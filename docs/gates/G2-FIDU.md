@@ -1,8 +1,7 @@
 # Gate G2 — Fidu (Phase G)
 
-> **Statut** : bascule code OK (2026-07-29) — Fidu **0.1.52** consomme `@creezio/*`
-> via `vendor/creezio` ; dual Client+Serveur (`buildServerArtifact: true`).
-> Publish feeds en cours / à valider ci-dessous.
+> **Statut** : **sign-off G2** (2026-07-29) — Fidu **0.1.52** publié (Client+Serveur).
+> Consomme `@creezio/*` via `vendor/creezio` (sync depuis kit). GUIDs / feeds OK.
 > Ordre : **G1 Certivan → G2 Fidu → G3 TempoFlow**.
 
 ## Cible
@@ -14,7 +13,7 @@
 | Manifest kit | `fiduManifest` (`@creezio/brand-config`) |
 | envPrefix | `FIDU` |
 | Client+Serveur | oui (`buildServerArtifact: true`) |
-| Version app (G2) | `0.1.52` |
+| Version app (G2) | `0.1.52` (après publish) |
 | userData client | `Fidu` (continuité `%APPDATA%/Fidu`) |
 | clientSlim | **false** (pas encore host-stack lazy — stack locale dans les 2 exe) |
 
@@ -28,50 +27,47 @@
 
 ### 1. Dépendances
 
-- [x] Ajouter dans `crm/package.json` :
-  - `@creezio/brand-config`
-  - `@creezio/shell`
-  - `@creezio/platform-core`
-  - `@creezio/product-hub`
-  - `@creezio/electron-shell`
-  - `@creezio/desktop-tooling`
+- [x] Ajouter dans `crm/package.json` les 6 packages `@creezio/*`
 - [x] Vendor `crm/vendor/creezio/*` + `sync-creezio-vendor.sh`
-- [x] Scripts npm → wrappers `desktop-tooling` (`electron:publish`, `remote-build`)
-- [x] Commit type : `chore(deps): consume @creezio/* — kit creezio [fidu]`
+- [x] Scripts npm → wrappers `desktop-tooling`
+- [x] Commit : `chore(deps): consume @creezio/* — kit creezio [fidu] (0.1.52)` (`538aa6a`)
 
 ### 2. Remplacements code
 
 - [x] Manifest / builder → `buildElectronBuilderConfig` + `fiduManifest` (`clientSlim: false`)
-- [x] Preload bridge → `exposeDesktopApi` / `FIDU_BRIDGE_NAME` (`window.fiduDesktop`)
-- [x] Boot partiel → `applyFiduDesktopBoot` (avant `requestSingleInstanceLock`)
+- [x] Preload → `exposeDesktopApi` / `FIDU_BRIDGE_NAME` (`window.fiduDesktop`)
+- [x] Boot → `applyFiduDesktopBoot` (avant `requestSingleInstanceLock`)
 - [x] app-kind / profile façades kit
 - [x] Dual `electron:build:win` + `electron:build:win:server`
-- [x] **Rester vertical** : Paperclip, GED, seeds cabinet, Pennylane, UI CRM
-- [x] **Ne pas purger** catalogue TF orphelin « pour nettoyer »
+- [x] **Vertical conservé** : Paperclip, GED, seeds cabinet, Pennylane, UI CRM
+- [x] **Pas de purge** catalogue TF orphelin
 - [ ] Product Hub / control plane runtime *(tokens prêts via `fiduProductHubTokens`)*
 
-### 3. Validation
+### 3. Validation Client + Serveur
 
 - [x] `npm run build` + `npm run electron:compile`
 - [x] `npm run test:app-kind` + `npm run test:shell`
 - [x] `npm run test:fidu` (GED, dépôt, Meili, Pennylane, users, …)
-- [ ] Feed client : `https://fidu.creez.io/dl-e660352fb04dbd5e2519f0e60897c548/latest.yml`
-- [ ] Feed serveur : `…/server/latest.yml` (première publication)
-- [ ] `remote-build-win.sh --publish` vert (Client + Serveur)
+- [x] Feeds live OK :
+  - Client : `https://fidu.creez.io/dl-e660352fb04dbd5e2519f0e60897c548/latest.yml` → **0.1.52**
+  - Serveur : `…/server/latest.yml` → **0.1.52** (première publication)
+- [x] `remote-build-win.sh --publish` vert (Client + Serveur)
 
 ### 4. Coupure legacy
 
-- [x] Runtime legacy encore dispo (façades + modules non basculés ; `clientSlim: false`)
-- [ ] Publish feed uniquement après verts (règle ship pipeline)
-- [ ] Sign-off G2 avant d'ouvrir G3
+- [x] Runtime legacy encore dispo (façades + `clientSlim: false`)
+- [x] Publish après verts uniquement
+- [x] Sign-off G2 — **G3 TempoFlow peut être ouvert** (accord parent / ops)
 
 ### 5. Sign-off G2
 
-- [ ] Console / feeds Client + Serveur Fidu OK
-- [ ] Exe publiés 0.1.52
-- [ ] **Autorisation explicite** pour G3 TempoFlow
+- [x] Feeds Client + Serveur Fidu OK (GUID client inchangé `f124e69d-…`)
+- [x] Exe publiés 0.1.52
+  - Client SHA256 `823e2497ca7b897cea7f367e54a5f404cb68708dc5398433a1a4a7a20571b819`
+  - Serveur SHA256 `800f0894b58d3d8ea02fb119e03319ed090dc175ce18cd5b7a99a596b7356f0d`
+- [x] Kit SHA `45c811e` ; Fidu SHA `538aa6a`
 
-## Interdits
+## Interdits pendant G2
 
 - ❌ Skip G1
 - ❌ Publish sans tests verts
@@ -81,5 +77,5 @@
 ## Références
 
 - [PROPAGATION.md](../PROPAGATION.md)
-- [PHASE-C.md](../PHASE-C.md) (publish tooling)
+- [PHASE-C.md](../PHASE-C.md)
 - Pipeline : `crm/docs/REMOTE-BUILD.md` (repo fidu)

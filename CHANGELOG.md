@@ -15,8 +15,8 @@ bumps via Conventional Commits (`npm run kit:version`).
 
 ### Added
 
-- Gate **G2 Fidu** en cours : consommation `@creezio/*` via vendor (voir
-  `docs/gates/G2-FIDU.md`)
+- Gate **G2 Fidu** sign-off : app 0.1.52 consomme `@creezio/*` via vendor ;
+  feeds Client + Serveur publiés (voir `docs/gates/G2-FIDU.md`)
 
 ## Kit — Phase G1 prep (2026-07-29)
 
