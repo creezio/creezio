@@ -28,13 +28,13 @@ Dette post-I18 : [PHASE-D0.md](PHASE-D0.md) → D1…D6.
 | Factory new-app | `@creezio/factory` | ✅ | scaffold Client+Serveur + demobrand |
 | Propagation kit→marques | `@creezio/propagation` | ✅ | semver, impact, canaux, extension points, registre L3 |
 | Console ops | `apps/console` | ✅ | kit-versions (+ `ARCHITECTURE_VERSION` I0), feeds, gates, POST-H5 |
-| **Auth** (session, login, recovery) | `@creezio/auth` | ✅ | Mémoire + **`createSqliteAuthStore` I1** + IPC + `AUTH_CORE_SQL` ; TF conso I13 (surface produit historique encore Hono — dette **D2**) |
+| **Auth** (session, login, recovery) | `@creezio/auth` | ✅ | Mémoire + **`createSqliteAuthStore` I1** ; **TF D2** dual-write login Hono → kit |
 | **Shell-UI / nav + slots** | `@creezio/shell-ui` | ✅ | **I7** : `createNavShellAdapter` + `NavRenderModel` ; TF/Certivan/Fidu I12/I16/I18 |
-| **Assistant / chat** | `@creezio/assistant` | ✅ | Mémoire + **`createSqliteAssistantStore` I2** ; TF I13 (dette unif. **D2**) |
+| **Assistant / chat** | `@creezio/assistant` | ✅ | Mémoire + **`createSqliteAssistantStore` I2** ; **TF D2** dual-write `chat-db` → kit |
 | **API kernel** (façade HTTP cœur) | `@creezio/api-kernel` | ✅ | ScopedDbAccess H2 + `authorizePluginAccess` H5 |
 | **MCP façade / proxy** | `@creezio/mcp-facade` | ✅ | H4 aliases/policies + H5 deny plugin ; **TF D1** : exécuteur = Hono `/mcp`, façade = adaptateur + proxy |
-| **Tasks** (natif plateforme) | `@creezio/tasks` | ✅ | CRUD + mount + **`createSqliteTasksStore` I3** ; TF mounts I13 (dette **D2**) |
-| **Mails** (natif plateforme) | `@creezio/mails` | ✅ | SQLite + **`file-sink`** I3 ; TF I13 (dette **D2**) |
+| **Tasks** (natif plateforme) | `@creezio/tasks` | ✅ | CRUD + mount I3 ; **TF D2** brand-retained (kanban ≫ kit) |
+| **Mails** (natif plateforme) | `@creezio/mails` | ✅ | SQLite + file-sink I3 ; **TF D2** brand inbox + kit outbound only |
 | Sync vendor standardisé | `scripts/sync-creezio-vendor.sh` | ✅ | **I0** — assert `ARCHITECTURE_VERSION=H6`, CJS, wrappers 3 marques |
 | Politique republish | [REPUBLISH-POLICY.md](REPUBLISH-POLICY.md) | ✅ | I14/I16/I18 livrés ; suite D3/D4/D5 si runtime packaged |
 | **SQLite multi-fichiers** (core / brand / plugin) | `@creezio/platform-core` | ✅ | paths H1 + `createSqliteRuntime` / migrations H2 |
@@ -95,7 +95,7 @@ nommés dans `@creezio/propagation` (contrats, pas automation).
 
 | Couche | ✅ | 🟡 (dette D*) | ❌ |
 |--------|----|---------------|-----|
-| Natif (socle A–G + H1–H6 + I0–I8) | brand-config, shell, platform-core, electron-shell, product-hub ACL H5, tooling, factory, propagation, console, api-kernel, mcp-facade, auth, shell-ui, assistant, tasks, mails | stores kit vs Hono historiques TF (**D2**) | — |
+| Natif (socle A–G + H1–H6 + I0–I8) | brand-config, shell, platform-core, electron-shell, product-hub ACL H5, tooling, factory, propagation, console, api-kernel, mcp-facade, auth, shell-ui, assistant, tasks, mails (+ **TF D2** adapters) | — | — |
 | Métier TF (repo marque) | panier, dispatch, releves, catalogue, stack, scan (status), MCP H4/**D1** une stack, ACL L3 I10, shell-ui I12, republish 0.10.30 | Scan API métier si produit l’exige (**D3**) | — |
 | Plugins | hub + host + DB `plugin/<id>` + ACL L3 kit + conso TF/Certivan/Fidu + E2E demobrand | Fidu HTTP control-plane (**D4**) ; Fidu `clientSlim` ADR (**D5**) ; Certivan polish (**D6**) | auto-promotion *(volontaire)* ; univers perso *(volontaire)* ; cloud registry *(volontaire)* |
 

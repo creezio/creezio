@@ -4,6 +4,9 @@
 ## [Unreleased]
 
 ### Added
+- **Phase D2** — TempoFlow stores plateforme : adaptateurs uniques, dual-write
+  auth/assistant, tasks/mails brand-retained ; dry-run migration ;
+  `docs/PHASE-D2.md` ; pas de republish.
 - **Phase D1** — TempoFlow une stack MCP : exécuteur Hono `/mcp`, façade
   Electron = adaptateur + proxy (`setMcpUpstream`) ; aliases source unique ;
   tools `creezio.*` + `module.dispatch.*` ; `docs/PHASE-D1.md` ; pas de republish.
