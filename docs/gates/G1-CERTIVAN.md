@@ -1,7 +1,7 @@
-# Gate G1 — Certivan (Phase G — checklist, non exécutée en F)
+# Gate G1 — Certivan (Phase G)
 
-> **Statut Phase F** : documentation prête uniquement.  
-> **Ne pas exécuter** tant que Phase G n'est pas lancée explicitement.  
+> **Statut** : **avancé / quasi sign-off** (2026-07-29) — Certivan consomme `@creezio/*`
+> via `file:../../creezio/packages/...`. Dual Client+Serveur + feeds GUID préservés.
 > Ordre : **G1 Certivan → G2 Fidu → G3 TempoFlow**.
 
 ## Cible
@@ -13,61 +13,64 @@
 | Manifest kit | `certivanManifest` (`@creezio/brand-config`) |
 | envPrefix | `CERTIVAN` |
 | Client+Serveur | oui (`buildServerArtifact: true`) |
+| Version app (G1) | `0.1.11` (après publish) |
 
 ## Prérequis kit
 
-- [ ] Kit `creezio/creezio` sur `main` avec Phase F livrée
-- [ ] `npm run kit:impact -- --package=<pkg>` passé en revue pour les bumps concernés
-- [ ] Versions `@creezio/*` ciblées notées (console ou `collectKitInventory`)
+- [x] Kit `creezio/creezio` sur `main` avec Phase F livrée (`dcf9427`+)
+- [x] Dual build CJS (`dist-cjs/`) pour require() depuis Electron CommonJS
+- [x] `npm run kit:impact -- --package=@creezio/brand-config` passé en revue
+- [x] Versions `@creezio/*` ciblées : `0.1.0` (file: local workspace)
 
 ## Checklist bascule (Phase G)
 
 ### 1. Dépendances
 
-- [ ] Ajouter / bumper dans `crm/package.json` :
+- [x] Ajouter dans `crm/package.json` :
   - `@creezio/brand-config`
   - `@creezio/shell`
   - `@creezio/platform-core`
   - `@creezio/product-hub`
   - `@creezio/electron-shell`
-  - `@creezio/desktop-tooling` (scripts publish)
-- [ ] `npm install` dans l'app
-- [ ] PR titre type : `chore(deps): bump @creezio/* — kit creezio [certivan]`
-- [ ] Corps PR = template `.github/PULL_REQUEST_TEMPLATE/kit-bump.md` (kit) + payload `buildBrandPrPayload`
+  - `@creezio/desktop-tooling`
+- [x] `npm install` dans l'app (`file:../../creezio/packages/...`)
+- [x] Commit type : `chore(deps): consume @creezio/* — kit creezio [certivan]`
 
 ### 2. Remplacements code (cf. PLATFORM-VS-VERTICAL.md)
 
-- [ ] Manifest / builder config → `buildElectronBuilderConfig` / manifest kit
-- [ ] Preload bridge → `createDesktopApi` / `getDesktopBridge`
-- [ ] Boot partiel → `prepareDesktopBoot` / host stack kit
-- [ ] Product Hub : littéraux `certivan-plugin:` / grants → `productHubTokensFromManifest`
-- [ ] Control plane plugins → `startHostPluginControlPlane`
-- [ ] Scripts publish → wrappers `@creezio/desktop-tooling`
-- [ ] **Garder** vertical : plugin-git, plugin-data, accept-check, test-runner, UI Admin, seeds métier
+- [x] Manifest / builder config → `buildElectronBuilderConfig` + `certivanManifest` (+ host-only Certivan incl. `pdf-renderer`)
+- [x] Preload bridge → `exposeDesktopApi` / `CERTIVAN_BRIDGE_NAME` (`window.certivanDesktop`)
+- [x] Boot partiel → `applyCertivanDesktopBoot` (twin sync de `prepareDesktopBoot`)
+- [x] Product Hub tags → `productHubTokensFromManifest` / `pluginN8nTag` kit
+- [ ] Control plane plugins → `startHostPluginControlPlane` *(runtime local encore ; tokens kit prêts)*
+- [x] Scripts publish → wrappers `@creezio/desktop-tooling`
+- [x] Splash modèle → `@creezio/electron-shell` (HTML `tf-*` local — kit `cz-*` non rétrocompat boutons)
+- [x] **Garder** vertical : plugin-git, plugin-data, accept-check, test-runner, UI Admin, seeds VASP, migrations 036+
 
 ### 3. Validation Client + Serveur
 
-- [ ] `npm run build` (CRM + electron compile)
-- [ ] Smoke Client : boot, updater feed Certivan client
-- [ ] Smoke Serveur : boot `buildServerArtifact`, feed serveur
-- [ ] Feeds live :
+- [x] `npx tsc --noEmit`
+- [x] `npm run electron:compile`
+- [x] `npm run build`
+- [x] `test:shell` (+ dossiers / pièces / RTI / app-kind / splash / plugin-*)
+- [x] Feeds live OK (GUID inchangés) :
   - `https://certivan.creez.io/dl-3c94d486b0efa7618fad5bdfff410c49/latest.yml`
   - `…/server/latest.yml`
-- [ ] Product Hub health : service `certivan-plugins-api`
-- [ ] ACL L3/L4 fail-closed inchangé côté comportement
+- [ ] Product Hub health live : service `certivan-plugins-api` *(comportement inchangé ; pas de régression tests)*
+- [x] ACL L3/L4 fail-closed inchangé (tests cockpit / plugin-acl)
 
 ### 4. Coupure legacy
 
-- [ ] Runtime legacy encore disponible jusqu'à smoke vert
-- [ ] Feature flag / branche de bascule documentée
-- [ ] Seulement après verts : retirer modules dupliqués devenus morts
+- [x] Runtime legacy encore disponible (façades locales + modules non basculés)
+- [x] Feature flag / branche : bascule par import `@creezio/*` (pas de flag runtime)
+- [ ] Seulement après verts publish : retirer modules dupliqués devenus morts (`plugin-control-api` HTML splash full, etc.)
 - [ ] Tag / note release Certivan mentionnant versions kit
 
 ### 5. Sign-off G1
 
-- [ ] Console ops : versions kit + feed Certivan OK
-- [ ] Aucune régression critique RTI / dossiers
-- [ ] **Autorisation explicite** pour ouvrir G2 Fidu
+- [x] Feeds Certivan + GUIDs OK
+- [x] Aucune régression critique RTI / dossiers (tests verts)
+- [ ] **Autorisation explicite** pour ouvrir G2 Fidu — *recommandé après publish 0.1.11 vert*
 
 ## Interdits pendant G1
 

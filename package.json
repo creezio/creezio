@@ -12,7 +12,8 @@
   },
   "scripts": {
     "build": "npm run build -w @creezio/brand-config && npm run build -w @creezio/shell && npm run build -w @creezio/platform-core && npm run build -w @creezio/product-hub && npm run build -w @creezio/electron-shell && npm run build -w @creezio/desktop-tooling && npm run build -w @creezio/factory && npm run build -w @creezio/propagation && npm run build -w @creezio/console && npm run build -w @creezio/app-demobrand",
-    "build:packages": "npm run build -w @creezio/brand-config && npm run build -w @creezio/shell && npm run build -w @creezio/platform-core && npm run build -w @creezio/product-hub && npm run build -w @creezio/electron-shell && npm run build -w @creezio/desktop-tooling && npm run build -w @creezio/factory && npm run build -w @creezio/propagation",
+    "build:packages": "npm run build -w @creezio/brand-config && npm run build -w @creezio/shell && npm run build -w @creezio/platform-core && npm run build -w @creezio/product-hub && npm run build -w @creezio/electron-shell && npm run build -w @creezio/desktop-tooling && npm run build -w @creezio/factory && npm run build -w @creezio/propagation && node scripts/build-cjs.mjs",
+    "build:cjs": "node scripts/build-cjs.mjs",
     "typecheck": "npm run build:packages",
     "test": "node --test scripts/test-phase-b.mjs scripts/test-phase-b2.mjs scripts/test-phase-c.mjs scripts/test-phase-d.mjs scripts/test-phase-e.mjs scripts/test-phase-f.mjs",
     "factory:new-app": "node packages/factory/bin/creezio.js new-app",

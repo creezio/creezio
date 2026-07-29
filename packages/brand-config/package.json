@@ -3,12 +3,14 @@
   "version": "0.1.0",
   "description": "AppManifest, createAppManifest, manifests marque (TempoFlow, Certivan, Fidu, DemoBrand) — client + serveur",
   "type": "module",
-  "main": "./dist/index.js",
+  "main": "./dist-cjs/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "import": "./dist/index.js"
+      "import": "./dist/index.js",
+      "require": "./dist-cjs/index.js",
+      "default": "./dist/index.js"
     },
     "./manifests/*": {
       "types": "./dist/manifests/*.d.ts",
@@ -16,7 +18,8 @@
     }
   },
   "files": [
-    "dist"
+    "dist",
+    "dist-cjs"
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
@@ -25,5 +28,6 @@
   "devDependencies": {
     "typescript": "^5.8.3"
   },
-  "license": "UNLICENSED"
+  "license": "UNLICENSED",
+  "module": "./dist/index.js"
 }

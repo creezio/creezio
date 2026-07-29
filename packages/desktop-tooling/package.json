@@ -3,12 +3,14 @@
   "version": "0.1.0",
   "description": "Tooling publish / remote-build / after-pack / build-status générique (AppManifest)",
   "type": "module",
-  "main": "./dist/index.js",
+  "main": "./dist-cjs/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "import": "./dist/index.js"
+      "import": "./dist/index.js",
+      "require": "./dist-cjs/index.js",
+      "default": "./dist/index.js"
     }
   },
   "bin": {
@@ -19,7 +21,8 @@
   },
   "files": [
     "dist",
-    "scripts"
+    "scripts",
+    "dist-cjs"
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
@@ -36,5 +39,6 @@
     "@types/node": "^22.15.3",
     "typescript": "^5.8.3"
   },
-  "license": "UNLICENSED"
+  "license": "UNLICENSED",
+  "module": "./dist/index.js"
 }
