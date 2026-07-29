@@ -15,7 +15,13 @@ export async function startPluginControlPlane(
 ): Promise<PluginControlPlaneState> {
   const handler = createPluginControlPlaneHandler(opts);
   const server = http.createServer((req, res) => {
-    void handler(req, res).catch((err) => {
+    void (async () => {
+      if (opts.preHandle) {
+        const done = await opts.preHandle(req, res);
+        if (done) return;
+      }
+      await handler(req, res);
+    })().catch((err) => {
       const msg = err instanceof Error ? err.message : String(err);
       if (!res.headersSent) {
         res.writeHead(500, { "Content-Type": "application/json" });

@@ -80,6 +80,14 @@ export type PluginControlPlaneOptions = {
   preferredPort?: number;
   /** H5 — enforcement ACL L3 (optionnel, rétrocompat). */
   acl?: PluginControlPlaneAcl;
+  /**
+   * C7 — routes marque avant le handler kit (extras TF/Certivan).
+   * Retourne `true` si la requête est entièrement traitée.
+   */
+  preHandle?: (
+    req: import("node:http").IncomingMessage,
+    res: import("node:http").ServerResponse,
+  ) => boolean | Promise<boolean>;
 };
 
 export type PluginControlPlaneState = {

@@ -12,8 +12,8 @@
 - [x] Politique republish : [REPUBLISH-POLICY.md](../REPUBLISH-POLICY.md)
 - [x] Phases I1–I8 livrées (persistance + control-plane + admin + shell-ui + freeze)
 - [x] D0–D6 + V1–V3 socle (sign-offs) — **pas** « 100 % produit » (voir C*)
-- [x] **C1–C6** cutover TF · dualités Certivan · fabrique · V2/V3 · mounts Fidu/RTI
-- [ ] **C7–C8** CP unifié · republish
+- [x] **C1–C7** cutover · dualités · fabrique · V2/V3 · mounts · CP unifié
+- [ ] **C8** docs finales + republish marques touchées
 
 ## TempoFlow (`tempoflow2`)
 
@@ -39,7 +39,7 @@
 - [x] ACL L3 store + shell-ui + conso stores (I18)
 - [x] Republish I18 Client+Serveur **0.1.55** *(historique)*
 - [x] D4 control-plane HTTP → republish **0.1.56** *(courant)*
-- [ ] **C5** mounts ged/contacts/dossiers utiles · CP host unifié **C7** · republish **C8**
+- [x] **C5** mounts utiles · **C7** CP host unifié · republish **C8**
 
 ## Dry-run sync TF (preuve I0)
 

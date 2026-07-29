@@ -1,9 +1,11 @@
 /**
  * Control plane plugins — façade electron-shell sur @creezio/product-hub.
+ * C7 : point d'entrée unifié `startHostPluginControlPlane` (4 boots).
  */
 
 import fs from "node:fs";
 import path from "node:path";
+import type { IncomingMessage, ServerResponse } from "node:http";
 import {
   productHubTokensFromManifest,
   startPluginControlPlane,
@@ -16,13 +18,19 @@ import { pluginsRootDir } from "@creezio/platform-core";
 import type { HostRuntimeContext } from "../context.js";
 import { hostLog } from "../context.js";
 import { ensurePluginControlToken } from "./control-token.js";
-import type { PluginsHost } from "./host.js";
+import { createPluginsHost, type PluginsHost } from "./host.js";
 
 export type StartHostPluginControlPlaneOptions = {
   ctx: HostRuntimeContext;
-  pluginsHost: PluginsHost;
-  /** Port préféré (0 = éphémère). */
+  /**
+   * Host sidecars. Si omis (C7), `createPluginsHost({ ctx })` est utilisé
+   * (Fidu / demobrand / boots sans launcher custom).
+   */
+  pluginsHost?: PluginsHost;
+  /** Port effectif (0 = éphémère). */
   port?: number;
+  /** Port préféré passé au server kit (info / findFree côté marque). */
+  preferredPort?: number;
   /**
    * Store Product Hub (mémoire ou SQLite vertical) pour fetchProductDetails.
    * Si absent, POST …/grant renvoie 503 sauf adapter custom.
@@ -32,6 +40,16 @@ export type StartHostPluginControlPlaneOptions = {
   adapters?: Partial<PluginControlPlaneAdapters>;
   /** H5 — ACL L3 Product Hub (optionnel, rétrocompat sans filtre). */
   acl?: PluginControlPlaneAcl;
+  /** C7 — extras marque (accept-check, versions…) avant handler kit. */
+  preHandle?: (
+    req: IncomingMessage,
+    res: ServerResponse,
+  ) => boolean | Promise<boolean>;
+  /**
+   * Override token Bearer (sinon `ensurePluginControlToken(ctx)`).
+   * Utile quand la marque a déjà matérialisé le fichier token.
+   */
+  controlToken?: string;
 };
 
 function defaultScaffold(
@@ -54,6 +72,7 @@ function defaultScaffold(
     description: opts.description || "",
     main: "index.js",
     permissions: ["net:loopback"],
+    creezio: { factory: "c7-host", db: "plugin", mcpSpace: "plugin" },
   };
   fs.writeFileSync(
     path.join(dir, "manifest.json"),
@@ -62,7 +81,7 @@ function defaultScaffold(
   );
   fs.writeFileSync(
     path.join(dir, "index.js"),
-    `console.log("plugin ${id} stub");\n`,
+    `"use strict";\nmodule.exports = { id: ${JSON.stringify(id)}, start() { return { ok: true, pluginId: ${JSON.stringify(id)} }; } };\n`,
     "utf8",
   );
   return { ok: true, plugin: { id, dir } };
@@ -70,14 +89,18 @@ function defaultScaffold(
 
 /**
  * Démarre le control plane loopback brandé depuis HostRuntimeContext.
+ * **C7** — entrée unique TF / Certivan / Fidu / demobrand.
  */
 export async function startHostPluginControlPlane(
   opts: StartHostPluginControlPlaneOptions,
 ): Promise<PluginControlPlaneState> {
-  const { ctx, pluginsHost } = opts;
+  const { ctx } = opts;
+  const pluginsHost = opts.pluginsHost || createPluginsHost({ ctx });
   const tokens = productHubTokensFromManifest(ctx.manifest);
-  const stored = ensurePluginControlToken(ctx);
+  const storedToken =
+    opts.controlToken || ensurePluginControlToken(ctx).token;
   const pluginsDir = pluginsRootDir(ctx.userDataDir);
+  fs.mkdirSync(pluginsDir, { recursive: true });
 
   const baseAdapters: PluginControlPlaneAdapters = {
     listStatus: () => pluginsHost.pluginsStatusPayload(),
@@ -136,7 +159,6 @@ export async function startHostPluginControlPlane(
   const adapters: PluginControlPlaneAdapters = {
     ...baseAdapters,
     ...opts.adapters,
-    // conserver pluginDir / fetch si non fournis
     pluginDir: opts.adapters?.pluginDir || baseAdapters.pluginDir,
     fetchProductDetails:
       opts.adapters?.fetchProductDetails || baseAdapters.fetchProductDetails,
@@ -144,16 +166,18 @@ export async function startHostPluginControlPlane(
 
   const state = await startPluginControlPlane({
     tokens,
-    controlToken: stored.token,
+    controlToken: storedToken,
     pluginsDir,
     adapters,
     port: opts.port ?? 0,
+    preferredPort: opts.preferredPort,
     ...(opts.acl ? { acl: opts.acl } : {}),
+    ...(opts.preHandle ? { preHandle: opts.preHandle } : {}),
   });
   hostLog(
     ctx,
     "plugins-api",
-    `control plane ${tokens.controlPlaneServiceName} sur ${state.url}`,
+    `control plane ${tokens.controlPlaneServiceName} sur ${state.url} (startHostPluginControlPlane)`,
   );
   return state;
 }

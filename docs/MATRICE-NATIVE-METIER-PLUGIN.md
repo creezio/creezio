@@ -84,7 +84,7 @@ Autres marques (indicatif, hors extraction) :
 | Manifest / events / execution grant | `@creezio/platform-core` | ✅ | Contrats purs |
 | Lifecycle / PRD / impact / n8n tags / ACL | `@creezio/product-hub` | ✅ | + `createSqliteProductHubStore` (H1.8) ; demobrand opt-in sqlite |
 | Fabrique conversationnelle (intention→plugin) | product-hub factory + demobrand | ✅ | **C3** scaffold réel + console SQLite + PrdDrafter |
-| Control plane HTTP host | `@creezio/electron-shell` + product-hub | 🟡 | **I4** + TF/Certivan/Fidu présents mais **3 styles** — unifier `startHostPluginControlPlane` = **C7** |
+| Control plane HTTP host | `@creezio/electron-shell` + product-hub | ✅ | **C7** — `startHostPluginControlPlane` unifié TF/Certivan/Fidu/demobrand |
 | Registre org L3 | `@creezio/propagation` | ✅ | **I6** : `createFileOrgPluginRegistry` + console `/api/org-plugins` |
 | UI Admin Plugins multi-org | demobrand + product-hub admin | ✅ | **I5** : `admin-plugins` API + HTML ; caps see/install/execute |
 | DB `plugin/<id>` à l’install | `@creezio/platform-core` `ensurePluginDb` | ✅ | Fichier créé à l’install uniquement |
@@ -101,10 +101,10 @@ nommés dans `@creezio/propagation` (contrats, pas automation).
 
 | Couche | ✅ | 🟡 (correction C*) | ❌ |
 |--------|----|-------------------|-----|
-| Natif socle | brand-config… fabrique C3, obs/automations C4 | CP multi-styles (**C7**) | — |
+| Natif socle | brand-config… fabrique C3, obs/automations C4, CP unifié C7 | — | — |
 | Métier TF | panier, dispatch, releves, catalogue, stack, scan D3, MCP D1, ACL L3, republish **0.10.31** | stores D2 pas cutover (**C1**) | — |
 | Métier Fidu / Certivan | foundation + ACL + feeds | Fidu mounts (**C5**) ; Certivan dualités (**C2**) + RTI (**C6**) | — |
-| Plugins | hub + ACL L3 3 marques + Fidu D4/C5 ; fabrique C3 ; obs/automations C4 TF | CP unifié (**C7**) | auto-promotion / univers perso / cloud registry *(volontaire)* |
+| Plugins | hub + ACL L3 3 marques + Fidu C5 ; fabrique C3 ; obs/automations C4 ; CP C7 | — | auto-promotion / univers perso / cloud registry *(volontaire)* |
 
 **Socle** H0–H5 + I0–I18 + D0–D6 + V1–V3 = **signé** (pas « 100 % produit »).  
 **Correction** : [PHASE-C0.md](PHASE-C0.md) → C1…C8.  

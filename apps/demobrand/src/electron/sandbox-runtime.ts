@@ -61,6 +61,11 @@ import {
   type AutomationEngine,
 } from "@creezio/automations";
 import {
+  startHostPluginControlPlane,
+  type HostRuntimeContext,
+} from "@creezio/electron-shell";
+import type { PluginControlPlaneState } from "@creezio/product-hub";
+import {
   productHubTokensFromManifest,
   PRODUCT_HUB_ACL_H5_SQL,
   PRODUCT_HUB_ACL_ORG_SQL,
@@ -309,13 +314,16 @@ export type DemobrandSandbox = {
   /** Headers actor pour API / control-plane. */
   actorHeaders(actor: PluginAclActor): Record<string, string>;
   /**
-   * I4 — ACL control-plane prête pour `startHostPluginControlPlane({ acl })`
-   * ou `startPluginControlPlane({ acl })`.
+   * I4 / C7 — ACL control-plane pour `startHostPluginControlPlane({ acl })`.
    */
   controlPlaneAcl(opts?: {
     onInstalled?: (pluginId: string, actor: PluginAclActor) => void;
     onUninstalled?: (pluginId: string) => void;
   }): PluginControlPlaneAcl;
+  /** C7 — démarre le control plane unifié kit. */
+  startControlPlane(opts?: {
+    port?: number;
+  }): Promise<PluginControlPlaneState>;
   close(): void;
 };
 
@@ -702,6 +710,8 @@ export function createDemobrandSandbox(opts?: {
     },
   });
 
+  let controlPlane: PluginControlPlaneState | null = null;
+
   const sandbox: DemobrandSandbox = {
     ctx,
     runtime,
@@ -742,6 +752,23 @@ export function createDemobrandSandbox(opts?: {
           opts?.onUninstalled?.(pluginId);
         },
       });
+    },
+
+    async startControlPlane(opts) {
+      if (controlPlane) return controlPlane;
+      const hostCtx: HostRuntimeContext = {
+        manifest,
+        userDataDir: userDataRoot,
+        resourcesRoot: userDataRoot,
+        isPackaged: true,
+      };
+      controlPlane = await startHostPluginControlPlane({
+        ctx: hostCtx,
+        productHubStore: productHub,
+        acl: sandbox.controlPlaneAcl(),
+        port: opts?.port ?? 0,
+      });
+      return controlPlane;
     },
 
     installPlugin(pluginId, installOpts) {
@@ -810,6 +837,10 @@ export function createDemobrandSandbox(opts?: {
     },
 
     close() {
+      if (controlPlane) {
+        void controlPlane.close().catch(() => {});
+        controlPlane = null;
+      }
       observability.close();
       mails.close();
       tasks.close();

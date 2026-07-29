@@ -4,6 +4,9 @@
 ## [Unreleased]
 
 ### Added
+- **Phase C7** — Control-plane unifié `startHostPluginControlPlane` (TF /
+  Certivan / Fidu / demobrand) + `preHandle` extras ; `docs/PHASE-C7.md` ;
+  pas de republish (→ C8).
 - **Phase C4** — V2/V3 prod-ready : `createSqliteAutomationPersist`, console
   obs/automations SQLite, demobrand persist, pilote TempoFlow vendor + mounts ;
   `docs/PHASE-C4.md` ; `test-phase-c4.mjs` ; pas de republish (→ C8).
