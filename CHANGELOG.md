@@ -4,6 +4,9 @@
 ## [Unreleased]
 
 ### Added
+- **Phase D0** — Alignement docs post-I18 : matrice Natif/Métier/Plugin
+  (catalogue/stack/ACL L3 plus 🟡 faux), dry-run I0 H6, backlog D1–D6 +
+  vision V1–V3 ; `docs/PHASE-D0.md` ; pas de republish.
 - **Phase I8** — Freeze kit H6 : `ARCHITECTURE_VERSION = "H6"`,
   factory scaffold `createNavShellAdapter`, feature-parity demobrand,
   sync expect H6 ; `docs/PHASE-I8.md`, `FEATURE-PARITY-DEMOBRAND-H6.md` ;

@@ -6,7 +6,7 @@
 | **Date** | 2026-07-29 |
 | **Repo** | `creezio/creezio` (+ wrappers sync TF / Certivan / Fidu) |
 | **Prérequis** | [PHASE-H5.md](PHASE-H5.md) sign-off |
-| **ARCHITECTURE_VERSION** | inchangé (`H5`) |
+| **ARCHITECTURE_VERSION** | baseline I0 = `H5` ; freeze ultérieur **I8 → `H6`** (dry-run actuel = H6) |
 | **Republish marques** | **Non** — voir [REPUBLISH-POLICY.md](REPUBLISH-POLICY.md) |
 
 ---
@@ -46,7 +46,13 @@ code métier / persistance packages (I1+).
 CREEZIO_SYNC_DRY_RUN=1 bash /opt/docker/tempoflow2/crm/scripts/electron/sync-creezio-vendor.sh
 ```
 
-Attendu : `ARCHITECTURE_VERSION=H5`, packages baseline H5, `OK dry-run`.
+**À la livraison I0** : attendu `ARCHITECTURE_VERSION=H5`, packages baseline H5,
+`OK dry-run`.
+
+**Post-I8 / actuel (D0)** : le même dry-run attend
+`ARCHITECTURE_VERSION=H6`, packages baseline I3 (auth…mails), `OK dry-run`.
+Voir [gates/POST-H5.md](gates/POST-H5.md). Ne pas documenter H5 comme
+cible sync courante.
 
 ## Hors scope I0
 

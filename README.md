@@ -19,9 +19,10 @@ Monorepo **plateforme** pour les desktops Creezio (TempoFlow, Certivan, Fidu)
 | [docs/BACKLOG-H4.md](docs/BACKLOG-H4.md) | MCP proxy unifié H4 |
 | [docs/BACKLOG-H5.md](docs/BACKLOG-H5.md) | Harden plugins / ACL H5 |
 | [docs/PHASE-H0.md](docs/PHASE-H0.md) … [PHASE-H5.md](docs/PHASE-H5.md) | Sign-offs H0–H5 |
-| [docs/PHASE-I0.md](docs/PHASE-I0.md) … [PHASE-I16.md](docs/PHASE-I16.md) | Sign-offs I0–I8 (kit H6) + I9–I14 TF + I15–I16 Certivan |
+| [docs/PHASE-I0.md](docs/PHASE-I0.md) … [PHASE-I18.md](docs/PHASE-I18.md) | Sign-offs I0–I8 (kit H6) + I9–I18 conso 3 marques |
+| [docs/PHASE-D0.md](docs/PHASE-D0.md) | Dette post-I18 — D0 docs/matrice → D1…D6 |
 | [docs/FEATURE-PARITY-DEMOBRAND-H6.md](docs/FEATURE-PARITY-DEMOBRAND-H6.md) | Checklist parity demobrand avant I9 |
-| [docs/REPUBLISH-POLICY.md](docs/REPUBLISH-POLICY.md) | Politique republish (I14/I16/I18 seulement) |
+| [docs/REPUBLISH-POLICY.md](docs/REPUBLISH-POLICY.md) | Politique republish (I14/I16/I18 + D3/D4/D5 si runtime) |
 | [docs/gates/POST-H5.md](docs/gates/POST-H5.md) | Checklist gates post-H5 |
 
 En bref : Creezio = **CMS stable** (SQLite `core`, API/MCP façade, nav + slots) ;
@@ -151,11 +152,15 @@ Les sandboxes factory portent `sandbox: true` (feeds jetables).
 | **H3** | Modules métier TF (brand repo) | ✅ |
 | **H4** | MCP proxy unifié (aliases, policies) | ✅ |
 | **H5** | Harden plugins / ACL | ✅ |
+| **I0–I8** | Gouvernance + persistance + freeze H6 | ✅ |
+| **I9–I18** | Conso TempoFlow / Certivan / Fidu + republish | ✅ |
+| **D0** | Alignement docs / matrice post-I18 | ✅ |
+| **D1–D6** | Dette MCP / stores / scan / Fidu CP / clientSlim / Certivan | 🟡 |
 
-Voir [docs/PHASE-H5.md](docs/PHASE-H5.md), [docs/DOD-PHASE-A-G.md](docs/DOD-PHASE-A-G.md),
-[docs/PROPAGATION.md](docs/PROPAGATION.md).
+Voir [docs/PHASE-D0.md](docs/PHASE-D0.md), [docs/PHASE-H5.md](docs/PHASE-H5.md),
+[docs/DOD-PHASE-A-G.md](docs/DOD-PHASE-A-G.md), [docs/PROPAGATION.md](docs/PROPAGATION.md).
 
 ## Hors scope
 
 - Pas d’extraction du métier marque dans `@creezio/*` (décision H0 verrouillée)
-- Certivan / Fidu intacts sauf conso opt-in
+- Auto-promotion plugin→module, univers perso, cloud registry (volontaire)
