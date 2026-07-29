@@ -4,12 +4,12 @@
 ## [Unreleased]
 
 ### Added
-- **Phase M6p (Certivan)** — Dual-reads legacy Certivan dans
+- **Phase M6p** — Dual-reads legacy Certivan/Fidu dans
   `@creezio/electron-shell` (n8n encryption/owner, Hermes API key / webui
-  password, markers WebUI `.certivan-webui-*`) ; cutover marque Certivan
-  (jumeaux local-config/bootstraps/launchers/chrome absents ;
-  `host-runtime-ctx` / `local-config-store`) ; `docs/PHASE-M6p.md` ;
-  **pas** de republish exe. Fidu ⏳.
+  password, markers WebUI `.certivan-` / `.fidu-webui-*`) ; cutover
+  Certivan puis Fidu (jumeaux absents ; `host-runtime-ctx` /
+  `local-config-store` ; Paperclip reste vertical Fidu) ;
+  `docs/PHASE-M6p.md` ; tests `test-phase-m6p` ; **pas** de republish exe.
 - **Phase M5** — Delete jumeaux bootstraps hermes/n8n TF : deltas
   (`installHermesAgent`, webui deps marker/pip skip, scripts vendorisés,
   os-profile, `failDiskSpace`/`force`/timeout npm) portés dans

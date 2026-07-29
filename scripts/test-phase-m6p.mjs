@@ -41,15 +41,21 @@ check("hermes ensureApiKey brand-aware + clear certivan webui password", () => {
   assert.ok(src.includes("clearGeneratedWebuiPassword"));
 });
 
-check("hermes bootstrap WEBUI_DEPS_MARKER_LEGACY_CERTIVAN", () => {
+check("hermes bootstrap WEBUI_DEPS_MARKER_LEGACY_CERTIVAN + FIDU", () => {
   const src = read(
     "packages/electron-shell/src/host/hermes/runtime-bootstrap.ts",
   );
   assert.ok(src.includes("WEBUI_DEPS_MARKER_LEGACY_CERTIVAN"));
+  assert.ok(src.includes("WEBUI_DEPS_MARKER_LEGACY_FIDU"));
   assert.ok(src.includes(".certivan-webui-deps"));
+  assert.ok(src.includes(".fidu-webui-deps"));
   assert.ok(src.includes(".certivan-webui-pin"));
+  assert.ok(src.includes(".fidu-webui-pin"));
   const idx = read("packages/electron-shell/src/index.ts");
   assert.ok(idx.includes("WEBUI_DEPS_MARKER_LEGACY_CERTIVAN"));
+  assert.ok(idx.includes("WEBUI_DEPS_MARKER_LEGACY_FIDU"));
+  const hermes = read("packages/electron-shell/src/host/hermes/launcher.ts");
+  assert.ok(hermes.includes("fidu-webui-password"));
 });
 
 check("PHASE-M6p.md présent", () => {

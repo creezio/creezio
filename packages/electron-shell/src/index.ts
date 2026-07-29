@@ -214,6 +214,7 @@ export {
   WEBUI_DEPS_MARKER,
   WEBUI_DEPS_MARKER_LEGACY,
   WEBUI_DEPS_MARKER_LEGACY_CERTIVAN,
+  WEBUI_DEPS_MARKER_LEGACY_FIDU,
   ensureHermesRuntime,
   ensureHermesWebuiTree,
   getBootstrapError,

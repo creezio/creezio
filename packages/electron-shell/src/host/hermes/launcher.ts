@@ -143,6 +143,7 @@ function clearGeneratedWebuiPasswordImpl(
     path.join(home, ".tempoflow-webui-password"),
     path.join(home, ".desktop-hermes-webui-password"),
     path.join(home, ".certivan-webui-password"),
+    path.join(home, ".fidu-webui-password"),
   ];
   if (secretPrefix) {
     files.push(path.join(home, `.${secretPrefix}-webui-password`));

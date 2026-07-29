@@ -272,20 +272,25 @@ export const WEBUI_DEPS_MARKER = ".desktop-webui-deps";
 export const WEBUI_DEPS_MARKER_LEGACY = ".tempoflow-webui-deps";
 /** Legacy Certivan (M6p) — installs ≤ cutover host. */
 export const WEBUI_DEPS_MARKER_LEGACY_CERTIVAN = ".certivan-webui-deps";
+/** Legacy Fidu (M6p) — installs ≤ cutover host. */
+export const WEBUI_DEPS_MARKER_LEGACY_FIDU = ".fidu-webui-deps";
 const WEBUI_PIN_FILE = ".desktop-webui-pin";
 const WEBUI_PIN_FILE_LEGACY = ".tempoflow-webui-pin";
 const WEBUI_PIN_FILE_LEGACY_CERTIVAN = ".certivan-webui-pin";
+const WEBUI_PIN_FILE_LEGACY_FIDU = ".fidu-webui-pin";
 
 const WEBUI_DEPS_MARKER_CANDIDATES = [
   WEBUI_DEPS_MARKER,
   WEBUI_DEPS_MARKER_LEGACY,
   WEBUI_DEPS_MARKER_LEGACY_CERTIVAN,
+  WEBUI_DEPS_MARKER_LEGACY_FIDU,
 ] as const;
 
 const WEBUI_PIN_CANDIDATES = [
   WEBUI_PIN_FILE,
   WEBUI_PIN_FILE_LEGACY,
   WEBUI_PIN_FILE_LEGACY_CERTIVAN,
+  WEBUI_PIN_FILE_LEGACY_FIDU,
 ] as const;
 
 export function webuiDepsMarkerPath(webuiDir: string): string {
