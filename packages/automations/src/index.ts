@@ -24,3 +24,9 @@ export {
 
 export { ruleMatches } from "./match.js";
 export { createAutomationsApiMount } from "./api-mount.js";
+export { AUTOMATIONS_CORE_SQL } from "./schema.js";
+export type {
+  AutomationPersistStore,
+  CreateSqliteAutomationPersistOptions,
+} from "./sqlite-persist.js";
+export { createSqliteAutomationPersist } from "./sqlite-persist.js";

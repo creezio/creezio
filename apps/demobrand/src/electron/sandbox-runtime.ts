@@ -56,6 +56,7 @@ import {
 import {
   createAutomationEngine,
   createAutomationsApiMount,
+  createSqliteAutomationPersist,
   defaultDemobrandAutomationRules,
   type AutomationEngine,
 } from "@creezio/automations";
@@ -370,7 +371,11 @@ export function createDemobrandSandbox(opts?: {
   });
 
   const hubTokens = productHubTokensFromManifest(manifest);
+  const automationPersist = createSqliteAutomationPersist({
+    coreDbPath: runtime.paths.core,
+  });
   const automations = createAutomationEngine({
+    persist: automationPersist,
     n8nTagPrefix: hubTokens.n8nTagPrefix,
     defaultWebhookUrl: process.env.N8N_AUTOMATION_WEBHOOK_URL || null,
     emitObservability: (input) => {
@@ -400,8 +405,10 @@ export function createDemobrandSandbox(opts?: {
       }
     },
   });
-  for (const rule of defaultDemobrandAutomationRules()) {
-    automations.addRule(rule);
+  if (automations.listRules().length === 0) {
+    for (const rule of defaultDemobrandAutomationRules()) {
+      automations.addRule(rule);
+    }
   }
 
   function authorizePluginAccess(accessCtx: {

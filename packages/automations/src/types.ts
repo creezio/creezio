@@ -105,4 +105,8 @@ export type AutomationEngineAdapters = {
   log?: (level: "info" | "warn", message: string, meta?: unknown) => void;
   /** URL webhook par défaut (env N8N_AUTOMATION_WEBHOOK_URL). */
   defaultWebhookUrl?: string | null;
+  /**
+   * Persistance SQLite rules/runs (C4). Absent = mémoire (V3 legacy).
+   */
+  persist?: import("./sqlite-persist.js").AutomationPersistStore;
 };

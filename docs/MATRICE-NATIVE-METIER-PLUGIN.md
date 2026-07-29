@@ -26,8 +26,8 @@ Dette D* : [PHASE-D0.md](PHASE-D0.md). Correction : [PHASE-C0.md](PHASE-C0.md).
 | Host Hermes | `@creezio/electron-shell` | ✅ | `host/hermes/*` (B.2) |
 | Product Hub / plugins lifecycle + ACL L3/L4 | `@creezio/product-hub` | ✅ | H5 : `decidePluginAccess` see/install/execute + binding org + deny cross-org |
 | **Fabrique plugins conversationnelle** | `@creezio/product-hub` (+ demobrand/console) | ✅ | **C3** scaffold réel (schema/api/mcp) + console SQLite persist + `PrdDrafter` LLM opt. (socle V1 supersédé) |
-| **Observabilité** (activité / usages / CP) | `@creezio/observability` | 🟡 | **V2** package + demobrand ; console mémoire / pas vendor marques — **C4** persist + sync |
-| **Automations** data-driven | `@creezio/automations` | 🟡 | **V3** package + demobrand ; rules/runs éphémères — **C4** SQLite + ≥1 marque |
+| **Observabilité** (activité / usages / CP) | `@creezio/observability` | ✅ | **C4** SQLite console + demobrand + vendor TF pilote |
+| **Automations** data-driven | `@creezio/automations` | ✅ | **C4** SQLite rules/runs + console + demobrand + TF pilote |
 | Plugins host (spawn, grants, events) | platform-core + electron-shell | ✅ | `plugins/*`, control plane + `acl` option H5 |
 | Desktop tooling publish / remote-build | `@creezio/desktop-tooling` | ✅ | publish-desktop, remote-build-win, after-pack |
 | Factory new-app | `@creezio/factory` | ✅ | scaffold Client+Serveur + demobrand |
@@ -72,8 +72,8 @@ Autres marques (indicatif, hors extraction) :
 
 | Marque | Exemples métier | Repo | Conso H6 |
 |--------|-----------------|------|----------|
-| Fidu | GED, CRM fiduciaire… | `/opt/docker/fidu` | I17–I18 + D4/D5 **0.1.56** ; mounts métier minces → **C5** ; CP host unifié → **C7** |
-| Certivan | RTI / VASP… | `/opt/docker/certivan-app` | I15–I16 **0.1.14** ; D6 aliases ; **C2** MCP+stores cutover ; RTI UI-only → **C6** |
+| Fidu | GED, CRM fiduciaire… | `/opt/docker/fidu` | I17–I18 + D4/D5 **0.1.56** ; **C5** mounts list/get/mutation ; CP host unifié → **C7** |
+| Certivan | RTI / VASP… | `/opt/docker/certivan-app` | I15–I16 **0.1.14** ; **C2** cutover ; **C6** RTI API métier ; CP → **C7** |
 
 ---
 
@@ -101,10 +101,10 @@ nommés dans `@creezio/propagation` (contrats, pas automation).
 
 | Couche | ✅ | 🟡 (correction C*) | ❌ |
 |--------|----|-------------------|-----|
-| Natif socle | brand-config, shell, platform-core, electron-shell, product-hub ACL H5, tooling, factory, propagation, api-kernel, mcp-facade TF D1/C2, shell-ui, fabrique C3 | V2/V3 console/vendor (**C4**) ; CP multi-styles (**C7**) | — |
+| Natif socle | brand-config… fabrique C3, obs/automations C4 | CP multi-styles (**C7**) | — |
 | Métier TF | panier, dispatch, releves, catalogue, stack, scan D3, MCP D1, ACL L3, republish **0.10.31** | stores D2 pas cutover (**C1**) | — |
 | Métier Fidu / Certivan | foundation + ACL + feeds | Fidu mounts (**C5**) ; Certivan dualités (**C2**) + RTI (**C6**) | — |
-| Plugins | hub + ACL L3 3 marques + Fidu D4 HTTP ; clientSlim false D5 ; fabrique C3 | obs/automations non vendor (**C4**) ; CP unifié (**C7**) | auto-promotion / univers perso / cloud registry *(volontaire)* |
+| Plugins | hub + ACL L3 3 marques + Fidu D4/C5 ; fabrique C3 ; obs/automations C4 TF | CP unifié (**C7**) | auto-promotion / univers perso / cloud registry *(volontaire)* |
 
 **Socle** H0–H5 + I0–I18 + D0–D6 + V1–V3 = **signé** (pas « 100 % produit »).  
 **Correction** : [PHASE-C0.md](PHASE-C0.md) → C1…C8.  

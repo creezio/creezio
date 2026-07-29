@@ -10,6 +10,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
+    "@creezio/automations": "0.1.0",
     "@creezio/brand-config": "0.1.0",
     "@creezio/desktop-tooling": "0.1.0",
     "@creezio/observability": "0.1.0",

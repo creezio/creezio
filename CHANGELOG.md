@@ -4,6 +4,11 @@
 ## [Unreleased]
 
 ### Added
+- **Phase C4** — V2/V3 prod-ready : `createSqliteAutomationPersist`, console
+  obs/automations SQLite, demobrand persist, pilote TempoFlow vendor + mounts ;
+  `docs/PHASE-C4.md` ; `test-phase-c4.mjs` ; pas de republish (→ C8).
+- **Phase C5/C6** — docs sign-off mounts Fidu + RTI Certivan (`PHASE-C5.md`,
+  `PHASE-C6.md`).
 - **Phase C3** — Fabrique V1 réelle : scaffold `schema.sql`/`api.js`/`mcp-tools.js`,
   console SQLite persistée, `PrdDrafter` LLM optionnel ; demobrand E2E ;
   `docs/PHASE-C3.md` ; `test-phase-c3.mjs` ; pas de republish.

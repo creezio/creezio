@@ -139,11 +139,15 @@ export type AutomationEngine = {
 export function createAutomationEngine(
   adapters: AutomationEngineAdapters = {},
 ): AutomationEngine {
-  const rules: AutomationRule[] = [];
+  const persist = adapters.persist;
+  const rules: AutomationRule[] = persist ? persist.loadRules() : [];
   const runs: AutomationRunResult[] = [];
 
   return {
     addRule(input) {
+      const existingIdx = input.id
+        ? rules.findIndex((r) => r.id === input.id)
+        : -1;
       const rule: AutomationRule = {
         id: input.id || crypto.randomUUID(),
         name: input.name,
@@ -151,9 +155,14 @@ export function createAutomationEngine(
         trigger: input.trigger,
         filter: input.filter,
         actions: input.actions,
-        createdAt: input.createdAt || now(),
+        createdAt:
+          existingIdx >= 0
+            ? rules[existingIdx]!.createdAt
+            : input.createdAt || now(),
       };
-      rules.push(rule);
+      if (existingIdx >= 0) rules[existingIdx] = rule;
+      else rules.push(rule);
+      persist?.saveRule(rule);
       return rule;
     },
 
@@ -161,6 +170,7 @@ export function createAutomationEngine(
       const idx = rules.findIndex((r) => r.id === id);
       if (idx < 0) return false;
       rules.splice(idx, 1);
+      persist?.deleteRule(id);
       return true;
     },
 
@@ -192,11 +202,13 @@ export function createAutomationEngine(
         results.push(result);
         runs.push(result);
         if (runs.length > 500) runs.shift();
+        persist?.appendRun(result);
       }
       return results;
     },
 
     listRuns(limit = 50) {
+      if (persist) return persist.listRuns(limit);
       return runs.slice(-limit).reverse();
     },
   };
