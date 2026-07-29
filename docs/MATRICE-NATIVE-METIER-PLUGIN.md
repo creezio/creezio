@@ -1,8 +1,8 @@
 # Matrice Natif / Métier / Plugin
 
 > Cartographie **Phase H0** (2026-07-29), réalignée **D0** puis **C0**
-> (correction post-audit). Versions courantes : TF **0.10.31** · Certivan
-> **0.1.14** · Fidu **0.1.56**.  
+> (correction post-audit). Versions courantes : TF **0.10.32** · Certivan
+> **0.1.15** · Fidu **0.1.57** (C8).  
 > Légende : **✅** livré / utilisable · **🟡** partiel (demi-mesure —
 > fermeture [PHASE-C0.md](PHASE-C0.md) → C1…C8) · **❌** absent / hors
 > scope volontaire.
@@ -72,8 +72,8 @@ Autres marques (indicatif, hors extraction) :
 
 | Marque | Exemples métier | Repo | Conso H6 |
 |--------|-----------------|------|----------|
-| Fidu | GED, CRM fiduciaire… | `/opt/docker/fidu` | I17–I18 + D4/D5 **0.1.56** ; **C5** mounts list/get/mutation ; CP host unifié → **C7** |
-| Certivan | RTI / VASP… | `/opt/docker/certivan-app` | I15–I16 **0.1.14** ; **C2** cutover ; **C6** RTI API métier ; CP → **C7** |
+| Fidu | GED, CRM fiduciaire… | `/opt/docker/fidu` | I17–I18 + D4/D5 ; **C5** mounts ; **C7** CP ; republish **0.1.57** (C8) |
+| Certivan | RTI / VASP… | `/opt/docker/certivan-app` | I15–I16 ; **C2** cutover ; **C6** RTI API ; **C7** CP ; republish **0.1.15** (C8) |
 
 ---
 
@@ -102,7 +102,7 @@ nommés dans `@creezio/propagation` (contrats, pas automation).
 | Couche | ✅ | 🟡 (correction C*) | ❌ |
 |--------|----|-------------------|-----|
 | Natif socle | brand-config… fabrique C3, obs/automations C4, CP unifié C7 | — | — |
-| Métier TF | panier, dispatch, releves, catalogue, stack, scan D3, MCP D1, ACL L3, republish **0.10.31** | stores D2 pas cutover (**C1**) | — |
+| Métier TF | panier, dispatch, releves, catalogue, stack, scan, MCP, ACL L3 ; C1–C4–C7 ; republish **0.10.32** (C8) | — | — |
 | Métier Fidu / Certivan | foundation + ACL + feeds | Fidu mounts (**C5**) ; Certivan dualités (**C2**) + RTI (**C6**) | — |
 | Plugins | hub + ACL L3 3 marques + Fidu C5 ; fabrique C3 ; obs/automations C4 ; CP C7 | — | auto-promotion / univers perso / cloud registry *(volontaire)* |
 

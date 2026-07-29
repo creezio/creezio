@@ -4,6 +4,8 @@
 ## [Unreleased]
 
 ### Added
+- **Phase C8** — Docs finales + republish TF **0.10.32** · Certivan **0.1.15** ·
+  Fidu **0.1.57** ; checklist C* 100 % ; `docs/PHASE-C8.md`.
 - **Phase C7** — Control-plane unifié `startHostPluginControlPlane` (TF /
   Certivan / Fidu / demobrand) + `preHandle` extras ; `docs/PHASE-C7.md` ;
   pas de republish (→ C8).

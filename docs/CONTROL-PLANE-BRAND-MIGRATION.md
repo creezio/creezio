@@ -42,7 +42,7 @@ Sandbox demobrand : `sandbox.controlPlaneAcl()` + `sandbox.actorHeaders(actor)`.
 |---|-------|----|----------|------|
 | 1 | Vendor sync inclut `product-hub` + `electron-shell` (I0/I3) | ✅ I9 | ✅ I15 | ✅ I17 |
 | 2 | Brancher `createSqliteProductHubStore` (ou store existant) | ✅ I10 | ✅ I15/I16 | ✅ I17/I18 |
-| 3 | Remplacer HTTP local par `startHostPluginControlPlane` | ✅ I10 (façade `createPluginControlPlaneHandler`) | ✅ I16 | ➖ N/A GED (pas de HTTP plugins) |
+| 3 | Remplacer HTTP local par `startHostPluginControlPlane` | ✅ **C7** | ✅ **C7** | ✅ **C7** (D4 HTTP) |
 | 4 | Passer `acl: createPluginControlPlaneAclFromStore(...)` | ✅ I10 | ✅ I16 | ✅ I18 (`createFiduControlPlaneAcl` + `brand-runtime.controlPlaneAcl`) |
 | 5 | Headers actor `buildPluginAclActorHeaders` / `x-creezio-org-id` | ✅ I10 | ✅ I16 | ✅ I18 (`fiduActorHeaders`) |
 | 6 | Garder adapters verticaux (git, accept-check, grants CRM) | ✅ I10 | ✅ I16 | ➖ N/A (pas de control-plane HTTP) |

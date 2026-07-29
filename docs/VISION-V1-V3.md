@@ -91,12 +91,9 @@ Chat intention
 
 ## Addendum C0 — demi-mesures (pas « 100 % produit »)
 
-Sign-off V1–V3 = **socle kit + demobrand**. L’audit post-V3 classe encore
-en 🟡 restant : obs/automations non persistés côté console + pas vendor
-marques (→ **C4**) ; mounts / CP (→ **C5–C7**). **C3** fabrique réelle ✅
-(scaffold + console SQLite + PrdDrafter). Cutovers TF/Certivan = **C1–C2** ✅.
-
-Voir [PHASE-C0.md](PHASE-C0.md).
+Sign-off V1–V3 = **socle kit + demobrand**. Correction C* : **C1–C7** ✅ ;
+clôture docs + republish = **C8** (TF **0.10.32** · Certivan **0.1.15** ·
+Fidu **0.1.57**). Voir [PHASE-C8.md](PHASE-C8.md) · [PHASE-C0.md](PHASE-C0.md).
 
 ---
 
