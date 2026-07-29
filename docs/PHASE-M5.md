@@ -74,8 +74,8 @@ cd /opt/docker/tempoflow2/crm && npm run electron:compile \
 
 | Gate | Résultat |
 |------|----------|
-| kit `npm test` (+ M5) | ✅ |
-| TF vendor sync complète | ✅ |
+| kit `npm test` (+ M5) | ✅ 224 pass |
+| TF vendor sync complète | ✅ liste complète |
 | TF `electron:compile` | ✅ |
 | TF hermes/n8n-embed + context-seed + api-key + embed-env + main-graph | ✅ |
 
@@ -84,6 +84,15 @@ cd /opt/docker/tempoflow2/crm && npm run electron:compile \
 ## Suite
 
 **M6** — Delete stubs launchers/chrome (hermes/n8n/tunnel/node/npm/updater/splash/tray/logger/meili) ; imports directs kit.
+
+---
+
+## Push
+
+| Repo | SHA |
+|------|-----|
+| kit `creezio/creezio` | `40a694e` |
+| TF `tempoflow2` | `015f796` |
 
 ---
 
