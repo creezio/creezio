@@ -75,7 +75,10 @@ cloud registry.
 
 ## Suite
 
-→ **D1 livrée** : [PHASE-D1.md](PHASE-D1.md).
+→ **D1–D6 + V1–V3 livrés** (socle).  
+→ **Correction post-audit** : [PHASE-C0.md](PHASE-C0.md) → C1…C8
+(demi-mesures 🟡 restantes : dual-write TF, dualités Certivan, V1–V3
+prod-ready, mounts, control-plane unifié).
 
 ## Verdict
 

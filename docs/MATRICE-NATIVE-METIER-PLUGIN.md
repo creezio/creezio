@@ -1,12 +1,14 @@
 # Matrice Natif / Métier / Plugin
 
-> Cartographie **Phase H0** (2026-07-29), **réalignée Phase D0** post
-> I0→I18 (kit tip ~`520bb56`, TF 0.10.30 · Certivan 0.1.14 · Fidu 0.1.55).  
-> Légende : **✅** livré / utilisable · **🟡** partiel (dette post-I18
-> documentée D1–D6) · **❌** absent / hors scope volontaire.
+> Cartographie **Phase H0** (2026-07-29), réalignée **D0** puis **C0**
+> (correction post-audit). Versions courantes : TF **0.10.31** · Certivan
+> **0.1.14** · Fidu **0.1.56**.  
+> Légende : **✅** livré / utilisable · **🟡** partiel (demi-mesure —
+> fermeture [PHASE-C0.md](PHASE-C0.md) → C1…C8) · **❌** absent / hors
+> scope volontaire.
 
 Source cadre : [ARCHITECTURE-INTENTION.md](ARCHITECTURE-INTENTION.md).  
-Dette post-I18 : [PHASE-D0.md](PHASE-D0.md) → D1…D6.
+Dette D* : [PHASE-D0.md](PHASE-D0.md). Correction : [PHASE-C0.md](PHASE-C0.md).
 
 ---
 
@@ -23,21 +25,21 @@ Dette post-I18 : [PHASE-D0.md](PHASE-D0.md) → D1…D6.
 | Host n8n | `@creezio/electron-shell` | ✅ | `host/n8n/*` (B.2) |
 | Host Hermes | `@creezio/electron-shell` | ✅ | `host/hermes/*` (B.2) |
 | Product Hub / plugins lifecycle + ACL L3/L4 | `@creezio/product-hub` | ✅ | H5 : `decidePluginAccess` see/install/execute + binding org + deny cross-org |
-| **Fabrique plugins conversationnelle** | `@creezio/product-hub` (+ demobrand/console) | ✅ | **V1** : intention→PRD→scaffold→`openPlugin`→MCP ; `PHASE-V1.md` |
-| **Observabilité** (activité / usages / CP) | `@creezio/observability` | ✅ | **V2** : store core + API + console multi-org ; `PHASE-V2.md` |
-| **Automations** data-driven | `@creezio/automations` | ✅ | **V3** : triggers lifecycle/données + n8n opt. ; `PHASE-V3.md` |
+| **Fabrique plugins conversationnelle** | `@creezio/product-hub` (+ demobrand/console) | 🟡 | **V1** socle E2E demobrand (PRD déterministe, scaffold stub, console mémoire) — **C3** = fabrique réelle + persist |
+| **Observabilité** (activité / usages / CP) | `@creezio/observability` | 🟡 | **V2** package + demobrand ; console mémoire / pas vendor marques — **C4** persist + sync |
+| **Automations** data-driven | `@creezio/automations` | 🟡 | **V3** package + demobrand ; rules/runs éphémères — **C4** SQLite + ≥1 marque |
 | Plugins host (spawn, grants, events) | platform-core + electron-shell | ✅ | `plugins/*`, control plane + `acl` option H5 |
 | Desktop tooling publish / remote-build | `@creezio/desktop-tooling` | ✅ | publish-desktop, remote-build-win, after-pack |
 | Factory new-app | `@creezio/factory` | ✅ | scaffold Client+Serveur + demobrand |
 | Propagation kit→marques | `@creezio/propagation` | ✅ | semver, impact, canaux, extension points, registre L3 |
 | Console ops | `apps/console` | ✅ | kit-versions (+ `ARCHITECTURE_VERSION` I0), feeds, gates, POST-H5 |
-| **Auth** (session, login, recovery) | `@creezio/auth` | ✅ | Mémoire + **`createSqliteAuthStore` I1** ; **TF D2** dual-write login Hono → kit |
+| **Auth** (session, login, recovery) | `@creezio/auth` | 🟡 | Mémoire + **`createSqliteAuthStore` I1** ; **TF D2** dual-write login Hono → kit — cutover SoT kit = **C1** |
 | **Shell-UI / nav + slots** | `@creezio/shell-ui` | ✅ | **I7** : `createNavShellAdapter` + `NavRenderModel` ; TF/Certivan/Fidu I12/I16/I18 |
-| **Assistant / chat** | `@creezio/assistant` | ✅ | Mémoire + **`createSqliteAssistantStore` I2** ; **TF D2** dual-write `chat-db` → kit |
+| **Assistant / chat** | `@creezio/assistant` | 🟡 | Mémoire + **`createSqliteAssistantStore` I2** ; **TF D2** dual-write `chat-db` → kit — cutover = **C1** |
 | **API kernel** (façade HTTP cœur) | `@creezio/api-kernel` | ✅ | ScopedDbAccess H2 + `authorizePluginAccess` H5 |
-| **MCP façade / proxy** | `@creezio/mcp-facade` | ✅ | H4 aliases/policies + H5 deny plugin ; **TF D1** : exécuteur = Hono `/mcp`, façade = adaptateur + proxy |
-| **Tasks** (natif plateforme) | `@creezio/tasks` | ✅ | CRUD + mount I3 ; **TF D2** brand-retained (kanban ≫ kit) |
-| **Mails** (natif plateforme) | `@creezio/mails` | ✅ | SQLite + file-sink I3 ; **TF D2** brand inbox + kit outbound only |
+| **MCP façade / proxy** | `@creezio/mcp-facade` | ✅ | H4 aliases/policies + H5 deny plugin ; **TF D1** : exécuteur = Hono `/mcp`, façade = adaptateur + proxy ; Certivan dualité = **C2** |
+| **Tasks** (natif plateforme) | `@creezio/tasks` | 🟡 | CRUD + mount I3 ; **TF D2** brand-retained (kanban ≫ kit) — SoT kit + bridge = **C1** |
+| **Mails** (natif plateforme) | `@creezio/mails` | 🟡 | SQLite + file-sink I3 ; **TF D2** brand inbox + kit outbound only — cutover = **C1** |
 | Sync vendor standardisé | `scripts/sync-creezio-vendor.sh` | ✅ | **I0** — assert `ARCHITECTURE_VERSION=H6`, CJS, wrappers 3 marques |
 | Politique republish | [REPUBLISH-POLICY.md](REPUBLISH-POLICY.md) | ✅ | I14/I16/I18 livrés ; suite D3/D4/D5 si runtime packaged |
 | **SQLite multi-fichiers** (core / brand / plugin) | `@creezio/platform-core` | ✅ | paths H1 + `createSqliteRuntime` / migrations H2 |
@@ -70,8 +72,8 @@ Autres marques (indicatif, hors extraction) :
 
 | Marque | Exemples métier | Repo | Conso H6 |
 |--------|-----------------|------|----------|
-| Fidu | GED, CRM fiduciaire… | `/opt/docker/fidu` | I17–I18 **0.1.55** ; HTTP control-plane plugins = **D4** |
-| Certivan | RTI / VASP… | `/opt/docker/certivan-app` | I15–I16 **0.1.14** ; polish gaps = **D6** |
+| Fidu | GED, CRM fiduciaire… | `/opt/docker/fidu` | I17–I18 + D4/D5 **0.1.56** ; mounts métier minces → **C5** ; CP host unifié → **C7** |
+| Certivan | RTI / VASP… | `/opt/docker/certivan-app` | I15–I16 **0.1.14** ; D6 aliases ; dualités MCP/stores → **C2** ; RTI UI-only → **C6** |
 
 ---
 
@@ -81,8 +83,8 @@ Autres marques (indicatif, hors extraction) :
 |----------|-----|--------|-------|
 | Manifest / events / execution grant | `@creezio/platform-core` | ✅ | Contrats purs |
 | Lifecycle / PRD / impact / n8n tags / ACL | `@creezio/product-hub` | ✅ | + `createSqliteProductHubStore` (H1.8) ; demobrand opt-in sqlite |
-| Fabrique conversationnelle (intention→plugin) | product-hub factory + demobrand | ✅ | **V1** — `createConversationalPluginFactory` ; preuve E2E demobrand |
-| Control plane HTTP host | `@creezio/electron-shell` + product-hub | ✅ | **I4** kit + demobrand ; TF I10 · Certivan I16 · **Fidu D4** minimal HTTP + ACL L3 |
+| Fabrique conversationnelle (intention→plugin) | product-hub factory + demobrand | 🟡 | **V1** socle — **C3** scaffold réel + console persistée |
+| Control plane HTTP host | `@creezio/electron-shell` + product-hub | 🟡 | **I4** + TF/Certivan/Fidu présents mais **3 styles** — unifier `startHostPluginControlPlane` = **C7** |
 | Registre org L3 | `@creezio/propagation` | ✅ | **I6** : `createFileOrgPluginRegistry` + console `/api/org-plugins` |
 | UI Admin Plugins multi-org | demobrand + product-hub admin | ✅ | **I5** : `admin-plugins` API + HTML ; caps see/install/execute |
 | DB `plugin/<id>` à l’install | `@creezio/platform-core` `ensurePluginDb` | ✅ | Fichier créé à l’install uniquement |
@@ -95,17 +97,15 @@ nommés dans `@creezio/propagation` (contrats, pas automation).
 
 ---
 
-## 4. Synthèse rapide (post-I18 / D0)
+## 4. Synthèse rapide (post-audit / C0)
 
-| Couche | ✅ | 🟡 (dette D*) | ❌ |
-|--------|----|---------------|-----|
-| Natif (socle A–G + H1–H6 + I0–I8) | brand-config, shell, platform-core, electron-shell, product-hub ACL H5, tooling, factory, propagation, console, api-kernel, mcp-facade, auth, shell-ui, assistant, tasks, mails (+ **TF D2** adapters) | — | — |
-| Métier TF (repo marque) | panier, dispatch, releves, catalogue, stack, scan D3, MCP H4/**D1**, stores **D2**, ACL L3, shell-ui, republish **0.10.31** | — | — |
-| Plugins | hub + host + DB + ACL L3 3 marques + Fidu D4 HTTP ; fabrique **V1** ; clientSlim **false** D5 ; Certivan D6 aliases | — | auto-promotion / univers perso / cloud registry *(volontaire)* |
+| Couche | ✅ | 🟡 (correction C*) | ❌ |
+|--------|----|-------------------|-----|
+| Natif socle | brand-config, shell, platform-core, electron-shell, product-hub ACL H5, tooling, factory, propagation, api-kernel, mcp-facade TF D1, shell-ui | auth/assistant/tasks/mails TF dual-write ou brand-retained (**C1**) ; V1–V3 fondations (**C3–C4**) ; CP multi-styles (**C7**) | — |
+| Métier TF | panier, dispatch, releves, catalogue, stack, scan D3, MCP D1, ACL L3, republish **0.10.31** | stores D2 pas cutover (**C1**) | — |
+| Métier Fidu / Certivan | foundation + ACL + feeds | Fidu mounts (**C5**) ; Certivan dualités (**C2**) + RTI (**C6**) | — |
+| Plugins | hub + ACL L3 3 marques + Fidu D4 HTTP ; clientSlim false D5 | fabrique toy (**C3**) ; obs/automations non vendor (**C4**) ; CP unifié (**C7**) | auto-promotion / univers perso / cloud registry *(volontaire)* |
 
-**H5 terminée** = ACL plugins durcie.  
-**Plan H0–H5 + I0–I18 + D0–D6** = **complet**.  
-**V1** = fabrique plugins — [PHASE-V1.md](PHASE-V1.md).  
-**V2** = observabilité native — [PHASE-V2.md](PHASE-V2.md).  
-**V3** = automations data-driven — [PHASE-V3.md](PHASE-V3.md).  
-**Vision V1–V3 signée** — [VISION-V1-V3.md](VISION-V1-V3.md).
+**Socle** H0–H5 + I0–I18 + D0–D6 + V1–V3 = **signé** (pas « 100 % produit »).  
+**Correction** : [PHASE-C0.md](PHASE-C0.md) → C1…C8.  
+Vision sign-off + addendum : [VISION-V1-V3.md](VISION-V1-V3.md).

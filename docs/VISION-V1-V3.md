@@ -89,7 +89,17 @@ Chat intention
 
 ---
 
+## Addendum C0 — demi-mesures (pas « 100 % produit »)
+
+Sign-off V1–V3 = **socle kit + demobrand**. L’audit post-V3 classe encore
+en 🟡 : fabrique toy / console mémoire (→ **C3**), obs/automations non
+persistés côté console + pas vendor marques (→ **C4**), et hors vision
+directe les cutovers TF/Certivan / mounts / CP (→ **C1–C2 / C5–C7**).
+
+Voir [PHASE-C0.md](PHASE-C0.md).
+
+---
+
 ## Verdict
 
-**Vision V1–V3 : SIGNÉE.** Socle kit prêt pour conso progressive des marques
-sans obligation de republish immédiate.
+**Vision V1–V3 : SIGNÉE** (socle). Correction produit : backlog **C\***.

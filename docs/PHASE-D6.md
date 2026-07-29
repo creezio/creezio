@@ -30,7 +30,11 @@
 | 3 | Ce fichier | ✅ |
 | 4 | Push Certivan + kit | ✅ |
 
+## Suite correction
+
+Dualités MCP/stores **acceptées en D6** = demi-mesure documentée.  
+Fermeture en code (comme TF D1/C1) : **[PHASE-C0.md](PHASE-C0.md) → C2**.
+
 ## Verdict
 
-**Phase D6 : TERMINÉE** — polish aliases ; **pas** de gap bloquant restant.
-Suite vision : **V1** (fabrique plugins conversationnelle) si session.
+**Phase D6 : TERMINÉE** — polish aliases ; dualités reportées à **C2**.

@@ -44,6 +44,11 @@ brand explicite** (tasks/mails — cutover kit = feature loss).
 - Dual-write best-effort (jamais bloquant login/chat)
 - Mounts `platform-*` conservés pour parity demobrand
 
+## Suite correction
+
+D2 = adapters + dual-write / brand-retained — **pas** cutover unique.  
+Fermeture SoT kit (zéro dual-write runtime) : **[PHASE-C0.md](PHASE-C0.md) → C1**.
+
 ## Verdict
 
-**Phase D2 : TERMINÉE.** Suite : **D3** (scan + feature gates + republish si runtime).
+**Phase D2 : TERMINÉE** (socle adapters). Suite historique : **D3**.
