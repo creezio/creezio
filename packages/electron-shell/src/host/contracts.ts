@@ -1,9 +1,6 @@
 /**
- * Contrats des launchers hôte (Hermes / n8n / tunnel) — Phase B.
- *
- * Les implémentations complètes (1000+ lignes, runtime bootstrap, pins npm)
- * restent dans les apps verticales jusqu'à Phase B.2. Le kit expose les
- * interfaces + helpers env pour éviter TEMPOFLOW_* hardcodé.
+ * Contrats des launchers hôte (Hermes / n8n / tunnel) — Phase B / B.2.
+ * Les implémentations complètes sont dans host/hermes, host/n8n, host/tunnel.
  */
 
 import type { AppManifest } from "@creezio/brand-config";

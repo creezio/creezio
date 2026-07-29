@@ -11,7 +11,7 @@ export type LocalBindHost = "127.0.0.1" | "0.0.0.0";
 
 export type ConnectionProfile = {
   mode: ConnectionMode;
-  remoteUrl?: string;
+  remoteUrl?: string | null;
   localBind?: LocalBindHost;
   chosen?: boolean;
 };
@@ -70,13 +70,15 @@ export function sanitizeConnectionProfile(
   if (!raw || typeof raw !== "object") return defaultLocalProfile();
   const mode: ConnectionMode = raw.mode === "remote" ? "remote" : "local";
   const localBind = normalizeLocalBind(raw.localBind);
-  let remoteUrl: string | undefined;
+  let remoteUrl: string | null | undefined;
   if (typeof raw.remoteUrl === "string" && raw.remoteUrl.trim()) {
     try {
       remoteUrl = normalizeRemoteUrl(raw.remoteUrl);
     } catch {
       remoteUrl = raw.remoteUrl.trim().replace(/\/+$/, "");
     }
+  } else if (raw.remoteUrl === null) {
+    remoteUrl = null;
   }
   const chosen = raw.chosen === true;
   return { mode, localBind, remoteUrl, chosen };

@@ -51,6 +51,12 @@ declare module "electron" {
     };
   };
 
+  export const safeStorage: {
+    isEncryptionAvailable: () => boolean;
+    encryptString: (plain: string) => Buffer;
+    decryptString: (buffer: Buffer) => string;
+  };
+
   export const Menu: {
     buildFromTemplate: (template: MenuItemConstructorOptions[]) => Menu;
   };

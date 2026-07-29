@@ -93,12 +93,12 @@ Les builds exe / publish des marques restent dans leurs repos respectifs.
 | Phase | Contenu |
 |-------|---------|
 | **A** | Contrats + manifests + docs + build vert |
-| **B** (ici) | Runtime Electron générique (boot/preload/launchers/updater) |
-| **B.2** | Hermes / n8n / tunnel / plugins launchers complets |
+| **B** | Runtime Electron générique (boot/preload/updater/meili) |
+| **B.2** (ici) | Hermes / n8n / tunnel / local-config / plugins host |
 | **C** | Tooling publish / after-pack |
 | **G** | Branchement Fidu / Certivan / TF2 sur le kit |
 
-Voir [docs/PHASE-B.md](docs/PHASE-B.md) et [docs/PLATFORM-VS-VERTICAL.md](docs/PLATFORM-VS-VERTICAL.md).
+Voir [docs/PHASE-B.md](docs/PHASE-B.md), [docs/PHASE-B2.md](docs/PHASE-B2.md) et [docs/PLATFORM-VS-VERTICAL.md](docs/PLATFORM-VS-VERTICAL.md).
 
 ## Hors scope
 

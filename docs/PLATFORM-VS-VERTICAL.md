@@ -17,7 +17,7 @@ Légende :
 | `scripts/electron/build-builder-config.mjs` | `@creezio/brand-config` (`buildElectronBuilderConfig`) | **B** | Client+Serveur obligatoire |
 | `electron/app-kind.ts` | `@creezio/platform-core` | **B** | Paramétré par manifest |
 | `electron/paths.ts` | `@creezio/platform-core` | A / **B** | + meili candidates, logs, preload |
-| `electron/local-config.ts` | schema A + runtime safeStorage | A / **B.2** | Secrets Electron = B.2 |
+| `electron/local-config.ts` | schema A + `createLocalConfigStore` + safeStorage | A / **B.2** | Factory brand-agnostic |
 | `electron/preload-app.ts` | `@creezio/shell` (`createDesktopApi`) | **B** | Extensions verticales restent en app |
 | `src/types/desktop.d.ts` | `@creezio/shell` | A | `DesktopBridge` générique |
 | `electron/preload-supplier.ts` | vertical / stub | B | Minimal — inchangé côté app |
@@ -34,8 +34,9 @@ Légende :
 | `electron/meili-launcher.ts` | `@creezio/electron-shell` | **B** | Chemins injectés |
 | `electron/server-launcher.ts` | ports + `startNextServerCore` | **B** | Spawn injecté ; secrets app |
 | `electron/host-stack.ts` | pattern doc / contrats | **B** | Lazy host — apps gardent le graphe |
-| `electron/hermes-*` / `n8n-*` / `tunnel.ts` | contrats B + port B.2 | **B.2** | Trop couplés runtime |
-| `electron/plugin-*` | vertical / B.2 | **B.2** | |
+| `electron/hermes-*` / `n8n-*` / `tunnel.ts` | electron-shell host/* | **B.2** | Factories + hooks verticaux |
+| `electron/plugin-events/manifest/grants/token/host` | platform-core + electron-shell | **B.2** | control-api/git/data = vertical |
+| `electron/node-runtime` / `npm-cli` / sandbox | electron-shell | **B.2** | |
 | `electron/main.ts` | façade `prepareDesktopBoot` + vertical | **B** / vertical | Découpe progressive |
 | `scripts/electron/after-pack.cjs` | tooling | **C** | |
 | `scripts/electron/publish-desktop.sh` | tooling | **C** | |

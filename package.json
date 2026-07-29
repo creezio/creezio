@@ -10,7 +10,7 @@
   "scripts": {
     "build": "npm run build -w @creezio/brand-config && npm run build -w @creezio/shell && npm run build -w @creezio/platform-core && npm run build -w @creezio/electron-shell",
     "typecheck": "npm run build",
-    "test": "node --test scripts/test-phase-b.mjs",
+    "test": "node --test scripts/test-phase-b.mjs scripts/test-phase-b2.mjs",
     "clean": "rm -rf packages/*/dist"
   },
   "engines": {

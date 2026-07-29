@@ -32,14 +32,12 @@ Porter le **runtime Electron générique** depuis TempoFlow2 **v0.10.26** vers l
 - **paths / factory-reset targets / local-config schema** : déjà A, enrichis B
 - **meili launcher** + **startNextServerCore** (spawn injecté)
 - **tunnel URL helpers** paramétrés par `tunnelRootDomain`
-- **contrats** Hermes / n8n / tunnel (`buildEmbedHostEnv`) — implémentations complètes = B.2
+- **contrats** Hermes / n8n / tunnel (`buildEmbedHostEnv`) — implémentations complètes = **B.2 livré** (voir [PHASE-B2.md](./PHASE-B2.md))
 
 ## Hors scope / reste vertical
 
 - Monolithe `main.ts` (onglets fournisseurs, catalogue-sync, AI workspace, fleet…)
-- Launchers Hermes / n8n / tunnel / plugins (1000+ lignes, pins runtime)
-- Seeds / skills / routes Next métier
-- `safeStorage` local-config runtime (chiffrement) — Phase B.2 / C
+- Seeds / skills / routes Next métier + product-hub HTTP (voir inventaire vertical B.2)
 - Brancher Certivan / Fidu / TF2 sur le kit — **Phase G**
 
 ## Comment une marque consommera (Phase G)
@@ -92,7 +90,7 @@ npm test
 
 | Phase | Contenu |
 |-------|---------|
-| **B.2** | Port Hermes / n8n / tunnel / plugin launchers + local-config safeStorage |
+| **B.2** | ✅ Livré — voir [PHASE-B2.md](./PHASE-B2.md) |
 | **C** | Tooling publish / after-pack / remote-build génériques |
 | **E** | Embeds UI (sandbox, status IPC) unifiés |
 | **G** | Branchement apps sur le kit (sans republier tant que non demandé) |
