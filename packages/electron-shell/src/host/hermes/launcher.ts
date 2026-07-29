@@ -119,20 +119,35 @@ export type HermesHost = {
 };
 
 /** Clear legacy generated WebUI password (gold: no login prompt on loopback). */
-export function clearGeneratedWebuiPassword(home: string, stateDir: string): void {
-  clearGeneratedWebuiPasswordImpl(home, stateDir);
+export function clearGeneratedWebuiPassword(
+  home: string,
+  stateDir: string,
+  secretPrefix?: string,
+): void {
+  clearGeneratedWebuiPasswordImpl(home, stateDir, secretPrefix);
 }
 /** @deprecated gold marker alias */
 export function clearTempoflowGeneratedWebuiPassword(
   home: string,
   stateDir: string,
+  secretPrefix?: string,
 ): void {
-  clearGeneratedWebuiPasswordImpl(home, stateDir);
+  clearGeneratedWebuiPasswordImpl(home, stateDir, secretPrefix);
 }
-function clearGeneratedWebuiPasswordImpl(home: string, stateDir: string): void {
-  const keyFile = path.join(home, ".tempoflow-webui-password");
-  const desktopKey = path.join(home, ".desktop-hermes-webui-password");
-  for (const f of [keyFile, desktopKey]) {
+function clearGeneratedWebuiPasswordImpl(
+  home: string,
+  stateDir: string,
+  secretPrefix?: string,
+): void {
+  const files = [
+    path.join(home, ".tempoflow-webui-password"),
+    path.join(home, ".desktop-hermes-webui-password"),
+    path.join(home, ".certivan-webui-password"),
+  ];
+  if (secretPrefix) {
+    files.push(path.join(home, `.${secretPrefix}-webui-password`));
+  }
+  for (const f of files) {
     try {
       if (fs.existsSync(f)) fs.unlinkSync(f);
     } catch {
@@ -290,19 +305,22 @@ function findHermesBinary(): string | null {
 }
 
 function ensureApiKey(home: string): string {
-  const keyFile = path.join(home, ".desktop-hermes-api-key");
-  const legacy = path.join(home, ".tempoflow-api-server-key");
-  try {
-    const existing = fs.readFileSync(keyFile, "utf8").trim();
-    if (existing.length >= 16) return existing;
-  } catch { /* */ }
-  try {
-    const existing = fs.readFileSync(legacy, "utf8").trim();
-    if (existing.length >= 16) {
-      fs.writeFileSync(keyFile, existing, { mode: 0o600 });
-      return existing;
+  const prefix = ctx.secretFilePrefix || ctx.manifest.brandId || "desktop";
+  /** Canon marque : `.certivan-api-server-key` / `.tempoflow-api-server-key`. */
+  const keyFile = path.join(home, `.${prefix}-api-server-key`);
+  const desktop = path.join(home, ".desktop-hermes-api-key");
+  const tempoflow = path.join(home, ".tempoflow-api-server-key");
+  for (const f of [keyFile, desktop, tempoflow]) {
+    try {
+      const existing = fs.readFileSync(f, "utf8").trim();
+      if (existing.length >= 16) {
+        if (f !== keyFile) fs.writeFileSync(keyFile, existing, { mode: 0o600 });
+        return existing;
+      }
+    } catch {
+      /* */
     }
-  } catch { /* */ }
+  }
   const key = crypto.randomBytes(24).toString("base64url");
   fs.writeFileSync(keyFile, key, { mode: 0o600 });
   return key;
@@ -457,7 +475,11 @@ async function spawnWebui(opts: {
   const webuiUrl = `http://127.0.0.1:${webuiPort}`;
   const stateDir = path.join(ctx.userDataDir, "hermes-webui-state");
   fs.mkdirSync(stateDir, { recursive: true });
-  clearGeneratedWebuiPassword(opts.home, stateDir); // clearTempoflowGeneratedWebuiPassword gold
+  clearGeneratedWebuiPassword(
+    opts.home,
+    stateDir,
+    ctx.secretFilePrefix || ctx.manifest.brandId,
+  ); // clearTempoflowGeneratedWebuiPassword gold
 
   opts.log(`spawn WebUI ${serverPy} → ${webuiUrl} (auth loopback désactivée)`);
   const sand = hermesSandboxPaths(opts.home);
@@ -625,6 +647,7 @@ async function startHermesImpl(
     clearGeneratedWebuiPassword(
       home,
       path.join(ctx.userDataDir, "hermes-webui-state"),
+      ctx.secretFilePrefix || ctx.manifest.brandId,
     );
     const sand = await writeHermesHome({
       home,

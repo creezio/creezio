@@ -240,10 +240,13 @@ function findN8nEntry(): string | null {
 }
 
 function ensureEncryptionKey(home: string): string {
-  const keyFile = path.join(home, `.${secretPrefix()}-n8n-encryption-key`);
+  const prefix = secretPrefix();
+  const keyFile = path.join(home, `.${prefix}-n8n-encryption-key`);
+  /** Legacy marques (Certivan/Fidu) : `.${prefix}-encryption-key` sans `-n8n-`. */
+  const brandLegacy = path.join(home, `.${prefix}-encryption-key`);
   const legacy = path.join(home, ".tempoflow-encryption-key");
   const desktop = path.join(home, ".desktop-n8n-encryption-key");
-  for (const f of [keyFile, legacy, desktop]) {
+  for (const f of [keyFile, brandLegacy, legacy, desktop]) {
     try {
       const existing = fs.readFileSync(f, "utf8").trim();
       if (existing.length >= 16) {
@@ -257,9 +260,12 @@ function ensureEncryptionKey(home: string): string {
   return key;
 }
 function ensureOwnerCreds(home: string): OwnerCreds {
-  const keyFile = path.join(home, `.${secretPrefix()}-n8n-owner.json`);
+  const prefix = secretPrefix();
+  const keyFile = path.join(home, `.${prefix}-n8n-owner.json`);
+  /** Legacy marques : `.${prefix}-owner.json` (Certivan `.certivan-owner.json`). */
+  const brandLegacy = path.join(home, `.${prefix}-owner.json`);
   const legacy = path.join(home, ".tempoflow-owner.json");
-  for (const f of [keyFile, legacy]) {
+  for (const f of [keyFile, brandLegacy, legacy]) {
     try {
       const raw = JSON.parse(fs.readFileSync(f, "utf8")) as OwnerCreds;
       if (raw && typeof raw.email === "string" && typeof raw.password === "string" && raw.password.length >= 12) {

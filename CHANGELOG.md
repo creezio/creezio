@@ -4,6 +4,12 @@
 ## [Unreleased]
 
 ### Added
+- **Phase M6p (Certivan)** — Dual-reads legacy Certivan dans
+  `@creezio/electron-shell` (n8n encryption/owner, Hermes API key / webui
+  password, markers WebUI `.certivan-webui-*`) ; cutover marque Certivan
+  (jumeaux local-config/bootstraps/launchers/chrome absents ;
+  `host-runtime-ctx` / `local-config-store`) ; `docs/PHASE-M6p.md` ;
+  **pas** de republish exe. Fidu ⏳.
 - **Phase M5** — Delete jumeaux bootstraps hermes/n8n TF : deltas
   (`installHermesAgent`, webui deps marker/pip skip, scripts vendorisés,
   os-profile, `failDiskSpace`/`force`/timeout npm) portés dans
