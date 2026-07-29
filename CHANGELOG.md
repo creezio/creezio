@@ -4,6 +4,8 @@
 ## [Unreleased]
 
 ### Added
+- **Phase C2** — Certivan : MCP façade→Hono proxy + stores SoT kit cutover ;
+  `docs/PHASE-C2.md` ; `test:phase-c2` ; pas de republish (→ C8).
 - **Phase C1** — Cutover stores TempoFlow SoT kit : assistant rich schema,
   tasks `upsertWithId`, mails inbound ; TF zéro dual-write runtime ;
   `docs/PHASE-C1.md` ; tests kit + `test:phase-c1` ; pas de republish (→ C8).

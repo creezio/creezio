@@ -37,7 +37,7 @@ Dette D* : [PHASE-D0.md](PHASE-D0.md). Correction : [PHASE-C0.md](PHASE-C0.md).
 | **Shell-UI / nav + slots** | `@creezio/shell-ui` | ✅ | **I7** : `createNavShellAdapter` + `NavRenderModel` ; TF/Certivan/Fidu I12/I16/I18 |
 | **Assistant / chat** | `@creezio/assistant` | ✅ | **I2** + **C1** rich schema ; **TF C1** chat-db façade kit (plus dual-write) |
 | **API kernel** (façade HTTP cœur) | `@creezio/api-kernel` | ✅ | ScopedDbAccess H2 + `authorizePluginAccess` H5 |
-| **MCP façade / proxy** | `@creezio/mcp-facade` | ✅ | H4 aliases/policies + H5 deny plugin ; **TF D1** : exécuteur = Hono `/mcp`, façade = adaptateur + proxy ; Certivan dualité = **C2** |
+| **MCP façade / proxy** | `@creezio/mcp-facade` | ✅ | H4 aliases/policies + H5 deny plugin ; **TF D1** + **Certivan C2** : exécuteur Hono `/mcp`, façade = adaptateur + proxy |
 | **Tasks** (natif plateforme) | `@creezio/tasks` | ✅ | CRUD + mount I3 ; **TF C1** SoT kit UUID + kanban/AI brand |
 | **Mails** (natif plateforme) | `@creezio/mails` | ✅ | SQLite + file-sink I3 ; **TF C1** index inbound kit + PJ brand |
 | Sync vendor standardisé | `scripts/sync-creezio-vendor.sh` | ✅ | **I0** — assert `ARCHITECTURE_VERSION=H6`, CJS, wrappers 3 marques |
@@ -73,7 +73,7 @@ Autres marques (indicatif, hors extraction) :
 | Marque | Exemples métier | Repo | Conso H6 |
 |--------|-----------------|------|----------|
 | Fidu | GED, CRM fiduciaire… | `/opt/docker/fidu` | I17–I18 + D4/D5 **0.1.56** ; mounts métier minces → **C5** ; CP host unifié → **C7** |
-| Certivan | RTI / VASP… | `/opt/docker/certivan-app` | I15–I16 **0.1.14** ; D6 aliases ; dualités MCP/stores → **C2** ; RTI UI-only → **C6** |
+| Certivan | RTI / VASP… | `/opt/docker/certivan-app` | I15–I16 **0.1.14** ; D6 aliases ; **C2** MCP+stores cutover ; RTI UI-only → **C6** |
 
 ---
 

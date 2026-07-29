@@ -166,7 +166,8 @@ Les sandboxes factory portent `sandbox: true` (feeds jetables).
 | **V3** | Automations data-driven (triggers + n8n opt.) | ✅ socle / 🟡 persist+marque → **C4** |
 | **C0** | Alignement docs / gates / backlog correction | ✅ |
 | **C1** | Cutover stores TF SoT kit (zéro dual-write) | ✅ |
-| **C2–C8** | Dualités Certivan, V1 réel, V2/V3, mounts, CP, republish | ⬜ |
+| **C2** | Certivan MCP+stores fermés en code | ✅ |
+| **C3–C8** | V1 réel, V2/V3, mounts, CP, republish | ⬜ |
 
 Voir [docs/PHASE-C0.md](docs/PHASE-C0.md), [docs/PHASE-D0.md](docs/PHASE-D0.md),
 [docs/PHASE-V1.md](docs/PHASE-V1.md), [docs/PHASE-V2.md](docs/PHASE-V2.md),

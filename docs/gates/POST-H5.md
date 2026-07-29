@@ -28,8 +28,8 @@
 - [x] Wrapper sync → contrat kit I0 (liste H5 baseline)
 - [x] Foundation SqliteRuntime + modules (I15)
 - [x] Republish uniquement I16 (**0.1.14** courant)
-- [x] D6 polish aliases (dualités MCP/stores **acceptées** — à fermer en **C2**)
-- [ ] **C2** dualités fermées en code · **C6** RTI API métier · republish **C8**
+- [x] D6 polish aliases
+- [x] **C2** dualités MCP+stores fermées en code — **C6** RTI API · republish **C8**
 
 ## Fidu (`fidu`)
 

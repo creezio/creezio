@@ -33,7 +33,7 @@
 ## Suite correction
 
 Dualités MCP/stores **acceptées en D6** = demi-mesure documentée.  
-Fermeture en code (comme TF D1/C1) : **[PHASE-C0.md](PHASE-C0.md) → C2**.
+**Fermées en C2** : [PHASE-C2.md](PHASE-C2.md).
 
 ## Verdict
 
