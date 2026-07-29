@@ -4,6 +4,10 @@
 ## [Unreleased]
 
 ### Added
+- **Phase I7** — Shell-UI adapters : `createNavShellAdapter`,
+  `NavRenderModel` / `renderNavHtml`, demobrand conso ;
+  contrat « registerBrandNav only » ; `docs/PHASE-I7.md` ;
+  tests `test-phase-i7.mjs`.
 - **Phase I6** — Registre org persisté : `createFileOrgPluginRegistry`,
   console `GET/POST /api/org-plugins` + panel ; `docs/PHASE-I6.md` ;
   tests `test-phase-i6.mjs`.

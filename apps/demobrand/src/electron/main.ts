@@ -11,12 +11,11 @@ import {
   prepareDesktopBoot,
   writeAppKindFile,
 } from "@creezio/electron-shell";
-import { mergeNav } from "@creezio/shell-ui";
 import { demobrandManifest as manifest } from "./app-manifest.js";
-import { coreNavItems } from "./nav-core.js";
 import { verticalSlot } from "./vertical-slot.js";
 import { createDemobrandSandbox } from "./sandbox-runtime.js";
 import { setDemobrandProductHubStore } from "./product-hub-stub.js";
+import { demobrandNavShell } from "./nav-shell.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -35,8 +34,14 @@ async function main(): Promise<void> {
   const sandbox = createDemobrandSandbox({ userDataRoot: boot.userDataDir });
   setDemobrandProductHubStore(sandbox.productHub);
   const auth = sandbox.auth;
-  const navItems = mergeNav(coreNavItems, verticalSlot.items);
+  // I7 — adapter shell-ui (marque = registerBrandNav only)
+  const navModel = demobrandNavShell.getRenderModel();
+  const navHtml = demobrandNavShell.renderNavHtml();
   void auth;
+  void verticalSlot;
+  void navModel;
+  void navHtml;
+  log("nav", `items=${navModel.items.length} brand=${navModel.groups.find((g) => g.id === "brand")?.items.length || 0}`);
 
   const status = sandbox.runtime.status();
   log(
@@ -79,7 +84,7 @@ async function main(): Promise<void> {
   });
   log(
     "nav",
-    `core=${coreNavItems.length} vertical=${verticalSlot.items.length} merged=${navItems.length} apiMounts=${sandbox.api.listMounts().length} arch=${JSON.stringify((arch.body as { architectureVersion?: string })?.architectureVersion)}`,
+    `merged=${navModel.items.length} brand=${navModel.groups.find((g) => g.id === "brand")?.items.length || 0} apiMounts=${sandbox.api.listMounts().length} arch=${JSON.stringify((arch.body as { architectureVersion?: string })?.architectureVersion)}`,
   );
 
   app.on("will-quit", () => {
