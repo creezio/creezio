@@ -4,6 +4,9 @@
 ## [Unreleased]
 
 ### Added
+- **Phase I1** — Auth sqlite core : `createSqliteAuthStore` + driver
+  injecté, demobrand sandbox branché, session persistée après restart ;
+  `docs/PHASE-I1.md` ; tests `test-phase-i1.mjs`.
 - **Phase I0** — Gouvernance post-H5 : `scripts/sync-creezio-vendor.sh`
   (assert `ARCHITECTURE_VERSION`, CJS, `SYNC.json`), wrappers sync
   TempoFlow / Certivan / Fidu, console + `GET /api/kit-versions`

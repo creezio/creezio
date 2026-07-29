@@ -1,5 +1,5 @@
 /**
- * @creezio/auth — session native Creezio (Phase H1.3).
+ * @creezio/auth — session native Creezio (Phase H1.3 / I1 sqlite).
  * Backlog note : package nommé `@creezio/auth` (pas auth-session).
  */
 
@@ -13,6 +13,13 @@ export type {
   AuthUser,
 } from "./types.js";
 export { createMemoryAuthStore } from "./memory-store.js";
+export type {
+  CreateSqliteAuthStoreOptions,
+  SqliteAuthStore,
+} from "./sqlite-store.js";
+export { createSqliteAuthStore } from "./sqlite-store.js";
+export type { OpenSqliteDatabase, SqliteDatabase } from "./sqlite-driver.js";
+export { openNodeSqliteDatabase } from "./sqlite-driver.js";
 export {
   hashPassword,
   hashToken,

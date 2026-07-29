@@ -11,7 +11,6 @@ import {
   prepareDesktopBoot,
   writeAppKindFile,
 } from "@creezio/electron-shell";
-import { createMemoryAuthStore } from "@creezio/auth";
 import { mergeNav } from "@creezio/shell-ui";
 import { demobrandManifest as manifest } from "./app-manifest.js";
 import { coreNavItems } from "./nav-core.js";
@@ -32,9 +31,10 @@ async function main(): Promise<void> {
   );
 
   // H2 — isolation réelle : SqliteRuntime + api-kernel + mcp scindé
+  // I1 — auth sqlite core (session persistée)
   const sandbox = createDemobrandSandbox({ userDataRoot: boot.userDataDir });
   setDemobrandProductHubStore(sandbox.productHub);
-  const auth = createMemoryAuthStore();
+  const auth = sandbox.auth;
   const navItems = mergeNav(coreNavItems, verticalSlot.items);
   void auth;
 

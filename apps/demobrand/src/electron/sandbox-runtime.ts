@@ -20,7 +20,11 @@ import {
   type SqliteMigration,
   type SqliteRuntime,
 } from "@creezio/platform-core";
-import { AUTH_CORE_SQL } from "@creezio/auth";
+import {
+  AUTH_CORE_SQL,
+  createSqliteAuthStore,
+  type SqliteAuthStore,
+} from "@creezio/auth";
 import {
   PRODUCT_HUB_ACL_H5_SQL,
   PRODUCT_HUB_ACL_ORG_SQL,
@@ -222,6 +226,8 @@ export type DemobrandSandbox = {
     removed: boolean;
     path: string;
   };
+  /** Auth persisté core.db (I1). */
+  auth: SqliteAuthStore;
   /** Headers actor pour API / control-plane. */
   actorHeaders(actor: PluginAclActor): Record<string, string>;
   close(): void;
@@ -253,6 +259,10 @@ export function createDemobrandSandbox(opts?: {
   const productHub = createSqliteProductHubStore({
     coreDbPath: runtime.paths.core,
     conversationPrefix: "demobrand",
+  });
+
+  const auth = createSqliteAuthStore({
+    coreDbPath: runtime.paths.core,
   });
 
   function authorizePluginAccess(accessCtx: {
@@ -379,6 +389,7 @@ export function createDemobrandSandbox(opts?: {
     api,
     mcp,
     productHub,
+    auth,
 
     actorHeaders(actor) {
       const h: Record<string, string> = {};
@@ -420,6 +431,7 @@ export function createDemobrandSandbox(opts?: {
     },
 
     close() {
+      auth.close();
       productHub.close();
       runtime.close();
     },

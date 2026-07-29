@@ -28,7 +28,7 @@ Source cadre : [ARCHITECTURE-INTENTION.md](ARCHITECTURE-INTENTION.md).
 | Factory new-app | `@creezio/factory` | ✅ | scaffold Client+Serveur + demobrand |
 | Propagation kit→marques | `@creezio/propagation` | ✅ | semver, impact, canaux, extension points, registre L3 |
 | Console ops | `apps/console` | ✅ | kit-versions (+ `ARCHITECTURE_VERSION` I0), feeds, gates, POST-H5 |
-| **Auth** (session, login, recovery) | `@creezio/auth` | 🟡 | Store mémoire + IPC + `AUTH_CORE_SQL` ; **sqlite store = I1** ; UI marques verticale |
+| **Auth** (session, login, recovery) | `@creezio/auth` | ✅ | Mémoire + **`createSqliteAuthStore` I1** + IPC + `AUTH_CORE_SQL` ; UI marques verticale |
 | **Shell-UI / nav + slots** | `@creezio/shell-ui` | 🟡 | `CORE_NAV_ITEMS` + `registerBrandNav` ; adapters UI réutilisables = **I7** |
 | **Assistant / chat** | `@creezio/assistant` | 🟡 | Store mémoire + IPC ; **sqlite core = I2** |
 | **API kernel** (façade HTTP cœur) | `@creezio/api-kernel` | ✅ | ScopedDbAccess H2 + `authorizePluginAccess` H5 |
