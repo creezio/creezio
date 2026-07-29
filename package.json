@@ -2,16 +2,23 @@
   "name": "creezio",
   "private": true,
   "version": "0.1.0",
-  "description": "Kit plateforme Creezio — packages @creezio/* partagés (brand-config, shell, platform-core, electron-shell)",
+  "description": "Kit plateforme Creezio — packages @creezio/* partagés (brand-config, shell, platform-core, electron-shell, desktop-tooling) + console ops",
   "workspaces": [
     "packages/*",
     "apps/*"
   ],
   "scripts": {
-    "build": "npm run build -w @creezio/brand-config && npm run build -w @creezio/shell && npm run build -w @creezio/platform-core && npm run build -w @creezio/electron-shell",
-    "typecheck": "npm run build",
-    "test": "node --test scripts/test-phase-b.mjs scripts/test-phase-b2.mjs",
-    "clean": "rm -rf packages/*/dist"
+    "build": "npm run build -w @creezio/brand-config && npm run build -w @creezio/shell && npm run build -w @creezio/platform-core && npm run build -w @creezio/electron-shell && npm run build -w @creezio/desktop-tooling && npm run build -w @creezio/console",
+    "build:packages": "npm run build -w @creezio/brand-config && npm run build -w @creezio/shell && npm run build -w @creezio/platform-core && npm run build -w @creezio/electron-shell && npm run build -w @creezio/desktop-tooling",
+    "typecheck": "npm run build:packages",
+    "test": "node --test scripts/test-phase-b.mjs scripts/test-phase-b2.mjs scripts/test-phase-c.mjs",
+    "console:dev": "npm run dev -w @creezio/console",
+    "console:start": "npm run start -w @creezio/console",
+    "desktop:resolve-config": "node packages/desktop-tooling/scripts/resolve-config.mjs",
+    "desktop:build-status": "node packages/desktop-tooling/scripts/desktop-build-status.mjs",
+    "desktop:publish": "bash packages/desktop-tooling/scripts/publish-desktop.sh",
+    "desktop:remote-build": "bash packages/desktop-tooling/scripts/remote-build-win.sh",
+    "clean": "rm -rf packages/*/dist apps/console/.next"
   },
   "engines": {
     "node": ">=20"

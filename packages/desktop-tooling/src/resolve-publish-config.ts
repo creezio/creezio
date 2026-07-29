@@ -1,0 +1,233 @@
+/**
+ * Résout la config publish / remote-build pour une marque + kind.
+ * Consommé par les scripts bash (JSON / export shell) et la console.
+ */
+
+import fs from "node:fs";
+import path from "node:path";
+import {
+  type AppKind,
+  type AppManifest,
+  type BrandId,
+  appKindEnvKey,
+  distDirForKind,
+  exeForKind,
+  feedBaseUrl,
+  getManifest,
+  latestYmlUrl,
+  listBrandIds,
+  resolveArtifactFileName,
+  resolveLatestAlias,
+  serverPlatformEnvKey,
+} from "@creezio/brand-config";
+
+export type ResolvedPublishConfig = {
+  brandId: BrandId;
+  kind: AppKind;
+  envPrefix: string;
+  productName: string;
+  title: string;
+  version: string;
+  appRoot: string;
+  distDir: string;
+  distAbs: string;
+  exeFileName: string;
+  latestAlias: string;
+  legacyAlias: string | null;
+  feedBase: string;
+  feedUrl: string;
+  latestYmlUrl: string;
+  dockerDlName: string;
+  dockerDlDir: string;
+  hostDlRoot: string;
+  hostDlDir: string;
+  npmContainer: string;
+  statusFile: string;
+  statusDist: string;
+  remoteLogHint: string;
+  remoteBuildHost: string;
+  remoteBuildRoot: string;
+  remoteCrm: string;
+  remoteBinSrc: string;
+  remoteLogPrefix: string;
+  buildServerArtifact: boolean;
+  appKindEnv: string;
+  serverPlatformEnv: string;
+  defaultAppRoot: string;
+  npmPublishCmd: string;
+  npmRemoteBuildCmd: string;
+  npmBuildStatusCmd: string;
+};
+
+function readAppVersion(appRoot: string): string {
+  try {
+    const pkg = JSON.parse(
+      fs.readFileSync(path.join(appRoot, "package.json"), "utf8"),
+    ) as { version?: string };
+    return pkg.version ? String(pkg.version) : "0.0.0";
+  } catch {
+    return "0.0.0";
+  }
+}
+
+export type ResolvePublishConfigOptions = {
+  brandId: BrandId;
+  kind?: AppKind;
+  appRoot?: string;
+  version?: string;
+  /** Override DL host dir (`{ENV}_DL_DIR`). */
+  hostDlRoot?: string;
+};
+
+export function resolvePublishConfig(
+  opts: ResolvePublishConfigOptions,
+): ResolvedPublishConfig {
+  const brandId = opts.brandId;
+  if (!listBrandIds().includes(brandId)) {
+    throw new Error(`Marque inconnue: ${brandId}`);
+  }
+  const manifest: AppManifest = getManifest(brandId);
+  const kind: AppKind = opts.kind === "server" ? "server" : "client";
+  const exe = exeForKind(manifest, kind);
+  const appRoot = path.resolve(
+    opts.appRoot ||
+      process.env.CREEZIO_APP_ROOT ||
+      manifest.publish.defaultAppRoot,
+  );
+  const version = opts.version || process.env.VERSION || readAppVersion(appRoot);
+  const distRel = distDirForKind(kind);
+  const distAbs = path.join(appRoot, distRel);
+  const feedBase = feedBaseUrl(exe);
+  const hostDlRoot =
+    opts.hostDlRoot ||
+    process.env[`${manifest.envPrefix}_DL_DIR`] ||
+    process.env.CREEZIO_DL_DIR ||
+    manifest.publish.hostDlDirDefault;
+  const dockerDlDir =
+    kind === "server"
+      ? `/data/${manifest.publish.dockerDlName}/server`
+      : `/data/${manifest.publish.dockerDlName}`;
+  const hostDlDir =
+    kind === "server" ? path.join(hostDlRoot, "server") : hostDlRoot;
+  const statusFile =
+    process.env[`${manifest.envPrefix}_BUILD_STATUS_FILE`] ||
+    process.env.CREEZIO_BUILD_STATUS_FILE ||
+    manifest.publish.statusFile;
+  const statusDist = path.join(
+    appRoot,
+    "dist-electron",
+    "build-status.json",
+  );
+  const remoteLogPrefix = manifest.publish.remoteLogPrefix;
+  const remoteHost =
+    process.env[`${manifest.envPrefix}_REMOTE_BUILD_HOST`] ||
+    process.env.CREEZIO_REMOTE_BUILD_HOST ||
+    manifest.publish.remoteBuildHost;
+  const remoteRoot =
+    process.env[`${manifest.envPrefix}_REMOTE_BUILD_ROOT`] ||
+    process.env.CREEZIO_REMOTE_BUILD_ROOT ||
+    manifest.publish.remoteBuildRoot;
+  const remoteBinSrc =
+    process.env[`${manifest.envPrefix}_REMOTE_BIN_SRC`] ||
+    process.env.CREEZIO_REMOTE_BIN_SRC ||
+    manifest.publish.remoteBinSrc;
+
+  return {
+    brandId,
+    kind,
+    envPrefix: manifest.envPrefix,
+    productName: exe.productName,
+    title: kind === "server" ? exe.productName : `${exe.productName} Desktop`,
+    version,
+    appRoot,
+    distDir: distRel,
+    distAbs,
+    exeFileName: resolveArtifactFileName(exe, version),
+    latestAlias: resolveLatestAlias(exe),
+    legacyAlias:
+      kind === "client" && manifest.publish.legacyClientAlias
+        ? manifest.publish.legacyClientAlias
+        : null,
+    feedBase,
+    feedUrl: feedBase,
+    latestYmlUrl: latestYmlUrl(manifest, kind),
+    dockerDlName: manifest.publish.dockerDlName,
+    dockerDlDir,
+    hostDlRoot,
+    hostDlDir,
+    npmContainer: manifest.publish.npmContainer,
+    statusFile,
+    statusDist,
+    remoteLogHint: `/tmp/${remoteLogPrefix}-${version}.log`,
+    remoteBuildHost: remoteHost,
+    remoteBuildRoot: remoteRoot,
+    remoteCrm: path.posix.join(remoteRoot.replace(/\\/g, "/"), "crm"),
+    remoteBinSrc,
+    remoteLogPrefix,
+    buildServerArtifact: manifest.publish.buildServerArtifact,
+    appKindEnv: appKindEnvKey(manifest),
+    serverPlatformEnv: serverPlatformEnvKey(manifest),
+    defaultAppRoot: manifest.publish.defaultAppRoot,
+    npmPublishCmd: `CREEZIO_BRAND=${brandId} bash scripts/electron/publish-desktop.sh`,
+    npmRemoteBuildCmd: `CREEZIO_BRAND=${brandId} bash scripts/electron/remote-build-win.sh`,
+    npmBuildStatusCmd: `CREEZIO_BRAND=${brandId} npm run electron:build-status`,
+  };
+}
+
+/** Export shell `KEY=value` (échappé) pour `eval "$(… --export-shell)"`. */
+export function toShellExports(cfg: ResolvedPublishConfig): string {
+  const pairs: Array<[string, string]> = [
+    ["CREEZIO_BRAND", cfg.brandId],
+    ["CREEZIO_KIND", cfg.kind],
+    ["CREEZIO_ENV_PREFIX", cfg.envPrefix],
+    ["CREEZIO_PRODUCT_NAME", cfg.productName],
+    ["CREEZIO_TITLE", cfg.title],
+    ["CREEZIO_VERSION", cfg.version],
+    ["CREEZIO_APP_ROOT", cfg.appRoot],
+    ["CREEZIO_DIST_DIR", cfg.distDir],
+    ["CREEZIO_DIST_ABS", cfg.distAbs],
+    ["CREEZIO_EXE", cfg.exeFileName],
+    ["CREEZIO_ALIAS", cfg.latestAlias],
+    ["CREEZIO_LEGACY_ALIAS", cfg.legacyAlias || ""],
+    ["CREEZIO_FEED_URL", cfg.feedUrl],
+    ["CREEZIO_LATEST_YML_URL", cfg.latestYmlUrl],
+    ["CREEZIO_DOCKER_DL_NAME", cfg.dockerDlName],
+    ["CREEZIO_DOCKER_DL_DIR", cfg.dockerDlDir],
+    ["CREEZIO_HOST_DL_ROOT", cfg.hostDlRoot],
+    ["CREEZIO_HOST_DL_DIR", cfg.hostDlDir],
+    ["CREEZIO_NPM_CONTAINER", cfg.npmContainer],
+    ["CREEZIO_STATUS_FILE", cfg.statusFile],
+    ["CREEZIO_STATUS_DIST", cfg.statusDist],
+    ["CREEZIO_REMOTE_LOG_HINT", cfg.remoteLogHint],
+    ["CREEZIO_REMOTE_BUILD_HOST", cfg.remoteBuildHost],
+    ["CREEZIO_REMOTE_BUILD_ROOT", cfg.remoteBuildRoot],
+    ["CREEZIO_REMOTE_CRM", cfg.remoteCrm],
+    ["CREEZIO_REMOTE_BIN_SRC", cfg.remoteBinSrc],
+    ["CREEZIO_REMOTE_LOG_PREFIX", cfg.remoteLogPrefix],
+    ["CREEZIO_BUILD_SERVER", cfg.buildServerArtifact ? "1" : "0"],
+    ["CREEZIO_APP_KIND_ENV", cfg.appKindEnv],
+    ["CREEZIO_SERVER_PLATFORM_ENV", cfg.serverPlatformEnv],
+  ];
+  return pairs
+    .map(([k, v]) => `${k}=${shellQuote(v)}`)
+    .join("\n");
+}
+
+function shellQuote(v: string): string {
+  return `'${v.replace(/'/g, `'\\''`)}'`;
+}
+
+export function parseBrandArg(raw: string | undefined): BrandId {
+  const id = (raw || process.env.CREEZIO_BRAND || "").trim().toLowerCase();
+  if (!listBrandIds().includes(id as BrandId)) {
+    throw new Error(
+      `Marque requise (--brand=… ou CREEZIO_BRAND). Connues: ${listBrandIds().join(", ")}`,
+    );
+  }
+  return id as BrandId;
+}
+
+export function parseKindArg(raw: string | undefined): AppKind {
+  const k = (raw || process.env.CREEZIO_KIND || "client").trim().toLowerCase();
+  return k === "server" ? "server" : "client";
+}

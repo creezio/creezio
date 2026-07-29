@@ -49,4 +49,19 @@ export const fiduManifest: AppManifest = {
     nsisGuid: "9a6b4565-45b5-5572-a867-74ab1954e3da",
     appUserModelId: "fr.fidu.desktop.server",
   },
+  publish: {
+    dockerDlName: "dl-fidu",
+    hostDlDirDefault:
+      "/var/lib/docker/volumes/nginx-proxy-manager_npm_data/_data/dl-fidu",
+    npmContainer: "nginx-proxy-manager",
+    remoteBuildHost: "deploy@104.168.10.36",
+    remoteBuildRoot: "/opt/docker/fidu-build",
+    remoteBinSrc: "/opt/docker/tempoflow2/crm",
+    statusFile: "/tmp/fidu-build-status.json",
+    remoteLogPrefix: "fidu-remote-build",
+    // Serveur = cible kit ; remote-build Fidu reste client-only tant que
+    // electron:build:win:server n'existe pas dans l'app (Phase G).
+    buildServerArtifact: false,
+    defaultAppRoot: "/opt/docker/fidu/crm",
+  },
 };

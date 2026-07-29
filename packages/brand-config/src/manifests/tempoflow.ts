@@ -46,4 +46,17 @@ export const tempoflowManifest: AppManifest = {
     nsisGuid: "1eada1b2-84e4-5bc4-9615-9317aa380c2b",
     appUserModelId: "fr.tempoflow.desktop.server",
   },
+  publish: {
+    dockerDlName: "dl-tempoflow",
+    hostDlDirDefault:
+      "/var/lib/docker/volumes/nginx-proxy-manager_npm_data/_data/dl-tempoflow",
+    npmContainer: "nginx-proxy-manager",
+    remoteBuildHost: "deploy@104.168.10.36",
+    remoteBuildRoot: "/opt/docker/tempoflow2-build",
+    remoteBinSrc: "/opt/docker/tempoflow2/crm",
+    statusFile: "/tmp/tempoflow-build-status.json",
+    remoteLogPrefix: "tempoflow-remote-build",
+    buildServerArtifact: true,
+    defaultAppRoot: "/opt/docker/creezio-kit-src/crm",
+  },
 };

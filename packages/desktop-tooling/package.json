@@ -1,0 +1,40 @@
+{
+  "name": "@creezio/desktop-tooling",
+  "version": "0.1.0",
+  "description": "Tooling publish / remote-build / after-pack / build-status générique (AppManifest)",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "bin": {
+    "creezio-resolve-publish-config": "./scripts/resolve-config.mjs",
+    "creezio-desktop-build-status": "./scripts/desktop-build-status.mjs",
+    "creezio-publish-desktop": "./scripts/publish-desktop.sh",
+    "creezio-remote-build-win": "./scripts/remote-build-win.sh"
+  },
+  "files": [
+    "dist",
+    "scripts"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "publish-desktop": "bash scripts/publish-desktop.sh",
+    "remote-build-win": "bash scripts/remote-build-win.sh",
+    "build-status": "node scripts/desktop-build-status.mjs",
+    "resolve-config": "node scripts/resolve-config.mjs"
+  },
+  "dependencies": {
+    "@creezio/brand-config": "0.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.3",
+    "typescript": "^5.8.3"
+  },
+  "license": "UNLICENSED"
+}

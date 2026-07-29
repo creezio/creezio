@@ -46,4 +46,18 @@ export const certivanManifest: AppManifest = {
     nsisGuid: "793d6100-6458-5e93-80b2-7c3221147975",
     appUserModelId: "fr.certivan.desktop.server",
   },
+  publish: {
+    dockerDlName: "dl-certivan",
+    hostDlDirDefault:
+      "/var/lib/docker/volumes/nginx-proxy-manager_npm_data/_data/dl-certivan",
+    npmContainer: "nginx-proxy-manager",
+    remoteBuildHost: "deploy@104.168.10.36",
+    remoteBuildRoot: "/opt/docker/certivan-build",
+    remoteBinSrc: "/opt/docker/tempoflow2/crm",
+    statusFile: "/tmp/certivan-build-status.json",
+    remoteLogPrefix: "certivan-remote-build",
+    buildServerArtifact: true,
+    legacyClientAlias: "Certivan-Setup-0.1.0.exe",
+    defaultAppRoot: "/opt/docker/certivan-app/crm",
+  },
 };

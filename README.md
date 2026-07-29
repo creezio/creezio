@@ -8,34 +8,27 @@ Monorepo **plateforme** pour les desktops Creezio (TempoFlow, Certivan, Fidu).
 ## Pourquoi ce repo ?
 
 Les trois marques partagent le même shell Electron (Client + Serveur, feeds, preload, paths, splash, updater…).  
-Ce kit isole les **contrats** (Phase A) et le **runtime générique** (Phase B) — sans toucher aux apps tant que la Phase G n'est pas lancée.
+Ce kit isole les **contrats**, le **runtime générique**, le **tooling publish** et une **console ops**.
 
 ## Structure
 
 ```
 packages/
-  brand-config/     # AppManifest + manifests + buildElectronBuilderConfig
-  shell/            # IPC, DesktopBridge, createDesktopApi (preload)
-  platform-core/    # paths, app-kind, connection, tunnel, updater-state…
-  electron-shell/   # runtime Electron (boot, updater, tray, splash, launchers)
-apps/               # placeholder (consoles futures)
+  brand-config/      # AppManifest + manifests + buildElectronBuilderConfig + publish infra
+  shell/             # IPC, DesktopBridge, createDesktopApi (preload)
+  platform-core/     # paths, app-kind, connection, tunnel, updater-state…
+  electron-shell/    # runtime Electron (boot, updater, tray, splash, host stack)
+  desktop-tooling/   # publish-desktop, remote-build-win, after-pack, build-status
+apps/
+  console/           # Console ops parc (feeds, versions, dry-run remote-build)
 docs/
-  PHASE-A.md
-  PHASE-B.md
+  PHASE-A.md … PHASE-C.md
   PLATFORM-VS-VERTICAL.md
 ```
 
 ## Modèle standard : Client + Serveur
 
-Chaque `AppManifest` expose **toujours** `client` et `server` :
-
-- `appId` / `productName` / `executableName` / `artifactName`
-- `feedUrl` (racine client, `/server/` pour le serveur)
-- `nsisGuid` (mutex Uninstall distincts)
-- `userDataSegment` / `packageName`
-- `bridgeName`, `envPrefix`, `deepLinkProtocol`, `sessionPartition`, `tunnelRootDomain`
-
-Ce n'est **pas** une option de configuration.
+Chaque `AppManifest` expose **toujours** `client` et `server` + `publish` (DL, remote-build, statut).
 
 ## Quick start
 
@@ -46,11 +39,27 @@ npm run build
 npm test
 ```
 
+### Console ops
+
+```bash
+npm run console:dev    # http://127.0.0.1:3080
+```
+
+Détails : [apps/console/README.md](apps/console/README.md).
+
+### Tooling publish (générique)
+
+```bash
+npm run desktop:resolve-config -- --brand=certivan --kind=server --pretty
+npm run desktop:build-status -- --brand=tempoflow
+npm run desktop:publish -- --brand=fidu --dry-run
+npm run desktop:remote-build -- --brand=certivan --dry-run
+```
+
 ## Comment une app consommera le kit (Phase G)
 
-Aujourd'hui **aucune** app ne dépend encore de ce repo.
-
-Plus tard (workspace npm ou package GitHub) :
+Aujourd'hui **aucune** app ne dépend encore de ce repo pour son runtime.
+Les scripts génériques sont prêts à être branchés :
 
 ```json
 {
@@ -58,35 +67,11 @@ Plus tard (workspace npm ou package GitHub) :
     "@creezio/brand-config": "0.1.0",
     "@creezio/shell": "0.1.0",
     "@creezio/platform-core": "0.1.0",
-    "@creezio/electron-shell": "0.1.0"
-  },
-  "peerDependencies": {
-    "electron": ">=28",
-    "electron-updater": ">=6"
+    "@creezio/electron-shell": "0.1.0",
+    "@creezio/desktop-tooling": "0.1.0"
   }
 }
 ```
-
-```ts
-import { certivanManifest } from "@creezio/brand-config";
-import { createDesktopApi, exposeDesktopApi, IpcChannels } from "@creezio/shell";
-import { resolveDbPath, feedUrlForKind } from "@creezio/platform-core";
-import {
-  prepareDesktopBoot,
-  setupAutoUpdater,
-  TrayController,
-} from "@creezio/electron-shell";
-
-const boot = await prepareDesktopBoot(certivanManifest);
-await setupAutoUpdater({
-  feedUrl: feedUrlForKind(
-    certivanManifest,
-    boot.appKind === "server" ? "server" : "client",
-  ),
-});
-```
-
-Les builds exe / publish des marques restent dans leurs repos respectifs.
 
 ## Phases
 
@@ -94,14 +79,14 @@ Les builds exe / publish des marques restent dans leurs repos respectifs.
 |-------|---------|
 | **A** | Contrats + manifests + docs + build vert |
 | **B** | Runtime Electron générique (boot/preload/updater/meili) |
-| **B.2** (ici) | Hermes / n8n / tunnel / local-config / plugins host |
-| **C** | Tooling publish / after-pack |
+| **B.2** | Hermes / n8n / tunnel / local-config / plugins host |
+| **C** (ici) | Tooling publish + console ops |
+| **D** | Factory new-app |
 | **G** | Branchement Fidu / Certivan / TF2 sur le kit |
 
-Voir [docs/PHASE-B.md](docs/PHASE-B.md), [docs/PHASE-B2.md](docs/PHASE-B2.md) et [docs/PLATFORM-VS-VERTICAL.md](docs/PLATFORM-VS-VERTICAL.md).
+Voir [docs/PHASE-C.md](docs/PHASE-C.md) et [docs/PLATFORM-VS-VERTICAL.md](docs/PLATFORM-VS-VERTICAL.md).
 
 ## Hors scope
 
-- Pas de publish npm / exe depuis ce repo
-- Pas de modification Fidu / Certivan / tempoflow2
-- Pas de consommation du kit par les apps (Phase G)
+- Pas de modification Fidu / Certivan / tempoflow2 depuis ce repo
+- Pas de consommation runtime du kit par les apps (Phase G)

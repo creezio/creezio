@@ -1,10 +1,22 @@
-export type { AppKind, AppManifest, ExeIdentity } from "./types.js";
+export type {
+  AppKind,
+  AppManifest,
+  BrandPublishInfra,
+  ExeIdentity,
+} from "./types.js";
 export {
+  appKindEnvKey,
   appSessionPartition,
+  distDirForKind,
   envKey,
   exeForKind,
+  feedBaseUrl,
+  latestYmlUrl,
   profileArgPrefix,
   profileDirArgPrefix,
+  resolveArtifactFileName,
+  resolveLatestAlias,
+  serverPlatformEnvKey,
 } from "./types.js";
 
 export { tempoflowManifest } from "./manifests/tempoflow.js";

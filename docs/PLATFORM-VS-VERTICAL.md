@@ -38,8 +38,10 @@ Légende :
 | `electron/plugin-events/manifest/grants/token/host` | platform-core + electron-shell | **B.2** | control-api/git/data = vertical |
 | `electron/node-runtime` / `npm-cli` / sandbox | electron-shell | **B.2** | |
 | `electron/main.ts` | façade `prepareDesktopBoot` + vertical | **B** / vertical | Découpe progressive |
-| `scripts/electron/after-pack.cjs` | tooling | **C** | |
-| `scripts/electron/publish-desktop.sh` | tooling | **C** | |
+| `scripts/electron/after-pack.cjs` | `@creezio/desktop-tooling` | **C** | hook générique |
+| `scripts/electron/publish-desktop.sh` | `@creezio/desktop-tooling` | **C** | paramétré AppManifest.publish |
+| `scripts/electron/remote-build-win.sh` | `@creezio/desktop-tooling` | **C** | idem |
+| `scripts/electron/desktop-build-status.mjs` | `@creezio/desktop-tooling` | **C** | + console ops |
 | `electron-builder.yml` | généré depuis manifest | **B** | via buildElectronBuilderConfig |
 | Seeds / templates métier | **vertical** | — | Certivan VASP, Fidu seeds… |
 | Routes Next CRM / UI métier | **vertical** | — | |
