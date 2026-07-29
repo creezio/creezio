@@ -29,6 +29,7 @@
     "@creezio/tasks": "0.1.0",
     "@creezio/mails": "0.1.0",
     "@creezio/observability": "0.1.0",
+    "@creezio/automations": "0.1.0",
     "@creezio/electron-shell": "0.1.0",
     "@creezio/desktop-tooling": "0.1.0"
   },

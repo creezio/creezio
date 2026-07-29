@@ -50,6 +50,7 @@ packages/
   tasks/             # Tâches plateforme (H1.6)
   mails/             # Mails plateforme (H1.7)
   observability/     # Activité / usages plugins / control-plane (V2)
+  automations/       # Triggers lifecycle / données + actions (V3)
   electron-shell/    # runtime Electron (boot, updater, tray, splash, host stack)
   desktop-tooling/   # publish-desktop, remote-build-win, after-pack, build-status
   factory/           # creezio new-app (Phase D + wiring H1.9)
@@ -161,9 +162,11 @@ Les sandboxes factory portent `sandbox: true` (feeds jetables).
 | **D6** | Certivan polish aliases | ✅ |
 | **V1** | Fabrique plugins conversationnelle (demobrand E2E) | ✅ |
 | **V2** | Observabilité native (activité / usages / control-plane) | ✅ |
+| **V3** | Automations data-driven (triggers + n8n opt.) | ✅ |
 
 Voir [docs/PHASE-D0.md](docs/PHASE-D0.md), [docs/PHASE-V1.md](docs/PHASE-V1.md),
-[docs/PHASE-V2.md](docs/PHASE-V2.md),
+[docs/PHASE-V2.md](docs/PHASE-V2.md), [docs/PHASE-V3.md](docs/PHASE-V3.md),
+[docs/VISION-V1-V3.md](docs/VISION-V1-V3.md),
 [docs/PHASE-H5.md](docs/PHASE-H5.md),
 [docs/DOD-PHASE-A-G.md](docs/DOD-PHASE-A-G.md), [docs/PROPAGATION.md](docs/PROPAGATION.md).
 

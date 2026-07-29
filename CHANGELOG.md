@@ -4,6 +4,10 @@
 ## [Unreleased]
 
 ### Added
+- **Phase V3** — Automations data-driven : package `@creezio/automations`
+  (triggers lifecycle/données, actions emit_obs/webhook/n8n_tag_hint) ;
+  demobrand règles + API ; sign-off [VISION-V1-V3.md](docs/VISION-V1-V3.md) ;
+  tests `test-phase-v3.mjs` ; pas de republish marques.
 - **Phase V2** — Observabilité native : package `@creezio/observability`
   (activité, usages plugins, control-plane) ; demobrand mount + émissions ;
   console `GET/POST /api/observability` multi-org ; `docs/PHASE-V2.md` ;

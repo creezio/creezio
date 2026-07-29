@@ -54,6 +54,13 @@ import {
   type SqliteObservabilityStore,
 } from "@creezio/observability";
 import {
+  createAutomationEngine,
+  createAutomationsApiMount,
+  defaultDemobrandAutomationRules,
+  type AutomationEngine,
+} from "@creezio/automations";
+import {
+  productHubTokensFromManifest,
   PRODUCT_HUB_ACL_H5_SQL,
   PRODUCT_HUB_ACL_ORG_SQL,
   PRODUCT_HUB_ACL_USER_SQL,
@@ -188,7 +195,15 @@ function createDemoNotesMount(): ApiMount {
   };
 }
 
-function createPluginKvMount(pluginId: string): ApiMount {
+function createPluginKvMount(
+  pluginId: string,
+  onDataChanged?: (info: {
+    pluginId: string;
+    key: string;
+    value: string;
+    actor: PluginAclActor;
+  }) => void | Promise<void>,
+): ApiMount {
   return {
     dbLayer: "plugin",
     handle: async ({ req, subPath, db }) => {
@@ -226,9 +241,16 @@ function createPluginKvMount(pluginId: string): ApiMount {
           `INSERT INTO plugin_kv (key, value, updated_at) VALUES (?, ?, ?)
            ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at`,
         ).run(key, value, updatedAt);
+        const actor = resolvePluginAclActorFromHeaders(req.headers || {});
+        await onDataChanged?.({ pluginId, key, value, actor });
         return {
           status: 201,
-          body: { ok: true, pluginId, layer: db.layer, entry: { key, value, updated_at: updatedAt } },
+          body: {
+            ok: true,
+            pluginId,
+            layer: db.layer,
+            entry: { key, value, updated_at: updatedAt },
+          },
         };
       }
 
@@ -259,6 +281,8 @@ export type DemobrandSandbox = {
   pluginFactory: ConversationalPluginFactory;
   /** V2 — observabilité native (core). */
   observability: SqliteObservabilityStore;
+  /** V3 — automations data-driven. */
+  automations: AutomationEngine;
   /** Répertoire plugins FS (scaffold). */
   pluginsDir: string;
   installPlugin(
@@ -343,6 +367,41 @@ export function createDemobrandSandbox(opts?: {
   const observability = createSqliteObservabilityStore({
     coreDbPath: runtime.paths.core,
   });
+
+  const hubTokens = productHubTokensFromManifest(manifest);
+  const automations = createAutomationEngine({
+    n8nTagPrefix: hubTokens.n8nTagPrefix,
+    defaultWebhookUrl: process.env.N8N_AUTOMATION_WEBHOOK_URL || null,
+    emitObservability: (input) => {
+      observability.record({
+        kind: "activity",
+        action: input.action,
+        orgId: input.orgId,
+        userId: input.userId,
+        brandId: input.brandId,
+        pluginId: input.pluginId,
+        meta: input.meta,
+      });
+    },
+    postWebhook: async (url, body) => {
+      try {
+        const res = await fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        });
+        return { ok: res.ok, status: res.status };
+      } catch (e) {
+        return {
+          ok: false,
+          error: e instanceof Error ? e.message : String(e),
+        };
+      }
+    },
+  });
+  for (const rule of defaultDemobrandAutomationRules()) {
+    automations.addRule(rule);
+  }
 
   function authorizePluginAccess(accessCtx: {
     pluginId: string;
@@ -459,8 +518,9 @@ export function createDemobrandSandbox(opts?: {
     "observability",
     createObservabilityApiMount(observability),
   );
+  api.registerModuleApi("automations", createAutomationsApiMount(automations));
 
-  // Wrap factory surface pour émettre activité V2
+  // Wrap factory surface pour émettre activité V2 + triggers V3
   const rawSubmit = pluginFactory.submitIntention.bind(pluginFactory);
   const rawMaterialize = pluginFactory.materialize.bind(pluginFactory);
   const rawIterate = pluginFactory.iterate.bind(pluginFactory);
@@ -488,6 +548,21 @@ export function createDemobrandSandbox(opts?: {
         { pluginId: result.pluginId, productId: input.productId },
       );
       // control_plane install émis par installPlugin (installRuntime)
+      await automations.dispatch({
+        type: "factory.materialized",
+        orgId: input.actor.orgId,
+        userId: input.actor.userId,
+        brandId: manifest.brandId,
+        pluginId: result.pluginId,
+        payload: { productId: input.productId },
+      });
+      await automations.dispatch({
+        type: "plugin.released",
+        orgId: input.actor.orgId,
+        userId: input.actor.userId,
+        brandId: manifest.brandId,
+        pluginId: result.pluginId,
+      });
     }
     return result;
   };
@@ -625,6 +700,7 @@ export function createDemobrandSandbox(opts?: {
     productHub,
     pluginFactory,
     observability,
+    automations,
     pluginsDir,
     auth,
     assistant,
@@ -659,9 +735,22 @@ export function createDemobrandSandbox(opts?: {
     },
 
     installPlugin(pluginId, installOpts) {
-      const opened = runtime.openPlugin(pluginId, demobrandPluginMigrations());
-      api.registerPluginApi(pluginId, createPluginKvMount(pluginId));
       const ownerOrgId = installOpts?.ownerOrgId || "org-sandbox";
+      const opened = runtime.openPlugin(pluginId, demobrandPluginMigrations());
+      api.registerPluginApi(
+        pluginId,
+        createPluginKvMount(pluginId, async (info) => {
+          await automations.dispatch({
+            type: "org.data_changed",
+            orgId: info.actor.orgId || ownerOrgId,
+            userId: info.actor.userId,
+            brandId: manifest.brandId,
+            pluginId: info.pluginId,
+            dataLayer: "plugin",
+            payload: { key: info.key, value: info.value },
+          });
+        }),
+      );
       const orgIds = installOpts?.allowedOrgIds?.length
         ? installOpts.allowedOrgIds
         : [ownerOrgId];
@@ -684,6 +773,13 @@ export function createDemobrandSandbox(opts?: {
         actor: { orgId: ownerOrgId, brandId: manifest.brandId },
         meta: { created: opened.created },
       });
+      void automations.dispatch({
+        type: "plugin.installed",
+        orgId: ownerOrgId,
+        brandId: manifest.brandId,
+        pluginId,
+        payload: { created: opened.created },
+      });
       return { path: opened.handle.path, created: opened.created };
     },
 
@@ -694,6 +790,11 @@ export function createDemobrandSandbox(opts?: {
       recordControlPlaneEvent(observability, "uninstall", {
         pluginId,
         actor: { brandId: manifest.brandId },
+      });
+      void automations.dispatch({
+        type: "plugin.uninstalled",
+        brandId: manifest.brandId,
+        pluginId,
       });
       return result;
     },

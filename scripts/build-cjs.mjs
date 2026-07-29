@@ -27,6 +27,7 @@ const PACKAGES = [
   "tasks",
   "mails",
   "observability",
+  "automations",
   "electron-shell",
   "desktop-tooling",
   "propagation",

@@ -25,6 +25,7 @@ Dette post-I18 : [PHASE-D0.md](PHASE-D0.md) → D1…D6.
 | Product Hub / plugins lifecycle + ACL L3/L4 | `@creezio/product-hub` | ✅ | H5 : `decidePluginAccess` see/install/execute + binding org + deny cross-org |
 | **Fabrique plugins conversationnelle** | `@creezio/product-hub` (+ demobrand/console) | ✅ | **V1** : intention→PRD→scaffold→`openPlugin`→MCP ; `PHASE-V1.md` |
 | **Observabilité** (activité / usages / CP) | `@creezio/observability` | ✅ | **V2** : store core + API + console multi-org ; `PHASE-V2.md` |
+| **Automations** data-driven | `@creezio/automations` | ✅ | **V3** : triggers lifecycle/données + n8n opt. ; `PHASE-V3.md` |
 | Plugins host (spawn, grants, events) | platform-core + electron-shell | ✅ | `plugins/*`, control plane + `acl` option H5 |
 | Desktop tooling publish / remote-build | `@creezio/desktop-tooling` | ✅ | publish-desktop, remote-build-win, after-pack |
 | Factory new-app | `@creezio/factory` | ✅ | scaffold Client+Serveur + demobrand |
@@ -106,4 +107,5 @@ nommés dans `@creezio/propagation` (contrats, pas automation).
 **Plan H0–H5 + I0–I18 + D0–D6** = **complet**.  
 **V1** = fabrique plugins — [PHASE-V1.md](PHASE-V1.md).  
 **V2** = observabilité native — [PHASE-V2.md](PHASE-V2.md).  
-Suite : **V3** automations data-driven.
+**V3** = automations data-driven — [PHASE-V3.md](PHASE-V3.md).  
+**Vision V1–V3 signée** — [VISION-V1-V3.md](VISION-V1-V3.md).

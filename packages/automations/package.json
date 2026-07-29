@@ -1,0 +1,36 @@
+{
+  "name": "@creezio/automations",
+  "version": "0.1.0",
+  "description": "Automations data-driven natives — triggers lifecycle/données + actions (V3)",
+  "type": "module",
+  "main": "./dist-cjs/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist-cjs/index.js",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "dist-cjs"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@creezio/api-kernel": "0.1.0",
+    "@creezio/observability": "0.1.0",
+    "@creezio/platform-core": "0.1.0",
+    "@creezio/product-hub": "0.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.3",
+    "typescript": "^5.8.3"
+  },
+  "license": "UNLICENSED",
+  "module": "./dist/index.js"
+}
