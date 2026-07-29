@@ -32,7 +32,7 @@ Dette post-I18 : [PHASE-D0.md](PHASE-D0.md) → D1…D6.
 | **Shell-UI / nav + slots** | `@creezio/shell-ui` | ✅ | **I7** : `createNavShellAdapter` + `NavRenderModel` ; TF/Certivan/Fidu I12/I16/I18 |
 | **Assistant / chat** | `@creezio/assistant` | ✅ | Mémoire + **`createSqliteAssistantStore` I2** ; TF I13 (dette unif. **D2**) |
 | **API kernel** (façade HTTP cœur) | `@creezio/api-kernel` | ✅ | ScopedDbAccess H2 + `authorizePluginAccess` H5 |
-| **MCP façade / proxy** | `@creezio/mcp-facade` | ✅ | H4 aliases/policies + H5 deny plugin ; TF : dualité Hono `/mcp` vs façade Electron = dette **D1** |
+| **MCP façade / proxy** | `@creezio/mcp-facade` | ✅ | H4 aliases/policies + H5 deny plugin ; **TF D1** : exécuteur = Hono `/mcp`, façade = adaptateur + proxy |
 | **Tasks** (natif plateforme) | `@creezio/tasks` | ✅ | CRUD + mount + **`createSqliteTasksStore` I3** ; TF mounts I13 (dette **D2**) |
 | **Mails** (natif plateforme) | `@creezio/mails` | ✅ | SQLite + **`file-sink`** I3 ; TF I13 (dette **D2**) |
 | Sync vendor standardisé | `scripts/sync-creezio-vendor.sh` | ✅ | **I0** — assert `ARCHITECTURE_VERSION=H6`, CJS, wrappers 3 marques |
@@ -95,8 +95,8 @@ nommés dans `@creezio/propagation` (contrats, pas automation).
 
 | Couche | ✅ | 🟡 (dette D*) | ❌ |
 |--------|----|---------------|-----|
-| Natif (socle A–G + H1–H6 + I0–I8) | brand-config, shell, platform-core, electron-shell, product-hub ACL H5, tooling, factory, propagation, console, api-kernel, mcp-facade, auth, shell-ui, assistant, tasks, mails | Dualité MCP TF (**D1**) ; stores kit vs Hono historiques TF (**D2**) | — |
-| Métier TF (repo marque) | panier, dispatch, releves, catalogue, stack, scan (status), MCP H4, ACL L3 I10, shell-ui I12, republish 0.10.30 | Scan API métier si produit l’exige (**D3**) | — |
+| Natif (socle A–G + H1–H6 + I0–I8) | brand-config, shell, platform-core, electron-shell, product-hub ACL H5, tooling, factory, propagation, console, api-kernel, mcp-facade, auth, shell-ui, assistant, tasks, mails | stores kit vs Hono historiques TF (**D2**) | — |
+| Métier TF (repo marque) | panier, dispatch, releves, catalogue, stack, scan (status), MCP H4/**D1** une stack, ACL L3 I10, shell-ui I12, republish 0.10.30 | Scan API métier si produit l’exige (**D3**) | — |
 | Plugins | hub + host + DB `plugin/<id>` + ACL L3 kit + conso TF/Certivan/Fidu + E2E demobrand | Fidu HTTP control-plane (**D4**) ; Fidu `clientSlim` ADR (**D5**) ; Certivan polish (**D6**) | auto-promotion *(volontaire)* ; univers perso *(volontaire)* ; cloud registry *(volontaire)* |
 
 **H5 terminée** = ACL plugins durcie.  

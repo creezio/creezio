@@ -73,6 +73,10 @@ cloud registry.
 - [x] `npm test` kit verts
 - [x] Push kit — 0 republish exe
 
+## Suite
+
+→ **D1 livrée** : [PHASE-D1.md](PHASE-D1.md).
+
 ## Verdict
 
-**Phase D0 : TERMINÉE.** Suite : **D1** (TF — une seule stack MCP runtime).
+**Phase D0 : TERMINÉE.**

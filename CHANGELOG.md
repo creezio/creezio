@@ -4,6 +4,9 @@
 ## [Unreleased]
 
 ### Added
+- **Phase D1** — TempoFlow une stack MCP : exécuteur Hono `/mcp`, façade
+  Electron = adaptateur + proxy (`setMcpUpstream`) ; aliases source unique ;
+  tools `creezio.*` + `module.dispatch.*` ; `docs/PHASE-D1.md` ; pas de republish.
 - **Phase D0** — Alignement docs post-I18 : matrice Natif/Métier/Plugin
   (catalogue/stack/ACL L3 plus 🟡 faux), dry-run I0 H6, backlog D1–D6 +
   vision V1–V3 ; `docs/PHASE-D0.md` ; pas de republish.
