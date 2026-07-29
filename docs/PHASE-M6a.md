@@ -106,7 +106,7 @@ admin-window kit pur ou ≤30 LOC ; imports directs kit.
 
 | Repo | SHA |
 |------|-----|
-| kit `creezio/creezio` | _(docs — SHA après push)_ |
+| kit `creezio/creezio` | `664d15b` |
 | TF `tempoflow2` | `f6fcb48` |
 
 ---
