@@ -4,6 +4,9 @@
 ## [Unreleased]
 
 ### Added
+- **Phase I6** — Registre org persisté : `createFileOrgPluginRegistry`,
+  console `GET/POST /api/org-plugins` + panel ; `docs/PHASE-I6.md` ;
+  tests `test-phase-i6.mjs`.
 - **Phase I5** — Admin Plugins L3 : `upsertPluginAclAdmin` / preview,
   demobrand mount `admin-plugins` + UI HTML, deny cross-org E2E ;
   `docs/PHASE-I5.md` ; tests `test-phase-i5.mjs`.

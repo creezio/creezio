@@ -80,7 +80,7 @@ Autres marques (indicatif, hors extraction) :
 | Manifest / events / execution grant | `@creezio/platform-core` | ✅ | Contrats purs |
 | Lifecycle / PRD / impact / n8n tags / ACL | `@creezio/product-hub` | ✅ | + `createSqliteProductHubStore` (H1.8) ; demobrand opt-in sqlite |
 | Control plane HTTP host | `@creezio/electron-shell` + product-hub | ✅ | **I4** : `createPluginControlPlaneAclFromStore` + demobrand gold ; bascule marques I10+ |
-| Registre org L3 | `@creezio/propagation` | 🟡 | Mémoire + extension points ; **persistance = I6** |
+| Registre org L3 | `@creezio/propagation` | ✅ | **I6** : `createFileOrgPluginRegistry` + console `/api/org-plugins` |
 | UI Admin Plugins multi-org | demobrand + product-hub admin | ✅ | **I5** : `admin-plugins` API + HTML ; caps see/install/execute |
 | DB `plugin/<id>` à l’install | `@creezio/platform-core` `ensurePluginDb` | ✅ | Fichier créé à l’install uniquement |
 | ACL granulaire qui voit/utilise | product-hub `acl` + sqlite store | ✅ | Contrats L3/L4 + persistance core kit |

@@ -96,11 +96,11 @@ npm run kit:impact -- --package=electron-shell --bump=major --json
 Contrat dans `@creezio/propagation` :
 
 - `OrgPluginRecord` + `createMemoryOrgPluginRegistry`
+- **I6** : `createFileOrgPluginRegistry({ filePath })` — persistance JSON ops
 - Visibilités : `owner_only` → `pending_review` → `promoted_vertical` → `promoted_kit`
 - Remontée : `submitForOrgReview` → `proposeVerticalPromotion` → `proposeKitPromotion`
-- Persistance SQLite / UI = **vertical** (Phase G) — le kit expose le schéma + store mémoire
-
-La console peut afficher un snapshot (mémoire / seed) via l'API kit.
+- Console : `GET/POST /api/org-plugins` + panel (fichier `var/org-plugin-registry.json`)
+- Cloud registry / auto-promotion = hors scope
 
 ## Points d'extension
 

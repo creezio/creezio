@@ -69,6 +69,8 @@ export {
   createMemoryOrgPluginRegistry,
   snapshotOrgPluginRegistry,
 } from "./org-plugin-registry.js";
+export type { CreateFileOrgPluginRegistryOptions } from "./org-plugin-registry-file.js";
+export { createFileOrgPluginRegistry } from "./org-plugin-registry-file.js";
 
 export type {
   ExtensionHookBus,

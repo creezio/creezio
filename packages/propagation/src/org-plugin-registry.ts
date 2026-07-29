@@ -1,8 +1,9 @@
 /**
  * Registre plugins organisation (contrat L3 — Notion §2–4).
  *
- * Persistance réelle = vertical (Phase G). Ici : schéma + store mémoire
- * pour console / tests / dry-run de remontée terrain → review → kit.
+ * - Mémoire : tests / dry-run
+ * - Fichier : `createFileOrgPluginRegistry` (Phase I6) — console ops
+ * Cloud registry / auto-promotion = hors scope.
  */
 
 export type PropagationLevel = "L1-core" | "L2-vertical" | "L3-org" | "L4-user";

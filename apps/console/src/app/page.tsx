@@ -1,7 +1,9 @@
 import { BrandCard } from "@/components/BrandCard";
 import { GatesPanel } from "@/components/GatesPanel";
 import { KitVersionsPanel } from "@/components/KitVersionsPanel";
+import { OrgPluginsPanel } from "@/components/OrgPluginsPanel";
 import { loadKitSnapshot } from "@/lib/kit";
+import { loadOrgPluginRegistrySnapshot } from "@/lib/org-plugin-registry";
 import { loadParc } from "@/lib/parc";
 
 export const dynamic = "force-dynamic";
@@ -10,6 +12,7 @@ export const revalidate = 0;
 export default function HomePage() {
   const parc = loadParc();
   const kit = loadKitSnapshot();
+  const orgPlugins = loadOrgPluginRegistrySnapshot();
   const generatedAt = new Date().toISOString();
 
   return (
@@ -26,6 +29,7 @@ export default function HomePage() {
       </header>
 
       <KitVersionsPanel snap={kit} />
+      <OrgPluginsPanel snap={orgPlugins} filePath={orgPlugins.filePath} />
       <GatesPanel snap={kit} />
 
       <h2 className="section-title">Parc marques</h2>
