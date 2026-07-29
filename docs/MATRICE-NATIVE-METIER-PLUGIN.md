@@ -23,6 +23,7 @@ Dette post-I18 : [PHASE-D0.md](PHASE-D0.md) → D1…D6.
 | Host n8n | `@creezio/electron-shell` | ✅ | `host/n8n/*` (B.2) |
 | Host Hermes | `@creezio/electron-shell` | ✅ | `host/hermes/*` (B.2) |
 | Product Hub / plugins lifecycle + ACL L3/L4 | `@creezio/product-hub` | ✅ | H5 : `decidePluginAccess` see/install/execute + binding org + deny cross-org |
+| **Fabrique plugins conversationnelle** | `@creezio/product-hub` (+ demobrand/console) | ✅ | **V1** : intention→PRD→scaffold→`openPlugin`→MCP ; `PHASE-V1.md` |
 | Plugins host (spawn, grants, events) | platform-core + electron-shell | ✅ | `plugins/*`, control plane + `acl` option H5 |
 | Desktop tooling publish / remote-build | `@creezio/desktop-tooling` | ✅ | publish-desktop, remote-build-win, after-pack |
 | Factory new-app | `@creezio/factory` | ✅ | scaffold Client+Serveur + demobrand |
@@ -78,6 +79,7 @@ Autres marques (indicatif, hors extraction) :
 |----------|-----|--------|-------|
 | Manifest / events / execution grant | `@creezio/platform-core` | ✅ | Contrats purs |
 | Lifecycle / PRD / impact / n8n tags / ACL | `@creezio/product-hub` | ✅ | + `createSqliteProductHubStore` (H1.8) ; demobrand opt-in sqlite |
+| Fabrique conversationnelle (intention→plugin) | product-hub factory + demobrand | ✅ | **V1** — `createConversationalPluginFactory` ; preuve E2E demobrand |
 | Control plane HTTP host | `@creezio/electron-shell` + product-hub | ✅ | **I4** kit + demobrand ; TF I10 · Certivan I16 · **Fidu D4** minimal HTTP + ACL L3 |
 | Registre org L3 | `@creezio/propagation` | ✅ | **I6** : `createFileOrgPluginRegistry` + console `/api/org-plugins` |
 | UI Admin Plugins multi-org | demobrand + product-hub admin | ✅ | **I5** : `admin-plugins` API + HTML ; caps see/install/execute |
@@ -97,9 +99,9 @@ nommés dans `@creezio/propagation` (contrats, pas automation).
 |--------|----|---------------|-----|
 | Natif (socle A–G + H1–H6 + I0–I8) | brand-config, shell, platform-core, electron-shell, product-hub ACL H5, tooling, factory, propagation, console, api-kernel, mcp-facade, auth, shell-ui, assistant, tasks, mails (+ **TF D2** adapters) | — | — |
 | Métier TF (repo marque) | panier, dispatch, releves, catalogue, stack, scan D3, MCP H4/**D1**, stores **D2**, ACL L3, shell-ui, republish **0.10.31** | — | — |
-| Plugins | hub + host + DB + ACL L3 3 marques + Fidu D4 HTTP ; clientSlim **false** D5 ; Certivan D6 aliases | — | auto-promotion / univers perso / cloud registry *(volontaire)* |
+| Plugins | hub + host + DB + ACL L3 3 marques + Fidu D4 HTTP ; fabrique **V1** ; clientSlim **false** D5 ; Certivan D6 aliases | — | auto-promotion / univers perso / cloud registry *(volontaire)* |
 
 **H5 terminée** = ACL plugins durcie.  
-**Plan H0–H5 + I0–I18** = **complet** (conso 3 marques 100 %).  
-**D0** = alignement docs/matrice (ce fichier) — pas de code runtime.  
-Suite code : [PHASE-D0.md](PHASE-D0.md) → **D1** (MCP une stack).
+**Plan H0–H5 + I0–I18 + D0–D6** = **complet**.  
+**V1** = fabrique plugins conversationnelle — [PHASE-V1.md](PHASE-V1.md).  
+Suite : **V2** observabilité native.

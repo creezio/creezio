@@ -53,10 +53,13 @@ import {
   PLUGIN_ACL_OWNER_HEADER,
   PLUGIN_ACL_USER_HEADER,
   buildPluginAclActorHeaders,
+  createConversationalPluginFactory,
+  createFsPluginScaffoldAdapters,
   createPluginControlPlaneAclFromStore,
   createSqliteProductHubStore,
   decidePluginAccess,
   resolvePluginAclActorFromHeaders,
+  type ConversationalPluginFactory,
   type PluginAclActor,
   type PluginAclCapability,
   type PluginControlPlaneAcl,
@@ -74,8 +77,10 @@ import {
   type McpFacade,
   type McpRegisteredTool,
 } from "@creezio/mcp-facade";
+import { pluginsRootDir } from "@creezio/platform-core";
 import { demobrandManifest as manifest } from "./app-manifest.js";
 import { createAdminPluginsApiMount } from "./admin-plugins-api.js";
+import { createPluginFactoryApiMount } from "./plugin-factory-api.js";
 
 export const DEMOBRAND_NOTES_SQL = `
 CREATE TABLE IF NOT EXISTS demobrand_notes (
@@ -240,6 +245,10 @@ export type DemobrandSandbox = {
   api: ApiKernel;
   mcp: McpFacade;
   productHub: SqliteProductHubStore;
+  /** V1 — fabrique plugins conversationnelle. */
+  pluginFactory: ConversationalPluginFactory;
+  /** Répertoire plugins FS (scaffold). */
+  pluginsDir: string;
   installPlugin(
     pluginId: string,
     opts?: InstallSandboxPluginOpts,
@@ -357,6 +366,67 @@ export function createDemobrandSandbox(opts?: {
   api.registerModuleApi("platform-mails", createMailsApiMount(mails));
   api.registerModuleApi("admin-plugins", createAdminPluginsApiMount(productHub));
 
+  const pluginsDir = pluginsRootDir(userDataRoot);
+  fs.mkdirSync(pluginsDir, { recursive: true });
+  const fsAdapters = createFsPluginScaffoldAdapters(pluginsDir);
+
+  const sandboxRef: { install?: DemobrandSandbox["installPlugin"] } = {};
+
+  const pluginFactory = createConversationalPluginFactory({
+    store: productHub,
+    collectEvidence: () => {
+      const fromHub = productHub.listProducts().map((p) => ({
+        type: "product_prd" as const,
+        name: p.name,
+        description: p.description,
+        pluginId: p.plugin_id || undefined,
+      }));
+      const fromFs = fs.existsSync(pluginsDir)
+        ? fs
+            .readdirSync(pluginsDir, { withFileTypes: true })
+            .filter((d) => d.isDirectory())
+            .map((d) => {
+              const mf = path.join(pluginsDir, d.name, "manifest.json");
+              let description = "";
+              let name = d.name;
+              if (fs.existsSync(mf)) {
+                try {
+                  const j = JSON.parse(fs.readFileSync(mf, "utf8")) as {
+                    name?: string;
+                    description?: string;
+                  };
+                  name = j.name || name;
+                  description = j.description || "";
+                } catch {
+                  /* */
+                }
+              }
+              return {
+                type: "plugin_manifest" as const,
+                name,
+                description,
+                pluginId: d.name,
+              };
+            })
+        : [];
+      return [...fromHub, ...fromFs];
+    },
+    scaffoldPlugin: (input) => fsAdapters.scaffoldPlugin(input),
+    writePluginFiles: (id, files) => fsAdapters.writePluginFiles(id, files),
+    installRuntime: (pluginId, actor) => {
+      const ownerOrgId = actor.orgId || "org-sandbox";
+      if (!runtime.hasPluginOpen(pluginId)) {
+        sandboxRef.install?.(pluginId, { ownerOrgId });
+      }
+      return { dbOpened: runtime.hasPluginOpen(pluginId) };
+    },
+  });
+
+  api.registerModuleApi(
+    "plugin-factory",
+    createPluginFactoryApiMount(pluginFactory),
+  );
+
   function moduleTools(): McpRegisteredTool[] {
     return [
       {
@@ -371,6 +441,38 @@ export function createDemobrandSandbox(opts?: {
           });
           return { ok: res.status < 400, content: res.body };
         },
+      },
+      {
+        name: "module.plugin-factory.submit",
+        description: "Soumet une intention à la fabrique plugins (V1)",
+        space: "module",
+        ownerId: "plugin-factory",
+        handler: async (args) => {
+          const text = String(
+            (args as { text?: string })?.text || "",
+          ).trim();
+          try {
+            const session = pluginFactory.submitIntention({ text });
+            return { ok: true, content: { session } };
+          } catch (e) {
+            return {
+              ok: false,
+              content: {
+                error: e instanceof Error ? e.message : "error",
+              },
+            };
+          }
+        },
+      },
+      {
+        name: "module.plugin-factory.sessions",
+        description: "Liste les sessions fabrique plugins",
+        space: "module",
+        ownerId: "plugin-factory",
+        handler: async () => ({
+          ok: true,
+          content: { sessions: pluginFactory.listSessions() },
+        }),
       },
     ];
   }
@@ -440,12 +542,14 @@ export function createDemobrandSandbox(opts?: {
     },
   });
 
-  return {
+  const sandbox: DemobrandSandbox = {
     ctx,
     runtime,
     api,
     mcp,
     productHub,
+    pluginFactory,
+    pluginsDir,
     auth,
     assistant,
     tasks,
@@ -463,13 +567,13 @@ export function createDemobrandSandbox(opts?: {
           const ownerOrgId = actor.orgId || "org-sandbox";
           // Évite double-bind : installPlugin gère ACL + openPlugin
           if (!runtime.hasPluginOpen(pluginId)) {
-            this.installPlugin(pluginId, { ownerOrgId });
+            sandbox.installPlugin(pluginId, { ownerOrgId });
           }
           opts?.onInstalled?.(pluginId, actor);
         },
         onUninstalled: (pluginId) => {
           if (runtime.hasPluginOpen(pluginId)) {
-            this.uninstallPlugin(pluginId);
+            sandbox.uninstallPlugin(pluginId);
           } else {
             productHub.clearAcl(pluginId);
           }
@@ -518,4 +622,7 @@ export function createDemobrandSandbox(opts?: {
       runtime.close();
     },
   };
+
+  sandboxRef.install = (pluginId, opts) => sandbox.installPlugin(pluginId, opts);
+  return sandbox;
 }

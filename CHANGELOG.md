@@ -4,6 +4,10 @@
 ## [Unreleased]
 
 ### Added
+- **Phase V1** — Fabrique plugins conversationnelle : `createConversationalPluginFactory`
+  (intention → impact → PRD → scaffold → openPlugin → MCP) ; demobrand
+  mount `plugin-factory` + tools MCP ; console `GET/POST /api/plugin-factory` ;
+  `docs/PHASE-V1.md` ; tests `test-phase-v1.mjs` ; pas de republish marques.
 - **Phase D6** — Certivan polish : aliases MCP source unique ; dualités
   MCP/stores acceptées (non bloquantes) ; `docs/PHASE-D6.md` ; pas de republish.
 - **Phase D5** — ADR Fidu `clientSlim: false` définitif + critères réouverture ;

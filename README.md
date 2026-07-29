@@ -158,8 +158,10 @@ Les sandboxes factory portent `sandbox: true` (feeds jetables).
 | **D1–D3** | TF MCP / stores / scan + republish **0.10.31** | ✅ |
 | **D4–D5** | Fidu CP HTTP **0.1.56** + ADR clientSlim false | ✅ |
 | **D6** | Certivan polish aliases | ✅ |
+| **V1** | Fabrique plugins conversationnelle (demobrand E2E) | ✅ |
 
-Voir [docs/PHASE-D0.md](docs/PHASE-D0.md), [docs/PHASE-H5.md](docs/PHASE-H5.md),
+Voir [docs/PHASE-D0.md](docs/PHASE-D0.md), [docs/PHASE-V1.md](docs/PHASE-V1.md),
+[docs/PHASE-H5.md](docs/PHASE-H5.md),
 [docs/DOD-PHASE-A-G.md](docs/DOD-PHASE-A-G.md), [docs/PROPAGATION.md](docs/PROPAGATION.md).
 
 ## Hors scope

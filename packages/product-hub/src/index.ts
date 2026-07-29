@@ -166,6 +166,27 @@ export {
   upsertPluginAclAdmin,
 } from "./admin/plugin-acl-admin.js";
 
+/** V1 — fabrique plugins conversationnelle. */
+export type {
+  ConversationalPluginFactory,
+  ConversationalPluginFactoryAdapters,
+  FactoryMaterializeResult,
+  FactoryPhase,
+  FactoryScaffoldResult,
+  FactorySessionSnapshot,
+  FactoryWriteFilesResult,
+} from "./factory/index.js";
+export {
+  buildPluginScaffoldFiles,
+  createConversationalPluginFactory,
+  createFsPluginScaffoldAdapters,
+  defaultClarificationQuestions,
+  derivePluginIdentity,
+  draftPrdFromIntention,
+  needsClarification,
+  slugifyPluginId,
+} from "./factory/index.js";
+
 /** Modules encore verticaux (apps marques) après Phase E / H1.8. */
 export const PRODUCT_HUB_VERTICAL_REMAINING = [
   "plugin-git",

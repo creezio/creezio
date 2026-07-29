@@ -2,8 +2,10 @@ import { BrandCard } from "@/components/BrandCard";
 import { GatesPanel } from "@/components/GatesPanel";
 import { KitVersionsPanel } from "@/components/KitVersionsPanel";
 import { OrgPluginsPanel } from "@/components/OrgPluginsPanel";
+import { PluginFactoryPanel } from "@/components/PluginFactoryPanel";
 import { loadKitSnapshot } from "@/lib/kit";
 import { loadOrgPluginRegistrySnapshot } from "@/lib/org-plugin-registry";
+import { listFactorySessionsSnapshot } from "@/lib/plugin-factory-demo";
 import { loadParc } from "@/lib/parc";
 
 export const dynamic = "force-dynamic";
@@ -13,6 +15,7 @@ export default function HomePage() {
   const parc = loadParc();
   const kit = loadKitSnapshot();
   const orgPlugins = loadOrgPluginRegistrySnapshot();
+  const factory = listFactorySessionsSnapshot();
   const generatedAt = new Date().toISOString();
 
   return (
@@ -29,6 +32,11 @@ export default function HomePage() {
       </header>
 
       <KitVersionsPanel snap={kit} />
+      <PluginFactoryPanel
+        sessions={factory.sessions}
+        filePath={factory.filePath}
+        updatedAt={factory.updatedAt}
+      />
       <OrgPluginsPanel snap={orgPlugins} filePath={orgPlugins.filePath} />
       <GatesPanel snap={kit} />
 
