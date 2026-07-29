@@ -83,7 +83,8 @@ cd /opt/docker/tempoflow2/crm && npm run electron:compile \
 
 ## Suite
 
-**M6** — Delete stubs launchers/chrome (hermes/n8n/tunnel/node/npm/updater/splash/tray/logger/meili) ; imports directs kit.
+**M6a** — Delete stubs launchers (hermes/n8n/tunnel/node/npm) ; puis **M6b** chrome.
+→ [PHASE-M6a.md](PHASE-M6a.md)
 
 ---
 
