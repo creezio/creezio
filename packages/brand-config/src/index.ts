@@ -25,6 +25,7 @@ export { fiduManifest } from "./manifests/fidu.js";
 export { demobrandManifest } from "./manifests/demobrand.js";
 
 export {
+  CREEZIO_ASAR_RUNTIME_PACKAGES,
   DEFAULT_HOST_ONLY_ELECTRON_MODULES,
   buildElectronBuilderConfig,
 } from "./build-builder-config.js";

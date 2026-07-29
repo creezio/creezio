@@ -3,6 +3,13 @@
 
 ## [Unreleased]
 
+### Fixed
+- `buildElectronBuilderConfig` : ré-inclut les packages runtime `@creezio/*`
+  (`brand-config`, `platform-core`, `product-hub`, `shell`, `electron-shell`)
+  dans l'asar depuis `vendor/creezio/` quand `files` exclut `node_modules/**`.
+  Corrige le crash packaged `Cannot find module '@creezio/brand-config'`
+  (TempoFlow Server 0.10.27 / même trou latent Certivan & Fidu).
+
 ### Changed
 - Phase G3 TempoFlow : `tempoflowManifest.defaultAppRoot` → `/opt/docker/tempoflow2/crm` ; gate G3 sign-off (TF 0.10.27).
 - DoD A→G documenté (`docs/DOD-PHASE-A-G.md`).

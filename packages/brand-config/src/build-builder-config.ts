@@ -14,6 +14,26 @@
 import type { AppKind, AppManifest, ExeIdentity } from "./types.js";
 import { exeForKind } from "./types.js";
 
+/**
+ * Packages @creezio/* requis au runtime du main Electron packagé.
+ * (desktop-tooling = tooling de build uniquement — hors asar.)
+ *
+ * Les apps marques branchent ces packages via `file:vendor/creezio/…` (symlink
+ * dans node_modules). Or electron-builder.yml exclut `node_modules/**` puis
+ * ne ré-inclut que electron-updater → crash packaged :
+ * `Cannot find module '@creezio/brand-config'`.
+ *
+ * On copie donc depuis `vendor/creezio/<pkg>` (fichiers réels) vers
+ * `node_modules/@creezio/<pkg>` dans l'asar — indépendant des symlinks npm.
+ */
+export const CREEZIO_ASAR_RUNTIME_PACKAGES = [
+  "brand-config",
+  "platform-core",
+  "product-hub",
+  "shell",
+  "electron-shell",
+] as const;
+
 /** Liste des modules main Electron réservés à l'hôte (exclus du paquet Client). */
 export const DEFAULT_HOST_ONLY_ELECTRON_MODULES = [
   "server-launcher",
@@ -60,6 +80,13 @@ export type BuildBuilderConfigOptions = {
   nsisInclude?: string | false;
   /** Prefixe relatif des icônes (`resources/icons/{kind}.png`). */
   iconDir?: string;
+  /**
+   * Embarque `@creezio/*` runtime depuis `vendor/creezio/` dans l'asar.
+   * - `true` : toujours
+   * - `false` : jamais (demobrand / workspace sans vendor)
+   * - `undefined` (défaut) : auto si `files` contient une exclusion `!node_modules`
+   */
+  packCreezioVendor?: boolean;
 };
 
 type JsonRecord = Record<string, unknown>;
@@ -115,6 +142,61 @@ function applyExeIdentity(
     ...asRecord(base.win),
     icon: iconFor(kind, opts.iconDir),
   };
+}
+
+function creezioAsarFileSets(): JsonRecord[] {
+  return CREEZIO_ASAR_RUNTIME_PACKAGES.map((name) => ({
+    from: `vendor/creezio/${name}`,
+    to: `node_modules/@creezio/${name}`,
+    filter: ["package.json", "dist-cjs/**/*"],
+  }));
+}
+
+function filesAlreadyPackCreezio(files: unknown[]): boolean {
+  return files.some((entry) => {
+    if (typeof entry === "string") {
+      return (
+        entry.includes("node_modules/@creezio") ||
+        entry.includes("vendor/creezio/")
+      );
+    }
+    if (entry && typeof entry === "object") {
+      const rec = entry as { from?: string; to?: string };
+      const from = String(rec.from || "");
+      const to = String(rec.to || "");
+      return (
+        from.includes("vendor/creezio/") ||
+        to.includes("node_modules/@creezio/") ||
+        from.includes("node_modules/@creezio")
+      );
+    }
+    return false;
+  });
+}
+
+function filesExcludeNodeModules(files: unknown[]): boolean {
+  return files.some(
+    (entry) => typeof entry === "string" && entry.includes("!node_modules"),
+  );
+}
+
+/**
+ * Ré-inclut les packages runtime @creezio/* dans l'asar quand la config
+ * exclut `node_modules/**` (pattern TF2 / Certivan / Fidu).
+ */
+function ensureCreezioVendorInAsar(
+  base: JsonRecord,
+  pack: boolean | undefined,
+): void {
+  const files = Array.isArray(base.files) ? [...(base.files as unknown[])] : [];
+  const shouldPack =
+    pack === true ||
+    (pack !== false && filesExcludeNodeModules(files));
+  if (!shouldPack || filesAlreadyPackCreezio(files)) {
+    base.files = files;
+    return;
+  }
+  base.files = [...files, ...creezioAsarFileSets()];
 }
 
 /**
@@ -189,6 +271,8 @@ export function buildElectronBuilderConfig(
   if (kind === "client" && clientSlim) {
     applyClientSlim(base, hostOnly);
   }
+
+  ensureCreezioVendorInAsar(base, options.packCreezioVendor);
 
   if (manifest.copyright) {
     base.copyright = manifest.copyright;

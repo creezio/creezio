@@ -123,7 +123,7 @@ test("updater reduce + builder config", () => {
   assert.equal(st.updateAvailable, true);
 
   const base = {
-    files: ["build/electron/**/*"],
+    files: ["build/electron/**/*", "!node_modules/**/*", "node_modules/electron-updater/**/*"],
     extraResources: [{ from: "vendor/meili", to: "vendor/meili" }, { from: "build/electron" }],
     win: {},
   };
@@ -131,12 +131,45 @@ test("updater reduce + builder config", () => {
   assert.equal(serverCfg.appId, tempoflowManifest.server.appId);
   assert.equal(serverCfg.executableName, "TF2-Server");
   assert.equal(serverCfg.publish.url, tempoflowManifest.server.feedUrl);
+  const serverFiles = serverCfg.files || [];
+  assert.ok(
+    serverFiles.some(
+      (e) =>
+        typeof e === "object" &&
+        e?.from === "vendor/creezio/brand-config" &&
+        e?.to === "node_modules/@creezio/brand-config",
+    ),
+    "server : asar embarque @creezio/brand-config depuis vendor/",
+  );
+  for (const pkg of [
+    "brand-config",
+    "platform-core",
+    "product-hub",
+    "shell",
+    "electron-shell",
+  ]) {
+    assert.ok(
+      serverFiles.some(
+        (e) =>
+          typeof e === "object" && e?.from === `vendor/creezio/${pkg}`,
+      ),
+      `server : asar embarque @creezio/${pkg}`,
+    );
+  }
 
   const clientCfg = buildElectronBuilderConfig(certivanManifest, "client", base);
   assert.equal(clientCfg.appId, certivanManifest.client.appId);
   const extras = clientCfg.extraResources;
   assert.ok(Array.isArray(extras));
   assert.ok(!extras.some((e) => String(e.from || e).startsWith("vendor/")));
+  assert.ok(
+    (clientCfg.files || []).some(
+      (e) =>
+        typeof e === "object" &&
+        e?.from === "vendor/creezio/brand-config",
+    ),
+    "client slim : asar embarque aussi @creezio/*",
+  );
 });
 
 test("paths / env brand / factory targets", () => {
