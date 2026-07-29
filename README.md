@@ -19,7 +19,7 @@ Monorepo **plateforme** pour les desktops Creezio (TempoFlow, Certivan, Fidu)
 | [docs/BACKLOG-H4.md](docs/BACKLOG-H4.md) | MCP proxy unifié H4 |
 | [docs/BACKLOG-H5.md](docs/BACKLOG-H5.md) | Harden plugins / ACL H5 |
 | [docs/PHASE-H0.md](docs/PHASE-H0.md) … [PHASE-H5.md](docs/PHASE-H5.md) | Sign-offs H0–H5 |
-| [docs/PHASE-I0.md](docs/PHASE-I0.md) … [PHASE-I13.md](docs/PHASE-I13.md) | Sign-offs I0–I8 (kit H6) + I9–I13 TF |
+| [docs/PHASE-I0.md](docs/PHASE-I0.md) … [PHASE-I14.md](docs/PHASE-I14.md) | Sign-offs I0–I8 (kit H6) + I9–I14 TF republish |
 | [docs/FEATURE-PARITY-DEMOBRAND-H6.md](docs/FEATURE-PARITY-DEMOBRAND-H6.md) | Checklist parity demobrand avant I9 |
 | [docs/REPUBLISH-POLICY.md](docs/REPUBLISH-POLICY.md) | Politique republish (I14/I16/I18 seulement) |
 | [docs/gates/POST-H5.md](docs/gates/POST-H5.md) | Checklist gates post-H5 |

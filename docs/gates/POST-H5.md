@@ -16,7 +16,7 @@
 - [x] Wrapper sync → contrat kit I0
 - [x] Vendor H6 consommé nominal (I9)
 - [x] ACL L3 + control-plane `acl` (I10)
-- [ ] Republish uniquement I14 après verts
+- [x] Republish I14 Client+Serveur **0.10.30**
 
 ## Certivan (`certivan-app`)
 
