@@ -30,7 +30,7 @@ Source cadre : [ARCHITECTURE-INTENTION.md](ARCHITECTURE-INTENTION.md).
 | Console ops | `apps/console` | ✅ | kit-versions (+ `ARCHITECTURE_VERSION` I0), feeds, gates, POST-H5 |
 | **Auth** (session, login, recovery) | `@creezio/auth` | ✅ | Mémoire + **`createSqliteAuthStore` I1** + IPC + `AUTH_CORE_SQL` ; UI marques verticale |
 | **Shell-UI / nav + slots** | `@creezio/shell-ui` | 🟡 | `CORE_NAV_ITEMS` + `registerBrandNav` ; adapters UI réutilisables = **I7** |
-| **Assistant / chat** | `@creezio/assistant` | 🟡 | Store mémoire + IPC ; **sqlite core = I2** |
+| **Assistant / chat** | `@creezio/assistant` | ✅ | Mémoire + **`createSqliteAssistantStore` I2** (core) ; legacy `assistant_chats.db` |
 | **API kernel** (façade HTTP cœur) | `@creezio/api-kernel` | ✅ | ScopedDbAccess H2 + `authorizePluginAccess` H5 |
 | **MCP façade / proxy** | `@creezio/mcp-facade` | ✅ | H4 aliases/policies + H5 `createDenyUnauthorizedPluginToolPolicy` + JWT `orgId` |
 | **Tasks** (natif plateforme) | `@creezio/tasks` | 🟡 | CRUD + mount ; **sqlite = I3** |

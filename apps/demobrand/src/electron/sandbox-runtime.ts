@@ -26,6 +26,11 @@ import {
   type SqliteAuthStore,
 } from "@creezio/auth";
 import {
+  ASSISTANT_CORE_SQL,
+  createSqliteAssistantStore,
+  type SqliteAssistantStore,
+} from "@creezio/assistant";
+import {
   PRODUCT_HUB_ACL_H5_SQL,
   PRODUCT_HUB_ACL_ORG_SQL,
   PRODUCT_HUB_ACL_USER_SQL,
@@ -82,6 +87,7 @@ export function demobrandCoreMigrations(): SqliteMigration[] {
         PRODUCT_HUB_ACL_H5_SQL,
       ].join("\n"),
     },
+    { id: "i2_001_assistant", sql: ASSISTANT_CORE_SQL },
   );
 }
 
@@ -228,6 +234,8 @@ export type DemobrandSandbox = {
   };
   /** Auth persisté core.db (I1). */
   auth: SqliteAuthStore;
+  /** Assistant persisté core.db (I2). */
+  assistant: SqliteAssistantStore;
   /** Headers actor pour API / control-plane. */
   actorHeaders(actor: PluginAclActor): Record<string, string>;
   close(): void;
@@ -262,6 +270,10 @@ export function createDemobrandSandbox(opts?: {
   });
 
   const auth = createSqliteAuthStore({
+    coreDbPath: runtime.paths.core,
+  });
+
+  const assistant = createSqliteAssistantStore({
     coreDbPath: runtime.paths.core,
   });
 
@@ -390,6 +402,7 @@ export function createDemobrandSandbox(opts?: {
     mcp,
     productHub,
     auth,
+    assistant,
 
     actorHeaders(actor) {
       const h: Record<string, string> = {};
@@ -431,6 +444,7 @@ export function createDemobrandSandbox(opts?: {
     },
 
     close() {
+      assistant.close();
       auth.close();
       productHub.close();
       runtime.close();

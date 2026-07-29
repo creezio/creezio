@@ -4,6 +4,10 @@
 ## [Unreleased]
 
 ### Added
+- **Phase I2** — Assistant sqlite core : `createSqliteAssistantStore` +
+  `ASSISTANT_CORE_SQL` (cible core.db ; `assistant_chats.db` legacy),
+  demobrand migration `i2_001_assistant` ; `docs/PHASE-I2.md` ;
+  tests `test-phase-i2.mjs`.
 - **Phase I1** — Auth sqlite core : `createSqliteAuthStore` + driver
   injecté, demobrand sandbox branché, session persistée après restart ;
   `docs/PHASE-I1.md` ; tests `test-phase-i1.mjs`.
