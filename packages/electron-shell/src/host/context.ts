@@ -37,11 +37,34 @@ export type HostRuntimeContext = {
    * Bridge CRM key pour Hermes (insertion DB verticale).
    * Si absent, le launcher n'injecte que n8n bridge.
    */
-  getHermesBridgeEnv?: (opts: {
+  getHermesBridgeEnv?: (opts?: {
     crmPort?: number | null;
   }) => Record<string, string>;
   /** Env bridge plugins control plane. */
   getPluginControlBridgeEnv?: () => Record<string, string>;
+  /** Binaire git emballé (MinGit) pour PATH confiné Hermes/outils. */
+  getGitBinary?: () => string | null;
+  /**
+   * Après owner n8n silencieux — provision clé API Product Hub / Hermes.
+   * Vertical (n8n-api-key) reste hors kit.
+   */
+  onN8nReady?: (opts: {
+    uiUrl: string;
+    homeDir: string;
+    email: string;
+    password: string;
+    log: (line: string) => void;
+  }) => void | Promise<void>;
+  /** Extra env Next pour n8n (N8N_API_KEY bridge, etc.). */
+  getN8nNextEnvExtra?: (opts: {
+    connectionMode: "local" | "remote";
+    homeDir: string;
+    localUiUrl: string | null;
+  }) => Record<string, string>;
+  /** Segment userData npm (`tempoflow-npm` / `desktop-npm`). */
+  npmUserDataSegment?: string;
+  /** Prefixe fichiers secrets n8n/hermes (dual-read legacy `.tempoflow-*`). */
+  secretFilePrefix?: string;
 };
 
 export function hostProductName(ctx: HostRuntimeContext): string {

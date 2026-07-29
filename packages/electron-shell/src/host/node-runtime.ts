@@ -119,6 +119,10 @@ export function buildIsolatedNodeEnv(opts: {
       path.join(opts.sandbox.userData, "desktop-npm", "cache"),
       { recursive: true },
     );
+    fs.mkdirSync(
+      path.join(opts.sandbox.userData, "tempoflow-npm", "cache"),
+      { recursive: true },
+    );
     env = applyOsSandboxEnv({
       env,
       profileHome: opts.sandbox.profileHome,

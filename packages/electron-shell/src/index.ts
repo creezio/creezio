@@ -45,7 +45,11 @@ export {
   updateSplashStep,
 } from "./splash-ui.js";
 
-export type { SetupAutoUpdaterOptions, UpdaterSend } from "./updater.js";
+export type {
+  SetupAutoUpdaterOptions,
+  UpdateStatus,
+  UpdaterSend,
+} from "./updater.js";
 export {
   checkForUpdatesNow,
   downloadAndInstallUpdate,
@@ -193,8 +197,17 @@ export {
   resolveSystemBinary,
 } from "./host/sandbox/os-sandbox.js";
 
-export type { HermesHost, RunningHermes, StartHermesOptions } from "./host/hermes/launcher.js";
-export { createHermesHost } from "./host/hermes/launcher.js";
+export type {
+  HermesHost,
+  HermesStatusPayload,
+  RunningHermes,
+  StartHermesOptions,
+} from "./host/hermes/launcher.js";
+export {
+  clearGeneratedWebuiPassword,
+  clearTempoflowGeneratedWebuiPassword,
+  createHermesHost,
+} from "./host/hermes/launcher.js";
 export {
   ensureHermesRuntime,
   ensureHermesWebuiTree,
@@ -210,7 +223,13 @@ export {
 } from "./host/hermes/runtime-bootstrap.js";
 export type { BootstrapPhase, RuntimeManifest } from "./host/hermes/runtime-bootstrap.js";
 
-export type { N8nHost, RunningN8n, StartN8nOptions } from "./host/n8n/launcher.js";
+export type {
+  N8nAgentKeysHooks,
+  N8nHost,
+  N8nStatusPayload,
+  RunningN8n,
+  StartN8nOptions,
+} from "./host/n8n/launcher.js";
 export { createN8nHost } from "./host/n8n/launcher.js";
 export {
   ensureN8nRuntime,

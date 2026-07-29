@@ -1,36 +1,40 @@
 /**
- * Sidecar n8n — factory brand-agnostic (TF2 n8n-launcher, noyau spawn/status).
- * Auth owner silencieuse + cookie session restent branchables via hooks.
+ * Sidecar n8n — factory brand-agnostic.
+ * SoT extrait de TempoFlow n8n-launcher.ts (R3.3) — chemins gold intacts.
+ * Clés API / agent = hooks verticaux (onN8nReady, getN8nNextEnvExtra, n8nAgentKeys).
  */
 
-import { spawn, type ChildProcess } from "node:child_process";
+import { spawn, type ChildProcess, execFileSync } from "node:child_process";
 import crypto from "node:crypto";
 import fs from "node:fs";
 import http from "node:http";
 import path from "node:path";
 import {
-  buildN8nSpawnEnv,
   buildNextN8nEnv,
+  buildN8nSpawnEnv,
   describeN8nSpawnKind,
-  findFreePort,
+  EMBED_TOOL_SITE_IDS,
   N8N_DESKTOP_PORT,
+  normalizeN8nPublicBaseUrl,
   n8nHomeLooksWarm as n8nHomeLooksWarmPure,
   n8nPublicStatus,
-  normalizeN8nPublicBaseUrl,
   resolveN8nEntry,
   sanitizeN8nEmbedConfig,
   shouldSpawnEmbeddedN8n,
   type N8nEmbedConfig,
+  type N8nRuntimeStatus,
 } from "@creezio/platform-core";
 import type { HostRuntimeContext } from "../context.js";
 import { hostLog, hostProductName } from "../context.js";
 import type { LocalConfigStore } from "../local-config.js";
+import { resolveSystemBinary } from "../sandbox/os-sandbox.js";
 import {
   buildIsolatedNodeEnv,
   DESKTOP_NODE_MIN_FOR_EMBEDS,
   ensureDesktopNode,
   resolveDesktopNodeBinary,
 } from "../node-runtime.js";
+import { findFreePort } from "../server-env.js";
 import {
   ensureN8nRuntime,
   getN8nBootstrapError,
@@ -49,353 +53,1196 @@ export type RunningN8n = {
 };
 
 export type StartN8nOptions = {
-  publicBaseUrl?: string | null;
+  connectionMode: "local" | "remote";
+  n8nConfig?: N8nEmbedConfig;
   onLog?: (line: string) => void;
+  autoBootstrap?: boolean;
+  publicBaseUrl?: string | null;
+  forceRestart?: boolean;
+};
+
+export type N8nAgentKeysHooks = {
+  provision: (opts: {
+    uiUrl: string;
+    homeDir: string;
+    email: string;
+    password: string;
+    aiUserId: string;
+    log: (line: string) => void;
+    forceNew?: boolean;
+  }) => Promise<{ ok: boolean; apiKey: string | null; detail: string }>;
+  revoke: (opts: {
+    uiUrl: string;
+    homeDir: string;
+    email: string;
+    password: string;
+    aiUserId: string;
+    log: (line: string) => void;
+  }) => Promise<{ ok: boolean; detail: string }>;
+  readStored: (homeDir: string) => Record<string, unknown>;
+  writeStored: (homeDir: string, keys: Record<string, unknown>) => void;
+};
+
+export type N8nStatusPayload = {
+  status: N8nRuntimeStatus;
+  mode: ReturnType<typeof sanitizeN8nEmbedConfig>["mode"];
+  uiUrl: string | null;
+  entryFound: boolean;
+  entryPath: string | null;
+  version: string | null;
+  detail: string;
+  homeDir: string | null;
+  bootstrapPhase: N8nBootstrapPhase;
+  bootstrapError: string | null;
+  installing: boolean;
+  ownerReady: boolean;
+  logs: string[];
+  /** URL locale loopback (onglet desktop). */
+  localUiUrl: string | null;
+  /** WEBHOOK_URL / EDITOR_BASE_URL actifs (tunnel si configuré). */
+  publicWebhookUrl: string | null;
+  listenHost: string;
+  listenPort: number;
 };
 
 export type N8nHost = {
-  startN8n: (
-    connectionMode: "local" | "remote",
-    opts?: StartN8nOptions,
-  ) => Promise<RunningN8n | null>;
+  startN8n: (opts: StartN8nOptions) => Promise<RunningN8n | null>;
   stopN8n: () => void;
   getRunningN8n: () => RunningN8n | null;
   getN8nStatusPayload: (
     connectionMode: "local" | "remote",
-    remoteCrmOrigin?: string | null,
-  ) => Record<string, unknown>;
+    opts?: { remoteCrmOrigin?: string | null },
+  ) => N8nStatusPayload;
   getN8nNextEnv: (connectionMode: "local" | "remote") => Record<string, string>;
   getN8nLogs: () => string[];
-  ensureN8nRuntimeFromUi: () => Promise<{
+  ensureN8nRuntimeFromUi: (opts?: {
+    onLog?: (line: string) => void;
+  }) => Promise<{
     ok: boolean;
     detail: string;
+    entryPath: string | null;
+    runtimeDir: string | null;
     phase: N8nBootstrapPhase;
   }>;
   findN8nEntry: () => string | null;
   applyN8nPublicBaseUrl: (opts: {
     publicBaseUrl: string | null;
-  }) => Promise<void>;
-  n8nHomeLooksWarm: () => boolean;
+    connectionMode?: "local" | "remote";
+    onLog?: (line: string) => void;
+  }) => Promise<RunningN8n | null>;
+  n8nHomeLooksWarm: (homeDir?: string) => boolean;
   getN8nLastStartPath: () => "bootstrap" | "reuse" | null;
+  prepareN8nUiSession: () => Promise<{
+    ok: boolean;
+    detail: string;
+    uiUrl: string | null;
+  }>;
+  provisionN8nAgentApiKey: (
+    aiUserId: string,
+    opts?: { forceNew?: boolean },
+  ) => Promise<{ ok: boolean; apiKey: string | null; detail: string }>;
+  revokeN8nAgentKey: (
+    aiUserId: string,
+  ) => Promise<{ ok: boolean; detail: string }>;
+  getN8nBridgeEnvForHermes: () => Record<string, string>;
+  n8nHomeDir: () => string;
   __resetForTests: () => void;
 };
-
-function ensureEncryptionKey(homeDir: string): string {
-  const keyFile = path.join(homeDir, ".desktop-n8n-encryption-key");
-  try {
-    const existing = fs.readFileSync(keyFile, "utf8").trim();
-    if (existing.length >= 16) return existing;
-  } catch {
-    /* */
-  }
-  const key = crypto.randomBytes(24).toString("hex");
-  fs.mkdirSync(homeDir, { recursive: true });
-  fs.writeFileSync(keyFile, key, { mode: 0o600 });
-  return key;
-}
-
-function waitN8nHealth(uiUrl: string, timeoutMs: number): Promise<void> {
-  const health = `${uiUrl.replace(/\/$/, "")}/healthz`;
-  const started = Date.now();
-  return new Promise((resolve, reject) => {
-    const tick = () => {
-      const req = http.get(health, (res) => {
-        res.resume();
-        if ((res.statusCode || 0) >= 200 && (res.statusCode || 0) < 500) {
-          resolve();
-          return;
-        }
-        if (Date.now() - started > timeoutMs) {
-          reject(new Error(`timeout n8n health ${health}`));
-          return;
-        }
-        setTimeout(tick, 500);
-      });
-      req.on("error", () => {
-        if (Date.now() - started > timeoutMs) {
-          reject(new Error(`timeout n8n health ${health}`));
-          return;
-        }
-        setTimeout(tick, 500);
-      });
-    };
-    tick();
-  });
-}
 
 export function createN8nHost(opts: {
   ctx: HostRuntimeContext;
   store: LocalConfigStore;
+  agentKeys?: N8nAgentKeysHooks;
 }): N8nHost {
-  const { ctx, store } = opts;
-  const homeDir = path.join(ctx.userDataDir, "n8n-home");
-
-  type State = {
-    running: RunningN8n | null;
-    lastError: string | null;
-    version: string | null;
-    logs: string[];
-    entryPath: string | null;
-    installing: boolean;
-    lastStartPath: "bootstrap" | "reuse" | null;
-    lastPublicBaseUrl: string | null;
+  const { ctx, store, agentKeys } = opts;
+  const homeDirPath = () => path.join(ctx.userDataDir, "n8n-home");
+  const homeDirEnsure = () => {
+    const d = homeDirPath();
+    fs.mkdirSync(d, { recursive: true });
+    return d;
   };
-
-  const state: State = {
-    running: null,
-    lastError: null,
-    version: null,
-    logs: [],
-    entryPath: null,
-    installing: false,
-    lastStartPath: null,
-    lastPublicBaseUrl: null,
-  };
-
-  const pushLog = (line: string) => {
-    state.logs.push(line);
-    if (state.logs.length > 400) state.logs.shift();
-    hostLog(ctx, "n8n", line);
-  };
-
-  function findN8nEntry(): string | null {
-    const entry =
-      resolveN8nEntry({
-        platform: process.platform,
-        env: process.env,
-        runtimeDir: n8nRuntimeCacheDir(ctx),
-        allowEnvOverride: !ctx.isPackaged,
-        envPrefix: ctx.manifest.envPrefix,
-        existsSync: fs.existsSync,
-        readFileSync: (p, enc) => fs.readFileSync(p, enc),
-      }) || n8nEntryPath(ctx);
-    state.entryPath = entry;
-    return entry;
+  const product = () => hostProductName(ctx);
+  const secretPrefix = () => ctx.secretFilePrefix || "desktop";
+  function n8nHomeDir(): string {
+    return homeDirEnsure();
   }
 
-  function n8nHomeLooksWarm(): boolean {
-    return n8nHomeLooksWarmPure(homeDir, fs.existsSync);
-  }
 
-  async function startN8n(
-    connectionMode: "local" | "remote",
-    startOpts?: StartN8nOptions,
-  ): Promise<RunningN8n | null> {
-    const config = store.getN8nEmbedConfig();
-    if (
-      !shouldSpawnEmbeddedN8n({
-        connectionMode,
-        n8n: config as N8nEmbedConfig,
-      })
-    ) {
-      return null;
+type OwnerCreds = {
+  email: string;
+  password: string;
+  firstName: string;
+  lastName: string;
+};
+
+type N8nState = {
+  running: RunningN8n | null;
+  lastError: string | null;
+  version: string | null;
+  logs: string[];
+  entryPath: string | null;
+  installing: boolean;
+  ownerReady: boolean;
+  /** Dernière URL publique demandée au spawn. */
+  publicBaseUrl: string | null;
+  /** Dernier chemin de démarrage : install runtime vs runtime réutilisé. */
+  lastStartPath: "bootstrap" | "reuse" | null;
+};
+
+const state: N8nState = {
+  running: null,
+  lastError: null,
+  version: null,
+  logs: [],
+  entryPath: null,
+  installing: false,
+  ownerReady: false,
+  publicBaseUrl: null,
+  lastStartPath: null,
+};
+
+/** "bootstrap" = runtime n8n installé pendant ce boot ; "reuse" = déjà présent. */
+function getN8nLastStartPath(): "bootstrap" | "reuse" | null {
+  return state.lastStartPath;
+}
+
+const LOG_MAX = 200;
+
+function pushLog(line: string): void {
+  const ts = new Date().toISOString().slice(11, 19);
+  state.logs.push("[" + ts + "] " + line);
+  if (state.logs.length > LOG_MAX) state.logs.shift();
+  hostLog(ctx, "n8n", line);
+}
+
+function findN8nEntry(): string | null {
+  const runtime = n8nRuntimeCacheDir(ctx);
+  // Jamais `which n8n` : sous Windows → %AppData%\Roaming\npm\n8n (shim bash)
+  // que `node <shim> start` exécute comme JS → SyntaxError immédiat.
+  const resolved = resolveN8nEntry({
+    platform: process.platform,
+    env: process.env,
+    runtimeDir: runtime,
+    // Overrides env honorés uniquement hors build packagé (dev/tests).
+    allowEnvOverride: !ctx.isPackaged,
+    envPrefix: ctx.manifest.envPrefix,
+    existsSync: (p) => {
+      try {
+        return fs.existsSync(p);
+      } catch {
+        return false;
+      }
+    },
+    readFileSync: (p, enc) => fs.readFileSync(p, enc),
+  });
+  state.entryPath = resolved || n8nEntryPath(ctx);
+  return state.entryPath;
+}
+
+function ensureEncryptionKey(home: string): string {
+  const keyFile = path.join(home, `.${secretPrefix()}-n8n-encryption-key`);
+  const legacy = path.join(home, ".tempoflow-encryption-key");
+  const desktop = path.join(home, ".desktop-n8n-encryption-key");
+  for (const f of [keyFile, legacy, desktop]) {
+    try {
+      const existing = fs.readFileSync(f, "utf8").trim();
+      if (existing.length >= 16) {
+        if (f !== keyFile) fs.writeFileSync(keyFile, existing, { mode: 0o600 });
+        return existing;
+      }
+    } catch { /* */ }
+  }
+  const key = crypto.randomBytes(32).toString("hex");
+  fs.writeFileSync(keyFile, key, { mode: 0o600 });
+  return key;
+}
+function ensureOwnerCreds(home: string): OwnerCreds {
+  const keyFile = path.join(home, `.${secretPrefix()}-n8n-owner.json`);
+  const legacy = path.join(home, ".tempoflow-owner.json");
+  for (const f of [keyFile, legacy]) {
+    try {
+      const raw = JSON.parse(fs.readFileSync(f, "utf8")) as OwnerCreds;
+      if (raw && typeof raw.email === "string" && typeof raw.password === "string" && raw.password.length >= 12) {
+        if (f !== keyFile) fs.writeFileSync(keyFile, JSON.stringify(raw, null, 2) + "\n", { mode: 0o600 });
+        return {
+          email: raw.email,
+          password: raw.password,
+          firstName: raw.firstName || product(),
+          lastName: raw.lastName || "Desktop",
+        };
+      }
+    } catch { /* */ }
+  }
+  const creds: OwnerCreds = {
+    email: secretPrefix() + "-desktop@localhost.local",
+    password: crypto.randomBytes(24).toString("base64url"),
+    firstName: product(),
+    lastName: "Desktop",
+  };
+  fs.writeFileSync(keyFile, JSON.stringify(creds, null, 2) + "\n", { mode: 0o600 });
+  return creds;
+}
+function httpJson(
+  method: string,
+  url: string,
+  body?: unknown,
+  headers?: Record<string, string>,
+): Promise<{
+  status: number;
+  json: unknown;
+  headers: http.IncomingHttpHeaders;
+  raw: string;
+}> {
+  return new Promise((resolve, reject) => {
+    const u = new URL(url);
+    const payload = body === undefined ? null : JSON.stringify(body);
+    const req = http.request(
+      {
+        hostname: u.hostname,
+        port: u.port,
+        path: `${u.pathname}${u.search}`,
+        method,
+        headers: {
+          Accept: "application/json",
+          ...(payload
+            ? {
+                "Content-Type": "application/json",
+                "Content-Length": Buffer.byteLength(payload),
+              }
+            : {}),
+          ...headers,
+        },
+        timeout: 15000,
+      },
+      (res) => {
+        const chunks: Buffer[] = [];
+        res.on("data", (c) => chunks.push(c));
+        res.on("end", () => {
+          const raw = Buffer.concat(chunks).toString("utf8");
+          let json: unknown = null;
+          try {
+            json = raw ? JSON.parse(raw) : null;
+          } catch {
+            json = null;
+          }
+          resolve({
+            status: res.statusCode || 0,
+            json,
+            headers: res.headers,
+            raw,
+          });
+        });
+      },
+    );
+    req.on("error", reject);
+    req.on("timeout", () => {
+      req.destroy();
+      reject(new Error("timeout HTTP n8n"));
+    });
+    if (payload) req.write(payload);
+    req.end();
+  });
+}
+
+/**
+ * n8n 2.x (Node) est lourd au boot Windows : chargement modules + SQLite + AV.
+ * Warm = DB déjà là — souvent 30–90s ; cold (1er boot) 5–10 min possibles.
+ */
+const N8N_HEALTH_TIMEOUT_COLD_MS = 600_000;
+const N8N_HEALTH_TIMEOUT_WARM_MS = 180_000;
+const N8N_HEALTH_GRACE_COLD_MS = 180_000;
+const N8N_HEALTH_GRACE_WARM_MS = 90_000;
+
+/** Signaux stdout/stderr qui indiquent que l’UI est joignable (avant healthz). */
+function isN8nReadyLogLine(line: string): boolean {
+  return /Editor is now accessible|n8n ready on|Editor UI available|Server is listening/i.test(
+    line,
+  );
+}
+
+/** Best-effort : libérer le port desktop (zombie après crash / retry). */
+function killListenerOnPort(port: number): void {
+  try {
+    if (process.platform === "win32") {
+      const powershell = resolveSystemBinary("powershell");
+      if (!powershell) return;
+      execFileSync(
+        powershell,
+        [
+          "-NoProfile",
+          "-Command",
+          `Get-NetTCPConnection -LocalPort ${port} -State Listen -ErrorAction SilentlyContinue | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force -ErrorAction SilentlyContinue }`,
+        ],
+        { timeout: 8000, windowsHide: true, stdio: "ignore" },
+      );
+      return;
     }
-    if (state.running && !state.running.child.killed) {
+    const bash = resolveSystemBinary("bash");
+    if (!bash) return;
+    execFileSync(
+      bash,
+      ["-lc", `fuser -k ${port}/tcp >/dev/null 2>&1 || true`],
+      { timeout: 5000, stdio: "ignore" },
+    );
+  } catch {
+    /* best-effort */
+  }
+}
+
+/** DB déjà présente → pas de 1er install / grosses migrations. */
+function n8nHomeLooksWarm(homeDir?: string): boolean {
+  return n8nHomeLooksWarmPure(homeDir || homeDirPath(), (p) => fs.existsSync(p));
+}
+
+function waitForN8nHealth(
+  uiUrl: string,
+  timeoutMs = N8N_HEALTH_TIMEOUT_COLD_MS,
+  /** Si true → sortir tôt (ex. log « Editor is now accessible »). */
+  earlyOk?: () => boolean,
+  /** Si true → abandonner tout de suite (process mort). */
+  earlyFail?: () => string | null,
+): Promise<{ ok: boolean; detail?: string; version?: string | null }> {
+  const deadline = Date.now() + timeoutMs;
+  const base = uiUrl.replace(/\/$/, "");
+  const started = Date.now();
+  let lastTickLog = 0;
+  return new Promise((resolve) => {
+    const tryOnce = () => {
+      const failReason = earlyFail?.();
+      if (failReason) {
+        resolve({ ok: false, detail: failReason });
+        return;
+      }
+      if (earlyOk?.()) {
+        resolve({ ok: true, version: null });
+        return;
+      }
+      const elapsed = Date.now() - started;
+      if (elapsed - lastTickLog >= 15_000) {
+        lastTickLog = elapsed;
+        pushLog(
+          `attente n8n… ${Math.round(elapsed / 1000)}s (chargement modules / SQLite)`,
+        );
+      }
+      const req = http.get(`${base}/healthz`, { timeout: 2000 }, (res) => {
+        res.resume();
+        if (res.statusCode && res.statusCode >= 200 && res.statusCode < 500) {
+          resolve({ ok: true, version: null });
+        } else {
+          next();
+        }
+      });
+      req.on("error", next);
+      req.on("timeout", () => {
+        req.destroy();
+        next();
+      });
+    };
+    const next = () => {
+      const failReason = earlyFail?.();
+      if (failReason) {
+        resolve({ ok: false, detail: failReason });
+        return;
+      }
+      if (earlyOk?.()) {
+        resolve({ ok: true, version: null });
+        return;
+      }
+      if (Date.now() > deadline) {
+        resolve({
+          ok: false,
+          detail: `n8n healthz timeout après ${Math.round(timeoutMs / 1000)}s`,
+        });
+      } else {
+        setTimeout(tryOnce, 400);
+      }
+    };
+    tryOnce();
+  });
+}
+
+/**
+ * Provisionne l’owner si besoin + vérifie login (sans UI password).
+ */
+async function ensureOwnerSilent(
+  uiUrl: string,
+  creds: OwnerCreds,
+  log: (l: string) => void,
+): Promise<boolean> {
+  const base = uiUrl.replace(/\/$/, "");
+  try {
+    const login = await httpJson("POST", `${base}/rest/login`, {
+      emailOrLdapLoginId: creds.email,
+      password: creds.password,
+    });
+    if (login.status >= 200 && login.status < 300) {
+      state.ownerReady = true;
+      log("owner: login OK (session silencieuse)");
+      return true;
+    }
+
+    const setup = await httpJson("POST", `${base}/rest/owner/setup`, {
+      email: creds.email,
+      password: creds.password,
+      firstName: creds.firstName,
+      lastName: creds.lastName,
+    });
+    if (setup.status >= 200 && setup.status < 300) {
+      state.ownerReady = true;
+      log("owner: setup silencieux OK (pas de prompt UI)");
+      return true;
+    }
+
+    // Instance déjà initialisée avec d’autres creds — on log sans bloquer.
+    log(
+      `owner: setup/login non conclusif (login=${login.status} setup=${setup.status}) — UI pourra demander un login`,
+    );
+    state.ownerReady = false;
+    return false;
+  } catch (e) {
+    log(`owner: ${e instanceof Error ? e.message : String(e)}`);
+    state.ownerReady = false;
+    return false;
+  }
+}
+
+function parseSetCookie(headers: http.IncomingHttpHeaders): string[] {
+  const raw = headers["set-cookie"];
+  if (!raw) return [];
+  return Array.isArray(raw) ? raw : [raw];
+}
+
+/**
+ * Login REST + injecte le cookie `n8n-auth` dans la partition onglet.
+ * Évite l’écran password à l’ouverture (équivalent fix Hermes 0.1.47).
+ */
+async function prepareN8nUiSession(): Promise<{
+  ok: boolean;
+  detail: string;
+  uiUrl: string | null;
+}> {
+  const config = sanitizeN8nEmbedConfig(store.getN8nEmbedConfig());
+  const uiUrl =
+    state.running?.uiUrl ||
+    (config.mode === "remote" ? config.remoteUiUrl || null : null);
+  if (!uiUrl) {
+    return {
+      ok: false,
+      detail: "URL n8n absente — démarrez le mode embarqué ou configurez Distant.",
+      uiUrl: null,
+    };
+  }
+  if (config.mode === "remote" && !state.running) {
+    // Remote : pas de credentials TempoFlow — l’utilisateur gère l’auth distante.
+    return {
+      ok: true,
+      detail: "Mode distant — pas d’injection cookie locale.",
+      uiUrl,
+    };
+  }
+
+  const home = state.running?.homeDir || n8nHomeDir();
+  const creds = ensureOwnerCreds(home);
+  const base = uiUrl.replace(/\/$/, "");
+  try {
+    let res = await httpJson("POST", `${base}/rest/login`, {
+      emailOrLdapLoginId: creds.email,
+      password: creds.password,
+    });
+    if (!(res.status >= 200 && res.status < 300)) {
+      await ensureOwnerSilent(uiUrl, creds, pushLog);
+      res = await httpJson("POST", `${base}/rest/login`, {
+        emailOrLdapLoginId: creds.email,
+        password: creds.password,
+      });
+    }
+    if (!(res.status >= 200 && res.status < 300)) {
+      return {
+        ok: false,
+        detail: `Login n8n échoué (HTTP ${res.status})`,
+        uiUrl,
+      };
+    }
+
+    const cookies = parseSetCookie(res.headers);
+    if (!cookies.length) {
+      return {
+        ok: false,
+        detail: "Login n8n OK mais aucun Set-Cookie — session non injectée",
+        uiUrl,
+      };
+    }
+    let electronSession: typeof import("electron").session;
+    try {
+      electronSession = (await import("electron")).session;
+    } catch {
+      return { ok: false, detail: "electron session indisponible", uiUrl };
+    }
+    type CookiesSetDetails = {
+      url: string;
+      name: string;
+      value: string;
+      path?: string;
+      httpOnly?: boolean;
+      secure?: boolean;
+      sameSite?: "unspecified" | "no_restriction" | "lax" | "strict";
+      domain?: string;
+    };
+    const ses = electronSession.fromPartition(
+      `persist:extsite-${EMBED_TOOL_SITE_IDS.n8nUi}`,
+    ) as unknown as {
+      cookies: {
+        set: (details: CookiesSetDetails) => Promise<void>;
+        flushStore: () => Promise<void>;
+      };
+    };
+    const u = new URL(base);
+    // Chromium refuse souvent `domain` sur une IP (127.0.0.1) — url seul.
+    const hostIsIp = /^\d{1,3}(\.\d{1,3}){3}$/.test(u.hostname);
+    let injected = 0;
+    for (const line of cookies) {
+      const nameVal = line.split(";")[0] || "";
+      const eq = nameVal.indexOf("=");
+      if (eq <= 0) continue;
+      const name = nameVal.slice(0, eq).trim();
+      const value = nameVal.slice(eq + 1).trim();
+      if (!name) continue;
+      const payload: CookiesSetDetails = {
+        url: base,
+        name,
+        value,
+        path: "/",
+        httpOnly: /httponly/i.test(line),
+        secure: u.protocol === "https:",
+        sameSite: "lax",
+      };
+      if (!hostIsIp) payload.domain = u.hostname;
+      await ses.cookies.set(payload);
+      injected += 1;
+    }
+    try {
+      await ses.cookies.flushStore();
+    } catch {
+      /* best-effort */
+    }
+    pushLog(`session: ${injected} cookie(s) injecté(s) → partition extsite-${EMBED_TOOL_SITE_IDS.n8nUi}`);
+    return {
+      ok: injected > 0,
+      detail:
+        injected > 0
+          ? "Session n8n préparée (login silencieux)"
+          : "Aucun cookie injecté",
+      uiUrl,
+    };
+  } catch (e) {
+    const detail = e instanceof Error ? e.message : String(e);
+    return { ok: false, detail, uiUrl };
+  }
+}
+
+async function startN8n(
+  opts: StartN8nOptions,
+): Promise<RunningN8n | null> {
+  const n8nConfig = sanitizeN8nEmbedConfig(
+    opts.n8nConfig ?? store.getN8nEmbedConfig(),
+  );
+  const desiredPublic = normalizeN8nPublicBaseUrl(opts.publicBaseUrl);
+
+  if (
+    !shouldSpawnEmbeddedN8n({
+      connectionMode: opts.connectionMode,
+      n8n: n8nConfig,
+    })
+  ) {
+    pushLog(
+      opts.connectionMode === "remote"
+        ? "skip spawn (client distant)"
+        : `skip spawn (mode=${n8nConfig.mode})`,
+    );
+    return null;
+  }
+
+  const log = (line: string) => {
+    pushLog(line);
+    opts.onLog?.(line);
+  };
+
+  // Idempotent sauf si URL publique changée ou forceRestart.
+  if (state.running) {
+    const publicMatches =
+      desiredPublic == null
+        ? state.running.publicBaseUrl.startsWith("http://127.0.0.1")
+        : state.running.publicBaseUrl === desiredPublic;
+    if (!opts.forceRestart && publicMatches) {
+      log(
+        `déjà prêt ${state.running.uiUrl} (webhooks=${state.running.publicBaseUrl})`,
+      );
       return state.running;
     }
+    log(
+      `restart n8n — webhooks ${state.running.publicBaseUrl} → ${desiredPublic || "loopback"}`,
+    );
+    stopN8n();
+  }
 
-    const log = startOpts?.onLog || pushLog;
-    fs.mkdirSync(homeDir, { recursive: true });
-
-    const nodeRes = await ensureDesktopNode(ctx, {
+  const nodeReady = await ensureDesktopNode(ctx, {
       minVersion: DESKTOP_NODE_MIN_FOR_EMBEDS,
     });
-    if (!nodeRes.ok) {
-      state.lastError = nodeRes.detail;
-      return null;
-    }
+    if (!nodeReady.ok) {
+    state.lastError = nodeReady.detail;
+    log(state.lastError);
+    return null;
+  }
+  const node = nodeReady.node;
 
-    let entry = findN8nEntry();
-    if (!entry) {
-      state.installing = true;
-      state.lastStartPath = "bootstrap";
+  let entry = findN8nEntry();
+  // Honnêteté splash + télémétrie : install réelle vs runtime réutilisé.
+  state.lastStartPath = entry ? "reuse" : "bootstrap";
+  if (!entry && opts.autoBootstrap !== false) {
+    state.installing = true;
+    log("runtime n8n manquant — bootstrap npm (Node TempoFlow)…");
+    try {
       const boot = await ensureN8nRuntime(ctx, { onLog: log });
-      state.installing = false;
-      entry = boot.entry;
-      if (!entry) {
-        state.lastError = boot.detail || getN8nBootstrapError();
+      log(boot.detail);
+      entry = boot.entry || findN8nEntry();
+      if (!boot.ok && !entry) {
+        state.lastError = boot.detail;
+        state.installing = false;
         return null;
       }
-    } else {
-      state.lastStartPath = "reuse";
+    } finally {
+      state.installing = false;
     }
-    state.entryPath = entry;
+  }
+
+  if (!entry) {
+    state.lastError = "Entry n8n introuvable (bootstrap / TF2_N8N_BIN)";
+    log(state.lastError);
+    return null;
+  }
+
+  try {
+    const home = n8nHomeDir();
+    // Warm AVANT d’écrire les marqueurs TempoFlow (sinon faux « warm » au 1er boot).
+    const warm = n8nHomeLooksWarm(home);
+    const encryptionKey = ensureEncryptionKey(home);
+    const creds = ensureOwnerCreds(home);
+
+    // Réutiliser une instance déjà saine sur le port desktop (retry / zombie).
+    // Évite un 2ᵉ spawn sur un autre port partageant la même DB.
+    const existingUrl = `http://127.0.0.1:${N8N_DESKTOP_PORT}`;
+    const existing = await waitForN8nHealth(existingUrl, 2500);
+    // Si on a une URL tunnel à injecter, il faut re-spawner (env au boot).
+    if (existing.ok && !desiredPublic && !opts.forceRestart) {
+      log(`réutilise n8n déjà prêt sur ${existingUrl} (pas de re-spawn)`);
+      state.lastError = null;
+      await ensureOwnerSilent(existingUrl, creds, log);
+      if (state.ownerReady) {
+        if (ctx.onN8nReady) {
+        try {
+          await ctx.onN8nReady({
+            uiUrl: existingUrl,
+            homeDir: home,
+            email: creds.email,
+            password: creds.password,
+            log,
+          });
+        } catch (e) {
+          log("api-key: " + (e instanceof Error ? e.message : e));
+        }
+      }
+      }
+      const publicBase = `${existingUrl.replace(/\/$/, "")}/`;
+      const running: RunningN8n = {
+        uiUrl: existingUrl,
+        homeDir: home,
+        publicBaseUrl: publicBase,
+        child: { kill: () => undefined } as unknown as ChildProcess,
+        stop: () => killListenerOnPort(N8N_DESKTOP_PORT),
+      };
+      state.running = running;
+      state.publicBaseUrl = publicBase;
+      return running;
+    }
+
+    // Port occupé mais healthz KO (zombie après crash / Réessayer) : libérer
+    // avant findFreePort, sinon n8n démarre sur :15679 avec la même DB → crash.
+    if (existing.ok) {
+      log(
+        `n8n déjà sur ${existingUrl} — stop pour appliquer WEBHOOK_URL=${desiredPublic || "loopback"}`,
+      );
+    } else {
+      log(
+        `port ${N8N_DESKTOP_PORT} non prêt — kill éventuel zombie avant spawn`,
+      );
+    }
+    killListenerOnPort(N8N_DESKTOP_PORT);
+    await new Promise((r) => setTimeout(r, 800));
 
     const port = await findFreePort(N8N_DESKTOP_PORT);
-    const uiUrl = `http://127.0.0.1:${port}/`;
+    if (port !== N8N_DESKTOP_PORT) {
+      log(
+        `port ${N8N_DESKTOP_PORT} encore pris — kill + retry (évite 2ᵉ instance DB)`,
+      );
+      killListenerOnPort(N8N_DESKTOP_PORT);
+      await new Promise((r) => setTimeout(r, 1000));
+    }
+    const boundPort = await findFreePort(N8N_DESKTOP_PORT);
+    if (boundPort !== N8N_DESKTOP_PORT) {
+      state.lastError = `port n8n ${N8N_DESKTOP_PORT} occupé par un autre process — fermez-le puis réessayez`;
+      log(state.lastError);
+      return null;
+    }
+    const uiUrl = `http://127.0.0.1:${boundPort}`;
     const publicBase =
-      normalizeN8nPublicBaseUrl(startOpts?.publicBaseUrl) || uiUrl;
-    state.lastPublicBaseUrl = publicBase;
-    const encryptionKey = ensureEncryptionKey(homeDir);
-    const warm = n8nHomeLooksWarm();
-    const healthTimeoutSec = warm ? 90 : 300;
-
-    const userEnv = store.getEmbedUserEnv("n8n");
-    const spawnEnv = buildN8nSpawnEnv({
-      port,
-      userFolder: homeDir,
-      encryptionKey,
-      publicBaseUrl: publicBase,
-      userEnv,
-      baseEnv: buildIsolatedNodeEnv({
-        nodeBin: nodeRes.node,
-        sandbox: {
-          profileHome: path.join(homeDir, "profile"),
-          userData: ctx.userDataDir,
-        },
-      }),
-    });
+      desiredPublic || `${uiUrl.replace(/\/$/, "")}/`;
+    const healthTimeout = warm
+      ? N8N_HEALTH_TIMEOUT_WARM_MS
+      : N8N_HEALTH_TIMEOUT_COLD_MS;
 
     log(
       describeN8nSpawnKind({
         warm,
-        node: nodeRes.node,
+        node,
         entry,
-        home: homeDir,
+        home,
         uiUrl,
-        healthTimeoutSec,
+        healthTimeoutSec: Math.round(healthTimeout / 1000),
       }),
     );
+    log(`WEBHOOK_URL / N8N_EDITOR_BASE_URL = ${publicBase}`);
 
-    const child = spawn(nodeRes.node, [entry, "start"], {
-      cwd: homeDir,
-      env: spawnEnv as NodeJS.ProcessEnv,
+    const osHome = path.join(home, "os-home");
+    const childEnv = buildIsolatedNodeEnv({
+      nodeBin: node,
+      baseEnv: buildN8nSpawnEnv({
+        port: boundPort,
+        userFolder: home,
+        encryptionKey,
+        publicBaseUrl: desiredPublic,
+        userEnv: store.getEmbedUserEnv("n8n"),
+        baseEnv: process.env,
+      }),
+      sandbox: { profileHome: osHome, userData: ctx.userDataDir },
+    });
+
+    const child = spawn(node, [entry, "start"], {
+      cwd: home,
+      env: childEnv,
       stdio: ["ignore", "pipe", "pipe"],
       windowsHide: true,
     });
+
+    const errTail: string[] = [];
+    let readyFromLog = false;
+    const onLine = (l: string, asStderr = false) => {
+      if (asStderr) {
+        errTail.push(l);
+        if (errTail.length > 30) errTail.shift();
+        log(`stderr: ${l}`);
+      } else {
+        log(l);
+      }
+      if (isN8nReadyLogLine(l)) {
+        readyFromLog = true;
+        log("signal prêt (log n8n) — UI accessible");
+      }
+    };
     child.stdout?.on("data", (d: Buffer) =>
       d
         .toString()
         .split("\n")
         .filter(Boolean)
-        .forEach((l) => log(l)),
+        .forEach((l) => onLine(l, false)),
     );
     child.stderr?.on("data", (d: Buffer) =>
       d
         .toString()
         .split("\n")
         .filter(Boolean)
-        .forEach((l) => log(`stderr: ${l}`)),
+        .forEach((l) => onLine(l, true)),
     );
 
-    try {
-      await waitN8nHealth(uiUrl, healthTimeoutSec * 1000);
-    } catch (e) {
-      state.lastError = e instanceof Error ? e.message : String(e);
-      try {
-        child.kill();
-      } catch {
-        /* */
+    const spawnErr: { current: Error | null } = { current: null };
+    child.on("error", (e) => {
+      spawnErr.current = e;
+      log(`spawn error: ${e.message}`);
+    });
+    child.on("exit", (code, signal) => {
+      log(`exit code=${code} signal=${signal}`);
+      if (state.running?.child === child) {
+        state.running = null;
+      }
+    });
+
+    const childDeadReason = (): string | null => {
+      if (spawnErr.current) return `spawn n8n: ${spawnErr.current.message}`;
+      if (child.exitCode !== null || child.killed) {
+        const interesting =
+          errTail.find((l) => /SyntaxError|Error:|Cannot find module/i.test(l)) ||
+          errTail.slice(-3).join(" | ");
+        const tail = interesting ? ` — ${interesting}` : "";
+        return `process n8n arrêté (code=${child.exitCode}, signal=${child.signalCode})${tail}`;
       }
       return null;
+    };
+
+    // Attente combinée : healthz OU log « Editor is now accessible ».
+    const bootStarted = Date.now();
+    let health = await waitForN8nHealth(
+      uiUrl,
+      healthTimeout,
+      () => readyFromLog,
+      childDeadReason,
+    );
+    if (!health.ok && readyFromLog && !childDeadReason()) {
+      // Petite fenêtre pour que healthz suive le log.
+      health = await waitForN8nHealth(uiUrl, 15_000, undefined, childDeadReason);
+      if (!health.ok && !childDeadReason()) {
+        log("UI signalée prête par log — on continue (healthz encore en retard)");
+        health = { ok: true };
+      }
+    }
+    const childAlive = !childDeadReason();
+    if (!health.ok) {
+      if (!childAlive) {
+        state.lastError =
+          health.detail ||
+          spawnErr.current?.message ||
+          (errTail.length
+            ? errTail.slice(-5).join(" | ")
+            : "démarrage n8n échoué");
+        log(`échec health: ${state.lastError}`);
+        return null;
+      }
+      const elapsedSec = Math.round((Date.now() - bootStarted) / 1000);
+      log(
+        `n8n charge encore ses modules (${elapsedSec}s, process vivant) — poursuite…`,
+      );
+      const health2 = await waitForN8nHealth(
+        uiUrl,
+        warm ? N8N_HEALTH_GRACE_WARM_MS : N8N_HEALTH_GRACE_COLD_MS,
+        () => readyFromLog,
+        childDeadReason,
+      );
+      if (!health2.ok && childDeadReason()) {
+        state.lastError = health2.detail || childDeadReason() || "démarrage n8n échoué";
+        log(`échec health: ${state.lastError}`);
+        return null;
+      }
+      if (!health2.ok && readyFromLog) {
+        log("signal prêt (log) après attente prolongée");
+      } else if (!health2.ok) {
+        log(
+          `healthz encore KO après ${Math.round((Date.now() - bootStarted) / 1000)}s — URL ${uiUrl} (process vivant, pas de kill)`,
+        );
+      }
     }
 
-    const stop = () => {
+    await ensureOwnerSilent(uiUrl, creds, log);
+    if (state.ownerReady && ctx.onN8nReady) {
       try {
-        child.kill();
-      } catch {
-        /* */
+        await ctx.onN8nReady({
+          uiUrl,
+          homeDir: home,
+          email: creds.email,
+          password: creds.password,
+          log,
+        });
+      } catch (e) {
+        log("api-key: " + (e instanceof Error ? e.message : String(e)));
       }
-    };
+    }
+
+    // Version best-effort depuis package installé
+    try {
+      const pkg = path.join(n8nRuntimeCacheDir(ctx),
+        "node_modules",
+        "n8n",
+        "package.json",
+      );
+      if (fs.existsSync(pkg)) {
+        const v = JSON.parse(fs.readFileSync(pkg, "utf8")) as { version?: string };
+        state.version = v.version || null;
+      }
+    } catch {
+      state.version = null;
+    }
+
+    state.lastError = null;
     const running: RunningN8n = {
       uiUrl,
-      homeDir,
+      homeDir: home,
       publicBaseUrl: publicBase,
       child,
-      stop,
+      stop: () => {
+        try {
+          child.kill();
+        } catch {
+          /* already dead */
+        }
+      },
     };
     state.running = running;
-    state.lastError = null;
-    child.on("exit", () => {
-      if (state.running?.child === child) state.running = null;
-    });
+    state.publicBaseUrl = publicBase;
+    log(
+      `ready ${uiUrl}${state.version ? ` v${state.version}` : ""} · webhooks ${publicBase}`,
+    );
     return running;
+  } catch (e) {
+    state.lastError = e instanceof Error ? e.message : String(e);
+    log(`exception: ${state.lastError}`);
+    return null;
   }
+}
 
-  function stopN8n(): void {
-    state.running?.stop();
+/**
+ * Applique l’URL tunnel aux webhooks n8n (restart si nécessaire).
+ * Appelé après syncTunnelIngress / réserve slug.
+ */
+async function applyN8nPublicBaseUrl(opts: {
+  publicBaseUrl: string | null;
+  connectionMode?: "local" | "remote";
+  onLog?: (line: string) => void;
+}): Promise<RunningN8n | null> {
+  const desired = normalizeN8nPublicBaseUrl(opts.publicBaseUrl);
+  if (!desired) return state.running;
+  if (state.running?.publicBaseUrl === desired) {
+    opts.onLog?.(`n8n webhooks déjà sur ${desired}`);
+    return state.running;
+  }
+  return startN8n({
+    connectionMode: opts.connectionMode || "local",
+    publicBaseUrl: desired,
+    forceRestart: true,
+    onLog: opts.onLog,
+    autoBootstrap: true,
+  });
+}
+
+function stopN8n(): void {
+  if (state.running) {
+    pushLog("stop");
+    state.running.stop();
     state.running = null;
   }
+  state.ownerReady = false;
+  state.publicBaseUrl = null;
+}
 
-  function getN8nNextEnv(
-    connectionMode: "local" | "remote",
-  ): Record<string, string> {
-    if (connectionMode !== "local" || !state.running) return {};
-    return buildNextN8nEnv({ uiUrl: state.running.uiUrl });
+function getRunningN8n(): RunningN8n | null {
+  return state.running;
+}
+
+/**
+ * Q2 (étanchéité par agent) : API key n8n DÉDIÉE à un collaborateur IA,
+ * créée via le login owner silencieux du n8n embarqué. Idempotent.
+ * n8n non démarré → échec doux (l'appelant journalise, jamais bloquant).
+ */
+async function provisionN8nAgentApiKey(
+  aiUserId: string,
+  opts?: { forceNew?: boolean },
+): Promise<{ ok: boolean; apiKey: string | null; detail: string }> {
+  const running = state.running;
+  if (!running) {
+    return { ok: false, apiKey: null, detail: "n8n embarqué non démarré" };
   }
+  const creds = ensureOwnerCreds(running.homeDir);
+  if (!agentKeys) return { ok: false, apiKey: null, detail: "n8nAgentKeys hook absent" };
+  return agentKeys.provision({
+    uiUrl: running.uiUrl,
+    homeDir: running.homeDir,
+    email: creds.email,
+    password: creds.password,
+    aiUserId,
+    log: pushLog,
+    forceNew: opts?.forceNew,
+  });
+}
 
-  function getN8nStatusPayload(
-    connectionMode: "local" | "remote",
-    remoteCrmOrigin?: string | null,
-  ): Record<string, unknown> {
-    const config = sanitizeN8nEmbedConfig(store.getN8nEmbedConfig());
-    const pub = n8nPublicStatus({
-      connectionMode,
-      config,
-      entryFound: Boolean(state.entryPath || findN8nEntry()),
-      running: Boolean(state.running),
-      uiUrl: state.running?.uiUrl ?? null,
-      lastError: state.lastError,
-      version: state.version,
-      installing: state.installing,
-      remoteCrmOrigin,
-      tunnelRootDomain: ctx.manifest.tunnelRootDomain,
-      productName: hostProductName(ctx),
-    });
-    return {
-      ...pub,
-      bootstrapPhase: getN8nBootstrapPhase(),
-      bootstrapError: getN8nBootstrapError(),
-      lastStartPath: state.lastStartPath,
-      publicBaseUrl: state.running?.publicBaseUrl ?? state.lastPublicBaseUrl,
-      node: resolveDesktopNodeBinary(ctx),
-    };
-  }
-
-  async function ensureN8nRuntimeFromUi() {
-    state.installing = true;
-    const boot = await ensureN8nRuntime(ctx, { onLog: pushLog });
-    state.installing = false;
-    state.entryPath = boot.entry;
-    return {
-      ok: boot.ok,
-      detail: boot.detail,
-      phase: getN8nBootstrapPhase(),
-    };
-  }
-
-  async function applyN8nPublicBaseUrl(opts: {
-    publicBaseUrl: string | null;
-  }): Promise<void> {
-    const next = normalizeN8nPublicBaseUrl(opts.publicBaseUrl);
-    if (!state.running) {
-      state.lastPublicBaseUrl = next;
-      return;
+/** Révocation de la clé n8n d'un agent (vraie fermeture / suppression). */
+async function revokeN8nAgentKey(
+  aiUserId: string,
+): Promise<{ ok: boolean; detail: string }> {
+  const running = state.running;
+  if (!running) {
+    // Sans n8n actif on retire quand même l'entrée locale (fichier home).
+    const home = n8nHomeDir();
+    if (agentKeys) {
+      const keys = agentKeys.readStored(home) as Record<string, unknown>;
+      if (keys[aiUserId]) {
+        delete keys[aiUserId];
+        agentKeys.writeStored(home, keys);
+      }
     }
-    if (next === state.running.publicBaseUrl) return;
-    const mode = store.getConnectionProfile().mode;
-    stopN8n();
-    await startN8n(mode, { publicBaseUrl: next });
+    return { ok: true, detail: "n8n non démarré — clé retirée localement" };
   }
+  const creds = ensureOwnerCreds(running.homeDir);
+  if (!agentKeys) return { ok: false, detail: "n8nAgentKeys hook absent" };
+  return agentKeys.revoke({
+    uiUrl: running.uiUrl,
+    homeDir: running.homeDir,
+    email: creds.email,
+    password: creds.password,
+    aiUserId,
+    log: pushLog,
+  });
+}
+
+function getN8nNextEnv(
+  connectionMode: "local" | "remote",
+): Record<string, string> {
+  if (connectionMode !== "local") return {};
+  const config = sanitizeN8nEmbedConfig(store.getN8nEmbedConfig());
+  if (state.running) {
+    // Le serveur Next a besoin de l'API n8n complète (clé incluse) pour
+    // l'onglet n8n du Product Hub (n8nConfig() exige N8N_API_URL+N8N_API_KEY).
+    // La clé est provisionnée pendant le boot n8n (avant Next) ; si elle
+    // apparaît plus tard, restartNextServer ré-évalue cet env.
+    return {
+      ...buildNextN8nEnv({ uiUrl: state.running.uiUrl }),
+      ...(ctx.getN8nNextEnvExtra?.({
+        connectionMode,
+        homeDir: state.running.homeDir,
+        localUiUrl: state.running.uiUrl,
+      }) || {}),
+    };
+  }
+  if (config.mode === "remote" && config.remoteUiUrl) {
+    return buildNextN8nEnv({ uiUrl: config.remoteUiUrl });
+  }
+  return {};
+}
+
+function getN8nStatusPayload(
+  connectionMode: "local" | "remote",
+  opts?: { remoteCrmOrigin?: string | null },
+): N8nStatusPayload {
+  const config = sanitizeN8nEmbedConfig(store.getN8nEmbedConfig());
+  const entry = state.entryPath || findN8nEntry();
+  let pub = n8nPublicStatus({
+    connectionMode,
+    config,
+    entryFound: Boolean(entry),
+    running: Boolean(state.running),
+    uiUrl: state.running?.uiUrl || config.remoteUiUrl || null,
+    lastError: state.lastError,
+    version: state.version,
+    installing: state.installing,
+    remoteCrmOrigin: opts?.remoteCrmOrigin,
+    tunnelRootDomain: ctx.manifest.tunnelRootDomain,
+    productName: product(),
+  });
+  if (state.installing && pub.status === "missing") {
+    pub = {
+      ...pub,
+      status: "installing",
+      detail: `Installation runtime en cours (${getN8nBootstrapPhase()})…`,
+    };
+  }
+  const localUiUrl = state.running?.uiUrl || null;
+  const publicWebhookUrl =
+    state.running?.publicBaseUrl || state.publicBaseUrl || null;
+  let listenPort = N8N_DESKTOP_PORT;
+  try {
+    if (localUiUrl) listenPort = Number(new URL(localUiUrl).port) || N8N_DESKTOP_PORT;
+  } catch {
+    /* keep default */
+  }
+  return {
+    ...pub,
+    entryPath: entry,
+    // Chemin pur : un simple status ne doit pas créer n8n-home (client léger).
+    homeDir: state.running?.homeDir || homeDirPath(),
+    bootstrapPhase: getN8nBootstrapPhase(),
+    bootstrapError: getN8nBootstrapError() || state.lastError,
+    installing: state.installing,
+    ownerReady: state.ownerReady,
+    logs: state.logs.slice(-80),
+    localUiUrl,
+    publicWebhookUrl,
+    listenHost: "127.0.0.1",
+    listenPort,
+  };
+}
+
+function getN8nLogs(): string[] {
+  return state.logs.slice(-80);
+}
+
+/** Env bridge n8n → Hermes (lecture fichier + URL locale). */
+function getN8nBridgeEnvForHermes(): Record<string, string> {
+  const home = state.running?.homeDir || n8nHomeDir();
+  const localUiUrl =
+    state.running?.uiUrl || `http://127.0.0.1:${N8N_DESKTOP_PORT}`;
+  return (
+    ctx.getN8nNextEnvExtra?.({
+      connectionMode: "local",
+      homeDir: home,
+      localUiUrl,
+    }) || {}
+  );
+}
+
+async function ensureN8nRuntimeFromUi(opts?: {
+  onLog?: (line: string) => void;
+}): Promise<{
+  ok: boolean;
+  detail: string;
+  entryPath: string | null;
+  runtimeDir: string | null;
+}> {
+  state.installing = true;
+  const log = (line: string) => {
+    pushLog(line);
+    opts?.onLog?.(line);
+  };
+  try {
+    const r = await ensureN8nRuntime(ctx, { onLog: log });
+    if (r.entry) state.entryPath = r.entry;
+    return {
+      ok: r.ok,
+      detail: r.detail,
+      entryPath: r.entry,
+      runtimeDir: n8nRuntimeCacheDir(ctx),
+    };
+  } finally {
+    state.installing = false;
+  }
+}
+
+/** Exposé pour tests. */
+function __resetN8nStateForTests(): void {
+  state.running = null;
+  state.lastError = null;
+  state.version = null;
+  state.logs = [];
+  state.entryPath = null;
+  state.installing = false;
+  state.ownerReady = false;
+}
+
 
   return {
     startN8n,
     stopN8n,
-    getRunningN8n: () => state.running,
+    getRunningN8n,
     getN8nStatusPayload,
     getN8nNextEnv,
-    getN8nLogs: () => [...state.logs],
-    ensureN8nRuntimeFromUi,
+    getN8nLogs,
+    ensureN8nRuntimeFromUi: async (uiOpts) => {
+      const r = await ensureN8nRuntimeFromUi(uiOpts);
+      return { ...r, phase: getN8nBootstrapPhase() };
+    },
     findN8nEntry,
     applyN8nPublicBaseUrl,
     n8nHomeLooksWarm,
-    getN8nLastStartPath: () => state.lastStartPath,
-    __resetForTests: () => {
-      stopN8n();
-      state.lastError = null;
-      state.logs = [];
-      state.entryPath = null;
-      state.lastStartPath = null;
-    },
+    getN8nLastStartPath,
+    prepareN8nUiSession,
+    provisionN8nAgentApiKey,
+    revokeN8nAgentKey,
+    getN8nBridgeEnvForHermes,
+    n8nHomeDir,
+    __resetForTests: __resetN8nStateForTests,
   };
 }

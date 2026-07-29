@@ -25,7 +25,23 @@ export type EnsureNpmCliResult =
   | { ok: false; detail: string };
 
 export function npmUserDataRoot(ctx: HostRuntimeContext): string {
-  const dir = path.join(ctx.userDataDir, "desktop-npm");
+  const segment =
+    ctx.npmUserDataSegment ||
+    `${ctx.manifest.brandId}-npm` ||
+    "desktop-npm";
+  // Dual-path legacy : tempoflow-npm / desktop-npm
+  for (const cand of [
+    segment,
+    `${ctx.manifest.brandId}-npm`,
+    "tempoflow-npm",
+    "desktop-npm",
+  ]) {
+    const dir = path.join(ctx.userDataDir, cand);
+    if (fs.existsSync(path.join(dir, "node_modules", "npm", "bin", "npm-cli.js"))) {
+      return dir;
+    }
+  }
+  const dir = path.join(ctx.userDataDir, segment);
   fs.mkdirSync(dir, { recursive: true });
   return dir;
 }
