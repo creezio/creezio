@@ -2,18 +2,13 @@
  * Fabrique l'objet exposé via contextBridge sous `window[bridgeName]`.
  *
  * Port structurel de electron/preload-app.ts (TF2 0.10.26) — sans hardcoder
- * le nom du bridge. Le preload de l'app appelle :
+ * le nom du bridge.
  *
- * ```ts
- * import { contextBridge, ipcRenderer } from "electron";
- * import { createDesktopApi, exposeDesktopApi } from "@creezio/shell";
- * import { tempoflowManifest } from "@creezio/brand-config";
- * exposeDesktopApi(
- *   contextBridge,
- *   tempoflowManifest.bridgeName,
- *   createDesktopApi(ipcRenderer),
- * );
- * ```
+ * ⚠️ Préload packagé via extraResources (hors asar) : NE PAS `require`
+ * `@creezio/shell` ni le manifest depuis le preload compilé — Node ne
+ * résout pas `node_modules` depuis `resources/electron/`. Préférer un
+ * littéral `contextBridge.exposeInMainWorld("…Desktop", api)` dans le
+ * preload de l'app, ou bundler le preload (esbuild) pour inliner ce module.
  */
 
 import type {

@@ -99,15 +99,19 @@ fi
 PUBLISH_VIA_DOCKER=0
 PUBLISH_VIA_SSH=0
 REMOTE_HOST="${CREEZIO_REMOTE_BUILD_HOST:-}"
-if [[ -d "${DL_ROOT}" ]]; then
+# TempoFlow : le feed prod (crm.tempoflow.fr) vit sur l'hôte remote-build.
+# Le NPM local Creezio peut avoir un dossier dl-tempoflow STALE — ne pas le
+# préférer, sinon publish « réussit » en local et latest.yml public reste vieux.
+FEED_HOST="$(printf '%s' "${FEED_URL}" | sed -E 's|^https?://([^/]+)/.*|\1|')"
+if [[ -n "${REMOTE_HOST}" ]] \
+  && [[ "${FEED_HOST}" != "fidu.creez.io" && "${FEED_HOST}" != "certivan.creez.io" ]] \
+  && ssh -o BatchMode=yes -o ConnectTimeout=15 "${REMOTE_HOST}" \
+    "docker exec ${NPM_CT} test -d /data/${CREEZIO_DOCKER_DL_NAME}" >/dev/null 2>&1; then
+  PUBLISH_VIA_SSH=1
+elif [[ -d "${DL_ROOT}" ]]; then
   :
 elif docker exec "${NPM_CT}" test -d "/data/${CREEZIO_DOCKER_DL_NAME}" 2>/dev/null; then
   PUBLISH_VIA_DOCKER=1
-elif [[ -n "${REMOTE_HOST}" ]] \
-  && ssh -o BatchMode=yes -o ConnectTimeout=15 "${REMOTE_HOST}" \
-    "docker exec ${NPM_CT} test -d /data/${CREEZIO_DOCKER_DL_NAME}" >/dev/null 2>&1; then
-  # TempoFlow : feed prod sur l'hôte remote-build (crm.tempoflow.fr), pas sur Creezio.
-  PUBLISH_VIA_SSH=1
 else
   die "dossier DL introuvable : ${DL_ROOT}"
 fi

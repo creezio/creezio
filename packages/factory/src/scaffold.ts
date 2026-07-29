@@ -345,16 +345,29 @@ main().catch((err) => {
 }
 
 function renderPreloadTs(m: AppManifest): string {
-  const name = exportName(m);
   return `/**
- * Preload — bridge générique @creezio/shell (pas d'API catalogue TF).
+ * Preload — bridge desktop générique (pas d'API catalogue TF).
+ *
+ * Zéro import @creezio/* : ce fichier est copié hors asar (extraResources).
+ * Le bridge name est figé au scaffold (manifest.bridgeName = ${JSON.stringify(m.bridgeName)}).
  */
 import { contextBridge, ipcRenderer } from "electron";
-import { createDesktopApi, exposeDesktopApi } from "@creezio/shell";
-import { ${name} as manifest } from "./app-manifest.js";
 
-const api = createDesktopApi(ipcRenderer);
-exposeDesktopApi(contextBridge, manifest.bridgeName, api);
+const BRIDGE_NAME = ${JSON.stringify(m.bridgeName)};
+
+/** Sous-ensemble générique — étendre localement selon la marque. */
+const api = {
+  isDesktop: true as const,
+  getInfo: () => ipcRenderer.invoke("desktop:info"),
+  getConnectionProfile: () => ipcRenderer.invoke("connection:get"),
+  chooseConnection: (profile: unknown) =>
+    ipcRenderer.invoke("connection:choose", profile),
+  getSetupStatus: () => ipcRenderer.invoke("setup:status"),
+  completeSetup: (payload: unknown) =>
+    ipcRenderer.invoke("setup:complete", payload),
+};
+
+contextBridge.exposeInMainWorld(BRIDGE_NAME, api);
 `;
 }
 
