@@ -19,8 +19,12 @@
   "dependencies": {
     "@creezio/brand-config": "0.1.0",
     "@creezio/shell": "0.1.0",
+    "@creezio/shell-ui": "0.1.0",
     "@creezio/platform-core": "0.1.0",
     "@creezio/product-hub": "0.1.0",
+    "@creezio/api-kernel": "0.1.0",
+    "@creezio/mcp-facade": "0.1.0",
+    "@creezio/auth": "0.1.0",
     "@creezio/electron-shell": "0.1.0",
     "@creezio/desktop-tooling": "0.1.0"
   },

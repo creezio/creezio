@@ -4,7 +4,7 @@
 > Ce document fixe le *pourquoi* et le *où* ; le *comment packagé* est dans
 > [BACKLOG-H1-PACKAGES.md](BACKLOG-H1-PACKAGES.md).  
 > Constante runtime : `ARCHITECTURE_VERSION` dans `@creezio/platform-core`
-> (`"H0"` après sign-off).
+> (`"H1"` après sign-off H1 ; était `"H0"` au cadre).
 
 ---
 

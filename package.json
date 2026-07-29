@@ -2,7 +2,7 @@
   "name": "creezio",
   "private": true,
   "version": "0.1.0",
-  "description": "Kit plateforme Creezio — packages @creezio/* partagés (brand-config, shell, platform-core, electron-shell, product-hub, desktop-tooling, factory, propagation) + console ops + sandboxes",
+  "description": "Kit plateforme Creezio — packages @creezio/* (core CMS H1 : api-kernel, mcp-facade, auth, shell-ui, assistant, tasks, mails + platform A–G)",
   "workspaces": [
     "packages/*",
     "apps/*"
@@ -11,11 +11,11 @@
     "creezio": "./packages/factory/bin/creezio.js"
   },
   "scripts": {
-    "build": "npm run build -w @creezio/brand-config && npm run build -w @creezio/shell && npm run build -w @creezio/platform-core && npm run build -w @creezio/product-hub && npm run build -w @creezio/electron-shell && npm run build -w @creezio/desktop-tooling && npm run build -w @creezio/factory && npm run build -w @creezio/propagation && npm run build -w @creezio/console && npm run build -w @creezio/app-demobrand",
-    "build:packages": "npm run build -w @creezio/brand-config && npm run build -w @creezio/shell && npm run build -w @creezio/platform-core && npm run build -w @creezio/product-hub && npm run build -w @creezio/electron-shell && npm run build -w @creezio/desktop-tooling && npm run build -w @creezio/factory && npm run build -w @creezio/propagation && node scripts/build-cjs.mjs",
+    "build": "npm run build -w @creezio/brand-config && npm run build -w @creezio/shell && npm run build -w @creezio/platform-core && npm run build -w @creezio/product-hub && npm run build -w @creezio/api-kernel && npm run build -w @creezio/mcp-facade && npm run build -w @creezio/auth && npm run build -w @creezio/shell-ui && npm run build -w @creezio/assistant && npm run build -w @creezio/tasks && npm run build -w @creezio/mails && npm run build -w @creezio/electron-shell && npm run build -w @creezio/desktop-tooling && npm run build -w @creezio/factory && npm run build -w @creezio/propagation && npm run build -w @creezio/console && npm run build -w @creezio/app-demobrand",
+    "build:packages": "npm run build -w @creezio/brand-config && npm run build -w @creezio/shell && npm run build -w @creezio/platform-core && npm run build -w @creezio/product-hub && npm run build -w @creezio/api-kernel && npm run build -w @creezio/mcp-facade && npm run build -w @creezio/auth && npm run build -w @creezio/shell-ui && npm run build -w @creezio/assistant && npm run build -w @creezio/tasks && npm run build -w @creezio/mails && npm run build -w @creezio/electron-shell && npm run build -w @creezio/desktop-tooling && npm run build -w @creezio/factory && npm run build -w @creezio/propagation && node scripts/build-cjs.mjs",
     "build:cjs": "node scripts/build-cjs.mjs",
     "typecheck": "npm run build:packages",
-    "test": "node --test scripts/test-phase-b.mjs scripts/test-phase-b2.mjs scripts/test-phase-c.mjs scripts/test-phase-d.mjs scripts/test-phase-e.mjs scripts/test-phase-f.mjs",
+    "test": "node --test scripts/test-phase-b.mjs scripts/test-phase-b2.mjs scripts/test-phase-c.mjs scripts/test-phase-d.mjs scripts/test-phase-e.mjs scripts/test-phase-f.mjs scripts/test-phase-h1.mjs",
     "factory:new-app": "node packages/factory/bin/creezio.js new-app",
     "console:dev": "npm run dev -w @creezio/console",
     "console:start": "npm run start -w @creezio/console",

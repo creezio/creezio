@@ -145,11 +145,14 @@ test("scaffoldNewApp génère structure + builder configs", () => {
     fs.readFileSync(path.join(outDir, "package.json"), "utf8"),
   );
   assert.ok(pkg.dependencies["@creezio/product-hub"]);
+  assert.ok(pkg.dependencies["@creezio/shell-ui"]);
+  assert.ok(pkg.dependencies["@creezio/api-kernel"]);
+  assert.ok(pkg.dependencies["@creezio/auth"]);
   const vertical = fs.readFileSync(
     path.join(outDir, "src/electron/vertical-slot.ts"),
     "utf8",
   );
-  assert.match(vertical, /items:\s*\[\s*\]/);
+  assert.match(vertical, /registerBrandNav\(\[\]\)/);
   assert.match(vertical, /productHub/);
   assert.doesNotMatch(vertical, /catalogue|tempoflow/i);
   const hubStub = fs.readFileSync(

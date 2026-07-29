@@ -129,6 +129,13 @@ export const PACKAGE_SURFACE_MAP: Record<
     "next-host-env",
   ],
   "@creezio/product-hub": ["package-json-deps", "product-hub", "electron-main"],
+  "@creezio/api-kernel": ["package-json-deps", "next-host-env", "electron-main"],
+  "@creezio/mcp-facade": ["package-json-deps", "next-host-env", "electron-main"],
+  "@creezio/auth": ["package-json-deps", "electron-main", "electron-preload"],
+  "@creezio/shell-ui": ["package-json-deps", "electron-main", "factory-scaffold"],
+  "@creezio/assistant": ["package-json-deps", "electron-main"],
+  "@creezio/tasks": ["package-json-deps", "next-host-env"],
+  "@creezio/mails": ["package-json-deps", "next-host-env"],
   "@creezio/electron-shell": [
     "package-json-deps",
     "electron-main",

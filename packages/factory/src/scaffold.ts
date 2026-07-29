@@ -94,6 +94,10 @@ function renderPackageJson(m: AppManifest): string {
           "@creezio/shell": "0.1.0",
           "@creezio/platform-core": "0.1.0",
           "@creezio/product-hub": "0.1.0",
+          "@creezio/shell-ui": "0.1.0",
+          "@creezio/api-kernel": "0.1.0",
+          "@creezio/mcp-facade": "0.1.0",
+          "@creezio/auth": "0.1.0",
           "@creezio/electron-shell": "0.1.0",
           "@creezio/desktop-tooling": "0.1.0",
         },
@@ -286,6 +290,10 @@ import {
   writeAppKindFile,
 } from "@creezio/electron-shell";
 import { ${name} as manifest } from "./app-manifest.js";
+import { createApiKernel } from "@creezio/api-kernel";
+import { createMcpFacade } from "@creezio/mcp-facade";
+import { createMemoryAuthStore } from "@creezio/auth";
+import { mergeNav } from "@creezio/shell-ui";
 import { coreNavItems } from "./nav-core.js";
 import { verticalSlot } from "./vertical-slot.js";
 
@@ -300,6 +308,18 @@ async function main(): Promise<void> {
     __dirname,
     boot.appKind === "legacy" ? "client" : boot.appKind,
   );
+
+  // Wiring H1 — api-kernel + mcp-facade + auth (stores prêts, handlers à brancher).
+  const api = createApiKernel({ brandId: manifest.brandId });
+  const mcp = createMcpFacade({
+    brandId: manifest.brandId,
+    allowUnauthenticated: true,
+    listApiMounts: () => api.listMounts(),
+  });
+  const auth = createMemoryAuthStore();
+  const navItems = mergeNav(coreNavItems, verticalSlot.items);
+  void mcp;
+  void auth;
 
   const gotLock = app.requestSingleInstanceLock();
   if (!gotLock) {
@@ -329,11 +349,9 @@ async function main(): Promise<void> {
     : path.join(__dirname, "../../resources/renderer/index.html");
   await win.loadFile(renderer);
 
-  void coreNavItems;
-  void verticalSlot;
   log(
     "nav",
-    \`core=\${coreNavItems.length} vertical=\${verticalSlot.items.length}\`,
+    \`core=\${coreNavItems.length} vertical=\${verticalSlot.items.length} merged=\${navItems.length} apiMounts=\${api.listMounts().length}\`,
   );
 }
 
@@ -373,21 +391,11 @@ contextBridge.exposeInMainWorld(BRIDGE_NAME, api);
 
 function renderNavCoreTs(): string {
   return `/**
- * Navigation cœur plateforme (placeholder).
+ * Navigation cœur plateforme — délègue à \`@creezio/shell-ui\`.
  * PAS de catalogue TempoFlow ni d'entrées métier marque.
  */
-export type NavItem = {
-  id: string;
-  label: string;
-  href: string;
-};
-
-/** Entrées shell génériques — communes à toute marque kit. */
-export const coreNavItems: NavItem[] = [
-  { id: "home", label: "Accueil", href: "/" },
-  { id: "settings", label: "Réglages", href: "/settings" },
-  { id: "about", label: "À propos", href: "/about" },
-];
+export type { CoreNavItem as NavItem } from "@creezio/shell-ui";
+export { CORE_NAV_ITEMS, coreNavItems } from "@creezio/shell-ui";
 `;
 }
 
@@ -450,9 +458,13 @@ function renderVerticalSlotTs(m: AppManifest): string {
   const tokensName = `${m.brandId.replace(/-/g, "")}ProductHubTokens`;
   return `/**
  * Slot métier vertical — ${m.client.productName}.
- * Product Hub stub (Phase E) branché ; domaine métier reste vide.
+ * Nav brand via \`@creezio/shell-ui\` ; Product Hub stub ; domaine métier vide.
  */
-import type { NavItem } from "./nav-core.js";
+import {
+  createNavRegistry,
+  type CoreNavItem,
+  type NavRegistry,
+} from "@creezio/shell-ui";
 import {
   createDemoPluginRequest,
   ${tokensName},
@@ -463,8 +475,10 @@ export type VerticalSlot = {
   /** Identifiant marque. */
   brandId: string;
   /** Entrées de nav métier (vide = squelette factory). */
-  items: NavItem[];
-  /** Accès Product Hub sandbox (store mémoire). */
+  items: CoreNavItem[];
+  /** Registre slots shell-ui. */
+  nav: NavRegistry;
+  /** Accès Product Hub sandbox. */
   productHub: {
     tokens: typeof ${tokensName};
     getStore: typeof get${pascal}ProductHubStore;
@@ -472,9 +486,13 @@ export type VerticalSlot = {
   };
 };
 
+const nav = createNavRegistry();
+nav.registerBrandNav([]);
+
 export const verticalSlot: VerticalSlot = {
   brandId: "${m.brandId}",
-  items: [],
+  items: nav.getBrandNav(),
+  nav,
   productHub: {
     tokens: ${tokensName},
     getStore: get${pascal}ProductHubStore,
@@ -546,9 +564,10 @@ src/electron/
   app-manifest.ts       # AppManifest embarqué
   main.ts               # boot mince (@creezio/electron-shell)
   preload.ts            # bridge (@creezio/shell)
-  nav-core.ts           # nav plateforme placeholder
-  vertical-slot.ts      # slot métier + Product Hub stub
+  nav-core.ts           # nav via @creezio/shell-ui
+  vertical-slot.ts      # slots shell-ui + Product Hub stub
   product-hub-stub.ts   # store mémoire @creezio/product-hub
+  (wiring H1)           # deps api-kernel / mcp-facade / auth
 resources/
   icons/{client,server}.png
   renderer/index.html

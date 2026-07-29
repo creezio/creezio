@@ -1,11 +1,15 @@
 /**
- * Stub Product Hub sandbox DemoBrand — store mémoire + jetons marque.
- * Pas de SQLite / UI Admin (vertical Phase G).
+ * Stub Product Hub sandbox DemoBrand.
+ * Défaut : store mémoire. Opt-in sqlite core via DEMOBRAND_PRODUCT_HUB_SQLITE=1.
  */
 
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
 import {
   buildPluginImpactReport,
   createMemoryProductHubStore,
+  createSqliteProductHubStore,
   productHubTokensFromManifest,
   type ProductHubStore,
 } from "@creezio/product-hub";
@@ -18,7 +22,17 @@ let store: ProductHubStore | null = null;
 
 export function getDemobrandProductHubStore(): ProductHubStore {
   if (!store) {
-    store = createMemoryProductHubStore({ conversationPrefix: "demobrand" });
+    if (process.env.DEMOBRAND_PRODUCT_HUB_SQLITE === "1") {
+      const dir = path.join(os.tmpdir(), "creezio-demobrand-sqlite");
+      fs.mkdirSync(dir, { recursive: true });
+      const coreDbPath = path.join(dir, "core.db");
+      store = createSqliteProductHubStore({
+        coreDbPath,
+        conversationPrefix: "demobrand",
+      });
+    } else {
+      store = createMemoryProductHubStore({ conversationPrefix: "demobrand" });
+    }
   }
   return store;
 }

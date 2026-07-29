@@ -38,7 +38,12 @@ export function resolveUserDataDir(ctx: PathsContext): string {
   return override || ctx.userDataRoot;
 }
 
-/** Chemin SQLite principal. */
+/**
+ * Chemin SQLite principal (= base **brand** / métier).
+ *
+ * @deprecated Préférer `resolveBrandDbPath` (H1.0). Alias conservé pour
+ * soft-compat des marques déjà branchées (TempoFlow / Certivan / Fidu).
+ */
 export function resolveDbPath(ctx: PathsContext): string {
   const override = readEnvOverride(ctx, "DB_PATH_OVERRIDE");
   if (override) return override;

@@ -1,8 +1,12 @@
 /**
  * Slot métier vertical — DemoBrand.
- * Product Hub stub (Phase E) branché ; domaine métier reste vide.
+ * Nav brand via `@creezio/shell-ui` ; Product Hub (mémoire ou sqlite core).
  */
-import type { NavItem } from "./nav-core.js";
+import {
+  createNavRegistry,
+  type CoreNavItem,
+  type NavRegistry,
+} from "@creezio/shell-ui";
 import {
   createDemoPluginRequest,
   demobrandProductHubTokens,
@@ -13,8 +17,10 @@ export type VerticalSlot = {
   /** Identifiant marque. */
   brandId: string;
   /** Entrées de nav métier (vide = squelette factory). */
-  items: NavItem[];
-  /** Accès Product Hub sandbox (store mémoire). */
+  items: CoreNavItem[];
+  /** Registre slots shell-ui. */
+  nav: NavRegistry;
+  /** Accès Product Hub sandbox. */
   productHub: {
     tokens: typeof demobrandProductHubTokens;
     getStore: typeof getDemobrandProductHubStore;
@@ -22,9 +28,13 @@ export type VerticalSlot = {
   };
 };
 
+const nav = createNavRegistry();
+nav.registerBrandNav([]);
+
 export const verticalSlot: VerticalSlot = {
   brandId: "demobrand",
-  items: [],
+  items: nav.getBrandNav(),
+  nav,
   productHub: {
     tokens: demobrandProductHubTokens,
     getStore: getDemobrandProductHubStore,

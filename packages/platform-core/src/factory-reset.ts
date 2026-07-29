@@ -15,6 +15,11 @@ import {
   resolveMeiliDataDir,
   resolveUserDataDir,
 } from "./paths.js";
+import {
+  resolveBrandDbPath,
+  resolveCoreDbPath,
+  resolveSqliteRoot,
+} from "./sqlite-layout.js";
 
 /**
  * Liste des chemins userData ciblés (hors logs / install-id).
@@ -29,6 +34,9 @@ export function factoryResetTargets(
   return [
     resolveLocalConfigPath(ctx),
     resolveDbPath(ctx),
+    resolveBrandDbPath(ctx),
+    resolveCoreDbPath(ctx),
+    resolveSqliteRoot(ctx),
     resolveAssistantDbPath(ctx),
     path.join(root, "uploads"),
     resolveMeiliDataDir(ctx),

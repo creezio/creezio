@@ -1,6 +1,7 @@
 # Backlog H1 — packages `@creezio/*`
 
 > Suite de [PHASE-H0.md](PHASE-H0.md).  
+> **Sign-off** : [PHASE-H1.md](PHASE-H1.md) (2026-07-29).  
 > Objectif H1 : matérialiser le **cœur CMS** manquant (auth, nav/slots, API,
 > MCP façade, sqlite multi-fichiers, assistant…) **sans** importer le métier
 > TempoFlow/Fidu/Certivan dans le kit.

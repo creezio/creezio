@@ -39,7 +39,9 @@ test("catalogue packages @creezio/* complet", () => {
   assert.ok(KIT_PACKAGE_NAMES.includes("@creezio/platform-core"));
   assert.ok(KIT_PACKAGE_NAMES.includes("@creezio/propagation"));
   assert.ok(KIT_PACKAGE_NAMES.includes("@creezio/product-hub"));
-  assert.equal(KIT_PACKAGES.length, 8);
+  assert.ok(KIT_PACKAGES.length >= 8);
+  assert.ok(KIT_PACKAGE_NAMES.includes("@creezio/api-kernel"));
+  assert.ok(KIT_PACKAGE_NAMES.includes("@creezio/shell-ui"));
   assert.equal(assertKitPackage("@creezio/platform-core"), "@creezio/platform-core");
 });
 

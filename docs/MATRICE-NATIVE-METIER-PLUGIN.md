@@ -28,14 +28,14 @@ Source cadre : [ARCHITECTURE-INTENTION.md](ARCHITECTURE-INTENTION.md).
 | Factory new-app | `@creezio/factory` | ✅ | scaffold Client+Serveur + demobrand |
 | Propagation kit→marques | `@creezio/propagation` | ✅ | semver, impact, canaux, extension points, registre L3 |
 | Console ops | `apps/console` | ✅ | kit-versions, feeds, gates |
-| **Auth** (session, login, recovery) | `@creezio/auth` *(à créer)* | 🟡 | Canaux IPC `auth:*` + secrets local-config ; handlers/UI encore marques |
-| **Shell-UI / nav + slots** | `@creezio/shell-ui` *(à créer)* | 🟡 | Placeholders factory `nav-core` + `vertical-slot` ; pas de package slots typé |
-| **Assistant / chat** | `@creezio/assistant` *(à créer)* | 🟡 | IPC `assistant:*` / `llm:*`, `assistant_chats.db`, Hermes ; pas de package unifié |
-| **API kernel** (façade HTTP cœur) | `@creezio/api-kernel` *(à créer)* | ❌ | APIs encore dans Next des marques |
-| **MCP façade / proxy** | `@creezio/mcp-facade` *(à créer)* | ❌ | `mcpJwtSecret` en config ; pas de proxy tools cœur+modules+plugins |
-| **Tasks** (natif plateforme) | `@creezio/tasks` *(à créer)* | 🟡 | Tasks Product Hub (plugins) en mémoire/SQL vertical ; pas de module tasks app natif kit |
-| **Mails** (natif plateforme) | `@creezio/mails` *(à créer)* | ❌ | Présent côté marques (ex. TF) ; hors kit |
-| **SQLite multi-fichiers** (core / brand / plugin) | extension `@creezio/platform-core` (+ stores) | 🟡 | `resolveDbPath` + `assistant_chats.db` ; pas encore `core`/`brand`/`plugin/<id>` |
+| **Auth** (session, login, recovery) | `@creezio/auth` | ✅ | Store + IPC bind + `AUTH_CORE_SQL` ; UI marques encore verticale |
+| **Shell-UI / nav + slots** | `@creezio/shell-ui` | ✅ | `CORE_NAV_ITEMS` + `registerBrandNav` ; demobrand/factory branchés |
+| **Assistant / chat** | `@creezio/assistant` | ✅ | Store mémoire + surface IPC ; persistance sqlite core = raffinement |
+| **API kernel** (façade HTTP cœur) | `@creezio/api-kernel` | ✅ | `/api/v1/core/*` + registres modules/plugins ; deny cross-write |
+| **MCP façade / proxy** | `@creezio/mcp-facade` | ✅ | Tools cœur + `discoverTools` + JWT ; pas de MCP produit séparé |
+| **Tasks** (natif plateforme) | `@creezio/tasks` | ✅ | CRUD + mount api-kernel ; distinct Product Hub tasks |
+| **Mails** (natif plateforme) | `@creezio/mails` | ✅ | Draft/send stub + providers ; pas de templates marque |
+| **SQLite multi-fichiers** (core / brand / plugin) | `@creezio/platform-core` | ✅ | `resolveCore/Brand/PluginDbPath` + `ensurePluginDb` |
 | Splash / host stack (contrat lazy) | `@creezio/electron-shell` | ✅ | splash + host-stack pattern |
 
 ---
@@ -73,11 +73,11 @@ Autres marques (indicatif, hors extraction) :
 | Capacité | Où | Statut | Notes |
 |----------|-----|--------|-------|
 | Manifest / events / execution grant | `@creezio/platform-core` | ✅ | Contrats purs |
-| Lifecycle / PRD / impact / n8n tags / ACL | `@creezio/product-hub` | ✅ | Store SQLite = encore vertical (mémoire en demobrand) |
+| Lifecycle / PRD / impact / n8n tags / ACL | `@creezio/product-hub` | ✅ | + `createSqliteProductHubStore` (H1.8) ; demobrand opt-in sqlite |
 | Control plane HTTP host | `@creezio/electron-shell` + product-hub | 🟡 | Tokens kit prêts ; runtime partiellement local marques (dette DoD A–G) |
 | Registre org L3 | `@creezio/propagation` | 🟡 | Mémoire + extension points ; pas de persistance prod kit |
-| DB `plugin/<id>` à l’install | — | ❌ | Décision H0 ; à implémenter H1+ |
-| ACL granulaire qui voit/utilise | product-hub `acl` | 🟡 | Contrats L3/L4 ; persistance SQL marques |
+| DB `plugin/<id>` à l’install | `@creezio/platform-core` `ensurePluginDb` | ✅ | Fichier créé à l’install uniquement |
+| ACL granulaire qui voit/utilise | product-hub `acl` + sqlite store | ✅ | Contrats L3/L4 + persistance core kit |
 | Univers perso totalement séparé | — | ❌ *(volontaire)* | Hors scope — plugins = **orga** |
 
 Promotion plugin → module natif **marque** : processus humain (voir architecture) ;

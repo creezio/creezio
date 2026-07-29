@@ -24,6 +24,22 @@ export {
   userDataDirForKind,
 } from "./paths.js";
 
+/* ── Phase H1.0 : SQLite multi-fichiers ── */
+export type { EnsurePluginDbResult } from "./sqlite-layout.js";
+export {
+  CORE_DB_FILENAME,
+  PLUGIN_DB_SUBDIR,
+  SQLITE_LAYOUT_DIR,
+  ensureDay0SqliteLayout,
+  ensurePluginDb,
+  pluginDbExists,
+  resolveBrandDbPath,
+  resolveCoreDbPath,
+  resolveDay0SqlitePaths,
+  resolvePluginDbPath,
+  resolveSqliteRoot,
+} from "./sqlite-layout.js";
+
 export type {
   AiWorkspacePresentationSetting,
   BackgroundSettings,

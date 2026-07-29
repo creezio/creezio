@@ -391,7 +391,9 @@ test("grant bypass headers brandés", () => {
 test("vertical remaining + demobrand stub files", () => {
   assert.ok(!PLUGIN_VERTICAL_REMAINING.includes("plugin-control-api"));
   assert.ok(PLUGIN_VERTICAL_REMAINING.includes("plugin-git"));
-  assert.ok(PRODUCT_HUB_VERTICAL_REMAINING.includes("sqlite-product-hub-store"));
+  // H1.8 : store sqlite core livré dans le kit
+  assert.ok(!PRODUCT_HUB_VERTICAL_REMAINING.includes("sqlite-product-hub-store"));
+  assert.ok(PRODUCT_HUB_VERTICAL_REMAINING.includes("admin-ui-plugins"));
 
   const stub = path.join(
     ROOT,
@@ -400,6 +402,7 @@ test("vertical remaining + demobrand stub files", () => {
   assert.ok(fs.existsSync(stub));
   const src = fs.readFileSync(stub, "utf8");
   assert.ok(src.includes("@creezio/product-hub"));
+  assert.ok(src.includes("createSqliteProductHubStore") || src.includes("createMemoryProductHubStore"));
   assert.ok(!src.includes("TEMPOFLOW_"));
   assert.ok(!src.includes("CERTIVAN_"));
 });

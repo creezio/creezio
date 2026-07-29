@@ -11,7 +11,14 @@ export type CreezioPackageName =
   | "@creezio/electron-shell"
   | "@creezio/desktop-tooling"
   | "@creezio/factory"
-  | "@creezio/propagation";
+  | "@creezio/propagation"
+  | "@creezio/api-kernel"
+  | "@creezio/mcp-facade"
+  | "@creezio/auth"
+  | "@creezio/shell-ui"
+  | "@creezio/assistant"
+  | "@creezio/tasks"
+  | "@creezio/mails";
 
 export type KitPackageMeta = {
   name: CreezioPackageName;
@@ -43,15 +50,72 @@ export const KIT_PACKAGES: readonly KitPackageMeta[] = [
   {
     name: "@creezio/platform-core",
     dir: "platform-core",
-    summary: "paths, app-kind, connection, tunnel, updater-state, plugins purs",
+    summary: "paths, sqlite core/brand/plugin, app-kind, connection, plugins purs",
     dependsOn: ["@creezio/brand-config"],
     layer: "L1-core",
   },
   {
     name: "@creezio/product-hub",
     dir: "product-hub",
-    summary: "Product Hub brand-agnostic (lifecycle, PRD, ACL, control plane)",
-    dependsOn: ["@creezio/brand-config"],
+    summary: "Product Hub (lifecycle, PRD, ACL, control plane, sqlite core store)",
+    dependsOn: ["@creezio/brand-config", "@creezio/platform-core"],
+    layer: "L1-core",
+  },
+  {
+    name: "@creezio/api-kernel",
+    dir: "api-kernel",
+    summary: "Façade HTTP /api/v1 cœur + montage modules/plugins",
+    dependsOn: ["@creezio/brand-config", "@creezio/platform-core"],
+    layer: "L1-core",
+  },
+  {
+    name: "@creezio/mcp-facade",
+    dir: "mcp-facade",
+    summary: "MCP d'app unique — tools cœur + discoverTools",
+    dependsOn: ["@creezio/api-kernel", "@creezio/platform-core"],
+    layer: "L1-core",
+  },
+  {
+    name: "@creezio/auth",
+    dir: "auth",
+    summary: "Session / login / logout / recovery (sqlite core)",
+    dependsOn: ["@creezio/platform-core", "@creezio/shell"],
+    layer: "L1-core",
+  },
+  {
+    name: "@creezio/shell-ui",
+    dir: "shell-ui",
+    summary: "Nav Creezio + slots métier typés",
+    dependsOn: ["@creezio/brand-config", "@creezio/shell"],
+    layer: "L1-core",
+  },
+  {
+    name: "@creezio/assistant",
+    dir: "assistant",
+    summary: "Chat / assistant plateforme (store + contrats IPC)",
+    dependsOn: ["@creezio/platform-core", "@creezio/shell"],
+    layer: "L1-core",
+  },
+  {
+    name: "@creezio/tasks",
+    dir: "tasks",
+    summary: "Tâches natives plateforme (hors Product Hub)",
+    dependsOn: [
+      "@creezio/api-kernel",
+      "@creezio/auth",
+      "@creezio/platform-core",
+    ],
+    layer: "L1-core",
+  },
+  {
+    name: "@creezio/mails",
+    dir: "mails",
+    summary: "Mails natifs plateforme + slot providers",
+    dependsOn: [
+      "@creezio/api-kernel",
+      "@creezio/auth",
+      "@creezio/platform-core",
+    ],
     layer: "L1-core",
   },
   {

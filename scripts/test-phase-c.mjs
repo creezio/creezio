@@ -161,11 +161,10 @@ test("feeds live client (réseau) — marques prod uniquement", () => {
     assert.ok(snap.meta.version, `${brandId} version`);
     assert.ok(snap.downloadUrl, `${brandId} downloadUrl`);
   }
+  // Post-G2 : feed Serveur Fidu publié (plus une cible 404).
   const fiduServer = fetchFeedSnapshot("fidu", "server");
-  assert.ok(
-    fiduServer.httpStatus === 404 || !fiduServer.ok,
-    "fidu server feed encore cible",
-  );
+  assert.equal(fiduServer.httpStatus, 200, "fidu server latest.yml");
+  assert.ok(fiduServer.ok, "fidu server feed");
   const all = fetchBrandFeeds("certivan");
   assert.ok(all.client.ok);
   assert.ok(all.server.ok);

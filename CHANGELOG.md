@@ -4,10 +4,20 @@
 ## [Unreleased]
 
 ### Added
+- **Phase H1** — packages cœur CMS :
+  `@creezio/api-kernel`, `@creezio/mcp-facade`, `@creezio/auth`,
+  `@creezio/shell-ui`, `@creezio/assistant`, `@creezio/tasks`, `@creezio/mails` ;
+  sqlite multi-fichiers (`resolveCoreDbPath` / `resolveBrandDbPath` /
+  `resolvePluginDbPath` / `ensurePluginDb`) ; Product Hub
+  `createSqliteProductHubStore` ; demobrand + factory branchés ;
+  `docs/PHASE-H1.md` ; tests `scripts/test-phase-h1.mjs`.
 - **Phase H0** — cadre architecture verrouillé :
   `docs/ARCHITECTURE-INTENTION.md`, `docs/MATRICE-NATIVE-METIER-PLUGIN.md`,
   `docs/BACKLOG-H1-PACKAGES.md`, `docs/PHASE-H0.md` ; liens README.
-- `@creezio/platform-core` : constante `ARCHITECTURE_VERSION = "H0"`.
+
+### Changed
+- `@creezio/platform-core` : `ARCHITECTURE_VERSION = "H1"` (était `"H0"`).
+- Inventaire propagation : 15 packages `@creezio/*` (était 8).
 
 ### Fixed
 - `publish-desktop.sh` : si le DL local est absent, publie via SSH sur

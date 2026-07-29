@@ -107,6 +107,21 @@ export {
 } from "./store/memory-store.js";
 
 export type {
+  CreateSqliteProductHubStoreOptions,
+  SqliteProductHubStore,
+} from "./store/sqlite-store.js";
+export {
+  createSqliteProductHubStore,
+  createSqliteProductRequest,
+} from "./store/sqlite-store.js";
+export type {
+  OpenSqliteDatabase,
+  SqliteDatabase,
+  SqliteStatement,
+} from "./store/sqlite-driver.js";
+export { openNodeSqliteDatabase } from "./store/sqlite-driver.js";
+
+export type {
   PluginControlPlaneAdapters,
   PluginControlPlaneOptions,
   PluginControlPlaneState,
@@ -116,13 +131,12 @@ export {
   startPluginControlPlane,
 } from "./control-plane/server.js";
 
-/** Modules encore verticaux (apps marques) après Phase E. */
+/** Modules encore verticaux (apps marques) après Phase E / H1.8. */
 export const PRODUCT_HUB_VERTICAL_REMAINING = [
   "plugin-git",
   "plugin-data",
   "plugin-accept-check",
   "plugin-test-runner",
   "plugin-crm-key",
-  "sqlite-product-hub-store",
   "admin-ui-plugins",
 ] as const;

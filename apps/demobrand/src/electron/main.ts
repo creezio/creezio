@@ -11,6 +11,10 @@ import {
   prepareDesktopBoot,
   writeAppKindFile,
 } from "@creezio/electron-shell";
+import { createApiKernel } from "@creezio/api-kernel";
+import { createMcpFacade } from "@creezio/mcp-facade";
+import { createMemoryAuthStore } from "@creezio/auth";
+import { mergeNav } from "@creezio/shell-ui";
 import { demobrandManifest as manifest } from "./app-manifest.js";
 import { coreNavItems } from "./nav-core.js";
 import { verticalSlot } from "./vertical-slot.js";
@@ -26,6 +30,17 @@ async function main(): Promise<void> {
     __dirname,
     boot.appKind === "legacy" ? "client" : boot.appKind,
   );
+
+  const api = createApiKernel({ brandId: manifest.brandId });
+  const mcp = createMcpFacade({
+    brandId: manifest.brandId,
+    allowUnauthenticated: true,
+    listApiMounts: () => api.listMounts(),
+  });
+  const auth = createMemoryAuthStore();
+  const navItems = mergeNav(coreNavItems, verticalSlot.items);
+  void mcp;
+  void auth;
 
   const gotLock = app.requestSingleInstanceLock();
   if (!gotLock) {
@@ -55,11 +70,9 @@ async function main(): Promise<void> {
     : path.join(__dirname, "../../resources/renderer/index.html");
   await win.loadFile(renderer);
 
-  void coreNavItems;
-  void verticalSlot;
   log(
     "nav",
-    `core=${coreNavItems.length} vertical=${verticalSlot.items.length}`,
+    `core=${coreNavItems.length} vertical=${verticalSlot.items.length} merged=${navItems.length} apiMounts=${api.listMounts().length}`,
   );
 }
 
