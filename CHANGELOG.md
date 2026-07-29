@@ -4,6 +4,11 @@
 ## [Unreleased]
 
 ### Added
+- **Phase M3** — Product Hub / control-plane zéro façade TF : helpers kit
+  (`migrateLegacyBrandProductHubOnce`, `createBrandProductHubBindings`,
+  `createCachedSqliteProductHubAccessor`, `createProductHubHost`,
+  `withBearerServiceKeyFallback`) ; TF façades ≤40 LOC ; extras verticaux ;
+  `docs/PHASE-M3.md` ; tests `test-phase-m3`.
 - **Phase M2** — Admin UI Database hors TF : `@creezio/database/ui` (port
   panels) + `createAdminDatabaseRoutes` ; TF route mince ; sync vendor copie
   `ui/` ; `docs/PHASE-M2.md` ; tests `test-phase-m2`.

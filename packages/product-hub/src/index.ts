@@ -137,6 +137,18 @@ export type {
   SqliteStatement,
 } from "./store/sqlite-driver.js";
 export { openNodeSqliteDatabase } from "./store/sqlite-driver.js";
+export type { MigrateLegacyBrandProductHubOnceOptions } from "./store/migrate-legacy.js";
+export { migrateLegacyBrandProductHubOnce } from "./store/migrate-legacy.js";
+export type {
+  BrandProductHubBindings,
+  CreateBrandProductHubBindingsOptions,
+} from "./store/brand-bindings.js";
+export { createBrandProductHubBindings } from "./store/brand-bindings.js";
+export type {
+  CachedSqliteProductHubAccessor,
+  CreateCachedSqliteProductHubAccessorOptions,
+} from "./store/cached-accessor.js";
+export { createCachedSqliteProductHubAccessor } from "./store/cached-accessor.js";
 
 export type {
   PluginControlPlaneAcl,
@@ -153,6 +165,13 @@ export type {
   PluginHubAclStoreSurface,
 } from "./control-plane/acl-from-store.js";
 export { createPluginControlPlaneAclFromStore } from "./control-plane/acl-from-store.js";
+export { withBearerServiceKeyFallback } from "./control-plane/acl-service-key.js";
+
+export type {
+  ProductHubHost,
+  ProductHubHostDeps,
+} from "./host-api.js";
+export { createProductHubHost } from "./host-api.js";
 
 export type {
   PluginAclAdminRow,
