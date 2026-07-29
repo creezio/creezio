@@ -4,6 +4,12 @@
 ## [Unreleased]
 
 ### Added
+- **Phase I0** — Gouvernance post-H5 : `scripts/sync-creezio-vendor.sh`
+  (assert `ARCHITECTURE_VERSION`, CJS, `SYNC.json`), wrappers sync
+  TempoFlow / Certivan / Fidu, console + `GET /api/kit-versions`
+  exposent `architectureVersion`, docs `PHASE-I0`, `REPUBLISH-POLICY`,
+  `gates/POST-H5`, matrice/PROPAGATION H3–H5 ; tests `test-phase-i0.mjs`.
+  Pas de republish exe ; `ARCHITECTURE_VERSION` reste `H5`.
 - **Phase H5** — Harden plugins / ACL (`@creezio/product-hub`) :
   `decidePluginAccess` (see/install/execute), deny cross-org,
   `plugin_org_binding` + `plugin_acl_capability`, control-plane `acl`,

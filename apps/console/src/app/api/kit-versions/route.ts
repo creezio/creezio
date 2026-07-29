@@ -9,6 +9,7 @@ export async function GET() {
     generatedAt: snap.inventory.generatedAt,
     kitRoot: snap.inventory.kitRoot,
     rootVersion: snap.inventory.rootVersion,
+    architectureVersion: snap.architectureVersion,
     packages: snap.inventory.packages.map((p) => ({
       name: p.name,
       version: p.version,

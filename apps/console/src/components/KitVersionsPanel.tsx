@@ -9,9 +9,13 @@ export function KitVersionsPanel({ snap }: { snap: KitConsoleSnapshot }) {
           <div className="meta">
             inventaire local · canal workspace-local · root v
             {snap.inventory.rootVersion || "—"}
+            {" · "}
+            <code>ARCHITECTURE_VERSION={snap.architectureVersion || "—"}</code>
           </div>
         </div>
-        <span className="badge idle">Phase F</span>
+        <span className="badge idle">
+          {snap.architectureVersion || "kit"}
+        </span>
       </div>
 
       <div className="kit-table-wrap">

@@ -65,12 +65,24 @@ dans les repos marques en Phase F.
 |---------|-------------------|
 | `brand-config` | deps, electron-builder, main, desktop-scripts |
 | `shell` | deps, preload, main |
-| `platform-core` | deps, main, next-host-env |
-| `product-hub` | deps, product-hub, main |
-| `electron-shell` | deps, main, product-hub, next-host-env |
+| `platform-core` | deps, main, next-host-env, SqliteRuntime, `ARCHITECTURE_VERSION` |
+| `product-hub` | deps, product-hub, main, ACL L3, control-plane |
+| `electron-shell` | deps, main, product-hub, next-host-env, plugin host |
 | `desktop-tooling` | deps, desktop-scripts, electron-builder |
+| `api-kernel` | deps, main (façade HTTP cœur + mounts modules/plugins) |
+| `mcp-facade` | deps, main (proxy MCP unifié H4/H5) |
+| `shell-ui` | deps, main, next UI (nav core + slots brand) |
+| `auth` | deps, main (session ; sqlite core dès I1) |
+| `assistant` | deps, main (chat ; sqlite core dès I2) — vendor I3+ |
+| `tasks` | deps, main (tasks plateforme) — vendor I3+ |
+| `mails` | deps, main (mails plateforme) — vendor I3+ |
 | `factory` | sandbox demobrand |
-| `propagation` | *(aucune surface marque)* |
+| `propagation` | console ops, semver/impact ; registre org (persisté I6) |
+
+Sync vendor marques : contrat canonique
+[`scripts/sync-creezio-vendor.sh`](../scripts/sync-creezio-vendor.sh)
+(wrappers dans chaque `crm/scripts/electron/`). Republish :
+[REPUBLISH-POLICY.md](REPUBLISH-POLICY.md).
 
 Dry-run impacts :
 

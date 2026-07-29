@@ -5,9 +5,9 @@ Monorepo **plateforme** pour les desktops Creezio (TempoFlow, Certivan, Fidu)
 
 > Chemin canonique sur le VPS : **`/opt/docker/creezio`**  
 > Source d'extraction (lecture seule) : `/opt/docker/creezio-kit-src` = `creezio/tempoflow2` @ **v0.10.26**.  
-> Cadre architecture : **`ARCHITECTURE_VERSION = "H5"`** — voir docs Phase H0–H5.
+> Cadre architecture : **`ARCHITECTURE_VERSION = "H5"`** — voir docs Phase H0–H5 + plan I*.
 
-## Architecture (Phases H0 → H5)
+## Architecture (Phases H0 → H5 + I0…)
 
 | Doc | Contenu |
 |-----|---------|
@@ -18,12 +18,10 @@ Monorepo **plateforme** pour les desktops Creezio (TempoFlow, Certivan, Fidu)
 | [docs/BACKLOG-H3.md](docs/BACKLOG-H3.md) | Modules métier TempoFlow (brand repo) H3 |
 | [docs/BACKLOG-H4.md](docs/BACKLOG-H4.md) | MCP proxy unifié H4 |
 | [docs/BACKLOG-H5.md](docs/BACKLOG-H5.md) | Harden plugins / ACL H5 |
-| [docs/PHASE-H0.md](docs/PHASE-H0.md) | Sign-off H0 |
-| [docs/PHASE-H1.md](docs/PHASE-H1.md) | Sign-off H1 (packages cœur CMS) |
-| [docs/PHASE-H2.md](docs/PHASE-H2.md) | Sign-off H2 (isolation multi-DB / API) |
-| [docs/PHASE-H3.md](docs/PHASE-H3.md) | Sign-off H3 (modules TF brand) |
-| [docs/PHASE-H4.md](docs/PHASE-H4.md) | Sign-off H4 (MCP proxy unifié) |
-| [docs/PHASE-H5.md](docs/PHASE-H5.md) | Sign-off H5 (plugins / ACL) |
+| [docs/PHASE-H0.md](docs/PHASE-H0.md) … [PHASE-H5.md](docs/PHASE-H5.md) | Sign-offs H0–H5 |
+| [docs/PHASE-I0.md](docs/PHASE-I0.md) | Sign-off I0 (gouvernance post-H5) |
+| [docs/REPUBLISH-POLICY.md](docs/REPUBLISH-POLICY.md) | Politique republish (I14/I16/I18 seulement) |
+| [docs/gates/POST-H5.md](docs/gates/POST-H5.md) | Checklist gates post-H5 |
 
 En bref : Creezio = **CMS stable** (SQLite `core`, API/MCP façade, nav + slots) ;
 le **métier** vit dans le repo marque (SQLite `brand`) ; les **plugins** sont
@@ -32,6 +30,7 @@ gates — **terminées**. H1 = packages natifs. H2 = **isolation runtime**.
 H3 = **modules TempoFlow** montés dans le brand repo (pas dans le kit).
 H4 = **MCP proxy unifié** (aliases anti-doublon, deny cross-layer).
 H5 = **ACL plugins L3** (see/install/execute, deny cross-org).
+I0 = **gouvernance** sync vendor + console `ARCHITECTURE_VERSION` + politique republish.
 
 ## Structure
 

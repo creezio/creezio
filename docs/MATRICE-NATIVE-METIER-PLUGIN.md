@@ -27,14 +27,16 @@ Source cadre : [ARCHITECTURE-INTENTION.md](ARCHITECTURE-INTENTION.md).
 | Desktop tooling publish / remote-build | `@creezio/desktop-tooling` | ✅ | publish-desktop, remote-build-win, after-pack |
 | Factory new-app | `@creezio/factory` | ✅ | scaffold Client+Serveur + demobrand |
 | Propagation kit→marques | `@creezio/propagation` | ✅ | semver, impact, canaux, extension points, registre L3 |
-| Console ops | `apps/console` | ✅ | kit-versions, feeds, gates |
-| **Auth** (session, login, recovery) | `@creezio/auth` | ✅ | Store + IPC bind + `AUTH_CORE_SQL` ; UI marques encore verticale |
-| **Shell-UI / nav + slots** | `@creezio/shell-ui` | ✅ | `CORE_NAV_ITEMS` + `registerBrandNav` ; demobrand/factory branchés |
-| **Assistant / chat** | `@creezio/assistant` | ✅ | Store mémoire + surface IPC ; persistance sqlite core = raffinement |
+| Console ops | `apps/console` | ✅ | kit-versions (+ `ARCHITECTURE_VERSION` I0), feeds, gates, POST-H5 |
+| **Auth** (session, login, recovery) | `@creezio/auth` | 🟡 | Store mémoire + IPC + `AUTH_CORE_SQL` ; **sqlite store = I1** ; UI marques verticale |
+| **Shell-UI / nav + slots** | `@creezio/shell-ui` | 🟡 | `CORE_NAV_ITEMS` + `registerBrandNav` ; adapters UI réutilisables = **I7** |
+| **Assistant / chat** | `@creezio/assistant` | 🟡 | Store mémoire + IPC ; **sqlite core = I2** |
 | **API kernel** (façade HTTP cœur) | `@creezio/api-kernel` | ✅ | ScopedDbAccess H2 + `authorizePluginAccess` H5 |
 | **MCP façade / proxy** | `@creezio/mcp-facade` | ✅ | H4 aliases/policies + H5 `createDenyUnauthorizedPluginToolPolicy` + JWT `orgId` |
-| **Tasks** (natif plateforme) | `@creezio/tasks` | ✅ | CRUD + mount api-kernel ; distinct Product Hub tasks |
-| **Mails** (natif plateforme) | `@creezio/mails` | ✅ | Draft/send stub + providers ; pas de templates marque |
+| **Tasks** (natif plateforme) | `@creezio/tasks` | 🟡 | CRUD + mount ; **sqlite = I3** |
+| **Mails** (natif plateforme) | `@creezio/mails` | 🟡 | Draft/send stub ; **sqlite + provider non-stub = I3** |
+| Sync vendor standardisé | `scripts/sync-creezio-vendor.sh` | ✅ | **I0** — assert `ARCHITECTURE_VERSION`, CJS, wrappers 3 marques |
+| Politique republish | [REPUBLISH-POLICY.md](REPUBLISH-POLICY.md) | ✅ | **I0** — publish seulement I14/I16/I18 après verts |
 | **SQLite multi-fichiers** (core / brand / plugin) | `@creezio/platform-core` | ✅ | paths H1 + `createSqliteRuntime` / migrations H2 |
 | Splash / host stack (contrat lazy) | `@creezio/electron-shell` | ✅ | splash + host-stack pattern |
 
@@ -77,8 +79,9 @@ Autres marques (indicatif, hors extraction) :
 |----------|-----|--------|-------|
 | Manifest / events / execution grant | `@creezio/platform-core` | ✅ | Contrats purs |
 | Lifecycle / PRD / impact / n8n tags / ACL | `@creezio/product-hub` | ✅ | + `createSqliteProductHubStore` (H1.8) ; demobrand opt-in sqlite |
-| Control plane HTTP host | `@creezio/electron-shell` + product-hub | 🟡 | Tokens kit prêts ; runtime partiellement local marques (dette DoD A–G) |
-| Registre org L3 | `@creezio/propagation` | 🟡 | Mémoire + extension points ; pas de persistance prod kit |
+| Control plane HTTP host | `@creezio/electron-shell` + product-hub | 🟡 | Tokens + `acl` H5 ; runtime unifié kit = **I4** ; bascule marques I10+ |
+| Registre org L3 | `@creezio/propagation` | 🟡 | Mémoire + extension points ; **persistance = I6** |
+| UI Admin Plugins multi-org | demobrand / kit UI | 🟡 | Caps L3 ; surface Admin = **I5** |
 | DB `plugin/<id>` à l’install | `@creezio/platform-core` `ensurePluginDb` | ✅ | Fichier créé à l’install uniquement |
 | ACL granulaire qui voit/utilise | product-hub `acl` + sqlite store | ✅ | Contrats L3/L4 + persistance core kit |
 | Univers perso totalement séparé | — | ❌ *(volontaire)* | Hors scope — plugins = **orga** |
@@ -98,4 +101,6 @@ nommés dans `@creezio/propagation` (contrats, pas automation).
 | Plugins | hub + host + DB `plugin/<id>` + ACL L3 kit (see/install/execute, deny cross-org) + E2E demobrand | TF `plugin-acl` encore L4 user-only → conso L3 progressive | auto-promotion *(volontaire)* |
 
 **H5 terminée** = ACL plugins durcie (L3 + policies API/MCP/control-plane).
-**Plan H0–H5** = complet ; gaps post = consommation marques progressive.
+**Plan H0–H5** = complet.
+**I0 terminée** = gouvernance sync/console/republish ; suite = I1–I18
+(voir [PHASE-I0.md](PHASE-I0.md), [gates/POST-H5.md](gates/POST-H5.md)).
