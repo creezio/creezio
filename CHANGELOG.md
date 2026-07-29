@@ -3,6 +3,12 @@
 
 ## [Unreleased]
 
+### Added
+- **Phase H0** — cadre architecture verrouillé :
+  `docs/ARCHITECTURE-INTENTION.md`, `docs/MATRICE-NATIVE-METIER-PLUGIN.md`,
+  `docs/BACKLOG-H1-PACKAGES.md`, `docs/PHASE-H0.md` ; liens README.
+- `@creezio/platform-core` : constante `ARCHITECTURE_VERSION = "H0"`.
+
 ### Fixed
 - `publish-desktop.sh` : si le DL local est absent, publie via SSH sur
   `remoteBuildHost` (cas TempoFlow : feed sur hôte `crm.tempoflow.fr`).

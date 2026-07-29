@@ -1,3 +1,8 @@
+export {
+  ARCHITECTURE_VERSION,
+} from "./architecture-version.js";
+export type { ArchitectureVersion } from "./architecture-version.js";
+
 export type { PathsContext } from "./paths.js";
 export {
   feedUrlForKind,
