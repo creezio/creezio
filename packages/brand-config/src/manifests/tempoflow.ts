@@ -57,6 +57,6 @@ export const tempoflowManifest: AppManifest = {
     statusFile: "/tmp/tempoflow-build-status.json",
     remoteLogPrefix: "tempoflow-remote-build",
     buildServerArtifact: true,
-    defaultAppRoot: "/opt/docker/creezio-kit-src/crm",
+    defaultAppRoot: "/opt/docker/tempoflow2/crm",
   },
 };

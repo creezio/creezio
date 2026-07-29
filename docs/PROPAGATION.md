@@ -1,8 +1,8 @@
 # Propagation — contrat kit → marques (Notion §3–4)
 
-> Phase F du kit `creezio/creezio`. **Ne bascule pas** les apps prod
-> (Certivan / Fidu / TempoFlow) — voir [PHASE-F.md](PHASE-F.md) et gates
-> [G1](gates/G1-CERTIVAN.md) / [G2](gates/G2-FIDU.md) / [G3](gates/G3-TEMPOFLOW.md).
+> Phase F du kit `creezio/creezio` (contrats). **Phase G exécutée** : gates
+> [G1](gates/G1-CERTIVAN.md) / [G2](gates/G2-FIDU.md) / [G3](gates/G3-TEMPOFLOW.md)
+> signées — voir [DOD-PHASE-A-G.md](DOD-PHASE-A-G.md).
 
 ## Modèle (rappel architecture)
 

@@ -1,5 +1,12 @@
 # Changelog
 
+
+## [Unreleased]
+
+### Changed
+- Phase G3 TempoFlow : `tempoflowManifest.defaultAppRoot` → `/opt/docker/tempoflow2/crm` ; gate G3 sign-off (TF 0.10.27).
+- DoD A→G documenté (`docs/DOD-PHASE-A-G.md`).
+
 Toutes les versions notables des packages `@creezio/*` sont documentées ici.
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/) ;
 bumps via Conventional Commits (`npm run kit:version`).
