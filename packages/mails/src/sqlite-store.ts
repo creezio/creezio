@@ -1,10 +1,11 @@
 /**
- * Store mails plateforme — sqlite **core** (Phase I3).
+ * Store mails plateforme — sqlite **core** (Phase I3 + C1 inbound index).
  */
 
 import crypto from "node:crypto";
 import {
   PLATFORM_MAILS_CORE_SQL,
+  ensureMailsInboundColumnsSql,
   type MailProvider,
   type PlatformMail,
   type PlatformMailsStore,
@@ -27,6 +28,11 @@ type Row = {
   body: string;
   status: string;
   provider_id: string | null;
+  from_addr?: string;
+  message_id?: string | null;
+  folder?: string;
+  read_at?: string | null;
+  brand_email_id?: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -40,9 +46,24 @@ function fromRow(r: Row): PlatformMail {
     body: r.body,
     status: r.status as PlatformMail["status"],
     providerId: r.provider_id,
+    from: r.from_addr || "",
+    messageId: r.message_id ?? null,
+    folder: r.folder || "outbox",
+    readAt: r.read_at ?? null,
+    brandEmailId: r.brand_email_id ?? null,
     createdAt: r.created_at,
     updatedAt: r.updated_at,
   };
+}
+
+function ensureInboundColumns(db: SqliteDatabase): void {
+  for (const sql of ensureMailsInboundColumnsSql()) {
+    try {
+      db.exec(sql);
+    } catch {
+      /* already exists */
+    }
+  }
 }
 
 export type SqliteMailsStore = PlatformMailsStore & {
@@ -67,6 +88,7 @@ export function createSqliteMailsStore(
   const open = opts.openDatabase || openNodeSqliteDatabase;
   const db: SqliteDatabase = open(opts.coreDbPath);
   db.exec(PLATFORM_MAILS_CORE_SQL);
+  ensureInboundColumns(db);
 
   const providers = new Map<string, MailProvider>();
   providers.set("platform-stub", {
@@ -81,14 +103,21 @@ export function createSqliteMailsStore(
   function persist(mail: PlatformMail): void {
     db.prepare(
       `INSERT INTO creezio_platform_mails
-      (id, user_id, to_addr, subject, body, status, provider_id, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      (id, user_id, to_addr, subject, body, status, provider_id,
+       from_addr, message_id, folder, read_at, brand_email_id,
+       created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(id) DO UPDATE SET
         to_addr = excluded.to_addr,
         subject = excluded.subject,
         body = excluded.body,
         status = excluded.status,
         provider_id = excluded.provider_id,
+        from_addr = excluded.from_addr,
+        message_id = excluded.message_id,
+        folder = excluded.folder,
+        read_at = excluded.read_at,
+        brand_email_id = excluded.brand_email_id,
         updated_at = excluded.updated_at`,
     ).run(
       mail.id,
@@ -98,6 +127,11 @@ export function createSqliteMailsStore(
       mail.body,
       mail.status,
       mail.providerId,
+      mail.from || "",
+      mail.messageId ?? null,
+      mail.folder || "outbox",
+      mail.readAt ?? null,
+      mail.brandEmailId ?? null,
       mail.createdAt,
       mail.updatedAt,
     );
@@ -121,6 +155,35 @@ export function createSqliteMailsStore(
         body: input.body || "",
         status: "draft",
         providerId: null,
+        folder: "outbox",
+        createdAt: ts,
+        updatedAt: ts,
+      };
+      persist(mail);
+      return mail;
+    },
+    insertInbound(input) {
+      if (input.messageId) {
+        const existing = db
+          .prepare(
+            `SELECT * FROM creezio_platform_mails WHERE message_id = ? LIMIT 1`,
+          )
+          .get(input.messageId) as Row | undefined;
+        if (existing) return fromRow(existing);
+      }
+      const ts = now();
+      const mail: PlatformMail = {
+        id: input.id || crypto.randomUUID(),
+        userId: input.userId,
+        to: input.to.trim(),
+        from: input.from.trim(),
+        subject: input.subject.trim() || "(sans objet)",
+        body: input.body || "",
+        status: "inbound",
+        providerId: null,
+        messageId: input.messageId ?? null,
+        folder: "inbox",
+        brandEmailId: input.brandEmailId ?? null,
         createdAt: ts,
         updatedAt: ts,
       };

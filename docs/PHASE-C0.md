@@ -90,7 +90,7 @@ C0 → C1 → C2 → C3 → C4 → C7 → C8
 
 ## Suite
 
-→ **C1** : cutover stores TempoFlow (SoT kit).
+→ **C1 livrée** : [PHASE-C1.md](PHASE-C1.md).
 
 ## Verdict
 

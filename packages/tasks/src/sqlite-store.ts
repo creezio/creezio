@@ -59,21 +59,37 @@ export function createSqliteTasksStore(
       db.close?.();
     },
     create(input) {
-      const ts = now();
-      const t: PlatformTask = {
+      return store.upsertWithId!({
         id: crypto.randomUUID(),
+        userId: input.userId,
+        title: input.title,
+        body: input.body,
+        status: "open",
+      });
+    },
+    upsertWithId(input) {
+      const ts = now();
+      const existing = store.get(input.id);
+      const t: PlatformTask = {
+        id: input.id,
         userId: input.userId,
         title: input.title.trim(),
         body: input.body || "",
-        status: "open",
-        createdAt: ts,
+        status: input.status || existing?.status || "open",
+        createdAt: existing?.createdAt || ts,
         updatedAt: ts,
       };
       if (!t.title) throw new Error("title_required");
       db.prepare(
         `INSERT INTO creezio_platform_tasks
         (id, user_id, title, body, status, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(id) DO UPDATE SET
+          user_id = excluded.user_id,
+          title = excluded.title,
+          body = excluded.body,
+          status = excluded.status,
+          updated_at = excluded.updated_at`,
       ).run(
         t.id,
         t.userId,

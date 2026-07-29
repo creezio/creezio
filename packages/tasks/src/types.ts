@@ -16,6 +16,17 @@ export type PlatformTasksStore = {
     title: string;
     body?: string;
   }): PlatformTask;
+  /**
+   * C1 — upsert avec id fixe (bridge marque : même UUID brand/kit).
+   * Pas de contrôle actor (écritures host / migrate).
+   */
+  upsertWithId?(input: {
+    id: string;
+    userId: string;
+    title: string;
+    body?: string;
+    status?: PlatformTaskStatus;
+  }): PlatformTask;
   list(userId: string): PlatformTask[];
   get(id: string): PlatformTask | undefined;
   update(

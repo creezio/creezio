@@ -165,7 +165,8 @@ Les sandboxes factory portent `sandbox: true` (feeds jetables).
 | **V2** | Observabilité native (activité / usages / control-plane) | ✅ socle / 🟡 persist+vendor → **C4** |
 | **V3** | Automations data-driven (triggers + n8n opt.) | ✅ socle / 🟡 persist+marque → **C4** |
 | **C0** | Alignement docs / gates / backlog correction | ✅ |
-| **C1–C8** | Cutover stores, dualités Certivan, V1 réel, V2/V3, mounts, CP, republish | ⬜ |
+| **C1** | Cutover stores TF SoT kit (zéro dual-write) | ✅ |
+| **C2–C8** | Dualités Certivan, V1 réel, V2/V3, mounts, CP, republish | ⬜ |
 
 Voir [docs/PHASE-C0.md](docs/PHASE-C0.md), [docs/PHASE-D0.md](docs/PHASE-D0.md),
 [docs/PHASE-V1.md](docs/PHASE-V1.md), [docs/PHASE-V2.md](docs/PHASE-V2.md),

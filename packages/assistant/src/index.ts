@@ -10,9 +10,11 @@ export type {
   AssistantMessage,
   AssistantRole,
   AssistantStore,
+  CreateConversationInput,
+  AppendMessageInput,
 } from "./types.js";
 export { ASSISTANT_IPC_SURFACE } from "./types.js";
-export { ASSISTANT_CORE_SQL } from "./schema.js";
+export { ASSISTANT_CORE_SQL, ensureAssistantRichColumnsSql } from "./schema.js";
 export { createMemoryAssistantStore } from "./memory-store.js";
 export type {
   CreateSqliteAssistantStoreOptions,

@@ -4,6 +4,9 @@
 ## [Unreleased]
 
 ### Added
+- **Phase C1** — Cutover stores TempoFlow SoT kit : assistant rich schema,
+  tasks `upsertWithId`, mails inbound ; TF zéro dual-write runtime ;
+  `docs/PHASE-C1.md` ; tests kit + `test:phase-c1` ; pas de republish (→ C8).
 - **Phase C0** — Alignement docs / gates / matrice sur l’état réel post-audit
   (versions TF 0.10.31 · Fidu 0.1.56) ; backlog correction **C1–C8** ;
   `docs/PHASE-C0.md` ; tests `test-phase-c0.mjs` ; pas de republish.

@@ -21,7 +21,7 @@
 - [x] ACL L3 + control-plane `acl` (I10)
 - [x] Republish I14 Client+Serveur **0.10.30** *(historique)*
 - [x] D1 MCP unique + D2 adapters dual-write + D3 scan → republish **0.10.31** *(courant)*
-- [ ] **C1** cutover stores SoT kit (fin dual-write) — puis republish regroupé **C8**
+- [x] **C1** cutover stores SoT kit (fin dual-write) — republish regroupé **C8**
 
 ## Certivan (`certivan-app`)
 

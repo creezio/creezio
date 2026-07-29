@@ -8,16 +8,26 @@ function now(): string {
 export function createMemoryTasksStore(): PlatformTasksStore {
   const tasks = new Map<string, PlatformTask>();
 
-  return {
+  const store: PlatformTasksStore = {
     create(input) {
-      const ts = now();
-      const t: PlatformTask = {
+      return store.upsertWithId!({
         id: crypto.randomUUID(),
+        userId: input.userId,
+        title: input.title,
+        body: input.body,
+        status: "open",
+      });
+    },
+    upsertWithId(input) {
+      const ts = now();
+      const existing = tasks.get(input.id);
+      const t: PlatformTask = {
+        id: input.id,
         userId: input.userId,
         title: input.title.trim(),
         body: input.body || "",
-        status: "open",
-        createdAt: ts,
+        status: input.status || existing?.status || "open",
+        createdAt: existing?.createdAt || ts,
         updatedAt: ts,
       };
       if (!t.title) throw new Error("title_required");
@@ -59,4 +69,6 @@ export function createMemoryTasksStore(): PlatformTasksStore {
       return tasks.delete(id);
     },
   };
+
+  return store;
 }

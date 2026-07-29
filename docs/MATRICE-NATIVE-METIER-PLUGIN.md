@@ -33,13 +33,13 @@ Dette D* : [PHASE-D0.md](PHASE-D0.md). Correction : [PHASE-C0.md](PHASE-C0.md).
 | Factory new-app | `@creezio/factory` | ✅ | scaffold Client+Serveur + demobrand |
 | Propagation kit→marques | `@creezio/propagation` | ✅ | semver, impact, canaux, extension points, registre L3 |
 | Console ops | `apps/console` | ✅ | kit-versions (+ `ARCHITECTURE_VERSION` I0), feeds, gates, POST-H5 |
-| **Auth** (session, login, recovery) | `@creezio/auth` | 🟡 | Mémoire + **`createSqliteAuthStore` I1** ; **TF D2** dual-write login Hono → kit — cutover SoT kit = **C1** |
+| **Auth** (session, login, recovery) | `@creezio/auth` | ✅ | Mémoire + **`createSqliteAuthStore` I1** ; **TF C1** SoT kit credentials + JWT/ACL brand |
 | **Shell-UI / nav + slots** | `@creezio/shell-ui` | ✅ | **I7** : `createNavShellAdapter` + `NavRenderModel` ; TF/Certivan/Fidu I12/I16/I18 |
-| **Assistant / chat** | `@creezio/assistant` | 🟡 | Mémoire + **`createSqliteAssistantStore` I2** ; **TF D2** dual-write `chat-db` → kit — cutover = **C1** |
+| **Assistant / chat** | `@creezio/assistant` | ✅ | **I2** + **C1** rich schema ; **TF C1** chat-db façade kit (plus dual-write) |
 | **API kernel** (façade HTTP cœur) | `@creezio/api-kernel` | ✅ | ScopedDbAccess H2 + `authorizePluginAccess` H5 |
 | **MCP façade / proxy** | `@creezio/mcp-facade` | ✅ | H4 aliases/policies + H5 deny plugin ; **TF D1** : exécuteur = Hono `/mcp`, façade = adaptateur + proxy ; Certivan dualité = **C2** |
-| **Tasks** (natif plateforme) | `@creezio/tasks` | 🟡 | CRUD + mount I3 ; **TF D2** brand-retained (kanban ≫ kit) — SoT kit + bridge = **C1** |
-| **Mails** (natif plateforme) | `@creezio/mails` | 🟡 | SQLite + file-sink I3 ; **TF D2** brand inbox + kit outbound only — cutover = **C1** |
+| **Tasks** (natif plateforme) | `@creezio/tasks` | ✅ | CRUD + mount I3 ; **TF C1** SoT kit UUID + kanban/AI brand |
+| **Mails** (natif plateforme) | `@creezio/mails` | ✅ | SQLite + file-sink I3 ; **TF C1** index inbound kit + PJ brand |
 | Sync vendor standardisé | `scripts/sync-creezio-vendor.sh` | ✅ | **I0** — assert `ARCHITECTURE_VERSION=H6`, CJS, wrappers 3 marques |
 | Politique republish | [REPUBLISH-POLICY.md](REPUBLISH-POLICY.md) | ✅ | I14/I16/I18 livrés ; suite D3/D4/D5 si runtime packaged |
 | **SQLite multi-fichiers** (core / brand / plugin) | `@creezio/platform-core` | ✅ | paths H1 + `createSqliteRuntime` / migrations H2 |

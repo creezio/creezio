@@ -17,8 +17,11 @@ export function createMemoryAssistantStore(): AssistantStore {
     createConversation(input) {
       const ts = now();
       const c: AssistantConversation = {
-        id: crypto.randomUUID(),
+        id: input?.id || crypto.randomUUID(),
         title: (input?.title || "Nouvelle conversation").trim(),
+        model: input?.model || "",
+        mode: input?.mode || "chat",
+        userId: input?.userId ?? null,
         createdAt: ts,
         updatedAt: ts,
       };
@@ -26,10 +29,12 @@ export function createMemoryAssistantStore(): AssistantStore {
       messages.set(c.id, []);
       return c;
     },
-    listConversations() {
-      return [...conversations.values()].sort((a, b) =>
-        b.updatedAt.localeCompare(a.updatedAt),
-      );
+    listConversations(userId) {
+      let list = [...conversations.values()];
+      if (userId) {
+        list = list.filter((c) => !c.userId || c.userId === userId);
+      }
+      return list.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
     },
     getConversation(id) {
       return conversations.get(id);
@@ -38,10 +43,11 @@ export function createMemoryAssistantStore(): AssistantStore {
       const c = conversations.get(conversationId);
       if (!c) throw new Error("conversation_not_found");
       const msg: AssistantMessage = {
-        id: crypto.randomUUID(),
+        id: input.id || crypto.randomUUID(),
         conversationId,
         role: input.role,
         content: input.content,
+        sourcesJson: input.sourcesJson ?? null,
         createdAt: now(),
       };
       const list = messages.get(conversationId) || [];
