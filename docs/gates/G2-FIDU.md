@@ -41,7 +41,7 @@
 - [x] Dual `electron:build:win` + `electron:build:win:server`
 - [x] **Vertical conservé** : Paperclip, GED, seeds cabinet, Pennylane, UI CRM
 - [x] **Pas de purge** catalogue TF orphelin
-- [ ] Product Hub / control plane runtime *(tokens prêts via `fiduProductHubTokens`)*
+- [x] Product Hub store + ACL L3 (I18) — HTTP control-plane **N/A** GED ; tokens `fiduProductHubTokens`
 
 ### 3. Validation Client + Serveur
 

@@ -28,7 +28,8 @@
 
 - [x] Wrapper sync → contrat kit I0
 - [x] ADR `clientSlim` + foundation (I17) — clientSlim reste **false**
-- [ ] Republish uniquement I18
+- [x] ACL L3 store + shell-ui + conso stores (I18)
+- [x] Republish uniquement I18 — Client+Serveur **0.1.55**
 
 ## Dry-run sync TF (preuve I0)
 

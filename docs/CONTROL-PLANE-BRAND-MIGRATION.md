@@ -41,13 +41,13 @@ Sandbox demobrand : `sandbox.controlPlaneAcl()` + `sandbox.actorHeaders(actor)`.
 | # | Étape | TF | Certivan | Fidu |
 |---|-------|----|----------|------|
 | 1 | Vendor sync inclut `product-hub` + `electron-shell` (I0/I3) | ✅ I9 | ✅ I15 | ✅ I17 |
-| 2 | Brancher `createSqliteProductHubStore` (ou store existant) | ✅ I10 | ✅ I15/I16 | ☐ |
-| 3 | Remplacer HTTP local par `startHostPluginControlPlane` | ✅ I10 (façade `createPluginControlPlaneHandler`) | ✅ I16 | ☐ I18 |
-| 4 | Passer `acl: createPluginControlPlaneAclFromStore(...)` | ✅ I10 | ✅ I16 | ☐ I18 |
-| 5 | Headers actor `buildPluginAclActorHeaders` / `x-creezio-org-id` | ✅ I10 | ✅ I16 | ☐ |
-| 6 | Garder adapters verticaux (git, accept-check, grants CRM) | ✅ I10 | ✅ I16 | ☐ |
-| 7 | Tests deny cross-org + owner install OK | ✅ I10 | ✅ I16 | ☐ |
-| 8 | Retirer `plugin-control-api.ts` mort après verts | ✅ I10 (aminci → kit + extras) | ✅ I16 (aminci) | ☐ |
+| 2 | Brancher `createSqliteProductHubStore` (ou store existant) | ✅ I10 | ✅ I15/I16 | ✅ I17/I18 |
+| 3 | Remplacer HTTP local par `startHostPluginControlPlane` | ✅ I10 (façade `createPluginControlPlaneHandler`) | ✅ I16 | ➖ N/A GED (pas de HTTP plugins) |
+| 4 | Passer `acl: createPluginControlPlaneAclFromStore(...)` | ✅ I10 | ✅ I16 | ✅ I18 (`createFiduControlPlaneAcl` + `brand-runtime.controlPlaneAcl`) |
+| 5 | Headers actor `buildPluginAclActorHeaders` / `x-creezio-org-id` | ✅ I10 | ✅ I16 | ✅ I18 (`fiduActorHeaders`) |
+| 6 | Garder adapters verticaux (git, accept-check, grants CRM) | ✅ I10 | ✅ I16 | ➖ N/A (pas de control-plane HTTP) |
+| 7 | Tests deny cross-org + owner install OK | ✅ I10 | ✅ I16 | ✅ I18 (`test:plugin-acl-l3`) |
+| 8 | Retirer `plugin-control-api.ts` mort après verts | ✅ I10 (aminci → kit + extras) | ✅ I16 (aminci) | ➖ N/A (jamais présent) |
 
 ## Sans `acl` (rétrocompat)
 
