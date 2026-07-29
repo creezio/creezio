@@ -4,6 +4,12 @@
 ## [Unreleased]
 
 ### Added
+- **Phase R0** — Gel inventions : V1/V2/V3 = prototypes ≠ SoT ;
+  `@creezio/automations` clarifié **lifecycle-only** ; interdiction nouvelles
+  features plateforme dans TF/Certivan/Fidu ; `docs/PHASE-R0.md`.
+- **Phase R1** — Package `@creezio/database` (port SoT TempoFlow Admin Database
+  + automations row-level) ; cutover TF vendor ; matrice Database = natif ✅ ;
+  `docs/PHASE-R1.md` ; tests `test-phase-r0/r1` ; **pas** de republish exe.
 - **Phase C8** — Docs finales + republish TF **0.10.32** · Certivan **0.1.15** ·
   Fidu **0.1.57** ; checklist C* 100 % ; `docs/PHASE-C8.md`.
 - **Phase C7** — Control-plane unifié `startHostPluginControlPlane` (TF /
@@ -25,9 +31,9 @@
 - **Phase C0** — Alignement docs / gates / matrice sur l’état réel post-audit
   (versions TF 0.10.31 · Fidu 0.1.56) ; backlog correction **C1–C8** ;
   `docs/PHASE-C0.md` ; tests `test-phase-c0.mjs` ; pas de republish.
-- **Phase V3** — Automations data-driven : package `@creezio/automations`
-  (triggers lifecycle/données, actions emit_obs/webhook/n8n_tag_hint) ;
-  demobrand règles + API ; sign-off [VISION-V1-V3.md](docs/VISION-V1-V3.md) ;
+- **Phase V3** — Automations **lifecycle-only** (prototype) : package
+  `@creezio/automations` (triggers plugins/org/factory/obs — **≠** Database
+  row-level) ; demobrand règles + API ; sign-off [VISION-V1-V3.md](docs/VISION-V1-V3.md) ;
   tests `test-phase-v3.mjs` ; pas de republish marques.
 - **Phase V2** — Observabilité native : package `@creezio/observability`
   (activité, usages plugins, control-plane) ; demobrand mount + émissions ;

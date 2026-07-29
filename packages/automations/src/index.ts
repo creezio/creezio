@@ -1,5 +1,8 @@
 /**
- * @creezio/automations — triggers lifecycle / données + actions (V3).
+ * @creezio/automations — **lifecycle-only** (plugins / org / factory / obs).
+ *
+ * Prototype V3 — **pas** le moteur Admin Database row-level.
+ * SoT row-level = `@creezio/database` (extraction TempoFlow, R1).
  */
 
 export type {

@@ -100,3 +100,21 @@ Fidu **0.1.57**). Voir [PHASE-C8.md](PHASE-C8.md) · [PHASE-C0.md](PHASE-C0.md).
 ## Verdict
 
 **Vision V1–V3 : SIGNÉE** (socle). Correction produit : backlog **C\***.
+
+---
+
+## Amendement R0 — prototypes ≠ Source of Truth
+
+> Intention OS Creezio (audit écart) : OS = commun ; marques = minimum métier ;
+> extraire le réel TF — **ne pas inventer** de jumeaux.
+
+| Prototype | Lecture corrigée |
+|-----------|------------------|
+| **V1** Fabrique | Prototype kit/demobrand — **≠** SoT fabrique produit final |
+| **V2** Observabilité | Prototype kit — **≠** extraction complète vertical |
+| **V3** `@creezio/automations` | **Lifecycle-only** (plugins/org/factory/obs) — **≠** automations **Database** row-level TempoFlow |
+
+**Interdit** (R0) : nouvelles features plateforme inventées dans TF / Certivan / Fidu.
+Extraction Database réelle = **R1** → `@creezio/database`.
+
+Voir [PHASE-R0.md](PHASE-R0.md).

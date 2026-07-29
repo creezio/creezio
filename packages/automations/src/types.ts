@@ -1,5 +1,7 @@
 /**
- * Contrats automations data-driven (vision V3).
+ * Contrats automations **lifecycle** (vision V3 prototype).
+ * Triggers = plugin/org/factory/obs — pas row-level Database.
+ * Voir `@creezio/database` pour Admin Database / automations TF.
  */
 
 export const AUTOMATION_TRIGGER_TYPES = [

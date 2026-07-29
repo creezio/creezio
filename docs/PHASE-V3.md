@@ -21,7 +21,7 @@ casser les marques ni exiger un n8n vivant.
 
 | # | Livrable | Statut |
 |---|----------|--------|
-| 1 | Package `@creezio/automations` (triggers, rules, actions, engine) | ✅ |
+| 1 | Package `@creezio/automations` **lifecycle-only** (triggers, rules, actions, engine) — ≠ Database row-level | ✅ |
 | 2 | Demobrand — règles défaut + dispatch install / data / factory | ✅ |
 | 3 | API `/api/v1/modules/automations/*` | ✅ |
 | 4 | Intégration optionnelle n8n : `n8n_tag_hint` + `webhook` (skip si pas d’URL) | ✅ |

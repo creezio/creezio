@@ -28,6 +28,7 @@ const PACKAGES = [
   "mails",
   "observability",
   "automations",
+  "database",
   "electron-shell",
   "desktop-tooling",
   "propagation",

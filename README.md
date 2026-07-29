@@ -22,6 +22,8 @@ Monorepo **plateforme** pour les desktops Creezio (TempoFlow, Certivan, Fidu)
 | [docs/PHASE-I0.md](docs/PHASE-I0.md) … [PHASE-I18.md](docs/PHASE-I18.md) | Sign-offs I0–I8 (kit H6) + I9–I18 conso 3 marques |
 | [docs/PHASE-D0.md](docs/PHASE-D0.md) | Dette post-I18 — D0 docs/matrice → D1…D6 |
 | [docs/PHASE-C0.md](docs/PHASE-C0.md) | Correction post-audit — C0 docs → C1…C8 |
+| [docs/PHASE-R0.md](docs/PHASE-R0.md) | Gel inventions — V1–V3 prototypes ≠ SoT |
+| [docs/PHASE-R1.md](docs/PHASE-R1.md) | Database TF → `@creezio/database` (natif) |
 | [docs/FEATURE-PARITY-DEMOBRAND-H6.md](docs/FEATURE-PARITY-DEMOBRAND-H6.md) | Checklist parity demobrand avant I9 |
 | [docs/REPUBLISH-POLICY.md](docs/REPUBLISH-POLICY.md) | Politique republish (I*/D*/C* — republish C* en C8) |
 | [docs/gates/POST-H5.md](docs/gates/POST-H5.md) | Checklist gates post-H5 + backlog C* |
@@ -51,7 +53,8 @@ packages/
   tasks/             # Tâches plateforme (H1.6)
   mails/             # Mails plateforme (H1.7)
   observability/     # Activité / usages plugins / control-plane (V2)
-  automations/       # Triggers lifecycle / données + actions (V3)
+  automations/       # Lifecycle-only plugins/org/factory (V3 prototype ≠ Database)
+  database/          # Admin Database + automations row-level (R1, SoT TF)
   electron-shell/    # runtime Electron (boot, updater, tray, splash, host stack)
   desktop-tooling/   # publish-desktop, remote-build-win, after-pack, build-status
   factory/           # creezio new-app (Phase D + wiring H1.9)
@@ -163,13 +166,16 @@ Les sandboxes factory portent `sandbox: true` (feeds jetables).
 | **D6** | Certivan polish aliases | ✅ |
 | **V1** | Fabrique plugins conversationnelle (demobrand E2E) | ✅ socle / 🟡 produit → **C3** |
 | **V2** | Observabilité native (activité / usages / control-plane) | ✅ socle / 🟡 persist+vendor → **C4** |
-| **V3** | Automations data-driven (triggers + n8n opt.) | ✅ socle / 🟡 persist+marque → **C4** |
+| **V3** | Automations lifecycle-only (prototype ≠ Database) | ✅ socle / C4 |
 | **C0** | Alignement docs / gates / backlog correction | ✅ |
 | **C1** | Cutover stores TF SoT kit (zéro dual-write) | ✅ |
 | **C2** | Certivan MCP+stores fermés en code | ✅ |
-| **C3–C8** | V1 réel, V2/V3, mounts, CP, republish | ⬜ |
+| **C3–C8** | V1 réel, V2/V3, mounts, CP, republish | ✅ |
+| **R0** | Gel inventions — V1–V3 prototypes ≠ SoT | ✅ |
+| **R1** | Database TF → `@creezio/database` (natif) | ✅ |
 
-Voir [docs/PHASE-C0.md](docs/PHASE-C0.md), [docs/PHASE-D0.md](docs/PHASE-D0.md),
+Voir [docs/PHASE-R0.md](docs/PHASE-R0.md), [docs/PHASE-R1.md](docs/PHASE-R1.md),
+[docs/PHASE-C0.md](docs/PHASE-C0.md), [docs/PHASE-D0.md](docs/PHASE-D0.md),
 [docs/PHASE-V1.md](docs/PHASE-V1.md), [docs/PHASE-V2.md](docs/PHASE-V2.md),
 [docs/PHASE-V3.md](docs/PHASE-V3.md), [docs/VISION-V1-V3.md](docs/VISION-V1-V3.md),
 [docs/PHASE-H5.md](docs/PHASE-H5.md),

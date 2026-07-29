@@ -1,14 +1,13 @@
 # Matrice Natif / Métier / Plugin
 
-> Cartographie **Phase H0** (2026-07-29), réalignée **D0** puis **C0**
-> (correction post-audit). Versions courantes : TF **0.10.32** · Certivan
-> **0.1.15** · Fidu **0.1.57** (C8).  
-> Légende : **✅** livré / utilisable · **🟡** partiel (demi-mesure —
-> fermeture [PHASE-C0.md](PHASE-C0.md) → C1…C8) · **❌** absent / hors
+> Cartographie **Phase H0** (2026-07-29), réalignée **D0** / **C0**, puis
+> **R0** (intention OS : geler inventions ; V1–V3 = prototypes ≠ SoT).
+> Versions courantes : TF **0.10.32** · Certivan **0.1.15** · Fidu **0.1.57**.
+> Légende : **✅** livré / utilisable · **🟡** partiel · **❌** absent / hors
 > scope volontaire.
 
 Source cadre : [ARCHITECTURE-INTENTION.md](ARCHITECTURE-INTENTION.md).  
-Dette D* : [PHASE-D0.md](PHASE-D0.md). Correction : [PHASE-C0.md](PHASE-C0.md).
+Gel inventions : [PHASE-R0.md](PHASE-R0.md). Database : [PHASE-R1.md](PHASE-R1.md).
 
 ---
 
@@ -27,7 +26,8 @@ Dette D* : [PHASE-D0.md](PHASE-D0.md). Correction : [PHASE-C0.md](PHASE-C0.md).
 | Product Hub / plugins lifecycle + ACL L3/L4 | `@creezio/product-hub` | ✅ | H5 : `decidePluginAccess` see/install/execute + binding org + deny cross-org |
 | **Fabrique plugins conversationnelle** | `@creezio/product-hub` (+ demobrand/console) | ✅ | **C3** scaffold réel (schema/api/mcp) + console SQLite persist + `PrdDrafter` LLM opt. (socle V1 supersédé) |
 | **Observabilité** (activité / usages / CP) | `@creezio/observability` | ✅ | **C4** SQLite console + demobrand + vendor TF pilote |
-| **Automations** data-driven | `@creezio/automations` | ✅ | **C4** SQLite rules/runs + console + demobrand + TF pilote |
+| **Automations lifecycle** (plugins/org) | `@creezio/automations` | ✅ | **V3 prototype** lifecycle-only — **≠** Database row-level ; C4 persist demobrand |
+| **Database admin + automations row-level** | `@creezio/database` | ✅ | **R1** port SoT TempoFlow + cutover TF ; panel Admin Database inchangé |
 | Plugins host (spawn, grants, events) | platform-core + electron-shell | ✅ | `plugins/*`, control plane + `acl` option H5 |
 | Desktop tooling publish / remote-build | `@creezio/desktop-tooling` | ✅ | publish-desktop, remote-build-win, after-pack |
 | Factory new-app | `@creezio/factory` | ✅ | scaffold Client+Serveur + demobrand |
@@ -101,7 +101,7 @@ nommés dans `@creezio/propagation` (contrats, pas automation).
 
 | Couche | ✅ | 🟡 (correction C*) | ❌ |
 |--------|----|-------------------|-----|
-| Natif socle | brand-config… fabrique C3, obs/automations C4, CP unifié C7 | — | — |
+| Natif socle | brand-config… fabrique C3, obs C4, lifecycle automations V3, **Database R1**, CP C7 | — | — |
 | Métier TF | panier, dispatch, releves, catalogue, stack, scan, MCP, ACL L3 ; C1–C4–C7 ; republish **0.10.32** (C8) | — | — |
 | Métier Fidu / Certivan | foundation + ACL + feeds | Fidu mounts (**C5**) ; Certivan dualités (**C2**) + RTI (**C6**) | — |
 | Plugins | hub + ACL L3 3 marques + Fidu C5 ; fabrique C3 ; obs/automations C4 ; CP C7 | — | auto-promotion / univers perso / cloud registry *(volontaire)* |

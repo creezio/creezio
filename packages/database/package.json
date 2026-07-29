@@ -1,7 +1,7 @@
 {
-  "name": "@creezio/automations",
+  "name": "@creezio/database",
   "version": "0.1.0",
-  "description": "Lifecycle automations ONLY (plugins/org/factory/obs) — V3 prototype ≠ Database row-level (@creezio/database)",
+  "description": "Database admin native — catalogue, browse, CRUD, automations row-level (port TempoFlow SoT)",
   "type": "module",
   "main": "./dist-cjs/index.js",
   "types": "./dist/index.d.ts",
@@ -22,10 +22,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@creezio/api-kernel": "0.1.0",
-    "@creezio/observability": "0.1.0",
-    "@creezio/platform-core": "0.1.0",
-    "@creezio/product-hub": "0.1.0"
+    "@creezio/platform-core": "0.1.0"
   },
   "devDependencies": {
     "@types/node": "^22.15.3",
