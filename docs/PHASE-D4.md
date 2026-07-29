@@ -2,7 +2,7 @@
 
 | | |
 |--|--|
-| **Statut** | ✅ **Sign-off code** (republish si standing ship) |
+| **Statut** | ✅ **Sign-off code** — republish standing ship **en attente** |
 | **Date** | 2026-07-29 |
 | **Repo** | `fidu` (+ doc kit) |
 | **Prérequis** | [PHASE-I18.md](PHASE-I18.md), [PHASE-D3.md](PHASE-D3.md) |
