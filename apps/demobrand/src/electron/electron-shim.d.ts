@@ -14,6 +14,7 @@ declare module "electron" {
     setName: (name: string) => void;
     setAppUserModelId: (id: string) => void;
     getVersion: () => string;
+    on: (event: string, listener: (...args: unknown[]) => void) => void;
   };
 
   export class BrowserWindow {

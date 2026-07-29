@@ -1,9 +1,9 @@
 # `@creezio/platform-core`
 
 Paths userData, local-config, embeds purs, plugins purs, **layout SQLite
-multi-fichiers** (`core` / `brand` / `plugin/<id>`).
+multi-fichiers** (`core` / `brand` / `plugin/<id>`) + **runtime H2**.
 
-## SQLite (H1.0)
+## SQLite paths (H1.0)
 
 | Helper | Fichier | Quand |
 |--------|---------|-------|
@@ -11,18 +11,23 @@ multi-fichiers** (`core` / `brand` / `plugin/<id>`).
 | `resolveBrandDbPath` | `{userData}/{manifest.dbFileName}` | Jour 0 (alias soft de `resolveDbPath`) |
 | `resolvePluginDbPath(id)` | `{userData}/sqlite/plugin/<id>.db` | À l'install (`ensurePluginDb`) |
 
-Migration : garder `resolveDbPath` (= brand) ; préférer `resolveBrandDbPath`
-dans le code neuf. Constante `ARCHITECTURE_VERSION` (cadre H0/H1…).
-
-## Export public (extrait)
+## Runtime multi-DB (H2.0) + migrations (H2.1)
 
 ```ts
 import {
   ARCHITECTURE_VERSION,
-  resolveCoreDbPath,
-  resolveBrandDbPath,
-  resolvePluginDbPath,
-  ensurePluginDb,
-  ensureDay0SqliteLayout,
+  composeMigrations,
+  createSqliteRuntime,
 } from "@creezio/platform-core";
+
+const runtime = createSqliteRuntime({
+  ctx,
+  coreMigrations: composeMigrations({ id: "h2_001_auth", sql: AUTH_CORE_SQL }),
+  brandMigrations: composeMigrations({ id: "h2_brand_001", sql: BRAND_SQL }),
+});
+// jour 0 : core + brand ouverts ; aucun plugin
+runtime.openPlugin("meteo", pluginMigrations); // à l'install
 ```
+
+Chaque fichier DB a sa table `_creezio_schema_migrations`.  
+Constante `ARCHITECTURE_VERSION` (cadre H0/H1/H2…).

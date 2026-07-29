@@ -1,8 +1,14 @@
 /**
  * Façade API Creezio — registre + routes cœur + deny-by-default cross-write.
+ * H2 : ScopedDbAccess injecté quand `sqliteRuntime` est fourni.
  */
 
 import { ARCHITECTURE_VERSION } from "@creezio/platform-core";
+import {
+  CrossLayerWriteDeniedError,
+  createScopedDbAccess,
+  mountLayerRef,
+} from "./db-scope.js";
 import type {
   ApiKernelOptions,
   ApiMount,
@@ -43,6 +49,16 @@ function assertMountId(id: string, kind: string): void {
   }
 }
 
+function isCrossWriteAttempt(subPath: string): boolean {
+  return (
+    subPath.startsWith("__cross/") ||
+    subPath === "__cross" ||
+    subPath.startsWith("core/") ||
+    subPath === "core" ||
+    /(^|\/)\.\.(?:\/|$)/.test(subPath)
+  );
+}
+
 export type ApiKernel = {
   registerModuleApi(id: string, mount: ApiMount): void;
   registerPluginApi(id: string, mount: ApiMount): void;
@@ -52,6 +68,8 @@ export type ApiKernel = {
   handle(req: ApiRequest): Promise<ApiResponse>;
   /** Préfixe domaine unique documenté. */
   readonly prefix: typeof API_V1_PREFIX;
+  /** Runtime multi-DB attaché (H2), si fourni. */
+  readonly sqliteRuntime: ApiKernelOptions["sqliteRuntime"];
 };
 
 export function createApiKernel(opts: ApiKernelOptions = {}): ApiKernel {
@@ -60,6 +78,7 @@ export function createApiKernel(opts: ApiKernelOptions = {}): ApiKernel {
   const architectureVersion = opts.architectureVersion ?? ARCHITECTURE_VERSION;
   const appVersion = opts.appVersion ?? "0.0.0";
   const brandId = opts.brandId ?? null;
+  const runtime = opts.sqliteRuntime;
 
   function handleCore(method: string, subPath: string): ApiResponse {
     const m = method.toUpperCase();
@@ -89,16 +108,37 @@ export function createApiKernel(opts: ApiKernelOptions = {}): ApiKernel {
       if (m !== "GET") {
         return json(405, { ok: false, error: "method_not_allowed" });
       }
+      const sqliteStatus = runtime?.status();
       return json(200, {
         ok: true,
         architectureVersion,
         sqliteLayout: ["core", "brand", "plugin/<id>"],
         apiPrefix: API_V1_PREFIX,
+        isolation: {
+          crossWriteDefault: "deny",
+          scopedDb: Boolean(runtime),
+        },
         mounts: {
           modules: [...modules.keys()],
           plugins: [...plugins.keys()],
         },
+        sqlite: sqliteStatus
+          ? {
+              coreOpen: sqliteStatus.coreOpen,
+              brandOpen: sqliteStatus.brandOpen,
+              openPlugins: sqliteStatus.openPlugins,
+            }
+          : null,
       });
+    }
+    if (subPath === "sqlite/status") {
+      if (m !== "GET") {
+        return json(405, { ok: false, error: "method_not_allowed" });
+      }
+      if (!runtime) {
+        return json(503, { ok: false, error: "sqlite_runtime_unavailable" });
+      }
+      return json(200, { ok: true, ...runtime.status() });
     }
     return json(404, { ok: false, error: "core_route_not_found", path: subPath });
   }
@@ -110,26 +150,52 @@ export function createApiKernel(opts: ApiKernelOptions = {}): ApiKernel {
     req: ApiRequest,
     subPath: string,
   ): Promise<ApiResponse> {
-    const method = req.method.toUpperCase();
-    if (WRITE_METHODS.has(method) && !mount.allowCrossWrite) {
-      // Deny-by-default : écritures restent dans l'espace monté.
-      // Le handler ne reçoit que son propre préfixe — pas de proxy cross.
-      // Flag allowCrossWrite réservé aux bridges explicites (ex. admin kit).
-    }
-    // Guard supplémentaire : refus si le path tente de « sortir » (déjà parsé).
     if (subPath.includes("..")) {
       return json(400, { ok: false, error: "invalid_path" });
     }
-    return mount.handle({
-      req,
-      space,
-      mountId: id,
-      subPath,
-    });
+
+    const method = req.method.toUpperCase();
+    if (
+      WRITE_METHODS.has(method) &&
+      mount.allowCrossWrite !== true &&
+      isCrossWriteAttempt(subPath)
+    ) {
+      return json(403, {
+        ok: false,
+        error: "cross_write_denied",
+        space,
+        id,
+      });
+    }
+
+    const layerRef = mountLayerRef(space, id);
+    const db = runtime ? createScopedDbAccess(runtime, layerRef) : undefined;
+
+    try {
+      return await mount.handle({
+        req,
+        space,
+        mountId: id,
+        subPath,
+        db,
+      });
+    } catch (err) {
+      if (err instanceof CrossLayerWriteDeniedError) {
+        return json(403, {
+          ok: false,
+          error: err.code,
+          from: err.from,
+          to: err.to,
+          message: err.message,
+        });
+      }
+      throw err;
+    }
   }
 
   return {
     prefix: API_V1_PREFIX,
+    sqliteRuntime: runtime,
 
     registerModuleApi(id, mount) {
       assertMountId(id, "module");
@@ -156,6 +222,7 @@ export function createApiKernel(opts: ApiKernelOptions = {}): ApiKernel {
           space: "module",
           id,
           allowCrossWrite: Boolean(m.allowCrossWrite),
+          dbLayer: m.dbLayer ?? "brand",
         });
       }
       for (const [id, m] of plugins) {
@@ -163,6 +230,7 @@ export function createApiKernel(opts: ApiKernelOptions = {}): ApiKernel {
           space: "plugin",
           id,
           allowCrossWrite: Boolean(m.allowCrossWrite),
+          dbLayer: m.dbLayer ?? "plugin",
         });
       }
       return out;
@@ -193,6 +261,19 @@ export function createApiKernel(opts: ApiKernelOptions = {}): ApiKernel {
           path === API_CORE_PREFIX
             ? ""
             : path.slice(API_CORE_PREFIX.length + 1);
+
+        // Routes core avec DB scopée core (H2)
+        if (runtime && (sub.startsWith("db/") || sub === "db")) {
+          const db = createScopedDbAccess(runtime, { kind: "core" });
+          if (sub === "db/ping" && method === "GET") {
+            return json(200, {
+              ok: true,
+              layer: db.layer,
+              path: db.path,
+            });
+          }
+        }
+
         return handleCore(method, sub);
       }
 
@@ -206,20 +287,6 @@ export function createApiKernel(opts: ApiKernelOptions = {}): ApiKernel {
         if (!mount) {
           return json(404, { ok: false, error: "module_not_mounted", id });
         }
-        // Cross-write deny : un module ne peut pas cibler /core ou /plugins
-        // via ce dispatcher (path déjà contraint à /modules/<id>).
-        if (
-          WRITE_METHODS.has(method) &&
-          mount.allowCrossWrite !== true &&
-          subPath.startsWith("__cross/")
-        ) {
-          return json(403, {
-            ok: false,
-            error: "cross_write_denied",
-            space: "module",
-            id,
-          });
-        }
         return dispatchMount("module", id, mount, { ...req, method, path }, subPath);
       }
 
@@ -232,18 +299,6 @@ export function createApiKernel(opts: ApiKernelOptions = {}): ApiKernel {
         const mount = plugins.get(id);
         if (!mount) {
           return json(404, { ok: false, error: "plugin_not_mounted", id });
-        }
-        if (
-          WRITE_METHODS.has(method) &&
-          mount.allowCrossWrite !== true &&
-          subPath.startsWith("__cross/")
-        ) {
-          return json(403, {
-            ok: false,
-            error: "cross_write_denied",
-            space: "plugin",
-            id,
-          });
         }
         return dispatchMount("plugin", id, mount, { ...req, method, path }, subPath);
       }

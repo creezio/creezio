@@ -61,8 +61,9 @@ function tmpCtx() {
   };
 }
 
-test("H1.0 ARCHITECTURE_VERSION = H1", () => {
-  assert.equal(ARCHITECTURE_VERSION, "H1");
+test("H1.0 ARCHITECTURE_VERSION >= H1 (cadre évolutif)", () => {
+  // H1 a introduit la constante ; H2+ la bump — on vérifie qu'elle reste définie.
+  assert.match(ARCHITECTURE_VERSION, /^H[1-9]\d*$/);
 });
 
 test("H1.0 sqlite paths core/brand/plugin + soft alias resolveDbPath", () => {
@@ -100,7 +101,7 @@ test("H1.1 api-kernel health/version/architecture + mounts + cross-write deny", 
     method: "GET",
     path: "/api/v1/core/version",
   });
-  assert.equal(version.body.architectureVersion, "H1");
+  assert.match(version.body.architectureVersion, /^H[1-9]\d*$/);
 
   const arch = await api.handle({
     method: "GET",

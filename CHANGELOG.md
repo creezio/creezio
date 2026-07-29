@@ -4,6 +4,12 @@
 ## [Unreleased]
 
 ### Added
+- **Phase H2** — isolation DB/API runtime :
+  `createSqliteRuntime` + `ensureMigrations` / `composeMigrations` ;
+  `ScopedDbAccess` api-kernel (deny brand/plugin → core) ;
+  MCP `listToolsBySpace` / `discoverToolsBySpace` ;
+  demobrand `sandbox-runtime` preuve E2E ;
+  `docs/BACKLOG-H2.md`, `docs/PHASE-H2.md` ; tests `scripts/test-phase-h2.mjs`.
 - **Phase H1** — packages cœur CMS :
   `@creezio/api-kernel`, `@creezio/mcp-facade`, `@creezio/auth`,
   `@creezio/shell-ui`, `@creezio/assistant`, `@creezio/tasks`, `@creezio/mails` ;
@@ -16,7 +22,7 @@
   `docs/BACKLOG-H1-PACKAGES.md`, `docs/PHASE-H0.md` ; liens README.
 
 ### Changed
-- `@creezio/platform-core` : `ARCHITECTURE_VERSION = "H1"` (était `"H0"`).
+- `@creezio/platform-core` : `ARCHITECTURE_VERSION = "H2"` (était `"H1"`).
 - Inventaire propagation : 15 packages `@creezio/*` (était 8).
 
 ### Fixed

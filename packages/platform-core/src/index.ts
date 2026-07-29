@@ -40,6 +40,40 @@ export {
   resolveSqliteRoot,
 } from "./sqlite-layout.js";
 
+/* ── Phase H2 : runtime multi-DB + migrations ── */
+export type {
+  OpenSqliteDatabase,
+  SqliteDatabase,
+  SqliteStatement,
+} from "./sqlite-driver.js";
+export { openNodeSqliteDatabase } from "./sqlite-driver.js";
+
+export type {
+  EnsureMigrationsResult,
+  SqliteMigration,
+} from "./sqlite-migrations.js";
+export {
+  SQLITE_META_MIGRATION,
+  SQLITE_MIGRATIONS_TABLE,
+  composeMigrations,
+  ensureMigrations,
+  listAppliedMigrations,
+} from "./sqlite-migrations.js";
+
+export type {
+  CreateSqliteRuntimeOptions,
+  OpenPluginResult,
+  SqliteHandle,
+  SqliteLayerKind,
+  SqliteLayerRef,
+  SqliteRuntime,
+  SqliteRuntimeStatus,
+} from "./sqlite-runtime.js";
+export {
+  createSqliteRuntime,
+  resolveLayerPath,
+} from "./sqlite-runtime.js";
+
 export type {
   AiWorkspacePresentationSetting,
   BackgroundSettings,

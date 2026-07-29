@@ -309,12 +309,15 @@ async function main(): Promise<void> {
     boot.appKind === "legacy" ? "client" : boot.appKind,
   );
 
-  // Wiring H1 — api-kernel + mcp-facade + auth (stores prêts, handlers à brancher).
+  // Wiring H1/H2 — api-kernel + mcp-facade + auth.
+  // Pour l'isolation multi-DB réelle (SqliteRuntime), voir demobrand
+  // \`sandbox-runtime.ts\` (preuve H2) — à brancher quand la marque est prête.
   const api = createApiKernel({ brandId: manifest.brandId });
   const mcp = createMcpFacade({
     brandId: manifest.brandId,
     allowUnauthenticated: true,
     listApiMounts: () => api.listMounts(),
+    discoverToolsBySpace: async () => ({ module: [], plugin: [] }),
   });
   const auth = createMemoryAuthStore();
   const navItems = mergeNav(coreNavItems, verticalSlot.items);

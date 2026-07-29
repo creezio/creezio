@@ -1,8 +1,9 @@
 /**
- * @creezio/mcp-facade — MCP d'app unique (Phase H1.2).
+ * @creezio/mcp-facade — MCP d'app unique (Phase H1.2 / discovery H2.3).
  */
 
 export type {
+  DiscoverToolsBySpaceFn,
   DiscoverToolsFn,
   McpAuthResult,
   McpFacadeOptions,
@@ -11,6 +12,7 @@ export type {
   McpToolCallResult,
   McpToolDefinition,
   McpToolHandler,
+  McpToolsBySpace,
   McpToolSpace,
 } from "./types.js";
 

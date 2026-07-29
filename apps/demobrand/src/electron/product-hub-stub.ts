@@ -1,6 +1,7 @@
 /**
  * Stub Product Hub sandbox DemoBrand.
- * Défaut : store mémoire. Opt-in sqlite core via DEMOBRAND_PRODUCT_HUB_SQLITE=1.
+ * H2 : utilise le sqlite **core** du runtime sandbox quand disponible ;
+ * sinon opt-in `DEMOBRAND_PRODUCT_HUB_SQLITE=1` (tmp) ou mémoire.
  */
 
 import fs from "node:fs";
@@ -19,10 +20,45 @@ export const demobrandProductHubTokens =
   productHubTokensFromManifest(manifest);
 
 let store: ProductHubStore | null = null;
+let boundCorePath: string | null = null;
+
+/** Injecte un store déjà ouvert (ex. sandbox H2) sans rouvrir core. */
+export function setDemobrandProductHubStore(next: ProductHubStore): void {
+  store = next;
+  boundCorePath = "dbPath" in next ? String((next as { dbPath?: string }).dbPath ?? "") : null;
+}
+
+/** Branche le store sur le core du SqliteRuntime H2 (préféré). */
+export function bindDemobrandProductHubCore(coreDbPath: string): ProductHubStore {
+  if (
+    store &&
+    "close" in store &&
+    typeof (store as { close?: () => void }).close === "function" &&
+    boundCorePath &&
+    boundCorePath !== coreDbPath
+  ) {
+    try {
+      (store as { close: () => void }).close();
+    } catch {
+      /* ignore */
+    }
+  }
+  boundCorePath = coreDbPath;
+  store = createSqliteProductHubStore({
+    coreDbPath,
+    conversationPrefix: "demobrand",
+  });
+  return store;
+}
 
 export function getDemobrandProductHubStore(): ProductHubStore {
   if (!store) {
-    if (process.env.DEMOBRAND_PRODUCT_HUB_SQLITE === "1") {
+    if (boundCorePath) {
+      store = createSqliteProductHubStore({
+        coreDbPath: boundCorePath,
+        conversationPrefix: "demobrand",
+      });
+    } else if (process.env.DEMOBRAND_PRODUCT_HUB_SQLITE === "1") {
       const dir = path.join(os.tmpdir(), "creezio-demobrand-sqlite");
       fs.mkdirSync(dir, { recursive: true });
       const coreDbPath = path.join(dir, "core.db");

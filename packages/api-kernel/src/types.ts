@@ -2,6 +2,9 @@
  * Contrats HTTP façade Creezio — indépendants d'Express/Fastify/Next.
  */
 
+import type { SqliteRuntime } from "@creezio/platform-core";
+import type { ScopedDbAccess } from "./db-scope.js";
+
 export type ApiSpace = "core" | "module" | "plugin";
 
 export type ApiRequest = {
@@ -26,6 +29,11 @@ export type ApiHandlerContext = {
   mountId: string;
   /** Sous-chemin relatif au préfixe de montage (sans slash initial). */
   subPath: string;
+  /**
+   * Accès DB scopé (H2) — présent si le kernel a un `sqliteRuntime`.
+   * Écriture hors couche → CrossLayerWriteDeniedError / 403.
+   */
+  db?: ScopedDbAccess;
 };
 
 export type ApiMountHandler = (
@@ -39,6 +47,13 @@ export type ApiMount = {
    * (défaut false = deny-by-default).
    */
   allowCrossWrite?: boolean;
+  /**
+   * Couche DB attendue pour ce mount (H2).
+   * - module → brand (défaut)
+   * - plugin → plugin/<id> (défaut = mount id)
+   * Ignoré pour les routes core.
+   */
+  dbLayer?: "brand" | "plugin";
 };
 
 export type ApiKernelOptions = {
@@ -47,10 +62,16 @@ export type ApiKernelOptions = {
   architectureVersion?: string;
   /** Version package kit / app exposée sur /version. */
   appVersion?: string;
+  /**
+   * Runtime multi-DB (H2) — injecte `ctx.db` scopé sur chaque mount.
+   * Sans runtime, les routes fonctionnent mais sans garde DB (compat H1).
+   */
+  sqliteRuntime?: SqliteRuntime;
 };
 
 export type MountedApiInfo = {
   space: Exclude<ApiSpace, "core">;
   id: string;
   allowCrossWrite: boolean;
+  dbLayer: "brand" | "plugin";
 };

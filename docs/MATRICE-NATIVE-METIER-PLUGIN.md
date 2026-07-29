@@ -31,11 +31,11 @@ Source cadre : [ARCHITECTURE-INTENTION.md](ARCHITECTURE-INTENTION.md).
 | **Auth** (session, login, recovery) | `@creezio/auth` | ✅ | Store + IPC bind + `AUTH_CORE_SQL` ; UI marques encore verticale |
 | **Shell-UI / nav + slots** | `@creezio/shell-ui` | ✅ | `CORE_NAV_ITEMS` + `registerBrandNav` ; demobrand/factory branchés |
 | **Assistant / chat** | `@creezio/assistant` | ✅ | Store mémoire + surface IPC ; persistance sqlite core = raffinement |
-| **API kernel** (façade HTTP cœur) | `@creezio/api-kernel` | ✅ | `/api/v1/core/*` + registres modules/plugins ; deny cross-write |
-| **MCP façade / proxy** | `@creezio/mcp-facade` | ✅ | Tools cœur + `discoverTools` + JWT ; pas de MCP produit séparé |
+| **API kernel** (façade HTTP cœur) | `@creezio/api-kernel` | ✅ | `/api/v1/core/*` + registres ; **ScopedDbAccess** H2 deny brand/plugin→core |
+| **MCP façade / proxy** | `@creezio/mcp-facade` | ✅ | Tools cœur + `discoverToolsBySpace` H2 + JWT ; pas de MCP produit séparé |
 | **Tasks** (natif plateforme) | `@creezio/tasks` | ✅ | CRUD + mount api-kernel ; distinct Product Hub tasks |
 | **Mails** (natif plateforme) | `@creezio/mails` | ✅ | Draft/send stub + providers ; pas de templates marque |
-| **SQLite multi-fichiers** (core / brand / plugin) | `@creezio/platform-core` | ✅ | `resolveCore/Brand/PluginDbPath` + `ensurePluginDb` |
+| **SQLite multi-fichiers** (core / brand / plugin) | `@creezio/platform-core` | ✅ | paths H1 + `createSqliteRuntime` / migrations H2 |
 | Splash / host stack (contrat lazy) | `@creezio/electron-shell` | ✅ | splash + host-stack pattern |
 
 ---
@@ -57,7 +57,8 @@ kit.
 | Fleet | tempoflow2 | ✅ | Idem |
 | Scan | tempoflow2 | ✅ | Idem |
 
-**Contrat d’accueil kit** (slots / façade) : 🟡 placeholders factory uniquement.
+**Contrat d’accueil kit** (slots / façade) : 🟡 shell-ui + api-kernel + MCP
+scindé prêts ; **extraction modules TF → brand repo = H3**.
 
 Autres marques (indicatif, hors extraction) :
 
@@ -90,10 +91,9 @@ nommés dans `@creezio/propagation` (contrats, pas automation).
 
 | Couche | ✅ | 🟡 | ❌ |
 |--------|----|----|-----|
-| Natif (socle A–G) | brand-config, shell, platform-core, electron-shell hosts, product-hub, tooling, factory, propagation, console | auth, shell-ui/slots, assistant, tasks, sqlite multi-fichiers, control-plane runtime | api-kernel, mcp-facade, mails |
-| Métier TF (repo marque) | modules listés | slots d’accueil kit | — |
-| Plugins | contrats hub + host | store/ACL runtime, registre L3 | DB par plugin, auto-promotion |
+| Natif (socle A–G + H1/H2) | brand-config, shell, platform-core (+ SqliteRuntime), electron-shell, product-hub, tooling, factory, propagation, console, api-kernel (ScopedDb), mcp-facade (by space), auth, shell-ui, assistant, tasks, mails | control-plane runtime marques, registre L3 persisté | — |
+| Métier TF (repo marque) | modules listés (produit) | extraction vers brand repo + montages API (H3) | — |
+| Plugins | contrats hub + host + DB `plugin/<id>` + ACL sqlite | control-plane runtime local marques | auto-promotion *(volontaire)* |
 
-**Prêt pour H1** = combler les ❌ natifs prioritaires et solidifier les 🟡
-(auth, shell-ui, assistant, api-kernel, mcp-facade, sqlite layout) sans
-déplacer le métier TempoFlow dans le kit.
+**H2 terminée** = isolation runtime prouvée (demobrand). **H3** = modules
+TempoFlow dans le brand repo (montages + migrations brand), pas dans le kit.

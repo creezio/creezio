@@ -4,7 +4,7 @@
 > Ce document fixe le *pourquoi* et le *où* ; le *comment packagé* est dans
 > [BACKLOG-H1-PACKAGES.md](BACKLOG-H1-PACKAGES.md).  
 > Constante runtime : `ARCHITECTURE_VERSION` dans `@creezio/platform-core`
-> (`"H1"` après sign-off H1 ; était `"H0"` au cadre).
+> (`"H2"` après sign-off H2 ; était `"H1"` packages / `"H0"` cadre).
 
 ---
 
@@ -62,13 +62,11 @@ Une instance Serveur (jour 0) ouvre **deux** bases, pas une seule monolithe :
 | **`brand` / métier** | Schéma des modules natifs de la marque | Jour 0 (schéma modules, même vide) |
 | **`plugin/<id>`** | Données d’un plugin installé | **À l’install** du plugin uniquement |
 
-Chemins existants côté kit (à faire évoluer en H1) :
+Chemins + runtime (H1 paths, H2 handles) :
 
-- `resolveDbPath` → aujourd’hui *un* `dbFileName` manifeste (souvent métier TF) ;
-- `resolveAssistantDbPath` → `assistant_chats.db` (précédent du découpage multi-fichiers).
-
-Cible H1+ : API paths explicite `core` / `brand` / `plugin/<id>` sans casser les
-marques déjà branchées (migration douce).
+- `resolveCoreDbPath` / `resolveBrandDbPath` / `resolvePluginDbPath` ;
+- `createSqliteRuntime` — open core+brand jour 0 ; `openPlugin` à l'install ;
+- `resolveDbPath` reste alias déprécié de brand (soft-compat marques).
 
 ### Modules métier = repo marque
 

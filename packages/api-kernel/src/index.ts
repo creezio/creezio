@@ -1,5 +1,5 @@
 /**
- * @creezio/api-kernel — façade HTTP unique (Phase H1.1).
+ * @creezio/api-kernel — façade HTTP unique (Phase H1.1 / isolation H2).
  */
 
 export type {
@@ -12,6 +12,13 @@ export type {
   ApiSpace,
   MountedApiInfo,
 } from "./types.js";
+
+export type { DbAccessMode, ScopedDbAccess } from "./db-scope.js";
+export {
+  CrossLayerWriteDeniedError,
+  createScopedDbAccess,
+  mountLayerRef,
+} from "./db-scope.js";
 
 export type { ApiKernel } from "./kernel.js";
 export {

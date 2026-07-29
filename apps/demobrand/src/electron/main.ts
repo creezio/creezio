@@ -1,6 +1,6 @@
 /**
- * Main Electron mince — boot plateforme uniquement.
- * Le métier vit dans vertical-slot.ts (vide par défaut).
+ * Main Electron mince — boot plateforme + sandbox H2 multi-DB.
+ * Le métier vit dans vertical-slot.ts (notes brand sandbox uniquement).
  */
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -11,13 +11,13 @@ import {
   prepareDesktopBoot,
   writeAppKindFile,
 } from "@creezio/electron-shell";
-import { createApiKernel } from "@creezio/api-kernel";
-import { createMcpFacade } from "@creezio/mcp-facade";
 import { createMemoryAuthStore } from "@creezio/auth";
 import { mergeNav } from "@creezio/shell-ui";
 import { demobrandManifest as manifest } from "./app-manifest.js";
 import { coreNavItems } from "./nav-core.js";
 import { verticalSlot } from "./vertical-slot.js";
+import { createDemobrandSandbox } from "./sandbox-runtime.js";
+import { setDemobrandProductHubStore } from "./product-hub-stub.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -31,19 +31,22 @@ async function main(): Promise<void> {
     boot.appKind === "legacy" ? "client" : boot.appKind,
   );
 
-  const api = createApiKernel({ brandId: manifest.brandId });
-  const mcp = createMcpFacade({
-    brandId: manifest.brandId,
-    allowUnauthenticated: true,
-    listApiMounts: () => api.listMounts(),
-  });
+  // H2 — isolation réelle : SqliteRuntime + api-kernel + mcp scindé
+  const sandbox = createDemobrandSandbox({ userDataRoot: boot.userDataDir });
+  setDemobrandProductHubStore(sandbox.productHub);
   const auth = createMemoryAuthStore();
   const navItems = mergeNav(coreNavItems, verticalSlot.items);
-  void mcp;
   void auth;
+
+  const status = sandbox.runtime.status();
+  log(
+    "sqlite",
+    `core=${status.coreOpen} brand=${status.brandOpen} pluginsOpen=${status.openPlugins.length}`,
+  );
 
   const gotLock = app.requestSingleInstanceLock();
   if (!gotLock) {
+    sandbox.close();
     app.quit();
     return;
   }
@@ -70,10 +73,18 @@ async function main(): Promise<void> {
     : path.join(__dirname, "../../resources/renderer/index.html");
   await win.loadFile(renderer);
 
+  const arch = await sandbox.api.handle({
+    method: "GET",
+    path: "/api/v1/core/architecture",
+  });
   log(
     "nav",
-    `core=${coreNavItems.length} vertical=${verticalSlot.items.length} merged=${navItems.length} apiMounts=${api.listMounts().length}`,
+    `core=${coreNavItems.length} vertical=${verticalSlot.items.length} merged=${navItems.length} apiMounts=${sandbox.api.listMounts().length} arch=${JSON.stringify((arch.body as { architectureVersion?: string })?.architectureVersion)}`,
   );
+
+  app.on("will-quit", () => {
+    sandbox.close();
+  });
 }
 
 main().catch((err) => {

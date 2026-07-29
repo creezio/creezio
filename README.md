@@ -5,22 +5,25 @@ Monorepo **plateforme** pour les desktops Creezio (TempoFlow, Certivan, Fidu)
 
 > Chemin canonique sur le VPS : **`/opt/docker/creezio`**  
 > Source d'extraction (lecture seule) : `/opt/docker/creezio-kit-src` = `creezio/tempoflow2` @ **v0.10.26**.  
-> Cadre architecture : **`ARCHITECTURE_VERSION = "H1"`** — voir docs Phase H0/H1.
+> Cadre architecture : **`ARCHITECTURE_VERSION = "H2"`** — voir docs Phase H0–H2.
 
-## Architecture (Phases H0 → H1)
+## Architecture (Phases H0 → H2)
 
 | Doc | Contenu |
 |-----|---------|
 | [docs/ARCHITECTURE-INTENTION.md](docs/ARCHITECTURE-INTENTION.md) | Intention (non-dev + technique), 3 couches, décisions verrouillées |
 | [docs/MATRICE-NATIVE-METIER-PLUGIN.md](docs/MATRICE-NATIVE-METIER-PLUGIN.md) | Cartographie Natif / Métier / Plugin + statuts ✅/🟡/❌ |
 | [docs/BACKLOG-H1-PACKAGES.md](docs/BACKLOG-H1-PACKAGES.md) | Packages `@creezio/*` H1 |
+| [docs/BACKLOG-H2.md](docs/BACKLOG-H2.md) | Isolation DB/API runtime H2 |
 | [docs/PHASE-H0.md](docs/PHASE-H0.md) | Sign-off H0 |
 | [docs/PHASE-H1.md](docs/PHASE-H1.md) | Sign-off H1 (packages cœur CMS) |
+| [docs/PHASE-H2.md](docs/PHASE-H2.md) | Sign-off H2 (isolation multi-DB / API) |
 
 En bref : Creezio = **CMS stable** (SQLite `core`, API/MCP façade, nav + slots) ;
 le **métier** vit dans le repo marque (SQLite `brand`) ; les **plugins** sont
 d’organisation (SQLite `plugin/<id>` à l’install). Phases A→G = extraction +
-gates marques — **terminées**. Phase H1 = packages natifs livrés.
+gates — **terminées**. H1 = packages natifs. H2 = **isolation runtime**
+(handles DB, migrations, frontiers API/MCP, preuve demobrand).
 
 ## Structure
 
@@ -29,10 +32,10 @@ packages/
   brand-config/      # AppManifest + createAppManifest + buildElectronBuilderConfig
   shell/             # IPC, DesktopBridge, createDesktopApi (preload)
   shell-ui/          # Nav Creezio + slots métier (H1.4)
-  platform-core/     # paths, sqlite core/brand/plugin, app-kind, connection…
+  platform-core/     # paths, SqliteRuntime H2, migrations, app-kind…
   product-hub/       # Product Hub + store sqlite core (H1.8)
-  api-kernel/        # Façade HTTP /api/v1 (H1.1)
-  mcp-facade/        # MCP d'app unique (H1.2)
+  api-kernel/        # Façade HTTP /api/v1 + ScopedDbAccess H2
+  mcp-facade/        # MCP d'app unique + discovery par couche H2
   auth/              # Session native (H1.3)
   assistant/         # Chat plateforme (H1.5)
   tasks/             # Tâches plateforme (H1.6)
@@ -43,12 +46,12 @@ packages/
   propagation/       # semver, impacts, canaux PR, registre L3, extension points
 apps/
   console/           # Console ops parc + versions kit + liens gates G1/G2/G3
-  demobrand/         # Sandbox factory DemoBrand + shell-ui / api-kernel
+  demobrand/         # Sandbox H2 multi-DB + shell-ui / api-kernel
 docs/
   ARCHITECTURE-INTENTION.md
   MATRICE-NATIVE-METIER-PLUGIN.md
-  BACKLOG-H1-PACKAGES.md
-  PHASE-H0.md PHASE-H1.md
+  BACKLOG-H1-PACKAGES.md BACKLOG-H2.md
+  PHASE-H0.md PHASE-H1.md PHASE-H2.md
   PHASE-A.md … PHASE-F.md
   DOD-PHASE-A-G.md
   PROPAGATION.md
