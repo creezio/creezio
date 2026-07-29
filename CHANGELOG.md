@@ -4,6 +4,9 @@
 ## [Unreleased]
 
 ### Added
+- **Phase I4** — Control-plane unifié : `createPluginControlPlaneAclFromStore`,
+  `buildPluginAclActorHeaders`, demobrand `controlPlaneAcl()`,
+  doc `CONTROL-PLANE-BRAND-MIGRATION.md` ; tests `test-phase-i4.mjs`.
 - **Phase I3** — Tasks/mails sqlite core : `createSqliteTasksStore`,
   `createSqliteMailsStore`, provider `file-sink` non-stub,
   demobrand mounts + migrations ; vendor sync élargi

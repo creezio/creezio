@@ -319,3 +319,14 @@ export function resolvePluginAclActorFromHeaders(
     isOwner,
   };
 }
+
+/** Headers actor pour API / MCP / control-plane (I4 — helper marques). */
+export function buildPluginAclActorHeaders(
+  actor: PluginAclActor,
+): Record<string, string> {
+  const h: Record<string, string> = {};
+  if (actor.orgId) h[PLUGIN_ACL_ORG_HEADER] = String(actor.orgId);
+  if (actor.userId) h[PLUGIN_ACL_USER_HEADER] = String(actor.userId);
+  if (actor.isOwner) h[PLUGIN_ACL_OWNER_HEADER] = "1";
+  return h;
+}

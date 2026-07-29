@@ -52,11 +52,14 @@ import {
   PLUGIN_ACL_ORG_HEADER,
   PLUGIN_ACL_OWNER_HEADER,
   PLUGIN_ACL_USER_HEADER,
+  buildPluginAclActorHeaders,
+  createPluginControlPlaneAclFromStore,
   createSqliteProductHubStore,
   decidePluginAccess,
   resolvePluginAclActorFromHeaders,
   type PluginAclActor,
   type PluginAclCapability,
+  type PluginControlPlaneAcl,
   type SqliteProductHubStore,
 } from "@creezio/product-hub";
 import {
@@ -257,6 +260,14 @@ export type DemobrandSandbox = {
   mails: SqliteMailsStore;
   /** Headers actor pour API / control-plane. */
   actorHeaders(actor: PluginAclActor): Record<string, string>;
+  /**
+   * I4 — ACL control-plane prête pour `startHostPluginControlPlane({ acl })`
+   * ou `startPluginControlPlane({ acl })`.
+   */
+  controlPlaneAcl(opts?: {
+    onInstalled?: (pluginId: string, actor: PluginAclActor) => void;
+    onUninstalled?: (pluginId: string) => void;
+  }): PluginControlPlaneAcl;
   close(): void;
 };
 
@@ -439,11 +450,30 @@ export function createDemobrandSandbox(opts?: {
     mails,
 
     actorHeaders(actor) {
-      const h: Record<string, string> = {};
-      if (actor.orgId) h[PLUGIN_ACL_ORG_HEADER] = String(actor.orgId);
-      if (actor.userId) h[PLUGIN_ACL_USER_HEADER] = String(actor.userId);
-      if (actor.isOwner) h[PLUGIN_ACL_OWNER_HEADER] = "1";
-      return h;
+      return buildPluginAclActorHeaders(actor);
+    },
+
+    controlPlaneAcl(opts) {
+      return createPluginControlPlaneAclFromStore({
+        store: productHub,
+        fallbackOwnerOrgId: "org-sandbox",
+        onInstalled: (pluginId, actor) => {
+          const ownerOrgId = actor.orgId || "org-sandbox";
+          // Évite double-bind : installPlugin gère ACL + openPlugin
+          if (!runtime.hasPluginOpen(pluginId)) {
+            this.installPlugin(pluginId, { ownerOrgId });
+          }
+          opts?.onInstalled?.(pluginId, actor);
+        },
+        onUninstalled: (pluginId) => {
+          if (runtime.hasPluginOpen(pluginId)) {
+            this.uninstallPlugin(pluginId);
+          } else {
+            productHub.clearAcl(pluginId);
+          }
+          opts?.onUninstalled?.(pluginId);
+        },
+      });
     },
 
     installPlugin(pluginId, installOpts) {

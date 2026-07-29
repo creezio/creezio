@@ -77,6 +77,7 @@ export {
   decidePluginAccess,
   filterVisiblePluginIds,
   isCrossOrgDenied,
+  buildPluginAclActorHeaders,
   resolvePluginAclActorFromHeaders,
   subjectKey,
 } from "./acl.js";
@@ -146,6 +147,11 @@ export {
   createPluginControlPlaneHandler,
   startPluginControlPlane,
 } from "./control-plane/server.js";
+export type {
+  CreatePluginControlPlaneAclFromStoreOptions,
+  PluginHubAclStoreSurface,
+} from "./control-plane/acl-from-store.js";
+export { createPluginControlPlaneAclFromStore } from "./control-plane/acl-from-store.js";
 
 /** Modules encore verticaux (apps marques) après Phase E / H1.8. */
 export const PRODUCT_HUB_VERTICAL_REMAINING = [
