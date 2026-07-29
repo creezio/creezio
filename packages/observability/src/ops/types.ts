@@ -6,6 +6,14 @@
 export const TF2EVENT_PREFIX = "TF2EVENT ";
 /** Alias plateforme (même fil de protocole pour rétrocompat TF). */
 export const OPS_EVENT_PREFIX = TF2EVENT_PREFIX;
+/**
+ * Préfixes stdout acceptés en lecture (M7p) : émission = TF2EVENT ;
+ * CertivanEVENT = dual-read legacy marques.
+ */
+export const OPS_EVENT_PREFIXES = [
+  TF2EVENT_PREFIX,
+  "CertivanEVENT ",
+] as const;
 
 export type OpsLevel = "decision" | "event" | "anomaly" | "error" | "crash";
 
@@ -123,14 +131,15 @@ export function serializeOpsEvent(evt: OpsEvent): string {
  */
 export function parseOpsLine(line: string): OpsEventInput | null {
   const trimmed = line.trim();
-  if (!trimmed.startsWith(TF2EVENT_PREFIX)) return null;
-  try {
-    return sanitizeOpsEventInput(
-      JSON.parse(trimmed.slice(TF2EVENT_PREFIX.length)),
-    );
-  } catch {
-    return null;
+  for (const prefix of OPS_EVENT_PREFIXES) {
+    if (!trimmed.startsWith(prefix)) continue;
+    try {
+      return sanitizeOpsEventInput(JSON.parse(trimmed.slice(prefix.length)));
+    } catch {
+      return null;
+    }
   }
+  return null;
 }
 
 /** Résumé d'un boot (ops/index.json + heartbeat flotte). */

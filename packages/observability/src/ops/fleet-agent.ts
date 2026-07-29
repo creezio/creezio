@@ -67,6 +67,14 @@ export type FleetAgentRuntimeHooks = {
   getActionsSample?: () =>
     | Array<Record<string, unknown>>
     | Promise<Array<Record<string, unknown>>>;
+  /**
+   * Champs métier marque à fusionner dans le heartbeat (ex. dossierStats
+   * Certivan) — best-effort, scope heartbeat.
+   */
+  getHeartbeatExtras?: () =>
+    | Record<string, unknown>
+    | null
+    | Promise<Record<string, unknown> | null>;
   executeRemoteCommand?: (
     cmd: string,
     args?: Record<string, unknown>,
@@ -193,6 +201,16 @@ export function createFleetAgent(opts: CreateFleetAgentOptions): FleetAgent {
 
     if (scopeOn("heartbeat") && hooks) {
       payload.health = await hooks.getHealth();
+      if (hooks.getHeartbeatExtras) {
+        try {
+          const extras = await hooks.getHeartbeatExtras();
+          if (extras && typeof extras === "object") {
+            Object.assign(payload, extras);
+          }
+        } catch {
+          /* best-effort */
+        }
+      }
     }
     if (scopeOn("plugins") && hooks?.getPluginsSummary) {
       payload.plugins = await hooks.getPluginsSummary();

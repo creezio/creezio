@@ -4,6 +4,10 @@
 ## [Unreleased]
 
 ### Added
+- **Phase M7p** — Cutover Certivan fleet/ops (jumeaux absents ;
+  `cvFleetAgent` / `getHeartbeatExtras` dossierStats ; dual-read
+  `CertivanEVENT`) + Fidu vendor (stubs déjà absents) ;
+  `docs/PHASE-M7p.md` ; tests `test-phase-m7p` ; **pas** de republish exe.
 - **Phase M7** — Fleet/obs TF sans stubs : `fleet-activity` +
   `createFleetSamples` dans `@creezio/observability` ; wiring marque
   `tfFleetAgent` / `tfFleetSamples` ; stubs TF

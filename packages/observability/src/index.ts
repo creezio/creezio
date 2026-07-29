@@ -49,6 +49,7 @@ export type {
 export {
   MAX_CTX_BYTES,
   OPS_EVENT_PREFIX,
+  OPS_EVENT_PREFIXES,
   OPS_LEVELS,
   TF2EVENT_PREFIX,
   parseOpsLine,
