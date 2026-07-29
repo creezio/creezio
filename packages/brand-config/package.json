@@ -1,0 +1,29 @@
+{
+  "name": "@creezio/brand-config",
+  "version": "0.1.0",
+  "description": "AppManifest et manifests marque (TempoFlow, Certivan, Fidu) — client + serveur",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./manifests/*": {
+      "types": "./dist/manifests/*.d.ts",
+      "import": "./dist/manifests/*.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "^5.8.3"
+  },
+  "license": "UNLICENSED"
+}

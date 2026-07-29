@@ -1,0 +1,28 @@
+{
+  "name": "@creezio/shell",
+  "version": "0.1.0",
+  "description": "Contrats preload/IPC et interface générique DesktopBridge (window.*Desktop)",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "^5.8.3"
+  },
+  "peerDependencies": {
+    "@creezio/brand-config": "0.1.0"
+  },
+  "license": "UNLICENSED"
+}
