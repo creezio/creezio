@@ -1,16 +1,18 @@
 # `@creezio/tasks`
 
-Tâches **natives plateforme** (todo utilisateur) — distinctes des
-`PluginTaskRecord` Product Hub.
-
-Montage api-kernel : `registerModuleApi("platform-tasks", …)` via
-`createTasksApiMount`.
+Tâches **plateforme** (distinctes des Plugin tasks Product Hub).
 
 ```ts
-import { createMemoryTasksStore, createTasksApiMount } from "@creezio/tasks";
-import { createApiKernel } from "@creezio/api-kernel";
+import {
+  createSqliteTasksStore,
+  createTasksApiMount,
+  PLATFORM_TASKS_CORE_SQL,
+} from "@creezio/tasks";
 
-const store = createMemoryTasksStore();
-const api = createApiKernel();
-api.registerModuleApi("platform-tasks", createTasksApiMount(store));
+const store = createSqliteTasksStore({ coreDbPath: runtime.paths.core });
+store.create({ userId: "u1", title: "Todo" });
 ```
+
+- Mémoire : `createMemoryTasksStore`
+- SQLite core : `createSqliteTasksStore` (I3)
+- Mount API : `createTasksApiMount(store)` → `/api/v1/core/tasks` (via api-kernel)

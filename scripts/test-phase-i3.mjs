@@ -1,0 +1,129 @@
+/**
+ * Phase I3 — tasks/mails sqlite + file-sink provider + vendor list.
+ */
+import assert from "node:assert/strict";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import { spawnSync } from "node:child_process";
+import { test } from "node:test";
+import { fileURLToPath } from "node:url";
+import {
+  createSqliteTasksStore,
+  createTasksApiMount,
+} from "../packages/tasks/dist/index.js";
+import {
+  FILE_SINK_PROVIDER_ID,
+  createFileSinkMailProvider,
+  createSqliteMailsStore,
+  createMailsApiMount,
+} from "../packages/mails/dist/index.js";
+import { createApiKernel } from "../packages/api-kernel/dist/index.js";
+import { createDemobrandSandbox } from "../apps/demobrand/build/electron/sandbox-runtime.js";
+
+const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+
+test("I3 tasks sqlite CRUD + API mount", async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "creezio-i3-tasks-"));
+  const store = createSqliteTasksStore({
+    coreDbPath: path.join(dir, "core.db"),
+  });
+  const t = store.create({ userId: "u1", title: "I3 task" });
+  store.update(t.id, { status: "done" }, "u1");
+  assert.equal(store.get(t.id)?.status, "done");
+  store.close();
+
+  const store2 = createSqliteTasksStore({
+    coreDbPath: path.join(dir, "core.db"),
+  });
+  assert.equal(store2.list("u1").length, 1);
+  store2.close();
+
+  const api = createApiKernel();
+  const live = createSqliteTasksStore({
+    coreDbPath: path.join(dir, "core2.db"),
+  });
+  api.registerModuleApi("platform-tasks", createTasksApiMount(live));
+  const res = await api.handle({
+    method: "POST",
+    path: "/api/v1/modules/platform-tasks/create",
+    headers: { "x-creezio-user-id": "u1" },
+    body: { title: "via-api" },
+  });
+  assert.equal(res.status, 201);
+  live.close();
+});
+
+test("I3 mails sqlite + file-sink non-stub", async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "creezio-i3-mails-"));
+  const outDir = path.join(dir, "outbox");
+  const store = createSqliteMailsStore({
+    coreDbPath: path.join(dir, "core.db"),
+    defaultProviderId: FILE_SINK_PROVIDER_ID,
+  });
+  store.registerProvider(createFileSinkMailProvider({ outDir }));
+  const draft = store.createDraft({
+    userId: "u1",
+    to: "dest@example.com",
+    subject: "I3",
+    body: "hello",
+  });
+  const sent = await store.queueSend(draft.id, "u1");
+  assert.equal(sent.status, "sent");
+  assert.equal(sent.providerId, FILE_SINK_PROVIDER_ID);
+  const files = fs.readdirSync(outDir).filter((f) => f.endsWith(".json"));
+  assert.ok(files.length >= 1, "file-sink must write a file");
+  store.close();
+});
+
+test("I3 demobrand tasks/mails mounts + migrations", async () => {
+  const sandbox = createDemobrandSandbox();
+  const migs = sandbox.runtime.getCore().listMigrations();
+  assert.ok(migs.includes("i3_001_tasks"));
+  assert.ok(migs.includes("i3_002_mails"));
+  sandbox.tasks.create({ userId: "demo", title: "t" });
+  const draft = sandbox.mails.createDraft({
+    userId: "demo",
+    to: "a@b.c",
+    subject: "s",
+  });
+  const sent = await sandbox.mails.queueSend(draft.id, "demo");
+  assert.equal(sent.providerId, FILE_SINK_PROVIDER_ID);
+  assert.equal(sent.status, "sent");
+
+  const list = await sandbox.api.handle({
+    method: "GET",
+    path: "/api/v1/modules/platform-tasks/list",
+    headers: { "x-creezio-user-id": "demo" },
+  });
+  assert.equal(list.status, 200);
+  assert.ok(list.body.tasks.length >= 1);
+  sandbox.close();
+});
+
+test("I3 vendor sync liste inclut assistant tasks mails", () => {
+  const script = fs.readFileSync(
+    path.join(ROOT, "scripts/sync-creezio-vendor.sh"),
+    "utf8",
+  );
+  for (const p of ["assistant", "tasks", "mails"]) {
+    assert.match(script, new RegExp(`\\b${p}\\b`));
+  }
+  const r = spawnSync(
+    "bash",
+    [path.join(ROOT, "scripts/sync-creezio-vendor.sh")],
+    {
+      env: {
+        ...process.env,
+        CREEZIO_KIT_ROOT: ROOT,
+        DEST: path.join(ROOT, ".tmp-vendor-i3-dry"),
+        CREEZIO_SYNC_DRY_RUN: "1",
+      },
+      encoding: "utf8",
+    },
+  );
+  assert.equal(r.status, 0, r.stderr || r.stdout);
+  assert.match(r.stdout, /assistant/);
+  assert.match(r.stdout, /tasks/);
+  assert.match(r.stdout, /mails/);
+});

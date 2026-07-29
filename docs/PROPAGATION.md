@@ -73,9 +73,9 @@ dans les repos marques en Phase F.
 | `mcp-facade` | deps, main (proxy MCP unifié H4/H5) |
 | `shell-ui` | deps, main, next UI (nav core + slots brand) |
 | `auth` | deps, main (session ; sqlite core dès I1) |
-| `assistant` | deps, main (chat ; sqlite core dès I2) — vendor I3+ |
-| `tasks` | deps, main (tasks plateforme) — vendor I3+ |
-| `mails` | deps, main (mails plateforme) — vendor I3+ |
+| `assistant` | deps, main (chat ; sqlite core I2) — **vendor I3** |
+| `tasks` | deps, main (tasks plateforme sqlite I3) — **vendor I3** |
+| `mails` | deps, main (mails + file-sink I3) — **vendor I3** |
 | `factory` | sandbox demobrand |
 | `propagation` | console ops, semver/impact ; registre org (persisté I6) |
 

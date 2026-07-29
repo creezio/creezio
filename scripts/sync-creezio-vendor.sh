@@ -14,7 +14,7 @@
 #   CREEZIO_VENDOR_PACKAGES — liste espace-séparée (sinon baseline H5)
 #   CREEZIO_SYNC_DRY_RUN=1 — liste + assert seulement, pas de copie
 #
-# Baseline H5 (socle conso marques) — assistant/tasks/mails ajoutés en I3+.
+# Baseline I3 (socle conso marques) — H5 + auth/assistant/tasks/mails.
 set -euo pipefail
 
 KIT="${CREEZIO_KIT_ROOT:-/opt/docker/creezio}"
@@ -32,6 +32,9 @@ DEFAULT_PACKAGES=(
   mcp-facade
   shell-ui
   auth
+  assistant
+  tasks
+  mails
 )
 
 if [[ -n "${CREEZIO_VENDOR_PACKAGES:-}" ]]; then

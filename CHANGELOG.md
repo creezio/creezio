@@ -4,6 +4,10 @@
 ## [Unreleased]
 
 ### Added
+- **Phase I3** — Tasks/mails sqlite core : `createSqliteTasksStore`,
+  `createSqliteMailsStore`, provider `file-sink` non-stub,
+  demobrand mounts + migrations ; vendor sync élargi
+  (assistant/tasks/mails) ; `docs/PHASE-I3.md` ; tests `test-phase-i3.mjs`.
 - **Phase I2** — Assistant sqlite core : `createSqliteAssistantStore` +
   `ASSISTANT_CORE_SQL` (cible core.db ; `assistant_chats.db` legacy),
   demobrand migration `i2_001_assistant` ; `docs/PHASE-I2.md` ;

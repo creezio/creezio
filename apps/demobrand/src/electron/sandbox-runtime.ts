@@ -31,6 +31,20 @@ import {
   type SqliteAssistantStore,
 } from "@creezio/assistant";
 import {
+  PLATFORM_TASKS_CORE_SQL,
+  createSqliteTasksStore,
+  createTasksApiMount,
+  type SqliteTasksStore,
+} from "@creezio/tasks";
+import {
+  FILE_SINK_PROVIDER_ID,
+  PLATFORM_MAILS_CORE_SQL,
+  createFileSinkMailProvider,
+  createMailsApiMount,
+  createSqliteMailsStore,
+  type SqliteMailsStore,
+} from "@creezio/mails";
+import {
   PRODUCT_HUB_ACL_H5_SQL,
   PRODUCT_HUB_ACL_ORG_SQL,
   PRODUCT_HUB_ACL_USER_SQL,
@@ -88,6 +102,8 @@ export function demobrandCoreMigrations(): SqliteMigration[] {
       ].join("\n"),
     },
     { id: "i2_001_assistant", sql: ASSISTANT_CORE_SQL },
+    { id: "i3_001_tasks", sql: PLATFORM_TASKS_CORE_SQL },
+    { id: "i3_002_mails", sql: PLATFORM_MAILS_CORE_SQL },
   );
 }
 
@@ -236,6 +252,9 @@ export type DemobrandSandbox = {
   auth: SqliteAuthStore;
   /** Assistant persisté core.db (I2). */
   assistant: SqliteAssistantStore;
+  /** Tasks / mails plateforme (I3). */
+  tasks: SqliteTasksStore;
+  mails: SqliteMailsStore;
   /** Headers actor pour API / control-plane. */
   actorHeaders(actor: PluginAclActor): Record<string, string>;
   close(): void;
@@ -277,6 +296,17 @@ export function createDemobrandSandbox(opts?: {
     coreDbPath: runtime.paths.core,
   });
 
+  const tasks = createSqliteTasksStore({
+    coreDbPath: runtime.paths.core,
+  });
+
+  const mailOutDir = path.join(userDataRoot, "mail-outbox");
+  const mails = createSqliteMailsStore({
+    coreDbPath: runtime.paths.core,
+    defaultProviderId: FILE_SINK_PROVIDER_ID,
+  });
+  mails.registerProvider(createFileSinkMailProvider({ outDir: mailOutDir }));
+
   function authorizePluginAccess(accessCtx: {
     pluginId: string;
     method: string;
@@ -311,6 +341,8 @@ export function createDemobrandSandbox(opts?: {
     authorizePluginAccess,
   });
   api.registerModuleApi("demo-notes", createDemoNotesMount());
+  api.registerModuleApi("platform-tasks", createTasksApiMount(tasks));
+  api.registerModuleApi("platform-mails", createMailsApiMount(mails));
 
   function moduleTools(): McpRegisteredTool[] {
     return [
@@ -403,6 +435,8 @@ export function createDemobrandSandbox(opts?: {
     productHub,
     auth,
     assistant,
+    tasks,
+    mails,
 
     actorHeaders(actor) {
       const h: Record<string, string> = {};
@@ -444,6 +478,8 @@ export function createDemobrandSandbox(opts?: {
     },
 
     close() {
+      mails.close();
+      tasks.close();
       assistant.close();
       auth.close();
       productHub.close();

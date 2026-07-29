@@ -33,8 +33,8 @@ Source cadre : [ARCHITECTURE-INTENTION.md](ARCHITECTURE-INTENTION.md).
 | **Assistant / chat** | `@creezio/assistant` | ✅ | Mémoire + **`createSqliteAssistantStore` I2** (core) ; legacy `assistant_chats.db` |
 | **API kernel** (façade HTTP cœur) | `@creezio/api-kernel` | ✅ | ScopedDbAccess H2 + `authorizePluginAccess` H5 |
 | **MCP façade / proxy** | `@creezio/mcp-facade` | ✅ | H4 aliases/policies + H5 `createDenyUnauthorizedPluginToolPolicy` + JWT `orgId` |
-| **Tasks** (natif plateforme) | `@creezio/tasks` | 🟡 | CRUD + mount ; **sqlite = I3** |
-| **Mails** (natif plateforme) | `@creezio/mails` | 🟡 | Draft/send stub ; **sqlite + provider non-stub = I3** |
+| **Tasks** (natif plateforme) | `@creezio/tasks` | ✅ | CRUD + mount + **`createSqliteTasksStore` I3** |
+| **Mails** (natif plateforme) | `@creezio/mails` | ✅ | SQLite + **`file-sink`** non-stub I3 ; templates marque exclus |
 | Sync vendor standardisé | `scripts/sync-creezio-vendor.sh` | ✅ | **I0** — assert `ARCHITECTURE_VERSION`, CJS, wrappers 3 marques |
 | Politique republish | [REPUBLISH-POLICY.md](REPUBLISH-POLICY.md) | ✅ | **I0** — publish seulement I14/I16/I18 après verts |
 | **SQLite multi-fichiers** (core / brand / plugin) | `@creezio/platform-core` | ✅ | paths H1 + `createSqliteRuntime` / migrations H2 |

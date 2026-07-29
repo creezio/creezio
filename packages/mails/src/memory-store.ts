@@ -9,11 +9,18 @@ function now(): string {
   return new Date().toISOString();
 }
 
-export function createMemoryMailsStore(): PlatformMailsStore {
+export type CreateMemoryMailsStoreOptions = {
+  defaultProviderId?: string;
+};
+
+export function createMemoryMailsStore(
+  opts?: CreateMemoryMailsStoreOptions,
+): PlatformMailsStore {
   const mails = new Map<string, PlatformMail>();
   const providers = new Map<string, MailProvider>();
+  let defaultProviderId = opts?.defaultProviderId || "platform-stub";
 
-  // Provider stub plateforme (pas de SMTP réel).
+  // Provider stub plateforme (tests sans I/O).
   providers.set("platform-stub", {
     id: "platform-stub",
     async send(mail) {
@@ -48,12 +55,20 @@ export function createMemoryMailsStore(): PlatformMailsStore {
     },
     registerProvider(provider) {
       providers.set(provider.id, provider);
+      if (
+        !opts?.defaultProviderId &&
+        provider.id !== "platform-stub" &&
+        defaultProviderId === "platform-stub"
+      ) {
+        defaultProviderId = provider.id;
+      }
     },
     async queueSend(id, actorUserId) {
       const mail = mails.get(id);
       if (!mail) throw new Error("not_found");
       if (mail.userId !== actorUserId) throw new Error("forbidden");
-      const provider = providers.get("platform-stub")!;
+      const provider =
+        providers.get(defaultProviderId) || providers.get("platform-stub")!;
       const queued: PlatformMail = {
         ...mail,
         status: "queued",
