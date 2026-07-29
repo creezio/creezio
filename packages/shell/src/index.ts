@@ -15,3 +15,6 @@ export type {
 } from "./types.js";
 
 export { getDesktopBridge } from "./types.js";
+
+export type { ContextBridgeLike, IpcRendererLike } from "./create-desktop-api.js";
+export { createDesktopApi, exposeDesktopApi } from "./create-desktop-api.js";

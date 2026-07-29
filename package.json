@@ -2,14 +2,15 @@
   "name": "creezio",
   "private": true,
   "version": "0.1.0",
-  "description": "Kit plateforme Creezio — packages @creezio/* partagés (brand-config, shell, platform-core)",
+  "description": "Kit plateforme Creezio — packages @creezio/* partagés (brand-config, shell, platform-core, electron-shell)",
   "workspaces": [
     "packages/*",
     "apps/*"
   ],
   "scripts": {
-    "build": "npm run build -w @creezio/brand-config && npm run build -w @creezio/shell && npm run build -w @creezio/platform-core",
+    "build": "npm run build -w @creezio/brand-config && npm run build -w @creezio/shell && npm run build -w @creezio/platform-core && npm run build -w @creezio/electron-shell",
     "typecheck": "npm run build",
+    "test": "node --test scripts/test-phase-b.mjs",
     "clean": "rm -rf packages/*/dist"
   },
   "engines": {

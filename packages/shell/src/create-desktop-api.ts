@@ -1,0 +1,179 @@
+/**
+ * Fabrique l'objet exposé via contextBridge sous `window[bridgeName]`.
+ *
+ * Port structurel de electron/preload-app.ts (TF2 0.10.26) — sans hardcoder
+ * le nom du bridge. Le preload de l'app appelle :
+ *
+ * ```ts
+ * import { contextBridge, ipcRenderer } from "electron";
+ * import { createDesktopApi, exposeDesktopApi } from "@creezio/shell";
+ * import { tempoflowManifest } from "@creezio/brand-config";
+ * exposeDesktopApi(
+ *   contextBridge,
+ *   tempoflowManifest.bridgeName,
+ *   createDesktopApi(ipcRenderer),
+ * );
+ * ```
+ */
+
+import type {
+  DesktopBridge,
+  DesktopConnectionProfile,
+  DesktopContentRect,
+  DesktopInfo,
+  DesktopSupplierTabOpened,
+  DesktopTabInfo,
+  DesktopTabLoadState,
+  DesktopUpdateStatus,
+} from "./types.js";
+import { IpcChannels } from "./ipc-channels.js";
+
+/** Sous-ensemble ipcRenderer requis par le bridge. */
+export type IpcRendererLike = {
+  invoke: (channel: string, ...args: unknown[]) => Promise<unknown>;
+  send: (channel: string, ...args: unknown[]) => void;
+  on: (
+    channel: string,
+    listener: (event: unknown, ...args: unknown[]) => void,
+  ) => void;
+  removeListener: (
+    channel: string,
+    listener: (...args: unknown[]) => void,
+  ) => void;
+};
+
+export type ContextBridgeLike = {
+  exposeInMainWorld: (apiKey: string, api: unknown) => void;
+};
+
+function onChannel<T>(
+  ipc: IpcRendererLike,
+  channel: string,
+  cb: (payload: T) => void,
+): () => void {
+  const listener = (_event: unknown, payload: unknown) => cb(payload as T);
+  ipc.on(channel, listener);
+  return () => ipc.removeListener(channel, listener);
+}
+
+/**
+ * API noyau partagée (Client + Serveur). Les extensions verticales
+ * (plugins, Hermes status…) restent dans le preload de chaque marque.
+ */
+export function createDesktopApi(
+  ipc: IpcRendererLike,
+  opts?: { customWindowChrome?: boolean },
+): DesktopBridge {
+  const C = IpcChannels;
+  return {
+    isDesktop: true,
+    customWindowChrome:
+      opts?.customWindowChrome ??
+      (typeof process !== "undefined" && process.platform === "win32"),
+
+    getInfo: () => ipc.invoke(C.desktop.info) as Promise<DesktopInfo>,
+
+    getConnectionProfile: () =>
+      ipc.invoke(C.connection.get) as Promise<DesktopConnectionProfile>,
+    testConnection: (url: string) =>
+      ipc.invoke(C.connection.test, url) as Promise<{
+        ok: boolean;
+        status: number;
+        baseUrl?: string;
+        error?: string;
+      }>,
+    chooseConnection: (profile) =>
+      ipc.invoke(C.connection.choose, profile) as Promise<
+        { ok: true; profile: unknown } | { ok: false; error: string }
+      >,
+    applyConnection: (profile) =>
+      ipc.invoke(C.connection.apply, profile) as Promise<
+        { ok: true; relaunching?: boolean } | { ok: false; error: string }
+      >,
+    rechooseConnection: () =>
+      ipc.invoke(C.connection.rechoose) as Promise<
+        { ok: true; relaunching?: boolean } | { ok: false; error: string }
+      >,
+    forgetRememberedServer: (id: string) =>
+      ipc.invoke(C.profiles.forgetServer, id) as Promise<{
+        ok: boolean;
+        error?: string;
+      }>,
+
+    minimizeWindow: () => ipc.invoke(C.window.minimize) as Promise<void>,
+    toggleMaximizeWindow: () =>
+      ipc.invoke(C.window.maximizeToggle) as Promise<{ isMaximized: boolean }>,
+    closeWindow: () => ipc.invoke(C.window.close) as Promise<void>,
+    isWindowMaximized: () =>
+      ipc.invoke(C.window.isMaximized) as Promise<boolean>,
+    onWindowMaximizedChanged: (cb) =>
+      onChannel<boolean>(ipc, C.window.maximizedChanged, cb),
+
+    openTab: (fournisseurId: number, url: string) =>
+      ipc.invoke(C.tabs.open, fournisseurId, url) as Promise<{
+        tabId: string;
+        fournisseurId: number;
+        loadState?: "loading" | "ready" | "error";
+        url?: string;
+      }>,
+    closeTab: (tabId: string) =>
+      ipc.invoke(C.tabs.close, tabId) as Promise<void>,
+    activateTab: (tabId: string, rect?: DesktopContentRect) =>
+      ipc.invoke(C.tabs.activate, tabId, rect) as Promise<
+        { ok: boolean; error?: string } | void
+      >,
+    activateSite: (siteId: number, url: string, rect?: DesktopContentRect) =>
+      ipc.invoke(C.tabs.activateSite, siteId, url, rect) as Promise<{
+        ok: boolean;
+        error?: string;
+        tabId?: string;
+        fournisseurId?: number;
+        loadState?: "loading" | "ready" | "error";
+        url?: string;
+      }>,
+    setContentRect: (rect: DesktopContentRect) =>
+      ipc.invoke(C.tabs.setContentRect, rect) as Promise<void>,
+    showCrm: () => ipc.invoke(C.tabs.showCrm) as Promise<void>,
+    listTabs: () => ipc.invoke(C.tabs.list) as Promise<DesktopTabInfo[]>,
+    onTabsChanged: (cb) =>
+      onChannel<DesktopTabInfo[]>(ipc, C.tabs.changed, cb),
+    onTabLoadState: (cb) =>
+      onChannel<DesktopTabLoadState>(ipc, C.tabs.loadState, cb),
+    onSupplierTabOpened: (cb) =>
+      onChannel<DesktopSupplierTabOpened>(ipc, C.tabs.supplierOpened, cb),
+
+    googleLogin: () =>
+      ipc.invoke(C.auth.googleLogin) as Promise<{
+        ok: boolean;
+        error?: string;
+      }>,
+    logout: () => ipc.invoke(C.auth.logout) as Promise<{ ok: boolean }>,
+    retrySetup: () => {
+      ipc.send(C.setup.retry);
+    },
+
+    // Compat TF2 : handlers main écoutent souvent `update:get-status`.
+    getUpdateStatus: () =>
+      ipc.invoke(C.update.getStatus) as Promise<DesktopUpdateStatus>,
+    checkForUpdates: () =>
+      ipc.invoke(C.update.check) as Promise<DesktopUpdateStatus>,
+    downloadAndInstallUpdate: () =>
+      ipc.invoke(C.update.downloadInstall) as Promise<DesktopUpdateStatus>,
+    onUpdateChanged: (cb) =>
+      onChannel<DesktopUpdateStatus>(ipc, C.update.changed, cb),
+
+    setAssistantChrome: (mode: "fab" | "hidden") =>
+      ipc.invoke(C.assistant.setChrome, mode) as Promise<void>,
+    onAssistantOpenRequest: (cb) =>
+      onChannel<void>(ipc, C.assistant.openRequest, () => cb()),
+  };
+}
+
+/** Expose l'API sous `window[bridgeName]` (contextIsolation). */
+export function exposeDesktopApi(
+  contextBridge: ContextBridgeLike,
+  bridgeName: string,
+  api: DesktopBridge,
+): void {
+  contextBridge.exposeInMainWorld(bridgeName, api);
+}

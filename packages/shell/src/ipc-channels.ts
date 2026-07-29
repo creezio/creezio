@@ -53,10 +53,18 @@ export const IpcChannels = {
     generateRecoveryKey: "auth:generate-recovery-key",
   },
   update: {
+    /** Alias historique TF2 (`update:get-status`) — préférer `status`. */
     status: "update:status",
+    getStatus: "update:get-status",
     check: "update:check",
     downloadInstall: "update:download-install",
     changed: "update:changed",
+  },
+  admin: {
+    open: "admin:open",
+  },
+  splash: {
+    model: "splash:model",
   },
   assistant: {
     setChrome: "assistant:set-chrome",

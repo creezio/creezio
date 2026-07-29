@@ -38,7 +38,7 @@ export type ExeIdentity = {
 /**
  * Manifeste complet d'une marque.
  * Paramètre tous les chemins / env / bridges sans hardcoder une marque
- * dans platform-core.
+ * dans platform-core / electron-shell.
  */
 export type AppManifest = {
   /** Identifiant court stable (`tempoflow` | `certivan` | `fidu`). */
@@ -51,6 +51,23 @@ export type AppManifest = {
   dbFileName: string;
   /** Nom fichier config locale JSON sous userData. */
   localConfigFileName: string;
+  /**
+   * Protocole deep-link OS (sans `://`) — ex. `tempoflow`, `certivan`, `fidu`.
+   * Utilisé pour `tempoflow://join/<host>` et les argv `--{prefix}-profile=`.
+   */
+  deepLinkProtocol: string;
+  /**
+   * Segment partition Chromium app (sans préfixe `persist:`).
+   * Ex. `tempoflow-app` → `persist:tempoflow-app`.
+   */
+  sessionPartition: string;
+  /** Préfixe des fichiers log main (ex. `tempoflow-main` → `tempoflow-main.log`). */
+  logBasename: string;
+  /**
+   * Domaine racine pour tunnels Cloudflare multi-niveau
+   * (`{slug}.{tunnelRootDomain}`, `n8n.{slug}.{tunnelRootDomain}`…).
+   */
+  tunnelRootDomain: string;
   /** Domaines / hosts publics (docs, feeds, tunnels). */
   domains: {
     /** Domaine produit principal (marketing / CRM). */
@@ -76,4 +93,19 @@ export function exeForKind(manifest: AppManifest, kind: AppKind): ExeIdentity {
 /** Nom d'env override (ex. `TF2_USER_DATA_OVERRIDE`). */
 export function envKey(manifest: AppManifest, suffix: string): string {
   return `${manifest.envPrefix}_${suffix}`;
+}
+
+/** Partition persist Chromium pour la vue CRM principale. */
+export function appSessionPartition(manifest: AppManifest): string {
+  return `persist:${manifest.sessionPartition}`;
+}
+
+/** Prefixe argv profil (`--tf2-profile=` / `--certivan-profile=`…). */
+export function profileArgPrefix(manifest: AppManifest): string {
+  return `--${manifest.envPrefix.toLowerCase()}-profile=`;
+}
+
+/** Prefixe argv profil-dir. */
+export function profileDirArgPrefix(manifest: AppManifest): string {
+  return `--${manifest.envPrefix.toLowerCase()}-profile-dir=`;
 }

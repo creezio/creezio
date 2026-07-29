@@ -5,7 +5,7 @@ import type { AppManifest } from "../types.js";
  *
  * Aujourd'hui Fidu publie un exe unique (`fr.fidu.desktop`, feed racine).
  * Le modèle kit impose quand même Client + Serveur : les champs `server`
- * sont la cible Phase B/G (mêmes conventions que TF2/Certivan).
+ * sont la cible Phase G (mêmes conventions que TF2/Certivan).
  *
  * GUIDs : UUID.v5(appId, OID electron-builder) — pas encore hardcodés
  * dans un build-builder-config.mjs Fidu (pas de split packagé à ce jour).
@@ -17,6 +17,10 @@ export const fiduManifest: AppManifest = {
   bridgeName: "fiduDesktop",
   dbFileName: "fidu.db",
   localConfigFileName: "fidu-config.json",
+  deepLinkProtocol: "fidu",
+  sessionPartition: "fidu-app",
+  logBasename: "fidu-main",
+  tunnelRootDomain: "fidu.creez.io",
   domains: {
     primary: "fidu.creez.io",
     feedHost: "fidu.creez.io",

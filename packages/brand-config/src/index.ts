@@ -1,16 +1,28 @@
 export type { AppKind, AppManifest, ExeIdentity } from "./types.js";
-export { envKey, exeForKind } from "./types.js";
+export {
+  appSessionPartition,
+  envKey,
+  exeForKind,
+  profileArgPrefix,
+  profileDirArgPrefix,
+} from "./types.js";
 
 export { tempoflowManifest } from "./manifests/tempoflow.js";
 export { certivanManifest } from "./manifests/certivan.js";
 export { fiduManifest } from "./manifests/fidu.js";
+
+export {
+  DEFAULT_HOST_ONLY_ELECTRON_MODULES,
+  buildElectronBuilderConfig,
+} from "./build-builder-config.js";
+export type { BuildBuilderConfigOptions } from "./build-builder-config.js";
 
 import { tempoflowManifest } from "./manifests/tempoflow.js";
 import { certivanManifest } from "./manifests/certivan.js";
 import { fiduManifest } from "./manifests/fidu.js";
 import type { AppManifest } from "./types.js";
 
-/** Registre des manifests connus (Phase A). */
+/** Registre des manifests connus. */
 export const manifests = {
   tempoflow: tempoflowManifest,
   certivan: certivanManifest,

@@ -1,0 +1,183 @@
+/**
+ * Icône Tray générique — labels depuis AppManifest.productName.
+ * Port de electron/tray.ts (TF2 0.10.26).
+ */
+
+import fs from "node:fs";
+import path from "node:path";
+import { log, logError } from "./logger.js";
+
+const TRAY_ICON_FALLBACK_B64 =
+  "iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAACAklEQVR42u2X2U7CQBSGeZwCgkvdtUAv+gx9g8IENC5xiUsUA/SKt5qkEMAoRmtcohKBtO/QHHMSLswMygytd/7Jd9P2XxISOo3F/iUhxfIMxfLqiuVRxfJ8xfKCEf7oGt4zIi+O54cknh+68fwQBMFnSejiRGGgJgoDmigMYErQq05VniR9M0n6QZL0ISSYYUqVzxQ/zZniJ0SM2IhUqaemSr0gVepBxGDm5J8jvfVB01sf8EfQ38u330l6+x2+E1ZsHnb8OGB2582d3XmD74QVm4cdY8vndl+Nud1XYAmrcZnYxQ2Y33upz++9AEtYjcvELm7Awv4zXdh/BlFYyXixixugHjz56sETiMJKxotd3IDFw8dg8fARRGEl48UubsDSkRssHbkgCisZL3ZxA5aPH/zl4wcQhZWMF7u4ASsn93Tl5B5EYSXjxS5uwOrpXX319A5EYSXjxS5uwNpZ11g764IorGS82DX233D9/NZdP78FEViJ+rDjx3fBxsUN2bi4ARFYifqw49c34ublNd28vIZJsBLxYPbE84BW7qhauRNo5Q5EDGaKnQ+1q7apXbUhYuTOhZlKy8xUWkGm0oLQYIY51ck4W22qWWqTZqtNmBL0qqG/D3K1BsnVGm6u1gBB8FkS+ReSbjuGbjt13Xaobju+bjvBCH90De8ZsX9J6AvaetnzgauSsgAAAABJRU5ErkJggg==";
+
+export type TrayAiWorkspaceEntry = {
+  userId: string;
+  label: string;
+  visible: boolean;
+};
+
+export type TrayControllerOptions = {
+  productName: string;
+  /** Chemin icône tray (PNG) — optionnel. */
+  iconPath?: string;
+  resourcesRoot?: string;
+  isPackaged?: boolean;
+  showWindow: () => void;
+  quit: () => void;
+  listAiWorkspaces?: () => TrayAiWorkspaceEntry[];
+  openAiWorkspace?: (userId: string) => void;
+  closeAiWorkspace?: (userId: string) => void;
+};
+
+export class TrayController {
+  private tray: InstanceType<typeof import("electron").Tray> | null = null;
+
+  constructor(private readonly opts: TrayControllerOptions) {}
+
+  get active(): boolean {
+    return this.tray !== null;
+  }
+
+  private resolveIconPath(): string | null {
+    if (this.opts.iconPath) return this.opts.iconPath;
+    const root = this.opts.resourcesRoot;
+    if (!root) return null;
+    if (this.opts.isPackaged) {
+      return path.join(process.resourcesPath, "tray-icon.png");
+    }
+    return path.join(root, "resources", "tray-icon.png");
+  }
+
+  private async loadTrayIcon(): Promise<import("electron").NativeImage> {
+    const { nativeImage } = await import("electron");
+    try {
+      const p = this.resolveIconPath();
+      if (p && fs.existsSync(p)) {
+        const img = nativeImage.createFromPath(p);
+        if (!img.isEmpty()) return img;
+      }
+    } catch (e) {
+      logError("tray", e);
+    }
+    return nativeImage.createFromDataURL(
+      `data:image/png;base64,${TRAY_ICON_FALLBACK_B64}`,
+    );
+  }
+
+  private async buildMenu(): Promise<import("electron").Menu> {
+    const { Menu } = await import("electron");
+    const name = this.opts.productName;
+    const aiEntries = (() => {
+      try {
+        return this.opts.listAiWorkspaces?.() ?? [];
+      } catch (e) {
+        logError("tray", e);
+        return [];
+      }
+    })();
+    const aiSubmenu = aiEntries.map((entry) => ({
+      label: `${entry.label}${entry.visible ? "" : " (masqué)"}`,
+      submenu: [
+        {
+          label: "Ouvrir",
+          click: () => this.opts.openAiWorkspace?.(entry.userId),
+        },
+        {
+          label: "Fermer réellement",
+          click: () => this.opts.closeAiWorkspace?.(entry.userId),
+        },
+      ],
+    }));
+    return Menu.buildFromTemplate([
+      {
+        label: `Ouvrir ${name}`,
+        click: () => this.opts.showWindow(),
+      },
+      ...(aiSubmenu.length
+        ? ([
+            { type: "separator" },
+            { label: "Workspaces IA", submenu: aiSubmenu },
+          ] as import("electron").MenuItemConstructorOptions[])
+        : []),
+      { type: "separator" },
+      {
+        label: `Quitter ${name}`,
+        click: () => this.opts.quit(),
+      },
+    ]);
+  }
+
+  async refresh(): Promise<void> {
+    try {
+      this.tray?.setContextMenu(await this.buildMenu());
+    } catch (e) {
+      logError("tray", e);
+    }
+  }
+
+  async setup(): Promise<boolean> {
+    if (this.tray) return true;
+    try {
+      const electron = await import("electron");
+      const tray = new electron.Tray(await this.loadTrayIcon());
+      tray.setToolTip(`${this.opts.productName} — actif en arrière-plan`);
+      tray.setContextMenu(await this.buildMenu());
+      tray.on("click", () => this.opts.showWindow());
+      this.tray = tray;
+      log("tray", "icône tray active (fermer la fenêtre = arrière-plan)");
+      return true;
+    } catch (e) {
+      logError("tray", e);
+      log(
+        "tray",
+        "création du tray impossible — fermer la fenêtre quittera l'app",
+      );
+      this.tray = null;
+      return false;
+    }
+  }
+
+  destroy(): void {
+    try {
+      this.tray?.destroy();
+    } catch {
+      /* ignore */
+    }
+    this.tray = null;
+  }
+}
+
+export async function installCloseToTray(
+  win: InstanceType<typeof import("electron").BaseWindow>,
+  opts: {
+    trayActive: () => boolean;
+    isQuitting: () => boolean;
+    closeToTrayEnabled: () => boolean;
+    productName?: string;
+  },
+): Promise<void> {
+  win.on("close", ((e: { preventDefault: () => void }) => {
+    if (opts.isQuitting()) return;
+    if (!opts.trayActive()) return;
+    if (!opts.closeToTrayEnabled()) return;
+    e.preventDefault();
+    win.hide();
+    log(
+      "tray",
+      `fenêtre masquée — ${opts.productName ?? "app"} reste actif en arrière-plan`,
+    );
+  }) as never);
+}
+
+export async function applyLaunchAtStartup(enabled: boolean): Promise<void> {
+  try {
+    const { app } = await import("electron");
+    app.setLoginItemSettings({
+      openAtLogin: enabled,
+      args: [],
+    });
+    log("tray", `launchAtStartup → ${enabled ? "activé" : "désactivé"}`);
+  } catch (e) {
+    logError("tray", e);
+  }
+}

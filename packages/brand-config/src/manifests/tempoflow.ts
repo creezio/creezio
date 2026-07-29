@@ -13,6 +13,10 @@ export const tempoflowManifest: AppManifest = {
   bridgeName: "tempoflowDesktop",
   dbFileName: "tempoflow2.db",
   localConfigFileName: "tempoflow-config.json",
+  deepLinkProtocol: "tempoflow",
+  sessionPartition: "tempoflow-app",
+  logBasename: "tempoflow-main",
+  tunnelRootDomain: "tempoflow.fr",
   domains: {
     primary: "crm.tempoflow.fr",
     feedHost: "crm.tempoflow.fr",

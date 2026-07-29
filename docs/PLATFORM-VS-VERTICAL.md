@@ -4,45 +4,55 @@ Source d'extraction : `creezio/tempoflow2` @ **v0.10.26** (`/opt/docker/creezio-
 
 Légende :
 
-- **Kit** = ira dans `@creezio/*` (Phase B runtime, déjà contrats en Phase A)
+- **Kit** = `@creezio/*`
 - **Vertical** = reste dans l'app marque
-- **A** = déjà extrait (contrats) en Phase A
-- **B** = portage runtime prévu Phase B
+- **A** = contrats Phase A
+- **B** = runtime porté Phase B
+- **B.2** = suite runtime (launchers lourds)
 
 ## Matrice TF2 → package cible
 
 | Fichier source TF2 (crm/) | Cible kit | Phase | Notes |
 |---------------------------|-----------|-------|-------|
-| `scripts/electron/build-builder-config.mjs` | `@creezio/brand-config` (+ helper build) | A (ids) / B (générateur) | Client+Serveur obligatoire |
-| `electron/app-kind.ts` | `@creezio/platform-core` | A (ids via manifest) / B | Logique pure + bootBehavior |
-| `electron/paths.ts` | `@creezio/platform-core` | A | Paramétré par manifest |
-| `electron/local-config.ts` | `@creezio/platform-core` (schema) + runtime B | A / B | Secrets / safeStorage = B |
-| `electron/preload-app.ts` | `@creezio/shell` | A (contrats) / B | `bridgeName` depuis manifest |
+| `scripts/electron/build-builder-config.mjs` | `@creezio/brand-config` (`buildElectronBuilderConfig`) | **B** | Client+Serveur obligatoire |
+| `electron/app-kind.ts` | `@creezio/platform-core` | **B** | Paramétré par manifest |
+| `electron/paths.ts` | `@creezio/platform-core` | A / **B** | + meili candidates, logs, preload |
+| `electron/local-config.ts` | schema A + runtime safeStorage | A / **B.2** | Secrets Electron = B.2 |
+| `electron/preload-app.ts` | `@creezio/shell` (`createDesktopApi`) | **B** | Extensions verticales restent en app |
 | `src/types/desktop.d.ts` | `@creezio/shell` | A | `DesktopBridge` générique |
-| `electron/preload-supplier.ts` | `@creezio/shell` | B | Onglets fournisseurs |
-| `electron/main.ts` | `@creezio/shell` / runtime | B | Gros fichier — découpe |
-| `electron/updater.ts` | platform-core / shell | B | Feed depuis manifest |
-| `electron/connection-profile.ts` | platform-core | B | |
-| `electron/server-launcher.ts` | platform-core (host) | B | Serveur only |
-| `electron/meili-*` | platform-core (host) | B | Serveur only |
-| `electron/hermes-*` / `n8n-*` | platform-core (host) | B | Serveur only |
-| `electron/tunnel-*` | platform-core (host) | B | Serveur only |
-| `electron/factory-reset.ts` | platform-core | B | |
-| `scripts/electron/after-pack.cjs` | tooling kit | B | |
-| `scripts/electron/publish-desktop.sh` | tooling kit | B | Feeds client+server |
-| `electron-builder.yml` | généré depuis manifest | B | |
+| `electron/preload-supplier.ts` | vertical / stub | B | Minimal — inchangé côté app |
+| `electron/connection-profile.ts` | `@creezio/platform-core` | **B** | |
+| `electron/profile.ts` | `@creezio/platform-core` | **B** | Argv / deep-link paramétrés |
+| `electron/updater.ts` | platform-core (state) + `@creezio/electron-shell` | **B** | Feed depuis manifest |
+| `electron/splash-ui.ts` | `@creezio/electron-shell` | **B** | `productName` / `bridgeName` |
+| `electron/window-chrome-html.ts` | `@creezio/electron-shell` | **B** | |
+| `electron/tray.ts` | `@creezio/electron-shell` | **B** | Labels depuis manifest |
+| `electron/admin-window.ts` | `@creezio/electron-shell` | **B** | |
+| `electron/logger.ts` | `@creezio/electron-shell` | **B** | `logBasename` |
+| `electron/factory-reset.ts` | platform-core (targets) + electron-shell (wipe) | **B** | |
+| `electron/tunnel-service-urls.ts` | `@creezio/platform-core` | **B** | `tunnelRootDomain` |
+| `electron/meili-launcher.ts` | `@creezio/electron-shell` | **B** | Chemins injectés |
+| `electron/server-launcher.ts` | ports + `startNextServerCore` | **B** | Spawn injecté ; secrets app |
+| `electron/host-stack.ts` | pattern doc / contrats | **B** | Lazy host — apps gardent le graphe |
+| `electron/hermes-*` / `n8n-*` / `tunnel.ts` | contrats B + port B.2 | **B.2** | Trop couplés runtime |
+| `electron/plugin-*` | vertical / B.2 | **B.2** | |
+| `electron/main.ts` | façade `prepareDesktopBoot` + vertical | **B** / vertical | Découpe progressive |
+| `scripts/electron/after-pack.cjs` | tooling | **C** | |
+| `scripts/electron/publish-desktop.sh` | tooling | **C** | |
+| `electron-builder.yml` | généré depuis manifest | **B** | via buildElectronBuilderConfig |
 | Seeds / templates métier | **vertical** | — | Certivan VASP, Fidu seeds… |
 | Routes Next CRM / UI métier | **vertical** | — | |
 | `vendor/hermes-skills` marque | **vertical** | — | |
 | Paperclip (Fidu) | **vertical** | — | Hors noyau kit |
+| Catalogue-sync / supplier-tabs | **vertical** | — | Métier TempoFlow |
 
-## Identités lues (Phase A)
+## Identités (Phase A/B)
 
-| Marque | bridgeName | envPrefix | appId client | appId serveur |
-|--------|------------|-----------|--------------|---------------|
-| TempoFlow | `tempoflowDesktop` | `TF2` | `fr.tempoflow.desktop` | `fr.tempoflow.desktop.server` |
-| Certivan | `certivanDesktop` | `CERTIVAN` | `fr.certivan.desktop` | `fr.certivan.desktop.server` |
-| Fidu | `fiduDesktop` | `FIDU` | `fr.fidu.desktop` | `fr.fidu.desktop.server` (cible) |
+| Marque | bridgeName | envPrefix | deepLink | sessionPartition | tunnelRootDomain |
+|--------|------------|-----------|----------|------------------|------------------|
+| TempoFlow | `tempoflowDesktop` | `TF2` | `tempoflow` | `tempoflow-app` | `tempoflow.fr` |
+| Certivan | `certivanDesktop` | `CERTIVAN` | `certivan` | `certivan-app` | `certivan.creez.io` |
+| Fidu | `fiduDesktop` | `FIDU` | `fidu` | `fidu-app` | `fidu.creez.io` |
 
 ## Ce qui reste vertical (ne jamais monter dans le kit)
 
@@ -50,14 +60,17 @@ Légende :
 - Seeds / templates / skills Hermes spécifiques
 - Pages Next, API métier, migrations SQL produit
 - Credentials / tokens de feed (seuls les **URLs** publiques sont dans brand-config)
+- Orchestration complète du boot `main.ts` (jusqu'à découpe progressive Phase G)
 
 ## Consommation future (Phase G)
 
 ```ts
 import { fiduManifest } from "@creezio/brand-config";
-import { getDesktopBridge } from "@creezio/shell";
-import { resolveDbPath } from "@creezio/platform-core";
+import { getDesktopBridge, createDesktopApi } from "@creezio/shell";
+import { resolveDbPath, feedUrlForKind } from "@creezio/platform-core";
+import { prepareDesktopBoot, setupAutoUpdater } from "@creezio/electron-shell";
 
+const boot = await prepareDesktopBoot(fiduManifest);
 const bridge = getDesktopBridge(fiduManifest.bridgeName);
 ```
 

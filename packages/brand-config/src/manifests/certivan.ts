@@ -13,6 +13,10 @@ export const certivanManifest: AppManifest = {
   bridgeName: "certivanDesktop",
   dbFileName: "certivan.db",
   localConfigFileName: "certivan-config.json",
+  deepLinkProtocol: "certivan",
+  sessionPartition: "certivan-app",
+  logBasename: "certivan-main",
+  tunnelRootDomain: "certivan.creez.io",
   domains: {
     primary: "certivan.creez.io",
     feedHost: "certivan.creez.io",

@@ -19,6 +19,11 @@ export type PathsContext = {
   isPackaged: boolean;
   /** process.env (injectable pour tests). */
   env?: NodeJS.ProcessEnv;
+  /**
+   * Racine ressources packagées (`process.resourcesPath`) ou racine repo en dev.
+   * Requis pour résoudre binaires vendor / preload.
+   */
+  resourcesRoot?: string;
 };
 
 function readEnvOverride(ctx: PathsContext, suffix: string): string {
@@ -66,6 +71,22 @@ export function resolveN8nHomeDir(ctx: PathsContext): string {
   return path.join(resolveUserDataDir(ctx), "n8n-home");
 }
 
+export function resolveLogsDir(ctx: PathsContext): string {
+  return path.join(resolveUserDataDir(ctx), "logs");
+}
+
+export function resolveMainLogPath(ctx: PathsContext): string {
+  return path.join(resolveLogsDir(ctx), `${ctx.manifest.logBasename}.log`);
+}
+
+export function resolveTunnelHomeDir(ctx: PathsContext): string {
+  return path.join(resolveUserDataDir(ctx), "tunnel-home");
+}
+
+export function resolveNodeRuntimeDir(ctx: PathsContext): string {
+  return path.join(resolveUserDataDir(ctx), `${ctx.manifest.brandId}-node`);
+}
+
 /**
  * Calcule le userData cible pour un kind packagé (client/server).
  * Pure — l'appelant crée le dossier et appelle `app.setPath`.
@@ -89,4 +110,41 @@ export function feedUrlForKind(
   kind: "client" | "server",
 ): string {
   return kind === "server" ? manifest.server.feedUrl : manifest.client.feedUrl;
+}
+
+/**
+ * Racine ressources embarquées.
+ * - packagé : `resourcesRoot` (= process.resourcesPath)
+ * - dev     : fourni par l'appelant (racine repo crm/)
+ */
+export function resolveResourcesRoot(ctx: PathsContext): string {
+  if (ctx.resourcesRoot) return ctx.resourcesRoot;
+  return resolveUserDataDir(ctx);
+}
+
+/** Candidats binaire Meilisearch (OS courant). */
+export function meiliBinaryCandidates(ctx: PathsContext): string[] {
+  const root = resolveResourcesRoot(ctx);
+  const plat =
+    process.platform === "win32"
+      ? "win-x64"
+      : process.platform === "darwin"
+        ? "darwin"
+        : "linux";
+  const name =
+    process.platform === "win32" ? "meilisearch.exe" : "meilisearch";
+  return [
+    path.join(root, "bin", `meilisearch-${plat}`, name),
+    path.join(root, "resources", "bin", `meilisearch-${plat}`, name),
+    path.join(root, "vendor", "meilisearch", name),
+  ];
+}
+
+/** Chemin preload compilé sous build/electron ou resources. */
+export function resolvePreloadPath(
+  ctx: PathsContext,
+  fileName: string,
+): string {
+  const root = resolveResourcesRoot(ctx);
+  return path.join(root, "build", "electron", fileName);
 }

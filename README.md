@@ -7,19 +7,21 @@ Monorepo **plateforme** pour les desktops Creezio (TempoFlow, Certivan, Fidu).
 
 ## Pourquoi ce repo ?
 
-Les trois marques partagent le même shell Electron (Client + Serveur, feeds, preload, paths).  
-Ce kit isole les **contrats** et, plus tard, le **runtime** — sans toucher aux apps tant que la Phase G n'est pas lancée.
+Les trois marques partagent le même shell Electron (Client + Serveur, feeds, preload, paths, splash, updater…).  
+Ce kit isole les **contrats** (Phase A) et le **runtime générique** (Phase B) — sans toucher aux apps tant que la Phase G n'est pas lancée.
 
 ## Structure
 
 ```
 packages/
-  brand-config/   # AppManifest + manifests tempoflow / certivan / fidu
-  shell/          # IPC, DesktopBridge, types window.*Desktop
-  platform-core/  # paths / local-config schema (paramétrés par manifest)
-apps/             # placeholder (consoles futures)
+  brand-config/     # AppManifest + manifests + buildElectronBuilderConfig
+  shell/            # IPC, DesktopBridge, createDesktopApi (preload)
+  platform-core/    # paths, app-kind, connection, tunnel, updater-state…
+  electron-shell/   # runtime Electron (boot, updater, tray, splash, launchers)
+apps/               # placeholder (consoles futures)
 docs/
   PHASE-A.md
+  PHASE-B.md
   PLATFORM-VS-VERTICAL.md
 ```
 
@@ -31,7 +33,7 @@ Chaque `AppManifest` expose **toujours** `client` et `server` :
 - `feedUrl` (racine client, `/server/` pour le serveur)
 - `nsisGuid` (mutex Uninstall distincts)
 - `userDataSegment` / `packageName`
-- `bridgeName`, `envPrefix`, `dbFileName`, `localConfigFileName`
+- `bridgeName`, `envPrefix`, `deepLinkProtocol`, `sessionPartition`, `tunnelRootDomain`
 
 Ce n'est **pas** une option de configuration.
 
@@ -41,6 +43,7 @@ Ce n'est **pas** une option de configuration.
 cd /opt/docker/creezio
 npm install
 npm run build
+npm test
 ```
 
 ## Comment une app consommera le kit (Phase G)
@@ -54,26 +57,33 @@ Plus tard (workspace npm ou package GitHub) :
   "dependencies": {
     "@creezio/brand-config": "0.1.0",
     "@creezio/shell": "0.1.0",
-    "@creezio/platform-core": "0.1.0"
+    "@creezio/platform-core": "0.1.0",
+    "@creezio/electron-shell": "0.1.0"
+  },
+  "peerDependencies": {
+    "electron": ">=28",
+    "electron-updater": ">=6"
   }
 }
 ```
 
 ```ts
 import { certivanManifest } from "@creezio/brand-config";
-import { IpcChannels, getDesktopBridge } from "@creezio/shell";
-import { resolveDbPath, resolveLocalConfigPath } from "@creezio/platform-core";
+import { createDesktopApi, exposeDesktopApi, IpcChannels } from "@creezio/shell";
+import { resolveDbPath, feedUrlForKind } from "@creezio/platform-core";
+import {
+  prepareDesktopBoot,
+  setupAutoUpdater,
+  TrayController,
+} from "@creezio/electron-shell";
 
-const ctx = {
-  manifest: certivanManifest,
-  userDataRoot: "/tmp/demo-userdata",
-  isPackaged: false,
-};
-
-console.log(resolveDbPath(ctx));
-// …/certivan.db
-
-const api = getDesktopBridge(certivanManifest.bridgeName);
+const boot = await prepareDesktopBoot(certivanManifest);
+await setupAutoUpdater({
+  feedUrl: feedUrlForKind(
+    certivanManifest,
+    boot.appKind === "server" ? "server" : "client",
+  ),
+});
 ```
 
 Les builds exe / publish des marques restent dans leurs repos respectifs.
@@ -82,14 +92,16 @@ Les builds exe / publish des marques restent dans leurs repos respectifs.
 
 | Phase | Contenu |
 |-------|---------|
-| **A** (ici) | Contrats + manifests + docs + build vert |
-| **B** | Runtime Electron générique (main/preload/launchers/updater) |
+| **A** | Contrats + manifests + docs + build vert |
+| **B** (ici) | Runtime Electron générique (boot/preload/launchers/updater) |
+| **B.2** | Hermes / n8n / tunnel / plugins launchers complets |
+| **C** | Tooling publish / after-pack |
 | **G** | Branchement Fidu / Certivan / TF2 sur le kit |
 
-Voir [docs/PHASE-A.md](docs/PHASE-A.md) et [docs/PLATFORM-VS-VERTICAL.md](docs/PLATFORM-VS-VERTICAL.md).
+Voir [docs/PHASE-B.md](docs/PHASE-B.md) et [docs/PLATFORM-VS-VERTICAL.md](docs/PLATFORM-VS-VERTICAL.md).
 
-## Hors scope Phase A
+## Hors scope
 
-- Pas de publish npm / exe
+- Pas de publish npm / exe depuis ce repo
 - Pas de modification Fidu / Certivan / tempoflow2
-- Pas de consommation du kit par les apps
+- Pas de consommation du kit par les apps (Phase G)
