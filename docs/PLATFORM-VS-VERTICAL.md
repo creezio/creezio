@@ -90,16 +90,35 @@ const tokens = productHubTokensFromManifest(certivanManifest);
 const tag = pluginN8nTag(productId, tokens); // certivan-plugin:…
 ```
 
-## Consommation future (Phase F / G)
+## Propagation (Phase F) — contrat, pas bascule
+
+Le package `@creezio/propagation` expose :
+
+- policy semver + `kit:version` / `kit:impact`
+- mapping packages → surfaces apps + canaux PR marques
+- registre plugins org L3 (mémoire) + extension points descente/remontée
+- inventaire versions pour la console
+
+Les checklists de bascule sont dans `docs/gates/G1-CERTIVAN.md`,
+`G2-FIDU.md`, `G3-TEMPOFLOW.md` — **exécutées en Phase G uniquement**.
+
+Voir [PROPAGATION.md](PROPAGATION.md) et [PHASE-F.md](PHASE-F.md).
+
+## Consommation future (Phase G)
 
 ```ts
 import { fiduManifest } from "@creezio/brand-config";
 import { getDesktopBridge, createDesktopApi } from "@creezio/shell";
 import { resolveDbPath, feedUrlForKind } from "@creezio/platform-core";
 import { prepareDesktopBoot, setupAutoUpdater } from "@creezio/electron-shell";
+import { impactForPackageBump } from "@creezio/propagation";
 
 const boot = await prepareDesktopBoot(fiduManifest);
 const bridge = getDesktopBridge(fiduManifest.bridgeName);
+const impact = impactForPackageBump({
+  packageName: "@creezio/platform-core",
+  bumpKind: "minor",
+});
 ```
 
-Les apps continueront de vivre sous `/opt/docker/{fidu,certivan-app}` et `creezio/tempoflow2` ; elles ajouteront une dépendance workspace/npm vers ce repo.
+Les apps continueront de vivre sous `/opt/docker/{fidu,certivan-app}` et `creezio/tempoflow2` ; elles ajouteront une dépendance workspace/npm vers ce repo **en Phase G**.

@@ -131,6 +131,87 @@ header.top p {
 .badge.idle {
   color: var(--idle);
 }
+.badge.warn {
+  color: var(--warn);
+  border-color: color-mix(in srgb, var(--warn) 45%, var(--line));
+}
+
+.section-title {
+  margin: 28px 0 12px;
+  font-size: 1.05rem;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+}
+
+.kit-panel {
+  border: 1px solid var(--line);
+  background: color-mix(in srgb, var(--panel) 88%, black);
+  border-radius: 14px;
+  padding: 18px 18px 14px;
+  margin-bottom: 16px;
+}
+
+.kit-table-wrap {
+  overflow-x: auto;
+}
+
+.kit-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.88rem;
+}
+
+.kit-table th,
+.kit-table td {
+  text-align: left;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--line);
+  vertical-align: top;
+}
+
+.kit-table th {
+  color: var(--muted);
+  font-weight: 600;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.gates {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.gate-link {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 12px 14px;
+  background: #0e1621;
+  color: var(--text);
+  text-decoration: none;
+}
+
+.gate-link:hover {
+  border-color: var(--accent);
+  text-decoration: none;
+}
+
+.gate-order {
+  margin: 0;
+  padding-left: 1.2rem;
+  color: var(--muted);
+  font-size: 0.9rem;
+  line-height: 1.55;
+}
+
+.gate-order strong {
+  color: var(--text);
+}
 
 .arts {
   display: grid;

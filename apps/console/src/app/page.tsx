@@ -1,4 +1,7 @@
 import { BrandCard } from "@/components/BrandCard";
+import { GatesPanel } from "@/components/GatesPanel";
+import { KitVersionsPanel } from "@/components/KitVersionsPanel";
+import { loadKitSnapshot } from "@/lib/kit";
 import { loadParc } from "@/lib/parc";
 
 export const dynamic = "force-dynamic";
@@ -6,6 +9,7 @@ export const revalidate = 0;
 
 export default function HomePage() {
   const parc = loadParc();
+  const kit = loadKitSnapshot();
   const generatedAt = new Date().toISOString();
 
   return (
@@ -14,13 +18,17 @@ export default function HomePage() {
         <div>
           <h1>Creezio Console</h1>
           <p>
-            Pilotage du parc desktop — feeds Client + Serveur, versions live,
-            statut build, dry-run remote-build.
+            Pilotage du parc desktop + inventaire kit @creezio/* — feeds
+            Client/Serveur, versions locales, gates G1/G2/G3 (docs).
           </p>
         </div>
         <div className="meta">généré {generatedAt}</div>
       </header>
 
+      <KitVersionsPanel snap={kit} />
+      <GatesPanel snap={kit} />
+
+      <h2 className="section-title">Parc marques</h2>
       <div className="grid">
         {parc.map((row) => (
           <BrandCard key={row.brandId} row={row} />
@@ -29,14 +37,29 @@ export default function HomePage() {
 
       <footer className="foot">
         <p>
-          Lecture seule des feeds publics (<code>latest.yml</code> via{" "}
-          <code>@creezio/brand-config</code>). Les triggers destructifs
-          (build/publish) restent CLI — voir{" "}
-          <code>apps/console/README.md</code> et{" "}
-          <code>docs/PHASE-C.md</code>.
+          Lecture seule des feeds publics (<code>latest.yml</code>). Triggers
+          destructifs (build/publish) restent CLI — voir{" "}
+          <code>apps/console/README.md</code>,{" "}
+          <a
+            href="https://github.com/creezio/creezio/blob/main/docs/PROPAGATION.md"
+            target="_blank"
+            rel="noreferrer"
+          >
+            docs/PROPAGATION.md
+          </a>{" "}
+          et{" "}
+          <a
+            href="https://github.com/creezio/creezio/blob/main/docs/PHASE-F.md"
+            target="_blank"
+            rel="noreferrer"
+          >
+            docs/PHASE-F.md
+          </a>
+          .
         </p>
         <p>
-          Suite prévue : <strong>Phase D (Factory new-app)</strong>.
+          Suite : <strong>Phase G</strong> — bascule gated{" "}
+          <strong>G1 Certivan</strong> d&apos;abord (pas exécutée ici).
         </p>
       </footer>
     </main>

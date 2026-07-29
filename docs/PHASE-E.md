@@ -158,9 +158,9 @@ Les apps (`certivan-app`, `tempoflow2`, éventuellement Fidu) :
 
 ## Suite — Phase F (Propagation)
 
-Propager le kit dans les apps marques (dépendances, remplacements progressifs
-des modules dupliqués, validation Client+Serveur) **sans** encore couper le
-runtime legacy — préparation à la bascule Phase G.
+Livré : voir [PHASE-F.md](PHASE-F.md) et [PROPAGATION.md](PROPAGATION.md) —
+semver, canaux PR, registre L3, extension points, console versions, checklists
+gates G1–G3 (sans bascule runtime ; bascule = Phase G).
 
 ## Contraintes respectées
 

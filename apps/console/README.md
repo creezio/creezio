@@ -2,7 +2,8 @@
 
 Console de **pilotage du parc** desktop (TempoFlow, Certivan, Fidu) :
 versions live depuis les `latest.yml`, liens de téléchargement, statut build,
-wrappers remote-build en **dry-run** par défaut.
+wrappers remote-build en **dry-run** par défaut, **inventaire packages kit**
+et liens docs gates G1/G2/G3 (Phase F).
 
 Ce n’est **pas** un CRM métier.
 
@@ -33,7 +34,9 @@ npm run console:start  # après npm run build
 
 | Zone | Comportement |
 |------|----------------|
-| Parc | 3 marques, cartes Client + Serveur |
+| Kit versions | Inventaire local `@creezio/*` (`GET /api/kit-versions`) |
+| Gates | Liens docs G1 Certivan / G2 Fidu / G3 TempoFlow (non exécutées) |
+| Parc | Marques + sandbox demobrand, cartes Client + Serveur |
 | Feeds | Lecture HTTP des `latest.yml` (URLs `brand-config`) |
 | Téléchargements | Liens directs exe + latest.yml |
 | Statut build | Fichier JSON `/tmp/{brand}-build-status.json` si présent |
