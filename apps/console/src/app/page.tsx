@@ -2,8 +2,10 @@ import { BrandCard } from "@/components/BrandCard";
 import { GatesPanel } from "@/components/GatesPanel";
 import { KitVersionsPanel } from "@/components/KitVersionsPanel";
 import { OrgPluginsPanel } from "@/components/OrgPluginsPanel";
+import { ObservabilityPanel } from "@/components/ObservabilityPanel";
 import { PluginFactoryPanel } from "@/components/PluginFactoryPanel";
 import { loadKitSnapshot } from "@/lib/kit";
+import { loadObservabilityConsoleSnapshot } from "@/lib/observability-console";
 import { loadOrgPluginRegistrySnapshot } from "@/lib/org-plugin-registry";
 import { listFactorySessionsSnapshot } from "@/lib/plugin-factory-demo";
 import { loadParc } from "@/lib/parc";
@@ -16,6 +18,7 @@ export default function HomePage() {
   const kit = loadKitSnapshot();
   const orgPlugins = loadOrgPluginRegistrySnapshot();
   const factory = listFactorySessionsSnapshot();
+  const obs = loadObservabilityConsoleSnapshot();
   const generatedAt = new Date().toISOString();
 
   return (
@@ -36,6 +39,14 @@ export default function HomePage() {
         sessions={factory.sessions}
         filePath={factory.filePath}
         updatedAt={factory.updatedAt}
+      />
+      <ObservabilityPanel
+        summary={obs.summary}
+        usage={obs.usage}
+        orgs={obs.orgs}
+        recent={obs.recent}
+        filePath={obs.filePath}
+        updatedAt={obs.updatedAt}
       />
       <OrgPluginsPanel snap={orgPlugins} filePath={orgPlugins.filePath} />
       <GatesPanel snap={kit} />

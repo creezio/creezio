@@ -58,7 +58,7 @@ post-I18. Ordre strict : D0 → D1 → … → D6, puis vision V1–V3.
 | Phase | Contenu |
 |-------|---------|
 | **V1** | Fabrique plugins conversationnelle (demobrand E2E) — ✅ [PHASE-V1.md](PHASE-V1.md) |
-| **V2** | Observabilité native kit |
+| **V2** | Observabilité native kit — ✅ [PHASE-V2.md](PHASE-V2.md) |
 | **V3** | Automations data-driven (contrat + preuve demobrand) |
 
 Hors scope volontaire inchangé : auto-promotion plugin→module, univers perso,

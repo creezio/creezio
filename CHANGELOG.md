@@ -4,6 +4,10 @@
 ## [Unreleased]
 
 ### Added
+- **Phase V2** — Observabilité native : package `@creezio/observability`
+  (activité, usages plugins, control-plane) ; demobrand mount + émissions ;
+  console `GET/POST /api/observability` multi-org ; `docs/PHASE-V2.md` ;
+  tests `test-phase-v2.mjs` ; pas de republish marques.
 - **Phase V1** — Fabrique plugins conversationnelle : `createConversationalPluginFactory`
   (intention → impact → PRD → scaffold → openPlugin → MCP) ; demobrand
   mount `plugin-factory` + tools MCP ; console `GET/POST /api/plugin-factory` ;

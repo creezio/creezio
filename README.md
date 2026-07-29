@@ -49,6 +49,7 @@ packages/
   assistant/         # Chat plateforme (H1.5)
   tasks/             # Tâches plateforme (H1.6)
   mails/             # Mails plateforme (H1.7)
+  observability/     # Activité / usages plugins / control-plane (V2)
   electron-shell/    # runtime Electron (boot, updater, tray, splash, host stack)
   desktop-tooling/   # publish-desktop, remote-build-win, after-pack, build-status
   factory/           # creezio new-app (Phase D + wiring H1.9)
@@ -159,8 +160,10 @@ Les sandboxes factory portent `sandbox: true` (feeds jetables).
 | **D4–D5** | Fidu CP HTTP **0.1.56** + ADR clientSlim false | ✅ |
 | **D6** | Certivan polish aliases | ✅ |
 | **V1** | Fabrique plugins conversationnelle (demobrand E2E) | ✅ |
+| **V2** | Observabilité native (activité / usages / control-plane) | ✅ |
 
 Voir [docs/PHASE-D0.md](docs/PHASE-D0.md), [docs/PHASE-V1.md](docs/PHASE-V1.md),
+[docs/PHASE-V2.md](docs/PHASE-V2.md),
 [docs/PHASE-H5.md](docs/PHASE-H5.md),
 [docs/DOD-PHASE-A-G.md](docs/DOD-PHASE-A-G.md), [docs/PROPAGATION.md](docs/PROPAGATION.md).
 

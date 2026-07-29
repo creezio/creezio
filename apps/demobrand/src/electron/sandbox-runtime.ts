@@ -45,6 +45,15 @@ import {
   type SqliteMailsStore,
 } from "@creezio/mails";
 import {
+  OBSERVABILITY_CORE_SQL,
+  createObservabilityApiMount,
+  createSqliteObservabilityStore,
+  recordActivity,
+  recordControlPlaneEvent,
+  recordPluginUsage,
+  type SqliteObservabilityStore,
+} from "@creezio/observability";
+import {
   PRODUCT_HUB_ACL_H5_SQL,
   PRODUCT_HUB_ACL_ORG_SQL,
   PRODUCT_HUB_ACL_USER_SQL,
@@ -113,6 +122,7 @@ export function demobrandCoreMigrations(): SqliteMigration[] {
     { id: "i2_001_assistant", sql: ASSISTANT_CORE_SQL },
     { id: "i3_001_tasks", sql: PLATFORM_TASKS_CORE_SQL },
     { id: "i3_002_mails", sql: PLATFORM_MAILS_CORE_SQL },
+    { id: "v2_001_observability", sql: OBSERVABILITY_CORE_SQL },
   );
 }
 
@@ -247,6 +257,8 @@ export type DemobrandSandbox = {
   productHub: SqliteProductHubStore;
   /** V1 — fabrique plugins conversationnelle. */
   pluginFactory: ConversationalPluginFactory;
+  /** V2 — observabilité native (core). */
+  observability: SqliteObservabilityStore;
   /** Répertoire plugins FS (scaffold). */
   pluginsDir: string;
   installPlugin(
@@ -328,6 +340,10 @@ export function createDemobrandSandbox(opts?: {
   });
   mails.registerProvider(createFileSinkMailProvider({ outDir: mailOutDir }));
 
+  const observability = createSqliteObservabilityStore({
+    coreDbPath: runtime.paths.core,
+  });
+
   function authorizePluginAccess(accessCtx: {
     pluginId: string;
     method: string;
@@ -348,11 +364,24 @@ export function createDemobrandSandbox(opts?: {
       accessCtx.method.toUpperCase() === "HEAD"
         ? ("see" as const)
         : ("execute" as const);
-    return decidePluginAccess(
+    const decision = decidePluginAccess(
       productHub.getAclPolicy(accessCtx.pluginId),
       actor,
       action,
     );
+    if (decision.allow) {
+      recordPluginUsage(observability, {
+        pluginId: accessCtx.pluginId,
+        action: `api.${accessCtx.method.toLowerCase()}`,
+        actor: {
+          orgId: actor.orgId,
+          userId: actor.userId,
+          brandId: manifest.brandId,
+        },
+        meta: { subPath: accessCtx.subPath },
+      });
+    }
+    return decision;
   }
 
   const api = createApiKernel({
@@ -426,6 +455,52 @@ export function createDemobrandSandbox(opts?: {
     "plugin-factory",
     createPluginFactoryApiMount(pluginFactory),
   );
+  api.registerModuleApi(
+    "observability",
+    createObservabilityApiMount(observability),
+  );
+
+  // Wrap factory surface pour émettre activité V2
+  const rawSubmit = pluginFactory.submitIntention.bind(pluginFactory);
+  const rawMaterialize = pluginFactory.materialize.bind(pluginFactory);
+  const rawIterate = pluginFactory.iterate.bind(pluginFactory);
+  pluginFactory.submitIntention = (input) => {
+    const session = rawSubmit(input);
+    recordActivity(
+      observability,
+      "factory.intention",
+      { orgId: "org-sandbox", brandId: manifest.brandId },
+      { productId: session.productId, phase: session.phase },
+    );
+    return session;
+  };
+  pluginFactory.materialize = async (input) => {
+    const result = await rawMaterialize(input);
+    if (result.ok) {
+      recordActivity(
+        observability,
+        "factory.materialize",
+        {
+          orgId: input.actor.orgId,
+          userId: input.actor.userId,
+          brandId: manifest.brandId,
+        },
+        { pluginId: result.pluginId, productId: input.productId },
+      );
+      // control_plane install émis par installPlugin (installRuntime)
+    }
+    return result;
+  };
+  pluginFactory.iterate = (input) => {
+    const session = rawIterate(input);
+    recordActivity(
+      observability,
+      "factory.iterate",
+      { orgId: "org-sandbox", brandId: manifest.brandId },
+      { pluginId: input.pluginId, productId: session.productId },
+    );
+    return session;
+  };
 
   function moduleTools(): McpRegisteredTool[] {
     return [
@@ -549,6 +624,7 @@ export function createDemobrandSandbox(opts?: {
     mcp,
     productHub,
     pluginFactory,
+    observability,
     pluginsDir,
     auth,
     assistant,
@@ -603,6 +679,11 @@ export function createDemobrandSandbox(opts?: {
         ownerOrgId,
         ...(capabilities.length > 0 ? { capabilities } : {}),
       });
+      recordControlPlaneEvent(observability, "install", {
+        pluginId,
+        actor: { orgId: ownerOrgId, brandId: manifest.brandId },
+        meta: { created: opened.created },
+      });
       return { path: opened.handle.path, created: opened.created };
     },
 
@@ -610,10 +691,15 @@ export function createDemobrandSandbox(opts?: {
       api.unregisterPluginApi(pluginId);
       const result = runtime.uninstallPlugin(pluginId);
       productHub.clearAcl(pluginId);
+      recordControlPlaneEvent(observability, "uninstall", {
+        pluginId,
+        actor: { brandId: manifest.brandId },
+      });
       return result;
     },
 
     close() {
+      observability.close();
       mails.close();
       tasks.close();
       assistant.close();
