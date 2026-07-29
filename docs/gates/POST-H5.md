@@ -14,7 +14,7 @@
 ## TempoFlow (`tempoflow2`)
 
 - [x] Wrapper sync → contrat kit I0
-- [ ] Vendor H5+ consommé nominal (I9) — **pas** forcé en I0
+- [x] Vendor H6 consommé nominal (I9)
 - [ ] ACL L3 + control-plane `acl` (I10)
 - [ ] Republish uniquement I14 après verts
 
@@ -34,5 +34,5 @@
 
 ```bash
 CREEZIO_SYNC_DRY_RUN=1 bash crm/scripts/electron/sync-creezio-vendor.sh
-# attendu : ARCHITECTURE_VERSION=H5, packages baseline, OK dry-run
+# attendu : ARCHITECTURE_VERSION=H6, packages baseline I3, OK dry-run
 ```
