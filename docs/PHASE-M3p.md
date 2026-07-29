@@ -4,7 +4,7 @@
 |--|--|
 | **Statut** | ✅ **Sign-off** |
 | **Date** | 2026-07-30 |
-| **Repo** | `certivan-app` → `fidu` (+ kit M3 `0f6b843`) |
+| **Repo** | `certivan-app` `6b45c2d` → `fidu` `3550145` (+ kit `1fcc4b3`) |
 | **Prérequis** | [PHASE-M3.md](PHASE-M3.md) |
 | **ARCHITECTURE_VERSION** | `"H6"` (inchangé) |
 | **Republish marques** | Fidu ship pipeline si desktop |
