@@ -4,6 +4,7 @@
 
 import crypto from "node:crypto";
 import {
+  PRODUCT_HUB_ACL_H5_SQL,
   PRODUCT_HUB_ACL_ORG_SQL,
   PRODUCT_HUB_ACL_USER_SQL,
   PRODUCT_HUB_CORE_SQL,
@@ -34,7 +35,13 @@ import {
   type OpenSqliteDatabase,
   type SqliteDatabase,
 } from "./sqlite-driver.js";
-import type { PluginAclEntry } from "../acl.js";
+import {
+  aclEntryToPolicy,
+  type PluginAclCapability,
+  type PluginAclCapabilityGrant,
+  type PluginAclEntry,
+  type PluginAclPolicy,
+} from "../acl.js";
 
 function id(): string {
   return crypto.randomUUID();
@@ -45,10 +52,17 @@ function now(): string {
 }
 
 export type SqliteProductHubStore = ProductHubStore & {
-  /** Persistance ACL L3/L4 dans core. */
+  /** Persistance ACL L3/L4 (+ H5 caps / binding) dans core. */
   upsertAcl(entry: PluginAclEntry): void;
   getAcl(pluginId: string): PluginAclEntry;
   listAcl(): PluginAclEntry[];
+  /** Binding org propriétaire (install). */
+  bindPluginOrg(pluginId: string, ownerOrgId: string): void;
+  getPluginOwnerOrg(pluginId: string): string | null;
+  clearAcl(pluginId: string): void;
+  /** Policy prête pour decidePluginAccess. */
+  getAclPolicy(pluginId: string): PluginAclPolicy;
+  listAclPolicies(): PluginAclPolicy[];
   close(): void;
   readonly dbPath: string;
 };
@@ -88,6 +102,7 @@ export function createSqliteProductHubStore(
   db.exec(PRODUCT_HUB_CORE_SQL);
   db.exec(PRODUCT_HUB_ACL_USER_SQL);
   db.exec(PRODUCT_HUB_ACL_ORG_SQL);
+  db.exec(PRODUCT_HUB_ACL_H5_SQL);
 
   const store: SqliteProductHubStore = {
     dbPath: opts.coreDbPath,
@@ -439,6 +454,9 @@ export function createSqliteProductHubStore(
       db.prepare(`DELETE FROM plugin_acl_org WHERE plugin_id = ?`).run(
         entry.pluginId,
       );
+      db.prepare(`DELETE FROM plugin_acl_capability WHERE plugin_id = ?`).run(
+        entry.pluginId,
+      );
       const ts = now();
       for (const userId of entry.userIds) {
         db.prepare(
@@ -450,6 +468,45 @@ export function createSqliteProductHubStore(
           `INSERT INTO plugin_acl_org (plugin_id, org_id, created_at) VALUES (?, ?, ?)`,
         ).run(entry.pluginId, orgId, ts);
       }
+      for (const g of entry.capabilities || []) {
+        db.prepare(
+          `INSERT INTO plugin_acl_capability
+            (plugin_id, subject_kind, subject_id, capability, created_at)
+           VALUES (?, ?, ?, ?, ?)`,
+        ).run(entry.pluginId, g.subjectKind, g.subjectId, g.capability, ts);
+      }
+      if (entry.ownerOrgId) {
+        store.bindPluginOrg(entry.pluginId, entry.ownerOrgId);
+      }
+    },
+
+    bindPluginOrg(pluginId, ownerOrgId) {
+      const ts = now();
+      db.prepare(
+        `INSERT INTO plugin_org_binding (plugin_id, owner_org_id, created_at)
+         VALUES (?, ?, ?)
+         ON CONFLICT(plugin_id) DO UPDATE SET owner_org_id = excluded.owner_org_id`,
+      ).run(pluginId, ownerOrgId, ts);
+    },
+
+    getPluginOwnerOrg(pluginId) {
+      const row = db
+        .prepare(
+          `SELECT owner_org_id FROM plugin_org_binding WHERE plugin_id = ?`,
+        )
+        .get(pluginId) as { owner_org_id: string } | undefined;
+      return row ? String(row.owner_org_id) : null;
+    },
+
+    clearAcl(pluginId) {
+      db.prepare(`DELETE FROM plugin_acl WHERE plugin_id = ?`).run(pluginId);
+      db.prepare(`DELETE FROM plugin_acl_org WHERE plugin_id = ?`).run(pluginId);
+      db.prepare(`DELETE FROM plugin_acl_capability WHERE plugin_id = ?`).run(
+        pluginId,
+      );
+      db.prepare(`DELETE FROM plugin_org_binding WHERE plugin_id = ?`).run(
+        pluginId,
+      );
     },
 
     getAcl(pluginId) {
@@ -459,11 +516,36 @@ export function createSqliteProductHubStore(
       const orgs = db
         .prepare(`SELECT org_id FROM plugin_acl_org WHERE plugin_id = ?`)
         .all(pluginId) as Array<{ org_id: string }>;
+      const caps = db
+        .prepare(
+          `SELECT subject_kind, subject_id, capability
+           FROM plugin_acl_capability WHERE plugin_id = ?`,
+        )
+        .all(pluginId) as Array<{
+        subject_kind: string;
+        subject_id: string;
+        capability: string;
+      }>;
+      const capabilities: PluginAclCapabilityGrant[] = caps.map((c) => ({
+        subjectKind: c.subject_kind as "org" | "user",
+        subjectId: String(c.subject_id),
+        capability: c.capability as PluginAclCapability,
+      }));
       return {
         pluginId,
         userIds: users.map((u) => String(u.user_id)),
         orgIds: orgs.map((o) => String(o.org_id)),
+        ownerOrgId: store.getPluginOwnerOrg(pluginId),
+        ...(capabilities.length > 0 ? { capabilities } : {}),
       };
+    },
+
+    getAclPolicy(pluginId) {
+      return aclEntryToPolicy(store.getAcl(pluginId));
+    },
+
+    listAclPolicies() {
+      return store.listAcl().map(aclEntryToPolicy);
     },
 
     listAcl() {
@@ -478,7 +560,12 @@ export function createSqliteProductHubStore(
         .all() as Array<{ plugin_id: string }>) {
         pluginIds.add(String(r.plugin_id));
       }
-      return [...pluginIds].map((pid) => store.getAcl(pid));
+      for (const r of db
+        .prepare(`SELECT DISTINCT plugin_id FROM plugin_org_binding`)
+        .all() as Array<{ plugin_id: string }>) {
+        pluginIds.add(String(r.plugin_id));
+      }
+      return [...pluginIds].sort().map((pid) => store.getAcl(pid));
     },
   };
 

@@ -52,19 +52,33 @@ export {
 } from "./n8n-tags.js";
 
 export type {
+  PluginAclAction,
   PluginAclActor,
+  PluginAclCapability,
+  PluginAclCapabilityGrant,
+  PluginAclDecision,
   PluginAclEntry,
   PluginAclLevel,
   PluginAclPolicy,
 } from "./acl.js";
 export {
+  PLUGIN_ACL_DEFAULT_CAPABILITIES,
   PLUGIN_ACL_LEVEL_ORG,
   PLUGIN_ACL_LEVEL_USER,
+  PLUGIN_ACL_ORG_HEADER,
+  PLUGIN_ACL_OWNER_HEADER,
+  PLUGIN_ACL_USER_HEADER,
   aclEntryToPolicy,
   actorIsPluginAdmin,
   aggregateAclRows,
+  canActorExecutePlugin,
+  canActorInstallPlugin,
   canActorSeePlugin,
+  decidePluginAccess,
   filterVisiblePluginIds,
+  isCrossOrgDenied,
+  resolvePluginAclActorFromHeaders,
+  subjectKey,
 } from "./acl.js";
 
 export type {
@@ -80,6 +94,7 @@ export {
 } from "./grants-flow.js";
 
 export {
+  PRODUCT_HUB_ACL_H5_SQL,
   PRODUCT_HUB_ACL_ORG_SQL,
   PRODUCT_HUB_ACL_USER_SQL,
   PRODUCT_HUB_CORE_SQL,
@@ -122,6 +137,7 @@ export type {
 export { openNodeSqliteDatabase } from "./store/sqlite-driver.js";
 
 export type {
+  PluginControlPlaneAcl,
   PluginControlPlaneAdapters,
   PluginControlPlaneOptions,
   PluginControlPlaneState,

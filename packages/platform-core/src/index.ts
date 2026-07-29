@@ -33,6 +33,7 @@ export {
   ensureDay0SqliteLayout,
   ensurePluginDb,
   pluginDbExists,
+  removePluginDb,
   resolveBrandDbPath,
   resolveCoreDbPath,
   resolveDay0SqlitePaths,

@@ -51,6 +51,10 @@ export type McpAuthorizeContext = {
   space: McpToolSpace;
   ownerId?: string;
   subject?: string;
+  /** H5 — org claim JWT / opaque actor. */
+  orgId?: string;
+  /** Claims JWT bruts (orgId, isOwner, …). */
+  claims?: Record<string, unknown>;
   args: Record<string, unknown>;
   isAlias: boolean;
 };
@@ -101,6 +105,14 @@ export type McpFacadeOptions = {
    * Défaut true.
    */
   defaultCrossLayerDeny?: boolean;
+  /**
+   * H5 — filtre listTools space=plugin selon ACL (optionnel).
+   * Si fourni, les tools plugin non visibles sont masqués.
+   */
+  filterPluginToolsForActor?: (
+    tools: McpToolDefinition[],
+    ctx: { subject?: string; orgId?: string; claims?: Record<string, unknown> },
+  ) => McpToolDefinition[] | Promise<McpToolDefinition[]>;
 };
 
 export type McpListToolsResult = {
@@ -110,5 +122,11 @@ export type McpListToolsResult = {
 export type McpToolsBySpace = Record<McpToolSpace, McpToolDefinition[]>;
 
 export type McpAuthResult =
-  | { ok: true; subject?: string }
+  | {
+      ok: true;
+      subject?: string;
+      /** H5 — orgId depuis claim JWT `orgId` / `org_id`. */
+      orgId?: string;
+      claims?: Record<string, unknown>;
+    }
   | { ok: false; error: string; status: number };

@@ -81,8 +81,4 @@ aliases anti-doublon, deny cross-layer, tests verts, version H4.
 
 ## Suite H5 — Harden plugins / ACL
 
-1. Runtime plugins orga : lifecycle Product Hub L3 + DB `plugin/<id>`
-2. ACL granulaire (qui voit / exécute) alignée nav-acl + mcp_tool_policies
-3. Deny cross-tenant / cross-org sur mounts plugin
-4. E2E demobrand + smoke TF plugin-control
-5. Docs `BACKLOG-H5` / `PHASE-H5` + `ARCHITECTURE_VERSION = "H5"`
+→ **Livré** : [PHASE-H5.md](PHASE-H5.md) / [BACKLOG-H5.md](BACKLOG-H5.md).

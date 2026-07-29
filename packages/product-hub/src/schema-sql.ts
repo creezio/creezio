@@ -127,4 +127,29 @@ CREATE TABLE IF NOT EXISTS plugin_acl_org (
 CREATE INDEX IF NOT EXISTS idx_plugin_acl_org ON plugin_acl_org(org_id);
 `;
 
+/**
+ * H5 — binding org propriétaire + capacités granulaires see/install/execute.
+ * Membership reste dans plugin_acl / plugin_acl_org ; les caps explicites
+ * vivent ici (absent ⇒ défaut see+execute pour sujets listés).
+ */
+export const PRODUCT_HUB_ACL_H5_SQL = `
+CREATE TABLE IF NOT EXISTS plugin_org_binding (
+  plugin_id TEXT PRIMARY KEY,
+  owner_org_id TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_plugin_org_binding_org ON plugin_org_binding(owner_org_id);
+
+CREATE TABLE IF NOT EXISTS plugin_acl_capability (
+  plugin_id TEXT NOT NULL,
+  subject_kind TEXT NOT NULL CHECK (subject_kind IN ('org','user')),
+  subject_id TEXT NOT NULL,
+  capability TEXT NOT NULL CHECK (capability IN ('see','install','execute')),
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  PRIMARY KEY (plugin_id, subject_kind, subject_id, capability)
+);
+CREATE INDEX IF NOT EXISTS idx_plugin_acl_capability_subject
+  ON plugin_acl_capability(subject_kind, subject_id);
+`;
+
 export const PRODUCT_HUB_MANAGED_MARKER = ".product-hub-managed";

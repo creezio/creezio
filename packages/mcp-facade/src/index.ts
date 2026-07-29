@@ -29,7 +29,13 @@ export {
   parseNamespacedToolName,
 } from "./namespace.js";
 export type { ParsedToolName } from "./namespace.js";
+export type {
+  DecidePluginAccessFn,
+  PluginAclActorResolver,
+  PluginAclPolicyResolver,
+} from "./policy.js";
 export {
   composeToolPolicies,
+  createDenyUnauthorizedPluginToolPolicy,
   denyCrossLayerToolCall,
 } from "./policy.js";

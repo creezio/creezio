@@ -107,6 +107,22 @@ export function pluginDbExists(ctx: PathsContext, pluginId: string): boolean {
 }
 
 /**
+ * H5 — supprime le fichier DB plugin (après close du handle).
+ * Ne touche jamais core/brand.
+ */
+export function removePluginDb(
+  ctx: PathsContext,
+  pluginId: string,
+): { removed: boolean; path: string } {
+  const dbPath = resolvePluginDbPath(ctx, pluginId);
+  if (!fs.existsSync(dbPath)) {
+    return { removed: false, path: dbPath };
+  }
+  fs.rmSync(dbPath, { force: true });
+  return { removed: true, path: dbPath };
+}
+
+/**
  * Chemins jour 0 serveur : core + brand uniquement (pas de plugin).
  */
 export function resolveDay0SqlitePaths(ctx: PathsContext): {

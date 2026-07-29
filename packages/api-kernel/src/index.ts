@@ -3,10 +3,12 @@
  */
 
 export type {
+  ApiAuthorizePluginAccessFn,
   ApiHandlerContext,
   ApiKernelOptions,
   ApiMount,
   ApiMountHandler,
+  ApiPluginAccessDecision,
   ApiRequest,
   ApiResponse,
   ApiSpace,

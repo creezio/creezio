@@ -1,10 +1,13 @@
 /**
- * Runtime sandbox DemoBrand (H2.4) — multi-DB réel + routes API isolées.
+ * Runtime sandbox DemoBrand (H2.4 / H5) — multi-DB réel + routes API isolées
+ * + ACL Product Hub L3 (see/install/execute) + deny cross-org.
  *
  * Preuve kit :
  * - jour 0 = core + brand only
  * - module `demo-notes` écrit uniquement dans brand
- * - `installSandboxPlugin` crée `plugin/<id>.db` + mount API plugin
+ * - `installSandboxPlugin` crée `plugin/<id>.db` + mount API plugin + ACL org
+ * - MCP tools plugin filtrés / deny si org non autorisée
+ * - uninstall = closePlugin + remove DB + clear ACL
  */
 
 import fs from "node:fs";
@@ -19,18 +22,28 @@ import {
 } from "@creezio/platform-core";
 import { AUTH_CORE_SQL } from "@creezio/auth";
 import {
+  PRODUCT_HUB_ACL_H5_SQL,
   PRODUCT_HUB_ACL_ORG_SQL,
   PRODUCT_HUB_ACL_USER_SQL,
   PRODUCT_HUB_CORE_SQL,
+  PLUGIN_ACL_ORG_HEADER,
+  PLUGIN_ACL_OWNER_HEADER,
+  PLUGIN_ACL_USER_HEADER,
   createSqliteProductHubStore,
+  decidePluginAccess,
+  resolvePluginAclActorFromHeaders,
+  type PluginAclActor,
+  type PluginAclCapability,
   type SqliteProductHubStore,
 } from "@creezio/product-hub";
 import {
   createApiKernel,
   type ApiKernel,
   type ApiMount,
+  type ApiRequest,
 } from "@creezio/api-kernel";
 import {
+  createDenyUnauthorizedPluginToolPolicy,
   createMcpFacade,
   type McpFacade,
   type McpRegisteredTool,
@@ -62,6 +75,7 @@ export function demobrandCoreMigrations(): SqliteMigration[] {
         PRODUCT_HUB_CORE_SQL,
         PRODUCT_HUB_ACL_USER_SQL,
         PRODUCT_HUB_ACL_ORG_SQL,
+        PRODUCT_HUB_ACL_H5_SQL,
       ].join("\n"),
     },
   );
@@ -178,28 +192,50 @@ function createPluginKvMount(pluginId: string): ApiMount {
   };
 }
 
+export type InstallSandboxPluginOpts = {
+  /** Org propriétaire (binding L3) — défaut `org-sandbox`. */
+  ownerOrgId?: string;
+  /** Orgs qui voient / exécutent (défaut = [ownerOrgId]). */
+  allowedOrgIds?: string[];
+  /** Capacités explicites (sinon see+execute pour orgs listées). */
+  orgCapabilities?: Array<{
+    orgId: string;
+    capabilities: PluginAclCapability[];
+  }>;
+};
+
 export type DemobrandSandbox = {
   ctx: PathsContext;
   runtime: SqliteRuntime;
   api: ApiKernel;
   mcp: McpFacade;
   productHub: SqliteProductHubStore;
-  installPlugin(pluginId: string): {
+  installPlugin(
+    pluginId: string,
+    opts?: InstallSandboxPluginOpts,
+  ): {
     path: string;
     created: boolean;
   };
+  uninstallPlugin(pluginId: string): {
+    closed: boolean;
+    removed: boolean;
+    path: string;
+  };
+  /** Headers actor pour API / control-plane. */
+  actorHeaders(actor: PluginAclActor): Record<string, string>;
   close(): void;
 };
 
 /**
- * Boot sandbox H2. `userDataRoot` optionnel (tests / CI) — défaut tmp.
+ * Boot sandbox H2/H5. `userDataRoot` optionnel (tests / CI) — défaut tmp.
  */
 export function createDemobrandSandbox(opts?: {
   userDataRoot?: string;
 }): DemobrandSandbox {
   const userDataRoot =
     opts?.userDataRoot ||
-    fs.mkdtempSync(path.join(os.tmpdir(), "creezio-demobrand-h2-"));
+    fs.mkdtempSync(path.join(os.tmpdir(), "creezio-demobrand-h5-"));
 
   const ctx: PathsContext = {
     manifest,
@@ -219,10 +255,38 @@ export function createDemobrandSandbox(opts?: {
     conversationPrefix: "demobrand",
   });
 
+  function authorizePluginAccess(accessCtx: {
+    pluginId: string;
+    method: string;
+    subPath: string;
+    req: ApiRequest;
+  }) {
+    const headers = accessCtx.req.headers || {};
+    const hasActorHint = Boolean(
+      headers[PLUGIN_ACL_ORG_HEADER] ||
+        headers[PLUGIN_ACL_USER_HEADER] ||
+        headers[PLUGIN_ACL_OWNER_HEADER],
+    );
+    // Compat H2 : appels sans headers actor = service (tests isolation DB).
+    if (!hasActorHint) return { allow: true as const };
+    const actor = resolvePluginAclActorFromHeaders(headers);
+    const action =
+      accessCtx.method.toUpperCase() === "GET" ||
+      accessCtx.method.toUpperCase() === "HEAD"
+        ? ("see" as const)
+        : ("execute" as const);
+    return decidePluginAccess(
+      productHub.getAclPolicy(accessCtx.pluginId),
+      actor,
+      action,
+    );
+  }
+
   const api = createApiKernel({
     brandId: manifest.brandId,
     appVersion: "0.1.0",
     sqliteRuntime: runtime,
+    authorizePluginAccess,
   });
   api.registerModuleApi("demo-notes", createDemoNotesMount());
 
@@ -251,23 +315,62 @@ export function createDemobrandSandbox(opts?: {
       space: "plugin" as const,
       ownerId: pluginId,
       handler: async () => {
+        // Tool déjà autorisé par policy MCP execute — lecture interne owner.
         const res = await api.handle({
           method: "GET",
           path: `/api/v1/plugins/${pluginId}/kv`,
+          headers: {
+            [PLUGIN_ACL_OWNER_HEADER]: "1",
+          },
         });
         return { ok: res.status < 400, content: res.body };
       },
     }));
   }
 
+  const pluginAclPolicy = createDenyUnauthorizedPluginToolPolicy({
+    getPolicy: (pluginId) => productHub.getAclPolicy(pluginId),
+    decide: decidePluginAccess,
+    resolveActor: (ctx) => ({
+      orgId: ctx.orgId ?? null,
+      userId: ctx.subject && ctx.subject !== "opaque-token" ? ctx.subject : null,
+      isOwner: Boolean(ctx.claims?.isOwner),
+      isServiceKey:
+        ctx.subject === "opaque-token" || ctx.subject === "anonymous",
+    }),
+  });
+
   const mcp = createMcpFacade({
     brandId: manifest.brandId,
     allowUnauthenticated: true,
     listApiMounts: () => api.listMounts(),
+    authorizeToolCall: pluginAclPolicy,
     discoverToolsBySpace: async () => ({
       module: moduleTools(),
       plugin: pluginTools(),
     }),
+    filterPluginToolsForActor: (tools, actorCtx) => {
+      const actor: PluginAclActor = {
+        orgId: actorCtx.orgId ?? null,
+        userId:
+          actorCtx.subject &&
+          actorCtx.subject !== "opaque-token" &&
+          actorCtx.subject !== "anonymous"
+            ? actorCtx.subject
+            : null,
+        isOwner: Boolean(actorCtx.claims?.isOwner),
+        isServiceKey:
+          actorCtx.subject === "opaque-token" ||
+          actorCtx.subject === "anonymous",
+      };
+      return tools.filter((t) => {
+        if (t.space !== "plugin") return true;
+        const id = t.ownerId;
+        if (!id) return false;
+        return decidePluginAccess(productHub.getAclPolicy(id), actor, "see")
+          .allow;
+      });
+    },
   });
 
   return {
@@ -277,10 +380,43 @@ export function createDemobrandSandbox(opts?: {
     mcp,
     productHub,
 
-    installPlugin(pluginId) {
+    actorHeaders(actor) {
+      const h: Record<string, string> = {};
+      if (actor.orgId) h[PLUGIN_ACL_ORG_HEADER] = String(actor.orgId);
+      if (actor.userId) h[PLUGIN_ACL_USER_HEADER] = String(actor.userId);
+      if (actor.isOwner) h[PLUGIN_ACL_OWNER_HEADER] = "1";
+      return h;
+    },
+
+    installPlugin(pluginId, installOpts) {
       const opened = runtime.openPlugin(pluginId, demobrandPluginMigrations());
       api.registerPluginApi(pluginId, createPluginKvMount(pluginId));
+      const ownerOrgId = installOpts?.ownerOrgId || "org-sandbox";
+      const orgIds = installOpts?.allowedOrgIds?.length
+        ? installOpts.allowedOrgIds
+        : [ownerOrgId];
+      const capabilities = (installOpts?.orgCapabilities || []).flatMap((g) =>
+        g.capabilities.map((capability) => ({
+          subjectKind: "org" as const,
+          subjectId: g.orgId,
+          capability,
+        })),
+      );
+      productHub.upsertAcl({
+        pluginId,
+        orgIds,
+        userIds: [],
+        ownerOrgId,
+        ...(capabilities.length > 0 ? { capabilities } : {}),
+      });
       return { path: opened.handle.path, created: opened.created };
+    },
+
+    uninstallPlugin(pluginId) {
+      api.unregisterPluginApi(pluginId);
+      const result = runtime.uninstallPlugin(pluginId);
+      productHub.clearAcl(pluginId);
+      return result;
     },
 
     close() {

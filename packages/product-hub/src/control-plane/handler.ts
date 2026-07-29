@@ -1,6 +1,7 @@
 /**
  * Handler HTTP control plane plugins — patterns génériques TF2/Certivan.
  * Bind 127.0.0.1 recommandé. Auth Bearer + grants Product Hub.
+ * H5 : ACL L3 see/install/execute + deny cross-org (si `opts.acl`).
  */
 
 import type http from "node:http";
@@ -15,8 +16,64 @@ import {
   isProductHubManaged,
   markProductHubManaged,
 } from "../managed-marker.js";
+import {
+  actorIsPluginAdmin,
+  decidePluginAccess,
+  type PluginAclAction,
+  type PluginAclActor,
+} from "../acl.js";
 import { authOk, normalizeHeaders, readBody, sendJson } from "./http-utils.js";
 import type { PluginControlPlaneOptions } from "./types.js";
+
+function aclDeny(
+  res: http.ServerResponse,
+  decision: { allow: false; reason: string },
+): void {
+  sendJson(res, 403, {
+    ok: false,
+    error: decision.reason,
+    hint: "ACL Product Hub L3 — voir / installer / exécuter selon org",
+  });
+}
+
+function checkAcl(
+  opts: PluginControlPlaneOptions,
+  headers: Record<string, string | string[] | undefined>,
+  pluginId: string | null,
+  action: PluginAclAction,
+):
+  | { ok: true; actor: PluginAclActor }
+  | { ok: false; reason: string } {
+  if (!opts.acl) {
+    return { ok: true, actor: { isServiceKey: true } };
+  }
+  const actor = opts.acl.resolveActor(headers);
+  if (!pluginId) {
+    // Bootstrap install — pas encore de policy.
+    if (opts.acl.requireAdminToBootstrapInstall === false) {
+      return { ok: true, actor };
+    }
+    if (actorIsPluginAdmin(actor)) return { ok: true, actor };
+    return { ok: false, reason: "acl_install_denied" };
+  }
+  const policy = opts.acl.getPolicy(pluginId);
+  // Plugin inconnu + install → bootstrap
+  const hasGrants =
+    policy &&
+    (policy.allowedOrgIds.length > 0 ||
+      policy.allowedUserIds.length > 0 ||
+      policy.ownerOrgId);
+  if (action === "install" && !hasGrants) {
+    if (opts.acl.requireAdminToBootstrapInstall === false) {
+      return { ok: true, actor };
+    }
+    if (actorIsPluginAdmin(actor)) return { ok: true, actor };
+    return { ok: false, reason: "acl_install_denied" };
+  }
+  const decision = decidePluginAccess(policy, actor, action);
+  if (!decision.allow) return { ok: false, reason: decision.reason };
+  return { ok: true, actor };
+}
 
 export function createPluginControlPlaneHandler(
   opts: PluginControlPlaneOptions,
@@ -35,6 +92,7 @@ export function createPluginControlPlaneHandler(
         service: tokens.controlPlaneServiceName,
         brandId: tokens.brandId,
         pluginsDir,
+        acl: Boolean(opts.acl),
       });
       return;
     }
@@ -45,7 +103,33 @@ export function createPluginControlPlaneHandler(
     }
 
     if (method === "GET" && p === "/v1/plugins") {
-      sendJson(res, 200, { ok: true, ...(await adapters.listStatus()) });
+      const status = await adapters.listStatus();
+      if (!opts.acl) {
+        sendJson(res, 200, { ok: true, ...status });
+        return;
+      }
+      const actor = opts.acl.resolveActor(headers);
+      const pluginsRaw = (status as { plugins?: unknown }).plugins;
+      const plugins = Array.isArray(pluginsRaw) ? pluginsRaw : [];
+      const filtered = plugins.filter((pl) => {
+        const id =
+          pl && typeof pl === "object" && "id" in pl
+            ? String((pl as { id: unknown }).id)
+            : pl &&
+                typeof pl === "object" &&
+                "manifest" in pl &&
+                (pl as { manifest?: { id?: string } }).manifest?.id
+              ? String((pl as { manifest: { id: string } }).manifest.id)
+              : null;
+        if (!id) return actorIsPluginAdmin(actor);
+        const decision = decidePluginAccess(
+          opts.acl!.getPolicy(id),
+          actor,
+          "see",
+        );
+        return decision.allow;
+      });
+      sendJson(res, 200, { ok: true, ...status, plugins: filtered });
       return;
     }
 
@@ -62,6 +146,11 @@ export function createPluginControlPlaneHandler(
       const pluginId = String(body.plugin_id || "").trim();
       if (!isValidPluginId(pluginId)) {
         sendJson(res, 400, { ok: false, error: "plugin_id invalide" });
+        return;
+      }
+      const acl = checkAcl(opts, headers, pluginId, "install");
+      if (!acl.ok) {
+        aclDeny(res, { allow: false, reason: acl.reason });
         return;
       }
       if (!adapters.fetchProductDetails) {
@@ -127,6 +216,11 @@ export function createPluginControlPlaneHandler(
         return;
       }
       const id = String(body.id || "").trim();
+      const acl = checkAcl(opts, headers, id || null, "install");
+      if (!acl.ok) {
+        aclDeny(res, { allow: false, reason: acl.reason });
+        return;
+      }
       const grant = requirePluginExecutionGrant({
         tokens,
         secret: controlToken,
@@ -157,6 +251,11 @@ export function createPluginControlPlaneHandler(
       } catch {
         /* best-effort */
       }
+      try {
+        opts.acl?.onInstalled?.(id, acl.actor);
+      } catch {
+        /* best-effort */
+      }
       let running: unknown = null;
       if (adapters.restartPlugin) {
         const restarted = await adapters.restartPlugin(id);
@@ -175,6 +274,11 @@ export function createPluginControlPlaneHandler(
     const filesMatch = p.match(/^\/v1\/plugins\/([a-z][a-z0-9-]{1,62})\/files$/);
     if (method === "PUT" && filesMatch) {
       const id = filesMatch[1]!;
+      const acl = checkAcl(opts, headers, id, "execute");
+      if (!acl.ok) {
+        aclDeny(res, { allow: false, reason: acl.reason });
+        return;
+      }
       const raw = await readBody(req);
       let body: {
         files?: Record<string, string>;
@@ -223,6 +327,13 @@ export function createPluginControlPlaneHandler(
     if (actionMatch && method === "POST") {
       const id = actionMatch[1]!;
       const action = actionMatch[2]!;
+      const aclAction: PluginAclAction =
+        action === "disable" ? "install" : "execute";
+      const acl = checkAcl(opts, headers, id, aclAction);
+      if (!acl.ok) {
+        aclDeny(res, { allow: false, reason: acl.reason });
+        return;
+      }
       if (action === "enable" || action === "disable") {
         if (!adapters.enablePlugin) {
           sendJson(res, 501, { ok: false, error: "enablePlugin non branché" });
@@ -245,11 +356,24 @@ export function createPluginControlPlaneHandler(
 
     const deleteMatch = p.match(/^\/v1\/plugins\/([a-z][a-z0-9-]{1,62})$/);
     if (method === "DELETE" && deleteMatch) {
+      const id = deleteMatch[1]!;
+      const acl = checkAcl(opts, headers, id, "install");
+      if (!acl.ok) {
+        aclDeny(res, { allow: false, reason: acl.reason });
+        return;
+      }
       if (!adapters.deletePlugin) {
         sendJson(res, 501, { ok: false, error: "deletePlugin non branché" });
         return;
       }
-      const r = await adapters.deletePlugin(deleteMatch[1]!);
+      const r = await adapters.deletePlugin(id);
+      if (r.ok) {
+        try {
+          opts.acl?.onUninstalled?.(id);
+        } catch {
+          /* best-effort */
+        }
+      }
       sendJson(res, r.ok ? 200 : 404, r);
       return;
     }

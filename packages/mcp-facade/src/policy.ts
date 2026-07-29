@@ -1,11 +1,55 @@
 /**
  * Policies MCP H4 — deny cross-layer cohérent api-kernel H2.
+ * H5 — plugin ACL (see/execute) alignée Product Hub.
  */
 
 import type {
   McpAuthorizeContext,
   McpToolPolicyDecision,
 } from "./types.js";
+
+export type PluginAclPolicyResolver = (pluginId: string) =>
+  | {
+      allowedOrgIds: string[];
+      allowedUserIds: string[];
+      ownerOrgId?: string | null;
+      capabilitiesBySubject?: Record<string, Array<"see" | "install" | "execute">>;
+      failClosed?: boolean;
+      pluginId: string;
+    }
+  | undefined;
+
+export type PluginAclActorResolver = (ctx: McpAuthorizeContext) => {
+  orgId?: string | null;
+  userId?: string | null;
+  isOwner?: boolean;
+  isServiceKey?: boolean;
+  isImpersonating?: boolean;
+};
+
+export type DecidePluginAccessFn = (
+  policy:
+    | {
+        pluginId: string;
+        allowedOrgIds: string[];
+        allowedUserIds: string[];
+        ownerOrgId?: string | null;
+        capabilitiesBySubject?: Record<
+          string,
+          Array<"see" | "install" | "execute">
+        >;
+        failClosed?: boolean;
+      }
+    | undefined,
+  actor: {
+    orgId?: string | null;
+    userId?: string | null;
+    isOwner?: boolean;
+    isServiceKey?: boolean;
+    isImpersonating?: boolean;
+  },
+  action: "see" | "install" | "execute",
+) => { allow: true } | { allow: false; reason: string };
 
 /**
  * Deny-by-default si la charge utile tente un échappement cross-layer
@@ -61,6 +105,38 @@ export function composeToolPolicies(
       const d = await p(ctx);
       if (!d.allow) return d;
     }
+    return { allow: true };
+  };
+}
+
+/**
+ * H5 — deny tools `plugin.<id>.*` si l'acteur n'a pas `execute`.
+ * Injecter `decidePluginAccess` depuis `@creezio/product-hub` pour
+ * une décision identique à l'API / control-plane.
+ */
+export function createDenyUnauthorizedPluginToolPolicy(opts: {
+  getPolicy: PluginAclPolicyResolver;
+  resolveActor?: PluginAclActorResolver;
+  decide: DecidePluginAccessFn;
+}): (ctx: McpAuthorizeContext) => McpToolPolicyDecision {
+  const resolveActor =
+    opts.resolveActor ||
+    ((ctx) => ({
+      orgId: ctx.orgId ?? (ctx.claims?.orgId as string | undefined) ?? null,
+      userId: ctx.subject || null,
+      isOwner: Boolean(ctx.claims?.isOwner),
+      isServiceKey: ctx.subject === "opaque-token" || ctx.subject === "anonymous",
+    }));
+
+  return (ctx) => {
+    if (ctx.space !== "plugin") return { allow: true };
+    const pluginId = ctx.ownerId;
+    if (!pluginId) {
+      return { allow: false, reason: "acl_plugin_owner_missing" };
+    }
+    const actor = resolveActor(ctx);
+    const decision = opts.decide(opts.getPolicy(pluginId), actor, "execute");
+    if (!decision.allow) return { allow: false, reason: decision.reason };
     return { allow: true };
   };
 }

@@ -15,7 +15,9 @@ test("H3.0 docs H3 présents (version bumpée en H4+)", () => {
   // ARCHITECTURE_VERSION est bumpée au sign-off de chaque phase ;
   // H3 reste prouvée par les docs + contrats shell-ui ci-dessous.
   assert.ok(
-    ARCHITECTURE_VERSION === "H3" || ARCHITECTURE_VERSION === "H4",
+    ARCHITECTURE_VERSION === "H3" ||
+      ARCHITECTURE_VERSION === "H4" ||
+      ARCHITECTURE_VERSION === "H5",
     `ARCHITECTURE_VERSION inattendue: ${ARCHITECTURE_VERSION}`,
   );
 });

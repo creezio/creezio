@@ -300,6 +300,21 @@ export function createApiKernel(opts: ApiKernelOptions = {}): ApiKernel {
         if (!mount) {
           return json(404, { ok: false, error: "plugin_not_mounted", id });
         }
+        if (opts.authorizePluginAccess) {
+          const decision = await opts.authorizePluginAccess({
+            pluginId: id,
+            method,
+            subPath,
+            req: { ...req, method, path },
+          });
+          if (!decision.allow) {
+            return json(decision.status ?? 403, {
+              ok: false,
+              error: decision.reason,
+              pluginId: id,
+            });
+          }
+        }
         return dispatchMount("plugin", id, mount, { ...req, method, path }, subPath);
       }
 

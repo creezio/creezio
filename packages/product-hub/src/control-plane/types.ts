@@ -4,6 +4,11 @@
 
 import type { ProductHubBrandTokens } from "../brand-tokens.js";
 import type { ProductHubProductDetails } from "../grants-flow.js";
+import type {
+  PluginAclActor,
+  PluginAclDecision,
+  PluginAclPolicy,
+} from "../acl.js";
 
 export type PluginControlPlaneAdapters = {
   /** Status listing (plugins + running). */
@@ -45,6 +50,26 @@ export type PluginControlPlaneAdapters = {
   ) => Promise<ProductHubProductDetails | null>;
 };
 
+/**
+ * H5 — ACL org branchée sur le control plane.
+ * Absent ⇒ compat Phase E (pas de filtre org — Bearer seul).
+ */
+export type PluginControlPlaneAcl = {
+  resolveActor: (headers: Record<string, string | string[] | undefined>) => PluginAclActor;
+  getPolicy: (pluginId: string) => PluginAclPolicy | undefined;
+  listPolicies?: () => PluginAclPolicy[];
+  /** Après create réussi — bind owner org + grants. */
+  onInstalled?: (pluginId: string, actor: PluginAclActor) => void;
+  /** Après delete — clear ACL / binding. */
+  onUninstalled?: (pluginId: string) => void;
+  /**
+   * Install d'un plugin inexistant : si true, admin uniquement
+   * (défaut). Si false, tout acteur authentifié Bearer peut créer
+   * (déconseillé hors sandbox).
+   */
+  requireAdminToBootstrapInstall?: boolean;
+};
+
 export type PluginControlPlaneOptions = {
   tokens: ProductHubBrandTokens;
   /** Bearer secret (= control token). */
@@ -53,6 +78,8 @@ export type PluginControlPlaneOptions = {
   adapters: PluginControlPlaneAdapters;
   /** Port préféré (info health). */
   preferredPort?: number;
+  /** H5 — enforcement ACL L3 (optionnel, rétrocompat). */
+  acl?: PluginControlPlaneAcl;
 };
 
 export type PluginControlPlaneState = {
@@ -63,3 +90,5 @@ export type PluginControlPlaneState = {
   tokens: ProductHubBrandTokens;
   close: () => Promise<void>;
 };
+
+export type { PluginAclActor, PluginAclDecision, PluginAclPolicy };

@@ -99,7 +99,8 @@ découverts. Pas de « produit MCP Creezio » séparé du MCP de l’app.
 ### Plugins = organisation + ACL
 
 - Créés éventuellement par des users, mais ce sont des **plugins d’organisation**.
-- Granularité ACL (qui voit / utilise) — Product Hub L3/L4 déjà contracté.
+- Granularité ACL (qui voit / installe / exécute) — Product Hub L3/L4 **H5**
+  (`decidePluginAccess`, deny cross-org, binding `ownerOrgId`).
 - Pas d’univers perso totalement séparé (pas de silo user hors org).
 
 ### Multi-exe Client + Serveur par marque

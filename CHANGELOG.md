@@ -4,6 +4,14 @@
 ## [Unreleased]
 
 ### Added
+- **Phase H5** — Harden plugins / ACL (`@creezio/product-hub`) :
+  `decidePluginAccess` (see/install/execute), deny cross-org,
+  `plugin_org_binding` + `plugin_acl_capability`, control-plane `acl`,
+  api-kernel `authorizePluginAccess`, mcp
+  `createDenyUnauthorizedPluginToolPolicy` + JWT `orgId`,
+  `closePlugin` / `uninstallPlugin`, demobrand E2E ;
+  `docs/BACKLOG-H5.md`, `docs/PHASE-H5.md` ; tests
+  `scripts/test-phase-h5.mjs`.
 - **Phase H4** — MCP proxy unifié durci (`@creezio/mcp-facade`) :
   namespaces, aliases legacy → canonique, `publicSurface: legacy-preferred`,
   `denyCrossLayerToolCall`, registry `registerTool`/`registerAlias`,
@@ -36,8 +44,10 @@
   `docs/BACKLOG-H1-PACKAGES.md`, `docs/PHASE-H0.md` ; liens README.
 
 ### Changed
-- `@creezio/platform-core` : `ARCHITECTURE_VERSION = "H4"` (était `"H3"`).
-- `@creezio/mcp-facade` : proxy H4 (aliases, policies, registry).
+- `@creezio/platform-core` : `ARCHITECTURE_VERSION = "H5"` (était `"H4"`).
+- `@creezio/mcp-facade` : proxy H4 + policy plugin ACL H5.
+- `@creezio/api-kernel` : garde `authorizePluginAccess` (H5).
+- `@creezio/product-hub` : ACL L3 durcie + SQL H5.
 - `@creezio/shell-ui` : guard nav — ids `brand.*` peuvent cibler les routes
   produit métier ; ids nus (`panier`) toujours refusés.
 - Inventaire propagation : 15 packages `@creezio/*` (était 8).

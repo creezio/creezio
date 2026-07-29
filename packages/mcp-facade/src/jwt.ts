@@ -60,11 +60,26 @@ export function verifyMcpBearer(
     const payload = JSON.parse(b64urlToBuf(p).toString("utf8")) as {
       sub?: string;
       exp?: number;
+      orgId?: string;
+      org_id?: string;
+      isOwner?: boolean;
+      [k: string]: unknown;
     };
     if (typeof payload.exp === "number" && payload.exp * 1000 < Date.now()) {
       return { ok: false, error: "token_expired", status: 401 };
     }
-    return { ok: true, subject: payload.sub || "jwt" };
+    const orgId =
+      typeof payload.orgId === "string"
+        ? payload.orgId
+        : typeof payload.org_id === "string"
+          ? payload.org_id
+          : undefined;
+    return {
+      ok: true,
+      subject: payload.sub || "jwt",
+      ...(orgId ? { orgId } : {}),
+      claims: payload as Record<string, unknown>,
+    };
   } catch {
     return { ok: false, error: "invalid_payload", status: 401 };
   }

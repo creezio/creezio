@@ -366,6 +366,13 @@ export function createMcpFacade(options: McpFacadeOptions = {}): McpFacade {
       if (opts?.space) {
         defs = defs.filter((t) => t.space === opts.space);
       }
+      if (options.filterPluginToolsForActor) {
+        defs = await options.filterPluginToolsForActor(defs, {
+          subject: a.subject,
+          orgId: a.orgId,
+          claims: a.claims,
+        });
+      }
       return { tools: defs };
     },
 
@@ -376,7 +383,15 @@ export function createMcpFacade(options: McpFacadeOptions = {}): McpFacade {
       }
       const tools = await allTools();
       const mode = opts?.publicSurface ?? publicSurfaceDefault;
-      return groupBySpace(applyPublicSurface(tools, aliases, mode));
+      let defs = applyPublicSurface(tools, aliases, mode);
+      if (options.filterPluginToolsForActor) {
+        defs = await options.filterPluginToolsForActor(defs, {
+          subject: a.subject,
+          orgId: a.orgId,
+          claims: a.claims,
+        });
+      }
+      return groupBySpace(defs);
     },
 
     async callTool(name, args = {}, opts) {
@@ -396,6 +411,8 @@ export function createMcpFacade(options: McpFacadeOptions = {}): McpFacade {
         space: tool.space,
         ownerId: tool.ownerId,
         subject: a.subject,
+        orgId: a.orgId,
+        claims: a.claims,
         args,
         isAlias,
       });

@@ -16,6 +16,21 @@ export type ApiRequest = {
   query?: Record<string, string | string[] | undefined>;
 };
 
+/**
+ * H5 — garde ACL plugin avant dispatch mount.
+ * Même décision que MCP / control-plane via `decidePluginAccess`.
+ */
+export type ApiPluginAccessDecision =
+  | { allow: true }
+  | { allow: false; reason: string; status?: number };
+
+export type ApiAuthorizePluginAccessFn = (ctx: {
+  pluginId: string;
+  method: string;
+  subPath: string;
+  req: ApiRequest;
+}) => ApiPluginAccessDecision | Promise<ApiPluginAccessDecision>;
+
 export type ApiResponse = {
   status: number;
   headers?: Record<string, string>;
@@ -67,6 +82,11 @@ export type ApiKernelOptions = {
    * Sans runtime, les routes fonctionnent mais sans garde DB (compat H1).
    */
   sqliteRuntime?: SqliteRuntime;
+  /**
+   * H5 — ACL plugin (see/execute) avant dispatch.
+   * Absent ⇒ compat H2/H4 (pas de filtre org).
+   */
+  authorizePluginAccess?: ApiAuthorizePluginAccessFn;
 };
 
 export type MountedApiInfo = {

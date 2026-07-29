@@ -22,6 +22,7 @@ import {
   ensureDay0SqliteLayout,
   ensurePluginDb,
   pluginDbExists,
+  removePluginDb,
   resolveBrandDbPath,
   resolveCoreDbPath,
   resolvePluginDbPath,
@@ -76,6 +77,20 @@ export type SqliteRuntime = {
     pluginId: string,
     migrations?: readonly SqliteMigration[],
   ): OpenPluginResult;
+  /**
+   * H5 — ferme le handle plugin (fichier conserve).
+   * Retourne false si non ouvert.
+   */
+  closePlugin(pluginId: string): boolean;
+  /**
+   * H5 — uninstall : close handle + delete fichier `plugin/<id>.db`.
+   * Ne touche jamais core/brand.
+   */
+  uninstallPlugin(pluginId: string): {
+    closed: boolean;
+    removed: boolean;
+    path: string;
+  };
   listOpenPlugins(): string[];
   status(): SqliteRuntimeStatus;
   close(): void;
@@ -225,6 +240,30 @@ export function createSqliteRuntime(
       );
       plugins.set(pluginId, handle);
       return { handle, created: ensured.created, migrations: mig };
+    },
+
+    closePlugin(pluginId) {
+      assertOpen();
+      const h = plugins.get(pluginId);
+      if (!h) return false;
+      h.close();
+      plugins.delete(pluginId);
+      return true;
+    },
+
+    uninstallPlugin(pluginId) {
+      assertOpen();
+      const closed = Boolean(plugins.get(pluginId));
+      if (closed) {
+        plugins.get(pluginId)!.close();
+        plugins.delete(pluginId);
+      }
+      const removed = removePluginDb(opts.ctx, pluginId);
+      return {
+        closed,
+        removed: removed.removed,
+        path: removed.path,
+      };
     },
 
     listOpenPlugins() {

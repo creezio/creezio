@@ -7,6 +7,7 @@ import path from "node:path";
 import {
   productHubTokensFromManifest,
   startPluginControlPlane,
+  type PluginControlPlaneAcl,
   type PluginControlPlaneAdapters,
   type PluginControlPlaneState,
   type ProductHubStore,
@@ -29,6 +30,8 @@ export type StartHostPluginControlPlaneOptions = {
   productHubStore?: ProductHubStore;
   /** Adapters verticaux (git, scaffold riche…) — override partiel. */
   adapters?: Partial<PluginControlPlaneAdapters>;
+  /** H5 — ACL L3 Product Hub (optionnel, rétrocompat sans filtre). */
+  acl?: PluginControlPlaneAcl;
 };
 
 function defaultScaffold(
@@ -145,6 +148,7 @@ export async function startHostPluginControlPlane(
     pluginsDir,
     adapters,
     port: opts.port ?? 0,
+    ...(opts.acl ? { acl: opts.acl } : {}),
   });
   hostLog(
     ctx,

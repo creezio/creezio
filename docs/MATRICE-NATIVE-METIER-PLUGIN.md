@@ -22,8 +22,8 @@ Source cadre : [ARCHITECTURE-INTENTION.md](ARCHITECTURE-INTENTION.md).
 | Host tunnel | `@creezio/electron-shell` + platform-core | ✅ | `host/tunnel`, `tunnel-urls` |
 | Host n8n | `@creezio/electron-shell` | ✅ | `host/n8n/*` (B.2) |
 | Host Hermes | `@creezio/electron-shell` | ✅ | `host/hermes/*` (B.2) |
-| Product Hub / plugins lifecycle + ACL L3/L4 | `@creezio/product-hub` | ✅ | lifecycle, PRD, grants, control-plane, schema-sql contrat |
-| Plugins host (spawn, grants, events) | platform-core + electron-shell | ✅ | `plugins/*`, control plane host |
+| Product Hub / plugins lifecycle + ACL L3/L4 | `@creezio/product-hub` | ✅ | H5 : `decidePluginAccess` see/install/execute + binding org + deny cross-org |
+| Plugins host (spawn, grants, events) | platform-core + electron-shell | ✅ | `plugins/*`, control plane + `acl` option H5 |
 | Desktop tooling publish / remote-build | `@creezio/desktop-tooling` | ✅ | publish-desktop, remote-build-win, after-pack |
 | Factory new-app | `@creezio/factory` | ✅ | scaffold Client+Serveur + demobrand |
 | Propagation kit→marques | `@creezio/propagation` | ✅ | semver, impact, canaux, extension points, registre L3 |
@@ -31,8 +31,8 @@ Source cadre : [ARCHITECTURE-INTENTION.md](ARCHITECTURE-INTENTION.md).
 | **Auth** (session, login, recovery) | `@creezio/auth` | ✅ | Store + IPC bind + `AUTH_CORE_SQL` ; UI marques encore verticale |
 | **Shell-UI / nav + slots** | `@creezio/shell-ui` | ✅ | `CORE_NAV_ITEMS` + `registerBrandNav` ; demobrand/factory branchés |
 | **Assistant / chat** | `@creezio/assistant` | ✅ | Store mémoire + surface IPC ; persistance sqlite core = raffinement |
-| **API kernel** (façade HTTP cœur) | `@creezio/api-kernel` | ✅ | `/api/v1/core/*` + registres ; **ScopedDbAccess** H2 deny brand/plugin→core |
-| **MCP façade / proxy** | `@creezio/mcp-facade` | ✅ | H4 : aliases legacy + `legacy-preferred` + deny cross-layer + registry ; discovery by space H2 ; JWT |
+| **API kernel** (façade HTTP cœur) | `@creezio/api-kernel` | ✅ | ScopedDbAccess H2 + `authorizePluginAccess` H5 |
+| **MCP façade / proxy** | `@creezio/mcp-facade` | ✅ | H4 aliases/policies + H5 `createDenyUnauthorizedPluginToolPolicy` + JWT `orgId` |
 | **Tasks** (natif plateforme) | `@creezio/tasks` | ✅ | CRUD + mount api-kernel ; distinct Product Hub tasks |
 | **Mails** (natif plateforme) | `@creezio/mails` | ✅ | Draft/send stub + providers ; pas de templates marque |
 | **SQLite multi-fichiers** (core / brand / plugin) | `@creezio/platform-core` | ✅ | paths H1 + `createSqliteRuntime` / migrations H2 |
@@ -93,9 +93,9 @@ nommés dans `@creezio/propagation` (contrats, pas automation).
 
 | Couche | ✅ | 🟡 | ❌ |
 |--------|----|----|-----|
-| Natif (socle A–G + H1–H4) | brand-config, shell, platform-core (+ SqliteRuntime), electron-shell, product-hub, tooling, factory, propagation, console, api-kernel (ScopedDb), mcp-facade (proxy H4), auth, shell-ui, assistant, tasks, mails | control-plane runtime marques, registre L3 persisté | — |
+| Natif (socle A–G + H1–H5) | brand-config, shell, platform-core (+ SqliteRuntime + uninstallPlugin), electron-shell, product-hub (ACL H5), tooling, factory, propagation, console, api-kernel, mcp-facade, auth, shell-ui, assistant, tasks, mails | control-plane runtime marques (sans `acl` tant que non branché) | — |
 | Métier TF (repo marque) | panier, dispatch, releves + MCP unifié H4 | catalogue/stack mounts API | — |
-| Plugins | contrats hub + host + DB `plugin/<id>` + ACL sqlite | control-plane runtime local marques ; harden ACL → **H5** | auto-promotion *(volontaire)* |
+| Plugins | hub + host + DB `plugin/<id>` + ACL L3 kit (see/install/execute, deny cross-org) + E2E demobrand | TF `plugin-acl` encore L4 user-only → conso L3 progressive | auto-promotion *(volontaire)* |
 
-**H4 terminée** = MCP proxy unifié (aliases anti-doublon, deny cross-layer).
-**H5** = harden plugins / ACL runtime.
+**H5 terminée** = ACL plugins durcie (L3 + policies API/MCP/control-plane).
+**Plan H0–H5** = complet ; gaps post = consommation marques progressive.

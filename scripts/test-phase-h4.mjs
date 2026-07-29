@@ -18,8 +18,8 @@ import {
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
-test("H4.0 ARCHITECTURE_VERSION = H4", () => {
-  assert.equal(ARCHITECTURE_VERSION, "H4");
+test("H4.0 ARCHITECTURE_VERSION >= H4", () => {
+  assert.match(ARCHITECTURE_VERSION, /^H([4-9]|\d{2,})$/);
 });
 
 test("H4 docs BACKLOG + PHASE présents", () => {
