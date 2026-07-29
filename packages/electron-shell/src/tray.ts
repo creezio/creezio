@@ -1,6 +1,6 @@
 /**
  * Icône Tray générique — labels depuis AppManifest.productName.
- * Port de electron/tray.ts (TF2 0.10.26).
+ * Port de electron/tray.ts (TF2) — setup/refresh sync (require electron).
  */
 
 import fs from "node:fs";
@@ -29,6 +29,24 @@ export type TrayControllerOptions = {
   closeAiWorkspace?: (userId: string) => void;
 };
 
+/**
+ * Charge electron en sync pour le main CJS des marques.
+ * `eval("require")` hérite du scope CJS (dist-cjs) sans `import.meta`.
+ */
+function loadElectron(): typeof import("electron") {
+  try {
+    // eslint-disable-next-line no-eval
+    const req = eval("require") as NodeRequire;
+    return req("electron") as typeof import("electron");
+  } catch (e) {
+    throw new Error(
+      `@creezio/electron-shell tray: require('electron') indisponible (${
+        e instanceof Error ? e.message : e
+      })`,
+    );
+  }
+}
+
 export class TrayController {
   private tray: InstanceType<typeof import("electron").Tray> | null = null;
 
@@ -48,8 +66,8 @@ export class TrayController {
     return path.join(root, "resources", "tray-icon.png");
   }
 
-  private async loadTrayIcon(): Promise<import("electron").NativeImage> {
-    const { nativeImage } = await import("electron");
+  private loadTrayIcon(): import("electron").NativeImage {
+    const { nativeImage } = loadElectron();
     try {
       const p = this.resolveIconPath();
       if (p && fs.existsSync(p)) {
@@ -64,8 +82,8 @@ export class TrayController {
     );
   }
 
-  private async buildMenu(): Promise<import("electron").Menu> {
-    const { Menu } = await import("electron");
+  private buildMenu(): import("electron").Menu {
+    const { Menu } = loadElectron();
     const name = this.opts.productName;
     const aiEntries = (() => {
       try {
@@ -107,21 +125,22 @@ export class TrayController {
     ]);
   }
 
-  async refresh(): Promise<void> {
+  refresh(): void {
     try {
-      this.tray?.setContextMenu(await this.buildMenu());
+      this.tray?.setContextMenu(this.buildMenu());
     } catch (e) {
       logError("tray", e);
     }
   }
 
-  async setup(): Promise<boolean> {
+  /** true si le tray est opérationnel (close → hide possible). */
+  setup(): boolean {
     if (this.tray) return true;
     try {
-      const electron = await import("electron");
-      const tray = new electron.Tray(await this.loadTrayIcon());
+      const { Tray } = loadElectron();
+      const tray = new Tray(this.loadTrayIcon());
       tray.setToolTip(`${this.opts.productName} — actif en arrière-plan`);
-      tray.setContextMenu(await this.buildMenu());
+      tray.setContextMenu(this.buildMenu());
       tray.on("click", () => this.opts.showWindow());
       this.tray = tray;
       log("tray", "icône tray active (fermer la fenêtre = arrière-plan)");
@@ -147,7 +166,7 @@ export class TrayController {
   }
 }
 
-export async function installCloseToTray(
+export function installCloseToTray(
   win: InstanceType<typeof import("electron").BaseWindow>,
   opts: {
     trayActive: () => boolean;
@@ -155,7 +174,7 @@ export async function installCloseToTray(
     closeToTrayEnabled: () => boolean;
     productName?: string;
   },
-): Promise<void> {
+): void {
   win.on("close", ((e: { preventDefault: () => void }) => {
     if (opts.isQuitting()) return;
     if (!opts.trayActive()) return;
@@ -169,9 +188,9 @@ export async function installCloseToTray(
   }) as never);
 }
 
-export async function applyLaunchAtStartup(enabled: boolean): Promise<void> {
+export function applyLaunchAtStartup(enabled: boolean): void {
   try {
-    const { app } = await import("electron");
+    const { app } = loadElectron();
     app.setLoginItemSettings({
       openAtLogin: enabled,
       args: [],

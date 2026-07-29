@@ -8,6 +8,9 @@ export {
   logError,
   logFilePath,
   getLogRing,
+  recentLines,
+  logFileTail,
+  scoped,
   feedChildLine,
   setOpsLineHandler,
 } from "./logger.js";
@@ -19,6 +22,7 @@ export {
 } from "./window-chrome.js";
 
 export type {
+  SplashHtmlOptions,
   SplashStepId,
   SplashStepStatus,
   SplashStepView,

@@ -24,12 +24,13 @@ Légende :
 | `electron/preload-supplier.ts` | vertical / stub | B | Minimal — inchangé côté app |
 | `electron/connection-profile.ts` | `@creezio/platform-core` | **B** | |
 | `electron/profile.ts` | `@creezio/platform-core` | **B** | Argv / deep-link paramétrés |
-| `electron/updater.ts` | platform-core (state) + `@creezio/electron-shell` | **B** | Feed depuis manifest |
-| `electron/splash-ui.ts` | `@creezio/electron-shell` | **B** | `productName` / `bridgeName` |
-| `electron/window-chrome-html.ts` | `@creezio/electron-shell` | **B** | |
-| `electron/tray.ts` | `@creezio/electron-shell` | **B** | Labels depuis manifest |
-| `electron/admin-window.ts` | `@creezio/electron-shell` | **B** | |
-| `electron/logger.ts` | `@creezio/electron-shell` | **B** | `logBasename` |
+| `electron/updater.ts` | platform-core (state) + `@creezio/electron-shell` | **B** / **R3** | TF stub → kit + feed/onTrack |
+| `electron/splash-ui.ts` | `@creezio/electron-shell` | **B** / **R3** | TF stub labels + `cssPrefix: tf` |
+| `electron/window-chrome-html.ts` | `@creezio/electron-shell` | **B** / **R3** | TF stub prefix `tf` |
+| `electron/tray.ts` | `@creezio/electron-shell` | **B** / **R3** | TF stub productName |
+| `electron/admin-window.ts` | `@creezio/electron-shell` | **B** | TF fork léger (destroy) |
+| `electron/logger.ts` | `@creezio/electron-shell` | **B** / **R3** | TF stub `logBasename` |
+| `electron/meili-launcher.ts` | `@creezio/electron-shell` | **B** / **R3** | TF stub paths/sandbox |
 | `electron/factory-reset.ts` | platform-core (targets) + electron-shell (wipe) | **B** | |
 | `electron/tunnel-service-urls.ts` | `@creezio/platform-core` | **B** | `tunnelRootDomain` |
 | `electron/meili-launcher.ts` | `@creezio/electron-shell` | **B** | Chemins injectés |

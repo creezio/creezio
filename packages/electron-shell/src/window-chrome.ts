@@ -1,15 +1,15 @@
 /**
  * Chrome fenêtre frameless — HTML/CSS/JS purs.
- * Port de electron/window-chrome-html.ts, paramétré par bridgeName.
+ * Port de electron/window-chrome-html.ts, paramétré par bridgeName + cssPrefix.
  */
 
 export function windowChromeBarHtml(cssPrefix = "cz"): string {
   return `<div class="${cssPrefix}-titlebar" id="${cssPrefix}-titlebar">
   <div class="${cssPrefix}-titlebar-drag"></div>
   <div class="${cssPrefix}-titlebar-btns" role="group" aria-label="Contrôles de la fenêtre">
-    <button type="button" class="${cssPrefix}-tb" id="czBtnMin" aria-label="Réduire" title="Réduire">─</button>
-    <button type="button" class="${cssPrefix}-tb" id="czBtnMax" aria-label="Agrandir" title="Agrandir">□</button>
-    <button type="button" class="${cssPrefix}-tb ${cssPrefix}-tb-close" id="czBtnClose" aria-label="Fermer" title="Fermer">✕</button>
+    <button type="button" class="${cssPrefix}-tb" id="${cssPrefix}BtnMin" aria-label="Réduire" title="Réduire">─</button>
+    <button type="button" class="${cssPrefix}-tb" id="${cssPrefix}BtnMax" aria-label="Agrandir" title="Agrandir">□</button>
+    <button type="button" class="${cssPrefix}-tb ${cssPrefix}-tb-close" id="${cssPrefix}BtnClose" aria-label="Fermer" title="Fermer">✕</button>
   </div>
 </div>`;
 }
@@ -40,11 +40,16 @@ export function windowChromeCss(opts?: {
 
 /** Wire IPC via window[bridgeName]. */
 export function windowChromeJs(bridgeName: string, cssPrefix = "cz"): string {
+  const forceAttr = `data-${cssPrefix}-chrome-force`;
+  const minId = `${cssPrefix}BtnMin`;
+  const maxId = `${cssPrefix}BtnMax`;
+  const closeId = `${cssPrefix}BtnClose`;
+  const updId = `${cssPrefix}-upd`;
   return `
 (function wireCzChrome() {
   var api = window[${JSON.stringify(bridgeName)}];
   var bar = document.getElementById(${JSON.stringify(cssPrefix + "-titlebar")});
-  var forced = document.body && document.body.getAttribute("data-cz-chrome-force") === "1";
+  var forced = document.body && document.body.getAttribute(${JSON.stringify(forceAttr)}) === "1";
   var useChrome = forced || (api && api.customWindowChrome);
   if (!useChrome) {
     if (bar) bar.style.display = "none";
@@ -52,7 +57,7 @@ export function windowChromeJs(bridgeName: string, cssPrefix = "cz"): string {
     return;
   }
   document.body.classList.add(${JSON.stringify(cssPrefix + "-chrome")});
-  var maxBtn = document.getElementById("czBtnMax");
+  var maxBtn = document.getElementById(${JSON.stringify(maxId)});
   function syncMax(m) {
     if (!maxBtn) return;
     maxBtn.textContent = m ? "❐" : "□";
@@ -61,8 +66,8 @@ export function windowChromeJs(bridgeName: string, cssPrefix = "cz"): string {
   }
   if (api && api.isWindowMaximized) api.isWindowMaximized().then(syncMax);
   if (api && api.onWindowMaximizedChanged) api.onWindowMaximizedChanged(syncMax);
-  var min = document.getElementById("czBtnMin");
-  var close = document.getElementById("czBtnClose");
+  var min = document.getElementById(${JSON.stringify(minId)});
+  var close = document.getElementById(${JSON.stringify(closeId)});
   if (min) min.onclick = function () { api && api.minimizeWindow && api.minimizeWindow(); };
   if (maxBtn) maxBtn.onclick = function () {
     api && api.toggleMaximizeWindow && api.toggleMaximizeWindow().then(function (r) {
@@ -71,7 +76,7 @@ export function windowChromeJs(bridgeName: string, cssPrefix = "cz"): string {
   };
   if (close) close.onclick = function () { api && api.closeWindow && api.closeWindow(); };
 
-  var upd = document.getElementById("cz-upd");
+  var upd = document.getElementById(${JSON.stringify(updId)});
   function showUpd(st) {
     if (!upd || !st) return;
     if (st.updateAvailable || st.state === "available" || st.state === "ready" || st.state === "downloading") {
