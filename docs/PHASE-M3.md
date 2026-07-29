@@ -84,10 +84,10 @@ cd /opt/docker/tempoflow2/crm && npm run electron:compile \
 | 1 | Helpers kit Product Hub (migrate, bindings, host-api) | ✅ |
 | 2 | Cutover TF façades ≤40 LOC | ✅ |
 | 3 | Ce fichier + `test-phase-m3.mjs` | ✅ |
-| 4 | Push kit + TF | ✅ |
+| 4 | Push kit `0f6b843` + TF `c2b0291` | ✅ |
 
 ---
 
 ## Suite
 
-**M3p** — Product Hub marques (Certivan puis Fidu).
+**M3p** — Product Hub marques (Certivan puis Fidu) → [PHASE-M3p.md](PHASE-M3p.md).

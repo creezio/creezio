@@ -9,6 +9,8 @@
   `createCachedSqliteProductHubAccessor`, `createProductHubHost`,
   `withBearerServiceKeyFallback`) ; TF façades ≤40 LOC ; extras verticaux ;
   `docs/PHASE-M3.md` ; tests `test-phase-m3`.
+- **Phase M3p** — Même cutover Certivan puis Fidu ; SoT core.db ; façades ≤40 ;
+  `docs/PHASE-M3p.md` ; tests `test-phase-m3p`.
 - **Phase M2** — Admin UI Database hors TF : `@creezio/database/ui` (port
   panels) + `createAdminDatabaseRoutes` ; TF route mince ; sync vendor copie
   `ui/` ; `docs/PHASE-M2.md` ; tests `test-phase-m2`.
