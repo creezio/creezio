@@ -4,6 +4,8 @@
 ## [Unreleased]
 
 ### Added
+- **Phase D3** — TempoFlow scan API métier + feature-parity + republish
+  **0.10.31** Client+Serveur ; `docs/PHASE-D3.md`.
 - **Phase D2** — TempoFlow stores plateforme : adaptateurs uniques, dual-write
   auth/assistant, tasks/mails brand-retained ; dry-run migration ;
   `docs/PHASE-D2.md` ; pas de republish.

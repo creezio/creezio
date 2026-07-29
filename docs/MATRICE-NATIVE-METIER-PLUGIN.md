@@ -56,7 +56,7 @@ produit observée — **pas** une cible d’extraction kit.
 | Catalogue / catalog-sync | tempoflow2 | ✅ | ✅ **I11** API+MCP+nav (`createCatalogueMount`) | Plus 🟡 — faux écart corrigé D0 |
 | Supplier tabs / marketplaces | tempoflow2 | ✅ | ✅ nav `brand.fournisseurs` (+ catalogue) | UI fournisseurs brand |
 | Stack | tempoflow2 | ✅ | ✅ **I11** API+MCP+nav (`createStackMount`) | Plus 🟡 — faux écart corrigé D0 |
-| Scan | tempoflow2 | ✅ | ✅ **I11** nav + mount status UI-only | Produit = UI → panier ; API métier réelle = **D3** si besoin |
+| Scan | tempoflow2 | ✅ | ✅ **D3** API resolve/search/add-to-panier + nav | Produit figé UI→panier ; pas de tables dédiées |
 | Fleet | tempoflow2 | ✅ | — (plateforme Electron) | Hors brand métier |
 
 **Contrat d’accueil kit** : ✅ shell-ui + api-kernel + MCP scindé.  
@@ -96,7 +96,7 @@ nommés dans `@creezio/propagation` (contrats, pas automation).
 | Couche | ✅ | 🟡 (dette D*) | ❌ |
 |--------|----|---------------|-----|
 | Natif (socle A–G + H1–H6 + I0–I8) | brand-config, shell, platform-core, electron-shell, product-hub ACL H5, tooling, factory, propagation, console, api-kernel, mcp-facade, auth, shell-ui, assistant, tasks, mails (+ **TF D2** adapters) | — | — |
-| Métier TF (repo marque) | panier, dispatch, releves, catalogue, stack, scan (status), MCP H4/**D1** une stack, ACL L3 I10, shell-ui I12, republish 0.10.30 | Scan API métier si produit l’exige (**D3**) | — |
+| Métier TF (repo marque) | panier, dispatch, releves, catalogue, stack, scan D3, MCP H4/**D1**, stores **D2**, ACL L3, shell-ui, republish **0.10.31** | — | — |
 | Plugins | hub + host + DB `plugin/<id>` + ACL L3 kit + conso TF/Certivan/Fidu + E2E demobrand | Fidu HTTP control-plane (**D4**) ; Fidu `clientSlim` ADR (**D5**) ; Certivan polish (**D6**) | auto-promotion *(volontaire)* ; univers perso *(volontaire)* ; cloud registry *(volontaire)* |
 
 **H5 terminée** = ACL plugins durcie.  
