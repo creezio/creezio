@@ -75,9 +75,9 @@ Fichiers listés **absents** ; `rg "stub R3|stub R3.3" electron/` → **0**.
 | Repo | SHA |
 |------|-----|
 | kit dual-read Certivan | `83fd161` |
-| kit + markers Fidu + docs sign-off | _(ce commit)_ |
+| kit + markers Fidu + docs sign-off | `d90bf03` |
 | Certivan `certivan-app` | `a0a072f` |
-| Fidu `fidu` | _(ce commit)_ |
+| Fidu `fidu` | `16a398a` |
 
 ---
 
