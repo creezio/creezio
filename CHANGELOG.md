@@ -4,6 +4,10 @@
 ## [Unreleased]
 
 ### Added
+- **Phase I8** — Freeze kit H6 : `ARCHITECTURE_VERSION = "H6"`,
+  factory scaffold `createNavShellAdapter`, feature-parity demobrand,
+  sync expect H6 ; `docs/PHASE-I8.md`, `FEATURE-PARITY-DEMOBRAND-H6.md` ;
+  tests `test-phase-i8.mjs`. **Gate ouverture marques (I9+)**.
 - **Phase I7** — Shell-UI adapters : `createNavShellAdapter`,
   `NavRenderModel` / `renderNavHtml`, demobrand conso ;
   contrat « registerBrandNav only » ; `docs/PHASE-I7.md` ;

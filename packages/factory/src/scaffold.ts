@@ -293,8 +293,7 @@ import { ${name} as manifest } from "./app-manifest.js";
 import { createApiKernel } from "@creezio/api-kernel";
 import { createMcpFacade } from "@creezio/mcp-facade";
 import { createMemoryAuthStore } from "@creezio/auth";
-import { mergeNav } from "@creezio/shell-ui";
-import { coreNavItems } from "./nav-core.js";
+import { createNavShellAdapter } from "@creezio/shell-ui";
 import { verticalSlot } from "./vertical-slot.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -309,9 +308,9 @@ async function main(): Promise<void> {
     boot.appKind === "legacy" ? "client" : boot.appKind,
   );
 
-  // Wiring H1/H2 — api-kernel + mcp-facade + auth.
-  // Pour l'isolation multi-DB réelle (SqliteRuntime), voir demobrand
-  // \`sandbox-runtime.ts\` (preuve H2) — à brancher quand la marque est prête.
+  // Wiring H6/I* — api-kernel + mcp-facade + auth + shell-ui adapter.
+  // Isolation multi-DB + stores sqlite : voir demobrand sandbox-runtime.ts
+  // (preuve I1–I7) — à brancher quand la marque est prête.
   const api = createApiKernel({ brandId: manifest.brandId });
   const mcp = createMcpFacade({
     brandId: manifest.brandId,
@@ -320,7 +319,9 @@ async function main(): Promise<void> {
     discoverToolsBySpace: async () => ({ module: [], plugin: [] }),
   });
   const auth = createMemoryAuthStore();
-  const navItems = mergeNav(coreNavItems, verticalSlot.items);
+  const navShell = createNavShellAdapter();
+  navShell.registerBrandNav(verticalSlot.items);
+  const navModel = navShell.getRenderModel();
   void mcp;
   void auth;
 
@@ -354,7 +355,7 @@ async function main(): Promise<void> {
 
   log(
     "nav",
-    \`core=\${coreNavItems.length} vertical=\${verticalSlot.items.length} merged=\${navItems.length} apiMounts=\${api.listMounts().length}\`,
+    \`merged=\${navModel.items.length} brand=\${navModel.groups.find((g) => g.id === "brand")?.items.length || 0} apiMounts=\${api.listMounts().length}\`,
   );
 }
 
@@ -606,11 +607,13 @@ npm run desktop:publish -- --brand=${m.brandId} --kind=client --dry-run --app-ro
 
 Ne **jamais** pointer \`dockerDlName\` / feedToken vers \`dl-tempoflow\`, \`dl-fidu\` ou \`dl-certivan\`.
 
-## Suite
+## Suite (kit H6 / I*)
 
-- Remplir \`vertical-slot.ts\` + UI métier
-- Brancher CRM Next + store SQLite Product Hub (Phase G)
-- Control plane : \`startHostPluginControlPlane\` (@creezio/electron-shell)
+- Remplir \`vertical-slot.ts\` via \`registerBrandNav\` (\`brand.*\` only)
+- Brancher demobrand-like : SqliteRuntime + auth/assistant/tasks/mails sqlite
+- Control plane : \`startHostPluginControlPlane\` + \`createPluginControlPlaneAclFromStore\`
+- Admin plugins L3 : helpers \`upsertPluginAclAdmin\`
+- Voir \`docs/FEATURE-PARITY-DEMOBRAND-H6.md\`
 `;
 }
 

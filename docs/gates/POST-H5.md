@@ -5,11 +5,11 @@
 
 ## Kit (`creezio/creezio`)
 
-- [x] `ARCHITECTURE_VERSION = "H5"` (`@creezio/platform-core`)
+- [x] `ARCHITECTURE_VERSION = "H6"` (freeze I8 ; était H5 ACL)
 - [x] Script canonique `scripts/sync-creezio-vendor.sh` (assert version + CJS + SYNC.json)
 - [x] Console expose `architectureVersion` (`GET /api/kit-versions`)
 - [x] Politique republish : [REPUBLISH-POLICY.md](../REPUBLISH-POLICY.md)
-- [ ] Phases I1–I8 livrées (persistance + control-plane + admin + shell-ui + freeze)
+- [x] Phases I1–I8 livrées (persistance + control-plane + admin + shell-ui + freeze)
 
 ## TempoFlow (`tempoflow2`)
 

@@ -17,7 +17,8 @@ test("H3.0 docs H3 présents (version bumpée en H4+)", () => {
   assert.ok(
     ARCHITECTURE_VERSION === "H3" ||
       ARCHITECTURE_VERSION === "H4" ||
-      ARCHITECTURE_VERSION === "H5",
+      ARCHITECTURE_VERSION === "H5" ||
+      ARCHITECTURE_VERSION === "H6",
     `ARCHITECTURE_VERSION inattendue: ${ARCHITECTURE_VERSION}`,
   );
 });

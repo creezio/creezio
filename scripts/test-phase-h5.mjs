@@ -36,8 +36,9 @@ import { createDemobrandSandbox } from "../apps/demobrand/build/electron/sandbox
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
-test("H5.0 ARCHITECTURE_VERSION = H5", () => {
-  assert.equal(ARCHITECTURE_VERSION, "H5");
+test("H5.0 ARCHITECTURE_VERSION >= H5", () => {
+  // H5 = ACL ; H6 = freeze I* (I8) — les tests H5 restent valides.
+  assert.match(ARCHITECTURE_VERSION, /^H([5-9]|\d{2,})$/);
 });
 
 test("H5 docs BACKLOG + PHASE présents", () => {

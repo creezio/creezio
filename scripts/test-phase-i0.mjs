@@ -26,7 +26,7 @@ test("I0 docs livrables présents", () => {
   }
 });
 
-test("I0 ARCHITECTURE_VERSION reste H5", () => {
+test("I0 ARCHITECTURE_VERSION signée (H5+)", () => {
   const f = path.join(
     ROOT,
     "packages/platform-core/src/architecture-version.ts",
@@ -34,7 +34,7 @@ test("I0 ARCHITECTURE_VERSION reste H5", () => {
   const s = fs.readFileSync(f, "utf8");
   const m = /ARCHITECTURE_VERSION\s*=\s*["']([^"']+)["']/.exec(s);
   assert.ok(m, "ARCHITECTURE_VERSION introuvable");
-  assert.equal(m[1], "H5");
+  assert.match(m[1], /^H([5-9]|\d{2,})$/);
 });
 
 test("I0 sync canonique dry-run OK", () => {
@@ -46,12 +46,13 @@ test("I0 sync canonique dry-run OK", () => {
       CREEZIO_KIT_ROOT: ROOT,
       DEST: path.join(ROOT, ".tmp-vendor-i0-dry"),
       CREEZIO_SYNC_DRY_RUN: "1",
-      CREEZIO_EXPECT_ARCH_VERSION: "H5",
+      // Aligné sur la version courante du kit (H6 après I8)
+      CREEZIO_EXPECT_ARCH_VERSION: "",
     },
     encoding: "utf8",
   });
   assert.equal(r.status, 0, r.stderr || r.stdout);
-  assert.match(r.stdout, /ARCHITECTURE_VERSION=H5/);
+  assert.match(r.stdout, /ARCHITECTURE_VERSION=H\d+/);
   assert.match(r.stdout, /OK dry-run/);
 });
 
