@@ -88,6 +88,11 @@ export type AppManifest = {
    * Les tokens secrets restent hors repo (env de l'app marque).
    */
   publish: BrandPublishInfra;
+  /**
+   * Marque sandbox / démo (Phase D factory) — feeds jetables, hors parc prod.
+   * Exclue des asserts feeds live Phase C.
+   */
+  sandbox?: boolean;
 };
 
 /**

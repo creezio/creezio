@@ -11,6 +11,7 @@ import {
   buildElectronBuilderConfig,
   envKey,
   exeForKind,
+  getManifest,
   listBrandIds,
 } from "../packages/brand-config/dist/index.js";
 import {
@@ -41,9 +42,9 @@ import {
 
 test("manifests : client + serveur obligatoires", () => {
   for (const id of listBrandIds()) {
-    const m = { tempoflow: tempoflowManifest, certivan: certivanManifest, fidu: fiduManifest }[id];
-    assert.ok(m.client.appId);
-    assert.ok(m.server.appId);
+    const m = getManifest(id);
+    assert.ok(m.client.appId, id);
+    assert.ok(m.server.appId, id);
     assert.notEqual(m.client.appId, m.server.appId);
     assert.ok(m.deepLinkProtocol);
     assert.ok(m.sessionPartition);

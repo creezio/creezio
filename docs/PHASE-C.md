@@ -135,6 +135,5 @@ scripts exécutables, feeds HTTP live, présence console).
 
 ## Suite — Phase D (Factory new-app)
 
-Le parent enchaîne sur **Phase D** : factory pour créer une nouvelle app
-desktop marque à partir du kit (scaffolding Client+Serveur, manifests,
-scripts publish, console entry).
+Livré : voir [PHASE-D.md](PHASE-D.md) — `creezio new-app`, sandbox
+`apps/demobrand`, tests `test-phase-d.mjs`.

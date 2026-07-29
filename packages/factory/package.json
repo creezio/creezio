@@ -1,7 +1,7 @@
 {
-  "name": "@creezio/brand-config",
+  "name": "@creezio/factory",
   "version": "0.1.0",
-  "description": "AppManifest, createAppManifest, manifests marque (TempoFlow, Certivan, Fidu, DemoBrand) — client + serveur",
+  "description": "Factory Creezio — scaffold new-app Client+Serveur depuis le kit",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -9,20 +9,24 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
-    },
-    "./manifests/*": {
-      "types": "./dist/manifests/*.d.ts",
-      "import": "./dist/manifests/*.js"
     }
   },
+  "bin": {
+    "creezio": "./bin/creezio.js"
+  },
   "files": [
-    "dist"
+    "dist",
+    "bin"
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
+  "dependencies": {
+    "@creezio/brand-config": "0.1.0"
+  },
   "devDependencies": {
+    "@types/node": "^22.15.3",
     "typescript": "^5.8.3"
   },
   "license": "UNLICENSED"

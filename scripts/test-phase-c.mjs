@@ -12,7 +12,7 @@ import {
   certivanManifest,
   fiduManifest,
   latestYmlUrl,
-  listBrandIds,
+  listProductionBrandIds,
   resolveArtifactFileName,
   resolveLatestAlias,
   tempoflowManifest,
@@ -154,8 +154,8 @@ test("publish-desktop --dry-run sans artefacts → exit 1 attendu ou dry avant c
   );
 });
 
-test("feeds live client (réseau)", () => {
-  for (const brandId of listBrandIds()) {
+test("feeds live client (réseau) — marques prod uniquement", () => {
+  for (const brandId of listProductionBrandIds()) {
     const snap = fetchFeedSnapshot(brandId, "client");
     assert.equal(snap.httpStatus, 200, `${brandId} client latest.yml`);
     assert.ok(snap.meta.version, `${brandId} version`);

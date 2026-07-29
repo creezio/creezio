@@ -11,9 +11,12 @@ export function BrandCard({ row }: { row: BrandParcRow }) {
           <h2>{row.label}</h2>
           <div className="meta">
             {row.brandId} · env {row.envPrefix} · {row.defaultAppRoot}
+            {row.sandbox ? " · sandbox factory" : ""}
           </div>
         </div>
-        <span className={`badge ${state}`}>build {state}</span>
+        <span className={`badge ${state}`}>
+          {row.sandbox ? "sandbox" : `build ${state}`}
+        </span>
       </div>
 
       <div className="arts">

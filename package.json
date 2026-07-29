@@ -2,23 +2,27 @@
   "name": "creezio",
   "private": true,
   "version": "0.1.0",
-  "description": "Kit plateforme Creezio — packages @creezio/* partagés (brand-config, shell, platform-core, electron-shell, desktop-tooling) + console ops",
+  "description": "Kit plateforme Creezio — packages @creezio/* partagés (brand-config, shell, platform-core, electron-shell, desktop-tooling, factory) + console ops + sandboxes",
   "workspaces": [
     "packages/*",
     "apps/*"
   ],
+  "bin": {
+    "creezio": "./packages/factory/bin/creezio.js"
+  },
   "scripts": {
-    "build": "npm run build -w @creezio/brand-config && npm run build -w @creezio/shell && npm run build -w @creezio/platform-core && npm run build -w @creezio/electron-shell && npm run build -w @creezio/desktop-tooling && npm run build -w @creezio/console",
-    "build:packages": "npm run build -w @creezio/brand-config && npm run build -w @creezio/shell && npm run build -w @creezio/platform-core && npm run build -w @creezio/electron-shell && npm run build -w @creezio/desktop-tooling",
+    "build": "npm run build -w @creezio/brand-config && npm run build -w @creezio/shell && npm run build -w @creezio/platform-core && npm run build -w @creezio/electron-shell && npm run build -w @creezio/desktop-tooling && npm run build -w @creezio/factory && npm run build -w @creezio/console && npm run build -w @creezio/app-demobrand",
+    "build:packages": "npm run build -w @creezio/brand-config && npm run build -w @creezio/shell && npm run build -w @creezio/platform-core && npm run build -w @creezio/electron-shell && npm run build -w @creezio/desktop-tooling && npm run build -w @creezio/factory",
     "typecheck": "npm run build:packages",
-    "test": "node --test scripts/test-phase-b.mjs scripts/test-phase-b2.mjs scripts/test-phase-c.mjs",
+    "test": "node --test scripts/test-phase-b.mjs scripts/test-phase-b2.mjs scripts/test-phase-c.mjs scripts/test-phase-d.mjs",
+    "factory:new-app": "node packages/factory/bin/creezio.js new-app",
     "console:dev": "npm run dev -w @creezio/console",
     "console:start": "npm run start -w @creezio/console",
     "desktop:resolve-config": "node packages/desktop-tooling/scripts/resolve-config.mjs",
     "desktop:build-status": "node packages/desktop-tooling/scripts/desktop-build-status.mjs",
     "desktop:publish": "bash packages/desktop-tooling/scripts/publish-desktop.sh",
     "desktop:remote-build": "bash packages/desktop-tooling/scripts/remote-build-win.sh",
-    "clean": "rm -rf packages/*/dist apps/console/.next"
+    "clean": "rm -rf packages/*/dist apps/console/.next apps/demobrand/build"
   },
   "engines": {
     "node": ">=20"
