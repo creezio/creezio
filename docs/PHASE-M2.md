@@ -72,7 +72,7 @@ cd /opt/docker/tempoflow2/crm && npm run electron:compile \
 | 1 | `@creezio/database/ui` + `createAdminDatabaseRoutes` | ✅ |
 | 2 | Cutover TF sans panels locaux | ✅ |
 | 3 | Ce fichier + `test-phase-m2.mjs` | ✅ |
-| 4 | Push kit + TF | ✅ |
+| 4 | Push kit `18285a5` + TF `a50fc11` | ✅ |
 
 ---
 

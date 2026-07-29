@@ -31,7 +31,7 @@ Vision stricte M* : [PLAN-M.md](PLAN-M.md) · [PHASE-M0.md](PHASE-M0.md).
 | **Fabrique plugins conversationnelle** | `@creezio/product-hub` (+ demobrand/console) | ✅ | **C3** scaffold réel (schema/api/mcp) + console SQLite persist + `PrdDrafter` LLM opt. (socle V1 supersédé) |
 | **Observabilité** (activité / usages / CP) | `@creezio/observability` | ✅ | **C4** SQLite console + demobrand + vendor TF pilote |
 | **Automations lifecycle** (plugins/org) | `@creezio/automations` | ✅ | **V3 prototype** lifecycle-only — **≠** Database row-level ; C4 persist demobrand |
-| **Database admin + automations row-level** | `@creezio/database` | ✅ | **M1+M1p** moteur ; **M2** UI+routes kit (`/ui`, `createAdminDatabaseRoutes`) ; marques UI → **M2p** |
+| **Database admin + automations row-level** | `@creezio/database` | ✅ | **M1–M2p** moteur + UI/routes kit ; TF/Certivan/Fidu sans panels locaux |
 | Plugins host (spawn, grants, events) | platform-core + electron-shell | ✅ | `plugins/*`, control plane + `acl` option H5 |
 | Desktop tooling publish / remote-build | `@creezio/desktop-tooling` | ✅ | publish-desktop, remote-build-win, after-pack |
 | Factory new-app | `@creezio/factory` | ✅ | scaffold Client+Serveur + demobrand |

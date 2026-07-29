@@ -7,6 +7,8 @@
 - **Phase M2** — Admin UI Database hors TF : `@creezio/database/ui` (port
   panels) + `createAdminDatabaseRoutes` ; TF route mince ; sync vendor copie
   `ui/` ; `docs/PHASE-M2.md` ; tests `test-phase-m2`.
+- **Phase M2p** — Même UI/routes kit sur Certivan puis Fidu ; zéro panel local ;
+  `docs/PHASE-M2p.md` ; tests `test-phase-m2p`.
 - **Phase R2** — Product Hub SoT unique `core.db` : `PRODUCT_HUB_RUNTIME_SQL`,
   store étendu (updateTask/details/changelog), cutover TF Next (plus de
   split-brain mig 028 brand) ; `docs/PHASE-R2.md` ; tests `test-phase-r2` ;
