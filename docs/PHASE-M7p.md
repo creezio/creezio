@@ -66,9 +66,9 @@ consentement) ; vendor **liste complète**.
 
 | Repo | SHA |
 |------|-----|
-| kit `creezio/creezio` | _(à remplir)_ |
-| Certivan | _(à remplir)_ |
-| Fidu | _(à remplir)_ |
+| kit `creezio/creezio` | `e6bb680` |
+| Certivan `certivan-app` | `7f8e03f` |
+| Fidu | `ca088e3` |
 
 ---
 
