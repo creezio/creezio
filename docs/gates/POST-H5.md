@@ -21,7 +21,7 @@
 ## Certivan (`certivan-app`)
 
 - [x] Wrapper sync → contrat kit I0 (liste H5 baseline)
-- [ ] Foundation SqliteRuntime + modules (I15)
+- [x] Foundation SqliteRuntime + modules (I15)
 - [ ] Republish uniquement I16
 
 ## Fidu (`fidu`)
