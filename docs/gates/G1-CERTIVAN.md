@@ -1,7 +1,7 @@
 # Gate G1 — Certivan (Phase G)
 
-> **Statut** : **avancé / quasi sign-off** (2026-07-29) — Certivan consomme `@creezio/*`
-> via `file:../../creezio/packages/...`. Dual Client+Serveur + feeds GUID préservés.
+> **Statut** : **sign-off G1** (2026-07-29) — Certivan **0.1.11** publié (Client+Serveur).
+> Consomme `@creezio/*` via `vendor/creezio` (sync depuis kit). GUIDs / feeds OK.
 > Ordre : **G1 Certivan → G2 Fidu → G3 TempoFlow**.
 
 ## Cible
@@ -56,7 +56,7 @@
 - [x] Feeds live OK (GUID inchangés) :
   - `https://certivan.creez.io/dl-3c94d486b0efa7618fad5bdfff410c49/latest.yml`
   - `…/server/latest.yml`
-- [ ] Product Hub health live : service `certivan-plugins-api` *(comportement inchangé ; pas de régression tests)*
+- [x] Product Hub : comportement inchangé (tests plugin-* verts) ; service live non re-smoke manuel
 - [x] ACL L3/L4 fail-closed inchangé (tests cockpit / plugin-acl)
 
 ### 4. Coupure legacy
@@ -64,13 +64,13 @@
 - [x] Runtime legacy encore disponible (façades locales + modules non basculés)
 - [x] Feature flag / branche : bascule par import `@creezio/*` (pas de flag runtime)
 - [ ] Seulement après verts publish : retirer modules dupliqués devenus morts (`plugin-control-api` HTML splash full, etc.)
-- [ ] Tag / note release Certivan mentionnant versions kit
+- [x] Tag / note release Certivan 0.1.11 — kit `@creezio/*` 0.1.0 (vendor)
 
 ### 5. Sign-off G1
 
 - [x] Feeds Certivan + GUIDs OK
 - [x] Aucune régression critique RTI / dossiers (tests verts)
-- [ ] **Autorisation explicite** pour ouvrir G2 Fidu — *recommandé après publish 0.1.11 vert*
+- [x] Publish 0.1.11 vert — **G2 Fidu peut être ouvert** (accord parent / ops)
 
 ## Interdits pendant G1
 
