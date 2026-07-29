@@ -27,7 +27,7 @@
 ## Fidu (`fidu`)
 
 - [x] Wrapper sync → contrat kit I0
-- [ ] ADR `clientSlim` + foundation (I17)
+- [x] ADR `clientSlim` + foundation (I17) — clientSlim reste **false**
 - [ ] Republish uniquement I18
 
 ## Dry-run sync TF (preuve I0)

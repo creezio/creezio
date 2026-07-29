@@ -2,7 +2,7 @@
 
 | | |
 |--|--|
-| **Statut** | 🔄 **En cours** |
+| **Statut** | ✅ **Sign-off** |
 | **Date** | 2026-07-29 |
 | **Repo** | `fidu` (+ doc kit) |
 | **Prérequis** | [PHASE-I16.md](PHASE-I16.md) Certivan republish |
@@ -24,9 +24,9 @@ via `registerModuleApi` — zéro métier dans `@creezio/*`.
 | 2 | Vendor H6 + `SYNC.json` + deps api-kernel/mcp-facade/shell-ui/auth/… | ✅ |
 | 3 | `bootFiduBrandRuntime` + splash/crash visible | ✅ |
 | 4 | Modules `dossiers` / `contacts` / `ged` + MCP aliases | ✅ |
-| 5 | Tests `electron:compile` + `test:phase-h3` + `test:fidu` | 🔄 |
-| 6 | Push — **pas** de republish | 🔄 |
+| 5 | Tests `electron:compile` + `test:phase-h3` + `test:fidu` | ✅ |
+| 6 | Push — **pas** de republish | ✅ |
 
 ## Verdict
 
-_(après tests verts + push)_
+**Phase I17 : TERMINÉE.** Suite : **I18** (ACL L3 + shell-ui + conso + republish Fidu).
