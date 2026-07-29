@@ -56,7 +56,7 @@ Fichiers listés **absents** ; `rg "stub R3|stub R3.3" electron/` → **0**.
 
 | Repo | SHA |
 |------|-----|
-| kit `creezio/creezio` | _(docs — SHA après push)_ |
+| kit `creezio/creezio` | `87bc6e8` |
 | TF `tempoflow2` M6a | `f6fcb48` |
 | TF `tempoflow2` M6b | `f4364c9` |
 
