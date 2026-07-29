@@ -2,6 +2,8 @@
 
 > Cartographie **Phase H0** (2026-07-29), réalignée **D0** / **C0**, puis
 > **R0** (intention OS : geler inventions ; V1–V3 = prototypes ≠ SoT).
+> **M0** (2026-07-29) : **vision stricte** — stubs / façades / jumeaux =
+> **NON done** ; plan [PLAN-M.md](PLAN-M.md) · baseline [PHASE-M0.md](PHASE-M0.md).
 > Versions courantes : TF **0.10.32** · Certivan **0.1.15** · Fidu **0.1.57**.
 > Légende : **✅** livré / utilisable · **🟡** partiel · **❌** absent / hors
 > scope volontaire.
@@ -9,6 +11,7 @@
 Source cadre : [ARCHITECTURE-INTENTION.md](ARCHITECTURE-INTENTION.md).  
 Gel inventions : [PHASE-R0.md](PHASE-R0.md). Database : [PHASE-R1.md](PHASE-R1.md).
 Product Hub SoT : [PHASE-R2.md](PHASE-R2.md).
+Vision stricte M* : [PLAN-M.md](PLAN-M.md) · [PHASE-M0.md](PHASE-M0.md).
 
 ---
 
@@ -28,7 +31,7 @@ Product Hub SoT : [PHASE-R2.md](PHASE-R2.md).
 | **Fabrique plugins conversationnelle** | `@creezio/product-hub` (+ demobrand/console) | ✅ | **C3** scaffold réel (schema/api/mcp) + console SQLite persist + `PrdDrafter` LLM opt. (socle V1 supersédé) |
 | **Observabilité** (activité / usages / CP) | `@creezio/observability` | ✅ | **C4** SQLite console + demobrand + vendor TF pilote |
 | **Automations lifecycle** (plugins/org) | `@creezio/automations` | ✅ | **V3 prototype** lifecycle-only — **≠** Database row-level ; C4 persist demobrand |
-| **Database admin + automations row-level** | `@creezio/database` | ✅ | **R1** port SoT TempoFlow + cutover TF ; panel Admin Database inchangé |
+| **Database admin + automations row-level** | `@creezio/database` | 🟡 | **R1** moteur kit OK ; vision stricte **M1** = supprimer shims TF `src/lib/database/**` (stubs = NON done) |
 | Plugins host (spawn, grants, events) | platform-core + electron-shell | ✅ | `plugins/*`, control plane + `acl` option H5 |
 | Desktop tooling publish / remote-build | `@creezio/desktop-tooling` | ✅ | publish-desktop, remote-build-win, after-pack |
 | Factory new-app | `@creezio/factory` | ✅ | scaffold Client+Serveur + demobrand |
