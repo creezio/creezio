@@ -113,7 +113,7 @@ npm run test:node-runtime && npm run test:electron-main-graph
 
 ## Suite
 
-**R4** — Observabilité unifiée (`@creezio/observability` ← ops-journal TF).
+**R4** — Observabilité unifiée (`@creezio/observability` ← ops-journal TF) — voir [PHASE-R4.md](PHASE-R4.md).
 
 ---
 

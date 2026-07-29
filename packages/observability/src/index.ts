@@ -1,5 +1,6 @@
 /**
- * @creezio/observability — activité, usages plugins, control-plane (V2).
+ * @creezio/observability — activité / usages / CP (V2 SQLite) + boîte noire
+ * desktop ops/fleet (R4, extrait TempoFlow).
  */
 
 export type {
@@ -36,3 +37,54 @@ export {
 } from "./helpers.js";
 
 export { createObservabilityApiMount } from "./api-mount.js";
+
+/* ── R4 : ops journal / rules / emit / fleet ── */
+
+export type {
+  OpsBootSummary,
+  OpsEvent,
+  OpsEventInput,
+  OpsLevel,
+} from "./ops/types.js";
+export {
+  MAX_CTX_BYTES,
+  OPS_EVENT_PREFIX,
+  OPS_LEVELS,
+  TF2EVENT_PREFIX,
+  parseOpsLine,
+  redactOpsCtx,
+  sanitizeOpsEventInput,
+  serializeOpsEvent,
+} from "./ops/types.js";
+
+export type { OpsJournalHooks } from "./ops/journal.js";
+export {
+  __resetOpsJournalForTests,
+  consumeOpsLine,
+  currentBootSummary,
+  drainPendingOpsEvents,
+  getOpsBootId,
+  getOpsDir,
+  initOpsJournal,
+  persistBootSummary,
+  readPreviousBootSummaries,
+  setOpsJournalHooks,
+  track,
+  trackCrashMirror,
+  trackDecision,
+  trackExternal,
+} from "./ops/journal.js";
+
+export type { BootRuleFinding } from "./ops/rules.js";
+export { evaluateBootRules, evaluateRulesPure } from "./ops/rules.js";
+
+export { emitOpsEvent } from "./ops/emit.js";
+
+export type {
+  CreateFleetAgentOptions,
+  FleetAgent,
+  FleetAgentRuntimeHooks,
+  FleetHealthSnapshot,
+  FleetTelemetrySnapshot,
+} from "./ops/fleet-agent.js";
+export { createFleetAgent } from "./ops/fleet-agent.js";

@@ -1,7 +1,7 @@
 {
   "name": "@creezio/observability",
   "version": "0.1.0",
-  "description": "Observabilité native plateforme — activité, usages plugins, événements control-plane (V2)",
+  "description": "Observabilité native — activité/usages/CP (V2 SQLite) + ops journal/fleet desktop (R4)",
   "type": "module",
   "main": "./dist-cjs/index.js",
   "types": "./dist/index.d.ts",
