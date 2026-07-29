@@ -78,7 +78,7 @@ Autres marques (indicatif, hors extraction) :
 |----------|-----|--------|-------|
 | Manifest / events / execution grant | `@creezio/platform-core` | ✅ | Contrats purs |
 | Lifecycle / PRD / impact / n8n tags / ACL | `@creezio/product-hub` | ✅ | + `createSqliteProductHubStore` (H1.8) ; demobrand opt-in sqlite |
-| Control plane HTTP host | `@creezio/electron-shell` + product-hub | ✅ | **I4** kit + demobrand ; **TF I10** + **Certivan I16** branchés ACL L3 ; **Fidu** store prêt, HTTP = **D4** |
+| Control plane HTTP host | `@creezio/electron-shell` + product-hub | ✅ | **I4** kit + demobrand ; TF I10 · Certivan I16 · **Fidu D4** minimal HTTP + ACL L3 |
 | Registre org L3 | `@creezio/propagation` | ✅ | **I6** : `createFileOrgPluginRegistry` + console `/api/org-plugins` |
 | UI Admin Plugins multi-org | demobrand + product-hub admin | ✅ | **I5** : `admin-plugins` API + HTML ; caps see/install/execute |
 | DB `plugin/<id>` à l’install | `@creezio/platform-core` `ensurePluginDb` | ✅ | Fichier créé à l’install uniquement |
@@ -97,7 +97,7 @@ nommés dans `@creezio/propagation` (contrats, pas automation).
 |--------|----|---------------|-----|
 | Natif (socle A–G + H1–H6 + I0–I8) | brand-config, shell, platform-core, electron-shell, product-hub ACL H5, tooling, factory, propagation, console, api-kernel, mcp-facade, auth, shell-ui, assistant, tasks, mails (+ **TF D2** adapters) | — | — |
 | Métier TF (repo marque) | panier, dispatch, releves, catalogue, stack, scan D3, MCP H4/**D1**, stores **D2**, ACL L3, shell-ui, republish **0.10.31** | — | — |
-| Plugins | hub + host + DB `plugin/<id>` + ACL L3 kit + conso TF/Certivan/Fidu + E2E demobrand | Fidu HTTP control-plane (**D4**) ; Fidu `clientSlim` ADR (**D5**) ; Certivan polish (**D6**) | auto-promotion *(volontaire)* ; univers perso *(volontaire)* ; cloud registry *(volontaire)* |
+| Plugins | hub + host + DB + ACL L3 3 marques + Fidu D4 HTTP ; clientSlim **false** D5 ; Certivan D6 aliases | — | auto-promotion / univers perso / cloud registry *(volontaire)* |
 
 **H5 terminée** = ACL plugins durcie.  
 **Plan H0–H5 + I0–I18** = **complet** (conso 3 marques 100 %).  

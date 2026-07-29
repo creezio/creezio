@@ -4,6 +4,12 @@
 ## [Unreleased]
 
 ### Added
+- **Phase D6** — Certivan polish : aliases MCP source unique ; dualités
+  MCP/stores acceptées (non bloquantes) ; `docs/PHASE-D6.md` ; pas de republish.
+- **Phase D5** — ADR Fidu `clientSlim: false` définitif + critères réouverture ;
+  `docs/ADR-FIDU-CLIENTSLIM-D5.md`, `PHASE-D5.md`.
+- **Phase D4** — Fidu control-plane HTTP minimal + ACL L3 E2E ;
+  `docs/PHASE-D4.md` ; bump marque **0.1.56** (republish standing ship).
 - **Phase D3** — TempoFlow scan API métier + feature-parity + republish
   **0.10.31** Client+Serveur ; `docs/PHASE-D3.md`.
 - **Phase D2** — TempoFlow stores plateforme : adaptateurs uniques, dual-write

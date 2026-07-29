@@ -27,11 +27,12 @@
 
 ## Révision
 
-Réouvrir après I18 si host-stack Fidu + tests Client thin verts
-(`test:client-slim-boot` ou équivalent).
+**Clôturée en D5** : voir [ADR-FIDU-CLIENTSLIM-D5.md](ADR-FIDU-CLIENTSLIM-D5.md)
+(`false` définitif + critères de réouverture explicites — plus de « reporté »).
 
 ## Références
 
 - `/opt/docker/fidu/crm/scripts/electron/build-builder-config.mjs`
 - [gates/G2-FIDU.md](gates/G2-FIDU.md)
 - [PHASE-I17.md](PHASE-I17.md)
+- [PHASE-D5.md](PHASE-D5.md)
