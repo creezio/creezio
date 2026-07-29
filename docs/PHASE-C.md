@@ -34,7 +34,7 @@ Chaque marque expose désormais :
 | `remoteBuildHost` | `deploy@104.168.10.36` | idem | idem |
 | `remoteBuildRoot` | `/opt/docker/tempoflow2-build` | `…/certivan-build` | `…/fidu-build` |
 | `statusFile` | `/tmp/tempoflow-build-status.json` | … | … |
-| `buildServerArtifact` | `true` | `true` | `false` (cible Phase G) |
+| `buildServerArtifact` | `true` | `true` | `true` (G2) |
 | `legacyClientAlias` | — | `Certivan-Setup-0.1.0.exe` | — |
 | `defaultAppRoot` | `/opt/docker/creezio-kit-src/crm` | `/opt/docker/certivan-app/crm` | `/opt/docker/fidu/crm` |
 

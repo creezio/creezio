@@ -1,8 +1,9 @@
-# Gate G2 — Fidu (Phase G — checklist, non exécutée en F)
+# Gate G2 — Fidu (Phase G)
 
-> **Statut Phase F** : documentation prête uniquement.  
-> **Prérequis** : Gate **G1 Certivan** signée.  
-> Ordre : G1 → **G2 Fidu** → G3 TempoFlow.
+> **Statut** : bascule code OK (2026-07-29) — Fidu **0.1.52** consomme `@creezio/*`
+> via `vendor/creezio` ; dual Client+Serveur (`buildServerArtifact: true`).
+> Publish feeds en cours / à valider ci-dessous.
+> Ordre : **G1 Certivan → G2 Fidu → G3 TempoFlow**.
 
 ## Cible
 
@@ -10,50 +11,64 @@
 |-------|--------|
 | Marque | Fidu |
 | Repo / chemin | `/opt/docker/fidu` (`crm/`) |
-| Manifest kit | `fiduManifest` |
+| Manifest kit | `fiduManifest` (`@creezio/brand-config`) |
 | envPrefix | `FIDU` |
-| Client+Serveur | Client obligatoire ; Serveur = **cible** (`buildServerArtifact: false` aujourd'hui) |
+| Client+Serveur | oui (`buildServerArtifact: true`) |
+| Version app (G2) | `0.1.52` |
+| userData client | `Fidu` (continuité `%APPDATA%/Fidu`) |
+| clientSlim | **false** (pas encore host-stack lazy — stack locale dans les 2 exe) |
 
 ## Prérequis
 
-- [ ] G1 Certivan sign-off
-- [ ] Kit Phase F/G patches nécessaires déjà sur `main`
-- [ ] Pipeline ship Fidu respectée (`fidu-desktop-ship-pipeline`) **après** verts
+- [x] G1 Certivan sign-off
+- [x] Kit Phase F/G + dual CJS + `clientSlim` option + `fiduManifest` dual
+- [x] Pipeline ship Fidu respectée (`fidu-desktop-ship-pipeline`) **après** verts
 
 ## Checklist bascule (Phase G)
 
 ### 1. Dépendances
 
-- [ ] Bumper `@creezio/*` dans `crm/package.json`
-- [ ] Scripts npm → `desktop-tooling` (`electron:publish`, `remote-build`, `build-status`)
-- [ ] PR template kit-bump `[fidu]`
+- [x] Ajouter dans `crm/package.json` :
+  - `@creezio/brand-config`
+  - `@creezio/shell`
+  - `@creezio/platform-core`
+  - `@creezio/product-hub`
+  - `@creezio/electron-shell`
+  - `@creezio/desktop-tooling`
+- [x] Vendor `crm/vendor/creezio/*` + `sync-creezio-vendor.sh`
+- [x] Scripts npm → wrappers `desktop-tooling` (`electron:publish`, `remote-build`)
+- [x] Commit type : `chore(deps): consume @creezio/* — kit creezio [fidu]`
 
 ### 2. Remplacements code
 
-- [ ] brand-config / shell / platform-core / electron-shell
-- [ ] Product Hub si/quand branché (tokens `FIDU_*`, pas de hardcode kit)
-- [ ] **Rester vertical** : Paperclip, GED métier, seeds cabinet, UI CRM
-- [ ] Ne pas casser le standing ship pipeline (tests → bump → remote-build --publish)
+- [x] Manifest / builder → `buildElectronBuilderConfig` + `fiduManifest` (`clientSlim: false`)
+- [x] Preload bridge → `exposeDesktopApi` / `FIDU_BRIDGE_NAME` (`window.fiduDesktop`)
+- [x] Boot partiel → `applyFiduDesktopBoot` (avant `requestSingleInstanceLock`)
+- [x] app-kind / profile façades kit
+- [x] Dual `electron:build:win` + `electron:build:win:server`
+- [x] **Rester vertical** : Paperclip, GED, seeds cabinet, Pennylane, UI CRM
+- [x] **Ne pas purger** catalogue TF orphelin « pour nettoyer »
+- [ ] Product Hub / control plane runtime *(tokens prêts via `fiduProductHubTokens`)*
 
 ### 3. Validation
 
-- [ ] `npm run build` + `npm run electron:compile`
-- [ ] Smoke `/clients` et routes critiques touchées
-- [ ] `npm run test:fidu` si pertinent
+- [x] `npm run build` + `npm run electron:compile`
+- [x] `npm run test:app-kind` + `npm run test:shell`
+- [x] `npm run test:fidu` (GED, dépôt, Meili, Pennylane, users, …)
 - [ ] Feed client : `https://fidu.creez.io/dl-e660352fb04dbd5e2519f0e60897c548/latest.yml`
-- [ ] Feed serveur : documenter 404 actuel ; ne pas prétendre publié
-- [ ] Dry-run remote-build via console / CLI avant publish réel
+- [ ] Feed serveur : `…/server/latest.yml` (première publication)
+- [ ] `remote-build-win.sh --publish` vert (Client + Serveur)
 
 ### 4. Coupure legacy
 
-- [ ] Dual-run possible jusqu'à smoke vert
+- [x] Runtime legacy encore dispo (façades + modules non basculés ; `clientSlim: false`)
 - [ ] Publish feed uniquement après verts (règle ship pipeline)
 - [ ] Sign-off G2 avant d'ouvrir G3
 
 ### 5. Sign-off G2
 
-- [ ] Console : feed Client Fidu OK
-- [ ] Exe publié versionné si release
+- [ ] Console / feeds Client + Serveur Fidu OK
+- [ ] Exe publiés 0.1.52
 - [ ] **Autorisation explicite** pour G3 TempoFlow
 
 ## Interdits
@@ -61,6 +76,7 @@
 - ❌ Skip G1
 - ❌ Publish sans tests verts
 - ❌ Modifier tempoflow2 / certivan pendant G2 sauf hotfix hors kit
+- ❌ Purger métier cabinet / catalogue TF orphelin « pour nettoyer »
 
 ## Références
 

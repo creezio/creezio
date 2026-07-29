@@ -50,8 +50,14 @@ export const DEFAULT_HOST_ONLY_ELECTRON_MODULES = [
 export type BuildBuilderConfigOptions = {
   /** Modules host-only à exclure du paquet Client (défaut = liste TF2). */
   hostOnlyModules?: readonly string[];
-  /** Chemin include NSIS (défaut `installer.nsh`). */
-  nsisInclude?: string;
+  /**
+   * Si `false`, n'applique pas `applyClientSlim` (apps sans host-stack lazy,
+   * ex. Fidu G2 : Client et Serveur embarquent encore la stack locale).
+   * Défaut `true` (comportement TF2 / Certivan).
+   */
+  clientSlim?: boolean;
+  /** Chemin include NSIS (défaut `installer.nsh`). `false` = ne pas forcer. */
+  nsisInclude?: string | false;
   /** Prefixe relatif des icônes (`resources/icons/{kind}.png`). */
   iconDir?: string;
 };
@@ -72,7 +78,10 @@ function applyExeIdentity(
   base: JsonRecord,
   exe: ExeIdentity,
   kind: AppKind,
-  opts: Required<Pick<BuildBuilderConfigOptions, "nsisInclude" | "iconDir">>,
+  opts: {
+    nsisInclude: string | false;
+    iconDir: string;
+  },
 ): void {
   base.appId = exe.appId;
   base.productName = exe.productName;
@@ -87,13 +96,16 @@ function applyExeIdentity(
     name: exe.packageName,
     productName: exe.productName,
   };
-  base.nsis = {
+  const nsis: JsonRecord = {
     ...asRecord(base.nsis),
     shortcutName: exe.productName,
     uninstallDisplayName: exe.productName,
     guid: exe.nsisGuid,
-    include: opts.nsisInclude,
   };
+  if (opts.nsisInclude !== false) {
+    nsis.include = opts.nsisInclude;
+  }
+  base.nsis = nsis;
   base.publish = {
     provider: "generic",
     url: exe.feedUrl,
@@ -166,13 +178,15 @@ export function buildElectronBuilderConfig(
 ): JsonRecord {
   const base = JSON.parse(JSON.stringify(baseConfig ?? {})) as JsonRecord;
   const exe = exeForKind(manifest, kind);
-  const nsisInclude = options.nsisInclude ?? "installer.nsh";
+  const nsisInclude =
+    options.nsisInclude === false ? false : (options.nsisInclude ?? "installer.nsh");
   const iconDir = options.iconDir ?? "resources/icons";
   const hostOnly = options.hostOnlyModules ?? DEFAULT_HOST_ONLY_ELECTRON_MODULES;
+  const clientSlim = options.clientSlim !== false;
 
   applyExeIdentity(base, exe, kind, { nsisInclude, iconDir });
 
-  if (kind === "client") {
+  if (kind === "client" && clientSlim) {
     applyClientSlim(base, hostOnly);
   }
 

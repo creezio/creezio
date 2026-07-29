@@ -3,13 +3,11 @@ import type { AppManifest } from "../types.js";
 /**
  * Manifest Fidu — identité lue dans /opt/docker/fidu (lecture seule).
  *
- * Aujourd'hui Fidu publie un exe unique (`fr.fidu.desktop`, feed racine).
- * Le modèle kit impose quand même Client + Serveur : les champs `server`
- * sont la cible Phase G (mêmes conventions que TF2/Certivan).
+ * Gate G2 : Client + Serveur (`buildServerArtifact: true`). GUIDs =
+ * UUID.v5(appId, OID electron-builder). Ne pas recycler TempoFlow / Certivan.
  *
- * GUIDs : UUID.v5(appId, OID electron-builder) — pas encore hardcodés
- * dans un build-builder-config.mjs Fidu (pas de split packagé à ce jour).
- * Ne pas recycler les GUID TempoFlow / Certivan.
+ * userDataSegment client = `Fidu` (casse productName) pour conserver
+ * `%APPDATA%/Fidu` des installs existantes (docs FACTORY-RESET).
  */
 export const fiduManifest: AppManifest = {
   brandId: "fidu",
@@ -32,7 +30,7 @@ export const fiduManifest: AppManifest = {
     executableName: "Fidu",
     artifactName: "Fidu-Setup-${version}.${ext}",
     packageName: "fidu",
-    userDataSegment: "fidu",
+    userDataSegment: "Fidu",
     feedUrl: "https://fidu.creez.io/dl-e660352fb04dbd5e2519f0e60897c548/",
     nsisGuid: "f124e69d-95f4-5dd2-b199-5b89c875649d",
     appUserModelId: "fr.fidu.desktop",
@@ -59,9 +57,7 @@ export const fiduManifest: AppManifest = {
     remoteBinSrc: "/opt/docker/tempoflow2/crm",
     statusFile: "/tmp/fidu-build-status.json",
     remoteLogPrefix: "fidu-remote-build",
-    // Serveur = cible kit ; remote-build Fidu reste client-only tant que
-    // electron:build:win:server n'existe pas dans l'app (Phase G).
-    buildServerArtifact: false,
+    buildServerArtifact: true,
     defaultAppRoot: "/opt/docker/fidu/crm",
   },
 };

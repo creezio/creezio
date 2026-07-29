@@ -37,7 +37,7 @@ test("manifests exposent publish Client+Serveur", () => {
     assert.ok(m.client.feedUrl.endsWith("/"));
     assert.ok(m.server.feedUrl.includes("/server/"));
   }
-  assert.equal(fiduManifest.publish.buildServerArtifact, false);
+  assert.equal(fiduManifest.publish.buildServerArtifact, true);
   assert.equal(certivanManifest.publish.buildServerArtifact, true);
   assert.equal(certivanManifest.publish.legacyClientAlias, "Certivan-Setup-0.1.0.exe");
 });

@@ -4,6 +4,20 @@ Toutes les versions notables des packages `@creezio/*` sont documentées ici.
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/) ;
 bumps via Conventional Commits (`npm run kit:version`).
 
+## Kit — Phase G2 prep (2026-07-29)
+
+### Changed
+
+- `fiduManifest` : `buildServerArtifact: true`, `userDataSegment` client = `Fidu`
+  (continuité `%APPDATA%/Fidu`)
+- `buildElectronBuilderConfig` : option `clientSlim` (défaut `true`) +
+  `nsisInclude: false` pour apps sans include NSIS custom
+
+### Added
+
+- Gate **G2 Fidu** en cours : consommation `@creezio/*` via vendor (voir
+  `docs/gates/G2-FIDU.md`)
+
 ## Kit — Phase G1 prep (2026-07-29)
 
 ### Added
