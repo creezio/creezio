@@ -4,6 +4,9 @@
 ## [Unreleased]
 
 ### Added
+- **Phase I5** — Admin Plugins L3 : `upsertPluginAclAdmin` / preview,
+  demobrand mount `admin-plugins` + UI HTML, deny cross-org E2E ;
+  `docs/PHASE-I5.md` ; tests `test-phase-i5.mjs`.
 - **Phase I4** — Control-plane unifié : `createPluginControlPlaneAclFromStore`,
   `buildPluginAclActorHeaders`, demobrand `controlPlaneAcl()`,
   doc `CONTROL-PLANE-BRAND-MIGRATION.md` ; tests `test-phase-i4.mjs`.

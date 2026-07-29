@@ -75,6 +75,7 @@ import {
   type McpRegisteredTool,
 } from "@creezio/mcp-facade";
 import { demobrandManifest as manifest } from "./app-manifest.js";
+import { createAdminPluginsApiMount } from "./admin-plugins-api.js";
 
 export const DEMOBRAND_NOTES_SQL = `
 CREATE TABLE IF NOT EXISTS demobrand_notes (
@@ -354,6 +355,7 @@ export function createDemobrandSandbox(opts?: {
   api.registerModuleApi("demo-notes", createDemoNotesMount());
   api.registerModuleApi("platform-tasks", createTasksApiMount(tasks));
   api.registerModuleApi("platform-mails", createMailsApiMount(mails));
+  api.registerModuleApi("admin-plugins", createAdminPluginsApiMount(productHub));
 
   function moduleTools(): McpRegisteredTool[] {
     return [

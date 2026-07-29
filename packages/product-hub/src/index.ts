@@ -153,6 +153,19 @@ export type {
 } from "./control-plane/acl-from-store.js";
 export { createPluginControlPlaneAclFromStore } from "./control-plane/acl-from-store.js";
 
+export type {
+  PluginAclAdminRow,
+  PluginAclAdminStore,
+  UpsertPluginAclAdminInput,
+} from "./admin/plugin-acl-admin.js";
+export {
+  clearPluginAclAdmin,
+  getPluginAclAdmin,
+  listPluginAclAdmin,
+  previewPluginAclAccess,
+  upsertPluginAclAdmin,
+} from "./admin/plugin-acl-admin.js";
+
 /** Modules encore verticaux (apps marques) après Phase E / H1.8. */
 export const PRODUCT_HUB_VERTICAL_REMAINING = [
   "plugin-git",
