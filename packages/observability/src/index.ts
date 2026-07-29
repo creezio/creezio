@@ -88,3 +88,22 @@ export type {
   FleetTelemetrySnapshot,
 } from "./ops/fleet-agent.js";
 export { createFleetAgent } from "./ops/fleet-agent.js";
+
+/* ── M7 : fleet activity ring + samples (hooks chemins) ── */
+
+export type {
+  FleetAction,
+  FleetSessionContext,
+  FleetSurface,
+} from "./ops/fleet-activity.js";
+export {
+  _resetFleetActivityForTests,
+  drainFleetActions,
+  getFleetSessionContext,
+  recordFleetAction,
+  sampleFleetActions,
+  setFleetSessionContext,
+} from "./ops/fleet-activity.js";
+
+export type { FleetSamples, FleetSamplesPaths } from "./ops/fleet-samples.js";
+export { createFleetSamples } from "./ops/fleet-samples.js";

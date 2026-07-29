@@ -4,6 +4,11 @@
 ## [Unreleased]
 
 ### Added
+- **Phase M7** — Fleet/obs TF sans stubs : `fleet-activity` +
+  `createFleetSamples` dans `@creezio/observability` ; wiring marque
+  `tfFleetAgent` / `tfFleetSamples` ; stubs TF
+  `fleet-agent` / `ops-*` / `fleet-telemetry|activity|samples` absents ;
+  `docs/PHASE-M7.md` ; tests `test-phase-m7` ; **pas** de republish exe.
 - **Phase M6p** — Dual-reads legacy Certivan/Fidu dans
   `@creezio/electron-shell` (n8n encryption/owner, Hermes API key / webui
   password, markers WebUI `.certivan-` / `.fidu-webui-*`) ; cutover

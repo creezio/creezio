@@ -67,8 +67,6 @@ export const DEFAULT_HOST_ONLY_ELECTRON_MODULES = [
   "plugin-control-token",
   "plugin-execution-grant",
   "tunnel",
-  "fleet-agent",
-  "fleet-samples",
   "factory-reset",
 ] as const;
 
