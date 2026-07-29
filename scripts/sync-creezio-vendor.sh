@@ -125,6 +125,9 @@ for name in "${PACKAGES[@]}"; do
   if [[ -d "${src}/bin" ]]; then
     cp -a "${src}/bin" "${out}/"
   fi
+  if [[ -d "${src}/ui" ]]; then
+    cp -a "${src}/ui" "${out}/"
+  fi
   node -e '
 const fs = require("fs");
 const path = process.argv[1];

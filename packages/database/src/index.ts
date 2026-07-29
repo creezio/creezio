@@ -107,3 +107,6 @@ export {
 
 export { insertRow, updateRow, deleteRow } from "./crud.js";
 export { exportTable } from "./export.js";
+
+export type { AdminDatabaseRouteDeps } from "./http/admin-routes.js";
+export { createAdminDatabaseRoutes } from "./http/admin-routes.js";

@@ -39,3 +39,24 @@ configureDatabaseWebhookBrand({
 ```
 
 Schéma SQL : `DATABASE_CORE_SQL` (tables `db_*`, compat migration TF v33).
+
+## HTTP Admin (M2)
+
+```ts
+import { createAdminDatabaseRoutes } from "@creezio/database";
+
+export const adminDatabaseRoutes = createAdminDatabaseRoutes({
+  getDb,
+  getWriteDb,
+  getActor: (c) => /* session owner */ "owner",
+  webhookTestSource: "mybrand-database",
+});
+```
+
+## UI Admin (M2)
+
+```tsx
+import { DatabaseClient } from "@creezio/database/ui";
+// Next : transpilePackages: ["@creezio/database"]
+// Tailwind content : "./vendor/creezio/database/ui/**/*.{js,ts,jsx,tsx}"
+```
