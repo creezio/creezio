@@ -24,6 +24,7 @@ Monorepo **plateforme** pour les desktops Creezio (TempoFlow, Certivan, Fidu)
 | [docs/PHASE-C0.md](docs/PHASE-C0.md) | Correction post-audit — C0 docs → C1…C8 |
 | [docs/PHASE-R0.md](docs/PHASE-R0.md) | Gel inventions — V1–V3 prototypes ≠ SoT |
 | [docs/PHASE-R1.md](docs/PHASE-R1.md) | Database TF → `@creezio/database` (natif) |
+| [docs/PHASE-R2.md](docs/PHASE-R2.md) | Product Hub SoT unique `core.db` |
 | [docs/FEATURE-PARITY-DEMOBRAND-H6.md](docs/FEATURE-PARITY-DEMOBRAND-H6.md) | Checklist parity demobrand avant I9 |
 | [docs/REPUBLISH-POLICY.md](docs/REPUBLISH-POLICY.md) | Politique republish (I*/D*/C* — republish C* en C8) |
 | [docs/gates/POST-H5.md](docs/gates/POST-H5.md) | Checklist gates post-H5 + backlog C* |

@@ -152,4 +152,85 @@ CREATE INDEX IF NOT EXISTS idx_plugin_acl_capability_subject
   ON plugin_acl_capability(subject_kind, subject_id);
 `;
 
+/**
+ * Tables runtime Product Hub (extraites migration TF 028) — documents, tests,
+ * changelog, gates. SoT = core.db (Phase R2) ; pas de split-brain brand.db.
+ */
+export const PRODUCT_HUB_RUNTIME_SQL = `
+CREATE TABLE IF NOT EXISTS plugin_task_dependencies (
+  task_id TEXT NOT NULL REFERENCES plugin_tasks(id) ON DELETE CASCADE,
+  depends_on_task_id TEXT NOT NULL REFERENCES plugin_tasks(id) ON DELETE CASCADE,
+  PRIMARY KEY(task_id, depends_on_task_id),
+  CHECK(task_id <> depends_on_task_id)
+);
+
+CREATE TABLE IF NOT EXISTS plugin_documents (
+  id TEXT PRIMARY KEY,
+  plugin_product_id TEXT NOT NULL REFERENCES plugin_products(id) ON DELETE CASCADE,
+  filename TEXT NOT NULL,
+  media_type TEXT NOT NULL,
+  storage_path TEXT NOT NULL,
+  sha256 TEXT NOT NULL,
+  size_bytes INTEGER NOT NULL DEFAULT 0,
+  context_enabled INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_plugin_documents_product ON plugin_documents(plugin_product_id);
+
+CREATE TABLE IF NOT EXISTS plugin_tickets (
+  id TEXT PRIMARY KEY,
+  plugin_product_id TEXT NOT NULL REFERENCES plugin_products(id) ON DELETE CASCADE,
+  title TEXT NOT NULL,
+  body TEXT NOT NULL DEFAULT '',
+  status TEXT NOT NULL DEFAULT 'open',
+  priority INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS plugin_changelog_entries (
+  id TEXT PRIMARY KEY,
+  plugin_product_id TEXT NOT NULL REFERENCES plugin_products(id) ON DELETE CASCADE,
+  version TEXT NOT NULL,
+  title TEXT NOT NULL,
+  body TEXT NOT NULL DEFAULT '',
+  git_sha TEXT,
+  released_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS plugin_gate_runs (
+  id TEXT PRIMARY KEY,
+  plugin_product_id TEXT NOT NULL REFERENCES plugin_products(id) ON DELETE CASCADE,
+  gate TEXT NOT NULL,
+  status TEXT NOT NULL,
+  details_json TEXT NOT NULL DEFAULT '{}',
+  git_sha TEXT,
+  started_at TEXT NOT NULL DEFAULT (datetime('now')),
+  finished_at TEXT
+);
+
+CREATE TABLE IF NOT EXISTS plugin_test_definitions (
+  id TEXT PRIMARY KEY,
+  plugin_product_id TEXT NOT NULL REFERENCES plugin_products(id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  relative_path TEXT NOT NULL,
+  timeout_ms INTEGER NOT NULL DEFAULT 30000,
+  enabled INTEGER NOT NULL DEFAULT 1,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS plugin_test_runs (
+  id TEXT PRIMARY KEY,
+  plugin_product_id TEXT NOT NULL REFERENCES plugin_products(id) ON DELETE CASCADE,
+  definition_id TEXT REFERENCES plugin_test_definitions(id) ON DELETE SET NULL,
+  status TEXT NOT NULL,
+  git_sha TEXT,
+  exit_code INTEGER,
+  stdout TEXT NOT NULL DEFAULT '',
+  stderr TEXT NOT NULL DEFAULT '',
+  started_at TEXT NOT NULL DEFAULT (datetime('now')),
+  finished_at TEXT
+);
+`;
+
 export const PRODUCT_HUB_MANAGED_MARKER = ".product-hub-managed";

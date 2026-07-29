@@ -8,6 +8,7 @@
 
 Source cadre : [ARCHITECTURE-INTENTION.md](ARCHITECTURE-INTENTION.md).  
 Gel inventions : [PHASE-R0.md](PHASE-R0.md). Database : [PHASE-R1.md](PHASE-R1.md).
+Product Hub SoT : [PHASE-R2.md](PHASE-R2.md).
 
 ---
 
@@ -23,7 +24,7 @@ Gel inventions : [PHASE-R0.md](PHASE-R0.md). Database : [PHASE-R1.md](PHASE-R1.m
 | Host tunnel | `@creezio/electron-shell` + platform-core | ✅ | `host/tunnel`, `tunnel-urls` |
 | Host n8n | `@creezio/electron-shell` | ✅ | `host/n8n/*` (B.2) |
 | Host Hermes | `@creezio/electron-shell` | ✅ | `host/hermes/*` (B.2) |
-| Product Hub / plugins lifecycle + ACL L3/L4 | `@creezio/product-hub` | ✅ | H5 : `decidePluginAccess` see/install/execute + binding org + deny cross-org |
+| Product Hub / plugins lifecycle + ACL L3/L4 | `@creezio/product-hub` | ✅ | **R2** SoT `core.db` (TF Next cutover) ; H5 ACL see/install/execute |
 | **Fabrique plugins conversationnelle** | `@creezio/product-hub` (+ demobrand/console) | ✅ | **C3** scaffold réel (schema/api/mcp) + console SQLite persist + `PrdDrafter` LLM opt. (socle V1 supersédé) |
 | **Observabilité** (activité / usages / CP) | `@creezio/observability` | ✅ | **C4** SQLite console + demobrand + vendor TF pilote |
 | **Automations lifecycle** (plugins/org) | `@creezio/automations` | ✅ | **V3 prototype** lifecycle-only — **≠** Database row-level ; C4 persist demobrand |

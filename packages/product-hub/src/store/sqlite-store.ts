@@ -8,9 +8,11 @@ import {
   PRODUCT_HUB_ACL_ORG_SQL,
   PRODUCT_HUB_ACL_USER_SQL,
   PRODUCT_HUB_CORE_SQL,
+  PRODUCT_HUB_RUNTIME_SQL,
 } from "../schema-sql.js";
 import {
   assertPluginLifecycleTransition,
+  PLUGIN_TASK_STATUSES,
   type PluginLifecycleState,
   type PluginTaskStatus,
 } from "../lifecycle.js";
@@ -34,6 +36,7 @@ import {
   openNodeSqliteDatabase,
   type OpenSqliteDatabase,
   type SqliteDatabase,
+  type SqliteStatement,
 } from "./sqlite-driver.js";
 import {
   aclEntryToPolicy,
@@ -63,6 +66,11 @@ export type SqliteProductHubStore = ProductHubStore & {
   /** Policy prête pour decidePluginAccess. */
   getAclPolicy(pluginId: string): PluginAclPolicy;
   listAclPolicies(): PluginAclPolicy[];
+  /** SQL runtime (documents, tests, n8n…) — même connexion core.db. */
+  prepare(sql: string): SqliteStatement;
+  exec(sql: string): void;
+  archiveProduct(productId: string): PluginProductRecord;
+  deleteProduct(productId: string): void;
   close(): void;
   readonly dbPath: string;
 };
@@ -100,12 +108,44 @@ export function createSqliteProductHubStore(
 
   db.exec("PRAGMA foreign_keys = ON;");
   db.exec(PRODUCT_HUB_CORE_SQL);
+  db.exec(PRODUCT_HUB_RUNTIME_SQL);
   db.exec(PRODUCT_HUB_ACL_USER_SQL);
   db.exec(PRODUCT_HUB_ACL_ORG_SQL);
   db.exec(PRODUCT_HUB_ACL_H5_SQL);
 
+  function recordDeliveryChangelog(product: PluginProductRecord): void {
+    const version = new Date().toISOString().slice(0, 10);
+    const delivered = db
+      .prepare(
+        `SELECT title FROM plugin_tasks WHERE plugin_product_id = ? AND status = 'done'
+         ORDER BY updated_at`,
+      )
+      .all(product.id) as Array<{ title: string }>;
+    db.prepare(
+      `INSERT INTO plugin_changelog_entries
+       (id, plugin_product_id, version, title, body, git_sha)
+       VALUES (?, ?, ?, ?, ?, NULL)`,
+    ).run(
+      id(),
+      product.id,
+      version,
+      `Livraison ${version} — en attente de validation`,
+      delivered.length
+        ? delivered.map((task) => `- ${task.title}`).join("\n")
+        : "- Module livré, tests automatiques passés",
+    );
+  }
+
   const store: SqliteProductHubStore = {
     dbPath: opts.coreDbPath,
+
+    prepare(sql) {
+      return db.prepare(sql);
+    },
+
+    exec(sql) {
+      db.exec(sql);
+    },
 
     close() {
       db.close?.();
@@ -178,7 +218,15 @@ export function createSqliteProductHubStore(
       db.prepare(
         `UPDATE plugin_products SET lifecycle_state = ?, updated_at = ? WHERE id = ?`,
       ).run(next, ts, productId);
-      return store.getProduct(productId)!;
+      const updated = store.getProduct(productId)!;
+      if (next === "awaiting_human_qa") {
+        try {
+          recordDeliveryChangelog(updated);
+        } catch {
+          /* changelog best-effort — ne bloque jamais la transition */
+        }
+      }
+      return updated;
     },
 
     savePrd(input) {
@@ -386,6 +434,65 @@ export function createSqliteProductHubStore(
       return store.listTasks(input.productId).find((t) => t.id === taskId)!;
     },
 
+    updateTask(productId, taskId, patch) {
+      const current = store.listTasks(productId).find((t) => t.id === taskId);
+      if (!current) throw new Error("Tâche plugin introuvable");
+      const status = patch.status || current.status;
+      if (!PLUGIN_TASK_STATUSES.includes(status)) {
+        throw new Error("Statut de tâche invalide");
+      }
+      const ts = now();
+      db.prepare(
+        `UPDATE plugin_tasks SET status = ?, blocked = ?, blocked_reason = ?,
+         hermes_task_id = COALESCE(?, hermes_task_id), updated_at = ? WHERE id = ?`,
+      ).run(
+        status,
+        patch.blocked == null ? current.blocked : patch.blocked ? 1 : 0,
+        patch.blockedReason === undefined
+          ? current.blocked_reason
+          : patch.blockedReason,
+        patch.hermesTaskId ?? null,
+        ts,
+        taskId,
+      );
+      return store.listTasks(productId).find((t) => t.id === taskId)!;
+    },
+
+    countDoneTasks(productId) {
+      const row = db
+        .prepare(
+          `SELECT COUNT(*) AS c FROM plugin_tasks
+           WHERE plugin_product_id = ? AND status = 'done'`,
+        )
+        .get(productId) as { c: number };
+      return Number(row?.c || 0);
+    },
+
+    hasPassedTestRun(productId) {
+      const row = db
+        .prepare(
+          `SELECT COUNT(*) AS c FROM plugin_test_runs
+           WHERE plugin_product_id = ? AND status = 'passed'`,
+        )
+        .get(productId) as { c: number };
+      return Number(row?.c || 0) > 0;
+    },
+
+    archiveProduct(productId) {
+      if (!store.getProduct(productId)) {
+        throw new Error("Produit plugin introuvable");
+      }
+      const ts = now();
+      db.prepare(
+        `UPDATE plugin_products SET archived_at = ?, updated_at = ? WHERE id = ?`,
+      ).run(ts, ts, productId);
+      return store.getProduct(productId)!;
+    },
+
+    deleteProduct(productId) {
+      db.prepare(`DELETE FROM plugin_products WHERE id = ?`).run(productId);
+    },
+
     listTasks(productId) {
       const rows = db
         .prepare(
@@ -430,6 +537,12 @@ export function createSqliteProductHubStore(
           `SELECT * FROM plugin_impact_reports WHERE plugin_product_id = ? ORDER BY created_at DESC`,
         )
         .all(productId) as Record<string, unknown>[];
+      const all = (table: string, order = "created_at DESC") =>
+        db
+          .prepare(
+            `SELECT * FROM ${table} WHERE plugin_product_id = ? ORDER BY ${order}`,
+          )
+          .all(productId) as Record<string, unknown>[];
       return {
         product,
         prdRevisions: store.listPrdRevisions(productId),
@@ -446,6 +559,12 @@ export function createSqliteProductHubStore(
             }) satisfies PluginImpactReportRecord,
         ),
         clarifications: store.listClarifications(productId),
+        documents: all("plugin_documents"),
+        tickets: all("plugin_tickets"),
+        tests: all("plugin_test_runs", "started_at DESC"),
+        n8nResources: all("plugin_n8n_resources"),
+        changelog: all("plugin_changelog_entries", "released_at DESC"),
+        gates: all("plugin_gate_runs", "started_at DESC"),
       };
     },
 

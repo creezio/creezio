@@ -125,9 +125,23 @@ export type ProductHubStore = {
     priority?: number;
   }): PluginTaskRecord;
 
+  updateTask?(
+    productId: string,
+    taskId: string,
+    patch: {
+      status?: PluginTaskStatus;
+      blocked?: boolean;
+      blockedReason?: string | null;
+      hermesTaskId?: string | null;
+    },
+  ): PluginTaskRecord;
+
   listTasks(productId: string): PluginTaskRecord[];
 
   linkRuntime(productId: string, pluginId: string): PluginProductRecord;
+
+  countDoneTasks?(productId: string): number;
+  hasPassedTestRun?(productId: string): boolean;
 
   productDetails(productId: string): {
     product: PluginProductRecord;
@@ -135,5 +149,11 @@ export type ProductHubStore = {
     tasks: PluginTaskRecord[];
     impactReports: PluginImpactReportRecord[];
     clarifications: PluginClarificationRecord[];
+    documents?: Record<string, unknown>[];
+    tickets?: Record<string, unknown>[];
+    tests?: Record<string, unknown>[];
+    n8nResources?: Record<string, unknown>[];
+    changelog?: Record<string, unknown>[];
+    gates?: Record<string, unknown>[];
   } | undefined;
 };

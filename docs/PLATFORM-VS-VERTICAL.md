@@ -39,10 +39,10 @@ Légende :
 | `electron/plugin-events/manifest/grants/token/host` | platform-core + electron-shell | **B.2** | spawn + token |
 | `electron/plugin-control-api.ts` | `@creezio/product-hub` + `startHostPluginControlPlane` | **E** | headers/tags/service brandés |
 | `electron/plugin-execution-grant.ts` | platform-core + product-hub grants-flow | B.2 / **E** | prefix via tokens |
-| `src/lib/plugin-product-hub.ts` | `@creezio/product-hub` (lifecycle/PRD/impact/store) | **E** | SQLite store = vertical |
-| `src/lib/n8n-plugin-provisioning.ts` (tags) | `@creezio/product-hub` `pluginN8nTag` | **E** | préfixe `{brandId}-plugin:` |
-| `src/lib/plugin-acl.ts` | `@creezio/product-hub` acl L3/L4 | **E** | persistance SQL = vertical |
-| migrations 028/030/032 (+ acl org) | `schema-sql.ts` (DDL contrat) | **E** | apps exécutent |
+| `src/lib/plugin-product-hub.ts` | `@creezio/product-hub` + core.db | **R2** | façade ; plus de brand.db |
+| `src/lib/n8n-plugin-provisioning.ts` (tags) | `@creezio/product-hub` `pluginN8nTag` | **E** | préfixe `{brandId}-plugin:` ; registry → core |
+| `src/lib/plugin-acl.ts` | `@creezio/product-hub` acl L3/L4 | **R2** | persistance store kit core.db |
+| migrations 028/030/032 (+ acl org) | `schema-sql.ts` (DDL contrat) | **R2** | 028 brand = legacy ; core via store |
 | `electron/node-runtime` / `npm-cli` / sandbox | electron-shell | **B.2** | |
 | `electron/main.ts` | façade `prepareDesktopBoot` + vertical | **B** / vertical | Découpe progressive |
 | `scripts/electron/after-pack.cjs` | `@creezio/desktop-tooling` | **C** | hook générique |

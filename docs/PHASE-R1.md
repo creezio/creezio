@@ -62,7 +62,7 @@ comme métier ; casser Hermes→Product Hub (R2).
 
 ## Suite
 
-**R2** — Product Hub SoT unique `core.db` (ne pas toucher pendant R1).
+**R2** — Product Hub SoT unique `core.db` → [PHASE-R2.md](PHASE-R2.md).
 
 ---
 

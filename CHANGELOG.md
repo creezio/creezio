@@ -4,6 +4,10 @@
 ## [Unreleased]
 
 ### Added
+- **Phase R2** — Product Hub SoT unique `core.db` : `PRODUCT_HUB_RUNTIME_SQL`,
+  store étendu (updateTask/details/changelog), cutover TF Next (plus de
+  split-brain mig 028 brand) ; `docs/PHASE-R2.md` ; tests `test-phase-r2` ;
+  **pas** de republish exe.
 - **Phase R0** — Gel inventions : V1/V2/V3 = prototypes ≠ SoT ;
   `@creezio/automations` clarifié **lifecycle-only** ; interdiction nouvelles
   features plateforme dans TF/Certivan/Fidu ; `docs/PHASE-R0.md`.
