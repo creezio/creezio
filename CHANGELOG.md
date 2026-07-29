@@ -4,6 +4,12 @@
 ## [Unreleased]
 
 ### Added
+- **Phase M5** — Delete jumeaux bootstraps hermes/n8n TF : deltas
+  (`installHermesAgent`, webui deps marker/pip skip, scripts vendorisés,
+  os-profile, `failDiskSpace`/`force`/timeout npm) portés dans
+  `@creezio/electron-shell` ; TF bootstraps absents ; hooks
+  `host-runtime-ctx` ≤200 LOC ; `docs/PHASE-M5.md` ; tests `test-phase-m5` ;
+  **pas** de republish exe.
 - **Phase M4** — Delete jumeau `local-config` TF : `fleetTelemetry` +
   sanitize/patch dans `@creezio/platform-core` ; store kit
   (`get/setFleetTelemetry`, `configPath` getter, encryption electron sync) ;

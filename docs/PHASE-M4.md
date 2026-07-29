@@ -81,8 +81,7 @@ cd /opt/docker/tempoflow2/crm && npm run electron:compile \
 
 ## Suite
 
-**M5** — Delete bootstraps hermes/n8n (`hermes-runtime-bootstrap` /
-`n8n-runtime-bootstrap`) ; hooks marque ≤200 LOC.
+**M5** — Delete bootstraps hermes/n8n → [PHASE-M5.md](PHASE-M5.md).
 
 ---
 

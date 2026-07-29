@@ -1,5 +1,9 @@
 /**
- * Bootstrap runtime n8n — npm download-on-first-run (TF2 n8n-runtime-bootstrap).
+ * Bootstrap runtime n8n — download-on-first-run via npm (Node embarqué).
+ *
+ * L’arbre npm n’est PAS dans l’exe (taille). Au premier mode embedded sans
+ * entry, on `npm install n8n@pin` sous userData/n8n-runtime.
+ * Chemins injectés via HostRuntimeContext (SoT kit — jumeau marque interdit).
  */
 
 import fs from "node:fs";
@@ -47,6 +51,10 @@ export function getN8nBootstrapError(): string | null {
   return lastBootstrapError;
 }
 
+function setPhase(p: N8nBootstrapPhase): void {
+  phase = p;
+}
+
 export function n8nVendorDir(ctx: HostRuntimeContext): string {
   const candidates = [
     path.join(ctx.resourcesRoot, "vendor", "n8n"),
@@ -78,9 +86,20 @@ export function n8nRuntimeCacheDir(ctx: HostRuntimeContext): string {
   return dir;
 }
 
-export function n8nEntryPath(ctx: HostRuntimeContext): string | null {
-  const runtimeDir = n8nRuntimeCacheDir(ctx);
-  for (const c of n8nEntryCandidates(runtimeDir, process.platform)) {
+export function n8nPackageJsonPath(
+  ctx: HostRuntimeContext,
+  runtimeDir?: string,
+): string {
+  return path.join(runtimeDir || n8nRuntimeCacheDir(ctx), "package.json");
+}
+
+export function n8nEntryPath(
+  ctx: HostRuntimeContext,
+  runtimeDir?: string,
+): string | null {
+  const root = runtimeDir || n8nRuntimeCacheDir(ctx);
+  // .js d’abord — le bin sans extension peut être un shim non exécutable via node.
+  for (const c of n8nEntryCandidates(root, process.platform)) {
     if (
       isNodeSpawnableN8nEntry(c, {
         existsSync: fs.existsSync,
@@ -93,79 +112,209 @@ export function n8nEntryPath(ctx: HostRuntimeContext): string | null {
   return null;
 }
 
+function failDiskSpace(
+  ctx: HostRuntimeContext,
+  runtimeDir: string,
+  detail: string,
+  log: (line: string) => void,
+): {
+  ok: false;
+  detail: string;
+  entry: null;
+  entryPath: null;
+  runtimeDir: string;
+} {
+  const cleaned = cleanupN8nInstallArtifacts(ctx.userDataDir, {
+    npmCacheSegment: ctx.npmUserDataSegment || "desktop-npm",
+  });
+  if (cleaned.length) {
+    log(`nettoyage espace disque : ${cleaned.length} cible(s)`);
+  }
+  const freeBytes = getFreeDiskBytes(runtimeDir);
+  const friendly = formatN8nDiskSpaceError(ctx.userDataDir, {
+    freeBytes,
+    cleaned,
+    productName: hostProductName(ctx),
+  });
+  lastBootstrapError = friendly;
+  setPhase("error");
+  log(detail);
+  return {
+    ok: false,
+    detail: friendly,
+    entry: null,
+    entryPath: null,
+    runtimeDir,
+  };
+}
+
+/**
+ * Installe n8n@pin sous userData si absent.
+ */
 export async function ensureN8nRuntime(
   ctx: HostRuntimeContext,
-  opts?: { onLog?: (l: string) => void },
-): Promise<{ ok: boolean; entry: string | null; detail: string }> {
+  opts?: { onLog?: (line: string) => void; force?: boolean },
+): Promise<{
+  ok: boolean;
+  detail: string;
+  entry: string | null;
+  entryPath: string | null;
+  runtimeDir: string;
+}> {
   const log = opts?.onLog || ((l) => hostLog(ctx, "n8n-bootstrap", l));
-  phase = "checking";
+  setPhase("checking");
   lastBootstrapError = null;
-
-  const existing = n8nEntryPath(ctx);
-  if (existing) {
-    phase = "ready";
-    return { ok: true, entry: existing, detail: "reuse" };
+  const runtimeDir = n8nRuntimeCacheDir(ctx);
+  const existing = n8nEntryPath(ctx, runtimeDir);
+  if (existing && !opts?.force) {
+    setPhase("ready");
+    return {
+      ok: true,
+      detail: `Runtime déjà présent (${existing})`,
+      entry: existing,
+      entryPath: existing,
+      runtimeDir,
+    };
   }
 
-  const free = getFreeDiskBytes(ctx.userDataDir);
-  const preflight = diskSpacePreflightMessage(ctx.userDataDir, free);
-  if (preflight) {
-    phase = "error";
-    lastBootstrapError = formatN8nDiskSpaceError(ctx.userDataDir, {
-      freeBytes: free,
-      productName: hostProductName(ctx),
-    });
-    return { ok: false, entry: null, detail: lastBootstrapError };
-  }
-
-  phase = "installing";
+  let manifest: N8nRuntimeManifest;
   try {
-    const manifest = loadN8nRuntimeManifest(ctx);
-    const runtimeDir = n8nRuntimeCacheDir(ctx);
-    const pkgJson = path.join(runtimeDir, "package.json");
-    if (!fs.existsSync(pkgJson)) {
-      fs.writeFileSync(
-        pkgJson,
-        JSON.stringify({ name: "desktop-n8n-runtime", private: true }, null, 2),
-        "utf8",
-      );
-    }
-    const pin = `${manifest.package.name}@${manifest.package.version || manifest.n8nPin}`;
-    log(`npm install ${pin}…`);
-    const result = await runNpmCli(
-      ctx,
-      ["install", pin, ...(manifest.package.installArgs || [])],
-      { cwd: runtimeDir, onLog: log },
-    );
-    if (result.code !== 0) {
-      if (isDiskSpaceError({ code: result.code, text: result.stderr })) {
-        const cleaned = cleanupN8nInstallArtifacts(ctx.userDataDir, {
-          npmCacheSegment: "desktop-npm",
-        });
-        lastBootstrapError = formatN8nDiskSpaceError(ctx.userDataDir, {
-          freeBytes: getFreeDiskBytes(ctx.userDataDir),
-          cleaned,
-          productName: hostProductName(ctx),
-        });
-      } else {
-        lastBootstrapError =
-          result.stderr.slice(0, 500) || `npm exit ${result.code}`;
-      }
-      phase = "error";
-      return { ok: false, entry: null, detail: lastBootstrapError };
-    }
-    const entry = n8nEntryPath(ctx);
-    if (!entry) {
-      lastBootstrapError = "entry n8n introuvable après npm install";
-      phase = "error";
-      return { ok: false, entry: null, detail: lastBootstrapError };
-    }
-    phase = "ready";
-    return { ok: true, entry, detail: "installed" };
+    manifest = loadN8nRuntimeManifest(ctx);
   } catch (e) {
-    lastBootstrapError = e instanceof Error ? e.message : String(e);
-    phase = "error";
-    return { ok: false, entry: null, detail: lastBootstrapError };
+    const detail = e instanceof Error ? e.message : String(e);
+    lastBootstrapError = detail;
+    setPhase("error");
+    return {
+      ok: false,
+      detail,
+      entry: null,
+      entryPath: null,
+      runtimeDir,
+    };
+  }
+
+  setPhase("installing");
+  log(`npm install n8n@${manifest.n8nPin} → ${runtimeDir}`);
+
+  const preflight = diskSpacePreflightMessage(
+    ctx.userDataDir,
+    getFreeDiskBytes(runtimeDir),
+  );
+  if (preflight) {
+    return failDiskSpace(
+      ctx,
+      runtimeDir,
+      "pré-vol espace disque insuffisant",
+      log,
+    );
+  }
+
+  const pkgPath = n8nPackageJsonPath(ctx, runtimeDir);
+  if (!fs.existsSync(pkgPath)) {
+    fs.writeFileSync(
+      pkgPath,
+      `${JSON.stringify(
+        {
+          name: "desktop-n8n-runtime",
+          private: true,
+          version: "0.0.0",
+          description:
+            "Runtime n8n téléchargé par le desktop — ne pas committer",
+        },
+        null,
+        2,
+      )}\n`,
+      "utf8",
+    );
+  }
+
+  const pin = `${manifest.package.name}@${manifest.package.version || manifest.n8nPin}`;
+  const installArgs = manifest.package.installArgs?.length
+    ? manifest.package.installArgs
+    : ["install", "--omit=dev", "--no-fund", "--no-audit", pin];
+
+  // Si installArgs du manifest ne commence pas par "install", préfixer.
+  const npmArgs =
+    installArgs[0] === "install" ? installArgs : ["install", ...installArgs];
+  // Garantir le pin si le manifest ne l’a pas mis dans installArgs.
+  if (!npmArgs.some((a) => a.includes("n8n@"))) {
+    npmArgs.push(pin);
+  }
+
+  try {
+    // Toujours node + npm-cli.js (Node embarqué) — jamais npm du PATH Windows.
+    const result = await runNpmCli(ctx, npmArgs, {
+      cwd: runtimeDir,
+      onLog: log,
+      timeoutMs: 30 * 60 * 1000,
+      env: {
+        ...process.env,
+        npm_config_fund: "false",
+        npm_config_audit: "false",
+        NODE_ENV: "production",
+      },
+    });
+
+    if (result.code !== 0) {
+      const raw = `${result.stderr || ""}\n${result.stdout || ""}`.trim();
+      if (isDiskSpaceError({ code: result.code, text: raw })) {
+        return failDiskSpace(
+          ctx,
+          runtimeDir,
+          `npm install échoué (code ${result.code}): ${raw.slice(-400)}`,
+          log,
+        );
+      }
+      const detail = `npm install échoué (code ${result.code}): ${raw.slice(-400)}`;
+      lastBootstrapError = detail;
+      setPhase("error");
+      return {
+        ok: false,
+        detail,
+        entry: null,
+        entryPath: null,
+        runtimeDir,
+      };
+    }
+
+    const entry = n8nEntryPath(ctx, runtimeDir);
+    if (!entry) {
+      const detail =
+        "npm install OK mais entry n8n introuvable sous node_modules/n8n/bin";
+      lastBootstrapError = detail;
+      setPhase("error");
+      return {
+        ok: false,
+        detail,
+        entry: null,
+        entryPath: null,
+        runtimeDir,
+      };
+    }
+
+    setPhase("ready");
+    log(`ready ${entry}`);
+    return {
+      ok: true,
+      detail: `n8n@${manifest.n8nPin} installé`,
+      entry,
+      entryPath: entry,
+      runtimeDir,
+    };
+  } catch (e) {
+    const raw = e instanceof Error ? e.message : String(e);
+    if (isDiskSpaceError({ text: raw })) {
+      return failDiskSpace(ctx, runtimeDir, raw, log);
+    }
+    lastBootstrapError = raw;
+    setPhase("error");
+    return {
+      ok: false,
+      detail: raw,
+      entry: null,
+      entryPath: null,
+      runtimeDir,
+    };
   }
 }
 

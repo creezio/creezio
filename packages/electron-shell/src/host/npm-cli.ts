@@ -195,6 +195,8 @@ export async function runNpmCli(
     cwd?: string;
     env?: NodeJS.ProcessEnv;
     onLog?: (line: string) => void;
+    /** Timeout kill (ex. bootstrap n8n 30 min). */
+    timeoutMs?: number;
   },
 ): Promise<{ code: number; stdout: string; stderr: string }> {
   const ensured = await ensureNpmCli(ctx);
@@ -237,9 +239,24 @@ export async function runNpmCli(
         .filter(Boolean)
         .forEach((l) => onLog(`stderr: ${l}`));
     });
-    child.on("error", reject);
-    child.on("exit", (code) =>
-      resolve({ code: code ?? 1, stdout, stderr }),
-    );
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    if (opts?.timeoutMs && opts.timeoutMs > 0) {
+      timer = setTimeout(() => {
+        try {
+          child.kill();
+        } catch {
+          /* ignore */
+        }
+        reject(new Error(`timeout npm (${opts.timeoutMs}ms)`));
+      }, opts.timeoutMs);
+    }
+    child.on("error", (e) => {
+      if (timer) clearTimeout(timer);
+      reject(e);
+    });
+    child.on("exit", (code) => {
+      if (timer) clearTimeout(timer);
+      resolve({ code: code ?? 1, stdout, stderr });
+    });
   });
 }

@@ -1,16 +1,20 @@
 /**
- * Bootstrap runtime Hermes — download-on-first-run (TF2 hermes-runtime-bootstrap).
- * Chemins injectés via HostRuntimeContext.
+ * Bootstrap runtime Hermes (agent CLI + WebUI) — download-on-first-run.
+ *
+ * Le full Python/venv n’est PAS dans l’exe (taille / remote-build). Au premier
+ * Héberger sans CLI, on lance l’installeur officiel NousResearch, puis on
+ * récupère l’archive WebUI pinée (checksum SHA-256) sous userData.
+ * Chemins injectés via HostRuntimeContext (SoT kit — jumeau marque interdit).
  */
 
-import { spawn } from "node:child_process";
+import { spawn, type ChildProcess } from "node:child_process";
 import crypto from "node:crypto";
 import fs from "node:fs";
 import http from "node:http";
 import https from "node:https";
 import path from "node:path";
 import type { HostRuntimeContext } from "../context.js";
-import { hostLog } from "../context.js";
+import { hostLog, hostProductName } from "../context.js";
 import { applyOsSandboxEnv, setSandboxEnvVar } from "../sandbox/embed-sandbox.js";
 import { resolveSystemBinary } from "../sandbox/os-sandbox.js";
 import { resolveDesktopNodeBinary } from "../node-runtime.js";
@@ -34,11 +38,18 @@ export type RuntimeManifest = {
     license?: string;
   };
   agentInstall: {
+    /** Commit hermes-agent épinglé (install reproductible, checkout exact). */
     commitPin?: string;
     windows: {
       scriptUrl: string;
       scriptSha256?: string;
       args: string[];
+      /**
+       * Stages install.ps1 exécutés UN PAR UN (stage protocol officiel).
+       * Tout stage absent de la liste n'est JAMAIS exécuté — c'est ainsi
+       * qu'on exclut `system-packages` (winget machine-wide) et `path`
+       * (PATH registre utilisateur) du périmètre OS desktop.
+       */
       stages?: string[];
     };
     posix: { scriptUrl: string; scriptSha256?: string; args: string[] };
@@ -83,9 +94,40 @@ export function loadRuntimeManifest(ctx: HostRuntimeContext): RuntimeManifest {
   throw new Error("vendor/hermes-agent/runtime-manifest.json introuvable");
 }
 
+/**
+ * Script d'install Hermes VENDORISÉ (embarqué dans les ressources).
+ * Plus aucun téléchargement au first-run : un changement du script upstream
+ * ne peut plus casser les installs (le checksum du manifest reste vérifié
+ * comme garde d'intégrité du fichier packagé).
+ */
+export function vendoredInstallScriptPath(
+  ctx: HostRuntimeContext,
+  name: string,
+): string | null {
+  const candidates = [path.join(hermesVendorDir(ctx), name)];
+  for (const p of candidates) {
+    if (fs.existsSync(p)) return p;
+  }
+  return null;
+}
+
 export function hermesRuntimeCacheDir(ctx: HostRuntimeContext): string {
   const dir = path.join(ctx.userDataDir, "hermes-runtime");
   fs.mkdirSync(dir, { recursive: true });
+  return dir;
+}
+
+/**
+ * Profil OS faux pour l’installeur Hermes officiel.
+ * Sous Windows l’install écrit typiquement `%USERPROFILE%\.hermes` /
+ * `%LOCALAPPDATA%\hermes` — on pointe USERPROFILE + LOCALAPPDATA ici
+ * pour rester dans le sandbox desktop.
+ */
+export function hermesInstallOsProfileDir(ctx: HostRuntimeContext): string {
+  const dir = path.join(hermesRuntimeCacheDir(ctx), "os-profile");
+  fs.mkdirSync(dir, { recursive: true });
+  fs.mkdirSync(path.join(dir, "AppData", "Local"), { recursive: true });
+  fs.mkdirSync(path.join(dir, "AppData", "Roaming"), { recursive: true });
   return dir;
 }
 
@@ -93,27 +135,31 @@ export function hermesWebuiInstallDir(ctx: HostRuntimeContext): string {
   return path.join(hermesRuntimeCacheDir(ctx), "webui");
 }
 
+/** Répertoires candidats pour le checkout hermes-agent (sandbox d’abord). */
 export function hermesAgentDirCandidates(ctx: HostRuntimeContext): string[] {
-  const cache = hermesRuntimeCacheDir(ctx);
+  const profile = hermesInstallOsProfileDir(ctx);
+  const local = path.join(profile, "AppData", "Local");
   return [
-    path.join(cache, "hermes-agent"),
-    path.join(cache, "agent"),
+    path.join(hermesRuntimeCacheDir(ctx), "hermes-agent"),
+    path.join(profile, ".hermes", "hermes-agent"),
+    path.join(local, "hermes", "hermes-agent"),
     path.join(ctx.userDataDir, "hermes-home", "hermes-agent"),
-  ];
+  ].filter(Boolean);
 }
 
 export function resolveHermesAgentDir(
   ctx: HostRuntimeContext,
   existsSync = fs.existsSync,
 ): string | null {
-  for (const d of hermesAgentDirCandidates(ctx)) {
-    if (existsSync(path.join(d, "pyproject.toml")) || existsSync(path.join(d, "hermes"))) {
-      return d;
-    }
+  for (const dir of hermesAgentDirCandidates(ctx)) {
+    const marker = path.join(dir, "cli.py");
+    const marker2 = path.join(dir, "pyproject.toml");
+    if (existsSync(marker) || existsSync(marker2)) return dir;
   }
   return null;
 }
 
+/** Python du venv Hermes (pour spawner WebUI). */
 export function resolveHermesPython(
   agentDir?: string | null,
 ): string | null {
@@ -121,12 +167,13 @@ export function resolveHermesPython(
   const candidates =
     process.platform === "win32"
       ? [
-          path.join(agentDir, ".venv", "Scripts", "python.exe"),
           path.join(agentDir, "venv", "Scripts", "python.exe"),
+          path.join(agentDir, ".venv", "Scripts", "python.exe"),
         ]
       : [
-          path.join(agentDir, ".venv", "bin", "python"),
           path.join(agentDir, "venv", "bin", "python"),
+          path.join(agentDir, ".venv", "bin", "python"),
+          path.join(agentDir, "venv", "bin", "python3"),
         ];
   for (const p of candidates) {
     if (fs.existsSync(p)) return p;
@@ -134,16 +181,10 @@ export function resolveHermesPython(
   return null;
 }
 
-export const WEBUI_DEPS_MARKER = ".desktop-webui-deps";
-
-export function webuiDepsMarkerPath(webuiDir: string): string {
-  return path.join(webuiDir, WEBUI_DEPS_MARKER);
-}
-
-function downloadFile(
+function downloadToFile(
   url: string,
   dest: string,
-  onLog: (l: string) => void,
+  onLog: (line: string) => void,
 ): Promise<void> {
   return new Promise((resolve, reject) => {
     fs.mkdirSync(path.dirname(dest), { recursive: true });
@@ -151,7 +192,7 @@ function downloadFile(
     const file = fs.createWriteStream(tmp);
     const get = url.startsWith("https:") ? https.get : http.get;
     onLog(`download ${url}`);
-    const req = get(url, { timeout: 300_000 }, (res) => {
+    const req = get(url, { timeout: 120_000 }, (res) => {
       if (
         res.statusCode &&
         res.statusCode >= 300 &&
@@ -162,14 +203,14 @@ function downloadFile(
         try {
           fs.unlinkSync(tmp);
         } catch {
-          /* */
+          /* ignore */
         }
-        downloadFile(res.headers.location, dest, onLog).then(resolve, reject);
+        downloadToFile(res.headers.location, dest, onLog).then(resolve, reject);
         return;
       }
       if (res.statusCode !== 200) {
         file.close();
-        reject(new Error(`HTTP ${res.statusCode}`));
+        reject(new Error(`HTTP ${res.statusCode} pour ${url}`));
         return;
       }
       res.pipe(file);
@@ -180,7 +221,15 @@ function downloadFile(
         });
       });
     });
-    req.on("error", reject);
+    req.on("error", (e) => {
+      try {
+        file.close();
+        fs.unlinkSync(tmp);
+      } catch {
+        /* ignore */
+      }
+      reject(e);
+    });
     req.on("timeout", () => {
       req.destroy();
       reject(new Error("download timeout"));
@@ -194,46 +243,472 @@ function sha256File(filePath: string): string {
   return hash.digest("hex");
 }
 
+/**
+ * Supply-chain : le script d'install distant doit correspondre au pin sha256
+ * du manifest. Mismatch = throw (jamais d'exécution d'un script inattendu).
+ */
+function verifyInstallScriptChecksum(
+  scriptPath: string,
+  expectedSha256: string | undefined,
+  onLog: (line: string) => void,
+): void {
+  const digest = sha256File(scriptPath);
+  if (!expectedSha256) {
+    throw new Error(
+      `script d'install sans pin sha256 dans le manifest (observé ${digest}) — exécution refusée`,
+    );
+  }
+  if (digest !== expectedSha256.toLowerCase()) {
+    throw new Error(
+      `checksum script d'install invalide (got ${digest}, want ${expectedSha256}) — exécution refusée`,
+    );
+  }
+  onLog(`checksum script install OK ${digest.slice(0, 12)}…`);
+}
+
+/** Marker écrit après pip OK / imports OK — skip pip aux boots suivants. */
+export const WEBUI_DEPS_MARKER = ".desktop-webui-deps";
+/** Legacy marque (upgrade) — lu si le marker desktop est absent. */
+export const WEBUI_DEPS_MARKER_LEGACY = ".tempoflow-webui-deps";
+const WEBUI_PIN_FILE = ".desktop-webui-pin";
+const WEBUI_PIN_FILE_LEGACY = ".tempoflow-webui-pin";
+
+export function webuiDepsMarkerPath(webuiDir: string): string {
+  return path.join(webuiDir, WEBUI_DEPS_MARKER);
+}
+
+export function readWebuiDepsMarker(webuiDir: string): string | null {
+  for (const name of [WEBUI_DEPS_MARKER, WEBUI_DEPS_MARKER_LEGACY]) {
+    const p = path.join(webuiDir, name);
+    try {
+      if (!fs.existsSync(p)) continue;
+      const v = fs.readFileSync(p, "utf8").trim();
+      if (v) return v;
+    } catch {
+      /* ignore */
+    }
+  }
+  return null;
+}
+
+export function writeWebuiDepsMarker(webuiDir: string, digest: string): void {
+  fs.writeFileSync(webuiDepsMarkerPath(webuiDir), `${digest}\n`, "utf8");
+}
+
+/**
+ * true si le marker correspond au hash de requirements.txt
+ * (deps déjà validées pour ce pin WebUI).
+ */
+export function isWebuiDepsMarkerCurrent(
+  webuiDir: string,
+  requirementsPath: string,
+  existsSync = fs.existsSync,
+): boolean {
+  if (!existsSync(requirementsPath)) return false;
+  const digest = sha256File(requirementsPath);
+  return readWebuiDepsMarker(webuiDir) === digest;
+}
+
+/**
+ * Check rapide (~ms) : imports WebUI requis.
+ * Évite `pip install -r` à chaque Héberger quand le venv est déjà prêt.
+ */
+export async function webuiPythonDepsReady(
+  pythonPath: string,
+  opts?: { onLog?: (line: string) => void; timeoutMs?: number },
+): Promise<boolean> {
+  const silent = opts?.onLog || (() => undefined);
+  try {
+    const r = await runCommand(
+      pythonPath,
+      ["-c", "import yaml, cryptography"],
+      {
+        onLog: silent,
+        timeoutMs: opts?.timeoutMs ?? 15_000,
+      },
+    );
+    return r.code === 0;
+  } catch {
+    return false;
+  }
+}
+
+function runCommand(
+  cmd: string,
+  args: string[],
+  opts: {
+    cwd?: string;
+    env?: NodeJS.ProcessEnv;
+    onLog: (line: string) => void;
+    timeoutMs: number;
+  },
+): Promise<{ code: number | null }> {
+  return new Promise((resolve, reject) => {
+    opts.onLog(`$ ${cmd} ${args.join(" ")}`);
+    const child: ChildProcess = spawn(cmd, args, {
+      cwd: opts.cwd,
+      env: opts.env || process.env,
+      stdio: ["ignore", "pipe", "pipe"],
+      windowsHide: true,
+      shell: false,
+    });
+    const onData = (buf: Buffer) => {
+      buf
+        .toString("utf8")
+        .split(/\r?\n/)
+        .filter(Boolean)
+        .forEach((l) => opts.onLog(l.slice(0, 400)));
+    };
+    child.stdout?.on("data", onData);
+    child.stderr?.on("data", onData);
+    const timer = setTimeout(() => {
+      try {
+        child.kill();
+      } catch {
+        /* ignore */
+      }
+      reject(new Error(`timeout ${opts.timeoutMs}ms: ${cmd}`));
+    }, opts.timeoutMs);
+    child.on("error", (e) => {
+      clearTimeout(timer);
+      reject(e);
+    });
+    child.on("exit", (code) => {
+      clearTimeout(timer);
+      resolve({ code });
+    });
+  });
+}
+
+/**
+ * Installe Hermes Agent via l’installeur officiel (réseau requis).
+ * Idempotent si le CLI est déjà présent ailleurs — le caller vérifie d’abord.
+ */
+export async function installHermesAgent(
+  ctx: HostRuntimeContext,
+  opts: {
+    onLog: (line: string) => void;
+    timeoutMs?: number;
+  },
+): Promise<{ ok: boolean; detail: string }> {
+  const manifest = loadRuntimeManifest(ctx);
+  const timeoutMs = opts.timeoutMs ?? 15 * 60 * 1000;
+  setPhase("installing-agent");
+  lastBootstrapError = null;
+  const cache = hermesRuntimeCacheDir(ctx);
+  const scriptsDir = path.join(cache, "install-scripts");
+  fs.mkdirSync(scriptsDir, { recursive: true });
+  const product = hostProductName(ctx);
+
+  try {
+    const profile = hermesInstallOsProfileDir(ctx);
+    // Node desktop visible dans le PATH confiné : le stage `node` de
+    // l'installeur le détecte et n'installe RIEN (ni zip portable, ni winget
+    // machine-wide en fallback).
+    const desktopNode = resolveDesktopNodeBinary(ctx);
+    const installToolDirs = path.isAbsolute(desktopNode)
+      ? [path.dirname(desktopNode)]
+      : [];
+    const installEnv = applyOsSandboxEnv({
+      env: {
+        ...process.env,
+        LOCALAPPDATA: path.join(profile, "AppData", "Local"),
+        APPDATA: path.join(profile, "AppData", "Roaming"),
+      },
+      profileHome: profile,
+      userData: ctx.userDataDir,
+      // PATH confiné : Node desktop + System32, rien du PC hôte.
+      toolDirs: installToolDirs,
+    });
+    setSandboxEnvVar(
+      installEnv,
+      "LOCALAPPDATA",
+      path.join(profile, "AppData", "Local"),
+    );
+    setSandboxEnvVar(
+      installEnv,
+      "APPDATA",
+      path.join(profile, "AppData", "Roaming"),
+    );
+    // Verrou définitif : install.ps1/install.sh donnent à HERMES_HOME la
+    // priorité sur %LOCALAPPDATA% / $HOME pour choisir HermesHome/InstallDir.
+    setSandboxEnvVar(
+      installEnv,
+      "HERMES_HOME",
+      process.platform === "win32"
+        ? path.join(profile, "AppData", "Local", "hermes")
+        : path.join(profile, ".hermes"),
+    );
+    opts.onLog(
+      `install Hermes dans sandbox ${product} (USERPROFILE=${profile}, HERMES_HOME=${installEnv.HERMES_HOME})`,
+    );
+
+    // Purge des checkouts mis de côté par install.ps1 après un échec
+    // (« hermes-agent.broken-<ts> ») — sinon chaque retry laisse des
+    // centaines de Mo morts dans le sandbox.
+    try {
+      const hermesHome = installEnv.HERMES_HOME as string;
+      if (fs.existsSync(hermesHome)) {
+        for (const entry of fs.readdirSync(hermesHome)) {
+          if (entry.startsWith("hermes-agent.broken-")) {
+            opts.onLog(`purge checkout cassé: ${entry}`);
+            fs.rmSync(path.join(hermesHome, entry), {
+              recursive: true,
+              force: true,
+            });
+          }
+        }
+      }
+    } catch {
+      /* best-effort */
+    }
+
+    const commitPin = manifest.agentInstall.commitPin;
+    if (process.platform === "win32") {
+      const win = manifest.agentInstall.windows;
+      const ps1 = path.join(scriptsDir, "install.ps1");
+      const vendored = vendoredInstallScriptPath(ctx, "install.ps1");
+      if (vendored) {
+        fs.copyFileSync(vendored, ps1);
+        opts.onLog("script install vendorisé (embarqué, aucun téléchargement)");
+      } else {
+        await downloadToFile(win.scriptUrl, ps1, opts.onLog);
+      }
+      verifyInstallScriptChecksum(ps1, win.scriptSha256, opts.onLog);
+      const powershell = resolveSystemBinary("powershell");
+      if (!powershell) {
+        lastBootstrapError = "PowerShell système introuvable (System32)";
+        setPhase("error");
+        return { ok: false, detail: lastBootstrapError };
+      }
+      const baseArgs = [...win.args];
+      if (commitPin) baseArgs.push("-Commit", commitPin);
+      if (win.stages && win.stages.length > 0) {
+        for (const stage of win.stages) {
+          opts.onLog(`install stage « ${stage} »…`);
+          const r = await runCommand(
+            powershell,
+            [
+              "-NoProfile",
+              "-ExecutionPolicy",
+              "Bypass",
+              "-File",
+              ps1,
+              "-Stage",
+              stage,
+              ...baseArgs,
+            ],
+            { onLog: opts.onLog, timeoutMs, env: installEnv },
+          );
+          if (r.code !== 0) {
+            lastBootstrapError = `install.ps1 stage ${stage} exit ${r.code}`;
+            setPhase("error");
+            return { ok: false, detail: lastBootstrapError };
+          }
+        }
+      } else {
+        const result = await runCommand(
+          powershell,
+          ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", ps1, ...baseArgs],
+          { onLog: opts.onLog, timeoutMs, env: installEnv },
+        );
+        if (result.code !== 0) {
+          lastBootstrapError = `install.ps1 exit ${result.code}`;
+          setPhase("error");
+          return { ok: false, detail: lastBootstrapError };
+        }
+      }
+    } else {
+      const posix = manifest.agentInstall.posix;
+      const sh = path.join(scriptsDir, "install.sh");
+      const vendored = vendoredInstallScriptPath(ctx, "install.sh");
+      if (vendored) {
+        fs.copyFileSync(vendored, sh);
+        opts.onLog("script install vendorisé (embarqué, aucun téléchargement)");
+      } else {
+        await downloadToFile(posix.scriptUrl, sh, opts.onLog);
+      }
+      verifyInstallScriptChecksum(sh, posix.scriptSha256, opts.onLog);
+      fs.chmodSync(sh, 0o755);
+      const bash = resolveSystemBinary("bash");
+      if (!bash) {
+        lastBootstrapError = "bash système introuvable (/bin, /usr/bin)";
+        setPhase("error");
+        return { ok: false, detail: lastBootstrapError };
+      }
+      const posixArgs = [...posix.args];
+      if (commitPin) posixArgs.push("--commit", commitPin);
+      const result = await runCommand(bash, [sh, ...posixArgs], {
+        onLog: opts.onLog,
+        timeoutMs,
+        env: installEnv,
+      });
+      if (result.code !== 0) {
+        lastBootstrapError = `install.sh exit ${result.code}`;
+        setPhase("error");
+        return { ok: false, detail: lastBootstrapError };
+      }
+    }
+    setPhase("ready");
+    return { ok: true, detail: "Hermes Agent installé" };
+  } catch (e) {
+    lastBootstrapError = e instanceof Error ? e.message : String(e);
+    setPhase("error");
+    return { ok: false, detail: lastBootstrapError };
+  }
+}
+
+async function extractTarGz(
+  ctx: HostRuntimeContext,
+  archive: string,
+  destParent: string,
+  onLog: (line: string) => void,
+): Promise<string> {
+  fs.mkdirSync(destParent, { recursive: true });
+  const staging = path.join(destParent, "_extract");
+  fs.rmSync(staging, { recursive: true, force: true });
+  fs.mkdirSync(staging, { recursive: true });
+
+  const tarBin = resolveSystemBinary("tar");
+  if (!tarBin) {
+    throw new Error("tar système introuvable (System32 / /usr/bin)");
+  }
+  {
+    const r = await runCommand(tarBin, ["-xzf", archive, "-C", staging], {
+      onLog,
+      timeoutMs: 120_000,
+    });
+    if (r.code !== 0) throw new Error(`tar extraction failed (${tarBin})`);
+  }
+
+  const entries = fs.readdirSync(staging).filter((n) => !n.startsWith("."));
+  if (entries.length !== 1) {
+    throw new Error(`archive layout inattendu: ${entries.join(",")}`);
+  }
+  const extracted = path.join(staging, entries[0]!);
+  const finalDir = hermesWebuiInstallDir(ctx);
+  fs.rmSync(finalDir, { recursive: true, force: true });
+  fs.renameSync(extracted, finalDir);
+  fs.rmSync(staging, { recursive: true, force: true });
+  return finalDir;
+}
+
+function readWebuiPin(webuiDir: string): string | null {
+  for (const name of [WEBUI_PIN_FILE, WEBUI_PIN_FILE_LEGACY]) {
+    const p = path.join(webuiDir, name);
+    try {
+      if (!fs.existsSync(p)) continue;
+      const v = fs.readFileSync(p, "utf8").trim();
+      if (v) return v;
+    } catch {
+      /* ignore */
+    }
+  }
+  return null;
+}
+
+/**
+ * Télécharge + vérifie + extrait hermes-webui (pin + sha256 du manifest).
+ * Installe les deps Python légères dans le venv Hermes **uniquement** si
+ * absentes (premier run / repair). Boots suivants : marker ou import check.
+ */
 export async function ensureHermesWebuiTree(
   ctx: HostRuntimeContext,
-  opts?: { onLog?: (l: string) => void },
+  opts?: {
+    onLog?: (line: string) => void;
+    pythonPath?: string;
+  },
 ): Promise<{ ok: boolean; dir: string | null; detail: string }> {
   const log = opts?.onLog || ((l) => hostLog(ctx, "hermes-bootstrap", l));
+  setPhase("checking");
+  lastBootstrapError = null;
   try {
     const manifest = loadRuntimeManifest(ctx);
-    const dir = hermesWebuiInstallDir(ctx);
-    const marker = path.join(dir, ".sha256");
-    if (
-      fs.existsSync(dir) &&
-      fs.existsSync(marker) &&
-      fs.readFileSync(marker, "utf8").trim() === manifest.webui.sha256
-    ) {
-      return { ok: true, dir, detail: "webui cached" };
-    }
-    setPhase("installing-webui");
-    const cache = hermesRuntimeCacheDir(ctx);
-    const archive = path.join(cache, "webui-archive.zip");
-    await downloadFile(manifest.webui.archiveUrl, archive, log);
-    const digest = sha256File(archive);
-    if (digest !== manifest.webui.sha256) {
-      throw new Error(
-        `checksum webui mismatch (got ${digest}, want ${manifest.webui.sha256})`,
+    const finalDir = hermesWebuiInstallDir(ctx);
+    const marker = path.join(finalDir, "server.py");
+    const pinRef = readWebuiPin(finalDir);
+    const needDownload =
+      !fs.existsSync(marker) ||
+      !pinRef ||
+      pinRef !== manifest.webui.ref;
+
+    if (needDownload) {
+      setPhase("installing-webui");
+      const cache = path.join(hermesRuntimeCacheDir(ctx), "downloads");
+      fs.mkdirSync(cache, { recursive: true });
+      const archive = path.join(
+        cache,
+        `hermes-webui-${manifest.webui.ref}.tar.gz`,
+      );
+      if (
+        !fs.existsSync(archive) ||
+        sha256File(archive) !== manifest.webui.sha256
+      ) {
+        await downloadToFile(manifest.webui.archiveUrl, archive, log);
+      }
+      const digest = sha256File(archive);
+      if (digest !== manifest.webui.sha256) {
+        throw new Error(
+          `checksum WebUI invalide (got ${digest}, want ${manifest.webui.sha256})`,
+        );
+      }
+      log(`checksum OK ${digest.slice(0, 12)}…`);
+      await extractTarGz(ctx, archive, hermesRuntimeCacheDir(ctx), log);
+      fs.writeFileSync(
+        path.join(finalDir, WEBUI_PIN_FILE),
+        `${manifest.webui.ref}\n`,
+        "utf8",
       );
     }
-    fs.rmSync(dir, { recursive: true, force: true });
-    fs.mkdirSync(dir, { recursive: true });
-    const tarBin = resolveSystemBinary("tar") || "tar";
-    await new Promise<void>((resolve, reject) => {
-      const child = spawn(tarBin, ["-xf", archive, "-C", dir], {
-        windowsHide: true,
-      });
-      child.on("error", reject);
-      child.on("exit", (c) =>
-        c === 0 ? resolve() : reject(new Error(`extract exit ${c}`)),
-      );
-    });
-    fs.writeFileSync(marker, `${manifest.webui.sha256}\n`, "utf8");
-    return { ok: true, dir, detail: "webui installed" };
+
+    const pythonPath =
+      opts?.pythonPath ||
+      resolveHermesPython(resolveHermesAgentDir(ctx));
+    const req = path.join(finalDir, "requirements.txt");
+    if (fs.existsSync(req) && pythonPath) {
+      if (isWebuiDepsMarkerCurrent(finalDir, req)) {
+        log("démarrage…");
+      } else {
+        const already = await webuiPythonDepsReady(pythonPath);
+        const reqDigest = sha256File(req);
+        if (already) {
+          writeWebuiDepsMarker(finalDir, reqDigest);
+          log("démarrage…");
+        } else {
+          setPhase("installing-webui");
+          log("pip install WebUI deps (pyyaml, cryptography)…");
+          const pipEnv = applyOsSandboxEnv({
+            env: { ...process.env },
+            profileHome: hermesInstallOsProfileDir(ctx),
+            userData: ctx.userDataDir,
+            toolDirs: [path.dirname(pythonPath)],
+          });
+          const pip = await runCommand(
+            pythonPath,
+            ["-m", "pip", "install", "--disable-pip-version-check", "-r", req],
+            { onLog: log, timeoutMs: 180_000, cwd: finalDir, env: pipEnv },
+          );
+          if (pip.code === 0) {
+            writeWebuiDepsMarker(finalDir, reqDigest);
+          } else {
+            const recovered = await webuiPythonDepsReady(pythonPath);
+            if (recovered) {
+              writeWebuiDepsMarker(finalDir, reqDigest);
+              log("démarrage…");
+            } else {
+              log(
+                "deps WebUI manquantes après pip — WebUI peut échouer au spawn",
+              );
+            }
+          }
+        }
+      }
+    } else if (!needDownload) {
+      log("démarrage…");
+    }
+
+    setPhase("ready");
+    return { ok: true, dir: finalDir, detail: "WebUI prêt" };
   } catch (e) {
     lastBootstrapError = e instanceof Error ? e.message : String(e);
     setPhase("error");
@@ -242,164 +717,131 @@ export async function ensureHermesWebuiTree(
 }
 
 /**
- * Garantit le runtime agent + webui.
- * L'install agent officielle (install.ps1 / curl) est déléguée si le CLI
- * n'est pas déjà présent sous userData — mêmes stages sandbox que TF2.
+ * Si CLI absente → install agent. Puis assure l’arbre WebUI.
+ * Appelé au boot Héberger (embedded) ou depuis l’UI « Installer runtime ».
  */
 export async function ensureHermesRuntime(
   ctx: HostRuntimeContext,
   opts?: {
-    onLog?: (l: string) => void;
+    onLog?: (line: string) => void;
+    onPhase?: (p: BootstrapPhase) => void;
     searchDirs?: string[];
+    findBinary?: () => string | null;
+    timeoutMs?: number;
+    /** Si false, n’installe pas l’agent (seulement WebUI si python dispo). */
+    installAgentIfMissing?: boolean;
   },
 ): Promise<{
   ok: boolean;
   binary: string | null;
+  binaryPath: string | null;
   agentDir: string | null;
   webuiDir: string | null;
   detail: string;
 }> {
   const log = opts?.onLog || ((l) => hostLog(ctx, "hermes-bootstrap", l));
-  setPhase("checking");
+  const report = (p: BootstrapPhase) => {
+    setPhase(p);
+    opts?.onPhase?.(p);
+  };
+  report("checking");
   lastBootstrapError = null;
 
   const { resolveHermesBinary } = await import("@creezio/platform-core");
-  const searchDirs = opts?.searchDirs || [
+  const profile = hermesInstallOsProfileDir(ctx);
+  const defaultSearchDirs = [
     hermesRuntimeCacheDir(ctx),
+    path.join(hermesRuntimeCacheDir(ctx), "bin"),
+    path.join(profile, "AppData", "Local", "hermes", "bin"),
+    path.join(profile, ".hermes", "bin"),
+    process.platform === "win32"
+      ? path.join(
+          profile,
+          "AppData",
+          "Local",
+          "hermes",
+          "hermes-agent",
+          "venv",
+          "Scripts",
+        )
+      : path.join(profile, ".hermes", "hermes-agent", "venv", "bin"),
     ...hermesAgentDirCandidates(ctx),
     path.join(ctx.userDataDir, "hermes-home", "bin"),
   ];
-  let binary = resolveHermesBinary({
-    platform: process.platform,
-    env: process.env,
-    searchDirs,
-    allowEnvOverride: !ctx.isPackaged,
-    envPrefix: ctx.manifest.envPrefix,
-    existsSync: fs.existsSync,
-  });
-
-  if (!binary) {
-    setPhase("installing-agent");
-    log("CLI Hermes absent — bootstrap agent (install officiel piné)…");
-    try {
-      const manifest = loadRuntimeManifest(ctx);
-      const cache = hermesRuntimeCacheDir(ctx);
-      const profileHome = path.join(cache, "os-profile");
-      fs.mkdirSync(profileHome, { recursive: true });
-      const env = applyOsSandboxEnv({
-        env: { ...process.env },
-        profileHome,
-        userData: ctx.userDataDir,
-        toolDirs: [path.dirname(resolveDesktopNodeBinary(ctx))],
-      });
-      setSandboxEnvVar(env, "HERMES_HOME", path.join(ctx.userDataDir, "hermes-home"));
-
-      if (process.platform === "win32") {
-        const ps = resolveSystemBinary("powershell");
-        if (!ps) throw new Error("powershell introuvable");
-        const script = path.join(cache, "install.ps1");
-        await downloadFile(manifest.agentInstall.windows.scriptUrl, script, log);
-        const stages =
-          manifest.agentInstall.windows.stages ||
-          manifest.agentInstall.windows.args;
-        for (const stage of stages) {
-          log(`install stage: ${stage}`);
-          await new Promise<void>((resolve, reject) => {
-            const child = spawn(
-              ps,
-              [
-                "-NoProfile",
-                "-ExecutionPolicy",
-                "Bypass",
-                "-File",
-                script,
-                stage,
-              ],
-              { env, windowsHide: true, stdio: ["ignore", "pipe", "pipe"] },
-            );
-            child.stdout?.on("data", (d: Buffer) =>
-              d
-                .toString()
-                .split("\n")
-                .filter(Boolean)
-                .forEach((l) => log(l)),
-            );
-            child.stderr?.on("data", (d: Buffer) =>
-              d
-                .toString()
-                .split("\n")
-                .filter(Boolean)
-                .forEach((l) => log(`stderr: ${l}`)),
-            );
-            child.on("error", reject);
-            child.on("exit", (c) =>
-              c === 0 ? resolve() : reject(new Error(`stage ${stage} exit ${c}`)),
-            );
-          });
-        }
-      } else {
-        const bash = resolveSystemBinary("bash") || "bash";
-        const script = path.join(cache, "install.sh");
-        await downloadFile(manifest.agentInstall.posix.scriptUrl, script, log);
-        await new Promise<void>((resolve, reject) => {
-          const child = spawn(bash, [script, ...manifest.agentInstall.posix.args], {
-            env,
-            stdio: ["ignore", "pipe", "pipe"],
-          });
-          child.stdout?.on("data", (d: Buffer) =>
-            d
-              .toString()
-              .split("\n")
-              .filter(Boolean)
-              .forEach((l) => log(l)),
-          );
-          child.on("error", reject);
-          child.on("exit", (c) =>
-            c === 0 ? resolve() : reject(new Error(`install.sh exit ${c}`)),
-          );
-        });
-      }
-      binary = resolveHermesBinary({
+  const searchDirs = opts?.searchDirs || defaultSearchDirs;
+  const findBinary =
+    opts?.findBinary ||
+    (() =>
+      resolveHermesBinary({
         platform: process.platform,
         env: process.env,
         searchDirs,
         allowEnvOverride: !ctx.isPackaged,
         envPrefix: ctx.manifest.envPrefix,
         existsSync: fs.existsSync,
-      });
-    } catch (e) {
-      lastBootstrapError = e instanceof Error ? e.message : String(e);
-      setPhase("error");
+      }));
+
+  let binary = findBinary();
+
+  if (!binary && opts?.installAgentIfMissing !== false) {
+    log("CLI Hermes absente — bootstrap download-on-first-run…");
+    const inst = await installHermesAgent(ctx, {
+      onLog: log,
+      timeoutMs: opts?.timeoutMs,
+    });
+    if (!inst.ok) {
       return {
         ok: false,
         binary: null,
+        binaryPath: null,
         agentDir: null,
         webuiDir: null,
-        detail: lastBootstrapError,
+        detail: inst.detail,
       };
     }
+    binary = findBinary();
   }
 
-  const webui = await ensureHermesWebuiTree(ctx, { onLog: log });
-  const agentDir = resolveHermesAgentDir(ctx);
-  if (binary) {
-    setPhase("ready");
+  if (!binary) {
+    lastBootstrapError = "CLI toujours introuvable après install";
+    report("error");
     return {
-      ok: true,
-      binary,
-      agentDir,
-      webuiDir: webui.dir,
-      detail: "ready",
+      ok: false,
+      binary: null,
+      binaryPath: null,
+      agentDir: null,
+      webuiDir: null,
+      detail: lastBootstrapError,
     };
   }
-  lastBootstrapError = "CLI Hermes toujours introuvable après bootstrap";
-  setPhase("error");
+
+  const agentDir = resolveHermesAgentDir(ctx);
+  const python = resolveHermesPython(agentDir);
+  if (!python) {
+    lastBootstrapError = "Python venv Hermes introuvable (WebUI impossible)";
+    report("error");
+    return {
+      ok: false,
+      binary,
+      binaryPath: binary,
+      agentDir,
+      webuiDir: null,
+      detail: lastBootstrapError,
+    };
+  }
+
+  const webui = await ensureHermesWebuiTree(ctx, {
+    onLog: log,
+    pythonPath: python,
+  });
+  report(webui.ok ? "ready" : "error");
   return {
-    ok: false,
-    binary: null,
+    ok: Boolean(binary) && webui.ok,
+    binary,
+    binaryPath: binary,
     agentDir,
     webuiDir: webui.dir,
-    detail: lastBootstrapError,
+    detail: webui.ok ? "Runtime Hermes + WebUI prêts" : webui.detail,
   };
 }
 
