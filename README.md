@@ -5,9 +5,9 @@ Monorepo **plateforme** pour les desktops Creezio (TempoFlow, Certivan, Fidu)
 
 > Chemin canonique sur le VPS : **`/opt/docker/creezio`**  
 > Source d'extraction (lecture seule) : `/opt/docker/creezio-kit-src` = `creezio/tempoflow2` @ **v0.10.26**.  
-> Cadre architecture : **`ARCHITECTURE_VERSION = "H3"`** — voir docs Phase H0–H3.
+> Cadre architecture : **`ARCHITECTURE_VERSION = "H4"`** — voir docs Phase H0–H4.
 
-## Architecture (Phases H0 → H3)
+## Architecture (Phases H0 → H4)
 
 | Doc | Contenu |
 |-----|---------|
@@ -16,16 +16,19 @@ Monorepo **plateforme** pour les desktops Creezio (TempoFlow, Certivan, Fidu)
 | [docs/BACKLOG-H1-PACKAGES.md](docs/BACKLOG-H1-PACKAGES.md) | Packages `@creezio/*` H1 |
 | [docs/BACKLOG-H2.md](docs/BACKLOG-H2.md) | Isolation DB/API runtime H2 |
 | [docs/BACKLOG-H3.md](docs/BACKLOG-H3.md) | Modules métier TempoFlow (brand repo) H3 |
+| [docs/BACKLOG-H4.md](docs/BACKLOG-H4.md) | MCP proxy unifié H4 |
 | [docs/PHASE-H0.md](docs/PHASE-H0.md) | Sign-off H0 |
 | [docs/PHASE-H1.md](docs/PHASE-H1.md) | Sign-off H1 (packages cœur CMS) |
 | [docs/PHASE-H2.md](docs/PHASE-H2.md) | Sign-off H2 (isolation multi-DB / API) |
 | [docs/PHASE-H3.md](docs/PHASE-H3.md) | Sign-off H3 (modules TF brand) |
+| [docs/PHASE-H4.md](docs/PHASE-H4.md) | Sign-off H4 (MCP proxy unifié) |
 
 En bref : Creezio = **CMS stable** (SQLite `core`, API/MCP façade, nav + slots) ;
 le **métier** vit dans le repo marque (SQLite `brand`) ; les **plugins** sont
 d’organisation (SQLite `plugin/<id>` à l’install). Phases A→G = extraction +
 gates — **terminées**. H1 = packages natifs. H2 = **isolation runtime**.
 H3 = **modules TempoFlow** montés dans le brand repo (pas dans le kit).
+H4 = **MCP proxy unifié** (aliases anti-doublon, deny cross-layer).
 
 ## Structure
 
@@ -37,7 +40,7 @@ packages/
   platform-core/     # paths, SqliteRuntime H2, migrations, app-kind…
   product-hub/       # Product Hub + store sqlite core (H1.8)
   api-kernel/        # Façade HTTP /api/v1 + ScopedDbAccess H2
-  mcp-facade/        # MCP d'app unique + discovery par couche H2
+  mcp-facade/        # MCP proxy unifié H4 (aliases, policies, by space)
   auth/              # Session native (H1.3)
   assistant/         # Chat plateforme (H1.5)
   tasks/             # Tâches plateforme (H1.6)
@@ -139,13 +142,17 @@ Les sandboxes factory portent `sandbox: true` (feeds jetables).
 | **E** | Plugins / Product Hub généralisés | ✅ |
 | **F** | Propagation kit (semver, canaux, registre L3, console, gates docs) | ✅ |
 | **G** | Branchement runtime — G1 Certivan → G2 Fidu → G3 TempoFlow | ✅ |
-| **H0** (ici) | Cadre architecture + matrice + backlog packages H1 | ✅ |
-| **H1** | Création packages natifs (`api-kernel`, `mcp-facade`, `auth`, `shell-ui`…) | 🔜 |
+| **H0** | Cadre architecture + matrice + backlog packages H1 | ✅ |
+| **H1** | Packages natifs (`api-kernel`, `mcp-facade`, `auth`, `shell-ui`…) | ✅ |
+| **H2** | Isolation multi-DB / ScopedDb / MCP by space | ✅ |
+| **H3** | Modules métier TF (brand repo) | ✅ |
+| **H4** | MCP proxy unifié (aliases, policies) | ✅ |
+| **H5** | Harden plugins / ACL | 🔜 |
 
-Voir [docs/PHASE-H0.md](docs/PHASE-H0.md), [docs/DOD-PHASE-A-G.md](docs/DOD-PHASE-A-G.md),
+Voir [docs/PHASE-H4.md](docs/PHASE-H4.md), [docs/DOD-PHASE-A-G.md](docs/DOD-PHASE-A-G.md),
 [docs/PROPAGATION.md](docs/PROPAGATION.md).
 
 ## Hors scope
 
-- Pas de modification Fidu / Certivan / tempoflow2 depuis ce repo (H0/H1 kit)
 - Pas d’extraction du métier marque dans `@creezio/*` (décision H0 verrouillée)
+- Certivan / Fidu intacts sauf conso opt-in

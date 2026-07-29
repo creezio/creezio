@@ -11,8 +11,13 @@ import { createNavRegistry, CORE_NAV_ITEMS } from "@creezio/shell-ui";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
-test("H3.0 ARCHITECTURE_VERSION = H3", () => {
-  assert.equal(ARCHITECTURE_VERSION, "H3");
+test("H3.0 docs H3 présents (version bumpée en H4+)", () => {
+  // ARCHITECTURE_VERSION est bumpée au sign-off de chaque phase ;
+  // H3 reste prouvée par les docs + contrats shell-ui ci-dessous.
+  assert.ok(
+    ARCHITECTURE_VERSION === "H3" || ARCHITECTURE_VERSION === "H4",
+    `ARCHITECTURE_VERSION inattendue: ${ARCHITECTURE_VERSION}`,
+  );
 });
 
 test("H3 docs BACKLOG + PHASE présents", () => {

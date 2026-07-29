@@ -4,6 +4,13 @@
 ## [Unreleased]
 
 ### Added
+- **Phase H4** — MCP proxy unifié durci (`@creezio/mcp-facade`) :
+  namespaces, aliases legacy → canonique, `publicSurface: legacy-preferred`,
+  `denyCrossLayerToolCall`, registry `registerTool`/`registerAlias`,
+  tool admin `creezio.admin.list_aliases` ; `docs/BACKLOG-H4.md`,
+  `docs/PHASE-H4.md` ; tests `scripts/test-phase-h4.mjs`.
+  Consommation TF : aliases brand-runtime + catalogue Hono
+  `list_tools_by_space` (pas de double exposition panier).
 - **Phase H3** — modules métier TempoFlow dans le brand repo :
   contrats d’accueil consommés par tempoflow2 (`registerModuleApi`,
   MCP `space: module`, `registerBrandNav`) ; shell-ui accepte
@@ -29,7 +36,8 @@
   `docs/BACKLOG-H1-PACKAGES.md`, `docs/PHASE-H0.md` ; liens README.
 
 ### Changed
-- `@creezio/platform-core` : `ARCHITECTURE_VERSION = "H3"` (était `"H2"`).
+- `@creezio/platform-core` : `ARCHITECTURE_VERSION = "H4"` (était `"H3"`).
+- `@creezio/mcp-facade` : proxy H4 (aliases, policies, registry).
 - `@creezio/shell-ui` : guard nav — ids `brand.*` peuvent cibler les routes
   produit métier ; ids nus (`panier`) toujours refusés.
 - Inventaire propagation : 15 packages `@creezio/*` (était 8).

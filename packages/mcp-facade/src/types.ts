@@ -1,5 +1,16 @@
 export type McpToolSpace = "core" | "module" | "plugin";
 
+/**
+ * Surface publique listTools :
+ * - `canonical` — noms namespacés uniquement (module.panier.get)
+ * - `legacy-preferred` — si un alias legacy existe, masquer le canonique
+ * - `both` — alias + canonique (déconseillé — double exposition)
+ */
+export type McpPublicSurfaceMode =
+  | "canonical"
+  | "legacy-preferred"
+  | "both";
+
 export type McpToolDefinition = {
   name: string;
   description: string;
@@ -7,6 +18,8 @@ export type McpToolDefinition = {
   /** Id module/plugin si space !== core. */
   ownerId?: string;
   inputSchema?: Record<string, unknown>;
+  /** Nom canonique si cette entrée est un alias legacy exposé. */
+  aliasOf?: string;
 };
 
 export type McpToolCallResult = {
@@ -32,6 +45,24 @@ export type DiscoverToolsBySpaceFn = () =>
   | Partial<Record<"module" | "plugin", McpRegisteredTool[]>>
   | Promise<Partial<Record<"module" | "plugin", McpRegisteredTool[]>>>;
 
+export type McpAuthorizeContext = {
+  name: string;
+  canonicalName: string;
+  space: McpToolSpace;
+  ownerId?: string;
+  subject?: string;
+  args: Record<string, unknown>;
+  isAlias: boolean;
+};
+
+export type McpToolPolicyDecision =
+  | { allow: true }
+  | { allow: false; reason: string };
+
+export type McpAuthorizeToolCallFn = (
+  ctx: McpAuthorizeContext,
+) => McpToolPolicyDecision | Promise<McpToolPolicyDecision>;
+
 export type McpFacadeOptions = {
   /** Secret JWT (local-config `mcpJwtSecret` / env MCP_JWT_SECRET). */
   jwtSecret?: string | null;
@@ -48,6 +79,28 @@ export type McpFacadeOptions = {
   brandId?: string;
   /** Liste mounts api-kernel (optionnel, pour tool admin). */
   listApiMounts?: () => Array<{ space: string; id: string }>;
+  /**
+   * H4 — impose préfixes `core.*` / `creezio.*` · `module.<id>.*` · `plugin.<id>.*`
+   * Défaut true.
+   */
+  enforceNamespaces?: boolean;
+  /**
+   * H4 — aliases legacy → nom canonique namespacé
+   * (ex. get_panier → module.panier.get).
+   */
+  aliases?: Record<string, string>;
+  /**
+   * H4 — surface listTools (défaut `legacy-preferred` pour éviter
+   * la double exposition panier historique ↔ module.*).
+   */
+  publicSurface?: McpPublicSurfaceMode;
+  /** H4 — policy avant callTool (deny cross-layer par défaut). */
+  authorizeToolCall?: McpAuthorizeToolCallFn;
+  /**
+   * H4 — si false, ne pas installer denyCrossLayerToolCall par défaut.
+   * Défaut true.
+   */
+  defaultCrossLayerDeny?: boolean;
 };
 
 export type McpListToolsResult = {

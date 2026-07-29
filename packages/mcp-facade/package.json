@@ -1,7 +1,7 @@
 {
   "name": "@creezio/mcp-facade",
   "version": "0.1.0",
-  "description": "MCP d'app unique — tools admin cœur + découverte modules/plugins (pas de MCP produit séparé)",
+  "description": "MCP proxy unifié H4 — tools cœur + modules/plugins, aliases legacy, deny cross-layer",
   "type": "module",
   "main": "./dist-cjs/index.js",
   "types": "./dist/index.d.ts",

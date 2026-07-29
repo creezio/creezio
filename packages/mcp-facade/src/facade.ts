@@ -1,17 +1,27 @@
 /**
- * Façade MCP unique — tools cœur + discoverTools modules/plugins.
+ * Façade / proxy MCP unique — tools cœur + discoverTools modules/plugins.
  * H2.3 : discovery / listage scindés par couche (core / module / plugin).
+ * H4   : registry dynamique, namespacing, aliases legacy, policies deny
+ *        cross-layer, surface publique sans double exposition.
+ *
  * Pas de MCP « produit Creezio » séparé du MCP de l'app.
  */
 
 import { ARCHITECTURE_VERSION } from "@creezio/platform-core";
 import { API_V1_PREFIX } from "@creezio/api-kernel";
 import { verifyMcpBearer } from "./jwt.js";
+import { assertNamespacedToolName, isLegacyAliasName } from "./namespace.js";
+import {
+  composeToolPolicies,
+  denyCrossLayerToolCall,
+} from "./policy.js";
 import type {
   DiscoverToolsBySpaceFn,
   DiscoverToolsFn,
+  McpAuthorizeToolCallFn,
   McpFacadeOptions,
   McpListToolsResult,
+  McpPublicSurfaceMode,
   McpRegisteredTool,
   McpToolCallResult,
   McpToolDefinition,
@@ -24,10 +34,13 @@ export type McpFacade = {
     bearerToken?: string | null;
     /** Filtre H2 — une seule couche. */
     space?: McpToolSpace;
+    /** Override ponctuel de la surface publique. */
+    publicSurface?: McpPublicSurfaceMode;
   }): Promise<McpListToolsResult>;
   /** H2 : tools groupés par couche. */
   listToolsBySpace(opts?: {
     bearerToken?: string | null;
+    publicSurface?: McpPublicSurfaceMode;
   }): Promise<McpToolsBySpace>;
   callTool(
     name: string,
@@ -38,6 +51,16 @@ export type McpFacade = {
   setDiscoverTools(fn: DiscoverToolsFn): void;
   /** Réenregistre le discoverer scindé (H2). */
   setDiscoverToolsBySpace(fn: DiscoverToolsBySpaceFn): void;
+  /** H4 — enregistre un tool namespacé (module/plugin ; core réservé). */
+  registerTool(tool: McpRegisteredTool): void;
+  /** H4 — alias legacy → canonique. */
+  registerAlias(alias: string, canonicalName: string): void;
+  /** H4 — retire un tool du registre dynamique. */
+  unregisterTool(name: string): boolean;
+  /** H4 — map alias → canonique. */
+  listAliases(): Record<string, string>;
+  /** H4 — résout alias → nom canonique. */
+  resolveToolName(name: string): string;
 };
 
 function emptyBySpace(): McpToolsBySpace {
@@ -49,6 +72,7 @@ function coreTools(opts: {
   brandId?: string;
   listApiMounts?: () => Array<{ space: string; id: string }>;
   listToolsBySpaceSync?: () => McpToolsBySpace;
+  listAliasesSync?: () => Record<string, string>;
 }): McpRegisteredTool[] {
   return [
     {
@@ -71,8 +95,13 @@ function coreTools(opts: {
         content: {
           architectureVersion: opts.architectureVersion,
           apiPrefix: API_V1_PREFIX,
-          note: "Une seule façade MCP = MCP de l'app (pas de produit MCP séparé)",
+          note: "Une seule façade MCP = MCP de l'app (proxy unifié H4)",
           toolSpaces: ["core", "module", "plugin"],
+          publicSurfaceModes: [
+            "canonical",
+            "legacy-preferred",
+            "both",
+          ],
         },
       }),
     },
@@ -103,6 +132,19 @@ function coreTools(opts: {
         },
       }),
     },
+    {
+      name: "creezio.admin.list_aliases",
+      description:
+        "Liste les aliases legacy → tools canoniques (anti double exposition)",
+      space: "core",
+      inputSchema: { type: "object", properties: {} },
+      handler: async () => ({
+        ok: true,
+        content: {
+          aliases: opts.listAliasesSync ? opts.listAliasesSync() : {},
+        },
+      }),
+    },
   ];
 }
 
@@ -113,15 +155,61 @@ function toDef(t: McpRegisteredTool): McpToolDefinition {
     space: t.space,
     ...(t.ownerId ? { ownerId: t.ownerId } : {}),
     ...(t.inputSchema ? { inputSchema: t.inputSchema } : {}),
+    ...(t.aliasOf ? { aliasOf: t.aliasOf } : {}),
   };
 }
 
-function groupBySpace(tools: McpRegisteredTool[]): McpToolsBySpace {
+function groupBySpace(tools: McpToolDefinition[]): McpToolsBySpace {
   const out = emptyBySpace();
   for (const t of tools) {
-    out[t.space].push(toDef(t));
+    out[t.space].push(t);
   }
   return out;
+}
+
+/**
+ * Applique publicSurface : évite de lister à la fois get_panier et
+ * module.panier.get quand un alias les relie.
+ */
+function applyPublicSurface(
+  tools: McpRegisteredTool[],
+  aliases: Map<string, string>,
+  mode: McpPublicSurfaceMode,
+): McpToolDefinition[] {
+  const canonicalHidden = new Set<string>();
+  if (mode === "legacy-preferred") {
+    for (const canonical of aliases.values()) {
+      canonicalHidden.add(canonical);
+    }
+  }
+
+  const defs: McpToolDefinition[] = [];
+
+  for (const t of tools) {
+    if (mode === "legacy-preferred" && canonicalHidden.has(t.name)) {
+      continue;
+    }
+    defs.push(toDef(t));
+  }
+
+  if (mode === "legacy-preferred" || mode === "both") {
+    const byName = new Map(tools.map((t) => [t.name, t]));
+    for (const [alias, canonical] of aliases) {
+      const target = byName.get(canonical);
+      if (!target) continue;
+      if (defs.some((d) => d.name === alias)) continue;
+      defs.push({
+        name: alias,
+        description: `${target.description} (alias → ${canonical})`,
+        space: target.space,
+        ...(target.ownerId ? { ownerId: target.ownerId } : {}),
+        ...(target.inputSchema ? { inputSchema: target.inputSchema } : {}),
+        aliasOf: canonical,
+      });
+    }
+  }
+
+  return defs;
 }
 
 export function createMcpFacade(options: McpFacadeOptions = {}): McpFacade {
@@ -130,6 +218,55 @@ export function createMcpFacade(options: McpFacadeOptions = {}): McpFacade {
     options.discoverToolsBySpace || (async () => ({}));
   const architectureVersion =
     options.architectureVersion ?? ARCHITECTURE_VERSION;
+  const enforceNamespaces = options.enforceNamespaces !== false;
+  const publicSurfaceDefault: McpPublicSurfaceMode =
+    options.publicSurface ?? "legacy-preferred";
+
+  const dynamicTools = new Map<string, McpRegisteredTool>();
+  const aliases = new Map<string, string>();
+
+  if (options.aliases) {
+    for (const [alias, canonical] of Object.entries(options.aliases)) {
+      aliases.set(alias, canonical);
+    }
+  }
+
+  const authorize: McpAuthorizeToolCallFn = (() => {
+    const custom = options.authorizeToolCall;
+    const useDefault = options.defaultCrossLayerDeny !== false;
+    if (custom && useDefault) {
+      return composeToolPolicies(denyCrossLayerToolCall, custom);
+    }
+    if (custom) return custom;
+    if (useDefault) return denyCrossLayerToolCall;
+    return async () => ({ allow: true as const });
+  })();
+
+  function registerAlias(alias: string, canonicalName: string): void {
+    if (!alias || !canonicalName) {
+      throw new Error("mcp_alias_invalid: alias et canonical requis");
+    }
+    if (alias === canonicalName) {
+      throw new Error("mcp_alias_invalid: alias = canonical");
+    }
+    if (!isLegacyAliasName(alias) && enforceNamespaces) {
+      // Autoriser aussi un alias namespacé (ex. module.panier.get → autre),
+      // mais interdire qu'un alias pointe vers rien de valide plus tard.
+    }
+    aliases.set(alias, canonicalName);
+  }
+
+  function registerTool(tool: McpRegisteredTool): void {
+    if (tool.space === "core") {
+      throw new Error(
+        "mcp_register_core_denied: les tools core sont réservés à la façade",
+      );
+    }
+    if (enforceNamespaces) {
+      assertNamespacedToolName(tool.space, tool.name, tool.ownerId);
+    }
+    dynamicTools.set(tool.name, tool);
+  }
 
   async function auth(bearer?: string | null) {
     return verifyMcpBearer(bearer, options.jwtSecret, {
@@ -143,9 +280,11 @@ export function createMcpFacade(options: McpFacadeOptions = {}): McpFacade {
     const out: McpRegisteredTool[] = [...flat];
     for (const space of ["module", "plugin"] as const) {
       for (const t of bySpace[space] || []) {
-        // Force space coherence si le discoverer se trompe.
         out.push({ ...t, space: t.space || space });
       }
+    }
+    for (const t of dynamicTools.values()) {
+      out.push(t);
     }
     return out;
   }
@@ -154,16 +293,12 @@ export function createMcpFacade(options: McpFacadeOptions = {}): McpFacade {
     const discovered = await discoveredTools();
     const byName = new Map<string, McpRegisteredTool>();
 
-    // Placeholders pour list_tools_by_space (rempli après merge)
     const core = coreTools({
       architectureVersion,
       brandId: options.brandId,
       listApiMounts: options.listApiMounts,
-      listToolsBySpaceSync: () => {
-        // Snapshot synchrone des tools déjà dans byName hors ce tool lui-même
-        // — remplacé après construction complète via closure mutable.
-        return cachedBySpace;
-      },
+      listToolsBySpaceSync: () => cachedBySpace,
+      listAliasesSync: () => Object.fromEntries(aliases),
     });
 
     let cachedBySpace = emptyBySpace();
@@ -178,12 +313,24 @@ export function createMcpFacade(options: McpFacadeOptions = {}): McpFacade {
         // Interdit : un discoverer ne peut pas injecter un tool core.
         continue;
       }
+      if (enforceNamespaces) {
+        try {
+          assertNamespacedToolName(t.space, t.name, t.ownerId);
+        } catch {
+          // Tool non conforme : ignoré (pas de crash discovery).
+          continue;
+        }
+      }
       byName.set(t.name, t);
     }
 
     const all = [...byName.values()];
-    cachedBySpace = groupBySpace(all);
+    cachedBySpace = groupBySpace(all.map(toDef));
     return all;
+  }
+
+  function resolveToolName(name: string): string {
+    return aliases.get(name) || name;
   }
 
   return {
@@ -195,16 +342,31 @@ export function createMcpFacade(options: McpFacadeOptions = {}): McpFacade {
       discoverBySpace = fn;
     },
 
+    registerTool,
+    registerAlias,
+
+    unregisterTool(name) {
+      return dynamicTools.delete(name);
+    },
+
+    listAliases() {
+      return Object.fromEntries(aliases);
+    },
+
+    resolveToolName,
+
     async listTools(opts) {
       const a = await auth(opts?.bearerToken);
       if (!a.ok) {
         throw Object.assign(new Error(a.error), { status: a.status });
       }
       const tools = await allTools();
-      const filtered = opts?.space
-        ? tools.filter((t) => t.space === opts.space)
-        : tools;
-      return { tools: filtered.map(toDef) };
+      const mode = opts?.publicSurface ?? publicSurfaceDefault;
+      let defs = applyPublicSurface(tools, aliases, mode);
+      if (opts?.space) {
+        defs = defs.filter((t) => t.space === opts.space);
+      }
+      return { tools: defs };
     },
 
     async listToolsBySpace(opts) {
@@ -212,7 +374,9 @@ export function createMcpFacade(options: McpFacadeOptions = {}): McpFacade {
       if (!a.ok) {
         throw Object.assign(new Error(a.error), { status: a.status });
       }
-      return groupBySpace(await allTools());
+      const tools = await allTools();
+      const mode = opts?.publicSurface ?? publicSurfaceDefault;
+      return groupBySpace(applyPublicSurface(tools, aliases, mode));
     },
 
     async callTool(name, args = {}, opts) {
@@ -220,9 +384,25 @@ export function createMcpFacade(options: McpFacadeOptions = {}): McpFacade {
       if (!a.ok) {
         return { ok: false, error: a.error };
       }
+      const canonicalName = resolveToolName(name);
+      const isAlias = canonicalName !== name;
       const tools = await allTools();
-      const tool = tools.find((t) => t.name === name);
+      const tool = tools.find((t) => t.name === canonicalName);
       if (!tool) return { ok: false, error: "tool_not_found" };
+
+      const decision = await authorize({
+        name,
+        canonicalName,
+        space: tool.space,
+        ownerId: tool.ownerId,
+        subject: a.subject,
+        args,
+        isAlias,
+      });
+      if (!decision.allow) {
+        return { ok: false, error: decision.reason };
+      }
+
       return tool.handler(args);
     },
   };
