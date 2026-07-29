@@ -1,10 +1,12 @@
 /**
  * Host plugins runtime — découverte + spawn sidecars (noyau platform).
  *
- * Vertical / product-hub hors kit :
+ * Product Hub (lifecycle, grants, control plane, ACL contrats) →
+ * `@creezio/product-hub` + `startHostPluginControlPlane` (Phase E).
+ *
+ * Vertical restant (apps marques) :
  * - migrations SQL plugin-data (better-sqlite3 sous-process Next ABI)
- * - ACL / PRD product-hub (grant déjà en platform-core)
- * - scaffolds UI métier Hermes
+ * - scaffolds UI métier Hermes / git versions riches
  *
  * Port du contrat TF2 plugin-runtime + plugin-launcher (spawn minimal).
  */
@@ -205,16 +207,14 @@ export function createPluginsHost(opts: {
 }
 
 /**
- * Vertical documenté (non porté dans le kit — reste app marque) :
- * - plugin-control-api HTTP loopback complet (product-hub CRUD)
- * - plugin-git / versions / restore
+ * Vertical documenté après Phase E (reste app marque) :
+ * - plugin-git / versions / restore (hors scaffold stub kit)
  * - plugin-data migrations better-sqlite3
  * - plugin-accept-check / test-runner
  * - plugin-crm-key
- * Les contrats purs (manifest, events, grants) sont dans @creezio/platform-core.
+ * Control plane générique + Product Hub → @creezio/product-hub.
  */
 export const PLUGIN_VERTICAL_REMAINING = [
-  "plugin-control-api",
   "plugin-git",
   "plugin-data",
   "plugin-accept-check",

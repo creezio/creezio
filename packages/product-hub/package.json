@@ -1,7 +1,7 @@
 {
-  "name": "@creezio/electron-shell",
+  "name": "@creezio/product-hub",
   "version": "0.1.0",
-  "description": "Runtime Electron plateforme Creezio (updater, tray, splash, boot, launchers génériques)",
+  "description": "Product Hub / plugins brand-agnostic — lifecycle, PRD, grants, n8n tags, ACL L3/L4, control plane",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -20,17 +20,7 @@
   },
   "dependencies": {
     "@creezio/brand-config": "0.1.0",
-    "@creezio/platform-core": "0.1.0",
-    "@creezio/product-hub": "0.1.0",
-    "@creezio/shell": "0.1.0"
-  },
-  "peerDependencies": {
-    "electron": ">=28",
-    "electron-updater": ">=6"
-  },
-  "peerDependenciesMeta": {
-    "electron": { "optional": true },
-    "electron-updater": { "optional": true }
+    "@creezio/platform-core": "0.1.0"
   },
   "devDependencies": {
     "@types/node": "^22.15.3",

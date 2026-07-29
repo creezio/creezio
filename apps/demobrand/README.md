@@ -63,8 +63,14 @@ npm run desktop:publish -- --brand=demobrand --kind=client --dry-run --app-root 
 
 Ne **jamais** pointer `dockerDlName` / feedToken vers `dl-tempoflow`, `dl-fidu` ou `dl-certivan`.
 
+## Product Hub (Phase E)
+
+Stub mémoire dans `src/electron/product-hub-stub.ts` + slot
+`verticalSlot.productHub`. Tags n8n / grants dérivés du manifest
+(`demobrand-plugin:`, `DEMOBRAND_*`) — zéro hardcode TempoFlow/Certivan.
+
 ## Suite
 
 - Remplir `vertical-slot.ts` + UI métier
-- Brancher CRM Next (hors scope factory)
-- Phase E : plugins / Product Hub généralisés
+- Brancher CRM Next + store SQLite Product Hub (Phase G)
+- Control plane : `startHostPluginControlPlane` (@creezio/electron-shell)

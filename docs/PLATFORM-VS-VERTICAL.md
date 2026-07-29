@@ -9,6 +9,7 @@ Légende :
 - **A** = contrats Phase A
 - **B** = runtime porté Phase B
 - **B.2** = suite runtime (launchers lourds)
+- **E** = Product Hub / plugins généralisés
 
 ## Matrice TF2 → package cible
 
@@ -35,16 +36,24 @@ Légende :
 | `electron/server-launcher.ts` | ports + `startNextServerCore` | **B** | Spawn injecté ; secrets app |
 | `electron/host-stack.ts` | pattern doc / contrats | **B** | Lazy host — apps gardent le graphe |
 | `electron/hermes-*` / `n8n-*` / `tunnel.ts` | electron-shell host/* | **B.2** | Factories + hooks verticaux |
-| `electron/plugin-events/manifest/grants/token/host` | platform-core + electron-shell | **B.2** | control-api/git/data = vertical |
+| `electron/plugin-events/manifest/grants/token/host` | platform-core + electron-shell | **B.2** | spawn + token |
+| `electron/plugin-control-api.ts` | `@creezio/product-hub` + `startHostPluginControlPlane` | **E** | headers/tags/service brandés |
+| `electron/plugin-execution-grant.ts` | platform-core + product-hub grants-flow | B.2 / **E** | prefix via tokens |
+| `src/lib/plugin-product-hub.ts` | `@creezio/product-hub` (lifecycle/PRD/impact/store) | **E** | SQLite store = vertical |
+| `src/lib/n8n-plugin-provisioning.ts` (tags) | `@creezio/product-hub` `pluginN8nTag` | **E** | préfixe `{brandId}-plugin:` |
+| `src/lib/plugin-acl.ts` | `@creezio/product-hub` acl L3/L4 | **E** | persistance SQL = vertical |
+| migrations 028/030/032 (+ acl org) | `schema-sql.ts` (DDL contrat) | **E** | apps exécutent |
 | `electron/node-runtime` / `npm-cli` / sandbox | electron-shell | **B.2** | |
 | `electron/main.ts` | façade `prepareDesktopBoot` + vertical | **B** / vertical | Découpe progressive |
 | `scripts/electron/after-pack.cjs` | `@creezio/desktop-tooling` | **C** | hook générique |
 | `scripts/electron/publish-desktop.sh` | `@creezio/desktop-tooling` | **C** | paramétré AppManifest.publish |
 | `scripts/electron/remote-build-win.sh` | `@creezio/desktop-tooling` | **C** | idem |
 | `scripts/electron/desktop-build-status.mjs` | `@creezio/desktop-tooling` | **C** | + console ops |
+| factory `new-app` | `@creezio/factory` + demobrand | **D** | + stub Product Hub **E** |
 | `electron-builder.yml` | généré depuis manifest | **B** | via buildElectronBuilderConfig |
+| `plugin-git` / `plugin-data` / accept / test-runner | **vertical** | — | Phase G adapters |
 | Seeds / templates métier | **vertical** | — | Certivan VASP, Fidu seeds… |
-| Routes Next CRM / UI métier | **vertical** | — | |
+| Routes Next CRM / UI Admin Plugins | **vertical** | — | |
 | `vendor/hermes-skills` marque | **vertical** | — | |
 | Paperclip (Fidu) | **vertical** | — | Hors noyau kit |
 | Catalogue-sync / supplier-tabs | **vertical** | — | Métier TempoFlow |
@@ -61,11 +70,27 @@ Légende :
 
 - Domaine métier (GED Fidu, RTI Certivan, catalogue TempoFlow…)
 - Seeds / templates / skills Hermes spécifiques
-- Pages Next, API métier, migrations SQL produit
+- Pages Next, API métier, migrations SQL produit (exécution DDL Product Hub incluse)
 - Credentials / tokens de feed (seuls les **URLs** publiques sont dans brand-config)
 - Orchestration complète du boot `main.ts` (jusqu'à découpe progressive Phase G)
+- `plugin-git`, `plugin-data`, accept-check, test-runner, UI Admin Plugins
 
-## Consommation future (Phase G)
+## Product Hub (Phase E) — consommation
+
+```ts
+import { certivanManifest } from "@creezio/brand-config";
+import {
+  productHubTokensFromManifest,
+  pluginN8nTag,
+  createMemoryProductHubStore,
+} from "@creezio/product-hub";
+import { startHostPluginControlPlane, createPluginsHost } from "@creezio/electron-shell";
+
+const tokens = productHubTokensFromManifest(certivanManifest);
+const tag = pluginN8nTag(productId, tokens); // certivan-plugin:…
+```
+
+## Consommation future (Phase F / G)
 
 ```ts
 import { fiduManifest } from "@creezio/brand-config";

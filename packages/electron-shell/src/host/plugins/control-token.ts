@@ -1,10 +1,12 @@
 /**
  * Token Bearer control plane plugins — brand-agnostic (TF2 plugin-control-token).
+ * Env bridge : clés génériques + `{ENV_PREFIX}_*` (plus de hardcode TEMPOFLOW_).
  */
 
 import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
+import { productHubTokensFromManifest } from "@creezio/product-hub";
 import type { HostRuntimeContext } from "../context.js";
 import { hostLog } from "../context.js";
 
@@ -85,23 +87,23 @@ export function ensurePluginControlToken(
   return stored;
 }
 
-/** Env bridge plugins pour Hermes / sidecars. */
+/**
+ * Env bridge plugins pour Hermes / sidecars.
+ * Injecte PLUGINS_* génériques + `{ENV_PREFIX}_PLUGINS_*` depuis le manifest.
+ */
 export function getPluginControlBridgeEnv(
   ctx: HostRuntimeContext,
   opts?: { controlPort?: number | null },
 ): Record<string, string> {
   const token = ensurePluginControlToken(ctx);
   const pluginsDir = path.join(ctx.userDataDir, "plugins");
-  const out: Record<string, string> = {
-    PLUGINS_API_TOKEN: token.token,
-    PLUGINS_DIR: pluginsDir,
-    TEMPOFLOW_PLUGINS_API_TOKEN: token.token,
-    TEMPOFLOW_PLUGINS_DIR: pluginsDir,
-  };
+  const hub = productHubTokensFromManifest(ctx.manifest);
+  const out: Record<string, string> = {};
+  for (const key of hub.pluginsApiTokenEnvKeys) out[key] = token.token;
+  for (const key of hub.pluginsDirEnvKeys) out[key] = pluginsDir;
   if (opts?.controlPort && opts.controlPort > 0) {
     const url = `http://127.0.0.1:${opts.controlPort}`;
-    out.PLUGINS_API_URL = url;
-    out.TEMPOFLOW_PLUGINS_API_URL = url;
+    for (const key of hub.pluginsApiUrlEnvKeys) out[key] = url;
   }
   return out;
 }

@@ -236,6 +236,8 @@ export {
   pluginControlTokenPrefix,
   readPluginControlToken,
 } from "./host/plugins/control-token.js";
+export type { StartHostPluginControlPlaneOptions } from "./host/plugins/control-plane.js";
+export { startHostPluginControlPlane } from "./host/plugins/control-plane.js";
 
 export type { HostStack } from "./host/host-stack.js";
 export { createHostStack, lazyHost } from "./host/host-stack.js";

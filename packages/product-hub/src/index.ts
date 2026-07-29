@@ -1,0 +1,128 @@
+/**
+ * @creezio/product-hub — Product Hub / plugins brand-agnostic (Phase E).
+ *
+ * Contrats purs + store mémoire + control plane HTTP.
+ * Persistance SQLite / UI Admin / scaffolds git restent verticaux (Phase G).
+ */
+
+export type { ProductHubBrandTokens } from "./brand-tokens.js";
+export {
+  grantProcessHint,
+  productHubTokensFromManifest,
+} from "./brand-tokens.js";
+
+export type { PluginLifecycleState, PluginTaskStatus } from "./lifecycle.js";
+export {
+  PLUGIN_LIFECYCLE_STATES,
+  PLUGIN_LIFECYCLE_TRANSITIONS,
+  PLUGIN_TASK_STATUSES,
+  assertPluginLifecycleTransition,
+  canTransitionPluginLifecycle,
+  isPluginLifecycleState,
+} from "./lifecycle.js";
+
+export type { PluginPrdRevisionInput, PluginPrdSections } from "./prd.js";
+export {
+  PLUGIN_PRD_REQUIRED_SECTIONS,
+  containsReplacementChar,
+  missingPrdCoreFields,
+  missingPrdSections,
+  parsePluginPrdSections,
+} from "./prd.js";
+
+export type {
+  PluginClarificationQuestion,
+  PluginClarificationRound,
+  PluginClarificationStatus,
+} from "./clarifications.js";
+export { assertClarificationQuestions } from "./clarifications.js";
+
+export type { PluginImpactEvidence, PluginImpactReport } from "./impact.js";
+export {
+  buildPluginImpactReport,
+  collectPluginManifestEvidence,
+  textOverlapScore,
+} from "./impact.js";
+
+export type { N8nPluginIdentityMode } from "./n8n-tags.js";
+export {
+  N8N_TAG_MAX_LENGTH,
+  isBrandPluginN8nTag,
+  pluginN8nTag,
+} from "./n8n-tags.js";
+
+export type {
+  PluginAclActor,
+  PluginAclEntry,
+  PluginAclLevel,
+  PluginAclPolicy,
+} from "./acl.js";
+export {
+  PLUGIN_ACL_LEVEL_ORG,
+  PLUGIN_ACL_LEVEL_USER,
+  aclEntryToPolicy,
+  actorIsPluginAdmin,
+  aggregateAclRows,
+  canActorSeePlugin,
+  filterVisiblePluginIds,
+} from "./acl.js";
+
+export type {
+  IssueGrantResult,
+  ProductHubPrdRevision,
+  ProductHubProductDetails,
+} from "./grants-flow.js";
+export {
+  extractExecutionGrantFromRequest,
+  issueGrantFromProductDetails,
+  isGrantBypassEnabled,
+  requirePluginExecutionGrant,
+} from "./grants-flow.js";
+
+export {
+  PRODUCT_HUB_ACL_ORG_SQL,
+  PRODUCT_HUB_ACL_USER_SQL,
+  PRODUCT_HUB_CORE_SQL,
+  PRODUCT_HUB_MANAGED_MARKER,
+} from "./schema-sql.js";
+
+export {
+  isProductHubManaged,
+  markProductHubManaged,
+  productHubManagedPath,
+} from "./managed-marker.js";
+
+export type {
+  PluginClarificationRecord,
+  PluginImpactReportRecord,
+  PluginPrdRevisionRecord,
+  PluginProductRecord,
+  PluginTaskRecord,
+  ProductHubStore,
+} from "./store/types.js";
+
+export {
+  createMemoryProductHubStore,
+  createProductRequest,
+} from "./store/memory-store.js";
+
+export type {
+  PluginControlPlaneAdapters,
+  PluginControlPlaneOptions,
+  PluginControlPlaneState,
+} from "./control-plane/types.js";
+export {
+  createPluginControlPlaneHandler,
+  startPluginControlPlane,
+} from "./control-plane/server.js";
+
+/** Modules encore verticaux (apps marques) après Phase E. */
+export const PRODUCT_HUB_VERTICAL_REMAINING = [
+  "plugin-git",
+  "plugin-data",
+  "plugin-accept-check",
+  "plugin-test-runner",
+  "plugin-crm-key",
+  "sqlite-product-hub-store",
+  "admin-ui-plugins",
+] as const;

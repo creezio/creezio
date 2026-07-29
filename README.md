@@ -12,15 +12,16 @@ Monorepo **plateforme** pour les desktops Creezio (TempoFlow, Certivan, Fidu)
 packages/
   brand-config/      # AppManifest + createAppManifest + buildElectronBuilderConfig
   shell/             # IPC, DesktopBridge, createDesktopApi (preload)
-  platform-core/     # paths, app-kind, connection, tunnel, updater-state…
+  platform-core/     # paths, app-kind, connection, tunnel, updater-state, plugin grants…
+  product-hub/       # Product Hub brand-agnostic (lifecycle, PRD, ACL, control plane)
   electron-shell/    # runtime Electron (boot, updater, tray, splash, host stack)
   desktop-tooling/   # publish-desktop, remote-build-win, after-pack, build-status
   factory/           # creezio new-app (Phase D)
 apps/
   console/           # Console ops parc (feeds, versions, dry-run remote-build)
-  demobrand/         # Sandbox factory DemoBrand Client+Serveur
+  demobrand/         # Sandbox factory DemoBrand Client+Serveur + stub Product Hub
 docs/
-  PHASE-A.md … PHASE-D.md
+  PHASE-A.md … PHASE-E.md
   PLATFORM-VS-VERTICAL.md
 ```
 
@@ -44,6 +45,19 @@ npm run factory:new-app -- \
 ```
 
 Détails : [docs/PHASE-D.md](docs/PHASE-D.md).
+
+### Product Hub (Phase E)
+
+```ts
+import {
+  productHubTokensFromManifest,
+  pluginN8nTag,
+  createMemoryProductHubStore,
+} from "@creezio/product-hub";
+import { startHostPluginControlPlane } from "@creezio/electron-shell";
+```
+
+Détails : [docs/PHASE-E.md](docs/PHASE-E.md).
 
 ### Console ops
 
@@ -72,13 +86,14 @@ Les sandboxes factory portent `sandbox: true` (feeds jetables).
 | **B** | Runtime Electron générique (boot/preload/updater/meili) |
 | **B.2** | Hermes / n8n / tunnel / local-config / plugins host |
 | **C** | Tooling publish + console ops |
-| **D** (ici) | Factory new-app + sandbox DemoBrand |
-| **E** | Plugins / Product Hub généralisés |
-| **G** | Branchement Fidu / Certivan / TF2 sur le kit |
+| **D** | Factory new-app + sandbox DemoBrand |
+| **E** (ici) | Plugins / Product Hub généralisés |
+| **F** | Propagation kit → apps marques |
+| **G** | Branchement runtime Fidu / Certivan / TF2 |
 
-Voir [docs/PHASE-D.md](docs/PHASE-D.md) et [docs/PLATFORM-VS-VERTICAL.md](docs/PLATFORM-VS-VERTICAL.md).
+Voir [docs/PHASE-E.md](docs/PHASE-E.md) et [docs/PLATFORM-VS-VERTICAL.md](docs/PLATFORM-VS-VERTICAL.md).
 
 ## Hors scope
 
 - Pas de modification Fidu / Certivan / tempoflow2 depuis ce repo
-- Pas de consommation runtime du kit par les apps prod (Phase G)
+- Pas de consommation runtime du kit par les apps prod (Phase F/G)

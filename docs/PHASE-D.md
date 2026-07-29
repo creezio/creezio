@@ -186,13 +186,10 @@ Couverture Phase D :
 
 ## Hors scope Phase D
 
-- Product Hub / plugins généralisés → **Phase E**
-- Branchement runtime Fidu / Certivan / TF2 → **Phase G**
+- Product Hub / plugins généralisés → **Phase E** (livré, voir `PHASE-E.md`)
+- Branchement runtime Fidu / Certivan / TF2 → **Phase F / G**
 - Publish npm registry des packages `@creezio/*`
 
-## Suite — Phase E (Plugins / Product Hub généralisés)
+## Suite
 
-Généraliser le modèle plugins (manifest, grants, control token, host) et un
-**Product Hub** multi-marque au-dessus du kit — sans hardcoder TempoFlow —
-pour que chaque app factory puisse activer des modules (Hermes, n8n, métier)
-de façon déclarative.
+Phase E livrée (`@creezio/product-hub`). Suivant : **Phase F (Propagation)**.

@@ -3,15 +3,11 @@
   "compilerOptions": {
     "outDir": "dist",
     "rootDir": "src",
-    "composite": true,
-    "lib": ["ES2022", "DOM"],
-    "types": ["node"]
+    "composite": true
   },
   "include": ["src/**/*.ts"],
   "references": [
     { "path": "../brand-config" },
-    { "path": "../platform-core" },
-    { "path": "../product-hub" },
-    { "path": "../shell" }
+    { "path": "../platform-core" }
   ]
 }

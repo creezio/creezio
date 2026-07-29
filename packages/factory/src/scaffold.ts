@@ -93,6 +93,7 @@ function renderPackageJson(m: AppManifest): string {
           "@creezio/brand-config": "0.1.0",
           "@creezio/shell": "0.1.0",
           "@creezio/platform-core": "0.1.0",
+          "@creezio/product-hub": "0.1.0",
           "@creezio/electron-shell": "0.1.0",
           "@creezio/desktop-tooling": "0.1.0",
         },
@@ -377,23 +378,95 @@ export const coreNavItems: NavItem[] = [
 `;
 }
 
-function renderVerticalSlotTs(m: AppManifest): string {
+function brandPascal(brandId: string): string {
+  return brandId
+    .split("-")
+    .map((p) => p.charAt(0).toUpperCase() + p.slice(1))
+    .join("");
+}
+
+function renderProductHubStubTs(m: AppManifest): string {
+  const manifestExport = exportName(m);
+  const pascal = brandPascal(m.brandId);
   return `/**
- * Slot métier vertical — vide volontairement.
- * Y brancher le domaine produit (${m.client.productName}) sans polluer le kit.
+ * Stub Product Hub sandbox — store mémoire + jetons marque.
+ * Pas de SQLite / UI Admin (vertical Phase G).
+ */
+
+import {
+  buildPluginImpactReport,
+  createMemoryProductHubStore,
+  productHubTokensFromManifest,
+  type ProductHubStore,
+} from "@creezio/product-hub";
+import { ${manifestExport} as manifest } from "./app-manifest.js";
+
+export const ${m.brandId.replace(/-/g, "")}ProductHubTokens =
+  productHubTokensFromManifest(manifest);
+
+let store: ProductHubStore | null = null;
+
+export function get${pascal}ProductHubStore(): ProductHubStore {
+  if (!store) {
+    store = createMemoryProductHubStore({ conversationPrefix: "${m.brandId}" });
+  }
+  return store;
+}
+
+export function createDemoPluginRequest(input: {
+  name: string;
+  description?: string;
+}) {
+  const hub = get${pascal}ProductHubStore();
+  const impact = buildPluginImpactReport({
+    name: input.name,
+    description: input.description || "",
+    evidence: [],
+  });
+  return hub.createRequest({
+    name: input.name,
+    description: input.description,
+    impact,
+  });
+}
+`;
+}
+
+function renderVerticalSlotTs(m: AppManifest): string {
+  const pascal = brandPascal(m.brandId);
+  const tokensName = `${m.brandId.replace(/-/g, "")}ProductHubTokens`;
+  return `/**
+ * Slot métier vertical — ${m.client.productName}.
+ * Product Hub stub (Phase E) branché ; domaine métier reste vide.
  */
 import type { NavItem } from "./nav-core.js";
+import {
+  createDemoPluginRequest,
+  ${tokensName},
+  get${pascal}ProductHubStore,
+} from "./product-hub-stub.js";
 
 export type VerticalSlot = {
   /** Identifiant marque. */
   brandId: string;
   /** Entrées de nav métier (vide = squelette factory). */
   items: NavItem[];
+  /** Accès Product Hub sandbox (store mémoire). */
+  productHub: {
+    tokens: typeof ${tokensName};
+    getStore: typeof get${pascal}ProductHubStore;
+    createRequest: typeof createDemoPluginRequest;
+  };
 };
 
 export const verticalSlot: VerticalSlot = {
   brandId: "${m.brandId}",
   items: [],
+  productHub: {
+    tokens: ${tokensName},
+    getStore: get${pascal}ProductHubStore,
+    createRequest: createDemoPluginRequest,
+  },
 };
 `;
 }
@@ -461,7 +534,8 @@ src/electron/
   main.ts               # boot mince (@creezio/electron-shell)
   preload.ts            # bridge (@creezio/shell)
   nav-core.ts           # nav plateforme placeholder
-  vertical-slot.ts      # slot métier VIDE (pas de catalogue TF)
+  vertical-slot.ts      # slot métier + Product Hub stub
+  product-hub-stub.ts   # store mémoire @creezio/product-hub
 resources/
   icons/{client,server}.png
   renderer/index.html
@@ -500,8 +574,8 @@ Ne **jamais** pointer \`dockerDlName\` / feedToken vers \`dl-tempoflow\`, \`dl-f
 ## Suite
 
 - Remplir \`vertical-slot.ts\` + UI métier
-- Brancher CRM Next (hors scope factory)
-- Phase E : plugins / Product Hub généralisés
+- Brancher CRM Next + store SQLite Product Hub (Phase G)
+- Control plane : \`startHostPluginControlPlane\` (@creezio/electron-shell)
 `;
 }
 
@@ -593,6 +667,12 @@ export function scaffoldNewApp(opts: NewAppOptions): ScaffoldResult {
   writeFile(
     path.join(outDir, "src/electron/nav-core.ts"),
     renderNavCoreTs(),
+    force,
+    written,
+  );
+  writeFile(
+    path.join(outDir, "src/electron/product-hub-stub.ts"),
+    renderProductHubStubTs(manifest),
     force,
     written,
   );

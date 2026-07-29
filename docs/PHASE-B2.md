@@ -108,8 +108,10 @@ npm test
 | Phase | Contenu |
 |-------|---------|
 | **C** | Tooling publish / after-pack / remote-build génériques |
-| **E** | Embeds UI (sandbox, status IPC) unifiés |
-| **G** | Branchement apps sur le kit |
+| **D** | Factory new-app + sandbox DemoBrand |
+| **E** | Plugins / Product Hub généralisés (`@creezio/product-hub`) |
+| **F** | Propagation kit → apps marques |
+| **G** | Branchement runtime Fidu / Certivan / TF2 |
 
 ## Contraintes respectées
 

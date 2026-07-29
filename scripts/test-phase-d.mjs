@@ -131,6 +131,7 @@ test("scaffoldNewApp génère structure + builder configs", () => {
     "src/electron/preload.ts",
     "src/electron/nav-core.ts",
     "src/electron/vertical-slot.ts",
+    "src/electron/product-hub-stub.ts",
     "src/electron/app-manifest.ts",
     "electron-builder.base.json",
     "electron-builder.client.json",
@@ -140,12 +141,23 @@ test("scaffoldNewApp génère structure + builder configs", () => {
   for (const rel of required) {
     assert.ok(fs.existsSync(path.join(outDir, rel)), rel);
   }
+  const pkg = JSON.parse(
+    fs.readFileSync(path.join(outDir, "package.json"), "utf8"),
+  );
+  assert.ok(pkg.dependencies["@creezio/product-hub"]);
   const vertical = fs.readFileSync(
     path.join(outDir, "src/electron/vertical-slot.ts"),
     "utf8",
   );
   assert.match(vertical, /items:\s*\[\s*\]/);
+  assert.match(vertical, /productHub/);
   assert.doesNotMatch(vertical, /catalogue|tempoflow/i);
+  const hubStub = fs.readFileSync(
+    path.join(outDir, "src/electron/product-hub-stub.ts"),
+    "utf8",
+  );
+  assert.match(hubStub, /@creezio\/product-hub/);
+  assert.doesNotMatch(hubStub, /TEMPOFLOW_|CERTIVAN_/);
   const nav = fs.readFileSync(
     path.join(outDir, "src/electron/nav-core.ts"),
     "utf8",
