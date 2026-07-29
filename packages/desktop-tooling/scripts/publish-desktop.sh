@@ -97,22 +97,38 @@ fi
 [[ -f "${DIST}/${LATEST_YML}" ]] || die "manquant : ${DIST}/${LATEST_YML} (rebuild avec publish configuré)"
 
 PUBLISH_VIA_DOCKER=0
-if [[ ! -d "${DL_ROOT}" ]]; then
-  if docker exec "${NPM_CT}" test -d "/data/${CREEZIO_DOCKER_DL_NAME}"; then
-    PUBLISH_VIA_DOCKER=1
-  else
-    die "dossier DL introuvable : ${DL_ROOT}"
-  fi
+PUBLISH_VIA_SSH=0
+REMOTE_HOST="${CREEZIO_REMOTE_BUILD_HOST:-}"
+if [[ -d "${DL_ROOT}" ]]; then
+  :
+elif docker exec "${NPM_CT}" test -d "/data/${CREEZIO_DOCKER_DL_NAME}" 2>/dev/null; then
+  PUBLISH_VIA_DOCKER=1
+elif [[ -n "${REMOTE_HOST}" ]] \
+  && ssh -o BatchMode=yes -o ConnectTimeout=15 "${REMOTE_HOST}" \
+    "docker exec ${NPM_CT} test -d /data/${CREEZIO_DOCKER_DL_NAME}" >/dev/null 2>&1; then
+  # TempoFlow : feed prod sur l'hôte remote-build (crm.tempoflow.fr), pas sur Creezio.
+  PUBLISH_VIA_SSH=1
+else
+  die "dossier DL introuvable : ${DL_ROOT}"
 fi
 
 echo "→ Publication ${TITLE} ${VERSION} (brand=${BRAND} kind=${KIND})"
 echo "  source : ${DIST}/${EXE}"
+if [[ "${PUBLISH_VIA_SSH}" -eq 1 ]]; then
+  echo "  cible  : ${REMOTE_HOST}:/data/${CREEZIO_DOCKER_DL_NAME}/ (ssh + docker cp)"
+fi
 
 sha256sum "${DIST}/${EXE}" | awk '{print $1"  '"${EXE}"'"}' > "${DIST}/${EXE}.sha256"
 
 copy_to_dl() {
   local src="$1" name="$2" dest_dir="$3"
-  if [[ "${PUBLISH_VIA_DOCKER}" -eq 1 ]]; then
+  if [[ "${PUBLISH_VIA_SSH}" -eq 1 ]]; then
+    local remote_tmp="/tmp/creezio-publish-${BRAND}-${KIND}-$$"
+    ssh -o BatchMode=yes "${REMOTE_HOST}" "mkdir -p '${remote_tmp}' && docker exec ${NPM_CT} mkdir -p '${DOCKER_DL_DIR}'"
+    rsync -a "${src}" "${REMOTE_HOST}:${remote_tmp}/${name}"
+    ssh -o BatchMode=yes "${REMOTE_HOST}" \
+      "docker cp '${remote_tmp}/${name}' '${NPM_CT}:${DOCKER_DL_DIR}/${name}' && rm -f '${remote_tmp}/${name}'"
+  elif [[ "${PUBLISH_VIA_DOCKER}" -eq 1 ]]; then
     docker exec "${NPM_CT}" mkdir -p "${DOCKER_DL_DIR}"
     docker cp "${src}" "${NPM_CT}:${DOCKER_DL_DIR}/${name}"
   else

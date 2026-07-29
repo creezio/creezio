@@ -4,6 +4,8 @@
 ## [Unreleased]
 
 ### Fixed
+- `publish-desktop.sh` : si le DL local est absent, publie via SSH sur
+  `remoteBuildHost` (cas TempoFlow : feed sur hôte `crm.tempoflow.fr`).
 - `buildElectronBuilderConfig` : ré-inclut les packages runtime `@creezio/*`
   (`brand-config`, `platform-core`, `product-hub`, `shell`, `electron-shell`)
   dans l'asar depuis `vendor/creezio/` quand `files` exclut `node_modules/**`.
