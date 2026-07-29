@@ -97,8 +97,8 @@ cd /opt/docker/tempoflow2/crm && npm run electron:compile \
 
 ## Suite
 
-**M6b** — Delete stubs chrome (logger/splash/tray/updater/meili) ;
-admin-window kit pur ou ≤30 LOC ; imports directs kit.
+**M6b** — Delete stubs chrome → [PHASE-M6b.md](PHASE-M6b.md) ;
+**M6** complet → [PHASE-M6.md](PHASE-M6.md).
 
 ---
 
