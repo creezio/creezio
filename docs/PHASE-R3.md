@@ -8,6 +8,8 @@
 | **Prérequis** | [PHASE-R2.md](PHASE-R2.md) |
 | **ARCHITECTURE_VERSION** | `"H6"` (inchangé) |
 | **Republish exe TF** | **Non** (cutover lib + vendor ; pas de nécessité) |
+| **Kit SHA** | `d4abe7c` |
+| **TF SHA** | `8c69547` |
 
 ---
 
