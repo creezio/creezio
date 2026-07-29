@@ -155,7 +155,9 @@ Les sandboxes factory portent `sandbox: true` (feeds jetables).
 | **I0–I8** | Gouvernance + persistance + freeze H6 | ✅ |
 | **I9–I18** | Conso TempoFlow / Certivan / Fidu + republish | ✅ |
 | **D0** | Alignement docs / matrice post-I18 | ✅ |
-| **D1–D6** | Dette MCP / stores / scan / Fidu CP / clientSlim / Certivan | 🟡 |
+| **D1–D3** | TF MCP / stores / scan + republish **0.10.31** | ✅ |
+| **D4–D5** | Fidu CP HTTP **0.1.56** + ADR clientSlim false | ✅ |
+| **D6** | Certivan polish aliases | ✅ |
 
 Voir [docs/PHASE-D0.md](docs/PHASE-D0.md), [docs/PHASE-H5.md](docs/PHASE-H5.md),
 [docs/DOD-PHASE-A-G.md](docs/DOD-PHASE-A-G.md), [docs/PROPAGATION.md](docs/PROPAGATION.md).
