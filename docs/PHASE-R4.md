@@ -8,8 +8,8 @@
 | **Prérequis** | [PHASE-R3.md](PHASE-R3.md) |
 | **ARCHITECTURE_VERSION** | `"H6"` (inchangé) |
 | **Republish exe TF** | **Non** (cutover lib + vendor) |
-| **Kit SHA** | _(après push)_ |
-| **TF SHA** | _(après push)_ |
+| **Kit SHA** | `5550186` |
+| **TF SHA** | `beddcaa` |
 
 ---
 
