@@ -4,6 +4,11 @@
 ## [Unreleased]
 
 ### Added
+- **Phase M4** — Delete jumeau `local-config` TF : `fleetTelemetry` +
+  sanitize/patch dans `@creezio/platform-core` ; store kit
+  (`get/setFleetTelemetry`, `configPath` getter, encryption electron sync) ;
+  TF wiring ≤40 LOC (`local-config-store.ts`) ; `docs/PHASE-M4.md` ;
+  tests `test-phase-m4` ; **pas** de republish exe.
 - **Phase M3** — Product Hub / control-plane zéro façade TF : helpers kit
   (`migrateLegacyBrandProductHubOnce`, `createBrandProductHubBindings`,
   `createCachedSqliteProductHubAccessor`, `createProductHubHost`,

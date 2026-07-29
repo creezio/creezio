@@ -98,6 +98,23 @@ export {
 } from "./local-config-schema.js";
 
 export type {
+  FleetScopeId,
+  FleetTelemetryConfig,
+  FleetTelemetryPatch,
+  FleetTelemetryScopes,
+} from "./fleet-telemetry.js";
+export {
+  FLEET_CONSENT_VERSION,
+  FLEET_SCOPE_IDS,
+  applyFleetTelemetryPatch,
+  basicSupportScopes,
+  defaultFleetScopes,
+  defaultFleetTelemetry,
+  isFleetScopeActive,
+  sanitizeFleetTelemetry,
+} from "./fleet-telemetry.js";
+
+export type {
   BootBehavior,
   PickerVariant,
   RuntimeAppKind,

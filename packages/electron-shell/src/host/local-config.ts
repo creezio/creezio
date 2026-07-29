@@ -16,6 +16,7 @@ import fs from "node:fs";
 import path from "node:path";
 import type { AppManifest } from "@creezio/brand-config";
 import {
+  applyFleetTelemetryPatch,
   assertProfileReady,
   createRecoveryVerifier,
   defaultLocalProfile,
@@ -25,6 +26,7 @@ import {
   isLocalConfigV1,
   normalizeRecoveryKey,
   sanitizeConnectionProfile,
+  sanitizeFleetTelemetry,
   sanitizeHermesEmbedConfig,
   sanitizeN8nEmbedConfig,
   sanitizeUserEnvOverlay,
@@ -34,6 +36,8 @@ import {
   type BackgroundSettings,
   type ConnectionProfile,
   type EmbedEnvService,
+  type FleetTelemetryConfig,
+  type FleetTelemetryPatch,
   type HermesEmbedConfig,
   type LocalConfigFileV1,
   type N8nEmbedConfig,
@@ -46,6 +50,7 @@ import {
 import {
   canEncrypt,
   loadElectronSafeStorage,
+  loadElectronSafeStorageSync,
   openValue,
   sealValue,
   type SafeStorageBackend,
@@ -59,8 +64,11 @@ export type LocalAuth = {
 
 export type TunnelConfig = TunnelMetaStored & { tunnelToken: string };
 
+/** Chemin fixe ou getter (userData peut changer au boot profil join). */
+export type LocalConfigPath = string | (() => string);
+
 export type LocalConfigStoreOptions = {
-  configPath: string;
+  configPath: LocalConfigPath;
   manifest: AppManifest;
   /** Injecter un backend (tests) — sinon Electron safeStorage. */
   safeStorage?: SafeStorageBackend | null;
@@ -84,8 +92,12 @@ async function resolveBackend(
   }
 }
 
+function resolveConfigPath(configPath: LocalConfigPath): string {
+  return typeof configPath === "function" ? configPath() : configPath;
+}
+
 function buildStore(
-  configPath: string,
+  configPath: LocalConfigPath,
   manifest: AppManifest,
   backend: SafeStorageBackend | null,
 ) {
@@ -98,7 +110,7 @@ function buildStore(
 
   function readFile(): LocalConfigFileV1 {
     try {
-      const raw = fs.readFileSync(configPath, "utf8");
+      const raw = fs.readFileSync(resolveConfigPath(configPath), "utf8");
       const parsed = JSON.parse(raw) as unknown;
       if (isLocalConfigV1(parsed)) return parsed;
     } catch {
@@ -108,9 +120,10 @@ function buildStore(
   }
 
   function writeFile(cfg: LocalConfigFileV1): void {
-    const dir = path.dirname(configPath);
+    const filePath = resolveConfigPath(configPath);
+    const dir = path.dirname(filePath);
     if (dir && dir !== ".") fs.mkdirSync(dir, { recursive: true });
-    fs.writeFileSync(configPath, JSON.stringify(cfg, null, 2), {
+    fs.writeFileSync(filePath, JSON.stringify(cfg, null, 2), {
       mode: 0o600,
     });
   }
@@ -491,6 +504,18 @@ function buildStore(
     return sanitizeUserEnvOverlay(service, raw);
   }
 
+  function getFleetTelemetry(): FleetTelemetryConfig {
+    return sanitizeFleetTelemetry(readFile().fleetTelemetry);
+  }
+
+  function setFleetTelemetry(patch: FleetTelemetryPatch): FleetTelemetryConfig {
+    const next = applyFleetTelemetryPatch(getFleetTelemetry(), patch);
+    const cfg = readFile();
+    cfg.fleetTelemetry = next;
+    writeFile(cfg);
+    return next;
+  }
+
   function setEmbedUserEnv(
     service: EmbedEnvService,
     values: Record<string, string>,
@@ -671,7 +696,9 @@ function buildStore(
   }
 
   return {
-    configPath,
+    get configPath() {
+      return resolveConfigPath(configPath);
+    },
     manifest,
     encryptionAvailable: () => canEncrypt(backend),
     readRaw: readFile,
@@ -716,6 +743,8 @@ function buildStore(
     setN8nEmbedConfig,
     getEmbedUserEnv,
     setEmbedUserEnv,
+    getFleetTelemetry,
+    setFleetTelemetry,
     getBackgroundSettings,
     setBackgroundSettings,
     getAiWorkspacePresentation,
@@ -735,13 +764,17 @@ export async function createLocalConfigStore(
   return buildStore(opts.configPath, opts.manifest, backend);
 }
 
-/** Variante sync pour tests (encryption plain ou injectée). */
+/** Variante sync — tests (plain/inject) ou main Electron (encryption electron). */
 export function createLocalConfigStoreSync(
   opts: LocalConfigStoreOptions & {
-    encryption: "plain" | "inject";
+    encryption: "plain" | "inject" | "electron";
   },
 ): LocalConfigStore {
-  const backend =
-    opts.encryption === "inject" ? (opts.safeStorage ?? null) : null;
+  let backend: SafeStorageBackend | null = null;
+  if (opts.encryption === "inject") {
+    backend = opts.safeStorage ?? null;
+  } else if (opts.encryption === "electron") {
+    backend = loadElectronSafeStorageSync();
+  }
   return buildStore(opts.configPath, opts.manifest, backend);
 }

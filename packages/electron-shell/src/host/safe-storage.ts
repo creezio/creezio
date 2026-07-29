@@ -3,6 +3,8 @@
  * Fallback plain si backend OS indisponible (documenté TF2).
  */
 
+import { createRequire } from "node:module";
+import path from "node:path";
 import type { StoredValue } from "@creezio/platform-core";
 
 export type SafeStorageBackend = {
@@ -15,6 +17,20 @@ export type SafeStorageBackend = {
 export async function loadElectronSafeStorage(): Promise<SafeStorageBackend> {
   const { safeStorage } = await import("electron");
   return safeStorage;
+}
+
+/**
+ * Variante sync pour `createLocalConfigStoreSync({ encryption: "electron" })`.
+ * Échec (hors Electron / module absent) → null (fallback plain).
+ */
+export function loadElectronSafeStorageSync(): SafeStorageBackend | null {
+  try {
+    const req = createRequire(path.join(process.cwd(), "package.json"));
+    const electron = req("electron") as { safeStorage?: SafeStorageBackend };
+    return electron.safeStorage ?? null;
+  } catch {
+    return null;
+  }
 }
 
 export function canEncrypt(backend: SafeStorageBackend | null): boolean {

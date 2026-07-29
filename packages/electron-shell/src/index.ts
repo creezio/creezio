@@ -123,12 +123,14 @@ export type { SafeStorageBackend } from "./host/safe-storage.js";
 export {
   canEncrypt,
   loadElectronSafeStorage,
+  loadElectronSafeStorageSync,
   openValue,
   sealValue,
 } from "./host/safe-storage.js";
 
 export type {
   LocalAuth,
+  LocalConfigPath,
   LocalConfigStore,
   LocalConfigStoreOptions,
   TunnelConfig,

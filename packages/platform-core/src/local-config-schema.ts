@@ -7,6 +7,7 @@ import type {
   RecoveryEnvelope,
   RecoveryVerifier,
 } from "./recovery-key.js";
+import type { FleetTelemetryConfig } from "./fleet-telemetry.js";
 
 export type StoredValue = { enc: string } | { plain: string };
 
@@ -72,7 +73,8 @@ export type AiWorkspacePresentationSetting = "window" | "embedded";
 
 /**
  * Version 1 du fichier — champs optionnels selon wizard / features.
- * Extensions métier (Paperclip Fidu, fleet vertical…) hors kit ou injectées.
+ * Extensions métier (Paperclip Fidu…) hors kit ou injectées.
+ * `fleetTelemetry` = plateforme (M4, extrait TF).
  */
 export type LocalConfigFileV1 = {
   version: 1;
@@ -102,6 +104,8 @@ export type LocalConfigFileV1 = {
     n8n?: Record<string, string>;
     hermes?: Record<string, string>;
   };
+  /** Consentement Support / télémétrie flotte (opt-in / phase éditeur). */
+  fleetTelemetry?: FleetTelemetryConfig;
   background?: {
     closeToTray?: boolean;
     launchAtStartup?: boolean;

@@ -174,7 +174,29 @@ test("local-config store plain encryption", () => {
   assert.equal(store.getTunnelPublic().configured, true);
   store.setHermesEmbedConfig({ mode: "embedded" });
   assert.equal(store.getHermesEmbedConfig().mode, "embedded");
+  const fleet = store.setFleetTelemetry({ enabled: true, preset: "basic" });
+  assert.equal(fleet.enabled, true);
+  assert.equal(store.getFleetTelemetry().scopes.heartbeat, true);
   fs.rmSync(dir, { recursive: true, force: true });
+});
+
+test("local-config configPath getter (userData dynamique)", () => {
+  const dir1 = fs.mkdtempSync(path.join(os.tmpdir(), "creezio-cfg-a-"));
+  const dir2 = fs.mkdtempSync(path.join(os.tmpdir(), "creezio-cfg-b-"));
+  let active = dir1;
+  const store = createLocalConfigStoreSync({
+    configPath: () => path.join(active, "tempoflow-config.json"),
+    manifest: tempoflowManifest,
+    encryption: "plain",
+  });
+  store.ensureAuthSecret();
+  assert.ok(fs.existsSync(path.join(dir1, "tempoflow-config.json")));
+  active = dir2;
+  store.setLocalAuthCredentials("bob", "secret99");
+  assert.ok(fs.existsSync(path.join(dir2, "tempoflow-config.json")));
+  assert.equal(store.getLocalAuth()?.authUser, "bob");
+  fs.rmSync(dir1, { recursive: true, force: true });
+  fs.rmSync(dir2, { recursive: true, force: true });
 });
 
 test("safeStorage seal/open plain fallback", () => {
