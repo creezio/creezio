@@ -45,7 +45,7 @@ export function createPluginFactoryApiMount(
         const gate = requireFactoryActor(req);
         if (!gate.ok) return { status: gate.status, body: gate.body };
         try {
-          const session = factory.submitIntention({
+          const session = await factory.submitIntention({
             text: String(body.text || body.intention || ""),
             name: body.name ? String(body.name) : undefined,
             pluginId: body.pluginId ? String(body.pluginId) : undefined,
@@ -68,7 +68,7 @@ export function createPluginFactoryApiMount(
 
       if (subPath === "clarify" && method === "POST") {
         try {
-          const session = factory.answerClarifications({
+          const session = await factory.answerClarifications({
             productId: String(body.productId || ""),
             clarificationId: String(body.clarificationId || ""),
             answers: (body.answers || {}) as Record<string, string | string[]>,
@@ -145,7 +145,7 @@ export function createPluginFactoryApiMount(
 
       if (subPath === "iterate" && method === "POST") {
         try {
-          const session = factory.iterate({
+          const session = await factory.iterate({
             pluginId: String(body.pluginId || ""),
             text: String(body.text || body.intention || ""),
             conversationId: body.conversationId

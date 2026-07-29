@@ -18,6 +18,7 @@ import {
   defaultClarificationQuestions,
   draftPrdFromIntention,
   needsClarification,
+  type DraftPrdFromIntentionInput,
 } from "./draft-prd.js";
 import { buildPluginScaffoldFiles } from "./scaffold-files.js";
 import { derivePluginIdentity } from "./slug.js";
@@ -28,6 +29,16 @@ import type {
   FactoryPhase,
   FactorySessionSnapshot,
 } from "./types.js";
+
+async function resolveDraft(
+  adapters: ConversationalPluginFactoryAdapters,
+  input: DraftPrdFromIntentionInput,
+) {
+  if (adapters.draftPrd) {
+    return await adapters.draftPrd(input);
+  }
+  return draftPrdFromIntention(input);
+}
 
 function impactFromRecord(
   row: PluginImpactReportRecord | undefined,
@@ -129,7 +140,7 @@ export function createConversationalPluginFactory(
   const intentionByProduct = new Map<string, string>();
 
   const factory: ConversationalPluginFactory = {
-    submitIntention(input) {
+    async submitIntention(input) {
       const text = String(input.text || "").trim();
       if (!text) {
         throw new Error("intention_vide");
@@ -177,7 +188,7 @@ export function createConversationalPluginFactory(
         });
       }
 
-      const draft = draftPrdFromIntention({ name, intention: text });
+      const draft = await resolveDraft(adapters, { name, intention: text });
       store.savePrd({
         productId: product.id,
         problem: draft.problem,
@@ -198,7 +209,7 @@ export function createConversationalPluginFactory(
       });
     },
 
-    answerClarifications(input) {
+    async answerClarifications(input) {
       store.answerClarification({
         productId: input.productId,
         clarificationId: input.clarificationId,
@@ -208,7 +219,7 @@ export function createConversationalPluginFactory(
       if (!product) throw new Error("Produit plugin introuvable");
       const intention =
         intentionByProduct.get(input.productId) || product.description;
-      const draft = draftPrdFromIntention({
+      const draft = await resolveDraft(adapters, {
         name: product.name,
         intention,
         clarificationAnswers: input.answers,
@@ -335,7 +346,7 @@ export function createConversationalPluginFactory(
       };
     },
 
-    iterate(input) {
+    async iterate(input) {
       const text = String(input.text || "").trim();
       if (!text) throw new Error("intention_vide");
       const pluginId = String(input.pluginId || "").trim();
@@ -368,7 +379,7 @@ export function createConversationalPluginFactory(
         impact: forced,
       });
       intentionByProduct.set(product.id, text);
-      const draft = draftPrdFromIntention({
+      const draft = await resolveDraft(adapters, {
         name: pluginId,
         intention: text,
       });

@@ -66,7 +66,7 @@ test("V2.2 sqlite store survit au reopen", () => {
 test("V2.3 E2E demobrand : factory + API plugin → événements", async () => {
   const sandbox = createDemobrandSandbox();
   try {
-    const session = sandbox.pluginFactory.submitIntention({
+    const session = await sandbox.pluginFactory.submitIntention({
       text: "Créer un plugin alertes stock pour la cuisine du restaurant",
       pluginId: "alertes-stock",
     });

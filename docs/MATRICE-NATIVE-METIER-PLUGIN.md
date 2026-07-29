@@ -25,7 +25,7 @@ Dette D* : [PHASE-D0.md](PHASE-D0.md). Correction : [PHASE-C0.md](PHASE-C0.md).
 | Host n8n | `@creezio/electron-shell` | ✅ | `host/n8n/*` (B.2) |
 | Host Hermes | `@creezio/electron-shell` | ✅ | `host/hermes/*` (B.2) |
 | Product Hub / plugins lifecycle + ACL L3/L4 | `@creezio/product-hub` | ✅ | H5 : `decidePluginAccess` see/install/execute + binding org + deny cross-org |
-| **Fabrique plugins conversationnelle** | `@creezio/product-hub` (+ demobrand/console) | 🟡 | **V1** socle E2E demobrand (PRD déterministe, scaffold stub, console mémoire) — **C3** = fabrique réelle + persist |
+| **Fabrique plugins conversationnelle** | `@creezio/product-hub` (+ demobrand/console) | ✅ | **C3** scaffold réel (schema/api/mcp) + console SQLite persist + `PrdDrafter` LLM opt. (socle V1 supersédé) |
 | **Observabilité** (activité / usages / CP) | `@creezio/observability` | 🟡 | **V2** package + demobrand ; console mémoire / pas vendor marques — **C4** persist + sync |
 | **Automations** data-driven | `@creezio/automations` | 🟡 | **V3** package + demobrand ; rules/runs éphémères — **C4** SQLite + ≥1 marque |
 | Plugins host (spawn, grants, events) | platform-core + electron-shell | ✅ | `plugins/*`, control plane + `acl` option H5 |
@@ -83,7 +83,7 @@ Autres marques (indicatif, hors extraction) :
 |----------|-----|--------|-------|
 | Manifest / events / execution grant | `@creezio/platform-core` | ✅ | Contrats purs |
 | Lifecycle / PRD / impact / n8n tags / ACL | `@creezio/product-hub` | ✅ | + `createSqliteProductHubStore` (H1.8) ; demobrand opt-in sqlite |
-| Fabrique conversationnelle (intention→plugin) | product-hub factory + demobrand | 🟡 | **V1** socle — **C3** scaffold réel + console persistée |
+| Fabrique conversationnelle (intention→plugin) | product-hub factory + demobrand | ✅ | **C3** scaffold réel + console SQLite + PrdDrafter |
 | Control plane HTTP host | `@creezio/electron-shell` + product-hub | 🟡 | **I4** + TF/Certivan/Fidu présents mais **3 styles** — unifier `startHostPluginControlPlane` = **C7** |
 | Registre org L3 | `@creezio/propagation` | ✅ | **I6** : `createFileOrgPluginRegistry` + console `/api/org-plugins` |
 | UI Admin Plugins multi-org | demobrand + product-hub admin | ✅ | **I5** : `admin-plugins` API + HTML ; caps see/install/execute |
@@ -101,10 +101,10 @@ nommés dans `@creezio/propagation` (contrats, pas automation).
 
 | Couche | ✅ | 🟡 (correction C*) | ❌ |
 |--------|----|-------------------|-----|
-| Natif socle | brand-config, shell, platform-core, electron-shell, product-hub ACL H5, tooling, factory, propagation, api-kernel, mcp-facade TF D1, shell-ui | auth/assistant/tasks/mails TF dual-write ou brand-retained (**C1**) ; V1–V3 fondations (**C3–C4**) ; CP multi-styles (**C7**) | — |
+| Natif socle | brand-config, shell, platform-core, electron-shell, product-hub ACL H5, tooling, factory, propagation, api-kernel, mcp-facade TF D1/C2, shell-ui, fabrique C3 | V2/V3 console/vendor (**C4**) ; CP multi-styles (**C7**) | — |
 | Métier TF | panier, dispatch, releves, catalogue, stack, scan D3, MCP D1, ACL L3, republish **0.10.31** | stores D2 pas cutover (**C1**) | — |
 | Métier Fidu / Certivan | foundation + ACL + feeds | Fidu mounts (**C5**) ; Certivan dualités (**C2**) + RTI (**C6**) | — |
-| Plugins | hub + ACL L3 3 marques + Fidu D4 HTTP ; clientSlim false D5 | fabrique toy (**C3**) ; obs/automations non vendor (**C4**) ; CP unifié (**C7**) | auto-promotion / univers perso / cloud registry *(volontaire)* |
+| Plugins | hub + ACL L3 3 marques + Fidu D4 HTTP ; clientSlim false D5 ; fabrique C3 | obs/automations non vendor (**C4**) ; CP unifié (**C7**) | auto-promotion / univers perso / cloud registry *(volontaire)* |
 
 **Socle** H0–H5 + I0–I18 + D0–D6 + V1–V3 = **signé** (pas « 100 % produit »).  
 **Correction** : [PHASE-C0.md](PHASE-C0.md) → C1…C8.  

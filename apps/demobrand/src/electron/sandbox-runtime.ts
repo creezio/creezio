@@ -71,6 +71,7 @@ import {
   buildPluginAclActorHeaders,
   createConversationalPluginFactory,
   createFsPluginScaffoldAdapters,
+  createOptionalLlmPrdDrafter,
   createPluginControlPlaneAclFromStore,
   createSqliteProductHubStore,
   decidePluginAccess,
@@ -462,6 +463,8 @@ export function createDemobrandSandbox(opts?: {
 
   const pluginFactory = createConversationalPluginFactory({
     store: productHub,
+    /** C3 — LLM opt. via env ; sinon déterministe. */
+    draftPrd: createOptionalLlmPrdDrafter(),
     collectEvidence: () => {
       const fromHub = productHub.listProducts().map((p) => ({
         type: "product_prd" as const,
@@ -524,8 +527,8 @@ export function createDemobrandSandbox(opts?: {
   const rawSubmit = pluginFactory.submitIntention.bind(pluginFactory);
   const rawMaterialize = pluginFactory.materialize.bind(pluginFactory);
   const rawIterate = pluginFactory.iterate.bind(pluginFactory);
-  pluginFactory.submitIntention = (input) => {
-    const session = rawSubmit(input);
+  pluginFactory.submitIntention = async (input) => {
+    const session = await rawSubmit(input);
     recordActivity(
       observability,
       "factory.intention",
@@ -566,8 +569,8 @@ export function createDemobrandSandbox(opts?: {
     }
     return result;
   };
-  pluginFactory.iterate = (input) => {
-    const session = rawIterate(input);
+  pluginFactory.iterate = async (input) => {
+    const session = await rawIterate(input);
     recordActivity(
       observability,
       "factory.iterate",
@@ -602,7 +605,7 @@ export function createDemobrandSandbox(opts?: {
             (args as { text?: string })?.text || "",
           ).trim();
           try {
-            const session = pluginFactory.submitIntention({ text });
+            const session = await pluginFactory.submitIntention({ text });
             return { ok: true, content: { session } };
           } catch (e) {
             return {

@@ -90,7 +90,8 @@ C0 → C1 → C2 → C3 → C4 → C7 → C8
 
 ## Suite
 
-→ **C1 livrée** : [PHASE-C1.md](PHASE-C1.md).
+→ **C1–C3 livrées** : [PHASE-C1.md](PHASE-C1.md) · [PHASE-C2.md](PHASE-C2.md) ·
+[PHASE-C3.md](PHASE-C3.md). Prochaine : **C4** (V2/V3) · **C5/C6** mounts.
 
 ## Verdict
 

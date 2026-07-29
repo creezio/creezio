@@ -37,7 +37,7 @@ proxy) et **stores plateforme SoT kit** (plus N/A D6).
 
 ## Suite
 
-→ **C3** fabrique V1 · **C6** RTI API (//) · **C5** Fidu mounts.
+→ **C3 livrée** : [PHASE-C3.md](PHASE-C3.md) · **C6** RTI API (//) · **C5** Fidu mounts.
 
 ## Verdict
 

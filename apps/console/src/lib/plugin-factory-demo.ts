@@ -1,16 +1,17 @@
 /**
- * Démo ops console — fabrique V1 en mémoire (pas de demobrand requis).
- * Persist sessions dans var/plugin-factory-sessions.json pour le panel.
+ * Console ops — fabrique C3 persistée (SQLite Product Hub + plugins dir).
+ * Sessions survivent au redémarrage ; scaffold réel (schema/api/mcp).
  */
 
 import fs from "node:fs";
-import os from "node:os";
 import path from "node:path";
 import {
   createConversationalPluginFactory,
   createFsPluginScaffoldAdapters,
-  createMemoryProductHubStore,
+  createOptionalLlmPrdDrafter,
+  createSqliteProductHubStore,
   type FactorySessionSnapshot,
+  type SqliteProductHubStore,
 } from "@creezio/product-hub";
 
 function kitRoot(): string {
@@ -25,75 +26,79 @@ function kitRoot(): string {
   return path.resolve(process.cwd(), "../..");
 }
 
-export function pluginFactorySessionsPath(): string {
+export function pluginFactoryDataDir(): string {
   return (
-    process.env.CREEZIO_PLUGIN_FACTORY_SESSIONS_PATH ||
-    path.join(kitRoot(), "var", "plugin-factory-sessions.json")
+    process.env.CREEZIO_PLUGIN_FACTORY_DATA_DIR ||
+    path.join(kitRoot(), "var", "plugin-factory")
   );
 }
 
-type Persisted = {
-  updatedAt: string;
-  sessions: FactorySessionSnapshot[];
+export function pluginFactoryCoreDbPath(): string {
+  return (
+    process.env.CREEZIO_PLUGIN_FACTORY_CORE_DB ||
+    path.join(pluginFactoryDataDir(), "console-core.db")
+  );
+}
+
+export function pluginFactoryPluginsDir(): string {
+  return (
+    process.env.CREEZIO_PLUGIN_FACTORY_PLUGINS_DIR ||
+    path.join(pluginFactoryDataDir(), "plugins")
+  );
+}
+
+/** @deprecated — sessions vivent dans SQLite ; chemin conservé pour compat API. */
+export function pluginFactorySessionsPath(): string {
+  return pluginFactoryCoreDbPath();
+}
+
+type FactoryBundle = {
+  factory: ReturnType<typeof createConversationalPluginFactory>;
+  store: SqliteProductHubStore;
+  pluginsDir: string;
+  coreDbPath: string;
 };
 
-function loadPersisted(): Persisted {
-  const file = pluginFactorySessionsPath();
-  if (!fs.existsSync(file)) {
-    return { updatedAt: new Date().toISOString(), sessions: [] };
-  }
-  try {
-    return JSON.parse(fs.readFileSync(file, "utf8")) as Persisted;
-  } catch {
-    return { updatedAt: new Date().toISOString(), sessions: [] };
-  }
-}
+let bundle: FactoryBundle | null = null;
 
-function savePersisted(sessions: FactorySessionSnapshot[]): void {
-  const file = pluginFactorySessionsPath();
-  fs.mkdirSync(path.dirname(file), { recursive: true });
-  const payload: Persisted = {
-    updatedAt: new Date().toISOString(),
-    sessions,
-  };
-  fs.writeFileSync(file, `${JSON.stringify(payload, null, 2)}\n`, "utf8");
-}
-
-let factorySingleton: ReturnType<
-  typeof createConversationalPluginFactory
-> | null = null;
-let pluginsDirSingleton: string | null = null;
-
-function getFactory() {
-  if (!factorySingleton) {
-    pluginsDirSingleton = fs.mkdtempSync(
-      path.join(os.tmpdir(), "creezio-console-factory-"),
-    );
-    const store = createMemoryProductHubStore({
-      conversationPrefix: "console",
-    });
-    const fsAdapters = createFsPluginScaffoldAdapters(pluginsDirSingleton);
-    factorySingleton = createConversationalPluginFactory({
-      store,
-      scaffoldPlugin: (i) => fsAdapters.scaffoldPlugin(i),
-      writePluginFiles: (id, files) => fsAdapters.writePluginFiles(id, files),
-      installRuntime: () => ({ dbOpened: true }),
-    });
-  }
-  return factorySingleton;
+function getBundle(): FactoryBundle {
+  if (bundle) return bundle;
+  const coreDbPath = pluginFactoryCoreDbPath();
+  const pluginsDir = pluginFactoryPluginsDir();
+  fs.mkdirSync(path.dirname(coreDbPath), { recursive: true });
+  fs.mkdirSync(pluginsDir, { recursive: true });
+  const store = createSqliteProductHubStore({
+    coreDbPath,
+    conversationPrefix: "console",
+  });
+  const fsAdapters = createFsPluginScaffoldAdapters(pluginsDir);
+  const factory = createConversationalPluginFactory({
+    store,
+    draftPrd: createOptionalLlmPrdDrafter(),
+    scaffoldPlugin: (i) => fsAdapters.scaffoldPlugin(i),
+    writePluginFiles: (id, files) => fsAdapters.writePluginFiles(id, files),
+    installRuntime: () => ({ dbOpened: true }),
+  });
+  bundle = { factory, store, pluginsDir, coreDbPath };
+  return bundle;
 }
 
 export function listFactorySessionsSnapshot(): {
   updatedAt: string;
   sessions: FactorySessionSnapshot[];
   filePath: string;
-  pluginsDir: string | null;
+  coreDbPath: string;
+  pluginsDir: string;
+  persisted: true;
 } {
-  const persisted = loadPersisted();
+  const { factory, pluginsDir, coreDbPath } = getBundle();
   return {
-    ...persisted,
-    filePath: pluginFactorySessionsPath(),
-    pluginsDir: pluginsDirSingleton,
+    updatedAt: new Date().toISOString(),
+    sessions: factory.listSessions(),
+    filePath: coreDbPath,
+    coreDbPath,
+    pluginsDir,
+    persisted: true,
   };
 }
 
@@ -105,15 +110,17 @@ export async function runFactoryDemo(input: {
 }): Promise<{
   session: FactorySessionSnapshot;
   materialize?: unknown;
+  pluginsDir: string;
+  coreDbPath: string;
 }> {
-  const factory = getFactory();
-  let session = factory.submitIntention({
+  const { factory, pluginsDir, coreDbPath } = getBundle();
+  let session = await factory.submitIntention({
     text: input.text,
     name: input.name,
   });
 
   if (session.phase === "clarification_required" && session.openClarification) {
-    session = factory.answerClarifications({
+    session = await factory.answerClarifications({
       productId: session.productId,
       clarificationId: session.openClarification.id,
       answers: {
@@ -142,6 +149,5 @@ export async function runFactoryDemo(input: {
     if (result.ok) session = result.session;
   }
 
-  savePersisted(factory.listSessions());
-  return { session, materialize };
+  return { session, materialize, pluginsDir, coreDbPath };
 }

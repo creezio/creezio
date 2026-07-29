@@ -12,7 +12,8 @@
 - [x] Politique republish : [REPUBLISH-POLICY.md](../REPUBLISH-POLICY.md)
 - [x] Phases I1–I8 livrées (persistance + control-plane + admin + shell-ui + freeze)
 - [x] D0–D6 + V1–V3 socle (sign-offs) — **pas** « 100 % produit » (voir C*)
-- [ ] Correction C1–C8 (cutover stores, dualités Certivan, V1 réel, V2/V3 persist, mounts, CP unifié, republish)
+- [x] **C1–C3** cutover TF · dualités Certivan · fabrique réelle
+- [ ] **C4–C8** V2/V3 persist · mounts · CP unifié · republish
 
 ## TempoFlow (`tempoflow2`)
 

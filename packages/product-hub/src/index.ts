@@ -166,22 +166,27 @@ export {
   upsertPluginAclAdmin,
 } from "./admin/plugin-acl-admin.js";
 
-/** V1 — fabrique plugins conversationnelle. */
+/** V1 / C3 — fabrique plugins conversationnelle. */
 export type {
   ConversationalPluginFactory,
   ConversationalPluginFactoryAdapters,
+  DraftPrdFromIntentionInput,
   FactoryMaterializeResult,
   FactoryPhase,
   FactoryScaffoldResult,
   FactorySessionSnapshot,
   FactoryWriteFilesResult,
+  LlmPrdDrafterOptions,
+  PrdDrafter,
 } from "./factory/index.js";
 export {
   buildPluginScaffoldFiles,
   createConversationalPluginFactory,
   createFsPluginScaffoldAdapters,
+  createOptionalLlmPrdDrafter,
   defaultClarificationQuestions,
   derivePluginIdentity,
+  deterministicPrdDrafter,
   draftPrdFromIntention,
   needsClarification,
   slugifyPluginId,

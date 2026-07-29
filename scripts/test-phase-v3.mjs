@@ -88,7 +88,7 @@ test("V3.3 E2E demobrand : factory + KV → automations + obs", async () => {
   try {
     assert.ok(sandbox.automations.listRules().length >= 3);
 
-    const session = sandbox.pluginFactory.submitIntention({
+    const session = await sandbox.pluginFactory.submitIntention({
       text: "Créer un plugin recettes express pour valoriser les restes",
       pluginId: "recettes-express",
     });

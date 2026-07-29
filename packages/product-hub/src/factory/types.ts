@@ -10,6 +10,7 @@ import type {
   PluginProductRecord,
   ProductHubStore,
 } from "../store/types.js";
+import type { PrdDrafter } from "./prd-drafter.js";
 
 export type FactoryPhase =
   | "intention_received"
@@ -81,6 +82,11 @@ export type ConversationalPluginFactoryAdapters = {
     pluginId: string,
     actor: PluginAclActor,
   ) => Promise<{ dbOpened: boolean }> | { dbOpened: boolean };
+  /**
+   * Brouillon PRD pluggable (C3) — sync ou async.
+   * Défaut : déterministe. LLM via `createOptionalLlmPrdDrafter`.
+   */
+  draftPrd?: PrdDrafter;
   /** Prefixe conversation assistant (défaut demobrand). */
   conversationPrefix?: string;
 };
@@ -93,13 +99,13 @@ export type ConversationalPluginFactory = {
     conversationId?: string;
     /** Force clarification même si intention longue. */
     forceClarification?: boolean;
-  }): FactorySessionSnapshot;
+  }): Promise<FactorySessionSnapshot>;
 
   answerClarifications(input: {
     productId: string;
     clarificationId: string;
     answers: Record<string, string | string[]>;
-  }): FactorySessionSnapshot;
+  }): Promise<FactorySessionSnapshot>;
 
   approvePrd(input: {
     productId: string;
@@ -118,7 +124,7 @@ export type ConversationalPluginFactory = {
     pluginId: string;
     text: string;
     conversationId?: string;
-  }): FactorySessionSnapshot;
+  }): Promise<FactorySessionSnapshot>;
 
   getSession(productId: string): FactorySessionSnapshot | undefined;
   listSessions(): FactorySessionSnapshot[];

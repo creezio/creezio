@@ -4,6 +4,9 @@
 ## [Unreleased]
 
 ### Added
+- **Phase C3** — Fabrique V1 réelle : scaffold `schema.sql`/`api.js`/`mcp-tools.js`,
+  console SQLite persistée, `PrdDrafter` LLM optionnel ; demobrand E2E ;
+  `docs/PHASE-C3.md` ; `test-phase-c3.mjs` ; pas de republish.
 - **Phase C2** — Certivan : MCP façade→Hono proxy + stores SoT kit cutover ;
   `docs/PHASE-C2.md` ; `test:phase-c2` ; pas de republish (→ C8).
 - **Phase C1** — Cutover stores TempoFlow SoT kit : assistant rich schema,

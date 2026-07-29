@@ -49,14 +49,7 @@ export function createFsPluginScaffoldAdapters(pluginsDir: string): {
           "utf8",
         );
       }
-      const indexPath = path.join(dir, "index.js");
-      if (!fs.existsSync(indexPath)) {
-        fs.writeFileSync(
-          indexPath,
-          `console.log("plugin ${id} stub");\n`,
-          "utf8",
-        );
-      }
+      // index.js / schema / api / mcp écrits par writePluginFiles (scaffold C3).
       return { ok: true, plugin: { id, dir } };
     },
     writePluginFiles(id, files) {

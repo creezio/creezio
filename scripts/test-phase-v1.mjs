@@ -60,7 +60,7 @@ test("V1.2 factory mémoire : intention → approve → materialize", async () =
     installRuntime: () => ({ dbOpened: true }),
   });
 
-  let session = factory.submitIntention({
+  let session = await factory.submitIntention({
     text: "Créer un plugin inventaire frigo pour suivre les denrées périssables",
     pluginId: "inventaire-frigo",
   });
@@ -92,7 +92,7 @@ test("V1.3 E2E demobrand : chat → DB plugin → MCP ACL → itération", async
   try {
     const factory = sandbox.pluginFactory;
 
-    let session = factory.submitIntention({
+    let session = await factory.submitIntention({
       text: "Je veux un module météo cuisine pour proposer des plats selon la météo",
       pluginId: "meteo-cuisine",
       name: "Météo Cuisine",
@@ -197,7 +197,7 @@ test("V1.3 E2E demobrand : chat → DB plugin → MCP ACL → itération", async
     assert.ok(Array.isArray(apiSessions.body.sessions));
     assert.ok(apiSessions.body.sessions.length >= 1);
 
-    const iter = factory.iterate({
+    const iter = await factory.iterate({
       pluginId: "meteo-cuisine",
       text: "Ajouter aussi les alertes orage pour fermer la terrasse",
     });
@@ -224,7 +224,7 @@ test("V1.3 E2E demobrand : chat → DB plugin → MCP ACL → itération", async
 test("V1.4 clarification path puis materialize", async () => {
   const sandbox = createDemobrandSandbox();
   try {
-    let session = sandbox.pluginFactory.submitIntention({
+    let session = await sandbox.pluginFactory.submitIntention({
       text: "plugin stock",
       forceClarification: true,
       pluginId: "stock-rapide",
@@ -232,7 +232,7 @@ test("V1.4 clarification path puis materialize", async () => {
     assert.equal(session.phase, "clarification_required");
     assert.ok(session.openClarification);
 
-    session = sandbox.pluginFactory.answerClarifications({
+    session = await sandbox.pluginFactory.answerClarifications({
       productId: session.productId,
       clarificationId: session.openClarification.id,
       answers: {
