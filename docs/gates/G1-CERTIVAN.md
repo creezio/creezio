@@ -1,6 +1,7 @@
 # Gate G1 — Certivan (Phase G)
 
 > **Statut** : **sign-off G1** (2026-07-29) — Certivan **0.1.11** publié (Client+Serveur).
+> **Post-H5/H6 (I16)** : republish **0.1.14** (ACL L3 + shell-ui + SqliteRuntime) — feeds OK.
 > Consomme `@creezio/*` via `vendor/creezio` (sync depuis kit). GUIDs / feeds OK.
 > Ordre : **G1 Certivan → G2 Fidu → G3 TempoFlow**.
 

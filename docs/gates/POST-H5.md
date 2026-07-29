@@ -22,7 +22,7 @@
 
 - [x] Wrapper sync → contrat kit I0 (liste H5 baseline)
 - [x] Foundation SqliteRuntime + modules (I15)
-- [ ] Republish uniquement I16
+- [x] Republish uniquement I16 (0.1.14)
 
 ## Fidu (`fidu`)
 
