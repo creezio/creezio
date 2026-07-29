@@ -219,6 +219,11 @@ test("H1.4 shell-ui nav + slots sans métier hardcodé", () => {
   assert.throws(() =>
     reg.registerBrandNav([{ id: "panier", label: "Panier", href: "/panier" }]),
   );
+  // H3 : href produit réel OK si id préfixé brand.*
+  reg.registerBrandNav([
+    { id: "brand.panier", label: "Panier", href: "/panier" },
+  ]);
+  assert.equal(reg.getBrandNav()[0]?.href, "/panier");
 });
 
 test("H1.5 assistant store", () => {

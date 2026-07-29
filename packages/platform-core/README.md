@@ -30,4 +30,4 @@ runtime.openPlugin("meteo", pluginMigrations); // à l'install
 ```
 
 Chaque fichier DB a sa table `_creezio_schema_migrations`.  
-Constante `ARCHITECTURE_VERSION` (cadre H0/H1/H2…).
+Constante `ARCHITECTURE_VERSION` (cadre H0/H1/H2/H3…).

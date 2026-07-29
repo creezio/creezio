@@ -32,6 +32,11 @@ export const CREEZIO_ASAR_RUNTIME_PACKAGES = [
   "product-hub",
   "shell",
   "electron-shell",
+  // H3 — brand-runtime (api-kernel / mcp / shell-ui / auth) dans le main
+  "api-kernel",
+  "mcp-facade",
+  "shell-ui",
+  "auth",
 ] as const;
 
 /** Liste des modules main Electron réservés à l'hôte (exclus du paquet Client). */

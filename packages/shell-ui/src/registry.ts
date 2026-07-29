@@ -12,17 +12,20 @@ const FORBIDDEN_BRAND_IDS = new Set([
 function assertBrandItem(item: CoreNavItem): void {
   const id = item.id.toLowerCase();
   const href = item.href.toLowerCase();
+  // H3 : les slots marque peuvent pointer vers les vraies routes produit
+  // (`/panier`, `/optimiser`…) si l'id est préfixé `brand.*`.
+  // Interdit : id métier nu (ex. `panier`) = confusion avec nav native.
   for (const bad of FORBIDDEN_BRAND_IDS) {
-    if (id === bad || id.endsWith(`.${bad}`) || href === `/${bad}`) {
-      // Soft-guard documentation : le kit refuse les ids réservés métier TF
-      // hardcodés comme « nav native ». La marque peut toujours les mettre
-      // dans son slot avec un préfixe brand.* explicite hors liste exacte.
-      if (id === bad || href === `/${bad}`) {
-        throw new Error(
-          `Nav brand refusée: id/href réservé métier (${bad}). Utiliser un préfixe brand.<id>.`,
-        );
-      }
+    if (id === bad) {
+      throw new Error(
+        `Nav brand refusée: id réservé métier (${bad}). Utiliser brand.${bad}.`,
+      );
     }
+  }
+  if (!id.startsWith("brand.") && FORBIDDEN_BRAND_IDS.has(href.replace(/^\//, ""))) {
+    throw new Error(
+      `Nav brand refusée: href métier (${href}) sans id brand.*.`,
+    );
   }
 }
 

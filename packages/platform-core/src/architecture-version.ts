@@ -1,7 +1,7 @@
 /**
- * Version du cadre d'architecture Creezio (docs H0+).
- * Bumpée au sign-off de chaque phase cadre (H0 → H1 → H2 → …).
+ * Cadre architecture Creezio (Phase H0+).
+ * Bump uniquement au sign-off de phase (H0 → H1 → H2 → H3…).
  */
-export const ARCHITECTURE_VERSION = "H2" as const;
+export const ARCHITECTURE_VERSION = "H3" as const;
 
 export type ArchitectureVersion = typeof ARCHITECTURE_VERSION;

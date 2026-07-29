@@ -46,19 +46,21 @@ Ces lignes restent dans **tempoflow2** (ou équivalent). Statut = existence
 produit observée au gate G3 / matrice vertical — **pas** une cible d’extraction
 kit.
 
-| Module métier | Repo | Statut produit | Notes kit |
-|---------------|------|----------------|-----------|
-| Panier | tempoflow2 | ✅ | Vertical — ne pas monter dans `@creezio/*` |
-| Dispatch | tempoflow2 | ✅ | Idem |
-| Relevés | tempoflow2 | ✅ | Idem |
-| Optimiser | tempoflow2 | ✅ | Idem |
-| Catalogue / catalog-sync | tempoflow2 | ✅ | Idem |
-| Supplier tabs / marketplaces | tempoflow2 | ✅ | Idem |
-| Fleet | tempoflow2 | ✅ | Idem |
-| Scan | tempoflow2 | ✅ | Idem |
+| Module métier | Repo | Statut produit | Extraction H3 (brand mounts) | Notes kit |
+|---------------|------|----------------|------------------------------|-----------|
+| Panier | tempoflow2 | ✅ | ✅ `modules/panier` API+MCP+nav | Jamais dans `@creezio/*` |
+| Dispatch | tempoflow2 | ✅ | ✅ `modules/dispatch` API+MCP+nav | Idem |
+| Relevés | tempoflow2 | ✅ | ✅ `modules/releves` API+MCP+nav | Idem |
+| Optimiser | tempoflow2 | ✅ | ✅ nav via dispatch (`brand.optimiser`) | Algo reste lib TF |
+| Catalogue / catalog-sync | tempoflow2 | ✅ | 🟡 nav + mig catalog_min | Mount API suite |
+| Supplier tabs / marketplaces | tempoflow2 | ✅ | 🟡 nav `brand.fournisseurs` | Idem |
+| Stack | tempoflow2 | ✅ | 🟡 nav + mig `stack_items` | Mount API suite |
+| Scan | tempoflow2 | ✅ | 🟡 nav `brand.scan` | UI → panier |
+| Fleet | tempoflow2 | ✅ | — (plateforme Electron) | Hors brand métier |
 
-**Contrat d’accueil kit** (slots / façade) : 🟡 shell-ui + api-kernel + MCP
-scindé prêts ; **extraction modules TF → brand repo = H3**.
+**Contrat d’accueil kit** : ✅ shell-ui + api-kernel + MCP scindé.
+**H3** : modules TF dans `tempoflow2/crm/electron/modules/` +
+`brand-runtime.ts` (voir [PHASE-H3.md](PHASE-H3.md)).
 
 Autres marques (indicatif, hors extraction) :
 
@@ -92,8 +94,8 @@ nommés dans `@creezio/propagation` (contrats, pas automation).
 | Couche | ✅ | 🟡 | ❌ |
 |--------|----|----|-----|
 | Natif (socle A–G + H1/H2) | brand-config, shell, platform-core (+ SqliteRuntime), electron-shell, product-hub, tooling, factory, propagation, console, api-kernel (ScopedDb), mcp-facade (by space), auth, shell-ui, assistant, tasks, mails | control-plane runtime marques, registre L3 persisté | — |
-| Métier TF (repo marque) | modules listés (produit) | extraction vers brand repo + montages API (H3) | — |
+| Métier TF (repo marque) | panier, dispatch, releves montés H3 | catalogue/stack mounts API ; MCP unifié (H4) | — |
 | Plugins | contrats hub + host + DB `plugin/<id>` + ACL sqlite | control-plane runtime local marques | auto-promotion *(volontaire)* |
 
-**H2 terminée** = isolation runtime prouvée (demobrand). **H3** = modules
-TempoFlow dans le brand repo (montages + migrations brand), pas dans le kit.
+**H3 terminée** = modules TF prioritaires dans le brand repo (montages +
+migrations brand + runtime). **H4** = MCP proxy unifié durci.

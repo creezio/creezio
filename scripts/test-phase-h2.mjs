@@ -43,8 +43,8 @@ function tmpCtx() {
   };
 }
 
-test("H2.0 ARCHITECTURE_VERSION = H2", () => {
-  assert.equal(ARCHITECTURE_VERSION, "H2");
+test("H2.0 ARCHITECTURE_VERSION >= H2 (cadre évolutif)", () => {
+  assert.match(ARCHITECTURE_VERSION, /^H([2-9]|\d{2,})$/);
 });
 
 test("H2.0 SqliteRuntime day0 = core+brand only ; plugin à openPlugin", () => {
@@ -226,7 +226,7 @@ test("H2.2 api-kernel intégration : cross-write + attack-core → 403", async (
     method: "GET",
     path: "/api/v1/core/architecture",
   });
-  assert.equal(arch.body.architectureVersion, "H2");
+  assert.match(String(arch.body.architectureVersion), /^H([2-9]|\d{2,})$/);
   assert.equal(arch.body.isolation.scopedDb, true);
   assert.equal(arch.body.sqlite.coreOpen, true);
 

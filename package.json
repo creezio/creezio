@@ -2,7 +2,7 @@
   "name": "creezio",
   "private": true,
   "version": "0.1.0",
-  "description": "Kit plateforme Creezio — packages @creezio/* (H2 isolation multi-DB/API + cœur CMS H1 + platform A–G)",
+  "description": "Kit plateforme Creezio — packages @creezio/* (H3 modules brand TF + H2 isolation + cœur CMS H1 + platform A–G)",
   "workspaces": [
     "packages/*",
     "apps/*"
@@ -15,7 +15,7 @@
     "build:packages": "npm run build -w @creezio/brand-config && npm run build -w @creezio/shell && npm run build -w @creezio/platform-core && npm run build -w @creezio/product-hub && npm run build -w @creezio/api-kernel && npm run build -w @creezio/mcp-facade && npm run build -w @creezio/auth && npm run build -w @creezio/shell-ui && npm run build -w @creezio/assistant && npm run build -w @creezio/tasks && npm run build -w @creezio/mails && npm run build -w @creezio/electron-shell && npm run build -w @creezio/desktop-tooling && npm run build -w @creezio/factory && npm run build -w @creezio/propagation && node scripts/build-cjs.mjs",
     "build:cjs": "node scripts/build-cjs.mjs",
     "typecheck": "npm run build:packages",
-    "test": "node --test scripts/test-phase-b.mjs scripts/test-phase-b2.mjs scripts/test-phase-c.mjs scripts/test-phase-d.mjs scripts/test-phase-e.mjs scripts/test-phase-f.mjs scripts/test-phase-h1.mjs scripts/test-phase-h2.mjs",
+    "test": "node --test scripts/test-phase-b.mjs scripts/test-phase-b2.mjs scripts/test-phase-c.mjs scripts/test-phase-d.mjs scripts/test-phase-e.mjs scripts/test-phase-f.mjs scripts/test-phase-h1.mjs scripts/test-phase-h2.mjs scripts/test-phase-h3.mjs",
     "factory:new-app": "node packages/factory/bin/creezio.js new-app",
     "console:dev": "npm run dev -w @creezio/console",
     "console:start": "npm run start -w @creezio/console",

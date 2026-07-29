@@ -5,9 +5,9 @@ Monorepo **plateforme** pour les desktops Creezio (TempoFlow, Certivan, Fidu)
 
 > Chemin canonique sur le VPS : **`/opt/docker/creezio`**  
 > Source d'extraction (lecture seule) : `/opt/docker/creezio-kit-src` = `creezio/tempoflow2` @ **v0.10.26**.  
-> Cadre architecture : **`ARCHITECTURE_VERSION = "H2"`** — voir docs Phase H0–H2.
+> Cadre architecture : **`ARCHITECTURE_VERSION = "H3"`** — voir docs Phase H0–H3.
 
-## Architecture (Phases H0 → H2)
+## Architecture (Phases H0 → H3)
 
 | Doc | Contenu |
 |-----|---------|
@@ -15,15 +15,17 @@ Monorepo **plateforme** pour les desktops Creezio (TempoFlow, Certivan, Fidu)
 | [docs/MATRICE-NATIVE-METIER-PLUGIN.md](docs/MATRICE-NATIVE-METIER-PLUGIN.md) | Cartographie Natif / Métier / Plugin + statuts ✅/🟡/❌ |
 | [docs/BACKLOG-H1-PACKAGES.md](docs/BACKLOG-H1-PACKAGES.md) | Packages `@creezio/*` H1 |
 | [docs/BACKLOG-H2.md](docs/BACKLOG-H2.md) | Isolation DB/API runtime H2 |
+| [docs/BACKLOG-H3.md](docs/BACKLOG-H3.md) | Modules métier TempoFlow (brand repo) H3 |
 | [docs/PHASE-H0.md](docs/PHASE-H0.md) | Sign-off H0 |
 | [docs/PHASE-H1.md](docs/PHASE-H1.md) | Sign-off H1 (packages cœur CMS) |
 | [docs/PHASE-H2.md](docs/PHASE-H2.md) | Sign-off H2 (isolation multi-DB / API) |
+| [docs/PHASE-H3.md](docs/PHASE-H3.md) | Sign-off H3 (modules TF brand) |
 
 En bref : Creezio = **CMS stable** (SQLite `core`, API/MCP façade, nav + slots) ;
 le **métier** vit dans le repo marque (SQLite `brand`) ; les **plugins** sont
 d’organisation (SQLite `plugin/<id>` à l’install). Phases A→G = extraction +
-gates — **terminées**. H1 = packages natifs. H2 = **isolation runtime**
-(handles DB, migrations, frontiers API/MCP, preuve demobrand).
+gates — **terminées**. H1 = packages natifs. H2 = **isolation runtime**.
+H3 = **modules TempoFlow** montés dans le brand repo (pas dans le kit).
 
 ## Structure
 

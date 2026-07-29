@@ -4,6 +4,13 @@
 ## [Unreleased]
 
 ### Added
+- **Phase H3** — modules métier TempoFlow dans le brand repo :
+  contrats d’accueil consommés par tempoflow2 (`registerModuleApi`,
+  MCP `space: module`, `registerBrandNav`) ; shell-ui accepte
+  `brand.*` + href produit (`/panier`) ; `docs/BACKLOG-H3.md`,
+  `docs/PHASE-H3.md` ; tests `scripts/test-phase-h3.mjs`.
+  Implémentation marque : `/opt/docker/tempoflow2` (`electron/modules/`,
+  `brand-runtime.ts`) — **aucun** code panier/dispatch dans `@creezio/*`.
 - **Phase H2** — isolation DB/API runtime :
   `createSqliteRuntime` + `ensureMigrations` / `composeMigrations` ;
   `ScopedDbAccess` api-kernel (deny brand/plugin → core) ;
@@ -22,7 +29,9 @@
   `docs/BACKLOG-H1-PACKAGES.md`, `docs/PHASE-H0.md` ; liens README.
 
 ### Changed
-- `@creezio/platform-core` : `ARCHITECTURE_VERSION = "H2"` (était `"H1"`).
+- `@creezio/platform-core` : `ARCHITECTURE_VERSION = "H3"` (était `"H2"`).
+- `@creezio/shell-ui` : guard nav — ids `brand.*` peuvent cibler les routes
+  produit métier ; ids nus (`panier`) toujours refusés.
 - Inventaire propagation : 15 packages `@creezio/*` (était 8).
 
 ### Fixed
