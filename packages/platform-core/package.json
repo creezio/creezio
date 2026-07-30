@@ -24,6 +24,18 @@
   "dependencies": {
     "@creezio/brand-config": "0.1.0"
   },
+  "peerDependencies": {
+    "@creezio/auth": "0.1.0",
+    "@creezio/product-hub": "0.1.0"
+  },
+  "peerDependenciesMeta": {
+    "@creezio/auth": {
+      "optional": true
+    },
+    "@creezio/product-hub": {
+      "optional": true
+    }
+  },
   "devDependencies": {
     "@types/node": "^22.15.3",
     "typescript": "^5.8.3"

@@ -152,6 +152,12 @@ métier parallèle. Gates `test:phase-h3` + `test:panier-sku` + `test:dispatch`.
 
 ## M11 — SQLite core layout / migrations cœur
 
+Voir [PHASE-M11.md](PHASE-M11.md).
+
+- **Done** : `platformCoreMigrations` kit ; TF sans `core-migrations` ;
+  `brand-migrations` métier only.
+- **Effort M · Republish non**
+
 ---
 
 ## M12 — `main.ts` ≤ 800 LOC

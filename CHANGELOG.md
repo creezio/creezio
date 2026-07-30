@@ -4,6 +4,11 @@
 ## [Unreleased]
 
 ### Added
+- **Phase M11** — Migrations SQLite cœur SoT kit :
+  `platformCoreMigrations()` + `PLATFORM_CORE_MIGRATION_IDS` dans
+  `@creezio/platform-core` ; TF `core-migrations.ts` absent ;
+  `brand-runtime` → kit ; `brand-migrations` métier only ;
+  `docs/PHASE-M11.md` ; tests `test-phase-m11` ; **pas** de republish exe.
 - **Phase M10** — Une seule arborescence métier TF : `crm/modules` =
   symlink → `electron/modules` (pas de doublon physique) ;
   `docs/PHASE-M10.md` ; tests `test-phase-m10` ; **pas** de republish exe.

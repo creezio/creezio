@@ -77,6 +77,16 @@ export {
   listAppliedMigrations,
 } from "./sqlite-migrations.js";
 
+/* ── M11 : migrations SQLite cœur (auth + Product Hub) ── */
+export type {
+  PlatformCoreMigrationId,
+  PlatformCoreMigrationsOptions,
+} from "./core-migrations.js";
+export {
+  PLATFORM_CORE_MIGRATION_IDS,
+  platformCoreMigrations,
+} from "./core-migrations.js";
+
 export type {
   CreateSqliteRuntimeOptions,
   OpenPluginResult,
