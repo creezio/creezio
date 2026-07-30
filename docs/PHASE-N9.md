@@ -74,7 +74,7 @@ CREEZIO_SYNC_DRY_RUN=1 bash /opt/docker/fidu/crm/scripts/electron/sync-creezio-v
 
 | Repo | SHA |
 |------|-----|
-| kit `creezio/creezio` | _(ce commit)_ |
+| kit `creezio/creezio` | `49f1bd1` |
 
 ---
 
