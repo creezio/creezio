@@ -1,5 +1,7 @@
 /**
- * Bridge mails marque → index kit inbound — M8.
+ * Bridge inbound → kit SoT (core.db).
+ * Après cutover marques : préférer `createEmailInboxRoutes` / `insertInboundFull`.
+ * Conservé pour compat scripts / indexation légère sans PJ.
  */
 
 import {
@@ -16,6 +18,9 @@ export function indexKitInboundMail(opts: {
   body?: string;
   messageId?: string | null;
   brandEmailId?: string | null;
+  textBody?: string | null;
+  htmlBody?: string | null;
+  receivedAt?: string | null;
 }): void {
   const corePath = resolveCoreDbPathFromEnv();
   if (!corePath) return;
@@ -31,6 +36,9 @@ export function indexKitInboundMail(opts: {
         body: opts.body || "",
         messageId: opts.messageId,
         brandEmailId: opts.brandEmailId,
+        textBody: opts.textBody ?? opts.body ?? null,
+        htmlBody: opts.htmlBody ?? null,
+        receivedAt: opts.receivedAt,
       });
     } finally {
       store.close();

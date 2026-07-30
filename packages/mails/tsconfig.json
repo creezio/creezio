@@ -9,6 +9,7 @@
   "references": [
     { "path": "../api-kernel" },
     { "path": "../auth" },
-    { "path": "../platform-core" }
+    { "path": "../platform-core" },
+    { "path": "../shell-ui" }
   ]
 }
