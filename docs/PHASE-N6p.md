@@ -91,7 +91,7 @@ npm run test:plugin-acl-l3 && npm run test:plugin-sidebar
 
 | Repo | SHA | Notes |
 |------|-----|-------|
-| Kit | _(feat commit)_ | N6p UI fix + docs + gate |
+| Kit | `f8862de` | N6p UI fix + docs + gate |
 | TempoFlow | `c85bb0f` | cutover admin |
 | Certivan | `08a02b1` | cutover admin |
 
