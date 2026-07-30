@@ -55,25 +55,37 @@ export type ActiveSurfaceCrm = {
 };
 
 /**
- * Surface onglet site externe.
- * `kind: "supplier"` = wire historique TF (alias) — nouveau code préfère siteId.
+ * Surface onglet site externe (SoT).
+ * Wire historique TF : `kind: "supplier"` encore accepté en parse / checks.
  */
-export type ActiveSurfaceSupplier = {
-  kind: "supplier";
+export type ActiveSurfaceExternal = {
+  kind: "external";
   /** Id runtime Electron (`tab-…`) — peut être "" si pas encore ouvert. */
   tabId: string;
   /** Id de partition site externe. */
   siteId?: number;
-  /** @deprecated → siteId */
+  /** @deprecated → siteId — conservé pour wire TF / cookies partition. */
   fournisseurId: number;
   url: string;
   title: string;
 };
 
-/** Alias SoT (même shape wire pour l’instant). */
-export type ActiveSurfaceExternal = ActiveSurfaceSupplier;
+/** @deprecated → ActiveSurfaceExternal (`kind: "external"`). */
+export type ActiveSurfaceSupplier = Omit<ActiveSurfaceExternal, "kind"> & {
+  kind: "supplier";
+};
 
-export type ActiveSurface = ActiveSurfaceCrm | ActiveSurfaceSupplier;
+export type ActiveSurface =
+  | ActiveSurfaceCrm
+  | ActiveSurfaceExternal
+  | ActiveSurfaceSupplier;
+
+/** True si surface = onglet site externe (kind external ou alias supplier). */
+export function isExternalActiveSurface(
+  surface: ActiveSurface | null | undefined,
+): surface is ActiveSurfaceExternal | ActiveSurfaceSupplier {
+  return surface?.kind === "external" || surface?.kind === "supplier";
+}
 
 export type SupplierTabSummary = {
   tabId: string;
@@ -157,7 +169,7 @@ export function resolveActiveSurface(opts: {
       siteIdFromSurfaceHref(href) ??
       0;
     return {
-      kind: "supplier",
+      kind: "external",
       tabId: ext?.electronTabId || opts.desktopTab?.tabId || "",
       siteId,
       fournisseurId: siteId,
@@ -183,7 +195,7 @@ export function parseActiveSurface(raw: unknown): ActiveSurface | null {
     const url = typeof o.url === "string" ? o.url : "";
     const title = typeof o.title === "string" ? o.title : "Site externe";
     return {
-      kind: "supplier",
+      kind: "external",
       tabId,
       siteId,
       fournisseurId: siteId,
@@ -227,41 +239,43 @@ export function formatActiveSurfaceRuntimeBlock(
     "Ceci décrit ce que l'utilisateur REGARDE maintenant. Base toute observation/action UI dessus.",
   ];
 
-  if (surface.kind === "supplier") {
+  if (isExternalActiveSurface(surface)) {
+    const siteId = surface.siteId ?? surface.fournisseurId;
     lines.push(
-      `- **kind** : \`supplier\` (site externe dans WebContentsView Electron)`,
-      `- **tabId** : \`${surface.tabId || "(inconnu — appeler supplier_list_tabs)"}\``,
-      `- **fournisseurId** : ${surface.fournisseurId || "?"}`,
+      `- **kind** : \`external\` (site externe dans WebContentsView Electron ; alias wire \`supplier\` accepté)`,
+      `- **tabId** : \`${surface.tabId || "(inconnu — appeler external_list_tabs / supplier_list_tabs)"}\``,
+      `- **siteId** : ${siteId || "?"}`,
       `- **url** : ${surface.url || "(chargement…)"}`,
       `- **title** : ${surface.title}`,
       "",
       "### Outils autorisés pour OBSERVER / AGIR sur cette page",
-      "- Utilise **`surface_list_targets` / `surface_click` / `surface_type` / `surface_scroll` / `surface_read`** (routage auto vers le driver fournisseur).",
-      "- Équivalents acceptés : `supplier_*` avec le `tabId` ci-dessus.",
+      "- Utilise **`surface_list_targets` / `surface_click` / `surface_type` / `surface_scroll` / `surface_read`** (routage auto vers le driver site externe).",
+      "- Équivalents acceptés : `external_*` / `supplier_*` avec le `tabId` ci-dessus.",
       "- **INTERDIT** d'utiliser `ui_*` pour lire ou piloter cette page : `ui_*` ne voit que le shell CRM (slot `/site/<id>` vide), PAS le site externe.",
-      "- Pour savoir « où suis-je ? » : `surface_list_targets` (ou `supplier_list_targets`) — le résultat contient url/title du site.",
+      "- Pour savoir « où suis-je ? » : `surface_list_targets` (ou `external_list_targets` / `supplier_list_targets`) — le résultat contient url/title du site.",
       "- Login : champs email/password **natifs** = autorisés si l'utilisateur demande de les remplir. CAPTCHA / challenge Cloudflare = laisser à l'humain.",
     );
   } else {
     lines.push(
-      `- **kind** : \`crm\` (interface React TempoFlow)`,
+      `- **kind** : \`crm\` (interface React marque)`,
       `- **href** : ${surface.href}`,
       `- **title** : ${surface.title}`,
       "",
       "### Outils autorisés pour OBSERVER / AGIR sur cette page",
       "- Utilise **`surface_*`** (routage auto vers `ui_*`) ou directement `ui_list_targets` / `ui_click` / `ui_type` / `ui_scroll`.",
-      "- Les outils `supplier_*` ciblent uniquement les onglets sites externes, pas cette page CRM.",
+      "- Les outils `external_*` / `supplier_*` ciblent uniquement les onglets sites externes, pas cette page CRM.",
     );
   }
 
   if (supplierTabs && supplierTabs.length > 0) {
     lines.push("", "### Onglets sites ouverts");
     for (const t of supplierTabs.slice(0, 12)) {
-      const mark = t.active || t.tabId === (surface.kind === "supplier" ? surface.tabId : "")
+      const mark = t.active || (isExternalActiveSurface(surface) && t.tabId === surface.tabId)
         ? " ← actif"
         : "";
+      const sid = t.siteId ?? t.fournisseurId;
       lines.push(
-        `- \`${t.tabId}\` f=${t.fournisseurId} ${t.title || t.url}${mark}`,
+        `- \`${t.tabId}\` siteId=${sid} ${t.title || t.url}${mark}`,
       );
     }
   }

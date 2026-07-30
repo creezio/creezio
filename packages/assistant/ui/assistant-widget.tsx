@@ -62,6 +62,7 @@ import {
 import { useVoiceInput } from "./use-voice-input";
 import { assistantIdentity } from "../dist/brand/registry.js";
 import {
+  isExternalActiveSurface,
   resolveActiveSurface,
   type ActiveSurface,
   type SupplierTabSummary,
@@ -543,7 +544,7 @@ export function AssistantWidget() {
         active: t.active,
       }));
       const desktop =
-        base.kind === "supplier"
+        isExternalActiveSurface(base)
           ? list.find(
               (t: any) =>
                 t.tabId === base.tabId ||
@@ -1167,7 +1168,7 @@ export function AssistantWidget() {
             active: t.active,
           }));
           const desktop =
-            base.kind === "supplier"
+            isExternalActiveSurface(base)
               ? list.find(
                   (t) =>
                     t.tabId === base.tabId ||

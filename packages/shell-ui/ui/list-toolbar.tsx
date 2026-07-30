@@ -6,6 +6,66 @@ import { usePathname, useSearchParams } from "next/navigation";
 import { Skeleton } from "./primitives/skeleton";
 import { cn } from "@creezio/shell-ui";
 
+/** Clés query effacées au changement de preset — injectables marque. */
+const DEFAULT_PRESET_CLEAR_KEYS = [
+  "status",
+  "alerts",
+  "alertType",
+  "platform",
+  "hasClient",
+  "fleet",
+  "risk",
+  "declaration",
+  "infraction",
+  "toDeclare",
+  "topic",
+  "type",
+  "declared",
+  "repaired",
+  "category",
+  "openOnly",
+  "settledOnly",
+  "company",
+  "coverage",
+  "hasAttestation",
+  "hasSub",
+  "year",
+  "month",
+  "productType",
+  "hasPdf",
+  "amountRange",
+  "pipeline",
+  "source",
+  "priceMin",
+  "priceMax",
+  "amountMin",
+  "amountMax",
+  "dateFrom",
+  "dateTo",
+  "payment_status",
+  "currency",
+  "invoiceMatched",
+  "sort",
+  "sens",
+  "period",
+  "varMin",
+  "varMax",
+  "deltaMin",
+  "deltaMax",
+  "docsIncomplete",
+] as const;
+
+let presetClearKeys: string[] = [...DEFAULT_PRESET_CLEAR_KEYS];
+
+/** Ajoute / remplace les clés métier marque (ex. TF: fournisseur, promo). */
+export function configureListToolbarClearKeys(keys: string[]): void {
+  presetClearKeys = Array.from(new Set([...DEFAULT_PRESET_CLEAR_KEYS, ...keys]));
+}
+
+export function getListToolbarClearKeys(): readonly string[] {
+  return presetClearKeys;
+}
+
 export type PresetDef = {
   id: string;
   label: string;
@@ -125,55 +185,7 @@ export function PresetChips({
   function hrefFor(preset: PresetDef) {
     const sp = new URLSearchParams(params.toString());
     // Remplace les filtres métier courants, conserve view/q
-    for (const key of [
-      "status",
-      "alerts",
-      "alertType",
-      "platform",
-      "hasClient",
-      "fleet",
-      "risk",
-      "declaration",
-      "infraction",
-      "toDeclare",
-      "topic",
-      "type",
-      "declared",
-      "repaired",
-      "category",
-      "openOnly",
-      "settledOnly",
-      "company",
-      "coverage",
-      "hasAttestation",
-      "hasSub",
-      "year",
-      "month",
-      "productType",
-      "hasPdf",
-      "amountRange",
-      "pipeline",
-      "source",
-      "priceMin",
-      "priceMax",
-      "amountMin",
-      "amountMax",
-      "dateFrom",
-      "dateTo",
-      "payment_status",
-      "currency",
-      "invoiceMatched",
-      "sort",
-      "fournisseur",
-      "sens",
-      "promo",
-      "period",
-      "varMin",
-      "varMax",
-      "deltaMin",
-      "deltaMax",
-      "docsIncomplete",
-    ]) {
+    for (const key of presetClearKeys) {
       sp.delete(key);
     }
     Object.entries(preset.params).forEach(([k, v]) => {

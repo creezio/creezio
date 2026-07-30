@@ -35,7 +35,7 @@ import {
   summarizeMcpResult,
 } from "./mcp-tools.js";
 import { executeTaskTool } from "./tasks-tools.js";
-import {
+import { isExternalActiveSurface,
   formatActiveSurfaceRuntimeBlock,
   looksLikeSurfaceCommand,
   parseActiveSurface,
@@ -424,7 +424,7 @@ async function executeTool(
           resultOk,
         };
       }
-      if (route.kind === "supplier") {
+      if (route.kind === "supplier" || route.kind === "external") {
         const result = await dispatchSupplierAction(
           route.tool,
           route.args,
@@ -506,7 +506,7 @@ async function executeTool(
       }
       // Onglets fournisseurs (app desktop) : canal SSE dédié vers Electron.
       let tabId = typeof args.tabId === "string" ? args.tabId : undefined;
-      if (!tabId && activeSurface?.kind === "supplier" && activeSurface.tabId) {
+      if (!tabId && isExternalActiveSurface(activeSurface) && activeSurface.tabId) {
         tabId = activeSurface.tabId;
         args = { ...args, tabId };
       }
@@ -1315,7 +1315,7 @@ export async function handleAssistantChat(req: Request) {
     !forceRunSql &&
     !preferSearchKnowledge &&
     looksLikeSurfaceCommand(lastUser.content) &&
-    activeSurface?.kind === "supplier";
+    isExternalActiveSurface(activeSurface);
   const firstToolChoice: ToolChoice = forceRunSql
     ? { type: "function", function: { name: "run_sql" } }
     : preferSearchKnowledge

@@ -61,10 +61,16 @@ export type WorkspacePersistedState = {
   activeTabId: string;
 };
 
-/** v3 : Dashboard unique épinglé + état des onglets persisté en session. */
-export const WORKSPACE_STORAGE_KEY = "creezio-workspace-tabs-v3";
+/** v3 : Dashboard unique épinglé + état des onglets persisté en session.
+ * Override marque via `configureWorkspaceStorageKey` (ex. tf2-workspace-tabs-v3).
+ */
+export let WORKSPACE_STORAGE_KEY = "creezio-workspace-tabs-v3";
 export const MAX_TABS = 12;
 export const MAX_KEEPALIVE = 12;
+
+export function configureWorkspaceStorageKey(key: string): void {
+  if (key.trim()) WORKSPACE_STORAGE_KEY = key.trim();
+}
 
 /** Chemin de l'onglet épinglé (toujours premier, non fermable). */
 export const DASHBOARD_PATH = "/dashboard";
