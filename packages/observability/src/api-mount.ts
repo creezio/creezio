@@ -1,5 +1,5 @@
 /**
- * Mount API observabilité — /api/v1/modules/observability/...
+ * Mount API observabilité — /api/v1/platform/observability/...
  */
 
 import type { ApiMount } from "@creezio/api-kernel";

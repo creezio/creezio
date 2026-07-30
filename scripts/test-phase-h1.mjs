@@ -241,10 +241,10 @@ test("H1.6 tasks CRUD + api mount ACL user", async () => {
   store.update(t.id, { status: "done" }, "u1");
 
   const api = createApiKernel();
-  api.registerModuleApi("platform-tasks", createTasksApiMount(store));
+  api.registerPlatformApi("platform-tasks", createTasksApiMount(store));
   const res = await api.handle({
     method: "GET",
-    path: "/api/v1/modules/platform-tasks/list",
+    path: "/api/v1/platform/platform-tasks/list",
     headers: { "x-creezio-user-id": "u1" },
   });
   assert.equal(res.status, 200);
@@ -263,10 +263,10 @@ test("H1.7 mails draft + send stub", async () => {
   assert.equal(sent.status, "sent");
 
   const api = createApiKernel();
-  api.registerModuleApi("platform-mails", createMailsApiMount(store));
+  api.registerPlatformApi("platform-mails", createMailsApiMount(store));
   const list = await api.handle({
     method: "GET",
-    path: "/api/v1/modules/platform-mails/list",
+    path: "/api/v1/platform/platform-mails/list",
     headers: { "x-creezio-user-id": "u1" },
   });
   assert.equal(list.body.mails.length, 1);

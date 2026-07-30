@@ -43,10 +43,10 @@ test("I3 tasks sqlite CRUD + API mount", async () => {
   const live = createSqliteTasksStore({
     coreDbPath: path.join(dir, "core2.db"),
   });
-  api.registerModuleApi("platform-tasks", createTasksApiMount(live));
+  api.registerPlatformApi("platform-tasks", createTasksApiMount(live));
   const res = await api.handle({
     method: "POST",
-    path: "/api/v1/modules/platform-tasks/create",
+    path: "/api/v1/platform/platform-tasks/create",
     headers: { "x-creezio-user-id": "u1" },
     body: { title: "via-api" },
   });
@@ -93,7 +93,7 @@ test("I3 demobrand tasks/mails mounts + migrations", async () => {
 
   const list = await sandbox.api.handle({
     method: "GET",
-    path: "/api/v1/modules/platform-tasks/list",
+    path: "/api/v1/platform/platform-tasks/list",
     headers: { "x-creezio-user-id": "demo" },
   });
   assert.equal(list.status, 200);
