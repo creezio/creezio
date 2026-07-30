@@ -8,6 +8,7 @@
   `installBrandDesktopRuntime` ; deps marque (`pluginsDirEnvKey`,
   `supplierFidQueryParam`, `apiKeyEnvName`, `nodeRuntimeLabel`) ;
   `maybeRestartNextAfterHermesSpawn` + `getHeartbeatExtras` ;
+  Paperclip **retiré** (aucun hook kit) ;
   fix TDZ `deps.supplierFidQueryParam` ; Paperclip **retiré**
   (aucun hook kit) ; `docs/PHASE-M12p.md` ; tests `test-phase-m12p` ;
   republish Fidu (packing : retrait Paperclip `extraResources`).
