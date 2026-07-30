@@ -2,7 +2,8 @@
  * Accès SQLite pour la cohérence Meili — process Node vanilla uniquement
  * (better-sqlite3 ABI Node). Ne jamais importer depuis electron/main.ts.
  *
- * Compteurs alignés sur electron/meili-indexer.ts (produits + fournisseurs).
+ * Compteurs alignés sur l'indexeur catalogue (tables via
+ * `configureMeiliCatalogSqlTables` — défaut TF produits + fournisseurs).
  */
 
 import { createRequire } from "node:module";
@@ -30,6 +31,7 @@ import {
   INDEX_SCHEMA_VERSION,
   MEILI_FINGERPRINT_META_KEY,
   MEILI_INDEX_IN_PROGRESS_KEY,
+  getMeiliCatalogSqlTables,
   parseFingerprint,
   serializeFingerprint,
   type CatalogSqlCounts,
@@ -50,16 +52,27 @@ function count(db: { prepare(sql: string): SqliteStmt }, sql: string): number {
   return Number(row?.c || 0);
 }
 
-/** Compteurs SQL alignés sur l'indexeur catalogue Tempo (tf2_*). */
+/** Identifiant table SQLite sûr (alphanum + underscore). */
+function safeTableName(name: string): string | null {
+  return /^[A-Za-z_][A-Za-z0-9_]*$/.test(name) ? name : null;
+}
+
+/** Compteurs SQL alignés sur l'indexeur catalogue (tables configurables). */
 export function countCatalogSql(dbPath: string): CatalogSqlCounts {
+  const tables = getMeiliCatalogSqlTables();
+  const produitsTable = safeTableName(tables.produits);
+  const sitesTable = safeTableName(tables.sites);
   const db = new (loadDatabase())(dbPath, { readonly: true, fileMustExist: true });
   try {
-    const produits = tableExists(db, "produits")
-      ? count(db, `SELECT COUNT(*) AS c FROM produits`)
-      : 0;
-    const fournisseurs = tableExists(db, "fournisseurs")
-      ? count(db, `SELECT COUNT(*) AS c FROM fournisseurs`)
-      : 0;
+    const produits =
+      produitsTable && tableExists(db, produitsTable)
+        ? count(db, `SELECT COUNT(*) AS c FROM ${produitsTable}`)
+        : 0;
+    // Champ fingerprint historique `fournisseurs` = compteur table `sites`.
+    const fournisseurs =
+      sitesTable && tableExists(db, sitesTable)
+        ? count(db, `SELECT COUNT(*) AS c FROM ${sitesTable}`)
+        : 0;
     return { produits, fournisseurs };
   } finally {
     db.close();

@@ -8,7 +8,8 @@
  *   - tf2_marketplaces
  *   - tf2_all  (unifié keyword = marketplaces uniquement)
  *
- * Les marques CV/Fidu injectent leur propre schema au cutover N2p.
+ * Les marques CV/Fidu injectent leur propre schema au cutover N2p via
+ * `configureMeiliCatalogSqlTables` (tables SQL comptées).
  */
 
 /** v1 = produits / marketplaces / all (port shell depuis Fidu). */
@@ -31,8 +32,48 @@ export type CatalogIndexUid = (typeof CATALOG_INDEXES)[number];
 export const GED_INDEXES = CATALOG_INDEXES;
 export type GedIndexUid = CatalogIndexUid;
 
+/**
+ * Tables SQL utilisées pour les compteurs de cohérence Meili.
+ * Défaut = schéma TempoFlow (`produits` / `fournisseurs`).
+ * Marques sans catalogue TF : `configureMeiliCatalogSqlTables`.
+ */
+export type MeiliCatalogSqlTables = {
+  /** Table lignes « produits » (compteur → tf2_produits). */
+  produits: string;
+  /**
+   * Table lignes « sites / marketplaces » (compteur → tf2_marketplaces / tf2_all).
+   * Défaut TF : `fournisseurs`. Champ retourné dans CatalogSqlCounts.fournisseurs
+   * (nom historique du fingerprint — ne pas renommer sans bump schema).
+   */
+  sites: string;
+};
+
+const DEFAULT_CATALOG_SQL_TABLES: MeiliCatalogSqlTables = {
+  produits: "produits",
+  sites: "fournisseurs",
+};
+
+let catalogSqlTables: MeiliCatalogSqlTables = { ...DEFAULT_CATALOG_SQL_TABLES };
+
+/** Configure les tables SQL comptées pour la cohérence Meili (défaut TF). */
+export function configureMeiliCatalogSqlTables(
+  next: Partial<MeiliCatalogSqlTables>,
+): void {
+  catalogSqlTables = { ...catalogSqlTables, ...next };
+}
+
+export function getMeiliCatalogSqlTables(): MeiliCatalogSqlTables {
+  return catalogSqlTables;
+}
+
+/** Tests uniquement. */
+export function resetMeiliCatalogSqlTablesForTests(): void {
+  catalogSqlTables = { ...DEFAULT_CATALOG_SQL_TABLES };
+}
+
 export type CatalogSqlCounts = {
   produits: number;
+  /** Compteur table `sites` (défaut TF = fournisseurs) — nom fingerprint historique. */
   fournisseurs: number;
 };
 

@@ -95,12 +95,16 @@ shell.registerBrandNav([
 const model = shell.getRenderModel();
 ```
 
-## ADR domaine
+## ADR domaine (P29)
 
 Voir [`docs/ADR-no-brand-domain-in-native-packages.md`](../../docs/ADR-no-brand-domain-in-native-packages.md) :
 
-- SoT = **site externe** / `siteId` / `OpenExternalSiteOpts`
-- Alias TF (`OpenSupplierSiteOpts`, `fournisseurId`, `createSupplierTab`, …) =
-  `@deprecated` uniquement
+| SoT kit (préféré) | Alias déprécié TF |
+|-------------------|-------------------|
+| `OpenExternalSiteOpts` / `openExternalSite` / `siteId` | `OpenSupplierSiteOpts` / `openSupplierSite` / `fournisseurId` |
+| `ExternalSiteSlot` / `ExternalSiteTabMeta` / `createExternalSiteTab` | `SupplierSiteSlot` / `SupplierTabMeta` / `createSupplierTab` |
+| `siteIdFromHref` / `isExternalSiteHref` | `fournisseurIdFromHref` / `isSupplierHref` |
+
 - Aucun label utilisateur « Site fournisseur » dans le kit
 - Aucun `window.tempoflowDesktop` — `getShellDesktopApi()` + `configureShellUiBrand`
+- Gate : `node --test scripts/test-phase-p-shell-ui.mjs` (+ `test-phase-p29.mjs`)

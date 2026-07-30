@@ -1,14 +1,17 @@
 /**
  * Boîte noire desktop — types + helpers PURS (aucun import Electron).
- * Extraits de TempoFlow ops-types.ts (R4) — contrat JSONL / TF2EVENT inchangé.
+ * Contrat JSONL ops (R4 / P29) — préfixe d'émission historique `TF2EVENT`
+ * conservé (wire sous-process Electron ×3). Lecture = dual-read via
+ * `OPS_EVENT_PREFIXES` ; ne pas retirer `TF2EVENT` sans cutover marques.
  */
 
 export const TF2EVENT_PREFIX = "TF2EVENT ";
-/** Alias plateforme (même fil de protocole pour rétrocompat TF). */
+/** Alias générique — même valeur que `TF2EVENT_PREFIX` (émission). */
 export const OPS_EVENT_PREFIX = TF2EVENT_PREFIX;
 /**
- * Préfixes stdout acceptés en lecture (M7p) : émission = TF2EVENT ;
- * CertivanEVENT = dual-read legacy marques.
+ * Préfixes stdout acceptés en lecture (M7p / P29) :
+ * - émission SoT = `TF2EVENT`
+ * - `CertivanEVENT` = dual-read legacy marques (ne pas casser)
  */
 export const OPS_EVENT_PREFIXES = [
   TF2EVENT_PREFIX,

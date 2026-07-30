@@ -11,7 +11,7 @@ uniquement via injection (`configure*` / env / hooks).
 | Surface | Entrée kit | Notes |
 |---------|------------|--------|
 | Store V2 (activité / CP / usages) | `createSqliteObservabilityStore`, `createObservabilityApiMount` | C4 |
-| Ops journal / rules / emit | `initOpsJournal`, `track`, `emitOpsEvent`, … | R4 — dual-read `TF2EVENT` / `CertivanEVENT` ; émission `TF2EVENT` (alias `OPS_EVENT_PREFIX`) |
+| Ops journal / rules / emit | `initOpsJournal`, `track`, `emitOpsEvent`, … | R4 / **P29** — émission SoT `TF2EVENT` (`OPS_EVENT_PREFIX`) ; lecture dual-read `OPS_EVENT_PREFIXES` = `TF2EVENT` + `CertivanEVENT` (ne pas casser) |
 | Fleet agent + activity + samples | `createFleetAgent`, `recordFleetAction`, `createFleetSamples` | M7 — hooks chemins / consent / endpoint |
 | Usage analytics | `configureUsageAnalytics`, routes + `ui` | N6 |
 | Request-logs | `configureRequestLogs`, middleware, routes, `ui` | O5 |

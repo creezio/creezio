@@ -167,8 +167,15 @@ export async function executeAiWorkspaceAction(
       if (!aiUserId) return { ok: false, error: "ai_user_id requis" };
       const webType =
         (typeof params.web_type === "string" && params.web_type) || "";
-      if (!webType.startsWith("supplier_")) {
-        return { ok: false, error: "web_type supplier_* requis" };
+      // SoT = external_* ; alias déprécié TF = supplier_*.
+      if (
+        !webType.startsWith("external_") &&
+        !webType.startsWith("supplier_")
+      ) {
+        return {
+          ok: false,
+          error: "web_type external_* requis (alias supplier_* accepté)",
+        };
       }
       const webParams =
         params.web_params && typeof params.web_params === "object"

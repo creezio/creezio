@@ -87,7 +87,8 @@ export function isExternalActiveSurface(
   return surface?.kind === "external" || surface?.kind === "supplier";
 }
 
-export type SupplierTabSummary = {
+/** Résumé onglet site externe (SoT). */
+export type ExternalTabSummary = {
   tabId: string;
   siteId?: number;
   /** @deprecated → siteId */
@@ -96,6 +97,9 @@ export type SupplierTabSummary = {
   title: string;
   active?: boolean;
 };
+
+/** @deprecated → ExternalTabSummary */
+export type SupplierTabSummary = ExternalTabSummary;
 
 export type ActiveSurfaceTabLike = {
   href: string;
@@ -206,9 +210,9 @@ export function parseActiveSurface(raw: unknown): ActiveSurface | null {
   return null;
 }
 
-export function parseSupplierTabSummaries(raw: unknown): SupplierTabSummary[] {
+export function parseExternalTabSummaries(raw: unknown): ExternalTabSummary[] {
   if (!Array.isArray(raw)) return [];
-  const out: SupplierTabSummary[] = [];
+  const out: ExternalTabSummary[] = [];
   for (const item of raw) {
     if (!item || typeof item !== "object") continue;
     const o = item as Record<string, unknown>;
@@ -227,12 +231,17 @@ export function parseSupplierTabSummaries(raw: unknown): SupplierTabSummary[] {
   return out;
 }
 
+/** @deprecated → parseExternalTabSummaries */
+export function parseSupplierTabSummaries(raw: unknown): ExternalTabSummary[] {
+  return parseExternalTabSummaries(raw);
+}
+
 /**
  * Bloc system/runtime injecté à chaque tour chat — surface + outils autorisés.
  */
 export function formatActiveSurfaceRuntimeBlock(
   surface: ActiveSurface,
-  supplierTabs?: SupplierTabSummary[],
+  supplierTabs?: ExternalTabSummary[],
 ): string {
   const lines: string[] = [
     "## Surface active (runtime — OBLIGATOIRE)",

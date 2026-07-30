@@ -16,6 +16,15 @@ Distinct des Plugin tasks Product Hub.
 | Adapter assistant | `createAssistantTasksAdapter()` |
 | UI | `@creezio/tasks/ui` → `TasksKanbanClient` |
 
+
+## Wire sites externes (P29 / ADR)
+
+L'agent IA (`web_*` tools) émet des actions desktop en **`external_*`** (SoT).
+Alias déprécié TF `supplier_*` encore accepté par `@creezio/electron-shell`
+(`ai_workspace_web_action` + browser-tab-driver). Préférer `siteId` /
+`site_id` dans les adaptateurs `externalTabs` ; `fournisseurId` /
+`fournisseur_id` = miroir déprécié.
+
 ## Boot marque (obligatoire)
 
 ```ts

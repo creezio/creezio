@@ -105,6 +105,9 @@ export type TasksNavAdapter = {
 export type ResolvedExternalTab = {
   url: string;
   title: string;
+  /** Id partition site externe (SoT). */
+  siteId?: number;
+  /** @deprecated → siteId */
   fournisseurId?: number;
   source?: string;
 };
@@ -112,6 +115,9 @@ export type ResolvedExternalTab = {
 export type TasksExternalTabsAdapter = {
   resolve: (input: {
     url?: string;
+    /** Id partition site externe (SoT). */
+    site_id?: number;
+    /** @deprecated → site_id */
     fournisseur_id?: number;
     title?: string;
   }) =>
