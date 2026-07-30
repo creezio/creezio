@@ -7,8 +7,17 @@
 | **Repo** | `creezio/creezio` + TempoFlow + Certivan + Fidu |
 | **Prérequis** | [PHASE-O0.md](PHASE-O0.md) · plan [PLAN-O.md](PLAN-O.md) |
 | **Baseline O0 kit tip** | `ab068b7` |
+| **Kit tip O1** | `ff1ca87` |
 | **ARCHITECTURE_VERSION** | `"H6"` (inchangé) |
 | **Republish** | Non (wiring ; packing différé) |
+
+### SHAs marques (gold O1)
+
+| Marque | SHA |
+|--------|-----|
+| TempoFlow | `f634176` |
+| Certivan | `524d2b2` |
+| Fidu | `c5379f6` |
 
 ---
 
