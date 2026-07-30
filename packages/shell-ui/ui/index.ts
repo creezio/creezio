@@ -65,9 +65,24 @@ export * from "./layout/entity-header";
 export * from "./layout/sandbox-banner";
 export * from "./layout/app-shell";
 export * from "./layout/desktop-update-banner";
+export * from "./layout/sidebar";
+export * from "./layout/sidebar-host";
 
 /* ── Workspace ── */
 export * from "./workspace/types";
+export * from "./workspace/workspace-config";
+export {
+  TabWorkspaceProvider,
+  useTabWorkspace as useTabWorkspaceImpl,
+  useTabWorkspaceOptional as useTabWorkspaceOptionalImpl,
+  useOpenTab as useOpenTabImpl,
+  type NavigateOptions,
+  type OpenExternalSiteOpts as TabWorkspaceOpenExternalSiteOpts,
+  /** @deprecated → TabWorkspaceOpenExternalSiteOpts */
+  type OpenSupplierSiteOpts as TabWorkspaceOpenSupplierSiteOpts,
+} from "./workspace/tab-workspace-context";
+export * from "./workspace/workspace-shell";
+export * from "./workspace/workspace-root";
 export * from "./workspace/workspace-tab-bar";
 export * from "./workspace/keep-alive";
 export * from "./workspace/ai-workspace-banner";
@@ -97,6 +112,8 @@ export * from "./settings/host-only-settings";
 
 /* ── Desktop / PWA / misc ── */
 export * from "./desktop/site-link";
+export * from "./desktop/external-site-slot";
+export * from "./desktop/external-site-surface";
 export * from "./desktop/desktop-bridge";
 export * from "./desktop/auth-window-chrome";
 export * from "./desktop/window-chrome-controls";
@@ -112,5 +129,8 @@ export * from "./range-filters";
 export * from "./faceted-filters";
 export * from "./search-input";
 export * from "./global-search";
+export { GlobalSearchProvider, useGlobalSearch as useGlobalSearchImpl } from "./search/global-search-provider";
+export * from "./search/global-search-config";
+export * from "./search/search-history";
 export * from "./pagination";
 export * from "./app-error-boundary";
