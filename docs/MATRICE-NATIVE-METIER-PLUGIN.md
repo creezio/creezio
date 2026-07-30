@@ -146,10 +146,10 @@ freeze O11.
 
 | Marque | SHA | Note |
 |--------|-----|------|
-| TempoFlow | `0cce78c` | ship **0.10.33** |
-| Certivan | `ba872e2` | ship **0.1.16** |
-| Fidu | `ebaa802` | ship **0.1.65** |
-| Kit | `1f7ac62` | O0→O11 · vision ~76 % |
+| TempoFlow | `bc3009c` | ship **0.10.33** |
+| Certivan | `f104073` | ship **0.1.16** |
+| Fidu | `09811a6` | ship **0.1.65** |
+| Kit | `ed611c3` | O0→O11 · vision ~76 % |
 
 ### Historique correction C* (fermé)
 
