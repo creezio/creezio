@@ -173,6 +173,18 @@ ci-dessous.
 
 ---
 
+## O4r4 — Projections assistant déclaratives ✅
+
+1. **Objectif** : `entitySources` / `formatSearchHit` = moteur kit + règles
+   marque ; **0** switch `kind` TS ×3.
+2. **Inclus** : `createEntitySourcesFromRules` / `createFormatSearchHit` ;
+   cutover ×3. **Exclu** : `argsPreview` (reste marque, non bloquant) ; O7.
+3. **Tests gate** : `test-phase-o4r4` + routing/active-surface ×3.
+4. **Done** : [PHASE-O4r4.md](PHASE-O4r4.md).
+5. **Effort S · Republish non**
+
+---
+
 ## O5 — Admin request-logs / api-endpoints → kit ✅
 
 1. **Objectif** : clients + middleware génériques SoT

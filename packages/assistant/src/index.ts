@@ -184,3 +184,8 @@ export {
   refreshMcpToolCache,
 } from "./runtime/mcp-tools.js";
 export { executeTaskTool, taskToolDefinitions } from "./runtime/tasks-tools.js";
+export {
+  createEntitySourcesFromRules,
+  createFormatSearchHit,
+} from "./brand/entity-projections.js";
+export type { EntitySourceKindRule } from "./brand/entity-projections.js";

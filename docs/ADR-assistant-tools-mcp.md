@@ -2,7 +2,7 @@
 
 | | |
 |--|--|
-| **Statut** | Accepté (O4r + **O4r2** + **O4r3** — 2026-07-30) |
+| **Statut** | Accepté (O4r + **O4r2** + **O4r3** + **O4r4** — 2026-07-30) |
 | **Contexte** | Remédiation silo `brand-chat-tools` / `TOOL_DEFINITIONS` ×3, puis mini-registre `mcp-bridge`, puis handlers Hono `/mcp` parallèles |
 
 ## Décision
@@ -34,7 +34,7 @@ La surface d’outils de l’assistant est **uniquement** :
 
 - **Data** + **tools exposés** (ACL / modules montés / discovery MCP)
 - OK mince : system prompt, Meili indexes, hermes skills, auth
-- Projections `entitySources` / `formatSearchHit` : encore TS marque (dette — pas de JSON déclaratif inventé en O4r2)
+- Projections `entitySources` / `formatSearchHit` : moteur kit + règles déclaratives marque (**O4r4**) ; `argsPreview` reste TS marque (non bloquant)
 - **Pas** de handlers panier / tasks / compta dans `lib/assistant/` hors adaptateurs `mcp-bridge` + `tasks-adapter`
 
 ## Dispatch runtime (`executeTool` kit)
@@ -50,5 +50,6 @@ surface/ui/supplier → explore/sql/meili/get_entity → tasks adapter → mcp.c
 - [PHASE-O4r.md](PHASE-O4r.md)
 - [PHASE-O4r2.md](PHASE-O4r2.md)
 - [PHASE-O4r3.md](PHASE-O4r3.md)
+- [PHASE-O4r4.md](PHASE-O4r4.md)
 - [PHASE-O4p.md](PHASE-O4p.md) (historique)
 - Package `@creezio/mcp-facade`, `@creezio/tasks`

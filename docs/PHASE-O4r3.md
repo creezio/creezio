@@ -82,7 +82,7 @@ npm run test:phase-d1
 
 | | SHA |
 |--|--|
-| Kit | *(après push)* |
-| TempoFlow | *(après push)* |
-| Certivan | *(après push)* |
-| Fidu | *(après push)* |
+| Kit | `f33f3b8` (+ tip docs pin) |
+| TempoFlow | `6475831` |
+| Certivan | `a71ee32` |
+| Fidu | `03a2ed5` |
