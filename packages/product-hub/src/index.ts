@@ -212,12 +212,34 @@ export {
   slugifyPluginId,
 } from "./factory/index.js";
 
-/** Modules encore verticaux (apps marques) après Phase E / H1.8. */
+/** Modules encore verticaux (apps marques) après Phase E / H1.8 / N6. */
 export const PRODUCT_HUB_VERTICAL_REMAINING = [
   "plugin-git",
   "plugin-data",
   "plugin-accept-check",
   "plugin-test-runner",
   "plugin-crm-key",
-  "admin-ui-plugins",
 ] as const;
+
+/* ── N6 : plugin-ui helpers + brand tokens ── */
+export {
+  configureProductHubUiBrand,
+  getProductHubUiBrand,
+  resetProductHubUiBrandForTests,
+  getDesktopApi,
+  pluginSidebarItems,
+  notifyPluginsChanged,
+  resolvePluginPanelOpenTarget,
+  isPluginPanelOpenTarget,
+  openPluginPanelInWorkspace,
+  isRemoteDesktopClient,
+} from "./plugin-ui/index.js";
+
+export type {
+  ProductHubUiBrand,
+  DesktopApiBridge,
+  PluginPanelOpenTarget,
+  PluginPanelOpenFail,
+  PluginStatusSnapshot,
+  PluginSidebarItem,
+} from "./plugin-ui/index.js";

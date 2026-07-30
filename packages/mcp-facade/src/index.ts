@@ -65,3 +65,40 @@ export {
   __mcpHonoProxyTest,
   wrapMcpFacadeWithHonoProxy,
 } from "./hono-proxy.js";
+
+/* ── N6 : MCP admin (port TempoFlow) ── */
+
+export {
+  configureMcpAdmin,
+  getMcpAdminAdapters,
+  resetMcpAdminAdaptersForTests,
+  ensureMcpAdminSchema,
+  listMcpToolPolicies,
+  getMcpToolPolicy,
+  updateMcpToolPolicy,
+  listMcpClients,
+  setMcpClientEnabled,
+  revokeMcpClient,
+  rotateMcpClientSecret,
+  clientCanAuthenticate,
+  touchMcpClient,
+  mcpAdminStatus,
+  mcpDiagnostics,
+  mcpMetrics,
+  auditMcpAdmin,
+  listMcpAuditLogs,
+  pruneMcpAuditLogs,
+  exportMcpDiagnostics,
+  createMcpAdminRoutes,
+} from "./admin/index.js";
+
+export type {
+  McpAdminAdapters,
+  McpAdminSqliteDatabase,
+  McpAdminSqliteStatement,
+  McpRequestLogEntry,
+  McpToolDefinition as McpAdminToolDefinition,
+  McpToolPolicy,
+  McpAdminClient,
+  CreateMcpAdminRoutesOptions,
+} from "./admin/index.js";

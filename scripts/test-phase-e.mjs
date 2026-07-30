@@ -396,7 +396,7 @@ test("vertical remaining + demobrand stub files", () => {
   assert.ok(PLUGIN_VERTICAL_REMAINING.includes("admin-plugins-ui"));
   // H1.8 : store sqlite core livré dans le kit
   assert.ok(!PRODUCT_HUB_VERTICAL_REMAINING.includes("sqlite-product-hub-store"));
-  assert.ok(PRODUCT_HUB_VERTICAL_REMAINING.includes("admin-ui-plugins"));
+  assert.ok(!PRODUCT_HUB_VERTICAL_REMAINING.includes("admin-ui-plugins")); // N6 → product-hub/ui
 
   const stub = path.join(
     ROOT,

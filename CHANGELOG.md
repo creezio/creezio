@@ -4,6 +4,12 @@
 ## [Unreleased]
 
 ### Added
+- **Phase N6** — Admin Plugins / MCP / usage-analytics génériques → kit :
+  `@creezio/product-hub/ui` (AdminPluginsList/Detail) ;
+  `@creezio/mcp-facade` admin + `./ui` (McpAdminClient) ;
+  `@creezio/observability` usage + `./ui` (AnalyticsClient) ;
+  adapters injectables ; demobrand I5 ACL inchangé ; **pas** de cutover
+  marques (→ N6p) ; `docs/PHASE-N6.md` ; tests `test-phase-n6`.
 - **Phase N5** — Feature-off Fidu : `createFeatureOffHost` dans
   `@creezio/electron-shell` ; `BrandFeatures` /
   `features.plugins=false` (Fidu) ; delete `host-na-stubs.ts` ;

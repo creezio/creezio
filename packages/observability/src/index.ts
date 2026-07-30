@@ -108,3 +108,58 @@ export {
 
 export type { FleetSamples, FleetSamplesPaths } from "./ops/fleet-samples.js";
 export { createFleetSamples } from "./ops/fleet-samples.js";
+
+/* ── N6 : usage analytics (port TempoFlow) ── */
+
+export {
+  configureUsageAnalytics,
+  getUsageAnalyticsAdapters,
+  resetUsageAnalyticsAdaptersForTests,
+  configureUsageAnalyticsUiBrand,
+  getUsageAnalyticsUiBrand,
+  resetUsageAnalyticsUiBrandForTests,
+  formatDuration,
+  usageAnalyticsReady,
+  ensureUsageAnalyticsSchema,
+  insertUsageEvents,
+  recordUsageEvent,
+  resolvePeriodFilters,
+  getUsageOverview,
+  getUsageTimeline,
+  getTopPages,
+  getTopClicks,
+  getUserStats,
+  listUsageEvents,
+  purgeUsageEvents,
+  BREAK_MIN_MS,
+  BREAK_MAX_MS,
+  getProductivityReport,
+  createUsageAnalyticsIngestRoutes,
+  createUsageAnalyticsAdminRoutes,
+} from "./usage/index.js";
+
+export type {
+  UsageAnalyticsAdapters,
+  UsageAnalyticsSqliteDatabase,
+  UsageAnalyticsSqliteStatement,
+  FleetActionPayload,
+  UsageAnalyticsUiBrand,
+  UsagePeriod,
+  UsageUserKind,
+  UsageEventInput,
+  UsageEventRow,
+  UsageFilters,
+  UsageOverview,
+  TimelineBucket,
+  PageStat,
+  ClickStat,
+  UserStat,
+  HeatmapCell,
+  DailyProductivity,
+  BreakSpan,
+  FocusBlock,
+  ProductivitySummary,
+  ProductivityReport,
+  UsageAnalyticsSession,
+  UsageAnalyticsRouteDeps,
+} from "./usage/index.js";

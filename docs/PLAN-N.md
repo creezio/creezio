@@ -158,9 +158,17 @@ Phases livrées : [PHASE-N0.md](PHASE-N0.md) · [PHASE-N1.md](PHASE-N1.md) ·
 
 ---
 
-## N6 — Admin Plugins / MCP / analytics génériques → kit
+## N6 — Admin Plugins / MCP / analytics génériques → kit ✅
 
-**Effort M · Republish non**
+1. **Objectif** : UI + handlers génériques TF (admin plugins, mcp-admin,
+   usage-analytics) SoT kit ; zéro agregateurs/data-mapping.
+2. **Inclus** : `product-hub/ui` + `mcp-facade` admin + `observability` usage ;
+   adapters injectables ; demobrand I5 ACL inchangé.
+3. **Exclu** : cutover marques (→ N6p) ; tool-registry métier ; Fidu admin.
+4. **Tests gate** : kit `test-phase-n6` (+ `npm test`).
+5. **Done** : [PHASE-N6.md](PHASE-N6.md) — kit _(SHA après push)_ ;
+   baseline N5 `b818804`.
+6. **Effort M · Republish non**
 
 ---
 
