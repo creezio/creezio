@@ -4,7 +4,7 @@ import { getShellDesktopApi, getShellUiBrand } from "@creezio/shell-ui";
  * URL dynamique (port libre desktop) — résolue via IPC getHermesStatus.
  */
 
-import { isRemoteDesktopClient } from "desktop-host";
+import { isRemoteDesktopClient } from "./desktop-host";
 
 /** Partition Electron stable (catalogue outils ≥ 900000). */
 export const HERMES_WEBUI_SITE_ID = 900099;

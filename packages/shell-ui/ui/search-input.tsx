@@ -4,7 +4,7 @@ import { FormEvent, useEffect, useRef, useState, useTransition } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Input } from "./primitives/input";
 import { Button } from "./primitives/button";
-import { cn } from "../src/lib/utils";
+import { cn } from "@creezio/shell-ui";
 
 export const SEARCH_DEBOUNCE_MS = 300;
 

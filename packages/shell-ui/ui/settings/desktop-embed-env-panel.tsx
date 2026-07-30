@@ -13,7 +13,7 @@ import { toast } from "sonner";
 import { Loader2, Plus, Save, Trash2 } from "lucide-react";
 import { Button } from "../primitives/button";
 import { Input } from "../primitives/input";
-import { LockedConfigField } from "locked-config-field";
+import { LockedConfigField } from "./locked-config-field";
 
 type EmbedService = "n8n" | "hermes";
 

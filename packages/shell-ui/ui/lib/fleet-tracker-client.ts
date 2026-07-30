@@ -4,7 +4,7 @@ import { getShellDesktopApi, getShellUiBrand } from "@creezio/shell-ui";
  * Envoie via getShellDesktopApi().reportFleetAction (opt-in côté main).
  */
 
-import { mirrorFleetAction } from "desktop-host";
+import { mirrorFleetAction } from "./desktop-host";
 
 type FleetReport = {
   type?: string;

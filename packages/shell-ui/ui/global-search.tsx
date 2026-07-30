@@ -1,8 +1,8 @@
 "use client";
 
 import { Search } from "lucide-react";
-import { useGlobalSearch } from "global-search-host";
-import { cn } from "../src/lib/utils";
+import { useGlobalSearch } from "./global-search-host";
+import { cn } from "@creezio/shell-ui";
 
 export function GlobalSearchTrigger({
   className,

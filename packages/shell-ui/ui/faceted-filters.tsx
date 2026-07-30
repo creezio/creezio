@@ -3,7 +3,7 @@
 import { useTransition } from "react";
 import { useSearchParams, usePathname, useRouter } from "next/navigation";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./primitives/select";
-import { SearchInput } from "search-input";
+import { SearchInput } from "./search-input";
 
 export type FacetOption = { value: string; c: number; label?: string };
 

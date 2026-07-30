@@ -1,6 +1,6 @@
-import { getShellDesktopApi, getShellUiBrand } from "@creezio/shell-ui";
 "use client";
 
+import { getShellDesktopApi, getShellUiBrand } from "@creezio/shell-ui";
 /**
  * Ouverture du workspace visuel d'un collaborateur IA (« Voir comme IA »).
  * Client uniquement — nécessite le bridge desktop (app Electron).

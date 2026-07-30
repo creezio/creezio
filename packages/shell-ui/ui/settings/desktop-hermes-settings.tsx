@@ -17,8 +17,8 @@ import {
   isHermesWebuiOpenTarget,
   resolveHermesWebuiOpenTarget,
 } from "../lib/hermes-ui";
-import { LockedConfigField } from "locked-config-field";
-import { DesktopEmbedEnvPanel } from "desktop-embed-env-panel";
+import { LockedConfigField } from "./locked-config-field";
+import { DesktopEmbedEnvPanel } from "./desktop-embed-env-panel";
 
 type HermesStatus = {
   status: string;

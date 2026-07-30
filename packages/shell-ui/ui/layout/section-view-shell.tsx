@@ -1,5 +1,5 @@
 import { Suspense, type ReactNode } from "react";
-import { AppShell } from "app-shell";
+import { AppShell } from "./app-shell";
 import {
   ViewToggle,
   ViewToggleSkeleton,

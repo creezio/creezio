@@ -20,8 +20,8 @@ import { Button } from "../primitives/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../primitives/card";
 import { useTabWorkspaceOptional } from "../workspace/tab-workspace-host";
 import { openN8nUiInWorkspace } from "../lib/n8n-ui";
-import { LockedConfigField } from "locked-config-field";
-import { DesktopEmbedEnvPanel } from "desktop-embed-env-panel";
+import { LockedConfigField } from "./locked-config-field";
+import { DesktopEmbedEnvPanel } from "./desktop-embed-env-panel";
 
 type N8nStatus = {
   status: string;

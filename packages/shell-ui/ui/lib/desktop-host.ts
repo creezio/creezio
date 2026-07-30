@@ -1,6 +1,6 @@
-import { getShellDesktopApi, getShellUiBrand } from "@creezio/shell-ui";
 "use client";
 
+import { getShellDesktopApi, getShellUiBrand } from "@creezio/shell-ui";
 /**
  * Détection partagée « cette page tourne-t-elle dans un desktop client
  * distant ? » (app Client kind=client, ou legacy joint en remote).
