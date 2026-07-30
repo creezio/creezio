@@ -29,7 +29,8 @@ Phases livrées : [PHASE-O0.md](PHASE-O0.md) · [PHASE-O1.md](PHASE-O1.md) ·
 [PHASE-O3p.md](PHASE-O3p.md) · [PHASE-O4.md](PHASE-O4.md) ·
 [PHASE-O4p.md](PHASE-O4p.md) · [PHASE-O5.md](PHASE-O5.md) ·
 [PHASE-O5p.md](PHASE-O5p.md) · [PHASE-O6.md](PHASE-O6.md) ·
-[PHASE-O7.md](PHASE-O7.md) · suite O8→O11 ci-dessous.
+[PHASE-O7.md](PHASE-O7.md) · [PHASE-O8.md](PHASE-O8.md) · suite O9→O11
+ci-dessous.
 
 ---
 
@@ -233,7 +234,7 @@ Phases livrées : [PHASE-O0.md](PHASE-O0.md) · [PHASE-O1.md](PHASE-O1.md) ·
 
 ---
 
-## O8 — Gates anti-façade permanents (remplace indulgence N8)
+## O8 — Gates anti-façade permanents (remplace indulgence N8) ✅
 
 1. **Objectif** : N8 autorisait façades ≤40 LOC — O8 les **interdit**.
 2. **Inclus** : `test-phase-o8` forbidden re-export + ceilings O7. **Exclu** :
