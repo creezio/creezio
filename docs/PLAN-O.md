@@ -28,7 +28,7 @@ Phases livrées : [PHASE-O0.md](PHASE-O0.md) · [PHASE-O1.md](PHASE-O1.md) ·
 [PHASE-O2.md](PHASE-O2.md) · [PHASE-O3.md](PHASE-O3.md) ·
 [PHASE-O3p.md](PHASE-O3p.md) · [PHASE-O4.md](PHASE-O4.md) ·
 [PHASE-O4p.md](PHASE-O4p.md) · [PHASE-O5.md](PHASE-O5.md) ·
-[PHASE-O5p.md](PHASE-O5p.md) · suite O6→O11
+[PHASE-O5p.md](PHASE-O5p.md) · [PHASE-O6.md](PHASE-O6.md) · suite O7→O11
 ci-dessous.
 
 ---
@@ -157,7 +157,7 @@ ci-dessous.
 
 ---
 
-## O6 — Certivan dé-TF (migrations / queries catering)
+## O6 — Certivan dé-TF (migrations / queries catering) ✅
 
 1. **Objectif** : CV sans fork catering TF actif ; queries métier only.
 2. **Inclus** : politique legacy tombstone / drop (extraite existant) ;
