@@ -7,7 +7,7 @@
 | **Repo** | `creezio/creezio` (gates) |
 | **Prérequis** | [PHASE-O7.md](PHASE-O7.md) · plan [PLAN-O.md](PLAN-O.md) |
 | **Baseline O7** | kit `4faefa7` / tip `a964f17` · TF `9934848` · CV `54bb924` · Fidu `c3ccbdd` |
-| **Kit tip O8** | _(pin post-push)_ |
+| **Kit tip O8** | `8b7f0ef` |
 | **ARCHITECTURE_VERSION** | `"H6"` (inchangé) |
 | **Republish** | Non |
 
