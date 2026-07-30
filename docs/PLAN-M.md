@@ -130,6 +130,15 @@ Jumeau `electron/local-config.ts` → kit `@creezio/platform-core` / electron-sh
 
 ## M9 — MCP/API anti-jumeau
 
+Voir [PHASE-M9.md](PHASE-M9.md).
+
+1. **Objectif** : runtime/proxy MCP + tools cœur SoT `@creezio/mcp-facade` ;
+   TF/Certivan sans `mcp-runtime` / `mcp-hono-proxy` dans `electron/modules/`.
+2. **Inclus** : `wrapMcpFacadeWithHonoProxy`, `MCP_PRODUCT_EXECUTOR`,
+   `createCoreMcpTools` / `CREEZIO_CORE_MCP_TOOL_NAMES` ; mounts métier restent marque.
+3. **Exclu** : unifier arbre métier TF (→ **M10**).
+4. **Done** : jumeaux plateforme absents ; gates H4/D1/MCP/i12 verts.
+
 ---
 
 ## M10 — Un seul arbre métier TF

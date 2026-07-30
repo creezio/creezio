@@ -4,6 +4,11 @@
 ## [Unreleased]
 
 ### Added
+- **Phase M9** — MCP/API anti-jumeau : `wrapMcpFacadeWithHonoProxy` +
+  contrat `MCP_PRODUCT_EXECUTOR` + `createCoreMcpTools` /
+  `CREEZIO_CORE_MCP_TOOL_NAMES` dans `@creezio/mcp-facade` ; TF/Certivan
+  sans jumeaux `mcp-runtime` / `mcp-hono-proxy` ; mounts métier only ;
+  `docs/PHASE-M9.md` ; tests `test-phase-m9` ; **pas** de republish exe.
 - **Phase M7p** — Cutover Certivan fleet/ops (jumeaux absents ;
   `cvFleetAgent` / `getHeartbeatExtras` dossierStats ; dual-read
   `CertivanEVENT`) + Fidu vendor (stubs déjà absents) ;

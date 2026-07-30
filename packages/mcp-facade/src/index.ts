@@ -1,5 +1,5 @@
 /**
- * @creezio/mcp-facade — MCP d'app unique (H1.2 / discovery H2.3 / proxy H4).
+ * @creezio/mcp-facade — MCP d'app unique (H1.2 / discovery H2.3 / proxy H4 / M9).
  */
 
 export type {
@@ -39,3 +39,29 @@ export {
   createDenyUnauthorizedPluginToolPolicy,
   denyCrossLayerToolCall,
 } from "./policy.js";
+
+export type {
+  CreezioCoreMcpToolName,
+  CreateCoreMcpToolsOptions,
+} from "./core-tools.js";
+export {
+  CREEZIO_CORE_MCP_TOOL_NAMES,
+  createCoreMcpTools,
+} from "./core-tools.js";
+
+export type {
+  McpFacadeMode,
+  McpFacadeRole,
+  McpProductExecutor,
+  McpUpstreamRef,
+} from "./runtime.js";
+export {
+  MCP_PRODUCT_EXECUTOR,
+  resolveMcpFacadeRole,
+} from "./runtime.js";
+
+export type { WrapMcpFacadeWithHonoProxyOptions } from "./hono-proxy.js";
+export {
+  __mcpHonoProxyTest,
+  wrapMcpFacadeWithHonoProxy,
+} from "./hono-proxy.js";

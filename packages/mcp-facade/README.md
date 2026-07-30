@@ -9,6 +9,7 @@
 | H1 | Tools cœur + `discoverTools` + JWT |
 | H2 | `listToolsBySpace` / `discoverToolsBySpace` |
 | **H4** | Registry, namespacing, **aliases legacy**, policies deny cross-layer, `publicSurface` |
+| **M9** | `wrapMcpFacadeWithHonoProxy` + contrat `MCP_PRODUCT_EXECUTOR` + `createCoreMcpTools` (SoT kit) |
 
 ### Namespaces
 

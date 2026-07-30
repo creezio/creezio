@@ -8,13 +8,13 @@
  */
 
 import { ARCHITECTURE_VERSION } from "@creezio/platform-core";
-import { API_V1_PREFIX } from "@creezio/api-kernel";
 import { verifyMcpBearer } from "./jwt.js";
 import { assertNamespacedToolName, isLegacyAliasName } from "./namespace.js";
 import {
   composeToolPolicies,
   denyCrossLayerToolCall,
 } from "./policy.js";
+import { createCoreMcpTools } from "./core-tools.js";
 import type {
   DiscoverToolsBySpaceFn,
   DiscoverToolsFn,
@@ -65,87 +65,6 @@ export type McpFacade = {
 
 function emptyBySpace(): McpToolsBySpace {
   return { core: [], module: [], plugin: [] };
-}
-
-function coreTools(opts: {
-  architectureVersion: string;
-  brandId?: string;
-  listApiMounts?: () => Array<{ space: string; id: string }>;
-  listToolsBySpaceSync?: () => McpToolsBySpace;
-  listAliasesSync?: () => Record<string, string>;
-}): McpRegisteredTool[] {
-  return [
-    {
-      name: "creezio.health",
-      description: "Ping santé façade MCP / API cœur",
-      space: "core",
-      inputSchema: { type: "object", properties: {} },
-      handler: async () => ({
-        ok: true,
-        content: { ok: true, brandId: opts.brandId ?? null },
-      }),
-    },
-    {
-      name: "creezio.architecture",
-      description: "Version architecture + préfixe API unique",
-      space: "core",
-      inputSchema: { type: "object", properties: {} },
-      handler: async () => ({
-        ok: true,
-        content: {
-          architectureVersion: opts.architectureVersion,
-          apiPrefix: API_V1_PREFIX,
-          note: "Une seule façade MCP = MCP de l'app (proxy unifié H4)",
-          toolSpaces: ["core", "module", "plugin"],
-          publicSurfaceModes: [
-            "canonical",
-            "legacy-preferred",
-            "both",
-          ],
-        },
-      }),
-    },
-    {
-      name: "creezio.admin.list_mounts",
-      description: "Liste les montages API modules/plugins connus",
-      space: "core",
-      inputSchema: { type: "object", properties: {} },
-      handler: async () => ({
-        ok: true,
-        content: {
-          mounts: opts.listApiMounts ? opts.listApiMounts() : [],
-        },
-      }),
-    },
-    {
-      name: "creezio.admin.list_tools_by_space",
-      description:
-        "Liste les tools MCP groupés par couche (core / module / plugin)",
-      space: "core",
-      inputSchema: { type: "object", properties: {} },
-      handler: async () => ({
-        ok: true,
-        content: {
-          bySpace: opts.listToolsBySpaceSync
-            ? opts.listToolsBySpaceSync()
-            : emptyBySpace(),
-        },
-      }),
-    },
-    {
-      name: "creezio.admin.list_aliases",
-      description:
-        "Liste les aliases legacy → tools canoniques (anti double exposition)",
-      space: "core",
-      inputSchema: { type: "object", properties: {} },
-      handler: async () => ({
-        ok: true,
-        content: {
-          aliases: opts.listAliasesSync ? opts.listAliasesSync() : {},
-        },
-      }),
-    },
-  ];
 }
 
 function toDef(t: McpRegisteredTool): McpToolDefinition {
@@ -293,7 +212,7 @@ export function createMcpFacade(options: McpFacadeOptions = {}): McpFacade {
     const discovered = await discoveredTools();
     const byName = new Map<string, McpRegisteredTool>();
 
-    const core = coreTools({
+    const core = createCoreMcpTools({
       architectureVersion,
       brandId: options.brandId,
       listApiMounts: options.listApiMounts,
