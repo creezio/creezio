@@ -258,8 +258,11 @@ async function spawnOne(
       if (j.event === "ready" && typeof j.port === "number") {
         detectedPort = j.port;
         const cur = state.running.get(p.manifest.id);
-        if (cur) cur.port = j.port;
-        syncRuntimeState();
+        // Ne maj que si c'est encore CE process (évite course au restart).
+        if (cur?.child === child) {
+          cur.port = j.port;
+          syncRuntimeState();
+        }
       }
     } catch {
       /* plain log */
@@ -271,8 +274,12 @@ async function spawnOne(
   });
   child.on("exit", (code) => {
     log(`${p.manifest.id}: exit ${code}`);
-    state.running.delete(p.manifest.id);
-    syncRuntimeState();
+    // Critique : ne pas effacer un process plus récent après kill+restart.
+    const cur = state.running.get(p.manifest.id);
+    if (cur?.child === child) {
+      state.running.delete(p.manifest.id);
+      syncRuntimeState();
+    }
   });
 
   return {
@@ -517,8 +524,22 @@ export async function restartPlugin(
   setPluginEnabled(p.dir, true);
   const existing = state.running.get(id);
   if (existing) {
+    const oldChild = existing.child;
+    const exited = new Promise<void>((resolve) => {
+      if (oldChild.exitCode !== null) {
+        resolve();
+        return;
+      }
+      const done = () => resolve();
+      oldChild.once("exit", done);
+      setTimeout(done, 2500);
+    });
     existing.stop();
-    state.running.delete(id);
+    await exited;
+    const cur = state.running.get(id);
+    if (cur?.child === oldChild) {
+      state.running.delete(id);
+    }
   }
   const started = await startEnabledPlugins();
   if (started.errors.some((e) => e.startsWith(`${id}:`))) {
@@ -527,7 +548,7 @@ export async function restartPlugin(
       error: started.errors.find((e) => e.startsWith(`${id}:`)) || "start failed",
     };
   }
-  for (let i = 0; i < 20; i++) {
+  for (let i = 0; i < 40; i++) {
     const run = getRunningPlugins().find((r) => r.id === id);
     if (run?.port) {
       return { ok: true, running: run };
@@ -535,6 +556,12 @@ export async function restartPlugin(
     await new Promise((r) => setTimeout(r, 100));
   }
   const run = getRunningPlugins().find((r) => r.id === id) || null;
+  if (!run?.port) {
+    return {
+      ok: false,
+      error: `plugin ${id} non démarré après restart`,
+    };
+  }
   return { ok: true, running: run };
 }
 

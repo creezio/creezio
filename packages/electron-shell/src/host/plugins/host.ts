@@ -176,7 +176,10 @@ export function createPluginsHost(opts: {
         panel: Boolean(plugin.manifest.panel),
       });
       child.on("exit", () => {
-        running.delete(plugin.manifest.id);
+        const cur = running.get(plugin.manifest.id);
+        if (cur?.child === child) {
+          running.delete(plugin.manifest.id);
+        }
       });
     }
     writePluginRuntimeState(root(), runtimeEntries);
