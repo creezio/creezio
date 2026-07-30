@@ -77,7 +77,7 @@ export type BrandFleetInput = {
   defaultEndpoint: string;
   getAppVersion: () => string;
   log: (scope: string, line: string) => void;
-  logFileTail: (maxBytes?: number) => string;
+  logFileTail: (maxBytes?: number) => string | null;
 };
 
 export type BrandHostRuntimeConfig = {
