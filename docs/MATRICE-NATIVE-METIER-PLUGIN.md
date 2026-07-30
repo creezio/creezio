@@ -9,13 +9,16 @@
 > [PHASE-N9.md](PHASE-N9.md) ; stubs / jumeaux = **NON done** ; **Paperclip** = mort.
 > Versions courantes : TF **0.10.32** · Certivan **0.1.15** · Fidu **0.1.63**.
 > **O0→O11** (2026-07-30) : plan [PLAN-O.md](PLAN-O.md) **fermé** —
-> freeze [PHASE-O11.md](PHASE-O11.md) ; vision intention **~76 %** (honnête,
-> pas 100 % cosmétique) ; cutover lib/UI `@creezio/shell-ui` / `tasks/ui` ×3 ;
-> domaine TF interdit kit ([ADR-no-brand-domain-in-native-packages.md](ADR-no-brand-domain-in-native-packages.md))
-> — dette vocabulaire legacy encore mesurable.
+> freeze [PHASE-O11.md](PHASE-O11.md) ; **ne pas lire O11 comme 100 % intention**.
+> **État des lieux intention (post-O11)** :
+> [ETAT-DES-LIEUX-INTENTION.md](ETAT-DES-LIEUX-INTENTION.md) · roadmap
+> [PLAN-P.md](PLAN-P.md) — piliers OS mesurés ; jumeaux plateforme ~21,7 kLOC
+> TF↔CV encore ouverts ; packages ✅ ≠ marques minces.
 > Versions courantes : TF **0.10.33** · Certivan **0.1.16** · Fidu **0.1.65**.
-> Légende : **✅** livré / utilisable · **🟡** partiel (hors M*/N*/O* gold) ·
-> **❌** absent / hors scope volontaire.
+> Légende : **✅** livré **et cutover marques prouvé** · **🟡** package/kit
+> partiel ou jumeaux restants · **❌** absent / hors scope volontaire.
+> **⚠️** Plusieurs lignes ci-dessous restent ✅ « package existe » (historique
+> M/N/O) — la vérité cutover est dans l’état des lieux P* jusqu’à réécriture.
 > **Paperclip** = mort (aucune marque).
 
 Source cadre : [ARCHITECTURE-INTENTION.md](ARCHITECTURE-INTENTION.md).  
