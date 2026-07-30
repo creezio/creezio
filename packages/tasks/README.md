@@ -14,6 +14,7 @@ Distinct des Plugin tasks Product Hub.
 | Agent + runner IA | `runAiTaskAgent`, `ensureAiRunnerLoop`, … |
 | Routes Hono `/api/v1/tasks` | `createTasksHonoRoutes()` |
 | Adapter assistant | `createAssistantTasksAdapter()` |
+| MCP host AI tools (D-P18) | `createAiTaskHostMcpTools()` |
 | UI | `@creezio/tasks/ui` → `TasksKanbanClient` |
 
 
@@ -60,6 +61,30 @@ configureTasksBrand({
 recoverInterruptedRuns();
 ensureAiRunnerLoop();
 ```
+
+## MCP host tools AI (D-P18)
+
+Les tools `list_ai_collaborators` / `create_ai_task` / `get_ai_task` /
+`get_ai_run_logs` / `answer_ai_question` (et optionnellement `list_tasks`)
+vivent dans le kit — plus de jumeau TF/CV dans `hono-host-tools.ts`.
+
+```ts
+import {
+  CREEZIO_AI_TASK_HOST_MCP_TOOL_NAMES,
+  createAiTaskHostMcpTools,
+} from "@creezio/tasks";
+import "@/lib/configure-tasks";
+
+createAiTaskHostMcpTools({
+  registerTool: (name, config, handler) =>
+    registerMcpTool(server, ctx, name, config, handler),
+  getActorUserId: () => ctx.userId,
+  includeListTasks: false, // true côté Certivan
+});
+```
+
+Reste en marque : `open_external_tab` (+ `list_tools_by_space` TF) et le métier
+façade.
 
 ## Montage API
 

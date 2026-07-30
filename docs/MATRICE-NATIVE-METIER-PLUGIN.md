@@ -127,7 +127,7 @@ nommés dans `@creezio/propagation` (contrats, pas automation).
 | Couche | ✅ | 🟡 | ❌ |
 |--------|----|----|-----|
 | Natif socle | brand-config… fabrique C3, obs C4, lifecycle automations V3, **Database R1**, CP C7, `platformCoreMigrations` M11 ; **N6** admin UI kit ; **N7** browser-tabs | — | — |
-| Métier TF | panier…scan ; **supplier-tabs** local ; **M13** + **N8** allowlists ; main slim ; ship **0.10.33** | jumeaux résiduels / `hono-host-tools` | — |
+| Métier TF | panier…scan ; **supplier-tabs** local ; **M13** + **N8** allowlists ; main slim ; ship **0.10.33** | host MCP : tab + discovery (AI → kit tasks) | — |
 | Métier Certivan | **M14 gold** RTI + core kit ; **N6p** admin cutover ; ship **0.1.16** | MCP Hono monolithe résiduel | — |
 | Métier Fidu | **M15 gold** GED/CRM + core kit ; **N5** feature-off ; ship **0.1.65** | GED tools Hono hors `createFiduModuleMcpTools` | — |
 | Plugins | hub + ACL L3 3 marques ; fabrique C3 ; obs/automations C4 ; CP C7 | — | auto-promotion / univers perso / cloud registry *(volontaire)* |
