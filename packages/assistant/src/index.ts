@@ -1,7 +1,7 @@
 /**
- * @creezio/assistant — chat plateforme (store I2 + runtime/UI N3).
+ * @creezio/assistant — chat plateforme (store I2 + runtime/UI N3 + chat O4).
  *
- * Extension marque : configureAssistantBrand({ appMap, prompts, tools, meili, … }).
+ * Extension marque : configureAssistantBrand({ appMap, prompts, tools, auth, meili, … }).
  * Pas de métier panier/dispatch/relevés dans ce package.
  */
 
@@ -32,6 +32,7 @@ export {
 export type {
   AssistantAppMapConfig,
   AssistantAppPage,
+  AssistantAuthSession,
   AssistantBrandConfig,
   AssistantBrandIdentity,
   AssistantBrandTools,
@@ -161,3 +162,7 @@ export * from "./runtime/surface-router.js";
 export * from "./runtime/tool-trace.js";
 export * from "./runtime/ui-actions.js";
 export * from "./runtime/whisper.js";
+export {
+  handleAssistantChat,
+  maxDuration,
+} from "./runtime/assistant-chat.js";

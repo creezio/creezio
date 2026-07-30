@@ -57,15 +57,34 @@ Quand l'utilisateur demande une ACTION sur ce qu'il voit, utilise les outils sur
 2. surface_click / surface_type / surface_scroll / surface_read ensuite.
 `;
 
-export function buildSystemPrompt(opts?: {
+export type BuildSystemPromptOptions = {
   schemaCatalog?: string;
   extra?: string;
-}): string {
+  auditDistribution?: boolean;
+  mode?: "chat" | "work";
+  /** Bloc runtime activeSurface (injecté par assistant-chat). */
+  activeSurfaceBlock?: string;
+};
+
+/**
+ * Prompt système Chat.
+ * Compatible TF : `buildSystemPrompt(new Date(), { mode, activeSurfaceBlock, … })`
+ * et forme courte : `buildSystemPrompt({ schemaCatalog, extra })`.
+ */
+export function buildSystemPrompt(
+  nowOrOpts: Date | BuildSystemPromptOptions = new Date(),
+  options: BuildSystemPromptOptions = {},
+): string {
+  const opts: BuildSystemPromptOptions =
+    nowOrOpts instanceof Date ? options : { ...nowOrOpts, ...options };
   const brand = assistantPrompts();
   const base = brand.baseSystemPrompt?.trim() || GENERIC_BASE;
-  const addendum = brand.chatModeAddendum?.trim() || CHAT_MODE_ADDENDUM;
+  const addendum =
+    opts.mode === "work"
+      ? ""
+      : brand.chatModeAddendum?.trim() || CHAT_MODE_ADDENDUM;
   const catalog =
-    opts?.schemaCatalog?.trim() ||
+    opts.schemaCatalog?.trim() ||
     (() => {
       try {
         return loadSchemaCatalog();
@@ -74,12 +93,26 @@ export function buildSystemPrompt(opts?: {
       }
     })();
   const map = appMapPromptSection();
+  const distributionGuard = opts.auditDistribution
+    ? `
+## Contrôle obligatoire pour la demande de répartition en cours
+Avant toute réponse finale, effectue les requêtes SQL nécessaires pour établir :
+1. le COUNT total des lignes source ;
+2. le COUNT des lignes où la dimension demandée est renseignée et celui où elle est vide / NULL ;
+3. le GROUP BY normalisé de la dimension, ordonné par COUNT(*) DESC.
+Pour une dimension texte, normalise-la par \`LOWER(TRIM(colonne))\`. N'annonce pas un total sans ces mesures.`
+    : "";
+  const surfaceBlock = opts.activeSurfaceBlock?.trim()
+    ? opts.activeSurfaceBlock.trim()
+    : "";
   const parts = [
     base,
     addendum,
+    surfaceBlock,
+    distributionGuard,
     `## Carte de l'application\n${map}`,
     catalog ? `## Catalogue schéma\n${catalog}` : "",
-    opts?.extra?.trim() || "",
+    opts.extra?.trim() || "",
   ];
   return parts.filter(Boolean).join("\n\n");
 }
@@ -96,6 +129,12 @@ export function TOOL_DEFINITIONS() {
   return assistantToolDefinitions();
 }
 
-export function shouldAuditDistribution(_userMessage: string): boolean {
-  return false;
+/** Heuristique générique (répartition / classement) — pas de métier marque. */
+export function shouldAuditDistribution(userMessage: string): boolean {
+  const text = userMessage.toLowerCase();
+  return (
+    /\b(r[ée]partition|distribution|classement|top\s*\d*)\b/.test(text) ||
+    /\bqui\b.{0,80}\b(le\s+plus|la\s+plus|majorit[ée]|moins)\b/.test(text) ||
+    /\b(qui|quel(?:le)?)\b.{0,80}\b(a\s+le\s+plus|fournit|propose)\b/.test(text)
+  );
 }

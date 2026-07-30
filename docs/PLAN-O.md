@@ -26,7 +26,7 @@ Fidu (sauf O0 / O6 CV-only / O10–O11) · Paperclip = mort.
 
 Phases livrées : [PHASE-O0.md](PHASE-O0.md) · [PHASE-O1.md](PHASE-O1.md) ·
 [PHASE-O2.md](PHASE-O2.md) · [PHASE-O3.md](PHASE-O3.md) ·
-[PHASE-O3p.md](PHASE-O3p.md) · suite O4→O11
+[PHASE-O3p.md](PHASE-O3p.md) · [PHASE-O4.md](PHASE-O4.md) · suite O4p→O11
 ci-dessous.
 
 ---
@@ -105,11 +105,12 @@ ci-dessous.
 
 ---
 
-## O4 — `assistant-chat` générique → `@creezio/assistant`
+## O4 — `assistant-chat` générique → `@creezio/assistant` ✅
 
 1. **Objectif** : orchestration chat SSE/tools générique SoT kit.
-2. **Inclus** : extraction TF `assistant-chat.ts` (~1957 LOC) + routes
-   génériques. **Exclu** : cutover (O4p) ; prompts/sql-tools métier.
+2. **Inclus** : extraction TF `assistant-chat.ts` (~1957 LOC) + hooks
+   `auth` / `BrandTools.executeTool` / hermes work. **Exclu** : cutover
+   (O4p) ; prompts/sql-tools métier ; panier/tasks en kit.
 3. **Tests gate** : `npm run build -w @creezio/assistant && npm test`
    (`test-phase-o4`).
 4. **Done** : [PHASE-O4.md](PHASE-O4.md).

@@ -1,7 +1,7 @@
 {
   "name": "@creezio/assistant",
   "version": "0.1.0",
-  "description": "Chat / assistant plateforme Creezio (store + runtime + UI)",
+  "description": "Chat / assistant plateforme Creezio (store + runtime + UI + chat SSE O4)",
   "type": "module",
   "main": "./dist-cjs/index.js",
   "types": "./dist/index.d.ts",

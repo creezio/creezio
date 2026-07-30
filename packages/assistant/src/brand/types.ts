@@ -53,6 +53,13 @@ export type AssistantPromptsConfig = {
   ) => string;
 };
 
+/** Session utilisateur pour handleAssistantChat (O4). */
+export type AssistantAuthSession = {
+  sub: string;
+  email: string;
+  role: string;
+};
+
 /** Outils / entités métier (catalogue, RTI, GED…) — hors kit. */
 export type AssistantBrandTools = {
   /** get_entity marque (produit/dossier/…). */
@@ -60,12 +67,29 @@ export type AssistantBrandTools = {
     kind: string,
     id: string,
   ) => { kind: string; entity: unknown; related?: Record<string, unknown> };
-  /** Exécuteur d’outil métier marque (hors kit). */
+  /**
+   * Exécuteur d’outil métier marque (panier, statut, tasks/todos…).
+   * Retourne `null` si l’outil n’est pas géré → kit répond « outil inconnu ».
+   * Peut inclure `sources` / `uiSummary` / `ok` dans le résultat.
+   */
   executeTool?: (
     name: string,
     args: Record<string, unknown>,
     ctx: Record<string, unknown>,
   ) => Promise<Record<string, unknown> | null>;
+  /** Sources CRM pour get_entity (kinds marque). */
+  entitySources?: (
+    kind: string,
+    id: string,
+    entity: Record<string, unknown> | null,
+  ) => Array<{ title: string; url: string; type?: string }>;
+  /** Projection hits Meili pour tool_result (champs métier optionnels). */
+  formatSearchHit?: (hit: AssistantRagHit) => Record<string, unknown>;
+  /** Preview args outil métier (sinon JSON générique). */
+  argsPreview?: (
+    name: string,
+    args: Record<string, unknown>,
+  ) => string | null | undefined;
   /** Enrichissement sources SQL → liens CRM. */
   collectSourcesFromSqlRows?: (
     rows: Record<string, unknown>[],
@@ -132,6 +156,10 @@ export type AssistantMeiliConfig = {
 /** Hermes / kanban marque. */
 export type AssistantHermesConfig = {
   defaultSkills?: string[];
+  /** Skills mode Work (≠ defaultSkills n8n/plugins) — O4. */
+  workSkills?: string[];
+  /** Préfixe session Hermes Work (`${prefix}-${conversationId}`). */
+  sessionIdPrefix?: string;
   kanbanTenant?: string;
   kanbanTaskSkills?: string[];
   kanbanCronSkills?: string[];
@@ -159,6 +187,13 @@ export type AssistantBrandConfig = {
   db?: AssistantDbAccess;
   meili?: AssistantMeiliConfig;
   hermes?: AssistantHermesConfig;
+  /**
+   * Auth pour handleAssistantChat (O4).
+   * Remplace l’import marque `@/lib/auth`.
+   */
+  auth?: {
+    getSession: () => Promise<AssistantAuthSession | null>;
+  };
   /** Presence desktop (isDesktopOnline / offline error). */
   desktopPresence?: {
     isDesktopOnline: (userId: string) => boolean;
