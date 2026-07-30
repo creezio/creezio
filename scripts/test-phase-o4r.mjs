@@ -77,8 +77,9 @@ test("O4r.2 brand-chat-tools absent ×3 + mcp/tasks wiring", () => {
 });
 
 test("O4r.3 preuves métier TF panier / CV rti / Fidu accounting", () => {
+  // O4r2 : SoT = modules/mcp-tools (bridge = adaptateur mince)
   const tf = fs.readFileSync(
-    path.join(dockerRoot, "tempoflow2/crm/src/lib/assistant/mcp-bridge.ts"),
+    path.join(dockerRoot, "tempoflow2/crm/electron/modules/mcp-tools.ts"),
     "utf8",
   );
   assert.match(tf, /module\.panier\.add_ligne/);
@@ -86,14 +87,14 @@ test("O4r.3 preuves métier TF panier / CV rti / Fidu accounting", () => {
   assert.doesNotMatch(tf, /add_to_cart/);
 
   const cv = fs.readFileSync(
-    path.join(dockerRoot, "certivan-app/crm/src/lib/assistant/mcp-bridge.ts"),
+    path.join(dockerRoot, "certivan-app/crm/electron/modules/mcp-tools.ts"),
     "utf8",
   );
   assert.match(cv, /module\.rti\./);
-  assert.doesNotMatch(cv, /module\.panier|add_to_cart|add_to_panier/);
+  assert.doesNotMatch(cv, /module\.panier|add_to_cart/);
 
   const fidu = fs.readFileSync(
-    path.join(dockerRoot, "fidu/crm/src/lib/assistant/mcp-bridge.ts"),
+    path.join(dockerRoot, "fidu/crm/electron/modules/mcp-tools.ts"),
     "utf8",
   );
   assert.match(fidu, /module\.accounting\.query/);

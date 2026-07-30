@@ -85,4 +85,5 @@ npm run test:active-surface
 
 ## Suite
 
-Dettes éventuelles (hors vague) : unifier handlers Hono `/mcp` et bridge assistant (même registre) ; monter `createPanierMount` côté Next ; entitySources déclaratifs JSON.
+→ **O4r2** : [PHASE-O4r2.md](PHASE-O4r2.md) — unifier bridge assistant et façade Electron (`create*BrandMcp`).  
+Dettes restantes : handlers Hono `/mcp` legacy ; entitySources déclaratifs JSON.

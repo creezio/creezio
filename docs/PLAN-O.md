@@ -147,6 +147,19 @@ ci-dessous.
 
 ---
 
+## O4r2 — Un registre MCP unique (façade marque) ✅
+
+1. **Objectif** : assistant + Electron partagent `create*BrandMcp` /
+   `create*ModuleMcpTools` ; **0** handlers métier dans `mcp-bridge`.
+2. **Inclus** : `modules/brand-mcp.ts` ×3 ; Next `brand-module-api` ; Fidu
+   `module.accounting.query` dans le registre Electron ; ADR. **Exclu** :
+   O7 host-stack ; unifier handlers Hono `/mcp` legacy ; entitySources JSON.
+3. **Tests gate** : `test-phase-o4r2` + routing/active-surface ×3.
+4. **Done** : [PHASE-O4r2.md](PHASE-O4r2.md) · [ADR-assistant-tools-mcp.md](ADR-assistant-tools-mcp.md).
+5. **Effort M · Republish non**
+
+---
+
 ## O5 — Admin request-logs / api-endpoints → kit ✅
 
 1. **Objectif** : clients + middleware génériques SoT
