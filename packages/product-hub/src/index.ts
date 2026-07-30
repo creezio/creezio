@@ -1,8 +1,9 @@
 /**
- * @creezio/product-hub — Product Hub / plugins brand-agnostic (Phase E).
+ * @creezio/product-hub — Product Hub / plugins brand-agnostic (Phase E / P09).
  *
- * Contrats purs + store mémoire + control plane HTTP.
- * Persistance SQLite / UI Admin / scaffolds git restent verticaux (Phase G).
+ * Contrats purs + store + control plane + routes HTTP `/plugin-products`
+ * + n8n provisioning + fabrique conversationnelle.
+ * UI Admin via `./ui` ; scaffolds git / test-runner restent verticaux.
  */
 
 export type { ProductHubBrandTokens } from "./brand-tokens.js";
@@ -50,6 +51,33 @@ export {
   isBrandPluginN8nTag,
   pluginN8nTag,
 } from "./n8n-tags.js";
+
+export type {
+  N8nConnectionStatus,
+  N8nExecution,
+  N8nRequest,
+  N8nTag,
+  N8nWorkflow,
+  PluginN8nHubDb,
+  PluginN8nProvisioning,
+  PluginN8nProvisioningDeps,
+  PluginN8nSnapshot,
+} from "./n8n-provisioning.js";
+export {
+  createPluginN8nProvisioning,
+  resolveN8nTagPrefix,
+} from "./n8n-provisioning.js";
+
+export type {
+  HermesCreateTaskInput,
+  PluginProductsReadonlyDb,
+  PluginProductsRouteDeps,
+  PluginProductsSession,
+} from "./http/plugin-products-routes.js";
+export { createPluginProductsRoutes } from "./http/plugin-products-routes.js";
+
+export type { PluginFactoryRouteDeps } from "./http/plugin-factory-routes.js";
+export { createPluginFactoryRoutes } from "./http/plugin-factory-routes.js";
 
 export type {
   PluginAclAction,
@@ -212,7 +240,10 @@ export {
   slugifyPluginId,
 } from "./factory/index.js";
 
-/** Modules encore verticaux (apps marques) après Phase E / H1.8 / N6. */
+/**
+ * Modules encore verticaux (apps marques) après P09 HTTP SoT.
+ * Routes `/plugin-products` + n8n provisioning = kit (`createPluginProductsRoutes`).
+ */
 export const PRODUCT_HUB_VERTICAL_REMAINING = [
   "plugin-git",
   "plugin-data",
