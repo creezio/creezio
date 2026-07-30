@@ -84,6 +84,14 @@ export type BrandDesktopDeps = {
   sessionCookieName: string;
   profileArgPrefix: string;
   defaultDesktopPort: number;
+  /** Env Next pour le dossier plugins (TEMPOFLOW_PLUGINS_DIR / CERTIVAN_…). */
+  pluginsDirEnvKey?: string;
+  /** Query param SiteLink (tf2fid / certivanfid / fidufid). */
+  supplierFidQueryParam?: string;
+  /** Clé API CRM dans process.env (TEMPOFLOW_API_KEY / CERTIVAN_…). */
+  apiKeyEnvName?: string;
+  /** Libellé splash Node (ex. « Runtime Node Certivan »). */
+  nodeRuntimeLabel?: string;
   appKind: string;
   bootBehavior: any;
   bootProfileLaunch: any;
@@ -118,6 +126,22 @@ export function installBrandDesktopRuntime(deps: BrandDesktopDeps): void {
     shell,
   } = deps.electron;
 
+  const productName = String(deps.manifest?.client?.productName || "App");
+  const productNameServer = String(
+    deps.manifest?.server?.productName || `${productName} Server`,
+  );
+  const nodeLabel = deps.nodeRuntimeLabel || `Runtime Node ${productName}`;
+  const pluginsDirEnvKey =
+    deps.pluginsDirEnvKey ||
+    (deps.envPrefix === "TF2" ? "TEMPOFLOW_PLUGINS_DIR" : `${deps.envPrefix}_PLUGINS_DIR`);
+  const supplierFidQueryParam =
+    supplierFidQueryParam ||
+    (deps.envPrefix === "TF2"
+      ? "tf2fid"
+      : `${String(deps.manifest?.brandId || "app")}fid`);
+  const apiKeyEnvName =
+    deps.apiKeyEnvName ||
+    (deps.envPrefix === "TF2" ? "TEMPOFLOW_API_KEY" : `${deps.envPrefix}_API_KEY`);
   const progressPrefix = `${deps.envPrefix}PROGRESS `;
 
   async function syncN8nWebhookPublicUrl(onLog?: (line: string) => void): Promise<void> {
@@ -191,7 +215,7 @@ export function installBrandDesktopRuntime(deps: BrandDesktopDeps): void {
     ) {
       return false;
     }
-    return /bootstrap|download|npm install|runtime (déjà|manquant)|spawn (cold|warm)|redémarrage n8n|première initialisation|données déjà présentes|réutilise n8n|déjà prêt|owner:|CLI Hermes|checksum|pip install WebUI|local_trusted|jwt=ok|Node TempoFlow|ready v|UI prêt|attente n8n|signal prêt|charge encore ses modules|Editor is now accessible|Installation runtime|doctor|postgres|migrations|install|venv|gateway|listening|health/i.test(
+    return /bootstrap|download|npm install|runtime (déjà|manquant)|spawn (cold|warm)|redémarrage n8n|première initialisation|données déjà présentes|réutilise n8n|déjà prêt|owner:|CLI Hermes|checksum|pip install WebUI|local_trusted|jwt=ok|Node |ready v|UI prêt|attente n8n|signal prêt|charge encore ses modules|Editor is now accessible|Installation runtime|doctor|postgres|migrations|install|venv|gateway|listening|health/i.test(
       s,
     );
   }
@@ -297,7 +321,7 @@ export function installBrandDesktopRuntime(deps: BrandDesktopDeps): void {
           void appView.webContents.loadURL(
             errorHtml(
               "Le serveur local s'est arrêté",
-              `Le serveur interne de TempoFlow s'est arrêté de façon inattendue (code ${code}).`,
+              `Le serveur interne de ${productName} s'est arrêté de façon inattendue (code ${code}).`,
             ),
           );
         }
@@ -388,7 +412,7 @@ export function installBrandDesktopRuntime(deps: BrandDesktopDeps): void {
           ...deps.hosts.n8n().getN8nNextEnv(activeConnectionProfile.mode),
           ...deps.store().getEmailNextEnv(),
           // Onglets Données / n8n du Product Hub côté Next (pluginDataPath).
-          TEMPOFLOW_PLUGINS_DIR: deps.hosts.pluginRuntime().pluginsRootDir(),
+          [pluginsDirEnvKey]: deps.hosts.pluginRuntime().pluginsRootDir(),
         },
         onLog: scoped("next"),
       });
@@ -450,6 +474,35 @@ export function installBrandDesktopRuntime(deps: BrandDesktopDeps): void {
     status: LlmStatusPayload;
   }> {
     return restartNextServer({ reload: false });
+  }
+
+  /**
+   * Réinjecte HERMES_* dans Next après un spawn Hermes réussi.
+   * No-op au boot (Next pas encore up) — évite le double restart.
+   * Delta M12p (Certivan) porté plateforme.
+   */
+  async function maybeRestartNextAfterHermesSpawn(
+    hermesSpawned: boolean,
+  ): Promise<void> {
+    const should =
+      typeof deps.vertical.shouldRestartNextAfterHermesStart === "function"
+        ? deps.vertical.shouldRestartNextAfterHermesStart({
+            hermesSpawned,
+            nextServerRunning: Boolean(server),
+          })
+        : Boolean(hermesSpawned) && Boolean(server);
+    if (!should) return;
+    log(
+      "main",
+      "Hermes (re)spawné alors que Next tourne — réinjection HERMES_*…",
+    );
+    const r = await restartNextServer({ reload: false });
+    if (!r.ok) {
+      logError(
+        "main",
+        new Error(r.error || "redémarrage Next après Hermes échoué"),
+      );
+    }
   }
 
   async function startBridgeIfReady(): Promise<void> {
@@ -1043,9 +1096,10 @@ export function installBrandDesktopRuntime(deps: BrandDesktopDeps): void {
             // Lien interne ouvert en _blank : navigation dans la vue CRM.
             void view.webContents.loadURL(url);
           } else {
-            // tf2fid : id fournisseur passé par l'UI (composant SiteLink).
-            const fid = Number(u.searchParams.get("tf2fid") || "0") || 0;
-            u.searchParams.delete("tf2fid");
+            // supplierFidQueryParam : id fournisseur (SiteLink).
+            const fidParam = supplierFidQueryParam;
+            const fid = Number(u.searchParams.get(fidParam) || "0") || 0;
+            u.searchParams.delete(fidParam);
             openInTab(u.toString(), fid);
           }
         }
@@ -1220,7 +1274,7 @@ export function installBrandDesktopRuntime(deps: BrandDesktopDeps): void {
           return {
             ok: false as const,
             error:
-              "Cette app est le client TempoFlow : installez « TempoFlow Server » pour héberger.",
+              `Cette app est le client ${productName} : installez « ${productNameServer} » pour héberger.`,
           };
         }
         const prev = deps.store().getConnectionProfile();
@@ -1270,14 +1324,14 @@ export function installBrandDesktopRuntime(deps: BrandDesktopDeps): void {
           return {
             ok: false as const,
             error:
-              "Cette app est le client TempoFlow : installez « TempoFlow Server » pour héberger.",
+              `Cette app est le client ${productName} : installez « ${productNameServer} » pour héberger.`,
           };
         }
         if (deps.bootBehavior.forceLocalProfile && raw.mode === "remote") {
           return {
             ok: false as const,
             error:
-              "Cette app est le serveur TempoFlow : utilisez l'app Client pour rejoindre un autre serveur.",
+              `Cette app est le serveur ${productName} : utilisez l'app Client pour rejoindre un autre serveur.`,
           };
         }
         const ready = deps.vertical.assertProfileReady({
@@ -1632,6 +1686,7 @@ export function installBrandDesktopRuntime(deps: BrandDesktopDeps): void {
         onLog: (line) => log("hermes", line),
       });
       hermes = started;
+      await maybeRestartNextAfterHermesSpawn(Boolean(started));
       const status = deps.hosts.hermes().getHermesStatusPayload("local");
       if (!started?.webuiUrl) {
         deps.vertical.reportCrashDebounced(
@@ -1757,7 +1812,7 @@ export function installBrandDesktopRuntime(deps: BrandDesktopDeps): void {
         lockedValues.N8N_LISTEN_ADDRESS = st.listenHost;
         lockedValues.N8N_PORT = String(st.listenPort);
         lockedValues.N8N_USER_FOLDER = st.homeDir;
-        lockedValues.N8N_ENCRYPTION_KEY = "•••• (gérée par TempoFlow)";
+        lockedValues.N8N_ENCRYPTION_KEY = `•••• (gérée par ${productName})`;
         lockedValues.N8N_MCP_ACCESS_ENABLED = "true";
         lockedValues.N8N_MCP_MANAGED_BY_ENV = "true";
       } else if (service === "hermes") {
@@ -1770,7 +1825,7 @@ export function installBrandDesktopRuntime(deps: BrandDesktopDeps): void {
         lockedValues.API_SERVER_PORT = st.apiUrl
           ? String(new URL(st.apiUrl).port || "")
           : "";
-        lockedValues.API_SERVER_KEY = "•••• (gérée par TempoFlow)";
+        lockedValues.API_SERVER_KEY = `•••• (gérée par ${productName})`;
         lockedValues.TERMINAL_CWD = st.homeDir
           ? `${st.homeDir.replace(/[/\\]$/, "")}/workspace`
           : "";
@@ -2045,6 +2100,7 @@ export function installBrandDesktopRuntime(deps: BrandDesktopDeps): void {
               onLog: (line) => log("hermes", line),
             });
             if (started) hermes = started;
+            await maybeRestartNextAfterHermesSpawn(Boolean(started));
             restarted = true;
             detail = "Variables enregistrées — Hermes redémarré.";
           }
@@ -2489,7 +2545,7 @@ export function installBrandDesktopRuntime(deps: BrandDesktopDeps): void {
       height: 900,
       minWidth: 1000,
       minHeight: 640,
-      title: deps.appKind === "server" ? "TempoFlow Server" : "TempoFlow",
+      title: deps.appKind === "server" ? productNameServer : productName,
       backgroundColor: "#14182f",
       autoHideMenuBar: true,
       ...(framelessWin ? { frame: false, thickFrame: true } : {}),
@@ -2680,7 +2736,7 @@ export function installBrandDesktopRuntime(deps: BrandDesktopDeps): void {
       recallLine =
         last.mode === "remote" && last.remoteUrl
           ? `Dernier serveur rejoint : ${last.remoteUrl}. Confirmez ou changez, puis Continuer.`
-          : "Cette app est le client TempoFlow : elle se connecte à un serveur (app TempoFlow Server ou hôte du cabinet).";
+          : `Cette app est le client ${productName} : elle se connecte à un serveur (app ${productNameServer} ou hôte du cabinet).`;
     } else if (last.mode === "remote" && last.remoteUrl) {
       recallLine = `Dernier choix : rejoindre ${last.remoteUrl}. Confirmez ou changez, puis Continuer.`;
     } else if (last.chosen && localSetupDone) {
@@ -2785,8 +2841,8 @@ export function installBrandDesktopRuntime(deps: BrandDesktopDeps): void {
     // plutôt que de démarrer Meili/Next/n8n/Hermes sur un poste client.
     if (!deps.bootBehavior.allowLocalStack) {
       throw new Error(
-        "Cette app est le client TempoFlow (join-only) : impossible d'héberger un serveur local. " +
-          "Installez « TempoFlow Server » pour héberger.",
+        `Cette app est le client ${productName} (join-only) : impossible d'héberger un serveur local. ` +
+          `Installez « ${productNameServer} » pour héberger.`,
       );
     }
 
@@ -2999,11 +3055,11 @@ export function installBrandDesktopRuntime(deps: BrandDesktopDeps): void {
      * - l’utilisateur ne télécharge / démarre / arrête rien au clic.
      */
 
-    /* 4a+. Runtime Node TempoFlow (pin ≥22.22) — requis dès qu’un outil npm démarre. */
+    /* 4a+. Runtime Node marque (pin ≥22.22) — requis dès qu’un outil npm démarre. */
     if (needNode) {
       deps.vertical.setBootStage("node-runtime");
       splashGo("node", {
-        headline: "Runtime Node TempoFlow…",
+        headline: `${nodeLabel}…`,
         detail: "Vérification / installation du runtime Node piné",
         percent: 10,
       });
@@ -3015,7 +3071,7 @@ export function installBrandDesktopRuntime(deps: BrandDesktopDeps): void {
             splashPatch("node", {
               detail,
               percent: estimateEmbedPercent(detail),
-              headline: "Runtime Node TempoFlow…",
+              headline: `${nodeLabel}…`,
             });
           }
         },
@@ -3027,7 +3083,7 @@ export function installBrandDesktopRuntime(deps: BrandDesktopDeps): void {
           percent: 100,
         });
         throw new Error(
-          `Runtime Node TempoFlow requis pour n8n : ${nodeReady.detail}`,
+          `${nodeLabel} requis pour n8n : ${nodeReady.detail}`,
         );
       }
       splashDone(
@@ -3036,7 +3092,7 @@ export function installBrandDesktopRuntime(deps: BrandDesktopDeps): void {
       );
       log(
         "main",
-        `Node TempoFlow v${nodeReady.version} (${nodeReady.source}) → ${nodeReady.node}`,
+        `${nodeLabel} v${nodeReady.version} (${nodeReady.source}) → ${nodeReady.node}`,
       );
     }
 
@@ -3226,7 +3282,7 @@ export function installBrandDesktopRuntime(deps: BrandDesktopDeps): void {
         ...deps.hosts.n8n().getN8nNextEnv("local"),
         ...deps.store().getEmailNextEnv(),
         // Onglets Données / n8n du Product Hub côté Next (pluginDataPath).
-        TEMPOFLOW_PLUGINS_DIR: deps.hosts.pluginRuntime().pluginsRootDir(),
+        [pluginsDirEnvKey]: deps.hosts.pluginRuntime().pluginsRootDir(),
       },
       onLog: scoped("next"),
     });
@@ -3259,7 +3315,7 @@ export function installBrandDesktopRuntime(deps: BrandDesktopDeps): void {
       if (brandRt) {
         brandRt.setMcpUpstream(
           server.baseUrl,
-          hermesCrmApiKey || process.env.TEMPOFLOW_API_KEY || null,
+          hermesCrmApiKey || process.env[apiKeyEnvName] || null,
         );
         log(
           "mcp",
@@ -3314,6 +3370,8 @@ export function installBrandDesktopRuntime(deps: BrandDesktopDeps): void {
         });
         if (bridge.restarted) {
           hermes = deps.hosts.hermes().getRunningHermes() ?? hermes;
+          // Hermes a pu prendre un nouveau port — Next doit recevoir HERMES_API_URL.
+          await maybeRestartNextAfterHermesSpawn(true);
         } else if (!deps.hosts.hermes().getRunningHermes()?.webuiUrl) {
           throw new Error(bridge.detail);
         }
@@ -3467,6 +3525,16 @@ export function installBrandDesktopRuntime(deps: BrandDesktopDeps): void {
           tunnel: tun.online ? "running" : tun.configured ? "configured" : "off",
         };
       },
+      getHeartbeatExtras: () => {
+        if (typeof deps.vertical.getHeartbeatExtras === "function") {
+          try {
+            return deps.vertical.getHeartbeatExtras();
+          } catch {
+            return null;
+          }
+        }
+        return null;
+      },
       getPluginsSummary: () => {
         try {
           const st = deps.hosts.plugins().pluginsStatusPayload();
@@ -3575,6 +3643,7 @@ export function installBrandDesktopRuntime(deps: BrandDesktopDeps): void {
               onLog: (line) => log("hermes", line),
             });
             hermes = started;
+            await maybeRestartNextAfterHermesSpawn(Boolean(started));
             return {
               ok: Boolean(started),
               detail: started ? `hermes ${started.apiUrl}` : "hermes start failed",
@@ -3870,7 +3939,7 @@ export function installBrandDesktopRuntime(deps: BrandDesktopDeps): void {
     bootWithRetry().catch((e) => {
       logError("main", e);
       dialog.showErrorBox(
-        "TempoFlow — le démarrage a échoué",
+        `${productName} — le démarrage a échoué`,
         `${e instanceof Error ? e.message : e}\n\nJournal : ${logFilePath() || "userData/logs"}`,
       );
       app.quit();

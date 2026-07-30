@@ -170,6 +170,12 @@ Voir [PHASE-M11.md](PHASE-M11.md).
 
 ## M12p — main marques
 
+Voir [PHASE-M12p.md](PHASE-M12p.md).
+
+Même façade `installBrandDesktopRuntime` : Certivan puis Fidu ;
+`main.ts` ≤ 800 LOC ; deltas marque portés kit (`pluginsDirEnvKey`,
+`supplierFidQueryParam`, hermes→Next restart, `getHeartbeatExtras`).
+
 ---
 
 ## M13 — Audit TF métier-only

@@ -4,6 +4,11 @@
 ## [Unreleased]
 
 ### Added
+- **Phase M12p** — `main.ts` Certivan (puis Fidu) ≤ 800 LOC via
+  `installBrandDesktopRuntime` ; deps marque (`pluginsDirEnvKey`,
+  `supplierFidQueryParam`, `apiKeyEnvName`, `nodeRuntimeLabel`) ;
+  `maybeRestartNextAfterHermesSpawn` + `getHeartbeatExtras` ;
+  `docs/PHASE-M12p.md` ; tests `test-phase-m12p` ; **pas** de republish exe.
 - **Phase M12** — `electron/main.ts` TF ≤ 800 LOC via façade kit :
   `installBrandDesktopRuntime` dans `@creezio/electron-shell`
   (`desktop/brand-desktop-runtime.ts`) ; main = composition marque
