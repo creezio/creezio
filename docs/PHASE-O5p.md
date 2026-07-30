@@ -7,7 +7,7 @@
 | **Repo** | `creezio/creezio` (+ marques) |
 | **Prérequis** | [PHASE-O5.md](PHASE-O5.md) · plan [PLAN-O.md](PLAN-O.md) |
 | **Baseline O5 kit tip** | `d6d5b81` / pin `834e48b` |
-| **Kit tip O5p** | *(pin après push docs)* |
+| **Kit tip O5p** | `97a4d2a` |
 | **ARCHITECTURE_VERSION** | `"H6"` (inchangé) |
 | **Republish** | Non |
 
