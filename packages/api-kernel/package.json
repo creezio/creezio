@@ -1,7 +1,7 @@
 {
   "name": "@creezio/api-kernel",
   "version": "0.1.0",
-  "description": "Façade HTTP unique Creezio — routes cœur + montage modules/plugins (deny-by-default)",
+  "description": "Façade HTTP unique Creezio — core/platform/modules/plugins (deny-by-default)",
   "type": "module",
   "main": "./dist-cjs/index.js",
   "types": "./dist/index.d.ts",
@@ -15,7 +15,8 @@
   },
   "files": [
     "dist",
-    "dist-cjs"
+    "dist-cjs",
+    "README.md"
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
@@ -23,7 +24,8 @@
   },
   "dependencies": {
     "@creezio/brand-config": "0.1.0",
-    "@creezio/platform-core": "0.1.0"
+    "@creezio/platform-core": "0.1.0",
+    "hono": "^4.12.32"
   },
   "devDependencies": {
     "@types/node": "^22.15.3",

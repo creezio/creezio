@@ -186,7 +186,7 @@ Légende écart : **OK** / **PARTIEL** / **ABSENT produit** / **INVENTÉ à côt
 | P10 Fabrique plugins | **INVENTÉ à côté** | demobrand + console **seulement** ; **0** TF/CV/Fidu | À shipper marques (natif, pas option « rester prototype ») |
 | P11 Observabilité | **PARTIEL** | Package ~7,2 kLOC ; deps ×3 ; Fidu plus mince | Cutover UI/ops incomplet Fidu |
 | P12 Automations lifecycle | **PARTIEL** | Dep ×3 ; surface surtout demobrand / brand-runtime TF | Peu de surface produit |
-| P13 Database | **OK / PARTIEL** | `@creezio/database` ; configure policy ×3 ; panels locaux absents | Policy whitelist teintée TF |
+| P13 Database | **OK** | `@creezio/database` fail-closed ; allowlists métier ×3 marques ; panels locaux absents | — |
 | P14 Auth | **PARTIEL** | `@creezio/auth` ; login UI ~294–299 LOC ×3 locaux | UI login à extraire |
 | P15 Shell-UI | **PARTIEL** | kit ~10,5 kLOC ; **sidebar / workspace / cockpit / setup / search / onboarding** encore locaux (souvent twin) | **Dette P0** |
 | P16 Assistant | **PARTIEL** | kit ~14,4 kLOC ; routes assistant twin TF↔CV ; Fidu plus mince | Surface HTTP encore brand |

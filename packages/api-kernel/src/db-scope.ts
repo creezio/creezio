@@ -2,7 +2,8 @@
  * Accès DB scopé par couche (H2.2) — deny-by-default cross-layer write.
  *
  * Un mount module (brand) ou plugin ne reçoit qu'un handle sur sa couche.
- * Toute tentative d'écriture core depuis brand/plugin → CrossLayerWriteDeniedError.
+ * Platform → couche core. Toute tentative d'écriture core depuis brand/plugin
+ * → CrossLayerWriteDeniedError.
  */
 
 import type {
@@ -120,11 +121,12 @@ export function createScopedDbAccess(
   };
 }
 
-/** Layer ref pour un mount module (brand) ou plugin. */
+/** Layer ref pour un mount platform (core), module (brand) ou plugin. */
 export function mountLayerRef(
-  space: "module" | "plugin",
+  space: "platform" | "module" | "plugin",
   mountId: string,
 ): SqliteLayerRef {
+  if (space === "platform") return { kind: "core" };
   if (space === "module") return { kind: "brand" };
   return { kind: "plugin", pluginId: mountId };
 }

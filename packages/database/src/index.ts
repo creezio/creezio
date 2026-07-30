@@ -1,6 +1,7 @@
 /**
- * @creezio/database — Admin Database natif + automations row-level (SoT port TempoFlow, R1).
+ * @creezio/database — Admin Database natif + automations row-level.
  *
+ * Fail-closed : CRUD métier impossible sans `configureDatabasePolicy({ crudAllowlist })`.
  * Ne pas confondre avec `@creezio/automations` (lifecycle plugins/org — V3 prototype).
  */
 
@@ -32,11 +33,12 @@ export {
 } from "./identifiers.js";
 
 export {
-  TEMPOFLOW_CRUD_WHITELIST,
   DEFAULT_FORBIDDEN_WRITE_TABLES,
   CRUD_WHITELIST,
   FORBIDDEN_WRITE_TABLES,
   configureDatabasePolicy,
+  getCrudAllowlist,
+  getForbiddenWriteTables,
   canCrudTable,
   canAutomateTable,
 } from "./whitelist.js";

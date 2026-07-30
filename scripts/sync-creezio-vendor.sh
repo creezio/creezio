@@ -133,6 +133,9 @@ for name in "${PACKAGES[@]}"; do
   if [[ -d "${src}/ui" ]]; then
     cp -a "${src}/ui" "${out}/"
   fi
+  if [[ -d "${src}/email-worker" ]]; then
+    cp -a "${src}/email-worker" "${out}/"
+  fi
   node -e '
 const fs = require("fs");
 const path = process.argv[1];

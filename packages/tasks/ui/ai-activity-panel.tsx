@@ -125,7 +125,7 @@ function AiLiveView({ userId }: { userId: string }) {
       <div
         ref={containerRef}
         className="relative flex min-h-48 items-center justify-center bg-slate-950"
-        data-tf2-ai-live-frames={frames}
+        data-creezio-tasks-ai-live-frames={frames}
       >
         {src ? (
           // eslint-disable-next-line @next/next/no-img-element
@@ -404,7 +404,7 @@ export function AiActivityPanel({
         compact ? "rounded-md" : "rounded-lg",
         className,
       )}
-      data-tf2-ai-activity={run?.id || ""}
+      data-creezio-tasks-ai-activity={run?.id || ""}
     >
       <header className="flex items-center gap-2 border-b border-slate-100 px-3 py-2">
         <Bot className="h-4 w-4 text-slate-600" />
@@ -446,7 +446,7 @@ export function AiActivityPanel({
                   : "text-slate-600 hover:bg-slate-100",
               )}
               onClick={() => setView("live")}
-              data-tf2-aid="ai-live-view-tab"
+              data-creezio-tasks-aid="ai-live-view-tab"
             >
               <MonitorPlay className="h-3 w-3" />
               Vue live
@@ -523,8 +523,8 @@ export function AiActivityPanel({
             <div
               key={l.id}
               className="border-b border-slate-50 pb-1.5 last:border-0"
-              data-tf2-ai-log-seq={l.seq}
-              data-tf2-ai-log-type={l.event_type}
+              data-creezio-tasks-ai-log-seq={l.seq}
+              data-creezio-tasks-ai-log-type={l.event_type}
             >
               <span
                 className={cn(

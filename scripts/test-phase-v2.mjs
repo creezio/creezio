@@ -89,7 +89,7 @@ test("V2.3 E2E demobrand : factory + API plugin → événements", async () => {
 
     const summary = await sandbox.api.handle({
       method: "GET",
-      path: "/api/v1/modules/observability/summary",
+      path: "/api/v1/platform/observability/summary",
     });
     assert.equal(summary.status, 200);
     assert.ok(summary.body.summary.activity >= 2);
@@ -98,7 +98,7 @@ test("V2.3 E2E demobrand : factory + API plugin → événements", async () => {
 
     const usage = await sandbox.api.handle({
       method: "GET",
-      path: "/api/v1/modules/observability/usage",
+      path: "/api/v1/platform/observability/usage",
       query: { orgId: "org-a" },
     });
     assert.equal(usage.status, 200);
@@ -110,7 +110,7 @@ test("V2.3 E2E demobrand : factory + API plugin → événements", async () => {
 
     const orgs = await sandbox.api.handle({
       method: "GET",
-      path: "/api/v1/modules/observability/orgs",
+      path: "/api/v1/platform/observability/orgs",
     });
     assert.equal(orgs.status, 200);
     assert.ok(orgs.body.orgs.some((o) => o.orgId === "org-a" || o.orgId === "org-sandbox"));

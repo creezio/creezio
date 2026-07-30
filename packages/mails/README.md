@@ -1,42 +1,124 @@
 # `@creezio/mails`
 
-Mails **natifs plateforme** — boîte / envoi générique. **Pas** de templates
-TempoFlow/Fidu.
+Mails **natifs plateforme** — boîte de réception + envoi générique + pièces jointes.
+**Pas** de templates TempoFlow/Fidu.
 
-## Stores
+> SoT unique : messages inbound/outbound + PJ vivent dans `core.db`
+> (`creezio_platform_mails` / `creezio_platform_mail_attachments`).
+> Les marques ne réimplémentent plus `email-queries` / `mail-inbox` / routes grasses.
 
-- `createMemoryMailsStore` — tests
-- `createSqliteMailsStore({ coreDbPath })` — **I3**, tables `PLATFORM_MAILS_CORE_SQL`
+## Capacités
 
-## Providers
+| Surface | Export |
+|---------|--------|
+| Store sqlite / memory | `createSqliteMailsStore`, `createMemoryMailsStore` |
+| API module (draft/send) | `createMailsApiMount` |
+| API inbox Hono | `createEmailInboxRoutes` → `POST /inbound`, `GET /meta`, list/get/patch/delete, PJ |
+| Config marque | `configureMails({ rootDomain, uiEnabled, … })` |
+| UI | `@creezio/mails/ui` → `MailInbox` |
+| Worker CF | `email-worker/` (domaines via env) |
+| Migration | `migrateBrandEmailsToKit(brandDb, kitDb)` |
 
-| Id | Rôle |
-|----|------|
-| `platform-stub` | Toujours présent (tests sans I/O) |
-| `file-sink` | **Non-stub I3** — écrit JSON dans un dossier (`createFileSinkMailProvider`) |
+## Intégration marque (contrat mince)
 
 ```ts
+// boot serveur (une fois)
 import {
-  createSqliteMailsStore,
+  configureMails,
+  createEmailInboxRoutes,
+  FILE_SINK_PROVIDER_ID,
   createFileSinkMailProvider,
   createMailsApiMount,
-  FILE_SINK_PROVIDER_ID,
+  createSqliteMailsStore,
 } from "@creezio/mails";
 
-const store = createSqliteMailsStore({
+configureMails({
+  rootDomain: "tempoflow.fr", // ou certivan.creez.io / fidu.creez.io
+  inboundSecretEnvKeys: ["EMAIL_INBOUND_SECRET", "TF2_EMAIL_INBOUND_SECRET"],
+  uiEnabled: true, // Fidu : false pour feature-off documenté
+  pageSubtitle: "Boîte de réception locale — *@slug.mail.tempoflow.fr",
+});
+
+// Electron brand-runtime (déjà typique)
+const mails = createSqliteMailsStore({
   coreDbPath: runtime.paths.core,
   defaultProviderId: FILE_SINK_PROVIDER_ID,
 });
-store.registerProvider(
-  createFileSinkMailProvider({ outDir: path.join(userData, "mail-outbox") }),
-);
-const draft = store.createDraft({
-  userId: "u1",
-  to: "a@b.c",
-  subject: "Hi",
-});
-await store.queueSend(draft.id, "u1"); // → fichier JSON + status sent
+mails.registerProvider(createFileSinkMailProvider({ outDir: mailOutDir }));
+api.registerModuleApi("platform-mails", createMailsApiMount(mails));
+
+// Hono app.ts — auth session côté marque ; inbound bypass session
+api.route("/email", createEmailInboxRoutes());
 ```
 
-SMTP / API marque : implémenter `MailProvider` et `registerProvider` —
-pas de templates dans ce package.
+```tsx
+// src/app/mails/page.tsx
+import { AppShell } from "@creezio/shell-ui/ui";
+import { MailInbox } from "@creezio/mails/ui";
+import { resolvePageSubtitle } from "@creezio/mails";
+
+export default function MailsPage() {
+  return (
+    <AppShell kind="section" title="Mails" subtitle={resolvePageSubtitle()}>
+      <MailInbox />
+    </AppShell>
+  );
+}
+```
+
+Env process Next (injecté Electron) :
+- `CREEZIO_CORE_DB_PATH` — SoT inbox
+- `EMAIL_DOMAIN` / `APP_PUBLIC_URL` — domaine public
+- `EMAIL_INBOUND_SECRET` (+ alias marque)
+
+## Fidu — UI on/off
+
+Capacité **native** (store + API) toujours montée.
+Pour masquer l’UI :
+
+```ts
+configureMails({ rootDomain: "fidu.creez.io", uiEnabled: false });
+// + ne pas exposer /mails (ou page qui redirige)
+```
+
+Ce n’est **pas** un reclassement « mails = métier Fidu ».
+
+## Migration depuis tables marque `emails`
+
+1. **Cutover clean** (recommandé instances neuves) : inbound écrit uniquement le kit ;
+   tables marque `emails` / `email_attachments` deviennent inertes (migration historique
+   034 peut rester pour ne pas casser le versioning).
+2. **One-shot données existantes** :
+
+```ts
+import { migrateBrandEmailsToKit, createSqliteMailsStore } from "@creezio/mails";
+
+const kit = createSqliteMailsStore({ coreDbPath: corePath });
+const result = migrateBrandEmailsToKit(brandDb, kit.db);
+// { migrated, skipped, errors }
+```
+
+Idempotent via `message_id` / `brand_email_id`.
+
+## Extinction TF / CV (liste)
+
+Supprimer après sync vendor :
+- `crm/src/components/mail/mail-inbox.tsx`
+- `crm/src/lib/email-queries.ts`
+- routes email grasses → stub ≤40 LOC `createEmailInboxRoutes`
+- `crm/scripts/email-worker/*` forké → pointer / documenter worker kit
+
+## Worker Cloudflare
+
+Voir [`email-worker/README.md`](./email-worker/README.md).
+Domaines injectés (`MAIL_ROOT_DOMAIN`) — **aucun** `tempoflow.fr` /
+`certivan.creez.io` hardcodé dans le package.
+
+## Providers d'envoi
+
+| Id | Rôle |
+|----|------|
+| `platform-stub` | Tests sans I/O |
+| `file-sink` | Écrit JSON dans un dossier |
+
+SMTP / API marque : implémenter `MailProvider` + `registerProvider`.

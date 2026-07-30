@@ -44,7 +44,7 @@ comme métier ; casser Hermes→Product Hub (R2).
 |--------------------------|-------------------|
 | catalogue, browse, CRUD, views, export | UI React Admin Database |
 | automations-store, triggers SQLite, engine, webhooks | Route Hono + session owner |
-| access-log, conditions, identifiers, policy | Whitelist métier via `configureDatabasePolicy` (défaut TF) |
+| access-log, conditions, identifiers, policy | Whitelist métier via `configureDatabasePolicy` (défaut kit vide / fail-closed) |
 | `DATABASE_CORE_SQL` | Migration electron v33 (réutilise SQL kit) |
 
 `@creezio/automations` reste **lifecycle-only** (R0) — pas fusionné.
