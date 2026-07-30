@@ -7,7 +7,7 @@
 | **Repo** | `creezio/creezio` (extract only) |
 | **Prérequis** | [PHASE-O4p.md](PHASE-O4p.md) · plan [PLAN-O.md](PLAN-O.md) |
 | **Baseline O4p kit tip** | `e4af9a4` / tip `4274edc` |
-| **Kit tip O5** | *(pin après push)* |
+| **Kit tip O5** | `d6d5b81` |
 | **ARCHITECTURE_VERSION** | `"H6"` (inchangé) |
 | **Republish** | Non (cutover = O5p) |
 
