@@ -5,7 +5,7 @@
 
 import type { Context, Next } from "hono";
 import { getCookie } from "hono/cookie";
-import { getAuthCookieName } from "./config.js";
+import { getAuthConfig, getAuthCookieName } from "./config.js";
 import {
   isAuthDisabled,
   sessionActorIsOwner,
@@ -71,7 +71,7 @@ export function createHonoAuth(
         sub: "auth-disabled",
         email: "auth-disabled",
         role: "owner",
-        permissions: [],
+        permissions: [...getAuthConfig().ownerPermissions],
       };
     }
     const token = getCookie(c, getAuthCookieName());
