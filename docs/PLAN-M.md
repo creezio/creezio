@@ -180,17 +180,36 @@ Même façade `installBrandDesktopRuntime` : Certivan puis Fidu ;
 
 ## M13 — Audit TF métier-only
 
+1. **Objectif** : TF = métier + wiring mince ; zéro jumeau plateforme / stub fantôme.
+2. **Inclus** : allowlist modules (`panier`/`dispatch`/`releves`/`catalogue`/`stack`/`scan`),
+   seeds, `host-runtime-ctx` hooks, `brand-runtime` ; assert absents launchers/bootstraps/
+   database shim / Paperclip ; gate kit `test-phase-m13`.
+3. **Exclu** : amincir wirings gras (`plugin-control-extras`) — hors delete-stub.
+4. **Tests gate** : kit `npm test` ; TF `electron:compile`, `test:shell`,
+   `test:database-module`, `test:phase-h3`, `build`.
+5. **Done** : [PHASE-M13.md](PHASE-M13.md) + gates verts ; republish non.
+6. **Effort S · Republish non**
+
 ---
 
 ## M14 — Certivan gold
+
+Allowlist métier RTI/VASP ; mêmes standards vision (pas de jumeaux plateforme) ;
+gates Certivan ; push (+ republish si packing).
 
 ---
 
 ## M15 — Fidu gold (+ ship pipeline)
 
+Allowlist GED/CRM ; gates `test:fidu` ; push ; standing ship publish **seulement**
+si verts + packing touché. Paperclip = mort.
+
 ---
 
 ## M16 — Freeze vision + matrice
+
+Matrice Native/Métier sans « stub OK » ; PLAN-M / PHASE-M16 ; kit `npm test` ;
+dry-run sync vendor 3 marques.
 
 ---
 
