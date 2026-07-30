@@ -14,9 +14,9 @@
 
 | Marque | SHA |
 |--------|-----|
-| TempoFlow |  |
-| Certivan |  |
-| Fidu |  |
+| TempoFlow | `a78cada` |
+| Certivan | `49480ba` |
+| Fidu | `28968f8` |
 
 ---
 

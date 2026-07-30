@@ -269,7 +269,7 @@ ci-dessous.
 5. **Done** : [PHASE-O9p.md](PHASE-O9p.md).
 6. **Effort M · Republish non**
 7. **Prérequis intention** : [ADR-no-brand-domain-in-native-packages.md](ADR-no-brand-domain-in-native-packages.md)
-8. **SHAs** : kit `ae00f6e` · TF/CV/Fidu _(voir PHASE-O9p)_
+8. **SHAs** : kit `ae00f6e` · TF `a78cada` · CV `49480ba` · Fidu `28968f8`
 
 ---
 
