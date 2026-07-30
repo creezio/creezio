@@ -465,16 +465,56 @@ async function executeTool(
     }
 
     if (isSupplierTool(name)) {
+      // Marque peut intercepter (ex. Fidu open_external_tab → resolveOpenTabRequest).
+      {
+        const brandExec = assistantBrandTools().executeTool;
+        if (brandExec) {
+          const brandCtx: Record<string, unknown> = {
+            conversationId: trace?.conversationId || null,
+            round: trace?.round ?? null,
+            runId: trace?.runId || null,
+            activeSurface: activeSurface || null,
+            emit: emit || null,
+            phase: "supplier",
+          };
+          const brandResult = await brandExec(name, args, brandCtx);
+          if (brandResult != null) {
+            const br = brandResult as Record<string, unknown>;
+            resultOk = br.ok !== false && !br.error;
+            error = resultOk ? null : String(br.error || "outil marque échoué");
+            parsedResult = br;
+            const brandSources = Array.isArray(br.sources)
+              ? (br.sources as AssistantSource[])
+              : [];
+            for (const s of brandSources) sources.push(s);
+            uiSummary =
+              typeof br.uiSummary === "string" && br.uiSummary
+                ? br.uiSummary
+                : uiActionSummary(name, br);
+            return {
+              content: JSON.stringify(parsedResult).slice(0, 14000),
+              sources,
+              uiSummary,
+              resultOk,
+            };
+          }
+        }
+      }
       // Onglets fournisseurs (app desktop) : canal SSE dédié vers Electron.
       let tabId = typeof args.tabId === "string" ? args.tabId : undefined;
       if (!tabId && activeSurface?.kind === "supplier" && activeSurface.tabId) {
         tabId = activeSurface.tabId;
         args = { ...args, tabId };
       }
+      const targetUserId =
+        typeof args.targetUserId === "string" ? args.targetUserId : undefined;
       const result = await dispatchSupplierAction(
         name as SupplierActionType,
         args,
         tabId,
+        targetUserId
+          ? { targetUserId, requireTargetOnline: true }
+          : undefined,
       );
       resultOk = result.ok !== false;
       error = resultOk ? null : String(result.error || "action fournisseur échouée");
