@@ -31,7 +31,7 @@ const SHELL_SRC = [
   "packages/tasks/ui/ai-activity-panel.tsx",
 ];
 
-/** Jumeaux encore présents marques (anti-cutover prématuré). */
+/** Jumeaux plateforme — absents après O9p. */
 const BRAND_TWINS = [
   "src/lib/api-scopes.ts",
   "src/lib/utils.ts",
@@ -133,20 +133,19 @@ test("O9.3 pas de @/ ni Paperclip ni hardcode TF desktop API", () => {
   assert.match(brand, /productName/);
 });
 
-test("O9.4 jumeaux marques encore présents (extract-only)", () => {
+test("O9.4 jumeaux marques absents (cutover O9p)", () => {
   for (const b of BRANDS) {
     const base = path.join(dockerRoot, b.dir);
     for (const rel of BRAND_TWINS) {
       const p = path.join(base, rel);
-      assert.ok(fs.existsSync(p), `${b.name}: jumeau manquant (trop tôt cutover?): ${rel}`);
+      assert.ok(!fs.existsSync(p), `${b.name}: jumeau encore présent: ${rel}`);
     }
   }
-  // Fidu : au moins primitives + settings connection
   const fiduBtn = path.join(
     dockerRoot,
     "fidu/crm/src/components/ui/button.tsx",
   );
-  assert.ok(fs.existsSync(fiduBtn), "fidu button twin");
+  assert.ok(!fs.existsSync(fiduBtn), "fidu button twin encore présent");
 });
 
 test("O9.5 smoke configureShellUiBrand + api-scopes", async () => {
