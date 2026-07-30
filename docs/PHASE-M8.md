@@ -84,6 +84,15 @@ npm run electron:compile \
 
 ---
 
+## Push
+
+| Repo | SHA |
+|------|-----|
+| kit `creezio/creezio` | `0a894b3` |
+| TF `tempoflow2` | `d7b60b4` |
+
+---
+
 ## Suite
 
 **M8p** — Certivan puis Fidu (mêmes critères stores mince).
