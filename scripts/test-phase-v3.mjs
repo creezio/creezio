@@ -126,14 +126,14 @@ test("V3.3 E2E demobrand : factory + KV → automations + obs", async () => {
 
     const apiRules = await sandbox.api.handle({
       method: "GET",
-      path: "/api/v1/modules/automations/rules",
+      path: "/api/v1/platform/automations/rules",
     });
     assert.equal(apiRules.status, 200);
     assert.ok(apiRules.body.rules.length >= 3);
 
     const apiRuns = await sandbox.api.handle({
       method: "GET",
-      path: "/api/v1/modules/automations/runs",
+      path: "/api/v1/platform/automations/runs",
     });
     assert.equal(apiRuns.status, 200);
     assert.ok(apiRuns.body.runs.length >= 1);

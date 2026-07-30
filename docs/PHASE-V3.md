@@ -23,7 +23,7 @@ casser les marques ni exiger un n8n vivant.
 |---|----------|--------|
 | 1 | Package `@creezio/automations` **lifecycle-only** (triggers, rules, actions, engine) — ≠ Database row-level | ✅ |
 | 2 | Demobrand — règles défaut + dispatch install / data / factory | ✅ |
-| 3 | API `/api/v1/modules/automations/*` | ✅ |
+| 3 | API `/api/v1/platform/automations/*` | ✅ |
 | 4 | Intégration optionnelle n8n : `n8n_tag_hint` + `webhook` (skip si pas d’URL) | ✅ |
 | 5 | Tests `scripts/test-phase-v3.mjs` | ✅ |
 | 6 | Docs PHASE-V3 + [VISION-V1-V3.md](VISION-V1-V3.md) | ✅ |

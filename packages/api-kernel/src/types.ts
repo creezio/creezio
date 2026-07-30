@@ -5,7 +5,14 @@
 import type { SqliteRuntime } from "@creezio/platform-core";
 import type { ScopedDbAccess } from "./db-scope.js";
 
-export type ApiSpace = "core" | "module" | "plugin";
+/**
+ * Espaces de la façade unique `/api/v1`.
+ * - `core` — routes kit (health/version/architecture)
+ * - `platform` — APIs plateforme kit (tasks/mails/obs/automations) → DB core
+ * - `module` — métier marque → DB brand
+ * - `plugin` — plugins installés → DB plugin/<id>
+ */
+export type ApiSpace = "core" | "platform" | "module" | "plugin";
 
 export type ApiRequest = {
   method: string;
@@ -39,7 +46,7 @@ export type ApiResponse = {
 
 export type ApiHandlerContext = {
   req: ApiRequest;
-  /** Espace monté (module/plugin id ou `core`). */
+  /** Espace monté (module/plugin/platform id ou `core`). */
   space: ApiSpace;
   mountId: string;
   /** Sous-chemin relatif au préfixe de montage (sans slash initial). */
@@ -64,11 +71,12 @@ export type ApiMount = {
   allowCrossWrite?: boolean;
   /**
    * Couche DB attendue pour ce mount (H2).
+   * - platform → core (défaut)
    * - module → brand (défaut)
    * - plugin → plugin/<id> (défaut = mount id)
-   * Ignoré pour les routes core.
+   * Ignoré pour les routes core kit.
    */
-  dbLayer?: "brand" | "plugin";
+  dbLayer?: "core" | "brand" | "plugin";
 };
 
 export type ApiKernelOptions = {
@@ -93,5 +101,5 @@ export type MountedApiInfo = {
   space: Exclude<ApiSpace, "core">;
   id: string;
   allowCrossWrite: boolean;
-  dbLayer: "brand" | "plugin";
+  dbLayer: "core" | "brand" | "plugin";
 };

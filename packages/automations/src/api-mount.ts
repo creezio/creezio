@@ -1,5 +1,5 @@
 /**
- * Mount API automations — /api/v1/modules/automations/...
+ * Mount API automations — /api/v1/platform/automations/...
  */
 
 import type { ApiMount } from "@creezio/api-kernel";
