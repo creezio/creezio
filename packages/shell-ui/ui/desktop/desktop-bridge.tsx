@@ -47,7 +47,12 @@ export function DesktopBridge() {
   useEffect(() => {
     const api = getShellDesktopApi();
     if (!api?.onSupplierTabOpened) return;
-    return api.onSupplierTabOpened((info) => {
+    return api.onSupplierTabOpened((info: {
+      fournisseurId?: number;
+      url: string;
+      title?: string;
+      electronTabId?: string;
+    }) => {
       const opts: OpenSupplierSiteOpts = {
         fournisseurId: info.fournisseurId,
         url: info.url,

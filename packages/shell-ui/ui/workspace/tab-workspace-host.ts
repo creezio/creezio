@@ -7,6 +7,8 @@ export type OpenSupplierSiteOpts = {
   url: string;
   title?: string;
   siteId?: number;
+  fournisseurId?: number;
+  electronTabId?: string;
   [key: string]: unknown;
 };
 
