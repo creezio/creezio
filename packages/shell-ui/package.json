@@ -1,7 +1,7 @@
 {
   "name": "@creezio/shell-ui",
   "version": "0.1.0",
-  "description": "Nav Creezio + slots typés pour onglets/vues métier marque",
+  "description": "Nav + slots + shell CRM UI / libs plateforme (O9)",
   "type": "module",
   "main": "./dist-cjs/index.js",
   "types": "./dist/index.d.ts",
@@ -11,11 +11,17 @@
       "import": "./dist/index.js",
       "require": "./dist-cjs/index.js",
       "default": "./dist/index.js"
+    },
+    "./ui": {
+      "types": "./ui/index.ts",
+      "import": "./ui/index.ts",
+      "default": "./ui/index.ts"
     }
   },
   "files": [
     "dist",
-    "dist-cjs"
+    "dist-cjs",
+    "ui"
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
@@ -23,11 +29,90 @@
   },
   "dependencies": {
     "@creezio/brand-config": "0.1.0",
-    "@creezio/shell": "0.1.0"
+    "@creezio/shell": "0.1.0",
+    "clsx": "^2.0.0",
+    "tailwind-merge": "^2.0.0"
   },
   "devDependencies": {
     "@types/node": "^22.15.3",
+    "@types/react": "^18.3.12",
     "typescript": "^5.8.3"
+  },
+  "peerDependencies": {
+    "@radix-ui/react-avatar": "^1.0.0",
+    "@radix-ui/react-dialog": "^1.0.0",
+    "@radix-ui/react-dropdown-menu": "^2.0.0",
+    "@radix-ui/react-label": "^2.0.0",
+    "@radix-ui/react-scroll-area": "^1.0.0",
+    "@radix-ui/react-select": "^2.0.0",
+    "@radix-ui/react-separator": "^1.0.0",
+    "@radix-ui/react-slot": "^1.1.0",
+    "@radix-ui/react-tabs": "^1.1.0",
+    "class-variance-authority": "^0.7.0",
+    "clsx": "^2.1.1",
+    "cmdk": ">=1.0.0",
+    "lucide-react": ">=0.400.0",
+    "next": ">=14.0.0",
+    "react": "^18.0.0 || ^19.0.0",
+    "recharts": ">=2.0.0",
+    "sonner": ">=1.0.0",
+    "tailwind-merge": "^3.6.0"
+  },
+  "peerDependenciesMeta": {
+    "@radix-ui/react-avatar": {
+      "optional": true
+    },
+    "@radix-ui/react-dialog": {
+      "optional": true
+    },
+    "@radix-ui/react-dropdown-menu": {
+      "optional": true
+    },
+    "@radix-ui/react-label": {
+      "optional": true
+    },
+    "@radix-ui/react-scroll-area": {
+      "optional": true
+    },
+    "@radix-ui/react-select": {
+      "optional": true
+    },
+    "@radix-ui/react-separator": {
+      "optional": true
+    },
+    "@radix-ui/react-slot": {
+      "optional": true
+    },
+    "@radix-ui/react-tabs": {
+      "optional": true
+    },
+    "class-variance-authority": {
+      "optional": true
+    },
+    "clsx": {
+      "optional": true
+    },
+    "cmdk": {
+      "optional": true
+    },
+    "lucide-react": {
+      "optional": true
+    },
+    "next": {
+      "optional": true
+    },
+    "react": {
+      "optional": true
+    },
+    "recharts": {
+      "optional": true
+    },
+    "sonner": {
+      "optional": true
+    },
+    "tailwind-merge": {
+      "optional": true
+    }
   },
   "license": "UNLICENSED",
   "module": "./dist/index.js"

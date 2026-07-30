@@ -245,7 +245,7 @@ ci-dessous.
 
 ---
 
-## O9 — Jumeaux lib/UI plateforme restants → kit
+## O9 — Jumeaux lib/UI plateforme restants → kit ✅
 
 1. **Objectif** : absorber near-copies plateforme TF↔CV restantes.
 2. **Inclus** : inventaire post-O3/O5 → extract kit. **Exclu** : cutover

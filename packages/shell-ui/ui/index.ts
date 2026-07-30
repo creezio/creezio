@@ -1,0 +1,112 @@
+/**
+ * @creezio/shell-ui/ui — primitives + shell CRM UI (O9, gold TF).
+ * Consommer via `@creezio/shell-ui/ui`.
+ */
+
+/* ── Brand / hosts (aussi via package root) ── */
+export {
+  configureShellUiBrand,
+  getShellUiBrand,
+  getShellDesktopApi,
+  resetShellUiBrandForTests,
+  type ShellUiBrand,
+} from "../src/brand";
+export {
+  configureTabWorkspaceHost,
+  useTabWorkspace,
+  useTabWorkspaceOptional,
+  useOpenTab,
+  type TabWorkspaceHost,
+  type OpenSupplierSiteOpts,
+} from "./workspace/tab-workspace-host";
+export {
+  configureGlobalSearchHost,
+  useGlobalSearch,
+  type GlobalSearchHost,
+} from "./global-search-host";
+
+/* ── Primitives ── */
+export * from "./primitives/button";
+export * from "./primitives/badge";
+export * from "./primitives/input";
+export * from "./primitives/card";
+export * from "./primitives/tabs";
+export * from "./primitives/label";
+export * from "./primitives/separator";
+export * from "./primitives/skeleton";
+export * from "./primitives/dialog";
+export * from "./primitives/sheet";
+export * from "./primitives/select";
+export * from "./primitives/dropdown-menu";
+export * from "./primitives/scroll-area";
+export * from "./primitives/avatar";
+export * from "./primitives/breadcrumb";
+export * from "./primitives/command";
+export * from "./primitives/sonner";
+export * from "./primitives/chart";
+
+/* ── Lib client ── */
+export * from "./lib/desktop-host";
+export * from "./lib/n8n-ui";
+export * from "./lib/hermes-ui";
+export * from "./lib/fleet-tracker-client";
+export * from "./lib/ai-workspace-client";
+export * from "./lib/ai-screencast-hub";
+
+/* ── Layout / chrome ── */
+export * from "./layout/page-chrome";
+export * from "./layout/page-toolbar-context";
+export * from "./layout/section-view-shell";
+export * from "./layout/entity-header";
+export * from "./layout/sandbox-banner";
+export * from "./layout/app-shell";
+export * from "./layout/desktop-update-banner";
+
+/* ── Workspace ── */
+export * from "./workspace/types";
+export * from "./workspace/workspace-tab-bar";
+export * from "./workspace/keep-alive";
+export * from "./workspace/ai-workspace-banner";
+export { configureAiActivityPanel, AiActivityPanelHost } from "./workspace/ai-activity-panel-host";
+export * from "./workspace/window-chrome-controls";
+export * from "./workspace/ai-workspace-agent-host";
+export * from "./workspace/use-location-search";
+
+/* ── Settings desktop ── */
+export * from "./settings/desktop-hermes-settings";
+export * from "./settings/desktop-n8n-settings";
+export * from "./settings/desktop-fleet-telemetry-settings";
+export * from "./settings/desktop-tunnel";
+export * from "./settings/desktop-embed-env-panel";
+export * from "./settings/desktop-connection-settings";
+export * from "./settings/desktop-llm-keys";
+export * from "./settings/desktop-update-settings";
+export * from "./settings/desktop-background-settings";
+export * from "./settings/ops-diagnostic-settings";
+export * from "./settings/api-keys-settings";
+export * from "./settings/agent-profile-settings";
+export * from "./settings/account-settings";
+export * from "./settings/search-reindex-settings";
+export * from "./settings/factory-reset-settings";
+export * from "./settings/locked-config-field";
+export * from "./settings/host-only-settings";
+
+/* ── Desktop / PWA / misc ── */
+export * from "./desktop/site-link";
+export * from "./desktop/desktop-bridge";
+export * from "./desktop/auth-window-chrome";
+export * from "./desktop/window-chrome-controls";
+export * from "./pwa/client-error-reporter";
+export * from "./pwa/register-sw";
+export * from "./page-loading/list-page-loading";
+export * from "./page-loading/entity-page-loading";
+export * from "./desktop-types";
+
+export * from "./list-toolbar";
+export * from "./data-table";
+export * from "./range-filters";
+export * from "./faceted-filters";
+export * from "./search-input";
+export * from "./global-search";
+export * from "./pagination";
+export * from "./app-error-boundary";
