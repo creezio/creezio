@@ -390,7 +390,10 @@ test("grant bypass headers brandés", () => {
 
 test("vertical remaining + demobrand stub files", () => {
   assert.ok(!PLUGIN_VERTICAL_REMAINING.includes("plugin-control-api"));
-  assert.ok(PLUGIN_VERTICAL_REMAINING.includes("plugin-git"));
+  // N1 : runtime plugins (git/data/…) dans le kit — vertical = bindings + UI
+  assert.ok(!PLUGIN_VERTICAL_REMAINING.includes("plugin-git"));
+  assert.ok(PLUGIN_VERTICAL_REMAINING.includes("brand-plugin-host-bindings"));
+  assert.ok(PLUGIN_VERTICAL_REMAINING.includes("admin-plugins-ui"));
   // H1.8 : store sqlite core livré dans le kit
   assert.ok(!PRODUCT_HUB_VERTICAL_REMAINING.includes("sqlite-product-hub-store"));
   assert.ok(PRODUCT_HUB_VERTICAL_REMAINING.includes("admin-ui-plugins"));

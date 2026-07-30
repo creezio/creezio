@@ -10,7 +10,7 @@ inventer · Tests verts → push → étape suivante · **Pas de N(n+1) si gate 
 rouge** · Sync vendor = **liste complète** · Cutover marques séquentiel `*p` :
 TF → Certivan → Fidu (sauf N5 Fidu-only et N0 artefacts) · **Paperclip = mort**.
 
-Phases livrées : [PHASE-N0.md](PHASE-N0.md) · suite N1→N9 ci-dessous.
+Phases livrées : [PHASE-N0.md](PHASE-N0.md) · [PHASE-N1.md](PHASE-N1.md) · suite N1p→N9 ci-dessous.
 
 ---
 
@@ -27,15 +27,16 @@ Phases livrées : [PHASE-N0.md](PHASE-N0.md) · suite N1→N9 ci-dessous.
 
 ---
 
-## N1 — Runtime plugins Electron → kit
+## N1 — Runtime plugins Electron → kit ✅
 
 1. **Objectif** : SoT spawn/discover/git/control-extras dans
    `@creezio/electron-shell`.
 2. **Inclus** : extraction TF `plugin-runtime|launcher|git|control-extras` (+
-   deps plateforme jumelles si pures).
+   deps plateforme jumelles si pures) + `brand-bindings` / adapters / crm-key /
+   accept-check / test-runner / data ; events+grants = réexport platform-core.
 3. **Exclu** : UI Admin Plugins ; cutover marques (N1p).
 4. **Tests gate** : `npm run build:packages && npm test` (+ `test-phase-n1`).
-5. **Done** : [PHASE-N1.md](PHASE-N1.md) inventaire + LOC.
+5. **Done** : [PHASE-N1.md](PHASE-N1.md) inventaire + LOC · baseline N0 `1aac0e2`.
 6. **Effort L · Republish non**
 
 ---

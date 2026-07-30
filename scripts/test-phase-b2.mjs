@@ -253,7 +253,9 @@ test("plugins contracts", () => {
   const found = discoverPlugins(root);
   assert.equal(found.length, 1);
   assert.equal(found[0].enabled, true);
-  assert.ok(PLUGIN_VERTICAL_REMAINING.includes("plugin-git"));
+  // N1 : git/data/accept-check/crm-key extraits → kit ; reste wiring marque + UI
+  assert.ok(!PLUGIN_VERTICAL_REMAINING.includes("plugin-git"));
+  assert.ok(PLUGIN_VERTICAL_REMAINING.includes("brand-plugin-host-bindings"));
   assert.ok(!PLUGIN_VERTICAL_REMAINING.includes("plugin-control-api"));
   fs.rmSync(dir, { recursive: true, force: true });
 });

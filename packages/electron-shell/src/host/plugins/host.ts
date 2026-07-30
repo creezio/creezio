@@ -1,14 +1,13 @@
 /**
- * Host plugins runtime — découverte + spawn sidecars (noyau platform).
+ * Host plugins runtime — spawn sidecars minimal (boots C7 sans bindings).
  *
- * Product Hub (lifecycle, grants, control plane, ACL contrats) →
- * `@creezio/product-hub` + `startHostPluginControlPlane` (Phase E).
+ * Runtime riche TF (scaffold / git / control-extras / accept-check…) →
+ * `host/plugins/{runtime,launcher,git,control-extras,...}` + `configurePluginHost`
+ * (Phase N1). Product Hub → `@creezio/product-hub` + `startHostPluginControlPlane`.
  *
- * Vertical restant (apps marques) :
- * - migrations SQL plugin-data (better-sqlite3 sous-process Next ABI)
- * - scaffolds UI métier Hermes / git versions riches
- *
- * Port du contrat TF2 plugin-runtime + plugin-launcher (spawn minimal).
+ * Vertical restant après N1 (cutover N1p / UI N6) :
+ * - wiring marque (`configurePluginHost`, barrels ≤40 LOC)
+ * - UI Admin Plugins / MCP analytics
  */
 
 import { spawn, type ChildProcess } from "node:child_process";
@@ -207,17 +206,13 @@ export function createPluginsHost(opts: {
 }
 
 /**
- * Vertical documenté après Phase E (reste app marque) :
- * - plugin-git / versions / restore (hors scaffold stub kit)
- * - plugin-data migrations better-sqlite3
- * - plugin-accept-check / test-runner
- * - plugin-crm-key
- * Control plane générique + Product Hub → @creezio/product-hub.
+ * Vertical documenté après N1 (reste app marque / phases suivantes) :
+ * - configurePluginHost bindings + barrels control-api / hub-store (N1p)
+ * - UI Admin Plugins / MCP analytics (N6)
+ * Runtime spawn/git/scaffold/extras → kit `host/plugins/*`.
  */
 export const PLUGIN_VERTICAL_REMAINING = [
-  "plugin-git",
-  "plugin-data",
-  "plugin-accept-check",
-  "plugin-test-runner",
-  "plugin-crm-key",
+  "brand-plugin-host-bindings",
+  "plugin-control-api-barrel",
+  "admin-plugins-ui",
 ] as const;

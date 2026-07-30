@@ -262,7 +262,10 @@ export type {
   N8nRuntimeManifest,
 } from "./host/n8n/runtime-bootstrap.js";
 
-export type { PluginsHost, RunningPlugin } from "./host/plugins/host.js";
+export type {
+  PluginsHost,
+  RunningPlugin as HostRunningPlugin,
+} from "./host/plugins/host.js";
 export {
   PLUGIN_VERTICAL_REMAINING,
   createPluginsHost,
@@ -277,6 +280,158 @@ export {
 } from "./host/plugins/control-token.js";
 export type { StartHostPluginControlPlaneOptions } from "./host/plugins/control-plane.js";
 export { startHostPluginControlPlane } from "./host/plugins/control-plane.js";
+
+/* ── Phase N1 : runtime plugins TF → kit ── */
+export type {
+  PluginHostBindings,
+  PluginLlmKeys,
+} from "./host/plugins/brand-bindings.js";
+export {
+  __resetPluginHostBindingsForTests,
+  assignPluginEnv,
+  configurePluginHost,
+  getPluginHostBindings,
+  pluginCrmKeyFileName,
+  pluginEnvKeys,
+  pluginGitIdentity,
+  resolveApplyOsSandboxEnv,
+  resolveBuildIsolatedNodeEnv,
+  resolveFindFreePort,
+  tryGetPluginHostBindings,
+} from "./host/plugins/brand-bindings.js";
+
+export type {
+  DiscoveredPlugin,
+  PluginAcceptance,
+  PluginAcceptanceSmoke,
+  PluginManifest,
+  PluginPanelConfig,
+  PluginPermission,
+} from "./host/plugins/runtime.js";
+export {
+  PLUGIN_MANIFEST_FILE,
+  discoverPlugins,
+  hasPluginPermission,
+  isValidPluginId,
+  parsePluginManifest,
+  pluginEnabledFlagPath,
+  pluginSiteId,
+  pluginsRootDir,
+  scaffoldPlugin,
+  scaffoldPluginUiCss,
+  setPluginEnabled,
+} from "./host/plugins/runtime.js";
+
+export type { RunningPlugin } from "./host/plugins/launcher.js";
+export {
+  createPluginScaffold,
+  createPluginScaffoldWithGit,
+  deletePlugin,
+  enablePlugin,
+  getPluginLogs,
+  getPluginVersions,
+  getPluginsCrmPort,
+  getRunningPlugins,
+  listPlugins,
+  pluginsStatusPayload,
+  pluginsStatusPayloadWithGit,
+  proxyPluginHealth,
+  resolvePluginPanel,
+  restartPlugin,
+  restorePluginToVersion,
+  setPluginsCrmPort,
+  startEnabledPlugins,
+  stopAllPlugins,
+  writePluginFiles,
+  writePluginFilesAndCommit,
+} from "./host/plugins/launcher.js";
+
+export type {
+  PluginGitCommit,
+  PluginGitStatus,
+} from "./host/plugins/git.js";
+export {
+  bumpPluginManifestPatch,
+  commitPluginChanges,
+  ensurePluginGitRepo,
+  getPluginGitStatus,
+  isPluginGitRepo,
+  listPluginVersions,
+  resetGitBinaryCache,
+  resolveGitBinary,
+  restorePluginVersion,
+} from "./host/plugins/git.js";
+
+export type {
+  PluginControlApiState,
+} from "./host/plugins/control-extras.js";
+export {
+  PLUGIN_CONTROL_PREFERRED_PORT,
+  archivePluginRuntime,
+  createPluginExecutionGrant,
+  getPluginControlApi,
+  /** Bridge env depuis API running (TF gold) — distinct du helper token+ctx. */
+  getPluginControlBridgeEnv as getPluginControlApiBridgeEnv,
+  handleBrandExtras,
+  handlePluginControlExtras,
+  migratePluginData,
+  startPluginControlApi,
+  stopPluginControlApi,
+  validatePluginExecutionGrant,
+} from "./host/plugins/control-extras.js";
+
+export { buildPluginControlPlaneAdapters } from "./host/plugins/control-adapters.js";
+
+export type { PluginCrmKeyStored } from "./host/plugins/crm-key.js";
+export {
+  PLUGIN_CRM_KEY_FILE,
+  ensurePluginCrmApiKey,
+  pluginCrmKeyPath,
+  readPluginCrmApiKey,
+} from "./host/plugins/crm-key.js";
+
+export type {
+  AcceptCheckItem,
+  AcceptCheckResult,
+} from "./host/plugins/accept-check.js";
+export {
+  resolvePluginSmokes,
+  runPluginAcceptCheck,
+} from "./host/plugins/accept-check.js";
+
+export type { PluginTestResult } from "./host/plugins/test-runner.js";
+export { runPluginTests } from "./host/plugins/test-runner.js";
+
+export type { PluginDataMigrationReport } from "./host/plugins/data.js";
+export {
+  applyPluginDataMigrations,
+  runPluginDataCli,
+} from "./host/plugins/data.js";
+
+export {
+  PLUGIN_RUNTIME_FILE,
+  PLUGIN_SITE_ID_BASE,
+  PLUGIN_SITE_ID_SPAN,
+  pluginAcceptsHook,
+  pluginHookUrl,
+  pluginN8nWebhookUrl,
+  pluginRuntimePath,
+  readPluginRuntimeState,
+  writePluginRuntimeState,
+} from "./host/plugins/events.js";
+export type {
+  PluginRuntimeEntry,
+  PluginRuntimeState,
+} from "./host/plugins/events.js";
+
+export {
+  issuePluginExecutionGrant,
+  verifyPluginExecutionGrant,
+} from "./host/plugins/execution-grant.js";
+export type {
+  PluginExecutionGrantPayload,
+  PluginGrantAction,
+} from "./host/plugins/execution-grant.js";
 
 export type { HostStack } from "./host/host-stack.js";
 export { createHostStack, lazyHost } from "./host/host-stack.js";
