@@ -35,7 +35,7 @@ import {
 import { cn } from "@creezio/shell-ui";
 import { PageChrome } from "../layout/page-chrome";
 import { useGlobalSearch } from "../global-search-host";
-import { useTabWorkspace } from "./tab-workspace-context";
+import { useTabWorkspace } from "./tab-workspace-host";
 import { WindowChromeControls } from "./window-chrome-controls";
 import { resolvePageKind, isFullscreenHref } from "./types";
 

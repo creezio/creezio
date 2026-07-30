@@ -18,7 +18,7 @@ export type HermesWebuiOpenTarget = {
 };
 
 type HermesDesktopStatus = Awaited<
-  ReturnType<NonNullable<NonNullable<typeof getShellDesktopApi()>["getHermesStatus"]>>
+  ReturnType<NonNullable<NonNullable<ReturnType<typeof getShellDesktopApi>>["getHermesStatus"]>>
 >;
 
 function cleanDetail(value: string | null | undefined): string {

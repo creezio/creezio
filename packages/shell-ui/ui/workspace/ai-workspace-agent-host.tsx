@@ -10,7 +10,7 @@ import { getShellDesktopApi, getShellUiBrand } from "@creezio/shell-ui";
 
 import { useEffect } from "react";
 import { runUiAction, runUiNavigate } from "@creezio/assistant/ui";
-import { useTabWorkspace } from "./tab-workspace-context";
+import { useTabWorkspace } from "./tab-workspace-host";
 
 export function AiWorkspaceAgentHost() {
   const { navigate } = useTabWorkspace();
