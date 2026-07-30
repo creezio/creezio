@@ -79,10 +79,11 @@ npm run electron:compile && npm run test:shell && npm run test:fidu
 
 | Repo | SHA |
 |------|-----|
-| kit `creezio/creezio` | `3deb61d` (+ docs `9a5f852`) |
+| kit `creezio/creezio` | `63f516e` |
 | Certivan `certivan-app` | `15ae995` |
 | TF | `3565524` |
-| Fidu `fidu` | `fd6ace6` (+ fix package.json) |
+| Fidu `fidu` | `9f139f2` |
+
 
 ---
 
