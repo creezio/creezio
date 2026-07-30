@@ -1,7 +1,7 @@
 {
   "name": "@creezio/product-hub",
   "version": "0.1.0",
-  "description": "Product Hub / plugins \u2014 lifecycle, ACL, admin UI (N6)",
+  "description": "Product Hub / plugins — lifecycle, ACL, admin UI (N6)",
   "type": "module",
   "main": "./dist-cjs/index.js",
   "types": "./dist/index.d.ts",
@@ -29,12 +29,14 @@
   },
   "dependencies": {
     "@creezio/brand-config": "0.1.0",
-    "@creezio/platform-core": "0.1.0"
+    "@creezio/platform-core": "0.1.0",
+    "hono": "^4.12.32",
+    "zod": "^3.25.76"
   },
   "devDependencies": {
     "@types/node": "^22.15.3",
-    "typescript": "^5.8.3",
-    "@types/react": "^18.3.12"
+    "@types/react": "^18.3.12",
+    "typescript": "^5.8.3"
   },
   "license": "UNLICENSED",
   "module": "./dist/index.js",
