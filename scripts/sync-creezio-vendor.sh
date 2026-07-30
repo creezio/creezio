@@ -147,20 +147,23 @@ if (changed) fs.writeFileSync(path, JSON.stringify(pkg, null, 2) + "\n");
 ' "${out}/package.json"
 done
 
-# Marqueur sync
+# Marqueur sync (O0 : pin kitSha tip pour audit / dry-run polish)
+KIT_SHA="$(git -C "${KIT}" rev-parse --short HEAD 2>/dev/null || echo unknown)"
 node -e '
 const fs = require("fs");
 const path = require("path");
 const dest = process.argv[1];
 const arch = process.argv[2];
-const pkgs = process.argv.slice(3);
+const kitSha = process.argv[3];
+const pkgs = process.argv.slice(4);
 const out = {
   syncedAt: new Date().toISOString(),
   architectureVersion: arch,
+  kitSha,
   packages: pkgs,
 };
 fs.writeFileSync(path.join(dest, "SYNC.json"), JSON.stringify(out, null, 2) + "\n");
-' "${DEST}" "${ARCH}" "${PACKAGES[@]}"
+' "${DEST}" "${ARCH}" "${KIT_SHA}" "${PACKAGES[@]}"
 
-echo "OK vendor → ${DEST}"
+echo "OK vendor → ${DEST} (kitSha=${KIT_SHA})"
 du -sh "${DEST}"/*
