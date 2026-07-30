@@ -157,3 +157,45 @@ test("P-shell.4 injection configure* SoT", () => {
   assert.match(rootUi, /banners/);
   assert.doesNotMatch(rootUi, /PanierProvider|ImpersonationBanner|from ["']@\//);
 });
+
+/** Jumeaux chrome P1 — absents après cutover marques (dockerRoot sibling). */
+const P_SHELL_TWINS = [
+  "src/components/layout/sidebar.tsx",
+  "src/components/workspace/tab-workspace-context.tsx",
+  "src/components/workspace/workspace-shell.tsx",
+  "src/components/global-search-provider.tsx",
+  "src/components/desktop/supplier-site-slot.tsx",
+];
+
+const P_SHELL_BRANDS = ["tempoflow2", "certivan-app", "fidu"];
+
+test("P-shell.5 extinction jumeaux chrome ×3 (si repos siblings présents)", () => {
+  const dockerRoot = path.resolve(root, "..");
+  let checked = 0;
+  for (const id of P_SHELL_BRANDS) {
+    const crm = path.join(dockerRoot, id, "crm");
+    if (!fs.existsSync(crm)) continue;
+    checked += 1;
+    for (const rel of P_SHELL_TWINS) {
+      const p = path.join(crm, rel);
+      assert.ok(!fs.existsSync(p), `${id}: jumeau encore présent: ${rel}`);
+    }
+    const boot = path.join(crm, "src/lib/shell-ui/configure-shell-ui-client.ts");
+    assert.ok(fs.existsSync(boot), `${id}: boot configure manquant`);
+    const bootBody = fs.readFileSync(boot, "utf8");
+    assert.match(bootBody, /configureSidebar|configure-sidebar/);
+    assert.match(bootBody, /configureGlobalSearch|configure-global-search/);
+    const rootTsx = path.join(
+      crm,
+      "src/components/workspace/workspace-root.tsx",
+    );
+    assert.ok(fs.existsSync(rootTsx), `${id}: workspace-root mince`);
+    const rootBody = fs.readFileSync(rootTsx, "utf8");
+    assert.match(rootBody, /@creezio\/shell-ui\/ui/);
+    assert.match(rootBody, /WorkspaceRoot/);
+  }
+  // En CI kit-only sans siblings : skip soft (0 checked).
+  if (checked === 0) {
+    assert.ok(true, "pas de repos marques siblings — skip extinction");
+  }
+});
