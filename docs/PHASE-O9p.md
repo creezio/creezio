@@ -14,9 +14,9 @@
 
 | Marque | SHA |
 |--------|-----|
-| TempoFlow | _(après push)_ |
-| Certivan | _(après push)_ |
-| Fidu | _(après push)_ |
+| TempoFlow |  |
+| Certivan |  |
+| Fidu |  |
 
 ---
 
