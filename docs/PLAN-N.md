@@ -186,10 +186,17 @@ Phases livrées : [PHASE-N0.md](PHASE-N0.md) · [PHASE-N1.md](PHASE-N1.md) ·
 
 ---
 
-## N7 — `supplier-tabs` hors métier Certivan / Fidu
+## N7 — `supplier-tabs` hors métier Certivan / Fidu ✅
 
-Reste **métier TF** only.  
-**Effort M · Republish oui** CV/Fidu
+1. **Objectif** : jumeaux manager/driver absents (façades) sur CV+Fidu ;
+   SoT `@creezio/electron-shell` `host/browser-tabs` ; TF métier local.
+2. **Inclus** : extract gold TF ; `configureBrowserTabs` ; façades CV/Fidu ;
+   delete helpers locaux tab-url/load-state ; sync vendor.
+3. **Exclu** : rewrite navigateur métier TF ; delete capability onglets CV.
+4. **Tests gate** : electron:compile + build CV ; build + test:fidu ;
+   kit `test-phase-n7`.
+5. **Done** : [PHASE-N7.md](PHASE-N7.md) — CV `336739d` · Fidu `8ec21d2` / 0.1.63.
+6. **Effort M · Republish oui** Fidu (+ vendor CV)
 
 ---
 

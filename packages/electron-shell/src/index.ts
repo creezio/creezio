@@ -527,6 +527,31 @@ export {
   tryGetAiWorkspaceHostBindings,
 } from "./host/ai-workspace/index.js";
 
+/* ── N7 : browser tabs génériques (hors métier supplier TF) ── */
+export type {
+  BrowserTab,
+  BrowserTabManagerDeps,
+  ContentRect,
+  SupplierTab,
+  SupplierTabManagerOptions,
+  TabInfo,
+  TabLoadPhase,
+  TabLoadSignal,
+  TabLoadState,
+} from "./host/browser-tabs/index.js";
+export {
+  BrowserTabManager,
+  CHROME_UA,
+  SupplierTabManager,
+  captureScreenshot,
+  configureBrowserTabs,
+  executeSupplierAction,
+  isSameTabDocument,
+  isSameTabOrigin,
+  normalizeTabDocumentUrl,
+  reduceTabNativeLoadState,
+} from "./host/browser-tabs/index.js";
+
 export type {
   CatalogIndexUid,
   CatalogSqlCounts,

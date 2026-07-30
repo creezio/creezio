@@ -4,6 +4,9 @@
 ## [Unreleased]
 
 ### Added
+- **Phase N7** — `supplier-tabs` hors métier CV/Fidu : SoT
+  `@creezio/electron-shell` `host/browser-tabs` ; façades marques ;
+  TF métier local conservé ; `docs/PHASE-N7.md` ; tests `test-phase-n7`.
 - **Phase N6p** — Cutover admin TF→Certivan : mounts ≤80 LOC ;
   delete analytics/mcp clients locaux ; façades + brand hosts ;
   kit UI imports `../dist` + `AdminPluginDetail` ; `docs/PHASE-N6p.md` ;
