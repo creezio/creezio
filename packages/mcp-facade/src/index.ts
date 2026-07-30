@@ -152,6 +152,21 @@ export const CREEZIO_PLATFORM_HOST_MCP_TOOL_NAMES = [
   "list_tools_by_space",
 ] as const;
 
+/* ── D-P18 : open_external_tab host tool SoT ── */
+
+export type {
+  CreateOpenExternalTabHostMcpToolsOptions,
+  OpenExternalTabHostMcpRegisterFn,
+  OpenExternalTabHostMcpToolConfig,
+  OpenExternalTabResolveResult,
+  OpenExternalTabResolved,
+  OpenExternalTabUser,
+} from "./open-external-tab-host-tools.js";
+export {
+  CREEZIO_OPEN_EXTERNAL_TAB_MCP_TOOL_NAME,
+  createOpenExternalTabHostMcpTools,
+} from "./open-external-tab-host-tools.js";
+
 /* ── N6 : MCP admin (port TempoFlow) ── */
 
 export {
