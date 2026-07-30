@@ -101,7 +101,10 @@ declare module "electron" {
       width: number;
       height: number;
     };
-    contentView: { addChildView: (view: WebContentsView) => void };
+    contentView: {
+      addChildView: (view: WebContentsView) => void;
+      removeChildView: (view: WebContentsView) => void;
+    };
     on(event: string, listener: (...args: never[]) => void): void;
   }
 
@@ -113,9 +116,21 @@ declare module "electron" {
       width: number;
       height: number;
     }): void;
+    getBounds(): {
+      x: number;
+      y: number;
+      width: number;
+      height: number;
+    };
     setVisible(visible: boolean): void;
+    getVisible(): boolean;
+    setBackgroundColor(color: string): void;
     webContents: WebContents;
   }
+
+  export const shell: {
+    openExternal: (url: string) => Promise<void>;
+  };
 }
 
 declare module "electron-updater" {

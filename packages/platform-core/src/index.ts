@@ -337,6 +337,18 @@ export {
   wrapSecretsWithRecoveryKey,
 } from "./recovery-key.js";
 
+/* ── O3 : installer prefs + licensing (purs) ── */
+export type { InstallerPrefs } from "./installer-prefs.js";
+export {
+  INSTALLER_PREFS_FILENAME,
+  consumeInstallerPrefsFile,
+  installerPrefsPath,
+  parseInstallerPrefs,
+} from "./installer-prefs.js";
+
+export type { LicenseStatus, LicensingOptions } from "./licensing.js";
+export { checkLicense, storeLicenseKey } from "./licensing.js";
+
 export {
   N8N_INSTALL_MIN_FREE_BYTES,
   WINDOWS_NPM_ENOSPC_EXIT,

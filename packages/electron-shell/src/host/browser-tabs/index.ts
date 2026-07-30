@@ -32,6 +32,8 @@ export {
   isSameTabOrigin,
 } from "./tab-url.js";
 
-export { CHROME_UA } from "./chrome-ua.js";
+export { CHROME_UA, installUserAgent } from "./chrome-ua.js";
+
+export { FAKE_CURSOR_INJECT } from "./fake-cursor-inject.js";
 
 export { browserTabPreloadPath } from "./browser-tab-preload-path.js";

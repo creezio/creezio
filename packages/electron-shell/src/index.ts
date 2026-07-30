@@ -257,6 +257,88 @@ export {
   n8nVendorDir,
   __resetN8nBootstrapStateForTests,
 } from "./host/n8n/runtime-bootstrap.js";
+
+/* ── O3 : jumeaux Electron plateforme (extract gold TF) ── */
+export type { N8nApiKeyBrand, N8nApiKeyStored } from "./host/n8n/api-key.js";
+export {
+  N8N_HERMES_API_SCOPES,
+  cookieHeaderFromSetCookie,
+  ensureN8nApiKey,
+  extractRawN8nApiKey,
+  fetchN8nApiKeyScopes,
+  getN8nBridgeEnv,
+  n8nApiKeyPath,
+  n8nHttpJson,
+  readStoredN8nApiKey,
+  writeStoredN8nApiKey,
+} from "./host/n8n/api-key.js";
+
+export type {
+  N8nAgentIsolationBrand,
+  N8nAgentKeyStored,
+  N8nAgentKeysFile,
+} from "./host/n8n/agent-isolation.js";
+export {
+  agentIdSegment,
+  ensureHermesAgentWorkspace,
+  ensureN8nAgentApiKey,
+  hermesAgentWorkspaceDir,
+  n8nAgentKeyLabel,
+  n8nAgentKeysPath,
+  n8nAgentTag,
+  readStoredN8nAgentKeys,
+  revokeN8nAgentApiKey,
+  writeStoredN8nAgentKeys,
+} from "./host/n8n/agent-isolation.js";
+
+export type {
+  AssistantChromeBrand,
+  AssistantChromeMode,
+  ContentRect as AssistantChromeContentRect,
+} from "./desktop/assistant-chrome.js";
+export {
+  ASSISTANT_FAB_MARGIN_PX,
+  ASSISTANT_FAB_SIZE_PX,
+  AssistantChromeOverlay,
+  assistantFabScreenRect,
+  rectsOverlap,
+} from "./desktop/assistant-chrome.js";
+
+export type {
+  GoogleOAuthLoopbackOptions,
+  GoogleOAuthTokenStore,
+  GoogleTokens,
+} from "./desktop/oauth-loopback.js";
+export {
+  googleLoginLoopback,
+  storedGoogleTokens,
+} from "./desktop/oauth-loopback.js";
+
+export type {
+  PickerRememberedServer,
+  ProfilePickerBrand,
+} from "./desktop/profile-picker-html.js";
+export { profilePickerHtml } from "./desktop/profile-picker-html.js";
+
+export type { ErrorPageBrand } from "./desktop/error-page-html.js";
+export {
+  errorPageDataUrl,
+  errorPageHtmlDocument,
+} from "./desktop/error-page-html.js";
+
+export type {
+  HermesCrmKeyBrand,
+  HermesCrmKeyPaths,
+  HermesCrmKeyStored,
+} from "./host/hermes/crm-key.js";
+export {
+  ensureHermesCrmApiKey,
+  generateHermesCrmApiKey,
+  getHermesFullBridgeEnv,
+  hermesCrmKeyPath,
+  readHermesCrmApiKey,
+  writeHermesCrmApiKey,
+} from "./host/hermes/crm-key.js";
 export type {
   N8nBootstrapPhase,
   N8nRuntimeManifest,

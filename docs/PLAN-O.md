@@ -25,7 +25,8 @@ Extraire l’existant · Tests verts → push → étape suivante ·
 Fidu (sauf O0 / O6 CV-only / O10–O11) · Paperclip = mort.
 
 Phases livrées : [PHASE-O0.md](PHASE-O0.md) · [PHASE-O1.md](PHASE-O1.md) ·
-[PHASE-O2.md](PHASE-O2.md) · suite O3→O11 ci-dessous.
+[PHASE-O2.md](PHASE-O2.md) · [PHASE-O3.md](PHASE-O3.md) · suite O3p→O11
+ci-dessous.
 
 ---
 
@@ -75,7 +76,7 @@ Phases livrées : [PHASE-O0.md](PHASE-O0.md) · [PHASE-O1.md](PHASE-O1.md) ·
 
 ---
 
-## O3 — Jumeaux Electron plateforme → kit
+## O3 — Jumeaux Electron plateforme → kit ✅
 
 1. **Objectif** : SoT unique des near-copies Electron TF↔CV encore locaux.
 2. **Inclus** : gold TF (`paths`, `connection-profile`, `recovery-key`,
