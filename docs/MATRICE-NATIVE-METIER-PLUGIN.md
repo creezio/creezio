@@ -146,10 +146,10 @@ freeze O11.
 
 | Marque | SHA | Note |
 |--------|-----|------|
-| TempoFlow | `acf7f15` | ship **0.10.33** |
-| Certivan | `ec96a11` | ship **0.1.16** |
-| Fidu | `7372bb5` | ship **0.1.65** |
-| Kit | voir [PHASE-O11.md](PHASE-O11.md) | O0→O11 · vision ~76 % |
+| TempoFlow | `0cce78c` | ship **0.10.33** |
+| Certivan | `ba872e2` | ship **0.1.16** |
+| Fidu | `ebaa802` | ship **0.1.65** |
+| Kit | `1f7ac62` | O0→O11 · vision ~76 % |
 
 ### Historique correction C* (fermé)
 
