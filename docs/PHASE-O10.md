@@ -6,7 +6,7 @@
 | **Date** | 2026-07-30 |
 | **Repo** | `creezio/creezio` (+ sync marques) |
 | **Prérequis** | [PHASE-O9p.md](PHASE-O9p.md) · plan [PLAN-O.md](PLAN-O.md) |
-| **Kit tip O10** | `617f422` |
+| **Kit tip O10** | `2a5ed50` |
 | **ARCHITECTURE_VERSION** | `"H6"` (inchangé) |
 | **Republish** | Non |
 
