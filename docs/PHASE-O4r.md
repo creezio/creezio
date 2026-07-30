@@ -16,7 +16,7 @@
 
 | | SHA |
 |--|--|
-| Kit tip | `f5f7512` |
+| Kit tip | `3e67ce3` (feat `f5f7512`) |
 | TempoFlow | `36b22b4` |
 | Certivan | `23f9e0c` |
 | Fidu | `7dd7367` |
