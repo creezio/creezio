@@ -60,4 +60,8 @@ export const certivanManifest: AppManifest = {
     legacyClientAlias: "Certivan-Setup-0.1.0.exe",
     defaultAppRoot: "/opt/docker/certivan-app/crm",
   },
+  features: {
+    plugins: true,
+    fleet: true,
+  },
 };

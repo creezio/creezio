@@ -436,6 +436,20 @@ export type {
 export type { HostStack } from "./host/host-stack.js";
 export { createHostStack, lazyHost } from "./host/host-stack.js";
 
+/* ── Phase N5 : feature-off host (marques sans plugins/flotte) ── */
+export type {
+  FeatureOffFleetAgentHost,
+  FeatureOffFleetSamplesHost,
+  FeatureOffHost,
+  FeatureOffHostOptions,
+  FeatureOffPluginAcceptHost,
+  FeatureOffPluginControlExtras,
+  FeatureOffPluginTestsHost,
+  FeatureOffPluginsHost,
+  FeatureOffPluginsStatus,
+} from "./host/feature-off-host.js";
+export { createFeatureOffHost } from "./host/feature-off-host.js";
+
 export {
   createHostRuntime,
   localConfigPathForBoot,

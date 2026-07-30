@@ -60,4 +60,9 @@ export const fiduManifest: AppManifest = {
     buildServerArtifact: true,
     defaultAppRoot: "/opt/docker/fidu/crm",
   },
+  /** N5 — pas de runtime plugins / flotte ; host = createFeatureOffHost. */
+  features: {
+    plugins: false,
+    fleet: false,
+  },
 };

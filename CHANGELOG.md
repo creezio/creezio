@@ -4,6 +4,10 @@
 ## [Unreleased]
 
 ### Added
+- **Phase N5** — Feature-off Fidu : `createFeatureOffHost` dans
+  `@creezio/electron-shell` ; `BrandFeatures` /
+  `features.plugins=false` (Fidu) ; delete `host-na-stubs.ts` ;
+  `docs/PHASE-N5.md` ; tests `test-phase-n5` ; republish Fidu.
 - **Phase N4p** — Cutover migrations TF→Certivan→Fidu : steps plateforme
   absents (wraps Fidu) ; runners ≤150 LOC via `runHistoricalMigrations` ;
   `docs/PHASE-N4p.md` ; tests `test-phase-n4p` ; republish Fidu (boot DB).

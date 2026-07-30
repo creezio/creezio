@@ -36,6 +36,17 @@ export type ExeIdentity = {
 };
 
 /**
+ * Capacités produit optionnelles (Phase N5).
+ * Absent ou `true` = activé ; `false` = feature-off (host kit N/A).
+ */
+export type BrandFeatures = {
+  /** Runtime plugins Electron (spawn / scaffold / admin). */
+  plugins?: boolean;
+  /** Agent flotte / samples diagnostics. */
+  fleet?: boolean;
+};
+
+/**
  * Manifeste complet d'une marque.
  * Paramètre tous les chemins / env / bridges sans hardcoder une marque
  * dans platform-core / electron-shell.
@@ -93,7 +104,20 @@ export type AppManifest = {
    * Exclue des asserts feeds live Phase C.
    */
   sandbox?: boolean;
+  /**
+   * Capacités optionnelles. Fidu : `plugins: false`, `fleet: false` (N5).
+   * TF/CV : `true` explicite (runtime réel).
+   */
+  features?: BrandFeatures;
 };
+
+/** `true` si la capacité est activée (défaut = on si absente). */
+export function isFeatureEnabled(
+  manifest: AppManifest,
+  feature: keyof BrandFeatures,
+): boolean {
+  return manifest.features?.[feature] !== false;
+}
 
 /**
  * Infra de publication Windows (feeds + remote-build).

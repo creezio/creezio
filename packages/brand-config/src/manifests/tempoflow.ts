@@ -59,4 +59,8 @@ export const tempoflowManifest: AppManifest = {
     buildServerArtifact: true,
     defaultAppRoot: "/opt/docker/tempoflow2/crm",
   },
+  features: {
+    plugins: true,
+    fleet: true,
+  },
 };

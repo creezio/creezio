@@ -1,6 +1,7 @@
 export type {
   AppKind,
   AppManifest,
+  BrandFeatures,
   BrandPublishInfra,
   ExeIdentity,
 } from "./types.js";
@@ -11,6 +12,7 @@ export {
   envKey,
   exeForKind,
   feedBaseUrl,
+  isFeatureEnabled,
   latestYmlUrl,
   profileArgPrefix,
   profileDirArgPrefix,

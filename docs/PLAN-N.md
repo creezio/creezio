@@ -143,10 +143,17 @@ Phases livrées : [PHASE-N0.md](PHASE-N0.md) · [PHASE-N1.md](PHASE-N1.md) ·
 
 ---
 
-## N5 — Feature-off Fidu (`host-na-stubs` → contrat kit)
+## N5 — Feature-off Fidu (`host-na-stubs` → contrat kit) ✅
 
-Fidu-only.  
-**Effort S · Republish oui** Fidu
+1. **Objectif** : stubs locaux absents ; contrat kit `createFeatureOffHost` ;
+   manifeste `features.plugins=false` / `fleet=false`.
+2. **Inclus** : `feature-off-host.ts` (signatures ex-`host-na-stubs`) ;
+   `BrandFeatures` ; cutover Fidu host-stack ; **delete** `host-na-stubs.ts`.
+3. **Exclu** : activer plugins Fidu ; TF/CV (hosts réels).
+4. **Tests gate** : kit `test-phase-n5` ; Fidu `electron:compile` +
+   `test:shell` + `test:phase-c5` ; `test ! -f host-na-stubs.ts`.
+5. **Done** : [PHASE-N5.md](PHASE-N5.md) — baseline N4p kit `5dca2bb`.
+6. **Effort S · Republish oui** Fidu
 
 ---
 
