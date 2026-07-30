@@ -273,7 +273,7 @@ ci-dessous.
 
 ---
 
-## O10 — Polish SYNC + matrice + allowlists métier
+## O10 — Polish SYNC + matrice + allowlists métier ✅
 
 1. **Objectif** : hygiene finale pré-freeze ; matrice = vérité O* ; SYNC pin.
 2. **Inclus** : MATRICE, SYNC `kitSha`, allowlists. **Exclu** : code produit.

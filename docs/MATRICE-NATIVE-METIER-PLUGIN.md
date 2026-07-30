@@ -8,6 +8,10 @@
 > **N0→N9** (2026-07-30) : **vision stricte 100 % freeze** — [PLAN-N.md](PLAN-N.md) ·
 > [PHASE-N9.md](PHASE-N9.md) ; stubs / jumeaux = **NON done** ; **Paperclip** = mort.
 > Versions courantes : TF **0.10.32** · Certivan **0.1.15** · Fidu **0.1.63**.
+> **O0→O9p** (2026-07-30) : plan [PLAN-O.md](PLAN-O.md) — cutover lib/UI
+> `@creezio/shell-ui` / `tasks/ui` ×3 ([PHASE-O9p.md](PHASE-O9p.md)) ; domaine TF
+> absent du kit ([ADR-no-brand-domain-in-native-packages.md](ADR-no-brand-domain-in-native-packages.md)).
+> Versions courantes : TF **0.10.32** · Certivan **0.1.15** · Fidu **0.1.64**.
 > Légende : **✅** livré / utilisable · **🟡** partiel (hors M*/N* gold) ·
 > **❌** absent / hors scope volontaire.
 > **Paperclip** = mort (aucune marque).
