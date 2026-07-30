@@ -61,7 +61,7 @@ Vision stricte N* : [PLAN-N.md](PLAN-N.md) · [PHASE-N0.md](PHASE-N0.md) ·
 | **Tasks** (natif plateforme, kanban+AI inclus) | `@creezio/tasks` | 🟡 | Store/API kit + UI kanban kit **partielle** ; **jumeaux locaux ×3** (TF/CV `tasks.ts`+AI twin, Fidu `cabinet-tasks`/kanban) — cutover P2 |
 | **Mails** (natif plateforme) | `@creezio/mails` | 🟡 | Store kit ×3 ; UI inbox twin TF↔CV ; Fidu sans UI (config) — cutover P6 |
 | **Shell CRM** (sidebar/workspace/cockpit/setup/onboarding/search) | `@creezio/shell-ui` | 🟡 | Nav adapters kit ; **surfaces CRM encore locales ×3** (souvent twin) — cutover P1 |
-| **Fleet** (ops telemetry) | observability + platform-core + shell-ui | 🟡 | Settings/telemetry kit ; collector twin TF↔CV ; Fidu `fleet:false` = config — cutover P7 |
+| **Fleet** (ops telemetry) | observability + platform-core + shell-ui | ✅ | SoT kit `observability/fleet-collector` (P25) ; marques = env/domaine + wrappers ≤80 LOC ; Fidu `fleet:false` = config |
 | Sync vendor standardisé | `scripts/sync-creezio-vendor.sh` | ✅ | **I0** — assert `ARCHITECTURE_VERSION=H6`, CJS, wrappers 3 marques |
 | Politique republish | [REPUBLISH-POLICY.md](REPUBLISH-POLICY.md) | ✅ | I14/I16/I18 livrés ; suite D3/D4/D5 si runtime packaged |
 | **SQLite multi-fichiers** (core / brand / plugin) | `@creezio/platform-core` | ✅ | paths H1 + `createSqliteRuntime` / migrations H2 |
