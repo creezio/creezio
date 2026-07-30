@@ -44,11 +44,19 @@ const inputCls =
 
 export function ApiKeysSettings({
   initialKeys,
-  linkableUsers = [],
+  linkableUsers,
+  /** @deprecated → linkableUsers (compat Fidu/TF page props). */
+  users,
 }: {
   initialKeys: ApiKeyItem[];
   linkableUsers?: LinkableUser[];
+  users?: Array<{ id: string; username: string; role?: string; kind?: "human" | "ai" }>;
 }) {
+  const resolvedUsers: LinkableUser[] = linkableUsers ?? (users || []).map((u) => ({
+    id: u.id,
+    username: u.username,
+    kind: u.kind ?? (u.role === "ai" || u.role === "agent" ? "ai" : "human"),
+  }));
   const [keys, setKeys] = useState<ApiKeyItem[]>(initialKeys);
   const [name, setName] = useState("");
   const [scope, setScope] = useState("full");
@@ -216,7 +224,7 @@ export function ApiKeysSettings({
                   onChange={(e) => setLinkedUser(e.target.value)}
                 >
                   <option value="">— Choisir un utilisateur —</option>
-                  {linkableUsers.map((u) => (
+                  {resolvedUsers.map((u) => (
                     <option key={u.id} value={u.id}>
                       {u.username}
                       {u.kind === "ai" ? " (IA)" : ""}

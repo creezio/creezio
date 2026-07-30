@@ -78,6 +78,7 @@ export async function openN8nUiInWorkspace(opts: {
     title: string;
   }) => void;
   openTab?: (siteId: number, url: string) => Promise<unknown>;
+  onProgress?: (msg: string) => void;
 }): Promise<{ ok: true } | N8nUiOpenFail> {
   const api = typeof window !== "undefined" ? getShellDesktopApi() : undefined;
   const target = await resolveN8nUiOpenTarget();

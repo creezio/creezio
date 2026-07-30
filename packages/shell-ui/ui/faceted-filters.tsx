@@ -7,31 +7,49 @@ import { SearchInput } from "./search-input";
 
 export type FacetOption = { value: string; c: number; label?: string };
 
+export type FacetDef = {
+  key: string;
+  label: string;
+  options: FacetOption[];
+  allLabel?: string;
+  /** Valeur affichée si le param URL est absent (ex. period → exercice). */
+  defaultValue?: string;
+  /** Pas de ligne « Tous » — utile quand les options couvrent déjà le reset (ex. period=all). */
+  hideAllOption?: boolean;
+};
+
 export function FacetedFilters({
   facets,
   searchKey = "q",
   searchPlaceholder = "Rechercher…",
   showSearchSubmit = false,
+  showSearch = true,
+  skipRefresh = false,
 }: {
-  facets: {
-    key: string;
-    label: string;
-    options: FacetOption[];
-    allLabel?: string;
-  }[];
+  facets: FacetDef[];
   searchKey?: string;
   searchPlaceholder?: string;
   /** Bouton « Filtrer » (inutile avec le debounce par défaut). */
   showSearchSubmit?: boolean;
+  /** Masquer la recherche (ex. synthèse : exercice + période seulement). */
+  showSearch?: boolean;
+  /** Mode filtre client — pas de `router.refresh()` (voir UI-PATTERNS §4). */
+  skipRefresh?: boolean;
 }) {
   const router = useRouter();
   const pathname = usePathname();
   const params = useSearchParams();
   const [, startTransition] = useTransition();
 
-  function update(key: string, value: string) {
+  function update(
+    key: string,
+    value: string,
+    opts?: { defaultValue?: string; allIsOption?: boolean },
+  ) {
     const next = new URLSearchParams(params.toString());
-    if (!value || value === "all") next.delete(key);
+    const isDefault = Boolean(opts?.defaultValue && value === opts.defaultValue);
+    const isClearAll = value === "all" && !opts?.allIsOption;
+    if (!value || isDefault || isClearAll) next.delete(key);
     else next.set(key, value);
     next.delete("page");
     // Un changement de facette invalide le preset affiché
@@ -47,21 +65,34 @@ export function FacetedFilters({
     const href = qs ? `${pathname}?${qs}` : pathname;
     startTransition(() => {
       router.push(href);
-      router.refresh();
+      if (!skipRefresh) router.refresh();
     });
   }
 
   return (
     <div className="flex flex-wrap items-end gap-3 rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
-      <SearchInput
-        searchKey={searchKey}
-        placeholder={searchPlaceholder}
-        showSubmit={showSearchSubmit}
-      />
+      {showSearch ? (
+        <SearchInput
+          searchKey={searchKey}
+          placeholder={searchPlaceholder}
+          showSubmit={showSearchSubmit}
+          skipRefresh={skipRefresh}
+        />
+      ) : null}
       {facets.map((f) => {
-        const current = params.get(f.key) || "all";
+        const current = params.get(f.key) || f.defaultValue || "all";
+        const optionsHaveAll = f.options.some((o) => o.value === "all");
         return (
-          <Select key={f.key} value={current} onValueChange={(v) => update(f.key, v)}>
+          <Select
+            key={f.key}
+            value={current}
+            onValueChange={(v) =>
+              update(f.key, v, {
+                defaultValue: f.defaultValue,
+                allIsOption: optionsHaveAll,
+              })
+            }
+          >
             <SelectTrigger
               className="w-52"
               data-tf2-aid={`filter.${f.key}`}
@@ -70,7 +101,9 @@ export function FacetedFilters({
               <SelectValue placeholder={f.label} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">{f.allLabel || `Tous — ${f.label}`}</SelectItem>
+              {!f.hideAllOption && !optionsHaveAll ? (
+                <SelectItem value="all">{f.allLabel || `Tous — ${f.label}`}</SelectItem>
+              ) : null}
               {f.options.map((o) => (
                 <SelectItem key={o.value} value={o.value}>
                   {(o.label || o.value)} ({o.c})

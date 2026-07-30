@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useRef, useState, useTransition } from "react";
+import { FormEvent, useEffect, useRef, useState, useTransition, type ChangeEvent } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Input } from "./primitives/input";
 import { Button } from "./primitives/button";
@@ -17,6 +17,11 @@ type SearchInputProps = {
   showSubmit?: boolean;
   submitLabel?: string;
   debounceMs?: number;
+  /**
+   * Mode filtre client (données déjà en props) : met à jour l’URL sans
+   * `router.refresh()` — évite un re-fetch RSC/SQLite à chaque frappe.
+   */
+  skipRefresh?: boolean;
 };
 
 /**
@@ -35,6 +40,7 @@ export function SearchInput({
   showSubmit = false,
   submitLabel = "Filtrer",
   debounceMs = SEARCH_DEBOUNCE_MS,
+  skipRefresh = false,
 }: SearchInputProps) {
   const router = useRouter();
   const pathname = usePathname();
@@ -88,7 +94,7 @@ export function SearchInput({
     startTransition(() => {
       if (seq !== navSeqRef.current) return;
       router.replace(href, { scroll: false });
-      router.refresh();
+      if (!skipRefresh) router.refresh();
     });
   }
 
@@ -116,7 +122,7 @@ export function SearchInput({
       <Input
         name={searchKey}
         value={searchValue}
-        onChange={(e) => {
+        onChange={(e: ChangeEvent<HTMLInputElement>) => {
           dirtyRef.current = true;
           setSearchValue(e.target.value);
         }}
