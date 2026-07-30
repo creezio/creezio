@@ -13,8 +13,10 @@
 > **État des lieux intention (post-O11)** :
 > [ETAT-DES-LIEUX-INTENTION.md](ETAT-DES-LIEUX-INTENTION.md) · roadmap
 > [PLAN-P.md](PLAN-P.md) — **règle ×3=NATIF** ; plus de questions bloquantes ;
-> post-cutover : Shell CRM + Tasks ✅ (surfaces cœur éteintes ×3) ; restent
-> MCP/oauth/schemas, vocabulaire TF kit, fabrique CV/Fidu, browser-tabs TF.
+> post-cutover : Shell CRM + Tasks + MCP host tools (`open_external_tab` /
+> AI tasks) + browser-tabs TF + fabrique TF/CV + aliases P29 ✅ ; restent
+> **schemas/oauth twin (D-P28b)**, fingerprint Meili TF kit, settings métier ;
+> Fidu `plugins`/`fleet=false` = config intentionnelle.
 > Versions courantes : TF **0.10.33** · Certivan **0.1.16** · Fidu **0.1.65**.
 > Légende : **✅** livré **et cutover marques prouvé** · **🟡** package/kit
 > partiel ou jumeaux restants · **❌** absent / hors scope volontaire.
@@ -40,12 +42,12 @@ Vision stricte N* : [PLAN-N.md](PLAN-N.md) · [PHASE-N0.md](PHASE-N0.md) ·
 | Paths / ports / profiles / local-config schéma | `@creezio/platform-core` | ✅ | paths, app-kind, connection, updater-state, embeds catalog |
 | Preload / IPC / DesktopBridge | `@creezio/shell` | ✅ | `IpcChannels`, `createDesktopApi`, types bridge |
 | Runtime Electron (boot, updater, tray, splash, window) | `@creezio/electron-shell` | ✅ | splash-ui, tray, updater, prepareDesktopBoot |
-| Host Meili / search | `@creezio/electron-shell` (+ paths) | ✅ | `host/meili-launcher`, `resolveMeiliDataDir` |
+| Host Meili / search | `@creezio/electron-shell` (+ paths) | 🟡 | `host/meili-launcher`, `resolveMeiliDataDir` ; fingerprint `counts.fournisseurs` historique (P29) |
 | Host tunnel | `@creezio/electron-shell` + platform-core | ✅ | `host/tunnel`, `tunnel-urls` |
 | Host n8n | `@creezio/electron-shell` | ✅ | `host/n8n/*` (B.2) |
 | Host Hermes | `@creezio/electron-shell` | ✅ | `host/hermes/*` (B.2) |
 | Product Hub / plugins lifecycle + ACL L3/L4 | `@creezio/product-hub` | ✅ | **R2** SoT `core.db` (TF Next cutover) ; H5 ACL see/install/execute |
-| **Fabrique plugins conversationnelle** | `@creezio/product-hub` (+ demobrand/console) | ✅ | **C3** scaffold réel (schema/api/mcp) + console SQLite persist + `PrdDrafter` LLM opt. (socle V1 supersédé) |
+| **Fabrique plugins conversationnelle** | `@creezio/product-hub` (+ demobrand/console) | 🟡 | **C3** scaffold + console ; mounts marque **TF+CV** (`createPluginFactoryRoutes`) ; Fidu `plugins=false` = config |
 | **Observabilité** (activité / usages / CP) | `@creezio/observability` | ✅ | **C4** SQLite console + demobrand + vendor TF pilote |
 | **Automations lifecycle** (plugins/org) | `@creezio/automations` | ✅ | **V3 prototype** lifecycle-only — **≠** Database row-level ; C4 persist demobrand |
 | **Database admin + automations row-level** | `@creezio/database` | ✅ | **M1–M2p** moteur + UI/routes kit ; TF/Certivan/Fidu sans panels locaux |
@@ -58,7 +60,7 @@ Vision stricte N* : [PLAN-N.md](PLAN-N.md) · [PHASE-N0.md](PHASE-N0.md) ·
 | **Shell-UI / nav + slots** | `@creezio/shell-ui` | ✅ | **I7** : `createNavShellAdapter` + `NavRenderModel` ; TF/Certivan/Fidu I12/I16/I18 |
 | **Assistant / chat** | `@creezio/assistant` | ✅ | **I2** + **C1** rich schema ; **TF C1** chat-db façade kit (plus dual-write) |
 | **API kernel** (façade HTTP cœur) | `@creezio/api-kernel` | ✅ | ScopedDbAccess H2 + `authorizePluginAccess` H5 |
-| **MCP façade / proxy** | `@creezio/mcp-facade` | ✅ | H4 aliases/policies + H5 deny plugin ; **TF D1** + **Certivan C2** : exécuteur Hono `/mcp`, façade = adaptateur + proxy |
+| **MCP façade / proxy** | `@creezio/mcp-facade` | 🟡 | H4/H5 + OAuth/`createMcpHonoApp` mince ×3 ; host tools SoT (`createOpenExternalTabHostMcpTools` + `createAiTaskHostMcpTools`) cutover ×3 ; **reste schemas/oauth twin D-P28b** |
 | **Tasks** (natif plateforme, kanban+AI inclus) | `@creezio/tasks` | ✅ | Cutover ×3 : `tasks.ts` / `cabinet-tasks` / kanban / AI absents marques ; SoT kit store+UI+`createTasksHonoRoutes` ; mounts mince `/api/v1/tasks` |
 | **Mails** (natif plateforme) | `@creezio/mails` | 🟡 | Store+UI kit ; pages `/mails` kit ×3 ; Fidu `uiEnabled: true` — polish/providers encore ouverts |
 | **Shell CRM** (sidebar/workspace/cockpit/setup/onboarding/search) | `@creezio/shell-ui` (+ `onboarding` / `cockpit`) | ✅ | Cutover ×3 : sidebar/workspace/search/setup/cockpit absents marques ; SoT `shell-ui` + `@creezio/onboarding` + `@creezio/cockpit` |
@@ -126,11 +128,11 @@ nommés dans `@creezio/propagation` (contrats, pas automation).
 
 | Couche | ✅ | 🟡 | ❌ |
 |--------|----|----|-----|
-| Natif socle | brand-config… fabrique C3, obs C4, lifecycle automations V3, **Database R1**, CP C7, `platformCoreMigrations` M11 ; **N6** admin UI kit ; **N7** browser-tabs | — | — |
-| Métier TF | panier…scan ; **supplier-tabs** local ; **M13** + **N8** allowlists ; main slim ; ship **0.10.33** | host MCP : tab + discovery (AI → kit tasks) | — |
-| Métier Certivan | **M14 gold** RTI + core kit ; **N6p** admin cutover ; ship **0.1.16** | MCP Hono monolithe résiduel | — |
-| Métier Fidu | **M15 gold** GED/CRM + core kit ; **N5** feature-off ; ship **0.1.65** | GED tools Hono hors `createFiduModuleMcpTools` | — |
-| Plugins | hub + ACL L3 3 marques ; fabrique C3 ; obs/automations C4 ; CP C7 | — | auto-promotion / univers perso / cloud registry *(volontaire)* |
+| Natif socle | brand-config… fabrique C3, obs C4, lifecycle automations V3, **Database R1**, CP C7, `platformCoreMigrations` M11 ; **N6** admin UI kit ; **N7** browser-tabs kit (TF cutover) ; MCP host tools SoT ; P29 aliases | schemas/oauth twin ; fingerprint Meili TF ; settings métier | — |
+| Métier TF | panier…scan ; browser-tabs kit + allowlist ; **M13** + **N8** allowlists ; main slim ; ship **0.10.33** | schemas twin ; settings métier | — |
+| Métier Certivan | **M14 gold** RTI + core kit ; **N6p** admin cutover ; plugin-factory mount ; ship **0.1.16** | schemas twin | — |
+| Métier Fidu | **M15 gold** GED/CRM + core kit ; GED = `createFiduModuleMcpTools` ; admin mcp/analytics/api ; ship **0.1.65** | `plugins`/`fleet=false` config ; schemas twin | — |
+| Plugins | hub + ACL L3 3 marques ; fabrique C3 + mounts TF/CV ; obs/automations C4 ; CP C7 | Fidu factory off | auto-promotion / univers perso / cloud registry *(volontaire)* |
 
 **Vision stricte M0→M16** = **signée**.  
 **Vision stricte N0→N9** = **signée** ([PHASE-N9.md](PHASE-N9.md)) — stub / jumeau ≠ done.  

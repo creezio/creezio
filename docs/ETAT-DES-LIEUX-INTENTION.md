@@ -90,9 +90,9 @@ plateforme ; **twin** = TF↔CV sim≥0,85.
 | **Tasks / kanban (+ AI/Hermes)** | mount mince `routes/tasks` (~8 LOC) + page kit | idem | idem (plus de `cabinet-tasks` / kanban local) | **NATIF** | SoT `@creezio/tasks` (+ UI kanban + `createTasksHonoRoutes`) ; cutover ×3 **DONE** | Non — jumeaux éteints |
 | **Cockpit (server shell)** | import `@creezio/cockpit/ui` | idem | mount kit (parité) | **NATIF shell** | SoT `@creezio/cockpit` ; cutover ×3 **DONE** | Non |
 | **Onboarding / setup** | import `@creezio/onboarding/ui` + steps métier | idem | idem | **NATIF shell** | SoT `@creezio/onboarding` (`SetupWizard` + moteur) ; steps métier restent marque | Non — setup/onboarding plateforme éteints |
-| **Product Hub / plugins HTTP** | stub → `createPluginProductsRoutes` | stub kit | store kit ; `features.plugins=false` | **NATIF** (+ config) | SoT `@creezio/product-hub` HTTP ; mounts **DONE** ; fabrique runtime encore faible (P10) | HTTP OK ; P10 ouvert |
-| **Fabrique plugins** | flag/mount TF partiel | 0 | 0 | **NATIF** | Kit + demobrand/console ; **pas shippé** CV/Fidu | Dette P10 **OPEN** |
-| **Fleet** | wrapper env mince | wrapper + `fleet-dossier-samples` métier | `features.fleet=false` | **NATIF** (+ config) | SoT `@creezio/observability/fleet-collector` (P25) **DONE** | Non |
+| **Product Hub / plugins HTTP** | stub → `createPluginProductsRoutes` | stub kit | store kit ; `features.plugins=false` *(config intentionnelle)* | **NATIF** (+ config) | SoT `@creezio/product-hub` HTTP ; mounts **DONE** ; fabrique TF+CV (P10) | HTTP OK ; Fidu flag ok |
+| **Fabrique plugins** | flag/mount kit | mount kit (`PRODUCT_HUB_FACTORY`) | 0 (`plugins=false`) | **NATIF** | Kit + demobrand/console ; **shippé TF+CV** ; Fidu off = config | P10 **PARTIEL** (Fidu) |
+| **Fleet** | wrapper env mince | wrapper + `fleet-dossier-samples` métier | `features.fleet=false` *(config intentionnelle)* | **NATIF** (+ config) | SoT `@creezio/observability/fleet-collector` (P25) **DONE** | Non |
 | **Mails** | page `/mails` → `@creezio/mails/ui` | idem | `uiEnabled: true` + kit UI | **NATIF** (+ config UI) | SoT `@creezio/mails` ; UI cutover **largement DONE** (Fidu on) | Mineur polish |
 | **Auth / login UI** | `LoginForm` `@creezio/auth/ui` | idem | idem | **NATIF** | SoT `@creezio/auth` store+UI ; cutover **DONE** | Non |
 | **Assistant surfaces** | mount mince `createAssistantRoutes` | idem | idem | **NATIF** | Runtime + routes SoT `@creezio/assistant` ; mounts **DONE** | Non (HTTP gras éteint) |
@@ -101,10 +101,11 @@ plateforme ; **twin** = TF↔CV sim≥0,85.
 | **Sidebar / nav shell** | `@creezio/shell-ui` sidebar | idem | idem | **NATIF** | SoT kit ; cutover **DONE** | Non |
 | **Workspace / tabs** | `@creezio/shell-ui` workspace | idem | idem | **NATIF** | SoT kit ; cutover **DONE** | Non |
 | **Boot Electron** | `creezio-boot.ts` ~90 | ~91 | ~85 | **NATIF** | Composition encore locale ×3 | Mineur |
-| **MCP façade** | oauth/app mince kit ; AI host → `@creezio/tasks` | idem (+ `list_tasks`) | host ping/tab only | **NATIF** (façade+OAuth) | `@creezio/mcp-facade` + `createAiTaskHostMcpTools` ; **D-P18 PARTIEL** | Oui — open_external_tab / GED Fidu / schemas |
-| **Browser-tabs** | `electron/supplier-tabs.ts` ~797 local TF | façades kit | façades kit | **NATIF** (+ métier TF) | Kit `electron-shell/browser-tabs` ; **twin TF métier local OPEN** | TF only — allowlist métier |
+| **MCP façade** | oauth/app mince kit ; AI + `open_external_tab` → kit | idem | AI + `open_external_tab` kit ; GED = factory modules | **NATIF** (façade+OAuth) | `@creezio/mcp-facade` (`createOpenExternalTabHostMcpTools`) + `createAiTaskHostMcpTools` ; cutover ×3 **DONE** ; **D-P18 PARTIEL** (schemas) | Oui — schemas twin |
+| **Browser-tabs** | kit `electron-shell/browser-tabs` (+ allowlist métier) | façades kit | façades kit | **NATIF** (+ métier TF) | SoT kit ; cutover TF **DONE** (`supplier-tabs.ts` local éteint) | Non — métier via allowlist |
 | **n8n provisioning plugins** | ~315 twin | twin | — | **NATIF** (hub) | Encore brand TF/CV | Oui |
-| **Schemas / oauth MCP** | `schemas.ts` ~824 + `oauth.ts` ~62 twin | twin | twin ~815 / 66 | **NATIF** | Encore brand ×3 — **D-P28b OPEN** | Oui |
+| **Schemas / oauth MCP** | `schemas.ts` ~823 + `oauth.ts` ~61 twin | twin | twin ~814 / 65 | **NATIF** | Encore brand ×3 — **D-P28b OPEN** | Oui |
+| **Settings desktop** | pages/settings marque + kit `shell-ui/ui/settings` | idem | idem | **NATIF** (+ métier) | Chrome settings kit ; **settings métier** encore marque — **OPEN** | Partiel |
 
 ### Métier (une seule marque) — hors extraction kit
 
@@ -141,7 +142,7 @@ Source : ARCHITECTURE-INTENTION §1–4 + matrice §1–3 + R0/VISION (prototype
 | P07 | Host n8n | Runtime embed n8n | `electron-shell` | hooks ≤ mince | sidecars tags |
 | P08 | Host Hermes | Runtime agent central | `electron-shell` | skills métier | — |
 | P09 | Product Hub | Lifecycle plugins, ACL L3, control-plane, store `core.db` | `product-hub` + host CP | evidence FS ; **config** on/off | sidecars |
-| P10 | Fabrique plugins | Intention→PRD→scaffold | `product-hub` (+ console/demobrand) | consommation runtime (à shipper) | résultat |
+| P10 | Fabrique plugins | Intention→PRD→scaffold | `product-hub` (+ console/demobrand) | mounts TF+CV ; Fidu config off | résultat |
 | P11 | Observabilité | Activité / usages / CP | `observability` | mounts / pas de 2ᵉ moteur | events |
 | P12 | Automations lifecycle | plugin/org/factory/obs triggers | `automations` (**≠** DB row-level) | — | — |
 | P13 | Database admin + auto row-level | Browse/CRUD/views + automations données | `database` | `configureDatabasePolicy` métier | — |
@@ -180,20 +181,20 @@ Légende écart : **OK** / **PARTIEL** / **ABSENT produit** / **INVENTÉ à côt
 | P02 SQLite multi-DB | **PARTIEL** | `createSqliteRuntime` ×3 ; `platformCoreMigrations` ; **0** `resolveBrandDbPath` / `resolvePluginDbPath` dans marques | Layout conceptuel kit ; adoption API paths incomplète |
 | P03 Shell IPC | **OK** | `@creezio/shell` deps ×3 ; preload mince O7 | — |
 | P04 Electron runtime | **PARTIEL** | `electron-shell` ~24,5 kLOC kit ; host sous plafonds O7 ; `creezio-boot.ts` ~85–91 LOC ×3 locaux | Boot jumeau mince |
-| P05 Meili | **PARTIEL** | Host kit ; indexeurs métier marques | OK frontière ; vocabulaire TF dans kit (P29) |
+| P05 Meili | **PARTIEL** | Host kit ; indexeurs métier marques | OK frontière ; fingerprint kit encore teinté TF (`counts.fournisseurs`) — P29 |
 | P06 Tunnel | **OK** | Host kit + domaines marque | — |
 | P07 n8n | **PARTIEL** | Host kit ; `n8n-plugin-provisioning.ts` ~315 LOC twin TF↔CV | Provisioning encore jumeau marque |
 | P08 Hermes | **PARTIEL** | Host kit ; skills marque ; kanban tasks marque jumelé | Couplage tasks/Hermes encore brand |
-| P09 Product Hub | **OK mounts** | HTTP SoT kit `createPluginProductsRoutes` ; stubs TF/CV ; Fidu `plugins:false` | Vertical/factory UI = P10 |
-| P10 Fabrique plugins | **INVENTÉ à côté** | demobrand + console ; TF flag partiel ; **0** CV/Fidu | **OPEN** — ship ≥1 marque hors demobrand |
-| P11 Observabilité | **PARTIEL** | Package ~7,2 kLOC ; deps ×3 ; Fidu plus mince | Cutover UI/ops incomplet Fidu |
+| P09 Product Hub | **OK mounts** | HTTP SoT kit `createPluginProductsRoutes` ; stubs TF/CV ; Fidu `plugins:false` *(config)* | Vertical/factory UI = P10 |
+| P10 Fabrique plugins | **PARTIEL** | demobrand + console ; mounts kit **TF+CV** ; Fidu `plugins:false` | Fidu off = config ; critère « ≥1 marque » **DONE** (CV) |
+| P11 Observabilité | **PARTIEL** | Package ~7,2 kLOC ; deps ×3 ; Fidu admin `/admin/{mcp,analytics,api}` pages **DONE** | Parité ops/lifecycle encore mince |
 | P12 Automations lifecycle | **PARTIEL** | Dep ×3 ; surface surtout demobrand / brand-runtime TF | Peu de surface produit |
 | P13 Database | **OK** | `@creezio/database` fail-closed ; allowlists métier ×3 marques ; panels locaux absents | — |
 | P14 Auth | **OK** | `@creezio/auth` store + `LoginForm` kit ; cutover UI ×3 **DONE** | — |
 | P15 Shell-UI | **OK cutover** | sidebar / workspace / search SoT `shell-ui` ; setup/onboarding `@creezio/onboarding` ; cockpit `@creezio/cockpit` ; cutover ×3 **DONE** | Libs minces `nav-context` / `search-history` locales ok |
 | P16 Assistant | **OK mounts** | `createAssistantRoutes` monté mince ×3 ; runtime kit | — |
 | P17 API kernel | **PARTIEL** | Package existe ; modules montés marques | Façade unique pas partout |
-| P18 MCP façade | **PARTIEL** | `create*BrandMcp` ×3 ; OAuth/`createMcpHonoApp` mince ×3 ; AI host tools SoT `@creezio/tasks` ; restent open_external_tab / GED Fidu / schemas | **D-P18 PARTIEL** |
+| P18 MCP façade | **PARTIEL** | `create*BrandMcp` ×3 ; OAuth/`createMcpHonoApp` mince ×3 ; AI host SoT `@creezio/tasks` ×3 ; `open_external_tab` SoT `@creezio/mcp-facade` ×3 ; GED Fidu = factory modules ; restent schemas twin | **D-P18 PARTIEL** (D-P28b) |
 | P19 Tasks | **OK** | SoT kit store+UI+routes ; jumeaux locaux éteints ×3 ; mounts mince | — |
 | P20 Mails | **OK largement** | UI/API kit ×3 ; Fidu `uiEnabled: true` | Polish providers |
 | P21 Sync / propagation | **OK** | dry-run H6 + kitSha ; vendor incl. onboarding/cockpit | — |
@@ -203,8 +204,8 @@ Légende écart : **OK** / **PARTIEL** / **ABSENT produit** / **INVENTÉ à côt
 | P25 Fleet | **OK** | collector SoT kit (`observability/fleet-collector`) ; Fidu `fleet:false` | Flag = config |
 | P26 Modules métier | **OK frontière** | symlink `modules`→`electron/modules` ×3 | — |
 | P27 Plugins discovery | **PARTIEL** | Host kit ; Fidu feature-off | Config, pas reclassement |
-| P28 Anti-jumeau | **PARTIEL** | Shell/tasks/auth/mails cutover **DONE** ; restent schemas/oauth/n8n/scripts + **browser-tabs TF** | D-P28b + D-P18 + scripts |
-| P29 Kit sans domaine TF | **PARTIEL** | SoT générique + aliases dépréciés (gate `test-phase-p29`) ; dettes wire HTTP / fingerprint Meili | **D-P29 PARTIEL** |
+| P28 Anti-jumeau | **PARTIEL** | Shell/tasks/auth/mails/browser-tabs cutover **DONE** ; restent schemas/oauth/n8n/scripts | D-P28b + scripts |
+| P29 Kit sans domaine TF | **PARTIEL** | SoT générique + **aliases hygiene DONE** (gate `test-phase-p29`) ; reste fingerprint Meili TF + wire HTTP historique | **D-P29 PARTIEL** |
 
 ### Chiffre jumeaux (ne pas omettre)
 
@@ -230,22 +231,23 @@ incomplet ; **P2** hygiene ; **P3** polish.
 | D-P19 | Tasks (P19+P08) | ~~jumeaux `tasks.ts`/kanban/AI~~ → SoT `@creezio/tasks` ×3 | — | **DONE** | — | — |
 | D-P09 | Product Hub (P09) | HTTP mounts kit **DONE** ; factory UI/vertical reste | Factory = P10 | **DONE mounts** | — | P10 |
 | D-P16 | Assistant surface (P16) | mounts `createAssistantRoutes` mince ×3 **DONE** | — | **DONE mounts** | — | — |
-| D-P18 | MCP (P18) | AI host tools SoT kit **DONE** ; oauth/app mince **DONE** ; restent open_external_tab ×3, GED Fidu, schemas twin | ≠ une liste tools | **P1 PARTIEL** | M | D-P28b |
-| D-P25 | Fleet (P25) | collector SoT kit ; wrappers env marque | — | **DONE** | — | — |
-| P10 | Fabrique (P10) | 0 conso CV/Fidu ; TF flag partiel | Vision non produit | **P1 OPEN** | L | Ship ≥1 marque |
+| D-P18 | MCP (P18) | AI host + `open_external_tab` SoT kit cutover ×3 **DONE** ; oauth/app mince **DONE** ; GED Fidu factory modules ; reste schemas twin | ≠ une liste tools | **P1 PARTIEL** | M | D-P28b |
+| D-P25 | Fleet (P25) | collector SoT kit ; wrappers env marque ; Fidu `fleet:false` = config | — | **DONE** | — | — |
+| P10 | Fabrique (P10) | mounts kit **TF+CV** ; Fidu `plugins:false` | Vision produit Fidu off | **PARTIEL** | M | Fidu config |
 | D-P20 | Mails (P20) | UI kit ×3 ; Fidu `uiEnabled: true` | Polish providers | **DONE largement** | S | — |
 | D-P14 | Auth UI (P14) | `LoginForm` kit ×3 | — | **DONE** | — | — |
 | D-P07 | n8n provisioning | ~315 twin | brand SoT | **P2** | M | P09 |
 | D-P04 | Boot | `creezio-boot` ~90 ×3 | composition non unique | **P2** | S | — |
 | D-P02 | Multi-DB paths | resolveBrand/Plugin quasi 0 | adoption floue | **P2** | M | — |
-| D-P29 | Domaine kit | fournisseur*/supplier_* packages | kit ≠ générique | **P2 OPEN** | L | — |
-| D-P11 | Obs Fidu | deps faibles | parité | **P2** | M | — |
+| D-P29 | Domaine kit | aliases hygiene **DONE** ; reste fingerprint Meili TF + wires HTTP | kit ≠ 100 % générique | **P2 PARTIEL** | M | P05 |
+| D-P11 | Obs Fidu | admin `/admin/{mcp,analytics,api}` pages kit **DONE** | lifecycle/ops parité | **PARTIEL** | S | — |
 | D-P12 | Automations lifecycle | peu hors demobrand | V3 | **P2** | M | — |
 | D-P28b | Schemas/oauth MCP | schemas + oauth twin ×3 | serveur plateforme brand | **P1 OPEN** | L | D-P18 |
-| D-browser-tabs | Browser-tabs TF | `electron/supplier-tabs.ts` ~797 local TF (métier) | twin TF hors kit browser-tabs | **P2 OPEN** | M | allowlist métier |
+| D-browser-tabs | Browser-tabs TF | ~~`supplier-tabs.ts` local~~ → kit `browser-tabs` + allowlist métier | — | **DONE** | — | — |
+| D-settings | Settings métier | chrome settings kit ; pages/settings métier encore marque | frontière package | **P2 OPEN** | M | P15 |
 | D-P28c | Scripts twins | ~14 kLOC | CI ×2 | **P3** | L | après runtime |
-| D-GATES | Gates/CI | p0 mesure cutover ; Shell/Tasks ✅ si prouvé | — | **DONE partiel** | M | durcir anti-twin |
-| D-MATRICE | Docs | Shell CRM / Tasks ✅ post-cutover ; légende cutover | — | **DONE partiel** | S | — |
+| D-GATES | Gates/CI | brand roots `/opt/docker` → sibling resolve ; `npm test` **505/505** ; p0/p-shell-ui | — | **DONE** | — | durcir anti-twin |
+| D-MATRICE | Docs | Shell/Tasks/MCP host/browser-tabs/P10 CV ✅ ; restes honnêtes | — | **DONE partiel** | S | — |
 
 ---
 
@@ -277,17 +279,17 @@ incomplet ; **P2** hygiene ; **P3** polish.
 
 ### D-P09 / P10 — Product Hub HTTP + fabrique
 
-1. **Done** : 0 `plugin-products.ts` jumeau ; routes = mount kit ; fabrique **shippée** dans ≥1 marque (config on) — plus de ✅ cosmétique demobrand-only.
-2. **Étapes** : extract routes gold TF → product-hub ; cutover ; brancher factory UI/runtime.
-3. **Preuve** : tests plugin-product-hub × marques actives ; factory e2e marque.
+1. **Done** : 0 `plugin-products.ts` jumeau ; routes = mount kit ; fabrique **shippée** TF+CV (`createPluginFactoryRoutes`) — plus de ✅ cosmétique demobrand-only. Fidu `plugins=false` = config.
+2. **Étapes** : ~~extract routes gold TF → product-hub ; cutover CV~~ **DONE** ; optionnel activer Fidu.
+3. **Preuve** : `test-plugin-factory-wire` CV ; mounts TF/CV.
 4. **Ordre** : après P0 shell/tasks (ou juste après gates).
 5. **Risque** : grants / n8n tags.
 
 ### D-P18 — MCP une SoT
 
-1. **Done** : `listTools` Electron = Hono = assistant ; Fidu GED dans factory modules ; host-tools = host-only ; `createMcpOAuthRoutes` / `createMcpHonoApp` mince ×3 ; `createAiTaskHostMcpTools` SoT `@creezio/tasks` (TF/CV).
-2. **Étapes** : optionnel extract `open_external_tab` ; GED Fidu → factory modules ; schemas twin (D-P28b).
-3. **Preuve** : `test-phase-p18-host-tools` ; smokes MCP ×3 ; égalité ensembles tools.
+1. **Done** : host-tools = host-only ; `createMcpOAuthRoutes` / `createMcpHonoApp` mince ×3 ; `createAiTaskHostMcpTools` SoT `@creezio/tasks` ×3 ; `createOpenExternalTabHostMcpTools` SoT `@creezio/mcp-facade` ×3 ; Fidu GED = factory modules (`module.ged.*`).
+2. **Étapes** : schemas twin (D-P28b) ; égalité `listTools` Electron = Hono = assistant.
+3. **Preuve** : `test-phase-p18-host-tools` ; `test-phase-p18-open-external-tab` ; smokes MCP ×3.
 4. **Ordre** : après D-P09.
 5. **Risque** : clients MCP externes (aliases).
 
@@ -342,7 +344,7 @@ Si **un** item reste ouvert → **pas** 100 %.
 - [ ] **0** jumeau plateforme TF↔CV (sim≥0,85) hors allowlist métier explicite *(reste schemas/oauth/n8n/scripts)*
 - [x] **0** façade/re-export « done » (même ≤40 LOC) *(gates O8 + intention)*
 - [x] Paperclip mort (déjà vrai)
-- [ ] Domaine TF absent des API/labels kit (aliases dépréciés = liste fermée + plan suppression) — **D-P29 OPEN**
+- [ ] Domaine TF absent des API/labels kit — aliases hygiene **DONE** ; reste fingerprint Meili TF — **D-P29 PARTIEL**
 - [ ] SQLite `core`/`brand`/`plugin/<id>` : chemins + runtime utilisés clairement (doc + code alignés)
 - [x] Multi-exe Client+Serveur+publish par marque (déjà vrai) + feeds à jour après cutovers runtime
 
@@ -354,14 +356,15 @@ Si **un** item reste ouvert → **pas** 100 %.
 - [x] Mails : UI/API natifs kit ; Fidu `uiEnabled: true` — **D-P20 largement DONE**
 - [x] Database : panels + engine kit + policy sans fuite domaine TF non configurée *(fuite labels = P29)*
 - [x] Product Hub : HTTP/control-plane/store mounts kit ; ACL L3 — **D-P09 mounts DONE**
-- [ ] Fabrique plugins : **shippée** dans ≥1 marque hors demobrand — **P10 OPEN** (CV/Fidu)
-- [ ] Observabilité + automations lifecycle : consommation réelle ou feature-off config
-- [x] Fleet : SoT kit/ops ; pas de collector jumeau — **D-P25 DONE**
-- [x] Hosts Meili/tunnel/n8n/Hermes : wiring mince seulement *(n8n provisioning twin = D-P07)*
+- [x] Fabrique plugins : **shippée** ≥1 marque hors demobrand (TF+CV mounts) — **P10 PARTIEL** (Fidu `plugins=false` = config)
+- [ ] Observabilité + automations lifecycle : consommation réelle ou feature-off config *(Fidu admin mcp/analytics/api ✅ ; lifecycle encore mince)*
+- [x] Fleet : SoT kit/ops ; pas de collector jumeau — **D-P25 DONE** *(Fidu `fleet=false` = config intentionnelle)*
+- [x] Hosts Meili/tunnel/n8n/Hermes : wiring mince seulement *(n8n provisioning twin = D-P07 ; fingerprint Meili TF = D-P29)*
 - [x] Assistant : runtime kit ; mounts brand plafonnés — **D-P16 mounts DONE** ; tools via MCP unique = D-P18
-- [ ] API kernel + MCP : une façade ; plugins découverts dans `listTools` — **D-P18 / D-P28b OPEN**
+- [ ] API kernel + MCP : une façade ; plugins découverts dans `listTools` — **D-P18 PARTIEL / D-P28b OPEN** (schemas twin)
 - [x] Sync vendor H6 + kitSha ×3
-- [ ] Browser-tabs : TF `supplier-tabs` local encore présent (métier) — **OPEN**
+- [x] Browser-tabs : TF cutover kit `electron-shell/browser-tabs` — **D-browser-tabs DONE**
+- [ ] Settings métier : chrome kit vs pages métier marque — **D-settings OPEN**
 
 ### Gold TempoFlow / métier marques
 
@@ -371,7 +374,8 @@ Si **un** item reste ouvert → **pas** 100 %.
 ### Process
 
 - [x] Gate `test-phase-p0-intention` / `test-phase-p-shell-ui` verte (Shell/Tasks ✅ si cutover prouvé)
-- [x] Matrice : ✅ seulement si cutover prouvé ; 🟡/❌ sincères *(Shell CRM + Tasks ✅)*
+- [x] Gates brand roots : `/opt/docker` → sibling resolve ; `npm test` **505/505**
+- [x] Matrice : ✅ seulement si cutover prouvé ; 🟡/❌ sincères *(Shell CRM + Tasks + MCP host tools + browser-tabs + P10 CV ✅)*
 - [ ] Plan P* fermé **sans** redéfinir 100 % comme « gates plan »
 - [ ] Republish TF/CV/Fidu post-cutovers runtime
 
@@ -391,6 +395,7 @@ Si **un** item reste ouvert → **pas** 100 %.
 
 ---
 
-*Livrable mesure + arbitrage (post-cutover shell/tasks/auth/mails/hub/assistant/fleet).
-Restent ouverts : D-P18 MCP, D-P28b schemas/oauth, D-P29 vocabulaire TF, P10
-fabrique CV/Fidu, browser-tabs TF local.*
+*Livrable mesure + arbitrage (post-cutover shell/tasks/auth/mails/hub/assistant/fleet/MCP-host/browser-tabs/P10-CV/P29-aliases).
+Restent ouverts honnêtement : **D-P28b** schemas/oauth twin ×3 ; **Meili fingerprint TF**
+dans kit indexer (D-P29) ; **Fidu `plugins`/`fleet=false`** = config intentionnelle ;
+**settings métier** (D-settings).*
