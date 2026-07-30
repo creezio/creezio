@@ -39,12 +39,16 @@ export function WorkspaceRoot({
   children,
   wrapWorkspace,
   banners,
+  sidebar,
+  footbar,
   afterShell,
   hideAssistantOn = defaultHideAssistantOn,
 }: {
   children: ReactNode;
   wrapWorkspace?: (node: ReactNode) => ReactNode;
   banners?: ReactNode;
+  sidebar?: ReactNode;
+  footbar?: ReactNode;
   afterShell?: ReactNode;
   hideAssistantOn?: (pathname: string | null) => boolean;
 }) {
@@ -68,7 +72,7 @@ export function WorkspaceRoot({
   );
 
   const shell = (
-    <WorkspaceShell>
+    <WorkspaceShell sidebar={sidebar} footbar={footbar}>
       {hideAssistant ? null : <AiWorkspaceBanner />}
       {banners}
       {content}
