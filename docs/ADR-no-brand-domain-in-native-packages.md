@@ -33,6 +33,18 @@ Alias **dépréciés** autorisés le temps du cutover marques :
 - Tools `supplier_*` → `external_*` (même handlers)
 - Partition Electron historique `persist:fournisseur-<id>` = **wire session** (ne pas casser les cookies TF) ; nouveau code parle `siteId`
 
+## Hygiene P29 (partiel — aliases fermés)
+
+Gate : `node --test scripts/test-phase-p29.mjs` (+ `test-phase-p-shell-ui.mjs`).
+
+| Package | SoT | Alias déprécié |
+|---------|-----|----------------|
+| shell-ui | `OpenExternalSiteOpts` / `siteId` | `OpenSupplierSiteOpts` / `fournisseurId` |
+| assistant | `EXTERNAL_SITE_TOOL_NAMES` / `siteIdFromSurfaceHref` | `SUPPLIER_TOOL_NAMES` / `fournisseurIdFromSurfaceHref` |
+| tasks | wire `external_*` | `supplier_*` |
+| electron-shell Meili | `configureMeiliCatalogSqlTables` (défaut TF `fournisseurs`) | — |
+| observability | émission `TF2EVENT` / `OPS_EVENT_PREFIX` | dual-read `CertivanEVENT` via `OPS_EVENT_PREFIXES` |
+
 ## Dettes connues (ne pas « oublier »)
 
 - `workspace-tab-bar` : icônes métier → `configureWorkspaceTabIcons` (marque)
@@ -40,6 +52,7 @@ Alias **dépréciés** autorisés le temps du cutover marques :
 - `platform-tool-definitions` : exemples SQL / Meili citant `fournisseurs` (data TF) — OK en exemple doc si clairement « marque data », pas en nom d’outil
 - Wire HTTP `/assistant/supplier-actions/stream` : nom historique — rename = breaking ; documenter, ne pas étendre
 - Wire `activeSurface.kind: "supplier"` : alias historique — accepter aussi `"external"` ; labels = « Site externe »
+- Fingerprint Meili champ `counts.fournisseurs` = nom historique (valeur = table `sites` configurée)
 - Commentaires « gold TempoFlow » = historique OK ; **API / labels** = générique obligatoire
 
 ## Conséquence O9p → O11

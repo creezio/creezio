@@ -68,6 +68,8 @@ function permissionForPath(pathname: string) {
 }
 function resolveOpenTabRequest(input: {
   url?: string;
+  site_id?: number;
+  /** @deprecated → site_id */
   fournisseur_id?: number;
   title?: string;
 }) {
@@ -76,6 +78,8 @@ function resolveOpenTabRequest(input: {
 function toSupplierOpenTabParams(resolved: {
   url: string;
   title: string;
+  siteId?: number;
+  /** @deprecated → siteId */
   fournisseurId?: number;
   source?: string;
   ok?: true;
@@ -214,15 +218,28 @@ function uiAction(
   );
 }
 
+/**
+ * Wire SoT = `external_*` (ADR no-brand-domain).
+ * Alias déprécié TF `supplier_*` encore accepté côté Electron driver.
+ */
+type ExternalWebActionType =
+  | "external_list_targets"
+  | "external_click"
+  | "external_type"
+  | "external_scroll"
+  | "external_read"
+  | "external_screenshot"
+  /** @deprecated → external_* */
+  | "supplier_list_targets"
+  | "supplier_click"
+  | "supplier_type"
+  | "supplier_scroll"
+  | "supplier_read"
+  | "supplier_screenshot";
+
 function webAction(
   ctx: AiTaskAgentContext,
-  webType:
-    | "supplier_list_targets"
-    | "supplier_click"
-    | "supplier_type"
-    | "supplier_scroll"
-    | "supplier_read"
-    | "supplier_screenshot",
+  webType: ExternalWebActionType,
   params: Record<string, unknown>,
   tabId?: string,
 ): Promise<Record<string, unknown>> {
@@ -438,7 +455,7 @@ export function buildAiTaskTools(ctx: AiTaskAgentContext): AgentTool[] {
         },
       },
       execute: (args) =>
-        webAction(ctx, "supplier_list_targets", { q: optStr(args.q) }, optStr(args.tab_id)),
+        webAction(ctx, "external_list_targets", { q: optStr(args.q) }, optStr(args.tab_id)),
     },
     {
       definition: {
@@ -461,7 +478,7 @@ export function buildAiTaskTools(ctx: AiTaskAgentContext): AgentTool[] {
       execute: (args) =>
         webAction(
           ctx,
-          "supplier_click",
+          "external_click",
           { ref: optStr(args.ref), label: optStr(args.label) },
           optStr(args.tab_id),
         ),
@@ -489,7 +506,7 @@ export function buildAiTaskTools(ctx: AiTaskAgentContext): AgentTool[] {
       execute: (args) =>
         webAction(
           ctx,
-          "supplier_type",
+          "external_type",
           {
             ref: optStr(args.ref),
             label: optStr(args.label),
@@ -518,7 +535,7 @@ export function buildAiTaskTools(ctx: AiTaskAgentContext): AgentTool[] {
       execute: (args) =>
         webAction(
           ctx,
-          "supplier_scroll",
+          "external_scroll",
           { direction: args.direction === "up" ? "up" : "down" },
           optStr(args.tab_id),
         ),
@@ -544,7 +561,7 @@ export function buildAiTaskTools(ctx: AiTaskAgentContext): AgentTool[] {
       execute: (args) =>
         webAction(
           ctx,
-          "supplier_read",
+          "external_read",
           {
             q: optStr(args.q),
             maxChars: typeof args.max_chars === "number" ? args.max_chars : undefined,
@@ -569,7 +586,7 @@ export function buildAiTaskTools(ctx: AiTaskAgentContext): AgentTool[] {
         },
       },
       execute: (args) =>
-        webAction(ctx, "supplier_screenshot", {}, optStr(args.tab_id)),
+        webAction(ctx, "external_screenshot", {}, optStr(args.tab_id)),
     },
     {
       definition: {

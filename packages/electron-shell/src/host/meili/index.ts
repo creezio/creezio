@@ -4,8 +4,11 @@ export {
   INDEX_SCHEMA_VERSION,
   MEILI_FINGERPRINT_META_KEY,
   MEILI_INDEX_IN_PROGRESS_KEY,
+  configureMeiliCatalogSqlTables,
   expectedMeiliCounts,
+  getMeiliCatalogSqlTables,
   parseFingerprint,
+  resetMeiliCatalogSqlTablesForTests,
   serializeFingerprint,
 } from "./index-schema.js";
 export type {
@@ -13,6 +16,7 @@ export type {
   CatalogSqlCounts,
   GedIndexUid,
   GedSqlCounts,
+  MeiliCatalogSqlTables,
   MeiliFingerprint,
 } from "./index-schema.js";
 

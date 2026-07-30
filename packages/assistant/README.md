@@ -116,13 +116,16 @@ Ne pas avaler dans le kit :
 
 ## Wire legacy (non API marque obligatoire)
 
-Conservés pour compat Electron / UI existante — **pas** des contrats métier à reproduire :
+Conservés pour compat Electron / UI existante — **pas** des contrats métier à reproduire.
+Voir aussi [`ADR-no-brand-domain-in-native-packages.md`](../../docs/ADR-no-brand-domain-in-native-packages.md).
 
-| Wire | Remplacement préféré |
-|------|----------------------|
-| `supplier_*` tools / `/supplier-actions/stream` | `external_*` / `/desktop-actions/stream` |
-| `fournisseurId` (active-surface) | `siteId` |
-| `data-tf2-aid` / `data-tf2-assistant-ui` | attributs DOM partagés ×3 (historique) |
+| SoT kit (préféré) | Alias déprécié TF |
+|-------------------|-------------------|
+| `EXTERNAL_SITE_TOOL_NAMES` / `external_*` tools | `SUPPLIER_TOOL_NAMES` / `supplier_*` |
+| `siteIdFromSurfaceHref` / `siteId` | `fournisseurIdFromSurfaceHref` / `fournisseurId` |
+| `ExternalTabSummary` / `parseExternalTabSummaries` | `SupplierTabSummary` / `parseSupplierTabSummaries` |
+| `isExternalSurfaceHref` | `isSupplierSurfaceHref` |
+| Wire HTTP `/desktop-actions/stream` (futur) | `/supplier-actions/stream` (historique — ne pas étendre) |
 
 Desktop API : `identity.desktopApiGlobal` uniquement (fallback kit = `creezioDesktop`).
 

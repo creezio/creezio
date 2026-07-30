@@ -99,20 +99,30 @@ export {
   ASSISTANT_FAB_SIZE_PX,
   assistantFabScreenRect,
   formatActiveSurfaceRuntimeBlock,
+  /** SoT — id partition site externe depuis `/site/<id>`. */
+  siteIdFromSurfaceHref,
+  /** @deprecated → siteIdFromSurfaceHref */
   fournisseurIdFromSurfaceHref,
+  isExternalSurfaceHref,
+  /** @deprecated → isExternalSurfaceHref */
   isSupplierSurfaceHref,
   looksLikeSurfaceCommand,
   parseActiveSurface,
+  parseExternalTabSummaries,
+  /** @deprecated → parseExternalTabSummaries */
   parseSupplierTabSummaries,
   rectsOverlap,
   resolveActiveSurface,
   type ActiveSurface,
   type ActiveSurfaceCrm,
   isExternalActiveSurface,
+  /** @deprecated → ActiveSurfaceExternal */
   type ActiveSurfaceSupplier,
   type ActiveSurfaceExternal,
   type ActiveSurfaceTabLike,
   type ScreenRect,
+  type ExternalTabSummary,
+  /** @deprecated → ExternalTabSummary */
   type SupplierTabSummary,
 } from "./runtime/active-surface.js";
 export {

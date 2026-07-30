@@ -444,7 +444,7 @@ async function handleClick(tab: SupplierTab, params: Params): Promise<Result> {
   if (!loc.ok || loc.x == null || loc.y == null) {
     return {
       ok: false,
-      error: `Cible introuvable (ref=${ref || "—"}, label=${label || "—"}). Refaire supplier_list_targets.`,
+      error: `Cible introuvable (ref=${ref || "—"}, label=${label || "—"}). Refaire external_list_targets (alias supplier_list_targets).`,
       suggestions: loc.suggestions || [],
       page: loc.page || (await pageOf(tab)),
     };
@@ -590,7 +590,7 @@ export async function executeSupplierAction(
     if (!tab) {
       return {
         ok: false,
-        error: `Onglet introuvable (tabId=${tabId || "—"}). Faire supplier_list_tabs d'abord.`,
+        error: `Onglet introuvable (tabId=${tabId || "—"}). Faire external_list_tabs (alias supplier_list_tabs) d'abord.`,
         tabs: manager.list(),
       };
     }
@@ -606,18 +606,19 @@ export async function executeSupplierAction(
       await sleep(1500);
     }
 
-    switch (req.type) {
-      case "supplier_list_targets":
+    // SoT = external_* ; supplier_* déjà normalisé ci-dessus.
+    switch (actionType) {
+      case "external_list_targets":
         return await handleListTargets(tab, req.params);
-      case "supplier_click":
+      case "external_click":
         return await handleClick(tab, req.params);
-      case "supplier_type":
+      case "external_type":
         return await handleType(tab, req.params);
-      case "supplier_scroll":
+      case "external_scroll":
         return await handleScroll(tab, req.params);
-      case "supplier_read":
+      case "external_read":
         return await handleRead(tab, req.params);
-      case "supplier_screenshot":
+      case "external_screenshot":
         return await handleScreenshot(tab);
       default:
         return { ok: false, error: `Action inconnue: ${req.type}` };
@@ -625,7 +626,7 @@ export async function executeSupplierAction(
   } catch (e) {
     return {
       ok: false,
-      error: e instanceof Error ? e.message : "Erreur exécution action fournisseur",
+      error: e instanceof Error ? e.message : "Erreur exécution action site externe",
     };
   }
 }

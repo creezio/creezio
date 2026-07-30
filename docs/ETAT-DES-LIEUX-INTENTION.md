@@ -204,7 +204,7 @@ Légende écart : **OK** / **PARTIEL** / **ABSENT produit** / **INVENTÉ à côt
 | P26 Modules métier | **OK frontière** | symlink `modules`→`electron/modules` ×3 | — |
 | P27 Plugins discovery | **PARTIEL** | Host kit ; Fidu feature-off | Config, pas reclassement |
 | P28 Anti-jumeau | **PARTIEL** | Shell/tasks/auth/mails cutover **DONE** ; restent schemas/oauth/n8n/scripts + **browser-tabs TF** | D-P28b + D-P18 + scripts |
-| P29 Kit sans domaine TF | **PARTIEL** | encore `fournisseur*` / `supplier_*` dans packages | **D-P29 OPEN** |
+| P29 Kit sans domaine TF | **PARTIEL** | SoT générique + aliases dépréciés (gate `test-phase-p29`) ; dettes wire HTTP / fingerprint Meili | **D-P29 PARTIEL** |
 
 ### Chiffre jumeaux (ne pas omettre)
 
