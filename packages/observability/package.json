@@ -1,10 +1,13 @@
 {
   "name": "@creezio/observability",
   "version": "0.1.0",
-  "description": "Observabilité — activité/CP + ops/fleet + usage analytics (N6) + request-logs admin (O5)",
+  "description": "Observabilité — activité/CP + ops/fleet + fleet-collector (P25) + usage analytics (N6) + request-logs admin (O5)",
   "type": "module",
   "main": "./dist-cjs/index.js",
   "types": "./dist/index.d.ts",
+  "bin": {
+    "creezio-fleet-collector": "./fleet-collector/server.mjs"
+  },
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
@@ -16,16 +19,20 @@
       "types": "./ui/index.ts",
       "import": "./ui/index.ts",
       "default": "./ui/index.ts"
-    }
+    },
+    "./fleet-collector/*": "./fleet-collector/*"
   },
   "files": [
     "dist",
     "dist-cjs",
-    "ui"
+    "ui",
+    "fleet-collector"
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "typecheck": "tsc -p tsconfig.json --noEmit"
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "fleet-collector": "node fleet-collector/server.mjs",
+    "test:fleet-collector": "node fleet-collector/test-fleet-collector.mjs"
   },
   "dependencies": {
     "@creezio/api-kernel": "0.1.0",

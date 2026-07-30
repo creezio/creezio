@@ -72,12 +72,20 @@ test("P.1 package scaffold + exports", () => {
   for (const rel of PACKAGE_UI) {
     assert.ok(fs.existsSync(path.join(root, rel)), rel);
   }
+  assert.ok(
+    fs.existsSync(path.join(root, "packages/onboarding/ui/onboarding/define.ts")),
+    "define.ts helper DX",
+  );
   const pkg = JSON.parse(
     fs.readFileSync(path.join(root, "packages/onboarding/package.json"), "utf8"),
   );
   assert.equal(pkg.name, "@creezio/onboarding");
   assert.ok(pkg.exports["."]);
   assert.ok(pkg.exports["./ui"]);
+  assert.ok(
+    pkg.exports["./ui/onboarding/onboarding.css"],
+    "export CSS onboarding",
+  );
   assert.equal(pkg.dependencies["@creezio/shell-ui"], "0.1.0");
   assert.ok(fs.existsSync(path.join(root, "packages/onboarding/dist/index.js")));
 });
@@ -115,11 +123,16 @@ test("P.3 zéro hardcode desktop marque + zéro métier dans package", () => {
         /tempoflowDesktop|certivanDesktop|fiduDesktop/,
         path.relative(root, f),
       );
-      if (f.endsWith(".md")) continue;
+      if (f.endsWith(".md")) continue; // README : exemples métier docs only
       assert.doesNotMatch(
         s,
         /\b(restaurant|cabinet|VASP|achats|atelier)\b/i,
         `métier interdit: ${path.relative(root, f)}`,
+      );
+      assert.doesNotMatch(
+        s,
+        /\b(TempoFlow|Certivan|Fidu|OnbRestaurant)\b/,
+        `marque interdite: ${path.relative(root, f)}`,
       );
       assert.doesNotMatch(s, /paperclipApi|startPaperclip|Paperclip/);
     }
@@ -130,6 +143,22 @@ test("P.3 zéro hardcode desktop marque + zéro métier dans package", () => {
   );
   assert.match(setup, /getShellDesktopApi/);
   assert.match(setup, /getShellUiBrand/);
+
+  // TempoPose : alias deprecated uniquement — aucun usage runtime interne
+  const uiFiles = walk(path.join(root, "packages/onboarding/ui")).filter((f) =>
+    /\.(ts|tsx)$/.test(f),
+  );
+  for (const f of uiFiles) {
+    const s = fs.readFileSync(f, "utf8");
+    const rel = path.relative(root, f);
+    if (rel.endsWith("types.ts") || rel.endsWith("index.ts") || rel.endsWith("onboarding-shell.tsx")) {
+      if (s.includes("TempoPose")) {
+        assert.match(s, /@deprecated/, `TempoPose sans @deprecated: ${rel}`);
+      }
+      continue;
+    }
+    assert.doesNotMatch(s, /TempoPose/, `usage interne TempoPose: ${rel}`);
+  }
 });
 
 test("P.4 setup validation + completeSetup payload", () => {
@@ -276,9 +305,22 @@ test("P.7 PHASE doc implemented + UI exports stables", () => {
     "AUTO_ADVANCE_MS",
     "INTERSTITIAL_MS",
     "configureOnboardingUi",
+    "defineOnboardingSteps",
+    "createOnboardingHostProps",
+    "CompanionPose",
   ]) {
     assert.match(ui, new RegExp(sym));
   }
+
+  const readme = fs.readFileSync(
+    path.join(root, "packages/onboarding/README.md"),
+    "utf8",
+  );
+  assert.match(readme, /Ce que le kit FOURNIT/i);
+  assert.match(readme, /Ce que la marque DOIT fournir/i);
+  assert.match(readme, /ne doit JAMAIS contenir/i);
+  assert.match(readme, /defineOnboardingSteps/);
+  assert.match(readme, /CompanionPose/);
 });
 
 test("P.8 cutover marques: 0 jumeau setup/moteur", () => {
