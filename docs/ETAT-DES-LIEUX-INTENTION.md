@@ -3,7 +3,7 @@
 | | |
 |--|--|
 | **Date** | 2026-07-30 |
-| **Baseline mesurée** | kit `b5b8735` tip · TF `ffb76bb` (0.10.33) · CV `8f3a88f` (0.1.16) · Fidu `8d85b1e` (0.1.65) |
+| **Baseline mesurée** | kit `6844bd3` tip (post-cutover shell/tasks) · TF/CV/Fidu sync vendor H6 |
 | **SoT intention** | [ARCHITECTURE-INTENTION.md](ARCHITECTURE-INTENTION.md) · [MATRICE-NATIVE-METIER-PLUGIN.md](MATRICE-NATIVE-METIER-PLUGIN.md) · R0 |
 | **Plans fermés (≠ 100 % intention)** | M16 · N9 · O11 (~76 % auto-déclaré sur sous-ensemble) |
 | **Ce doc** | Règle ×3 · carte piliers → écart réel → dettes → Plan P* jusqu’à intention |
@@ -87,22 +87,24 @@ plateforme ; **twin** = TF↔CV sim≥0,85.
 
 | Feature | TF | CV | Fidu | Verdict | Où ça vit aujourd’hui | Cassé / jumeau par cutovers ? |
 |---------|----|----|------|---------|------------------------|-------------------------------|
-| **Tasks / kanban (+ AI/Hermes)** | local `tasks.ts` 725 + routes 597 + `ai-task-*` ~1,3 k + `task-runs` 556 ; page `/taches` | twin TF (sim≈0,99) | routes 487 + `cabinet-tasks` 303 + `taches-kanban-client` 411 + `ai-task-runner` 635 + `task-runs` 515 | **NATIF** | Kit : `@creezio/tasks` store/API + `tasks/ui` kanban **partiel** ; marques = **jumeaux locaux** (Fidu forme divergente) | Oui — extraction store sans extinction UI/HTTP ; kanban riche resté brand |
-| **Cockpit (server shell)** | `server-cockpit-shell` 926 + client 490 + routes 81 | twin TF (sim≈0,98) | **pas d’UI cockpit** (admin host kit seulement) | **NATIF shell** | Local TF/CV ; kit `electron-shell` admin-window partiel ; Fidu = trou **parité** (pas métier) | Oui — jamais extrait ; Fidu non parité |
-| **Onboarding / setup** | onboarding ~2,8 kLOC + routes 309 + `setup-wizard` 484 | onboarding + routes 309 + setup 484 (twin setup sim≈0,94) | onboarding ~2,2 kLOC + routes 76 + setup 484 (sim setup≈0,93 ×3) | **NATIF shell** | **100 % local ×3** ; rien d’équivalent complet dans `shell-ui` | Oui — jamais extrait (setup quasi identique ×3) |
-| **Product Hub / plugins HTTP** | `plugin-products` 846 + thin hub lib | twin 851 | store kit monté ; **pas** de route `plugin-products` ; `features.plugins=false` | **NATIF** (+ config) | Kit `@creezio/product-hub` ; HTTP/UI admin encore local TF/CV | Oui — store cutover, routes restées twin |
-| **Fabrique plugins** | 0 conso runtime | 0 | 0 | **NATIF** | Kit + demobrand/console seulement | Non cassé — **jamais shippé** marques (dette P10) |
-| **Fleet** | wrapper mince + endpoints marque | wrapper mince + `fleet-dossier-samples` métier | `features.fleet=false` ; vendor/settings kit présents | **NATIF** (+ config) | SoT `@creezio/observability/fleet-collector` (P25) ; Fidu off volontaire N5 = config | Non — collector kit ; extras métier CV via `getHeartbeatExtras` |
-| **Mails** | `mail-inbox` 420 + routes email 147 ; store kit | twin | store kit monté ; **pas d’UI mail** | **NATIF** (+ config UI) | `@creezio/mails` ; UI inbox encore twin TF/CV | Oui — store cutover, UI non éteinte / Fidu sans UI |
-| **Auth / login UI** | `login-form` 299 | twin 299 (sim≈0,97) | 294 (sim≈0,73 vs TF) | **NATIF** | `@creezio/auth` store ; UI login **locale ×3** ; `shell-ui/ui/auth` quasi vide | Oui — credentials kit, chrome login resté brand |
-| **Assistant surfaces** | routes 763 + mounts brand | twin 763 | routes 406 (plus mince) | **NATIF** | `@creezio/assistant` runtime kit ; HTTP/routes encore brand | Oui — chat-db kit, routes twin/partiel |
-| **Database UI** | `admin-database` ~20 (façade) + kit panels | idem | idem | **NATIF** | `@creezio/database` moteur+UI kit (M2p) ; policy encore teintée TF | Partiel OK ; dette vocabulaire policy |
-| **Search global** | `global-search-provider` 507 | twin 507 | 503 (sim≈0,93) | **NATIF** | Hosts kit `global-search*` partiels ; provider **local ×3** | Oui — jumeau non éteint |
-| **Sidebar / nav shell** | sidebar 1026 | 999 (sim≈0,87) | 895 | **NATIF** | `@creezio/shell-ui` nav adapters ; sidebar CRM **locale ×3** | Oui |
-| **Workspace / tabs** | tab-workspace 1113 + shell 241 | twin ~1114 / 241 | 1042 / 243 (sim≈0,85–0,96) | **NATIF** | kit `shell-ui/ui/workspace/*` partiel ; context **local ×3** | Oui |
-| **Boot Electron** | `creezio-boot.ts` 90 | 91 | 85 | **NATIF** | Composition encore locale ×3 | Mineur — wiring acceptable court terme ; cible = kit |
-| **MCP façade** | host-tools + oauth twin | server monolith | GED tools hors factory | **NATIF** (façade) | `@creezio/mcp-facade` ; résidus brand | Oui — unification O4r incomplète |
+| **Tasks / kanban (+ AI/Hermes)** | mount mince `routes/tasks` (~8 LOC) + page kit | idem | idem (plus de `cabinet-tasks` / kanban local) | **NATIF** | SoT `@creezio/tasks` (+ UI kanban + `createTasksHonoRoutes`) ; cutover ×3 **DONE** | Non — jumeaux éteints |
+| **Cockpit (server shell)** | import `@creezio/cockpit/ui` | idem | mount kit (parité) | **NATIF shell** | SoT `@creezio/cockpit` ; cutover ×3 **DONE** | Non |
+| **Onboarding / setup** | import `@creezio/onboarding/ui` + steps métier | idem | idem | **NATIF shell** | SoT `@creezio/onboarding` (`SetupWizard` + moteur) ; steps métier restent marque | Non — setup/onboarding plateforme éteints |
+| **Product Hub / plugins HTTP** | stub → `createPluginProductsRoutes` | stub kit | store kit ; `features.plugins=false` | **NATIF** (+ config) | SoT `@creezio/product-hub` HTTP ; mounts **DONE** ; fabrique runtime encore faible (P10) | HTTP OK ; P10 ouvert |
+| **Fabrique plugins** | flag/mount TF partiel | 0 | 0 | **NATIF** | Kit + demobrand/console ; **pas shippé** CV/Fidu | Dette P10 **OPEN** |
+| **Fleet** | wrapper env mince | wrapper + `fleet-dossier-samples` métier | `features.fleet=false` | **NATIF** (+ config) | SoT `@creezio/observability/fleet-collector` (P25) **DONE** | Non |
+| **Mails** | page `/mails` → `@creezio/mails/ui` | idem | `uiEnabled: true` + kit UI | **NATIF** (+ config UI) | SoT `@creezio/mails` ; UI cutover **largement DONE** (Fidu on) | Mineur polish |
+| **Auth / login UI** | `LoginForm` `@creezio/auth/ui` | idem | idem | **NATIF** | SoT `@creezio/auth` store+UI ; cutover **DONE** | Non |
+| **Assistant surfaces** | mount mince `createAssistantRoutes` | idem | idem | **NATIF** | Runtime + routes SoT `@creezio/assistant` ; mounts **DONE** | Non (HTTP gras éteint) |
+| **Database UI** | façade mince + kit panels | idem | idem | **NATIF** | `@creezio/database` ; policy teintée TF = P29 | Partiel OK |
+| **Search global** | `@creezio/shell-ui` `GlobalSearchProvider` | idem | idem | **NATIF** | SoT kit ; cutover **DONE** (`search-history` lib locale mince ok) | Non |
+| **Sidebar / nav shell** | `@creezio/shell-ui` sidebar | idem | idem | **NATIF** | SoT kit ; cutover **DONE** | Non |
+| **Workspace / tabs** | `@creezio/shell-ui` workspace | idem | idem | **NATIF** | SoT kit ; cutover **DONE** | Non |
+| **Boot Electron** | `creezio-boot.ts` ~90 | ~91 | ~85 | **NATIF** | Composition encore locale ×3 | Mineur |
+| **MCP façade** | host-tools + oauth twin | server monolith | GED tools hors factory | **NATIF** (façade) | `@creezio/mcp-facade` ; **D-P18 OPEN** | Oui — host-tools / oauth / GED |
+| **Browser-tabs** | `electron/supplier-tabs.ts` ~797 local TF | façades kit | façades kit | **NATIF** (+ métier TF) | Kit `electron-shell/browser-tabs` ; **twin TF métier local OPEN** | TF only — allowlist métier |
 | **n8n provisioning plugins** | ~315 twin | twin | — | **NATIF** (hub) | Encore brand TF/CV | Oui |
+| **Schemas / oauth MCP** | `schemas.ts` ~824 + `oauth.ts` ~62 twin | twin | twin ~815 / 66 | **NATIF** | Encore brand ×3 — **D-P28b OPEN** | Oui |
 
 ### Métier (une seule marque) — hors extraction kit
 
@@ -182,27 +184,27 @@ Légende écart : **OK** / **PARTIEL** / **ABSENT produit** / **INVENTÉ à côt
 | P06 Tunnel | **OK** | Host kit + domaines marque | — |
 | P07 n8n | **PARTIEL** | Host kit ; `n8n-plugin-provisioning.ts` ~315 LOC twin TF↔CV | Provisioning encore jumeau marque |
 | P08 Hermes | **PARTIEL** | Host kit ; skills marque ; kanban tasks marque jumelé | Couplage tasks/Hermes encore brand |
-| P09 Product Hub | **PARTIEL→cutover** | HTTP SoT kit `createPluginProductsRoutes` ; TF/CV stubs ; Fidu `plugins:false` | Fabrique shippée TF (flag) ; vertical git/test-runner reste |
-| P10 Fabrique plugins | **INVENTÉ à côté** | demobrand + console **seulement** ; **0** TF/CV/Fidu | À shipper marques (natif, pas option « rester prototype ») |
+| P09 Product Hub | **OK mounts** | HTTP SoT kit `createPluginProductsRoutes` ; stubs TF/CV ; Fidu `plugins:false` | Vertical/factory UI = P10 |
+| P10 Fabrique plugins | **INVENTÉ à côté** | demobrand + console ; TF flag partiel ; **0** CV/Fidu | **OPEN** — ship ≥1 marque hors demobrand |
 | P11 Observabilité | **PARTIEL** | Package ~7,2 kLOC ; deps ×3 ; Fidu plus mince | Cutover UI/ops incomplet Fidu |
 | P12 Automations lifecycle | **PARTIEL** | Dep ×3 ; surface surtout demobrand / brand-runtime TF | Peu de surface produit |
 | P13 Database | **OK** | `@creezio/database` fail-closed ; allowlists métier ×3 marques ; panels locaux absents | — |
-| P14 Auth | **PARTIEL** | `@creezio/auth` ; login UI ~294–299 LOC ×3 locaux | UI login à extraire |
-| P15 Shell-UI | **PARTIEL** | kit ~10,5 kLOC ; **sidebar / workspace / cockpit / setup / search / onboarding** encore locaux (souvent twin) | **Dette P0** |
-| P16 Assistant | **PARTIEL** | kit ~14,4 kLOC ; routes assistant twin TF↔CV ; Fidu plus mince | Surface HTTP encore brand |
+| P14 Auth | **OK** | `@creezio/auth` store + `LoginForm` kit ; cutover UI ×3 **DONE** | — |
+| P15 Shell-UI | **OK cutover** | sidebar / workspace / search SoT `shell-ui` ; setup/onboarding `@creezio/onboarding` ; cockpit `@creezio/cockpit` ; cutover ×3 **DONE** | Libs minces `nav-context` / `search-history` locales ok |
+| P16 Assistant | **OK mounts** | `createAssistantRoutes` monté mince ×3 ; runtime kit | — |
 | P17 API kernel | **PARTIEL** | Package existe ; modules montés marques | Façade unique pas partout |
-| P18 MCP façade | **PARTIEL** | `create*BrandMcp` ×3 ; Fidu GED 16 tools hors factory ; TF host-tools ; CV server monolith | Pas une seule SoT runtime |
-| P19 Tasks | **PARTIEL** | kit store+UI partielle ; **jumeaux locaux ×3** (TF/CV twin, Fidu divergent) | **Dette P0** — verdict NATIF tranché |
-| P20 Mails | **PARTIEL** | kit mails ; TF/CV inbox twin ; Fidu sans mail UI | Parité UI à rétablir (config ok) |
-| P21 Sync / propagation | **OK** | dry-run H6 + kitSha (O10/O11) | — |
+| P18 MCP façade | **PARTIEL** | `create*BrandMcp` ×3 ; Fidu GED hors factory ; TF host-tools ; CV monolith ; oauth twin | **D-P18 OPEN** |
+| P19 Tasks | **OK** | SoT kit store+UI+routes ; jumeaux locaux éteints ×3 ; mounts mince | — |
+| P20 Mails | **OK largement** | UI/API kit ×3 ; Fidu `uiEnabled: true` | Polish providers |
+| P21 Sync / propagation | **OK** | dry-run H6 + kitSha ; vendor incl. onboarding/cockpit | — |
 | P22 Desktop ship | **OK** | Feeds : TF 0.10.33 · CV 0.1.16 · Fidu 0.1.65 | — |
 | P23 Factory / demobrand | **OK kit** | apps/demobrand | Preuve scaffold ≠ marques minces |
 | P24 Console | **OK kit** | apps/console | — |
-| P25 Fleet | **OK** | collector SoT kit (`observability/fleet-collector`) ; Fidu `fleet:false` | Flag = config ; cutover marques = wrappers env |
+| P25 Fleet | **OK** | collector SoT kit (`observability/fleet-collector`) ; Fidu `fleet:false` | Flag = config |
 | P26 Modules métier | **OK frontière** | symlink `modules`→`electron/modules` ×3 | — |
 | P27 Plugins discovery | **PARTIEL** | Host kit ; Fidu feature-off | Config, pas reclassement |
-| P28 Anti-jumeau | **ABSENT** | TF↔CV product twins sim≥0.85 : **111 fichiers · ~21,7 kLOC** | **Dette centrale** |
-| P29 Kit sans domaine TF | **PARTIEL** | encore `fournisseur*` / `supplier_*` dans packages | Labels/API legacy |
+| P28 Anti-jumeau | **PARTIEL** | Shell/tasks/auth/mails cutover **DONE** ; restent schemas/oauth/n8n/scripts + **browser-tabs TF** | D-P28b + D-P18 + scripts |
+| P29 Kit sans domaine TF | **PARTIEL** | encore `fournisseur*` / `supplier_*` dans packages | **D-P29 OPEN** |
 
 ### Chiffre jumeaux (ne pas omettre)
 
@@ -224,25 +226,26 @@ incomplet ; **P2** hygiene ; **P3** polish.
 
 | ID | Zone (pilier) | Symptôme mesurable | Impact | Sév. | Effort | Dépendances |
 |----|---------------|--------------------|--------|------|--------|-------------|
-| D-P28a | Shell-UI (P15+P28) | sidebar/workspace/cockpit/setup/onboarding/search twins ~6–8 kLOC+ | Pas CMS ; fix ×2–3 | **P0** | XL | D-GATES |
-| D-P19 | Tasks (P19+P08) | `tasks.ts`+routes+`ai-task-*`+`task-runs` TF/CV + jumeau Fidu kanban | Tasks natifs non SoT marques | **P0** | XL | D-GATES ; gold TF |
-| D-P09 | Product Hub (P09) | HTTP SoT kit + cutover TF/CV ; factory TF flag | Vertical remaining + factory UI | **P1** | M | — |
-| D-P16 | Assistant surface (P16) | routes ~763 twin ; mounts ~1 kLOC ×3 | Chat OK kit ; HTTP gras | **P1** | L | P18 |
-| D-P18 | MCP (P18) | Fidu GED hors factory ; TF host-tools ; CV monolith | ≠ une liste tools | **P1** | L | D-P09 |
-| D-P25 | Fleet (P25) | ~~twin collector~~ → SoT kit ; cutover marques | Ops kit-only + env marque | **OK kit** | S | cutover TF/CV wrappers |
-| P10 | Fabrique (P10) | 0 conso TF/CV/Fidu | Vision non produit | **P1** | L | Ship ≥1 marque |
-| D-P20 | Mails (P20) | inbox twin TF↔CV ; absent UI Fidu | Parité mails | **P1** | M | — |
-| D-P14 | Auth UI (P14) | login-form ~300 ×3 | UI encore brand | **P2** | M | avec P15 |
+| D-P28a | Shell-UI (P15+P28) | ~~twins sidebar/workspace/cockpit/setup/search~~ → cutover ×3 kit | — | **DONE** | — | — |
+| D-P19 | Tasks (P19+P08) | ~~jumeaux `tasks.ts`/kanban/AI~~ → SoT `@creezio/tasks` ×3 | — | **DONE** | — | — |
+| D-P09 | Product Hub (P09) | HTTP mounts kit **DONE** ; factory UI/vertical reste | Factory = P10 | **DONE mounts** | — | P10 |
+| D-P16 | Assistant surface (P16) | mounts `createAssistantRoutes` mince ×3 **DONE** | — | **DONE mounts** | — | — |
+| D-P18 | MCP (P18) | Fidu GED hors factory ; TF host-tools ; CV monolith ; oauth twin | ≠ une liste tools | **P1 OPEN** | L | D-P28b |
+| D-P25 | Fleet (P25) | collector SoT kit ; wrappers env marque | — | **DONE** | — | — |
+| P10 | Fabrique (P10) | 0 conso CV/Fidu ; TF flag partiel | Vision non produit | **P1 OPEN** | L | Ship ≥1 marque |
+| D-P20 | Mails (P20) | UI kit ×3 ; Fidu `uiEnabled: true` | Polish providers | **DONE largement** | S | — |
+| D-P14 | Auth UI (P14) | `LoginForm` kit ×3 | — | **DONE** | — | — |
 | D-P07 | n8n provisioning | ~315 twin | brand SoT | **P2** | M | P09 |
 | D-P04 | Boot | `creezio-boot` ~90 ×3 | composition non unique | **P2** | S | — |
 | D-P02 | Multi-DB paths | resolveBrand/Plugin quasi 0 | adoption floue | **P2** | M | — |
-| D-P29 | Domaine kit | fournisseur*/supplier_* packages | kit ≠ générique | **P2** | L | — |
+| D-P29 | Domaine kit | fournisseur*/supplier_* packages | kit ≠ générique | **P2 OPEN** | L | — |
 | D-P11 | Obs Fidu | deps faibles | parité | **P2** | M | — |
 | D-P12 | Automations lifecycle | peu hors demobrand | V3 | **P2** | M | — |
-| D-P28b | Schemas/oauth MCP | schemas + oauth twin | serveur plateforme brand | **P1** | L | D-P18 |
+| D-P28b | Schemas/oauth MCP | schemas + oauth twin ×3 | serveur plateforme brand | **P1 OPEN** | L | D-P18 |
+| D-browser-tabs | Browser-tabs TF | `electron/supplier-tabs.ts` ~797 local TF (métier) | twin TF hors kit browser-tabs | **P2 OPEN** | M | allowlist métier |
 | D-P28c | Scripts twins | ~14 kLOC | CI ×2 | **P3** | L | après runtime |
-| D-GATES | Gates/CI | pas de gate « 0 twin plateforme » | piège 75 % | **P0** | M | avant extract |
-| D-MATRICE | Docs | ✅ package ≠ cutover | mensonge cosmétique | **P0** | S | avec D-GATES |
+| D-GATES | Gates/CI | p0 mesure cutover ; Shell/Tasks ✅ si prouvé | — | **DONE partiel** | M | durcir anti-twin |
+| D-MATRICE | Docs | Shell CRM / Tasks ✅ post-cutover ; légende cutover | — | **DONE partiel** | S | — |
 
 ---
 
@@ -336,28 +339,29 @@ Si **un** item reste ouvert → **pas** 100 %.
 ### Intention structurelle
 
 - [ ] Commun uniquement dans `@creezio/*` ; marques = data + modules API/MCP/nav + config/labels/branding
-- [ ] **0** jumeau plateforme TF↔CV (sim≥0,85) hors allowlist métier explicite
-- [ ] **0** façade/re-export « done » (même ≤40 LOC)
-- [ ] Paperclip mort (déjà vrai)
-- [ ] Domaine TF absent des API/labels kit (aliases dépréciés = liste fermée + plan suppression)
+- [ ] **0** jumeau plateforme TF↔CV (sim≥0,85) hors allowlist métier explicite *(reste schemas/oauth/n8n/scripts)*
+- [x] **0** façade/re-export « done » (même ≤40 LOC) *(gates O8 + intention)*
+- [x] Paperclip mort (déjà vrai)
+- [ ] Domaine TF absent des API/labels kit (aliases dépréciés = liste fermée + plan suppression) — **D-P29 OPEN**
 - [ ] SQLite `core`/`brand`/`plugin/<id>` : chemins + runtime utilisés clairement (doc + code alignés)
-- [ ] Multi-exe Client+Serveur+publish par marque (déjà vrai) + feeds à jour après cutovers runtime
+- [x] Multi-exe Client+Serveur+publish par marque (déjà vrai) + feeds à jour après cutovers runtime
 
 ### Piliers natifs — cutover marques
 
-- [ ] Shell-UI : pas de sidebar/cockpit/workspace/setup/onboarding/search plateforme locaux jumelés
-- [ ] Auth UI : login générique kit (marque = branding)
-- [ ] Tasks : SoT kit **complet** (CRUD + kanban + AI/Hermes) — **pas** de zone grise
-- [ ] Mails : UI/API natifs kit ; parité ou feature-off **config** documenté Fidu
-- [ ] Database : panels + engine kit + policy sans fuite domaine TF non configurée
-- [ ] Product Hub : HTTP/control-plane/store sans route jumeau ; ACL L3
-- [ ] Fabrique plugins : **shippée** dans ≥1 marque (plus ✅ demobrand-only)
+- [x] Shell-UI : pas de sidebar/cockpit/workspace/setup/onboarding/search plateforme locaux jumelés — **D-P28a DONE**
+- [x] Auth UI : login générique kit (marque = branding) — **D-P14 DONE**
+- [x] Tasks : SoT kit **complet** (CRUD + kanban + AI/Hermes) — **D-P19 DONE**
+- [x] Mails : UI/API natifs kit ; Fidu `uiEnabled: true` — **D-P20 largement DONE**
+- [x] Database : panels + engine kit + policy sans fuite domaine TF non configurée *(fuite labels = P29)*
+- [x] Product Hub : HTTP/control-plane/store mounts kit ; ACL L3 — **D-P09 mounts DONE**
+- [ ] Fabrique plugins : **shippée** dans ≥1 marque hors demobrand — **P10 OPEN** (CV/Fidu)
 - [ ] Observabilité + automations lifecycle : consommation réelle ou feature-off config
-- [ ] Fleet : SoT kit/ops ; pas de collector jumeau
-- [ ] Hosts Meili/tunnel/n8n/Hermes : wiring mince seulement
-- [ ] Assistant : runtime kit ; mounts brand plafonnés ; tools via MCP unique
-- [ ] API kernel + MCP : une façade ; plugins découverts dans `listTools`
-- [ ] Sync vendor H6 + kitSha ×3
+- [x] Fleet : SoT kit/ops ; pas de collector jumeau — **D-P25 DONE**
+- [x] Hosts Meili/tunnel/n8n/Hermes : wiring mince seulement *(n8n provisioning twin = D-P07)*
+- [x] Assistant : runtime kit ; mounts brand plafonnés — **D-P16 mounts DONE** ; tools via MCP unique = D-P18
+- [ ] API kernel + MCP : une façade ; plugins découverts dans `listTools` — **D-P18 / D-P28b OPEN**
+- [x] Sync vendor H6 + kitSha ×3
+- [ ] Browser-tabs : TF `supplier-tabs` local encore présent (métier) — **OPEN**
 
 ### Gold TempoFlow / métier marques
 
@@ -366,8 +370,8 @@ Si **un** item reste ouvert → **pas** 100 %.
 
 ### Process
 
-- [ ] Gate `test-phase-p*-intention` verte
-- [ ] Matrice : ✅ seulement si cutover prouvé ; 🟡/❌ sincères
+- [x] Gate `test-phase-p0-intention` / `test-phase-p-shell-ui` verte (Shell/Tasks ✅ si cutover prouvé)
+- [x] Matrice : ✅ seulement si cutover prouvé ; 🟡/❌ sincères *(Shell CRM + Tasks ✅)*
 - [ ] Plan P* fermé **sans** redéfinir 100 % comme « gates plan »
 - [ ] Republish TF/CV/Fidu post-cutovers runtime
 
@@ -387,5 +391,6 @@ Si **un** item reste ouvert → **pas** 100 %.
 
 ---
 
-*Livrable mesure + arbitrage. Les questions bloquantes sont retirées. Prochaine
-vague code = P0 gates puis P1–P2 (shell + tasks).*
+*Livrable mesure + arbitrage (post-cutover shell/tasks/auth/mails/hub/assistant/fleet).
+Restent ouverts : D-P18 MCP, D-P28b schemas/oauth, D-P29 vocabulaire TF, P10
+fabrique CV/Fidu, browser-tabs TF local.*

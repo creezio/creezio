@@ -21,9 +21,8 @@
 | `@creezio/shell-ui` | Nav registry / adapters + brand config + libs utilitaires |
 | `@creezio/shell-ui/ui` | UI React (primitives → settings desktop) |
 
-**Absent du package** (toujours 100 % local ×3) : `ui/setup/*`, `ui/onboarding/*`, UI cockpit, sidebar CRM complète.  
-**Splash** : déjà dans `@creezio/electron-shell` (`splash-ui.ts`, pilier P04) — **pas** shell-ui.  
-**Aucun** package `@creezio/onboarding`, `@creezio/splash`, `@creezio/cockpit`.
+**Hors shell-ui (packages dédiés livrés)** : `@creezio/onboarding` (`SetupWizard` + moteur onboarding) · `@creezio/cockpit` (`ServerCockpitShell`) — cutover marques fait. Sidebar / workspace / search = SoT `@creezio/shell-ui/ui`.  
+**Splash** : déjà dans `@creezio/electron-shell` (`splash-ui.ts`, pilier P04) — **pas** shell-ui.
 
 ### Inventaire domaines (source `ui/` + `src/`, ~10,5 kLOC)
 
@@ -39,8 +38,8 @@
 | Settings desktop×N | `ui/settings/*` ~3,3 k | **Trop** pour le nom | garder en sous-chemin `shell-ui/ui/settings` ou `@creezio/desktop-settings` (P2) |
 | Desktop chrome / PWA / loading | `ui/desktop/*`, `pwa/`, `page-loading/` ~480 | **Oui** (chrome shell) | — |
 | Client libs (fleet, hermes, n8n, AI) | `ui/lib/*` ~752 | Limite | fleet → conso `observability` ; hosts restent mince |
-| **Setup / onboarding** | — (0 LOC kit) | **Non** (ne pas y entrer) | **`@creezio/onboarding`** |
-| **Cockpit UI** | — (0 LOC kit ; local TF/CV) | **Non** | **`@creezio/cockpit`** (extract ultérieur) |
+| **Setup / onboarding** | package `@creezio/onboarding` | **Non** (package dédié) | **`@creezio/onboarding`** ✅ |
+| **Cockpit UI** | package `@creezio/cockpit` | **Non** (package dédié) | **`@creezio/cockpit`** ✅ |
 | **Splash** | — | N/A | **déjà** `@creezio/electron-shell` |
 | **Auth store / session** | — | N/A | **déjà** `@creezio/auth` ; login UI = cutover vers auth (+ chrome shell-ui) |
 
