@@ -108,13 +108,6 @@ export type BrandDesktopDeps = {
     needTunnel: boolean;
   }) => any;
   electron: any;
-  /**
-   * Vertical Paperclip (Fidu) — optionnel.
-   * Si absent : pas d'IPC / boot / env Next Paperclip (marques sans surface).
-   * API : start / stop / getStatusPayload / getLogs / getConfig /
-   * setConfig / sanitizeConfig / ensureRuntimeFromUi / getNextEnv.
-   */
-  paperclip?: any;
 };
 
 /**
@@ -150,8 +143,6 @@ export function installBrandDesktopRuntime(deps: BrandDesktopDeps): void {
     deps.apiKeyEnvName ||
     (deps.envPrefix === "TF2" ? "TEMPOFLOW_API_KEY" : `${deps.envPrefix}_API_KEY`);
   const progressPrefix = `${deps.envPrefix}PROGRESS `;
-  /** Paperclip = vertical Fidu (deps.paperclip ou deps.vertical.paperclip). */
-  const paperclipApi = () => deps.paperclip || deps.vertical?.paperclip || null;
 
   async function syncN8nWebhookPublicUrl(onLog?: (line: string) => void): Promise<void> {
     const pub = deps.hosts.tunnel().publicUrlForEmbedService("n8n");
@@ -170,7 +161,6 @@ export function installBrandDesktopRuntime(deps: BrandDesktopDeps): void {
   let meili: any | null = null;
   let hermes: any | null = null;
   let n8n: any | null = null;
-  let paperclip: any | null = null;
   let bridge: BridgeClient | null = null;
   let tabs: any | null = null;
   let aiWorkspaces: AiWorkspaceManager | null = null;
@@ -420,7 +410,6 @@ export function installBrandDesktopRuntime(deps: BrandDesktopDeps): void {
             : {}),
           ...deps.hosts.hermes().getHermesNextEnv(activeConnectionProfile.mode),
           ...deps.hosts.n8n().getN8nNextEnv(activeConnectionProfile.mode),
-          ...(paperclipApi()?.getNextEnv?.(activeConnectionProfile.mode) || {}),
           ...deps.store().getEmailNextEnv(),
           // Onglets Données / n8n du Product Hub côté Next (pluginDataPath).
           [pluginsDirEnvKey]: deps.hosts.pluginRuntime().pluginsRootDir(),
@@ -1806,61 +1795,6 @@ export function installBrandDesktopRuntime(deps: BrandDesktopDeps): void {
       };
     });
     hostOnlyHandle("n8n:prepare-session", async () => deps.hosts.n8n().prepareN8nUiSession());
-
-    /* Paperclip (vertical Fidu) — IPC branchés seulement si API fournie. */
-    if (paperclipApi()) {
-      safeHandle("paperclip:status", () =>
-        paperclipApi().getStatusPayload(activeConnectionProfile.mode),
-      );
-      safeHandle("paperclip:logs", () =>
-        deps.bootBehavior.allowLocalStack ? paperclipApi().getLogs() : [],
-      );
-      safeHandle("paperclip:get-config", () => paperclipApi().getConfig());
-      hostOnlyHandle("paperclip:set-config", async (_e, raw) => {
-        const next = paperclipApi().setConfig(
-          paperclipApi().sanitizeConfig(
-            raw && typeof raw === "object" ? raw : {},
-          ),
-        );
-        return { ok: true as const, config: next, relaunchRequired: true as const };
-      });
-      hostOnlyHandle("paperclip:ensure-runtime", async () => {
-        if (activeConnectionProfile.mode !== "local") {
-          return {
-            ok: false as const,
-            detail: "Client distant — pas de runtime Paperclip local.",
-            binaryPath: null,
-            uiUrl: null as string | null,
-            relaunchRequired: false as const,
-          };
-        }
-        const r = await paperclipApi().ensureRuntimeFromUi({
-          onLog: (line: string) => log("paperclip", line),
-        });
-        let uiUrl: string | null = paperclip?.uiUrl ?? null;
-        if (r.ok) {
-          try {
-            const started = await paperclipApi().start({
-              connectionMode: "local",
-              paperclipConfig: paperclipApi().getConfig(),
-              autoBootstrap: false,
-              onLog: (line: string) => log("paperclip", line),
-            });
-            if (started) {
-              paperclip = started;
-              uiUrl = started.uiUrl;
-            }
-          } catch (e) {
-            logError("paperclip", e);
-          }
-        }
-        return {
-          ...r,
-          uiUrl,
-          relaunchRequired: false as const,
-        };
-      });
-    }
 
     safeHandle("embed-env:get", (_e, rawService) => {
       const service = String(rawService || "");
@@ -3325,34 +3259,6 @@ export function installBrandDesktopRuntime(deps: BrandDesktopDeps): void {
       log("main", `n8n UI prêt sur ${n8n.uiUrl}`);
     } else log("main", `n8n skip (mode=${n8nCfg.mode})`);
 
-    /* 4d. Paperclip (vertical Fidu) — fail-soft, bootstrap npm lazy. */
-    if (paperclipApi() && deps.bootBehavior.allowLocalStack) {
-      deps.vertical.setBootStage("paperclip");
-      setSplashStatus("Paperclip…");
-      try {
-        paperclip = await paperclipApi().start({
-          connectionMode: "local",
-          paperclipConfig: paperclipApi().getConfig(),
-          onLog: (line: string) => {
-            scoped("paperclip")(line);
-            if (/bootstrap|npm|install|paperclip|spawn|local_trusted|skip/i.test(line)) {
-              setSplashStatus(`Paperclip : ${line.slice(0, 80)}`);
-            }
-          },
-          autoBootstrap: false,
-        });
-      } catch (e) {
-        logError("paperclip", e);
-        paperclip = null;
-      }
-      if (!paperclip) {
-        const st = paperclipApi().getStatusPayload("local");
-        log("main", `Paperclip: ${st.status} — ${st.detail}`);
-      } else {
-        log("main", `Paperclip UI prêt sur ${paperclip.uiUrl}`);
-      }
-    }
-
     setSplashStatus("Stack native prête — finalisation…");
 
     /* 5. Serveur Next */
@@ -3374,7 +3280,6 @@ export function installBrandDesktopRuntime(deps: BrandDesktopDeps): void {
           : {}),
         ...deps.hosts.hermes().getHermesNextEnv("local"),
         ...deps.hosts.n8n().getN8nNextEnv("local"),
-        ...(paperclipApi()?.getNextEnv?.("local") || {}),
         ...deps.store().getEmailNextEnv(),
         // Onglets Données / n8n du Product Hub côté Next (pluginDataPath).
         [pluginsDirEnvKey]: deps.hosts.pluginRuntime().pluginsRootDir(),
@@ -4066,15 +3971,9 @@ export function installBrandDesktopRuntime(deps: BrandDesktopDeps): void {
       deps.hosts.pluginControl().stopPluginControlApi();
       deps.hosts.hermes().stopHermes();
       deps.hosts.n8n().stopN8n();
-      try {
-        paperclipApi()?.stop?.();
-      } catch {
-        /* ignore */
-      }
     }
     hermes = null;
     n8n = null;
-    paperclip = null;
     meili?.stop();
     try {
       deps.vertical.shutdownBrandRuntime();

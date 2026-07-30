@@ -1,4 +1,4 @@
-# Phase M12p — `main.ts` marques via façade kit
+# Phase M12p — main.ts marques via façade kit
 
 | | |
 |--|--|
@@ -14,7 +14,7 @@
 |--------|----:|-----|
 | Certivan | 320 | `15ae995` |
 | Fidu | ~303 | `9f139f2` |
-| kit | — | _(ci-dessous)_ |
+| kit | — | _(push)_ |
 
 Gates: `node scripts/test-phase-m12p.mjs` ; Fidu `electron:compile` + `test:shell`.
 Suite: **M13**.
