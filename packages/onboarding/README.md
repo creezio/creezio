@@ -1,209 +1,227 @@
-# `@creezio/onboarding`
+# @creezio/onboarding
 
-Module **natif** du kit : setup first-run + moteur d’onboarding plateforme (Phase P).
+## Rôle
 
-**Natif ≠ identique ×3 marques.** Natif = **même moteur**, parcours **injectés** par métier.
+`@creezio/onboarding` fournit le socle kit du premier lancement et du parcours d'onboarding Creezio :
 
-## Contrat — kit vs marque
+- moteur pur de navigation entre étapes (`computeInitialStep`, `clampStep`, `nextStepIndex`, `prevStepIndex`) ;
+- `SetupWizard` desktop pour compte local, clé de récupération, tunnel et clé OpenAI ;
+- `OnboardingWizard` React, `Stepper`, interstitiels et composants "micro" ;
+- helpers type-safe pour que la marque injecte ses propres étapes (`defineOnboardingSteps`, `createOnboardingHostProps`).
 
-| Couche | Kit (`@creezio/onboarding`) | Marque |
-|--------|-----------------------------|--------|
-| Shell setup first-run | `SetupWizard` | config : `productName` (via brand shell), `slugPlaceholder`, `requireOpenaiKey`, recovery copy… |
-| Shell parcours produit | `OnboardingWizard` + Stepper + micro + interstitials + CSS `onb-*` | `steps: OnboardingStepDef[]` |
-| Protocole | `OnboardingStepDef`, `OnboardingStepContext`, `OnboardingTransport`, flags/theme | implémentations de steps |
-| Persistence | contrat `transport` (persist/skip/complete) | routes `/api/v1/onboarding/*` + queries métier |
-| Branding | `configureOnboardingUi({ companionSrc })` + theme props | assets + copy métier |
+Le package ne contient pas de parcours métier marque. Il assemble une expérience générique et laisse la marque fournir les contenus, le transport et les bindings desktop.
 
-### Ce que le kit FOURNIT (SoT)
+## Périmètre kit vs marque
 
-- `SetupWizard` — tunnel first-run desktop (compte, recovery, slug, BYOK)
-- `OnboardingWizard` — stepper, interstitials optionnels, micro-UI générique
-- Protocole de steps : `OnboardingStepDef` / `OnboardingStepContext`
-- Contrat `OnboardingTransport` (get/save via `persistStep`, `skip`, `complete`)
-- Flags (`interstitials`, `allowSkip`, `interstitialMs`) + `OnboardingTheme`
-- Hooks UI : `configureOnboardingUi({ companionSrc })`, poses `CompanionPose`
-- CSS `@creezio/onboarding/ui/onboarding/onboarding.css` (classes `onb-*`)
-- Engine pur (non-UI) : `computeInitialStep`, `clampStep`, `nextStepIndex`, …
-- Helpers DX : `defineOnboardingSteps`, `createOnboardingHostProps` (assemblage typé, **sans** steps métier)
+**Kit**
 
-### Ce que la marque DOIT fournir
+- Calcule l'étape initiale, les bornes et les transitions.
+- Affiche le shell d'onboarding, les interstitiels, les aides visuelles et les composants de saisie.
+- Expose `SetupWizard` pour le first-run desktop basé sur `@creezio/shell-ui`.
+- Lit les bindings shell génériques (`getShellUiBrand`, `getShellDesktopApi`, `resolveDesktopHomePath`).
 
-- `steps: OnboardingStepDef[]` — composants step locaux (`step-*.tsx`)
-- Copy setup : `slugPlaceholder`, `tunnelHelp`, éventuellement `stepLabels`
-- `transport` branché sur l’API de la marque
-- Companion / hero assets (`configureOnboardingUi`)
-- Gates métier (flags, `resolveExitHref` / `onExit` si besoin)
-- Persistence backend (routes + queries) — **hors** de ce package
+**Marque**
 
-### Ce que le kit ne doit JAMAIS contenir
+- Définit la liste des étapes métier (`OnboardingStepDef[]`) et leur rendu.
+- Implémente `OnboardingTransport` (`persistStep`, `skip`, `complete`).
+- Configure éventuellement la mascotte via `configureOnboardingUi`.
+- Fournit les handlers desktop (`completeSetup`, `checkTunnelSlug`, `generateRecoveryKey`, etc.) via `@creezio/shell-ui`.
+- Décide des routes de sortie (`resolveExitHref`, `afterCompleteHref`) et des textes/skins propres.
 
-- Noms de tables / schémas métier
-- Libellés métier hardcodés (resto, cabinet, VASP, atelier, achats…)
-- IDs / globals desktop marque (`tempoflowDesktop`, …)
-- Routes métier figées (`/dashboard` métier, paths produit)
-- Steps « restaurant », « atelier », « cabinet » embarqués
+## Installation/build
 
-Les exemples ci-dessous sont **docs only** — aucun parcours métier n’est shippé dans le runtime du package.
+Depuis la racine du repo :
 
----
-
-## Placement
-
-Package **dédié** — **pas** un sous-dossier de `@creezio/shell-ui`.  
-Dépendance **one-way** : `onboarding` → `shell-ui` (Button, Input, brand, desktop API, home path).
+```bash
+npm run build -w @creezio/onboarding
+npm run typecheck -w @creezio/onboarding
+```
 
 Exports :
 
-| Entrée | Contenu |
-|--------|---------|
-| `@creezio/onboarding` | engine + validators setup (pas de React) |
-| `@creezio/onboarding/ui` | `SetupWizard`, `OnboardingWizard`, micro, types |
-| `@creezio/onboarding/ui/onboarding/onboarding.css` | styles `onb-*` |
+- `@creezio/onboarding` : moteur et types non React.
+- `@creezio/onboarding/ui` : composants React client.
+- `@creezio/onboarding/ui/onboarding/onboarding.css` : CSS du parcours.
 
----
+## Configuration détaillée
 
-## Setup (100 % package, copy marque)
+### `configureOnboardingUi`
 
-```tsx
-import { SetupWizard } from "@creezio/onboarding/ui";
+Configuration globale UI optionnelle :
 
-// TempoFlow (resto)
-<SetupWizard
-  config={{
-    slugPlaceholder: "mon-restaurant",
-    tunnelHelp: "Choisissez l'adresse mobile de votre CRM :",
-  }}
-/>
+```ts
+import { configureOnboardingUi } from "@creezio/onboarding/ui";
 
-// Certivan (atelier / VASP)
-<SetupWizard
-  config={{
-    slugPlaceholder: "mon-atelier",
-    tunnelHelp: "Choisissez l'adresse d'accès distant de votre atelier :",
-  }}
-/>
-
-// Fidu (cabinet)
-<SetupWizard
-  config={{
-    slugPlaceholder: "mon-cabinet",
-    tunnelHelp: "Choisissez l'adresse d'accès distant (tunnel) de votre CRM :",
-  }}
-/>
+configureOnboardingUi({
+  companionSrc: (pose) => `/brand/companion/${pose}.png`,
+});
 ```
 
-IPC via `getShellDesktopApi()` · produit / suffixe tunnel via `getShellUiBrand()`.  
-Le kit ne choisit **pas** le placeholder : c’est la marque.
+`companionSrc` reçoit une `CompanionPose` (`pointing`, `thumbs`, `waving`, `presenting`). Si elle est absente ou renvoie `undefined`, le kit n'affiche pas de mascotte.
 
----
-
-## Onboarding — injection métier
-
-### Helper DX (optionnel)
+### Steps injectés par la marque
 
 ```tsx
 import {
   OnboardingWizard,
   defineOnboardingSteps,
-  createOnboardingHostProps,
-  configureOnboardingUi,
-  type OnboardingTransport,
 } from "@creezio/onboarding/ui";
-import "@creezio/onboarding/ui/onboarding/onboarding.css";
-
-configureOnboardingUi({
-  companionSrc: (pose) => `/brand/companion-${pose}.png`,
-});
 
 const steps = defineOnboardingSteps([
-  { id: "intro", label: "Bienvenue", render: (ctx) => <StepIntro … /> },
-  // … steps MÉTIER locaux uniquement
+  {
+    id: "profile",
+    label: "Profil",
+    interstitialTitle: "On prépare votre espace",
+    render: ({ advance }) => (
+      <button type="button" onClick={advance}>
+        Continuer
+      </button>
+    ),
+  },
 ]);
 
-const transport: OnboardingTransport = {
-  persistStep: (i) => fetch("/api/v1/onboarding/profil", { /* marque */ }),
-  skip: () => fetch("/api/v1/onboarding/skip", { method: "POST" }).then(…),
-  complete: () => fetch("/api/v1/onboarding/complete", { method: "POST" }).then(…),
-};
-
-const props = createOnboardingHostProps({
-  steps,
-  transport,
-  flags: { interstitials: true, allowSkip: true },
-  // resolveExitHref omis → resolveDesktopHomePath() (shell-ui)
-});
-
-<OnboardingWizard {...props} />
+export function BrandOnboardingPage() {
+  return (
+    <OnboardingWizard
+      steps={[...steps]}
+      transport={{
+        persistStep: async (stepIndex) => {
+          await fetch("/api/onboarding/step", {
+            method: "POST",
+            body: JSON.stringify({ stepIndex }),
+          });
+        },
+        skip: async () => fetch("/api/onboarding/skip", { method: "POST" }),
+        complete: async () => fetch("/api/onboarding/complete", { method: "POST" }),
+      }}
+      flags={{ interstitials: true, allowSkip: true }}
+      theme={{ accentColor: "#f0701d" }}
+    />
+  );
+}
 ```
 
-`defineOnboardingSteps` / `createOnboardingHostProps` **assemblent** seulement — ils n’embarquent aucun step métier.
+### `SetupWizardConfig`
 
-### Exemple minimal Certivan (~3 steps, sans interstitials)
+`SetupWizard` accepte une configuration locale :
 
 ```tsx
-const steps = defineOnboardingSteps([
-  { id: "intro", label: "Bienvenue", render: (ctx) => <StepIntro … /> },
-  { id: "workshop", label: "Espace", render: (ctx) => <StepWorkshop … /> },
-  { id: "recap", label: "Récap", render: (ctx) => <StepRecap … /> },
-]);
+import { SetupWizard } from "@creezio/onboarding/ui";
 
-<OnboardingWizard
-  steps={steps}
-  transport={transport}
-  flags={{ interstitials: false }}
-/>
+<SetupWizard
+  config={{
+    requireOpenaiKey: true,
+    afterCompleteHref: "/onboarding",
+    slugPlaceholder: "mon-espace",
+    tunnelHelp: "Choisissez l'adresse publique de votre instance :",
+    accentColor: "#f0701d",
+    backgroundColor: "#14182f",
+  }}
+/>;
 ```
 
-### Exemple TempoFlow / Fidu (~8 steps + micro + interstitials)
+### Brand bindings
 
-```tsx
-const steps = defineOnboardingSteps([
-  { id: "intro", label: "Bienvenue", interstitialTitle: "…", render: … },
-  { id: "org", label: "Organisation", interstitialTitle: "…", render: … },
-  // … ~6 autres steps métier locaux
-  { id: "synthese", label: "Récapitulatif", render: … },
-]);
+Le kit lit les bindings de marque par `@creezio/shell-ui` :
 
-<OnboardingWizard
-  steps={steps}
-  transport={transport}
-  flags={{ interstitials: true }}
-/>
-```
+- `getShellUiBrand()` : `productName`, `publicHostSuffix` et identité visuelle shell ;
+- `getShellDesktopApi()` : API desktop first-run (`getSetupStatus`, `generateRecoveryKey`, `checkTunnelSlug`, `completeSetup`, `setAssistantChrome`) ;
+- `resolveDesktopHomePath()` : fallback de sortie après skip/complete.
 
-Les `step-*.tsx` **restent dans la marque** — c’est le point customizable.
+### Env
 
-### Exit
+Ce package ne lit pas directement `process.env`. Les valeurs runtime viennent du shell desktop, de la configuration passée aux composants ou des handlers marque.
 
-Par défaut, `OnboardingWizard` appelle `resolveDesktopHomePath()` (shell-ui, kind-aware).  
-Override marque seulement si nécessaire :
+## API publique avec exemples
 
-```tsx
-resolveExitHref={async () => resolveDesktopHomePath()}
-// éviter un hardcode opaque "/dashboard" si le desktop expose déjà le home
-```
-
-### Poses companion
-
-Utiliser `CompanionPose` (`"pointing" | "thumbs" | "waving" | "presenting"`).  
-`TempoPose` est un **alias deprecated** — ne plus l’utiliser dans le code marque.
-
----
-
-## Hors package
-
-- Steps métier (`step-*` resto / cabinet / atelier…)
-- Types/schémas métier
-- Routes Hono / migrations SQLite
-- Splash (`@creezio/electron-shell`), cockpit, settings shell-ui
-- Auth / recovery key flow (`@creezio/auth`)
-
----
-
-## CSS
-
-Importer **une fois** (layout ou page onboarding) :
+### Moteur non React
 
 ```ts
-import "@creezio/onboarding/ui/onboarding/onboarding.css";
+import {
+  computeInitialStep,
+  nextStepIndex,
+  prevStepIndex,
+  shouldShowInterstitial,
+} from "@creezio/onboarding";
+
+const initial = computeInitialStep({
+  stepCount: 4,
+  persistedStep: 1,
+  editMode: false,
+});
+
+const next = nextStepIndex(initial, 4);
+const previous = prevStepIndex(next);
+const showIntro = shouldShowInterstitial({
+  targetIndex: next,
+  interstitialsEnabled: true,
+  hasTitle: true,
+});
 ```
+
+### Types UI principaux
+
+```ts
+import type {
+  OnboardingStepDef,
+  OnboardingStepContext,
+  OnboardingTransport,
+  OnboardingTheme,
+  SetupWizardConfig,
+} from "@creezio/onboarding/ui";
+```
+
+### Validation first-run
+
+```ts
+import {
+  buildCompleteSetupPayload,
+  validateAccountStep,
+  validateOpenaiStep,
+  validateRecoveryStep,
+  validateSlugStep,
+} from "@creezio/onboarding";
+
+const accountError = validateAccountStep({
+  username: "owner",
+  password: "secret1",
+  password2: "secret1",
+});
+
+const payload = buildCompleteSetupPayload({
+  username: " owner ",
+  password: "secret1",
+  openaiKey: " sk-xxx ",
+  slug: " Mon-Espace ",
+  recoveryKey: "key",
+  stayLoggedIn: true,
+});
+```
+
+## Flux
+
+1. La marque configure éventuellement `configureOnboardingUi`.
+2. Elle construit ses `OnboardingStepDef[]` avec `defineOnboardingSteps`.
+3. `OnboardingWizard` calcule l'étape courante, appelle `transport.persistStep` à chaque navigation et affiche un interstitiel si l'étape cible le demande.
+4. Les steps appellent `advance`, `back`, `skip`, `complete` ou `goTo` via `OnboardingStepContext`.
+5. `skip` et `complete` délèguent à `transport`, puis sortent vers `resolveExitHref` ou vers le home desktop.
+6. En first-run desktop, `SetupWizard` pilote les APIs desktop shell jusqu'à `completeSetup`, puis redirige vers `afterCompleteHref`.
+
+## Intégration marques
+
+- Monter `SetupWizard` sur une route first-run desktop si l'application doit créer son owner/tunnel/OpenAI avant accès CRM.
+- Monter `OnboardingWizard` sur une route post-setup pour les étapes métier.
+- Ne pas coder de logique métier dans le package : les écrans de marque restent dans l'application hôte.
+- Garder `transport` idempotent : `persistStep` peut être appelé plusieurs fois et ses erreurs sont ignorées côté UI.
+- Utiliser `theme` pour les couleurs ponctuelles et `@creezio/shell-ui` pour l'identité produit globale.
+
+## Dépendances
+
+- Runtime : `@creezio/shell-ui`.
+- Peer UI : `react`, `lucide-react`.
+- Build/typecheck : TypeScript.
+
+## Voir aussi
+
+- [AGENTS.md](./AGENTS.md)
+- [docs/FILES.md](./docs/FILES.md)

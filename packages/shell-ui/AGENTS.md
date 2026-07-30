@@ -1,0 +1,148 @@
+# AGENTS — @creezio/shell-ui
+
+## Mission
+
+Maintenir le SoT UI du shell Creezio : nav slots historiques, brand tokens, helpers plateforme et chrome CRM partage (primitives, sidebar, workspace, search, desktop surfaces, settings). Le package doit supprimer les jumeaux TF/CV/Fidu pour les surfaces shell communes tout en laissant aux marques leur metier, leurs routes, leurs ACL et leurs providers.
+
+La mission inclut une clarification de scope : `shell-ui` n'est plus uniquement nav + slots ; il porte aussi le chrome CRM court terme. En revanche, onboarding, cockpit, auth et splash ont des packages dedies et ne doivent pas etre reabsorbes.
+
+## Ne pas faire / frontières
+
+- Ne pas hardcoder de domaine marque (`panier`, `dispatch`, GED, RTI, fournisseur comme concept utilisateur, etc.).
+- Ne pas importer de code app via `@/`.
+- Ne pas utiliser `window.tempoflowDesktop` ou equivalent hardcode ; passer par `configureShellUiBrand` et `getShellDesktopApi`.
+- Ne pas ajouter de nouvel usage `Supplier*`; preferer `ExternalSite*`. Les alias supplier sont seulement de compat cutover.
+- Ne pas remettre login/session dans shell-ui : utiliser `@creezio/auth/ui`.
+- Ne pas remettre setup/onboarding : utiliser `@creezio/onboarding/ui`.
+- Ne pas remettre cockpit serveur : utiliser `@creezio/cockpit/ui`.
+- Ne pas remettre splash : utiliser `@creezio/electron-shell`.
+- Ne pas deplacer les settings vers un nouveau package sans demande explicite ; documenter d'abord.
+- Ne pas modifier `docs/FILES.md` ou l'audit de scope sans demande explicite.
+
+## Points d'entrée
+
+Root :
+
+- `src/index.ts` : exports publics root.
+- `src/types.ts` : `CoreNavItem`, `NavSlotId`, `NavSlot`.
+- `src/core-nav.ts` : navigation core.
+- `src/registry.ts` : registry et merge nav.
+- `src/adapters/nav-shell.ts` : adapter nav UI-agnostique.
+- `src/brand.ts` : tokens marque et desktop API.
+- `src/lib/*` : helpers plateforme purs.
+
+UI :
+
+- `ui/index.ts` : exports React publics.
+- `ui/layout/sidebar-host.ts` : injection sidebar marque.
+- `ui/layout/sidebar.tsx` : sidebar CRM.
+- `ui/workspace/tab-workspace-context.tsx` : workspace onglets principal.
+- `ui/workspace/tab-workspace-host.ts` : host workspace historique.
+- `ui/workspace/workspace-shell.tsx`, `ui/workspace/workspace-root.tsx`, `ui/workspace/workspace-tab-bar.tsx`.
+- `ui/search/global-search-config.ts`, `ui/search/global-search-provider.tsx`.
+- `ui/desktop/external-site-slot.tsx`, `ui/desktop/external-site-surface.ts`.
+- `ui/settings/*` : settings desktop/admin.
+- `ui/primitives/*` : primitives partages.
+
+Docs :
+
+- `README.md`
+- `docs/FILES.md`
+- `../../docs/AUDIT-SHELL-UI-SCOPE.md`
+
+## Modifier sans casser
+
+- Pour nav bas niveau, garder la marque limitee a `registerBrandNav`; ne pas ajouter d'ids metier core.
+- Les slots valides sont `brand-primary`, `brand-secondary`, `plugins`. Toute extension doit etre justifiee.
+- Les hosts (`configureSidebar`, `configureGlobalSearch`, `configureTabWorkspaceHost`) doivent echouer clairement si requis mais non configures.
+- Les composants UI doivent rester consommables via `@creezio/shell-ui/ui`.
+- Garder les imports compatibles Next/React client-server ; eviter d'appeler `window` sans garde.
+- Les helpers dans `src/lib/*` doivent rester purs ou best-effort non bloquants.
+- Pour workspace, verifier les invariants : max tabs, keep-alive, locked navigation, external site tabs, storage keys configurables.
+- Pour search, la recherche concrete reste injectee ; ne pas importer Meili ou DB marque dans le kit.
+- Pour settings, les APIs appelees doivent rester configurees par props/hosts ou endpoints marque existants.
+- Si une API UI est renommee, conserver les alias de compat uniquement si une marque les utilise deja, et documenter la deprecation.
+
+## Config brand
+
+La marque doit configurer :
+
+- `configureShellUiBrand` :
+  - `desktopApiGlobal`
+  - `publicHostSuffix`
+  - `titlebarDragClass`
+  - `titlebarNoDragClass`
+  - `apiKeyPrefix`
+  - `productName`
+  - `aidAttr` si besoin
+- `configureSidebar` :
+  - `getNavItems`
+  - `getAdminItems`
+  - `canShowHref`
+  - `resolveForcedActiveHref`
+  - `renderBrandMark`, `renderTools`, `renderPlugins` si besoin
+- `configureGlobalSearch` :
+  - `search(query, signal)`
+  - `indexLabels`
+  - `storageKey`
+  - `preferCatalogueHref`
+  - `onTrack`
+- Workspace :
+  - `configureDefaultNewTabHref`
+  - `configureSidebarCollapsedKey`
+  - `configureProductDetailCtx`
+  - `configureWorkspaceStorageKey`
+  - `configureEntityRouteRoots`, `configureSectionLabels`, `configureEntityLabels` si necessaire
+- `configureAiActivityPanel` pour brancher `@creezio/tasks/ui`.
+
+Garder ce wiring dans un fichier client marque mince.
+
+## Tests / gates
+
+Commandes utiles :
+
+```bash
+npm run build -w @creezio/shell-ui
+npm run typecheck -w @creezio/shell-ui
+node --test scripts/test-phase-o9.mjs
+node --test scripts/test-phase-o9p.mjs
+node --test scripts/test-phase-p-shell-ui.mjs
+node --test scripts/test-phase-p29.mjs
+```
+
+Gates de scope :
+
+- aucun nouveau terme/metier marque dans le kit ;
+- aucun nouveau doublon sidebar/workspace/search dans les marques apres cutover ;
+- `ExternalSite*` prefere aux alias `Supplier*` ;
+- auth/onboarding/cockpit/splash restent hors package ;
+- `getShellDesktopApi()` reste la seule lecture desktop global generique.
+
+Gates fonctionnels :
+
+- `configureSidebar()` requis avant `Sidebar`.
+- `configureGlobalSearch()` requis avant provider search.
+- `createNavShellAdapter().registerBrandNav()` met a jour `getRenderModel()`.
+- `resolveCookieSecure` et `resolvePublicOrigin` restent corrects loopback/tunnel/prod.
+- workspace conserve l'etat onglets et n'evince pas les panes fullscreen proteges.
+
+## Fichiers sensibles
+
+- `ui/workspace/tab-workspace-context.tsx` : coeur onglets, historique, external sites.
+- `ui/workspace/types.ts` : types publics et aliases legacy supplier.
+- `ui/layout/sidebar.tsx` : chrome nav dense.
+- `ui/search/global-search-provider.tsx` : UX recherche et navigation.
+- `ui/desktop/external-site-slot.tsx` : coordination desktop/webview.
+- `src/brand.ts` : tokens marque et desktop API.
+- `src/adapters/nav-shell.ts` : contrat nav slots.
+- `src/lib/public-origin.ts` : securite cookies/origin.
+- `src/lib/api-scopes.ts` : scopes API keys.
+- `ui/settings/*` : nombreuses surfaces desktop avec endpoints host.
+- `package.json` exports et peer dependencies.
+
+## Liens
+
+- [`README.md`](./README.md)
+- [`docs/FILES.md`](./docs/FILES.md)
+- [`../../docs/AUDIT-SHELL-UI-SCOPE.md`](../../docs/AUDIT-SHELL-UI-SCOPE.md)
+- Packages lies : `@creezio/auth`, `@creezio/onboarding`, `@creezio/cockpit`, `@creezio/electron-shell`, `@creezio/tasks`, `@creezio/shell`

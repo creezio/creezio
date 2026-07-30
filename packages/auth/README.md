@@ -1,65 +1,194 @@
-# `@creezio/auth`
+# @creezio/auth
 
-Session / login / logout / recovery — **natif Creezio**, indépendant de la marque.
+## Rôle
 
-- Schéma tables : **sqlite core** (`AUTH_CORE_SQL`) — store credentials
-- Store mémoire (tests) + **`createSqliteAuthStore`** (persistance core.db)
-- **Session JWT cookie** Next (`configureAuth` + helpers)
-- **UI login** : `@creezio/auth/ui` (`LoginForm`, `SessionProvider`)
-- **Routes / middlewares Hono** : `createAuthRoutes`, `createHonoAuth`
-- Recovery key crypto : **SoT `@creezio/platform-core`** (réexporté)
-- Handlers IPC branchables sur `IpcChannels.auth` (`@creezio/shell`)
+`@creezio/auth` porte l'authentification native Creezio : credentials en SQLite core, store memoire pour tests, sessions JWT en cookie, routes/middlewares Hono, UI login/session React, IPC Electron et recovery key crypto reexportee depuis `@creezio/platform-core`.
 
-## Config marque (obligatoire)
+Le package est independant de la marque : il ne connait ni le nom du cookie, ni les permissions de navigation, ni le bridge desktop, ni les tables metier users d'une app. Ces elements sont injectes au boot.
+
+Surfaces publiees :
+
+| Import | Usage |
+|---|---|
+| `@creezio/auth` | config, store, JWT/cookies, Hono, IPC, recovery |
+| `@creezio/auth/ui` | `LoginForm`, `SessionProvider`, `useSession` |
+
+## Périmètre (kit vs marque)
+
+Ce qui appartient au kit :
+
+- `AUTH_CORE_SQL` pour les tables `creezio_users` et `creezio_sessions` dans SQLite core ;
+- `createMemoryAuthStore` pour tests/sandbox ;
+- `createSqliteAuthStore` pour persistance credentials/session dans `core.db` ;
+- hash password/token, generation de tokens ;
+- configuration `configureAuth({ cookieName, ownerPermissions })` ;
+- JWT HS256 via `jose` et helpers `createSessionToken`, `verifySessionToken`, `getSession` ;
+- options cookie Hono/Next (`sessionCookieOptions`, `clearSessionCookieOptions`, `toHonoCookie`) ;
+- middlewares Hono (`createHonoAuth`) ;
+- routes Hono (`createAuthRoutes`) : login/logout/me, impersonation, AI workspace session ;
+- composants React `LoginForm`, `SessionProvider`, `useSession` ;
+- IPC Electron sur `IpcChannels.auth` ;
+- recovery key crypto reexportee depuis `@creezio/platform-core`.
+
+Ce qui reste dans la marque :
+
+- nom de cookie et permissions owner ;
+- source des users/roles/permissions (`ALL_NAV_PERMISSIONS`, `authenticateUser`, `listUsers`, etc.) ;
+- prefixe et verification des API keys publiques ;
+- resolution `secure` des cookies derriere tunnel/proxy ;
+- layout de la page login et redirections ;
+- config `@creezio/shell-ui` pour le bridge desktop UI ;
+- OAuth MCP (`src/lib/mcp-oauth.ts`, `src/server/mcp/oauth.ts`) : cela appartient a `@creezio/mcp-facade`, pas a `@creezio/auth`.
+
+## Installation / build
+
+```bash
+npm install
+npm run build -w @creezio/auth
+npm run typecheck -w @creezio/auth
+```
+
+Artefacts :
+
+- ESM : `dist/`
+- CJS Electron : `dist-cjs/`
+- UI source : `ui/`
+
+Dependances directes : `@creezio/platform-core`, `@creezio/shell`, `@creezio/shell-ui`, `@hono/zod-openapi`, `hono`, `jose`, `zod`. `react`, `next` et `lucide-react` sont des peer dependencies optionnelles pour `./ui`.
+
+## Configuration
+
+### Configuration obligatoire au boot marque
 
 ```ts
 import { configureAuth } from "@creezio/auth";
 import { ALL_NAV_PERMISSIONS } from "@/lib/nav-config";
 
 configureAuth({
-  cookieName: "tempoflow2_crm_session", // ou certivan_crm_session / fidu_session
+  cookieName: "mybrand_crm_session",
   ownerPermissions: ALL_NAV_PERMISSIONS,
 });
 ```
 
-Aucun cookie / `window.*Desktop` hardcodé dans le kit.  
-Bridge desktop UI : `configureShellUiBrand({ desktopApiGlobal })` (`@creezio/shell-ui`).
+`cookieName` est obligatoire avant tout appel a `getSession`, `sessionCookieOptions` ou `createHonoAuth`. `ownerPermissions` alimente les sessions owner et le mode `AUTH_DISABLED`.
 
-## Page `/login` mince
+Variables lues par le kit :
 
-```tsx
-import { LoginForm } from "@creezio/auth/ui";
-import { isAuthDisabled } from "@creezio/auth";
+| Variable | Usage |
+|---|---|
+| `AUTH_SECRET` | secret JWT HS256 ; fallback dev insecure si absent |
+| `AUTH_DISABLED` | `1`/`true`/`yes` cree une session owner virtuelle |
+| `AUTH_USER`, `AUTH_PASSWORD` | credentials legacy/env pour compat et migration |
+| `AGENT_API_KEY` | middleware agent key Hono |
+| `CREEZIO_CORE_DB_PATH` / `DB_PATH` | store kit env via `getKitAuthStore` |
 
-export default function LoginPage() {
-  if (isAuthDisabled()) redirect("/dashboard");
-  return (
-    <div>
-      <h1>Ma Marque CRM</h1>
-      <LoginForm />
-    </div>
-  );
-}
+### Store credentials SQLite core
+
+```ts
+import { createSqliteAuthStore } from "@creezio/auth";
+import { resolveCoreDbPath } from "@creezio/platform-core";
+
+const authStore = createSqliteAuthStore({
+  coreDbPath: resolveCoreDbPath(ctx),
+});
 ```
 
-## SessionProvider
+Le store execute `AUTH_CORE_SQL`, normalise les emails, hash les mots de passe et les tokens, purge les sessions expirees a la lecture.
 
-```tsx
-import { SessionProvider } from "@creezio/auth/ui";
-import { ALL_NAV_PERMISSIONS } from "@/lib/nav-config";
+Pour tests :
 
-<SessionProvider ownerPermissions={ALL_NAV_PERMISSIONS}>
-  {children}
-</SessionProvider>
+```ts
+import { createMemoryAuthStore } from "@creezio/auth";
+
+const authStore = createMemoryAuthStore();
 ```
 
-## Routes Hono
+### UI et bridge desktop
+
+Le package auth ne configure pas `window.*Desktop`. Pour l'UI desktop, la marque configure `@creezio/shell-ui` :
+
+```ts
+import { configureShellUiBrand } from "@creezio/shell-ui";
+
+configureShellUiBrand({
+  desktopApiGlobal: "mybrandDesktop",
+  productName: "Ma Marque",
+});
+```
+
+## API publique (exports + exemples)
+
+### Config
+
+Exports :
+
+- `configureAuth`
+- `getAuthConfig`
+- `getAuthCookieName`
+- `resetAuthConfigForTests`
+- type `AuthConfig`
+
+```ts
+configureAuth({
+  cookieName: "certivan_crm_session",
+  cookieMaxAge: 60 * 60 * 24 * 14,
+  ownerPermissions: ALL_NAV_PERMISSIONS,
+});
+```
+
+### Store, password et SQLite
+
+Exports :
+
+- `AUTH_CORE_SQL`
+- `createMemoryAuthStore`, `createSqliteAuthStore`
+- `openNodeSqliteDatabase`
+- `hashPassword`, `verifyPassword`, `hashToken`, `newToken`
+- types `AuthStore`, `AuthUser`, `AuthSession`, `AuthAccountPublic`
+
+```ts
+const account = await authStore.register({
+  email: "owner@example.com",
+  password: "secret",
+  displayName: "Owner",
+});
+
+const session = await authStore.login({
+  email: "owner@example.com",
+  password: "secret",
+  stayLoggedIn: true,
+});
+```
+
+### Session JWT / cookies
+
+Exports :
+
+- `isAuthDisabled`, `getAuthCredentials`, `validateEnvCredentials`
+- `createSessionToken`, `createSessionTokenForUsername`, `verifySessionToken`, `getSession`
+- `sessionCookieOptions`, `clearSessionCookieOptions`, `toHonoCookie`
+- `sessionActorIsOwner`, `sessionIsImpersonating`, `sessionCanAccessPath`
+
+```ts
+import {
+  createSessionToken,
+  sessionCookieOptions,
+  toHonoCookie,
+} from "@creezio/auth";
+
+const token = await createSessionToken({ user });
+const cookie = toHonoCookie(sessionCookieOptions(token, { secure: true }));
+```
+
+`getSession()` lit les cookies Next via import dynamique de `next/headers`. En mode `AUTH_DISABLED`, il retourne une session owner virtuelle avec `ownerPermissions`.
+
+### Routes et middlewares Hono
 
 ```ts
 import { createAuthRoutes, createHonoAuth } from "@creezio/auth";
 import { resolveCookieSecure } from "@creezio/shell-ui";
-import * as users from "@/lib/users";
 import * as apiKeys from "@/lib/api-keys";
+import * as users from "@/lib/users";
 import { ALL_NAV_PERMISSIONS } from "@/lib/nav-config";
 
 const honoAuth = createHonoAuth({
@@ -68,7 +197,7 @@ const honoAuth = createHonoAuth({
   checkRateLimit: apiKeys.checkRateLimit,
   rateLimitPerMinute: apiKeys.RATE_LIMIT_PER_MINUTE,
   apiKeyAllowsMethod: apiKeys.apiKeyAllowsMethod,
-  apiKeyAllowsTasks: apiKeys.apiKeyAllowsTasks, // optionnel (Fidu peut omettre)
+  apiKeyAllowsTasks: apiKeys.apiKeyAllowsTasks,
 });
 
 export const {
@@ -87,39 +216,151 @@ export const authRoutes = createAuthRoutes({
   getSessionFromContext,
   resolveCookieSecure: (c) =>
     resolveCookieSecure(
-      { get: (n) => c.req.header(n) ?? null },
-      { appPublicUrl: process.env.APP_PUBLIC_URL, appBaseUrl: process.env.APP_BASE_URL },
+      { get: (name) => c.req.header(name) ?? null },
+      {
+        appPublicUrl: process.env.APP_PUBLIC_URL,
+        appBaseUrl: process.env.APP_BASE_URL,
+      },
     ),
 });
 ```
 
-## Extinction marques (cutover)
+Routes exposees par `createAuthRoutes` :
 
-Supprimer les jumeaux locaux :
+| Methode | Chemin | Rôle |
+|---|---|---|
+| `POST` | `/login` | authentifie, migre credentials kit si besoin, pose cookie |
+| `POST` | `/logout` | supprime le cookie |
+| `GET` | `/me` | session courante et permissions |
+| `POST` | `/impersonate` | owner -> collaborateur/IA |
+| `POST` | `/stop-impersonate` | retour au compte owner |
+| `POST` | `/ai-workspace-session` | session workspace IA |
 
-| Fichier local | Remplacé par |
-|---|---|
-| `src/app/login/login-form.tsx` | `@creezio/auth/ui` → `LoginForm` |
-| `src/components/auth/session-provider.tsx` | `@creezio/auth/ui` → `SessionProvider` |
-| `src/lib/auth.ts` (gras) | `configureAuth` + helpers kit (stub ≤40 LOC OK) |
-| `src/server/routes/auth.ts` (gras) | `createAuthRoutes(...)` |
-| `src/server/hono-auth.ts` (gras) | `createHonoAuth(...)` |
-| `electron/recovery-key.ts` | `@creezio/platform-core` |
+Middlewares exposes par `createHonoAuth` :
 
-## Hors scope (dette `mcp-facade`)
+- `requireSession`
+- `requireNavPermission(permission)`
+- `requireOwnerNotImpersonating`
+- `requireAgentKey`
+- `requireSessionOrAgentKey`
+- `requireSessionOrApiKey`
+- `requireSessionOrTasksApiKey` si `apiKeyAllowsTasks` est fourni.
 
-- `src/lib/mcp-oauth.ts`
-- `src/server/mcp/oauth.ts`
+### UI React
 
-Ne pas les avaler dans `@creezio/auth`. Ils peuvent importer les helpers session kit.
+Page login mince :
 
-## Store credentials (rappel)
+```tsx
+import { redirect } from "next/navigation";
+import { isAuthDisabled } from "@creezio/auth";
+import { LoginForm } from "@creezio/auth/ui";
+
+export default function LoginPage() {
+  if (isAuthDisabled()) redirect("/dashboard");
+  return <LoginForm title="Ma Marque CRM" />;
+}
+```
+
+Session provider :
+
+```tsx
+import { SessionProvider } from "@creezio/auth/ui";
+import { ALL_NAV_PERMISSIONS } from "@/lib/nav-config";
+
+export function Providers({ children }) {
+  return (
+    <SessionProvider ownerPermissions={ALL_NAV_PERMISSIONS}>
+      {children}
+    </SessionProvider>
+  );
+}
+```
+
+Consommation :
+
+```tsx
+import { useSession } from "@creezio/auth/ui";
+
+const { me, loading, refresh } = useSession();
+```
+
+### IPC Electron
+
+Exports :
+
+- `bindAuthIpcHandlers`
+- `authLoginWithStore`
+- types `AuthIpcBindings`, `IpcHandleFn`
 
 ```ts
-import { createSqliteAuthStore } from "@creezio/auth";
-import { resolveCoreDbPath } from "@creezio/platform-core";
+import { bindAuthIpcHandlers } from "@creezio/auth";
 
-const auth = createSqliteAuthStore({
-  coreDbPath: resolveCoreDbPath(ctx),
-});
+const bindings = bindAuthIpcHandlers(ipcMain.handle.bind(ipcMain), authStore);
 ```
+
+Handlers generiques branches sur `IpcChannels.auth` : account, logout, stay logged in, change password, recovery key. `googleLogin` et `recoverPassword` restent des stubs documentes a brancher par la marque si necessaire.
+
+### Recovery
+
+Reexports depuis `@creezio/platform-core` :
+
+- `generateRecoveryKey`
+- `normalizeRecoveryKey`
+- `createRecoveryVerifier`
+- `verifyRecoveryKey`
+- `wrapSecretsWithRecoveryKey`
+- `unwrapSecretsWithRecoveryKey`
+
+## Flux / fonctionnement
+
+1. La marque appelle `configureAuth` au boot.
+2. Le store SQLite core cree ou lit les credentials depuis `creezio_users`.
+3. `createAuthRoutes().POST /login` tente le login kit-first (`authenticateViaKit`), puis fallback marque/env, puis migration one-shot vers le store kit.
+4. Une session JWT est signee avec `AUTH_SECRET`, le cookie est pose avec le nom configure.
+5. `createHonoAuth` lit le cookie via Hono et place la session dans le contexte ou refuse.
+6. Les permissions de navigation sont verifiees via `requireNavPermission`.
+7. L'UI `SessionProvider` expose `/me` au client React.
+8. En desktop, IPC utilise le meme store pour account/logout/password/recovery.
+
+## Intégration marques
+
+Checklist :
+
+1. Appeler `configureAuth({ cookieName, ownerPermissions })` dans un fichier boot commun.
+2. Initialiser le store SQLite core avec `createSqliteAuthStore`.
+3. Monter `createAuthRoutes` sous le prefixe auth de l'API Hono.
+4. Exporter les middlewares `createHonoAuth` pour proteger les routes API.
+5. Remplacer les pages/forms locales par `LoginForm`.
+6. Remplacer le provider session local par `SessionProvider`.
+7. Utiliser `resolveCookieSecure` de `@creezio/shell-ui` pour les tunnels/proxies.
+8. Brancher `bindAuthIpcHandlers` dans Electron si l'app desktop utilise les canaux auth.
+9. Laisser OAuth MCP dans `@creezio/mcp-facade` et lui injecter les helpers session auth.
+
+Fichiers locaux a reduire apres cutover :
+
+| Fichier marque | Remplacement |
+|---|---|
+| `src/app/login/login-form.tsx` | `@creezio/auth/ui` -> `LoginForm` |
+| `src/components/auth/session-provider.tsx` | `@creezio/auth/ui` -> `SessionProvider` |
+| `src/lib/auth.ts` | config + reexports minces |
+| `src/server/routes/auth.ts` | `createAuthRoutes(...)` |
+| `src/server/hono-auth.ts` | `createHonoAuth(...)` |
+| `electron/recovery-key.ts` | reexports `@creezio/platform-core` via auth |
+
+## Dépendances @creezio/*
+
+| Dependance | Rôle |
+|---|---|
+| `@creezio/platform-core` | recovery key crypto et chemins core DB cote marque |
+| `@creezio/shell` | `IpcChannels.auth` pour Electron |
+| `@creezio/shell-ui` | helpers cookie/origin et bridge desktop UI |
+
+Interactions :
+
+- `@creezio/mcp-facade` consomme session/credentials auth pour OAuth MCP, mais reste proprietaire d'OAuth.
+- Les apps marques fournissent users, permissions et API keys.
+
+## Voir aussi → AGENTS.md + docs/FILES.md
+
+- [`AGENTS.md`](./AGENTS.md) : consignes de modification pour agents.
+- [`docs/FILES.md`](./docs/FILES.md) : inventaire fichier par fichier des exports et responsabilites.

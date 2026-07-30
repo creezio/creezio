@@ -1,153 +1,270 @@
-# `@creezio/tasks`
+# @creezio/tasks
 
-Tâches **plateforme** unifiées (kanban human / AI / Hermes + runs + agent IA).
+## Rôle
 
-Distinct des Plugin tasks Product Hub.
+`@creezio/tasks` fournit les tâches plateforme Creezio :
 
-## Capacités
+- store mince `PlatformTasksStore` pour `core.db` / `api-kernel` ;
+- kanban unifié `human` / `ai` / `hermes` ;
+- synchronisation Hermes kanban ;
+- runs IA (`task_runs`) avec logs, HITL, quotas et runner host ;
+- adapter assistant pour `create_task` / `list_tasks` ;
+- outils MCP host-only pour piloter les collaborateurs IA ;
+- UI kanban (`TasksKanbanClient`, `TaskDetailSheet`, `AiActivityPanel`).
 
-| Surface | Export |
-|---------|--------|
-| Store mince core (`creezio_platform_tasks`) | `createSqliteTasksStore`, `createTasksApiMount` |
-| Kanban brand DB (`tasks`) | `createTask`, `listTasks`, `syncHermesTasks`, … |
-| Runs / logs / HITL | `enqueueTaskRun`, `appendAgentLog`, … |
-| Agent + runner IA | `runAiTaskAgent`, `ensureAiRunnerLoop`, … |
-| Routes Hono `/api/v1/tasks` | `createTasksHonoRoutes()` |
-| Adapter assistant | `createAssistantTasksAdapter()` |
-| MCP host AI tools (D-P18) | `createAiTaskHostMcpTools()` |
-| UI | `@creezio/tasks/ui` → `TasksKanbanClient` |
+Ce package est distinct des `PluginTaskRecord` du Product Hub.
 
+## Périmètre kit vs marque
 
-## Wire sites externes (P29 / ADR)
+**Kit**
 
-L'agent IA (`web_*` tools) émet des actions desktop en **`external_*`** (SoT).
-Alias déprécié TF `supplier_*` encore accepté par `@creezio/electron-shell`
-(`ai_workspace_web_action` + browser-tab-driver). Préférer `siteId` /
-`site_id` dans les adaptateurs `externalTabs` ; `fournisseurId` /
-`fournisseur_id` = miroir déprécié.
+- Définit les statuts, exécutants, invariants d'assignation et opérations kanban.
+- Gère les runs IA, logs agent, SSE, relance, annulation et human-in-the-loop.
+- Fournit `createTasksHonoRoutes()` et `createTasksApiMount()`.
+- Fournit les tools MCP host `list_ai_collaborators`, `create_ai_task`, `get_ai_task`, `get_ai_run_logs`, `answer_ai_question`.
+- Fournit l'adapter assistant `createAssistantTasksAdapter()`.
 
-## Boot marque (obligatoire)
+**Marque**
+
+- Appelle `configureTasksBrand()` au boot.
+- Fournit DB, users, présence desktop, workspace Electron, navigation/permissions, external tabs, screencast et auth.
+- Monte les routes Hono sous `/api/v1/tasks`.
+- Monte le store `ApiMount` si elle expose la surface platform-core.
+- Configure les variables d'environnement préfixées pour le runner IA.
+- Branche les tools MCP dans son serveur host.
+
+## Installation/build
+
+```bash
+npm run build -w @creezio/tasks
+npm run typecheck -w @creezio/tasks
+```
+
+Exports :
+
+- `@creezio/tasks` : store, config, kanban, runner, Hono, MCP.
+- `@creezio/tasks/ui` : kanban, sheet détail et activité IA.
+
+## Configuration détaillée
+
+### `configureTasksBrand`
 
 ```ts
-import {
-  configureTasksBrand,
-  createTasksHonoRoutes,
-  createAssistantTasksAdapter,
-  recoverInterruptedRuns,
-  ensureAiRunnerLoop,
-} from "@creezio/tasks";
+import { configureTasksBrand } from "@creezio/tasks";
 
 configureTasksBrand({
-  productName: "TempoFlow",
-  productDomain: "CRM achats restauration",
-  hermesSourceLabel: "TempoFlow CRM",
-  hermesSkill: "tempoflow2-crm",
-  envPrefix: "TF2_AI",
+  productName: "Ma Marque",
+  productDomain: "CRM métier",
+  hermesSourceLabel: "Ma Marque CRM",
+  hermesSkill: "brand-crm",
+  envPrefix: "BRAND_AI",
   idempotencyPrefix: "crm",
   assistantIdempotencyPrefix: "asst",
   taskHref: "/taches",
-  examplePaths: ["/produits", "/marketplaces", "/panier"],
-  db: { getWriteDb, queryAll, queryOne, tableExists },
-  users: { getById: getUserById, list: listUsers, getOwner, ready: usersReady },
-  presence: { isDesktopOnline, listOnlineBridges },
-  workspace: { /* ensure/navigate/openTab/listTabs/webAction/screencast */ },
-  navigation: { permissionForPath, hasPermission },
-  externalTabs: { resolve: resolveOpenTabRequest, toWorkspaceParams: toSupplierOpenTabParams },
-  screencast: { viewerCount: screencastViewerCount, subscribe: subscribeScreencast },
-  auth: { getSessionFromContext, sessionActorIsOwner, sessionIsImpersonating },
+  examplePaths: ["/clients", "/dashboard"],
+  db,
+  users,
+  presence,
+  workspace,
+  navigation,
+  externalTabs,
+  screencast,
+  auth,
 });
-
-// instrumentation / server boot
-recoverInterruptedRuns();
-ensureAiRunnerLoop();
 ```
 
-## MCP host tools AI (D-P18)
+Bindings requis :
 
-Les tools `list_ai_collaborators` / `create_ai_task` / `get_ai_task` /
-`get_ai_run_logs` / `answer_ai_question` (et optionnellement `list_tasks`)
-vivent dans le kit — plus de jumeau TF/CV dans `hono-host-tools.ts`.
+- `db` : `getWriteDb`, `queryAll`, `queryOne`, `tableExists`.
+- `users` : `getById`, `list`, `getOwner`, `ready`.
+- `presence` : état desktop et bridges en ligne.
+- `workspace` : création/navigation workspace IA, tabs externes, web actions, screencast.
+- `navigation` : permission requise par chemin et vérification ACL.
+- `externalTabs` : résolution d'URL/site externe vers workspace params.
+- `screencast` : viewer count et subscription frames.
+- `auth` : session depuis Hono et helpers owner/impersonation.
+
+### Env runner IA
+
+Le préfixe vient de `envPrefix`. Pour `envPrefix: "BRAND_AI"`, le package lit notamment :
+
+- `BRAND_AI_RUNNER_ENABLED=0|false|no` pour désactiver le runner ;
+- `BRAND_AI_MAX_RUNS_PER_DAY` ;
+- `BRAND_AI_MAX_TOKENS_PER_DAY` ;
+- `BRAND_AI_HITL=1|true` pour forcer le human-in-the-loop ;
+- variables modèle/limites utilisées par `ai-task-agent` via `tasksEnv` / `tasksEnvNumber`.
+
+Les valeurs non configurées utilisent les defaults du kit ou restent illimitées selon le cas.
+
+### Hermes
+
+Le kanban Hermes utilise les fonctions de `@creezio/assistant` (`hermesKanbanConfigured`, create/list/patch/dispatch/cron). Les tâches `executorKind: "hermes"` n'ont pas d'assigné local et peuvent être dispatchées immédiatement.
+
+### Assistant brand binding
+
+```ts
+import { configureAssistantBrand } from "@creezio/assistant";
+import { createAssistantTasksAdapter } from "@creezio/tasks";
+
+configureAssistantBrand({
+  // autres bindings...
+  tasks: createAssistantTasksAdapter(),
+});
+```
+
+## API publique avec exemples
+
+### Kanban service
 
 ```ts
 import {
-  CREEZIO_AI_TASK_HOST_MCP_TOOL_NAMES,
-  createAiTaskHostMcpTools,
+  createTask,
+  listTasks,
+  tasksByColumn,
+  updateTask,
 } from "@creezio/tasks";
-import "@/lib/configure-tasks";
 
-createAiTaskHostMcpTools({
-  registerTool: (name, config, handler) =>
-    registerMcpTool(server, ctx, name, config, handler),
-  getActorUserId: () => ctx.userId,
-  includeListTasks: false, // true côté Certivan
+const { task } = await createTask({
+  title: "Préparer la relance client",
+  body: "Analyser les échanges et proposer un message.",
+  executorKind: "ai",
+  assigneeUserId: "user_ai_1",
+  createdBy: "owner_1",
+  source: "ui",
+});
+
+await updateTask(task.id, { status: "in_progress" });
+
+const board = tasksByColumn(listTasks({ includeCancelled: false }));
+```
+
+### Routes Hono
+
+```ts
+import { Hono } from "hono";
+import { createTasksHonoRoutes } from "@creezio/tasks";
+
+const api = new Hono();
+api.route("/tasks", createTasksHonoRoutes());
+```
+
+Endpoints sous `/tasks` :
+
+- `GET /meta`
+- `GET /`
+- `POST /sync`
+- `GET /:id`
+- `POST /`
+- `PATCH /:id`
+- `DELETE /:id`
+- `POST /:id/launch`
+- `GET /runs/:runId`, `/runs/:runId/logs`, `/runs/:runId/stream`
+- `POST /runs/:runId/retry`, `/resume`, `/cancel`
+- `GET /activity/:userId`, `/activity/:userId/stream`
+- `GET /screencast/:aiUserId/stream`
+- `POST /runner/tick`
+- `POST /logs/purge`
+
+### `ApiMount` platform-core
+
+```ts
+import { createTasksApiMount, createSqliteTasksStore } from "@creezio/tasks";
+
+const store = createSqliteTasksStore({ db });
+const mount = createTasksApiMount(store);
+```
+
+Surface mince :
+
+- `GET /list` ou `GET /`
+- `POST /create` ou `POST /`
+- `GET|PATCH|DELETE /:uuid`
+
+L'acteur vient de `x-creezio-user-id` ou `body.userId`.
+
+### Runner IA
+
+```ts
+import {
+  enqueueAiRunForTask,
+  ensureAiRunnerLoop,
+  processAiTaskQueue,
+} from "@creezio/tasks";
+
+const run = enqueueAiRunForTask("task_id");
+ensureAiRunnerLoop();
+void processAiTaskQueue();
+```
+
+### MCP host tools
+
+```ts
+import { createAiTaskHostMcpTools } from "@creezio/tasks";
+
+const registered = createAiTaskHostMcpTools({
+  registerTool: server.registerTool.bind(server),
+  getActorUserId: () => currentApiKey.user_id,
+  includeListTasks: true,
 });
 ```
 
-Reste en marque : résolution `open_external_tab` (tool → `createOpenExternalTabHostMcpTools` dans `@creezio/mcp-facade`) (+ `list_tools_by_space` TF) et le métier
-façade.
-
-## Montage API
-
-```ts
-// server/routes/tasks.ts — stub ≤ 40 LOC
-import { createTasksHonoRoutes } from "@creezio/tasks";
-import "@/lib/configure-tasks"; // side-effect configureTasksBrand
-
-export const tasksRoutes = createTasksHonoRoutes();
-```
-
-```ts
-// server/app.ts
-api.use("/tasks", requireSessionOrTasksApiKey);
-api.use("/tasks/*", requireSessionOrTasksApiKey);
-api.route("/tasks", tasksRoutes);
-```
-
-Le mount Electron mince reste inchangé :
-
-```ts
-api.registerModuleApi("platform-tasks", createTasksApiMount(tasks));
-```
-
-## Page `/taches`
+### UI
 
 ```tsx
-import { AppShell } from "@creezio/shell-ui/ui";
 import { TasksKanbanClient } from "@creezio/tasks/ui";
 
-export default function TachesPage() {
-  return (
-    <AppShell title="Tâches" subtitle="Humains, collaborateurs IA et Hermes.">
-      <TasksKanbanClient />
-    </AppShell>
-  );
+export default function TasksPage() {
+  return <TasksKanbanClient />;
 }
 ```
 
-## Fichiers marque à supprimer (cutover)
+## Flux
 
-**TempoFlow / Certivan**
+### Création tâche
 
-- `crm/src/lib/tasks.ts`
-- `crm/src/lib/task-runs.ts`
-- `crm/src/lib/ai-task-agent.ts`
-- `crm/src/lib/ai-task-runner.ts`
-- `crm/src/server/routes/tasks.ts` (ou stub délégant ≤ ~40 LOC)
-- `crm/src/lib/assistant/tasks-adapter.ts` (remplacé par `createAssistantTasksAdapter`)
+1. L'UI, l'assistant ou MCP appelle `createTask`.
+2. Le kit valide l'exécutant :
+   - `human` : assigné humain si fourni ;
+   - `ai` : assigné IA actif obligatoire ;
+   - `hermes` : pas d'assigné local.
+3. La tâche est écrite dans le schéma local et upsertée dans le store plateforme.
+4. Si Hermes est choisi, le kit crée/synchronise la tâche Hermes.
+5. Si IA est choisie et lancée, un run est enfilé.
 
-**Fidu**
+### Runner IA
 
-- `crm/src/lib/cabinet-tasks.ts`
-- `crm/src/components/tasks/taches-kanban-client.tsx`
-- `crm/src/lib/task-runs.ts`
-- `crm/src/lib/ai-task-runner.ts`
-- routes tasks grasses (même règle stub)
-- adapter local superflu
+1. `ensureAiRunnerLoop` démarre le poller.
+2. `claimNextQueuedRun` sélectionne un run.
+3. Le runner vérifie quotas, modèle LLM et bridge desktop host.
+4. Il ouvre/assure le workspace de l'IA avec les ACL du collaborateur.
+5. `runAiTaskAgent` exécute les étapes et écrit les logs.
+6. Le run finit `succeeded`, `failed`, `cancelled` ou attend HITL.
 
-## Env AI (préfixe marque)
+### MCP host
 
-Avec `envPrefix: "TF2_AI"` :
+1. La marque enregistre les tools avec `createAiTaskHostMcpTools`.
+2. L'actor MCP doit être owner pour créer des tâches IA.
+3. `create_ai_task` crée et lance la tâche si demandé.
+4. `get_ai_task` / `get_ai_run_logs` servent au polling externe.
+5. `answer_ai_question` reprend un run HITL.
 
-- `TF2_AI_MODEL`, `TF2_AI_MAX_STEPS`, `TF2_AI_RUN_TIMEOUT_MS`, `TF2_AI_MAX_TOKENS`
-- `TF2_AI_WEB_ALLOWED_HOSTS`, `TF2_AI_RUNNER_ENABLED`, `TF2_AI_HITL`
-- `TF2_AI_MAX_CONCURRENT`, `TF2_AI_MAX_RUNS_PER_DAY`, `TF2_AI_MAX_TOKENS_PER_DAY`
+## Intégration marques
+
+- Appeler `configureTasksBrand` avant toute route, UI ou runner.
+- Monter `createTasksHonoRoutes()` sous `/api/v1/tasks`.
+- Brancher `createAssistantTasksAdapter()` dans `configureAssistantBrand`.
+- Démarrer le runner uniquement sur le host serveur/desktop adéquat.
+- Garder les permissions dans l'adapter `navigation`, pas dans le prompt.
+- Exposer les tools MCP host seulement côté host, avec actor owner.
+- Prévoir les migrations SQL `tasks` et `task_runs` avant d'ouvrir l'UI.
+
+## Dépendances
+
+- Runtime : `@creezio/api-kernel`, `@creezio/assistant`, `@creezio/auth`, `@creezio/platform-core`, `@creezio/shell-ui`, `hono`, `zod`.
+- Peer UI : `react`, `lucide-react`, `date-fns`, `sonner`.
+- Intégrations : Hermes via `@creezio/assistant`, desktop workspace via bindings marque.
+
+## Voir aussi
+
+- [AGENTS.md](./AGENTS.md)
+- [docs/FILES.md](./docs/FILES.md)

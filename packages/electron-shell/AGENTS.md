@@ -1,0 +1,89 @@
+# AGENTS.md — @creezio/electron-shell
+
+## Mission
+
+Maintenir le runtime Electron plateforme Creezio : host stack, desktop runtime, launchers locaux, plugins, browser-tabs, ai-workspace, crash/updater/tray/splash et bindings marque. Garder le package generique, testable et sans dependance metier verticale.
+
+## Ne pas faire
+
+- Ne pas hardcoder `TF2`, `TEMPOFLOW`, `CERTIVAN` ou `FIDU` dans une nouvelle logique ; utiliser `envPrefix`, `AppManifest` ou bindings.
+- Ne pas importer de code marque depuis ce package.
+- Ne pas tirer le barrel principal dans des tests Node qui n'ont besoin que des browser-tabs ; utiliser `@creezio/electron-shell/browser-tabs`.
+- Ne pas lancer un sidecar sans chemin, store, contexte et logs injectes.
+- Ne pas exposer secrets BYOK, tokens control plane, cles CRM/n8n dans les logs.
+- Ne pas casser les alias legacy existants sans migration explicite.
+- Ne pas toucher `docs/FILES.md` sans demande dediee.
+
+## Points d'entrée
+
+- `src/index.ts` : barrel public principal.
+- `src/desktop/brand-desktop-runtime.ts` : runtime desktop complet.
+- `src/host/host-stack.ts` : stack host directe.
+- `src/host/brand-host-stack.ts` : wiring lazy marque.
+- `src/host/brand-host-runtime.ts` : singletons et `HostRuntimeContext` marque.
+- `src/host/plugins/brand-bindings.ts` : `configurePluginHost`.
+- `src/host/plugins/launcher.ts` : start/stop/restart/scaffold/git plugins.
+- `src/host/plugins/control-plane.ts` et `control-extras.ts` : API loopback plugins.
+- `src/host/hermes/launcher.ts`, `src/host/n8n/launcher.ts`, `src/host/meili-launcher.ts`, `src/host/tunnel/tunnel.ts` : embeds.
+- `src/host/browser-tabs/index.ts` : sous-export browser-tabs.
+- `src/host/ai-workspace/index.ts` : workspaces IA.
+
+## Modifier sans casser
+
+- Preserver les types publics exportes par `src/index.ts`.
+- Garder les modules host-only lazy : ne pas charger Electron/sidecars au simple import si evitable.
+- Pour les plugins, toute nouvelle env doit passer par `assignPluginEnv` afin de couvrir prefixe primaire et aliases legacy.
+- `restartPlugin` doit rester race-safe : un ancien child ne doit pas effacer un process plus recent.
+- Les preloads et partitions browser-tabs/IA doivent rester isoles.
+- Les launchers doivent retourner des payloads de statut stables meme en mode remote ou feature-off.
+- En cas d'erreur onglet externe, afficher/rapporter sans crash fatal du runtime.
+
+## Config brand
+
+Sur une marque complete, verifier l'ordre :
+
+1. Construire `AppManifest`, paths, local config store.
+2. Creer `createBrandHostRuntime` ou `createBrandHostRuntimeContext`.
+3. Appeler `configurePluginHost` avant `startEnabledPlugins`, `restartPlugin`, control extras ou git plugins.
+4. Appeler `configureAiWorkspaceHost` avant `AiWorkspaceManager.ensure`.
+5. Appeler `configureBrowserTabs` si le preload par defaut n'est pas celui de la marque.
+6. Construire `createBrandHostStack` puis passer ses getters a `installBrandDesktopRuntime`.
+
+Verifier que `envPrefix`, `secretFilePrefix`, noms de cookies, protocoles deep-link, ports et chemins de binaires viennent de la marque.
+
+## Tests/gates
+
+Avant validation :
+
+```bash
+npm run typecheck -w @creezio/electron-shell
+npm run build -w @creezio/electron-shell
+```
+
+Si la modification touche Electron reel, completer par un smoke de marque :
+
+- boot client local ;
+- boot serveur si supporte ;
+- status Hermes/n8n/Meili/tunnel ;
+- start/restart plugin avec panel ;
+- browser-tab open + action simple ;
+- workspace IA `ensure` + `show`.
+
+## Fichiers sensibles
+
+- `src/desktop/brand-desktop-runtime.ts` : boot global, IPC, restart Next, BYOK.
+- `src/host/plugins/brand-bindings.ts` : contrat d'injection marque.
+- `src/host/plugins/launcher.ts` : spawn sidecars plugins, env secrets, ecriture fichiers.
+- `src/host/plugins/control-token.ts` et `execution-grant.ts` : tokens/grants.
+- `src/host/hermes/crm-key.ts`, `src/host/n8n/api-key.ts`, `src/host/n8n/agent-isolation.ts` : secrets.
+- `src/host/tunnel/tunnel.ts` : provisioner, token tunnel, ingress public.
+- `src/host/browser-tabs/browser-tab-driver.ts` : CDP trusted input.
+- `src/host/ai-workspace/manager.ts` : partitions IA et cookies session.
+- `src/host/sandbox/*` et `src/host/node-runtime.ts` : confinement process.
+
+## Liens
+
+- `README.md`
+- `docs/FILES.md`
+- `packages/desktop-tooling/README.md`
+- `packages/brand-config/README.md` si present
