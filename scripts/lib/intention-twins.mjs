@@ -186,14 +186,30 @@ export function fileContains(brandDir, rel, re) {
 export function kitExportsShellCrm() {
   const uiIndex = path.join(KIT_ROOT, "packages/shell-ui/ui/index.ts");
   const text = fs.readFileSync(uiIndex, "utf8");
+  // Setup / onboarding / cockpit vivent hors shell-ui (packages dédiés).
+  const onboardingUi = path.join(KIT_ROOT, "packages/onboarding/ui/index.ts");
+  const onboardingText = fs.existsSync(onboardingUi)
+    ? fs.readFileSync(onboardingUi, "utf8")
+    : "";
+  const cockpitUi = path.join(KIT_ROOT, "packages/cockpit/ui/index.ts");
+  const cockpitText = fs.existsSync(cockpitUi)
+    ? fs.readFileSync(cockpitUi, "utf8")
+    : "";
   return {
-    setupWizard: /setup\/setup-wizard|SetupWizard/.test(text),
+    setupWizard:
+      /setup\/setup-wizard|SetupWizard/.test(onboardingText) ||
+      /setup\/setup-wizard|SetupWizard/.test(text),
     tabWorkspaceContext: /tab-workspace-context|TabWorkspaceProvider/.test(text),
     globalSearchProvider: /global-search-provider|GlobalSearchProvider/.test(text),
-    cockpit: /server-cockpit-shell|ServerCockpitShell/.test(text),
+    cockpit:
+      /server-cockpit-shell|ServerCockpitShell/.test(cockpitText) ||
+      /server-cockpit-shell|ServerCockpitShell/.test(text),
     sidebar: /layout\/sidebar|Sidebar/.test(text),
     workspaceShell: /workspace-shell|WorkspaceShell/.test(text),
-    onboardingShell: /onboarding-shell|OnboardingShell/.test(text),
+    onboardingShell:
+      /onboarding-shell|OnboardingShell|OnboardingWizard|Stepper/.test(
+        onboardingText,
+      ) || /onboarding-shell|OnboardingShell/.test(text),
   };
 }
 
@@ -204,6 +220,8 @@ export function kitExportsTasksRuntime() {
     kanbanStore: /createKanbanTasksStore|listTasks|TaskRow|KANBAN_COLUMNS/.test(text),
     taskRuns: /task-runs|listTaskRuns|createTaskRun/.test(text),
     aiRunner: /ai-task-runner|runAiTask|AiTaskRunner/.test(text),
-    routes: /createKanbanTasksRoutes|mountKanbanTasks/.test(text),
+    routes: /createTasksHonoRoutes|createKanbanTasksRoutes|mountKanbanTasks/.test(
+      text,
+    ),
   };
 }

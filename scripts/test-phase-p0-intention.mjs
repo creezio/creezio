@@ -66,7 +66,7 @@ test("P0.1 docs PLAN-P + ETAT §0 + PHASE-P0", () => {
   assert.doesNotMatch(phase, PAPERCLIP_RE);
 });
 
-test("P0.2 matrice : légende cutover + Shell CRM / Tasks 🟡 (pas ✅ cosmétique)", () => {
+test("P0.2 matrice : légende cutover + Shell CRM / Tasks = réalité cutover", () => {
   const matrice = fs.readFileSync(
     path.join(KIT_ROOT, "docs/MATRICE-NATIVE-METIER-PLUGIN.md"),
     "utf8",
@@ -77,20 +77,56 @@ test("P0.2 matrice : légende cutover + Shell CRM / Tasks 🟡 (pas ✅ cosméti
   );
   assert.match(matrice, /🟡.*jumeaux|jumeaux restants/i);
 
-  // Lignes capacité : Shell CRM et Tasks doivent être 🟡 tant que jumeaux locaux
+  // Surfaces cœur : absentes marques ⇒ cutover prouvé ⇒ matrice ✅ ; sinon 🟡
+  const coreShellSurfaces = [
+    "src/components/layout/sidebar.tsx",
+    "src/components/workspace/tab-workspace-context.tsx",
+    "src/components/workspace/workspace-shell.tsx",
+    "src/components/cockpit/server-cockpit-shell.tsx",
+    "src/components/setup/setup-wizard.tsx",
+    "src/components/global-search-provider.tsx",
+  ];
+  const shellCutoverDone = localSurfacesPresent(coreShellSurfaces).length === 0;
+
+  const coreTasksSurfaces = [
+    "src/lib/tasks.ts",
+    "src/lib/cabinet-tasks.ts",
+    "src/components/tasks/taches-kanban-client.tsx",
+    "src/lib/ai-task-runner.ts",
+  ];
+  const tasksCutoverDone = localSurfacesPresent(coreTasksSurfaces).length === 0;
+
   const shellRow = matrice
     .split("\n")
     .find((l) => /Shell CRM/.test(l) && /shell-ui/.test(l));
   assert.ok(shellRow, "ligne Shell CRM absente");
-  assert.match(shellRow, /🟡/);
-  assert.doesNotMatch(shellRow, /\| ✅ \|/);
+  if (shellCutoverDone) {
+    assert.match(shellRow, /\| ✅ \|/);
+    assert.doesNotMatch(
+      shellRow,
+      /jumeaux locaux|encore locales|twin TF/,
+      "Shell CRM ✅ ne doit pas revendiquer jumeaux locaux",
+    );
+  } else {
+    assert.match(shellRow, /🟡/);
+    assert.doesNotMatch(shellRow, /\| ✅ \|/);
+  }
 
   const tasksRow = matrice
     .split("\n")
     .find((l) => /\*\*Tasks\*\*/.test(l) && /@creezio\/tasks/.test(l));
   assert.ok(tasksRow, "ligne Tasks absente");
-  assert.match(tasksRow, /🟡/);
-  assert.doesNotMatch(tasksRow, /\| ✅ \|/);
+  if (tasksCutoverDone) {
+    assert.match(tasksRow, /\| ✅ \|/);
+    assert.doesNotMatch(
+      tasksRow,
+      /jumeaux locaux|encore locales|twin TF/,
+      "Tasks ✅ ne doit pas revendiquer jumeaux locaux",
+    );
+  } else {
+    assert.match(tasksRow, /🟡/);
+    assert.doesNotMatch(tasksRow, /\| ✅ \|/);
+  }
 
   // Interdit : ✅ + « jumeaux locaux » sur la même ligne capacité
   for (const line of matrice.split("\n")) {
@@ -112,19 +148,31 @@ test("P0.3 mesure cutover : jumeau local ⇒ dette ; absent ⇒ SoT kit obligato
   );
   assert.ok(fs.existsSync(path.join(KIT_ROOT, "packages/tasks/ui/index.ts")));
 
+  const coreShellSurfaces = [
+    "src/components/layout/sidebar.tsx",
+    "src/components/workspace/tab-workspace-context.tsx",
+    "src/components/workspace/workspace-shell.tsx",
+    "src/components/cockpit/server-cockpit-shell.tsx",
+    "src/components/setup/setup-wizard.tsx",
+    "src/components/global-search-provider.tsx",
+  ];
+  const localCoreShell = localSurfacesPresent(coreShellSurfaces);
   const localShell = localSurfacesPresent(P1_SHELL_SURFACES);
-  if (localShell.length > 0) {
+  if (localCoreShell.length === 0) {
+    // Cutover cœur prouvé — SoT kit (setup/cockpit = packages dédiés).
+    const exp = kitExportsShellCrm();
+    assert.ok(exp.setupWizard, "cutover shell: SetupWizard (@creezio/onboarding)");
+    assert.ok(exp.cockpit, "cutover shell: ServerCockpitShell (@creezio/cockpit)");
+    assert.ok(exp.tabWorkspaceContext, "cutover shell: TabWorkspaceProvider kit");
+    assert.ok(exp.globalSearchProvider, "cutover shell: GlobalSearchProvider kit");
+    assert.ok(exp.workspaceShell, "cutover shell: WorkspaceShell kit");
+    assert.ok(exp.sidebar, "cutover shell: Sidebar kit");
+  } else if (localShell.length > 0) {
     const shellTwins = scanTwinPair(P1_SHELL_SURFACES, { threshold: 0.85 });
     assert.ok(
       shellTwins.length >= 1,
       `jumeaux shell locaux sans sim≥0.85 TF↔CV: ${[...new Set(localShell.map((r) => r.rel))].join(", ")}`,
     );
-  } else {
-    const exp = kitExportsShellCrm();
-    assert.ok(exp.setupWizard, "cutover shell: SetupWizard kit");
-    assert.ok(exp.tabWorkspaceContext, "cutover shell: TabWorkspaceProvider kit");
-    assert.ok(exp.globalSearchProvider, "cutover shell: GlobalSearchProvider kit");
-    assert.ok(exp.workspaceShell, "cutover shell: WorkspaceShell kit");
   }
 
   const localTasksCore = localSurfacesPresent([
@@ -145,7 +193,8 @@ test("P0.3 mesure cutover : jumeau local ⇒ dette ; absent ⇒ SoT kit obligato
   } else {
     const rt = kitExportsTasksRuntime();
     assert.ok(rt.kanbanStore, "cutover tasks: kanban store kit");
-    assert.ok(rt.aiRunner || rt.routes, "cutover tasks: AI ou routes kit");
+    assert.ok(rt.routes, "cutover tasks: createTasksHonoRoutes kit");
+    assert.ok(rt.aiRunner || rt.taskRuns, "cutover tasks: AI ou task-runs kit");
   }
 });
 

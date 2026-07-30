@@ -13,7 +13,8 @@
 > **État des lieux intention (post-O11)** :
 > [ETAT-DES-LIEUX-INTENTION.md](ETAT-DES-LIEUX-INTENTION.md) · roadmap
 > [PLAN-P.md](PLAN-P.md) — **règle ×3=NATIF** ; plus de questions bloquantes ;
-> jumeaux plateforme ~21,7 kLOC TF↔CV encore ouverts ; packages ✅ ≠ marques minces.
+> post-cutover : Shell CRM + Tasks ✅ (surfaces cœur éteintes ×3) ; restent
+> MCP/oauth/schemas, vocabulaire TF kit, fabrique CV/Fidu, browser-tabs TF.
 > Versions courantes : TF **0.10.33** · Certivan **0.1.16** · Fidu **0.1.65**.
 > Légende : **✅** livré **et cutover marques prouvé** · **🟡** package/kit
 > partiel ou jumeaux restants · **❌** absent / hors scope volontaire.
@@ -58,9 +59,9 @@ Vision stricte N* : [PLAN-N.md](PLAN-N.md) · [PHASE-N0.md](PHASE-N0.md) ·
 | **Assistant / chat** | `@creezio/assistant` | ✅ | **I2** + **C1** rich schema ; **TF C1** chat-db façade kit (plus dual-write) |
 | **API kernel** (façade HTTP cœur) | `@creezio/api-kernel` | ✅ | ScopedDbAccess H2 + `authorizePluginAccess` H5 |
 | **MCP façade / proxy** | `@creezio/mcp-facade` | ✅ | H4 aliases/policies + H5 deny plugin ; **TF D1** + **Certivan C2** : exécuteur Hono `/mcp`, façade = adaptateur + proxy |
-| **Tasks** (natif plateforme, kanban+AI inclus) | `@creezio/tasks` | 🟡 | Store/API kit + UI kanban kit **partielle** ; **jumeaux locaux ×3** (TF/CV `tasks.ts`+AI twin, Fidu `cabinet-tasks`/kanban) — cutover P2 |
-| **Mails** (natif plateforme) | `@creezio/mails` | 🟡 | Store kit ×3 ; UI inbox twin TF↔CV ; Fidu sans UI (config) — cutover P6 |
-| **Shell CRM** (sidebar/workspace/cockpit/setup/onboarding/search) | `@creezio/shell-ui` | 🟡 | Nav adapters kit ; **surfaces CRM encore locales ×3** (souvent twin) — cutover P1 |
+| **Tasks** (natif plateforme, kanban+AI inclus) | `@creezio/tasks` | ✅ | Cutover ×3 : `tasks.ts` / `cabinet-tasks` / kanban / AI absents marques ; SoT kit store+UI+`createTasksHonoRoutes` ; mounts mince `/api/v1/tasks` |
+| **Mails** (natif plateforme) | `@creezio/mails` | 🟡 | Store+UI kit ; pages `/mails` kit ×3 ; Fidu `uiEnabled: true` — polish/providers encore ouverts |
+| **Shell CRM** (sidebar/workspace/cockpit/setup/onboarding/search) | `@creezio/shell-ui` (+ `onboarding` / `cockpit`) | ✅ | Cutover ×3 : sidebar/workspace/search/setup/cockpit absents marques ; SoT `shell-ui` + `@creezio/onboarding` + `@creezio/cockpit` |
 | **Fleet** (ops telemetry) | observability + platform-core + shell-ui | ✅ | SoT kit `observability/fleet-collector` (P25) ; marques = env/domaine + wrappers ≤80 LOC ; Fidu `fleet:false` = config |
 | Sync vendor standardisé | `scripts/sync-creezio-vendor.sh` | ✅ | **I0** — assert `ARCHITECTURE_VERSION=H6`, CJS, wrappers 3 marques |
 | Politique republish | [REPUBLISH-POLICY.md](REPUBLISH-POLICY.md) | ✅ | I14/I16/I18 livrés ; suite D3/D4/D5 si runtime packaged |
