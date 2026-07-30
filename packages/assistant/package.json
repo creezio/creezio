@@ -30,7 +30,8 @@
   "dependencies": {
     "@creezio/platform-core": "0.1.0",
     "@creezio/shell": "0.1.0",
-    "better-sqlite3": "^12.11.1"
+    "better-sqlite3": "^12.11.1",
+    "hono": "^4.12.30"
   },
   "peerDependencies": {
     "@radix-ui/react-dropdown-menu": "^2.1.0",

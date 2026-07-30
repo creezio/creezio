@@ -19,7 +19,7 @@ function readCatalogRaw(): string {
   const p = getSchemaCatalogPath();
   try {
     if (!fs.existsSync(p)) {
-      return "(Catalogue schéma absent — lancer scripts/generate_schema_catalog.py. Tables cœur: fournisseurs, produits, releves_prix, promotions, skus ; vues v_prix_courant / v_stats_produit / v_variation / v_comparaison_sku. Utiliser list_tables / describe_table.)";
+      return "(Catalogue schéma absent — générer assistant_schema_catalog.md côté marque, ou utiliser list_tables / describe_table.)";
     }
     const st = fs.statSync(p);
     if (cached !== null && st.mtimeMs === cachedMtimeMs) {
