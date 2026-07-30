@@ -72,8 +72,8 @@ npm run electron:compile \
 
 | Repo | SHA |
 |------|-----|
-| kit `creezio/creezio` | *(à remplir)* |
-| TF `tempoflow2` | *(à remplir)* |
+| kit `creezio/creezio` | `b443335` |
+| TF `tempoflow2` | `a7fd8d6` |
 
 ---
 
