@@ -2,16 +2,19 @@
 
 > Cartographie **Phase H0** (2026-07-29), réalignée **D0** / **C0**, puis
 > **R0** (intention OS : geler inventions ; V1–V3 = prototypes ≠ SoT).
-> **M0** (2026-07-29) : **vision stricte** — stubs / façades / jumeaux =
-> **NON done** ; plan [PLAN-M.md](PLAN-M.md) · baseline [PHASE-M0.md](PHASE-M0.md).
-> Versions courantes : TF **0.10.32** · Certivan **0.1.15** · Fidu **0.1.57**.
-> Légende : **✅** livré / utilisable · **🟡** partiel · **❌** absent / hors
-> scope volontaire.
+> **M0→M16** (2026-07-30) : **vision stricte freeze** — stubs / façades /
+> jumeaux = **NON done** (jamais « stub OK ») ; plan [PLAN-M.md](PLAN-M.md) ·
+> freeze [PHASE-M16.md](PHASE-M16.md).
+> Versions courantes : TF **0.10.32** · Certivan **0.1.15** · Fidu **0.1.60**.
+> Légende : **✅** livré / utilisable · **🟡** partiel (hors M* gold) ·
+> **❌** absent / hors scope volontaire.
+> **Paperclip** = mort (aucune marque).
 
 Source cadre : [ARCHITECTURE-INTENTION.md](ARCHITECTURE-INTENTION.md).  
 Gel inventions : [PHASE-R0.md](PHASE-R0.md). Database : [PHASE-R1.md](PHASE-R1.md).
 Product Hub SoT : [PHASE-R2.md](PHASE-R2.md).
-Vision stricte M* : [PLAN-M.md](PLAN-M.md) · [PHASE-M0.md](PHASE-M0.md).
+Vision stricte M* : [PLAN-M.md](PLAN-M.md) · [PHASE-M0.md](PHASE-M0.md) ·
+[PHASE-M16.md](PHASE-M16.md).
 
 ---
 
@@ -69,15 +72,16 @@ produit observée — **pas** une cible d’extraction kit.
 | Fleet | tempoflow2 | ✅ | — (plateforme Electron) | Hors brand métier |
 
 **Contrat d’accueil kit** : ✅ shell-ui + api-kernel + MCP scindé.  
-**H3 / I11** : modules TF dans `tempoflow2/crm/electron/modules/` +
-`brand-runtime.ts` (voir [PHASE-H3.md](PHASE-H3.md), [PHASE-I11.md](PHASE-I11.md)).
+**H3 / I11 / M13** : modules TF dans `tempoflow2/crm/electron/modules/` +
+`brand-runtime.ts` ; allowlist métier-only [PHASE-M13.md](PHASE-M13.md)
+(voir aussi [PHASE-H3.md](PHASE-H3.md), [PHASE-I11.md](PHASE-I11.md)).
 
 Autres marques (indicatif, hors extraction) :
 
-| Marque | Exemples métier | Repo | Conso H6 |
-|--------|-----------------|------|----------|
-| Fidu | GED, CRM fiduciaire… | `/opt/docker/fidu` | I17–I18 + D4/D5 ; **C5** mounts ; **C7** CP ; republish **0.1.57** (C8) |
-| Certivan | RTI / VASP… | `/opt/docker/certivan-app` | I15–I16 ; **C2** cutover ; **C6** RTI API ; **C7** CP ; republish **0.1.15** (C8) |
+| Marque | Exemples métier | Repo | Conso H6 / gold M* |
+|--------|-----------------|------|---------------------|
+| Fidu | GED, CRM (`dossiers`/`contacts`/`ged`) | `/opt/docker/fidu` | **M15 gold** ; core = `platformCoreMigrations` ; ship **0.1.60** ; Paperclip absent |
+| Certivan | RTI / VASP (`dossiers`/`pieces`/`rti`) | `/opt/docker/certivan-app` | **M14 gold** ; core = `platformCoreMigrations` ; **0.1.15** |
 
 ---
 
@@ -101,15 +105,22 @@ nommés dans `@creezio/propagation` (contrats, pas automation).
 
 ---
 
-## 4. Synthèse rapide (post-audit / C0)
+## 4. Synthèse rapide (freeze M16)
 
-| Couche | ✅ | 🟡 (correction C*) | ❌ |
-|--------|----|-------------------|-----|
-| Natif socle | brand-config… fabrique C3, obs C4, lifecycle automations V3, **Database R1**, CP C7 | — | — |
-| Métier TF | panier, dispatch, releves, catalogue, stack, scan, MCP, ACL L3 ; C1–C4–C7 ; republish **0.10.32** (C8) | — | — |
-| Métier Fidu / Certivan | foundation + ACL + feeds | Fidu mounts (**C5**) ; Certivan dualités (**C2**) + RTI (**C6**) | — |
-| Plugins | hub + ACL L3 3 marques + Fidu C5 ; fabrique C3 ; obs/automations C4 ; CP C7 | — | auto-promotion / univers perso / cloud registry *(volontaire)* |
+| Couche | ✅ | 🟡 | ❌ |
+|--------|----|----|-----|
+| Natif socle | brand-config… fabrique C3, obs C4, lifecycle automations V3, **Database R1**, CP C7, `platformCoreMigrations` M11 | — | — |
+| Métier TF | panier…scan ; **M13** allowlist métier-only ; main slim M12 ; republish **0.10.32** | wirings gras (`plugin-control-extras`) hors delete-stub | — |
+| Métier Certivan | **M14 gold** RTI + core kit | — | — |
+| Métier Fidu | **M15 gold** GED/CRM + core kit ; Paperclip absent | — | — |
+| Plugins | hub + ACL L3 3 marques ; fabrique C3 ; obs/automations C4 ; CP C7 | — | auto-promotion / univers perso / cloud registry *(volontaire)* |
 
-**Socle** H0–H5 + I0–I18 + D0–D6 + V1–V3 = **signé** (pas « 100 % produit »).  
-**Correction** : [PHASE-C0.md](PHASE-C0.md) → C1…C8.  
-Vision sign-off + addendum : [VISION-V1-V3.md](VISION-V1-V3.md).
+**Vision stricte M0→M16** = **signée** — stub / jumeau / façade plateforme ≠ done.  
+**Socle** H0–H5 + I0–I18 + D0–D6 + V1–V3 + M* = cadre fermé.  
+Addendum vision : [VISION-V1-V3.md](VISION-V1-V3.md) · freeze [PHASE-M16.md](PHASE-M16.md).
+
+### Historique correction C* (fermé)
+
+[PHASE-C0.md](PHASE-C0.md) → **C1–C8** : dual-write TF stores → **cutover SoT kit**
+(C1) ; dualités Certivan (C2) ; mounts Fidu (C5) ; RTI (C6) ; CP unifié (C7) ;
+republish (C8). Plus de rétention brand « shadow only » — kit SoT.

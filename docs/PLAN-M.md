@@ -223,8 +223,14 @@ Même façade `installBrandDesktopRuntime` : Certivan puis Fidu ;
 
 ## M16 — Freeze vision + matrice
 
-Matrice Native/Métier sans « stub OK » ; PLAN-M / PHASE-M16 ; kit `npm test` ;
-dry-run sync vendor 3 marques.
+1. **Objectif** : geler vision stricte — matrice sans « stub OK » ; preuves
+   allowlists M13–M15 ; dry-run sync vendor 3 marques.
+2. **Inclus** : update [MATRICE-NATIVE-METIER-PLUGIN.md](MATRICE-NATIVE-METIER-PLUGIN.md) ;
+   [PHASE-M16.md](PHASE-M16.md) ; gate `test-phase-m16`.
+3. **Exclu** : republish ; inventer nouvelles features.
+4. **Tests gate** : kit `npm test` ; `CREEZIO_SYNC_DRY_RUN=1` sync TF/Certivan/Fidu.
+5. **Done** : plan M0→M16 fermé.
+6. **Effort S · Republish non**
 
 ---
 
