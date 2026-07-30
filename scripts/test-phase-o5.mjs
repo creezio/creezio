@@ -104,31 +104,26 @@ test("O5.4 pas de Paperclip + corpus sans @/", () => {
   assert.doesNotMatch(corpus, /tempoflow2-crm|getOrCreatePanier/);
 });
 
-test("O5.5 cutover délégué O5p (jumeaux encore présents)", () => {
+test("O5.5 cutover délégué O5p (jumeaux absents post-cutover)", () => {
+  // O5 extract-only ; O5p a supprimé les jumeaux — assert absences.
   for (const brand of BRANDS) {
-    const lib = path.join(dockerRoot, brand, "crm/src/lib/request-logs.ts");
-    const mw = path.join(
-      dockerRoot,
-      brand,
+    for (const rel of [
+      "crm/src/lib/request-logs.ts",
       "crm/src/server/request-log-middleware.ts",
-    );
-    const client = path.join(
-      dockerRoot,
-      brand,
+      "crm/src/server/routes/request-logs.ts",
       "crm/src/components/admin/request-logs-client.tsx",
-    );
-    assert.ok(fs.existsSync(lib), `${brand}: lib/request-logs encore attendu (O5 extract)`);
-    assert.ok(fs.existsSync(mw), `${brand}: middleware encore attendu`);
-    assert.ok(fs.existsSync(client), `${brand}: request-logs-client encore attendu`);
+    ]) {
+      const p = path.join(dockerRoot, brand, rel);
+      assert.ok(!fs.existsSync(p), `${brand}: jumeau encore présent ${rel}`);
+    }
   }
-  // api-endpoints-client : TF + CV (Fidu N/A surface)
   for (const brand of ["tempoflow2", "certivan-app"]) {
     const p = path.join(
       dockerRoot,
       brand,
       "crm/src/components/admin/api-endpoints-client.tsx",
     );
-    assert.ok(fs.existsSync(p), `${brand}: api-endpoints-client encore attendu`);
+    assert.ok(!fs.existsSync(p), `${brand}: api-endpoints-client encore présent`);
   }
 });
 

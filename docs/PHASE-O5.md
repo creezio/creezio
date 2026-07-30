@@ -109,4 +109,4 @@ npm test   # incl. test-phase-o5
 
 ## Suite
 
-**O5p** — Cutover TF → CV → Fidu (delete jumeaux ; pages ≤80 LOC).
+**O5p** — ✅ Cutover livré ([PHASE-O5p.md](PHASE-O5p.md)).

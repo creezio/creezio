@@ -27,7 +27,8 @@ Fidu (sauf O0 / O6 CV-only / O10–O11) · Paperclip = mort.
 Phases livrées : [PHASE-O0.md](PHASE-O0.md) · [PHASE-O1.md](PHASE-O1.md) ·
 [PHASE-O2.md](PHASE-O2.md) · [PHASE-O3.md](PHASE-O3.md) ·
 [PHASE-O3p.md](PHASE-O3p.md) · [PHASE-O4.md](PHASE-O4.md) ·
-[PHASE-O4p.md](PHASE-O4p.md) · [PHASE-O5.md](PHASE-O5.md) · suite O5p→O11
+[PHASE-O4p.md](PHASE-O4p.md) · [PHASE-O5.md](PHASE-O5.md) ·
+[PHASE-O5p.md](PHASE-O5p.md) · suite O6→O11
 ci-dessous.
 
 ---
@@ -144,7 +145,7 @@ ci-dessous.
 
 ---
 
-## O5p — Cutover admin logs (TF → CV → Fidu)
+## O5p — Cutover admin logs (TF → CV → Fidu) ✅
 
 1. **Objectif** : **0** clients request-logs / api-endpoints locaux.
 2. **Inclus** : delete + mounts ≤80 LOC ; sync. **Exclu** : Fidu admin hors
@@ -152,6 +153,7 @@ ci-dessous.
 3. **Tests gate** : build×3 ; `test-phase-o5p`.
 4. **Done** : [PHASE-O5p.md](PHASE-O5p.md).
 5. **Effort M · Republish non**
+6. **SHAs** : TF `2203a41` · CV `a7b96b3` · Fidu `8009aed`
 
 ---
 
