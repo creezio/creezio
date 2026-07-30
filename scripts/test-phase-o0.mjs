@@ -65,7 +65,7 @@ test("O0.1 PHASE-O0.md + PLAN-O.md", () => {
   const plan = fs.readFileSync(path.join(root, "docs/PLAN-O.md"), "utf8");
   assert.match(plan, /## O0 — Hygiene/);
   assert.match(plan, /## O1 — Anti-façades Electron/);
-  assert.match(plan, /## O11 — Freeze vision/);
+  assert.match(plan, /## O11 — Freeze (vision|plan O\*)/);
   assert.match(plan, /Pas de O\(n\+1\) si gate O\(n\) rouge/);
   assert.match(plan, /Façades \/ stubs \/ jumeaux = NON done|façades = NON done/i);
   assert.match(plan, /Paperclip = mort/);
