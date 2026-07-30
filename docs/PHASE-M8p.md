@@ -61,7 +61,7 @@ npm run electron:compile && npm run test:phase-i13
 
 | Repo | SHA |
 |------|-----|
-| kit `creezio/creezio` | *(voir commit docs M8p)* |
+| kit `creezio/creezio` | `50043f5` |
 | Certivan `certivan-app` | `036f180` |
 | Fidu `fidu` | `25e4e75` |
 | TF (prérequis M8) | `d7b60b4` |
