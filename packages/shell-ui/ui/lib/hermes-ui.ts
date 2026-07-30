@@ -17,9 +17,13 @@ export type HermesWebuiOpenTarget = {
   title: string;
 };
 
-type HermesDesktopStatus = Awaited<
-  ReturnType<NonNullable<NonNullable<ReturnType<typeof getShellDesktopApi>>["getHermesStatus"]>>
->;
+/** Statut Hermes desktop — typé soft (API marque via getShellDesktopApi). */
+type HermesDesktopStatus = {
+  status?: string;
+  detail?: string | null;
+  uiUrl?: string | null;
+  [key: string]: unknown;
+};
 
 function cleanDetail(value: string | null | undefined): string {
   return String(value || "").trim().replace(/\s+/g, " ");
