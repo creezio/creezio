@@ -89,9 +89,9 @@ npm run electron:compile \
 
 | Repo | SHA |
 |------|-----|
-| kit `creezio/creezio` | *(après push)* |
-| TF `tempoflow2` | *(après push)* |
-| Certivan `certivan-app` | *(après push)* |
+| kit `creezio/creezio` | `1908d73` |
+| TF `tempoflow2` | `059df48` |
+| Certivan `certivan-app` | `55cf82f` |
 
 ---
 
