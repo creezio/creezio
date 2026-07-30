@@ -4,7 +4,7 @@
 |--|--|
 | **Date** | 2026-07-30 |
 | **Nature** | Arbitrage structure packages (pas d’implémentation) |
-| **SoT** | Code `packages/shell-ui` · apps TF/CV/Fidu · [ETAT-DES-LIEUX-INTENTION.md](ETAT-DES-LIEUX-INTENTION.md) · [PHASE-P-ONBOARDING.md](PHASE-P-ONBOARDING.md) (DRAFT) |
+| **SoT** | Code `packages/shell-ui` · apps TF/CV/Fidu · [ETAT-DES-LIEUX-INTENTION.md](ETAT-DES-LIEUX-INTENTION.md) · [PHASE-P-ONBOARDING.md](PHASE-P-ONBOARDING.md) (plan tranché → `@creezio/onboarding`) |
 
 ---
 
@@ -91,5 +91,5 @@ Routes pages : `app/setup`, `app/onboarding` (± `app/cockpit`) partout où la s
 
 - **Ne pas** cibler l’implémentation comme sous-dossier obligatoire de `shell-ui`.
 - **Cibler** un **nouveau** package `@creezio/onboarding` (setup + moteur onboarding).
-- Réutiliser l’audit comparatif de [PHASE-P-ONBOARDING.md](PHASE-P-ONBOARDING.md) (commun vs slots) ; **invalider** seulement le placement « tout dans shell-ui ».
+- Audit + plan finalisés dans [PHASE-P-ONBOARDING.md](PHASE-P-ONBOARDING.md) — package cible **`@creezio/onboarding`** (plus DRAFT).
 - Mettre à jour P15 / matrice : « Shell CRM » = *famille de surfaces natives*, pas *un seul package*.

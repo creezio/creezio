@@ -1,44 +1,42 @@
-# Phase P — Onboarding / Setup (DRAFT — arbitrage packages)
+# Phase P — Onboarding / Setup → `@creezio/onboarding`
 
 | | |
 |--|--|
-| **Statut** | ⏸️ **DRAFT / NON DÉFINITIF** — attente arbitrage découpage packages |
+| **Statut** | ✅ **Plan tranché** — prêt validation user avant code |
 | **Date** | 2026-07-30 |
-| **Hypothèse initiale (contestée)** | Moteur dans `@creezio/shell-ui` |
-| **Blocage** | L’utilisateur questionne « onboarding ∈ shell-ui » (risque fourre-tout). Un autre agent audite le scope réel de `shell-ui`. **Ne pas implémenter ni conclure** tant que le package cible n’est pas tranché (`shell-ui` vs package dédié vs autre). |
+| **Package cible** | **`@creezio/onboarding`** (nouveau package dédié) |
+| **Arbitrage placement** | [AUDIT-SHELL-UI-SCOPE.md](AUDIT-SHELL-UI-SCOPE.md) kit `5a62b32` — onboarding/setup **hors** `shell-ui` |
 | **Repos** | TF `tempoflow2` · CV `certivan-app` · Fidu `fidu` · kit `creezio` |
-| **SoT intention** | [ETAT-DES-LIEUX-INTENTION.md](ETAT-DES-LIEUX-INTENTION.md) §0 (×3 = NATIF) — *où* (quel package) = **ouvert** |
-| **Hors scope** | Implémentation, cutover, tout autre pilier P |
+| **SoT intention** | [ETAT-DES-LIEUX-INTENTION.md](ETAT-DES-LIEUX-INTENTION.md) §0 (×3 = NATIF) |
+| **Hors scope ce plan** | Implémentation package · cutover marques · tasks · cockpit · MCP · extract settings shell-ui |
 
-> **⚠ Ce document n’est PAS une décision d’architecture package.**
-> L’audit comparatif TF/CV/Fidu (commun vs divergences) reste utile comme
-> matière. Les sections « design cible / API / plan → shell-ui » sont une
-> **hypothèse de placement** à revalider ou à déplacer (ex. `@creezio/onboarding`,
-> autre) après l’audit scope `shell-ui`.
+> **Placement définitif.** Setup + moteur onboarding = **`packages/onboarding`**
+> (`@creezio/onboarding`). **Pas** un sous-dossier de `shell-ui`. Splash reste
+> dans `@creezio/electron-shell`. Cockpit = package ultérieur séparé.
 
-> **Règle gelée.** Aucune extraction ni cutover onboarding/setup tant que le
-> découpage package n’est pas tranché.
+> **Ce livrable = audit + plan jusqu’à 100 % du package.** Aucun code feature
+> tant que l’utilisateur n’a pas validé.
 
 ---
 
 ## 0. Verdict en une phrase
 
-**Setup** = jumeau quasi-identique ×3 (sim ≥ 0,97) → **extrait kit à 100 %**
-via `ShellUiBrand` + config. **Onboarding** = **moteur UI commun** (stepper,
+**Setup** = jumeau quasi-identique ×3 (sim ≥ 0,97) → **100 % dans
+`@creezio/onboarding`**. **Onboarding** = **moteur UI commun** (stepper,
 micro-questions, advance/skip/complete) ×3 + **contenu/API métier divergent**
-→ kit = moteur + slots ; pas le schéma restaurant TF.
+→ package = moteur + slots + branding config ; **pas** le schéma restaurant TF.
 
 ---
 
 ## 1. Audit comparatif TF × CV × Fidu
 
-### 1.1 Fichiers & volumétrie (UI + pages)
+### 1.1 Fichiers & volumétrie (UI + pages) — revalidé 2026-07-30
 
 | Surface | TF | CV | Fidu |
 |---------|----|----|------|
 | `components/setup/setup-wizard.tsx` | 484 LOC | 484 (sim **0,975** vs TF) | 484 (sim **0,971** vs TF) |
 | `app/setup/page.tsx` | 7 LOC | 7 | 7 |
-| `components/onboarding/*` | ~2,8 kLOC (8 steps + micro + import) | ~0,6 kLOC (3 steps, **sans** micro) | ~2,2 kLOC (8 steps + micro) |
+| `components/onboarding/*` | **2838** LOC (8 steps + micro + import) | **638** LOC (3 steps, **sans** micro) | **2180** LOC (8 steps + micro) |
 | `onboarding-shell.tsx` (Stepper) | 89 · labels resto | 78 · 3 labels | 88 · labels cabinet |
 | `micro.tsx` | 362 | — | 362 (**sim 1,000** vs TF) |
 | `onboarding-wizard.tsx` | 336 | 153 (sim 0,51) | 234 (sim 0,70) |
@@ -80,7 +78,7 @@ Gate middleware ×3 : `SETUP_COMPLETE !== "1"` + desktop local → force `/setup
 
 ### 1.4 Flow onboarding — commun vs divergences
 
-#### Commun (plateforme shell)
+#### Commun (plateforme → `@creezio/onboarding`)
 
 | Brique | Preuve ×3 |
 |--------|-----------|
@@ -107,77 +105,125 @@ Gate middleware ×3 : `SETUP_COMPLETE !== "1"` + desktop local → force `/setup
 | Import fichiers | Oui (step Achats) | Non (routes twin **mortes** côté UI) | Non |
 | Copy | achats / économies / fournisseurs | VASP / RTI / DREAL | cabinet / GED / relances / portail |
 
-#### Backend (hors `shell-ui` — pour ne pas mal découper)
+#### Backend (hors `@creezio/onboarding` — frontière stricte)
 
 - **TF ↔ CV** : routes + queries + `import-parser` **jumeaux** ; CV UI n’utilise
   qu’un sous-ensemble (`/restaurant`, `/profil`, skip/complete). Dette :
   schéma « restaurant » sous CV.
 - **Fidu** : API mince adaptée cabinet — **bon modèle** de perso côté serveur
-  (pas d’obligation à unifier le schéma SQLite dans `shell-ui`).
+  (pas d’obligation à unifier le schéma SQLite dans ce package).
 
-**Conclusion découpe :** le kit porte le **chrome + moteur de parcours** ;
+**Conclusion découpe :** le package porte le **chrome + moteur de parcours** ;
 chaque marque fournit `steps[]` (composants + labels + handlers API). Les
 routes HTTP / migrations restent **marque** (ou package data ultérieur) —
-**pas** une dette bloquante du 100 % `shell-ui` onboarding UI.
+**pas** une dette bloquante du 100 % `@creezio/onboarding`.
 
 ### 1.5 Couplage minimal hors périmètre
 
 | Dépendance | Pourquoi mentionnée | Action dans ce plan |
 |------------|---------------------|---------------------|
-| `ShellUiBrand` / `getShellDesktopApi` | Setup hardcode encore `window.*Desktop` | **Réutiliser** (déjà kit) |
-| `AuthWindowChrome` | Chrome frameless login/setup | Setup kit doit s’en servir (ou documenter wrap page) |
-| `resolveDesktopHomePath` | Sortie onboarding TF/CV | API onboarding kit l’utilise par défaut ; Fidu override optionnel |
+| `ShellUiBrand` / `getShellDesktopApi` | Setup hardcode encore `window.*Desktop` | **Consommer** (dep → `shell-ui`, jamais l’inverse) |
+| `AuthWindowChrome` | Chrome frameless login/setup | Doc wrap page marque ; import depuis `shell-ui/ui` |
+| `resolveDesktopHomePath` | Sortie onboarding TF/CV | API onboarding l’utilise par défaut ; Fidu override optionnel |
 | Exclusion paths workspace | Déjà dans `ui/workspace/types.ts` | **Aucun** chantier sidebar |
 | Middleware `SETUP_COMPLETE` | Gate first-run | Reste marque (1 fichier) — hors extract UI |
 | Cockpit serveur | Cible home `appKind=server` | Lien via `resolveDesktopHomePath` seulement |
+| Splash | Boot desktop | **Déjà** `@creezio/electron-shell` — hors scope |
 
 ---
 
-## 2. État actuel kit `packages/shell-ui`
+## 2. État actuel kit
 
 | Attendu onboarding/setup | Présent ? | Où |
 |--------------------------|-----------|-----|
-| `SetupWizard` | ❌ | — (100 % local ×3) |
+| Package `@creezio/onboarding` | ❌ | — (à créer en phase code, **après** validation) |
+| `SetupWizard` | ❌ | 100 % local ×3 |
 | `OnboardingWizard` / host steps | ❌ | — |
 | `Stepper` / `OnboardingShell` | ❌ | — |
-| `micro` (MicroScreen, useMicro, …) | ❌ | — (TF≡Fidu local) |
+| `micro` (MicroScreen, useMicro, …) | ❌ | TF≡Fidu local |
 | CSS `onb-*` | ❌ | dans `globals.css` marques |
-| Brand tokens (`productName`, `publicHostSuffix`, desktop API) | ✅ | `src/brand.ts` |
-| `getShellDesktopApi` | ✅ | `src/brand.ts` |
-| `resolveDesktopHomePath` | ✅ | `src/lib/desktop-home-path.ts` |
-| Exclusion `/setup` `/onboarding` workspace | ✅ | `ui/workspace/types.ts` |
-| `AuthWindowChrome` | ✅ | `ui/desktop/auth-window-chrome.tsx` |
+| Brand tokens (`productName`, `publicHostSuffix`, desktop API) | ✅ | `@creezio/shell-ui` `src/brand.ts` |
+| `getShellDesktopApi` | ✅ | `shell-ui` |
+| `resolveDesktopHomePath` | ✅ | `shell-ui` |
+| Exclusion `/setup` `/onboarding` workspace | ✅ | `shell-ui` `ui/workspace/types.ts` |
+| `AuthWindowChrome` | ✅ | `shell-ui` `ui/desktop/` |
 | Primitives Button/Input | ✅ | déjà consommées par setup local |
 
-**Gap :** zéro module `ui/setup/*` ni `ui/onboarding/*`. O9 a **explicitement
-exclu** l’onboarding restaurateur — d’où la dette actuelle.
+**Gap :** zéro module setup/onboarding dans le kit. O9 a **explicitement
+exclu** l’onboarding restaurateur. L’audit scope (`5a62b32`) interdit de
+combler ce gap **dans** `shell-ui`.
 
 ---
 
-## 3. Design cible — moteur kit + API de perso
+## 3. Design cible — `@creezio/onboarding` = moteur + API de perso
 
 ### 3.1 Principes
 
-1. **Setup = 100 % kit** (une seule implémentation). Marque = `configureShellUiBrand` + overrides copy optionnels.
-2. **Onboarding = moteur kit + registry de steps marque.** Zéro hardcode « restaurant » / « cabinet » / « atelier » dans le kit.
-3. **Intelligent, pas clone TF :** CV court (3 steps) et Fidu cabinet doivent être des configs de première classe, pas des forks du parcours achats.
-4. **Persistance / schéma = hors kit UI** : le host injecte un `OnboardingTransport` (fetch wrappers).
-5. **Feature flags** pour activer/désactiver briques (ex. étape OpenAI obligatoire, interstitiels, skip, micro-engine).
+1. **Un seul package** : `@creezio/onboarding` = SetupWizard + moteur onboarding
+   + micro + stepper + CSS `onb-*`.
+2. **Setup = 100 % package** (une seule implémentation). Marque =
+   `configureShellUiBrand` (shell-ui) + overrides copy optionnels du package.
+3. **Onboarding = moteur package + registry de steps marque.** Zéro hardcode
+   « restaurant » / « cabinet » / « atelier » dans le kit.
+4. **Intelligent, pas clone TF :** CV court (3 steps) et Fidu cabinet sont des
+   configs de première classe, pas des forks du parcours achats.
+5. **Persistance / schéma = hors package UI** : le host injecte un
+   `OnboardingTransport` (fetch wrappers).
+6. **Dépendances one-way :** `@creezio/onboarding` → `@creezio/shell-ui`
+   (Button, Input, AuthWindowChrome, brand, desktop API, home path).
+   **`shell-ui` ne dépend jamais d’`onboarding`.**
+7. Feature flags pour activer/désactiver briques (OpenAI obligatoire,
+   interstitiels, skip, micro-engine).
 
-### 3.2 API proposée — Setup
-
-Fichiers cibles (indicatif) :
+### 3.2 Emplacement package (indicatif — phase code)
 
 ```
-packages/shell-ui/ui/setup/
-  setup-wizard.tsx          # composant unique
-  setup-types.ts
-  setup-copy.ts             # defaults FR + merge overrides
-packages/shell-ui/ui/index.ts  # re-export SetupWizard
+packages/onboarding/
+  package.json              # name: @creezio/onboarding
+  README.md
+  src/
+    index.ts                # re-exports stables
+  ui/
+    setup/
+      setup-wizard.tsx
+      setup-types.ts
+      setup-copy.ts
+    onboarding/
+      onboarding-wizard.tsx
+      onboarding-shell.tsx  # Stepper
+      micro.tsx
+      interstitial.tsx
+      types.ts              # types moteur (pas OnbRestaurant)
+      onboarding.css
+    index.ts
 ```
+
+Exports proposés (miroir pattern `@creezio/tasks`) :
+
+```json
+{
+  "name": "@creezio/onboarding",
+  "exports": {
+    ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js" },
+    "./ui": { "types": "./ui/index.ts", "import": "./ui/index.ts" }
+  },
+  "dependencies": {
+    "@creezio/shell-ui": "0.1.0"
+  },
+  "peerDependencies": {
+    "react": "^18.0.0 || ^19.0.0"
+  }
+}
+```
+
+Workspace : `packages/*` couvre déjà le nouveau dossier. Ajouter
+`-w @creezio/onboarding` dans `build` / `build:packages` du root kit
+(phase code uniquement).
+
+### 3.3 API proposée — Setup
 
 ```ts
-/** Config optionnelle — tout le reste vient de getShellUiBrand(). */
+/** Config optionnelle — le reste vient de getShellUiBrand() (shell-ui). */
 export type SetupWizardConfig = {
   /** Override labels étapes (défaut: Compte / Récupération / Tunnel / OpenAI). */
   stepLabels?: [string, string, string, string];
@@ -203,20 +249,13 @@ Règles internes :
 - IPC **uniquement** via `getShellDesktopApi()` (plus de `window.tempoflowDesktop`).
 - Copy produit / suffixe tunnel via `getShellUiBrand().productName` +
   `publicHostSuffix`.
-- Fallback non-desktop : écran « lancez l’app desktop {productName} » (déjà là).
-- Enveloppe recommandée page marque : `<AuthWindowChrome variant="dark"><SetupWizard /></AuthWindowChrome>`.
+- Fallback non-desktop : écran « lancez l’app desktop {productName} ».
+- Enveloppe recommandée page marque :
+  `<AuthWindowChrome variant="dark"><SetupWizard /></AuthWindowChrome>`
+  (chrome importé depuis `@creezio/shell-ui/ui`, **pas** re-export obligatoire
+  depuis onboarding).
 
-### 3.3 API proposée — Onboarding engine
-
-```
-packages/shell-ui/ui/onboarding/
-  onboarding-shell.tsx      # Stepper({ steps, current })
-  onboarding-wizard.tsx     # moteur
-  micro.tsx                 # gold TF≡Fidu
-  interstitial.tsx
-  types.ts                  # types moteur (pas OnbRestaurant)
-  onboarding.css.ts|css     # classes onb-* exportables / injectables
-```
+### 3.4 API proposée — Onboarding engine
 
 ```ts
 export type OnboardingStepId = string;
@@ -259,15 +298,22 @@ export type OnboardingWizardFlags = {
   interstitialMs?: number;
 };
 
+export type OnboardingTheme = {
+  accentColor?: string;         // #f0701d
+  inkColor?: string;            // #14182f
+  tealColor?: string;           // #0e7b7b
+  creamBackground?: string;     // #faf7f1
+};
+
 export type OnboardingWizardProps = {
   steps: OnboardingStepDef[];   // inclut intro (0) + … + recap
   transport: OnboardingTransport;
   initialStep?: number;
   editMode?: boolean;           // → last step
   flags?: OnboardingWizardFlags;
-  /** Après skip/complete (défaut resolveDesktopHomePath). */
+  theme?: OnboardingTheme;
+  /** Après skip/complete (défaut resolveDesktopHomePath depuis shell-ui). */
   resolveExitHref?: () => Promise<string> | string;
-  /** Slot erreur globale (optionnel). */
   className?: string;
 };
 
@@ -289,6 +335,8 @@ export {
 
 ```ts
 // TempoFlow — 8 steps métier locaux
+import { OnboardingWizard } from "@creezio/onboarding/ui";
+
 <OnboardingWizard
   steps={[
     { id: "intro", label: "Bienvenue", render: (ctx) => <StepIntro … /> },
@@ -314,75 +362,88 @@ export {
 />
 ```
 
-#### Ce qui **ne** va **pas** dans le kit
+#### Ce qui **ne** va **pas** dans `@creezio/onboarding`
 
 - Types `OnbRestaurant` / `CabinetProfil` / labels OBJECTIF_LABELS / PACK_LABELS
 - Steps concrets `step-restaurant`, `step-atelier`, `step-cabinet`, …
 - `import-parser`, routes Hono, migrations `011_onboarding`
 - Mascotte Tempo hardcodée (slot hero intro marque)
+- UI cockpit, settings desktop, workspace tabs, splash
 
-### 3.4 Branding tokens (extension minimale `ShellUiBrand`)
+### 3.5 Branding tokens
 
-Déjà suffisant pour setup : `productName`, `publicHostSuffix`, `desktopApiGlobal`.
+Déjà suffisant pour setup via **shell-ui** : `productName`, `publicHostSuffix`,
+`desktopApiGlobal`.
 
-Optionnel (si on évite les hardcodes couleur setup/onboarding) :
+**Recommandation :** theme onboarding via props `OnboardingTheme` sur le shell
+du package, **pas** obligation d’étendre `ShellUiBrand` au jour 1 (évite de
+gonfler shell-ui pour ce chantier).
 
-```ts
-// Extension NON bloquante du 100 % — peut rester en SetupWizardConfig /
-// OnboardingTheme props si on refuse d’élargir ShellUiBrand trop tôt.
-accentColor?: string;      // #f0701d
-inkColor?: string;         // #14182f
-tealColor?: string;        // #0e7b7b
-creamBackground?: string;  // #faf7f1
-```
-
-**Recommandation :** theme onboarding via props `OnboardingTheme` sur le shell,
-pas obligation d’étendre `ShellUiBrand` au jour 1.
-
-### 3.5 CSS
+### 3.6 CSS
 
 Extraire le bloc `.onb-*` (stage, scroll, anim, interstitial, stagger) depuis
-`globals.css` marques vers `packages/shell-ui/ui/onboarding/onboarding.css`
+`globals.css` marques vers `packages/onboarding/ui/onboarding/onboarding.css`
 (ou injection `getOnboardingStyleSheet()`). Les apps importent une fois
 (layout onboarding ou global). Critère : **même rendu** sans duplication ×3.
 
+### 3.7 Graphe dépendances (falsifiable)
+
+```
+marques (TF/CV/Fidu)
+  → @creezio/onboarding/ui     (SetupWizard, OnboardingWizard, micro, …)
+  → @creezio/shell-ui[/ui]     (Button, Input, AuthWindowChrome, brand, …)
+
+@creezio/onboarding
+  → @creezio/shell-ui          (OK)
+
+@creezio/shell-ui
+  ↛ @creezio/onboarding        (INTERDIT)
+```
+
+Gate : `package.json` de `shell-ui` ne liste pas `@creezio/onboarding` ;
+aucun import inverse dans `packages/shell-ui/**`.
+
 ---
 
-## 4. Plan d’implémentation → 100 % périmètre kit
+## 4. Plan d’implémentation → 100 % package
 
-> Ordre strict. **Pas de cutover marques dans cette phase code** tant que les
-> gates kit ne sont pas verts. Cutover = phase suivante (hors ce doc détail),
-> mais les critères « consommation » ci-dessous définissent le **Done produit**.
+> Ordre strict. **Pas de cutover marques** tant que les gates package ne sont
+> pas verts. Cutover = chantier suivant (hors ce livrable code), mais les
+> critères « consommation » définissent le Done produit intention.
 
-### Étape A — Setup kit (P-ONB-A)
+### Étape A — Scaffold + SetupWizard (P-ONB-A)
 
-1. Créer `ui/setup/setup-wizard.tsx` depuis gold TF (structure), brancher
-   `getShellDesktopApi` + `getShellUiBrand`.
-2. `SetupWizardConfig` + defaults copy.
-3. Export `@creezio/shell-ui/ui` → `SetupWizard`.
-4. Test unitaire / harness : mock desktop API → parcours 4 steps + erreurs
+1. Créer `packages/onboarding` (`package.json`, tsconfig, exports `.` + `/ui`).
+2. Brancher workspace root (`build` / `build:packages` → `-w @creezio/onboarding`).
+3. Porter `setup-wizard.tsx` depuis gold TF ; IPC via `getShellDesktopApi` +
+   brand via `getShellUiBrand`.
+4. `SetupWizardConfig` + defaults copy.
+5. Test unitaire / harness : mock desktop API → parcours 4 steps + erreurs
    validation (sans Electron).
-5. (Option) story demobrand page `/setup` consommant le kit.
+6. (Option) story demobrand page `/setup` consommant le package.
 
 **Done A (falsifiable)**
 
-- [ ] Aucun `tempoflowDesktop|certivanDesktop|fiduDesktop` dans le module kit
-- [ ] `SetupWizard` exporté ; build `shell-ui` vert
-- [ ] Test : completeSetup appelé avec payload attendu quand mocks OK
+- [ ] Package `@creezio/onboarding` existe ; build package vert
+- [ ] Aucun `tempoflowDesktop|certivanDesktop|fiduDesktop` dans le module
+- [ ] `SetupWizard` exporté depuis `@creezio/onboarding/ui`
+- [ ] Test : `completeSetup` appelé avec payload attendu quand mocks OK
 - [ ] Changer `configureShellUiBrand({ productName, publicHostSuffix })` change
       le rendu (assert test ou snapshot)
+- [ ] `packages/shell-ui/package.json` **sans** dep `@creezio/onboarding`
 
 ### Étape B — Micro + Stepper + CSS (P-ONB-B)
 
-1. Porter `micro.tsx` (TF≡Fidu) → kit.
-2. Porter `Stepper` paramétré par `steps: string[]` (plus de `STEP_LABELS` hardcodés).
+1. Porter `micro.tsx` (TF≡Fidu) → package.
+2. Porter `Stepper` paramétré par `steps: string[]` (plus de `STEP_LABELS`
+   hardcodés).
 3. Extraire CSS `onb-*`.
 4. Interstitial générique (`title` string).
 
 **Done B**
 
 - [ ] `useMicro` / `MicroScreen` / `Stepper` exportés
-- [ ] Fichier CSS kit présent ; plus de dépendance au CSS marque pour le moteur
+- [ ] Fichier CSS package présent ; plus de dépendance au CSS marque pour le moteur
 - [ ] Test micro : avance N questions → `onDone` ; back depuis fin
 
 ### Étape C — OnboardingWizard host (P-ONB-C)
@@ -395,24 +456,26 @@ Extraire le bloc `.onb-*` (stage, scroll, anim, interstitial, stagger) depuis
 
 **Done C**
 
-- [ ] Wizard kit sans string métier (`restaurant`, `cabinet`, `VASP`, `achats`)
+- [ ] Wizard package sans string métier (`restaurant`, `cabinet`, `VASP`, `achats`)
 - [ ] Demobrand (ou test RTL) : config 3 steps **et** config 8 steps passent
 - [ ] `editMode` ouvre le dernier step ; `persistStep` appelé à chaque advance
 - [ ] Exit utilise `resolveDesktopHomePath` par défaut
 
 ### Étape D — Pack export + doc package (P-ONB-D)
 
-1. README `shell-ui` : section Setup + Onboarding (exemples config ×3).
+1. README `@creezio/onboarding` : Setup + Onboarding (exemples config ×3).
 2. `ui/index.ts` exports stables.
 3. Gate CI : `npm run build:packages` + tests phase dédiés
-   (`test-phase-p-onboarding` ou équivalent).
+   (`scripts/test-phase-p-onboarding.mjs` ou équivalent) — inclut gate
+   **pas d’import inverse** shell-ui → onboarding.
 
-**Done D = 100 % package / périmètre UI**
+**Done D = 100 % package**
 
-- [ ] Exports listés §3 présents
-- [ ] Aucun jumeau setup/onboarding-engine **dans le kit** (une SoT)
+- [ ] Exports listés §3 présents sous `@creezio/onboarding[/ui]`
+- [ ] Aucun jumeau setup/onboarding-engine **dans le kit** (une SoT package)
 - [ ] Tests + build verts sur tip
 - [ ] Doc package + ce PHASE à jour (statut → implémenté)
+- [ ] Aucun fichier setup/onboarding sous `packages/shell-ui/ui/`
 
 ### Étape E — Cutover marques (hors implémentation maintenant — critères)
 
@@ -421,35 +484,38 @@ Extraire le bloc `.onb-*` (stage, scroll, anim, interstitial, stagger) depuis
 | Marque | Actions | Done marque |
 |--------|---------|-------------|
 | ×3 setup | Page `/setup` = `<SetupWizard config={…} />` ; supprimer local `setup-wizard.tsx` | `diff` local absent ; sim N/A |
-| TF onboarding | Wizard local → host kit + steps TF en slots ; shell/micro locaux supprimés | plus de `components/onboarding/micro.tsx` local |
+| TF onboarding | Wizard local → host package + steps TF en slots ; shell/micro locaux supprimés | plus de `components/onboarding/micro.tsx` local |
 | CV onboarding | Idem, 3 steps ; **ne pas** importer steps TF | parcours atelier OK |
 | Fidu onboarding | Idem ; transport cabinet ; corriger hero Tempo → asset Fidu (dette) | micro local supprimé |
 | Align Fidu exit | `resolveDesktopHomePath` ou config explicite | plus de hardcode divergent non justifié |
 
-**Anti-pattern interdit :** copier le wizard TF entier dans le kit puis
+**Anti-pattern interdit :** copier le wizard TF entier dans le package puis
 `if (brand === 'fidu')` — utiliser **registry de steps**.
 
 ---
 
 ## 5. Critères « 100 % » (checklist unique)
 
-### Package `@creezio/shell-ui` (obligatoire)
+### Package `@creezio/onboarding` (obligatoire — Done ce plan)
 
-1. `SetupWizard` + `SetupWizardConfig` exportés et sans globals marque.
-2. `OnboardingWizard` + `OnboardingStepDef` + `OnboardingTransport` exportés.
+1. Package créé ; exports `SetupWizard` + `SetupWizardConfig`.
+2. Exports `OnboardingWizard` + `OnboardingStepDef` + `OnboardingTransport`.
 3. `Stepper`, micro-engine, interstitial, CSS `onb-*` exportés / documentés.
 4. Zéro type/schéma métier resto/cabinet/atelier dans le package.
-5. Build + tests dédiés verts.
-6. Demobrand (ou harness) prouve **deux** shapes de parcours (court + long).
+5. Dépendance **unidirectionnelle** vers `shell-ui` mince (primitives + brand +
+   chrome + home path) ; **zéro** dep inverse.
+6. Build + tests dédiés verts.
+7. Demobrand (ou harness) prouve **deux** shapes de parcours (court + long).
+8. **Aucun** module setup/onboarding sous `packages/shell-ui/`.
 
-### Adoption ×3 (validation intention — après cutover)
+### Adoption ×3 (validation intention — après cutover, hors ce livrable)
 
-7. Aucun `components/setup/setup-wizard.tsx` local.
-8. Aucun moteur `onboarding-wizard.tsx` / `onboarding-shell.tsx` / `micro.tsx`
-   plateforme local (seulement `step-*.tsx` + types métier + transport).
-9. Smoke desktop : first-run setup → onboarding → home (TF, CV, Fidu).
+9. Aucun `components/setup/setup-wizard.tsx` local.
+10. Aucun moteur `onboarding-wizard.tsx` / `onboarding-shell.tsx` / `micro.tsx`
+    plateforme local (seulement `step-*.tsx` + types métier + transport).
+11. Smoke desktop : first-run setup → onboarding → home (TF, CV, Fidu).
 
-Tant que 1–6 seuls sont verts : **package Done**, marques encore dettes
+Tant que 1–8 seuls sont verts : **package Done**, marques encore dettes
 d’adoption (acceptable si séquencé — ne pas prétendre intention OS finie).
 
 ---
@@ -458,32 +524,33 @@ d’adoption (acceptable si séquencé — ne pas prétendre intention OS finie)
 
 | Risque | Impact | Mitigation |
 |--------|--------|------------|
-| Extraire en clonant TF (8 steps achats dans le kit) | CV/Fidu forcés dans un mauvais moule | Registry steps ; demobrand 3 **et** 8 steps |
-| Emporter routes/queries TF dans shell-ui | Violation frontière UI / data | Transport injecté ; routes restent marque |
-| Éditer runners / apps pendant revert dirty | Conflits | Working trees propres avant cutover (déjà OK à l’audit) |
-| CSS globals oubliés → UI cassée au cutover | Régression visuelle | CSS dans kit + import unique documenté |
+| Remettre setup/onboarding dans `shell-ui` | Fourre-tout confirmé | Placement gelé ici + audit scope ; gate « 0 fichier sous shell-ui/ui/setup\|onboarding » |
+| Extraire en clonant TF (8 steps achats dans le package) | CV/Fidu forcés dans un mauvais moule | Registry steps ; demobrand 3 **et** 8 steps |
+| Emporter routes/queries TF dans le package | Violation frontière UI / data | Transport injecté ; routes restent marque |
+| Dep circulaire shell-ui ↔ onboarding | Couplage mortel | Gate package.json + rg imports |
+| CSS globals oubliés → UI cassée au cutover | Régression visuelle | CSS dans package + import unique documenté |
 | Fidu hero Tempo | Dette marque visible | Slot intro ; fix Fidu au cutover |
-| CV twin queries mortes | Confusion maintenance | Hors shell-ui ; ticket data/brand séparé |
-| Coupler sidebar/cockpit « en passant » | Scope creep | Interdit — seuls AuthWindowChrome + home path |
+| CV twin queries mortes | Confusion maintenance | Hors package ; ticket data/brand séparé |
+| Coupler sidebar/cockpit/tasks « en passant » | Scope creep | Interdit — seul package onboarding |
 
 ---
 
 ## 7. Ordre recommandé (résumé)
 
 ```
-A SetupWizard kit (brand API)
+A Scaffold @creezio/onboarding + SetupWizard (brand API shell-ui)
     → B micro + Stepper + CSS
         → C OnboardingWizard host + demobrand 3/8
-            → D exports + tests + README  = 100 % package
+            → D exports + tests + README + gate no-inverse  = 100 % package
                 → E cutover ×3 (autre chantier)
 ```
 
-Estimation relative : **A** S · **B** S · **C** M · **D** S · **E** M
+Estimation relative : **A** S–M · **B** S · **C** M · **D** S · **E** M
 (cutover E hors charge « package seul »).
 
 ---
 
-## 8. Références mesures (2026-07-30)
+## 8. Références mesures (2026-07-30, tip apps)
 
 ```
 setup TF↔CV sim=0.975  LOC 484/484
@@ -492,6 +559,9 @@ micro TF↔Fidu sim=1.000  LOC 362
 shell Stepper TF↔Fidu sim=0.915 (labels)
 wizard TF↔CV sim=0.507   (contenu divergent)
 wizard TF↔Fidu sim=0.695 (moteur proche, steps différents)
+routes TF↔CV sim=1.000   LOC 309 (hors package)
+routes TF↔Fidu sim≈0.16  LOC 76 Fidu (hors package)
+onboarding UI total : TF 2838 · CV 638 · Fidu 2180
 ```
 
 Fichiers gold setup : n’importe lequel des trois (diff = branding only) —
@@ -499,14 +569,19 @@ préférer TF puis substituer IPC→`getShellDesktopApi`.
 
 Fichiers gold micro/stepper : TF ou Fidu (`micro` identique).
 
-Fichiers **non-gold** pour le kit : steps métier, `types.ts` marque,
+Fichiers **non-gold** pour le package : steps métier, `types.ts` marque,
 `onboarding-queries`, routes.
+
+Arbitrage placement : [AUDIT-SHELL-UI-SCOPE.md](AUDIT-SHELL-UI-SCOPE.md)
+(`5a62b32`).
 
 ---
 
 ## 9. Livrable / statut push
 
-- ✅ Doc poussé puis **rétrogradé DRAFT** (attente arbitrage package)
-- ❌ Pas de conclusion « onboarding ∈ shell-ui » définitive
-- ❌ Pas de code feature / pas de cutover / pas de sed apps
-- ⏸️ Reprise uniquement après décision de découpage packages
+- ✅ Audit comparatif conservé (commun vs divergences) — métriques revalidées
+- ✅ Placement corrigé : **`@creezio/onboarding`** (plus d’hypothèse `shell-ui`)
+- ✅ Design moteur + API perso + deps one-way + critères falsifiables + plan A→D
+- ✅ Doc **plus DRAFT** — prêt validation user avant code
+- ❌ Pas de code feature / pas de scaffold package / pas de cutover / pas de sed apps
+- ⏸️ Phase code après validation explicite utilisateur
