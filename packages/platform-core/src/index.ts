@@ -87,6 +87,24 @@ export {
   platformCoreMigrations,
 } from "./core-migrations.js";
 
+/* ── N4 : migrations historiques brand.db (schema_version) ── */
+export type {
+  HistoricalMigration,
+  HistoricalMigrationReport,
+  HistoricalSqliteDb,
+  Migration,
+  PlatformHistoricalStepVersion,
+  RunHistoricalMigrationsOptions,
+} from "./historical-migrations/index.js";
+export {
+  PLATFORM_HISTORICAL_STEP_VERSIONS,
+  addColumnIfMissing,
+  platformHistoricalMigrations,
+  runHistoricalMigrations,
+  tableColumns,
+  tableExists,
+} from "./historical-migrations/index.js";
+
 export type {
   CreateSqliteRuntimeOptions,
   OpenPluginResult,

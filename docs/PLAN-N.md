@@ -116,10 +116,18 @@ Phases livrées : [PHASE-N0.md](PHASE-N0.md) · [PHASE-N1.md](PHASE-N1.md) ·
 
 ---
 
-## N4 — Migrations historiques plateforme → kit
+## N4 — Migrations historiques plateforme → kit ✅
 
-Hors `platformCoreMigrations` déjà gold.  
-**Effort M · Republish non**
+1. **Objectif** : steps plateforme `electron/migrations` SoT
+   `@creezio/platform-core` (`platformHistoricalMigrations`) ; inventaire
+   classé ; gaps migrate-legacy.
+2. **Inclus** : 16 steps TF gold (017, 020, 022–035) + runner + types ;
+   filtre colonnes migrate-legacy ; harness fixture.
+3. **Exclu** : cutover marques (N4p) ; steps métier ; 021 hermes (métier TF).
+4. **Tests gate** : `npm run build -w @creezio/platform-core` + `npm test`
+   (`test-phase-n4`).
+5. **Done** : [PHASE-N4.md](PHASE-N4.md) · baseline N3p `369a7bf`.
+6. **Effort M · Republish non**
 
 ---
 

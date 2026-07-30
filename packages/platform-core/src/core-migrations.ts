@@ -5,6 +5,12 @@
  * Les marques ne doivent plus dupliquer cette liste ; elles gardent
  * uniquement `brand-migrations` métier.
  *
+ * N4 — couverture vs steps historiques brand.db :
+ * - `028/030/032` plugin_* → `PRODUCT_HUB_*_SQL` + `migrateLegacyBrandProductHubOnce`
+ * - auth utilisateurs kit → `AUTH_CORE_SQL` (`creezio_users`, pas table `users` legacy)
+ * - autres steps plateforme (api_keys, mcp, tasks brand, emails, analytics, …)
+ *   → `platformHistoricalMigrations()` (brand.db / schema_version)
+ *
  * Chargement SQL via `createRequire` (cwd app) pour éviter le cycle
  * compile-time `platform-core → auth|product-hub → platform-core`.
  */

@@ -35,5 +35,25 @@ runtime.openPlugin("meteo", pluginMigrations); // à l'install
 `platformCoreMigrations()` charge `@creezio/auth` + `@creezio/product-hub`
 au runtime (peer optionnels) — IDs stables `PLATFORM_CORE_MIGRATION_IDS`.
 
-Chaque fichier DB a sa table `_creezio_schema_migrations`.  
+## Migrations historiques brand.db (N4)
+
+Steps plateforme du runner Electron (`schema_version` / better-sqlite3 Node) :
+
+```ts
+import {
+  platformHistoricalMigrations,
+  runHistoricalMigrations,
+} from "@creezio/platform-core";
+
+// Process Node vanilla uniquement (pas le main Electron)
+runHistoricalMigrations(brandDbPath, {
+  migrations: [...metierSteps, ...platformHistoricalMigrations()],
+});
+```
+
+Versions stables : `PLATFORM_HISTORICAL_STEP_VERSIONS` (TF gold 17…35).  
+Plugin Hub legacy brand→core : `migrateLegacyBrandProductHubOnce`
+(`@creezio/product-hub`).
+
+Chaque fichier DB cœur/brand/plugin a sa table `_creezio_schema_migrations`.  
 Constante `ARCHITECTURE_VERSION` (cadre H0/H1/H2/H3…).

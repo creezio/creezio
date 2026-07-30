@@ -251,6 +251,14 @@ export function migrateLegacyBrandProductHubOnce(
     return Boolean(row);
   };
 
+  const tableColumnSet = (name: string): Set<string> => {
+    if (!tableExists(name)) return new Set();
+    const rows = legacy
+      .prepare(`PRAGMA table_info(${JSON.stringify(name).slice(1, -1)})`)
+      .all() as Array<{ name: string }>;
+    return new Set(rows.map((r) => r.name));
+  };
+
   try {
     if (!tableExists("plugin_products")) return false;
     const productCount = legacy
@@ -260,17 +268,22 @@ export function migrateLegacyBrandProductHubOnce(
 
     for (const { table, columns } of TABLES) {
       if (!tableExists(table)) continue;
-      const cols = columns.join(", ");
+      // N4 gap : brand.db peut avoir appliqué 028 sans 030 → pas de
+      // `sections_json` ; ne SELECT que les colonnes réellement présentes.
+      const present = tableColumnSet(table);
+      const colsList = columns.filter((c) => present.has(c));
+      if (!colsList.length) continue;
+      const cols = colsList.join(", ");
       const rows = legacy
         .prepare(`SELECT ${cols} FROM ${table}`)
         .all() as Record<string, unknown>[];
       if (!rows.length) continue;
-      const placeholders = columns.map(() => "?").join(", ");
+      const placeholders = colsList.map(() => "?").join(", ");
       const ins = opts.store.prepare(
         `INSERT OR IGNORE INTO ${table} (${cols}) VALUES (${placeholders})`,
       );
       for (const row of rows) {
-        ins.run(...columns.map((c) => row[c] ?? null));
+        ins.run(...colsList.map((c) => row[c] ?? null));
       }
     }
     return true;

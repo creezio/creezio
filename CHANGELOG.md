@@ -4,6 +4,12 @@
 ## [Unreleased]
 
 ### Added
+- **Phase N4** — Migrations historiques plateforme SoT kit :
+  `platformHistoricalMigrations()` + `runHistoricalMigrations` dans
+  `@creezio/platform-core` (16 steps TF gold) ; inventaire
+  `docs/PHASE-N4.md` ; gap migrate-legacy (colonnes absentes / 028→030) ;
+  tests `test-phase-n4` ; **pas** de cutover marques (→ N4p) ;
+  **pas** de republish exe.
 - **Phase N3p** — Cutover assistant TF→Certivan→Fidu : jumeaux UI/runtime
   absents ; mounts `configureAssistantBrand` ; budgets ≤2000 LOC / chat-db ≤80 ;
   `docs/PHASE-N3p.md` ; tests `test-phase-n3p` ; **pas** de republish exe.
