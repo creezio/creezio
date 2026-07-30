@@ -7,7 +7,7 @@
 | **Repo** | `creezio/creezio` |
 | **Prérequis** | [PHASE-N2p.md](PHASE-N2p.md) · plan [PLAN-N.md](PLAN-N.md) |
 | **Baseline N2p SHA** | `4f37a9e` |
-| **Kit SHA** | `863406f` |
+| **Kit SHA** | `863406f` (+ fix `a358d5b`) |
 | **ARCHITECTURE_VERSION** | `"H6"` (inchangé) |
 | **Republish** | Non |
 

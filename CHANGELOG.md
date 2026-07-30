@@ -4,6 +4,9 @@
 ## [Unreleased]
 
 ### Added
+- **Phase N3p** — Cutover assistant TF→Certivan→Fidu : jumeaux UI/runtime
+  absents ; mounts `configureAssistantBrand` ; budgets ≤2000 LOC / chat-db ≤80 ;
+  `docs/PHASE-N3p.md` ; tests `test-phase-n3p` ; **pas** de republish exe.
 - **Phase N3** — Runtime+UI assistant génériques dans `@creezio/assistant`
   (~11 kLOC TF gold) ; `configureAssistantBrand` (AppMap / Prompts /
   BrandTools / Meili / Hermes) ; UI `@creezio/assistant/ui` ; **pas** de

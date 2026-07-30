@@ -102,10 +102,17 @@ Phases livrées : [PHASE-N0.md](PHASE-N0.md) · [PHASE-N1.md](PHASE-N1.md) ·
 
 ---
 
-## N3p — Cutover assistant (TF → CV → Fidu)
+## N3p — Cutover assistant (TF → CV → Fidu) ✅
 
-Marques = mounts / brand hooks.  
-**Effort L · Republish oui** ×3
+1. **Objectif** : jumeaux UI/runtime absents ; mounts brand ≤2000 LOC.
+2. **Inclus** : configure-brand ×3 ; delete générique ; chat-db façade ≤80 ;
+   sync vendor liste complète.
+3. **Exclu** : migrations (N4) ; admin plugins ; supplier-tabs.
+4. **Tests gate** : assistant-routing + active-surface + electron:compile + build
+   ×3 ; kit `test-phase-n3p`.
+5. **Done** : [PHASE-N3p.md](PHASE-N3p.md) — TF `cfd4a49` · CV `49d39be` ·
+   Fidu `e9542f5` ; baseline N3 `863406f` / `a358d5b`.
+6. **Effort L · Republish non** (packing inchangé)
 
 ---
 

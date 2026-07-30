@@ -141,19 +141,26 @@ test("N2p.4 Meili : TF hooks kit ; CV/Fidu métier", () => {
   }
 });
 
-test("N2p.5 SHAs marques HEAD match sign-off", () => {
+test("N2p.5 SHAs marques HEAD ⊇ sign-off N2p (ancêtre)", () => {
   const repos = {
     tempoflow2: "/opt/docker/tempoflow2",
     "certivan-app": "/opt/docker/certivan-app",
     fidu: "/opt/docker/fidu",
   };
   for (const [name, dir] of Object.entries(repos)) {
+    const expected = EXPECTED_SHAS[name];
     const head = gitHead(dir);
-    assert.equal(
-      head,
-      EXPECTED_SHAS[name],
-      `${name}: HEAD ${head} ≠ attendu ${EXPECTED_SHAS[name]}`,
-    );
+    // HEAD peut avancer (N3p…) tant que le sign-off N2p reste ancêtre.
+    try {
+      execSync(`git merge-base --is-ancestor ${expected} HEAD`, {
+        cwd: dir,
+        stdio: "ignore",
+      });
+    } catch {
+      assert.fail(
+        `${name}: sign-off N2p ${expected} n'est pas ancêtre de HEAD ${head}`,
+      );
+    }
   }
 });
 
