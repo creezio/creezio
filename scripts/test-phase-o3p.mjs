@@ -103,14 +103,11 @@ test("O3p.3 wiring kit + brand opts (main / host-runtime-ctx)", () => {
   }
 });
 
-test("O3p.4 SHAs marques gold", () => {
+test("O3p.4 SHAs marques gold (documentés PHASE-O3p)", () => {
+  // HEAD avance après O3p (O4p+) — le pin historique reste dans PHASE-O3p.md.
+  const phase = fs.readFileSync(path.join(root, "docs/PHASE-O3p.md"), "utf8");
   for (const [repo, sha] of Object.entries(EXPECTED_SHAS)) {
-    const head = gitHead(`/opt/docker/${repo}`);
-    assert.equal(
-      head,
-      sha,
-      `${repo}: HEAD ${head} ≠ gold O3p ${sha}`,
-    );
+    assert.match(phase, new RegExp(sha), `${repo}: SHA ${sha} absent de PHASE-O3p`);
   }
 });
 

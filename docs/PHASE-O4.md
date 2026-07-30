@@ -113,4 +113,4 @@ npm test   # incl. test-phase-o4
 
 ## Suite
 
-**O4p** — Cutover `assistant-chat` TF → Certivan → Fidu (delete jumeau, mount ≤80 LOC, gates assistant-routing / active-surface).
+**O4p** — ✅ Cutover livré ([PHASE-O4p.md](PHASE-O4p.md)).

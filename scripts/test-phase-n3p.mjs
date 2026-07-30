@@ -107,10 +107,11 @@ test("N3p.2 jumeaux génériques absents ×3 ; brand mounts présents", () => {
   }
 });
 
-test("N3p.3 budgets LOC ≤2000 ; chat-db absent (O2)", () => {
+test("N3p.3 budgets LOC ≤2400 ; chat-db absent (O2)", () => {
   for (const b of BRANDS) {
     const loc = brandLoc(b.dir);
-    assert.ok(loc <= 2000, `${b.name}: LOC ${loc} > 2000`);
+    // O4p : + brand-chat-tools (~250–400 LOC métier) → budget 2000→2400
+    assert.ok(loc <= 2400, `${b.name}: LOC ${loc} > 2400`);
     assert.ok(loc > 200, `${b.name}: LOC trop bas ${loc}`);
     assert.ok(
       !fs.existsSync(path.join(b.dir, "src/lib/assistant/chat-db.ts")),

@@ -83,10 +83,11 @@ test("O4.3 pas de métier panier/tasks TF + Paperclip mort", () => {
   assert.doesNotMatch(corpus, PAPERCLIP_RE);
 });
 
-test("O4.4 cutover délégué O4p (jumeaux encore présents)", () => {
+test("O4.4 cutover délégué O4p (jumeaux absents post-cutover)", () => {
+  // O4 extract-only ; O4p a supprimé les jumeaux — assert absences.
   for (const brand of ["tempoflow2", "certivan-app", "fidu"]) {
     const p = path.join(dockerRoot, brand, "crm/src/server/assistant-chat.ts");
-    assert.ok(fs.existsSync(p), `${brand}: jumeau assistant-chat.ts attendu (O4 extract-only)`);
+    assert.ok(!fs.existsSync(p), `${brand}: jumeau encore présent`);
   }
 });
 

@@ -92,9 +92,14 @@ test("M8.4 TF call-sites importent @creezio/* directs", () => {
     !fs.existsSync(path.join(tfRoot, "src/lib/assistant/chat-db.ts")),
     "TF chat-db façade",
   );
-  const assistantChat = fs.readFileSync(
-    path.join(tfRoot, "src/server/assistant-chat.ts"),
+  // O4p : assistant-chat jumeau supprimé — mount routes + brand-chat-tools
+  const assistantRoutes = fs.readFileSync(
+    path.join(tfRoot, "src/server/routes/assistant.ts"),
     "utf8",
   );
-  assert.match(assistantChat, /@creezio\/assistant/);
+  assert.match(assistantRoutes, /@creezio\/assistant/);
+  assert.ok(
+    fs.existsSync(path.join(tfRoot, "src/lib/assistant/brand-chat-tools.ts")),
+    "TF brand-chat-tools",
+  );
 });

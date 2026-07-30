@@ -64,8 +64,12 @@ test("M8p.3 Certivan call-sites @creezio/* directs", () => {
     "CV chat-db façade",
   );
   assert.match(
-    fs.readFileSync(path.join(cvRoot, "src/server/assistant-chat.ts"), "utf8"),
+    fs.readFileSync(path.join(cvRoot, "src/server/routes/assistant.ts"), "utf8"),
     /@creezio\/assistant/,
+  );
+  assert.ok(
+    fs.existsSync(path.join(cvRoot, "src/lib/assistant/brand-chat-tools.ts")),
+    "CV brand-chat-tools",
   );
 });
 

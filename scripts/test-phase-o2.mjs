@@ -77,12 +77,19 @@ test("O2.4 imports kit directs (échantillons)", () => {
     assert.match(mcp, /brand-mcp-admin-host/);
   }
   for (const brand of ["tempoflow2", "certivan-app", "fidu"]) {
-    const chat = fs.readFileSync(
-      path.join(dockerRoot, brand, "crm/src/server/assistant-chat.ts"),
+    // O4p : jumeau assistant-chat.ts supprimé — routes + brand-chat-tools
+    const routes = fs.readFileSync(
+      path.join(dockerRoot, brand, "crm/src/server/routes/assistant.ts"),
       "utf8",
     );
-    assert.match(chat, /@creezio\/assistant/);
-    assert.doesNotMatch(chat, /@\/lib\/assistant\/chat-db/);
+    assert.match(routes, /@creezio\/assistant/);
+    assert.doesNotMatch(routes, /@\/lib\/assistant\/chat-db/);
+    assert.ok(
+      !fs.existsSync(
+        path.join(dockerRoot, brand, "crm/src/server/assistant-chat.ts"),
+      ),
+      `${brand}: jumeau assistant-chat`,
+    );
   }
 });
 

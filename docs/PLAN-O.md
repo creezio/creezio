@@ -26,7 +26,8 @@ Fidu (sauf O0 / O6 CV-only / O10–O11) · Paperclip = mort.
 
 Phases livrées : [PHASE-O0.md](PHASE-O0.md) · [PHASE-O1.md](PHASE-O1.md) ·
 [PHASE-O2.md](PHASE-O2.md) · [PHASE-O3.md](PHASE-O3.md) ·
-[PHASE-O3p.md](PHASE-O3p.md) · [PHASE-O4.md](PHASE-O4.md) · suite O4p→O11
+[PHASE-O3p.md](PHASE-O3p.md) · [PHASE-O4.md](PHASE-O4.md) ·
+[PHASE-O4p.md](PHASE-O4p.md) · suite O5→O11
 ci-dessous.
 
 ---
@@ -118,7 +119,7 @@ ci-dessous.
 
 ---
 
-## O4p — Cutover `assistant-chat` (TF → CV → Fidu)
+## O4p — Cutover `assistant-chat` (TF → CV → Fidu) ✅
 
 1. **Objectif** : **0** `assistant-chat.ts` local ; mounts brand mince.
 2. **Inclus** : delete + imports `@creezio/assistant` ; sync. **Exclu** :
@@ -127,6 +128,7 @@ ci-dessous.
    `test-phase-o4p`.
 4. **Done** : [PHASE-O4p.md](PHASE-O4p.md).
 5. **Effort M · Republish non**
+6. **SHAs** : TF `92a03f3` · CV `1e97e72` · Fidu `f6d0fb8`
 
 ---
 
