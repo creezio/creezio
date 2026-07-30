@@ -11,6 +11,16 @@
 
 ---
 
+
+### SHAs (gold O4r)
+
+| | SHA |
+|--|--|
+| Kit tip | `f5f7512` |
+| TempoFlow | `36b22b4` |
+| Certivan | `23f9e0c` |
+| Fidu | `7dd7367` |
+
 ## Objectif
 
 Éliminer le silo parallèle `brand-chat-tools` + `TOOL_DEFINITIONS` métier ×3.
