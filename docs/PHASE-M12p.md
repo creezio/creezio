@@ -14,7 +14,7 @@
 |--------|----:|-----|
 | Certivan | 320 | `15ae995` |
 | Fidu | ~303 | `9f139f2` |
-| kit | — | `812d6df` |
+| kit | — | `db77119` |
 
 Gates: `node scripts/test-phase-m12p.mjs` ; Fidu `electron:compile` + `test:shell`.
 Suite: **M13**.
