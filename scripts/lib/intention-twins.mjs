@@ -4,16 +4,19 @@
  */
 import fs from "node:fs";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
+import {
+  BRAND_CRM_ROOTS,
+  KIT_ROOT,
+  resolveBrandCrmRoot,
+} from "./brand-roots.mjs";
 
-const here = path.dirname(fileURLToPath(import.meta.url));
-export const KIT_ROOT = path.resolve(here, "../..");
+export { KIT_ROOT, resolveBrandCrmRoot };
 export const DOCKER_ROOT = path.resolve(KIT_ROOT, "..");
 
 export const BRANDS = {
-  tempoflow2: path.join(DOCKER_ROOT, "tempoflow2/crm"),
-  "certivan-app": path.join(DOCKER_ROOT, "certivan-app/crm"),
-  fidu: path.join(DOCKER_ROOT, "fidu/crm"),
+  tempoflow2: BRAND_CRM_ROOTS.tempoflow2,
+  "certivan-app": BRAND_CRM_ROOTS["certivan-app"],
+  fidu: BRAND_CRM_ROOTS.fidu,
 };
 
 /** Surfaces P1 — shell CRM (doit être SoT kit après cutover). */

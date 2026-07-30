@@ -6,9 +6,10 @@ import fs from "node:fs";
 import path from "node:path";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
+import { resolveBrandCrmRoot } from "./lib/brand-roots.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const tfCrm = "/opt/docker/tempoflow2/crm";
+const tfCrm = resolveBrandCrmRoot("tempoflow2");
 
 test("M1.1 PHASE-M1.md existe et exige suppression shims", () => {
   const doc = fs.readFileSync(path.join(root, "docs/PHASE-M1.md"), "utf8");

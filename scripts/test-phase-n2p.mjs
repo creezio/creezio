@@ -8,12 +8,13 @@ import path from "node:path";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
 import { execSync } from "node:child_process";
+import { resolveBrandCrmRoot, resolveBrandRoot } from "./lib/brand-roots.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
-const TF_ELECTRON = "/opt/docker/tempoflow2/crm/electron";
-const CV_ELECTRON = "/opt/docker/certivan-app/crm/electron";
-const FIDU_ELECTRON = "/opt/docker/fidu/crm/electron";
+const TF_ELECTRON = path.join(resolveBrandCrmRoot("tempoflow2"), "electron");
+const CV_ELECTRON = path.join(resolveBrandCrmRoot("certivan-app"), "electron");
+const FIDU_ELECTRON = path.join(resolveBrandCrmRoot("fidu"), "electron");
 
 const TWINS_ABSENT = [
   "hermes-embed.ts",
@@ -144,9 +145,9 @@ test("N2p.4 Meili : TF hooks kit ; CV/Fidu métier", () => {
 
 test("N2p.5 SHAs marques HEAD ⊇ sign-off N2p (ancêtre)", () => {
   const repos = {
-    tempoflow2: "/opt/docker/tempoflow2",
-    "certivan-app": "/opt/docker/certivan-app",
-    fidu: "/opt/docker/fidu",
+    tempoflow2: resolveBrandRoot("tempoflow2"),
+    "certivan-app": resolveBrandRoot("certivan-app"),
+    fidu: resolveBrandRoot("fidu"),
   };
   for (const [name, dir] of Object.entries(repos)) {
     const expected = EXPECTED_SHAS[name];

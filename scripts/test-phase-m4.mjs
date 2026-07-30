@@ -8,12 +8,14 @@ import path from "node:path";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
 import { tempoflowManifest } from "../packages/brand-config/dist/index.js";
+import { resolveBrandCrmRoot } from "./lib/brand-roots.mjs";
+
 import {
   createLocalConfigStoreSync,
 } from "../packages/electron-shell/dist/index.js";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const tfCrm = "/opt/docker/tempoflow2/crm";
+const tfCrm = resolveBrandCrmRoot("tempoflow2");
 
 function loc(file) {
   return fs.readFileSync(file, "utf8").split("\n").length;

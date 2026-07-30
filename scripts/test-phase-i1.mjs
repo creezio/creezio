@@ -109,5 +109,5 @@ test("I1 package exports documentés", () => {
     "utf8",
   );
   assert.match(readme, /createSqliteAuthStore/);
-  assert.match(readme, /openDatabase/);
+  assert.match(readme, /configureAuth/);
 });

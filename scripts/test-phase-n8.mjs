@@ -79,15 +79,15 @@ test("N8.3 budgets LOC communs (main / preload / runner)", () => {
   }
 });
 
-test("N8.4 supplier-tabs : TF métier ; CV+Fidu absents (O1 anti-façade)", () => {
-  const tfTabs = path.join(
-    dockerRoot,
-    "tempoflow2/crm/electron/supplier-tabs.ts",
+test("N8.4 supplier-tabs SoT kit ; jumeaux absents ×3 (O1 anti-façade)", () => {
+  const kitMgr = path.join(
+    root,
+    "packages/electron-shell/src/host/browser-tabs/browser-tab-manager.ts",
   );
-  assert.ok(loc(tfTabs) >= 400);
-  assert.match(fs.readFileSync(tfTabs, "utf8"), /class SupplierTabManager/);
+  assert.ok(loc(kitMgr) >= 400);
+  assert.match(fs.readFileSync(kitMgr, "utf8"), /class SupplierTabManager/);
 
-  for (const brand of ["certivan-app", "fidu"]) {
+  for (const brand of ["tempoflow2", "certivan-app", "fidu"]) {
     assert.ok(
       !fs.existsSync(
         path.join(dockerRoot, brand, "crm/electron/supplier-tabs.ts"),
@@ -100,6 +100,11 @@ test("N8.4 supplier-tabs : TF métier ; CV+Fidu absents (O1 anti-façade)", () =
       ),
       `${brand}: supplier-driver façade`,
     );
+    const bindings = fs.readFileSync(
+      path.join(dockerRoot, brand, "crm/electron/host-n2-bindings.ts"),
+      "utf8",
+    );
+    assert.match(bindings, /@creezio\/electron-shell\/browser-tabs/);
   }
 });
 

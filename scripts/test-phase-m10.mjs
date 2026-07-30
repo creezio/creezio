@@ -7,9 +7,10 @@ import fs from "node:fs";
 import path from "node:path";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
+import { resolveBrandCrmRoot } from "./lib/brand-roots.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const tfRoot = "/opt/docker/tempoflow2/crm";
+const tfRoot = resolveBrandCrmRoot("tempoflow2");
 const modulesPath = path.join(tfRoot, "modules");
 const electronModulesPath = path.join(tfRoot, "electron/modules");
 

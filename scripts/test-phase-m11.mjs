@@ -9,10 +9,11 @@ import path from "node:path";
 import { test } from "node:test";
 import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
+import { resolveBrandCrmRoot } from "./lib/brand-roots.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const require = createRequire(path.join(root, "package.json"));
-const tfRoot = "/opt/docker/tempoflow2/crm";
+const tfRoot = resolveBrandCrmRoot("tempoflow2");
 
 test("M11.1 PHASE-M11.md présent", () => {
   const docPath = path.join(root, "docs/PHASE-M11.md");

@@ -7,13 +7,14 @@ import fs from "node:fs";
 import path from "node:path";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
+import { resolveBrandCrmRoot } from "./lib/brand-roots.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const PAPERCLIP_RE = /paperclipApi|startPaperclip\b|paperclip-launcher/;
 
-const TF = "/opt/docker/tempoflow2/crm";
-const CV = "/opt/docker/certivan-app/crm";
-const FIDU = "/opt/docker/fidu/crm";
+const TF = resolveBrandCrmRoot("tempoflow2");
+const CV = resolveBrandCrmRoot("certivan-app");
+const FIDU = resolveBrandCrmRoot("fidu");
 
 const PLATFORM_GONE_TF_CV = [
   "017_agent_todos.ts",

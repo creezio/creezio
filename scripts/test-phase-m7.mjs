@@ -8,10 +8,11 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { createRequire } from "node:module";
+import { resolveBrandCrmRoot } from "./lib/brand-roots.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const require = createRequire(import.meta.url);
-const tfRoot = "/opt/docker/tempoflow2/crm";
+const tfRoot = resolveBrandCrmRoot("tempoflow2");
 
 let failed = 0;
 function check(name, fn) {

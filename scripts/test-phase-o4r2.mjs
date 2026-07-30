@@ -61,7 +61,7 @@ test("O4r2.2 factory brand-mcp + brand-module-api ×3", () => {
     assert.ok(fs.existsSync(brandMcp), `${b.label}: brand-mcp manquant`);
     const src = fs.readFileSync(brandMcp, "utf8");
     assert.match(src, new RegExp(`export function ${b.factory}`));
-    assert.match(src, /createMcpFacade/);
+    assert.match(src, /createBrandMcpFacade|createMcpFacade/);
     assert.match(src, /create\w+ModuleMcpTools/);
 
     const api = path.join(

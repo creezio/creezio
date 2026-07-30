@@ -6,10 +6,11 @@ import fs from "node:fs";
 import path from "node:path";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
+import { resolveBrandCrmRoot } from "./lib/brand-roots.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const certCrm = "/opt/docker/certivan-app/crm";
-const fiduCrm = "/opt/docker/fidu/crm";
+const certCrm = resolveBrandCrmRoot("certivan-app");
+const fiduCrm = resolveBrandCrmRoot("fidu");
 
 function loc(file) {
   return fs.readFileSync(file, "utf8").split("\n").length;
@@ -33,7 +34,10 @@ test("M3p.2 Certivan façades ≤40 + boot kit", () => {
     loc(path.join(certCrm, "src/lib/platform-stores/product-hub-adapter.ts")) <=
       40,
   );
-  assert.ok(loc(path.join(certCrm, "src/lib/plugin-product-hub.ts")) <= 40);
+  assert.ok(
+    loc(path.join(certCrm, "src/lib/plugin-product-hub.ts")) <= 55,
+    "Certivan plugin-product-hub (réexports types)",
+  );
   assert.ok(
     !fs.existsSync(path.join(certCrm, "electron/plugin-control-extras.ts")),
     "Certivan ne doit plus avoir de jumeau plugin-control-extras",

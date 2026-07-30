@@ -8,10 +8,11 @@ import path from "node:path";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
 import { createRequire } from "node:module";
+import { resolveBrandCrmRoot } from "./lib/brand-roots.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const require = createRequire(import.meta.url);
-const tfRoot = "/opt/docker/tempoflow2/crm";
+const tfRoot = resolveBrandCrmRoot("tempoflow2");
 
 function locDir(dir) {
   if (!fs.existsSync(dir)) return 0;
@@ -82,7 +83,9 @@ test("M8.3 TF adapters lourds absents ; platform-stores ≤80 LOC", () => {
   assert.ok(fs.existsSync(path.join(ps, "product-hub-adapter.ts")));
 });
 
-test("M8.4 TF call-sites importent @creezio/* directs", () => {
+test("M8.4 TF call-sites importent @creezio/* directs (post-cutover mounts)", () => {
+  assert.ok(fs.existsSync(tfRoot), `TF crm root manquant: ${tfRoot}`);
+
   const auth = fs.readFileSync(
     path.join(tfRoot, "src/server/routes/auth.ts"),
     "utf8",
@@ -90,26 +93,49 @@ test("M8.4 TF call-sites importent @creezio/* directs", () => {
   assert.match(auth, /from ["']@creezio\/auth["']/);
   assert.doesNotMatch(auth, /platform-stores/);
 
-  const tasks = fs.readFileSync(path.join(tfRoot, "src/lib/tasks.ts"), "utf8");
-  assert.match(tasks, /from ["']@creezio\/tasks["']/);
+  // Tasks cutover : routes kit + jumeau local absent OU configure-tasks présent
+  const tasksRoutes = fs.readFileSync(
+    path.join(tfRoot, "src/server/routes/tasks.ts"),
+    "utf8",
+  );
+  assert.match(tasksRoutes, /from ["']@creezio\/tasks["']/);
+  const tasksTwin = path.join(tfRoot, "src/lib/tasks.ts");
+  const configureTasks = path.join(tfRoot, "src/lib/configure-tasks.ts");
+  assert.ok(
+    !fs.existsSync(tasksTwin) || fs.existsSync(configureTasks),
+    "TF tasks: jumeau local encore présent sans configure-tasks",
+  );
+  assert.ok(
+    fs.existsSync(configureTasks),
+    "TF configure-tasks mount",
+  );
+  assert.ok(
+    fs.existsSync(path.join(tfRoot, "vendor/creezio/tasks")),
+    "TF vendor @creezio/tasks",
+  );
 
-  // P20 cutover : email-queries jumeau éteint ; routes délèguent au kit
-  const emailQueriesPath = path.join(tfRoot, "src/lib/email-queries.ts");
-  if (fs.existsSync(emailQueriesPath)) {
-    const mails = fs.readFileSync(emailQueriesPath, "utf8");
-    assert.match(mails, /from ["']@creezio\/mails["']/);
-  } else if (fs.existsSync(tfRoot)) {
-    const emailRoutes = fs.readFileSync(
-      path.join(tfRoot, "src/server/routes/email.ts"),
-      "utf8",
-    );
-    assert.match(emailRoutes, /from ["']@creezio\/mails["']/);
-    assert.match(emailRoutes, /createEmailInboxRoutes/);
-    assert.ok(
-      !fs.existsSync(path.join(tfRoot, "src/components/mail/mail-inbox.tsx")),
-      "TF mail-inbox twin",
-    );
-  }
+  // Mails cutover : routes kit + jumeau local absent OU configure-mails présent
+  const emailRoutes = fs.readFileSync(
+    path.join(tfRoot, "src/server/routes/email.ts"),
+    "utf8",
+  );
+  assert.match(emailRoutes, /from ["']@creezio\/mails["']/);
+  assert.match(emailRoutes, /createEmailInboxRoutes/);
+  const emailTwin = path.join(tfRoot, "src/lib/email-queries.ts");
+  const configureMails = path.join(tfRoot, "src/lib/configure-mails.ts");
+  assert.ok(
+    !fs.existsSync(emailTwin) || fs.existsSync(configureMails),
+    "TF mails: jumeau local encore présent sans configure-mails",
+  );
+  assert.ok(fs.existsSync(configureMails), "TF configure-mails mount");
+  assert.ok(
+    fs.existsSync(path.join(tfRoot, "vendor/creezio/mails")),
+    "TF vendor @creezio/mails",
+  );
+  assert.ok(
+    !fs.existsSync(path.join(tfRoot, "src/components/mail/mail-inbox.tsx")),
+    "TF mail-inbox twin",
+  );
 
   // O2 : chat-db façade absente — SoT kit direct
   assert.ok(

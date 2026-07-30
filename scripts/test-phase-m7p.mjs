@@ -8,11 +8,12 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { createRequire } from "node:module";
+import { resolveBrandCrmRoot } from "./lib/brand-roots.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const require = createRequire(import.meta.url);
-const certivan = "/opt/docker/certivan-app/crm";
-const fidu = "/opt/docker/fidu/crm";
+const certivan = resolveBrandCrmRoot("certivan-app");
+const fidu = resolveBrandCrmRoot("fidu");
 
 let failed = 0;
 function check(name, fn) {

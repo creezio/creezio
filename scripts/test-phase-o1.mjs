@@ -81,18 +81,15 @@ test("O1.3 plugin-control-api absent ×3 ; Fidu boot conservé", () => {
   );
 });
 
-test("O1.4 CV+Fidu supplier façades absentes ; TF métier ≥400", () => {
-  const tf = path.join(dockerRoot, "tempoflow2/crm/electron/supplier-tabs.ts");
-  assert.ok(loc(tf) >= 400);
-  assert.match(fs.readFileSync(tf, "utf8"), /class SupplierTabManager/);
-  assert.ok(
-    fs.existsSync(
-      path.join(dockerRoot, "tempoflow2/crm/electron/preload-supplier.ts"),
-    ),
-    "TF preload-supplier métier attendu",
+test("O1.4 supplier façades absentes ×3 ; SoT kit browser-tabs ≥400", () => {
+  const kitMgr = path.join(
+    root,
+    "packages/electron-shell/src/host/browser-tabs/browser-tab-manager.ts",
   );
+  assert.ok(loc(kitMgr) >= 400);
+  assert.match(fs.readFileSync(kitMgr, "utf8"), /class SupplierTabManager/);
 
-  for (const brand of ["certivan-app", "fidu"]) {
+  for (const brand of ["tempoflow2", "certivan-app", "fidu"]) {
     for (const rel of [
       "supplier-tabs.ts",
       "supplier-driver.ts",

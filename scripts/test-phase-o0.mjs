@@ -8,12 +8,13 @@ import fs from "node:fs";
 import path from "node:path";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
+import { resolveBrandCrmRoot } from "./lib/brand-roots.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const brands = [
-  { id: "tempoflow", crm: "/opt/docker/tempoflow2/crm" },
-  { id: "certivan", crm: "/opt/docker/certivan-app/crm" },
-  { id: "fidu", crm: "/opt/docker/fidu/crm" },
+  { id: "tempoflow", crm: resolveBrandCrmRoot("tempoflow2") },
+  { id: "certivan", crm: resolveBrandCrmRoot("certivan-app") },
+  { id: "fidu", crm: resolveBrandCrmRoot("fidu") },
 ];
 
 const FULL_PACKAGES = [
@@ -26,6 +27,8 @@ const FULL_PACKAGES = [
   "api-kernel",
   "mcp-facade",
   "shell-ui",
+  "onboarding",
+  "cockpit",
   "auth",
   "assistant",
   "tasks",
@@ -101,7 +104,7 @@ test("O0.2 host-na-stubs + Paperclip absents src/build (3 marques)", () => {
   }
 });
 
-test("O0.3 SYNC.json liste complète H6 (16 packages)", () => {
+test("O0.3 SYNC.json liste complète H6 (18 packages)", () => {
   for (const { id, crm } of brands) {
     const syncPath = path.join(crm, "vendor/creezio/SYNC.json");
     assert.ok(fs.existsSync(syncPath), `${id}: SYNC.json`);
@@ -134,7 +137,11 @@ test("O0.4 sync script pin kitSha + dry-run ×3", () => {
       "bash",
       [path.join(crm, "scripts/electron/sync-creezio-vendor.sh")],
       {
-        env: { ...process.env, CREEZIO_SYNC_DRY_RUN: "1" },
+        env: {
+          ...process.env,
+          CREEZIO_SYNC_DRY_RUN: "1",
+          CREEZIO_KIT_ROOT: root,
+        },
         encoding: "utf8",
       },
     );
