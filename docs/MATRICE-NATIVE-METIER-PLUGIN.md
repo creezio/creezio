@@ -5,6 +5,8 @@
 > **M0→M16** (2026-07-30) : **vision stricte freeze** — stubs / façades /
 > jumeaux = **NON done** (jamais « stub OK ») ; plan [PLAN-M.md](PLAN-M.md) ·
 > freeze [PHASE-M16.md](PHASE-M16.md).
+> **N*** (post-M16) : [PLAN-N.md](PLAN-N.md) — purge artefacts **N0** ✅ ·
+> suite plugins/hosts/assistant… · **Paperclip** = mort (src + build).
 > Versions courantes : TF **0.10.32** · Certivan **0.1.15** · Fidu **0.1.60**.
 > Légende : **✅** livré / utilisable · **🟡** partiel (hors M* gold) ·
 > **❌** absent / hors scope volontaire.
@@ -14,7 +16,8 @@ Source cadre : [ARCHITECTURE-INTENTION.md](ARCHITECTURE-INTENTION.md).
 Gel inventions : [PHASE-R0.md](PHASE-R0.md). Database : [PHASE-R1.md](PHASE-R1.md).
 Product Hub SoT : [PHASE-R2.md](PHASE-R2.md).
 Vision stricte M* : [PLAN-M.md](PLAN-M.md) · [PHASE-M0.md](PHASE-M0.md) ·
-[PHASE-M16.md](PHASE-M16.md).
+[PHASE-M16.md](PHASE-M16.md).  
+Suite N* : [PLAN-N.md](PLAN-N.md) · [PHASE-N0.md](PHASE-N0.md).
 
 ---
 

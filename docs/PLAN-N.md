@@ -1,0 +1,168 @@
+# Plan N* — Finir la vision post-M16 (~45–50 % → 100 %)
+
+**Baseline HEAD (audit 2026-07-30)**  
+kit `e4b23ec` (M16 freeze) · TF `3565524` · Certivan `e51b369` · Fidu `2cc207e`
+
+**Règles non négociables** (héritées M0)  
+Commun = `@creezio/*` uniquement · Marques = minimum métier · Stubs / façades /
+jumeaux / fichiers plateforme = **NON done** · Extraire l’existant, ne pas
+inventer · Tests verts → push → étape suivante · **Pas de N(n+1) si gate N(n)
+rouge** · Sync vendor = **liste complète** · Cutover marques séquentiel `*p` :
+TF → Certivan → Fidu (sauf N5 Fidu-only et N0 artefacts) · **Paperclip = mort**.
+
+Phases livrées : [PHASE-N0.md](PHASE-N0.md) · suite N1→N9 ci-dessous.
+
+---
+
+## N0 — Purge artefacts (Paperclip build + Fidu git clean)
+
+1. **Objectif** : zéro artefact Paperclip sur disque / WT ; Paperclip mort partout.
+2. **Inclus** : purge `fidu/crm/build/electron/paperclip*` ; assert `.gitignore`
+   `/build` ; assert TF/CV/Fidu sans `paperclip-*` src/build runtime.
+3. **Exclu** : extraction code ; sync vendor ; republish.
+4. **Tests gate** : kit `npm test` (incl. `test-phase-n0`) ; absents
+   `paperclip-launcher` src/build 3 marques.
+5. **Done** : [PHASE-N0.md](PHASE-N0.md).
+6. **Effort S · Republish non**
+
+---
+
+## N1 — Runtime plugins Electron → kit
+
+1. **Objectif** : SoT spawn/discover/git/control-extras dans
+   `@creezio/electron-shell`.
+2. **Inclus** : extraction TF `plugin-runtime|launcher|git|control-extras` (+
+   deps plateforme jumelles si pures).
+3. **Exclu** : UI Admin Plugins ; cutover marques (N1p).
+4. **Tests gate** : `npm run build:packages && npm test` (+ `test-phase-n1`).
+5. **Done** : [PHASE-N1.md](PHASE-N1.md) inventaire + LOC.
+6. **Effort L · Republish non**
+
+---
+
+## N1p — Cutover plugins runtime (TF → Certivan → Fidu)
+
+1. **Objectif** : jumeaux runtime absents ; imports `@creezio/electron-shell`.
+2. **Inclus** : delete cutover ; `plugin-control-api` ≤40 LOC ou absent ; sync
+   vendor liste complète.
+3. **Exclu** : UI admin ; assistant ; meili-indexer.
+4. **Tests gate** : par marque `sync-creezio-vendor` + `electron:compile` +
+   `test:plugin-*` + `test:shell` ; kit `npm test`.
+5. **Done** : fichiers runtime absents TF+CV ; Fidu toujours 0 copies.
+6. **Effort L · Republish oui** (TF/CV)
+
+---
+
+## N2 — Jumeaux hosts → kit
+
+Preload / embeds / meili-indexer / hermes·n8n stack / ai-workspace / utilitaires
+plateforme → `@creezio/electron-shell` (+ `@creezio/shell` preload).  
+**Exclu** : seeds métier ; supplier-tabs ; assistant ; migrations.  
+**Effort L · Republish non**
+
+---
+
+## N2p — Cutover hosts (TF → CV → Fidu)
+
+Delete jumeaux ; hooks marque ≤ budgets.  
+**Effort L · Republish oui** ×3
+
+---
+
+## N3 — Assistant marque → `@creezio/assistant`
+
+Extraction lib+UI générique (~11 kLOC TF) → kit.  
+**Effort L · Republish non**
+
+---
+
+## N3p — Cutover assistant (TF → CV → Fidu)
+
+Marques = mounts / brand hooks.  
+**Effort L · Republish oui** ×3
+
+---
+
+## N4 — Migrations historiques plateforme → kit
+
+Hors `platformCoreMigrations` déjà gold.  
+**Effort M · Republish non**
+
+---
+
+## N4p — Cutover migrations (TF → CV → Fidu)
+
+**Effort M · Republish oui** si boot DB
+
+---
+
+## N5 — Feature-off Fidu (`host-na-stubs` → contrat kit)
+
+Fidu-only.  
+**Effort S · Republish oui** Fidu
+
+---
+
+## N6 — Admin Plugins / MCP / analytics génériques → kit
+
+**Effort M · Republish non**
+
+---
+
+## N6p — Cutover admin (TF → CV)
+
+**Effort M · Republish oui**
+
+---
+
+## N7 — `supplier-tabs` hors métier Certivan / Fidu
+
+Reste **métier TF** only.  
+**Effort M · Republish oui** CV/Fidu
+
+---
+
+## N8 — Gates LOC + allowlists vision
+
+Budgets mesurables 3 marques + forbidden lists.  
+**Effort M · Republish non**
+
+---
+
+## N9 — Freeze vision 100 %
+
+Matrice + PLAN-N + SHAs gold ; dry-run sync ×3.  
+**Effort S · Republish non**
+
+---
+
+## Flowchart
+
+```mermaid
+flowchart TD
+  N0[N0 Purge Paperclip / artefacts] --> N1[N1 Plugins runtime kit]
+  N1 --> N1p[N1p Cutover TF → CV → Fidu]
+  N1p --> N2[N2 Jumeaux hosts kit]
+  N2 --> N2p[N2p Cutover hosts 3 marques]
+  N2p --> N3[N3 Assistant kit]
+  N3 --> N3p[N3p Cutover assistant 3 marques]
+  N3p --> N4[N4 Migrations plateforme kit]
+  N4 --> N4p[N4p Cutover migrations 3 marques]
+  N4p --> N5[N5 Feature-off Fidu]
+  N5 --> N6[N6 Admin Plugins/MCP/analytics kit]
+  N6 --> N6p[N6p Cutover admin TF→CV]
+  N6p --> N7[N7 Supplier cleanup CV+Fidu]
+  N7 --> N8[N8 Gates LOC + allowlists]
+  N8 --> N9[N9 Freeze vision 100%]
+```
+
+---
+
+## Engagement process
+
+- **Pas de N(n+1) si gate N(n) rouge.**
+- Push GitHub kit + marque touchée après chaque étape verte.
+- Sync vendor = liste complète.
+- Extraire TF (gold) ; ne pas inventer.
+- Stubs / façades / jumeaux = **NON done**.
+- Paperclip = mort — ne jamais réintroduire.
