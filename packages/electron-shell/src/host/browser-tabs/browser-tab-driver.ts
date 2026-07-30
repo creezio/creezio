@@ -1,6 +1,7 @@
 // @ts-nocheck — Electron WebContents/session (shim kit mince, N7)
 /**
- * Exécuteur des actions `supplier_*` sur les onglets fournisseurs.
+ * Exécuteur des actions `external_*` (alias déprécié `supplier_*`) sur
+ * les onglets sites externes.
  *
  * Architecture hybride (portage de src/components/assistant/ui-driver.tsx) :
  * - ÉNUMÉRATION / RÉSOLUTION des cibles : JavaScript exécuté dans un MONDE
@@ -537,8 +538,8 @@ export type SupplierActionHooks = {
 };
 
 /**
- * Exécute une action supplier_* et retourne un résultat JSON-compatible
- * (même contrat que executeUiAction de ui-driver.tsx : jamais de throw).
+ * Exécute une action external_* / supplier_* et retourne un résultat
+ * JSON-compatible (même contrat que executeUiAction : jamais de throw).
  */
 export async function executeSupplierAction(
   manager: SupplierTabManager,
@@ -546,20 +547,30 @@ export async function executeSupplierAction(
   hooks?: SupplierActionHooks,
 ): Promise<Result> {
   try {
-    if (req.type === "supplier_list_tabs") {
+    const actionType = String(req.type || "").replace(/^supplier_/, "external_");
+
+    if (
+      actionType === "external_list_tabs" ||
+      req.type === "supplier_list_tabs"
+    ) {
       return { ok: true, tabs: manager.list() };
     }
 
-    if (req.type === "supplier_open_tab") {
-      const fournisseurId = Number(req.params.fournisseur_id);
+    if (
+      actionType === "external_open_tab" ||
+      req.type === "supplier_open_tab"
+    ) {
+      const siteId = Number(
+        req.params.site_id ?? req.params.fournisseur_id ?? 0,
+      );
       const url = typeof req.params.url === "string" ? req.params.url : "";
-      if (!Number.isFinite(fournisseurId) || fournisseurId <= 0) {
-        return { ok: false, error: "fournisseur_id invalide" };
+      if (!Number.isFinite(siteId) || siteId <= 0) {
+        return { ok: false, error: "site_id invalide" };
       }
       if (!/^https?:\/\//i.test(url)) {
         return { ok: false, error: "url invalide (http(s):// requis)" };
       }
-      const tab = await manager.openTab(fournisseurId, url);
+      const tab = await manager.openTab(siteId, url);
       const page = await pageOf(tab);
       const title =
         typeof page.title === "string" && page.title
@@ -567,7 +578,7 @@ export async function executeSupplierAction(
           : tab.view.webContents.getTitle() || url;
       hooks?.onTabOpened?.({
         tabId: tab.tabId,
-        fournisseurId: tab.fournisseurId,
+        fournisseurId: tab.siteId ?? tab.fournisseurId,
         url: tab.view.webContents.getURL() || url,
         title,
       });

@@ -36,6 +36,12 @@ export const IpcChannels = {
     list: "tabs:list",
     changed: "tabs:changed",
     loadState: "tabs:load-state",
+    /** SoT wire — ouverture site externe. */
+    externalOpened: "tabs:external-opened",
+    /**
+     * @deprecated wire historique TF — les mains émettent encore ce canal ;
+     * le preload écoute les deux (external + supplier).
+     */
     supplierOpened: "tabs:supplier-opened",
   },
   setup: {

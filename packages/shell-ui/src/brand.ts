@@ -12,8 +12,10 @@ export type ShellUiBrand = {
   titlebarNoDragClass: string;
   /** Préfixe clés API live (tf2_live_ / certivan_live_ / fidu_live_) */
   apiKeyPrefix: string;
-  /** Nom produit UI (TempoFlow / Certivan / Fidu) */
+  /** Nom produit UI — injecté par la marque */
   productName: string;
+  /** Attribut data-* analytics clics (défaut data-creezio-aid). */
+  aidAttr?: string;
 };
 
 const DEFAULT: ShellUiBrand = {
@@ -23,6 +25,7 @@ const DEFAULT: ShellUiBrand = {
   titlebarNoDragClass: "creezio-titlebar-no-drag",
   apiKeyPrefix: "creezio_live_",
   productName: "Creezio",
+  aidAttr: "data-creezio-aid",
 };
 
 let brand: ShellUiBrand = { ...DEFAULT };

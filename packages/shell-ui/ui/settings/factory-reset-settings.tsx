@@ -4,7 +4,7 @@ import { getShellDesktopApi, getShellUiBrand } from "@creezio/shell-ui";
 
 /**
  * Remise à zéro usine — Configuration desktop.
- * Efface compte, DB, Meili, uploads, tunnel token, cookies CRM + fournisseurs.
+ * Efface compte, DB, Meili, uploads, tunnel token, cookies CRM + sites externes.
  */
 
 import { FormEvent, useEffect, useState } from "react";
@@ -56,7 +56,7 @@ export function FactoryResetSettings() {
         </CardTitle>
         <CardDescription>
           Efface toutes les données locales de cet ordinateur (compte, base catalogue/métier,
-          index Meili, uploads, token tunnel, cookies CRM et sessions fournisseurs), puis relance
+          index Meili, uploads, token tunnel, cookies CRM et sessions sites externes), puis relance
           le wizard de premier lancement. Le DNS Cloudflare distant peut rester — vous
           re-réservez un slug au setup.
         </CardDescription>

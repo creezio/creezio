@@ -3,38 +3,53 @@
 import { getShellDesktopApi, getShellUiBrand } from "@creezio/shell-ui";
 
 /**
- * Lien vers le site d'un fournisseur.
+ * Lien vers un **site externe** (outil, portail, marketplace… — le métier
+ * est décidé par la marque via libellés UI, pas par ce composant).
  *
- * - App desktop (Electron) : ouvre immédiatement un ONGLET WORKSPACE (spinner
- *   dans le slot) puis charge la WebContentsView en arrière-plan.
- * - Navigateur web classique : simple lien target=_blank.
+ * - App desktop (Electron) : ouvre un onglet workspace puis WebContentsView.
+ * - Navigateur web : lien target=_blank.
  */
 
 import { useCallback, type MouseEvent, type ReactNode } from "react";
-import { useTabWorkspaceOptional } from "../workspace/tab-workspace-host";
+import {
+  openExternalSiteFromWorkspace,
+  useTabWorkspaceOptional,
+} from "../workspace/tab-workspace-host";
+
+const DEFAULT_EXTERNAL_SITE_TITLE = "Site externe";
 
 export function SiteLink({
   url,
-  fournisseurId = 0,
+  siteId = 0,
+  /** @deprecated → `siteId` */
+  fournisseurId,
   className,
   title,
   children,
-  "data-tf2-aid": aid,
+  "data-creezio-aid": aid,
+  /** @deprecated attribut TF — utiliser data-creezio-aid ou brand.aidAttr */
+  "data-tf2-aid": aidLegacy,
 }: {
   url: string;
-  /** Id du fournisseur (partition persistante). 0 = onglet générique (hash host). */
+  /** Id de partition persistante. 0 = onglet générique (hash host). */
+  siteId?: number;
+  /** @deprecated → `siteId` */
   fournisseurId?: number;
   className?: string;
   title?: string;
   children: ReactNode;
+  "data-creezio-aid"?: string;
   "data-tf2-aid"?: string;
 }) {
   const workspace = useTabWorkspaceOptional();
+  const resolvedSiteId = siteId || fournisseurId || 0;
+  const aidAttr = getShellUiBrand().aidAttr ?? "data-creezio-aid";
+  const aidValue = aid ?? aidLegacy;
 
   const onClick = useCallback(
     (e: MouseEvent<HTMLAnchorElement>) => {
       const api = getShellDesktopApi();
-      if (!api) return; // web : laisse le target=_blank normal
+      if (!api) return;
       e.preventDefault();
 
       let tabTitle = (title || "").trim();
@@ -42,14 +57,13 @@ export function SiteLink({
         try {
           tabTitle = new URL(url).hostname.replace(/^www\./, "");
         } catch {
-          tabTitle = "Site fournisseur";
+          tabTitle = DEFAULT_EXTERNAL_SITE_TITLE;
         }
       }
 
-      // Onglet workspace tout de suite (évite le vide pendant openTab/load).
-      if (workspace?.openSupplierSite) {
-        workspace.openSupplierSite({
-          fournisseurId,
+      if (workspace?.openExternalSite || workspace?.openSupplierSite) {
+        openExternalSiteFromWorkspace(workspace, {
+          siteId: resolvedSiteId,
           url,
           title: tabTitle,
           navigateUrl: true,
@@ -57,18 +71,23 @@ export function SiteLink({
         return;
       }
 
-      // Hors shell workspace : fallback IPC puis navigation.
       api
-        .openTab(fournisseurId, url)
-        .then((res) => {
-          window.location.assign(`/site/${res.fournisseurId || fournisseurId}`);
+        .openTab(resolvedSiteId, url)
+        .then((res: { siteId?: number; fournisseurId?: number }) => {
+          const id = res.siteId ?? res.fournisseurId ?? resolvedSiteId;
+          window.location.assign(`/site/${id}`);
         })
         .catch(() => {
           window.open(url, "_blank", "noreferrer");
         });
     },
-    [url, fournisseurId, title, workspace],
+    [url, resolvedSiteId, title, workspace],
   );
+
+  const extraAid =
+    aidValue != null
+      ? ({ [aidAttr]: aidValue } as Record<string, string>)
+      : undefined;
 
   return (
     <a
@@ -78,7 +97,7 @@ export function SiteLink({
       className={className}
       title={title}
       onClick={onClick}
-      data-tf2-aid={aid}
+      {...extraAid}
     >
       {children}
     </a>

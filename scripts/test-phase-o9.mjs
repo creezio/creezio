@@ -109,8 +109,20 @@ test("O9.3 pas de @/ ni Paperclip ni hardcode TF desktop API", () => {
         /window\.tempoflowDesktop/,
         `desktop API hardcode: ${f}`,
       );
+      // Labels métier TF interdits dans UI kit (ADR-no-brand-domain)
+      assert.doesNotMatch(
+        body,
+        /Site fournisseur/,
+        `label TF interdit: ${f}`,
+      );
     }
   }
+  const bridge = fs.readFileSync(
+    path.join(root, "packages/shell-ui/ui/desktop/desktop-bridge.tsx"),
+    "utf8",
+  );
+  assert.match(bridge, /Site externe/);
+  assert.match(bridge, /OpenExternalSiteOpts|onExternalTabOpened/);
   const brand = fs.readFileSync(
     path.join(root, "packages/shell-ui/src/brand.ts"),
     "utf8",

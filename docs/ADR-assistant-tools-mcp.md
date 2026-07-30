@@ -9,7 +9,7 @@
 
 La surface d’outils de l’assistant est **uniquement** :
 
-1. **Platform kit** — `@creezio/assistant` (`PLATFORM_TOOL_DEFINITIONS` : explore SQL, Meili, surface_*/ui_*/supplier_*, `get_entity`)
+1. **Platform kit** — `@creezio/assistant` (`PLATFORM_TOOL_DEFINITIONS` : explore SQL, Meili, surface_*/ui_*/external_* (+ alias déprécié supplier_*), `get_entity`)
 2. **Tasks kit** — `configureAssistantBrand({ tasks })` → `create_task` / `list_tasks` (+ aliases `create_todo` / `list_todos`)
 3. **MCP registry marque** — **une** factory `modules/brand-mcp.ts` (`create*BrandMcp(api)` → `create*ModuleMcpTools`) consommée par :
    - Electron `brand-runtime` (façade locale / proxy Hono)
@@ -28,7 +28,7 @@ La surface d’outils de l’assistant est **uniquement** :
 | `mcp-bridge.ts` qui re-liste N tools + handlers en dur | **Mort (O4r2)** — second SoT interdit |
 | Handlers métier panier/catalogue/dossiers **dupliqués** dans Hono `server.ts` alors que la factory les expose | **Mort (O4r3)** — Hono = `bindFacadeToolsToHono(create*BrandMcp)` |
 | `add_to_cart` brand parallèle à `module.panier.*` | **Mort** |
-| `module.desktop.open_external_tab` jumeau de `supplier_open_tab` | **Interdit** — open tab = plateforme |
+| `module.desktop.open_external_tab` jumeau de `external_open_tab` | **Interdit** — open tab = plateforme (`external_*` ; `supplier_*` = alias déprécié) |
 
 ## Différenciation marque
 

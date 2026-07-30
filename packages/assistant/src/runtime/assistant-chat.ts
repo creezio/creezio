@@ -348,7 +348,7 @@ function uiActionSummary(name: string, result: Record<string, unknown>): string 
     return `texte saisi${page?.title ? ` · ${page.title}` : ""}`;
   }
   if (name === "supplier_scroll") {
-    return "défilement effectué (onglet fournisseur)";
+    return "défilement effectué (onglet site externe)";
   }
   if (name === "supplier_read" || name === "surface_read") {
     const chars = typeof result.text === "string" ? result.text.length : 0;

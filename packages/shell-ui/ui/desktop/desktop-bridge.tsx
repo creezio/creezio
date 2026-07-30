@@ -1,21 +1,23 @@
 "use client";
 
-import { getShellDesktopApi, getShellUiBrand } from "@creezio/shell-ui";
+import { getShellDesktopApi } from "@creezio/shell-ui";
 
 /**
  * Pont desktop global (monté dans WorkspaceRoot, no-op en web).
  *
- * Écoute les demandes du process principal Electron :
- * - "supplier-tab-opened" : un onglet fournisseur vient d'être ouvert
- *   (lien externe, bot supplier_open_tab) → ouvrir/activer l'onglet
- *   workspace correspondant (plus de navigation forcée vers /navigateur).
+ * Écoute les ouvertures d’onglet **site externe** depuis le process principal
+ * Electron (`onExternalTabOpened` / alias déprécié `onSupplierTabOpened`)
+ * → active l’onglet workspace correspondant.
  */
 
 import { useEffect, useRef } from "react";
 import {
   useTabWorkspaceOptional,
-  type OpenSupplierSiteOpts,
+  openExternalSiteFromWorkspace,
+  type OpenExternalSiteOpts,
 } from "../workspace/tab-workspace-host";
+
+const DEFAULT_EXTERNAL_SITE_TITLE = "Site externe";
 
 function titleFromInfo(url: string, rawTitle?: string): string {
   const t = (rawTitle || "").trim();
@@ -23,41 +25,52 @@ function titleFromInfo(url: string, rawTitle?: string): string {
   try {
     return new URL(url).hostname.replace(/^www\./, "");
   } catch {
-    return "Site fournisseur";
+    return DEFAULT_EXTERNAL_SITE_TITLE;
   }
+}
+
+function resolveOpenFn(workspace: any): ((opts: OpenExternalSiteOpts) => void) | null {
+  if (!workspace) return null;
+  return workspace.openExternalSite ?? workspace.openSupplierSite ?? null;
 }
 
 export function DesktopBridge() {
   const workspace = useTabWorkspaceOptional();
-  const openRef = useRef(workspace?.openSupplierSite);
+  const openRef = useRef(resolveOpenFn(workspace));
   const readyRef = useRef(Boolean(workspace?.ready));
-  const pendingRef = useRef<OpenSupplierSiteOpts[]>([]);
-  openRef.current = workspace?.openSupplierSite;
+  const pendingRef = useRef<OpenExternalSiteOpts[]>([]);
+  openRef.current = resolveOpenFn(workspace);
   readyRef.current = Boolean(workspace?.ready);
 
-  // Rejouer les ouvertures reçues avant l'hydratation workspace.
   useEffect(() => {
-    if (!workspace?.ready || !workspace.openSupplierSite) return;
+    const open = resolveOpenFn(workspace);
+    if (!workspace?.ready || !open) return;
     const pending = pendingRef.current;
     if (!pending.length) return;
     pendingRef.current = [];
-    for (const opts of pending) workspace.openSupplierSite(opts);
-  }, [workspace?.ready, workspace?.openSupplierSite, workspace]);
+    for (const opts of pending) open(opts);
+  }, [workspace?.ready, workspace]);
 
   useEffect(() => {
     const api = getShellDesktopApi();
-    if (!api?.onSupplierTabOpened) return;
-    return api.onSupplierTabOpened((info: {
+    // SoT : onExternalTabOpened ; alias déprécié onSupplierTabOpened
+    const subscribe =
+      api?.onExternalTabOpened ?? api?.onSupplierTabOpened;
+    if (!subscribe) return;
+    return subscribe((info: {
+      siteId?: number;
+      /** @deprecated → siteId */
       fournisseurId?: number;
       url: string;
       title?: string;
+      tabId?: string;
       electronTabId?: string;
     }) => {
-      const opts: OpenSupplierSiteOpts = {
-        fournisseurId: info.fournisseurId,
+      const opts: OpenExternalSiteOpts = {
+        siteId: info.siteId ?? info.fournisseurId ?? 0,
         url: info.url,
         title: titleFromInfo(info.url, info.title),
-        electronTabId: info.tabId,
+        electronTabId: info.electronTabId ?? info.tabId,
       };
       if (readyRef.current && openRef.current) {
         openRef.current(opts);
@@ -69,3 +82,6 @@ export function DesktopBridge() {
 
   return null;
 }
+
+/** @deprecated — préférer openExternalSiteFromWorkspace */
+export { openExternalSiteFromWorkspace };

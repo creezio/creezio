@@ -88,4 +88,5 @@ export {
 export {
   isKeepAliveProtectedKey,
   rankKeepAliveEvictionKeys,
+  configureKeepAliveFullscreenMatchers,
 } from "./lib/keepalive-eviction.js";

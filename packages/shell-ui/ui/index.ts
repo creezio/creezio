@@ -16,7 +16,11 @@ export {
   useTabWorkspace,
   useTabWorkspaceOptional,
   useOpenTab,
+  openExternalSiteFromWorkspace,
+  normalizeOpenExternalSiteOpts,
   type TabWorkspaceHost,
+  type OpenExternalSiteOpts,
+  /** @deprecated → OpenExternalSiteOpts */
   type OpenSupplierSiteOpts,
 } from "./workspace/tab-workspace-host";
 export {

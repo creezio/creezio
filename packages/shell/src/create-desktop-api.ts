@@ -104,9 +104,10 @@ export function createDesktopApi(
     onWindowMaximizedChanged: (cb) =>
       onChannel<boolean>(ipc, C.window.maximizedChanged, cb),
 
-    openTab: (fournisseurId: number, url: string) =>
-      ipc.invoke(C.tabs.open, fournisseurId, url) as Promise<{
+    openTab: (siteId: number, url: string) =>
+      ipc.invoke(C.tabs.open, siteId, url) as Promise<{
         tabId: string;
+        siteId: number;
         fournisseurId: number;
         loadState?: "loading" | "ready" | "error";
         url?: string;
@@ -122,6 +123,7 @@ export function createDesktopApi(
         ok: boolean;
         error?: string;
         tabId?: string;
+        siteId?: number;
         fournisseurId?: number;
         loadState?: "loading" | "ready" | "error";
         url?: string;
@@ -134,8 +136,39 @@ export function createDesktopApi(
       onChannel<DesktopTabInfo[]>(ipc, C.tabs.changed, cb),
     onTabLoadState: (cb) =>
       onChannel<DesktopTabLoadState>(ipc, C.tabs.loadState, cb),
-    onSupplierTabOpened: (cb) =>
-      onChannel<DesktopSupplierTabOpened>(ipc, C.tabs.supplierOpened, cb),
+    onExternalTabOpened: (cb) => {
+      const offExt = onChannel<DesktopSupplierTabOpened>(
+        ipc,
+        C.tabs.externalOpened,
+        cb,
+      );
+      const offLegacy = onChannel<DesktopSupplierTabOpened>(
+        ipc,
+        C.tabs.supplierOpened,
+        cb,
+      );
+      return () => {
+        offExt();
+        offLegacy();
+      };
+    },
+    /** @deprecated → onExternalTabOpened */
+    onSupplierTabOpened: (cb) => {
+      const offExt = onChannel<DesktopSupplierTabOpened>(
+        ipc,
+        C.tabs.externalOpened,
+        cb,
+      );
+      const offLegacy = onChannel<DesktopSupplierTabOpened>(
+        ipc,
+        C.tabs.supplierOpened,
+        cb,
+      );
+      return () => {
+        offExt();
+        offLegacy();
+      };
+    },
 
     googleLogin: () =>
       ipc.invoke(C.auth.googleLogin) as Promise<{

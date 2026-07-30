@@ -1013,22 +1013,40 @@ export function installBrandDesktopRuntime(deps: BrandDesktopDeps): void {
   /* ─────────────────────── Liens externes → onglets ──────────────────────── */
 
   /**
-   * Routage des liens EXTERNES cliqués dans l'UI CRM : au lieu d'ouvrir une
-   * fenêtre Electron parasite (comportement par défaut) ou de naviguer la vue
-   * CRM hors de l'app, on ouvre un onglet fournisseur intégré et on demande à
-   * l'UI d'ouvrir un onglet workspace (content area).
+   * Routage des liens EXTERNES : onglet site intégré + event renderer.
+   * SoT = site externe (pas « fournisseur »). Dual-emit wire legacy TF.
    */
-  function emitSupplierTabOpened(
+  function emitExternalTabOpened(
     view: any,
-    info: { tabId: string; fournisseurId: number; url: string; title: string },
+    info: { tabId: string; siteId: number; url: string; title: string },
   ): void {
+    const payload = {
+      ...info,
+      fournisseurId: info.siteId, // miroir déprécié
+    };
     try {
       if (!view.webContents.isDestroyed()) {
-        view.webContents.send("desktop:supplier-tab-opened", info);
+        view.webContents.send("tabs:external-opened", payload);
+        view.webContents.send("tabs:supplier-opened", payload); // alias déprécié
+        // Alias historique (certains preload écoutent encore ce nom)
+        view.webContents.send("desktop:supplier-tab-opened", payload);
       }
     } catch (e) {
       logError("tabs", e);
     }
+  }
+
+  /** @deprecated → emitExternalTabOpened */
+  function emitSupplierTabOpened(
+    view: any,
+    info: { tabId: string; fournisseurId: number; url: string; title: string },
+  ): void {
+    emitExternalTabOpened(view, {
+      tabId: info.tabId,
+      siteId: info.fournisseurId,
+      url: info.url,
+      title: info.title,
+    });
   }
 
   /** Manager d’onglets du sender IPC (owner ou espace IA). */
@@ -1435,10 +1453,20 @@ export function installBrandDesktopRuntime(deps: BrandDesktopDeps): void {
       };
     });
 
-    safeHandle("tabs:open", async (e, rawArgs) => {
+    safeHandle("tabs:open", async (e, a, b) => {
       const manager = tabsManagerForEvent(e);
-      const args = rawArgs as { fournisseurId: number; url: string };
-      const tab = await manager.openTab(Number(args.fournisseurId), String(args.url));
+      // Compat : (siteId, url) OU { siteId|fournisseurId, url }
+      let siteId: number;
+      let openUrl: string;
+      if (a && typeof a === "object") {
+        const o = a as { siteId?: number; fournisseurId?: number; url?: string };
+        siteId = Number(o.siteId ?? o.fournisseurId);
+        openUrl = String(o.url ?? "");
+      } else {
+        siteId = Number(a);
+        openUrl = String(b ?? "");
+      }
+      const tab = await manager.openTab(siteId, openUrl);
       let url = "";
       try {
         if (!tab.view.webContents.isDestroyed()) url = tab.view.webContents.getURL();
@@ -1451,17 +1479,18 @@ export function installBrandDesktopRuntime(deps: BrandDesktopDeps): void {
           type: "embed.navigate",
           name: "embed.navigate",
           category: "embed",
-          label: `Onglet fournisseur #${args.fournisseurId}${host ? ` · ${host}` : ""}`,
+          label: `Onglet site externe #${siteId}${host ? ` · ${host}` : ""}`,
           path: host ? `https://${host}/` : undefined,
-          surface: "supplier_tab",
-          meta: { fournisseurId: Number(args.fournisseurId), host },
+          surface: "external_site_tab",
+          meta: { siteId, fournisseurId: siteId, host },
         });
       } catch {
         /* ignore */
       }
       return {
         tabId: tab.tabId,
-        fournisseurId: tab.fournisseurId,
+        siteId: tab.siteId ?? siteId,
+        fournisseurId: tab.siteId ?? tab.fournisseurId ?? siteId,
         loadState: tab.loadState,
         url: url || undefined,
       };
@@ -1484,18 +1513,27 @@ export function installBrandDesktopRuntime(deps: BrandDesktopDeps): void {
           : undefined;
       return manager.activate(String(args.tabId), rect);
     });
-    safeHandle("tabs:activate-site", (e, rawArgs) => {
+    safeHandle("tabs:activate-site", (e, a, b, c) => {
       const manager = tabsManagerForEvent(e);
-      const args = rawArgs as {
-        siteId: number;
-        url: string;
-        rect?: { x: number; y: number; width: number; height: number };
-      };
-      return manager.activateSite(
-        Number(args.siteId),
-        String(args.url || ""),
-        args.rect,
-      );
+      // Compat : (siteId, url, rect?) OU { siteId, url, rect? }
+      let siteId: number;
+      let url: string;
+      let rect: { x: number; y: number; width: number; height: number } | undefined;
+      if (a && typeof a === "object" && !Array.isArray(a) && ("siteId" in a || "url" in a)) {
+        const o = a as {
+          siteId?: number;
+          url?: string;
+          rect?: { x: number; y: number; width: number; height: number };
+        };
+        siteId = Number(o.siteId);
+        url = String(o.url || "");
+        rect = o.rect;
+      } else {
+        siteId = Number(a);
+        url = String(b ?? "");
+        rect = c as typeof rect;
+      }
+      return manager.activateSite(siteId, url, rect);
     });
     safeHandle("tabs:set-content-rect", (e, rawRect) => {
       const rect = rawRect as { x: number; y: number; width: number; height: number };

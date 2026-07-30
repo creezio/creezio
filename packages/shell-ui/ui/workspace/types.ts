@@ -21,14 +21,20 @@ export type TabMeta = {
   fullscreen?: boolean;
 };
 
-/** Métadonnées d'un onglet site fournisseur (WebContentsView Electron). */
-export type SupplierTabMeta = {
-  fournisseurId: number;
-  /** URL du portail (rechargée au remount ; cookies partition conservés). */
+/** Métadonnées d'un onglet site externe (WebContentsView Electron). */
+export type ExternalSiteTabMeta = {
+  siteId: number;
+  /** URL (rechargée au remount ; cookies partition conservés). */
   url: string;
-  /** Id runtime Electron — peut être absent après redémarrage UI. */
   electronTabId?: string;
 };
+
+/** @deprecated → ExternalSiteTabMeta (siteId). */
+export type SupplierTabMeta = ExternalSiteTabMeta & {
+  /** @deprecated → siteId */
+  fournisseurId?: number;
+};
+
 
 export type WorkspaceTab = {
   id: string;
@@ -40,8 +46,11 @@ export type WorkspaceTab = {
   kind?: PageKind;
   trail?: TrailCrumb[];
   fullscreen?: boolean;
-  /** Présent si l'onglet héberge un site fournisseur Chromium. */
+  /** Présent si l'onglet héberge un site externe Chromium. */
+  externalSite?: ExternalSiteTabMeta;
+  /** @deprecated → externalSite */
   supplier?: SupplierTabMeta;
+
   /** Historique back/forward propre à cet onglet. */
   history: string[];
   historyIndex: number;
@@ -53,16 +62,33 @@ export type WorkspacePersistedState = {
 };
 
 /** v3 : Dashboard unique épinglé + état des onglets persisté en session. */
-export const WORKSPACE_STORAGE_KEY = "tf2-workspace-tabs-v3";
+export const WORKSPACE_STORAGE_KEY = "creezio-workspace-tabs-v3";
 export const MAX_TABS = 12;
 export const MAX_KEEPALIVE = 12;
 
 /** Chemin de l'onglet épinglé (toujours premier, non fermable). */
 export const DASHBOARD_PATH = "/dashboard";
-/** Page dédiée du panier (module dispatch fournisseurs). */
-export const PANIER_PATH = "/panier";
-/** Module atelier Optimiser (canvas React Flow). */
-export const OPTIMISER_PATH = "/optimiser";
+/**
+ * Chemins fullscreen optionnels — **override marque** via
+ * `configureFullscreenPaths`. Défauts vides côté kit (pas de domaine TF).
+ * Alias historiques TF (`/panier`, `/optimiser`) restent importables depuis la marque.
+ */
+export let PANIER_PATH = "";
+export let OPTIMISER_PATH = "";
+
+/** @deprecated Chemins TF historiques — configurer via configureFullscreenPaths. */
+export const TF_LEGACY_PANIER_PATH = "/panier";
+/** @deprecated */
+export const TF_LEGACY_OPTIMISER_PATH = "/optimiser";
+
+export function configureFullscreenPaths(opts: {
+  panierPath?: string;
+  optimiserPath?: string;
+}): void {
+  if (opts.panierPath != null) PANIER_PATH = opts.panierPath;
+  if (opts.optimiserPath != null) OPTIMISER_PATH = opts.optimiserPath;
+}
+
 
 /** Le href pointe-t-il vers le dashboard (query ignorée) ? */
 export function isDashboardHref(href: string): boolean {
@@ -94,15 +120,13 @@ export function normalizeHref(href: string): string {
   }
 }
 
-const ENTITY_ROUTE_ROOTS = new Set([
-  "produits",
-  "marketplaces",
-  "fournisseurs",
-  "skus",
-  "agregateurs",
-  "secteurs",
-  "commandes",
-]);
+/** Roots entity — **injectés par la marque** (kit = plateforme only). */
+let ENTITY_ROUTE_ROOTS = new Set<string>();
+
+export function configureEntityRouteRoots(roots: string[]): void {
+  ENTITY_ROUTE_ROOTS = new Set(roots);
+}
+
 
 /**
  * Infère kind avant publication AppShell (évite le flash H1
@@ -123,37 +147,31 @@ export function pageKindFromHref(href: string): PageKind {
 /** Libellé liste (section) vs fiche (entity) — évite « Catalogue · 123 » au clic. */
 const SECTION_LABELS: Record<string, string> = {
   dashboard: "Dashboard",
-  secteurs: "Secteurs",
-  marketplaces: "Fournisseurs",
-  produits: "Produits",
-  skus: "Catalogue SKU",
-  stack: "Mes produits",
-  releves: "Relevés",
-  promotions: "Promotions",
-  likes: "Likes",
-  agregateurs: "Agrégateurs",
   admin: "Admin",
-  commandes: "Commandes",
-  panier: "Panier",
-  optimiser: "Optimiser",
   parametres: "Préférences",
   configuration: "Configuration",
   setup: "Premier lancement",
-  todos: "Todos",
-  abonnement: "Abonnement",
-  site: "Site fournisseur",
+  site: "Site externe",
   navigateur: "Navigateur",
+  taches: "Tâches",
+  mails: "Mails",
+  abonnement: "Abonnement",
+  collaborateurs: "Collaborateurs",
+  cockpit: "Cockpit",
 };
 
-const ENTITY_LABELS: Record<string, string> = {
-  produits: "Produit",
-  marketplaces: "Fournisseur",
-  fournisseurs: "Fournisseur",
-  skus: "SKU",
-  agregateurs: "Agrégateur",
-  secteurs: "Secteur",
-  commandes: "Commande",
-};
+/** Enrichit les libellés de section (marque = métier). */
+export function configureSectionLabels(labels: Record<string, string>): void {
+  Object.assign(SECTION_LABELS, labels);
+}
+
+
+const ENTITY_LABELS: Record<string, string> = {};
+
+export function configureEntityLabels(labels: Record<string, string>): void {
+  Object.assign(ENTITY_LABELS, labels);
+}
+
 
 export function titleFromHref(href: string): string {
   const path = normalizeHref(href).split("?")[0] || "/";
@@ -189,16 +207,19 @@ export function isOptimiserCanvasHref(href: string): boolean {
 }
 
 export function isFullscreenHref(href: string): boolean {
-  return isOptimiserCanvasHref(href) || isSupplierHref(href);
+  return isOptimiserCanvasHref(href) || isExternalSiteHref(href);
 }
 
-/** Onglet workspace hébergeant un site fournisseur (`/site/<id>`). */
-export function isSupplierHref(href: string): boolean {
+/** Onglet workspace hébergeant un site externe (`/site/<id>`). */
+export function isExternalSiteHref(href: string): boolean {
   const path = normalizeHref(href).split("?")[0] || "/";
   return path === "/site" || path.startsWith("/site/");
 }
 
-export function fournisseurIdFromHref(href: string): number | null {
+/** @deprecated → isExternalSiteHref */
+export const isSupplierHref = isExternalSiteHref;
+
+export function siteIdFromHref(href: string): number | null {
   const path = normalizeHref(href).split("?")[0] || "/";
   const m = path.match(/^\/site\/(\d+)$/);
   if (!m) return null;
@@ -206,24 +227,30 @@ export function fournisseurIdFromHref(href: string): number | null {
   return Number.isFinite(id) ? id : null;
 }
 
-export function supplierHref(fournisseurId: number): string {
-  return `/site/${Math.floor(fournisseurId)}`;
+/** @deprecated → siteIdFromHref */
+export const fournisseurIdFromHref = siteIdFromHref;
+
+export function externalSiteHref(siteId: number): string {
+  return `/site/${Math.floor(siteId)}`;
 }
 
-export function createSupplierTab(opts: {
-  fournisseurId: number;
+/** @deprecated → externalSiteHref */
+export const supplierHref = externalSiteHref;
+
+export function createExternalSiteTab(opts: {
+  siteId: number;
   url: string;
   title?: string;
   electronTabId?: string;
   id?: string;
 }): WorkspaceTab {
-  const href = supplierHref(opts.fournisseurId);
+  const href = externalSiteHref(opts.siteId);
   let title = (opts.title || "").trim();
   if (!title) {
     try {
       title = new URL(opts.url).hostname.replace(/^www\./, "");
     } catch {
-      title = `Fournisseur ${opts.fournisseurId}`;
+      title = `Site ${opts.siteId}`;
     }
   }
   return {
@@ -233,8 +260,8 @@ export function createSupplierTab(opts: {
       kind: "section",
       fullscreen: true,
     }),
-    supplier: {
-      fournisseurId: opts.fournisseurId,
+    externalSite: {
+      siteId: opts.siteId,
       url: opts.url,
       electronTabId: opts.electronTabId,
     },
@@ -355,20 +382,28 @@ export function ensureTabHistory(
     kind = legacy.pageHeader === "section" ? "section" : "entity";
   }
 
-  const supplier =
-    tab.supplier && typeof tab.supplier.fournisseurId === "number"
-      ? {
-          fournisseurId: tab.supplier.fournisseurId,
-          url: String(tab.supplier.url || ""),
-          electronTabId: tab.supplier.electronTabId,
-        }
-      : isSupplierHref(href)
-        ? {
-            fournisseurId: fournisseurIdFromHref(href) || 0,
-            url: "",
-            electronTabId: undefined,
-          }
-        : undefined;
+  let externalSite: ExternalSiteTabMeta | undefined;
+  if (tab.externalSite && typeof tab.externalSite.siteId === "number") {
+    externalSite = {
+      siteId: tab.externalSite.siteId,
+      url: String(tab.externalSite.url || ""),
+      electronTabId: tab.externalSite.electronTabId,
+    };
+  } else if (
+    tab.supplier &&
+    typeof (tab.supplier.siteId ?? tab.supplier.fournisseurId) === "number"
+  ) {
+    externalSite = {
+      siteId: Number(tab.supplier.siteId ?? tab.supplier.fournisseurId),
+      url: String(tab.supplier.url || ""),
+      electronTabId: tab.supplier.electronTabId,
+    };
+  } else if (isExternalSiteHref(href)) {
+    externalSite = {
+      siteId: siteIdFromHref(href) || 0,
+      url: "",
+    };
+  }
 
   return {
     id: tab.id || newTabId(),
@@ -379,10 +414,31 @@ export function ensureTabHistory(
     kind,
     trail: tab.trail,
     fullscreen: tab.fullscreen ?? isFullscreenHref(href),
-    supplier,
+    externalSite,
+    /** @deprecated miroir compat */
+    supplier: externalSite
+      ? { ...externalSite, fournisseurId: externalSite.siteId }
+      : undefined,
     history,
     historyIndex,
   };
+}
+
+/** @deprecated → createExternalSiteTab */
+export function createSupplierTab(opts: {
+  fournisseurId: number;
+  url: string;
+  title?: string;
+  electronTabId?: string;
+  id?: string;
+}): WorkspaceTab {
+  return createExternalSiteTab({
+    siteId: opts.fournisseurId,
+    url: opts.url,
+    title: opts.title,
+    electronTabId: opts.electronTabId,
+    id: opts.id,
+  });
 }
 
 /** Même pathname (seuls les query params changent). */

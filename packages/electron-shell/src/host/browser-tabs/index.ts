@@ -1,6 +1,7 @@
 /**
- * Onglets sites externes génériques (N7) — gold TempoFlow.
- * Les marques hors TF consomment ce module ; TF conserve electron/supplier-tabs.
+ * Onglets sites externes génériques (N7).
+ * Vocabulaire natif = site externe / BrowserTab — pas « fournisseur » (métier TF).
+ * Alias Supplier* conservés dépréciés pour compat marques.
  */
 export {
   configureBrowserTabs,

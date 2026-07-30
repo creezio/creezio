@@ -101,3 +101,12 @@ npm run build:packages && npm test   # incl. test-phase-o9
 ## Suite
 
 **O9p** — Cutover jumeaux lib/UI (TF → CV → Fidu) + delete liste O9.
+
+## Addendum intention (post-O9, avant O9p)
+
+Contrainte : **pas de domaine métier TF dans packages natifs**.
+Voir [ADR-no-brand-domain-in-native-packages.md](ADR-no-brand-domain-in-native-packages.md).
+
+Remédiation kit : `OpenExternalSiteOpts` / `siteId` / « Site externe » /
+tools `external_*` (alias `supplier_*` dépréciés) ; paths panier/optimiser
+vidés par défaut + `configureFullscreenPaths` ; icônes tab-bar injectables.

@@ -6,11 +6,10 @@
  * il POST le résultat sur /api/v1/assistant/ui-actions/:id/result →
  * la promesse serveur se résout et le tool retourne le résultat au LLM.
  *
- * Extension desktop (Electron) : les actions `supplier_*` ciblent les
- * onglets fournisseurs de l'app desktop. Elles passent par un canal SSE
- * dédié (GET /api/v1/assistant/supplier-actions/stream) auquel le process
- * principal Electron est abonné (bridge-client). Le résultat revient par la
- * même route REST que les actions ui_*.
+ * Extension desktop (Electron) : les actions `external_*` (alias déprécié
+ * `supplier_*`) ciblent les onglets sites externes. Canal SSE historique
+ * GET /api/v1/assistant/supplier-actions/stream (nom wire TF — inchangé).
+ * Le résultat revient par la même route REST que les actions ui_*.
  *
  * Fonctionne car l'app tourne dans un seul process Node (registre mémoire).
  */
@@ -25,7 +24,15 @@ export type UiActionType =
   | "scroll"
   | SupplierActionType;
 
-export type SupplierActionType =
+/** Actions onglet site externe (SoT = external_* ; supplier_* = alias déprécié TF). */
+export type ExternalSiteActionType =
+  | "external_list_tabs"
+  | "external_open_tab"
+  | "external_list_targets"
+  | "external_click"
+  | "external_type"
+  | "external_scroll"
+  | "external_read"
   | "supplier_list_tabs"
   | "supplier_open_tab"
   | "supplier_list_targets"
@@ -34,6 +41,10 @@ export type SupplierActionType =
   | "supplier_scroll"
   | "supplier_read"
   | "open_external_tab"
+
+/** @deprecated → ExternalSiteActionType */
+export type SupplierActionType =
+  | ExternalSiteActionType
   | "ai_workspace_ensure"
   | "ai_workspace_show"
   | "ai_workspace_show_owner"
@@ -50,7 +61,7 @@ export type SupplierActionType =
 export type UiActionRequest = {
   actionId: string;
   type: UiActionType;
-  /** Onglet fournisseur ciblé (actions supplier_* uniquement). */
+  /** Onglet site externe ciblé (actions external_* / supplier_*). */
   tabId?: string;
   params: Record<string, unknown>;
   targetUserId?: string;
@@ -78,7 +89,7 @@ const supplierSubscribers: Map<string, SupplierSubscriber> =
 globalStore.__creezioSupplierSubscribers = supplierSubscribers;
 
 const ACTION_TIMEOUT_MS = 25000;
-/** Les pages fournisseurs (navigation, chargements) sont plus lentes que le CRM. */
+/** Sites externes (navigation, chargements) plus lents que le CRM. */
 const SUPPLIER_ACTION_TIMEOUT_MS = 45000;
 
 export type EmitFn = (event: string, data: unknown) => void;
@@ -108,7 +119,7 @@ export function dispatchUiAction(
 }
 
 /**
- * Abonne l'app desktop (bridge Electron) au flux d'actions fournisseurs.
+ * Abonne l'app desktop au flux d'actions sites externes (wire `supplier-actions`).
  * Retourne la fonction de désabonnement.
  */
 export function subscribeSupplierActions(fn: (req: UiActionRequest) => void, opts: { userId: string; deviceId?: string }): { unsubscribe: () => void; meta: SupplierSubscriberMeta } {
@@ -119,13 +130,13 @@ export function subscribeSupplierActions(fn: (req: UiActionRequest) => void, opt
 export const hasSupplierBridgeForUser = (userId: string) => Array.from(supplierSubscribers.values()).some((s) => s.meta.userId === userId) || isDesktopOnline(userId);
 export type DispatchSupplierOpts = { targetUserId?: string; requireTargetOnline?: boolean };
 
-/** Vrai si l'app desktop est connectée (au moins un abonné supplier). */
+/** Vrai si l'app desktop est connectée (au moins un abonné actions site externe). */
 export function hasSupplierBridge(): boolean {
   return supplierSubscribers.size > 0;
 }
 
 /**
- * Émet une action `supplier_*` vers l'app desktop et attend son résultat.
+ * Émet une action `external_*` / `supplier_*` vers l'app desktop.
  * Sans app desktop connectée → erreur immédiate exploitable par le LLM.
  */
 export function dispatchSupplierAction(
@@ -140,7 +151,7 @@ export function dispatchSupplierAction(
     return Promise.resolve({
       ok: false,
       error:
-        "App desktop non connectée — les onglets fournisseurs ne sont pilotables que depuis l'application de bureau.",
+        "App desktop non connectée — les onglets sites externes ne sont pilotables que depuis l'application de bureau.",
     });
   }
   const actionId = randomUUID();
@@ -150,7 +161,7 @@ export function dispatchSupplierAction(
       resolve({
         ok: false,
         error:
-          "App desktop injoignable (pas de réponse en 45s) — l'onglet fournisseur est peut-être fermé ou la page charge encore.",
+          "App desktop injoignable (pas de réponse en 45s) — l'onglet site externe est peut-être fermé ou la page charge encore.",
       });
     }, SUPPLIER_ACTION_TIMEOUT_MS);
     pending.set(actionId, { resolve, timer });
@@ -185,7 +196,14 @@ export const UI_TOOL_NAMES = new Set([
   "ui_scroll",
 ]);
 
-export const SUPPLIER_TOOL_NAMES = new Set([
+export const EXTERNAL_SITE_TOOL_NAMES = new Set([
+  "external_list_tabs",
+  "external_open_tab",
+  "external_list_targets",
+  "external_click",
+  "external_type",
+  "external_scroll",
+  "external_read",
   "supplier_list_tabs",
   "supplier_open_tab",
   "supplier_list_targets",
@@ -201,6 +219,9 @@ export const SUPPLIER_TOOL_NAMES = new Set([
   "ai_workspace_list_tabs",
 ]);
 
+/** @deprecated → EXTERNAL_SITE_TOOL_NAMES */
+export const SUPPLIER_TOOL_NAMES = EXTERNAL_SITE_TOOL_NAMES;
+
 /** Façade unifiée — routée vers ui_* ou supplier_* selon activeSurface. */
 export const SURFACE_TOOL_NAMES = new Set([
   "surface_list_targets",
@@ -214,8 +235,46 @@ export function isUiTool(name: string): boolean {
   return UI_TOOL_NAMES.has(name);
 }
 
+export function isExternalSiteTool(name: string): boolean {
+  return EXTERNAL_SITE_TOOL_NAMES.has(name);
+}
+
+/** @deprecated → isExternalSiteTool */
 export function isSupplierTool(name: string): boolean {
-  return SUPPLIER_TOOL_NAMES.has(name);
+  return isExternalSiteTool(name);
+}
+
+/** Mappe external_* / supplier_* → verbe driver. */
+export function externalSiteToolVerb(
+  name: string,
+):
+  | "list_tabs"
+  | "open_tab"
+  | "list_targets"
+  | "click"
+  | "type"
+  | "scroll"
+  | "read"
+  | null {
+  const n = name.replace(/^supplier_/, "external_");
+  switch (n) {
+    case "external_list_tabs":
+      return "list_tabs";
+    case "external_open_tab":
+      return "open_tab";
+    case "external_list_targets":
+      return "list_targets";
+    case "external_click":
+      return "click";
+    case "external_type":
+      return "type";
+    case "external_scroll":
+      return "scroll";
+    case "external_read":
+      return "read";
+    default:
+      return null;
+  }
 }
 
 export function isSurfaceTool(name: string): boolean {

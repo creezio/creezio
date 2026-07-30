@@ -7,6 +7,9 @@
 
 export type DesktopTabInfo = {
   tabId: string;
+  /** Id de partition site externe. */
+  siteId: number;
+  /** @deprecated → siteId */
   fournisseurId: number;
   url: string;
   title: string;
@@ -20,16 +23,24 @@ export type DesktopContentRect = {
   height: number;
 };
 
-export type DesktopSupplierTabOpened = {
+/** Ouverture d’un onglet site externe (Electron → renderer). */
+export type DesktopExternalTabOpened = {
   tabId: string;
-  fournisseurId: number;
+  siteId: number;
+  /** @deprecated → siteId */
+  fournisseurId?: number;
   url: string;
   title: string;
 };
 
+/** @deprecated → DesktopExternalTabOpened */
+export type DesktopSupplierTabOpened = DesktopExternalTabOpened;
+
 export type DesktopTabLoadState = {
   tabId: string;
-  fournisseurId: number;
+  siteId: number;
+  /** @deprecated → siteId */
+  fournisseurId?: number;
   state: "loading" | "ready" | "error";
   error?: string;
   url?: string;
@@ -120,11 +131,14 @@ export type DesktopBridge = {
   isWindowMaximized?: () => Promise<boolean>;
   onWindowMaximizedChanged?: (cb: (maximized: boolean) => void) => () => void;
 
+  /** Ouvre un onglet site externe. 1er arg = siteId (alias historique: fournisseurId). */
   openTab: (
-    fournisseurId: number,
+    siteId: number,
     url: string,
   ) => Promise<{
     tabId: string;
+    siteId: number;
+    /** @deprecated → siteId */
     fournisseurId: number;
     loadState?: "loading" | "ready" | "error";
     url?: string;
@@ -142,6 +156,8 @@ export type DesktopBridge = {
     ok: boolean;
     error?: string;
     tabId?: string;
+    siteId?: number;
+    /** @deprecated → siteId */
     fournisseurId?: number;
     loadState?: "loading" | "ready" | "error";
     url?: string;
@@ -151,6 +167,9 @@ export type DesktopBridge = {
   listTabs: () => Promise<DesktopTabInfo[]>;
   onTabsChanged: (cb: (tabs: DesktopTabInfo[]) => void) => () => void;
   onTabLoadState?: (cb: (ev: DesktopTabLoadState) => void) => () => void;
+  /** SoT — ouverture onglet site externe. */
+  onExternalTabOpened: (cb: (info: DesktopExternalTabOpened) => void) => () => void;
+  /** @deprecated → onExternalTabOpened */
   onSupplierTabOpened: (cb: (info: DesktopSupplierTabOpened) => void) => () => void;
 
   googleLogin: () => Promise<{ ok: boolean; error?: string }>;

@@ -1,5 +1,5 @@
 /**
- * Machine d'état pure du chargement d'onglet fournisseur (WebContentsView).
+ * Machine d'état pure du chargement d'onglet site externe (WebContentsView).
  *
  * Objectif UX : spinner React uniquement pour un chargement **intentionnel**
  * (openTab / loadAndWait → intent-load). Les navigations main-frame initiées

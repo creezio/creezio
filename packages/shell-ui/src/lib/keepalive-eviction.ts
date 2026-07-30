@@ -1,10 +1,18 @@
 /**
  * Politique d'éviction keep-alive (pur / testable).
- * Les panes fullscreen (/site/*, optimiser canvas…) ne sont jamais évincées.
+ * Les panes fullscreen (`/site/*` + matchers marque) ne sont jamais évincées.
  */
 
 const DASHBOARD_PATH = "/dashboard";
-const OPTIMISER_PATH = "/optimiser";
+
+/** Matchers fullscreen injectables (marque) — ex. canvas Optimiser TF. */
+let fullscreenMatchers: Array<(href: string) => boolean> = [];
+
+export function configureKeepAliveFullscreenMatchers(
+  matchers: Array<(href: string) => boolean>,
+): void {
+  fullscreenMatchers = matchers;
+}
 
 function normalizeHref(href: string): string {
   try {
@@ -17,24 +25,14 @@ function normalizeHref(href: string): string {
   }
 }
 
-function isOptimiserCanvasHref(href: string): boolean {
-  const normalized = normalizeHref(href);
-  try {
-    const url = new URL(normalized, "http://local.invalid");
-    if (url.pathname !== OPTIMISER_PATH) return false;
-    return url.searchParams.has("commande");
-  } catch {
-    return false;
-  }
-}
-
-function isSupplierHref(href: string): boolean {
+function isExternalSiteHref(href: string): boolean {
   const path = normalizeHref(href).split("?")[0] || "/";
   return path === "/site" || path.startsWith("/site/");
 }
 
 function isFullscreenHref(href: string): boolean {
-  return isOptimiserCanvasHref(href) || isSupplierHref(href);
+  if (isExternalSiteHref(href)) return true;
+  return fullscreenMatchers.some((m) => m(href));
 }
 
 export function isKeepAliveProtectedKey(key: string): boolean {

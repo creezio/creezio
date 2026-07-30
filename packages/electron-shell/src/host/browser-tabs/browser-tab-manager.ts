@@ -59,6 +59,8 @@ function resolvePreloadPath(): string {
 
 export type TabInfo = {
   tabId: string;
+  siteId: number;
+  /** @deprecated → siteId */
   fournisseurId: number;
   url: string;
   title: string;
@@ -67,6 +69,8 @@ export type TabInfo = {
 
 export type TabLoadState = {
   tabId: string;
+  siteId: number;
+  /** @deprecated → siteId */
   fournisseurId: number;
   state: "loading" | "ready" | "error";
   error?: string;
@@ -80,14 +84,24 @@ export type ContentRect = {
   height: number;
 };
 
-export type SupplierTab = {
+/** Onglet site externe (WebContentsView). Alias historique : SupplierTab. */
+export type BrowserTab = {
   tabId: string;
+  /** Id de partition persistante (`/site/<id>`). */
+  siteId: number;
+  /**
+   * @deprecated → siteId (miroir pour marques TF non migrées).
+   * Toujours égal à `siteId`.
+   */
   fournisseurId: number;
   view: WebContentsView;
   debuggerAttached: boolean;
   /** Chargement document principal — vue masquée tant que loading (spinner React). */
   loadState: TabLoadPhase;
 };
+
+/** @deprecated → BrowserTab */
+export type SupplierTab = BrowserTab;
 
 /** Domaines de popups d'auth fédérée à laisser s'ouvrir en vraie fenêtre. */
 const OAUTH_POPUP_HOSTS = [
@@ -252,7 +266,8 @@ export class SupplierTabManager {
     tab.loadState = state;
     const ev: TabLoadState = {
       tabId: tab.tabId,
-      fournisseurId: tab.fournisseurId,
+      siteId: tab.siteId,
+      fournisseurId: tab.siteId,
       state,
       error: extra?.error,
       url: extra?.url,
@@ -329,7 +344,8 @@ export class SupplierTabManager {
       }
       infos.push({
         tabId: t.tabId,
-        fournisseurId: t.fournisseurId,
+        siteId: t.siteId,
+        fournisseurId: t.siteId,
         url,
         title,
         active: t.tabId === this.activeTabId,
@@ -377,6 +393,8 @@ export class SupplierTabManager {
     | {
         ok: true;
         tabId: string;
+        siteId: number;
+        /** @deprecated → siteId */
         fournisseurId: number;
         loadState: TabLoadPhase;
         url?: string;
@@ -398,27 +416,27 @@ export class SupplierTabManager {
     return {
       ok: true,
       tabId: tab.tabId,
-      fournisseurId: tab.fournisseurId,
+      siteId: tab.siteId,
+      fournisseurId: tab.siteId,
       loadState: tab.loadState,
       url: currentUrl || undefined,
     };
   }
 
   /**
-   * Ouvre un onglet sur `url`. Si un onglet du même fournisseur existe déjà,
-   * il est réutilisé (navigation) plutôt que dupliqué.
-   * La vue reste masquée tant qu'aucun ContentRect valide n'est fourni
-   * (l'UI workspace active l'onglet dans la content area).
+   * Ouvre un onglet site externe sur `url`.
+   * Si un onglet de la même partition (`siteId`) existe déjà, il est réutilisé.
+   * @param siteId Id de partition (ex. entité métier marque, ou 0 = hash host).
    */
-  async openTab(fournisseurId: number, url: string): Promise<SupplierTab> {
+  async openTab(siteId: number, url: string): Promise<BrowserTab> {
     try {
       new URL(url); // validation précoce : erreur claire plutôt qu'onglet blanc
     } catch {
       throw new Error(`URL d'onglet invalide : « ${url} »`);
     }
 
-    const partitionKey = resolvePartitionId(fournisseurId, url);
-    const existing = this.findLiveTabForSite(fournisseurId, url);
+    const partitionKey = resolvePartitionId(siteId, url);
+    const existing = this.findLiveTabForSite(siteId, url);
     if (existing) {
       // SPA / sync URL : ne pas loadURL si le document est déjà affiché
       // (sinon Hermes chat / sidebars SPA se remountent à chaque pushState).
@@ -451,9 +469,10 @@ export class SupplierTabManager {
     view.setVisible(false);
 
     const tabId = `tab-${crypto.randomBytes(4).toString("hex")}`;
-    const tab: SupplierTab = {
+    const tab: BrowserTab = {
       tabId,
-      fournisseurId: partitionKey,
+      siteId: partitionKey,
+      fournisseurId: partitionKey, // miroir déprécié
       view,
       debuggerAttached: false,
       loadState: "loading",
@@ -823,6 +842,5 @@ export class SupplierTabManager {
 }
 
 
-/** Alias plateforme (N7) — même classe, hors nomenclature métier TF. */
+/** Alias classe (N7) — SoT type = BrowserTab ci-dessus. */
 export { SupplierTabManager as BrowserTabManager };
-export type { SupplierTab as BrowserTab };

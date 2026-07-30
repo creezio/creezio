@@ -22,7 +22,10 @@ Commun = `@creezio/*` uniquement · Marques = minimum métier ·
 **Façades / stubs / jumeaux = NON done** (même ≤40 LOC — N* validait, O* refuse) ·
 Extraire l’existant · Tests verts → push → étape suivante ·
 **Pas de O(n+1) si gate O(n) rouge** · Cutover `*p` séquentiel TF → Certivan →
-Fidu (sauf O0 / O6 CV-only / O10–O11) · Paperclip = mort.
+Fidu (sauf O0 / O6 CV-only / O10–O11) · Paperclip = mort ·
+**Pas de domaine métier TF (fournisseur / panier / relevé…) dans packages natifs** —
+capacités génériques (`external` / site externe) ; labels & routes = config marque
+([ADR-no-brand-domain-in-native-packages.md](ADR-no-brand-domain-in-native-packages.md)).
 
 Phases livrées : [PHASE-O0.md](PHASE-O0.md) · [PHASE-O1.md](PHASE-O1.md) ·
 [PHASE-O2.md](PHASE-O2.md) · [PHASE-O3.md](PHASE-O3.md) ·
@@ -259,10 +262,13 @@ ci-dessous.
 ## O9p — Cutover jumeaux lib/UI (TF → CV → Fidu)
 
 1. **Objectif** : absents locaux ; imports `@creezio/*`.
-2. **Inclus** : delete liste O9 ×3. **Exclu** : republish (O11).
-3. **Tests gate** : build×3 ; `test-phase-o9p`.
-4. **Done** : [PHASE-O9p.md](PHASE-O9p.md).
-5. **Effort M · Republish non**
+2. **Inclus** : delete liste O9 ×3 ; labels métier via brand (`configure*` /
+   i18n) — **pas** de re-promotion « fournisseur » comme API kit.
+3. **Exclu** : republish (O11).
+4. **Tests gate** : build×3 ; `test-phase-o9p`.
+5. **Done** : [PHASE-O9p.md](PHASE-O9p.md).
+6. **Effort M · Republish non**
+7. **Prérequis intention** : [ADR-no-brand-domain-in-native-packages.md](ADR-no-brand-domain-in-native-packages.md)
 
 ---
 

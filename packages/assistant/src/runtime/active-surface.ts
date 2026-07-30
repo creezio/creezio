@@ -1,6 +1,7 @@
 /**
  * Contrat `activeSurface` — source de vérité unique :
- * « que regarde l'utilisateur ? » (CRM React vs onglet site fournisseur).
+ * « que regarde l'utilisateur ? » (CRM React vs onglet site externe).
+ * Wire `kind: "supplier"` = alias historique TF (ne pas étendre) ; labels = génériques.
  *
  * Module sans alias @/ / sans React — importable par les tests Node et le
  * serveur assistant.
@@ -53,19 +54,31 @@ export type ActiveSurfaceCrm = {
   title: string;
 };
 
+/**
+ * Surface onglet site externe.
+ * `kind: "supplier"` = wire historique TF (alias) — nouveau code préfère siteId.
+ */
 export type ActiveSurfaceSupplier = {
   kind: "supplier";
   /** Id runtime Electron (`tab-…`) — peut être "" si pas encore ouvert. */
   tabId: string;
+  /** Id de partition site externe. */
+  siteId?: number;
+  /** @deprecated → siteId */
   fournisseurId: number;
   url: string;
   title: string;
 };
 
+/** Alias SoT (même shape wire pour l’instant). */
+export type ActiveSurfaceExternal = ActiveSurfaceSupplier;
+
 export type ActiveSurface = ActiveSurfaceCrm | ActiveSurfaceSupplier;
 
 export type SupplierTabSummary = {
   tabId: string;
+  siteId?: number;
+  /** @deprecated → siteId */
   fournisseurId: number;
   url: string;
   title: string;
@@ -76,24 +89,41 @@ export type ActiveSurfaceTabLike = {
   href: string;
   title: string;
   supplier?: {
-    fournisseurId: number;
+    siteId?: number;
+    fournisseurId?: number;
+    url: string;
+    electronTabId?: string;
+  } | null;
+  externalSite?: {
+    siteId?: number;
+    fournisseurId?: number;
     url: string;
     electronTabId?: string;
   } | null;
 };
 
 /** Href workspace `/site/<id>` ? */
-export function isSupplierSurfaceHref(href: string): boolean {
+export function isExternalSurfaceHref(href: string): boolean {
   const path = (href.split("?")[0] || "/").replace(/\/+$/, "") || "/";
   return path === "/site" || path.startsWith("/site/");
 }
 
-export function fournisseurIdFromSurfaceHref(href: string): number | null {
+/** @deprecated → isExternalSurfaceHref */
+export function isSupplierSurfaceHref(href: string): boolean {
+  return isExternalSurfaceHref(href);
+}
+
+export function siteIdFromSurfaceHref(href: string): number | null {
   const path = (href.split("?")[0] || "/").replace(/\/+$/, "") || "/";
   const m = path.match(/^\/site\/(\d+)$/);
   if (!m) return null;
   const id = Number(m[1]);
   return Number.isFinite(id) && id > 0 ? id : null;
+}
+
+/** @deprecated → siteIdFromSurfaceHref */
+export function fournisseurIdFromSurfaceHref(href: string): number | null {
+  return siteIdFromSurfaceHref(href);
 }
 
 /**
@@ -109,28 +139,30 @@ export function resolveActiveSurface(opts: {
     tabId?: string;
     url?: string;
     title?: string;
+    siteId?: number;
     fournisseurId?: number;
   } | null;
 }): ActiveSurface {
   const tab = opts.activeTab;
   const href = tab?.href || opts.href || "/";
   const title = (tab?.title || opts.title || "").trim() || href;
+  const ext = tab?.externalSite || tab?.supplier;
 
-  if (tab?.supplier || isSupplierSurfaceHref(href)) {
-    const fournisseurId =
-      tab?.supplier?.fournisseurId ??
+  if (ext || isExternalSurfaceHref(href)) {
+    const siteId =
+      ext?.siteId ??
+      ext?.fournisseurId ??
+      opts.desktopTab?.siteId ??
       opts.desktopTab?.fournisseurId ??
-      fournisseurIdFromSurfaceHref(href) ??
+      siteIdFromSurfaceHref(href) ??
       0;
     return {
       kind: "supplier",
-      tabId:
-        tab?.supplier?.electronTabId ||
-        opts.desktopTab?.tabId ||
-        "",
-      fournisseurId,
-      url: opts.desktopTab?.url || tab?.supplier?.url || "",
-      title: (opts.desktopTab?.title || title).trim() || "Site fournisseur",
+      tabId: ext?.electronTabId || opts.desktopTab?.tabId || "",
+      siteId,
+      fournisseurId: siteId,
+      url: opts.desktopTab?.url || ext?.url || "",
+      title: (opts.desktopTab?.title || title).trim() || "Site externe",
     };
   }
 
@@ -145,12 +177,19 @@ export function parseActiveSurface(raw: unknown): ActiveSurface | null {
     const title = typeof o.title === "string" ? o.title : href;
     return { kind: "crm", href, title };
   }
-  if (o.kind === "supplier") {
+  if (o.kind === "supplier" || o.kind === "external") {
     const tabId = typeof o.tabId === "string" ? o.tabId : "";
-    const fournisseurId = Number(o.fournisseurId) || 0;
+    const siteId = Number(o.siteId ?? o.fournisseurId) || 0;
     const url = typeof o.url === "string" ? o.url : "";
-    const title = typeof o.title === "string" ? o.title : "Site fournisseur";
-    return { kind: "supplier", tabId, fournisseurId, url, title };
+    const title = typeof o.title === "string" ? o.title : "Site externe";
+    return {
+      kind: "supplier",
+      tabId,
+      siteId,
+      fournisseurId: siteId,
+      url,
+      title,
+    };
   }
   return null;
 }
@@ -163,9 +202,11 @@ export function parseSupplierTabSummaries(raw: unknown): SupplierTabSummary[] {
     const o = item as Record<string, unknown>;
     const tabId = typeof o.tabId === "string" ? o.tabId : "";
     if (!tabId) continue;
+    const siteId = Number(o.siteId ?? o.fournisseurId) || 0;
     out.push({
       tabId,
-      fournisseurId: Number(o.fournisseurId) || 0,
+      siteId,
+      fournisseurId: siteId,
       url: typeof o.url === "string" ? o.url : "",
       title: typeof o.title === "string" ? o.title : "",
       active: Boolean(o.active),

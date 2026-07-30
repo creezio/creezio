@@ -171,7 +171,7 @@ export const PLATFORM_TOOL_DEFINITIONS: AssistantToolDefinition[] = [
     function: {
       name: "surface_list_targets",
       description:
-        "Inventaire unifié des éléments VISIBLES sur la surface active (CRM React OU site fournisseur Electron). Préférer cet outil à ui_list_targets / supplier_list_targets. Retourne url/path + titre + cibles. TOUJOURS avant surface_click / surface_type.",
+        "Inventaire unifié des éléments VISIBLES sur la surface active (CRM React OU site externe Electron). Préférer cet outil à ui_list_targets / supplier_list_targets. Retourne url/path + titre + cibles. TOUJOURS avant surface_click / surface_type.",
       parameters: {
         type: "object",
         properties: {
@@ -183,7 +183,7 @@ export const PLATFORM_TOOL_DEFINITIONS: AssistantToolDefinition[] = [
           tabId: {
             type: "string",
             description:
-              "Override onglet fournisseur (sinon tabId de la surface active)",
+              "Override onglet site externe (sinon tabId de la surface active)",
           },
         },
         required: [],
@@ -195,13 +195,13 @@ export const PLATFORM_TOOL_DEFINITIONS: AssistantToolDefinition[] = [
     function: {
       name: "surface_click",
       description:
-        "Clic unifié sur la surface active (fake-cursor CRM ou injecté fournisseur). Cible = ref de surface_list_targets.",
+        "Clic unifié sur la surface active (fake-cursor CRM ou onglet site externe). Cible = ref de surface_list_targets.",
       parameters: {
         type: "object",
         properties: {
           ref: { type: "string", description: "Ref de cible" },
           label: { type: "string", description: "Libellé si ref inconnue" },
-          tabId: { type: "string", description: "Override onglet fournisseur" },
+          tabId: { type: "string", description: "Override onglet site externe" },
         },
         required: [],
       },
@@ -212,7 +212,7 @@ export const PLATFORM_TOOL_DEFINITIONS: AssistantToolDefinition[] = [
     function: {
       name: "surface_type",
       description:
-        "Saisie unifiée sur la surface active (champ CRM ou site fournisseur). Autorisé sur email/password natifs si l'utilisateur le demande. PAS sur CAPTCHA Cloudflare.",
+        "Saisie unifiée sur la surface active (champ CRM ou site externe). Autorisé sur email/password natifs si l'utilisateur le demande. PAS sur CAPTCHA Cloudflare.",
       parameters: {
         type: "object",
         properties: {
@@ -223,7 +223,7 @@ export const PLATFORM_TOOL_DEFINITIONS: AssistantToolDefinition[] = [
             type: "boolean",
             description: "Envoyer Entrée après la frappe (défaut false)",
           },
-          tabId: { type: "string", description: "Override onglet fournisseur" },
+          tabId: { type: "string", description: "Override onglet site externe" },
         },
         required: ["text"],
       },
@@ -239,7 +239,7 @@ export const PLATFORM_TOOL_DEFINITIONS: AssistantToolDefinition[] = [
         type: "object",
         properties: {
           direction: { type: "string", enum: ["up", "down"] },
-          tabId: { type: "string", description: "Override onglet fournisseur" },
+          tabId: { type: "string", description: "Override onglet site externe" },
         },
         required: ["direction"],
       },
@@ -250,7 +250,7 @@ export const PLATFORM_TOOL_DEFINITIONS: AssistantToolDefinition[] = [
     function: {
       name: "surface_read",
       description:
-        "Lecture texte visible sur la surface active. Sur CRM : résumé page ; sur site fournisseur : extraction texte (prix, tableaux).",
+        "Lecture texte visible sur la surface active. Sur CRM : résumé page ; sur site externe : extraction texte.",
       parameters: {
         type: "object",
         properties: {
@@ -262,7 +262,7 @@ export const PLATFORM_TOOL_DEFINITIONS: AssistantToolDefinition[] = [
             type: "integer",
             description: "Taille max (défaut 6000, supplier)",
           },
-          tabId: { type: "string", description: "Override onglet fournisseur" },
+          tabId: { type: "string", description: "Override onglet site externe" },
         },
         required: [],
       },
@@ -351,14 +351,124 @@ export const PLATFORM_TOOL_DEFINITIONS: AssistantToolDefinition[] = [
   {
     type: "function",
     function: {
-      name: "supplier_list_tabs",
+      name: "external_list_tabs",
       description:
-        "App desktop uniquement : liste les onglets fournisseurs ouverts (tabId, fournisseur, URL, titre). TOUJOURS appeler ceci avant toute autre action supplier_* pour connaître les tabId valides.",
+        "App desktop uniquement : liste les onglets sites externes ouverts (tabId, siteId, URL, titre). TOUJOURS appeler avant toute action external_* / supplier_* pour connaître les tabId valides.",
+      parameters: { type: "object", properties: {}, required: [] },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "external_open_tab",
+      description:
+        "App desktop uniquement : ouvre (ou réutilise) un onglet site externe sur une URL. La session est persistante par siteId. Retourne le tabId pour les actions suivantes.",
       parameters: {
         type: "object",
-        properties: {},
-        required: [],
+        properties: {
+          site_id: {
+            type: "integer",
+            description: "Id de partition du site (isole la session). 0 = générique.",
+          },
+          url: { type: "string", description: "URL à ouvrir (https://…)" },
+        },
+        required: ["site_id", "url"],
       },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "external_list_targets",
+      description:
+        "App desktop uniquement : inventaire des éléments cliquables/saisissables VISIBLES dans un onglet site externe. TOUJOURS avant external_click / external_type.",
+      parameters: {
+        type: "object",
+        properties: {
+          tabId: { type: "string", description: "Onglet cible (external_list_tabs)" },
+          q: { type: "string", description: "Filtre optionnel sur le libellé" },
+        },
+        required: ["tabId"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "external_click",
+      description:
+        "App desktop uniquement : clic trusted dans un onglet site externe (ref de external_list_targets).",
+      parameters: {
+        type: "object",
+        properties: {
+          tabId: { type: "string" },
+          ref: { type: "string" },
+          label: { type: "string" },
+        },
+        required: ["tabId"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "external_type",
+      description:
+        "App desktop uniquement : saisie trusted dans un champ d'un onglet site externe.",
+      parameters: {
+        type: "object",
+        properties: {
+          tabId: { type: "string" },
+          ref: { type: "string" },
+          label: { type: "string" },
+          text: { type: "string" },
+          submit: { type: "boolean" },
+        },
+        required: ["tabId", "text"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "external_scroll",
+      description:
+        "App desktop uniquement : défile un onglet site externe (up/down).",
+      parameters: {
+        type: "object",
+        properties: {
+          tabId: { type: "string" },
+          direction: { type: "string", enum: ["up", "down"] },
+        },
+        required: ["tabId", "direction"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "external_read",
+      description:
+        "App desktop uniquement : lit le texte visible d'un onglet site externe.",
+      parameters: {
+        type: "object",
+        properties: {
+          tabId: { type: "string" },
+          q: { type: "string" },
+          maxChars: { type: "integer" },
+        },
+        required: ["tabId"],
+      },
+    },
+  },
+  /* ── Alias dépréciés TF (supplier_* → external_*) — ne pas utiliser pour nouveau code ── */
+  {
+    type: "function",
+    function: {
+      name: "supplier_list_tabs",
+      description:
+        "DÉPRÉCIÉ → external_list_tabs. Liste les onglets sites externes ouverts.",
+      parameters: { type: "object", properties: {}, required: [] },
     },
   },
   {
@@ -366,17 +476,18 @@ export const PLATFORM_TOOL_DEFINITIONS: AssistantToolDefinition[] = [
     function: {
       name: "supplier_open_tab",
       description:
-        "App desktop uniquement : ouvre (ou réutilise) un onglet fournisseur sur une URL et le met au premier plan. La session du portail est persistante (l'utilisateur s'est connecté manuellement). Retourne le tabId à utiliser pour les actions suivantes.",
+        "DÉPRÉCIÉ → external_open_tab. Ouvre un onglet site externe. Param fournisseur_id = site_id.",
       parameters: {
         type: "object",
         properties: {
           fournisseur_id: {
             type: "integer",
-            description: "id local du fournisseur (isole la session par fournisseur)",
+            description: "Alias déprécié de site_id",
           },
-          url: { type: "string", description: "URL à ouvrir (https://…)" },
+          site_id: { type: "integer", description: "Id de partition site" },
+          url: { type: "string" },
         },
-        required: ["fournisseur_id", "url"],
+        required: ["url"],
       },
     },
   },
@@ -384,16 +495,12 @@ export const PLATFORM_TOOL_DEFINITIONS: AssistantToolDefinition[] = [
     type: "function",
     function: {
       name: "supplier_list_targets",
-      description:
-        "App desktop uniquement : inventaire des éléments cliquables/saisissables VISIBLES dans un onglet fournisseur (liens, boutons, champs). Retourne aussi l'URL et le titre de la page. TOUJOURS appeler ceci avant supplier_click / supplier_type pour obtenir des refs valides.",
+      description: "DÉPRÉCIÉ → external_list_targets.",
       parameters: {
         type: "object",
         properties: {
-          tabId: { type: "string", description: "Onglet cible (supplier_list_tabs)" },
-          q: {
-            type: "string",
-            description: "Filtre optionnel sur le libellé des cibles (ex. 'recherche', 'panier')",
-          },
+          tabId: { type: "string" },
+          q: { type: "string" },
         },
         required: ["tabId"],
       },
@@ -403,20 +510,13 @@ export const PLATFORM_TOOL_DEFINITIONS: AssistantToolDefinition[] = [
     type: "function",
     function: {
       name: "supplier_click",
-      description:
-        "App desktop uniquement : clique un élément d'un onglet fournisseur via un vrai clic Chromium (trusted). Cible = ref retournée par supplier_list_targets (prioritaire) ou libellé exact. Retourne la page après le clic.",
+      description: "DÉPRÉCIÉ → external_click.",
       parameters: {
         type: "object",
         properties: {
-          tabId: { type: "string", description: "Onglet cible (supplier_list_tabs)" },
-          ref: {
-            type: "string",
-            description: "Ref de cible issue du dernier supplier_list_targets (ex. s3-12)",
-          },
-          label: {
-            type: "string",
-            description: "Libellé visible de l'élément si ref inconnue",
-          },
+          tabId: { type: "string" },
+          ref: { type: "string" },
+          label: { type: "string" },
         },
         required: ["tabId"],
       },
@@ -426,22 +526,15 @@ export const PLATFORM_TOOL_DEFINITIONS: AssistantToolDefinition[] = [
     type: "function",
     function: {
       name: "supplier_type",
-      description:
-        "App desktop uniquement : tape du texte dans un champ d'un onglet fournisseur (frappe clavier trusted, caractère par caractère). Utiliser après supplier_list_targets pour connaître la ref du champ.",
+      description: "DÉPRÉCIÉ → external_type.",
       parameters: {
         type: "object",
         properties: {
-          tabId: { type: "string", description: "Onglet cible (supplier_list_tabs)" },
-          ref: { type: "string", description: "Ref du champ (supplier_list_targets)" },
-          label: {
-            type: "string",
-            description: "Placeholder / libellé du champ si ref inconnue",
-          },
-          text: { type: "string", description: "Texte à saisir" },
-          submit: {
-            type: "boolean",
-            description: "Envoyer Entrée après la frappe (défaut false)",
-          },
+          tabId: { type: "string" },
+          ref: { type: "string" },
+          label: { type: "string" },
+          text: { type: "string" },
+          submit: { type: "boolean" },
         },
         required: ["tabId", "text"],
       },
@@ -451,12 +544,11 @@ export const PLATFORM_TOOL_DEFINITIONS: AssistantToolDefinition[] = [
     type: "function",
     function: {
       name: "supplier_scroll",
-      description:
-        "App desktop uniquement : fait défiler la page d'un onglet fournisseur vers le haut ou le bas (pour révéler des éléments avant supplier_list_targets).",
+      description: "DÉPRÉCIÉ → external_scroll.",
       parameters: {
         type: "object",
         properties: {
-          tabId: { type: "string", description: "Onglet cible (supplier_list_tabs)" },
+          tabId: { type: "string" },
           direction: { type: "string", enum: ["up", "down"] },
         },
         required: ["tabId", "direction"],
@@ -467,20 +559,13 @@ export const PLATFORM_TOOL_DEFINITIONS: AssistantToolDefinition[] = [
     type: "function",
     function: {
       name: "supplier_read",
-      description:
-        "App desktop uniquement : lit le contenu texte visible d'un onglet fournisseur (extraction du texte principal, prix, tableaux). Param q optionnel pour cibler une zone (ex. 'prix', 'résultat'). À utiliser pour remonter une information affichée (prix, dispo).",
+      description: "DÉPRÉCIÉ → external_read.",
       parameters: {
         type: "object",
         properties: {
-          tabId: { type: "string", description: "Onglet cible (supplier_list_tabs)" },
-          q: {
-            type: "string",
-            description: "Filtre optionnel : ne retourne que les blocs contenant ce texte",
-          },
-          maxChars: {
-            type: "integer",
-            description: "Taille max du texte retourné (défaut 6000)",
-          },
+          tabId: { type: "string" },
+          q: { type: "string" },
+          maxChars: { type: "integer" },
         },
         required: ["tabId"],
       },

@@ -17,20 +17,13 @@ import {
   ChevronRight,
   FileText,
   Globe,
-  Heart,
   LayoutDashboard,
-  Layers,
-  LineChart,
   Lock,
   LockOpen,
-  Package,
   Pin,
   Plus,
-  ShoppingCart,
-  Store,
-  Tags,
-  Workflow,
   X,
+  type LucideIcon,
 } from "lucide-react";
 import { cn } from "@creezio/shell-ui";
 import { PageChrome } from "../layout/page-chrome";
@@ -50,34 +43,27 @@ const DRAG_THRESHOLD = 5;
 /** Marge gauche du strip : laisse la place à la courbe inversée du 1er onglet. */
 const PAD_L = 8;
 
+/**
+ * Icônes onglets = plateforme neutre uniquement.
+ * Routes métier (panier, fournisseurs, relevés…) → injecter via
+ * `configureWorkspaceTabIcons` depuis la marque (pas dans le kit).
+ */
+let brandIconForSeg: ((seg: string) => LucideIcon | null | undefined) | null =
+  null;
+
+export function configureWorkspaceTabIcons(
+  fn: ((seg: string) => LucideIcon | null | undefined) | null,
+): void {
+  brandIconForSeg = fn;
+}
+
 function iconForHref(href: string) {
   const seg = (href.split("?")[0] || "/").split("/").filter(Boolean)[0] || "";
+  const fromBrand = brandIconForSeg?.(seg);
+  if (fromBrand) return fromBrand;
   switch (seg) {
     case "dashboard":
       return LayoutDashboard;
-    case "marketplaces":
-    case "fournisseurs":
-      return Store;
-    case "produits":
-      return Package;
-    case "skus":
-      return Tags;
-    case "stack":
-      return Layers;
-    case "releves":
-      return LineChart;
-    case "promotions":
-      return Tags;
-    case "secteurs":
-      return LayoutDashboard;
-    case "commandes":
-      return Package;
-    case "panier":
-      return ShoppingCart;
-    case "optimiser":
-      return Workflow;
-    case "likes":
-      return Heart;
     case "site":
       return Globe;
     default:

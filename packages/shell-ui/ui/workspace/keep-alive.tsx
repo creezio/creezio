@@ -112,7 +112,7 @@ export function KeepAliveOutlet({
       : routeKey;
 
   if (cacheRef.current.size > max) {
-    // Ne jamais évincer /site/* (Hermes, fournisseurs) ni optimiser fullscreen :
+    // Ne jamais évincer /site/* (Hermes, sites externes) ni optimiser fullscreen :
     // sinon au retour d'onglet displayKey retombe sur routeKey (CRM précédent).
     const lastActiveAt: Record<string, number> = {};
     Array.from(cacheRef.current.entries()).forEach(([key, entry]) => {
