@@ -73,7 +73,7 @@ export type AiWorkspacePresentationSetting = "window" | "embedded";
 
 /**
  * Version 1 du fichier — champs optionnels selon wizard / features.
- * Extensions métier (Paperclip Fidu…) hors kit ou injectées.
+ * Extensions métier hors kit ou injectées.
  * `fleetTelemetry` = plateforme (M4, extrait TF).
  */
 export type LocalConfigFileV1 = {

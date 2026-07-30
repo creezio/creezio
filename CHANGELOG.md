@@ -4,11 +4,13 @@
 ## [Unreleased]
 
 ### Added
-- **Phase M12p** — `main.ts` Certivan (puis Fidu) ≤ 800 LOC via
+- **Phase M12p** — `main.ts` Certivan + Fidu ≤ 800 LOC via
   `installBrandDesktopRuntime` ; deps marque (`pluginsDirEnvKey`,
   `supplierFidQueryParam`, `apiKeyEnvName`, `nodeRuntimeLabel`) ;
   `maybeRestartNextAfterHermesSpawn` + `getHeartbeatExtras` ;
-  `docs/PHASE-M12p.md` ; tests `test-phase-m12p` ; **pas** de republish exe.
+  fix TDZ `deps.supplierFidQueryParam` ; Paperclip **retiré**
+  (aucun hook kit) ; `docs/PHASE-M12p.md` ; tests `test-phase-m12p` ;
+  republish Fidu (packing : retrait Paperclip `extraResources`).
 - **Phase M12** — `electron/main.ts` TF ≤ 800 LOC via façade kit :
   `installBrandDesktopRuntime` dans `@creezio/electron-shell`
   (`desktop/brand-desktop-runtime.ts`) ; main = composition marque
@@ -41,7 +43,7 @@
   `@creezio/electron-shell` (n8n encryption/owner, Hermes API key / webui
   password, markers WebUI `.certivan-` / `.fidu-webui-*`) ; cutover
   Certivan puis Fidu (jumeaux absents ; `host-runtime-ctx` /
-  `local-config-store` ; Paperclip reste vertical Fidu) ;
+  `local-config-store` ; Paperclip retiré toutes marques en M12p) ;
   `docs/PHASE-M6p.md` ; tests `test-phase-m6p` ; **pas** de republish exe.
 - **Phase M5** — Delete jumeaux bootstraps hermes/n8n TF : deltas
   (`installHermesAgent`, webui deps marker/pip skip, scripts vendorisés,

@@ -62,7 +62,7 @@ Ces modules TF2 restent **dans l’app marque** (métier / ABI / product-hub) :
 | `fleet-*` | Télémétrie flotte (opt-in produit) |
 | `catalog-sync.ts` / `supplier-*` | Métier catalogue TempoFlow |
 | `main.ts` monolithe | Orchestration verticale (Phase G découpe progressive) |
-| Paperclip (Fidu) | Vertical Fidu |
+| Paperclip | Retiré (plus aucune marque) |
 
 Export kit : `PLUGIN_VERTICAL_REMAINING` liste les modules plugins non portés.
 

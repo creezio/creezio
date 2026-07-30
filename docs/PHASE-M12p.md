@@ -2,12 +2,12 @@
 
 | | |
 |--|--|
-| **Statut** | 🔄 **Certivan ✅ / Fidu en cours** |
+| **Statut** | ✅ **Certivan + Fidu** |
 | **Date** | 2026-07-30 |
 | **Repo** | `creezio/creezio` + `certivan-app` + `fidu` |
 | **Prérequis** | [PHASE-M12.md](PHASE-M12.md) |
 | **ARCHITECTURE_VERSION** | `"H6"` (inchangé) |
-| **Republish marques** | Non (pas de packing) |
+| **Republish marques** | Fidu oui (packing : retrait Paperclip `extraResources`) |
 
 ---
 
@@ -26,6 +26,7 @@ Même façade `installBrandDesktopRuntime` que M12 (TF) sur Certivan puis Fidu :
 | Strings produit | `manifest.client/server.productName` |
 | `maybeRestartNextAfterHermesSpawn` | Porté plateforme (delta Certivan) |
 | `getHeartbeatExtras` | Hook vertical (dossierStats Certivan) |
+| Fix `supplierFidQueryParam` | TDZ → `deps.supplierFidQueryParam` |
 
 ---
 
@@ -42,15 +43,13 @@ Gates : compile + main-graph + client-slim-boot + shell + first-run-auth ✅
 
 ## Travaux Fidu
 
-Même cutover après Certivan. Fidu n’a pas encore `host-stack` ni surface
-flotte/plugins complète (M7p N/A) ; Paperclip = vertical marque à brancher.
+| Fichier | Avant | Après |
+|---------|------:|------:|
+| `electron/main.ts` | **2371** LOC | **~319** LOC |
+| `host-stack.ts` | absent | lazy + stubs flotte/plugins (M7p N/A) |
+| Paperclip | câblé (electron/UI/vendor) | **supprimé** (pas de vertical kit) |
 
-| Critère | Note |
-|---------|------|
-| `main.ts` ≤ 800 LOC | ⏳ |
-| `host-stack` lazy | ⏳ requis pour la façade |
-| Paperclip | ⏳ hook vertical kit |
-| Gates | compile + shell (pas de main-graph aujourd’hui) |
+Gates : `electron:compile` + `test:shell` + `test:fidu` ✅
 
 ---
 
@@ -59,9 +58,10 @@ flotte/plugins complète (M7p N/A) ; Paperclip = vertical marque à brancher.
 | Critère | Preuve |
 |---------|--------|
 | Certivan `main.ts` ≤ 800 LOC | ✅ 320 |
-| Fidu `main.ts` ≤ 800 LOC | ⏳ |
-| Même façade kit | ✅ Certivan |
-| Vendor liste complète | ✅ Certivan |
+| Fidu `main.ts` ≤ 800 LOC | ✅ ~319 |
+| Même façade kit | ✅ Certivan + Fidu |
+| Vendor liste complète | ✅ |
+| Paperclip Fidu | ✅ retiré |
 | PHASE-M12p.md | ✅ |
 
 ---
@@ -78,7 +78,7 @@ npm run electron:compile \
   && npm run test:first-run-auth \
   && npm run electron:compile
 cd /opt/docker/fidu/crm && bash scripts/electron/sync-creezio-vendor.sh
-npm run electron:compile && npm run test:shell
+npm run electron:compile && npm run test:shell && npm run test:fidu
 ```
 
 ---
@@ -87,10 +87,10 @@ npm run electron:compile && npm run test:shell
 
 | Repo | SHA |
 |------|-----|
-| kit `creezio/creezio` | `685bd89` |
+| kit `creezio/creezio` | _(après push)_ |
 | Certivan `certivan-app` | `15ae995` |
 | TF (deps + vendor) | `3565524` |
-| Fidu `fidu` | _(après cutover)_ |
+| Fidu `fidu` | _(après push)_ |
 
 ---
 

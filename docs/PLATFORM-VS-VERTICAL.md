@@ -56,7 +56,7 @@ Légende :
 | Seeds / templates métier | **vertical** | — | Certivan VASP, Fidu seeds… |
 | Routes Next CRM / UI Admin Plugins | **vertical** | — | |
 | `vendor/hermes-skills` marque | **vertical** | — | |
-| Paperclip (Fidu) | **vertical** | — | Hors noyau kit |
+| Paperclip | **retiré** | — | Plus dans aucune marque (TF / Certivan / Fidu) |
 | Catalogue-sync / supplier-tabs | **vertical** | — | Métier TempoFlow |
 
 ## Identités (Phase A/B)

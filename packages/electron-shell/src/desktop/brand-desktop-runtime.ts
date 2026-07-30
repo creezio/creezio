@@ -135,7 +135,7 @@ export function installBrandDesktopRuntime(deps: BrandDesktopDeps): void {
     deps.pluginsDirEnvKey ||
     (deps.envPrefix === "TF2" ? "TEMPOFLOW_PLUGINS_DIR" : `${deps.envPrefix}_PLUGINS_DIR`);
   const supplierFidQueryParam =
-    supplierFidQueryParam ||
+    deps.supplierFidQueryParam ||
     (deps.envPrefix === "TF2"
       ? "tf2fid"
       : `${String(deps.manifest?.brandId || "app")}fid`);

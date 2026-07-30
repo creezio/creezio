@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 /**
- * Gate kit M12p — main.ts Certivan (puis Fidu) ≤ 800 LOC via
+ * Gate kit M12p — main.ts Certivan + Fidu ≤ 800 LOC via
  * installBrandDesktopRuntime façade kit + deps marque.
+ * Paperclip : retiré du produit Fidu — aucun hook kit.
  */
 import assert from "node:assert/strict";
 import fs from "node:fs";
@@ -34,10 +35,13 @@ test("M12p.2 kit deps marque (pluginsDir / fid / apiKey / nodeLabel)", () => {
   const src = fs.readFileSync(runtimePath, "utf8");
   assert.match(src, /pluginsDirEnvKey/);
   assert.match(src, /supplierFidQueryParam/);
+  assert.match(src, /deps\.supplierFidQueryParam/);
   assert.match(src, /apiKeyEnvName/);
   assert.match(src, /nodeRuntimeLabel/);
   assert.match(src, /maybeRestartNextAfterHermesSpawn/);
   assert.match(src, /getHeartbeatExtras/);
+  assert.doesNotMatch(src, /paperclipApi/);
+  assert.doesNotMatch(src, /paperclip:status/);
   assert.doesNotMatch(src, /TEMPOFLOW_PLUGINS_DIR:/);
   assert.doesNotMatch(src, /title: deps\.appKind === "server" \? "TempoFlow Server"/);
 });
@@ -64,17 +68,36 @@ test("M12p.4 Certivan main.ts ≤ 800 LOC + façade kit", () => {
   assert.doesNotMatch(src, /async function bootWithRetry\b/);
 });
 
-test("M12p.5 Fidu main.ts ≤ 800 LOC + façade kit (si cutover fait)", () => {
+test("M12p.5 Fidu main.ts ≤ 800 LOC + façade kit", () => {
   const mainPath = path.join(fiduRoot, "electron/main.ts");
   assert.ok(fs.existsSync(mainPath));
   const src = fs.readFileSync(mainPath, "utf8");
-  if (!src.includes("installBrandDesktopRuntime")) {
-    // Cutover Fidu pas encore poussé dans cette étape — skip soft documenté.
-    return;
-  }
   const loc = src.split("\n").length;
   assert.ok(loc <= MAX_MAIN_LOC, `Fidu main.ts = ${loc} LOC > ${MAX_MAIN_LOC}`);
+  assert.match(src, /installBrandDesktopRuntime/);
   assert.match(src, /from ["']@creezio\/electron-shell["']/);
+  assert.match(src, /pluginsDirEnvKey:\s*["']FIDU_PLUGINS_DIR["']/);
+  assert.match(src, /supplierFidQueryParam:\s*["']fidufid["']/);
+  assert.match(src, /sessionCookieName:\s*["']fidu_session["']/);
+  assert.doesNotMatch(src, /startPaperclip/);
+  assert.doesNotMatch(src, /paperclip:\s*\{/);
   assert.doesNotMatch(src, /function registerIpc\b/);
   assert.doesNotMatch(src, /async function setupAndStart\b/);
+  assert.doesNotMatch(src, /async function bootWithRetry\b/);
+});
+
+test("M12p.6 Fidu Paperclip retiré (pas de vertical morte)", () => {
+  assert.equal(
+    fs.existsSync(path.join(fiduRoot, "electron/paperclip-launcher.ts")),
+    false,
+  );
+  assert.equal(
+    fs.existsSync(path.join(fiduRoot, "electron/paperclip-embed.ts")),
+    false,
+  );
+  assert.equal(
+    fs.existsSync(path.join(fiduRoot, "src/lib/paperclip-ui.ts")),
+    false,
+  );
+  assert.ok(fs.existsSync(path.join(fiduRoot, "electron/host-stack.ts")));
 });

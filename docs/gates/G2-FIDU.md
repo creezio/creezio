@@ -39,7 +39,7 @@
 - [x] Boot → `applyFiduDesktopBoot` (avant `requestSingleInstanceLock`)
 - [x] app-kind / profile façades kit
 - [x] Dual `electron:build:win` + `electron:build:win:server`
-- [x] **Vertical conservé** : Paperclip, GED, seeds cabinet, Pennylane, UI CRM
+- [x] **Vertical conservé** : GED, seeds cabinet, Pennylane, UI CRM (Paperclip **retiré** — M12p)
 - [x] **Pas de purge** catalogue TF orphelin
 - [x] Product Hub store + ACL L3 (I18) — HTTP control-plane **N/A** GED ; tokens `fiduProductHubTokens`
 

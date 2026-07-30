@@ -49,11 +49,11 @@ Fichiers listés **absents** ; `rg "stub R3|stub R3.3" electron/` → **0**.
 | Fichier | Après |
 |---------|-------|
 | 10 jumeaux (local-config, bootstraps hermes/n8n, launchers hermes/n8n/meili, logger, updater, npm-cli, tunnel) | **absents** |
-| `paperclip-*` | **conservés** (vertical Fidu) |
-| `paperclip-config.ts` | extension métier via `readRaw`/`writeRaw` |
+| `paperclip-*` | **retirés** (plus dans aucune marque) |
+| `paperclip-config.ts` | **supprimé** |
 | `local-config-store.ts` / `host-runtime-ctx.ts` | `fidu*` |
 | Pas de `host-stack` (clientSlim false) — imports directs factories | ✅ |
-| Gates compile + hermes/n8n/paperclip + first-run/recovery/updater/byok/app-kind | ✅ |
+| Gates compile + hermes/n8n + first-run/recovery/updater/byok/app-kind | ✅ |
 | Republish | Non (packing inchangé) |
 
 ---
@@ -66,7 +66,7 @@ Fichiers listés **absents** ; `rg "stub R3|stub R3.3" electron/` → **0**.
 | `rg "stub R3\|stub R3.3" electron/` → 0 | ✅ | ✅ |
 | host-runtime-ctx + local-config-store | ✅ | ✅ |
 | Vendor liste complète | ✅ | ✅ |
-| Paperclip hors kit (vertical) | n/a | ✅ |
+| Paperclip hors produit (retiré) | n/a | ✅ |
 
 ---
 
