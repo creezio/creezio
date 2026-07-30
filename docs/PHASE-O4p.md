@@ -7,7 +7,7 @@
 | **Repo** | `creezio/creezio` (+ marques) |
 | **Prérequis** | [PHASE-O4.md](PHASE-O4.md) · plan [PLAN-O.md](PLAN-O.md) |
 | **Baseline O4 kit tip** | `f06577b` / pin `dc6e0b1` · fix supplier `8b3ffb0` |
-| **Kit tip O4p** |  |
+| **Kit tip O4p** | `dfc8619` |
 | **ARCHITECTURE_VERSION** | `"H6"` (inchangé) |
 | **Republish** | Non |
 
