@@ -58,5 +58,9 @@ export type OnboardingWizardProps = {
 
 export type CompanionPose = "pointing" | "thumbs" | "waving" | "presenting";
 
-/** @deprecated alias — préférer CompanionPose */
+/**
+ * @deprecated Alias historique TF — utiliser `CompanionPose`.
+ * Conservé pour compat types uniquement ; sera retiré dans une major.
+ * Ne pas utiliser dans le code marque ni dans de nouveaux exports internes.
+ */
 export type TempoPose = CompanionPose;

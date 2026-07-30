@@ -33,6 +33,11 @@ export {
 } from "./onboarding/configure";
 export type { OnboardingUiConfig } from "./onboarding/configure";
 
+export {
+  defineOnboardingSteps,
+  createOnboardingHostProps,
+} from "./onboarding/define";
+
 export type {
   OnboardingStepId,
   OnboardingStepDef,
@@ -42,5 +47,6 @@ export type {
   OnboardingTheme,
   OnboardingWizardProps,
   CompanionPose,
+  /** @deprecated — préférer CompanionPose */
   TempoPose,
 } from "./onboarding/types";

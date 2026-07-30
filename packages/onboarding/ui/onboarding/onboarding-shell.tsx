@@ -6,7 +6,9 @@
 import { Check } from "lucide-react";
 import { cn } from "@creezio/shell-ui";
 
-export type { CompanionPose, TempoPose } from "./types";
+export type { CompanionPose } from "./types";
+/** @deprecated — préférer CompanionPose (réexport compat) */
+export type { TempoPose } from "./types";
 
 export function Stepper({
   steps,
