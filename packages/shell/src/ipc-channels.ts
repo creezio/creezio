@@ -85,6 +85,15 @@ export const IpcChannels = {
     get: "background:get",
     set: "background:set",
   },
+  /** N2 — espaces collaborateurs IA (handlers dans brand-desktop-runtime). */
+  aiWorkspace: {
+    identity: "ai-workspace:identity",
+    list: "ai-workspace:list",
+    ensure: "ai-workspace:ensure",
+    show: "ai-workspace:show",
+    showOwner: "ai-workspace:show-owner",
+    actionResult: "ai-workspace:action-result",
+  },
   renderer: {
     error: "renderer-error",
   },

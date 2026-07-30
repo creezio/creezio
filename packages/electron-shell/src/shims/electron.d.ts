@@ -8,6 +8,11 @@ declare module "electron" {
     isDestroyed(): boolean;
     send(channel: string, ...args: unknown[]): void;
     loadURL(url: string): Promise<void>;
+    getURL(): string;
+    executeJavaScript(code: string, userGesture?: boolean): Promise<unknown>;
+    once(event: string, listener: (...args: unknown[]) => void): void;
+    on(event: string, listener: (...args: unknown[]) => void): void;
+    removeListener(event: string, listener: (...args: unknown[]) => void): void;
   }
 
   export interface NativeImage {
@@ -48,6 +53,10 @@ declare module "electron" {
     fromPartition: (partition: string) => {
       clearStorageData: () => Promise<void>;
       clearCache: () => Promise<void>;
+      cookies: {
+        remove: (url: string, name: string) => Promise<void>;
+        set: (details: Record<string, unknown>) => Promise<void>;
+      };
     };
   };
 
@@ -77,9 +86,15 @@ declare module "electron" {
   export class BaseWindow {
     constructor(opts: Record<string, unknown>);
     show(): void;
+    showInactive(): void;
     hide(): void;
     focus(): void;
+    restore(): void;
+    destroy(): void;
     isDestroyed(): boolean;
+    isVisible(): boolean;
+    isMinimized(): boolean;
+    setTitle(title: string): void;
     getContentBounds(): {
       x: number;
       y: number;
@@ -98,6 +113,7 @@ declare module "electron" {
       width: number;
       height: number;
     }): void;
+    setVisible(visible: boolean): void;
     webContents: WebContents;
   }
 }

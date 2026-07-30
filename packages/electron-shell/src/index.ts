@@ -452,3 +452,96 @@ export type {
   BrandDesktopPaths,
   BrandDesktopVertical,
 } from "./desktop/brand-desktop-runtime.js";
+
+/* ── Phase N2 : jumeaux hosts → kit ── */
+export type { CrashKind, CrashReporterConfig } from "./host/crash-reporter.js";
+export {
+  configureCrashReporter,
+  crashEndpoint,
+  getBootStage,
+  getBootTimeline,
+  getInstallId,
+  initCrashReporter,
+  installGlobalHandlers,
+  reportCrash,
+  reportCrashDebounced,
+  setBootStage,
+} from "./host/crash-reporter.js";
+
+export { instrumentWebContents } from "./host/web-telemetry.js";
+
+export type { BridgeOptions } from "./host/bridge-client.js";
+export { BridgeClient } from "./host/bridge-client.js";
+
+export type {
+  BrandServerLauncherDeps,
+  ServerSpawnFn,
+  StartBrandServerOptions,
+} from "./host/server-launcher.js";
+export {
+  startBrandNextServer,
+  findFreePort as findServerFreePort,
+  waitForHealth as waitForServerHealth,
+} from "./host/server-launcher.js";
+
+export type {
+  AiWorkspaceHostBindings,
+  AiWorkspaceInfo,
+  AiWorkspaceManagerOptions,
+  AiWorkspacePresentation,
+  AiWorkspaceUiActionRequest,
+  AiProfileWindowOptions,
+  AiScreencasterOptions,
+  AiSupplierTabsFactory,
+  AiSupplierTabsLike,
+  AiTabInfo,
+  PostFrameResult,
+  SupplierActionRequest,
+} from "./host/ai-workspace/index.js";
+export {
+  AiProfileWindow,
+  AiScreencaster,
+  AiWorkspaceManager,
+  __resetAiWorkspaceHostBindingsForTests,
+  aiPartitionName,
+  aiShareWebSessions,
+  aiSupplierPartitionPrefix,
+  configureAiWorkspaceHost,
+  executeAiWorkspaceAction,
+  getAiWorkspaceHostBindings,
+  isAiWorkspaceActionType,
+  tryGetAiWorkspaceHostBindings,
+} from "./host/ai-workspace/index.js";
+
+export type {
+  CatalogIndexUid,
+  CatalogSqlCounts,
+  CoherenceDbSnapshot,
+  GedIndexUid,
+  GedSqlCounts,
+  MeiliCoherencePaths,
+  MeiliFingerprint,
+  MeiliIndexInProgress,
+  MeiliReadyDecision,
+} from "./host/meili/index.js";
+export {
+  CATALOG_INDEXES,
+  GED_INDEXES,
+  INDEX_SCHEMA_VERSION,
+  MEILI_FINGERPRINT_META_KEY,
+  MEILI_INDEX_IN_PROGRESS_KEY,
+  buildFingerprint,
+  configureMeiliCoherencePaths,
+  countCatalogSql,
+  countGedSql,
+  decideMeiliReady,
+  expectedMeiliCounts,
+  parseFingerprint,
+  readCoherenceDbSnapshot,
+  readFingerprintFromDb,
+  readIndexInProgress,
+  readSqliteSchemaVersion,
+  runIndexation,
+  serializeFingerprint,
+  writeFingerprintToDb,
+} from "./host/meili/index.js";

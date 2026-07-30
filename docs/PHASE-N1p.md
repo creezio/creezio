@@ -81,4 +81,4 @@ npm test   # incl. test-phase-n1p
 
 ## Suite
 
-**N2** — Jumeaux hosts → kit (preload / embeds / meili-indexer / hermes·n8n…).
+**N2** — Jumeaux hosts → kit — ✅ [PHASE-N2.md](PHASE-N2.md).

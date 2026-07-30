@@ -11,7 +11,7 @@ rouge** · Sync vendor = **liste complète** · Cutover marques séquentiel `*p`
 TF → Certivan → Fidu (sauf N5 Fidu-only et N0 artefacts) · **Paperclip = mort**.
 
 Phases livrées : [PHASE-N0.md](PHASE-N0.md) · [PHASE-N1.md](PHASE-N1.md) ·
-[PHASE-N1p.md](PHASE-N1p.md) · suite N2→N9 ci-dessous.
+[PHASE-N1p.md](PHASE-N1p.md) · [PHASE-N2.md](PHASE-N2.md) · suite N2p→N9 ci-dessous.
 
 ---
 
@@ -56,12 +56,17 @@ Phases livrées : [PHASE-N0.md](PHASE-N0.md) · [PHASE-N1.md](PHASE-N1.md) ·
 
 ---
 
-## N2 — Jumeaux hosts → kit
+## N2 — Jumeaux hosts → kit ✅
 
-Preload / embeds / meili-indexer / hermes·n8n stack / ai-workspace / utilitaires
-plateforme → `@creezio/electron-shell` (+ `@creezio/shell` preload).  
-**Exclu** : seeds métier ; supplier-tabs ; assistant ; migrations.  
-**Effort L · Republish non**
+1. **Objectif** : SoT utilitaires host / ai-workspace / meili (+ embeds déjà B2)
+   dans `@creezio/electron-shell` (+ canaux preload `@creezio/shell`).
+2. **Inclus** : crash-reporter, web-telemetry, bridge-client, server-launcher ;
+   ai-workspace (manager/actions/screencast/profile) ; meili (schema/coherence/indexer TF gold) ;
+   embeds/sandbox déjà SoT platform-core / electron-shell (B2) documentés.
+3. **Exclu** : cutover marques (N2p) ; seeds métier ; supplier-tabs ; assistant ; migrations.
+4. **Tests gate** : `npm run build:packages && npm test` (+ `test-phase-n2`).
+5. **Done** : [PHASE-N2.md](PHASE-N2.md) · baseline N1p `16b61f7`.
+6. **Effort L · Republish non**
 
 ---
 
