@@ -7,17 +7,18 @@
 | **Repo** | Kit + TempoFlow + Certivan + Fidu |
 | **Prérequis** | [PHASE-O6.md](PHASE-O6.md) · plan [PLAN-O.md](PLAN-O.md) |
 | **Baseline O4r4 tip** | kit `6c5391a` · TF `1c98930` · CV `51e9ce5` · Fidu `786dc41` |
+| **Kit tip O7** | `a964f17` |
 | **ARCHITECTURE_VERSION** | `"H6"` (inchangé) |
-| **Republish** | Oui (marques packing — host/preload) — après gates |
+| **Republish** | Différé feeds (runtime host/preload touché — republish O11 ou à la demande) |
 
 ### SHAs
 
 | Repo | SHA |
 |------|-----|
-| Kit tip | _(pin post-push)_ |
-| TempoFlow | _(pin post-push)_ |
-| Certivan | _(pin post-push)_ |
-| Fidu | _(pin post-push)_ |
+| Kit tip | `a964f17` |
+| TempoFlow | `9934848` |
+| Certivan | `54bb924` |
+| Fidu | `c3ccbdd` |
 
 ---
 
