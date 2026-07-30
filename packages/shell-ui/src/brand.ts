@@ -3,14 +3,14 @@
  */
 
 export type ShellUiBrand = {
-  /** Ex. tempoflowDesktop / certivanDesktop / fiduDesktop */
+  /** Ex. creezioDesktop / certivanDesktop / fiduDesktop */
   desktopApiGlobal: string;
-  /** Suffixe hôte public (tempoflow.fr / certivan.creez.io / fidu.creez.io) */
+  /** Suffixe hôte public (ex. app.example.com / tenant.creez.io) */
   publicHostSuffix: string;
   /** Classe CSS titlebar no-drag */
   titlebarDragClass: string;
   titlebarNoDragClass: string;
-  /** Préfixe clés API live (tf2_live_ / certivan_live_ / fidu_live_) */
+  /** Préfixe clés API live (ex. product_live_) */
   apiKeyPrefix: string;
   /** Nom produit UI — injecté par la marque */
   productName: string;

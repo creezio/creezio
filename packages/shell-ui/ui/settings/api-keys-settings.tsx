@@ -2,7 +2,7 @@
 
 /**
  * Section « Clés API » des Paramètres — création / révocation des clés
- * publiques tf2_live_... (Zapier / Make / n8n). La clé complète n'est
+ * publiques product_live_... (Zapier / Make / n8n). La clé complète n'est
  * montrée qu'une fois à la création ; ensuite seul le prefix est visible.
  */
 import { useState } from "react";
