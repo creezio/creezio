@@ -18,7 +18,7 @@ type Props = {
 /** Lien CRM relatif uniquement (anti-XSS / pas d'URL externes). */
 function safeCrmHref(href: string): string | null {
   let h = href.trim();
-  // Réécrit les URLs absolues vers le CRM TempoFlow2 en chemins relatifs
+  // Réécrit les URLs absolues *.creez.io en chemins relatifs CRM
   const abs = /^https?:\/\/(?:[\\w.-]+\\.creez\\.io)(\/[^?\s#]*)/i.exec(h);
   if (abs) h = abs[1] + (h.includes("?") ? h.slice(h.indexOf("?")) : "");
   if (!h.startsWith("/")) return null;

@@ -175,6 +175,15 @@ export {
   maxDuration,
 } from "./runtime/assistant-chat.js";
 export {
+  createAssistantRoutes,
+  type AssistantDesktopPresence,
+  type AssistantPluginProduct,
+  type AssistantPluginProductHub,
+  type AssistantRoutesDeps,
+  type AssistantRoutesFeatures,
+  type AssistantSession,
+} from "./http/assistant-routes.js";
+export {
   PLATFORM_TASK_TOOL_ALIASES,
   PLATFORM_TASK_TOOL_DEFINITIONS,
   PLATFORM_TOOL_DEFINITIONS,

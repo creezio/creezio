@@ -238,7 +238,7 @@ export type AssistantBrandIdentity = {
   uiStorageKey: string;
   /** Pref key mode Chat/Work. */
   modeStorageKey: string;
-  /** window.*Desktop API name (ex. tempoflowDesktop). */
+  /** window.*Desktop API name (ex. creezioDesktop / marqueDesktop). */
   desktopApiGlobal: string;
   /** Prefixe globalThis pour registres ui-actions. */
   globalStorePrefix: string;

@@ -42,11 +42,11 @@ Persistance cible : SQLite **core** (`creezio_obs_events`).
 
 | Méthode | Path | Rôle |
 |---------|------|------|
-| GET | `/api/v1/modules/observability/summary` | Totaux + top usage/orgs + récents |
-| GET | `/api/v1/modules/observability/events` | Liste filtrable |
-| POST | `/api/v1/modules/observability/events` | Enregistrer un événement |
-| GET | `/api/v1/modules/observability/usage` | Agrégat usages plugins |
-| GET | `/api/v1/modules/observability/orgs` | Agrégat activité multi-org |
+| GET | `/api/v1/platform/observability/summary` | Totaux + top usage/orgs + récents |
+| GET | `/api/v1/platform/observability/events` | Liste filtrable |
+| POST | `/api/v1/platform/observability/events` | Enregistrer un événement |
+| GET | `/api/v1/platform/observability/usage` | Agrégat usages plugins |
+| GET | `/api/v1/platform/observability/orgs` | Agrégat activité multi-org |
 
 ## Preuves
 

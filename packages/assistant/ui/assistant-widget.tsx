@@ -107,15 +107,19 @@ const SUGGESTIONS_WORK = [
 function modeStorageKey(): string {
   try { return assistantIdentity().modeStorageKey; } catch { return "creezio-assistant-preferred-mode"; }
 }
+function productNameLabel(): string {
+  try { return assistantIdentity().productName; } catch { return "Creezio"; }
+}
 function getDesktopApi(): any {
   if (typeof window === "undefined") return undefined;
   try {
     const name = assistantIdentity().desktopApiGlobal;
     const w = window as any;
-    return w[name] ?? w.tempoflowDesktop ?? w.creezioDesktop;
+    // Identity marque d'abord ; fallback plateforme générique uniquement.
+    return w[name] ?? w.creezioDesktop;
   } catch {
     const w = window as any;
-    return w.tempoflowDesktop ?? w.creezioDesktop;
+    return w.creezioDesktop;
   }
 }
 
@@ -1415,7 +1419,7 @@ export function AssistantWidget() {
           } as React.CSSProperties
         }
         role="complementary"
-        aria-label="Assistant TempoFlow2"
+        aria-label={`Assistant ${productNameLabel()}`}
       >
         <div className="flex shrink-0 items-center gap-1 border-b border-slate-100 px-2 py-2">
           <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>

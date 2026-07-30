@@ -1,6 +1,7 @@
 /**
  * Façade API Creezio — registre + routes cœur + deny-by-default cross-write.
  * H2 : ScopedDbAccess injecté quand `sqliteRuntime` est fourni.
+ * P17 : espaces core / platform / modules / plugins.
  */
 
 import { ARCHITECTURE_VERSION } from "@creezio/platform-core";
@@ -20,10 +21,12 @@ import type {
 
 export const API_V1_PREFIX = "/api/v1" as const;
 export const API_CORE_PREFIX = `${API_V1_PREFIX}/core` as const;
+export const API_PLATFORM_PREFIX = `${API_V1_PREFIX}/platform` as const;
 export const API_MODULES_PREFIX = `${API_V1_PREFIX}/modules` as const;
 export const API_PLUGINS_PREFIX = `${API_V1_PREFIX}/plugins` as const;
 
 const WRITE_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
+const MOUNT_ID_RE = /^[a-z][a-z0-9_-]{0,62}$/;
 
 function normalizePath(raw: string): string {
   const noQuery = raw.split("?")[0] || "/";
@@ -44,8 +47,21 @@ function json(
 }
 
 function assertMountId(id: string, kind: string): void {
-  if (!/^[a-z][a-z0-9_-]{0,62}$/.test(id)) {
+  if (!MOUNT_ID_RE.test(id)) {
     throw new Error(`${kind} id invalide: ${id}`);
+  }
+}
+
+/**
+ * Interdit d'abuser `registerModuleApi("platform-*")` — utiliser
+ * `registerPlatformApi` (espace `/api/v1/platform/<id>`, DB core).
+ */
+function assertNotPlatformModuleAbuse(id: string): void {
+  if (id.startsWith("platform-")) {
+    throw new Error(
+      `registerModuleApi("${id}") interdit — utiliser registerPlatformApi("${id}", mount) ` +
+        `(espace /api/v1/platform/${id}, couche DB core)`,
+    );
   }
 }
 
@@ -60,8 +76,10 @@ function isCrossWriteAttempt(subPath: string): boolean {
 }
 
 export type ApiKernel = {
+  registerPlatformApi(id: string, mount: ApiMount): void;
   registerModuleApi(id: string, mount: ApiMount): void;
   registerPluginApi(id: string, mount: ApiMount): void;
+  unregisterPlatformApi(id: string): boolean;
   unregisterModuleApi(id: string): boolean;
   unregisterPluginApi(id: string): boolean;
   listMounts(): MountedApiInfo[];
@@ -73,6 +91,7 @@ export type ApiKernel = {
 };
 
 export function createApiKernel(opts: ApiKernelOptions = {}): ApiKernel {
+  const platform = new Map<string, ApiMount>();
   const modules = new Map<string, ApiMount>();
   const plugins = new Map<string, ApiMount>();
   const architectureVersion = opts.architectureVersion ?? ARCHITECTURE_VERSION;
@@ -114,11 +133,14 @@ export function createApiKernel(opts: ApiKernelOptions = {}): ApiKernel {
         architectureVersion,
         sqliteLayout: ["core", "brand", "plugin/<id>"],
         apiPrefix: API_V1_PREFIX,
+        spaces: ["core", "platform", "modules", "plugins"],
         isolation: {
           crossWriteDefault: "deny",
           scopedDb: Boolean(runtime),
+          platformDbLayer: "core",
         },
         mounts: {
+          platform: [...platform.keys()],
           modules: [...modules.keys()],
           plugins: [...plugins.keys()],
         },
@@ -197,14 +219,24 @@ export function createApiKernel(opts: ApiKernelOptions = {}): ApiKernel {
     prefix: API_V1_PREFIX,
     sqliteRuntime: runtime,
 
+    registerPlatformApi(id, mount) {
+      assertMountId(id, "platform");
+      platform.set(id, mount);
+    },
+
     registerModuleApi(id, mount) {
       assertMountId(id, "module");
+      assertNotPlatformModuleAbuse(id);
       modules.set(id, mount);
     },
 
     registerPluginApi(id, mount) {
       assertMountId(id, "plugin");
       plugins.set(id, mount);
+    },
+
+    unregisterPlatformApi(id) {
+      return platform.delete(id);
     },
 
     unregisterModuleApi(id) {
@@ -217,6 +249,14 @@ export function createApiKernel(opts: ApiKernelOptions = {}): ApiKernel {
 
     listMounts() {
       const out: MountedApiInfo[] = [];
+      for (const [id, m] of platform) {
+        out.push({
+          space: "platform",
+          id,
+          allowCrossWrite: Boolean(m.allowCrossWrite),
+          dbLayer: m.dbLayer ?? "core",
+        });
+      }
       for (const [id, m] of modules) {
         out.push({
           space: "module",
@@ -252,7 +292,7 @@ export function createApiKernel(opts: ApiKernelOptions = {}): ApiKernel {
         return json(200, {
           ok: true,
           prefix: API_V1_PREFIX,
-          spaces: ["core", "modules", "plugins"],
+          spaces: ["core", "platform", "modules", "plugins"],
         });
       }
 
@@ -275,6 +315,25 @@ export function createApiKernel(opts: ApiKernelOptions = {}): ApiKernel {
         }
 
         return handleCore(method, sub);
+      }
+
+      const platMatch = path.match(
+        /^\/api\/v1\/platform\/([a-z][a-z0-9_-]{0,62})(?:\/(.*))?$/,
+      );
+      if (platMatch) {
+        const id = platMatch[1]!;
+        const subPath = platMatch[2] || "";
+        const mount = platform.get(id);
+        if (!mount) {
+          return json(404, { ok: false, error: "platform_not_mounted", id });
+        }
+        return dispatchMount(
+          "platform",
+          id,
+          mount,
+          { ...req, method, path },
+          subPath,
+        );
       }
 
       const modMatch = path.match(

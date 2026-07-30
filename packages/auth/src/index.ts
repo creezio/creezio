@@ -1,6 +1,7 @@
 /**
- * @creezio/auth — session native Creezio (Phase H1.3 / I1 sqlite).
- * Backlog note : package nommé `@creezio/auth` (pas auth-session).
+ * @creezio/auth — session native Creezio (store + JWT + Hono + UI).
+ * UI React : `@creezio/auth/ui`.
+ * Recovery crypto : `@creezio/platform-core` (réexporté ci-dessous).
  */
 
 export { AUTH_CORE_SQL } from "./schema.js";
@@ -35,3 +36,68 @@ export {
   getKitAuthStore,
   migrateBrandCredentialsToKit,
 } from "./env-store.js";
+
+/* ── Config marque ── */
+export type { AuthConfig } from "./config.js";
+export {
+  configureAuth,
+  getAuthConfig,
+  getAuthCookieName,
+  resetAuthConfigForTests,
+} from "./config.js";
+
+/* ── Session JWT / cookies ── */
+export type {
+  AuthSessionUser,
+  NavAccessAdapters,
+  SessionCookieOptions,
+  SessionCookieSecureOpts,
+  SessionPayload,
+  SessionRole,
+  SessionUserLookup,
+} from "./session.js";
+export {
+  clearSessionCookieOptions,
+  createSessionToken,
+  createSessionTokenForUsername,
+  getAuthCredentials,
+  getSession,
+  isAuthDisabled,
+  sessionActorIsOwner,
+  sessionCanAccessPath,
+  sessionCookieOptions,
+  sessionIsImpersonating,
+  toHonoCookie,
+  validateEnvCredentials,
+  verifySessionToken,
+} from "./session.js";
+
+/* ── Hono middlewares ── */
+export type {
+  HonoAuthAdapters,
+  HonoAuthMiddleware,
+  PublicApiKeyRecord,
+} from "./hono-middleware.js";
+export { createHonoAuth } from "./hono-middleware.js";
+
+/* ── Hono routes ── */
+export type {
+  AuthRouteAdapters,
+  AuthRouteUser,
+} from "./hono-routes.js";
+export { createAuthRoutes } from "./hono-routes.js";
+
+/* ── Recovery (SoT platform-core) ── */
+export type {
+  RecoveryEnvelope,
+  RecoveryVerifier,
+  RecoveryWrappedSecrets,
+} from "@creezio/platform-core";
+export {
+  createRecoveryVerifier,
+  generateRecoveryKey,
+  normalizeRecoveryKey,
+  unwrapSecretsWithRecoveryKey,
+  verifyRecoveryKey,
+  wrapSecretsWithRecoveryKey,
+} from "@creezio/platform-core";

@@ -466,8 +466,8 @@ export function createDemobrandSandbox(opts?: {
     authorizePluginAccess,
   });
   api.registerModuleApi("demo-notes", createDemoNotesMount());
-  api.registerModuleApi("platform-tasks", createTasksApiMount(tasks));
-  api.registerModuleApi("platform-mails", createMailsApiMount(mails));
+  api.registerPlatformApi("platform-tasks", createTasksApiMount(tasks));
+  api.registerPlatformApi("platform-mails", createMailsApiMount(mails));
   api.registerModuleApi("admin-plugins", createAdminPluginsApiMount(productHub));
 
   const pluginsDir = pluginsRootDir(userDataRoot);
@@ -532,11 +532,11 @@ export function createDemobrandSandbox(opts?: {
     "plugin-factory",
     createPluginFactoryApiMount(pluginFactory),
   );
-  api.registerModuleApi(
+  api.registerPlatformApi(
     "observability",
     createObservabilityApiMount(observability),
   );
-  api.registerModuleApi("automations", createAutomationsApiMount(automations));
+  api.registerPlatformApi("automations", createAutomationsApiMount(automations));
 
   // Wrap factory surface pour émettre activité V2 + triggers V3
   const rawSubmit = pluginFactory.submitIntention.bind(pluginFactory);
