@@ -7,7 +7,7 @@
  * seulement des signaux d'activité agrégés (heartbeat / idle).
  */
 
-import { getUsageAnalyticsUiBrand, type FleetActionPayload } from "../src/usage/ui-brand";
+import { getUsageAnalyticsUiBrand, type FleetActionPayload } from "../dist/usage/ui-brand.js";
 
 function mirrorFleetAction(payload: FleetActionPayload): void {
   getUsageAnalyticsUiBrand().mirrorFleetAction?.(payload);

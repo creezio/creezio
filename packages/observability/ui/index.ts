@@ -19,3 +19,11 @@ export {
   trackUsageEvent,
   ensureUsageAnalyticsDom,
 } from "./usage-analytics-client";
+
+/** Tokens UI marque (aidAttr / fleet) — safe client via dist. */
+export {
+  configureUsageAnalyticsUiBrand,
+  getUsageAnalyticsUiBrand,
+  type UsageAnalyticsUiBrand,
+  type FleetActionPayload,
+} from "../dist/usage/ui-brand.js";

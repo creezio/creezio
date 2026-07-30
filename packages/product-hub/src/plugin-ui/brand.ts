@@ -36,29 +36,12 @@ export function resetProductHubUiBrandForTests(): void {
   brand = { ...DEFAULT };
 }
 
-/** Accès typé minimal au bridge desktop. */
-export type DesktopApiBridge = {
-  getConnectionProfile?: () => Promise<unknown>;
-  getAppInfo?: () => Promise<{ kind?: string } | null>;
-  getPluginsStatus?: (...args: unknown[]) => Promise<unknown>;
-  resolvePluginPanel?: (
-    pluginId: string,
-  ) => Promise<
-    | { ok: true; url: string; siteId: number; title: string }
-    | { ok: false; error: string }
-  >;
-  setPluginEnabled?: (...args: unknown[]) => Promise<unknown>;
-  removePlugin?: (...args: unknown[]) => Promise<unknown>;
-  listPluginVersions?: (...args: unknown[]) => Promise<unknown>;
-  restorePluginVersion?: (...args: unknown[]) => Promise<unknown>;
-  runPluginAcceptCheck?: (...args: unknown[]) => Promise<unknown>;
-  createPluginFromPrd?: (...args: unknown[]) => Promise<unknown>;
-  runPluginTests?: (...args: unknown[]) => Promise<unknown>;
-  updatePlugin?: (...args: unknown[]) => Promise<unknown>;
-  archivePluginRuntime?: (...args: unknown[]) => Promise<unknown>;
-  migratePluginData?: (...args: unknown[]) => Promise<unknown>;
-  [key: string]: unknown;
-};
+/**
+ * Accès typé minimal au bridge desktop (IPC marque — shapes souples).
+ * Index signature `any` : les marques exposent des méthodes hétérogènes.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export type DesktopApiBridge = Record<string, any>;
 
 type BrowserWindow = Record<string, unknown> & {
   dispatchEvent?: (ev: unknown) => boolean;

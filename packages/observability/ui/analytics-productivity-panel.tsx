@@ -13,7 +13,7 @@ import {
 import { Coffee, Flame, Gauge, Timer } from "lucide-react";
 import { Badge } from "./primitives/badge";
 import { cn } from "./primitives/cn";
-import { formatDuration } from "../src/usage/usage-analytics-shared";
+import { formatDuration } from "../dist/usage/usage-analytics-shared.js";
 
 export type ProductivityPayload = {
   summary: {

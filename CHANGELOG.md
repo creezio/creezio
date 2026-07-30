@@ -4,6 +4,10 @@
 ## [Unreleased]
 
 ### Added
+- **Phase N6p** — Cutover admin TF→Certivan : mounts ≤80 LOC ;
+  delete analytics/mcp clients locaux ; façades + brand hosts ;
+  kit UI imports `../dist` + `AdminPluginDetail` ; `docs/PHASE-N6p.md` ;
+  tests `test-phase-n6p`.
 - **Phase N6** — Admin Plugins / MCP / usage-analytics génériques → kit :
   `@creezio/product-hub/ui` (AdminPluginsList/Detail) ;
   `@creezio/mcp-facade` admin + `./ui` (McpAdminClient) ;

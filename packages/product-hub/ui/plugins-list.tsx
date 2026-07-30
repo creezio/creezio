@@ -14,7 +14,7 @@ import {
   isRemoteDesktopClient,
   notifyPluginsChanged,
   openPluginPanelInWorkspace,
-} from "../src/plugin-ui";
+} from "../dist/plugin-ui/index.js";
 import { HostManagedNotice } from "./host-managed-notice";
 import { useTabWorkspaceOptional } from "./tab-workspace-shim";
 import {
@@ -290,10 +290,11 @@ export function AdminPluginsList() {
   async function onOpenPanel(id: string) {
     setBusy(true);
     try {
+      const openExternalSite = workspace?.openExternalSite;
       const r = await openPluginPanelInWorkspace({
         pluginId: id,
-        openExternalSite: workspace?.openExternalSite
-          ? (o) => workspace.openExternalSite(o)
+        openExternalSite: openExternalSite
+          ? (o) => openExternalSite(o)
           : undefined,
       });
       if (!r.ok) {

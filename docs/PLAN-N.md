@@ -172,9 +172,17 @@ Phases livrées : [PHASE-N0.md](PHASE-N0.md) · [PHASE-N1.md](PHASE-N1.md) ·
 
 ---
 
-## N6p — Cutover admin (TF → CV)
+## N6p — Cutover admin (TF → CV) ✅
 
-**Effort M · Republish oui**
+1. **Objectif** : jumeaux UI/libs admin absents ; mounts pages ≤80 LOC ;
+   façades `@creezio/product-hub|mcp-facade|observability` (+ `/ui`).
+2. **Inclus** : delete clients locaux ; brand-*-host ; routes kit ;
+   sync vendor liste complète TF+CV ; kit UI `../dist` + `AdminPluginDetail`.
+3. **Exclu** : Fidu admin ; agregateurs / data-mapping ; tool-registry métier.
+4. **Tests gate** : build + electron:compile + plugin-acl-l3 + plugin-sidebar
+   ×2 ; kit `test-phase-n6p`.
+5. **Done** : [PHASE-N6p.md](PHASE-N6p.md) — TF `c85bb0f` · CV `08a02b1`.
+6. **Effort M · Republish** vendor sync (pas d’exe Fidu)
 
 ---
 

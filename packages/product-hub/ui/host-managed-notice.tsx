@@ -1,7 +1,7 @@
 "use client";
 
 import { ServerCog } from "lucide-react";
-import { getProductHubUiBrand } from "../src/plugin-ui";
+import { getProductHubUiBrand } from "../dist/plugin-ui/index.js";
 
 /** Encart « géré par l'app Serveur » (client distant). */
 export function HostManagedNotice({

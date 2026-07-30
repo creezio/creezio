@@ -29,7 +29,7 @@ import {
   type ProductivityPayload,
 } from "./analytics-productivity-panel";
 import { cn } from "./primitives/cn";
-import { formatDuration, type UsagePeriod } from "../src/usage/usage-analytics-shared";
+import { formatDuration, type UsagePeriod } from "../dist/usage/usage-analytics-shared.js";
 
 type KindFilter = "all" | "human" | "ai";
 

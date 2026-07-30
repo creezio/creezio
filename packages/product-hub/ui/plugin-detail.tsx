@@ -26,7 +26,7 @@ import {
   getProductHubUiBrand,
   isRemoteDesktopClient,
   notifyPluginsChanged,
-} from "../src/plugin-ui";
+} from "../dist/plugin-ui/index.js";
 import { HostManagedNotice } from "./host-managed-notice";
 import { Badge } from "./primitives/badge";
 import { Button } from "./primitives/button";
@@ -344,7 +344,7 @@ function PrdView({ revision }: { revision: Row }) {
   );
 }
 
-export default function PluginProductDetailPage({ params }: { params: { id: string } }) {
+export function AdminPluginDetail({ params }: { params: { id: string } }) {
   const [details, setDetails] = useState<Details | null>(null);
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState("");
@@ -400,7 +400,13 @@ export default function PluginProductDetailPage({ params }: { params: { id: stri
       return;
     }
     try {
-      const status = await api.getPluginsStatus();
+      const status = (await api.getPluginsStatus()) as {
+        plugins: Array<{
+          manifest: { id: string; version: string };
+          enabled: boolean;
+        }>;
+        running: Array<{ id: string }>;
+      };
       const plugin = status.plugins.find((p) => p.manifest.id === runtimePluginId);
       setRuntimeInfo({
         installed: Boolean(plugin),
@@ -1149,9 +1155,13 @@ export default function PluginProductDetailPage({ params }: { params: { id: stri
                     disabled={busy || !runtimePluginId || !getDesktopApi()?.migratePluginData}
                     onClick={() => {
                       if (runtimePluginId) {
-                        void getDesktopApi()?.migratePluginData?.(runtimePluginId)
-                          .then(() => toast.success("Migrations plugin appliquées"))
-                          .catch((error) => toast.error(error.message));
+                          void getDesktopApi()?.migratePluginData?.(runtimePluginId)
+                            .then(() => toast.success("Migrations plugin appliquées"))
+                            .catch((error: unknown) =>
+                              toast.error(
+                                error instanceof Error ? error.message : "Migration impossible",
+                              ),
+                            );
                       }
                     }}
                   >
