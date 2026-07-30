@@ -25,7 +25,8 @@ Extraire l’existant · Tests verts → push → étape suivante ·
 Fidu (sauf O0 / O6 CV-only / O10–O11) · Paperclip = mort.
 
 Phases livrées : [PHASE-O0.md](PHASE-O0.md) · [PHASE-O1.md](PHASE-O1.md) ·
-[PHASE-O2.md](PHASE-O2.md) · [PHASE-O3.md](PHASE-O3.md) · suite O3p→O11
+[PHASE-O2.md](PHASE-O2.md) · [PHASE-O3.md](PHASE-O3.md) ·
+[PHASE-O3p.md](PHASE-O3p.md) · suite O4→O11
 ci-dessous.
 
 ---
@@ -91,7 +92,7 @@ ci-dessous.
 
 ---
 
-## O3p — Cutover jumeaux Electron (TF → CV → Fidu)
+## O3p — Cutover jumeaux Electron (TF → CV → Fidu) ✅
 
 1. **Objectif** : jumeaux Electron absents ; imports `@creezio/*` directs.
 2. **Inclus** : delete liste O3 ×3 ; sync vendor. **Exclu** : supplier TF ;
@@ -100,6 +101,7 @@ ci-dessous.
    `test-phase-o3p`.
 4. **Done** : [PHASE-O3p.md](PHASE-O3p.md).
 5. **Effort L · Republish différé**
+6. **SHAs** : TF `c8fb984` · CV `3499243` · Fidu `69f0a5b`
 
 ---
 

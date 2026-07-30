@@ -124,11 +124,12 @@ test("O3.5 smoke Node installer-prefs + licensing", async () => {
   assert.ok(fs.existsSync(path.join(tmp, "license.key")));
 });
 
-test("O3.6 anti-cutover : jumeaux encore présents TF/CV", () => {
-  for (const brand of ["tempoflow2", "certivan-app"]) {
+test("O3.6 cutover délégué O3p (jumeaux absents post-cutover)", () => {
+  // O3 extract-only ; O3p a supprimé les jumeaux — assert absences.
+  for (const brand of ["tempoflow2", "certivan-app", "fidu"]) {
     for (const name of BRAND_TWINS) {
       const p = path.join(dockerRoot, brand, "crm/electron", name);
-      assert.ok(fs.existsSync(p), `${brand}: ${name} (O3 ≠ O3p)`);
+      assert.ok(!fs.existsSync(p), `${brand}: jumeau encore présent: ${name}`);
     }
   }
 });

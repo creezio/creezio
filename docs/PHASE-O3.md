@@ -40,9 +40,9 @@ SoT unique des near-copies Electron plateforme (gold TF paramétré) dans
 
 ```bash
 cd /opt/docker/creezio && npm run build:packages && npm test   # incl. test-phase-o3
-# Marques : fichiers locaux encore là (O3 ≠ O3p)
-test -f /opt/docker/tempoflow2/crm/electron/n8n-api-key.ts
-test -f /opt/docker/certivan-app/crm/electron/n8n-api-key.ts
+# Post-O3p : jumeaux absents (voir PHASE-O3p / test-phase-o3p)
+test ! -f /opt/docker/tempoflow2/crm/electron/n8n-api-key.ts
+test ! -f /opt/docker/certivan-app/crm/electron/n8n-api-key.ts
 ```
 
 ---
@@ -53,11 +53,11 @@ test -f /opt/docker/certivan-app/crm/electron/n8n-api-key.ts
 |---------|--------|
 | Modules O3 présents + exportés | ✅ |
 | `build:packages` + `npm test` | ✅ |
-| Cutover non fait (jumeaux locaux) | ✅ |
+| Cutover différé à O3p (extract-only) | ✅ (O3) → O3p done |
 | Paramétrage marque (opts/brand) | ✅ |
 
 ---
 
 ## Suite
 
-**O3p** — Cutover jumeaux Electron TF → CV → Fidu (delete locaux, imports kit).
+**O3p** — ✅ Cutover livré ([PHASE-O3p.md](PHASE-O3p.md)).
