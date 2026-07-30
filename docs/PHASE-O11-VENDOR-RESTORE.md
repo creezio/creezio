@@ -23,8 +23,12 @@ Sans rebuild, `sync-creezio-vendor.sh` copie un arbre stale/vide et **écrase** 
 
 ## Preuve marques
 
-| Marque | Vendor | route/hono files | kitSha SYNC |
-|--------|--------|------------------|-------------|
-| TempoFlow | `tempoflow2/crm/vendor/creezio` | 96 | `91ef2ec` |
-| Certivan | `certivan-app/crm/vendor/creezio` | 96 | `91ef2ec` |
-| Fidu | `fidu/crm/vendor/creezio` | 96 | `91ef2ec` |
+| Marque | Vendor | route/hono files | kitSha SYNC | SHA push |
+|--------|--------|------------------|-------------|----------|
+| TempoFlow | `tempoflow2/crm/vendor/creezio` | 96 | `91ef2ec` | `b0dada4` |
+| Certivan | `certivan-app/crm/vendor/creezio` | 96 | `91ef2ec` | `bcafffc` |
+| Fidu | `fidu/crm/vendor/creezio` | 96 | `91ef2ec` | `e791eea` |
+
+`require(dist-cjs).create*` / `mountApiKernelOnHono` / `createMcpOAuthRoutes` = `function` ×3.
+
+Kit hotfix (garde sync + cette note) : `41bfb44` (sur tip post-`91ef2ec`).
