@@ -251,8 +251,8 @@ incomplet ; **P2** hygiene ; **P3** polish.
 ### D-GATES + D-MATRICE (d’abord process)
 
 1. **Done** : gate kit échoue si fichier plateforme (allowlist inverse) encore jumeau TF↔CV sim≥0,85 hors allowlist **métier** ; matrice ✅ seulement si cutover marques prouvé.
-2. **Étapes** : `scripts/test-phase-p0-intention.mjs` ; rewrite légende matrice.
-3. **Preuve** : `npm test` rouge sur HEAD dette puis vert vague par vague.
+2. **Étapes** : `scripts/lib/intention-twins.mjs` + `scripts/test-phase-p0-intention.mjs` ; rewrite légende matrice ; [PHASE-P0.md](PHASE-P0.md).
+3. **Preuve** : `npm test` (p0) mesure cutover (jumeau local XOR SoT kit) ; p1/p2 durcissent l’absence.
 4. **Ordre** : **avant / en parallèle immédiat** des extractions P0 code.
 5. **Risque** : faux positifs métier — allowlist panier/GED/RTI/Pennylane.
 

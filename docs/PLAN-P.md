@@ -19,7 +19,7 @@ post-O11 feeds.
 
 | Vague | Contenu | Effort |
 |-------|---------|--------|
-| **P0** | Gates intention + matrice honnête (+ doc §0 déjà appliqué) | S |
+| **P0** | Gates intention + matrice honnête (+ doc §0) — [PHASE-P0.md](PHASE-P0.md) | S |
 | **P1** | Shell-UI jumeaux → kit (sidebar/workspace/cockpit/setup/onboarding/search) + cutover ×3 | XL |
 | **P2** | Tasks/AI/Hermes kanban → kit SoT + extinction jumeaux TF/CV/Fidu | XL |
 | **P3** | Product Hub routes + n8n provisioning | L |

@@ -35,6 +35,9 @@ DEFAULT_PACKAGES=(
   assistant
   tasks
   mails
+  observability
+  automations
+  database
 )
 
 if [[ -n "${CREEZIO_VENDOR_PACKAGES:-}" ]]; then
