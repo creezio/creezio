@@ -182,7 +182,7 @@ Légende écart : **OK** / **PARTIEL** / **ABSENT produit** / **INVENTÉ à côt
 | P06 Tunnel | **OK** | Host kit + domaines marque | — |
 | P07 n8n | **PARTIEL** | Host kit ; `n8n-plugin-provisioning.ts` ~315 LOC twin TF↔CV | Provisioning encore jumeau marque |
 | P08 Hermes | **PARTIEL** | Host kit ; skills marque ; kanban tasks marque jumelé | Couplage tasks/Hermes encore brand |
-| P09 Product Hub | **PARTIEL** | Store kit ×3 ; **plugin-products.ts ~846/851 twin TF↔CV** ; Fidu `plugins:false` | Routes HTTP encore locale ; config Fidu OK |
+| P09 Product Hub | **PARTIEL→cutover** | HTTP SoT kit `createPluginProductsRoutes` ; TF/CV stubs ; Fidu `plugins:false` | Fabrique shippée TF (flag) ; vertical git/test-runner reste |
 | P10 Fabrique plugins | **INVENTÉ à côté** | demobrand + console **seulement** ; **0** TF/CV/Fidu | À shipper marques (natif, pas option « rester prototype ») |
 | P11 Observabilité | **PARTIEL** | Package ~7,2 kLOC ; deps ×3 ; Fidu plus mince | Cutover UI/ops incomplet Fidu |
 | P12 Automations lifecycle | **PARTIEL** | Dep ×3 ; surface surtout demobrand / brand-runtime TF | Peu de surface produit |
@@ -226,7 +226,7 @@ incomplet ; **P2** hygiene ; **P3** polish.
 |----|---------------|--------------------|--------|------|--------|-------------|
 | D-P28a | Shell-UI (P15+P28) | sidebar/workspace/cockpit/setup/onboarding/search twins ~6–8 kLOC+ | Pas CMS ; fix ×2–3 | **P0** | XL | D-GATES |
 | D-P19 | Tasks (P19+P08) | `tasks.ts`+routes+`ai-task-*`+`task-runs` TF/CV + jumeau Fidu kanban | Tasks natifs non SoT marques | **P0** | XL | D-GATES ; gold TF |
-| D-P09 | Product Hub (P09) | `plugin-products` ~850 twin ; factory 0 marques | Hub HTTP pas SoT | **P0** | L | — |
+| D-P09 | Product Hub (P09) | HTTP SoT kit + cutover TF/CV ; factory TF flag | Vertical remaining + factory UI | **P1** | M | — |
 | D-P16 | Assistant surface (P16) | routes ~763 twin ; mounts ~1 kLOC ×3 | Chat OK kit ; HTTP gras | **P1** | L | P18 |
 | D-P18 | MCP (P18) | Fidu GED hors factory ; TF host-tools ; CV monolith | ≠ une liste tools | **P1** | L | D-P09 |
 | D-P25 | Fleet (P25) | fleet-collector twin TF↔CV ; Fidu off | Ops pas kit-only | **P1** | M | — |
