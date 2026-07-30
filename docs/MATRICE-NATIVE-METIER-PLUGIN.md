@@ -163,5 +163,5 @@ freeze O11.
 ### Historique correction C* (fermé)
 
 [PHASE-C0.md](PHASE-C0.md) → **C1–C8** : dual-write TF stores → **cutover SoT kit**
-(C1) ; dualités Certivan (C2) ; mounts Fidu (C5) ; RTI (C6) ; CP unifié (C7) ;
+(C1) ; Certivan C2 dualités MCP+stores fermées ; mounts Fidu (C5) ; RTI (C6) ; CP unifié (C7) ;
 republish (C8). Plus de rétention brand « shadow only » — kit SoT.
