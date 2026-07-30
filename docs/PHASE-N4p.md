@@ -27,7 +27,7 @@ via `runHistoricalMigrations` ; steps restants = métier / brand-migrations.
 |--------|-----|------------|-------------------------|-------|
 | TempoFlow | `37ea6e6` | 44 | **absents** | métier catalogue + hermes + kit |
 | Certivan | `da7e356` | 70 | **absents** | 036 baseline → kit ; FRESH sans TF |
-| Fidu | `1763332` | 45 | wraps ≤20 LOC | orphelins TF deleted ; 018/019 deltas |
+| Fidu | `1763332` (+ release `85e2082` / **0.1.61**) | 45 | wraps ≤20 LOC | orphelins TF deleted ; 018/019 deltas |
 
 ### Absents (TF + CV)
 
@@ -81,7 +81,8 @@ npm run electron:compile && npm run test:fidu
 | Steps plateforme TF/CV absents | ✅ |
 | Gates database-module / test:fidu | ✅ |
 | Vendor liste complète | ✅ sync ×3 |
-| Republish packing | Fidu (ship pipeline) |
+| Republish packing | ✅ Fidu **0.1.61** — [Fidu-Setup-0.1.61.exe](https://fidu.creez.io/dl-e660352fb04dbd5e2519f0e60897c548/Fidu-Setup-0.1.61.exe) |
+| Kit sign-off | `893ad64` |
 
 ---
 
