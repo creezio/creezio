@@ -92,7 +92,7 @@ plateforme ; **twin** = TF↔CV sim≥0,85.
 | **Onboarding / setup** | onboarding ~2,8 kLOC + routes 309 + `setup-wizard` 484 | onboarding + routes 309 + setup 484 (twin setup sim≈0,94) | onboarding ~2,2 kLOC + routes 76 + setup 484 (sim setup≈0,93 ×3) | **NATIF shell** | **100 % local ×3** ; rien d’équivalent complet dans `shell-ui` | Oui — jamais extrait (setup quasi identique ×3) |
 | **Product Hub / plugins HTTP** | `plugin-products` 846 + thin hub lib | twin 851 | store kit monté ; **pas** de route `plugin-products` ; `features.plugins=false` | **NATIF** (+ config) | Kit `@creezio/product-hub` ; HTTP/UI admin encore local TF/CV | Oui — store cutover, routes restées twin |
 | **Fabrique plugins** | 0 conso runtime | 0 | 0 | **NATIF** | Kit + demobrand/console seulement | Non cassé — **jamais shippé** marques (dette P10) |
-| **Fleet** | `fleet-collector` ~1,3 kLOC + tracker UI + telemetry | twin collector ~1,3 kLOC | `features.fleet=false` ; vendor/settings kit présents | **NATIF** (+ config) | Kit `platform-core`/`shell-ui`/`observability` partiel ; collector encore marque TF/CV | Oui — dualité collector ; Fidu off volontaire N5 = config |
+| **Fleet** | wrapper mince + endpoints marque | wrapper mince + `fleet-dossier-samples` métier | `features.fleet=false` ; vendor/settings kit présents | **NATIF** (+ config) | SoT `@creezio/observability/fleet-collector` (P25) ; Fidu off volontaire N5 = config | Non — collector kit ; extras métier CV via `getHeartbeatExtras` |
 | **Mails** | `mail-inbox` 420 + routes email 147 ; store kit | twin | store kit monté ; **pas d’UI mail** | **NATIF** (+ config UI) | `@creezio/mails` ; UI inbox encore twin TF/CV | Oui — store cutover, UI non éteinte / Fidu sans UI |
 | **Auth / login UI** | `login-form` 299 | twin 299 (sim≈0,97) | 294 (sim≈0,73 vs TF) | **NATIF** | `@creezio/auth` store ; UI login **locale ×3** ; `shell-ui/ui/auth` quasi vide | Oui — credentials kit, chrome login resté brand |
 | **Assistant surfaces** | routes 763 + mounts brand | twin 763 | routes 406 (plus mince) | **NATIF** | `@creezio/assistant` runtime kit ; HTTP/routes encore brand | Oui — chat-db kit, routes twin/partiel |
@@ -198,7 +198,7 @@ Légende écart : **OK** / **PARTIEL** / **ABSENT produit** / **INVENTÉ à côt
 | P22 Desktop ship | **OK** | Feeds : TF 0.10.33 · CV 0.1.16 · Fidu 0.1.65 | — |
 | P23 Factory / demobrand | **OK kit** | apps/demobrand | Preuve scaffold ≠ marques minces |
 | P24 Console | **OK kit** | apps/console | — |
-| P25 Fleet | **PARTIEL** | collector twin TF↔CV ; Fidu `fleet:false` | Collector → kit ; flag = config |
+| P25 Fleet | **OK** | collector SoT kit (`observability/fleet-collector`) ; Fidu `fleet:false` | Flag = config ; cutover marques = wrappers env |
 | P26 Modules métier | **OK frontière** | symlink `modules`→`electron/modules` ×3 | — |
 | P27 Plugins discovery | **PARTIEL** | Host kit ; Fidu feature-off | Config, pas reclassement |
 | P28 Anti-jumeau | **ABSENT** | TF↔CV product twins sim≥0.85 : **111 fichiers · ~21,7 kLOC** | **Dette centrale** |
@@ -229,7 +229,7 @@ incomplet ; **P2** hygiene ; **P3** polish.
 | D-P09 | Product Hub (P09) | HTTP SoT kit + cutover TF/CV ; factory TF flag | Vertical remaining + factory UI | **P1** | M | — |
 | D-P16 | Assistant surface (P16) | routes ~763 twin ; mounts ~1 kLOC ×3 | Chat OK kit ; HTTP gras | **P1** | L | P18 |
 | D-P18 | MCP (P18) | Fidu GED hors factory ; TF host-tools ; CV monolith | ≠ une liste tools | **P1** | L | D-P09 |
-| D-P25 | Fleet (P25) | fleet-collector twin TF↔CV ; Fidu off | Ops pas kit-only | **P1** | M | — |
+| D-P25 | Fleet (P25) | ~~twin collector~~ → SoT kit ; cutover marques | Ops kit-only + env marque | **OK kit** | S | cutover TF/CV wrappers |
 | P10 | Fabrique (P10) | 0 conso TF/CV/Fidu | Vision non produit | **P1** | L | Ship ≥1 marque |
 | D-P20 | Mails (P20) | inbox twin TF↔CV ; absent UI Fidu | Parité mails | **P1** | M | — |
 | D-P14 | Auth UI (P14) | login-form ~300 ×3 | UI encore brand | **P2** | M | avec P15 |

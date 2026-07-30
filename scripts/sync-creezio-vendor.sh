@@ -133,6 +133,9 @@ for name in "${PACKAGES[@]}"; do
   if [[ -d "${src}/ui" ]]; then
     cp -a "${src}/ui" "${out}/"
   fi
+  if [[ -d "${src}/fleet-collector" ]]; then
+    cp -a "${src}/fleet-collector" "${out}/"
+  fi
   if [[ -d "${src}/email-worker" ]]; then
     cp -a "${src}/email-worker" "${out}/"
   fi
