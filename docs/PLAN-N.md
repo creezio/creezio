@@ -200,10 +200,16 @@ Phases livrées : [PHASE-N0.md](PHASE-N0.md) · [PHASE-N1.md](PHASE-N1.md) ·
 
 ---
 
-## N8 — Gates LOC + allowlists vision
+## N8 — Gates LOC + allowlists vision ✅
 
-Budgets mesurables 3 marques + forbidden lists.  
-**Effort M · Republish non**
+1. **Objectif** : budgets LOC mesurables ×3 + forbidden jumeaux/clients ;
+   gate permanent `test-phase-n8`.
+2. **Inclus** : ceilings main/preload/runner/façades ; supplier TF≥400 /
+   CV+Fidu≤40 ; Paperclip mort.
+3. **Exclu** : rewrite métier ; republish.
+4. **Tests gate** : kit `npm test` (`test-phase-n8`).
+5. **Done** : [PHASE-N8.md](PHASE-N8.md).
+6. **Effort M · Republish non**
 
 ---
 

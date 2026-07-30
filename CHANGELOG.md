@@ -4,6 +4,9 @@
 ## [Unreleased]
 
 ### Added
+- **Phase N8** — Gates LOC + allowlists vision ×3 marques :
+  ceilings main/preload/runner/façades ; forbidden jumeaux ;
+  `docs/PHASE-N8.md` ; tests `test-phase-n8`.
 - **Phase N7** — `supplier-tabs` hors métier CV/Fidu : SoT
   `@creezio/electron-shell` `host/browser-tabs` ; façades marques ;
   TF métier local conservé ; `docs/PHASE-N7.md` ; tests `test-phase-n7`.
