@@ -101,7 +101,7 @@ plateforme ; **twin** = TF↔CV sim≥0,85.
 | **Sidebar / nav shell** | `@creezio/shell-ui` sidebar | idem | idem | **NATIF** | SoT kit ; cutover **DONE** | Non |
 | **Workspace / tabs** | `@creezio/shell-ui` workspace | idem | idem | **NATIF** | SoT kit ; cutover **DONE** | Non |
 | **Boot Electron** | `creezio-boot.ts` ~90 | ~91 | ~85 | **NATIF** | Composition encore locale ×3 | Mineur |
-| **MCP façade** | host-tools + oauth twin | server monolith | GED tools hors factory | **NATIF** (façade) | `@creezio/mcp-facade` ; **D-P18 OPEN** | Oui — host-tools / oauth / GED |
+| **MCP façade** | oauth/app mince kit ; AI host → `@creezio/tasks` | idem (+ `list_tasks`) | host ping/tab only | **NATIF** (façade+OAuth) | `@creezio/mcp-facade` + `createAiTaskHostMcpTools` ; **D-P18 PARTIEL** | Oui — open_external_tab / GED Fidu / schemas |
 | **Browser-tabs** | `electron/supplier-tabs.ts` ~797 local TF | façades kit | façades kit | **NATIF** (+ métier TF) | Kit `electron-shell/browser-tabs` ; **twin TF métier local OPEN** | TF only — allowlist métier |
 | **n8n provisioning plugins** | ~315 twin | twin | — | **NATIF** (hub) | Encore brand TF/CV | Oui |
 | **Schemas / oauth MCP** | `schemas.ts` ~824 + `oauth.ts` ~62 twin | twin | twin ~815 / 66 | **NATIF** | Encore brand ×3 — **D-P28b OPEN** | Oui |
@@ -193,7 +193,7 @@ Légende écart : **OK** / **PARTIEL** / **ABSENT produit** / **INVENTÉ à côt
 | P15 Shell-UI | **OK cutover** | sidebar / workspace / search SoT `shell-ui` ; setup/onboarding `@creezio/onboarding` ; cockpit `@creezio/cockpit` ; cutover ×3 **DONE** | Libs minces `nav-context` / `search-history` locales ok |
 | P16 Assistant | **OK mounts** | `createAssistantRoutes` monté mince ×3 ; runtime kit | — |
 | P17 API kernel | **PARTIEL** | Package existe ; modules montés marques | Façade unique pas partout |
-| P18 MCP façade | **PARTIEL** | `create*BrandMcp` ×3 ; Fidu GED hors factory ; TF host-tools ; CV monolith ; oauth twin | **D-P18 OPEN** |
+| P18 MCP façade | **PARTIEL** | `create*BrandMcp` ×3 ; OAuth/`createMcpHonoApp` mince ×3 ; AI host tools SoT `@creezio/tasks` ; restent open_external_tab / GED Fidu / schemas | **D-P18 PARTIEL** |
 | P19 Tasks | **OK** | SoT kit store+UI+routes ; jumeaux locaux éteints ×3 ; mounts mince | — |
 | P20 Mails | **OK largement** | UI/API kit ×3 ; Fidu `uiEnabled: true` | Polish providers |
 | P21 Sync / propagation | **OK** | dry-run H6 + kitSha ; vendor incl. onboarding/cockpit | — |
@@ -230,7 +230,7 @@ incomplet ; **P2** hygiene ; **P3** polish.
 | D-P19 | Tasks (P19+P08) | ~~jumeaux `tasks.ts`/kanban/AI~~ → SoT `@creezio/tasks` ×3 | — | **DONE** | — | — |
 | D-P09 | Product Hub (P09) | HTTP mounts kit **DONE** ; factory UI/vertical reste | Factory = P10 | **DONE mounts** | — | P10 |
 | D-P16 | Assistant surface (P16) | mounts `createAssistantRoutes` mince ×3 **DONE** | — | **DONE mounts** | — | — |
-| D-P18 | MCP (P18) | Fidu GED hors factory ; TF host-tools ; CV monolith ; oauth twin | ≠ une liste tools | **P1 OPEN** | L | D-P28b |
+| D-P18 | MCP (P18) | AI host tools SoT kit **DONE** ; oauth/app mince **DONE** ; restent open_external_tab ×3, GED Fidu, schemas twin | ≠ une liste tools | **P1 PARTIEL** | M | D-P28b |
 | D-P25 | Fleet (P25) | collector SoT kit ; wrappers env marque | — | **DONE** | — | — |
 | P10 | Fabrique (P10) | 0 conso CV/Fidu ; TF flag partiel | Vision non produit | **P1 OPEN** | L | Ship ≥1 marque |
 | D-P20 | Mails (P20) | UI kit ×3 ; Fidu `uiEnabled: true` | Polish providers | **DONE largement** | S | — |
@@ -285,9 +285,9 @@ incomplet ; **P2** hygiene ; **P3** polish.
 
 ### D-P18 — MCP une SoT
 
-1. **Done** : `listTools` Electron = Hono = assistant ; Fidu GED dans factory modules ; TF host-tools = host-only.
-2. **Étapes** : move GED host → factory ; trim CV monolith.
-3. **Preuve** : égalité ensembles tools ; smokes MCP ×3.
+1. **Done** : `listTools` Electron = Hono = assistant ; Fidu GED dans factory modules ; host-tools = host-only ; `createMcpOAuthRoutes` / `createMcpHonoApp` mince ×3 ; `createAiTaskHostMcpTools` SoT `@creezio/tasks` (TF/CV).
+2. **Étapes** : optionnel extract `open_external_tab` ; GED Fidu → factory modules ; schemas twin (D-P28b).
+3. **Preuve** : `test-phase-p18-host-tools` ; smokes MCP ×3 ; égalité ensembles tools.
 4. **Ordre** : après D-P09.
 5. **Risque** : clients MCP externes (aliases).
 

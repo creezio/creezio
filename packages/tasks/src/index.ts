@@ -155,3 +155,16 @@ export {
 /* --- HTTP + assistant --- */
 export { createTasksHonoRoutes } from "./hono-routes.js";
 export { createAssistantTasksAdapter } from "./assistant-adapter.js";
+
+/* --- MCP host-only AI tasks (D-P18) --- */
+export type {
+  AiTaskHostMcpRegisterFn,
+  AiTaskHostMcpToolConfig,
+  CreateAiTaskHostMcpToolsOptions,
+  CreezioAiTaskHostMcpToolName,
+} from "./mcp-host-tools.js";
+export {
+  CREEZIO_AI_TASK_HOST_MCP_TOOL_NAMES,
+  CREEZIO_LIST_TASKS_MCP_TOOL_NAME,
+  createAiTaskHostMcpTools,
+} from "./mcp-host-tools.js";

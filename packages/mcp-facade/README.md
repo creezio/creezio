@@ -132,5 +132,7 @@ Après cutover marque, supprimer (ou stub ≤ ~40 LOC délégant) :
 ## Host tools plateforme
 
 `CREEZIO_PLATFORM_HOST_MCP_TOOL_NAMES` : `open_external_tab`, `list_tools_by_space`.  
-Les workflows AI tasks (`create_ai_task`, …) restent host marque (dépendent du runtime desktop).  
+Workflows AI tasks (`create_ai_task`, …) → `createAiTaskHostMcpTools` dans
+`@creezio/tasks` (host-only, SoT partagée TF/CV).  
+Reste marque : `open_external_tab` (+ discovery TF) et métier façade.  
 Le métier (panier, GED, dossiers VASP) **ne va jamais** dans le kit.
