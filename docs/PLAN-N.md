@@ -152,7 +152,8 @@ Phases livrées : [PHASE-N0.md](PHASE-N0.md) · [PHASE-N1.md](PHASE-N1.md) ·
 3. **Exclu** : activer plugins Fidu ; TF/CV (hosts réels).
 4. **Tests gate** : kit `test-phase-n5` ; Fidu `electron:compile` +
    `test:shell` + `test:phase-c5` ; `test ! -f host-na-stubs.ts`.
-5. **Done** : [PHASE-N5.md](PHASE-N5.md) — baseline N4p kit `5dca2bb`.
+5. **Done** : [PHASE-N5.md](PHASE-N5.md) — kit `de903b2` · Fidu
+   `20d9adf` / release `cf87426` (**0.1.62**) ; baseline N4p `5dca2bb`.
 6. **Effort S · Republish oui** Fidu
 
 ---

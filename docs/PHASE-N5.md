@@ -94,8 +94,12 @@ test ! -f electron/host-na-stubs.ts
 
 | Repo | SHA | Notes |
 |------|-----|-------|
-| Kit | _(push)_ | `createFeatureOffHost` + features |
-| Fidu | _(push)_ | delete stubs + host-stack ; republish |
+| Kit | `de903b2` | `createFeatureOffHost` + `BrandFeatures` |
+| Fidu feat | `20d9adf` | delete stubs + host-stack + vendor |
+| Fidu release | `cf87426` | **0.1.62** |
+
+Publish :
+[https://fidu.creez.io/dl-e660352fb04dbd5e2519f0e60897c548/Fidu-Setup-0.1.62.exe](https://fidu.creez.io/dl-e660352fb04dbd5e2519f0e60897c548/Fidu-Setup-0.1.62.exe)
 
 ---
 
