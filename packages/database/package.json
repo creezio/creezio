@@ -1,7 +1,7 @@
 {
   "name": "@creezio/database",
   "version": "0.1.0",
-  "description": "Database admin native — engine + HTTP routes + Admin UI source (port TempoFlow SoT)",
+  "description": "Database admin native — engine + HTTP routes + Admin UI (fail-closed CRUD policy; brand allowlists)",
   "type": "module",
   "main": "./dist-cjs/index.js",
   "types": "./dist/index.d.ts",

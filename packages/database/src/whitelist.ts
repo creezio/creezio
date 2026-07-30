@@ -1,19 +1,8 @@
 /**
  * Policy écriture / automation Admin Database.
- * SoT portée depuis TempoFlow ; configurable via `configureDatabasePolicy`.
+ * Fail-closed : aucune table métier CRUD-able sans `configureDatabasePolicy`.
+ * Les allowlists métier vivent dans chaque marque (jamais dans ce kit).
  */
-
-/** Tables métier TempoFlow autorisées CRUD (défaut historique). */
-export const TEMPOFLOW_CRUD_WHITELIST = [
-  "fournisseurs",
-  "produits",
-  "skus",
-  "promotions",
-  "releves_prix",
-  "stack_items",
-  "groupes_substitution",
-  "substitution_membres",
-] as const;
 
 /** Tables jamais automatisables / jamais éditables via le module Database. */
 export const DEFAULT_FORBIDDEN_WRITE_TABLES = [
@@ -32,9 +21,14 @@ export const DEFAULT_FORBIDDEN_WRITE_TABLES = [
   "db_access_log",
 ] as const;
 
-let crudWhitelist = new Set<string>(TEMPOFLOW_CRUD_WHITELIST);
+/** Défaut vide = fail-closed (CRUD métier impossible sans configureDatabasePolicy). */
+let crudWhitelist = new Set<string>();
 let forbiddenWriteTables = new Set<string>(DEFAULT_FORBIDDEN_WRITE_TABLES);
 
+/**
+ * Configure la policy CRUD / écriture.
+ * Sans `crudAllowlist`, aucune table métier n’est CRUD-able.
+ */
 export function configureDatabasePolicy(opts: {
   crudAllowlist?: Iterable<string>;
   forbiddenWriteTables?: Iterable<string>;
@@ -47,10 +41,20 @@ export function configureDatabasePolicy(opts: {
   }
 }
 
-/** @deprecated préférer TEMPOFLOW_CRUD_WHITELIST + configureDatabasePolicy */
+/** Snapshot runtime de l’allowlist CRUD (vide tant que la marque n’a pas configuré). */
+export function getCrudAllowlist(): ReadonlySet<string> {
+  return crudWhitelist;
+}
+
+/** Snapshot runtime des tables interdites en écriture. */
+export function getForbiddenWriteTables(): ReadonlySet<string> {
+  return forbiddenWriteTables;
+}
+
+/** @deprecated préférer getCrudAllowlist() — snapshot mutable, ne pas muter. */
 export const CRUD_WHITELIST = crudWhitelist;
 
-/** @deprecated préférer DEFAULT_FORBIDDEN_WRITE_TABLES + configureDatabasePolicy */
+/** @deprecated préférer getForbiddenWriteTables() / DEFAULT_FORBIDDEN_WRITE_TABLES. */
 export const FORBIDDEN_WRITE_TABLES = forbiddenWriteTables;
 
 export function canCrudTable(table: string): boolean {

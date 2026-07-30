@@ -16,13 +16,16 @@ import {
   configureDatabasePolicy,
   createAutomation,
   evaluateConditions,
+  getCrudAllowlist,
   insertRow,
   listCatalog,
   processPendingEvents,
-  TEMPOFLOW_CRUD_WHITELIST,
   updateRow,
   openNodeSqliteDatabase,
 } from "../packages/database/dist/index.js";
+
+/** Allowlist d’exemple pour les tests kit (pas de domaine marque dans le package). */
+const EXAMPLE_CRUD_ALLOWLIST = ["fournisseurs", "produits", "skus"];
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -39,12 +42,15 @@ test("R1.1 package + docs PHASE-R1", () => {
   assert.match(doc, /TempoFlow|row-level/);
 });
 
-test("R1.2 schema + policy TempoFlow + conditions", () => {
+test("R1.2 schema + policy fail-closed + conditions", () => {
   assert.match(DATABASE_CORE_SQL, /db_automations/);
   assert.match(DATABASE_CORE_SQL, /db_automation_events/);
-  assert.ok(TEMPOFLOW_CRUD_WHITELIST.includes("fournisseurs"));
+  // Fail-closed : sans configureDatabasePolicy, aucune table métier CRUD-able.
+  assert.equal(getCrudAllowlist().size, 0);
+  assert.equal(canCrudTable("fournisseurs"), false);
+  assert.equal(canCrudTable("users"), false);
   configureDatabasePolicy({
-    crudAllowlist: TEMPOFLOW_CRUD_WHITELIST,
+    crudAllowlist: EXAMPLE_CRUD_ALLOWLIST,
   });
   assert.equal(canCrudTable("fournisseurs"), true);
   assert.equal(canCrudTable("users"), false);
@@ -62,6 +68,9 @@ test("R1.2 schema + policy TempoFlow + conditions", () => {
 });
 
 test("R1.3 catalogue / CRUD / automation webhook outbox", async () => {
+  // Policy marque (ou test) obligatoire — le kit reste fail-closed par défaut.
+  configureDatabasePolicy({ crudAllowlist: EXAMPLE_CRUD_ALLOWLIST });
+
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "creezio-db-"));
   const dbPath = path.join(tmp, "t.db");
   const db = openNodeSqliteDatabase(dbPath);
