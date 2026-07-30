@@ -164,6 +164,35 @@ export type DesktopBridge = {
 
   setAssistantChrome: (mode: "fab" | "hidden") => Promise<void>;
   onAssistantOpenRequest: (cb: () => void) => () => void;
+
+  /** N2p — espaces collaborateurs IA (optionnel selon marque). */
+  getAiWorkspaceIdentity?: () => Promise<{
+    userId: string | null;
+    label: string;
+    active: boolean;
+  }>;
+  listAiWorkspaces?: () => Promise<
+    Array<{
+      userId: string;
+      label: string;
+      partition: string;
+      ready: boolean;
+      active: boolean;
+    }>
+  >;
+  ensureAiWorkspace?: (opts: {
+    userId: string;
+    token: string;
+    baseUrl?: string;
+    label?: string;
+    show?: boolean;
+  }) => Promise<unknown>;
+  showAiWorkspace?: (userId: string) => Promise<unknown>;
+  showOwnerWorkspace?: () => Promise<{ ok: true }>;
+  ackAiWorkspaceAction?: (
+    actionId: string,
+    result: Record<string, unknown>,
+  ) => void;
 };
 
 /**

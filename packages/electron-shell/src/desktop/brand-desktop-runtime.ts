@@ -516,6 +516,7 @@ export function installBrandDesktopRuntime(deps: BrandDesktopDeps): void {
         baseUrl: server.baseUrl,
         authUser: auth.authUser,
         authPassword: auth.authPassword,
+        sessionCookieName: deps.sessionCookieName,
         executor: async (req) => {
           if (deps.vertical.isAiWorkspaceActionType(req.type) && aiWorkspaces) {
             return deps.vertical.executeAiWorkspaceAction(

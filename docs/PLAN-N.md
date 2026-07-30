@@ -11,7 +11,8 @@ rouge** · Sync vendor = **liste complète** · Cutover marques séquentiel `*p`
 TF → Certivan → Fidu (sauf N5 Fidu-only et N0 artefacts) · **Paperclip = mort**.
 
 Phases livrées : [PHASE-N0.md](PHASE-N0.md) · [PHASE-N1.md](PHASE-N1.md) ·
-[PHASE-N1p.md](PHASE-N1p.md) · [PHASE-N2.md](PHASE-N2.md) · suite N2p→N9 ci-dessous.
+[PHASE-N1p.md](PHASE-N1p.md) · [PHASE-N2.md](PHASE-N2.md) ·
+[PHASE-N2p.md](PHASE-N2p.md) · suite N3→N9 ci-dessous.
 
 ---
 
@@ -70,10 +71,19 @@ Phases livrées : [PHASE-N0.md](PHASE-N0.md) · [PHASE-N1.md](PHASE-N1.md) ·
 
 ---
 
-## N2p — Cutover hosts (TF → CV → Fidu)
+## N2p — Cutover hosts (TF → Certivan → Fidu) ✅
 
-Delete jumeaux ; hooks marque ≤ budgets.  
-**Effort L · Republish oui** ×3
+1. **Objectif** : jumeaux host plateforme absents ; imports
+   `@creezio/electron-shell` / `@creezio/platform-core` ; preload mince.
+2. **Inclus** : delete cutover ; `host-n2-bindings` ; host-stack kit ; preload
+   `createDesktopApi`+esbuild ≤260 LOC ; Meili TF = hooks kit ; CV/Fidu =
+   indexeurs métier conservés ; sync vendor liste complète.
+3. **Exclu** : assistant (N3) ; seeds métier hors bindings ; packing/republish.
+4. **Tests gate** : par marque `electron:compile` + hermes/n8n/shell (+
+   ai-workspace) + `build` ; kit `npm test` (+ `test-phase-n2p`).
+5. **Done** : [PHASE-N2p.md](PHASE-N2p.md) — TF `b602b08` · CV `7e5bfa6` ·
+   Fidu `393bb98` ; baseline N2 `9f44eb6`.
+6. **Effort L · Republish différé** (wiring electron, non packing)
 
 ---
 

@@ -131,4 +131,4 @@ npm test   # incl. test-phase-n2
 
 ## Suite
 
-**N2p** — Cutover hosts (TF → Certivan → Fidu) : delete jumeaux, wiring bindings.
+**N2p** — Cutover hosts (TF → Certivan → Fidu) — ✅ [PHASE-N2p.md](PHASE-N2p.md).

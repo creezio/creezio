@@ -161,6 +161,41 @@ export function createDesktopApi(
       ipc.invoke(C.assistant.setChrome, mode) as Promise<void>,
     onAssistantOpenRequest: (cb) =>
       onChannel<void>(ipc, C.assistant.openRequest, () => cb()),
+
+    /* ── N2p — espaces IA (canaux IpcChannels.aiWorkspace) ── */
+    getAiWorkspaceIdentity: () =>
+      ipc.invoke(C.aiWorkspace.identity) as Promise<{
+        userId: string | null;
+        label: string;
+        active: boolean;
+      }>,
+    listAiWorkspaces: () =>
+      ipc.invoke(C.aiWorkspace.list) as Promise<
+        Array<{
+          userId: string;
+          label: string;
+          partition: string;
+          ready: boolean;
+          active: boolean;
+        }>
+      >,
+    ensureAiWorkspace: (opts: {
+      userId: string;
+      token: string;
+      baseUrl?: string;
+      label?: string;
+      show?: boolean;
+    }) => ipc.invoke(C.aiWorkspace.ensure, opts) as Promise<unknown>,
+    showAiWorkspace: (userId: string) =>
+      ipc.invoke(C.aiWorkspace.show, userId) as Promise<unknown>,
+    showOwnerWorkspace: () =>
+      ipc.invoke(C.aiWorkspace.showOwner) as Promise<{ ok: true }>,
+    ackAiWorkspaceAction: (
+      actionId: string,
+      result: Record<string, unknown>,
+    ) => {
+      ipc.send(C.aiWorkspace.actionResult, { actionId, result });
+    },
   };
 }
 
