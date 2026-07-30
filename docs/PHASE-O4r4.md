@@ -45,7 +45,7 @@ npm run test:active-surface
 
 | | SHA |
 |--|--|
-| Kit | *(après push)* |
-| TempoFlow | *(après push)* |
-| Certivan | *(après push)* |
-| Fidu | *(après push)* |
+| Kit | `f9d49ac` (+ tip docs pin) |
+| TempoFlow | `1c98930` |
+| Certivan | `51e9ce5` |
+| Fidu | `786dc41` |
