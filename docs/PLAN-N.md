@@ -208,7 +208,7 @@ Phases livrées : [PHASE-N0.md](PHASE-N0.md) · [PHASE-N1.md](PHASE-N1.md) ·
    CV+Fidu≤40 ; Paperclip mort.
 3. **Exclu** : rewrite métier ; republish.
 4. **Tests gate** : kit `npm test` (`test-phase-n8`).
-5. **Done** : [PHASE-N8.md](PHASE-N8.md).
+5. **Done** : [PHASE-N8.md](PHASE-N8.md) — kit `b522876`.
 6. **Effort M · Republish non**
 
 ---

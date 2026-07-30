@@ -76,7 +76,7 @@ cd /opt/docker/creezio && npm test   # incl. test-phase-n8
 
 | Repo | SHA |
 |------|-----|
-| Kit | _(après push)_ |
+| Kit | `b522876` |
 
 ---
 
