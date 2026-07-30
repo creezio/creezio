@@ -31,6 +31,7 @@ DEFAULT_PACKAGES=(
   api-kernel
   mcp-facade
   shell-ui
+  onboarding
   auth
   assistant
   tasks

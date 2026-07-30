@@ -23,6 +23,7 @@ const PACKAGES = [
   "mcp-facade",
   "auth",
   "shell-ui",
+  "onboarding",
   "assistant",
   "tasks",
   "mails",
