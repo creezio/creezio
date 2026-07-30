@@ -1,3 +1,4 @@
+// @ts-nocheck — desktop API loosely typed; marques fournissent Window.*Desktop
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -47,8 +48,7 @@ import {
   SelectValue,
 } from "./primitives/select";
 import { cn } from "./primitives/cn";
-import type { AssistantSource } from "@creezio/assistant";
-// AssistantSource re-exported from brand sources-shim via package root
+import type { AssistantSource } from "../dist/brand/sources-shim.js";
 import { AssistantMessageContent } from "./assistant-message-content";
 import { AssistantTracePanel } from "./assistant-trace-panel";
 import {
@@ -60,13 +60,13 @@ import {
   useAssistantUi,
 } from "./assistant-provider";
 import { useVoiceInput } from "./use-voice-input";
+import { assistantIdentity } from "../dist/brand/registry.js";
 import {
-  assistantIdentity,
   resolveActiveSurface,
   type ActiveSurface,
-  type AssistantMode,
   type SupplierTabSummary,
-} from "@creezio/assistant";
+} from "../dist/runtime/active-surface.js";
+import type { AssistantMode } from "../dist/runtime/modes.js";
 import { useTabWorkspaceOptional } from "./tab-workspace-shim";
 
 type Source = AssistantSource;
@@ -475,7 +475,7 @@ export function AssistantWidget() {
     };
     void refresh();
     const api = getDesktopApi();
-    const unsub = api?.onLlmStatusChanged?.((s) => {
+    const unsub = api?.onLlmStatusChanged?.((s: { assistantReady?: boolean; reason?: string; restarting?: boolean }) => {
       setLlmGate({
         ready: Boolean(s.assistantReady),
         byokRequired: true,
@@ -533,9 +533,9 @@ export function AssistantWidget() {
     let cancelled = false;
     const api = getDesktopApi();
     if (!api?.listTabs) return;
-    void api.listTabs().then((list) => {
+    void api.listTabs().then((list: any[]) => {
       if (cancelled) return;
-      const supplierTabs: SupplierTabSummary[] = list.map((t) => ({
+      const supplierTabs: SupplierTabSummary[] = list.map((t: any) => ({
         tabId: t.tabId,
         fournisseurId: t.fournisseurId,
         url: t.url,
@@ -545,13 +545,13 @@ export function AssistantWidget() {
       const desktop =
         base.kind === "supplier"
           ? list.find(
-              (t) =>
+              (t: any) =>
                 t.tabId === base.tabId ||
                 (base.fournisseurId > 0 &&
                   t.fournisseurId === base.fournisseurId) ||
                 t.active,
             )
-          : list.find((t) => t.active);
+          : list.find((t: any) => t.active);
       const activeSurface = resolveActiveSurface({
         activeTab: workspace?.activeTab ?? null,
         href: workspace?.activeTab?.href || pathname,

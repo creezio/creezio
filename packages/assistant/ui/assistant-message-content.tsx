@@ -6,7 +6,7 @@ import { entityLinkClass } from "./entity-links";
 import {
   sourceLinkMatchers,
   type AssistantSource,
-} from "@creezio/assistant";
+} from "../dist/brand/sources-shim.js";
 import { cn } from "./primitives/cn";
 
 type Props = {

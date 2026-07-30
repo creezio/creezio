@@ -70,6 +70,10 @@ export type AssistantBrandTools = {
   collectSourcesFromSqlRows?: (
     rows: Record<string, unknown>[],
   ) => Array<{ title: string; url: string; type?: string }>;
+  /** Matchers de liens dans le markdown assistant (UI). */
+  sourceLinkMatchers?: (
+    sources: Array<{ title: string; url: string; type?: string }> | undefined,
+  ) => Array<{ text: string; url: string; type?: string }>;
 };
 
 /** Accès DB marque (remplace `@/lib/db`). */

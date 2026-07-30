@@ -9,7 +9,8 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { ASSISTANT_FAB_SAFE_PX, assistantIdentity } from "@creezio/assistant";
+import { ASSISTANT_FAB_SAFE_PX } from "../dist/runtime/active-surface.js";
+import { assistantIdentity } from "../dist/brand/registry.js";
 
 /** Largeur du panneau docké (desktop) — utilisée pour décaler le shell CRM. */
 export const ASSISTANT_PANEL_WIDTH_PX = 400;
