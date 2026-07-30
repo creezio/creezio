@@ -7,6 +7,7 @@
 | **Repo** | Certivan (+ kit docs/gate) |
 | **Prérequis** | [PHASE-O5p.md](PHASE-O5p.md) · plan [PLAN-O.md](PLAN-O.md) |
 | **Baseline O5p** | kit tip `97a4d2a` / pin `5cfa4c3` · CV `a7b96b3` |
+| **Kit tip O6** | `04d8148` |
 | **ARCHITECTURE_VERSION** | `"H6"` (inchangé) |
 | **Republish** | Différé (runtime migrations au boot — pas de DB packaged dans l’installeur) |
 
@@ -15,7 +16,7 @@
 | Repo | SHA |
 |------|-----|
 | Certivan | `4712cd8` |
-| Kit (docs + `test-phase-o6`) | _(tip après push docs)_ |
+| Kit tip | `04d8148` |
 
 ---
 
