@@ -9,30 +9,33 @@ post-O11 feeds.
 
 - Intention = ARCHITECTURE-INTENTION (CMS + 3 couches), **pas** « finir MCP ».
 - Commun = `@creezio/*` ; marques = minimum métier.
+- **Arbitrage ×3 (§0 état des lieux) :** présent dans TF+CV+Fidu → **NATIF**
+  (config optionnelle ok). Pas de vague « décider si métier ».
 - Façades / stubs / jumeaux = **NON done**.
 - Extraire TempoFlow gold ; ne pas inventer.
 - **Pas de P(n+1) si gate intention P(n) rouge.**
-- Décisions trous documentaires (tasks kanban, cockpit, fabrique, Fidu fleet,
-  paths multi-DB) **avant** le code concerné.
 
 ## Vagues
 
 | Vague | Contenu | Effort |
 |-------|---------|--------|
-| **P0** | Gates intention + matrice honnête | S |
-| **P1** | Décisions humaines (trous doc) | S |
-| **P2** | Shell-UI jumeaux → kit | XL |
-| **P3** | Tasks/AI/Hermes (si natif) | XL |
-| **P4** | Product Hub routes + n8n provisioning | L |
-| **P5** | MCP SoT unique | L |
-| **P6** | Assistant routes / mounts | M |
-| **P7** | Auth login UI + mails parité | M |
-| **P8** | Fleet → kit/ops | M |
-| **P9** | Server twins (schemas, mcp/oauth) | L |
-| **P10** | Boot + multi-DB paths | M |
-| **P11** | Purge vocabulaire TF kit | L |
-| **P12** | Obs / automations lifecycle parité | M |
+| **P0** | Gates intention + matrice honnête (+ doc §0 déjà appliqué) | S |
+| **P1** | Shell-UI jumeaux → kit (sidebar/workspace/cockpit/setup/onboarding/search) + cutover ×3 | XL |
+| **P2** | Tasks/AI/Hermes kanban → kit SoT + extinction jumeaux TF/CV/Fidu | XL |
+| **P3** | Product Hub routes + n8n provisioning | L |
+| **P4** | MCP SoT unique | L |
+| **P5** | Assistant routes / mounts | M |
+| **P6** | Auth login UI + mails parité (config Fidu ok) | M |
+| **P7** | Fleet collector → kit/ops | M |
+| **P8** | Server twins (schemas, mcp/oauth) | L |
+| **P9** | Boot + multi-DB paths | M |
+| **P10** | Purge vocabulaire TF kit | L |
+| **P11** | Obs / automations lifecycle parité | M |
+| **P12** | Fabrique plugins shippée ≥1 marque | L |
 | **P13** | Scripts/tests twins | L |
 | **P14** | Freeze intention 100 % + republish | S |
 
-Détail done / étapes / risques : §E–G de l’état des lieux.
+**P0 code effectif = P1+P2** (tout ×3 encore local shell/tasks). Pas de P1
+« humain / trous ».
+
+Détail done / étapes / risques : §F–H de l’état des lieux.

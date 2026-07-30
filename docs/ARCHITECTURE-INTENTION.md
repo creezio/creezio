@@ -30,8 +30,8 @@ plus lentement : c’est le socle, pas le métier.
 
 | Couche | Qui la possède | Exemples |
 |--------|----------------|----------|
-| **Natif Creezio** | Kit `@creezio/*` | Auth, nav + slots, chat, API façade, MCP, splash, tasks/mails plateforme, Product Hub, tunnel, Meili, hosts n8n/Hermes |
-| **Modules métier** | **Repo de la marque** | Panier, dispatch, relevés, optimiser, catalogue (TempoFlow) ; GED (Fidu) ; RTI (Certivan) |
+| **Natif Creezio** | Kit `@creezio/*` | Auth, nav + slots, shell CRM (sidebar/workspace/cockpit/setup/onboarding/search), chat, API façade, MCP, splash, **tasks/kanban/AI**, mails, Product Hub/fabrique, fleet, database UI, tunnel, Meili, hosts n8n/Hermes |
+| **Modules métier** | **Repo de la marque** | Panier, dispatch, relevés, optimiser, catalogue (TempoFlow) ; GED / Pennylane (Fidu) ; RTI / VASP (Certivan) — **jamais** une surface présente dans les 3 marques |
 | **Plugins** | Organisation cliente (ACL) | Sidecars créés / installés par users, visibles selon droits org |
 
 ### Analogie simple
@@ -164,6 +164,11 @@ Voir [PROPAGATION.md](PROPAGATION.md).
 5. **Plugins d’organisation** + ACL granulaire ; pas d’univers perso isolé.
 6. **Multi-exe Client + Serveur** par marque.
 7. **Serveur neuf jour 0** : SQLite core + SQLite métier ; plugins à l’install.
+8. **Règle ×3 = natif** : toute fonctionnalité présente (ou l’ayant été) dans
+   TempoFlow **et** Certivan **et** Fidu est **plateforme** `@creezio/*`
+   (config optionnelle ok). Le métier = ce qui est spécifique à **une seule**
+   marque. Pas de « question bloquante » pour reclasser tasks/cockpit/onboarding/
+   shell/fleet/mails/hub/… — preuve dans [ETAT-DES-LIEUX-INTENTION.md](ETAT-DES-LIEUX-INTENTION.md) §0–B.
 
 ---
 

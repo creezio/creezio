@@ -12,8 +12,8 @@
 > freeze [PHASE-O11.md](PHASE-O11.md) ; **ne pas lire O11 comme 100 % intention**.
 > **État des lieux intention (post-O11)** :
 > [ETAT-DES-LIEUX-INTENTION.md](ETAT-DES-LIEUX-INTENTION.md) · roadmap
-> [PLAN-P.md](PLAN-P.md) — piliers OS mesurés ; jumeaux plateforme ~21,7 kLOC
-> TF↔CV encore ouverts ; packages ✅ ≠ marques minces.
+> [PLAN-P.md](PLAN-P.md) — **règle ×3=NATIF** ; plus de questions bloquantes ;
+> jumeaux plateforme ~21,7 kLOC TF↔CV encore ouverts ; packages ✅ ≠ marques minces.
 > Versions courantes : TF **0.10.33** · Certivan **0.1.16** · Fidu **0.1.65**.
 > Légende : **✅** livré **et cutover marques prouvé** · **🟡** package/kit
 > partiel ou jumeaux restants · **❌** absent / hors scope volontaire.
@@ -58,8 +58,10 @@ Vision stricte N* : [PLAN-N.md](PLAN-N.md) · [PHASE-N0.md](PHASE-N0.md) ·
 | **Assistant / chat** | `@creezio/assistant` | ✅ | **I2** + **C1** rich schema ; **TF C1** chat-db façade kit (plus dual-write) |
 | **API kernel** (façade HTTP cœur) | `@creezio/api-kernel` | ✅ | ScopedDbAccess H2 + `authorizePluginAccess` H5 |
 | **MCP façade / proxy** | `@creezio/mcp-facade` | ✅ | H4 aliases/policies + H5 deny plugin ; **TF D1** + **Certivan C2** : exécuteur Hono `/mcp`, façade = adaptateur + proxy |
-| **Tasks** (natif plateforme) | `@creezio/tasks` | ✅ | CRUD + mount I3 ; **TF C1** SoT kit UUID + kanban/AI brand |
-| **Mails** (natif plateforme) | `@creezio/mails` | ✅ | SQLite + file-sink I3 ; **TF C1** index inbound kit + PJ brand |
+| **Tasks** (natif plateforme, kanban+AI inclus) | `@creezio/tasks` | 🟡 | Store/API kit + UI kanban kit **partielle** ; **jumeaux locaux ×3** (TF/CV `tasks.ts`+AI twin, Fidu `cabinet-tasks`/kanban) — cutover P2 |
+| **Mails** (natif plateforme) | `@creezio/mails` | 🟡 | Store kit ×3 ; UI inbox twin TF↔CV ; Fidu sans UI (config) — cutover P6 |
+| **Shell CRM** (sidebar/workspace/cockpit/setup/onboarding/search) | `@creezio/shell-ui` | 🟡 | Nav adapters kit ; **surfaces CRM encore locales ×3** (souvent twin) — cutover P1 |
+| **Fleet** (ops telemetry) | observability + platform-core + shell-ui | 🟡 | Settings/telemetry kit ; collector twin TF↔CV ; Fidu `fleet:false` = config — cutover P7 |
 | Sync vendor standardisé | `scripts/sync-creezio-vendor.sh` | ✅ | **I0** — assert `ARCHITECTURE_VERSION=H6`, CJS, wrappers 3 marques |
 | Politique republish | [REPUBLISH-POLICY.md](REPUBLISH-POLICY.md) | ✅ | I14/I16/I18 livrés ; suite D3/D4/D5 si runtime packaged |
 | **SQLite multi-fichiers** (core / brand / plugin) | `@creezio/platform-core` | ✅ | paths H1 + `createSqliteRuntime` / migrations H2 |
@@ -82,7 +84,8 @@ produit observée — **pas** une cible d’extraction kit.
 | Supplier tabs / marketplaces | tempoflow2 | ✅ | ✅ nav `brand.fournisseurs` (+ catalogue) | UI fournisseurs brand |
 | Stack | tempoflow2 | ✅ | ✅ **I11** API+MCP+nav (`createStackMount`) | Plus 🟡 — faux écart corrigé D0 |
 | Scan | tempoflow2 | ✅ | ✅ **D3** API resolve/search/add-to-panier + nav | Produit figé UI→panier ; pas de tables dédiées |
-| Fleet | tempoflow2 | ✅ | — (plateforme Electron) | Hors brand métier |
+
+> **Fleet** = natif plateforme (P25), pas module métier — voir §1 et état des lieux §0/§B.
 
 **Contrat d’accueil kit** : ✅ shell-ui + api-kernel + MCP scindé.  
 **H3 / I11 / M13** : modules TF dans `tempoflow2/crm/electron/modules/` +
