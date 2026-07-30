@@ -60,7 +60,8 @@ import { getTempoflowModuleApi } from "@/lib/brand-module-api";
 export const api = new OpenAPIHono().basePath("/api/v1");
 
 // Façade unique — process Next (pas seulement Electron/MCP)
-mountApiKernelOnHono(api, getTempoflowModuleApi(), {
+// Getter lazy : ne pas ouvrir SQLite au import du module Hono.
+mountApiKernelOnHono(api, () => getTempoflowModuleApi(), {
   spaces: ["core", "platform", "modules", "plugins"],
 });
 

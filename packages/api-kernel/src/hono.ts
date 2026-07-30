@@ -14,10 +14,15 @@
  * ```
  */
 
-import type { Context, Hono, Next } from "hono";
+import type { Context, Next } from "hono";
 import type { ApiKernel } from "./kernel.js";
 import { API_V1_PREFIX } from "./kernel.js";
 import type { ApiRequest, ApiResponse } from "./types.js";
+
+/** Surface minimale Hono / OpenAPIHono pour le bridge. */
+export type HonoLike = {
+  all: (path: string, ...handlers: unknown[]) => unknown;
+};
 
 export type ApiKernelHonoSpace =
   | "core"
@@ -134,11 +139,19 @@ export async function applyApiResponse(
   return c.json(res.body as never, status);
 }
 
+export type ApiKernelLike = Pick<ApiKernel, "handle">;
+export type ApiKernelResolver = ApiKernelLike | (() => ApiKernelLike);
+
+function resolveKernel(kernel: ApiKernelResolver): ApiKernelLike {
+  return typeof kernel === "function" ? kernel() : kernel;
+}
+
 /**
  * Convertit un Context Hono → ApiRequest + appelle `kernel.handle`.
+ * Accepte un kernel ou un getter lazy (évite d'ouvrir SQLite au import).
  */
 export function apiKernelToHonoHandler(
-  kernel: ApiKernel,
+  kernel: ApiKernelResolver,
   options: Pick<
     MountApiKernelOnHonoOptions,
     "apiPrefix" | "fallthroughOnNotFound"
@@ -155,7 +168,7 @@ export function apiKernelToHonoHandler(
       query: queryFromHono(c),
       body: await bodyFromHono(c),
     };
-    const res = await kernel.handle(req);
+    const res = await resolveKernel(kernel).handle(req);
     if (fallthrough && isFallthroughNotFound(res)) {
       return next();
     }
@@ -169,10 +182,12 @@ export function apiKernelToHonoHandler(
  *
  * Ne remplace pas les routes flat métier (`/tasks`, `/panier`, `/auth`…) —
  * elles restent jusqu'aux cutovers packages dédiés.
+ *
+ * Preferer `() => getBrandModuleApi()` pour ne pas toucher SQLite au import.
  */
 export function mountApiKernelOnHono(
-  app: Hono,
-  kernel: ApiKernel,
+  app: HonoLike,
+  kernel: ApiKernelResolver,
   options: MountApiKernelOnHonoOptions = {},
 ): void {
   const spaces = options.spaces ?? [

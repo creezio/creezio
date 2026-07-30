@@ -40,6 +40,9 @@ export { registerApiMounts } from "./register.js";
 
 export type {
   ApiKernelHonoSpace,
+  ApiKernelLike,
+  ApiKernelResolver,
+  HonoLike,
   MountApiKernelOnHonoOptions,
 } from "./hono.js";
 export {
