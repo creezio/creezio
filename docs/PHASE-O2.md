@@ -7,8 +7,17 @@
 | **Repo** | `creezio/creezio` + TempoFlow + Certivan + Fidu |
 | **Prérequis** | [PHASE-O1.md](PHASE-O1.md) · plan [PLAN-O.md](PLAN-O.md) |
 | **Baseline O1 kit tip** | `ff1ca87` / docs `022111b` |
+| **Kit tip O2** | `e1335d8` |
 | **ARCHITECTURE_VERSION** | `"H6"` (inchangé) |
-| **Republish** | Oui Fidu (migrations packaged) |
+| **Republish** | Oui Fidu **0.1.64** |
+
+### SHAs marques (gold O2)
+
+| Marque | SHA |
+|--------|-----|
+| TempoFlow | `3bf55fd` |
+| Certivan | `ba620bd` |
+| Fidu | `50f741b` |
 
 ---
 
@@ -58,7 +67,7 @@ npm run test:fidu
 | Runner Fidu ≤150 LOC | ✅ |
 | `test-phase-o2` + `npm test` | ✅ |
 | Sync vendor ×3 | ✅ |
-| Republish Fidu | ✅ (si ship pipeline) |
+| Republish Fidu | ✅ 0.1.64 feed |
 
 ---
 
