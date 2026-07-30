@@ -150,7 +150,7 @@ npm test   # incl. test-phase-n4
 
 | Repo | SHA |
 |------|-----|
-| kit `creezio/creezio` | *(à renseigner après push)* |
+| kit `creezio/creezio` | `b2234b9` |
 
 ---
 

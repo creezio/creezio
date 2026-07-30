@@ -4,6 +4,9 @@
 ## [Unreleased]
 
 ### Added
+- **Phase N4p** — Cutover migrations TF→Certivan→Fidu : steps plateforme
+  absents (wraps Fidu) ; runners ≤150 LOC via `runHistoricalMigrations` ;
+  `docs/PHASE-N4p.md` ; tests `test-phase-n4p` ; republish Fidu (boot DB).
 - **Phase N4** — Migrations historiques plateforme SoT kit :
   `platformHistoricalMigrations()` + `runHistoricalMigrations` dans
   `@creezio/platform-core` (16 steps TF gold) ; inventaire

@@ -131,9 +131,15 @@ Phases livrées : [PHASE-N0.md](PHASE-N0.md) · [PHASE-N1.md](PHASE-N1.md) ·
 
 ---
 
-## N4p — Cutover migrations (TF → CV → Fidu)
+## N4p — Cutover migrations (TF → CV → Fidu) ✅
 
-**Effort M · Republish oui** si boot DB
+1. **Objectif** : steps plateforme absents (ou wraps Fidu) ; runner ≤150 LOC.
+2. **Inclus** : delete/wrap cutover ×3 ; sync vendor liste complète.
+3. **Exclu** : rewrite métier ; N5 feature-off.
+4. **Tests gate** : database-module TF/CV ; `test:fidu` ; kit `test-phase-n4p`.
+5. **Done** : [PHASE-N4p.md](PHASE-N4p.md) — TF `37ea6e6` · CV `da7e356` ·
+   Fidu `1763332` ; baseline N4 `b2234b9`.
+6. **Effort M · Republish oui** Fidu (boot DB packaged)
 
 ---
 
