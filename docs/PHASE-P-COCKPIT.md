@@ -2,7 +2,7 @@
 
 | | |
 |--|--|
-| **Statut** | 📝 **PLAN** — attente validation user avant implémentation |
+| **Statut** | ✅ **IMPLEMENTED** — package + cutover TF→CV→Fidu |
 | **Date** | 2026-07-30 |
 | **Package cible** | **`@creezio/cockpit`** (nouveau package dédié UI server-cockpit) |
 | **Arbitrage placement** | [AUDIT-SHELL-UI-SCOPE.md](AUDIT-SHELL-UI-SCOPE.md) — cockpit **hors** `shell-ui` ; après `@creezio/onboarding` (`feff378`) |
@@ -15,7 +15,7 @@
 > fourré dans onboarding/tasks. Splash reste `@creezio/electron-shell`.
 > Routes Hono / libs data restent **marque** (ou extract serveur ultérieur).
 
-> **Stop après ce doc.** Aucun code feature tant que validation user ≠ OK.
+> Validation user OK — livré `@creezio/cockpit` + cutover ×3.
 
 ---
 
@@ -380,8 +380,7 @@ Gate : `package.json` de `shell-ui` / `onboarding` / `tasks` **sans**
 
 ## 4. Plan d’implémentation → 100 % package
 
-> Ordre strict. **Pas d’implémentation** tant que ce plan n’est pas validé.
-> Cutover marques = après Done package (étape E).
+> Ordre strict. Cutover marques = après Done package (étape E) — **fait**.
 
 ### Étape A — Scaffold + types + config (P-CKPT-A)
 
@@ -393,9 +392,9 @@ Gate : `package.json` de `shell-ui` / `onboarding` / `tasks` **sans**
 
 **Done A**
 
-- [ ] Package `@creezio/cockpit` build vert
-- [ ] Config testable (override deepLink / download)
-- [ ] `shell-ui` / `onboarding` **sans** dep `@creezio/cockpit`
+- [x] Package `@creezio/cockpit` build vert
+- [x] Config testable (override deepLink / download)
+- [x] `shell-ui` / `onboarding` **sans** dep `@creezio/cockpit`
 
 ### Étape B — Moteur partagé + `CockpitClient` (P-CKPT-B)
 
@@ -407,9 +406,9 @@ Gate : `package.json` de `shell-ui` / `onboarding` / `tasks` **sans**
 
 **Done B**
 
-- [ ] `CockpitClient` exporté `@creezio/cockpit/ui`
-- [ ] Aucun `tempoflowDesktop|certivanDesktop|fiduDesktop` dans le package
-- [ ] Aucun hardcode `tempoflow://` / URL feed TF
+- [x] `CockpitClient` exporté `@creezio/cockpit/ui`
+- [x] Aucun `tempoflowDesktop|certivanDesktop|fiduDesktop` dans le package
+- [x] Aucun hardcode `tempoflow://` / URL feed TF
 
 ### Étape C — `ServerCockpitShell` (P-CKPT-C)
 
@@ -420,10 +419,10 @@ Gate : `package.json` de `shell-ui` / `onboarding` / `tasks` **sans**
 
 **Done C**
 
-- [ ] `ServerCockpitShell` exporté
-- [ ] Tabs filtrables via `config.tabs`
-- [ ] Join link = `${deepLinkProtocol}://join/…`
-- [ ] CTA download = `clientDownloadUrl`
+- [x] `ServerCockpitShell` exporté
+- [x] Tabs filtrables via `config.tabs`
+- [x] Join link = `${deepLinkProtocol}://join/…`
+- [x] CTA download = `clientDownloadUrl`
 
 ### Étape D — Pack export + tests + README (P-CKPT-D) = 100 % package
 
@@ -435,11 +434,11 @@ Gate : `package.json` de `shell-ui` / `onboarding` / `tasks` **sans**
 
 **Done D = 100 % package**
 
-- [ ] Exports §3 présents
-- [ ] Tests + `build:packages` verts
-- [ ] Doc package + PHASE à jour
-- [ ] **Aucun** fichier cockpit sous `packages/shell-ui/`
-- [ ] **Aucun** code feature onboarding/tasks/MCP touché
+- [x] Exports §3 présents
+- [x] Tests + `build:packages` verts
+- [x] Doc package + PHASE à jour
+- [x] **Aucun** fichier cockpit sous `packages/shell-ui/`
+- [x] **Aucun** code feature onboarding/tasks/MCP touché
 
 ### Étape E — Cutover marques (après D — autre chantier)
 
@@ -545,4 +544,4 @@ Précédent package dédié : [PHASE-P-ONBOARDING.md](PHASE-P-ONBOARDING.md)
 - ✅ Design `@creezio/cockpit` (moteur + hooks perso)
 - ✅ Plan A→E jusqu’à 100 % package + cutover + critères done
 - ✅ Doc poussée kit — **stop** ; attendre validation avant code
-- ❌ Pas d’implémentation / scaffold / cutover dans ce commit
+- ✅ Package `@creezio/cockpit` + gates `test-phase-p-cockpit` + cutover ×3

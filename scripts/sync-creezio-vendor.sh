@@ -32,6 +32,7 @@ DEFAULT_PACKAGES=(
   mcp-facade
   shell-ui
   onboarding
+  cockpit
   auth
   assistant
   tasks

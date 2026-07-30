@@ -4,6 +4,9 @@
 ## [Unreleased]
 
 ### Added
+- **Phase P cockpit** — `@creezio/cockpit` (ServerCockpitShell + CockpitClient +
+  configureCockpit) ; cutover TF→CV→Fidu ; extinction jumeaux UI ;
+  `docs/PHASE-P-COCKPIT.md` ; tests `test-phase-p-cockpit`.
 - **Phase O11** — Freeze plan O0→O11 : matrice + PLAN-O + SHAs gold ;
   vision intention **~76 %** (honnête) ; `docs/PHASE-O11.md` ;
   tests `test-phase-o11` ; republish feeds TF/CV/Fidu (runtime O7/O9p).
