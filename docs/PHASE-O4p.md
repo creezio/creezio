@@ -44,18 +44,16 @@
 |---------|-----|-------|
 | `handleAssistantChat` / SSE / tools plateforme | `@creezio/assistant` | — |
 | Auth session | kit `auth.getSession` | `getSession` → brand-config |
-| Métier tools | `tools.executeTool` | `lib/assistant/brand-chat-tools.ts` |
+| Métier tools | ~~`tools.executeTool` / brand-chat-tools~~ → **O4r MCP** | voir [PHASE-O4r.md](PHASE-O4r.md) |
 | `get_entity` sources | `tools.entitySources` | kinds TF/CV/Fidu |
 | Work Hermes | `hermes.workSkills` / `sessionIdPrefix` | TF `tf2-crm` · CV `certivan-crm` · Fidu `fidu-crm` |
 | Mount chat | `routes/assistant.ts` | `import { handleAssistantChat } from "@creezio/assistant"` |
 
-### Métier resté marque (`brand-chat-tools`)
+### Métier (historique O4p — supersédé O4r)
 
-| Marque | Tools |
-|--------|-------|
-| TF | `add_to_cart`, `set_statut`, `create_task`, `list_tasks` + entitySources catalogue |
-| CV | idem schéma + entitySources dossier/véhicule/pièce |
-| Fidu | `create_todo`, `list_todos`, `accounting_query`, `open_external_tab` + entitySources CRM |
+> **O4r** : `brand-chat-tools.ts` **absent** ; métier = `mcp-bridge` +
+> `tasks-adapter` ; defs plateforme SoT kit. Voir
+> [ADR-assistant-tools-mcp.md](ADR-assistant-tools-mcp.md).
 
 ---
 
@@ -74,9 +72,10 @@ cd /opt/docker/creezio && npm test   # incl. test-phase-o4p
 ### Gate `test-phase-o4p`
 
 - Absents ×3 : `src/server/assistant-chat.ts`
-- Présents ×3 : `brand-chat-tools.ts`, import kit dans `routes/assistant.ts`
+- Présents ×3 : import kit dans `routes/assistant.ts` ; auth + hermes dans brand-config
 - `handleAssistantChat` exporté kit ; Paperclip mort
 - PLAN-O O4p livré + SHAs marques
+- **O4r** : ne plus exiger `brand-chat-tools.ts` (fichier mort)
 
 ---
 

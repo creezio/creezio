@@ -32,7 +32,7 @@ test("O4p.1 PHASE-O4p.md + PLAN-O O4p", () => {
   assert.match(plan, /O4p — Cutover `assistant-chat`.*✅|## O4p —[\s\S]*?✅/);
 });
 
-test("O4p.2 jumeaux assistant-chat absents ×3 + brand-chat-tools", () => {
+test("O4p.2 jumeaux assistant-chat absents ×3 + mount kit", () => {
   for (const b of BRANDS) {
     const twin = path.join(
       dockerRoot,
@@ -40,12 +40,16 @@ test("O4p.2 jumeaux assistant-chat absents ×3 + brand-chat-tools", () => {
       "crm/src/server/assistant-chat.ts",
     );
     assert.ok(!fs.existsSync(twin), `${b.label}: jumeau encore présent`);
-    const tools = path.join(
+    // O4r : brand-chat-tools mort — ne plus l'exiger
+    const dead = path.join(
       dockerRoot,
       b.id,
       "crm/src/lib/assistant/brand-chat-tools.ts",
     );
-    assert.ok(fs.existsSync(tools), `${b.label}: brand-chat-tools manquant`);
+    assert.ok(
+      !fs.existsSync(dead),
+      `${b.label}: brand-chat-tools doit être absent (O4r)`,
+    );
     const routes = fs.readFileSync(
       path.join(dockerRoot, b.id, "crm/src/server/routes/assistant.ts"),
       "utf8",
@@ -65,7 +69,7 @@ test("O4p.2 jumeaux assistant-chat absents ×3 + brand-chat-tools", () => {
       "utf8",
     );
     assert.match(cfg, /auth:\s*\{/);
-    assert.match(cfg, /executeTool/);
+    assert.match(cfg, /\bmcp:\s*|\btasks:\s*/);
     assert.match(cfg, /workSkills|sessionIdPrefix/);
   }
 });
@@ -78,7 +82,7 @@ test("O4p.3 kit handleAssistantChat + Paperclip mort", () => {
   assert.ok(fs.existsSync(chat));
   const body = fs.readFileSync(chat, "utf8");
   assert.match(body, /export async function handleAssistantChat/);
-  assert.match(body, /phase:\s*["']supplier["']|BrandTools\.executeTool/);
+  assert.match(body, /callAssistantMcpTool|executeTaskTool|handleAssistantChat/);
   assert.doesNotMatch(body, PAPERCLIP_RE);
   assert.doesNotMatch(body, /getOrCreatePanier|tempoflow2-crm-/);
 });

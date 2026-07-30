@@ -1,6 +1,7 @@
 /**
  * Prompts génériques + injection marque (AssistantPrompts).
- * Pas de TOOL_DEFINITIONS panier/dispatch en dur — marques via configureAssistantBrand.
+ * TOOL_DEFINITIONS plateforme = SoT kit (platform-tool-definitions).
+ * Métier = discovery MCP ; pas de liste panier/tasks dupliquée en marque.
  */
 import { appMapPromptSection } from "./app-map-shim.js";
 import {
@@ -14,6 +15,22 @@ import {
   shouldPreferSearchKnowledge,
 } from "../runtime/routing.js";
 import { loadSchemaCatalog } from "../runtime/schema-catalog.js";
+import { PLATFORM_TOOL_DEFINITIONS } from "../runtime/platform-tool-definitions.js";
+import { cachedMcpToolDefinitions } from "../runtime/mcp-tools.js";
+import { taskToolDefinitions } from "../runtime/tasks-tools.js";
+import type { AssistantToolDefinition } from "./types.js";
+
+function mergeToolDefinitions(
+  ...lists: AssistantToolDefinition[][]
+): AssistantToolDefinition[] {
+  const byName = new Map<string, AssistantToolDefinition>();
+  for (const list of lists) {
+    for (const t of list) {
+      byName.set(t.function.name, t);
+    }
+  }
+  return [...byName.values()];
+}
 
 export {
   looksLikeUiCommand,
@@ -119,14 +136,22 @@ Pour une dimension texte, normalise-la par \`LOWER(TRIM(colonne))\`. N'annonce p
 
 export const ASSISTANT_SYSTEM_PROMPT = GENERIC_BASE;
 
-/** Outils = injection marque (vide si non configuré). */
-export function getToolDefinitions() {
-  return assistantToolDefinitions();
+/**
+ * Outils LLM = platform kit ∪ tasks ∪ MCP découverts ∪ addendum marque.
+ * Cache MCP rafraîchi via ensureMcpToolCache() en tête de chat.
+ */
+export function getToolDefinitions(): AssistantToolDefinition[] {
+  return mergeToolDefinitions(
+    PLATFORM_TOOL_DEFINITIONS,
+    taskToolDefinitions(),
+    cachedMcpToolDefinitions(),
+    assistantToolDefinitions(),
+  );
 }
 
 /** @deprecated préférer getToolDefinitions() — tableau live via getter. */
 export function TOOL_DEFINITIONS() {
-  return assistantToolDefinitions();
+  return getToolDefinitions();
 }
 
 /** Heuristique générique (répartition / classement) — pas de métier marque. */

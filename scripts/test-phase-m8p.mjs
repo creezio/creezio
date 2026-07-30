@@ -68,8 +68,12 @@ test("M8p.3 Certivan call-sites @creezio/* directs", () => {
     /@creezio\/assistant/,
   );
   assert.ok(
-    fs.existsSync(path.join(cvRoot, "src/lib/assistant/brand-chat-tools.ts")),
-    "CV brand-chat-tools",
+    fs.existsSync(path.join(cvRoot, "src/lib/assistant/mcp-bridge.ts")),
+    "CV mcp-bridge",
+  );
+  assert.ok(
+    !fs.existsSync(path.join(cvRoot, "src/lib/assistant/brand-chat-tools.ts")),
+    "CV brand-chat-tools mort",
   );
 });
 

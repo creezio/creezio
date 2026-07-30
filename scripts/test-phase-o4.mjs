@@ -47,7 +47,7 @@ test("O4.2 runtime/assistant-chat.ts + exports", () => {
   const body = fs.readFileSync(chat, "utf8");
   assert.match(body, /export async function handleAssistantChat/);
   assert.match(body, /export const maxDuration/);
-  assert.match(body, /assistantBrandTools\(\)\.executeTool/);
+  assert.match(body, /callAssistantMcpTool|executeTaskTool/);
   assert.match(body, /auth\?\.getSession|auth:\s*\{\s*getSession/);
   assert.match(body, /workSkills|sessionIdPrefix/);
 
@@ -55,10 +55,12 @@ test("O4.2 runtime/assistant-chat.ts + exports", () => {
   assert.match(index, /handleAssistantChat/);
   assert.match(index, /maxDuration/);
   assert.match(index, /AssistantAuthSession/);
+  assert.match(index, /AssistantMcpConfig|mcpFacadeToAssistantConfig/);
 
   const types = fs.readFileSync(path.join(src, "brand/types.ts"), "utf8");
   assert.match(types, /AssistantAuthSession/);
-  assert.match(types, /executeTool\?/);
+  assert.match(types, /AssistantMcpConfig/);
+  assert.match(types, /AssistantTasksConfig/);
   assert.match(types, /entitySources\?/);
   assert.match(types, /workSkills\?/);
   assert.match(types, /sessionIdPrefix\?/);
@@ -73,14 +75,15 @@ test("O4.3 pas de métier panier/tasks TF + Paperclip mort", () => {
   assert.doesNotMatch(body, /from ["']@\//);
   assert.doesNotMatch(body, /tempoflow2-crm|tf2-crm-/);
   assert.doesNotMatch(body, /["']\/panier["']/);
-  // add_to_cart only in comments about brand delegation, not as tool impl
+  // add_to_cart mort ; create_task via tasks-tools (pas panier TF)
   assert.doesNotMatch(body, /if \(name === "add_to_cart"\)/);
-  assert.doesNotMatch(body, /if \(name === "create_task"\)/);
+  assert.doesNotMatch(body, /getOrCreatePanier|addLigne/);
 
   const corpus = walkTs(src)
     .map((f) => fs.readFileSync(f, "utf8"))
     .join("\n");
   assert.doesNotMatch(corpus, PAPERCLIP_RE);
+  assert.match(corpus, /PLATFORM_TOOL_DEFINITIONS/);
 });
 
 test("O4.4 cutover délégué O4p (jumeaux absents post-cutover)", () => {

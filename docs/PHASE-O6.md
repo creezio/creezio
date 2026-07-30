@@ -49,7 +49,7 @@ Politique extraite de `AUDIT-RESTES-TEMPOFLOW.md` + `test-fresh-baseline` (`TF_A
 |--------|--------|
 | **Delete** | `queries.ts`, `commande-queries.ts`, `catalog-queries.ts`, `version-queries.ts`, `version-types.ts`, `rayons.ts`, `statut.ts` (+ composants statut morts) |
 | **Add** | `search-sql-fallback.ts` (dossiers / véhicules only) |
-| **Rewrite** | `context.ts`, `search.ts`, `brand-chat-tools.ts`, `open-external-tab.ts` |
+| **Rewrite** | `context.ts`, `search.ts`, `open-external-tab.ts` (O4r : `mcp-bridge` remplace brand-chat-tools) |
 | **Allowlist** | `CERTIVAN_CRUD_WHITELIST` via `configureCertivanDatabaseHost` (pattern Fidu) |
 
 ---
@@ -73,7 +73,7 @@ npm run test:database-module
 - Tombstones catering + `043` présent dans `steps/`
 - Libs catering absentes ; `search-sql-fallback` métier only
 - `CERTIVAN_CRUD_WHITELIST` (pas `TEMPOFLOW_CRUD_WHITELIST`)
-- Pas `add_to_cart` / panier dans brand-chat-tools
+- Pas `add_to_cart` / panier (O4r: mcp-bridge CV sans panier)
 - PLAN-O O6 marqué livré · Paperclip mort
 
 ---

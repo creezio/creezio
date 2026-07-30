@@ -1,11 +1,12 @@
 /**
- * Orchestration chat assistant (SSE / tools / Work Hermes) — Phase O4.
+ * Orchestration chat assistant (SSE / tools / Work Hermes) — Phase O4 / O4r.
  *
  * SoT générique : surface/ui/supplier, explore SQL, Meili, boucles OpenAI/Anthropic.
- * Métier marque (panier, statut, tasks/todos, get_entity sources…) via
- * configureAssistantBrand({ tools.executeTool, tools.getEntity, tools.entitySources, auth, hermes }).
+ * Métier = discovery MCP (`configureAssistantBrand({ mcp })`).
+ * Tasks = adapter kit (`configureAssistantBrand({ tasks })`).
+ * Projections = getEntity / entitySources / Meili (pas d’executeTool métier).
  *
- * Gold TF (orchestration) ; pas de panier/dispatch/catering en dur.
+ * BrandTools.executeTool = legacy mort (O4r).
  */
 
 import {
@@ -28,6 +29,12 @@ import {
   collectSourcesFromSqlRows,
   type AssistantSource,
 } from "../brand/sources-shim.js";
+import {
+  callAssistantMcpTool,
+  ensureMcpToolCache,
+  summarizeMcpResult,
+} from "./mcp-tools.js";
+import { executeTaskTool } from "./tasks-tools.js";
 import {
   formatActiveSurfaceRuntimeBlock,
   looksLikeSurfaceCommand,
@@ -465,39 +472,36 @@ async function executeTool(
     }
 
     if (isSupplierTool(name)) {
-      // Marque peut intercepter (ex. Fidu open_external_tab → resolveOpenTabRequest).
+      // O4r : interception métier (ex. open_external_tab Fidu) via MCP, pas BrandTools.
       {
-        const brandExec = assistantBrandTools().executeTool;
-        if (brandExec) {
-          const brandCtx: Record<string, unknown> = {
-            conversationId: trace?.conversationId || null,
-            round: trace?.round ?? null,
-            runId: trace?.runId || null,
-            activeSurface: activeSurface || null,
-            emit: emit || null,
-            phase: "supplier",
-          };
-          const brandResult = await brandExec(name, args, brandCtx);
-          if (brandResult != null) {
-            const br = brandResult as Record<string, unknown>;
-            resultOk = br.ok !== false && !br.error;
-            error = resultOk ? null : String(br.error || "outil marque échoué");
-            parsedResult = br;
-            const brandSources = Array.isArray(br.sources)
-              ? (br.sources as AssistantSource[])
-              : [];
-            for (const s of brandSources) sources.push(s);
-            uiSummary =
-              typeof br.uiSummary === "string" && br.uiSummary
-                ? br.uiSummary
-                : uiActionSummary(name, br);
-            return {
-              content: JSON.stringify(parsedResult).slice(0, 14000),
-              sources,
-              uiSummary,
-              resultOk,
-            };
+        const brandCtx: Record<string, unknown> = {
+          conversationId: trace?.conversationId || null,
+          round: trace?.round ?? null,
+          runId: trace?.runId || null,
+          activeSurface: activeSurface || null,
+          emit: emit || null,
+          phase: "supplier",
+        };
+        const mcpResult = await callAssistantMcpTool(name, args, brandCtx);
+        if (mcpResult != null) {
+          resultOk = mcpResult.ok !== false && !mcpResult.error;
+          error = resultOk ? null : String(mcpResult.error || "outil MCP échoué");
+          const content =
+            mcpResult.content !== undefined ? mcpResult.content : mcpResult;
+          parsedResult =
+            typeof content === "object" && content !== null
+              ? content
+              : { ok: resultOk, content, error: mcpResult.error };
+          if (Array.isArray(mcpResult.sources)) {
+            for (const s of mcpResult.sources) sources.push(s as AssistantSource);
           }
+          uiSummary = summarizeMcpResult(name, mcpResult);
+          return {
+            content: JSON.stringify(parsedResult).slice(0, 14000),
+            sources,
+            uiSummary,
+            resultOk,
+          };
         }
       }
       // Onglets fournisseurs (app desktop) : canal SSE dédié vers Electron.
@@ -715,43 +719,80 @@ async function executeTool(
       };
     }
 
-    // Métier marque → BrandTools.executeTool (panier / statut / tasks / todos…)
+    // Tasks plateforme (create_task / list_tasks / aliases todo)
     {
-      const brandExec = assistantBrandTools().executeTool;
-      if (brandExec) {
-        const brandCtx: Record<string, unknown> = {
-          conversationId: trace?.conversationId || null,
-          round: trace?.round ?? null,
-          runId: trace?.runId || null,
-          activeSurface: activeSurface || null,
-          emit: emit || null,
+      const brandCtx: Record<string, unknown> = {
+        conversationId: trace?.conversationId || null,
+        round: trace?.round ?? null,
+        runId: trace?.runId || null,
+        activeSurface: activeSurface || null,
+        emit: emit || null,
+      };
+      const taskResult = await executeTaskTool(name, args, brandCtx);
+      if (taskResult != null) {
+        resultOk = taskResult.ok !== false && !taskResult.error;
+        error = resultOk ? null : String(taskResult.error || "tâche échouée");
+        parsedResult = taskResult;
+        const taskSources = Array.isArray(taskResult.sources)
+          ? (taskResult.sources as AssistantSource[])
+          : [];
+        for (const s of taskSources) sources.push(s);
+        uiSummary =
+          typeof taskResult.uiSummary === "string" && taskResult.uiSummary
+            ? taskResult.uiSummary
+            : resultOk
+              ? `outil ${name}`
+              : error || `échec ${name}`;
+        return {
+          content: JSON.stringify(parsedResult).slice(0, 14000),
+          sources,
+          uiSummary,
+          resultOk,
         };
-        const brandResult = await brandExec(name, args, brandCtx);
-        if (brandResult != null) {
-          const br = brandResult as Record<string, unknown>;
-          resultOk = br.ok !== false && !br.error;
-          error = resultOk ? null : String(br.error || "outil marque échoué");
-          parsedResult = br;
-          const brandSources = Array.isArray(br.sources)
-            ? (br.sources as AssistantSource[])
-            : [];
-          for (const s of brandSources) sources.push(s);
-          uiSummary =
-            typeof br.uiSummary === "string" && br.uiSummary
-              ? br.uiSummary
-              : resultOk
-                ? `outil ${name}`
-                : error || `échec ${name}`;
-          return {
-            content: JSON.stringify(parsedResult).slice(0, 14000),
-            sources,
-            uiSummary,
-            resultOk,
-          };
-        }
       }
     }
 
+    // Métier découvert MCP (module.* / plugin.* / aliases legacy)
+    {
+      const brandCtx: Record<string, unknown> = {
+        conversationId: trace?.conversationId || null,
+        round: trace?.round ?? null,
+        runId: trace?.runId || null,
+        activeSurface: activeSurface || null,
+        emit: emit || null,
+      };
+      const mcpResult = await callAssistantMcpTool(name, args, brandCtx);
+      if (mcpResult != null) {
+        resultOk = mcpResult.ok !== false && !mcpResult.error;
+        error = resultOk ? null : String(mcpResult.error || "outil MCP échoué");
+        const body =
+          mcpResult.content !== undefined ? mcpResult.content : mcpResult;
+        parsedResult =
+          typeof body === "object" && body !== null
+            ? { ok: resultOk, ...(body as object), error: mcpResult.error }
+            : { ok: resultOk, content: body, error: mcpResult.error };
+        if (Array.isArray(mcpResult.sources)) {
+          for (const s of mcpResult.sources) sources.push(s as AssistantSource);
+        }
+        // sources éventuellement dans content
+        if (
+          body &&
+          typeof body === "object" &&
+          Array.isArray((body as { sources?: unknown }).sources)
+        ) {
+          for (const s of (body as { sources: AssistantSource[] }).sources) {
+            sources.push(s);
+          }
+        }
+        uiSummary = summarizeMcpResult(name, mcpResult);
+        return {
+          content: JSON.stringify(parsedResult).slice(0, 14000),
+          sources,
+          uiSummary,
+          resultOk,
+        };
+      }
+    }
 
     resultOk = false;
     error = `outil inconnu: ${name}`;
@@ -1069,6 +1110,13 @@ export async function handleAssistantChat(req: Request) {
   const sessionOrRes = await requireSession();
   if (sessionOrRes instanceof Response) return sessionOrRes;
   const session = sessionOrRes;
+
+  // O4r : rafraîchir discovery MCP avant getToolDefinitions()
+  try {
+    await ensureMcpToolCache();
+  } catch {
+    /* cache vide → tools plateforme seulement */
+  }
 
   let body: {
     messages?: { role: string; content: string }[];

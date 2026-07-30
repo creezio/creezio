@@ -16,9 +16,12 @@ Pas de métier panier / dispatch / relevés — injection marque via
 ## Extension marque
 
 ```ts
-import { configureAssistantBrand } from "@creezio/assistant";
+import { configureAssistantBrand, mcpFacadeToAssistantConfig } from "@creezio/assistant";
 
 configureAssistantBrand({
+  // O4r : mcp + tasks (pas tools.executeTool métier)
+  // mcp: mcpFacadeToAssistantConfig(facade),
+  // tasks: { create, list },
   identity: {
     productName: "MaMarque",
     uiStorageKey: "mamarque-assistant-ui",
@@ -34,9 +37,10 @@ configureAssistantBrand({
   },
   tools: {
     getEntity: (kind, id) => ({ kind, entity: null }),
-    executeTool: async (name, args) => null,
     collectSourcesFromSqlRows: (rows) => [],
   },
+  // mcp: mcpFacadeToAssistantConfig(facade),
+  // tasks: { create, list },
   db: { queryAll, queryOne, getDbPath, getDb },
   meili: { indexes: [...], mapHit: (index, doc) => ({ ... }) },
   hermes: { defaultSkills: [...], kanbanTenant: "..." },

@@ -1,8 +1,8 @@
 /**
- * @creezio/assistant — chat plateforme (store I2 + runtime/UI N3 + chat O4).
+ * @creezio/assistant — chat plateforme (store I2 + runtime/UI N3 + chat O4/O4r).
  *
- * Extension marque : configureAssistantBrand({ appMap, prompts, tools, auth, meili, … }).
- * Pas de métier panier/dispatch/relevés dans ce package.
+ * Extension marque : configureAssistantBrand({ appMap, prompts, mcp, tasks, tools, auth, meili, … }).
+ * Métier = discovery MCP ; tasks = adapter ; pas de BrandTools.executeTool.
  */
 
 export type {
@@ -39,8 +39,12 @@ export type {
   AssistantDbAccess,
   AssistantHermesConfig,
   AssistantMeiliConfig,
+  AssistantMcpCallResult,
+  AssistantMcpConfig,
+  AssistantMcpToolDef,
   AssistantPromptsConfig,
   AssistantRagHit,
+  AssistantTasksConfig,
   AssistantToolDefinition,
   HermesWorkUser,
 } from "./brand/types.js";
@@ -50,8 +54,10 @@ export {
   assistantDb,
   assistantHermes,
   assistantIdentity,
+  assistantMcp,
   assistantMeili,
   assistantPrompts,
+  assistantTasks,
   assistantToolDefinitions,
   buildBrandHermesWorkBrief,
   buildBrandPersonalAgentBrief,
@@ -166,3 +172,15 @@ export {
   handleAssistantChat,
   maxDuration,
 } from "./runtime/assistant-chat.js";
+export {
+  PLATFORM_TASK_TOOL_ALIASES,
+  PLATFORM_TASK_TOOL_DEFINITIONS,
+  PLATFORM_TOOL_DEFINITIONS,
+} from "./runtime/platform-tool-definitions.js";
+export {
+  callAssistantMcpTool,
+  ensureMcpToolCache,
+  mcpFacadeToAssistantConfig,
+  refreshMcpToolCache,
+} from "./runtime/mcp-tools.js";
+export { executeTaskTool, taskToolDefinitions } from "./runtime/tasks-tools.js";

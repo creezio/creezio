@@ -7,7 +7,9 @@ import type {
   AssistantDbAccess,
   AssistantHermesConfig,
   AssistantMeiliConfig,
+  AssistantMcpConfig,
   AssistantPromptsConfig,
+  AssistantTasksConfig,
   AssistantToolDefinition,
   HermesWorkUser,
 } from "./types.js";
@@ -23,7 +25,7 @@ const DEFAULT_IDENTITY: AssistantBrandIdentity = {
 };
 
 /**
- * Configure l’assistant marque (AppMap, Prompts, BrandTools, DB, Meili…).
+ * Configure l’assistant marque (AppMap, Prompts, MCP, tasks, DB, Meili…).
  * À appeler au boot serveur / layout client avant usage runtime.
  */
 export function configureAssistantBrand(next: AssistantBrandConfig): void {
@@ -59,6 +61,14 @@ export function assistantBrandTools(): AssistantBrandTools {
   return config?.tools ?? {};
 }
 
+export function assistantMcp(): AssistantMcpConfig | null {
+  return config?.mcp ?? null;
+}
+
+export function assistantTasks(): AssistantTasksConfig | null {
+  return config?.tasks ?? null;
+}
+
 export function assistantDb(): AssistantDbAccess | null {
   return config?.db ?? null;
 }
@@ -81,6 +91,7 @@ export function assistantHermes(): AssistantHermesConfig {
   return config?.hermes ?? {};
 }
 
+/** Addendum marque uniquement — merge complet via getToolDefinitions(). */
 export function assistantToolDefinitions(): AssistantToolDefinition[] {
   return config?.prompts?.toolDefinitions ?? [];
 }

@@ -1,8 +1,10 @@
 /**
- * Points d’extension marque pour `@creezio/assistant` (Phase N3).
+ * Points d’extension marque pour `@creezio/assistant` (Phase N3 / O4r).
  *
- * Marques = AppMap + Prompts + BrandTools métier.
- * Kit = runtime + UI génériques (pas de panier/dispatch/relevés).
+ * Marques = AppMap + Prompts addendum + projections (entitySources / Meili) +
+ * façade MCP (tools métier découverts) + adapter tasks.
+ * Kit = runtime + PLATFORM tools + handlers tasks/MCP.
+ * `BrandTools.executeTool` = legacy mort (O4r) — ne plus brancher de métier.
  */
 
 export type AssistantAppPage = {
@@ -39,7 +41,10 @@ export type AssistantPromptsConfig = {
   baseSystemPrompt?: string;
   /** Addendum mode Chat (sinon défaut kit générique). */
   chatModeAddendum?: string;
-  /** Définitions d’outils LLM (plateforme + métier). */
+  /**
+   * Addendum defs LLM marque uniquement (ex. get_entity kinds).
+   * O4r : ne plus y mettre la liste plateforme (SoT kit) ni le métier MCP.
+   */
   toolDefinitions?: AssistantToolDefinition[];
   /** Brief Hermes Work entreprise. */
   buildHermesWorkSystemBrief?: (
@@ -53,6 +58,64 @@ export type AssistantPromptsConfig = {
   ) => string;
 };
 
+/** Tool MCP exposé au LLM (module.* / plugin.*). */
+export type AssistantMcpToolDef = {
+  name: string;
+  description: string;
+  inputSchema?: Record<string, unknown>;
+};
+
+/** Résultat callTool MCP (aligné `@creezio/mcp-facade`). */
+export type AssistantMcpCallResult = {
+  ok: boolean;
+  content?: unknown;
+  error?: string;
+  /** Enrichissements assistant optionnels. */
+  sources?: Array<{ title: string; url: string; type?: string }>;
+  uiSummary?: string;
+};
+
+/**
+ * Façade MCP injectée par la marque (même registry que Electron / Hono).
+ * SoT métier assistant = discovery + callTool — pas BrandTools.executeTool.
+ */
+export type AssistantMcpConfig = {
+  listTools: (opts?: {
+    bearerToken?: string | null;
+  }) => Promise<AssistantMcpToolDef[]> | AssistantMcpToolDef[];
+  callTool: (
+    name: string,
+    args: Record<string, unknown>,
+    opts?: { bearerToken?: string | null; ctx?: Record<string, unknown> },
+  ) => Promise<AssistantMcpCallResult>;
+  /** Bearer optionnel (ACL plugin). */
+  bearerToken?: () => string | null | Promise<string | null>;
+  /** TTL cache listTools (ms, défaut 30s). */
+  listCacheTtlMs?: number;
+};
+
+/**
+ * Adapter tâches kanban marque — handlers kit `create_task` / `list_tasks`
+ * (aliases Fidu `create_todo` / `list_todos`).
+ * Les marques branchent leur store (`@/lib/tasks` ou todos) ; le kit expose
+ * les defs + dispatch. Ne pas recopier dans brand-chat-tools.
+ */
+export type AssistantTasksConfig = {
+  create: (
+    args: Record<string, unknown>,
+    ctx: Record<string, unknown>,
+  ) => Promise<Record<string, unknown>>;
+  list: (
+    args: Record<string, unknown>,
+    ctx: Record<string, unknown>,
+  ) => Promise<Record<string, unknown>>;
+  /**
+   * Noms LLM additionnels mappés vers create/list
+   * (défaut kit : create_todo→create, list_todos→list).
+   */
+  aliases?: Partial<{ create: string[]; list: string[] }>;
+};
+
 /** Session utilisateur pour handleAssistantChat (O4). */
 export type AssistantAuthSession = {
   sub: string;
@@ -60,7 +123,10 @@ export type AssistantAuthSession = {
   role: string;
 };
 
-/** Outils / entités métier (catalogue, RTI, GED…) — hors kit. */
+/**
+ * Projections / entités marque — PAS d’exécuteur métier.
+ * Métier = `AssistantMcpConfig` ; tasks = `AssistantTasksConfig`.
+ */
 export type AssistantBrandTools = {
   /** get_entity marque (produit/dossier/…). */
   getEntity?: (
@@ -68,9 +134,8 @@ export type AssistantBrandTools = {
     id: string,
   ) => { kind: string; entity: unknown; related?: Record<string, unknown> };
   /**
-   * Exécuteur d’outil métier marque (panier, statut, tasks/todos…).
-   * Retourne `null` si l’outil n’est pas géré → kit répond « outil inconnu ».
-   * Peut inclure `sources` / `uiSummary` / `ok` dans le résultat.
+   * @deprecated O4r — legacy mort. Utiliser `configureAssistantBrand({ mcp })`.
+   * Si encore présent, ignoré par le runtime (sauf tests de migration).
    */
   executeTool?: (
     name: string,
@@ -85,7 +150,7 @@ export type AssistantBrandTools = {
   ) => Array<{ title: string; url: string; type?: string }>;
   /** Projection hits Meili pour tool_result (champs métier optionnels). */
   formatSearchHit?: (hit: AssistantRagHit) => Record<string, unknown>;
-  /** Preview args outil métier (sinon JSON générique). */
+  /** Preview args outil (sinon JSON générique). */
   argsPreview?: (
     name: string,
     args: Record<string, unknown>,
@@ -184,6 +249,10 @@ export type AssistantBrandConfig = {
   appMap?: AssistantAppMapConfig;
   prompts?: AssistantPromptsConfig;
   tools?: AssistantBrandTools;
+  /** O4r — discovery + exécution tools métier (module.* / plugin.*). */
+  mcp?: AssistantMcpConfig;
+  /** O4r — create_task / list_tasks (kanban marque). */
+  tasks?: AssistantTasksConfig;
   db?: AssistantDbAccess;
   meili?: AssistantMeiliConfig;
   hermes?: AssistantHermesConfig;

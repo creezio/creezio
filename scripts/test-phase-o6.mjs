@@ -104,11 +104,12 @@ test("O6.3 libs catering absentes + queries métier", () => {
   assert.match(host, /configureCertivanDatabaseHost/);
 
   const tools = fs.readFileSync(
-    path.join(cv, "crm/src/lib/assistant/brand-chat-tools.ts"),
+    path.join(cv, "crm/src/lib/assistant/mcp-bridge.ts"),
     "utf8",
   );
-  assert.doesNotMatch(tools, /getOrCreatePanier|commande-queries|@\/lib\/queries/);
-  assert.doesNotMatch(tools, /name === ["']add_to_cart["']/);
+  assert.match(tools, /module\.rti\./);
+  assert.doesNotMatch(tools, /getOrCreatePanier|commande-queries|module\.panier/);
+  assert.doesNotMatch(tools, /add_to_cart/);
 
   const openTab = fs.readFileSync(
     path.join(cv, "crm/src/lib/open-external-tab.ts"),

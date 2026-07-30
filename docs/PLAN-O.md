@@ -130,6 +130,20 @@ ci-dessous.
 4. **Done** : [PHASE-O4p.md](PHASE-O4p.md).
 5. **Effort M · Republish non**
 6. **SHAs** : TF `92a03f3` · CV `1e97e72` · Fidu `f6d0fb8`
+7. **Note O4r** : le wiring `brand-chat-tools` / `BrandTools.executeTool` de
+   O4p est **supersédé** — voir O4r + [ADR-assistant-tools-mcp.md](ADR-assistant-tools-mcp.md).
+
+---
+
+## O4r — Remédiation assistant tools → MCP / kit ✅
+
+1. **Objectif** : **0** `brand-chat-tools.ts` ; métier = discovery MCP ;
+   tasks = adapter kit ; defs plateforme SoT kit.
+2. **Inclus** : bridge `mcp` / `tasks` dans `@creezio/assistant` ; cutover ×3 ;
+   ADR. **Exclu** : O7 host-stack ; unifier Hono `/mcp` handlers (dette).
+3. **Tests gate** : `test-phase-o4r` + routing/active-surface ×3.
+4. **Done** : [PHASE-O4r.md](PHASE-O4r.md) · [ADR-assistant-tools-mcp.md](ADR-assistant-tools-mcp.md).
+5. **Effort L · Republish non**
 
 ---
 
