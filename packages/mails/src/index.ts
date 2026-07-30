@@ -27,3 +27,4 @@ export {
 } from "./providers/file-sink.js";
 export type { CreateFileSinkMailProviderOptions } from "./providers/file-sink.js";
 export { createMailsApiMount } from "./api-mount.js";
+export { indexKitInboundMail } from "./env-bridge.js";

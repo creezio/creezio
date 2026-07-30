@@ -28,3 +28,10 @@ export {
 } from "./password.js";
 export type { AuthIpcBindings, IpcHandleFn } from "./ipc.js";
 export { authLoginWithStore, bindAuthIpcHandlers } from "./ipc.js";
+export type { KitAuthResult } from "./env-store.js";
+export {
+  authenticateViaKit,
+  countKitAuthUsers,
+  getKitAuthStore,
+  migrateBrandCredentialsToKit,
+} from "./env-store.js";

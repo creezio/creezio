@@ -23,3 +23,7 @@ export type {
 export { createSqliteAssistantStore } from "./sqlite-store.js";
 export type { OpenSqliteDatabase, SqliteDatabase } from "./sqlite-driver.js";
 export { openNodeSqliteDatabase } from "./sqlite-driver.js";
+export {
+  getKitAssistantStore,
+  requireKitAssistantStore,
+} from "./env-store.js";

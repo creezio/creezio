@@ -18,3 +18,4 @@ export { createSqliteTasksStore } from "./sqlite-store.js";
 export type { OpenSqliteDatabase } from "./sqlite-driver.js";
 export { openNodeSqliteDatabase } from "./sqlite-driver.js";
 export { createTasksApiMount } from "./api-mount.js";
+export { upsertKitPlatformTask } from "./env-bridge.js";

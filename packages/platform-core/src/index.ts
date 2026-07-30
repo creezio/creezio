@@ -24,6 +24,22 @@ export {
   userDataDirForKind,
 } from "./paths.js";
 
+/* ── M8 : core.db via env (Next/CRM) + contrat stores ── */
+export {
+  ensureCoreDbParent,
+  resolveCoreDbPathFromEnv,
+  resolvePluginDocumentsDirFromEnv,
+} from "./core-db-env.js";
+export type {
+  PlatformBackend,
+  PlatformDomain,
+  PlatformDomainContract,
+} from "./platform-stores-contract.js";
+export {
+  DEPRECATED_SHADOW_ONLY,
+  PLATFORM_STORES_CONTRACT,
+} from "./platform-stores-contract.js";
+
 /* ── Phase H1.0 : SQLite multi-fichiers ── */
 export type { EnsurePluginDbResult } from "./sqlite-layout.js";
 export {

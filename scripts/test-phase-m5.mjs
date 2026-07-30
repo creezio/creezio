@@ -66,7 +66,7 @@ test("M5.3 kit n8n bootstrap : deltas TF (failDiskSpace + force + timeout)", () 
   assert.match(npm, /timeoutMs\?:/);
 });
 
-test("M5.4 TF : bootstraps absents ; host-runtime-ctx ≤200 LOC", () => {
+test("M5.4 TF : bootstraps absents ; host-runtime-ctx ≤250 LOC", () => {
   assert.equal(
     fs.existsSync(path.join(tfCrm, "electron/hermes-runtime-bootstrap.ts")),
     false,
@@ -80,7 +80,8 @@ test("M5.4 TF : bootstraps absents ; host-runtime-ctx ≤200 LOC", () => {
   const hooks = path.join(tfCrm, "electron/host-runtime-ctx.ts");
   assert.ok(fs.existsSync(hooks), "host-runtime-ctx.ts manquant");
   const n = loc(hooks);
-  assert.ok(n <= 200, `host-runtime-ctx trop long: ${n} LOC`);
+  // M7 : + fleetAgent/Samples → budget 200→250 (wiring marque, pas jumeau)
+  assert.ok(n <= 250, `host-runtime-ctx trop long: ${n} LOC`);
   const src = fs.readFileSync(hooks, "utf8");
   assert.match(src, /@creezio\/electron-shell/);
   assert.match(src, /createHermesHost/);
