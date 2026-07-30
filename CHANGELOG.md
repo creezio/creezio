@@ -4,6 +4,8 @@
 ## [Unreleased]
 
 ### Added
+- **Phase N9** — Freeze vision 100 % N0→N9 : matrice + PLAN-N + SHAs gold ;
+  dry-run sync ×3 ; `docs/PHASE-N9.md` ; tests `test-phase-n9`.
 - **Phase N8** — Gates LOC + allowlists vision ×3 marques :
   ceilings main/preload/runner/façades ; forbidden jumeaux ;
   `docs/PHASE-N8.md` ; tests `test-phase-n8`.

@@ -44,12 +44,20 @@ test("N7.2 kit browser-tabs + exports", () => {
   );
   assert.match(idx, /configureBrowserTabs/);
   assert.match(idx, /SupplierTabManager|BrowserTabManager/);
+  const pkg = JSON.parse(
+    fs.readFileSync(
+      path.join(root, "packages/electron-shell/package.json"),
+      "utf8",
+    ),
+  );
+  assert.ok(pkg.exports?.["./browser-tabs"], "exports ./browser-tabs");
   const shellIdx = fs.readFileSync(
     path.join(root, "packages/electron-shell/src/index.ts"),
     "utf8",
   );
-  assert.match(shellIdx, /configureBrowserTabs/);
   assert.match(shellIdx, /browser-tabs/);
+  // Pas d'export barrel (évite electron dans les tests Node).
+  assert.doesNotMatch(shellIdx, /export \{[^}]*configureBrowserTabs/);
 });
 
 test("N7.3 TF métier local ; CV+Fidu façades ≤40", () => {
@@ -67,14 +75,18 @@ test("N7.3 TF métier local ; CV+Fidu façades ≤40", () => {
     );
     assert.ok(fs.existsSync(tabs), `${brand}: supplier-tabs manquant`);
     assert.ok(loc(tabs) <= 40, `${brand}: supplier-tabs ${loc(tabs)} > 40`);
+    const tabsBody = fs.readFileSync(tabs, "utf8");
     assert.match(
-      fs.readFileSync(tabs, "utf8"),
-      /@creezio\/electron-shell/,
+      tabsBody,
+      /electron-shell\/dist\/host\/browser-tabs|@creezio\/electron-shell\/browser-tabs/,
       `${brand}: pas de façades kit`,
     );
     assert.ok(fs.existsSync(driver));
     assert.ok(loc(driver) <= 40);
-    assert.match(fs.readFileSync(driver, "utf8"), /@creezio\/electron-shell/);
+    assert.match(
+      fs.readFileSync(driver, "utf8"),
+      /electron-shell\/dist\/host\/browser-tabs|@creezio\/electron-shell\/browser-tabs/,
+    );
     assert.ok(
       !fs.existsSync(path.join(dockerRoot, brand, "crm/electron/tab-url.ts")),
       `${brand}: tab-url local encore présent`,

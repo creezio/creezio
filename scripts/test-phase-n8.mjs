@@ -96,7 +96,10 @@ test("N8.4 supplier-tabs : TF métier ; CV+Fidu façades", () => {
     );
     assert.ok(loc(tabs) <= 40, `${brand} tabs`);
     assert.ok(loc(driver) <= 40, `${brand} driver`);
-    assert.match(fs.readFileSync(tabs, "utf8"), /@creezio\/electron-shell/);
+    assert.match(
+      fs.readFileSync(tabs, "utf8"),
+      /electron-shell\/dist\/host\/browser-tabs|@creezio\/electron-shell\/browser-tabs/,
+    );
   }
 });
 

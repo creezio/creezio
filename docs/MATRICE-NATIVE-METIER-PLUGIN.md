@@ -5,10 +5,10 @@
 > **M0→M16** (2026-07-30) : **vision stricte freeze** — stubs / façades /
 > jumeaux = **NON done** (jamais « stub OK ») ; plan [PLAN-M.md](PLAN-M.md) ·
 > freeze [PHASE-M16.md](PHASE-M16.md).
-> **N*** (post-M16) : [PLAN-N.md](PLAN-N.md) — purge artefacts **N0** ✅ ·
-> suite plugins/hosts/assistant… · **Paperclip** = mort (src + build).
-> Versions courantes : TF **0.10.32** · Certivan **0.1.15** · Fidu **0.1.60**.
-> Légende : **✅** livré / utilisable · **🟡** partiel (hors M* gold) ·
+> **N0→N9** (2026-07-30) : **vision stricte 100 % freeze** — [PLAN-N.md](PLAN-N.md) ·
+> [PHASE-N9.md](PHASE-N9.md) ; stubs / jumeaux = **NON done** ; **Paperclip** = mort.
+> Versions courantes : TF **0.10.32** · Certivan **0.1.15** · Fidu **0.1.63**.
+> Légende : **✅** livré / utilisable · **🟡** partiel (hors M*/N* gold) ·
 > **❌** absent / hors scope volontaire.
 > **Paperclip** = mort (aucune marque).
 
@@ -17,7 +17,8 @@ Gel inventions : [PHASE-R0.md](PHASE-R0.md). Database : [PHASE-R1.md](PHASE-R1.m
 Product Hub SoT : [PHASE-R2.md](PHASE-R2.md).
 Vision stricte M* : [PLAN-M.md](PLAN-M.md) · [PHASE-M0.md](PHASE-M0.md) ·
 [PHASE-M16.md](PHASE-M16.md).  
-Suite N* : [PLAN-N.md](PLAN-N.md) · [PHASE-N0.md](PHASE-N0.md).
+Vision stricte N* : [PLAN-N.md](PLAN-N.md) · [PHASE-N0.md](PHASE-N0.md) ·
+[PHASE-N9.md](PHASE-N9.md).
 
 ---
 
@@ -108,19 +109,29 @@ nommés dans `@creezio/propagation` (contrats, pas automation).
 
 ---
 
-## 4. Synthèse rapide (freeze M16)
+## 4. Synthèse rapide (freeze M16 + N9)
 
 | Couche | ✅ | 🟡 | ❌ |
 |--------|----|----|-----|
-| Natif socle | brand-config… fabrique C3, obs C4, lifecycle automations V3, **Database R1**, CP C7, `platformCoreMigrations` M11 | — | — |
-| Métier TF | panier…scan ; **M13** allowlist métier-only ; main slim M12 ; republish **0.10.32** | wirings gras (`plugin-control-extras`) hors delete-stub | — |
-| Métier Certivan | **M14 gold** RTI + core kit | — | — |
-| Métier Fidu | **M15 gold** GED/CRM + core kit ; Paperclip absent | — | — |
+| Natif socle | brand-config… fabrique C3, obs C4, lifecycle automations V3, **Database R1**, CP C7, `platformCoreMigrations` M11 ; **N6** admin UI kit ; **N7** browser-tabs | — | — |
+| Métier TF | panier…scan ; **supplier-tabs** local ; **M13** + **N8** allowlists ; main slim ; **0.10.32** | wirings gras (`plugin-control-extras`) hors delete-stub | — |
+| Métier Certivan | **M14 gold** RTI + core kit ; **N6p** admin cutover ; supplier façades kit | — | — |
+| Métier Fidu | **M15 gold** GED/CRM + core kit ; **N5** feature-off ; **N7** façades ; ship **0.1.63** | — | — |
 | Plugins | hub + ACL L3 3 marques ; fabrique C3 ; obs/automations C4 ; CP C7 | — | auto-promotion / univers perso / cloud registry *(volontaire)* |
 
-**Vision stricte M0→M16** = **signée** — stub / jumeau / façade plateforme ≠ done.  
-**Socle** H0–H5 + I0–I18 + D0–D6 + V1–V3 + M* = cadre fermé.  
-Addendum vision : [VISION-V1-V3.md](VISION-V1-V3.md) · freeze [PHASE-M16.md](PHASE-M16.md).
+**Vision stricte M0→M16** = **signée**.  
+**Vision stricte N0→N9** = **signée** ([PHASE-N9.md](PHASE-N9.md)) — stub / jumeau ≠ done.  
+**Socle** H0–H5 + I0–I18 + D0–D6 + V1–V3 + M* + N* = cadre fermé.  
+Addendum vision : [VISION-V1-V3.md](VISION-V1-V3.md) · freeze M16 · freeze N9.
+
+### SHAs gold N9
+
+| Marque | SHA | Note |
+|--------|-----|------|
+| TempoFlow | `c85bb0f` | N6p admin cutover |
+| Certivan | `51c7c22` | N6p + N7 façades |
+| Fidu | `5e5367d` | N7 + release **0.1.63** |
+| Kit | voir [PHASE-N9.md](PHASE-N9.md) | N0→N9 |
 
 ### Historique correction C* (fermé)
 

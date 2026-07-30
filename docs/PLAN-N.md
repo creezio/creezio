@@ -195,7 +195,7 @@ Phases livrées : [PHASE-N0.md](PHASE-N0.md) · [PHASE-N1.md](PHASE-N1.md) ·
 3. **Exclu** : rewrite navigateur métier TF ; delete capability onglets CV.
 4. **Tests gate** : electron:compile + build CV ; build + test:fidu ;
    kit `test-phase-n7`.
-5. **Done** : [PHASE-N7.md](PHASE-N7.md) — CV `336739d` · Fidu `8ec21d2` / 0.1.63.
+5. **Done** : [PHASE-N7.md](PHASE-N7.md) — CV `51c7c22` · Fidu `5e5367d` / 0.1.63.
 6. **Effort M · Republish oui** Fidu (+ vendor CV)
 
 ---
@@ -213,10 +213,15 @@ Phases livrées : [PHASE-N0.md](PHASE-N0.md) · [PHASE-N1.md](PHASE-N1.md) ·
 
 ---
 
-## N9 — Freeze vision 100 %
+## N9 — Freeze vision 100 % ✅
 
-Matrice + PLAN-N + SHAs gold ; dry-run sync ×3.  
-**Effort S · Republish non**
+1. **Objectif** : matrice + PLAN-N + SHAs gold ; dry-run sync ×3 ; freeze.
+2. **Inclus** : [PHASE-N9.md](PHASE-N9.md) ; update MATRICE ; `test-phase-n9`.
+3. **Exclu** : republish ; rewrite métier.
+4. **Tests gate** : kit `npm test` ; dry-run sync TF/CV/Fidu.
+5. **Done** : [PHASE-N9.md](PHASE-N9.md) — TF `c85bb0f` · CV `51c7c22` ·
+   Fidu `5e5367d` / **0.1.63**.
+6. **Effort S · Republish non**
 
 ---
 

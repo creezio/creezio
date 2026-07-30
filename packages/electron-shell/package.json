@@ -11,6 +11,12 @@
       "import": "./dist/index.js",
       "require": "./dist-cjs/index.js",
       "default": "./dist/index.js"
+    },
+    "./browser-tabs": {
+      "types": "./dist/host/browser-tabs/index.d.ts",
+      "import": "./dist/host/browser-tabs/index.js",
+      "require": "./dist-cjs/host/browser-tabs/index.js",
+      "default": "./dist/host/browser-tabs/index.js"
     }
   },
   "files": [
