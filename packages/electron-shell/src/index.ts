@@ -289,3 +289,11 @@ export {
   vendorDir,
 } from "./main-facade.js";
 export type { CreateHostRuntimeOptions } from "./main-facade.js";
+
+export { installBrandDesktopRuntime } from "./desktop/brand-desktop-runtime.js";
+export type {
+  BrandDesktopDeps,
+  BrandDesktopHosts,
+  BrandDesktopPaths,
+  BrandDesktopVertical,
+} from "./desktop/brand-desktop-runtime.js";

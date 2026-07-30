@@ -4,6 +4,12 @@
 ## [Unreleased]
 
 ### Added
+- **Phase M12** — `electron/main.ts` TF ≤ 800 LOC via façade kit :
+  `installBrandDesktopRuntime` dans `@creezio/electron-shell`
+  (`desktop/brand-desktop-runtime.ts`) ; main = composition marque
+  (brand-runtime, host-stack, vertical) ; smokes via
+  `readDesktopRuntimeSrc()` ; `docs/PHASE-M12.md` ; tests
+  `test-phase-m12` ; **pas** de republish exe.
 - **Phase M11** — Migrations SQLite cœur SoT kit :
   `platformCoreMigrations()` + `PLATFORM_CORE_MIGRATION_IDS` dans
   `@creezio/platform-core` ; TF `core-migrations.ts` absent ;

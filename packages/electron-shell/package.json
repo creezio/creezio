@@ -23,6 +23,7 @@
   },
   "dependencies": {
     "@creezio/brand-config": "0.1.0",
+    "@creezio/observability": "0.1.0",
     "@creezio/platform-core": "0.1.0",
     "@creezio/product-hub": "0.1.0",
     "@creezio/shell": "0.1.0"

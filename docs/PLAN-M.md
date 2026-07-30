@@ -162,6 +162,10 @@ Voir [PHASE-M11.md](PHASE-M11.md).
 
 ## M12 — `main.ts` ≤ 800 LOC
 
+**Done** — TF `main.ts` = composition marque ; SoT
+`installBrandDesktopRuntime` (`@creezio/electron-shell`). Voir
+[PHASE-M12.md](PHASE-M12.md).
+
 ---
 
 ## M12p — main marques
