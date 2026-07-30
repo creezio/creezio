@@ -142,6 +142,15 @@ freeze O11.
 | Fidu | `5e5367d` | N7 + release **0.1.63** |
 | Kit | voir [PHASE-N9.md](PHASE-N9.md) | N0→N9 |
 
+### SHAs gold O11
+
+| Marque | SHA | Note |
+|--------|-----|------|
+| TempoFlow | `acf7f15` | ship **0.10.33** |
+| Certivan | `ec96a11` | ship **0.1.16** |
+| Fidu | `7372bb5` | ship **0.1.65** |
+| Kit | voir [PHASE-O11.md](PHASE-O11.md) | O0→O11 · vision ~76 % |
+
 ### Historique correction C* (fermé)
 
 [PHASE-C0.md](PHASE-C0.md) → **C1–C8** : dual-write TF stores → **cutover SoT kit**

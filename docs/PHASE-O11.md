@@ -7,8 +7,9 @@
 | **Repo** | Kit + TempoFlow + Certivan + Fidu |
 | **Prérequis** | [PHASE-O10.md](PHASE-O10.md) · plan [PLAN-O.md](PLAN-O.md) |
 | **Kit tip O10** | `fca58d1` |
+| **Kit tip O11** | `e9f0a05` (+ pin tip docs) |
 | **ARCHITECTURE_VERSION** | `"H6"` (inchangé) |
-| **Republish** | Oui — runtime O7/O9p non packagé dans les feeds tip |
+| **Republish** | Oui — TF **0.10.33** · CV **0.1.16** · Fidu **0.1.65** |
 
 ---
 
@@ -74,10 +75,10 @@ vision intention stricte ≈ 76 %.)*
 
 | Repo | SHA | Note |
 |------|-----|------|
-| Kit `creezio/creezio` | _(tip freeze)_ | docs + gate o11 |
-| TempoFlow | _(tip)_ | sync + republish **0.10.33** |
-| Certivan | _(tip)_ | sync + republish **0.1.16** |
-| Fidu | _(tip)_ | sync + republish **0.1.65** |
+| Kit `creezio/creezio` | `e9f0a05` | docs + gate o11 (+ tip pin) |
+| TempoFlow | `acf7f15` | sync + republish **0.10.33** |
+| Certivan | `ec96a11` | sync + republish **0.1.16** |
+| Fidu | `7372bb5` | sync + republish **0.1.65** |
 
 ### Feeds desktop (post-republish)
 
