@@ -1,38 +1,55 @@
 # `@creezio/assistant`
 
-Assistant / chat **plateforme** (pas de skills métier marque).
+Assistant / chat **plateforme** Creezio (store + runtime + UI).
 
-## Persistance (décision I2)
+Pas de métier panier / dispatch / relevés — injection marque via
+`configureAssistantBrand`.
+
+## Couches
+
+| Couche | Import | Contenu |
+|--------|--------|---------|
+| Store (I2) | `@creezio/assistant` | `createSqliteAssistantStore`, mémoire |
+| Runtime (N3) | `@creezio/assistant` | agent-loop, hermes, chat-db, meili-rag, routing, surface… |
+| UI (N3) | `@creezio/assistant/ui` | widget, provider, ui-driver, voice |
+
+## Extension marque
+
+```ts
+import { configureAssistantBrand } from "@creezio/assistant";
+
+configureAssistantBrand({
+  identity: {
+    productName: "MaMarque",
+    uiStorageKey: "mamarque-assistant-ui",
+    modeStorageKey: "mamarque-assistant-mode",
+    desktopApiGlobal: "mamarqueDesktop",
+    globalStorePrefix: "__mm",
+  },
+  appMap: { pages: [...] },
+  prompts: {
+    baseSystemPrompt: "...",
+    toolDefinitions: [...],
+    buildHermesWorkSystemBrief: (now, user) => `...`,
+  },
+  tools: {
+    getEntity: (kind, id) => ({ kind, entity: null }),
+    executeTool: async (name, args) => null,
+    collectSourcesFromSqlRows: (rows) => [],
+  },
+  db: { queryAll, queryOne, getDbPath, getDb },
+  meili: { indexes: [...], mapHit: (index, doc) => ({ ... }) },
+  hermes: { defaultSkills: [...], kanbanTenant: "..." },
+});
+```
+
+```tsx
+import { AssistantWidget, AssistantProvider } from "@creezio/assistant/ui";
+```
+
+## Persistance
 
 | Chemin | Usage |
 |--------|--------|
 | **`resolveCoreDbPath` / `SqliteRuntime.paths.core`** | **Cible** — `createSqliteAssistantStore` |
-| `resolveAssistantDbPath` → `assistant_chats.db` | **Historique** marques ; migration progressive (I13 TF) |
-
-- Store mémoire (tests H1)
-- Surfaces IPC : `IpcChannels.assistant` / `IpcChannels.llm` (`@creezio/shell`)
-
-## Mémoire
-
-```ts
-import { createMemoryAssistantStore } from "@creezio/assistant";
-const a = createMemoryAssistantStore();
-const c = a.createConversation({ title: "Demo" });
-a.appendMessage(c.id, { role: "user", content: "hello" });
-```
-
-## SQLite core (I2)
-
-```ts
-import {
-  ASSISTANT_CORE_SQL,
-  createSqliteAssistantStore,
-} from "@creezio/assistant";
-
-// Migrer via SqliteRuntime + ASSISTANT_CORE_SQL, puis :
-const a = createSqliteAssistantStore({ coreDbPath: runtime.paths.core });
-const c = a.createConversation({ title: "Demo" });
-a.appendMessage(c.id, { role: "user", content: "hello" });
-// restart → listMessages(c.id) intact
-a.close();
-```
+| `resolveAssistantDbPath` → `assistant_chats.db` | **Historique** marques (`chat-db` runtime) |

@@ -87,10 +87,18 @@ Phases livrées : [PHASE-N0.md](PHASE-N0.md) · [PHASE-N1.md](PHASE-N1.md) ·
 
 ---
 
-## N3 — Assistant marque → `@creezio/assistant`
+## N3 — Assistant marque → `@creezio/assistant` ✅
 
-Extraction lib+UI générique (~11 kLOC TF) → kit.  
-**Effort L · Republish non**
+1. **Objectif** : runtime+UI génériques SoT `@creezio/assistant` ; extension
+   AppMap / Prompts / BrandTools.
+2. **Inclus** : extraction TF gold (~11 kLOC) ; `configureAssistantBrand` ;
+   UI `@creezio/assistant/ui`.
+3. **Exclu** : panier/dispatch/relevés ; cutover marques (N3p) ; assistant-chat
+   orchestration métier.
+4. **Tests gate** : `npm run build -w @creezio/assistant` + `npm test`
+   (`test-phase-n3`).
+5. **Done** : [PHASE-N3.md](PHASE-N3.md) · baseline N2p `4f37a9e`.
+6. **Effort L · Republish non**
 
 ---
 

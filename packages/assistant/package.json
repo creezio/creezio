@@ -1,7 +1,7 @@
 {
   "name": "@creezio/assistant",
   "version": "0.1.0",
-  "description": "Chat / assistant plateforme Creezio (store + contrats IPC)",
+  "description": "Chat / assistant plateforme Creezio (store + runtime + UI)",
   "type": "module",
   "main": "./dist-cjs/index.js",
   "types": "./dist/index.d.ts",
@@ -11,11 +11,17 @@
       "import": "./dist/index.js",
       "require": "./dist-cjs/index.js",
       "default": "./dist/index.js"
+    },
+    "./ui": {
+      "types": "./ui/index.ts",
+      "import": "./ui/index.ts",
+      "default": "./ui/index.ts"
     }
   },
   "files": [
     "dist",
-    "dist-cjs"
+    "dist-cjs",
+    "ui"
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
@@ -23,10 +29,53 @@
   },
   "dependencies": {
     "@creezio/platform-core": "0.1.0",
-    "@creezio/shell": "0.1.0"
+    "@creezio/shell": "0.1.0",
+    "better-sqlite3": "^12.11.1"
+  },
+  "peerDependencies": {
+    "@radix-ui/react-dropdown-menu": "^2.1.0",
+    "@radix-ui/react-scroll-area": "^1.1.0",
+    "@radix-ui/react-select": "^2.1.0",
+    "@radix-ui/react-slot": "^1.1.0",
+    "class-variance-authority": "^0.7.0",
+    "clsx": "^2.0.0",
+    "lucide-react": ">=0.400.0",
+    "react": "^18.0.0 || ^19.0.0",
+    "tailwind-merge": "^2.0.0 || ^3.0.0"
+  },
+  "peerDependenciesMeta": {
+    "@radix-ui/react-dropdown-menu": {
+      "optional": true
+    },
+    "@radix-ui/react-scroll-area": {
+      "optional": true
+    },
+    "@radix-ui/react-select": {
+      "optional": true
+    },
+    "@radix-ui/react-slot": {
+      "optional": true
+    },
+    "class-variance-authority": {
+      "optional": true
+    },
+    "clsx": {
+      "optional": true
+    },
+    "lucide-react": {
+      "optional": true
+    },
+    "react": {
+      "optional": true
+    },
+    "tailwind-merge": {
+      "optional": true
+    }
   },
   "devDependencies": {
+    "@types/better-sqlite3": "^7.6.12",
     "@types/node": "^22.15.3",
+    "@types/react": "^18.3.12",
     "typescript": "^5.8.3"
   },
   "license": "UNLICENSED",

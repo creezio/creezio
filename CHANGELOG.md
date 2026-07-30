@@ -4,6 +4,11 @@
 ## [Unreleased]
 
 ### Added
+- **Phase N3** — Runtime+UI assistant génériques dans `@creezio/assistant`
+  (~11 kLOC TF gold) ; `configureAssistantBrand` (AppMap / Prompts /
+  BrandTools / Meili / Hermes) ; UI `@creezio/assistant/ui` ; **pas** de
+  métier panier/dispatch ; `docs/PHASE-N3.md` ; tests `test-phase-n3` ;
+  **pas** de republish exe.
 - **Phase M12p** — `main.ts` Certivan + Fidu ≤ 800 LOC via
   `installBrandDesktopRuntime` ; deps marque (`pluginsDirEnvKey`,
   `supplierFidQueryParam`, `apiKeyEnvName`, `nodeRuntimeLabel`) ;
