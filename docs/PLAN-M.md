@@ -194,8 +194,16 @@ Même façade `installBrandDesktopRuntime` : Certivan puis Fidu ;
 
 ## M14 — Certivan gold
 
-Allowlist métier RTI/VASP ; mêmes standards vision (pas de jumeaux plateforme) ;
-gates Certivan ; push (+ republish si packing).
+1. **Objectif** : Certivan gold = métier RTI (`dossiers`/`pieces`/`rti`) + wiring
+   mince ; cœur SQLite = `platformCoreMigrations()` (plus de `i15_core_*` local).
+2. **Inclus** : delete `modules/core-migrations.ts` ; brand-runtime → kit ;
+   allowlist + gate `test-phase-m14` ; assert jumeaux absents.
+3. **Exclu** : republish (sauf packing) ; purge docs stale TF catalogue.
+4. **Tests gate** : kit `npm test` ; Certivan `electron:compile`, `test:phase-h3`,
+   `test:database-module`, `test:rti`, `test:dossiers`, `test:pieces`,
+   `test:shell`, `build`.
+5. **Done** : [PHASE-M14.md](PHASE-M14.md) + gates verts.
+6. **Effort S · Republish non**
 
 ---
 
