@@ -78,6 +78,80 @@ export {
   mcpFacadeResultToSdk,
 } from "./hono-bind.js";
 
+/* ── D-P18 : brand factory + OAuth/transport SoT ── */
+
+export type { CreateBrandMcpFacadeOptions } from "./brand-facade.js";
+export { createBrandMcpFacade } from "./brand-facade.js";
+
+export type {
+  CreateMcpHonoAppOptions,
+  McpApiKeyRecord,
+  McpConnectedServer,
+  McpOAuthAdapters,
+  McpOAuthRoutesConfig,
+  McpOAuthSession,
+  McpOAuthSessionBridge,
+  McpOAuthSessionUser,
+  McpOAuthSqliteDatabase,
+  McpServerAuthContext,
+  McpStreamableTransport,
+  ConsumedCode,
+  CreateCodeInput,
+  McpAccessToken,
+  McpOAuthClient,
+  RegisterClientInput,
+  RotatedRefresh,
+  McpRateLimitResult,
+} from "./oauth/index.js";
+
+export {
+  ACCESS_TOKEN_TTL_S,
+  REFRESH_TOKEN_TTL_S,
+  MCP_SCOPE,
+  MCP_SCOPE_LEGACY,
+  MCP_SCOPE_READ,
+  MCP_SCOPE_WRITE,
+  MCP_SCOPES,
+  McpPublicUrlRequiredError,
+  canonicalizeMcpUrl,
+  checkMcpRateLimit,
+  configureMcpOAuth,
+  consumeAuthCode,
+  createAuthCode,
+  createMcpHonoApp,
+  createMcpOAuthRoutes,
+  createRefreshToken,
+  getClient,
+  getMcpOAuthAdapters,
+  isMcpPublicUrlRequiredError,
+  mcpBaseUrl,
+  mcpCorsAllowlist,
+  mcpOauthReady,
+  mcpResourceUrl,
+  normalizeMcpScopes,
+  peekAuthCode,
+  pruneExpiredCodes,
+  rateLimitHeaders,
+  registerClient,
+  resetMcpOAuthAdaptersForTests,
+  resetMcpRateLimits,
+  resolveMcpCorsOrigin,
+  resolveMcpPublicUrl,
+  resourceAcceptable,
+  rotateRefreshToken,
+  signAccessToken,
+  touchOAuthClientLastUsed,
+  verifyAccessToken,
+  verifyClientSecret,
+  verifyPkceS256,
+} from "./oauth/index.js";
+
+/** Host-only tools typiques (hors factory marque) — desktop / introspection. */
+export const CREEZIO_PLATFORM_HOST_MCP_TOOL_NAMES = [
+  "open_external_tab",
+  "list_tools_by_space",
+] as const;
+
 /* ── N6 : MCP admin (port TempoFlow) ── */
 
 export {
