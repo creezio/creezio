@@ -15,7 +15,7 @@ import {
 } from "./session.js";
 
 export type PublicApiKeyRecord = {
-  id: string;
+  id: string | number;
   scopes: string;
   user_id?: string | null;
 };
@@ -24,7 +24,9 @@ export type HonoAuthAdapters = {
   /** Préfixe clé live (tf2_live_ / certivan_live_ / fidu_live_). */
   apiKeyPrefix: string;
   verifyApiKey: (raw: string) => PublicApiKeyRecord | null | undefined;
-  checkRateLimit: (keyId: string) => { ok: boolean; remaining: number };
+  checkRateLimit: (
+    keyId: string | number,
+  ) => { ok: boolean; remaining: number };
   rateLimitPerMinute: number;
   /** Si omis : toute méthode acceptée. */
   apiKeyAllowsMethod?: (scopes: string, method: string) => boolean;
