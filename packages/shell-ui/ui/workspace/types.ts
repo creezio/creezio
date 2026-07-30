@@ -213,7 +213,12 @@ export function isOptimiserCanvasHref(href: string): boolean {
 }
 
 export function isFullscreenHref(href: string): boolean {
-  return isOptimiserCanvasHref(href) || isExternalSiteHref(href);
+  if (isOptimiserCanvasHref(href) || isExternalSiteHref(href)) return true;
+  if (PANIER_PATH) {
+    const path = normalizeHref(href).split("?")[0] || "/";
+    if (path === PANIER_PATH || path.startsWith(PANIER_PATH + "/")) return true;
+  }
+  return false;
 }
 
 /** Onglet workspace hébergeant un site externe (`/site/<id>`). */
