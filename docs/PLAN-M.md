@@ -209,8 +209,15 @@ Même façade `installBrandDesktopRuntime` : Certivan puis Fidu ;
 
 ## M15 — Fidu gold (+ ship pipeline)
 
-Allowlist GED/CRM ; gates `test:fidu` ; push ; standing ship publish **seulement**
-si verts + packing touché. Paperclip = mort.
+1. **Objectif** : Fidu gold = métier GED/CRM (`dossiers`/`contacts`/`ged`) +
+   wiring mince ; cœur = `platformCoreMigrations()` ; Paperclip absent.
+2. **Inclus** : delete `modules/core-migrations.ts` ; brand-runtime → kit ;
+   allowlist + gate `test-phase-m15`.
+3. **Exclu** : standing ship publish sauf packing touché + verts.
+4. **Tests gate** : kit `npm test` ; Fidu `electron:compile`, `test:phase-h3`,
+   `test:database-module`, `test:fidu`, `build`.
+5. **Done** : [PHASE-M15.md](PHASE-M15.md) + gates verts.
+6. **Effort S · Republish non** (sauf packing)
 
 ---
 
