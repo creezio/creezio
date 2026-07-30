@@ -7,6 +7,7 @@
 | **Repo** | `creezio/creezio` (extract only) |
 | **Prérequis** | [PHASE-O2.md](PHASE-O2.md) · plan [PLAN-O.md](PLAN-O.md) |
 | **Baseline O2 kit tip** | `e1335d8` / docs `33bc9d2` |
+| **Kit tip O3** | `0b7daec` |
 | **ARCHITECTURE_VERSION** | `"H6"` (inchangé) |
 | **Republish** | Non (cutover = O3p) |
 
