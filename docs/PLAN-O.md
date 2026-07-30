@@ -25,7 +25,7 @@ Extraire l’existant · Tests verts → push → étape suivante ·
 Fidu (sauf O0 / O6 CV-only / O10–O11) · Paperclip = mort.
 
 Phases livrées : [PHASE-O0.md](PHASE-O0.md) · [PHASE-O1.md](PHASE-O1.md) ·
-suite O2→O11 ci-dessous.
+[PHASE-O2.md](PHASE-O2.md) · suite O3→O11 ci-dessous.
 
 ---
 
@@ -59,18 +59,18 @@ suite O2→O11 ci-dessous.
 
 ---
 
-## O2 — Anti-façades lib admin + chat-db + wraps migrations Fidu
+## O2 — Anti-façades lib admin + chat-db + wraps migrations Fidu ✅
 
 1. **Objectif** : plus de re-exports `mcp-admin` / `usage-analytics*` /
    `assistant/chat-db` ; plus de wraps Fidu `platformHistoricalMigrations`
    en fichiers step.
 2. **Inclus** : façades lib × marques ; wraps migr. Fidu. **Exclu** :
    `brand-*-host` (O7) ; UI request-logs (O5).
-3. **Travaux** : gate kit ; cutover TF → CV → Fidu ; fusion wraps → runner ;
-   sync ; build ; republish Fidu.
+3. **Travaux** : gate kit ; cutover TF → CV → Fidu ; fusion wraps →
+   `platform-compose` ; sync ; build ; republish Fidu.
 4. **Tests gate** : `test-phase-o2` ; build×3 ; `test:fidu` ; 0 wraps `.find`
    dans `steps/`.
-5. **Done** : [PHASE-O2.md](PHASE-O2.md) (après cutover).
+5. **Done** : [PHASE-O2.md](PHASE-O2.md).
 6. **Effort M · Republish oui Fidu**
 
 ---

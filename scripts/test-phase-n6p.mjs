@@ -84,18 +84,15 @@ test("N6p.2 jumeaux UI absents TF+CV ; hosts + mounts présents ≤80", () => {
         `${b.name}: ${rel} ne consomme pas le kit UI`,
       );
     }
-    const mcp = fs.readFileSync(
-      path.join(b.dir, "src/lib/mcp-admin.ts"),
-      "utf8",
+    // O2 : façades lib absentes — imports kit directs + brand-*-host.
+    assert.ok(!fs.existsSync(path.join(b.dir, "src/lib/mcp-admin.ts")));
+    assert.ok(!fs.existsSync(path.join(b.dir, "src/lib/usage-analytics.ts")));
+    assert.ok(
+      fs.existsSync(path.join(b.dir, "src/lib/brand-mcp-admin-host.ts")),
     );
-    assert.match(mcp, /@creezio\/mcp-facade/);
-    assert.ok(loc(path.join(b.dir, "src/lib/mcp-admin.ts")) <= 80);
-    const usage = fs.readFileSync(
-      path.join(b.dir, "src/lib/usage-analytics.ts"),
-      "utf8",
+    assert.ok(
+      fs.existsSync(path.join(b.dir, "src/lib/brand-usage-analytics-host.ts")),
     );
-    assert.match(usage, /@creezio\/observability/);
-    assert.ok(loc(path.join(b.dir, "src/lib/usage-analytics.ts")) <= 80);
   }
 });
 
@@ -127,8 +124,8 @@ test("N6p.4 Paperclip mort sur surfaces admin cutover", () => {
     const files = [
       ...REQUIRED.map((r) => path.join(b.dir, r)),
       ...PAGE_MOUNTS.map((r) => path.join(b.dir, r)),
-      path.join(b.dir, "src/lib/mcp-admin.ts"),
-      path.join(b.dir, "src/lib/usage-analytics.ts"),
+      path.join(b.dir, "src/lib/brand-mcp-admin-host.ts"),
+      path.join(b.dir, "src/lib/brand-usage-analytics-host.ts"),
     ];
     const corpus = files
       .filter((f) => fs.existsSync(f))

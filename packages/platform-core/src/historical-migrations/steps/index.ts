@@ -55,3 +55,15 @@ export function platformHistoricalMigrations(): HistoricalMigration[] {
     usageAnalytics,
   ].sort((a, b) => a.version - b.version);
 }
+
+/** Lookup par name (O2 — compose marques sans wraps fichiers). */
+export function platformHistoricalMigrationByName(
+  name: string,
+): HistoricalMigration {
+  const m = platformHistoricalMigrations().find((x) => x.name === name);
+  if (!m) {
+    throw new Error(`platformHistoricalMigrations: ${name} manquant`);
+  }
+  return m;
+}
+

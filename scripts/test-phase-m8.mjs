@@ -87,10 +87,14 @@ test("M8.4 TF call-sites importent @creezio/* directs", () => {
   );
   assert.match(mails, /from ["']@creezio\/mails["']/);
 
-  const chat = fs.readFileSync(
-    path.join(tfRoot, "src/lib/assistant/chat-db.ts"),
+  // O2 : chat-db façade absente — SoT kit direct
+  assert.ok(
+    !fs.existsSync(path.join(tfRoot, "src/lib/assistant/chat-db.ts")),
+    "TF chat-db façade",
+  );
+  const assistantChat = fs.readFileSync(
+    path.join(tfRoot, "src/server/assistant-chat.ts"),
     "utf8",
   );
-  assert.match(chat, /@creezio\/assistant/);
-  assert.doesNotMatch(chat, /platform-stores\/assistant-adapter/);
+  assert.match(assistantChat, /@creezio\/assistant/);
 });

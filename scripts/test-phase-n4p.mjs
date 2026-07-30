@@ -97,22 +97,30 @@ test("N4p.3 CV — plateforme absente + baseline kit + runner", () => {
   assert.ok(fs.existsSync(path.join(CV, "electron/migrations/steps/037_certivan_base.ts")));
 });
 
-test("N4p.4 Fidu — orphelins absents + wraps kit + runner", () => {
+test("N4p.4 Fidu — orphelins absents + compose kit (O2) + runner", () => {
   assertAbsent(path.join(FIDU, "electron/migrations/steps"), FIDU_ORPHANS_GONE);
   const runner = path.join(FIDU, "electron/migrations/runner.ts");
   assert.ok(loc(runner) <= 150, `Fidu runner trop long: ${loc(runner)}`);
   assert.match(fs.readFileSync(runner, "utf8"), /runHistoricalMigrations/);
+  // O2 : wraps steps/ absents — compose dans platform-compose.ts
   for (const wrap of [
     "002_api_keys.ts",
     "003_mcp_oauth.ts",
     "012_users.ts",
+    "017_desktop_presence_user_tokens.ts",
     "023_database_automations.ts",
   ]) {
-    const wrapPath = path.join(FIDU, "electron/migrations/steps", wrap);
-    const src = fs.readFileSync(wrapPath, "utf8");
-    assert.match(src, /platformHistoricalMigrations/);
-    assert.ok(loc(wrapPath) <= 40, `${wrap} trop long: ${loc(wrapPath)}`);
+    assert.ok(
+      !fs.existsSync(path.join(FIDU, "electron/migrations/steps", wrap)),
+      `wrap encore présent: ${wrap}`,
+    );
   }
+  const compose = path.join(FIDU, "electron/migrations/platform-compose.ts");
+  assert.ok(fs.existsSync(compose));
+  assert.match(
+    fs.readFileSync(compose, "utf8"),
+    /platformHistoricalMigrationByName/,
+  );
   assert.ok(
     fs.existsSync(path.join(FIDU, "electron/migrations/steps/004_ged_metier.ts")),
   );

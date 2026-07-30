@@ -59,11 +59,14 @@ test("M8p.3 Certivan call-sites @creezio/* directs", () => {
     "utf8",
   );
   assert.match(mails, /from ["']@creezio\/mails["']/);
-  const chat = fs.readFileSync(
-    path.join(cvRoot, "src/lib/assistant/chat-db.ts"),
-    "utf8",
+  assert.ok(
+    !fs.existsSync(path.join(cvRoot, "src/lib/assistant/chat-db.ts")),
+    "CV chat-db façade",
   );
-  assert.match(chat, /@creezio\/assistant/);
+  assert.match(
+    fs.readFileSync(path.join(cvRoot, "src/server/assistant-chat.ts"), "utf8"),
+    /@creezio\/assistant/,
+  );
 });
 
 test("M8p.4 Fidu sans couche platform-stores lourde", () => {

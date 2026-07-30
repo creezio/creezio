@@ -103,18 +103,21 @@ test("N8.4 supplier-tabs : TF métier ; CV+Fidu absents (O1 anti-façade)", () =
   }
 });
 
-test("N8.5 admin / analytics façades TF+CV ≤80", () => {
+test("N8.5 admin / analytics : 0 façade lib TF+CV (O2)", () => {
   for (const brand of ["tempoflow2", "certivan-app"]) {
     const dir = path.join(dockerRoot, brand, "crm");
     for (const rel of [
       "src/lib/mcp-admin.ts",
       "src/lib/usage-analytics.ts",
-      "src/app/admin/plugins/page.tsx",
+      "src/lib/assistant/chat-db.ts",
     ]) {
-      const p = path.join(dir, rel);
-      assert.ok(fs.existsSync(p), `${brand}: ${rel}`);
-      assert.ok(loc(p) <= 80, `${brand}: ${rel} ${loc(p)} > 80`);
+      assert.ok(!exists(dir, rel), `${brand}: façade ${rel}`);
     }
+    assert.ok(exists(dir, "src/app/admin/plugins/page.tsx"), `${brand}: page`);
+    assert.ok(
+      loc(path.join(dir, "src/app/admin/plugins/page.tsx")) <= 80,
+      `${brand}: plugins page`,
+    );
   }
   // Fidu : pas de surface admin plugins
   assert.ok(

@@ -99,6 +99,7 @@ export type {
 export {
   PLATFORM_HISTORICAL_STEP_VERSIONS,
   addColumnIfMissing,
+  platformHistoricalMigrationByName,
   platformHistoricalMigrations,
   runHistoricalMigrations,
   tableColumns,

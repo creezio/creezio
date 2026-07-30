@@ -107,16 +107,15 @@ test("N3p.2 jumeaux génériques absents ×3 ; brand mounts présents", () => {
   }
 });
 
-test("N3p.3 budgets LOC ≤2000 ; chat-db ≤80", () => {
+test("N3p.3 budgets LOC ≤2000 ; chat-db absent (O2)", () => {
   for (const b of BRANDS) {
     const loc = brandLoc(b.dir);
     assert.ok(loc <= 2000, `${b.name}: LOC ${loc} > 2000`);
     assert.ok(loc > 200, `${b.name}: LOC trop bas ${loc}`);
-    const chatDb = path.join(b.dir, "src/lib/assistant/chat-db.ts");
-    if (fs.existsSync(chatDb)) {
-      const n = fs.readFileSync(chatDb, "utf8").split("\n").length;
-      assert.ok(n <= 80, `${b.name}: chat-db ${n} > 80`);
-    }
+    assert.ok(
+      !fs.existsSync(path.join(b.dir, "src/lib/assistant/chat-db.ts")),
+      `${b.name}: façade chat-db`,
+    );
   }
 });
 

@@ -52,15 +52,12 @@ test("M1p.3 Fidu : brand host + migration kit + pas de lib/database", () => {
   );
   assert.match(host, /configureFiduDatabaseHost/);
   assert.match(host, /FIDU_CRUD_WHITELIST/);
-  const mig = fs.readFileSync(
-    path.join(fidu, "electron/migrations/steps/023_database_automations.ts"),
+  // O2 : compose plateforme (plus de wrap steps/023)
+  const compose = fs.readFileSync(
+    path.join(fidu, "electron/migrations/platform-compose.ts"),
     "utf8",
   );
-  // M1p : SQL kit ; N4p : wrap mince platformHistoricalMigrations
-  assert.match(
-    mig,
-    /DATABASE_CORE_SQL|platformHistoricalMigrations/,
-  );
+  assert.match(compose, /platformHistoricalMigrationByName|database-automations/);
   const sync = fs.readFileSync(
     path.join(fidu, "scripts/electron/sync-creezio-vendor.sh"),
     "utf8",

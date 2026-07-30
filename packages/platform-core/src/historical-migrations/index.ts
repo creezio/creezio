@@ -24,5 +24,6 @@ export { runHistoricalMigrations } from "./runner.js";
 export type { PlatformHistoricalStepVersion } from "./steps/index.js";
 export {
   PLATFORM_HISTORICAL_STEP_VERSIONS,
+  platformHistoricalMigrationByName,
   platformHistoricalMigrations,
 } from "./steps/index.js";
