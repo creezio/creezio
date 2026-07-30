@@ -7,6 +7,7 @@
 | **Repo** | `creezio/creezio` (+ marques) |
 | **Prérequis** | [PHASE-O3.md](PHASE-O3.md) · plan [PLAN-O.md](PLAN-O.md) |
 | **Baseline O3 kit tip** | `0b7daec` / docs `40003a9` |
+| **Kit tip O3p** | `90f5573` |
 | **ARCHITECTURE_VERSION** | `"H6"` (inchangé) |
 | **Republish** | Non (wiring electron, pas de packing) |
 
