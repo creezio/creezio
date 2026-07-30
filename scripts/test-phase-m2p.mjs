@@ -6,10 +6,11 @@ import fs from "node:fs";
 import path from "node:path";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
+import { resolveBrandCrmRoot } from "./lib/brand-roots.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const certivan = "/opt/docker/certivan-app/crm";
-const fidu = "/opt/docker/fidu/crm";
+const certivan = resolveBrandCrmRoot("certivan-app");
+const fidu = resolveBrandCrmRoot("fidu");
 
 test("M2p.1 PHASE-M2p.md séquentiel Certivan→Fidu", () => {
   const doc = fs.readFileSync(path.join(root, "docs/PHASE-M2p.md"), "utf8");

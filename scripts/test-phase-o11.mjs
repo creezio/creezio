@@ -116,7 +116,11 @@ test("O11.5 SYNC kitSha ×3 + dry-run + H6", () => {
       [path.join(dockerRoot, id, "crm/scripts/electron/sync-creezio-vendor.sh")],
       {
         encoding: "utf8",
-        env: { ...process.env, CREEZIO_SYNC_DRY_RUN: "1" },
+        env: {
+          ...process.env,
+          CREEZIO_SYNC_DRY_RUN: "1",
+          CREEZIO_KIT_ROOT: root,
+        },
       },
     );
     assert.match(out, /OK dry-run/);

@@ -30,6 +30,8 @@ const FULL_VENDOR = [
   "api-kernel",
   "mcp-facade",
   "shell-ui",
+  "onboarding",
+  "cockpit",
   "auth",
   "assistant",
   "tasks",

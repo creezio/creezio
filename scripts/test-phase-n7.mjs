@@ -60,14 +60,16 @@ test("N7.2 kit browser-tabs + exports", () => {
   assert.doesNotMatch(shellIdx, /export \{[^}]*configureBrowserTabs/);
 });
 
-test("N7.3 TF métier local ; CV+Fidu sans façade supplier (O1)", () => {
-  const tf = path.join(dockerRoot, "tempoflow2/crm/electron/supplier-tabs.ts");
-  assert.ok(fs.existsSync(tf));
-  assert.ok(loc(tf) > 400, `TF supplier-tabs trop court: ${loc(tf)}`);
-  assert.match(fs.readFileSync(tf, "utf8"), /class SupplierTabManager/);
+test("N7.3 supplier-tabs SoT kit ; jumeaux locaux absents ×3", () => {
+  const kitMgr = path.join(
+    root,
+    "packages/electron-shell/src/host/browser-tabs/browser-tab-manager.ts",
+  );
+  assert.ok(fs.existsSync(kitMgr), "kit SupplierTabManager");
+  assert.ok(loc(kitMgr) > 400, `kit browser-tab-manager trop court: ${loc(kitMgr)}`);
+  assert.match(fs.readFileSync(kitMgr, "utf8"), /class SupplierTabManager/);
 
-  for (const brand of ["certivan-app", "fidu"]) {
-    // O1 : façades ≤40 = NON done — fichiers absents, imports kit directs.
+  for (const brand of ["tempoflow2", "certivan-app", "fidu"]) {
     for (const rel of [
       "supplier-tabs.ts",
       "supplier-driver.ts",

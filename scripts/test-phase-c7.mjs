@@ -7,6 +7,7 @@ import path from "node:path";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
 import { createDemobrandSandbox } from "../apps/demobrand/build/electron/sandbox-runtime.js";
+import { resolveBrandCrmRoot } from "./lib/brand-roots.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -39,8 +40,8 @@ test("C7.2 marques appellent startHostPluginControlPlane", () => {
   assert.match(kitExtras, /export async function startPluginControlApi/);
 
   for (const brandPath of [
-    "/opt/docker/tempoflow2/crm/electron",
-    "/opt/docker/certivan-app/crm/electron",
+    path.join(resolveBrandCrmRoot("tempoflow2"), "electron"),
+    path.join(resolveBrandCrmRoot("certivan-app"), "electron"),
   ]) {
     assert.ok(
       !fs.existsSync(path.join(brandPath, "plugin-control-api.ts")),
@@ -53,12 +54,12 @@ test("C7.2 marques appellent startHostPluginControlPlane", () => {
   }
 
   const fiduBoot = fs.readFileSync(
-    "/opt/docker/fidu/crm/electron/plugin-control-boot.ts",
+    path.join(resolveBrandCrmRoot("fidu"), "electron/plugin-control-boot.ts"),
     "utf8",
   );
   assert.match(fiduBoot, /startHostPluginControlPlane/);
   assert.ok(
-    !fs.existsSync("/opt/docker/fidu/crm/electron/plugin-control-api.ts"),
+    !fs.existsSync(path.join(resolveBrandCrmRoot("fidu"), "electron/plugin-control-api.ts")),
   );
   assert.doesNotMatch(
     fiduBoot,

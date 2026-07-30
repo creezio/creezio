@@ -30,7 +30,7 @@ const FORBIDDEN = [
   "electron/meili-launcher.ts",
   "electron/local-config.ts",
   "electron/host-na-stubs.ts",
-  "electron/supplier-tabs.ts", // CV/Fidu only — TF métier OK (checked separately)
+  "electron/supplier-tabs.ts", // SoT kit browser-tabs — jumeau local interdit ×3
   "electron/supplier-driver.ts",
   "src/lib/assistant/brand-chat-tools.ts",
   "src/lib/mcp-admin.ts",
@@ -116,13 +116,6 @@ test("O8.3 forbidden façades / jumeaux absents (CV/Fidu supplier ; ×3 chat-too
   for (const b of BRANDS) {
     for (const rel of FORBIDDEN) {
       if (
-        (rel === "electron/supplier-tabs.ts" ||
-          rel === "electron/supplier-driver.ts") &&
-        b.name === "tempoflow2"
-      ) {
-        continue; // TF métier autorisé
-      }
-      if (
         (rel === "src/lib/mcp-admin.ts" ||
           rel === "src/lib/usage-analytics.ts") &&
         b.name === "fidu"
@@ -134,12 +127,14 @@ test("O8.3 forbidden façades / jumeaux absents (CV/Fidu supplier ; ×3 chat-too
         `${b.name}: façade/jumeau encore présent: ${rel}`,
       );
     }
-    // TF supplier métier vivant
-    if (b.name === "tempoflow2") {
-      assert.ok(exists(b.dir, "electron/supplier-tabs.ts"));
-      assert.ok(loc(path.join(b.dir, "electron/supplier-tabs.ts")) >= 400);
-    }
   }
+  // supplier-tabs SoT kit — jumeaux locaux absents ×3
+  const kitMgr = path.join(
+    root,
+    "packages/electron-shell/src/host/browser-tabs/browser-tab-manager.ts",
+  );
+  assert.ok(fs.existsSync(kitMgr));
+  assert.ok(loc(kitMgr) >= 400);
 });
 
 test("O8.4 0 re-export façade ≤40 LOC (src/lib + electron)", () => {

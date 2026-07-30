@@ -8,9 +8,10 @@ import fs from "node:fs";
 import path from "node:path";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
+import { resolveBrandCrmRoot } from "./lib/brand-roots.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const cvRoot = "/opt/docker/certivan-app/crm";
+const cvRoot = resolveBrandCrmRoot("certivan-app");
 
 const METIER_MODULES = ["dossiers", "pieces", "rti"];
 

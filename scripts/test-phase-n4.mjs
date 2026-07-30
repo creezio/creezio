@@ -9,6 +9,7 @@ import path from "node:path";
 import { createRequire } from "node:module";
 import { test } from "node:test";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import { resolveBrandCrmRoot } from "./lib/brand-roots.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const histDir = path.join(
@@ -142,7 +143,7 @@ test("N4.5 core-migrations documente couverture historique", () => {
 });
 
 test("N4.6 harness upgrade fixture brand.db", async () => {
-  const tfCrm = "/opt/docker/tempoflow2/crm";
+  const tfCrm = resolveBrandCrmRoot("tempoflow2");
   const reqPath = path.join(tfCrm, "package.json");
   if (!fs.existsSync(reqPath)) {
     console.log("skip N4.6 — tempoflow2/crm absent");

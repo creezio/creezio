@@ -9,10 +9,11 @@ import path from "node:path";
 import { createRequire } from "node:module";
 import { test } from "node:test";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import { resolveBrandCrmRoot } from "./lib/brand-roots.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const PAPERCLIP_RE = /paperclipApi|startPaperclip\b|paperclip-launcher/;
-const fiduElectron = "/opt/docker/fidu/crm/electron";
+const fiduElectron = path.join(resolveBrandCrmRoot("fidu"), "electron");
 const require = createRequire(import.meta.url);
 
 test("N5.1 PHASE-N5.md + PLAN-N N5", () => {

@@ -8,9 +8,10 @@ import fs from "node:fs";
 import path from "node:path";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
+import { resolveBrandCrmRoot } from "./lib/brand-roots.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const fiduRoot = "/opt/docker/fidu/crm";
+const fiduRoot = resolveBrandCrmRoot("fidu");
 
 const METIER_MODULES = ["dossiers", "contacts", "ged"];
 

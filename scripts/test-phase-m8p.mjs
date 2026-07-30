@@ -7,10 +7,11 @@ import fs from "node:fs";
 import path from "node:path";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
+import { resolveBrandCrmRoot } from "./lib/brand-roots.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const cvRoot = "/opt/docker/certivan-app/crm";
-const fiduRoot = "/opt/docker/fidu/crm";
+const cvRoot = resolveBrandCrmRoot("certivan-app");
+const fiduRoot = resolveBrandCrmRoot("fidu");
 
 function locDir(dir) {
   if (!fs.existsSync(dir)) return 0;
@@ -46,19 +47,50 @@ test("M8p.2 Certivan adapters lourds absents ; platform-stores ≤80 LOC", () =>
   assert.ok(n <= 80, `Certivan platform-stores ${n} LOC > 80`);
 });
 
-test("M8p.3 Certivan call-sites @creezio/* directs", () => {
+test("M8p.3 Certivan call-sites @creezio/* directs (post-cutover mounts)", () => {
+  assert.ok(fs.existsSync(cvRoot), `CV crm root manquant: ${cvRoot}`);
+
   const auth = fs.readFileSync(
     path.join(cvRoot, "src/server/routes/auth.ts"),
     "utf8",
   );
   assert.match(auth, /from ["']@creezio\/auth["']/);
-  const tasks = fs.readFileSync(path.join(cvRoot, "src/lib/tasks.ts"), "utf8");
-  assert.match(tasks, /from ["']@creezio\/tasks["']/);
-  const mails = fs.readFileSync(
-    path.join(cvRoot, "src/lib/email-queries.ts"),
+
+  const tasksRoutes = fs.readFileSync(
+    path.join(cvRoot, "src/server/routes/tasks.ts"),
     "utf8",
   );
-  assert.match(mails, /from ["']@creezio\/mails["']/);
+  assert.match(tasksRoutes, /from ["']@creezio\/tasks["']/);
+  const tasksTwin = path.join(cvRoot, "src/lib/tasks.ts");
+  const configureTasks = path.join(cvRoot, "src/lib/configure-tasks.ts");
+  assert.ok(
+    !fs.existsSync(tasksTwin) || fs.existsSync(configureTasks),
+    "CV tasks: jumeau local encore présent sans configure-tasks",
+  );
+  assert.ok(fs.existsSync(configureTasks), "CV configure-tasks mount");
+  assert.ok(
+    fs.existsSync(path.join(cvRoot, "vendor/creezio/tasks")),
+    "CV vendor @creezio/tasks",
+  );
+
+  const emailRoutes = fs.readFileSync(
+    path.join(cvRoot, "src/server/routes/email.ts"),
+    "utf8",
+  );
+  assert.match(emailRoutes, /from ["']@creezio\/mails["']/);
+  assert.match(emailRoutes, /createEmailInboxRoutes/);
+  const emailTwin = path.join(cvRoot, "src/lib/email-queries.ts");
+  const configureMails = path.join(cvRoot, "src/lib/configure-mails.ts");
+  assert.ok(
+    !fs.existsSync(emailTwin) || fs.existsSync(configureMails),
+    "CV mails: jumeau local encore présent sans configure-mails",
+  );
+  assert.ok(fs.existsSync(configureMails), "CV configure-mails mount");
+  assert.ok(
+    fs.existsSync(path.join(cvRoot, "vendor/creezio/mails")),
+    "CV vendor @creezio/mails",
+  );
+
   assert.ok(
     !fs.existsSync(path.join(cvRoot, "src/lib/assistant/chat-db.ts")),
     "CV chat-db façade",

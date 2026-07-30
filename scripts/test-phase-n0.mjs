@@ -7,12 +7,13 @@ import fs from "node:fs";
 import path from "node:path";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
+import { resolveBrandCrmRoot } from "./lib/brand-roots.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const brands = [
-  { id: "tempoflow", crm: "/opt/docker/tempoflow2/crm" },
-  { id: "certivan", crm: "/opt/docker/certivan-app/crm" },
-  { id: "fidu", crm: "/opt/docker/fidu/crm" },
+  { id: "tempoflow", crm: resolveBrandCrmRoot("tempoflow2") },
+  { id: "certivan", crm: resolveBrandCrmRoot("certivan-app") },
+  { id: "fidu", crm: resolveBrandCrmRoot("fidu") },
 ];
 
 const PAPERCLIP_SRC = [

@@ -7,12 +7,13 @@ import fs from "node:fs";
 import path from "node:path";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
+import { resolveBrandCrmRoot } from "./lib/brand-roots.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
-const TF_ELECTRON = "/opt/docker/tempoflow2/crm/electron";
-const CV_ELECTRON = "/opt/docker/certivan-app/crm/electron";
-const FIDU_ELECTRON = "/opt/docker/fidu/crm/electron";
+const TF_ELECTRON = path.join(resolveBrandCrmRoot("tempoflow2"), "electron");
+const CV_ELECTRON = path.join(resolveBrandCrmRoot("certivan-app"), "electron");
+const FIDU_ELECTRON = path.join(resolveBrandCrmRoot("fidu"), "electron");
 
 const TWINS_ABSENT_TF_CV = [
   "plugin-runtime.ts",
