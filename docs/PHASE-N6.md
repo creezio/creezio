@@ -104,7 +104,7 @@ cd /opt/docker/creezio && npm run build:packages && npm test
 
 | Repo | SHA | Notes |
 |------|-----|-------|
-| Kit | _(après push)_ | N6 extract |
+| Kit | `e4ec7fb` | N6 extract |
 
 ---
 
