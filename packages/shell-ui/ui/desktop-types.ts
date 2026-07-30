@@ -1,3 +1,10 @@
+/** Types bridge desktop (SoT @creezio/shell) — re-export UI pour cutover O9p. */
+export type {
+  DesktopContentRect,
+  DesktopTabLoadState,
+  DesktopTabInfo,
+} from "@creezio/shell";
+
 /** Types update desktop plateforme (O9) — extrait gold TF. */
 
 export type DesktopUpdateState =

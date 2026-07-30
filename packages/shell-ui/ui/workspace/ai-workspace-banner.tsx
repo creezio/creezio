@@ -15,7 +15,7 @@ import { Bot, ListTodo, Loader2, Undo2 } from "lucide-react";
 import Link from "next/link";
 import { Button } from "../primitives/button";
 import { AiActivityPanelHost } from "./ai-activity-panel-host";
-import { cn } from "@creezio/shell-ui";
+import { cn, getShellDesktopApi } from "@creezio/shell-ui";
 
 type Identity = {
   userId: string;
@@ -40,7 +40,7 @@ export function AiWorkspaceBanner() {
     if (!api?.getAiWorkspaceIdentity) return;
 
     let cancelled = false;
-    void api.getAiWorkspaceIdentity().then((id) => {
+    void api.getAiWorkspaceIdentity().then((id: { userId?: string; label?: string; active?: boolean } | null) => {
       if (cancelled) return;
       if (id?.userId) {
         setIdentity({

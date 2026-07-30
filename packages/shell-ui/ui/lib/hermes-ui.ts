@@ -22,7 +22,9 @@ type HermesDesktopStatus = {
   status?: string;
   detail?: string | null;
   uiUrl?: string | null;
-  [key: string]: unknown;
+  webuiUrl?: string | null;
+  webuiStatus?: string | null;
+  bootstrapError?: string | null;
 };
 
 function cleanDetail(value: string | null | undefined): string {

@@ -19,7 +19,7 @@ export function AiWorkspaceAgentHost() {
     const api = typeof window !== "undefined" ? getShellDesktopApi() : undefined;
     if (!api?.onAiWorkspaceNavigate && !api?.onAiWorkspaceUiAction) return;
 
-    const offNav = api.onAiWorkspaceNavigate?.((ev) => {
+    const offNav = api.onAiWorkspaceNavigate?.((ev: { href: string; actionId?: string }) => {
       void (async () => {
         const result = await runUiNavigate(ev.href, (href) => {
           navigate(href, { newTab: false });
@@ -28,7 +28,7 @@ export function AiWorkspaceAgentHost() {
       })();
     });
 
-    const offUi = api.onAiWorkspaceUiAction?.((ev) => {
+    const offUi = api.onAiWorkspaceUiAction?.((ev: { type: string; params: Record<string, unknown>; actionId?: string }) => {
       void (async () => {
         let result: Record<string, unknown>;
         if (ev.type === "navigate") {

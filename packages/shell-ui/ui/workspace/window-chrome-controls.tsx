@@ -39,8 +39,8 @@ export function WindowChromeControls({
     const api = getShellDesktopApi();
     if (!api?.customWindowChrome) return;
     setVisible(true);
-    void api.isWindowMaximized?.().then((v) => setMaximized(Boolean(v)));
-    return api.onWindowMaximizedChanged?.((v) => setMaximized(v));
+    void api.isWindowMaximized?.().then((v: boolean) => setMaximized(Boolean(v)));
+    return api.onWindowMaximizedChanged?.((v: boolean) => setMaximized(v));
   }, []);
 
   const onMinimize = useCallback(() => {
@@ -48,7 +48,7 @@ export function WindowChromeControls({
   }, []);
 
   const onToggleMax = useCallback(() => {
-    void getShellDesktopApi()?.toggleMaximizeWindow?.().then((r) => {
+    void getShellDesktopApi()?.toggleMaximizeWindow?.().then((r: { isMaximized?: boolean } | void) => {
       if (r && typeof r.isMaximized === "boolean") setMaximized(r.isMaximized);
     });
   }, []);

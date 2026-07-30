@@ -243,7 +243,7 @@ export function useIsRemoteDesktopClient(): boolean {
   useEffect(() => {
     const api = getShellDesktopApi();
     if (!api?.getConnectionProfile) return;
-    void api.getConnectionProfile().then((p) => setRemote(p.mode === "remote"));
+    void api.getConnectionProfile().then((p: { mode: string }) => setRemote(p.mode === "remote"));
   }, []);
   return remote;
 }

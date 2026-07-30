@@ -35,7 +35,7 @@ export function AccountSettings() {
       return;
     }
     setDesktop(true);
-    void api.getAccount().then((a) => setUsername(a.username));
+    void api.getAccount().then((a: { username: string }) => setUsername(a.username));
   }, []);
 
   async function onChangePassword(e: FormEvent) {

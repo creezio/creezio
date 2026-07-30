@@ -30,7 +30,7 @@ import { PageChrome } from "../layout/page-chrome";
 import { useGlobalSearch } from "../global-search-host";
 import { useTabWorkspace } from "./tab-workspace-host";
 import { WindowChromeControls } from "./window-chrome-controls";
-import { resolvePageKind, isFullscreenHref } from "./types";
+import { resolvePageKind, isFullscreenHref, type WorkspaceTab } from "./types";
 
 /* Géométrie type Chrome : onglets posés en bas du bandeau, largeur adaptative. */
 const TAB_MAX = 240;
@@ -175,7 +175,7 @@ export function WorkspaceTabBar() {
 
   const orderIndex = useMemo(() => {
     const m = new Map<string, number>();
-    tabs.forEach((t, i) => m.set(t.id, i));
+    tabs.forEach((t: WorkspaceTab, i: number) => m.set(t.id, i));
     return m;
   }, [tabs]);
 
@@ -192,7 +192,7 @@ export function WorkspaceTabBar() {
       if (e.button !== 0) return;
       // Chrome active l'onglet dès le mousedown
       activateTab(tabId);
-      const idx = tabsRef.current.findIndex((t) => t.id === tabId);
+      const idx = tabsRef.current.findIndex((t: WorkspaceTab) => t.id === tabId);
       if (idx < 0) return;
       const state: DragState = {
         id: tabId,
@@ -228,7 +228,7 @@ export function WorkspaceTabBar() {
         tabsRef.current.length - 1,
         Math.max(0, Math.round((left - PAD_L) / slotW)),
       );
-      const current = tabsRef.current.findIndex((t) => t.id === st.id);
+      const current = tabsRef.current.findIndex((t: WorkspaceTab) => t.id === st.id);
       if (target !== current) moveTab(st.id, target);
     },
     [clampDragLeft, moveTab, slotW],
@@ -267,7 +267,7 @@ export function WorkspaceTabBar() {
     [pinnedTabId],
   );
 
-  const menuTab = menu ? tabs.find((tab) => tab.id === menu.tabId) : null;
+  const menuTab = menu ? tabs.find((tab: WorkspaceTab) => tab.id === menu.tabId) : null;
 
   return (
     <div className="flex min-w-0 flex-col">
@@ -317,7 +317,7 @@ export function WorkspaceTabBar() {
           role="tablist"
           aria-label="Onglets workspace"
         >
-          {tabs.map((tab) => {
+          {tabs.map((tab: WorkspaceTab) => {
             const idx = orderIndex.get(tab.id) ?? 0;
             const active = tab.id === activeTabId;
             const pinned = tab.id === pinnedTabId;

@@ -38,7 +38,7 @@ export function DesktopBackgroundSettings() {
     if (!api?.getBackgroundSettings) return;
     void api
       .getBackgroundSettings()
-      .then((s) => setState(s))
+      .then((s: BackgroundState) => setState(s))
       .catch(() => {});
   }, []);
 
