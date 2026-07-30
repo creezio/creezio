@@ -53,6 +53,7 @@ export type {
   SessionCookieOptions,
   SessionCookieSecureOpts,
   SessionPayload,
+  SessionRole,
   SessionUserLookup,
 } from "./session.js";
 export {

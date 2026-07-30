@@ -19,6 +19,7 @@ export type {
   SessionCookieOptions,
   SessionCookieSecureOpts,
   SessionPayload,
+  SessionRole,
   SessionUserLookup,
 } from "./session-types.js";
 

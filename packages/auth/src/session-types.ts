@@ -9,10 +9,12 @@ export type AuthSessionUser = {
   permissions: readonly string[];
 };
 
+export type SessionRole = "owner" | "collaborator";
+
 export type SessionPayload = {
   sub: string;
   email: string;
-  role: string;
+  role: SessionRole;
   permissions: string[];
   /** Présent uniquement en impersonation = id du owner acteur. */
   actorSub?: string;
