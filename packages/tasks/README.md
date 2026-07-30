@@ -83,7 +83,7 @@ createAiTaskHostMcpTools({
 });
 ```
 
-Reste en marque : `open_external_tab` (+ `list_tools_by_space` TF) et le métier
+Reste en marque : résolution `open_external_tab` (tool → `createOpenExternalTabHostMcpTools` dans `@creezio/mcp-facade`) (+ `list_tools_by_space` TF) et le métier
 façade.
 
 ## Montage API

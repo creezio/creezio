@@ -31,7 +31,8 @@
     "@creezio/api-kernel": "0.1.0",
     "@creezio/platform-core": "0.1.0",
     "hono": "^4.12.32",
-    "jose": "^6.2.5"
+    "jose": "^6.2.5",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@types/node": "^22.15.3",
