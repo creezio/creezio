@@ -2,8 +2,8 @@
 
 | | |
 |--|--|
-| **Statut** | Accepté (O4r + **O4r2** — 2026-07-30) |
-| **Contexte** | Remédiation silo `brand-chat-tools` / `TOOL_DEFINITIONS` ×3, puis mini-registre `mcp-bridge` |
+| **Statut** | Accepté (O4r + **O4r2** + **O4r3** — 2026-07-30) |
+| **Contexte** | Remédiation silo `brand-chat-tools` / `TOOL_DEFINITIONS` ×3, puis mini-registre `mcp-bridge`, puis handlers Hono `/mcp` parallèles |
 
 ## Décision
 
@@ -14,7 +14,9 @@ La surface d’outils de l’assistant est **uniquement** :
 3. **MCP registry marque** — **une** factory `modules/brand-mcp.ts` (`create*BrandMcp(api)` → `create*ModuleMcpTools`) consommée par :
    - Electron `brand-runtime` (façade locale / proxy Hono)
    - Assistant via `mcp-bridge.ts` = **adaptateur mince** (`mcpFacadeToAssistantConfig`)
+   - **Hono `/mcp`** via `bindFacadeToolsToHono` (O4r3) — **même SoT**, pas de second registre métier
 4. **Addendum marque optionnel** — system prompt / Meili / hermes / auth — **jamais** handlers panier/compta dans `lib/assistant/`
+5. **Host-only Hono** — `open_external_tab`, tâches IA, (évent. writes CV) : besoin ctx Bearer / desktop — **hors** factory, **pas** de jumeau `module.*`
 
 ## Anti-patterns (NON done)
 
@@ -24,6 +26,7 @@ La surface d’outils de l’assistant est **uniquement** :
 | `BrandTools.executeTool` comme SoT | **Legacy mort** |
 | `TOOL_DEFINITIONS` complets ×3 marques | **Mort** |
 | `mcp-bridge.ts` qui re-liste N tools + handlers en dur | **Mort (O4r2)** — second SoT interdit |
+| Handlers métier panier/catalogue/dossiers **dupliqués** dans Hono `server.ts` alors que la factory les expose | **Mort (O4r3)** — Hono = `bindFacadeToolsToHono(create*BrandMcp)` |
 | `add_to_cart` brand parallèle à `module.panier.*` | **Mort** |
 | `module.desktop.open_external_tab` jumeau de `supplier_open_tab` | **Interdit** — open tab = plateforme |
 
@@ -40,11 +43,12 @@ La surface d’outils de l’assistant est **uniquement** :
 surface/ui/supplier → explore/sql/meili/get_entity → tasks adapter → mcp.callTool → outil inconnu
 ```
 
-`mcp.callTool` = même façade que Electron (`create*BrandMcp` → `create*ModuleMcpTools`).
+`mcp.callTool` = même façade que Electron **et** Hono (`create*BrandMcp` → `create*ModuleMcpTools`).
 
 ## Références
 
 - [PHASE-O4r.md](PHASE-O4r.md)
 - [PHASE-O4r2.md](PHASE-O4r2.md)
+- [PHASE-O4r3.md](PHASE-O4r3.md)
 - [PHASE-O4p.md](PHASE-O4p.md) (historique)
 - Package `@creezio/mcp-facade`, `@creezio/tasks`

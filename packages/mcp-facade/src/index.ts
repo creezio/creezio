@@ -66,6 +66,18 @@ export {
   wrapMcpFacadeWithHonoProxy,
 } from "./hono-proxy.js";
 
+/* ── O4r3 : Hono /mcp ← façade marque (même SoT) ── */
+
+export type {
+  BindFacadeToolsToHonoOptions,
+  HonoMcpSdkResult,
+  HonoMcpToolRegisterFn,
+} from "./hono-bind.js";
+export {
+  bindFacadeToolsToHono,
+  mcpFacadeResultToSdk,
+} from "./hono-bind.js";
+
 /* ── N6 : MCP admin (port TempoFlow) ── */
 
 export {

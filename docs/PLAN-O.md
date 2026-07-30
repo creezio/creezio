@@ -160,6 +160,19 @@ ci-dessous.
 
 ---
 
+## O4r3 — Unifier Hono `/mcp` → même factory ✅
+
+1. **Objectif** : Hono `/mcp` consomme `create*BrandMcp` via
+   `bindFacadeToolsToHono` ; **0** handlers métier dupliqués pour tools
+   déjà dans la façade.
+2. **Inclus** : kit `hono-bind` ; cutover TF (gold mounts Next) → CV → Fidu ;
+   ADR. **Exclu** : O7 ; entitySources (O4r4) ; extraction complète GED Fidu.
+3. **Tests gate** : `test-phase-o4r3` + routing/active-surface ×3 ; TF `test:phase-d1`.
+4. **Done** : [PHASE-O4r3.md](PHASE-O4r3.md) · [ADR-assistant-tools-mcp.md](ADR-assistant-tools-mcp.md).
+5. **Effort L · Republish non**
+
+---
+
 ## O5 — Admin request-logs / api-endpoints → kit ✅
 
 1. **Objectif** : clients + middleware génériques SoT
