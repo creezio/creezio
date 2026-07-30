@@ -109,6 +109,41 @@ for name in "${PACKAGES[@]}"; do
   }
 done
 
+# Garde anti-wipe (O11 hotfix) : pin kitSha SANS build:packages réel = INTERDIT.
+# Un dist/ vide ou stale (create* undefined) ne doit jamais écraser le vendor marque.
+node -e '
+const path = require("path");
+const kit = process.argv[1];
+const checks = [
+  ["auth", "createAuthRoutes"],
+  ["assistant", "createAssistantRoutes"],
+  ["mails", "createEmailInboxRoutes"],
+  ["tasks", "createTasksHonoRoutes"],
+  ["product-hub", "createPluginProductsRoutes"],
+  ["api-kernel", "mountApiKernelOnHono"],
+  ["mcp-facade", "createMcpOAuthRoutes"],
+];
+let fail = 0;
+for (const [pkg, sym] of checks) {
+  const file = path.join(kit, "packages", pkg, "dist-cjs/index.js");
+  try {
+    const mod = require(file);
+    if (typeof mod[sym] !== "function") {
+      console.error("ERROR: kit dist stale — " + pkg + "." + sym + " is " + typeof mod[sym]);
+      console.error("       Run: cd " + kit + " && npm run build:packages");
+      console.error("       Pin kitSha sans artefacts dist réels = INTERDIT.");
+      fail++;
+    }
+  } catch (e) {
+    console.error("ERROR: kit dist unloadable — " + pkg + ": " + e.message);
+    console.error("       Run: cd " + kit + " && npm run build:packages");
+    fail++;
+  }
+}
+if (fail) process.exit(1);
+console.log("▸ kit dist symbols OK (create*/mount*/oauth)");
+' "${KIT}"
+
 rm -rf "${DEST}"
 mkdir -p "${DEST}"
 
