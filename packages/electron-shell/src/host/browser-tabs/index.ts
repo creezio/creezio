@@ -33,3 +33,5 @@ export {
 } from "./tab-url.js";
 
 export { CHROME_UA } from "./chrome-ua.js";
+
+export { browserTabPreloadPath } from "./browser-tab-preload-path.js";

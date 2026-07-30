@@ -26,8 +26,8 @@ test("C7.1 kit exporte startHostPluginControlPlane + preHandle", () => {
 });
 
 test("C7.2 marques appellent startHostPluginControlPlane", () => {
-  // N1p : TF/CV → barrel `startPluginControlApi` kit (appelle startHostPluginControlPlane)
-  // + bindings configurePluginHost ; Fidu → plugin-control-boot direct.
+  // O1 : TF/CV — 0 façade plugin-control-api ; imports kit directs via bindings.
+  // Fidu → plugin-control-boot direct.
   const kitExtras = fs.readFileSync(
     path.join(
       root,
@@ -38,39 +38,28 @@ test("C7.2 marques appellent startHostPluginControlPlane", () => {
   assert.match(kitExtras, /startHostPluginControlPlane/);
   assert.match(kitExtras, /export async function startPluginControlApi/);
 
-  const tfApi = fs.readFileSync(
-    "/opt/docker/tempoflow2/crm/electron/plugin-control-api.ts",
-    "utf8",
-  );
-  assert.match(tfApi, /startPluginControlApi/);
-  assert.match(tfApi, /@creezio\/electron-shell/);
-  assert.match(
-    fs.readFileSync(
-      "/opt/docker/tempoflow2/crm/electron/plugin-host-bindings.ts",
-      "utf8",
-    ),
-    /configurePluginHost/,
-  );
-
-  const cvApi = fs.readFileSync(
-    "/opt/docker/certivan-app/crm/electron/plugin-control-api.ts",
-    "utf8",
-  );
-  assert.match(cvApi, /startPluginControlApi/);
-  assert.match(cvApi, /@creezio\/electron-shell/);
-  assert.match(
-    fs.readFileSync(
-      "/opt/docker/certivan-app/crm/electron/plugin-host-bindings.ts",
-      "utf8",
-    ),
-    /configurePluginHost/,
-  );
+  for (const brandPath of [
+    "/opt/docker/tempoflow2/crm/electron",
+    "/opt/docker/certivan-app/crm/electron",
+  ]) {
+    assert.ok(
+      !fs.existsSync(path.join(brandPath, "plugin-control-api.ts")),
+      `${brandPath}: façade O1`,
+    );
+    assert.match(
+      fs.readFileSync(path.join(brandPath, "plugin-host-bindings.ts"), "utf8"),
+      /configurePluginHost/,
+    );
+  }
 
   const fiduBoot = fs.readFileSync(
     "/opt/docker/fidu/crm/electron/plugin-control-boot.ts",
     "utf8",
   );
   assert.match(fiduBoot, /startHostPluginControlPlane/);
+  assert.ok(
+    !fs.existsSync("/opt/docker/fidu/crm/electron/plugin-control-api.ts"),
+  );
   assert.doesNotMatch(
     fiduBoot,
     /équivalent host de\n \* `startHostPluginControlPlane`/,

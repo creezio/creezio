@@ -31,26 +31,30 @@ import {
   type TabLoadPhase,
 } from "./tab-load-state.js";
 import { isSameTabDocument, isSameTabOrigin } from "./tab-url.js";
+import { browserTabPreloadPath } from "./browser-tab-preload-path.js";
 
 export type BrowserTabManagerDeps = {
-  /** Chemin absolu preload onglet (marque compile preload-supplier.js). */
-  resolvePreloadPath: () => string;
+  /**
+   * Chemin absolu preload onglet.
+   * O1 : défaut = `browserTabPreloadPath()` (kit) ; TF peut surcharger
+   * avec son preload-supplier métier.
+   */
+  resolvePreloadPath?: () => string;
 };
 
 let resolvePreloadPathImpl: (() => string) | null = null;
 
-/** Wiring marque — chemin preload onglet (obligatoire avant openTab). */
-export function configureBrowserTabs(opts: BrowserTabManagerDeps): void {
-  resolvePreloadPathImpl = opts.resolvePreloadPath;
+/** Wiring marque — chemin preload onglet (défaut kit si omis). */
+export function configureBrowserTabs(opts: BrowserTabManagerDeps = {}): void {
+  resolvePreloadPathImpl = opts.resolvePreloadPath ?? browserTabPreloadPath;
 }
 
 function resolvePreloadPath(): string {
   if (!resolvePreloadPathImpl) {
-    throw new Error(
-      "configureBrowserTabs({ resolvePreloadPath }) requis avant openTab",
-    );
+    // Auto-config défaut kit (O1) si configureBrowserTabs omis.
+    configureBrowserTabs();
   }
-  return resolvePreloadPathImpl();
+  return resolvePreloadPathImpl!();
 }
 
 export type TabInfo = {

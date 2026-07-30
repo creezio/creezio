@@ -60,36 +60,36 @@ test("N7.2 kit browser-tabs + exports", () => {
   assert.doesNotMatch(shellIdx, /export \{[^}]*configureBrowserTabs/);
 });
 
-test("N7.3 TF métier local ; CV+Fidu façades ≤40", () => {
+test("N7.3 TF métier local ; CV+Fidu sans façade supplier (O1)", () => {
   const tf = path.join(dockerRoot, "tempoflow2/crm/electron/supplier-tabs.ts");
   assert.ok(fs.existsSync(tf));
   assert.ok(loc(tf) > 400, `TF supplier-tabs trop court: ${loc(tf)}`);
   assert.match(fs.readFileSync(tf, "utf8"), /class SupplierTabManager/);
 
   for (const brand of ["certivan-app", "fidu"]) {
-    const tabs = path.join(dockerRoot, brand, "crm/electron/supplier-tabs.ts");
-    const driver = path.join(
-      dockerRoot,
-      brand,
-      "crm/electron/supplier-driver.ts",
-    );
-    assert.ok(fs.existsSync(tabs), `${brand}: supplier-tabs manquant`);
-    assert.ok(loc(tabs) <= 40, `${brand}: supplier-tabs ${loc(tabs)} > 40`);
-    const tabsBody = fs.readFileSync(tabs, "utf8");
-    assert.match(
-      tabsBody,
-      /electron-shell\/dist\/host\/browser-tabs|@creezio\/electron-shell\/browser-tabs/,
-      `${brand}: pas de façades kit`,
-    );
-    assert.ok(fs.existsSync(driver));
-    assert.ok(loc(driver) <= 40);
-    assert.match(
-      fs.readFileSync(driver, "utf8"),
-      /electron-shell\/dist\/host\/browser-tabs|@creezio\/electron-shell\/browser-tabs/,
-    );
+    // O1 : façades ≤40 = NON done — fichiers absents, imports kit directs.
+    for (const rel of [
+      "supplier-tabs.ts",
+      "supplier-driver.ts",
+      "preload-supplier.ts",
+    ]) {
+      assert.ok(
+        !fs.existsSync(path.join(dockerRoot, brand, "crm/electron", rel)),
+        `${brand}: façade encore présente: ${rel}`,
+      );
+    }
     assert.ok(
       !fs.existsSync(path.join(dockerRoot, brand, "crm/electron/tab-url.ts")),
       `${brand}: tab-url local encore présent`,
+    );
+    const bindings = fs.readFileSync(
+      path.join(dockerRoot, brand, "crm/electron/host-n2-bindings.ts"),
+      "utf8",
+    );
+    assert.match(
+      bindings,
+      /@creezio\/electron-shell\/browser-tabs/,
+      `${brand}: host-n2 sans import browser-tabs kit`,
     );
   }
 });

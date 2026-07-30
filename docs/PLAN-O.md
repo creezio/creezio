@@ -24,7 +24,8 @@ Extraire l’existant · Tests verts → push → étape suivante ·
 **Pas de O(n+1) si gate O(n) rouge** · Cutover `*p` séquentiel TF → Certivan →
 Fidu (sauf O0 / O6 CV-only / O10–O11) · Paperclip = mort.
 
-Phases livrées : [PHASE-O0.md](PHASE-O0.md) · suite O1→O11 ci-dessous.
+Phases livrées : [PHASE-O0.md](PHASE-O0.md) · [PHASE-O1.md](PHASE-O1.md) ·
+suite O2→O11 ci-dessous.
 
 ---
 
@@ -42,7 +43,7 @@ Phases livrées : [PHASE-O0.md](PHASE-O0.md) · suite O1→O11 ci-dessous.
 
 ---
 
-## O1 — Anti-façades Electron mince (supplier + plugin-control-api)
+## O1 — Anti-façades Electron mince (supplier + plugin-control-api) ✅
 
 1. **Objectif** : plus aucun fichier marque qui ne fait que re-exporter le kit
    Electron (browser-tabs / plugin-control).
@@ -53,7 +54,7 @@ Phases livrées : [PHASE-O0.md](PHASE-O0.md) · suite O1→O11 ci-dessous.
    delete façades ; sync vendor liste complète.
 4. **Tests gate** : `npm test` ; `electron:compile` ×3 ; fichiers absents ;
    TF `supplier-tabs` ≥400 LOC métier.
-5. **Done** : [PHASE-O1.md](PHASE-O1.md) (après cutover).
+5. **Done** : [PHASE-O1.md](PHASE-O1.md).
 6. **Effort S · Republish non**
 
 ---

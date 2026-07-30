@@ -37,8 +37,12 @@ test("M3.2 kit expose migrate / bindings / host-api / service-key", () => {
 });
 
 test("M3.3 TF façades ≤40 LOC wiring pur", () => {
+  // O1 : plugin-control-api absent (anti-façade) ; autres wirings ≤40.
+  assert.ok(
+    !fs.existsSync(path.join(tfCrm, "electron/plugin-control-api.ts")),
+    "O1: plugin-control-api façade",
+  );
   const files = [
-    "electron/plugin-control-api.ts",
     "electron/plugin-hub-store.ts",
     "src/lib/platform-stores/product-hub-adapter.ts",
     "src/lib/plugin-product-hub.ts",
@@ -50,7 +54,7 @@ test("M3.3 TF façades ≤40 LOC wiring pur", () => {
 });
 
 test("M3.4 TF boot = startHostPluginControlPlane + adapters verticaux", () => {
-  // N1p : SoT control-extras / adapters dans le kit ; TF = bindings + barrel ≤40.
+  // O1 : SoT control-extras / adapters kit ; TF = bindings only (0 façade api).
   const extras = fs.readFileSync(
     path.join(
       root,
@@ -79,13 +83,10 @@ test("M3.4 TF boot = startHostPluginControlPlane + adapters verticaux", () => {
   assert.match(bindings, /createTempoflowControlPlaneAcl/);
   assert.match(bindings, /buildPluginControlPlaneAdapters/);
 
-  const api = fs.readFileSync(
-    path.join(tfCrm, "electron/plugin-control-api.ts"),
-    "utf8",
+  assert.ok(
+    !fs.existsSync(path.join(tfCrm, "electron/plugin-control-api.ts")),
+    "O1: façade plugin-control-api",
   );
-  assert.match(api, /@creezio\/electron-shell/);
-  assert.match(api, /startPluginControlApi/);
-  assert.doesNotMatch(api, /createPluginControlPlaneHandler/);
   assert.ok(
     !fs.existsSync(path.join(tfCrm, "electron/plugin-control-extras.ts")),
     "TF ne doit plus avoir de jumeau plugin-control-extras",
