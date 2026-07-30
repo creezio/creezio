@@ -25,7 +25,7 @@ Même façade `installBrandDesktopRuntime` que M12 (TF) sur Certivan puis Fidu :
 | Marque | `main.ts` | SHA |
 |--------|----------:|-----|
 | Certivan | **320** LOC | `15ae995` |
-| Fidu | **303** LOC | `9f139f2` (+ fix scripts / assert) |
+| Fidu | **303** LOC | `61b153c` (+ fix scripts / assert) |
 | TempoFlow (M12) | **309** LOC | `3565524` (deps) |
 
 ## Kit
