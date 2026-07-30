@@ -78,7 +78,12 @@ if (fs.existsSync(path.join(certivan, "electron"))) {
       "utf8",
     );
     assert.ok(ctx.includes("cvFleetAgent"));
-    assert.ok(ctx.includes("createFleetSamples"));
+    // O7 : fleet via createBrandHostRuntime({ fleet: … })
+    assert.ok(
+      ctx.includes("createFleetSamples") ||
+        ctx.includes("createBrandHostRuntime") ||
+        ctx.includes("fleet:"),
+    );
   });
 }
 

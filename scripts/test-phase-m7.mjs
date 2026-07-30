@@ -105,8 +105,14 @@ if (fs.existsSync(path.join(tfRoot, "electron"))) {
     );
     assert.ok(src.includes("tfFleetAgent"));
     assert.ok(src.includes("tfFleetSamples"));
-    assert.ok(src.includes("createFleetAgent"));
-    assert.ok(src.includes("createFleetSamples"));
+    // O7 : fleet via createBrandHostRuntime({ fleet: … }) dans le kit
+    assert.ok(
+      src.includes("createFleetAgent") ||
+        src.includes("createBrandHostRuntime"),
+    );
+    assert.ok(
+      src.includes("createFleetSamples") || src.includes("fleet:"),
+    );
   });
 }
 

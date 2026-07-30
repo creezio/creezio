@@ -84,8 +84,9 @@ test("M5.4 TF : bootstraps absents ; host-runtime-ctx ≤250 LOC", () => {
   assert.ok(n <= 360, `host-runtime-ctx trop long: ${n} LOC`);
   const src = fs.readFileSync(hooks, "utf8");
   assert.match(src, /@creezio\/electron-shell/);
-  assert.match(src, /createHermesHost/);
-  assert.match(src, /createN8nHost/);
+  // O7 : createBrandHostRuntime (singletons hermes/n8n dans le kit)
+  assert.match(src, /createBrandHostRuntime|createHermesHost/);
+  assert.match(src, /createBrandHostRuntime|createN8nHost|TF_N8N|n8nAgent/);
 });
 
 test("M5.5 TF electron : aucun import local des bootstraps morts", () => {

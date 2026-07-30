@@ -28,8 +28,8 @@ Phases livrées : [PHASE-O0.md](PHASE-O0.md) · [PHASE-O1.md](PHASE-O1.md) ·
 [PHASE-O2.md](PHASE-O2.md) · [PHASE-O3.md](PHASE-O3.md) ·
 [PHASE-O3p.md](PHASE-O3p.md) · [PHASE-O4.md](PHASE-O4.md) ·
 [PHASE-O4p.md](PHASE-O4p.md) · [PHASE-O5.md](PHASE-O5.md) ·
-[PHASE-O5p.md](PHASE-O5p.md) · [PHASE-O6.md](PHASE-O6.md) · suite O7→O11
-ci-dessous.
+[PHASE-O5p.md](PHASE-O5p.md) · [PHASE-O6.md](PHASE-O6.md) ·
+[PHASE-O7.md](PHASE-O7.md) · suite O8→O11 ci-dessous.
 
 ---
 
@@ -221,7 +221,7 @@ ci-dessous.
 
 ---
 
-## O7 — Host wirings mince (host-stack / ctx / preload)
+## O7 — Host wirings mince (host-stack / ctx / preload) ✅
 
 1. **Objectif** : wirings marque = composition mince du kit.
 2. **Inclus** : plafonds `host-stack` ≤80 · `host-runtime-ctx` ≤100 ·

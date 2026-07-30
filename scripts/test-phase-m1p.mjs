@@ -26,7 +26,7 @@ test("M1p.1 PHASE-M1p.md documente Certivan puis Fidu", () => {
 test("M1p.2 Certivan : plus de lib/database + brand host + @creezio/database", () => {
   assert.equal(fs.existsSync(path.join(certivan, "src/lib/database")), false);
   const host = fs.readFileSync(
-    path.join(certivan, "src/lib/brand-database-host.ts"),
+    path.join(certivan, "src/lib/brand-host.ts"),
     "utf8",
   );
   assert.match(host, /@creezio\/database/);
@@ -47,7 +47,7 @@ test("M1p.2 Certivan : plus de lib/database + brand host + @creezio/database", (
 test("M1p.3 Fidu : brand host + migration kit + pas de lib/database", () => {
   assert.equal(fs.existsSync(path.join(fidu, "src/lib/database")), false);
   const host = fs.readFileSync(
-    path.join(fidu, "src/lib/brand-database-host.ts"),
+    path.join(fidu, "src/lib/brand-host.ts"),
     "utf8",
   );
   assert.match(host, /configureFiduDatabaseHost/);

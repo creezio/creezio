@@ -18,3 +18,15 @@ export { getDesktopBridge } from "./types.js";
 
 export type { ContextBridgeLike, IpcRendererLike } from "./create-desktop-api.js";
 export { createDesktopApi, exposeDesktopApi } from "./create-desktop-api.js";
+
+export type {
+  CrmHostDesktopApi,
+  CrmHostPreloadExtensions,
+  PreloadTelemetryOptions,
+} from "./create-crm-host-preload.js";
+export {
+  buildCrmHostDesktopApi,
+  createCrmHostPreloadExtensions,
+  installPreloadTelemetry,
+  wireCrmHostPreload,
+} from "./create-crm-host-preload.js";

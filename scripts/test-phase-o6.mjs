@@ -95,7 +95,7 @@ test("O6.3 libs catering absentes + queries métier", () => {
   assert.doesNotMatch(fb, /\bFROM skus\b|\bFROM produits\b|\bFROM fournisseurs\b/);
 
   const host = fs.readFileSync(
-    path.join(cv, "crm/src/lib/brand-database-host.ts"),
+    path.join(cv, "crm/src/lib/brand-host.ts"),
     "utf8",
   );
   assert.match(host, /CERTIVAN_CRUD_WHITELIST/);
@@ -103,13 +103,20 @@ test("O6.3 libs catering absentes + queries métier", () => {
   assert.doesNotMatch(host, /crudAllowlist:\s*TEMPOFLOW_CRUD_WHITELIST/);
   assert.match(host, /configureCertivanDatabaseHost/);
 
+  // O4r2+ : tools métier dans modules/mcp-tools (bridge = façade mince)
   const tools = fs.readFileSync(
-    path.join(cv, "crm/src/lib/assistant/mcp-bridge.ts"),
+    path.join(cv, "crm/modules/mcp-tools.ts"),
     "utf8",
   );
   assert.match(tools, /module\.rti\./);
   assert.doesNotMatch(tools, /getOrCreatePanier|commande-queries|module\.panier/);
   assert.doesNotMatch(tools, /add_to_cart/);
+  const bridge = fs.readFileSync(
+    path.join(cv, "crm/src/lib/assistant/mcp-bridge.ts"),
+    "utf8",
+  );
+  assert.match(bridge, /createCertivanBrandMcp/);
+  assert.doesNotMatch(bridge, /add_to_cart|getOrCreatePanier/);
 
   const openTab = fs.readFileSync(
     path.join(cv, "crm/src/lib/open-external-tab.ts"),

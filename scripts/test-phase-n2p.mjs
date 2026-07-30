@@ -107,7 +107,8 @@ test("N2p.3 preload mince ≤260 LOC + createDesktopApi", () => {
     assert.ok(n <= 260, `${label} preload-app.ts >260 LOC (${n})`);
     const src = fs.readFileSync(pre, "utf8");
     assert.match(src, /@creezio\/shell/);
-    assert.match(src, /createDesktopApi/);
+    // O7 : wireCrmHostPreload (compose createDesktopApi + extensions)
+    assert.match(src, /wireCrmHostPreload|createDesktopApi/);
     assert.doesNotMatch(src, PAPERCLIP_RE);
   }
 });

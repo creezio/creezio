@@ -74,7 +74,7 @@ test("O2.4 imports kit directs (échantillons)", () => {
     );
     assert.match(mcp, /@creezio\/mcp-facade/);
     assert.doesNotMatch(mcp, /@\/lib\/mcp-admin/);
-    assert.match(mcp, /brand-mcp-admin-host/);
+    assert.match(mcp, /brand-host|installMcpAdminHost/);
   }
   for (const brand of ["tempoflow2", "certivan-app", "fidu"]) {
     // O4p : jumeau assistant-chat.ts supprimé — routes + brand-chat-tools

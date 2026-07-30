@@ -24,9 +24,7 @@ const FORBIDDEN = [
 ];
 
 const REQUIRED = [
-  "src/lib/brand-mcp-admin-host.ts",
-  "src/lib/brand-usage-analytics-host.ts",
-  "src/lib/brand-product-hub-ui-host.ts",
+  "src/lib/brand-host.ts",
   "src/lib/brand-product-hub-ui-host-client.ts",
   "src/components/admin/admin-mcp-host.tsx",
 ];
@@ -84,14 +82,15 @@ test("N6p.2 jumeaux UI absents TF+CV ; hosts + mounts présents ≤80", () => {
         `${b.name}: ${rel} ne consomme pas le kit UI`,
       );
     }
-    // O2 : façades lib absentes — imports kit directs + brand-*-host.
+    // O2/O7 : façades lib absentes — brand-host unique + kit.
     assert.ok(!fs.existsSync(path.join(b.dir, "src/lib/mcp-admin.ts")));
     assert.ok(!fs.existsSync(path.join(b.dir, "src/lib/usage-analytics.ts")));
+    assert.ok(fs.existsSync(path.join(b.dir, "src/lib/brand-host.ts")));
     assert.ok(
-      fs.existsSync(path.join(b.dir, "src/lib/brand-mcp-admin-host.ts")),
+      !fs.existsSync(path.join(b.dir, "src/lib/brand-mcp-admin-host.ts")),
     );
     assert.ok(
-      fs.existsSync(path.join(b.dir, "src/lib/brand-usage-analytics-host.ts")),
+      !fs.existsSync(path.join(b.dir, "src/lib/brand-usage-analytics-host.ts")),
     );
   }
 });
@@ -124,8 +123,7 @@ test("N6p.4 Paperclip mort sur surfaces admin cutover", () => {
     const files = [
       ...REQUIRED.map((r) => path.join(b.dir, r)),
       ...PAGE_MOUNTS.map((r) => path.join(b.dir, r)),
-      path.join(b.dir, "src/lib/brand-mcp-admin-host.ts"),
-      path.join(b.dir, "src/lib/brand-usage-analytics-host.ts"),
+      path.join(b.dir, "src/lib/brand-host.ts"),
     ];
     const corpus = files
       .filter((f) => fs.existsSync(f))

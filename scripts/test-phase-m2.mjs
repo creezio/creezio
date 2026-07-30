@@ -64,7 +64,7 @@ test("M2.4 TF : panels absents, page + route kit", () => {
     "utf8",
   );
   assert.match(route, /createAdminDatabaseRoutes/);
-  assert.match(route, /brand-database-host/);
+  assert.match(route, /brand-host|installDatabaseHost/);
   const loc = route.split("\n").length;
   assert.ok(loc <= 150, `admin-database.ts trop long: ${loc}`);
 });

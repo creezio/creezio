@@ -111,13 +111,14 @@ test("O5p.2 jumeaux absents ×3 + imports kit", () => {
     );
   }
 
-  // TF/CV brand-mcp-admin-host
+  // TF/CV brand-host (O7 fusion) — listRequestLogs via observability
   for (const b of ["tempoflow2", "certivan-app"]) {
     const host = fs.readFileSync(
-      path.join(dockerRoot, b, "crm/src/lib/brand-mcp-admin-host.ts"),
+      path.join(dockerRoot, b, "crm/src/lib/brand-host.ts"),
       "utf8",
     );
-    assert.match(host, /listRequestLogs.*@creezio\/observability|from ["']@creezio\/observability["']/);
+    assert.match(host, /listRequestLogs|installMcpAdminHost/);
+    assert.match(host, /@creezio\/observability/);
     assert.doesNotMatch(host, /@\/lib\/request-logs/);
   }
 });

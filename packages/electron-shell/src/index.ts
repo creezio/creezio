@@ -518,6 +518,32 @@ export type {
 export type { HostStack } from "./host/host-stack.js";
 export { createHostStack, lazyHost } from "./host/host-stack.js";
 
+/* ── O7 : host wirings mince (stack / runtime) ── */
+export type {
+  BrandHostPathsModule,
+  BrandHostStack,
+  BrandHostStackConfig,
+  BrandLocalConfigStoreLike,
+} from "./host/brand-host-stack.js";
+export { createBrandHostStack } from "./host/brand-host-stack.js";
+export type {
+  BrandFleetInput,
+  BrandHostRuntimeConfig,
+  BrandHostSingletons,
+  BrandRuntimePaths,
+  BrandTunnelProvisionInput,
+} from "./host/brand-host-runtime.js";
+export {
+  brandEnsureCrmKeyDbScript,
+  createBrandHostRuntime,
+  createBrandHostRuntimeContext,
+  createHermesCrmKeyPaths,
+  createHermesCrmKeySurface,
+  createHermesCrmOnlyBridgeEnv,
+  createN8nAgentKeysHooks,
+  resolveTunnelProvision,
+} from "./host/brand-host-runtime.js";
+
 /* ── Phase N5 : feature-off host (marques sans plugins/flotte) ── */
 export type {
   FeatureOffFleetAgentHost,

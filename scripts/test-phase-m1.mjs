@@ -14,7 +14,7 @@ test("M1.1 PHASE-M1.md existe et exige suppression shims", () => {
   const doc = fs.readFileSync(path.join(root, "docs/PHASE-M1.md"), "utf8");
   assert.match(doc, /sans shims|src\/lib\/database/i);
   assert.match(doc, /@creezio\/database/);
-  assert.match(doc, /brand-database-host/);
+  assert.match(doc, /brand-database-host|brand-host/);
   assert.doesNotMatch(doc, /stub = done|façade OK/);
 });
 
@@ -35,10 +35,10 @@ test("M1.3 TF consumers importent @creezio/database (pas lib/database)", () => {
   assert.doesNotMatch(route, /from ["']@\/lib\/database/);
 
   const host = fs.readFileSync(
-    path.join(tfCrm, "src/lib/brand-database-host.ts"),
+    path.join(tfCrm, "src/lib/brand-host.ts"),
     "utf8",
   );
-  assert.match(host, /configureDatabasePolicy/);
+  assert.match(host, /configureDatabasePolicy|installDatabaseHost/);
   assert.match(host, /from ["']@creezio\/database["']/);
 
   const db = fs.readFileSync(path.join(tfCrm, "src/lib/db.ts"), "utf8");
