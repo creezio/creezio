@@ -1,10 +1,10 @@
 "use client";
 
-import { getShellDesktopApi, getShellUiBrand } from "../../src/brand";
+import { getShellDesktopApi, getShellUiBrand } from "@creezio/shell-ui";
 
 import { useCallback, useEffect, useState } from "react";
 import { Minus, Square, X } from "lucide-react";
-import { cn } from "../../src/lib/utils";
+import { cn } from "@creezio/shell-ui";
 
 /** Icône « restaurer » (deux carrés superposés, style Windows). */
 function RestoreIcon({ className }: { className?: string }) {

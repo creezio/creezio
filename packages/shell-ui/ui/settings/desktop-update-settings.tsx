@@ -1,6 +1,6 @@
 "use client";
 
-import { getShellDesktopApi, getShellUiBrand } from "../../src/brand";
+import { getShellDesktopApi, getShellUiBrand } from "@creezio/shell-ui";
 
 /**
  * Mise à jour de l'app desktop — Configuration.

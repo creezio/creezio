@@ -1,6 +1,6 @@
 "use client";
 
-import { getShellDesktopApi, getShellUiBrand } from "../../src/brand";
+import { getShellDesktopApi, getShellUiBrand } from "@creezio/shell-ui";
 
 /**
  * Compte local desktop : identifiant + changement de mot de passe

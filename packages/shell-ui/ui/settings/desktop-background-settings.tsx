@@ -1,6 +1,6 @@
 "use client";
 
-import { getShellDesktopApi, getShellUiBrand } from "../../src/brand";
+import { getShellDesktopApi, getShellUiBrand } from "@creezio/shell-ui";
 
 /**
  * Fonctionnement en arrière-plan — desktop uniquement (IPC background:*).

@@ -1,6 +1,6 @@
 "use client";
 
-import { getShellDesktopApi, getShellUiBrand } from "../../src/brand";
+import { getShellDesktopApi, getShellUiBrand } from "@creezio/shell-ui";
 
 /**
  * BYOK (Bring Your Own Key) — app desktop uniquement.

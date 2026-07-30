@@ -1,6 +1,6 @@
 "use client";
 
-import { getShellDesktopApi, getShellUiBrand } from "../../src/brand";
+import { getShellDesktopApi, getShellUiBrand } from "@creezio/shell-ui";
 
 /**
  * Bus agent dans chaque vue CRM (surtout partitions IA).

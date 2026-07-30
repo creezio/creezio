@@ -2,8 +2,8 @@
 
 import { FormEvent, useEffect, useState, useTransition } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Button } from "primitives/button";
-import { Input } from "primitives/input";
+import { Button } from "./primitives/button";
+import { Input } from "./primitives/input";
 
 /**
  * Filtres comparateur prix (min/max) + plage de dates (dateFrom/dateTo).

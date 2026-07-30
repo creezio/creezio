@@ -1,6 +1,6 @@
 "use client";
 
-import { getShellDesktopApi, getShellUiBrand } from "../../src/brand";
+import { getShellDesktopApi, getShellUiBrand } from "@creezio/shell-ui";
 
 import {
   useCallback,
@@ -32,7 +32,7 @@ import {
   Workflow,
   X,
 } from "lucide-react";
-import { cn } from "../../src/lib/utils";
+import { cn } from "@creezio/shell-ui";
 import { PageChrome } from "../layout/page-chrome";
 import { useGlobalSearch } from "../global-search-host";
 import { useTabWorkspace } from "./tab-workspace-context";

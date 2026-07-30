@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { cn } from "../../src/lib/utils";
+import { cn } from "@creezio/shell-ui";
 
 /**
  * En-tête standard des fiches entité (contenu, sous le chrome sticky).

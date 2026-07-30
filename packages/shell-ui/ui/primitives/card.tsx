@@ -1,5 +1,5 @@
 import * as React from "react";
-import { cn } from "../../src/lib/utils";
+import { cn } from "@creezio/shell-ui";
 
 const Card = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
   ({ className, ...props }, ref) => (

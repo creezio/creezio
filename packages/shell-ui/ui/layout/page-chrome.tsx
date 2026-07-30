@@ -11,7 +11,7 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "../primitives/breadcrumb";
-import { cn } from "../../src/lib/utils";
+import { cn } from "@creezio/shell-ui";
 import { normalizeHref } from "../workspace/types";
 import type { PageKind, TrailCrumb } from "../workspace/types";
 import { usePageToolbarActions } from "./page-toolbar-context";

@@ -1,4 +1,4 @@
-import { getShellDesktopApi, getShellUiBrand } from "../../src/brand";
+import { getShellDesktopApi, getShellUiBrand } from "@creezio/shell-ui";
 /**
  * Ouverture n8n UI dans un onglet workspace.
  * Contrat : n8n est déjà installé + démarré au splash Héberger.

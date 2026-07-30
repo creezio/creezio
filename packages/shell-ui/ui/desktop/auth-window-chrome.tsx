@@ -1,6 +1,6 @@
 "use client";
 
-import { getShellDesktopApi, getShellUiBrand } from "../../src/brand";
+import { getShellDesktopApi, getShellUiBrand } from "@creezio/shell-ui";
 
 /**
  * Chrome fenêtre frameless sur les écrans hors workspace (login, setup,
@@ -10,7 +10,7 @@ import { getShellDesktopApi, getShellUiBrand } from "../../src/brand";
 
 import { useEffect, useState, type ReactNode } from "react";
 import { WindowChromeControls } from "../workspace/window-chrome-controls";
-import { cn } from "../../src/lib/utils";
+import { cn } from "@creezio/shell-ui";
 
 export function AuthWindowChrome({
   children,

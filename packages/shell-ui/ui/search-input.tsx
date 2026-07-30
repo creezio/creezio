@@ -2,8 +2,8 @@
 
 import { FormEvent, useEffect, useRef, useState, useTransition } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Input } from "primitives/input";
-import { Button } from "primitives/button";
+import { Input } from "./primitives/input";
+import { Button } from "./primitives/button";
 import { cn } from "../src/lib/utils";
 
 export const SEARCH_DEBOUNCE_MS = 300;

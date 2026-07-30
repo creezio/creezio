@@ -15,7 +15,7 @@ import { Bot, ListTodo, Loader2, Undo2 } from "lucide-react";
 import Link from "next/link";
 import { Button } from "../primitives/button";
 import { AiActivityPanelHost } from "./ai-activity-panel-host";
-import { cn } from "../../src/lib/utils";
+import { cn } from "@creezio/shell-ui";
 
 type Identity = {
   userId: string;

@@ -1,4 +1,4 @@
-import { getShellDesktopApi, getShellUiBrand } from "../../src/brand";
+import { getShellDesktopApi, getShellUiBrand } from "@creezio/shell-ui";
 /**
  * Ouverture Hermes WebUI dans un onglet workspace (outil externe).
  * URL dynamique (port libre desktop) — résolue via IPC getHermesStatus.

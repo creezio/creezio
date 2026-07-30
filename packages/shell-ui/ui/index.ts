@@ -10,7 +10,7 @@ export {
   getShellDesktopApi,
   resetShellUiBrandForTests,
   type ShellUiBrand,
-} from "../src/brand";
+} from "../dist/brand.js";
 export {
   configureTabWorkspaceHost,
   useTabWorkspace,

@@ -1,4 +1,4 @@
-import { getShellDesktopApi, getShellUiBrand } from "../../src/brand";
+import { getShellDesktopApi, getShellUiBrand } from "@creezio/shell-ui";
 /**
  * Tracker produit flotte (renderer) — page views, clics, session.
  * Envoie via getShellDesktopApi().reportFleetAction (opt-in côté main).

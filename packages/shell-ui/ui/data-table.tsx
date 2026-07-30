@@ -11,8 +11,8 @@ import {
   type SortingState,
 } from "@tanstack/react-table";
 import { useState } from "react";
-import { Button } from "primitives/button";
-import { Input } from "primitives/input";
+import { Button } from "./primitives/button";
+import { Input } from "./primitives/input";
 
 type DataTableProps<TData, TValue> = {
   columns: ColumnDef<TData, TValue>[];

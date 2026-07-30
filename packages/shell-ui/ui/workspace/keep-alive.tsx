@@ -9,8 +9,8 @@ import {
   type ReactNode,
 } from "react";
 import { LayoutRouterContext } from "next/dist/shared/lib/app-router-context.shared-runtime";
-import { cn } from "../../src/lib/utils";
-import { rankKeepAliveEvictionKeys } from "../../src/lib/keepalive-eviction";
+import { cn } from "@creezio/shell-ui";
+import { rankKeepAliveEvictionKeys } from "@creezio/shell-ui";
 import { MAX_KEEPALIVE, isFullscreenHref } from "./types";
 
 type CacheEntry = {

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
-import { Skeleton } from "primitives/skeleton";
+import { Skeleton } from "./primitives/skeleton";
 import { cn } from "../src/lib/utils";
 
 export type PresetDef = {
