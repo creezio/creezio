@@ -170,32 +170,46 @@ export type TasksBrandConfig = {
   auth: TasksAuthAdapter;
 };
 
-let brandConfig: TasksBrandConfig | null = null;
+/**
+ * État global via globalThis — évite le dual-package hazard
+ * (tsx charge parfois le CJS `dist-cjs` depuis un fichier marque transformé
+ * en CJS, alors que le runtime ESM lit `dist`).
+ */
+const BRAND_KEY = "__creezioTasksBrandConfig";
+
+function brandSlot(): { current: TasksBrandConfig | null } {
+  const g = globalThis as unknown as {
+    [BRAND_KEY]?: { current: TasksBrandConfig | null };
+  };
+  if (!g[BRAND_KEY]) g[BRAND_KEY] = { current: null };
+  return g[BRAND_KEY];
+}
 
 export function configureTasksBrand(config: TasksBrandConfig): void {
-  brandConfig = config;
+  brandSlot().current = config;
 }
 
 export function getTasksBrandConfig(): TasksBrandConfig | null {
-  return brandConfig;
+  return brandSlot().current;
 }
 
 export function requireTasksBrand(): TasksBrandConfig {
-  if (!brandConfig) {
+  const cfg = brandSlot().current;
+  if (!cfg) {
     throw new Error(
       "@creezio/tasks: configureTasksBrand() requis avant d'utiliser le runtime kanban",
     );
   }
-  return brandConfig;
+  return cfg;
 }
 
 export function resetTasksBrandForTests(): void {
-  brandConfig = null;
+  brandSlot().current = null;
 }
 
 /** Lit process.env[`${envPrefix}_${suffix}`]. */
 export function tasksEnv(suffix: string, fallback = ""): string {
-  const cfg = brandConfig;
+  const cfg = brandSlot().current;
   const prefix = cfg?.envPrefix || "CREEZIO_AI";
   return (process.env[`${prefix}_${suffix}`] || fallback).trim();
 }
