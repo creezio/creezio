@@ -80,7 +80,7 @@ npm run build && npm run electron:compile && npm run test:fidu
 
 | Repo | SHA | Notes |
 |------|-----|-------|
-| Kit | _(feat)_ | browser-tabs + docs |
+| Kit | `d86a708` | browser-tabs + docs |
 | Certivan | `336739d` | façades N7 |
 | Fidu | `8ec21d2` | façades + release **0.1.63** |
 | TempoFlow | `c85bb0f` | inchangé N7 |
