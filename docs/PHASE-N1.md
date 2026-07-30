@@ -126,4 +126,4 @@ npm test   # incl. test-phase-n1
 
 ## Suite
 
-**N1p** — Cutover plugins runtime (TF → Certivan → Fidu).
+**N1p** — Cutover plugins runtime (TF → Certivan → Fidu) — ✅ [PHASE-N1p.md](PHASE-N1p.md).

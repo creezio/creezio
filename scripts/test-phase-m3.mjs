@@ -50,26 +50,46 @@ test("M3.3 TF façades ≤40 LOC wiring pur", () => {
 });
 
 test("M3.4 TF boot = startHostPluginControlPlane + adapters verticaux", () => {
+  // N1p : SoT control-extras / adapters dans le kit ; TF = bindings + barrel ≤40.
   const extras = fs.readFileSync(
-    path.join(tfCrm, "electron/plugin-control-extras.ts"),
+    path.join(
+      root,
+      "packages/electron-shell/src/host/plugins/control-extras.ts",
+    ),
     "utf8",
   );
   assert.match(extras, /startHostPluginControlPlane/);
-  assert.match(extras, /createTempoflowControlPlaneAcl/);
-  assert.match(extras, /handleTempoflowExtras|accept-check/);
+  assert.match(extras, /createControlPlaneAcl|buildControlPlaneAdapters/);
+  assert.match(extras, /handlePluginControlExtras|accept-check/);
 
   const adapters = fs.readFileSync(
-    path.join(tfCrm, "electron/plugin-control-adapters.ts"),
+    path.join(
+      root,
+      "packages/electron-shell/src/host/plugins/control-adapters.ts",
+    ),
     "utf8",
   );
-  assert.match(adapters, /buildTempoflowControlPlaneAdapters/);
+  assert.match(adapters, /buildPluginControlPlaneAdapters/);
+
+  const bindings = fs.readFileSync(
+    path.join(tfCrm, "electron/plugin-host-bindings.ts"),
+    "utf8",
+  );
+  assert.match(bindings, /configurePluginHost/);
+  assert.match(bindings, /createTempoflowControlPlaneAcl/);
+  assert.match(bindings, /buildPluginControlPlaneAdapters/);
 
   const api = fs.readFileSync(
     path.join(tfCrm, "electron/plugin-control-api.ts"),
     "utf8",
   );
-  assert.match(api, /plugin-control-extras/);
+  assert.match(api, /@creezio\/electron-shell/);
+  assert.match(api, /startPluginControlApi/);
   assert.doesNotMatch(api, /createPluginControlPlaneHandler/);
+  assert.ok(
+    !fs.existsSync(path.join(tfCrm, "electron/plugin-control-extras.ts")),
+    "TF ne doit plus avoir de jumeau plugin-control-extras",
+  );
 });
 
 test("M3.5 TF product-hub / hub-store importent le kit", () => {

@@ -10,7 +10,8 @@ inventer · Tests verts → push → étape suivante · **Pas de N(n+1) si gate 
 rouge** · Sync vendor = **liste complète** · Cutover marques séquentiel `*p` :
 TF → Certivan → Fidu (sauf N5 Fidu-only et N0 artefacts) · **Paperclip = mort**.
 
-Phases livrées : [PHASE-N0.md](PHASE-N0.md) · [PHASE-N1.md](PHASE-N1.md) · suite N1p→N9 ci-dessous.
+Phases livrées : [PHASE-N0.md](PHASE-N0.md) · [PHASE-N1.md](PHASE-N1.md) ·
+[PHASE-N1p.md](PHASE-N1p.md) · suite N2→N9 ci-dessous.
 
 ---
 
@@ -41,7 +42,7 @@ Phases livrées : [PHASE-N0.md](PHASE-N0.md) · [PHASE-N1.md](PHASE-N1.md) · su
 
 ---
 
-## N1p — Cutover plugins runtime (TF → Certivan → Fidu)
+## N1p — Cutover plugins runtime (TF → Certivan → Fidu) ✅
 
 1. **Objectif** : jumeaux runtime absents ; imports `@creezio/electron-shell`.
 2. **Inclus** : delete cutover ; `plugin-control-api` ≤40 LOC ou absent ; sync
@@ -49,8 +50,9 @@ Phases livrées : [PHASE-N0.md](PHASE-N0.md) · [PHASE-N1.md](PHASE-N1.md) · su
 3. **Exclu** : UI admin ; assistant ; meili-indexer.
 4. **Tests gate** : par marque `sync-creezio-vendor` + `electron:compile` +
    `test:plugin-*` + `test:shell` ; kit `npm test`.
-5. **Done** : fichiers runtime absents TF+CV ; Fidu toujours 0 copies.
-6. **Effort L · Republish oui** (TF/CV)
+5. **Done** : [PHASE-N1p.md](PHASE-N1p.md) — TF `063ac3c` · CV `e463290` ·
+   Fidu `2fd5a0f` ; baseline N1 `fadb3e4`.
+6. **Effort L · Republish différé** (wiring electron, non packing)
 
 ---
 

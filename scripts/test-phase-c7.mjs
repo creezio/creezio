@@ -26,20 +26,55 @@ test("C7.1 kit exporte startHostPluginControlPlane + preHandle", () => {
 });
 
 test("C7.2 marques appellent startHostPluginControlPlane", () => {
-  const files = [
+  // N1p : TF/CV → barrel `startPluginControlApi` kit (appelle startHostPluginControlPlane)
+  // + bindings configurePluginHost ; Fidu → plugin-control-boot direct.
+  const kitExtras = fs.readFileSync(
+    path.join(
+      root,
+      "packages/electron-shell/src/host/plugins/control-extras.ts",
+    ),
+    "utf8",
+  );
+  assert.match(kitExtras, /startHostPluginControlPlane/);
+  assert.match(kitExtras, /export async function startPluginControlApi/);
+
+  const tfApi = fs.readFileSync(
     "/opt/docker/tempoflow2/crm/electron/plugin-control-api.ts",
+    "utf8",
+  );
+  assert.match(tfApi, /startPluginControlApi/);
+  assert.match(tfApi, /@creezio\/electron-shell/);
+  assert.match(
+    fs.readFileSync(
+      "/opt/docker/tempoflow2/crm/electron/plugin-host-bindings.ts",
+      "utf8",
+    ),
+    /configurePluginHost/,
+  );
+
+  const cvApi = fs.readFileSync(
     "/opt/docker/certivan-app/crm/electron/plugin-control-api.ts",
-    "/opt/docker/fidu/crm/electron/plugin-control-api.ts",
-  ];
-  for (const f of files) {
-    const src = fs.readFileSync(f, "utf8");
-    assert.match(src, /startHostPluginControlPlane/, f);
-    assert.doesNotMatch(
-      src,
-      /équivalent host de\n \* `startHostPluginControlPlane`/,
-      f,
-    );
-  }
+    "utf8",
+  );
+  assert.match(cvApi, /startPluginControlApi/);
+  assert.match(cvApi, /@creezio\/electron-shell/);
+  assert.match(
+    fs.readFileSync(
+      "/opt/docker/certivan-app/crm/electron/plugin-host-bindings.ts",
+      "utf8",
+    ),
+    /configurePluginHost/,
+  );
+
+  const fiduBoot = fs.readFileSync(
+    "/opt/docker/fidu/crm/electron/plugin-control-boot.ts",
+    "utf8",
+  );
+  assert.match(fiduBoot, /startHostPluginControlPlane/);
+  assert.doesNotMatch(
+    fiduBoot,
+    /équivalent host de\n \* `startHostPluginControlPlane`/,
+  );
 });
 
 test("C7.3 demobrand startControlPlane + ACL deny cross-org", async () => {

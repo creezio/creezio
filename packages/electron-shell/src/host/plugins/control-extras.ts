@@ -11,6 +11,7 @@ import {
   issuePluginExecutionGrant,
   verifyPluginExecutionGrant,
 } from "@creezio/platform-core";
+import { productHubTokensFromManifest } from "@creezio/product-hub";
 import { startHostPluginControlPlane } from "./control-plane.js";
 import { ensurePluginControlToken } from "./control-token.js";
 import {
@@ -150,6 +151,11 @@ export function archivePluginRuntime(
   return { ok: true, archivedPath };
 }
 
+function grantTokenPrefix(): string {
+  const bindings = getPluginHostBindings();
+  return productHubTokensFromManifest(bindings.manifest).grantTokenPrefix;
+}
+
 export function createPluginExecutionGrant(opts: {
   productId: string;
   prdRevisionId: string;
@@ -158,8 +164,9 @@ export function createPluginExecutionGrant(opts: {
 }): { token: string; expiresAt: string; grantId: string } {
   if (!running) throw new Error("control plane plugins non démarré");
   const issued = issuePluginExecutionGrant({
-    secret: running.token,
     ...opts,
+    secret: running.token,
+    tokenPrefix: grantTokenPrefix(),
   });
   return {
     token: issued.token,
@@ -179,6 +186,7 @@ export function validatePluginExecutionGrant(opts: {
     secret: running.token,
     pluginId: opts.pluginId,
     action: opts.action,
+    tokenPrefix: grantTokenPrefix(),
   });
   return result.ok ? { ok: true } : result;
 }

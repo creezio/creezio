@@ -31,12 +31,31 @@ test("M3p.2 Certivan façades ≤40 + boot kit", () => {
       40,
   );
   assert.ok(loc(path.join(certCrm, "src/lib/plugin-product-hub.ts")) <= 40);
-  const extras = fs.readFileSync(
-    path.join(certCrm, "electron/plugin-control-extras.ts"),
+  // N1p : jumeau extras absent — boot via kit startPluginControlApi + bindings.
+  assert.ok(
+    !fs.existsSync(path.join(certCrm, "electron/plugin-control-extras.ts")),
+    "Certivan ne doit plus avoir de jumeau plugin-control-extras",
+  );
+  const kitExtras = fs.readFileSync(
+    path.join(
+      root,
+      "packages/electron-shell/src/host/plugins/control-extras.ts",
+    ),
     "utf8",
   );
-  assert.match(extras, /startHostPluginControlPlane/);
-  assert.match(extras, /createCertivanControlPlaneAcl/);
+  assert.match(kitExtras, /startHostPluginControlPlane/);
+  const bindings = fs.readFileSync(
+    path.join(certCrm, "electron/plugin-host-bindings.ts"),
+    "utf8",
+  );
+  assert.match(bindings, /configurePluginHost/);
+  assert.match(bindings, /createCertivanControlPlaneAcl/);
+  const api = fs.readFileSync(
+    path.join(certCrm, "electron/plugin-control-api.ts"),
+    "utf8",
+  );
+  assert.match(api, /startPluginControlApi/);
+  assert.match(api, /@creezio\/electron-shell/);
 });
 
 test("M3p.3 Fidu façades ≤40 + boot kit", () => {
