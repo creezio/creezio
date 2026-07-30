@@ -77,7 +77,7 @@ npm run test:active-surface
 
 | | SHA |
 |--|--|
-| Kit tip | `91c6624` (feat `30dbf06`) |
+| Kit tip | `340e732` (feat `30dbf06`) |
 | TempoFlow | `ee516af` (feat `68ebdf8`) |
 | Certivan | `b92465e` (feat `bde11ba`) |
 | Fidu | `c7d71c9` (feat `c9933ee`) |
