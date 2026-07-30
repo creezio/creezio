@@ -7,7 +7,7 @@
 | **Repo** | `creezio/creezio` (extract only) |
 | **Prérequis** | [PHASE-O8.md](PHASE-O8.md) · plan [PLAN-O.md](PLAN-O.md) |
 | **Baseline O8 kit tip** | `c50d217` / tip `8b7f0ef` |
-| **Kit tip O9** | _(pin après push)_ |
+| **Kit tip O9** | `3e4194a` |
 | **ARCHITECTURE_VERSION** | `"H6"` (inchangé) |
 | **Republish** | Non (cutover = O9p) |
 
