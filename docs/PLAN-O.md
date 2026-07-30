@@ -27,7 +27,7 @@ Fidu (sauf O0 / O6 CV-only / O10–O11) · Paperclip = mort.
 Phases livrées : [PHASE-O0.md](PHASE-O0.md) · [PHASE-O1.md](PHASE-O1.md) ·
 [PHASE-O2.md](PHASE-O2.md) · [PHASE-O3.md](PHASE-O3.md) ·
 [PHASE-O3p.md](PHASE-O3p.md) · [PHASE-O4.md](PHASE-O4.md) ·
-[PHASE-O4p.md](PHASE-O4p.md) · suite O5→O11
+[PHASE-O4p.md](PHASE-O4p.md) · [PHASE-O5.md](PHASE-O5.md) · suite O5p→O11
 ci-dessous.
 
 ---
@@ -132,7 +132,7 @@ ci-dessous.
 
 ---
 
-## O5 — Admin request-logs / api-endpoints → kit
+## O5 — Admin request-logs / api-endpoints → kit ✅
 
 1. **Objectif** : clients + middleware génériques SoT
    `@creezio/observability` / `product-hub` (package le plus proche).

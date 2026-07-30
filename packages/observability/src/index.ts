@@ -163,3 +163,35 @@ export type {
   UsageAnalyticsSession,
   UsageAnalyticsRouteDeps,
 } from "./usage/index.js";
+
+/* ── O5 : request-logs admin (port TempoFlow) ── */
+
+export {
+  configureRequestLogs,
+  getRequestLogsConfig,
+  resetRequestLogsConfigForTests,
+  resolveFleetStateDir,
+  getRequestLogCapacity,
+  _resetRequestLogsForTests,
+  isSecretKey,
+  redactSecrets,
+  pushRequestLog,
+  listRequestLogs,
+  clearRequestLogs,
+  parseJsonRpcMessages,
+  summarizeMcpRequest,
+  summarizeMcpResponse,
+  extractApiErrorMessage,
+  shouldSkipRequestLog,
+  requestLogApiMiddleware,
+  requestLogMcpMiddleware,
+  createRequestLogsRoutes,
+} from "./request-logs/index.js";
+
+export type {
+  RequestLogsConfig,
+  RequestLogSource,
+  RequestLogDetail,
+  RequestLogEntry,
+  ListRequestLogsOpts,
+} from "./request-logs/index.js";
