@@ -52,6 +52,18 @@ test("M8.2 kit expose env helpers + contrat", () => {
 
   const mails = require(path.join(root, "packages/mails/dist-cjs/index.js"));
   assert.equal(typeof mails.indexKitInboundMail, "function");
+  assert.equal(typeof mails.createEmailInboxRoutes, "function");
+  assert.equal(typeof mails.configureMails, "function");
+  assert.equal(typeof mails.getKitMailsStore, "function");
+  assert.equal(typeof mails.migrateBrandEmailsToKit, "function");
+  assert.ok(
+    fs.existsSync(path.join(root, "packages/mails/ui/mail-inbox.tsx")),
+    "MailInbox UI",
+  );
+  assert.ok(
+    fs.existsSync(path.join(root, "packages/mails/email-worker/worker.js")),
+    "email-worker kit",
+  );
 });
 
 test("M8.3 TF adapters lourds absents ; platform-stores ≤80 LOC", () => {
@@ -81,11 +93,23 @@ test("M8.4 TF call-sites importent @creezio/* directs", () => {
   const tasks = fs.readFileSync(path.join(tfRoot, "src/lib/tasks.ts"), "utf8");
   assert.match(tasks, /from ["']@creezio\/tasks["']/);
 
-  const mails = fs.readFileSync(
-    path.join(tfRoot, "src/lib/email-queries.ts"),
-    "utf8",
-  );
-  assert.match(mails, /from ["']@creezio\/mails["']/);
+  // P20 cutover : email-queries jumeau éteint ; routes délèguent au kit
+  const emailQueriesPath = path.join(tfRoot, "src/lib/email-queries.ts");
+  if (fs.existsSync(emailQueriesPath)) {
+    const mails = fs.readFileSync(emailQueriesPath, "utf8");
+    assert.match(mails, /from ["']@creezio\/mails["']/);
+  } else if (fs.existsSync(tfRoot)) {
+    const emailRoutes = fs.readFileSync(
+      path.join(tfRoot, "src/server/routes/email.ts"),
+      "utf8",
+    );
+    assert.match(emailRoutes, /from ["']@creezio\/mails["']/);
+    assert.match(emailRoutes, /createEmailInboxRoutes/);
+    assert.ok(
+      !fs.existsSync(path.join(tfRoot, "src/components/mail/mail-inbox.tsx")),
+      "TF mail-inbox twin",
+    );
+  }
 
   // O2 : chat-db façade absente — SoT kit direct
   assert.ok(

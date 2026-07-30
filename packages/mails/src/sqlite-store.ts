@@ -1,11 +1,12 @@
 /**
- * Store mails plateforme — sqlite **core** (Phase I3 + C1 inbound index).
+ * Store mails plateforme — sqlite **core** (I3 + inbox SoT complète).
  */
 
 import crypto from "node:crypto";
 import {
   PLATFORM_MAILS_CORE_SQL,
   ensureMailsInboundColumnsSql,
+  type InboundAttachmentInput,
   type MailProvider,
   type PlatformMail,
   type PlatformMailsStore,
@@ -15,6 +16,21 @@ import {
   type OpenSqliteDatabase,
   type SqliteDatabase,
 } from "./sqlite-driver.js";
+import {
+  deleteInboxEmail,
+  emailsReady,
+  getInboxAttachment,
+  getInboxEmail,
+  insertInboundEmail,
+  listInboxEmails,
+  markInboxEmailRead,
+  ensureMailsInboxSchema,
+} from "./inbox-queries.js";
+import type {
+  InboxEmailDetail,
+  InboxEmailListItem,
+  InboundEmailInput,
+} from "./types.js";
 
 function now(): string {
   return new Date().toISOString();
@@ -33,6 +49,10 @@ type Row = {
   folder?: string;
   read_at?: string | null;
   brand_email_id?: string | null;
+  text_body?: string | null;
+  html_body?: string | null;
+  received_at?: string | null;
+  raw_headers?: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -51,6 +71,10 @@ function fromRow(r: Row): PlatformMail {
     folder: r.folder || "outbox",
     readAt: r.read_at ?? null,
     brandEmailId: r.brand_email_id ?? null,
+    textBody: r.text_body ?? null,
+    htmlBody: r.html_body ?? null,
+    receivedAt: r.received_at ?? null,
+    rawHeaders: r.raw_headers ?? null,
     createdAt: r.created_at,
     updatedAt: r.updated_at,
   };
@@ -70,6 +94,26 @@ export type SqliteMailsStore = PlatformMailsStore & {
   close(): void;
   readonly dbPath: string;
   readonly defaultProviderId: string;
+  /** Accès DB pour routes / tests. */
+  readonly db: SqliteDatabase;
+  emailsReady(): boolean;
+  listInbox(opts?: {
+    folder?: string;
+    q?: string;
+    unreadOnly?: boolean;
+    limit?: number;
+    offset?: number;
+  }): { rows: InboxEmailListItem[]; total: number; unread: number };
+  getInbox(id: string): InboxEmailDetail | null;
+  getAttachment(
+    emailId: string,
+    attachmentId: string,
+  ): { filename: string; content_type: string; data: Buffer } | null;
+  markRead(id: string, read: boolean): boolean;
+  deleteMail(id: string): boolean;
+  insertInboundFull(
+    input: InboundEmailInput,
+  ): { ok: true; id: string; duplicate?: boolean } | { ok: false; error: string };
 };
 
 export type CreateSqliteMailsStoreOptions = {
@@ -89,6 +133,7 @@ export function createSqliteMailsStore(
   const db: SqliteDatabase = open(opts.coreDbPath);
   db.exec(PLATFORM_MAILS_CORE_SQL);
   ensureInboundColumns(db);
+  ensureMailsInboxSchema(db);
 
   const providers = new Map<string, MailProvider>();
   providers.set("platform-stub", {
@@ -105,8 +150,9 @@ export function createSqliteMailsStore(
       `INSERT INTO creezio_platform_mails
       (id, user_id, to_addr, subject, body, status, provider_id,
        from_addr, message_id, folder, read_at, brand_email_id,
+       text_body, html_body, received_at, raw_headers,
        created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(id) DO UPDATE SET
         to_addr = excluded.to_addr,
         subject = excluded.subject,
@@ -118,6 +164,10 @@ export function createSqliteMailsStore(
         folder = excluded.folder,
         read_at = excluded.read_at,
         brand_email_id = excluded.brand_email_id,
+        text_body = excluded.text_body,
+        html_body = excluded.html_body,
+        received_at = excluded.received_at,
+        raw_headers = excluded.raw_headers,
         updated_at = excluded.updated_at`,
     ).run(
       mail.id,
@@ -132,18 +182,44 @@ export function createSqliteMailsStore(
       mail.folder || "outbox",
       mail.readAt ?? null,
       mail.brandEmailId ?? null,
+      mail.textBody ?? null,
+      mail.htmlBody ?? null,
+      mail.receivedAt ?? null,
+      mail.rawHeaders ?? null,
       mail.createdAt,
       mail.updatedAt,
     );
   }
 
   const store: SqliteMailsStore = {
+    db,
     dbPath: opts.coreDbPath,
     get defaultProviderId() {
       return defaultProviderId;
     },
     close() {
       db.close?.();
+    },
+    emailsReady() {
+      return emailsReady(db);
+    },
+    listInbox(listOpts) {
+      return listInboxEmails(db, listOpts);
+    },
+    getInbox(id) {
+      return getInboxEmail(db, id);
+    },
+    getAttachment(emailId, attachmentId) {
+      return getInboxAttachment(db, emailId, attachmentId);
+    },
+    markRead(id, read) {
+      return markInboxEmailRead(db, id, read);
+    },
+    deleteMail(id) {
+      return deleteInboxEmail(db, id);
+    },
+    insertInboundFull(input) {
+      return insertInboundEmail(db, input);
     },
     createDraft(input) {
       const ts = now();
@@ -163,32 +239,47 @@ export function createSqliteMailsStore(
       return mail;
     },
     insertInbound(input) {
-      if (input.messageId) {
-        const existing = db
-          .prepare(
-            `SELECT * FROM creezio_platform_mails WHERE message_id = ? LIMIT 1`,
-          )
-          .get(input.messageId) as Row | undefined;
-        if (existing) return fromRow(existing);
+      const attachments = (input.attachments || []) as InboundAttachmentInput[];
+      let headers: Record<string, string> | null = null;
+      if (input.rawHeaders) {
+        try {
+          headers = JSON.parse(input.rawHeaders) as Record<string, string>;
+        } catch {
+          headers = null;
+        }
       }
-      const ts = now();
-      const mail: PlatformMail = {
-        id: input.id || crypto.randomUUID(),
+      const result = insertInboundEmail(db, {
+        message_id: input.messageId,
+        from: input.from,
+        to: input.to,
+        subject: input.subject,
+        text: input.textBody ?? input.body ?? null,
+        html: input.htmlBody ?? null,
+        received_at: input.receivedAt,
+        headers,
+        attachments,
         userId: input.userId,
-        to: input.to.trim(),
-        from: input.from.trim(),
-        subject: input.subject.trim() || "(sans objet)",
-        body: input.body || "",
-        status: "inbound",
-        providerId: null,
-        messageId: input.messageId ?? null,
-        folder: "inbox",
-        brandEmailId: input.brandEmailId ?? null,
-        createdAt: ts,
-        updatedAt: ts,
-      };
-      persist(mail);
-      return mail;
+      });
+      if (!result.ok) {
+        throw new Error(result.error);
+      }
+      const row = db
+        .prepare(`SELECT * FROM creezio_platform_mails WHERE id = ?`)
+        .get(result.id) as Row;
+      // Preserve brandEmailId if provided (migration)
+      if (input.brandEmailId && row) {
+        db.prepare(
+          `UPDATE creezio_platform_mails SET brand_email_id = ?, updated_at = ? WHERE id = ?`,
+        ).run(input.brandEmailId, now(), result.id);
+        if (input.id && input.id !== result.id) {
+          /* keep kit id */
+        }
+      }
+      return fromRow(
+        db
+          .prepare(`SELECT * FROM creezio_platform_mails WHERE id = ?`)
+          .get(result.id) as Row,
+      );
     },
     list(userId) {
       const rows = db
