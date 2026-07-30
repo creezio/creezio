@@ -1,18 +1,23 @@
-# Phase P — Onboarding / Setup → `@creezio/shell-ui`
+# Phase P — Onboarding / Setup (DRAFT — arbitrage packages)
 
 | | |
 |--|--|
-| **Statut** | 📋 **Audit + plan** (pas d’implémentation) |
+| **Statut** | ⏸️ **DRAFT / NON DÉFINITIF** — attente arbitrage découpage packages |
 | **Date** | 2026-07-30 |
-| **Périmètre** | Uniquement **setup first-run** + **onboarding métier-shell** dans `@creezio/shell-ui` |
-| **Repos** | TF `tempoflow2` · CV `certivan-app` · Fidu `fidu` · kit `creezio` (working trees propres) |
-| **SoT intention** | [ETAT-DES-LIEUX-INTENTION.md](ETAT-DES-LIEUX-INTENTION.md) §0 (×3 = NATIF) · [ARCHITECTURE-INTENTION.md](ARCHITECTURE-INTENTION.md) |
-| **Hors scope explicite** | Tasks, MCP, Product Hub, sidebar entière, cockpit UI, cutover marques, routes HTTP DB |
+| **Hypothèse initiale (contestée)** | Moteur dans `@creezio/shell-ui` |
+| **Blocage** | L’utilisateur questionne « onboarding ∈ shell-ui » (risque fourre-tout). Un autre agent audite le scope réel de `shell-ui`. **Ne pas implémenter ni conclure** tant que le package cible n’est pas tranché (`shell-ui` vs package dédié vs autre). |
+| **Repos** | TF `tempoflow2` · CV `certivan-app` · Fidu `fidu` · kit `creezio` |
+| **SoT intention** | [ETAT-DES-LIEUX-INTENTION.md](ETAT-DES-LIEUX-INTENTION.md) §0 (×3 = NATIF) — *où* (quel package) = **ouvert** |
+| **Hors scope** | Implémentation, cutover, tout autre pilier P |
 
-> **Règle.** Ce doc ne planifie **rien d’autre** que l’extraction d’un **moteur
-> setup + onboarding** dans `shell-ui`, avec **API de personnalisation**.
-> Les étapes métier (restaurant TF, atelier CV, cabinet Fidu) restent **slots
-> marque**. Pas de clone TempoFlow.
+> **⚠ Ce document n’est PAS une décision d’architecture package.**
+> L’audit comparatif TF/CV/Fidu (commun vs divergences) reste utile comme
+> matière. Les sections « design cible / API / plan → shell-ui » sont une
+> **hypothèse de placement** à revalider ou à déplacer (ex. `@creezio/onboarding`,
+> autre) après l’audit scope `shell-ui`.
+
+> **Règle gelée.** Aucune extraction ni cutover onboarding/setup tant que le
+> découpage package n’est pas tranché.
 
 ---
 
@@ -499,7 +504,9 @@ Fichiers **non-gold** pour le kit : steps métier, `types.ts` marque,
 
 ---
 
-## 9. Livrable de ce commit
+## 9. Livrable / statut push
 
-- ✅ Ce document (audit + design API + plan + critères falsifiables)
+- ✅ Doc poussé puis **rétrogradé DRAFT** (attente arbitrage package)
+- ❌ Pas de conclusion « onboarding ∈ shell-ui » définitive
 - ❌ Pas de code feature / pas de cutover / pas de sed apps
+- ⏸️ Reprise uniquement après décision de découpage packages
