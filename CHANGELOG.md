@@ -4,6 +4,9 @@
 ## [Unreleased]
 
 ### Added
+- **Phase M10** — Une seule arborescence métier TF : `crm/modules` =
+  symlink → `electron/modules` (pas de doublon physique) ;
+  `docs/PHASE-M10.md` ; tests `test-phase-m10` ; **pas** de republish exe.
 - **Phase M9** — MCP/API anti-jumeau : `wrapMcpFacadeWithHonoProxy` +
   contrat `MCP_PRODUCT_EXECUTOR` + `createCoreMcpTools` /
   `CREEZIO_CORE_MCP_TOOL_NAMES` dans `@creezio/mcp-facade` ; TF/Certivan

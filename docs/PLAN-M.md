@@ -143,7 +143,10 @@ Voir [PHASE-M9.md](PHASE-M9.md).
 
 ## M10 — Un seul arbre métier TF
 
-`electron/modules/{panier,dispatch,…}` absents si doublon `crm/modules/`.
+Voir [PHASE-M10.md](PHASE-M10.md).
+
+`crm/modules` = symlink → `electron/modules` (SoT unique) ; pas de copie
+métier parallèle. Gates `test:phase-h3` + `test:panier-sku` + `test:dispatch`.
 
 ---
 
