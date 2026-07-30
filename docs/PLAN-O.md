@@ -32,8 +32,9 @@ Phases livrées : [PHASE-O0.md](PHASE-O0.md) · [PHASE-O1.md](PHASE-O1.md) ·
 [PHASE-O3p.md](PHASE-O3p.md) · [PHASE-O4.md](PHASE-O4.md) ·
 [PHASE-O4p.md](PHASE-O4p.md) · [PHASE-O5.md](PHASE-O5.md) ·
 [PHASE-O5p.md](PHASE-O5p.md) · [PHASE-O6.md](PHASE-O6.md) ·
-[PHASE-O7.md](PHASE-O7.md) · [PHASE-O8.md](PHASE-O8.md) · suite O9→O11
-ci-dessous.
+[PHASE-O7.md](PHASE-O7.md) · [PHASE-O8.md](PHASE-O8.md) ·
+[PHASE-O9.md](PHASE-O9.md) · [PHASE-O9p.md](PHASE-O9p.md) ·
+[PHASE-O10.md](PHASE-O10.md) · [PHASE-O11.md](PHASE-O11.md).
 
 ---
 
@@ -283,14 +284,17 @@ ci-dessous.
 
 ---
 
-## O11 — Freeze vision 100 % O*
+## O11 — Freeze plan O* (vision honnête) ✅
 
-1. **Objectif** : signer 100 % vision stricte O* (façades = mort).
-2. **Inclus** : PHASE-O11, SHAs gold, `test-phase-o11`, republish si runtime
-   touché.
-3. **Tests gate** : `npm test` o0…o11 ; dry-run ×3 ; republish feeds.
+1. **Objectif** : geler O0→O11 (gates + SHAs + feeds) **sans** proclamer
+   100 % cosmétique ; checklist vision honnête (~**76 %** intention).
+2. **Inclus** : [PHASE-O11.md](PHASE-O11.md), SHAs gold, `test-phase-o11`,
+   republish TF/CV/Fidu (runtime O7/O9p).
+3. **Tests gate** : `npm test` o0…o11 ; dry-run ×3 ; republish feeds verts.
 4. **Done** : [PHASE-O11.md](PHASE-O11.md).
 5. **Effort S · Republish oui** (marques touchées)
+6. **Note** : façades ciblées O1–O8 = mort ; jumeaux résiduels / GED Fidu /
+   argsPreview / vocabulaire TF kit = **dettes documentées**, hors done.
 
 ---
 

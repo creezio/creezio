@@ -45,4 +45,4 @@ cd /opt/docker/creezio && npm test   # incl. test-phase-o10
 
 ## Suite
 
-**O11** — Freeze vision 100 % O*.
+**O11** — Freeze plan O* (vision honnête) — [PHASE-O11.md](PHASE-O11.md).

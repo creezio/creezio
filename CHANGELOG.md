@@ -4,6 +4,9 @@
 ## [Unreleased]
 
 ### Added
+- **Phase O11** — Freeze plan O0→O11 : matrice + PLAN-O + SHAs gold ;
+  vision intention **~76 %** (honnête) ; `docs/PHASE-O11.md` ;
+  tests `test-phase-o11` ; republish feeds TF/CV/Fidu (runtime O7/O9p).
 - **Phase N9** — Freeze vision 100 % N0→N9 : matrice + PLAN-N + SHAs gold ;
   dry-run sync ×3 ; `docs/PHASE-N9.md` ; tests `test-phase-n9`.
 - **Phase N8** — Gates LOC + allowlists vision ×3 marques :
