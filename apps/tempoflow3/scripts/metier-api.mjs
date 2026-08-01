@@ -452,6 +452,124 @@ async function handle(req, res) {
     return send(res, 200, { produit });
   }
 
+  // ---- Search catalogue ----
+  if (req.method === "GET" && url.pathname === "/api/v1/brand/search") {
+    const q = (url.searchParams.get("q") || "").toLowerCase().trim();
+    const store = readStore();
+    if (!q) return send(res, 200, { produits: [], fournisseurs: [], prix: [] });
+    const produits = (store.produits || []).filter(
+      (p) => !p.archived_at && JSON.stringify(p).toLowerCase().includes(q),
+    );
+    const fournisseurs = (store.fournisseurs || []).filter(
+      (f) => !f.archived_at && JSON.stringify(f).toLowerCase().includes(q),
+    );
+    const prix = (store.prix || []).filter((p) => {
+      const prod = (store.produits || []).find((x) => x.id === p.produit_id);
+      return (
+        String(p.montant).includes(q) ||
+        (prod && String(prod.nom).toLowerCase().includes(q)) ||
+        (p.promo_label && String(p.promo_label).toLowerCase().includes(q))
+      );
+    });
+    return send(res, 200, { q, produits, fournisseurs, prix });
+  }
+
+  // ---- Promotions (vue prix promo) ----
+  if (req.method === "GET" && url.pathname === "/api/v1/brand/promotions") {
+    const store = readStore();
+    const items = (store.prix || [])
+      .filter((p) => p.promo)
+      .map((p) => {
+        const produit = (store.produits || []).find((x) => x.id === p.produit_id);
+        const fournisseur = (store.fournisseurs || []).find(
+          (x) => x.id === p.fournisseur_id,
+        );
+        return { ...p, produit, fournisseur };
+      });
+    return send(res, 200, { items });
+  }
+
+  // ---- SKUs (alias produits MVP) ----
+  if (req.method === "GET" && url.pathname === "/api/v1/brand/skus") {
+    const store = readStore();
+    const items = (store.produits || [])
+      .filter((p) => !p.archived_at)
+      .map((p) => ({
+        id: p.id,
+        sku: `SKU-${String(p.id).slice(0, 8)}`,
+        produit_id: p.id,
+        nom: p.nom,
+        unite: p.unite,
+        fournisseur_id: p.fournisseur_id,
+      }));
+    return send(res, 200, { items });
+  }
+
+  // ---- Site fournisseur ----
+  if (req.method === "GET" && url.pathname.match(/^\/api\/v1\/brand\/site\/[^/]+\/?$/)) {
+    const id = url.pathname.split("/").pop();
+    const store = readStore();
+    const fournisseur = (store.fournisseurs || []).find((f) => f.id === id);
+    if (!fournisseur) return send(res, 404, { error: "not_found" });
+    const produits = (store.produits || []).filter(
+      (p) => p.fournisseur_id === id && !p.archived_at,
+    );
+    const prix = (store.prix || []).filter((p) => p.fournisseur_id === id);
+    return send(res, 200, { fournisseur, produits, prix });
+  }
+
+  // ---- Dispatch candidats (répartition simple par fournisseur) ----
+  if (req.method === "POST" && url.pathname === "/api/v1/brand/dispatch/candidates") {
+    const body = await readBody(req);
+    const store = readStore();
+    const besoins = body.besoins || (store.panier_lignes || []).map((l) => ({
+      produit_id: l.produit_id,
+      quantite: l.quantite,
+    }));
+    const candidates = [];
+    for (const need of besoins) {
+      const prixList = (store.prix || [])
+        .filter((p) => p.produit_id === need.produit_id)
+        .sort((a, b) => Number(a.montant) - Number(b.montant));
+      candidates.push({
+        produit_id: need.produit_id,
+        quantite: need.quantite,
+        options: prixList.map((p, i) => ({
+          fournisseur_id: p.fournisseur_id,
+          prix_unitaire: p.montant,
+          rank: i + 1,
+          promo: Boolean(p.promo),
+        })),
+        recommended: prixList[0]
+          ? {
+              fournisseur_id: prixList[0].fournisseur_id,
+              prix_unitaire: prixList[0].montant,
+            }
+          : null,
+      });
+    }
+    return send(res, 200, { candidates });
+  }
+
+  // ---- API publique minimale ----
+  if (req.method === "GET" && url.pathname === "/api/public/v1/health") {
+    return send(res, 200, {
+      ok: true,
+      brandId: "tempoflow3",
+      public: true,
+      ts: now(),
+    });
+  }
+  if (req.method === "GET" && url.pathname === "/api/public/v1/catalog") {
+    const store = readStore();
+    return send(res, 200, {
+      produits: (store.produits || [])
+        .filter((p) => !p.archived_at)
+        .map((p) => ({ id: p.id, nom: p.nom, unite: p.unite })),
+      count: (store.produits || []).filter((p) => !p.archived_at).length,
+    });
+  }
+
   // ---- Prix history helper ----
   if (req.method === "GET" && url.pathname === "/api/v1/brand/prix/historique") {
     const produitId = url.searchParams.get("produit_id");

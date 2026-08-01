@@ -26,6 +26,20 @@ for (const rel of required) {
 const main = fs.readFileSync(path.join(root, "src/electron/main.ts"), "utf8");
 assert.match(main, /installBrandDesktopRuntime/);
 assert.match(main, /prepareDesktopBoot/);
+assert.match(main, /createDesktopSessionStore/);
+assert.match(main, /registerDesktopSessionIpc/);
+assert.doesNotMatch(main, /createFileLocalConfigStore|local-config-store/);
+
+const forbidden = [
+  "src/electron/local-config-store.ts",
+  "src/electron/ipc-bridge.ts",
+];
+for (const rel of forbidden) {
+  assert.ok(
+    !fs.existsSync(path.join(root, rel)),
+    `OS custom interdit dans marque: ${rel}`,
+  );
+}
 
 const model = JSON.parse(
   fs.readFileSync(path.join(root, "product-model.json"), "utf8"),

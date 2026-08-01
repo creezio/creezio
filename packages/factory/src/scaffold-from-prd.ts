@@ -1,6 +1,6 @@
 /**
  * Orchestration scaffold --from-prd (F1–F4).
- * Vertical CHR → templates riches ; sinon générateurs génériques.
+ * Vertical CHR → templates métier riches ; OS = générateurs génériques kit.
  */
 import fs from "node:fs";
 import path from "node:path";
@@ -24,8 +24,10 @@ import {
   renderHostStackBindingsTs,
   renderDesktopPresenceTs,
   renderMainFromPrdTs,
+  renderPreloadFromPrdTs,
   renderMetierParcoursSmoke,
   renderFirstRunAuthSmoke,
+  renderSetupLoginSmoke,
 } from "./generators/index.js";
 import {
   renderChrMetierApi,
@@ -34,6 +36,7 @@ import {
   renderChrMetierParcoursSmoke,
   renderChrAllowlistSmoke,
   renderChrDesktopSmokeProfile,
+  renderChrOracleMvpSmoke,
 } from "./generators/chr-templates.js";
 
 function writeFile(
@@ -59,19 +62,22 @@ function renderPackageJsonFromPrd(m: AppManifest, model: ProductModel): string {
     "metier:api": "node scripts/metier-api.mjs",
     "test:metier-parcours": "node scripts/test-metier-parcours.mjs",
     "test:first-run-auth": "node scripts/test-first-run-auth.mjs",
+    "test:setup-login": "node scripts/test-setup-login.mjs",
     "test:desktop-smoke-profile": "node scripts/test-desktop-smoke-profile.mjs",
     "electron:config:client": "node scripts/build-builder-config.mjs client",
     "electron:config:server": "node scripts/build-builder-config.mjs server",
     "electron:publish": `CREEZIO_BRAND=${m.brandId} bash ../../packages/desktop-tooling/scripts/publish-desktop.sh`,
     "electron:publish:dry": `CREEZIO_BRAND=${m.brandId} bash ../../packages/desktop-tooling/scripts/publish-desktop.sh --dry-run`,
+    "desktop:dev": "npm run build:electron && electron .",
   };
   if (chr) {
     scripts["test:allowlist"] = "node scripts/test-allowlist.mjs";
+    scripts["test:oracle-mvp"] = "node scripts/test-oracle-mvp.mjs";
     scripts.test =
-      "npm run test:metier-parcours && npm run test:first-run-auth && npm run test:allowlist && npm run test:desktop-smoke-profile";
+      "npm run test:metier-parcours && npm run test:first-run-auth && npm run test:setup-login && npm run test:allowlist && npm run test:desktop-smoke-profile && npm run test:oracle-mvp";
   } else {
     scripts.test =
-      "npm run test:metier-parcours && npm run test:first-run-auth && npm run test:desktop-smoke-profile";
+      "npm run test:metier-parcours && npm run test:first-run-auth && npm run test:setup-login && npm run test:desktop-smoke-profile";
   }
 
   return (
@@ -151,8 +157,8 @@ Desktop smoke profile (sans GUI) : \`npm run test:desktop-smoke-profile\`.
 
 ## Plateforme
 
-Le générique (auth, fenêtres, MAJ, assistant…) vient de \`@creezio/*\`.
-Le métier vit **dans ce repo**.
+First-run / login / IPC = \`@creezio/electron-shell\` (\`createDesktopSessionStore\`).
+Le métier vit **dans ce repo** — pas de store/IPC OS custom marque.
 `;
 }
 
@@ -180,6 +186,8 @@ assert.match(hostStack, /pluginsFeatureOff:\\s*true/);
 const main = fs.readFileSync(path.join(root, "src/electron/main.ts"), "utf8");
 assert.match(main, /prepareDesktopBoot/);
 assert.match(main, /installBrandDesktopRuntime/);
+assert.match(main, /createDesktopSessionStore/);
+assert.match(main, /registerDesktopSessionIpc/);
 console.log("OK test:desktop-smoke-profile (${model.brandId})");
 `;
 }
@@ -249,6 +257,12 @@ export function writeFromPrdArtifacts(opts: {
     written,
   );
   writeFile(
+    path.join(outDir, "scripts/test-setup-login.mjs"),
+    renderSetupLoginSmoke(model),
+    force,
+    written,
+  );
+  writeFile(
     path.join(outDir, "scripts/test-desktop-smoke-profile.mjs"),
     chr
       ? renderChrDesktopSmokeProfile(model)
@@ -260,6 +274,12 @@ export function writeFromPrdArtifacts(opts: {
     writeFile(
       path.join(outDir, "scripts/test-allowlist.mjs"),
       renderChrAllowlistSmoke(model),
+      force,
+      written,
+    );
+    writeFile(
+      path.join(outDir, "scripts/test-oracle-mvp.mjs"),
+      renderChrOracleMvpSmoke(model),
       force,
       written,
     );
@@ -300,9 +320,16 @@ export function writeFromPrdArtifacts(opts: {
     force,
     written,
   );
+  // OS générique kit — jamais de local-config-store / ipc-bridge marque.
   writeFile(
     path.join(outDir, "src/electron/main.ts"),
     renderMainFromPrdTs(manifest, model),
+    force,
+    written,
+  );
+  writeFile(
+    path.join(outDir, "src/electron/preload.ts"),
+    renderPreloadFromPrdTs(manifest),
     force,
     written,
   );
@@ -362,7 +389,8 @@ export function writeFromPrdArtifacts(opts: {
     `# AGENTS — ${manifest.client.productName}
 
 Marque légère générée via \`creezio new-app --from-prd\`.
-Métier ici ; OS = \`@creezio/*\`. Ne pas copier de launchers depuis d'autres marques.
+Métier ici ; OS = \`@creezio/*\` (\`createDesktopSessionStore\`).
+Ne pas inventer de store/IPC/login dans la marque.
 
 \`\`\`bash
 npm test

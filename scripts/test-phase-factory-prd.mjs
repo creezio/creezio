@@ -123,6 +123,7 @@ test("F1–F4 scaffold --from-prd génère métier + wiring", () => {
     "scripts/metier-api.mjs",
     "scripts/test-metier-parcours.mjs",
     "scripts/test-first-run-auth.mjs",
+    "scripts/test-setup-login.mjs",
     "scripts/test-allowlist.mjs",
     "scripts/test-desktop-smoke-profile.mjs",
     "ui/app/fournisseurs/page.tsx",
@@ -136,6 +137,7 @@ test("F1–F4 scaffold --from-prd génère métier + wiring", () => {
     "src/lib/connection-profile.ts",
     "src/lib/brand-module-api.ts",
     "src/electron/main.ts",
+    "src/electron/preload.ts",
     "src/electron/vertical-slot.ts",
     "resources/renderer/index.html",
   ];
@@ -146,8 +148,21 @@ test("F1–F4 scaffold --from-prd génère métier + wiring", () => {
     );
   }
 
+  for (const bad of [
+    "src/electron/local-config-store.ts",
+    "src/electron/ipc-bridge.ts",
+  ]) {
+    assert.ok(
+      !fs.existsSync(path.join(outDir, bad)),
+      `OS custom ne doit pas être généré: ${bad}`,
+    );
+  }
+
   const main = fs.readFileSync(path.join(outDir, "src/electron/main.ts"), "utf8");
   assert.match(main, /installBrandDesktopRuntime/);
+  assert.match(main, /createDesktopSessionStore/);
+  assert.match(main, /registerDesktopSessionIpc/);
+  assert.match(main, /spawnBrandMetierApi/);
 
   const schema = fs.readFileSync(
     path.join(outDir, "crm/src/brand/schema.sql"),
@@ -177,6 +192,7 @@ test("F1–F4 scaffold --from-prd génère métier + wiring", () => {
   assert.equal(pkg.creezio?.fromPrd, true);
   assert.equal(pkg.creezio?.vertical, "chr");
   assert.ok(pkg.scripts["test:metier-parcours"]);
+  assert.ok(pkg.scripts["test:setup-login"]);
   assert.ok(pkg.scripts["test:allowlist"]);
   assert.ok(pkg.scripts["test:desktop-smoke-profile"]);
 });
@@ -208,6 +224,18 @@ test("F3 smoke test:metier-parcours sur app générée", () => {
     { encoding: "utf8", cwd: outDir },
   );
   assert.equal(firstRun.status, 0, firstRun.stderr + "\n" + firstRun.stdout);
+
+  const setupLogin = spawnSync(
+    process.execPath,
+    [path.join(outDir, "scripts/test-setup-login.mjs")],
+    {
+      encoding: "utf8",
+      cwd: outDir,
+      timeout: 30000,
+      env: { ...process.env, CREEZIO_ROOT: ROOT },
+    },
+  );
+  assert.equal(setupLogin.status, 0, setupLogin.stderr + "\n" + setupLogin.stdout);
 
   const allow = spawnSync(
     process.execPath,

@@ -575,6 +575,17 @@ export type {
   BrandDesktopVertical,
 } from "./desktop/brand-desktop-runtime.js";
 
+export type {
+  DesktopSessionApi,
+  DesktopSessionInfo,
+  DesktopSessionStatus,
+} from "./desktop/desktop-session.js";
+export {
+  createDesktopSessionStore,
+  registerDesktopSessionIpc,
+  spawnBrandMetierApi,
+} from "./desktop/desktop-session.js";
+
 /* ── Phase N2 : jumeaux hosts → kit ── */
 export type { CrashKind, CrashReporterConfig } from "./host/crash-reporter.js";
 export {

@@ -24,11 +24,15 @@ Tout fichier hors de cette liste doit être **justifié** (gap kit) ou **supprim
 ## `crm/electron/` — wiring + métier seulement
 
 **Wiring (mince)**  
-`main.ts`, `brand.ts`, `brand-runtime.ts`, `host-stack.ts`, `host-runtime-ctx.ts`,
-`host-n2-bindings.ts`, `plugin-host-bindings.ts`, `plugin-hub-store.ts`,
-`creezio-boot.ts`, `paths.ts`, `preload-app.ts`, `profile.ts`, `app-kind.ts`,
-`local-config-store.ts`, `ua.ts`, `window-chrome-html.ts` (si brand tokens seulement),
+`main.ts`, `preload.ts`, `brand.ts`, `brand-runtime.ts`, `host-stack.ts`,
+`host-runtime-ctx.ts`, `host-n2-bindings.ts`, `plugin-host-bindings.ts`,
+`plugin-hub-store.ts`, `creezio-boot.ts`, `paths.ts`, `profile.ts`, `app-kind.ts`,
+`ua.ts`, `window-chrome-html.ts` (si brand tokens seulement),
 `connection-profile.ts`, seeds marque (`hermes-*-seed.ts`) **si** contenus métier.
+
+**Interdit (OS kit — ne pas réimplémenter)**  
+`local-config-store.ts`, `ipc-bridge.ts`, handlers `setup:*` / `auth:*` custom.
+→ `createDesktopSessionStore` / `registerDesktopSessionIpc` (`@creezio/electron-shell`).
 
 **Métier**  
 `modules/**` (catalogue, panier, dispatch, optimiser, relevés, scan, stack, statut…),

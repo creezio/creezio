@@ -25,5 +25,5 @@ Desktop smoke profile (sans GUI) : `npm run test:desktop-smoke-profile`.
 
 ## Plateforme
 
-Le générique (auth, fenêtres, MAJ, assistant…) vient de `@creezio/*`.
-Le métier vit **dans ce repo**.
+First-run / login / IPC = `@creezio/electron-shell` (`createDesktopSessionStore`).
+Le métier vit **dans ce repo** — pas de store/IPC OS custom marque.

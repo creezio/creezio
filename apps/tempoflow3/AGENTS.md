@@ -1,7 +1,8 @@
 # AGENTS — TempoFlow
 
 Marque légère générée via `creezio new-app --from-prd`.
-Métier ici ; OS = `@creezio/*`. Ne pas copier de launchers depuis d'autres marques.
+Métier ici ; OS = `@creezio/*` (`createDesktopSessionStore`).
+Ne pas inventer de store/IPC/login dans la marque.
 
 ```bash
 npm test

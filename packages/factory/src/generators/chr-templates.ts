@@ -1,5 +1,6 @@
 /**
- * Templates CHR riches (P1) — API/UI/smokes versionnés sous templates/chr/.
+ * Templates CHR riches (P1) — métier uniquement sous templates/chr/.
+ * First-run / login / IPC = @creezio/electron-shell (pas ici).
  */
 import fs from "node:fs";
 import path from "node:path";
@@ -55,4 +56,8 @@ export function renderChrAllowlistSmoke(model: ProductModel): string {
 
 export function renderChrDesktopSmokeProfile(model: ProductModel): string {
   return readTpl("test-desktop-smoke-profile.mjs", model);
+}
+
+export function renderChrOracleMvpSmoke(model: ProductModel): string {
+  return readTpl("test-oracle-mvp.mjs", model);
 }

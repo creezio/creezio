@@ -27,7 +27,9 @@ Si l’agent doit tricher (copier tempoflow2) ou digérer un roman technique →
 |-------|--------|
 | Factory CHR complète (P1–P5 corrigés) | ✅ templates `packages/factory/templates/chr` |
 | Delete + regen from-prd | ✅ reproduit sans retouche marque |
-| `apps/tempoflow3` `npm test` | ✅ 4 smokes (métier, auth, allowlist, desktop) |
+| `apps/tempoflow3` `npm test` | ✅ 6 smokes (+ setup-login, oracle-mvp) |
+| First-run / login IPC + API métier au boot | ✅ |
+| Oracle MVP search/dispatch/promos/skus/site | ✅ |
 
 ```bash
 # preuve clean-room

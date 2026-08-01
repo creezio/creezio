@@ -44,23 +44,80 @@
     <nav id="nav"></nav>
     <main id="app"><p class="muted">Chargement…</p></main>
     <script>
+      const desktop = window.__BRAND_ID__Desktop;
       const BASE = localStorage.getItem("METIER_BASE_URL") || "http://127.0.0.1:18791";
       const PAGES = [
         ["dashboard","Dashboard"],["fournisseurs","Fournisseurs"],["produits","Produits"],
-        ["prix","Prix"],["panier","Panier"],["commandes","Commandes"],["optimiser","Optimiser"],
-        ["stack","Mes produits"],["releves","Relevés"],["scan","Scan"],
+        ["prix","Prix"],["promotions","Promotions"],["panier","Panier"],["commandes","Commandes"],
+        ["optimiser","Optimiser"],["stack","Mes produits"],["releves","Relevés"],["scan","Scan"],
         ["marketplaces","Marketplaces"],["secteurs","Secteurs"],["agregateurs","Agrégateurs"],
         ["data-mapping","Data-mapping"]
       ];
       let page = location.hash.slice(1) || "dashboard";
+      let authed = Boolean(!desktop); // navigateur seul = mode démo API (sans bridge)
 
       const nav = document.getElementById("nav");
-      PAGES.forEach(([id, label]) => {
-        const a = document.createElement("a");
-        a.href = "#" + id; a.dataset.page = id; a.textContent = label;
-        a.onclick = (e) => { e.preventDefault(); go(id); };
-        nav.appendChild(a);
-      });
+      function buildNav() {
+        nav.innerHTML = "";
+        if (!authed) return;
+        PAGES.forEach(([id, label]) => {
+          const a = document.createElement("a");
+          a.href = "#" + id; a.dataset.page = id; a.textContent = label;
+          a.onclick = (e) => { e.preventDefault(); go(id); };
+          nav.appendChild(a);
+        });
+      }
+
+      async function ensureAuth() {
+        if (!desktop) {
+          if (!authed) { authed = true; buildNav(); }
+          return true;
+        }
+        const session = await desktop.getSession();
+        if (session?.authenticated) { authed = true; return true; }
+        const status = await desktop.getSetupStatus();
+        const main = document.getElementById("app");
+        if (!status.setupComplete) {
+          main.innerHTML = `
+            <section>
+              <h2>Premier démarrage</h2>
+              <p class="lead">Créez le compte local du poste (données chez vous).</p>
+              <form id="setup" class="row">
+                <label>Identifiant<input name="user" required value="chef"/></label>
+                <label>Mot de passe<input name="password" type="password" required/></label>
+                <button type="submit">Terminer le setup</button>
+              </form>
+              <p id="err" class="err"></p>
+            </section>`;
+          main.querySelector("#setup").onsubmit = async (ev) => {
+            ev.preventDefault();
+            const fd = Object.fromEntries(new FormData(ev.target).entries());
+            const r = await desktop.completeSetup(fd);
+            if (!r.ok) { main.querySelector("#err").textContent = r.error || "échec"; return; }
+            await desktop.chooseConnection({ mode: "local", localBind: "127.0.0.1", chosen: true });
+            authed = true; buildNav(); go("dashboard");
+          };
+          return false;
+        }
+        main.innerHTML = `
+          <section>
+            <h2>Connexion</h2>
+            <form id="login" class="row">
+              <label>Identifiant<input name="user" required value="${status.user || ""}"/></label>
+              <label>Mot de passe<input name="password" type="password" required/></label>
+              <button type="submit">Entrer</button>
+            </form>
+            <p id="err" class="err"></p>
+          </section>`;
+        main.querySelector("#login").onsubmit = async (ev) => {
+          ev.preventDefault();
+          const fd = Object.fromEntries(new FormData(ev.target).entries());
+          const r = await desktop.login(fd);
+          if (!r.ok) { main.querySelector("#err").textContent = r.error || "échec"; return; }
+          authed = true; buildNav(); go("dashboard");
+        };
+        return false;
+      }
 
       async function api(path, init) {
         const res = await fetch(BASE + path, {
@@ -89,10 +146,20 @@
         return String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;" }[c]));
       }
 
+      async function viewPromotions() {
+        const data = await api("/api/v1/brand/promotions");
+        return el(`<section><h2>Promotions</h2>
+          <table><thead><tr><th>Produit</th><th>Fournisseur</th><th>Prix</th><th>Label</th></tr></thead>
+          <tbody>${data.items.map(i => `<tr><td>${esc(i.produit?.nom||"")}</td><td>${esc(i.fournisseur?.nom||"")}</td><td>${esc(i.montant)}</td><td><span class="chip">${esc(i.promo_label||"promo")}</span></td></tr>`).join("") || "<tr><td colspan=4 class=muted>Aucune</td></tr>"}</tbody></table>
+        </section>`);
+      }
+
       async function render() {
         const main = document.getElementById("app");
+        if (!(await ensureAuth())) return;
         try {
           if (page === "dashboard") return void (main.innerHTML = "", main.append(await viewDashboard()));
+          if (page === "promotions") return void (main.innerHTML = "", main.append(await viewPromotions()));
           if (page === "fournisseurs") return void (main.innerHTML = "", main.append(await viewFournisseurs()));
           if (page === "produits") return void (main.innerHTML = "", main.append(await viewProduits()));
           if (page === "prix") return void (main.innerHTML = "", main.append(await viewPrix()));
@@ -618,7 +685,14 @@
       }
 
       window.addEventListener("hashchange", () => go(location.hash.slice(1) || "dashboard"));
-      go(page);
+      (async () => {
+        if (desktop) {
+          const info = await desktop.getInfo().catch(() => null);
+          if (info?.metierBaseUrl) localStorage.setItem("METIER_BASE_URL", info.metierBaseUrl);
+        }
+        buildNav();
+        go(page);
+      })();
     </script>
   </body>
 </html>

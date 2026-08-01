@@ -290,18 +290,21 @@ export function renderMainFromPrdTs(m: AppManifest, model: ProductModel): string
   );
   const manifestExport = `${exportName}Manifest`;
   return `/**
- * Main Electron — runtime plateforme (installBrandDesktopRuntime) + métier nav.
- * Généré par creezio new-app --from-prd.
+ * Main Electron — boot OS kit (session + runtime) + nav métier.
+ * Généré par creezio new-app --from-prd. Zéro store/IPC custom marque.
  */
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { app, BrowserWindow } from "electron";
+import { app, BrowserWindow, ipcMain } from "electron";
 import {
   initLogger,
   log,
   prepareDesktopBoot,
   writeAppKindFile,
   installBrandDesktopRuntime,
+  createDesktopSessionStore,
+  registerDesktopSessionIpc,
+  spawnBrandMetierApi,
 } from "@creezio/electron-shell";
 import { ${manifestExport} as manifest } from "./app-manifest.js";
 import { createApiKernel } from "@creezio/api-kernel";
@@ -311,6 +314,7 @@ import { createNavShellAdapter } from "@creezio/shell-ui";
 import { verticalSlot } from "./vertical-slot.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const METIER_PORT = Number(process.env.METIER_PORT || 18791);
 
 async function main(): Promise<void> {
   const boot = await prepareDesktopBoot(manifest);
@@ -321,6 +325,11 @@ async function main(): Promise<void> {
     __dirname,
     boot.appKind === "legacy" ? "client" : boot.appKind,
   );
+
+  const session = createDesktopSessionStore({
+    userDataDir: boot.userDataDir,
+    manifest,
+  });
 
   const api = createApiKernel({ brandId: manifest.brandId });
   const mcp = createMcpFacade({
@@ -335,9 +344,7 @@ async function main(): Promise<void> {
   const navModel = navShell.getRenderModel();
   void mcp;
   void auth;
-
-  // Référence runtime production — wiring hosts via src/lib/host-stack.ts
-  // quand sidecars marque sont branchés. Ici: boot shell + UI métier.
+  // Référence runtime production — hosts via src/lib/host-stack.ts.
   void installBrandDesktopRuntime;
 
   const gotLock = app.requestSingleInstanceLock();
@@ -347,6 +354,24 @@ async function main(): Promise<void> {
   }
 
   await app.whenReady();
+
+  registerDesktopSessionIpc({
+    ipcMain,
+    session,
+    info: {
+      brandId: manifest.brandId,
+      productName: manifest.client.productName,
+      appKind: boot.appKind,
+      metierPort: METIER_PORT,
+    },
+  });
+
+  const metierChild = spawnBrandMetierApi({
+    scriptPath: path.join(__dirname, "../../scripts/metier-api.mjs"),
+    userDataDir: boot.userDataDir,
+    port: METIER_PORT,
+    log,
+  });
 
   const win = new BrowserWindow({
     width: 1180,
@@ -370,13 +395,44 @@ async function main(): Promise<void> {
 
   log(
     "nav",
-    \`merged=\${navModel.items.length} brand=\${navModel.groups.find((g) => g.id === "brand")?.items.length || 0} entities=${model.entities.length} pages=${model.pages.length}\`,
+    \`merged=\${navModel.items.length} brand=\${navModel.groups.find((g) => g.id === "brand")?.items.length || 0} entities=${model.entities.length} pages=${model.pages.length} setup=\${session.isSetupComplete()} metierPort=\${METIER_PORT}\`,
   );
+
+  app.on("will-quit", () => {
+    if (metierChild && !metierChild.killed) metierChild.kill("SIGTERM");
+  });
 }
 
 main().catch((err) => {
   console.error(err);
   app.exit(1);
 });
+`;
+}
+
+export function renderPreloadFromPrdTs(m: AppManifest): string {
+  return `/**
+ * Preload — bridge desktop OS kit (setup / auth / connexion).
+ * Généré par creezio new-app --from-prd.
+ */
+import { contextBridge, ipcRenderer } from "electron";
+
+const BRIDGE_NAME = ${JSON.stringify(m.bridgeName)};
+
+const api = {
+  isDesktop: true as const,
+  getInfo: () => ipcRenderer.invoke("desktop:info"),
+  getConnectionProfile: () => ipcRenderer.invoke("connection:get"),
+  chooseConnection: (profile: unknown) =>
+    ipcRenderer.invoke("connection:choose", profile),
+  getSetupStatus: () => ipcRenderer.invoke("setup:status"),
+  completeSetup: (payload: unknown) =>
+    ipcRenderer.invoke("setup:complete", payload),
+  login: (payload: unknown) => ipcRenderer.invoke("auth:login", payload),
+  logout: () => ipcRenderer.invoke("auth:logout"),
+  getSession: () => ipcRenderer.invoke("auth:session"),
+};
+
+contextBridge.exposeInMainWorld(BRIDGE_NAME, api);
 `;
 }

@@ -1,14 +1,11 @@
 /**
- * Preload — bridge desktop générique (pas d'API catalogue TF).
- *
- * Zéro import @creezio/* : ce fichier est copié hors asar (extraResources).
- * Le bridge name est figé au scaffold (manifest.bridgeName = "tempoflow3Desktop").
+ * Preload — bridge desktop OS kit (setup / auth / connexion).
+ * Généré par creezio new-app --from-prd.
  */
 import { contextBridge, ipcRenderer } from "electron";
 
 const BRIDGE_NAME = "tempoflow3Desktop";
 
-/** Sous-ensemble générique — étendre localement selon la marque. */
 const api = {
   isDesktop: true as const,
   getInfo: () => ipcRenderer.invoke("desktop:info"),
@@ -18,6 +15,9 @@ const api = {
   getSetupStatus: () => ipcRenderer.invoke("setup:status"),
   completeSetup: (payload: unknown) =>
     ipcRenderer.invoke("setup:complete", payload),
+  login: (payload: unknown) => ipcRenderer.invoke("auth:login", payload),
+  logout: () => ipcRenderer.invoke("auth:logout"),
+  getSession: () => ipcRenderer.invoke("auth:session"),
 };
 
 contextBridge.exposeInMainWorld(BRIDGE_NAME, api);

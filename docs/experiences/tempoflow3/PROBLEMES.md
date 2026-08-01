@@ -33,6 +33,16 @@ Smoke archive `f2` **après** création des prix (historique conserve l’id).
 `apps/tempoflow3` dans creezio = preuve OS kit. Allowlist mise à jour :
 sandbox monorepo acceptée ; extraction repo externe = propagation ultérieure.
 
+## P7 — First-run / login réimplémentés dans la marque → **CORRIGÉ**
+
+**Avant** : store fichier + IPC setup/login inventés dans `apps/tempoflow3`
+(puis copiés dans `templates/chr/`) — frontière OS/métier violée.
+
+**Fix kit** : `@creezio/electron-shell` expose `createDesktopSessionStore`,
+`registerDesktopSessionIpc`, `spawnBrandMetierApi`. La factory `--from-prd`
+génère un main/preload mince qui **consomme** ces APIs. Templates CHR =
+métier seulement. Allowlist interdit `local-config-store` / `ipc-bridge` marque.
+
 ---
 
 ## Vérification « delete + regen »
@@ -44,4 +54,5 @@ creezio new-app --from-prd docs/experiences/tempoflow3/PRD-PRODUIT.md \
 cd apps/tempoflow3 && npm test
 ```
 
-Résultat attendu : 4 smokes verts sans retouche manuelle marque.
+Résultat attendu : smokes verts **sans** retouche OS marque
+(pas de `local-config-store.ts` / `ipc-bridge.ts` dans la marque).

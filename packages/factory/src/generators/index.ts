@@ -19,10 +19,12 @@ export {
   renderHostStackBindingsTs,
   renderDesktopPresenceTs,
   renderMainFromPrdTs,
+  renderPreloadFromPrdTs,
 } from "./wiring.js";
 export {
   renderMetierParcoursSmoke,
   renderFirstRunAuthSmoke,
+  renderSetupLoginSmoke,
 } from "./tests.js";
 export {
   renderChrMetierApi,
@@ -31,4 +33,5 @@ export {
   renderChrMetierParcoursSmoke,
   renderChrAllowlistSmoke,
   renderChrDesktopSmokeProfile,
+  renderChrOracleMvpSmoke,
 } from "./chr-templates.js";

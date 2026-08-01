@@ -17,8 +17,10 @@ assert.match(hostStack, /createMemoryLocalConfigStore/);
 const main = fs.readFileSync(path.join(root, "src/electron/main.ts"), "utf8");
 assert.match(main, /prepareDesktopBoot/);
 assert.match(main, /installBrandDesktopRuntime/);
+assert.match(main, /createDesktopSessionStore/);
+assert.match(main, /registerDesktopSessionIpc/);
 
 const boot = fs.readFileSync(path.join(root, "src/lib/creezio-boot.ts"), "utf8");
 assert.match(boot, /prepareDesktopBoot/);
 
-console.log("OK test:desktop-smoke-profile (feature-off, no Electron GUI)");
+console.log("OK test:desktop-smoke-profile (feature-off + session kit, no Electron GUI)");

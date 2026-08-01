@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Prompt 13 — audit allowlist marque (pas de launchers OS recopiés).
+ * Prompt 13 — audit allowlist marque (pas de launchers OS / store custom).
  */
 import assert from "node:assert/strict";
 import fs from "node:fs";
@@ -16,6 +16,8 @@ const forbiddenNameSnippets = [
   "fleet-agent",
   "plugin-control-api",
   "crash-reporter",
+  "local-config-store",
+  "ipc-bridge",
 ];
 
 function walk(dir, out = []) {
@@ -44,6 +46,7 @@ const required = [
   "scripts/metier-api.mjs",
   "scripts/test-metier-parcours.mjs",
   "src/electron/main.ts",
+  "src/electron/preload.ts",
   "src/lib/host-stack.ts",
   "src/lib/paths.ts",
   "resources/renderer/index.html",
@@ -54,7 +57,11 @@ for (const rel of required) {
 }
 
 const main = fs.readFileSync(path.join(root, "src/electron/main.ts"), "utf8");
-assert.match(main, /installBrandDesktopRuntime|prepareDesktopBoot/);
+assert.match(main, /prepareDesktopBoot/);
+assert.match(main, /createDesktopSessionStore/);
+assert.match(main, /registerDesktopSessionIpc/);
+assert.match(main, /spawnBrandMetierApi/);
+assert.doesNotMatch(main, /createFileLocalConfigStore/);
 
 const nav = fs.readFileSync(path.join(root, "src/electron/vertical-slot.ts"), "utf8");
 for (const id of [
@@ -70,4 +77,4 @@ for (const id of [
   assert.match(nav, new RegExp(id));
 }
 
-console.log("OK test:allowlist TempoFlow (marque légère, pas de launchers OS)");
+console.log("OK test:allowlist TempoFlow (marque légère, OS = kit)");
