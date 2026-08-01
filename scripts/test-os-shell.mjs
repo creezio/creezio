@@ -110,3 +110,12 @@ test("shell.installBrandOsDesktop exporté", () => {
   assert.match(src, /installBrandDesktopRuntime/);
   assert.match(src, /createLocalSplashSteps/);
 });
+
+test("shell.more platform-core helpers", () => {
+  const r = spawnSync(
+    process.execPath,
+    ["--test", path.join(ROOT, "scripts/test-os-shell-more.mjs")],
+    { encoding: "utf8", cwd: ROOT },
+  );
+  assert.equal(r.status, 0, r.stdout + r.stderr);
+});

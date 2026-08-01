@@ -4,36 +4,32 @@ Date : 2026-08-01. Ref TF2 : `v0.10.26` / `e36e4d0`.
 
 ## Verdict
 
-Kit OS boot/P&P et métier API TF3 sont **largement prouvés**. DoD produit bloque surtout sur **UI OS stubs**, **agrégat test:shell**, **OAuth/admin**, profondeur optimiser canvas, et **tunnel distant** (credentials).
+Kit OS boot/P&P et métier API TF3 **largement prouvés**. Vague P1 livrée : OAuth/admin harness, canvas optimiser, navigateur slots, apply-modules scaffold. Bloqueurs restants surtout **externes** (tunnel distant, AdsPower).
 
 ## Déjà OK (A)
 
-- `proof:hard` 61/61, `proof:oracle` pages, cold-warm n8n start, native-pnp, plugins opt-in, owned-by-brand
+- `proof:hard` / `proof:oracle` (rejouer après P1)
 - Architecture mince `startBrandDesktop`, vendors kit only
 - Bonus API : optimiser/dispatch/stack/relevés/scan/site/versions/likes…
+- UI OS anti-stubs + connection/setup/plugins
+- MCP OAuth loopback (`/.well-known`, `/oauth/register`, `/api/v1/admin/mcp`)
+- Optimiser SVG graph + site fournisseur slots
+- Admin analytics / request-logs
 
-## Plan d’implémentation (cette vague = P0)
+## Plan exécuté
 
 | # | Item | Couche | Done |
 |---|------|--------|------|
-| 1 | `GET/POST /api/v1/os/connection` + test remote | kit | ✓ |
-| 2 | `GET/POST /api/v1/os/setup` first-run | kit | ✓ |
-| 3 | Pages UI OS interactives (plus « Surface exposée… ») | marque | ✓ |
-| 4 | Admin plugins/mcp/database + likes + data-mapping CRUD | marque | ✓ |
-| 5 | Tâches kanban colonnes + mails draft/send | marque | ✓ |
-| 6 | Oracle anti-stub + proof:hard extensions | preuves | ✓ 73/73 + 34/34 |
-| 7 | `test-os-connection-profile` + app-kind | kit | ✓ |
-| 8 | `creezio brand apply-modules` | factory | ✓ |
+| P0 | connection/setup/UI OS/plugins/apply-modules inventaire | kit+marque | ✓ |
+| P1 | MCP OAuth + admin routes harness | kit | ✓ |
+| P1 | Optimiser canvas + navigateur slots | marque | ✓ |
+| P1 | shell-more + mcp-oauth gates | kit | ✓ |
+| P1 | apply-modules scaffold UI absents | factory | ✓ |
+| P1 | Admin analytics/request-logs | marque | ✓ |
 
-## P1 (suivant)
-
-- Atelier optimiser canvas TF2, navigateur fournisseur slots
-- MCP OAuth routes dans harness
-- Brancher `@creezio/shell-ui` Settings (deps UI + transpile)
-- Génération auto bonus depuis BrandSpec YAML
-
-## P2 / bloqueurs externes (D)
+## Restant (P2 / externes)
 
 - Tunnel Cloudflare distant (`CREEZIO_TUNNEL_PROVISION_*`)
-- AdsPower / xvfb GUI CI
+- AdsPower / profondeur GUI
 - `test:shell` ~40 scripts TF2 complets
+- ReactFlow atelier optimiser pixel-parity / missions IA

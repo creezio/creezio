@@ -95,6 +95,8 @@ const tf2OnlyMissing = [
   "admin/mcp",
   "admin/plugins",
   "admin/database",
+  "admin/analytics",
+  "admin/request-logs",
 ];
 const stillMissing = tf2OnlyMissing.filter(
   (p) => !fs.existsSync(path.join(root, `ui/app/${p}/page.tsx`)),
@@ -140,6 +142,32 @@ record(
   "ui.os-pages-not-stubs",
   stubPages.length === 0,
   stubPages.join(", ") || "interactives",
+);
+
+const optSrc = fs.readFileSync(
+  path.join(root, "ui/app/optimiser/page.tsx"),
+  "utf8",
+);
+record(
+  "ui.optimiser-canvas",
+  /<svg/.test(optSrc) && /graph/.test(optSrc),
+  "canvas svg graphe",
+);
+const siteBrowser = fs.readFileSync(
+  path.join(root, "ui/app/site/[fournisseurId]/page.tsx"),
+  "utf8",
+);
+record(
+  "ui.site-browser-slots",
+  /site-browser-frame/.test(siteBrowser) && /Slots/.test(siteBrowser),
+  "navigateur slots",
+);
+record(
+  "kit.mcp-oauth-surface",
+  fs.existsSync(
+    path.join(creezioRoot, "packages/app-runtime/src/mount-brand-mcp-surface.ts"),
+  ),
+  "mountBrandMcpSurface",
 );
 
 // --- Renderer SPA vs Next ---

@@ -1,133 +1,207 @@
 /** creezio:owned-by-brand */
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { metierBase } from "@/lib/metier-base";
 
 type Suggestion = {
-  produit_id: string;
+  produit_id?: string;
   produit_nom?: string;
-  quantite?: number;
+  from_fournisseur_id?: string;
+  to_fournisseur_id?: string;
+  fournisseur_id?: string;
   fournisseur_nom?: string;
-  prix_unitaire?: number;
+  from_montant?: number;
+  to_montant?: number;
   prix_actuel?: number;
+  prix_unitaire?: number;
+  economy?: number;
   ecart_eur?: number;
   score?: string;
-  error?: string;
 };
 
-type Result = {
-  suggestions?: Suggestion[];
-  total_actuel?: number;
-  total_optimise?: number;
-  economie_eur?: number;
-  orientation?: string;
-  applied?: boolean;
-  items?: unknown[];
-};
+type GraphNode = { id: string; label: string; kind: "product" | "supplier" };
 
 export default function Page() {
   const base = metierBase();
-  const [result, setResult] = useState<Result | null>(null);
+  const [items, setItems] = useState<Suggestion[]>([]);
+  const [orientation, setOrientation] = useState("");
+  const [economie, setEconomie] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const [msg, setMsg] = useState<string | null>(null);
 
-  async function suggest() {
-    setError(null);
+  async function reload() {
     const res = await fetch(`${base}/api/v1/modules/optimiser/suggest`, {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ from: "panier" }),
     });
     const data = await res.json();
-    if (!res.ok) {
-      setError(data.error || res.statusText);
-      return;
-    }
-    setResult(data);
+    if (!res.ok) throw new Error(data.error || res.statusText);
+    setItems(data.suggestions || data.items || []);
+    setOrientation(data.orientation || "");
+    setEconomie(Number(data.economie_eur || 0));
   }
 
-  async function apply() {
+  useEffect(() => {
+    void reload().catch((e) =>
+      setError(e instanceof Error ? e.message : String(e)),
+    );
+  }, [base]);
+
+  const graph = useMemo(() => {
+    const nodes = new Map<string, GraphNode>();
+    const edges: Array<{ from: string; to: string; label: string }> = [];
+    for (const s of items) {
+      const pid = s.produit_id || "p?";
+      const from = s.from_fournisseur_id || "actuel";
+      const to = s.to_fournisseur_id || s.fournisseur_id || "best";
+      nodes.set(pid, {
+        id: pid,
+        label: s.produit_nom || pid.slice(0, 8),
+        kind: "product",
+      });
+      nodes.set(from, {
+        id: from,
+        label: from === "actuel" ? "Actuel" : from.slice(0, 8),
+        kind: "supplier",
+      });
+      nodes.set(to, {
+        id: to,
+        label: s.fournisseur_nom || to.slice(0, 8),
+        kind: "supplier",
+      });
+      edges.push({
+        from,
+        to: pid,
+        label: `${s.from_montant ?? s.prix_actuel ?? "?"}€`,
+      });
+      edges.push({
+        from: to,
+        to: pid,
+        label: `${s.to_montant ?? s.prix_unitaire ?? "?"}€ ★`,
+      });
+    }
+    return { nodes: [...nodes.values()], edges };
+  }, [items]);
+
+  async function applyAll() {
     setError(null);
     const res = await fetch(`${base}/api/v1/modules/optimiser/apply`, {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({
-        propositions: result?.suggestions || [],
-      }),
+      body: JSON.stringify({ propositions: items }),
     });
-    const data = await res.json();
+    const data = await res.json().catch(() => ({}));
     if (!res.ok) {
       setError(data.error || res.statusText);
       return;
     }
-    setResult(data);
+    setMsg("Optimisation appliquée au panier");
+    await reload();
   }
 
-  const rows = result?.suggestions || [];
+  const w = 640;
+  const h = Math.max(280, 80 + graph.nodes.length * 36);
+  const suppliers = graph.nodes.filter((n) => n.kind === "supplier");
+  const products = graph.nodes.filter((n) => n.kind === "product");
 
   return (
     <section>
       <h1>Optimiser</h1>
-      <p>Calcul local sur prix connus — appliquer au panier.</p>
-      <div style={{ display: "flex", gap: "0.5rem", marginTop: "0.75rem" }}>
-        <button type="button" onClick={() => void suggest()}>
-          Suggérer depuis le panier
-        </button>
-        <button type="button" onClick={() => void apply()} disabled={!rows.length}>
-          Appliquer au panier
-        </button>
-      </div>
+      <p>Atelier score / graphe fournisseurs ↔ produits (parité comportementale TF2).</p>
+      {orientation ? <p>{orientation}</p> : null}
+      <p>
+        Économie potentielle : <strong>{economie} €</strong>
+      </p>
+      <button type="button" onClick={() => void applyAll()}>
+        Appliquer au panier
+      </button>
       {error ? <p style={{ color: "#8b1e1e" }}>{error}</p> : null}
-      {result?.orientation ? (
-        <p style={{ marginTop: "1rem", fontSize: "1.1rem" }}>
-          {result.orientation}
-        </p>
-      ) : null}
-      {result?.economie_eur != null ? (
-        <p>
-          Actuel {result.total_actuel} € → Optimisé {result.total_optimise} € (
-          {result.economie_eur} €)
-        </p>
-      ) : null}
-      {result?.applied ? (
-        <p style={{ color: "#0f3d32" }}>
-          Panier mis à jour ({result.items?.length ?? 0} lignes).
-        </p>
-      ) : null}
-      {rows.length ? (
-        <table
-          style={{
-            width: "100%",
-            marginTop: "1rem",
-            borderCollapse: "collapse",
-          }}
-        >
-          <thead>
-            <tr>
-              <th align="left">Produit</th>
-              <th align="left">Qté</th>
-              <th align="left">Actuel</th>
-              <th align="left">Meilleur</th>
-              <th align="left">Fournisseur</th>
-              <th align="left">Écart</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((s) => (
-              <tr key={s.produit_id}>
-                <td>{s.produit_nom || s.produit_id.slice(0, 8)}</td>
-                <td>{s.quantite}</td>
-                <td>{s.prix_actuel ?? "—"}</td>
-                <td>{s.prix_unitaire ?? "—"}</td>
-                <td>{s.fournisseur_nom || "—"}</td>
-                <td>
-                  {s.error ||
-                    `${s.ecart_eur ?? 0} € (${s.score || "—"})`}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      {msg ? <p style={{ color: "#0f3d32" }}>{msg}</p> : null}
+
+      <svg
+        width="100%"
+        viewBox={`0 0 ${w} ${h}`}
+        style={{
+          marginTop: "1.25rem",
+          background: "rgba(255,255,255,0.45)",
+          borderRadius: 8,
+        }}
+      >
+        {graph.edges.map((e, i) => {
+          const fi = suppliers.findIndex((n) => n.id === e.from);
+          const ti = products.findIndex((n) => n.id === e.to);
+          if (fi < 0 || ti < 0) return null;
+          const x1 = 120;
+          const y1 = 40 + fi * 48;
+          const x2 = w - 140;
+          const y2 = 40 + ti * 48;
+          return (
+            <g key={`${e.from}-${e.to}-${i}`}>
+              <line
+                x1={x1}
+                y1={y1}
+                x2={x2}
+                y2={y2}
+                stroke={e.label.includes("★") ? "#0f3d32" : "#8a9a94"}
+                strokeWidth={e.label.includes("★") ? 2.5 : 1}
+              />
+              <text
+                x={(x1 + x2) / 2}
+                y={(y1 + y2) / 2 - 4}
+                fontSize="11"
+                fill="#14201c"
+              >
+                {e.label}
+              </text>
+            </g>
+          );
+        })}
+        {suppliers.map((n, i) => (
+          <g key={n.id}>
+            <rect
+              x={40}
+              y={20 + i * 48}
+              width={160}
+              height={36}
+              rx={6}
+              fill="#0f3d32"
+            />
+            <text x={50} y={42 + i * 48} fill="#f6f3eb" fontSize="12">
+              {n.label}
+            </text>
+          </g>
+        ))}
+        {products.map((n, i) => (
+          <g key={n.id}>
+            <rect
+              x={w - 200}
+              y={20 + i * 48}
+              width={160}
+              height={36}
+              rx={6}
+              fill="#c45c26"
+            />
+            <text x={w - 190} y={42 + i * 48} fill="#fff" fontSize="12">
+              {n.label}
+            </text>
+          </g>
+        ))}
+      </svg>
+
+      <h2>Suggestions</h2>
+      <ul>
+        {items.map((s, i) => (
+          <li key={`${s.produit_id}-${i}`}>
+            {s.produit_nom || s.produit_id?.slice(0, 8)} :{" "}
+            {s.from_montant ?? s.prix_actuel} → {s.to_montant ?? s.prix_unitaire}{" "}
+            € ({s.score || "—"}) éco {s.economy ?? s.ecart_eur ?? "—"}
+          </li>
+        ))}
+      </ul>
+      {!items.length && !error ? (
+        <p>Aucune suggestion — remplir le panier avec des prix concurrents.</p>
       ) : null}
     </section>
   );

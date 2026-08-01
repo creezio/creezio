@@ -22,6 +22,10 @@ import { createNavShellAdapter } from "@creezio/shell-ui";
 import { brandKernelBooter } from "./create-brand-kernel.js";
 import { composeBrandOs } from "./compose-brand-os.js";
 import { listenBrandOsHttp } from "./listen-brand-os-http.js";
+import {
+  mcpSurfaceHandlesPath,
+  mountBrandMcpSurface,
+} from "./mount-brand-mcp-surface.js";
 import { startBrandUiPlane } from "./start-brand-ui-plane.js";
 import { installBrandOsDesktop } from "./install-brand-os-desktop.js";
 import { warmBrandNativeHosts } from "./warm-brand-native-hosts.js";
@@ -228,11 +232,44 @@ export async function startBrandDesktop(
     });
   }
 
+  let mcpSurface: ReturnType<typeof mountBrandMcpSurface> | null = null;
   const httpServer =
     desktopProfile === "full"
-      ? await listenBrandOsHttp({ api, mcp, os })
+      ? await listenBrandOsHttp({
+          api,
+          mcp,
+          os,
+          mcpSurfaceFetch: async (request) => {
+            if (!mcpSurface) {
+              return new Response(
+                JSON.stringify({ error: "mcp_surface_pending" }),
+                {
+                  status: 503,
+                  headers: { "content-type": "application/json" },
+                },
+              );
+            }
+            return mcpSurface.app.fetch(request);
+          },
+          mcpSurfaceHandlesPath,
+        })
       : await listenBrandKernelHttp({ api });
   process.env.METIER_BASE_URL = httpServer.baseUrl;
+  process.env.MCP_PUBLIC_URL = httpServer.baseUrl;
+  process.env.APP_PUBLIC_URL = httpServer.baseUrl;
+  if (os && desktopProfile === "full") {
+    mcpSurface = mountBrandMcpSurface({
+      manifest,
+      runtime,
+      os,
+      mcp,
+      publicBaseUrl: () => httpServer.baseUrl,
+    });
+    log(
+      "mcp",
+      `oauth ready=${mcpSurface.oauthReady()} public=${mcpSurface.publicUrl()}`,
+    );
+  }
 
   // Fullstack natif kit (n8n + Hermes) — CREEZIO_NATIVE_WARM=0 pour skip.
   if (os && desktopProfile === "full" && process.env.CREEZIO_NATIVE_WARM !== "0") {

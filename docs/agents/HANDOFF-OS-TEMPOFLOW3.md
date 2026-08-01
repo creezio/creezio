@@ -29,43 +29,39 @@ Puis **TempoFlow3** doit atteindre une **parité comportementale** avec TempoFlo
 
 ## 1. Vérité sur l’état actuel (lire avant de coder)
 
-### Ce qui EST fait (preuve automatisée) — maj 2026-08-01 (session handoff exécutée)
+### Ce qui EST fait (preuve automatisée) — maj 2026-08-01 (vague P1)
 
 | Preuve | Résultat | Limite |
 |--------|----------|--------|
-| `proof:hard` | **61/61** (+ optimiser commande, dispatch graph) | pas GUI Electron |
-| `proof:oracle` | **33/33** | Pages OK ; profondeur TF2 partielle |
+| `proof:hard` / `proof:oracle` | rejouer après P1 | OAuth+canvas+slots ajoutés |
+| `test-os-mcp-oauth` | **PASS** well-known + DCR + admin | loopback |
+| `test-os-shell-more` | **PASS** | profile/recovery/tunnel |
 | `test-os-owned-by-brand` | OK + merge `package.json` ownedByBrand | |
-| `test-os-shell` / contracts | OK | BYOK + recovery + updater + splash + vendors |
-| `test-os-cold-warm` | OK `/os/ready` + **n8n start** | free-port via **lsof** (fuser absent CI) |
+| `test-os-shell` / contracts | OK (+ shell-more) | pas les ~40 TF2 |
+| `test-os-cold-warm` | OK `/os/ready` + **n8n start** | free-port via **lsof** |
 | `test-os-native-pnp` | **4/4** | apply neuf → tsc → ready |
-| `test-os-electron-runtime-smoke` | wiring OK | Launch xvfb optionnel |
-| `scripts/reset-tempoflow3.mjs` | OK si markers présents | UI TF3 marquées `owned-by-brand` |
-| Factory apply | skip fichiers marqués ; **merge** package.json owned | CREATE-BRAND §4b |
+| `mountBrandMcpSurface` | OAuth+admin sur harness/desktop | JWT + DDL core |
+| Factory `apply-modules` | inventaire + **scaffold UI** absents | ne wipe pas owned-by-brand |
 
 ### Ce qui N’EST PAS fini (DoD incomplet)
 
-Audit détaillé : `docs/experiences/tempoflow3/AUDIT-GAPS-2026-08-01.md`.
+Audit : `docs/experiences/tempoflow3/AUDIT-GAPS-2026-08-01.md`.
 
 #### A. OS kit
 
-1. **Tunnel Cloudflare distant** — **bloqueur credentials**. Local MCP + setup/connection HTTP **prouvés**.  
-2. **n8n start cold** — **prouvé** (lsof free-port).  
-3. **Plugins** — control plane + admin UI **prouvés** ; admin analytics/OAuth = P1.  
-4. **Electron GUI** AdsPower / xvfb CI.  
-5. **`test:shell` ~40** — +connection-profile +app-kind ; reste P1.  
-6. **BrandSpec apply-modules** — inventaire + garde-fous **OK** ; codegen bonus YAML = P1.
+1. **Tunnel Cloudflare distant** — **bloqueur credentials**. Local MCP + OAuth loopback **prouvés**.  
+2. **Electron GUI** AdsPower (xvfb smoke possible).  
+3. **`test:shell` ~40** TF2 — extensions kit OK, suite complète non.  
 
 #### B. TempoFlow3 profondeur TF2
 
-- UI OS stubs **éliminés** (login/setup/config/admin/taches/mails/likes…)  
-- Optimiser canvas TF2 / navigateur fournisseur slots = P1  
-- MCP OAuth distant = P1/D  
-- Missions IA = P1  
+- UI OS stubs **éliminés** ; canvas optimiser SVG + navigateur slots **livrés**  
+- ReactFlow pixel-parity / missions IA = reste  
+- MCP OAuth **distant** (hors loopback) = credentials tunnel  
 
 #### C. Oracle OS
 
-Majorité cochée ; restant : tunnel distant+OAuth, `test:shell` complet.
+Majorité cochée ; restant : tunnel distant, AdsPower, shell TF2 complet.
 
 ---
 

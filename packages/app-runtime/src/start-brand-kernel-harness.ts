@@ -14,6 +14,10 @@ import { createMcpFacade } from "@creezio/mcp-facade";
 import { brandKernelBooter } from "./create-brand-kernel.js";
 import { composeBrandOs } from "./compose-brand-os.js";
 import { listenBrandOsHttp } from "./listen-brand-os-http.js";
+import {
+  mcpSurfaceHandlesPath,
+  mountBrandMcpSurface,
+} from "./mount-brand-mcp-surface.js";
 import { warmBrandNativeHosts } from "./warm-brand-native-hosts.js";
 import type {
   BootBrandKernelFn,
@@ -154,6 +158,7 @@ export async function startBrandKernelHarness(
     console.log(`brand-kernel-harness tunnel local mcp=${local.publicMcp}`);
   }
 
+  let mcpSurface: ReturnType<typeof mountBrandMcpSurface> | null = null;
   const httpServer =
     desktopProfile === "full"
       ? await listenBrandOsHttp({
@@ -161,12 +166,37 @@ export async function startBrandKernelHarness(
           mcp,
           os: brandOs,
           ...(port && port > 0 ? { port } : {}),
+          mcpSurfaceFetch: async (request) => {
+            if (!mcpSurface) {
+              return new Response(JSON.stringify({ error: "mcp_surface_pending" }), {
+                status: 503,
+                headers: { "content-type": "application/json" },
+              });
+            }
+            return mcpSurface.app.fetch(request);
+          },
+          mcpSurfaceHandlesPath,
         })
       : await listenBrandKernelHttp({
           api,
           ...(port && port > 0 ? { port } : {}),
         });
   process.env.METIER_BASE_URL = httpServer.baseUrl;
+  process.env.MCP_PUBLIC_URL = httpServer.baseUrl;
+  process.env.APP_PUBLIC_URL = httpServer.baseUrl;
+
+  if (brandOs && desktopProfile === "full" && config.manifest) {
+    mcpSurface = mountBrandMcpSurface({
+      manifest: config.manifest,
+      runtime,
+      os: brandOs,
+      mcp,
+      publicBaseUrl: () => httpServer.baseUrl,
+    });
+    console.log(
+      `brand-kernel-harness mcp-oauth ready=${mcpSurface.oauthReady()} public=${mcpSurface.publicUrl()}`,
+    );
+  }
 
   // Si port auto-assigné : brancher la surface locale après coup.
   if (

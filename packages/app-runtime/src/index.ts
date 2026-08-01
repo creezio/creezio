@@ -38,3 +38,8 @@ export {
   warmBrandNativeHosts,
   type WarmNativeHostsResult,
 } from "./warm-brand-native-hosts.js";
+export {
+  mountBrandMcpSurface,
+  mcpSurfaceHandlesPath,
+  type BrandMcpSurface,
+} from "./mount-brand-mcp-surface.js";

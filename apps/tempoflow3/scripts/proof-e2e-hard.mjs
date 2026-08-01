@@ -586,6 +586,27 @@ try {
     `mode=${plugins.data.mode}`,
   );
 
+  // MCP OAuth surface (loopback — sans Cloudflare)
+  const oauthStatus = await json("GET", "/api/v1/os/mcp-oauth/status");
+  record(
+    "os.mcp-oauth-status",
+    oauthStatus.status === 200 && oauthStatus.data.ok === true,
+    `oauthReady=${oauthStatus.data.oauthReady} public=${oauthStatus.data.publicUrl || "?"}`,
+  );
+  const wellKnown = await json("GET", "/.well-known/oauth-authorization-server");
+  record(
+    "os.mcp-oauth-well-known",
+    wellKnown.status === 200 &&
+      Boolean(wellKnown.data.issuer || wellKnown.data.authorization_endpoint),
+    wellKnown.data.issuer || wellKnown.data.error || `status=${wellKnown.status}`,
+  );
+  const mcpAdmin = await json("GET", "/api/v1/admin/mcp/status");
+  record(
+    "os.mcp-admin-status",
+    mcpAdmin.status === 200,
+    `status=${mcpAdmin.status} oauthReady=${mcpAdmin.data.oauthReady}`,
+  );
+
   // Tasks kanban move
   const taskCreate = await json(
     "POST",
@@ -625,6 +646,9 @@ try {
     "ui/app/taches/page.tsx",
     "ui/app/admin/plugins/page.tsx",
     "ui/app/likes/page.tsx",
+    "ui/app/admin/analytics/page.tsx",
+    "ui/app/admin/request-logs/page.tsx",
+    "ui/app/site/page.tsx",
   ]) {
     const src = fs.readFileSync(path.join(root, rel), "utf8");
     record(
@@ -635,6 +659,25 @@ try {
       "interactive",
     );
   }
+
+  const optUi = fs.readFileSync(
+    path.join(root, "ui/app/optimiser/page.tsx"),
+    "utf8",
+  );
+  record(
+    "ui.optimiser-canvas",
+    /<svg/.test(optUi) && /use client/.test(optUi) && /graph/.test(optUi),
+    "svg graph canvas",
+  );
+  const siteUi = fs.readFileSync(
+    path.join(root, "ui/app/site/[fournisseurId]/page.tsx"),
+    "utf8",
+  );
+  record(
+    "ui.site-browser-slots",
+    /site-browser-frame/.test(siteUi) && /iframe|Slots/.test(siteUi),
+    "navigateur slots",
+  );
 } catch (err) {
   record("suite", false, err instanceof Error ? err.message : String(err));
 } finally {

@@ -88,11 +88,12 @@ Notes:
 
 /**
  * Inventaire modules BrandSpec + garde-fous owned-by-brand.
- * Codegen riche bonus = P1 ; ici on pose un inventaire + checklist.
+ * Scaffold UI stubs uniquement si page absente (jamais écrase owned-by-brand).
  */
 function applyBrandModules(specDir: string, appDir: string): {
   modules: string[];
   protectedFiles: string[];
+  scaffoldedUi: string[];
   notes: string[];
 } {
   const modulesDir = path.join(specDir, "modules");
@@ -125,6 +126,60 @@ function applyBrandModules(specDir: string, appDir: string): {
     }
   }
 
+  const scaffoldedUi: string[] = [];
+  for (const mod of modules) {
+    const rel = `ui/app/${mod}/page.tsx`;
+    const abs = path.join(appDir, rel);
+    if (fs.existsSync(abs)) {
+      const raw = fs.readFileSync(abs, "utf8");
+      if (raw.includes("creezio:owned-by-brand")) {
+        protectedFiles.push(rel);
+      }
+      continue;
+    }
+    fs.mkdirSync(path.dirname(abs), { recursive: true });
+    const title = mod.charAt(0).toUpperCase() + mod.slice(1);
+    fs.writeFileSync(
+      abs,
+      `/** creezio:owned-by-brand */
+"use client";
+
+import { useEffect, useState } from "react";
+import { metierBase } from "@/lib/metier-base";
+
+/** Stub généré par \`creezio brand apply-modules\` — à enrichir métier. */
+export default function Page() {
+  const base = metierBase();
+  const [data, setData] = useState<unknown>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    void fetch(\`\${base}/api/v1/modules/${mod}\`)
+      .then(async (res) => {
+        const body = await res.json();
+        if (!res.ok) throw new Error(body.error || res.statusText);
+        setData(body);
+      })
+      .catch((e) => setError(e instanceof Error ? e.message : String(e)));
+  }, [base]);
+
+  return (
+    <section>
+      <h1>${title}</h1>
+      <p>Module BrandSpec \`${mod}\` — scaffold apply-modules.</p>
+      {error ? <p style={{ color: "#8b1e1e" }}>{error}</p> : null}
+      <pre style={{ whiteSpace: "pre-wrap", fontSize: "0.85rem" }}>
+        {JSON.stringify(data, null, 2)}
+      </pre>
+    </section>
+  );
+}
+`,
+      "utf8",
+    );
+    scaffoldedUi.push(rel);
+  }
+
   const inventoryPath = path.join(appDir, "brand-spec", "MODULES-INVENTORY.md");
   fs.mkdirSync(path.dirname(inventoryPath), { recursive: true });
   const body = [
@@ -138,9 +193,13 @@ function applyBrandModules(specDir: string, appDir: string): {
     "## Fichiers protégés owned-by-brand (non écrasés)",
     ...protectedFiles.map((f) => `- \`${f}\``),
     "",
-    "## Suite manuelle / P1",
-    "- Enrichir `brand-bonus-api.ts` pour chaque module sans marker factory",
-    "- Pages UI sous `ui/app/<module>/` avec `/** creezio:owned-by-brand */`",
+    "## UI scaffoldés (absents → créés)",
+    ...(scaffoldedUi.length
+      ? scaffoldedUi.map((f) => `- \`${f}\``)
+      : ["- (aucun — pages déjà présentes)"]),
+    "",
+    "## Suite",
+    "- Enrichir stubs UI + `brand-bonus-api.ts` sans retirer `creezio:owned-by-brand`",
     "- Ne jamais wipe avec `brand apply --force` sans markers",
     "",
   ].join("\n");
@@ -150,8 +209,9 @@ function applyBrandModules(specDir: string, appDir: string): {
     `inventory → ${path.relative(process.cwd(), inventoryPath)}`,
     `${modules.length} modules`,
     `${protectedFiles.length} fichiers protégés`,
+    `${scaffoldedUi.length} UI scaffoldés`,
   ];
-  return { modules, protectedFiles, notes };
+  return { modules, protectedFiles, scaffoldedUi, notes };
 }
 
 function kitRoot(): string {
@@ -308,7 +368,8 @@ export async function runBrandCli(argv: string[]): Promise<void> {
     const result = applyBrandModules(specDir, outDir);
     console.log(`✓ brand apply-modules`);
     console.log(`  modules ${result.modules.join(", ") || "(aucun)"}`);
-    console.log(`  protected ${result.protectedFiles.join(", ") || "(aucun)"}`);
+    console.log(`  protected ${result.protectedFiles.length}`);
+    console.log(`  scaffolded ${result.scaffoldedUi.length}`);
     for (const n of result.notes) console.log(`  ${n}`);
     return;
   }

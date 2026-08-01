@@ -29,7 +29,8 @@
     "@creezio/mcp-facade": "0.1.0",
     "@creezio/platform-core": "0.1.0",
     "@creezio/shell-ui": "0.1.0",
-    "@creezio/tasks": "0.1.0"
+    "@creezio/tasks": "0.1.0",
+    "hono": "^4.12.33"
   },
   "peerDependencies": {
     "electron": ">=28"
