@@ -215,14 +215,11 @@ import { fileURLToPath } from "node:url";
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
 const required = [
-  "src/lib/host-stack.ts",
-  "src/lib/paths.ts",
-  "src/lib/connection-profile.ts",
-  "src/lib/creezio-boot.ts",
   "src/electron/main.ts",
-  "src/electron/brand-runtime.ts",
   "src/electron/brand-migrations.ts",
   "src/electron/brand-module-api.ts",
+  "src/electron/meili-feed.ts",
+  "src/electron/vertical-slot.ts",
   "scripts/brand-kernel-harness.mjs",
   "product-model.json",
 ];
@@ -232,21 +229,26 @@ for (const rel of required) {
   assert.ok(fs.existsSync(p), \`manquant: \${rel}\`);
 }
 
+const forbidden = [
+  "src/lib/host-stack.ts",
+  "src/electron/brand-runtime.ts",
+  "src/electron/product-hub-stub.ts",
+  "scripts/metier-api.mjs",
+];
+for (const rel of forbidden) {
+  assert.ok(!fs.existsSync(path.join(root, rel)), \`interdit: \${rel}\`);
+}
+
 const main = fs.readFileSync(path.join(root, "src/electron/main.ts"), "utf8");
 assert.match(main, /startBrandDesktop/);
-assert.match(main, /bootBrandKernel/);
+assert.match(main, /brandMigrations|registerModuleApi/);
 assert.match(main, /@creezio\\/app-runtime/);
-assert.doesNotMatch(main, /spawnBrandMetierApi|metier-api\\.mjs|createFileLocalConfigStore|listenBrandKernelHttp|prepareDesktopBoot/);
-
-assert.ok(!fs.existsSync(path.join(root, "scripts/metier-api.mjs")), "sidecar JSON interdit");
+assert.doesNotMatch(main, /spawnBrandMetierApi|metier-api\\.mjs|bootBrandKernel|brand-runtime|listenBrandKernelHttp|prepareDesktopBoot/);
 
 const model = JSON.parse(
   fs.readFileSync(path.join(root, "product-model.json"), "utf8"),
 );
 assert.equal(model.brandId, ${JSON.stringify(model.brandId)});
-
-const hostStack = fs.readFileSync(path.join(root, "src/lib/host-stack.ts"), "utf8");
-assert.match(hostStack, /createBrandHostStack/);
 
 console.log("OK test:first-run-auth (wiring natif ${model.brandId})");
 `;
@@ -311,8 +313,8 @@ session.logout();
 
 const main = fs.readFileSync(path.join(root, "src/electron/main.ts"), "utf8");
 assert.match(main, /startBrandDesktop/);
-assert.match(main, /bootBrandKernel/);
-assert.doesNotMatch(main, /spawnBrandMetierApi/);
+assert.match(main, /brandMigrations|registerModuleApi/);
+assert.doesNotMatch(main, /spawnBrandMetierApi|bootBrandKernel/);
 
 console.log("OK test:setup-login (OS kit + startBrandDesktop)");
 `;
@@ -367,7 +369,6 @@ for (const f of walk(root)) {
 
 const required = [
   "src/electron/main.ts",
-  "src/electron/brand-runtime.ts",
   "src/electron/brand-migrations.ts",
   "src/electron/brand-module-api.ts",
   "src/electron/meili-feed.ts",
@@ -378,11 +379,13 @@ const required = [
 for (const rel of required) {
   assert.ok(fs.existsSync(path.join(root, rel)), \`manquant: \${rel}\`);
 }
+assert.ok(!fs.existsSync(path.join(root, "src/electron/brand-runtime.ts")));
+assert.ok(!fs.existsSync(path.join(root, "src/lib/host-stack.ts")));
 
 const main = fs.readFileSync(path.join(root, "src/electron/main.ts"), "utf8");
 assert.match(main, /startBrandDesktop/);
-assert.match(main, /bootBrandKernel/);
-assert.doesNotMatch(main, /spawnBrandMetierApi|listenBrandKernelHttp/);
+assert.match(main, /brandMigrations|registerModuleApi/);
+assert.doesNotMatch(main, /spawnBrandMetierApi|listenBrandKernelHttp|bootBrandKernel/);
 
 const modApi = fs.readFileSync(
   path.join(root, "src/electron/brand-module-api.ts"),
@@ -568,10 +571,24 @@ const port = fake.address().port;
 const host = \`http://127.0.0.1:\${port}\`;
 
 const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "${model.brandId}-meili-idx-"));
-const bootMod = await import(
-  pathToFileURL(path.join(root, "build/electron/brand-runtime.js")).href
+const { createBrandKernel } = await import("@creezio/app-runtime");
+const manifestMod = await import(
+  pathToFileURL(path.join(root, "build/electron/app-manifest.js")).href
 );
-const { runtime, close } = bootMod.bootBrandKernel({ userDataDir: dataDir });
+const migMod = await import(
+  pathToFileURL(path.join(root, "build/electron/brand-migrations.js")).href
+);
+const apiMod = await import(
+  pathToFileURL(path.join(root, "build/electron/brand-module-api.js")).href
+);
+const manifestKey = Object.keys(manifestMod).find((k) => k.endsWith("Manifest"));
+const { runtime, close } = createBrandKernel({
+  manifest: manifestMod[manifestKey],
+  userDataDir: dataDir,
+  brandMigrations: migMod.brandMigrations(),
+  registerModuleApi: apiMod.registerBrandModuleApi,
+  beforeBoot: feedMod.applyBrandMeiliConfig,
+});
 const brand = runtime.getBrand();
 const resolvedDb = brand.path;
 assert.ok(fs.existsSync(resolvedDb), "brand.db attendu après boot");

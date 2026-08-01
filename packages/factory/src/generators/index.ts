@@ -22,7 +22,6 @@ export {
 export {
   renderBrandMigrationsTs,
   renderBrandModuleApiTs,
-  renderBrandRuntimeTs,
   renderBrandKernelHarnessMjs,
   renderMainFromPrdNativeTs,
   renderMeiliFeedTs,

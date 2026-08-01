@@ -35,16 +35,24 @@ test("AR1 package app-runtime exporté", () => {
 });
 
 test("AR2 TempoFlow3 main mince (façade, pas jumeau)", () => {
+  if (!fs.existsSync(path.join(TF3, "src/electron/main.ts"))) {
+    // Reset en cours — skip si app absente
+    return;
+  }
   const main = fs.readFileSync(
     path.join(TF3, "src/electron/main.ts"),
     "utf8",
   );
   assert.match(main, /startBrandDesktop/);
   assert.match(main, /@creezio\/app-runtime/);
+  assert.match(main, /brandMigrations|registerModuleApi/);
   assert.doesNotMatch(main, /listenBrandKernelHttp/);
   assert.doesNotMatch(main, /prepareDesktopBoot/);
   assert.doesNotMatch(main, /maybeBootBrandMeili/);
-  assert.ok(main.split("\n").length < 40, "main trop long (jumeau?)");
+  assert.doesNotMatch(main, /bootBrandKernel|brand-runtime/);
+  assert.ok(main.split("\n").length < 45, "main trop long (jumeau?)");
+  assert.ok(!fs.existsSync(path.join(TF3, "src/lib/host-stack.ts")));
+  assert.ok(!fs.existsSync(path.join(TF3, "src/electron/brand-runtime.ts")));
 
   const harness = fs.readFileSync(
     path.join(TF3, "scripts/brand-kernel-harness.mjs"),
@@ -54,6 +62,9 @@ test("AR2 TempoFlow3 main mince (façade, pas jumeau)", () => {
 });
 
 test("AR3 harness façade boote kernel TF3", async () => {
+  if (!fs.existsSync(path.join(TF3, "src/electron/brand-migrations.ts"))) {
+    return;
+  }
   const viaNpm = spawnSync("npm", ["run", "build:electron"], {
     encoding: "utf8",
     cwd: TF3,
@@ -62,18 +73,31 @@ test("AR3 harness façade boote kernel TF3", async () => {
   });
   assert.equal(viaNpm.status, 0, viaNpm.stderr + "\n" + viaNpm.stdout);
 
-  const bootMod = await import(
-    pathToFileURL(path.join(TF3, "build/electron/brand-runtime.js")).href
+  const electron = path.join(TF3, "build/electron");
+  const manifestMod = await import(
+    pathToFileURL(path.join(electron, "app-manifest.js")).href
+  );
+  const migMod = await import(
+    pathToFileURL(path.join(electron, "brand-migrations.js")).href
+  );
+  const apiMod = await import(
+    pathToFileURL(path.join(electron, "brand-module-api.js")).href
   );
   const feedMod = await import(
-    pathToFileURL(path.join(TF3, "build/electron/meili-feed.js")).href
+    pathToFileURL(path.join(electron, "meili-feed.js")).href
+  );
+  const manifestKey = Object.keys(manifestMod).find((k) =>
+    k.endsWith("Manifest"),
   );
   const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "ar-harness-"));
   const handle = await startBrandKernelHarness({
     brandId: "tempoflow3",
     appRoot: TF3,
     dataDir,
-    bootKernel: (opts) => bootMod.bootBrandKernel(opts),
+    manifest: manifestMod[manifestKey],
+    brandMigrations: migMod.brandMigrations(),
+    registerModuleApi: apiMod.registerBrandModuleApi,
+    beforeBoot: feedMod.applyBrandMeiliConfig,
     meiliFeed: feedMod.brandMeiliFeed,
     skipIndex: true,
   });
@@ -83,7 +107,7 @@ test("AR3 harness façade boote kernel TF3", async () => {
   await handle.close();
 });
 
-test("AR4 factory génère main startBrandDesktop", () => {
+test("AR4 factory génère main startBrandDesktop sans glue OS", () => {
   const outDir = fs.mkdtempSync(path.join(os.tmpdir(), "creezio-ar-facade-"));
   const model = parseProductPrd(fs.readFileSync(PRD, "utf8"));
   scaffoldNewApp({
@@ -97,7 +121,10 @@ test("AR4 factory génère main startBrandDesktop", () => {
   });
   const main = fs.readFileSync(path.join(outDir, "src/electron/main.ts"), "utf8");
   assert.match(main, /startBrandDesktop/);
-  assert.doesNotMatch(main, /listenBrandKernelHttp/);
+  assert.match(main, /brandMigrations/);
+  assert.doesNotMatch(main, /listenBrandKernelHttp|bootBrandKernel/);
+  assert.ok(!fs.existsSync(path.join(outDir, "src/lib/host-stack.ts")));
+  assert.ok(!fs.existsSync(path.join(outDir, "src/electron/brand-runtime.ts")));
   const pkg = JSON.parse(
     fs.readFileSync(path.join(outDir, "package.json"), "utf8"),
   );

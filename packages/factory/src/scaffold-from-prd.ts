@@ -15,16 +15,9 @@ import {
   renderNextEntityPage,
   renderMetierRendererHtml,
   renderVerticalSlotFromModel,
-  renderPathsTs,
-  renderConnectionProfileTs,
-  renderTunnelServiceUrlsTs,
-  renderCreezioBootTs,
-  renderHostStackBindingsTs,
-  renderDesktopPresenceTs,
   renderPreloadFromPrdTs,
   renderBrandMigrationsTs,
   renderBrandModuleApiTs,
-  renderBrandRuntimeTs,
   renderBrandKernelHarnessMjs,
   renderMainFromPrdNativeTs,
   renderMeiliFeedTs,
@@ -181,22 +174,20 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const hostStack = fs.readFileSync(path.join(root, "src/lib/host-stack.ts"), "utf8");
-assert.match(hostStack, /createBrandHostStack/);
 const main = fs.readFileSync(path.join(root, "src/electron/main.ts"), "utf8");
 assert.match(main, /startBrandDesktop/);
-assert.match(main, /bootBrandKernel/);
+assert.match(main, /brandMigrations|registerModuleApi/);
 assert.match(main, /@creezio\\/app-runtime/);
-assert.doesNotMatch(main, /spawnBrandMetierApi|listenBrandKernelHttp|prepareDesktopBoot/);
-const runtime = fs.readFileSync(path.join(root, "src/electron/brand-runtime.ts"), "utf8");
-assert.match(runtime, /createSqliteRuntime/);
-assert.match(runtime, /createApiKernel/);
+assert.doesNotMatch(main, /spawnBrandMetierApi|listenBrandKernelHttp|prepareDesktopBoot|bootBrandKernel|brand-runtime/);
+assert.ok(!fs.existsSync(path.join(root, "src/lib/host-stack.ts")), "glue OS host-stack interdit");
+assert.ok(!fs.existsSync(path.join(root, "src/electron/brand-runtime.ts")), "brand-runtime interdit");
+assert.ok(!fs.existsSync(path.join(root, "src/electron/product-hub-stub.ts")), "product-hub-stub interdit");
 const harness = fs.readFileSync(
   path.join(root, "scripts/brand-kernel-harness.mjs"),
   "utf8",
 );
 assert.match(harness, /startBrandKernelHarness/);
-assert.match(harness, /@creezio\\/app-runtime/);
+assert.match(harness, /brandMigrations|registerModuleApi/);
 const renderer = fs.readFileSync(
   path.join(root, "resources/renderer/index.html"),
   "utf8",
@@ -217,15 +208,29 @@ export function writeFromPrdArtifacts(opts: {
   const { outDir, manifest, model, force, written } = opts;
   const chr = isChrModel(model);
 
-  // Purge legacy sidecar JSON si --force (chemin natif uniquement).
+  // Purge glue OS / stubs / sidecar — marque = métier + déclaration.
   if (force) {
     for (const rel of [
       "scripts/metier-api.mjs",
       "src/lib/brand-module-api.ts",
+      "src/lib/paths.ts",
+      "src/lib/connection-profile.ts",
+      "src/lib/tunnel-service-urls.ts",
+      "src/lib/creezio-boot.ts",
+      "src/lib/host-stack.ts",
+      "src/lib/desktop-presence.ts",
+      "src/electron/brand-runtime.ts",
+      "src/electron/product-hub-stub.ts",
+      "src/electron/nav-core.ts",
       "scripts/test-oracle-mvp.mjs",
     ]) {
       const p = path.join(outDir, rel);
       if (fs.existsSync(p)) fs.unlinkSync(p);
+    }
+    // src/lib vide après purge
+    const libDir = path.join(outDir, "src/lib");
+    if (fs.existsSync(libDir) && fs.readdirSync(libDir).length === 0) {
+      fs.rmdirSync(libDir);
     }
   }
 
@@ -358,12 +363,6 @@ export function writeFromPrdArtifacts(opts: {
     written,
   );
   writeFile(
-    path.join(outDir, "src/electron/brand-runtime.ts"),
-    renderBrandRuntimeTs(manifest, model),
-    force,
-    written,
-  );
-  writeFile(
     path.join(outDir, "src/electron/meili-feed.ts"),
     renderMeiliFeedTs(model),
     force,
@@ -389,44 +388,6 @@ export function writeFromPrdArtifacts(opts: {
   );
 
   writeFile(
-    path.join(outDir, "src/lib/paths.ts"),
-    renderPathsTs(manifest),
-    force,
-    written,
-  );
-  writeFile(
-    path.join(outDir, "src/lib/connection-profile.ts"),
-    renderConnectionProfileTs(manifest),
-    force,
-    written,
-  );
-  writeFile(
-    path.join(outDir, "src/lib/tunnel-service-urls.ts"),
-    renderTunnelServiceUrlsTs(manifest),
-    force,
-    written,
-  );
-  // Plus de brand-module-api stub dans src/lib — mounts = src/electron
-  writeFile(
-    path.join(outDir, "src/lib/creezio-boot.ts"),
-    renderCreezioBootTs(manifest),
-    force,
-    written,
-  );
-  writeFile(
-    path.join(outDir, "src/lib/host-stack.ts"),
-    renderHostStackBindingsTs(manifest),
-    force,
-    written,
-  );
-  writeFile(
-    path.join(outDir, "src/lib/desktop-presence.ts"),
-    renderDesktopPresenceTs(manifest),
-    force,
-    written,
-  );
-
-  writeFile(
     path.join(outDir, "README.md"),
     renderReadmeFromPrd(manifest, model),
     force,
@@ -440,9 +401,9 @@ export function writeFromPrdArtifacts(opts: {
 Marque légère sur **OS Creezio**.
 
 - Desktop = \`startBrandDesktop\` (@creezio/app-runtime)
-- Kernel = \`bootBrandKernel\` (SQLite + api-kernel, déclaration marque)
+- Déclaration = migrations + \`registerModuleApi\` + feed + nav
 - API métier = \`/api/v1/modules/*\`
-- **Interdit** : \`metier-api.mjs\`, \`store.json\`, jumeau d'orchestration OS
+- **Interdit** : glue OS (\`src/lib/*\`, \`brand-runtime\`), sidecar JSON
 
 \`\`\`bash
 npm test

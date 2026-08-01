@@ -1,6 +1,9 @@
 import type { AppManifest } from "@creezio/brand-config";
 import type { ApiKernel } from "@creezio/api-kernel";
-import type { SqliteRuntime } from "@creezio/platform-core";
+import type {
+  SqliteMigration,
+  SqliteRuntime,
+} from "@creezio/platform-core";
 import type { BrandMeiliFeed } from "@creezio/electron-shell/meili";
 import type { CoreNavItem } from "@creezio/shell-ui";
 
@@ -16,11 +19,19 @@ export type BootBrandKernelFn = (opts: {
   isPackaged?: boolean;
 }) => BrandKernelHandle;
 
+/**
+ * Déclaration marque pour startBrandDesktop.
+ * Soit `bootKernel`, soit migrations + registerModuleApi (recommandé).
+ */
 export type StartBrandDesktopConfig = {
   manifest: AppManifest;
   /** `__dirname` du main Electron compilé (pour preload + app-kind). */
   electronDirname: string;
-  bootKernel: BootBrandKernelFn;
+  /** Callback custom (legacy). Préférer brandMigrations + registerModuleApi. */
+  bootKernel?: BootBrandKernelFn;
+  brandMigrations?: readonly SqliteMigration[];
+  registerModuleApi?: (api: ApiKernel) => void;
+  beforeBoot?: () => void;
   /** Feed Meili marque (optionnel — sans feed = pas de boot Meili). */
   meiliFeed?: BrandMeiliFeed;
   /** Items nav brand (slot vertical). */
@@ -44,7 +55,11 @@ export type BrandDesktopHandle = {
 
 export type StartBrandKernelHarnessConfig = {
   brandId: string;
-  bootKernel: BootBrandKernelFn;
+  bootKernel?: BootBrandKernelFn;
+  manifest?: AppManifest;
+  brandMigrations?: readonly SqliteMigration[];
+  registerModuleApi?: (api: ApiKernel) => void;
+  beforeBoot?: () => void;
   meiliFeed?: BrandMeiliFeed;
   /** Racine app (pour binaire meili resources/). */
   appRoot: string;

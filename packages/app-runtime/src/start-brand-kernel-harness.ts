@@ -8,10 +8,33 @@ import {
   listenBrandKernelHttp,
   maybeBootBrandMeili,
 } from "@creezio/electron-shell";
+import { brandKernelBooter } from "./create-brand-kernel.js";
 import type {
+  BootBrandKernelFn,
   BrandKernelHarnessHandle,
   StartBrandKernelHarnessConfig,
 } from "./types.js";
+
+function resolveBootKernel(
+  config: StartBrandKernelHarnessConfig,
+): BootBrandKernelFn {
+  if (config.bootKernel) return config.bootKernel;
+  if (
+    config.manifest &&
+    config.brandMigrations &&
+    config.registerModuleApi
+  ) {
+    return brandKernelBooter({
+      manifest: config.manifest,
+      brandMigrations: config.brandMigrations,
+      registerModuleApi: config.registerModuleApi,
+      beforeBoot: config.beforeBoot,
+    });
+  }
+  throw new Error(
+    "startBrandKernelHarness: fournir bootKernel OU manifest+brandMigrations+registerModuleApi",
+  );
+}
 
 export async function startBrandKernelHarness(
   config: StartBrandKernelHarnessConfig,
@@ -23,7 +46,8 @@ export async function startBrandKernelHarness(
     process.env.METIER_DATA_DIR ||
     fs.mkdtempSync(path.join(os.tmpdir(), `${config.brandId}-kernel-`));
 
-  const { api, runtime, close: closeKernel } = config.bootKernel({
+  const bootKernel = resolveBootKernel(config);
+  const { api, runtime, close: closeKernel } = bootKernel({
     userDataDir: dataDir,
   });
 

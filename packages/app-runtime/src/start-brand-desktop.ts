@@ -17,10 +17,27 @@ import {
 import { createMcpFacade } from "@creezio/mcp-facade";
 import { createMemoryAuthStore } from "@creezio/auth";
 import { createNavShellAdapter } from "@creezio/shell-ui";
+import { brandKernelBooter } from "./create-brand-kernel.js";
 import type {
   BrandDesktopHandle,
+  BootBrandKernelFn,
   StartBrandDesktopConfig,
 } from "./types.js";
+
+function resolveBootKernel(config: StartBrandDesktopConfig): BootBrandKernelFn {
+  if (config.bootKernel) return config.bootKernel;
+  if (config.brandMigrations && config.registerModuleApi) {
+    return brandKernelBooter({
+      manifest: config.manifest,
+      brandMigrations: config.brandMigrations,
+      registerModuleApi: config.registerModuleApi,
+      beforeBoot: config.beforeBoot,
+    });
+  }
+  throw new Error(
+    "startBrandDesktop: fournir bootKernel OU brandMigrations+registerModuleApi",
+  );
+}
 
 type ElectronApp = {
   isPackaged: boolean;
@@ -74,7 +91,8 @@ export async function startBrandDesktop(
     manifest,
   });
 
-  const { api, runtime, close: closeKernel } = config.bootKernel({
+  const bootKernel = resolveBootKernel(config);
+  const { api, runtime, close: closeKernel } = bootKernel({
     userDataDir: boot.userDataDir,
     isPackaged: app.isPackaged,
   });

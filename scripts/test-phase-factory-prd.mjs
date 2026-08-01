@@ -108,7 +108,6 @@ test("F1–F4 scaffold --from-prd génère runtime natif (pas sidecar JSON)", ()
     "scripts/test-mini-prd-core.mjs",
     "scripts/test-meili-config.mjs",
     "src/electron/main.ts",
-    "src/electron/brand-runtime.ts",
     "src/electron/brand-migrations.ts",
     "src/electron/brand-module-api.ts",
     "src/electron/meili-feed.ts",
@@ -125,17 +124,12 @@ test("F1–F4 scaffold --from-prd génère runtime natif (pas sidecar JSON)", ()
 
   const main = fs.readFileSync(path.join(outDir, "src/electron/main.ts"), "utf8");
   assert.match(main, /startBrandDesktop/);
-  assert.match(main, /bootBrandKernel/);
+  assert.match(main, /brandMigrations|registerModuleApi/);
   assert.match(main, /@creezio\/app-runtime/);
-  assert.doesNotMatch(main, /spawnBrandMetierApi|listenBrandKernelHttp/);
-
-  const runtime = fs.readFileSync(
-    path.join(outDir, "src/electron/brand-runtime.ts"),
-    "utf8",
-  );
-  assert.match(runtime, /createSqliteRuntime/);
-  assert.match(runtime, /createApiKernel/);
-  assert.match(runtime, /applyBrandMeiliConfig/);
+  assert.doesNotMatch(main, /spawnBrandMetierApi|listenBrandKernelHttp|bootBrandKernel/);
+  assert.ok(!fs.existsSync(path.join(outDir, "src/electron/brand-runtime.ts")));
+  assert.ok(!fs.existsSync(path.join(outDir, "src/lib/host-stack.ts")));
+  assert.ok(!fs.existsSync(path.join(outDir, "src/electron/product-hub-stub.ts")));
 
   const mounts = fs.readFileSync(
     path.join(outDir, "src/electron/brand-module-api.ts"),

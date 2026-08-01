@@ -501,66 +501,6 @@ export function applyBrandMeiliConfig(): void {
 `;
 }
 
-export function renderBrandRuntimeTs(m: AppManifest, model: ProductModel): string {
-  const exportName = m.brandId.replace(/-([a-z])/g, (_, c: string) =>
-    c.toUpperCase(),
-  );
-  const manifestExport = `${exportName}Manifest`;
-  return `/**
- * Runtime marque natif — SQLite + api-kernel (OS creezio).
- * Utilisé par Electron main ET par le harness Node (smokes).
- */
-import {
-  createSqliteRuntime,
-  platformCoreMigrations,
-  type SqliteRuntime,
-  type PathsContext,
-} from "@creezio/platform-core";
-import { createApiKernel, type ApiKernel } from "@creezio/api-kernel";
-import { ${manifestExport} as manifest } from "./app-manifest.js";
-import { brandMigrations } from "./brand-migrations.js";
-import { registerBrandModuleApi } from "./brand-module-api.js";
-import { applyBrandMeiliConfig } from "./meili-feed.js";
-
-export type BrandKernelBoot = {
-  api: ApiKernel;
-  runtime: SqliteRuntime;
-  paths: PathsContext;
-  close: () => void;
-};
-
-export function bootBrandKernel(opts: {
-  userDataDir: string;
-  isPackaged?: boolean;
-}): BrandKernelBoot {
-  applyBrandMeiliConfig();
-  const paths: PathsContext = {
-    manifest,
-    userDataRoot: opts.userDataDir,
-    isPackaged: Boolean(opts.isPackaged),
-    resourcesRoot: opts.userDataDir,
-  };
-  const runtime = createSqliteRuntime({
-    ctx: paths,
-    coreMigrations: platformCoreMigrations(),
-    brandMigrations: brandMigrations(),
-    touchBrand: true,
-  });
-  const api = createApiKernel({
-    brandId: manifest.brandId,
-    sqliteRuntime: runtime,
-  });
-  registerBrandModuleApi(api);
-  return {
-    api,
-    runtime,
-    paths,
-    close: () => runtime.close(),
-  };
-}
-`;
-}
-
 export function renderBrandKernelHarnessMjs(model: ProductModel): string {
   return `#!/usr/bin/env node
 /**
@@ -573,19 +513,34 @@ import { startBrandKernelHarness } from "@creezio/app-runtime";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const PORT = Number(process.env.METIER_PORT || process.env.PORT || 18791);
+const electron = path.join(root, "build/electron");
 
-const bootMod = await import(
-  pathToFileURL(path.join(root, "build/electron/brand-runtime.js")).href
+const manifestMod = await import(
+  pathToFileURL(path.join(electron, "app-manifest.js")).href
+);
+const migMod = await import(
+  pathToFileURL(path.join(electron, "brand-migrations.js")).href
+);
+const apiMod = await import(
+  pathToFileURL(path.join(electron, "brand-module-api.js")).href
 );
 const feedMod = await import(
-  pathToFileURL(path.join(root, "build/electron/meili-feed.js")).href
+  pathToFileURL(path.join(electron, "meili-feed.js")).href
 );
+
+const manifestExport = Object.keys(manifestMod).find((k) =>
+  k.endsWith("Manifest"),
+);
+if (!manifestExport) throw new Error("AppManifest introuvable");
 
 await startBrandKernelHarness({
   brandId: ${JSON.stringify(model.brandId)},
   appRoot: root,
   port: PORT,
-  bootKernel: (opts) => bootMod.bootBrandKernel(opts),
+  manifest: manifestMod[manifestExport],
+  brandMigrations: migMod.brandMigrations(),
+  registerModuleApi: apiMod.registerBrandModuleApi,
+  beforeBoot: feedMod.applyBrandMeiliConfig,
   meiliFeed: feedMod.brandMeiliFeed,
 });
 `;
@@ -600,9 +555,8 @@ export function renderMainFromPrdNativeTs(
   );
   const manifestExport = `${exportName}Manifest`;
   return `/**
- * Main Electron mince — déclaration marque uniquement.
- * Orchestration OS = @creezio/app-runtime (startBrandDesktop).
- * Généré --from-prd / brand apply. Pas de sidecar JSON métier.
+ * Main Electron — déclaration marque uniquement (métier + identité).
+ * Orchestration OS = @creezio/app-runtime.
  */
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -610,22 +564,24 @@ import { app } from "electron";
 import { startBrandDesktop } from "@creezio/app-runtime";
 import { ${manifestExport} as manifest } from "./app-manifest.js";
 import { verticalSlot } from "./vertical-slot.js";
-import { bootBrandKernel } from "./brand-runtime.js";
-import { brandMeiliFeed } from "./meili-feed.js";
+import { brandMigrations } from "./brand-migrations.js";
+import { registerBrandModuleApi } from "./brand-module-api.js";
+import { brandMeiliFeed, applyBrandMeiliConfig } from "./meili-feed.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 startBrandDesktop({
   manifest,
   electronDirname: __dirname,
-  bootKernel: (opts) =>
-    bootBrandKernel({ ...opts, isPackaged: app.isPackaged }),
+  brandMigrations: brandMigrations(),
+  registerModuleApi: registerBrandModuleApi,
+  beforeBoot: applyBrandMeiliConfig,
   meiliFeed: brandMeiliFeed,
   navItems: verticalSlot.items,
 }).catch((err) => {
   console.error(err);
   app.exit(1);
 });
-// entities=${model.entities.length} — ProductModel cœur (métier dans brand-runtime)
+// entities=${model.entities.length}
 `;
 }
