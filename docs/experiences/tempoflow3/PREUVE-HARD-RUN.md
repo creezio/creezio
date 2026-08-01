@@ -1,14 +1,15 @@
 # Preuve E2E dure TempoFlow3
 
-**Mission : SUCCESS** (25 pass / 0 fail)
+**Mission : SUCCESS** (26 pass / 0 fail)
 
 | Check | Result | Detail |
 |-------|--------|--------|
 | `arch.main-thin` | ✅ | lines=30 |
 | `arch.no-host-stack-brand` | ✅ | hosts dans @creezio/app-runtime |
+| `arch.installBrandOsDesktop` | ✅ | installBrandOsDesktop kit |
 | `arch.compose-in-kit` | ✅ | composeBrandOs |
 | `build.electron` | ✅ | ok |
-| `api.health` | ✅ | port 19892 |
+| `api.health` | ✅ | port 19459 |
 | `os.status` | ✅ | {"hermes":true,"n8n":true,"tunnel":true,"meili":true,"plugins":"feature-off"} |
 | `os.hosts-constructed` | ✅ | hermes=startHermes,stopHermes,stopHermesAndWait n8n=startN8n,stopN8n,getRunningN8n |
 | `mcp.http-list` | ✅ | n=7 |
@@ -18,8 +19,8 @@
 | `os.hermes-status` | ✅ | binary=null |
 | `os.n8n-status` | ✅ | entry=null |
 | `os.tunnel-status` | ✅ | mcp=null |
-| `metier.fournisseur` | ✅ | e846495d-5467-464e-bf30-2e30f3485cda |
-| `metier.commande` | ✅ | 12af9544-eb09-4326-bf22-69b9b93ee531 |
+| `metier.fournisseur` | ✅ | 44dd6ecd-2bc8-439d-a5a1-805b1295122f |
+| `metier.commande` | ✅ | 269f7e37-5300-4820-9e61-1b0dd2cdbdca |
 | `metier.optimiser` | ✅ | status=200 |
 | `metier.optimiser-apply` | ✅ | status=200 |
 | `metier.dispatch` | ✅ | status=200 |
