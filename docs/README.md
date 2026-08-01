@@ -6,6 +6,12 @@
 
 → **[../AGENTS.md](../AGENTS.md)** — règles globales pour agents.
 
+## Expériences OS
+
+→ **[experiences/tempoflow3/](./experiences/tempoflow3/)** — recréer TempoFlow
+métier-only depuis le kit ; oracle **v0.10.26** (`e36e4d0`, 27 juil. 2026),
+pas le tip post-refactor.
+
 ## Architecture & intention
 
 | Doc | Sujet |
