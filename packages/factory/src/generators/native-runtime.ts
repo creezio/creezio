@@ -376,12 +376,127 @@ function createDashboardMount(): ApiMount {
   };
 }
 
+function createSearchMount(): ApiMount {
+  return {
+    dbLayer: "brand",
+    handle: async ({ req, db }) => {
+      if (!db) return { status: 503, body: { error: "db_unavailable" } };
+      if (req.method.toUpperCase() !== "GET") {
+        return { status: 405, body: { error: "method_not_allowed" } };
+      }
+      const q = qstr(req, "q").trim();
+      if (!q) return { status: 200, body: { engine: "none", items: [] } };
+
+      const host = process.env.MEILI_HOST || "";
+      if (host) {
+        try {
+          const { searchMeiliIndexes } = await import("@creezio/electron-shell/meili");
+          const { brandMeiliFeed } = await import("./meili-feed.js");
+          const hits = await searchMeiliIndexes({
+            host,
+            masterKey: process.env.MEILI_MASTER_KEY || "",
+            indexUids: brandMeiliFeed.indexes.map((i) => i.uid),
+            query: q,
+          });
+          if (hits.length > 0) {
+            return { status: 200, body: { engine: "meili", items: hits } };
+          }
+        } catch {
+          /* fallback SQL */
+        }
+      }
+
+      const needle = q.toLowerCase();
+      const items: Array<Record<string, unknown>> = [];
+      for (const table of ENTITY_IDS) {
+        if (!TABLE_COLS[table]) continue;
+        const rows = db.prepare(\`SELECT * FROM \${table}\`).all() as Array<
+          Record<string, unknown>
+        >;
+        for (const r of rows) {
+          if (r.archived_at) continue;
+          const hay = Object.values(r)
+            .filter((v) => typeof v === "string")
+            .join(" ")
+            .toLowerCase();
+          if (hay.includes(needle)) {
+            items.push({ ...r, _table: table, _index: "sql" });
+          }
+        }
+      }
+      return { status: 200, body: { engine: "sql", items } };
+    },
+  };
+}
+
 export function registerBrandModuleApi(api: ApiKernel): void {
   for (const entity of ENTITY_IDS) {
     api.registerModuleApi(entity, createEntityMount(entity));
   }
   api.registerModuleApi("schema", createSchemaMount());
   api.registerModuleApi("dashboard", createDashboardMount());
+  api.registerModuleApi("search", createSearchMount());
+}
+`;
+}
+
+export function renderMeiliFeedTs(model: ProductModel): string {
+  if (!isChrModel(model)) {
+    return `/**
+ * Feed Meili générique — notes (sandbox).
+ */
+import {
+  configureMeiliBrandFeed,
+  configureMeiliCatalogSqlTables,
+  type BrandMeiliFeed,
+} from "@creezio/electron-shell/meili";
+
+export const brandMeiliFeed: BrandMeiliFeed = {
+  id: "${model.brandId}-notes",
+  schemaVersion: 1,
+  progressPrefix: "${model.brandId.replace(/[^A-Za-z0-9]/g, "").toUpperCase().slice(0, 24) || "BRAND"}",
+  countTables: { produits: "notes", sites: "notes" },
+  indexes: [
+    {
+      uid: "catalog_products",
+      countKey: "produits",
+      table: "notes",
+      columns: ["id", "titre", "contenu"],
+      docType: "note",
+      settings: {
+        searchableAttributes: ["titre", "contenu"],
+        displayedAttributes: ["id", "type", "titre", "contenu"],
+      },
+    },
+  ],
+  metaIndexUid: "catalog_meta",
+};
+
+export function applyBrandMeiliConfig(): void {
+  configureMeiliCatalogSqlTables(brandMeiliFeed.countTables);
+  configureMeiliBrandFeed(brandMeiliFeed);
+}
+`;
+  }
+
+  return `/**
+ * Feed Meili marque ${model.brandId} — config OS (pas de moteur maison).
+ * UIDs génériques catalog_* (interdit tf2_* dans le feed marque).
+ */
+import {
+  configureMeiliBrandFeed,
+  configureMeiliCatalogSqlTables,
+  createChrCatalogMeiliFeed,
+  type BrandMeiliFeed,
+} from "@creezio/electron-shell/meili";
+
+export const brandMeiliFeed: BrandMeiliFeed = createChrCatalogMeiliFeed({
+  brandId: ${JSON.stringify(model.brandId)},
+});
+
+export function applyBrandMeiliConfig(): void {
+  configureMeiliCatalogSqlTables(brandMeiliFeed.countTables);
+  configureMeiliBrandFeed(brandMeiliFeed);
 }
 `;
 }
@@ -405,6 +520,7 @@ import { createApiKernel, type ApiKernel } from "@creezio/api-kernel";
 import { ${manifestExport} as manifest } from "./app-manifest.js";
 import { brandMigrations } from "./brand-migrations.js";
 import { registerBrandModuleApi } from "./brand-module-api.js";
+import { applyBrandMeiliConfig } from "./meili-feed.js";
 
 export type BrandKernelBoot = {
   api: ApiKernel;
@@ -417,6 +533,7 @@ export function bootBrandKernel(opts: {
   userDataDir: string;
   isPackaged?: boolean;
 }): BrandKernelBoot {
+  applyBrandMeiliConfig();
   const paths: PathsContext = {
     manifest,
     userDataRoot: opts.userDataDir,

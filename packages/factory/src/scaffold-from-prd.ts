@@ -27,11 +27,13 @@ import {
   renderBrandRuntimeTs,
   renderBrandKernelHarnessMjs,
   renderMainFromPrdNativeTs,
+  renderMeiliFeedTs,
   renderMetierParcoursSmoke,
   renderFirstRunAuthSmoke,
   renderSetupLoginSmoke,
   renderAllowlistSmoke,
   renderMiniPrdCoreSmoke,
+  renderMeiliConfigSmoke,
 } from "./generators/index.js";
 
 function writeFile(
@@ -60,6 +62,7 @@ function renderPackageJsonFromPrd(m: AppManifest, model: ProductModel): string {
     "test:setup-login": "node scripts/test-setup-login.mjs",
     "test:desktop-smoke-profile": "node scripts/test-desktop-smoke-profile.mjs",
     "test:allowlist": "node scripts/test-allowlist.mjs",
+    "test:meili-config": "node scripts/test-meili-config.mjs",
     "electron:config:client": "node scripts/build-builder-config.mjs client",
     "electron:config:server": "node scripts/build-builder-config.mjs server",
     "electron:publish": `CREEZIO_BRAND=${m.brandId} bash ../../packages/desktop-tooling/scripts/publish-desktop.sh`,
@@ -69,10 +72,10 @@ function renderPackageJsonFromPrd(m: AppManifest, model: ProductModel): string {
   if (chr) {
     scripts["test:mini-prd-core"] = "node scripts/test-mini-prd-core.mjs";
     scripts.test =
-      "npm run test:metier-parcours && npm run test:mini-prd-core && npm run test:first-run-auth && npm run test:setup-login && npm run test:allowlist && npm run test:desktop-smoke-profile";
+      "npm run test:metier-parcours && npm run test:mini-prd-core && npm run test:first-run-auth && npm run test:setup-login && npm run test:allowlist && npm run test:meili-config && npm run test:desktop-smoke-profile";
   } else {
     scripts.test =
-      "npm run test:metier-parcours && npm run test:first-run-auth && npm run test:setup-login && npm run test:allowlist && npm run test:desktop-smoke-profile";
+      "npm run test:metier-parcours && npm run test:first-run-auth && npm run test:setup-login && npm run test:allowlist && npm run test:meili-config && npm run test:desktop-smoke-profile";
   }
 
   return (
@@ -341,6 +344,18 @@ export function writeFromPrdArtifacts(opts: {
   writeFile(
     path.join(outDir, "src/electron/brand-runtime.ts"),
     renderBrandRuntimeTs(manifest, model),
+    force,
+    written,
+  );
+  writeFile(
+    path.join(outDir, "src/electron/meili-feed.ts"),
+    renderMeiliFeedTs(model),
+    force,
+    written,
+  );
+  writeFile(
+    path.join(outDir, "scripts/test-meili-config.mjs"),
+    renderMeiliConfigSmoke(model),
     force,
     written,
   );

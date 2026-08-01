@@ -106,10 +106,12 @@ test("F1–F4 scaffold --from-prd génère runtime natif (pas sidecar JSON)", ()
     "scripts/brand-kernel-harness.mjs",
     "scripts/test-metier-parcours.mjs",
     "scripts/test-mini-prd-core.mjs",
+    "scripts/test-meili-config.mjs",
     "src/electron/main.ts",
     "src/electron/brand-runtime.ts",
     "src/electron/brand-migrations.ts",
     "src/electron/brand-module-api.ts",
+    "src/electron/meili-feed.ts",
     "src/electron/preload.ts",
     "ui/app/fournisseurs/page.tsx",
   ];
@@ -132,17 +134,27 @@ test("F1–F4 scaffold --from-prd génère runtime natif (pas sidecar JSON)", ()
   );
   assert.match(runtime, /createSqliteRuntime/);
   assert.match(runtime, /createApiKernel/);
+  assert.match(runtime, /applyBrandMeiliConfig/);
 
   const mounts = fs.readFileSync(
     path.join(outDir, "src/electron/brand-module-api.ts"),
     "utf8",
   );
   assert.match(mounts, /registerModuleApi/);
+  assert.match(mounts, /createSearchMount|"search"/);
   assert.doesNotMatch(mounts, /delegate_to_metier_api/);
+
+  const feed = fs.readFileSync(
+    path.join(outDir, "src/electron/meili-feed.ts"),
+    "utf8",
+  );
+  assert.match(feed, /createChrCatalogMeiliFeed|brandMeiliFeed/);
+  assert.doesNotMatch(feed, /tf2_produits|tf2_marketplaces/);
 
   const pkg = JSON.parse(fs.readFileSync(path.join(outDir, "package.json"), "utf8"));
   assert.equal(pkg.creezio?.nativeKernel, true);
   assert.ok(pkg.scripts["metier:api"].includes("brand-kernel-harness"));
+  assert.ok(pkg.scripts["test:meili-config"]);
 });
 
 test("F3 smoke kernel natif sur app générée", () => {

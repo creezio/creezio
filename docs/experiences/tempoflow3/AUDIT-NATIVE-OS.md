@@ -24,9 +24,10 @@ fonctionner → creezio (factory / wiring / Meili générique) n’est pas au ni
 
 ## 1. État actuel (inventaire honnête)
 
-**MAJ 2026-08-01** — Phases **A** et **B** livrées : factory génère le chemin
-natif ; TF3 reset + regen ; smokes verts sur `brand.db` / `/api/v1/modules/*` ;
-gates `test-phase-factory-prd*.mjs` 11/11. Reste **C** (Meili), **D** (Next), **E** (bonus).
+**MAJ 2026-08-01** — Phases **A**, **B** et **C** (socle) livrées : factory
+natif + TF3 sur kernel ; Meili = `BrandMeiliFeed` / UIDs `catalog_*` + smoke
+fake Meili / fallback sans binaire. Reste **D** (Next/desktop boot Meili réel),
+**E** (modules bonus) ; cutover complet readiness Meili hors child-process.
 
 ### 1.1 Ce qui est OK (aligné intention)
 
@@ -41,11 +42,12 @@ gates `test-phase-factory-prd*.mjs` 11/11. Reste **C** (Meili), **D** (Next), **
 | Host-stack feature-off | `src/lib/host-stack.ts` | Wiring mince OK en smoke |
 | Allowlist anti-sidecar | smokes | Interdit `metier-api.mjs` / `store.json` SoT |
 
-### 1.2 Écarts restants (après A–B)
+### 1.2 Écarts restants (après A–C socle)
 
 | Écart | Aujourd’hui | Cible OS |
 |-------|-------------|----------|
-| **Recherche** | filtre string / pas Meili boot | `startMeili` + index feed configurable |
+| **Meili boot desktop** | feed + indexeur générique + smoke fake ; pas encore `startMeili` dans main TF3 | brancher runtime desktop + binary optionnel |
+| **Cohérence child-process** | feed process-local ; legacy decideMeiliReady encore tf2_* | descriptor feed pour coherence-query |
 | **UI Next** | SPA renderer + pages Next squelette | Hono/Next sur le même kernel |
 | **Modules bonus** | hors ProductModel cœur | mini-PRDs 06–11 |
 
@@ -262,5 +264,6 @@ A1–A3 (générateurs natifs)
 
 ## 10. Prochaine action concrète
 
-Phases **A** et **B** closes. Enchaîner **Phase C** (Meili générique configurable),
-puis **D** (Next/desktop sur le même kernel), puis **E** (modules bonus 06–11).
+Phases **A–C (socle)** closes (`BrandMeiliFeed`, factory `meili-feed.ts`,
+`test:meili-config`). Enchaîner **Phase D** (boot desktop / Next sur le même
+kernel + `startMeili` optionnel), puis **E** (modules bonus 06–11).

@@ -63,6 +63,17 @@ SQL, `brand-kernel-harness`). Smokes hors monorepo : `CREEZIO_ROOT` + symlink
 
 ---
 
+## P10 — Meili hardcodé `tf2_*` dans le kit → **CORRIGÉ (socle)**
+
+**Avant** : indexeur / UIDs / SQL agrégateurs TempoFlow dans
+`@creezio/electron-shell` — TF3 ne pouvait pas « juste configurer ».
+
+**Fix kit** : `BrandMeiliFeed` + `runFeedIndexation` + UIDs `catalog_*` ;
+legacy `tf2_*` seulement si aucun feed. Factory génère `meili-feed.ts` ;
+smoke `test:meili-config` (binaire absent → null ; fake HTTP → index/search).
+
+---
+
 ## Vérification « delete + regen » (Prompt 1)
 
 ```bash

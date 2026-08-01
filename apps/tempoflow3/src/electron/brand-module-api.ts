@@ -321,10 +321,64 @@ function createDashboardMount(): ApiMount {
   };
 }
 
+function createSearchMount(): ApiMount {
+  return {
+    dbLayer: "brand",
+    handle: async ({ req, db }) => {
+      if (!db) return { status: 503, body: { error: "db_unavailable" } };
+      if (req.method.toUpperCase() !== "GET") {
+        return { status: 405, body: { error: "method_not_allowed" } };
+      }
+      const q = qstr(req, "q").trim();
+      if (!q) return { status: 200, body: { engine: "none", items: [] } };
+
+      const host = process.env.MEILI_HOST || "";
+      if (host) {
+        try {
+          const { searchMeiliIndexes } = await import("@creezio/electron-shell/meili");
+          const { brandMeiliFeed } = await import("./meili-feed.js");
+          const hits = await searchMeiliIndexes({
+            host,
+            masterKey: process.env.MEILI_MASTER_KEY || "",
+            indexUids: brandMeiliFeed.indexes.map((i) => i.uid),
+            query: q,
+          });
+          if (hits.length > 0) {
+            return { status: 200, body: { engine: "meili", items: hits } };
+          }
+        } catch {
+          /* fallback SQL */
+        }
+      }
+
+      const needle = q.toLowerCase();
+      const items: Array<Record<string, unknown>> = [];
+      for (const table of ENTITY_IDS) {
+        if (!TABLE_COLS[table]) continue;
+        const rows = db.prepare(`SELECT * FROM ${table}`).all() as Array<
+          Record<string, unknown>
+        >;
+        for (const r of rows) {
+          if (r.archived_at) continue;
+          const hay = Object.values(r)
+            .filter((v) => typeof v === "string")
+            .join(" ")
+            .toLowerCase();
+          if (hay.includes(needle)) {
+            items.push({ ...r, _table: table, _index: "sql" });
+          }
+        }
+      }
+      return { status: 200, body: { engine: "sql", items } };
+    },
+  };
+}
+
 export function registerBrandModuleApi(api: ApiKernel): void {
   for (const entity of ENTITY_IDS) {
     api.registerModuleApi(entity, createEntityMount(entity));
   }
   api.registerModuleApi("schema", createSchemaMount());
   api.registerModuleApi("dashboard", createDashboardMount());
+  api.registerModuleApi("search", createSearchMount());
 }

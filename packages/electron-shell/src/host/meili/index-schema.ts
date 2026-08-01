@@ -1,15 +1,16 @@
 /**
- * Schéma logique des index Meili catalogue (TF gold — N2).
+ * Schéma logique des index Meili catalogue.
+ *
+ * - Chemin générique (Phase C) : `BrandMeiliFeed` + UIDs `catalog_*`
+ *   via `configureMeiliBrandFeed` / `runFeedIndexation`.
+ * - Chemin legacy TF2 (défaut sans feed) :
+ *     tf2_produits / tf2_marketplaces / tf2_all
+ *
  * Bumper INDEX_SCHEMA_VERSION à chaque changement d'indexes / settings / docs
- * pour forcer une réindexation au boot.
+ * pour forcer une réindexation au boot (legacy).
  *
- * Index réels (voir electron/meili-indexer.ts) :
- *   - tf2_produits
- *   - tf2_marketplaces
- *   - tf2_all  (unifié keyword = marketplaces uniquement)
- *
- * Les marques CV/Fidu injectent leur propre schema au cutover N2p via
- * `configureMeiliCatalogSqlTables` (tables SQL comptées).
+ * Les marques injectent tables SQL comptées via
+ * `configureMeiliCatalogSqlTables` et/ou un feed complet.
  */
 
 /** v1 = produits / marketplaces / all (port shell depuis Fidu). */

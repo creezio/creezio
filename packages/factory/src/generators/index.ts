@@ -25,6 +25,7 @@ export {
   renderBrandRuntimeTs,
   renderBrandKernelHarnessMjs,
   renderMainFromPrdNativeTs,
+  renderMeiliFeedTs,
 } from "./native-runtime.js";
 export {
   renderMetierParcoursSmoke,
@@ -32,4 +33,5 @@ export {
   renderSetupLoginSmoke,
   renderAllowlistSmoke,
   renderMiniPrdCoreSmoke,
+  renderMeiliConfigSmoke,
 } from "./tests.js";

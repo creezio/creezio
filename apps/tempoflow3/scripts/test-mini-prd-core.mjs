@@ -14,6 +14,7 @@ const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "tempoflow3-metier-"));
 const port = 19000 + Math.floor(Math.random() * 1000);
 
 const creezioRoot = process.env.CREEZIO_ROOT || "";
+// Hors monorepo (/tmp) : partager node_modules du kit (tsc + @types + packages).
 const localNm = path.join(root, "node_modules");
 if (creezioRoot && !fs.existsSync(localNm)) {
   const kitNm = path.join(creezioRoot, "node_modules");

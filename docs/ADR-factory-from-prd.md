@@ -30,6 +30,9 @@ et un squelette OS sans métier.
    (`createSqliteRuntime` + `createApiKernel` + mounts SQL). Les smokes
    utilisent `brand-kernel-harness.mjs` (même stack, sans Electron). Un serveur
    JSON fichier n’est **pas** le chemin nominal.
+7. Recherche : générer `meili-feed.ts` (`BrandMeiliFeed`, UIDs `catalog_*`) +
+   mount `/api/v1/modules/search` (Meili si `MEILI_HOST`, sinon SQL). Pas de
+   `tf2_*` dans le feed marque.
 
 ## Conséquences
 

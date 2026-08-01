@@ -23,6 +23,8 @@ Les générateurs vivent ici. Le métier généré **n’entre pas** dans
 - **Ne pas** générer un sidecar JSON (`metier-api.mjs` / `store.json`) comme
   SoT métier. Chemin nominal = `createSqliteRuntime` + `createApiKernel` +
   mounts `/api/v1/modules/*` + harness `brand-kernel-harness.mjs`.
+- **Ne pas** hardcoder des UIDs Meili `tf2_*` dans le feed marque : générer
+  `meili-feed.ts` avec `catalog_*` + `configureMeiliBrandFeed`.
 - Ne pas écraser des fichiers existants sans `--force`.
 - Ne pas exiger des flags techniques si `--from-prd` suffit.
 - Ne pas toucher `docs/FILES.md` sans demande dédiée.

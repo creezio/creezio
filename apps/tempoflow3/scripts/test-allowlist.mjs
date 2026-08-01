@@ -49,6 +49,7 @@ const required = [
   "src/electron/brand-runtime.ts",
   "src/electron/brand-migrations.ts",
   "src/electron/brand-module-api.ts",
+  "src/electron/meili-feed.ts",
   "scripts/brand-kernel-harness.mjs",
   "crm/src/brand/schema.sql",
   "product-model.json",
@@ -67,6 +68,11 @@ const modApi = fs.readFileSync(
   "utf8",
 );
 assert.match(modApi, /registerModuleApi/);
+assert.match(modApi, /createSearchMount|modules\/search|"search"/);
 assert.doesNotMatch(modApi, /delegate_to_metier_api/);
+
+const feed = fs.readFileSync(path.join(root, "src/electron/meili-feed.ts"), "utf8");
+assert.match(feed, /brandMeiliFeed|createChrCatalogMeiliFeed/);
+assert.doesNotMatch(feed, /tf2_produits|tf2_marketplaces/);
 
 console.log("OK test:allowlist TempoFlow (OS natif, pas sidecar JSON)");

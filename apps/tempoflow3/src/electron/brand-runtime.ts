@@ -12,6 +12,7 @@ import { createApiKernel, type ApiKernel } from "@creezio/api-kernel";
 import { tempoflow3Manifest as manifest } from "./app-manifest.js";
 import { brandMigrations } from "./brand-migrations.js";
 import { registerBrandModuleApi } from "./brand-module-api.js";
+import { applyBrandMeiliConfig } from "./meili-feed.js";
 
 export type BrandKernelBoot = {
   api: ApiKernel;
@@ -24,6 +25,7 @@ export function bootBrandKernel(opts: {
   userDataDir: string;
   isPackaged?: boolean;
 }): BrandKernelBoot {
+  applyBrandMeiliConfig();
   const paths: PathsContext = {
     manifest,
     userDataRoot: opts.userDataDir,
