@@ -1,0 +1,224 @@
+{
+  "brandId": "tempoflow3",
+  "brandName": "TempoFlow",
+  "domain": "tempoflow3.local",
+  "tagline": "Application métier TempoFlow",
+  "entities": [
+    {
+      "id": "fournisseurs",
+      "label": "Fournisseur",
+      "labelPlural": "Fournisseurs",
+      "archivable": true,
+      "fields": [
+        {
+          "name": "nom",
+          "type": "text",
+          "required": true,
+          "label": "Nom"
+        },
+        {
+          "name": "contact",
+          "type": "text",
+          "label": "Contact"
+        },
+        {
+          "name": "email",
+          "type": "text",
+          "label": "Email"
+        },
+        {
+          "name": "telephone",
+          "type": "text",
+          "label": "Téléphone"
+        },
+        {
+          "name": "notes",
+          "type": "text",
+          "label": "Notes"
+        }
+      ]
+    },
+    {
+      "id": "produits",
+      "label": "Produit",
+      "labelPlural": "Produits",
+      "archivable": true,
+      "fields": [
+        {
+          "name": "nom",
+          "type": "text",
+          "required": true,
+          "label": "Nom"
+        },
+        {
+          "name": "unite",
+          "type": "text",
+          "label": "Unité"
+        },
+        {
+          "name": "categorie",
+          "type": "text",
+          "label": "Catégorie"
+        },
+        {
+          "name": "fournisseur_id",
+          "type": "ref",
+          "ref": "fournisseurs",
+          "label": "Fournisseur"
+        }
+      ]
+    },
+    {
+      "id": "prix",
+      "label": "Prix",
+      "labelPlural": "Prix",
+      "fields": [
+        {
+          "name": "produit_id",
+          "type": "ref",
+          "ref": "produits",
+          "required": true,
+          "label": "Produit"
+        },
+        {
+          "name": "fournisseur_id",
+          "type": "ref",
+          "ref": "fournisseurs",
+          "required": true,
+          "label": "Fournisseur"
+        },
+        {
+          "name": "montant",
+          "type": "number",
+          "required": true,
+          "label": "Montant HT"
+        },
+        {
+          "name": "devise",
+          "type": "text",
+          "label": "Devise"
+        }
+      ]
+    },
+    {
+      "id": "panier_lignes",
+      "label": "Ligne panier",
+      "labelPlural": "Panier",
+      "fields": [
+        {
+          "name": "produit_id",
+          "type": "ref",
+          "ref": "produits",
+          "required": true,
+          "label": "Produit"
+        },
+        {
+          "name": "fournisseur_id",
+          "type": "ref",
+          "ref": "fournisseurs",
+          "required": true,
+          "label": "Fournisseur"
+        },
+        {
+          "name": "quantite",
+          "type": "number",
+          "required": true,
+          "label": "Quantité"
+        },
+        {
+          "name": "prix_unitaire",
+          "type": "number",
+          "label": "Prix unitaire"
+        }
+      ]
+    },
+    {
+      "id": "commandes",
+      "label": "Commande",
+      "labelPlural": "Commandes",
+      "fields": [
+        {
+          "name": "fournisseur_id",
+          "type": "ref",
+          "ref": "fournisseurs",
+          "required": true,
+          "label": "Fournisseur"
+        },
+        {
+          "name": "statut",
+          "type": "text",
+          "required": true,
+          "label": "Statut"
+        },
+        {
+          "name": "total_ht",
+          "type": "number",
+          "label": "Total HT"
+        },
+        {
+          "name": "notes",
+          "type": "text",
+          "label": "Notes"
+        }
+      ]
+    }
+  ],
+  "pages": [
+    {
+      "id": "fournisseurs",
+      "path": "/fournisseurs",
+      "title": "Fournisseurs",
+      "entityId": "fournisseurs",
+      "kind": "list"
+    },
+    {
+      "id": "produits",
+      "path": "/produits",
+      "title": "Produits",
+      "entityId": "produits",
+      "kind": "list"
+    },
+    {
+      "id": "prix",
+      "path": "/prix",
+      "title": "Prix",
+      "entityId": "prix",
+      "kind": "list"
+    },
+    {
+      "id": "panier",
+      "path": "/panier",
+      "title": "Panier",
+      "entityId": "panier_lignes",
+      "kind": "flow"
+    },
+    {
+      "id": "commandes",
+      "path": "/commandes",
+      "title": "Commandes",
+      "entityId": "commandes",
+      "kind": "list"
+    }
+  ],
+  "flows": [
+    {
+      "id": "commande_fournisseur",
+      "label": "Commander chez un fournisseur",
+      "steps": [
+        "fournisseurs",
+        "produits",
+        "prix",
+        "panier",
+        "commandes"
+      ]
+    }
+  ],
+  "platformNeeds": {
+    "auth": true,
+    "desktop": true,
+    "pluginApi": true,
+    "chat": false,
+    "sync": false
+  },
+  "sourcePrdPath": "/agent/repos/creezio/docs/experiences/tempoflow3/PRD-PRODUIT.md"
+}

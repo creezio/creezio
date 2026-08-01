@@ -1,0 +1,60 @@
+{
+  "name": "@creezio/app-tempoflow3",
+  "private": true,
+  "version": "0.1.0",
+  "description": "TempoFlow — app métier générée depuis PRD (kit Creezio)",
+  "type": "module",
+  "main": "./build/electron/main.js",
+  "scripts": {
+    "build": "npm run build:electron",
+    "build:electron": "tsc -p tsconfig.electron.json",
+    "typecheck": "tsc -p tsconfig.electron.json --noEmit",
+    "metier:api": "node scripts/metier-api.mjs",
+    "test:metier-parcours": "node scripts/test-metier-parcours.mjs",
+    "test:first-run-auth": "node scripts/test-first-run-auth.mjs",
+    "electron:config:client": "node scripts/build-builder-config.mjs client",
+    "electron:config:server": "node scripts/build-builder-config.mjs server",
+    "electron:publish": "CREEZIO_BRAND=tempoflow3 bash ../../packages/desktop-tooling/scripts/publish-desktop.sh",
+    "electron:publish:dry": "CREEZIO_BRAND=tempoflow3 bash ../../packages/desktop-tooling/scripts/publish-desktop.sh --dry-run"
+  },
+  "dependencies": {
+    "@creezio/brand-config": "0.1.0",
+    "@creezio/shell": "0.1.0",
+    "@creezio/platform-core": "0.1.0",
+    "@creezio/product-hub": "0.1.0",
+    "@creezio/shell-ui": "0.1.0",
+    "@creezio/api-kernel": "0.1.0",
+    "@creezio/mcp-facade": "0.1.0",
+    "@creezio/auth": "0.1.0",
+    "@creezio/onboarding": "0.1.0",
+    "@creezio/electron-shell": "0.1.0",
+    "@creezio/desktop-tooling": "0.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.3",
+    "typescript": "^5.8.3"
+  },
+  "peerDependencies": {
+    "electron": ">=28"
+  },
+  "peerDependenciesMeta": {
+    "electron": {
+      "optional": true
+    }
+  },
+  "creezio": {
+    "fromPrd": true,
+    "brandId": "tempoflow3",
+    "entities": [
+      "fournisseurs",
+      "produits",
+      "prix",
+      "panier_lignes",
+      "commandes"
+    ],
+    "flows": [
+      "commande_fournisseur"
+    ]
+  },
+  "license": "UNLICENSED"
+}

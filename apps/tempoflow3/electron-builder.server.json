@@ -1,0 +1,57 @@
+{
+  "appId": "io.creezio.tempoflow3.server",
+  "productName": "TempoFlow Server",
+  "copyright": "© TempoFlow",
+  "directories": {
+    "output": "dist-electron-server",
+    "buildResources": "resources"
+  },
+  "files": [
+    "build/electron/**/*",
+    "package.json"
+  ],
+  "extraResources": [
+    {
+      "from": "build/electron",
+      "to": "build/electron",
+      "filter": [
+        "**/*"
+      ]
+    },
+    {
+      "from": "resources/renderer",
+      "to": "renderer"
+    }
+  ],
+  "asar": true,
+  "nsis": {
+    "oneClick": false,
+    "allowToChangeInstallationDirectory": true,
+    "include": "installer.nsh",
+    "shortcutName": "TempoFlow Server",
+    "uninstallDisplayName": "TempoFlow Server",
+    "guid": "1fdf0752-43e8-54dd-8a79-fdbc4abf1a15"
+  },
+  "win": {
+    "target": [
+      {
+        "target": "nsis",
+        "arch": [
+          "x64"
+        ]
+      }
+    ],
+    "icon": "resources/icons/server.png"
+  },
+  "executableName": "TempoFlow-Server",
+  "artifactName": "TempoFlow-Server-Setup-${version}.${ext}",
+  "extraMetadata": {
+    "name": "tempoflow3-server",
+    "productName": "TempoFlow Server"
+  },
+  "publish": {
+    "provider": "generic",
+    "url": "https://tempoflow3.local/dl-sandboxa6dd97fbd7ea5672b283334a/server/",
+    "useMultipleRangeRequest": false
+  }
+}

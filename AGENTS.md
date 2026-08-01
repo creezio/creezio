@@ -97,24 +97,24 @@ restart après PUT files efface le process respawné.
 
 Happy path **non technique** (expérience TempoFlow3) :
 
-1. Lire uniquement
-   [`docs/experiences/tempoflow3/PROMPT-PRODUIT.md`](./docs/experiences/tempoflow3/PROMPT-PRODUIT.md)
-   et le PRD qu’il pointe
-   ([`PRD-PRODUIT.md`](./docs/experiences/tempoflow3/PRD-PRODUIT.md)).
-2. Générer l’app :
+1. Suivre la suite ordonnée
+   [`docs/experiences/tempoflow3/HISTORIQUE-PROMPTS.md`](./docs/experiences/tempoflow3/HISTORIQUE-PROMPTS.md)
+   (cadre → bootstrap → **mini-PRDs par onglet**).
+2. Bootstrap :
 
 ```bash
 creezio new-app \
   --from-prd docs/experiences/tempoflow3/PRD-PRODUIT.md \
-  --out /tmp/tempoflow3 --force
-cd /tmp/tempoflow3 && npm run test:metier-parcours
+  --out apps/tempoflow3 --force
+cd apps/tempoflow3 && npm run test:metier-parcours
 ```
 
-3. Si un générique manque → **corriger creezio** (factory / générateurs /
-   packages natifs), pas enrichir le prompt avec du jargon kit.
+3. Enrichir **un module à la fois** via `mini-prds/*.md` — jamais en collant
+   du code tempoflow2.
+4. Si un générique manque → **corriger creezio**, pas le prompt.
 
-Pas besoin de MASTER-PROMPT / P0–P12 pour ce parcours. Détail ADR :
-[`docs/ADR-factory-from-prd.md`](./docs/ADR-factory-from-prd.md).
+Journal : [`JOURNAL-CREATION.md`](./docs/experiences/tempoflow3/JOURNAL-CREATION.md).  
+ADR : [`docs/ADR-factory-from-prd.md`](./docs/ADR-factory-from-prd.md).
 
 ## Ne pas faire
 

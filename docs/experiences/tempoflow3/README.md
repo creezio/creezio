@@ -1,86 +1,67 @@
 # Expérience TempoFlow3 — prouver l’OS Creezio
 
-## Intention (vraie)
+## Intention
 
-Donner un **brief produit non technique** (« app pour restaurateurs qui
-surveillent les prix fournisseurs… ») et vérifier que, grâce à **creezio**,
-l’app se crée toute seule.
+Donner des **prompts produit** (cadre + mini-PRDs par onglet), **sans code
+à coller**, et obtenir une app TempoFlow3 :
 
-- Si ça marche → l’OS est un vrai OS.  
-- Si l’agent a besoin d’un roman technique (`host-stack`, sync vendor, P0…) →
-  **ce n’est pas le brief qu’il faut complexifier : c’est creezio à modifier**
-  (factory « from PRD », doc agent, scaffolds).
+- repo marque **léger** (métier seulement) ;
+- capacités **lourdes** via creezio (auth, desktop, assistant, tasks, mails,
+  plugins, tunnel, MCP…).
 
-Entrées produit (à utiliser en premier) :
+Si l’agent doit tricher (copier tempoflow2) ou digérer un roman technique →
+**c’est creezio à corriger**.
 
-- [PRD-PRODUIT.md](./PRD-PRODUIT.md)  
-- [PROMPT-PRODUIT.md](./PROMPT-PRODUIT.md)  
+## Chemin agent (à utiliser)
 
-**Audit (réponse précise)** : [AUDIT-BRIEF-PRODUIT.md](./AUDIT-BRIEF-PRODUIT.md)  
-→ Aujourd’hui le brief produit **ne suffit pas** (preuves + plan F0→F5).
+1. **[HISTORIQUE-PROMPTS.md](./HISTORIQUE-PROMPTS.md)** — suite ordonnée des
+   prompts (0 cadre → 1 bootstrap → 2…12 mini-PRDs → 13 audit).
+2. **[mini-prds/](./mini-prds/)** — un mini-PRD précis par onglet / module.
+3. **[JOURNAL-CREATION.md](./JOURNAL-CREATION.md)** — ce qui a déjà été exécuté.
+4. **[PRD-PRODUIT.md](./PRD-PRODUIT.md)** + **[PROMPT-PRODUIT.md](./PROMPT-PRODUIT.md)**
+   — brief global non technique.
 
-Le reste de ce dossier (oracle 0.10.26, allowlist, prompts ingénieur P0–P12)
-sert de **filet / audit interne**, pas de brief utilisateur.
+## État actuel
+
+| Étape | Statut |
+|-------|--------|
+| Factory `--from-prd` (F0–F5) | ✅ dans creezio |
+| Prompt 0–1 (cadre + bootstrap) | ✅ `apps/tempoflow3` + smokes verts |
+| Prompts 2–12 (enrichissement onglets) | ⏳ mini-PRDs prêts, à enchaîner |
+| Prompt 13 (audit allowlist / oracle) | ⏳ |
+
+Bootstrap déjà joué :
+
+```bash
+creezio new-app \
+  --from-prd docs/experiences/tempoflow3/PRD-PRODUIT.md \
+  --out apps/tempoflow3 --force
+cd apps/tempoflow3 && npm run test:metier-parcours
+```
 
 ## Deux références (ne pas mélanger)
 
 | Dimension | Référence | Rôle |
 |-----------|-----------|------|
-| **Capacités** (ce que l’app doit *faire*) | TempoFlow **0.10.26** / `e36e4d0` (27 juil.) | Oracle produit — dernière version qui marchait avant refactor |
-| **Forme** (à quoi le code doit *ressembler*) | TempoFlow2 **tip** (kit `@creezio/*`) **plus clean** | Architecture cible — pas le monolithe 0.10.26 |
-
-TempoFlow3 ne doit **en rien** ressembler structurellement à 0.10.26
-(pas de vendor creezio, launchers electron maison partout). Elle doit
-ressembler à la TF2 tip (vendor + wiring + métier), en plus strict sur
-l’allowlist.
-
-Checklist capacités : [ORACLE-0.10.26.md](./ORACLE-0.10.26.md).  
-Prompt unique pour un agent : [MASTER-PROMPT.md](./MASTER-PROMPT.md).
-
-## Ce que l’expérience prouve (ou infirme)
-
-| Si… | Alors… |
-|-----|--------|
-| `tempoflow3` passe les gates oracle 0.10.26 avec code marque = métier + wiring mince | l’OS est suffisant pour une marque TempoFlow |
-| un prompt est forcé d’ajouter du natif dans `tempoflow3` | **gap kit** → ticket creezio, pas « on copie TF2 » |
-| parity UI/API métier OK mais `test:shell` incomplet | OS partiel — documenter les trous |
-
-Hors scope de l’expérience :
-
-- améliorations d’architecture imaginées pendant le refactor (P*, N*, intention…) ;
-- parity avec `0.10.33` ;
-- Fidu / Certivan ;
-- republish Windows production.
+| **Capacités** | TempoFlow **0.10.26** | Oracle produit |
+| **Forme** | tip kit `@creezio/*` (clean) | Architecture cible |
 
 ## Documents
 
 | Fichier | Rôle |
 |---------|------|
-| [ORACLE-0.10.26.md](./ORACLE-0.10.26.md) | Surfaces, pages, `test:shell`, métier à égaler |
-| [PRD.md](./PRD.md) | Cahier des charges TempoFlow3 |
-| [PROMPTS.md](./PROMPTS.md) | Suite de prompts P0…P12 (textes prêts) |
-| [ALLOWLIST.md](./ALLOWLIST.md) | Ce qui a le droit d’exister dans tempoflow3 |
-| [RAPPORT-TEMPLATE.md](./RAPPORT-TEMPLATE.md) | Trame du rapport final |
-
-## Déroulement
-
-```text
-Oracle 0.10.26 figé
-        ↓
-PRD + PROMPTS (ce dossier)
-        ↓
-P0–P5   OS monté depuis creezio
-        ↓ gates OS (sous-ensemble test:shell 0.10.26)
-P6–P10  Métier TempoFlow injecté
-        ↓ gates métier 0.10.26
-P11     Parity checklist oracle
-        ↓
-P12     Audit allowlist + RAPPORT
-```
+| [HISTORIQUE-PROMPTS.md](./HISTORIQUE-PROMPTS.md) | **Playbook prompts** |
+| [mini-prds/](./mini-prds/) | Mini-PRDs par onglet |
+| [JOURNAL-CREATION.md](./JOURNAL-CREATION.md) | Suivi d’exécution |
+| [ORACLE-0.10.26.md](./ORACLE-0.10.26.md) | Checklist capacités |
+| [ALLOWLIST.md](./ALLOWLIST.md) | Ce qui a le droit d’exister |
+| [AUDIT-BRIEF-PRODUIT.md](./AUDIT-BRIEF-PRODUIT.md) | Audit factory F0–F5 |
+| [PROMPTS.md](./PROMPTS.md) | Ancien plan ingénieur P0–P12 (filet, pas happy path) |
+| [RAPPORT-TEMPLATE.md](./RAPPORT-TEMPLATE.md) | Rapport final |
 
 ## Anti-patterns (invalident l’expérience)
 
-1. Cloner `tempoflow2@main` / `0.10.33` puis effacer des dossiers.  
-2. Copier des fichiers natifs depuis `0.10.26` au lieu de consommer `@creezio/*`.  
-3. Changer l’oracle en cours de route.  
-4. « Ça compile » sans rejouer les gates listées dans l’oracle.
+1. Cloner `tempoflow2` puis effacer des dossiers.  
+2. Coller du code oracle 0.10.26 dans la marque.  
+3. Enrichir le prompt avec `host-stack` / sync-vendor pour « débloquer ».  
+4. Mettre des launchers OS dans `apps/tempoflow3`.
