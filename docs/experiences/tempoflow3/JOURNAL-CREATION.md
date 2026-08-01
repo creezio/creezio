@@ -19,7 +19,7 @@ qui dump déjà tout le métier TempoFlow.
 | Prompt 6 — Commandes | ✅ | from-panier + statuts MVP |
 | Phase C — Meili générique | ✅ | `BrandMeiliFeed` + `catalog_*` + smoke fake/fallback |
 | Phase D — desktop kernel HTTP + Meili | ✅ | `listenBrandKernelHttp` + `maybeBootBrandMeili` + SPA search |
-| Prompts 7+ — modules bonus | ⏳ | optimiser, stack, scan… un par un |
+| Phase E — modules bonus 06–11 | ✅ | `brand-bonus-api.ts` + `test:mini-prd-bonus` |
 
 ---
 
@@ -75,3 +75,22 @@ node --test scripts/test-phase-factory-prd.mjs \
 Preuves d’absence sidecar : pas de `scripts/metier-api.mjs`, pas de
 `store.json` sous le dataDir de smoke ; health `/api/v1/core/health` +
 CRUD `/api/v1/modules/*` sur `brand.db`.
+
+## Raisonnement Prompts 7–12 (bonus 06–11)
+
+Écrits **dans la marque** uniquement (`brand-bonus-api.ts`, migration
+`fromprd_brand_002_bonus_modules`, nav, SPA, pages Next). Pas de template
+factory — sinon triche d’évaluation.
+
+| Mini-PRD | Décision |
+|----------|----------|
+| 06 Optimiser | Suggest = min prix connu par produit ; apply réécrit le panier |
+| 07 Stack | Table `stack_produits` ; add/remove ; panier en 1 POST |
+| 08 Relevés | Entête + lignes ; `apply-prix` crée historique prix traçable |
+| 09 Scan | Session + propositions ; validate → produits/prix/relevé ; IA = OS |
+| 10 Dashboard | Orientation + raccourcis + compteurs stack/relevés |
+| 11 Marketplaces | CRUD + liens ; secteurs↔produits ; data_mappings resolve |
+
+```bash
+npm run test:mini-prd-bonus
+```

@@ -60,6 +60,15 @@ métier, `app/**` pages métier, `server/routes/{catalog,fournisseurs,panier,com
 Réimplémenter `chat-db`, kanban tasks store, mail inbox store, mcp oauth server
 complet, admin database engine, shell chrome générique.
 
+## `apps/tempoflow3` (sandbox monorepo)
+
+Forme valide de preuve OS. Fichiers métier bonus attendus :
+
+- `src/electron/brand-bonus-api.ts` (mini-PRDs 06–11)
+- `crm/src/brand/schema-bonus.sql`
+- `scripts/test-mini-prd-bonus.mjs`
+- pages Next `ui/app/{optimiser,stack,releves,scan,marketplaces,…}`
+
 ## `crm/scripts/`
 
 - Tests métier + gates OS **adaptés** (assert chemins kit)

@@ -42,13 +42,20 @@
           <a href="#prix" data-page="prix">Prix</a>
           <a href="#panier" data-page="panier">Panier</a>
           <a href="#commandes" data-page="commandes">Commandes</a>
+    
+          <a href="#optimiser" data-page="optimiser">Optimiser</a>
+          <a href="#stack" data-page="stack">Mes produits</a>
+          <a href="#releves" data-page="releves">Relevés</a>
+          <a href="#scan" data-page="scan">Scan</a>
+          <a href="#marketplaces" data-page="marketplaces">Marketplaces</a>
+          <a href="#secteurs" data-page="secteurs">Secteurs</a>
     </nav>
     <main id="app">
       <p>Chargement API métier…</p>
     </main>
     <script>
       let BASE = localStorage.getItem("METIER_BASE_URL") || "http://127.0.0.1:18791";
-      const PAGES = [{"id":"dashboard","path":"/dashboard","title":"Dashboard","kind":"dashboard"},{"id":"fournisseurs","path":"/fournisseurs","title":"Fournisseurs","entityId":"fournisseurs","kind":"list"},{"id":"produits","path":"/produits","title":"Produits","entityId":"produits","kind":"list"},{"id":"prix","path":"/prix","title":"Prix","entityId":"prix","kind":"list"},{"id":"panier","path":"/panier","title":"Panier","entityId":"panier_lignes","kind":"flow"},{"id":"commandes","path":"/commandes","title":"Commandes","entityId":"commandes","kind":"list"}];
+      const PAGES = [{"id": "dashboard", "path": "/dashboard", "title": "Dashboard", "kind": "dashboard"}, {"id": "fournisseurs", "path": "/fournisseurs", "title": "Fournisseurs", "entityId": "fournisseurs", "kind": "list"}, {"id": "produits", "path": "/produits", "title": "Produits", "entityId": "produits", "kind": "list"}, {"id": "prix", "path": "/prix", "title": "Prix", "entityId": "prix", "kind": "list"}, {"id": "panier", "path": "/panier", "title": "Panier", "entityId": "panier_lignes", "kind": "flow"}, {"id": "commandes", "path": "/commandes", "title": "Commandes", "entityId": "commandes", "kind": "list"}, {"id": "optimiser", "path": "/optimiser", "title": "Optimiser", "kind": "flow"}, {"id": "stack", "path": "/stack", "title": "Mes produits", "kind": "list"}, {"id": "releves", "path": "/releves", "title": "Relevés", "kind": "list"}, {"id": "scan", "path": "/scan", "title": "Scan", "kind": "flow"}, {"id": "marketplaces", "path": "/marketplaces", "title": "Marketplaces", "kind": "list"}, {"id": "secteurs", "path": "/secteurs", "title": "Secteurs", "kind": "list"}];
       const ENTITIES = ["fournisseurs","produits","prix","panier_lignes","commandes"];
       const BRIDGE = window.creezioDesktop || window["tempoflow3Desktop"];
 
@@ -95,11 +102,73 @@
           "</tbody></table></section>";
       }
 
+      async function renderBonus(pageId) {
+        const main = document.getElementById("app");
+        if (pageId === "optimiser") {
+          const data = await api("/api/v1/modules/optimiser/suggest", { method: "POST", body: JSON.stringify({ from: "panier" }) });
+          main.innerHTML = "<section class='panel active'><h2>Optimiser</h2><p>" + (data.orientation||"") +
+            "</p><p>Total actuel " + data.total_actuel + " → optimisé " + data.total_optimise +
+            " (économie " + data.economie_eur + " €)</p><button id='apply-opt'>Appliquer au panier</button><pre>" +
+            JSON.stringify(data.propositions||[], null, 2) + "</pre></section>";
+          document.getElementById("apply-opt").onclick = async () => {
+            await api("/api/v1/modules/optimiser/apply", { method: "POST", body: JSON.stringify({ propositions: data.propositions }) });
+            alert("Panier mis à jour");
+          };
+          return true;
+        }
+        if (pageId === "stack") {
+          const data = await api("/api/v1/modules/stack");
+          main.innerHTML = "<section class='panel active'><h2>Mes produits</h2><ul>" +
+            (data.items||[]).map(i => "<li>" + (i.nom||i.produit_id) + " — " + (i.prix_actuel ?? "—") +
+            " € <button data-add='" + i.produit_id + "'>Panier</button> <button data-rm='" + i.produit_id + "'>Retirer</button></li>").join("") +
+            "</ul></section>";
+          main.querySelectorAll("[data-add]").forEach(b => b.onclick = async () => {
+            await api("/api/v1/modules/stack/" + b.getAttribute("data-add") + "/panier", { method: "POST", body: JSON.stringify({ quantite: 1 }) });
+            renderPage("stack");
+          });
+          main.querySelectorAll("[data-rm]").forEach(b => b.onclick = async () => {
+            await api("/api/v1/modules/stack/" + b.getAttribute("data-rm"), { method: "DELETE" });
+            renderPage("stack");
+          });
+          return true;
+        }
+        if (pageId === "dashboard") {
+          const d = await api("/api/v1/modules/dashboard");
+          main.innerHTML = "<section class='panel active'><h2>Dashboard</h2><p><strong>" + (d.orientation||"") +
+            "</strong></p><p>Fournisseurs " + d.fournisseurs + " · Panier " + d.panier_lignes +
+            " · Promos " + d.promos + " · Stack " + (d.stack||0) + "</p><ul>" +
+            (d.raccourcis||[]).map(r => "<li><a href='#" + r.path.replace(/^\//,"") + "' data-page='" + r.path.replace(/^\//,"") + "'>" + r.title + "</a></li>").join("") +
+            "</ul></section>";
+          main.querySelectorAll("[data-page]").forEach(a => a.onclick = (ev) => { ev.preventDefault(); renderPage(a.getAttribute("data-page")); });
+          return true;
+        }
+        if (["releves","scan","marketplaces","secteurs"].includes(pageId)) {
+          const path = pageId === "scan" ? "/api/v1/modules/scan/start" : "/api/v1/modules/" + pageId;
+          if (pageId === "scan") {
+            main.innerHTML = "<section class='panel active'><h2>Scan</h2><p>Mapping métier local — capture IA via assistant Creezio.</p>" +
+              "<textarea id='scan-lines' rows='4' style='width:100%' placeholder='nom|montant|fournisseur_id'></textarea>" +
+              "<button id='scan-go'>Démarrer</button><pre id='scan-out'></pre></section>";
+            document.getElementById("scan-go").onclick = async () => {
+              const lignes = document.getElementById("scan-lines").value.split(/\n/).filter(Boolean);
+              const started = await api("/api/v1/modules/scan/start", { method: "POST", body: JSON.stringify({ lignes_texte: lignes }) });
+              const validated = await api("/api/v1/modules/scan/" + started.id + "/validate", { method: "POST", body: "{}" });
+              document.getElementById("scan-out").textContent = JSON.stringify(validated, null, 2);
+            };
+            return true;
+          }
+          const data = await api(path);
+          main.innerHTML = "<section class='panel active'><h2>" + pageId + "</h2><pre>" + JSON.stringify(data.items||data, null, 2) + "</pre></section>";
+          return true;
+        }
+        return false;
+      }
+
       async function renderPage(pageId) {
         const page = PAGES.find((p) => p.id === pageId) || PAGES[0];
         const entityId = page.entityId || page.id;
         const main = document.getElementById("app");
         try {
+          if (await renderBonus(pageId)) return;
           const data = await api("/api/v1/modules/" + entityId);
           const entity = [{"id":"fournisseurs","label":"Fournisseur","labelPlural":"Fournisseurs","archivable":true,"fields":[{"name":"nom","type":"text","required":true,"label":"Nom"},{"name":"contact","type":"text","label":"Contact"},{"name":"email","type":"text","label":"Email"},{"name":"telephone","type":"text","label":"Téléphone"},{"name":"site_web","type":"text","label":"Site web"},{"name":"notes","type":"text","label":"Notes"}]},{"id":"produits","label":"Produit","labelPlural":"Produits","archivable":true,"fields":[{"name":"nom","type":"text","required":true,"label":"Nom"},{"name":"unite","type":"text","label":"Unité"},{"name":"categorie","type":"text","label":"Catégorie"},{"name":"fournisseur_id","type":"ref","ref":"fournisseurs","label":"Fournisseur"}]},{"id":"prix","label":"Prix","labelPlural":"Prix","fields":[{"name":"produit_id","type":"ref","ref":"produits","required":true,"label":"Produit"},{"name":"fournisseur_id","type":"ref","ref":"fournisseurs","required":true,"label":"Fournisseur"},{"name":"montant","type":"number","required":true,"label":"Montant HT"},{"name":"devise","type":"text","label":"Devise"},{"name":"promo","type":"boolean","label":"Promo"},{"name":"promo_label","type":"text","label":"Libellé promo"}]},{"id":"panier_lignes","label":"Ligne panier","labelPlural":"Panier","fields":[{"name":"produit_id","type":"ref","ref":"produits","required":true,"label":"Produit"},{"name":"fournisseur_id","type":"ref","ref":"fournisseurs","required":true,"label":"Fournisseur"},{"name":"quantite","type":"number","required":true,"label":"Quantité"},{"name":"prix_unitaire","type":"number","label":"Prix unitaire"}]},{"id":"commandes","label":"Commande","labelPlural":"Commandes","fields":[{"name":"fournisseur_id","type":"ref","ref":"fournisseurs","required":true,"label":"Fournisseur"},{"name":"statut","type":"text","required":true,"label":"Statut"},{"name":"total_ht","type":"number","label":"Total HT"},{"name":"notes","type":"text","label":"Notes"}]}].find((e) => e.id === entityId);
           const fields = (entity && entity.fields) || [{ name: "nom", type: "text", required: true, label: "Nom" }];

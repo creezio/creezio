@@ -4,6 +4,10 @@
  */
 import { randomUUID } from "node:crypto";
 import type { ApiKernel, ApiMount, ApiRequest } from "@creezio/api-kernel";
+import {
+  enrichDashboardBody,
+  registerBrandBonusApi,
+} from "./brand-bonus-api.js";
 
 const ENTITY_IDS = ["fournisseurs","produits","prix","panier_lignes","commandes"] as const;
 const ARCHIVABLE = new Set(["fournisseurs","produits"]);
@@ -296,26 +300,27 @@ function createDashboardMount(): ApiMount {
             c: number;
           }
         ).c;
+      const base = {
+        fournisseurs: ARCHIVABLE.has("fournisseurs")
+          ? count("fournisseurs", "WHERE archived_at IS NULL")
+          : count("fournisseurs"),
+        produits: ARCHIVABLE.has("produits")
+          ? count("produits", "WHERE archived_at IS NULL")
+          : count("produits"),
+        prix: ENTITY_IDS.includes("prix" as never) ? count("prix") : 0,
+        panier_lignes: ENTITY_IDS.includes("panier_lignes" as never)
+          ? count("panier_lignes")
+          : 0,
+        commandes: ENTITY_IDS.includes("commandes" as never)
+          ? count("commandes")
+          : 0,
+        promos: ENTITY_IDS.includes("prix" as never)
+          ? count("prix", "WHERE promo = 1")
+          : 0,
+      };
       return {
         status: 200,
-        body: {
-          fournisseurs: ARCHIVABLE.has("fournisseurs")
-            ? count("fournisseurs", "WHERE archived_at IS NULL")
-            : count("fournisseurs"),
-          produits: ARCHIVABLE.has("produits")
-            ? count("produits", "WHERE archived_at IS NULL")
-            : count("produits"),
-          prix: ENTITY_IDS.includes("prix" as never) ? count("prix") : 0,
-          panier_lignes: ENTITY_IDS.includes("panier_lignes" as never)
-            ? count("panier_lignes")
-            : 0,
-          commandes: ENTITY_IDS.includes("commandes" as never)
-            ? count("commandes")
-            : 0,
-          promos: ENTITY_IDS.includes("prix" as never)
-            ? count("prix", "WHERE promo = 1")
-            : 0,
-        },
+        body: enrichDashboardBody(db, base),
       };
     },
   };
@@ -381,4 +386,5 @@ export function registerBrandModuleApi(api: ApiKernel): void {
   api.registerModuleApi("schema", createSchemaMount());
   api.registerModuleApi("dashboard", createDashboardMount());
   api.registerModuleApi("search", createSearchMount());
+  registerBrandBonusApi(api);
 }

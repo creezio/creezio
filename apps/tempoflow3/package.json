@@ -22,7 +22,8 @@
     "electron:publish:dry": "CREEZIO_BRAND=tempoflow3 bash ../../packages/desktop-tooling/scripts/publish-desktop.sh --dry-run",
     "desktop:dev": "npm run build:electron && electron .",
     "test:mini-prd-core": "node scripts/test-mini-prd-core.mjs",
-    "test": "npm run test:metier-parcours && npm run test:mini-prd-core && npm run test:first-run-auth && npm run test:setup-login && npm run test:allowlist && npm run test:meili-config && npm run test:desktop-smoke-profile"
+    "test:mini-prd-bonus": "node scripts/test-mini-prd-bonus.mjs",
+    "test": "npm run test:metier-parcours && npm run test:mini-prd-core && npm run test:mini-prd-bonus && npm run test:first-run-auth && npm run test:setup-login && npm run test:allowlist && npm run test:meili-config && npm run test:desktop-smoke-profile"
   },
   "dependencies": {
     "@creezio/brand-config": "0.1.0",

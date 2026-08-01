@@ -49,9 +49,11 @@ const required = [
   "src/electron/brand-runtime.ts",
   "src/electron/brand-migrations.ts",
   "src/electron/brand-module-api.ts",
+  "src/electron/brand-bonus-api.ts",
   "src/electron/meili-feed.ts",
   "scripts/brand-kernel-harness.mjs",
   "crm/src/brand/schema.sql",
+  "crm/src/brand/schema-bonus.sql",
   "product-model.json",
 ];
 for (const rel of required) {

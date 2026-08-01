@@ -124,18 +124,26 @@ Exemples de domaines code marque :
 
 ## Checklist opérateur
 
-- [ ] Boot Client / Serveur (profils Héberger / Rejoindre)
-- [ ] Setup / recovery key
-- [ ] Auth login
-- [ ] Catalogue fournisseurs + recherche (Meili ou fallback SQL)
-- [ ] Fiche fournisseur / produits / SKU
-- [ ] Panier + commande
-- [ ] Optimiser (chemin de base)
-- [ ] Stack / relevés / scan (si dans MVP étendu)
-- [ ] Tâches kanban + mission IA (si desktop)
-- [ ] Mails inbox accessible
+### Métier TF3 (sonde — 2026-08-01)
+
+- [x] Bootstrap `--from-prd` natif (api-kernel + SQLite)
+- [x] Auth / setup via OS kit (`createDesktopSessionStore`)
+- [x] Catalogue fournisseurs + produits + prix + panier + commande
+- [x] Recherche (`/modules/search` Meili ou SQL)
+- [x] Optimiser (suggest + apply)
+- [x] Stack / relevés / scan (mapping métier, pas d’IA marque)
+- [x] Dashboard métier (orientation + raccourcis)
+- [x] Marketplaces + secteurs + agrégateurs + data-mapping
+- [x] Desktop mince : kernel HTTP + Meili optionnel
+
+### OS / parity 0.10.26 (hors MVP sonde métier)
+
+- [ ] Boot Client / Serveur (profils Héberger / Rejoindre) complet
+- [ ] Recovery key
+- [ ] Tâches kanban + mission IA
+- [ ] Mails inbox
 - [ ] MCP URL publique tunnel + OAuth
-- [ ] Plugins control plane (scaffold + health)
-- [ ] Hermes / n8n embeds status
-- [ ] Admin MCP / database / plugins ouvrables
-- [ ] `test:shell` agrégat vert
+- [ ] Plugins control plane
+- [ ] Hermes / n8n embeds
+- [ ] Admin MCP / database / plugins
+- [ ] `test:shell` agrégat vert (équivalent kit)

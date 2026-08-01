@@ -24,10 +24,10 @@ fonctionner → creezio (factory / wiring / Meili générique) n’est pas au ni
 
 ## 1. État actuel (inventaire honnête)
 
-**MAJ 2026-08-01** — Phases **A–D (socle)** livrées : factory natif + TF3
-kernel HTTP desktop + Meili optionnel (`maybeBootBrandMeili`) + SPA search +
-Next sur `/api/v1/modules/*`. Reste **E** (modules bonus) ; coherence-query
-feed descriptor ; `installBrandDesktopRuntime` complet hors scope sonde.
+**MAJ 2026-08-01** — Phases **A–E** livrées pour la sonde métier : OS natif +
+Meili feed + desktop mince + mini-PRDs 01–11 dans la marque. Hors scope :
+`test:shell` 0.10.26 complet, monolithe `installBrandDesktopRuntime`,
+coherence Meili child-process feed descriptor.
 
 ### 1.1 Ce qui est OK (aligné intention)
 
@@ -49,7 +49,7 @@ feed descriptor ; `installBrandDesktopRuntime` complet hors scope sonde.
 | **Desktop runtime complet** | boot mince (kernel HTTP + Meili optionnel + SPA) — pas `installBrandDesktopRuntime` | brancher hosts lourds si besoin prod |
 | **Cohérence child-process** | feed process-local ; legacy decideMeiliReady encore tf2_* | descriptor feed pour coherence-query |
 | **Next serveur embarqué** | pages Next pointent `/modules/*` ; pas de process Next dans main sonde | mount Hono/Next optionnel |
-| **Modules bonus** | hors ProductModel cœur | mini-PRDs 06–11 |
+| **Modules bonus** | ✅ `brand-bonus-api` + smoke 06–11 | — |
 
 ### 1.3 Fichiers encore à traiter (C+)
 
@@ -264,5 +264,6 @@ A1–A3 (générateurs natifs)
 
 ## 10. Prochaine action concrète
 
-Phases **A–D (socle)** closes. Enchaîner **Phase E** (modules bonus 06–11 +
-ALLOWLIST/ORACLE/rapport gaps).
+Phases **A–E** closes pour la sonde. Suite éventuelle : parity OS
+`test:shell` / tunnel / MCP OAuth (kit), extraction repo externe, coherence
+Meili feed descriptor.
