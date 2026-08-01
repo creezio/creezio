@@ -1,149 +1,112 @@
-# PRD — TempoFlow3 (expérience OS Creezio)
+# PRD — TempoFlow3
 
-**Statut** : protocole d’expérience  
-**Oracle** : TempoFlow **0.10.26** / `e36e4d0` (27 juil. 2026) — voir [ORACLE-0.10.26.md](./ORACLE-0.10.26.md)  
-**Non-oracle** : `0.10.33` et toute dette/amélioration née du refactor kit
+## 1. But de l’expérience
 
----
+Créer un nouveau dépôt **`tempoflow3`** qui :
 
-## 1. Produit
+1. **Fonctionne** au moins comme TempoFlow **0.10.26** (27 juil. 2026, `e36e4d0`) — c’est la référence **produit / capacités**.
+2. **Ressemble structurellement** à la **dernière** TempoFlow2 (tip post-kit : `vendor/@creezio/*`, wiring mince, modules métier) — **en plus clean**, pas au monolithe 0.10.26.
 
-**TempoFlow3** est une application desktop CRM fournisseurs (Electron + Next.js)
-dont le **socle natif** est fourni exclusivement par le kit `@creezio/*`, et dont
-le repo marque ne contient que :
+Autrement dit :
 
-- le **métier** TempoFlow (catalogue, panier, commandes, optimiser, …) ;
-- le **wiring mince** vers le kit (`configure*`, host-stack composition, nav métier).
+| Dimension | Référence | Interdit |
+|-----------|-----------|----------|
+| Capacités / parcours / tests comportementaux | **0.10.26** | Régresser vs ce qui marchait le 27 juil. |
+| Architecture code / dossiers / deps | **TF2 tip (kit)** plus strict | Copier l’arborescence monolithe 0.10.26 |
+| Améliorations architecture « vision » post-refactor | hors scope sauf si déjà dans le kit | Réinventer P/N/O dans la marque |
 
-Promesse utilisateur (identique à 0.10.26) :
-
-- catalogue fournisseurs local (SQLite + Meilisearch) ;
-- shell desktop, BYOK, tunnel `{slug}.tempoflow.fr` ;
-- MCP sur le tunnel ;
-- tâches / assistant / mails / plugins / admin issus de l’OS.
+Le but n’est **pas** de cloner 0.10.26. Le but est de prouver que **l’OS creezio** + un PRD métier suffisent à produire une app TempoFlow propre.
 
 ---
 
-## 2. Non-objectifs
+## 2. Produit (ce que c’est)
 
-- Parité avec `tempoflow2@0.10.33` (post-refactor).
-- Implémenter les visions architecture P/N/O « améliorées » non présentes au 27 juil.
-- Porter Fidu / Certivan.
-- Cloner le monolithe 0.10.26 fichier à fichier.
-- Publier un build Windows production pendant l’expérience (optionnel en fin).
+**TempoFlow** = CRM desktop local pour le **catalogue et le suivi fournisseurs** :
 
----
+- app Electron + UI Next.js ;
+- données SQLite (+ Meilisearch) sur la machine ;
+- assistant IA BYOK ;
+- accès distant via tunnel `{slug}.tempoflow.fr` ;
+- MCP exposé sur le tunnel ;
+- kanban tâches (humains / IA / Hermes), mails, plugins org, admin plateforme.
 
-## 3. Frontière kit vs marque
-
-### 3.1 Interdit dans `tempoflow3` (SoT = creezio)
-
-Auth/session/recovery, shell-ui chrome générique, api-kernel, mcp-facade (OAuth,
-policies, host tools génériques), electron-shell (boot, tray, updater, splash,
-launchers Hermes/n8n/Meili/tunnel, plugin launcher/control plane), tasks kanban
-générique, mails inbox générique, observability/ops/fleet génériques, product-hub
-lifecycle générique, database admin générique, onboarding/cockpit engines,
-brand-config manifests helpers, desktop-tooling publish.
-
-### 3.2 Autorisé dans `tempoflow3`
-
-Voir [ALLOWLIST.md](./ALLOWLIST.md).
-
-En résumé : identité TempoFlow, `configure*`, modules/routes/UI/queries métier,
-migrations **brand**, seeds métier, tests métier + adaptateurs de gates OS.
+Ce n’est **pas** Fidu (GED cabinet), **pas** Certivan (dossiers VASP), **pas** un CRM cloud multi-tenant.
 
 ---
 
-## 4. Contrats kit à consommer
+## 3. Capacités minimales (= oracle 0.10.26)
 
-| Capacité 0.10.26 | Package kit attendu | Wiring marque |
-|------------------|---------------------|---------------|
-| Manifest / feeds / bridge | `@creezio/brand-config` | `electron/brand.ts` |
-| Boot desktop / host stack | `@creezio/electron-shell` | `main`, `host-stack`, bindings |
-| Paths / SQLite multi-DB | `@creezio/platform-core` | brand-runtime mince |
-| HTTP `/api/v1` | `@creezio/api-kernel` | register mounts + modules métier |
-| MCP | `@creezio/mcp-facade` | brand facade + aliases métier |
-| Auth | `@creezio/auth` | montage routes/UI |
-| Nav / AppShell | `@creezio/shell-ui` | nav métier + slots |
-| Onboarding / cockpit | `@creezio/onboarding`, `cockpit` | `configure*` |
-| Assistant | `@creezio/assistant` | `configureAssistantBrand` + prompts métier |
-| Tâches | `@creezio/tasks` | `configure-tasks` |
-| Mails | `@creezio/mails` | `configure-mails` |
-| Plugins / Product Hub | `@creezio/product-hub` + electron-shell CP | hub store + ACL |
-| Observability | `@creezio/observability` | opt-in fleet TF |
-| Database admin | `@creezio/database` | mount admin |
+Détail opérable : [ORACLE-0.10.26.md](./ORACLE-0.10.26.md).
 
-Si un contrat manque → **stop expérience**, ouvrir gap kit, ne pas réimplémenter
-dans tempoflow3.
+### Plateforme (doit venir du kit `@creezio/*`)
+
+First-run (Héberger / Rejoindre), setup, recovery key, auth, shell UI, onboarding, configuration, cockpit, tâches, mails, MCP OAuth + URL publique, plugins control plane, Hermes/n8n embeds, admin (MCP, plugins, database, API, analytics, request-logs), updater/BYOK/profils, ops journal, AI workspace / open external tab, etc. — tout ce que `test:shell` @ 0.10.26 couvrait.
+
+### Métier TempoFlow (seul gros code dans tempoflow3)
+
+- Catalogue fournisseurs / produits / SKU / secteurs / marketplaces / agrégateurs  
+- Panier, commandes, optimiser, dispatch  
+- Stack, relevés, scan, promotions, data-mapping  
+- Surfaces fournisseur (`/site/[fournisseurId]`)  
+- Search (Meili host + fallback SQL métier)  
+- Nav métier + aliases MCP métier  
+
+MVP d’abord (dashboard, fournisseurs, produits, skus, panier, commandes, search, nav) puis extension (optimiser, dispatch, relevés, scan…) jusqu’à checklist oracle cochée.
 
 ---
 
-## 5. Métier (périmètre MVP puis extension)
+## 4. Forme du repo (cible architecture = TF2 tip clean)
 
-### MVP (doit égaler le « cœur » 0.10.26)
+Structure attendue (inspirée demobrand + TF2 tip, **pas** 0.10.26) :
 
-1. Schéma brand + migrations catalogue / panier / commandes / stack de base  
-2. Routes API + queries associées  
-3. Pages : dashboard, fournisseurs, produits, skus, panier, commandes  
-4. Search (Meili via kit/host + fallback SQL marque)  
-5. Nav métier + ACL  
-6. Data-mapping / agrégateurs (niveau utilisable 0.10.26)
+```text
+tempoflow3/
+  README.md
+  AGENTS.md
+  docs/
+  crm/
+    package.json          # deps file:vendor/creezio/*
+    vendor/creezio/       # sync kit uniquement
+    electron/             # wiring mince + modules/ métier
+    src/
+      app/                # pages métier (+ wrappers minces plateforme)
+      lib/                # queries métier + configure*
+      server/             # mounts kit + routes métier
+    scripts/              # tests adaptés
+```
 
-### Extension (après MVP vert)
+### Règles clean (plus strictes que TF2 tip actuel)
 
-- Optimiser complet + tests optimiser_*  
-- Dispatch avancé  
-- Relevés, scan, promotions, secteurs, marketplaces, surface `/site/[id]`
+1. **Zéro** launcher OS dans la marque (Hermes/n8n/Meili/plugin-control/updater/tray…).  
+2. **Zéro** store plateforme dupliqué (auth, tasks, mails, chat-db, mcp-oauth monolithe…).  
+3. Tout natif = import `@creezio/*` après `electron:sync-vendor`.  
+4. Marque = `configure*` + `host-stack` composition + modules/routes/UI/migrations **brand**.  
+5. Si le kit ne suffit pas → **gap creezio**, pas un copier-coller depuis 0.10.26.  
+6. Allowlist : [ALLOWLIST.md](./ALLOWLIST.md).
 
-L’oracle checklist reste la boussole : on coche MVP d’abord, extension ensuite.
-
----
-
-## 6. Données
-
-| DB | Contenu | Propriétaire |
-|----|---------|--------------|
-| `core.db` | users, auth, tasks, mails, mcp, plugins hub, ops… | kit |
-| `brand.db` (tempoflow) | catalogue, panier, commandes, mapping… | marque |
-| `plugin/<id>.db` | sidecars | kit à l’install |
-
----
-
-## 7. Acceptance
-
-### A — OS (équivalent `test:shell` 0.10.26)
-
-Tous les items de la chaîne listée dans [ORACLE-0.10.26.md](./ORACLE-0.10.26.md)
-passent (ou équivalent documenté si renommé côté kit).
-
-### B — Métier MVP
-
-- [ ] API catalogue / panier / commandes répondent  
-- [ ] Pages cœur rendent sans crash  
-- [ ] `test:panier-sku` (ou équivalent) vert  
-- [ ] Parcours manuel first-run → panier
-
-### C — Allowlist
-
-Audit P12 : 0 fichier natif dupliqué hors allowlist ; wiring ≤ seuil documenté
-dans le rapport.
-
-### D — Oracle
-
-Checklist opérateur [ORACLE-0.10.26.md](./ORACLE-0.10.26.md) cochée pour MVP
-(+ extension si jouée).
+Tu peux t’inspirer de **comment** TF2 tip branche le kit (`brand-runtime`, `host-stack`, `configure-brand`) comme **modèle de câblage**, jamais recopier le monolithe 0.10.26 ni le gras résiduel TF2 sans le réduire.
 
 ---
 
-## 8. Livrables
+## 5. Non-objectifs
 
-1. Repo GitHub `creezio/tempoflow3`  
-2. Ce PRD + prompts exécutés (historique commits `Pxx:`)  
-3. `RAPPORT-EXPERIENCE.md` (template [RAPPORT-TEMPLATE.md](./RAPPORT-TEMPLATE.md))  
-4. PR creezio éventuelles pour gaps
+- Ressembler à 0.10.26 en structure fichiers  
+- Valider / reproduire 0.10.33 « tel quel »  
+- Porter les dettes twins TF2 (schemas gras, settings métier non filtrés)  
+- Publier Windows prod pendant l’expérience (optionnel après parity)
 
 ---
 
-## 9. Prompt pack
+## 6. Acceptance
 
-Textes complets : [PROMPTS.md](./PROMPTS.md).
+1. **Comportement** : checklist + `test:shell` équivalent + smokes métier MVP ≥ 0.10.26.  
+2. **Structure** : audit allowlist OK ; ratio wiring << métier ; 0 natif dupliqué.  
+3. **Traçabilité** : commits `Pxx:` selon [PROMPTS.md](./PROMPTS.md) ou exécution du prompt maître ci-dessous en une campagne documentée.
+
+---
+
+## 7. Références kit
+
+- `creezio/AGENTS.md`, `creezio/docs/PACKAGES.md`  
+- `creezio/packages/*/README.md` + `AGENTS.md`  
+- Factory : `creezio new-app` / `apps/demobrand` (squelette OS, **sans** métier TF)

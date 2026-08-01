@@ -12,22 +12,20 @@ Objectif : vérifier que l’OS permet de reconstruire une marque **métier-only
 dont le comportement applicatif égale au minimum la baseline qui **fonctionnait
 parfaitement avant le grand refactor kit**.
 
-## Oracle (référence absolue)
+## Deux références (ne pas mélanger)
 
-| Champ | Valeur |
-|-------|--------|
-| Repo | `creezio/tempoflow2` |
-| Version | **0.10.26** |
-| Tag | `v0.10.26` |
-| Commit | `e36e4d0e94d19e939343e6d7baac62087a0c39a5` |
-| Date | 27 juillet 2026 |
-| Note | **Aucun** `@creezio/*` dans ce tip — monolithe desktop qui marchait |
+| Dimension | Référence | Rôle |
+|-----------|-----------|------|
+| **Capacités** (ce que l’app doit *faire*) | TempoFlow **0.10.26** / `e36e4d0` (27 juil.) | Oracle produit — dernière version qui marchait avant refactor |
+| **Forme** (à quoi le code doit *ressembler*) | TempoFlow2 **tip** (kit `@creezio/*`) **plus clean** | Architecture cible — pas le monolithe 0.10.26 |
 
-**Ne pas** prendre `0.10.33` (30 juil., post-refactor) comme oracle.
-`0.10.33` peut servir de comparaison secondaire « état kit actuel », jamais de
-critère de succès de l’expérience.
+TempoFlow3 ne doit **en rien** ressembler structurellement à 0.10.26
+(pas de vendor creezio, launchers electron maison partout). Elle doit
+ressembler à la TF2 tip (vendor + wiring + métier), en plus strict sur
+l’allowlist.
 
-Checklist détaillée : [ORACLE-0.10.26.md](./ORACLE-0.10.26.md).
+Checklist capacités : [ORACLE-0.10.26.md](./ORACLE-0.10.26.md).  
+Prompt unique pour un agent : [MASTER-PROMPT.md](./MASTER-PROMPT.md).
 
 ## Ce que l’expérience prouve (ou infirme)
 
