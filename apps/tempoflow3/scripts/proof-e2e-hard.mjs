@@ -217,6 +217,13 @@ try {
 const distOk =
   fs.existsSync(path.join(root, "dist-electron")) &&
   fs.readdirSync(path.join(root, "dist-electron")).some((f) => /AppImage/i.test(f));
+record(
+  "ui.next-standalone",
+  fs.existsSync(path.join(root, "ui/.next/standalone/server.js")),
+  fs.existsSync(path.join(root, "ui/.next/standalone/server.js"))
+    ? "Next standalone prêt"
+    : "lancer npm run build:ui",
+);
 record("build.appimage", distOk, distOk ? "AppImage présent" : "manquant");
 
 const passed = checks.filter((c) => c.ok).length;

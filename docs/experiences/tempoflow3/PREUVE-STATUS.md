@@ -1,24 +1,32 @@
-# Preuve TempoFlow3 vs TempoFlow 0.10.26 — statut
+# Preuve TempoFlow3 — statut vivant
 
-## Verdict (honnête, en cours)
+## Ce qui est prouvé maintenant
 
 | Couche | Statut | Preuve |
 |--------|--------|--------|
-| Archi mince (pas host-stack marque) | OK | `proof:hard` arch.* |
-| OS hosts composés (Hermes/n8n/tunnel) | OK | `/api/v1/os/hosts` startHermes/startN8n |
-| MCP HTTP | OK | `GET /mcp` + tool `module.os.status` |
-| Platform tasks/mails | OK | mounts kit |
-| Métier API MVP + bonus routes | OK partiel | hard proof métier.* |
-| UI Next riche = 0.10.26 | **EN COURS** | pages fetch API ; pas encore parité UX TF2 |
-| `installBrandDesktopRuntime` (tray/splash/Next plane) | **EN COURS** | absorbé ensuite derrière façade |
-| Tunnel/Hermes **processus démarrés** (binaries) | partiel | factories prêtes ; embeds si runtime présent |
-| `test:shell` ~40 équivalent | **NON** | à construire progressivement |
+| Marque mince (pas host-stack) | OK | `proof:hard` |
+| OS hosts kit (Hermes/n8n/tunnel) | OK | `/api/v1/os/hosts` + status |
+| MCP HTTP | OK | `GET /mcp` |
+| tasks/mails platform | OK | mounts |
+| Métier API cœur + bonus + optimiser apply | OK | `proof:hard` 24+ |
+| Plan UI Next standalone | OK | `startBrandUiPlane` → dashboard/taches 200 |
+| SPA fallback | OK | `resources/renderer` |
+| AppImage | OK | artefact |
 
-### Scripts
+## Encore à faire pour « = 0.10.26 »
 
-- `npm run proof:hard` — preuve dure OS+MCP+métier (**20/20**)
-- `npm run proof:oracle` — checklist fichiers/API
+1. `installBrandDesktopRuntime` (splash, tray, WebContentsView, profils) derrière façade
+2. UX Next interactive (formulaires/CRUD) au niveau TF2 — pas seulement JSON fetch
+3. Démarrage embeds Hermes/n8n quand binaires présents + smoke
+4. Tunnel provision réel + MCP public URL
+5. Suite `test:shell` équivalente
+6. Reset BrandSpec → apply → re-dev bout-en-bout documenté
 
-### Kit
+## Commandes
 
-`@creezio/app-runtime` `desktopProfile: "full"` → `composeBrandOs` + `listenBrandOsHttp`.
+```bash
+cd apps/tempoflow3
+npm run build:ui          # Next standalone
+npm run proof:hard        # OS + MCP + métier
+npm run desktop:dev       # Electron (Next si buildé, sinon SPA)
+```
