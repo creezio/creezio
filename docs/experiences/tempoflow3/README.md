@@ -16,8 +16,11 @@ Entrées produit (à utiliser en premier) :
 - [PRD-PRODUIT.md](./PRD-PRODUIT.md)  
 - [PROMPT-PRODUIT.md](./PROMPT-PRODUIT.md)  
 
+**Audit (réponse précise)** : [AUDIT-BRIEF-PRODUIT.md](./AUDIT-BRIEF-PRODUIT.md)  
+→ Aujourd’hui le brief produit **ne suffit pas** (preuves + plan F0→F5).
+
 Le reste de ce dossier (oracle 0.10.26, allowlist, prompts ingénieur P0–P12)
-sert seulement de **filet / audit interne**, pas de brief utilisateur.
+sert de **filet / audit interne**, pas de brief utilisateur.
 
 ## Deux références (ne pas mélanger)
 
