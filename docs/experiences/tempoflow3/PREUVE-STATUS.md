@@ -27,9 +27,14 @@ Voir `AUDIT-GAPS-2026-08-01.md`.
 - Admin analytics + request-logs
 - `apply-modules` scaffold UI stubs
 
+## Windows
+
+Voir `PREUVE-WINDOWS-VERDICT.md` — **E2E Windows NON PROUVÉ** (pod Linux). Zip Win cross-compilé produit ; binaires Meili/cloudflared ELF Linux dans le pack = non shippable ; NSIS Setup incomplet.
+
 ## Encore ouvert (externes / profondeur)
 
 - Tunnel Cloudflare distant (`CREEZIO_TUNNEL_PROVISION_*`)
+- Build/test Windows réel (hôte Win + bins kit win)
 - `test:shell` ~40 scripts TF2 complets
 - ReactFlow optimiser TF2 pixel-perfect / missions IA riches
 

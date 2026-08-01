@@ -26,6 +26,8 @@
     "test": "npm run test:metier-parcours && npm run test:mini-prd-core && npm run test:mini-prd-bonus && npm run test:first-run-auth && npm run test:setup-login && npm run test:allowlist && npm run test:meili-config && npm run test:desktop-smoke-profile",
     "test:mini-prd-bonus": "node scripts/test-mini-prd-bonus.mjs",
     "pack:linux": "npm run build:electron && electron-builder --config electron-builder.client.json --linux AppImage dir --x64",
+    "pack:win": "npm run build:electron && CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --config electron-builder.client.json --win zip --x64 -c.win.signAndEditExecutable=false",
+    "pack:win:nsis": "npm run build:electron && CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --config electron-builder.client.json --win nsis --x64 -c.win.signAndEditExecutable=false",
     "proof:oracle": "node scripts/proof-oracle-0.10.26.mjs",
     "proof:hard": "node scripts/proof-e2e-hard.mjs"
   },

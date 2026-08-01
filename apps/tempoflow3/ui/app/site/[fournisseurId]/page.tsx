@@ -2,7 +2,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { use, useEffect, useState } from "react";
 import { metierBase } from "@/lib/metier-base";
 
 type SitePayload = {
@@ -27,20 +27,15 @@ type SitePayload = {
 export default function Page({
   params,
 }: {
-  params: { fournisseurId: string } | Promise<{ fournisseurId: string }>;
+  params: Promise<{ fournisseurId: string }>;
 }) {
+  const { fournisseurId } = use(params);
   const base = metierBase();
-  const [fournisseurId, setFournisseurId] = useState("");
   const [data, setData] = useState<SitePayload | null>(null);
   const [slot, setSlot] = useState<"catalogue" | "promos" | "web">("catalogue");
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    void Promise.resolve(params).then((p) => setFournisseurId(p.fournisseurId));
-  }, [params]);
-
-  useEffect(() => {
-    if (!fournisseurId) return;
     void fetch(`${base}/api/v1/modules/site/${fournisseurId}`)
       .then(async (res) => {
         const body = (await res.json()) as SitePayload;
