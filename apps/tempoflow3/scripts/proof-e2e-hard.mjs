@@ -546,6 +546,73 @@ try {
     `n=${likes.data.items?.length}`,
   );
 
+  // OS connection + setup (Héberger / first-run)
+  const conn = await json("GET", "/api/v1/os/connection");
+  record(
+    "os.connection-get",
+    conn.status === 200 && conn.data.profile?.mode,
+    conn.data.profile?.mode || conn.data.error,
+  );
+  const connSet = await json("POST", "/api/v1/os/connection", {
+    mode: "local",
+    chosen: true,
+    localBind: "127.0.0.1",
+  });
+  record(
+    "os.connection-set",
+    connSet.status === 200 && connSet.data.profile?.chosen === true,
+    `chosen=${connSet.data.profile?.chosen}`,
+  );
+  const setupGet = await json("GET", "/api/v1/os/setup");
+  record("os.setup-get", setupGet.status === 200, `complete=${setupGet.data.setupComplete}`);
+  if (!setupGet.data.setupComplete) {
+    const setupPost = await json("POST", "/api/v1/os/setup", {
+      username: "hardops",
+      password: "secret12",
+      openaiKey: "sk-hard-proof",
+    });
+    record(
+      "os.setup-post",
+      setupPost.status === 200 && setupPost.data.recoveryKey,
+      setupPost.data.recoveryKey ? "recovery issued" : setupPost.data.error,
+    );
+  } else {
+    record("os.setup-post", true, "already complete");
+  }
+  const plugins = await json("GET", "/api/v1/os/plugins");
+  record(
+    "os.plugins-list",
+    plugins.status === 200 && typeof plugins.data.mode === "string",
+    `mode=${plugins.data.mode}`,
+  );
+
+  // Tasks kanban move
+  const taskCreate = await json(
+    "POST",
+    "/api/v1/platform/platform-tasks/create",
+    { title: "Hard kanban" },
+    { "x-creezio-user-id": "ui-user" },
+  );
+  const taskId = taskCreate.data.task?.id;
+  record(
+    "os.tasks-kanban-create",
+    taskCreate.status < 300 && taskId,
+    taskId || taskCreate.data.error,
+  );
+  if (taskId) {
+    const moved = await json(
+      "PATCH",
+      `/api/v1/platform/platform-tasks/${taskId}`,
+      { status: "done" },
+      { "x-creezio-user-id": "ui-user" },
+    );
+    record(
+      "os.tasks-kanban-move",
+      moved.status === 200 && moved.data.task?.status === "done",
+      moved.data.task?.status || moved.data.error,
+    );
+  }
+
   // Pages UI Next critiques présentes (plus de stubs JSON-only pour le cœur)
   for (const rel of [
     "ui/app/dashboard/page.tsx",
@@ -553,11 +620,18 @@ try {
     "ui/app/promotions/page.tsx",
     "ui/app/skus/page.tsx",
     "ui/app/stack/page.tsx",
+    "ui/app/setup/page.tsx",
+    "ui/app/configuration/page.tsx",
+    "ui/app/taches/page.tsx",
+    "ui/app/admin/plugins/page.tsx",
+    "ui/app/likes/page.tsx",
   ]) {
     const src = fs.readFileSync(path.join(root, rel), "utf8");
     record(
-      `ui.${rel.split("/").slice(-2).join("/")}`,
-      /use client/.test(src) && !/JSON\.stringify\(data/.test(src),
+      `ui.${rel.replace("ui/app/", "")}`,
+      /use client/.test(src) &&
+        !/Surface exposée par l'OS Creezio/.test(src) &&
+        /fetch\(|MetierCrud/.test(src),
       "interactive",
     );
   }

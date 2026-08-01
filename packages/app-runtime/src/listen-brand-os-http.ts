@@ -9,7 +9,13 @@ import {
   kitBinaryPaths,
   kitOsVendorDir,
 } from "@creezio/electron-shell";
-import { findFreePort } from "@creezio/platform-core";
+import {
+  findFreePort,
+  generateRecoveryKey,
+  sanitizeConnectionProfile,
+  testRemoteHealth,
+  type ConnectionProfile,
+} from "@creezio/platform-core";
 import type { ApiKernel } from "@creezio/api-kernel";
 import type { McpFacade } from "@creezio/mcp-facade";
 import type { BrandOsComposition } from "./compose-brand-os.js";
@@ -407,6 +413,119 @@ export async function listenBrandOsHttp(opts: {
           publicN8n: tunnel.publicUrlForEmbedService?.("n8n") ?? null,
           publicHermes: tunnel.publicUrlForEmbedService?.("hermes") ?? null,
         });
+        return;
+      }
+
+      // Profil connexion Héberger / Rejoindre (store local-config).
+      if (pathname === "/api/v1/os/connection" && req.method === "GET") {
+        if (!opts.os) {
+          send(res, 503, { ok: false, error: "os_not_composed" });
+          return;
+        }
+        const profile = opts.os.store.getConnectionProfile();
+        send(res, 200, {
+          ok: true,
+          profile,
+          public: {
+            mode: profile.mode,
+            remoteUrl: profile.remoteUrl ?? null,
+            localBind: profile.localBind ?? "127.0.0.1",
+            chosen: profile.chosen === true,
+            activeBaseUrl:
+              profile.mode === "remote"
+                ? profile.remoteUrl ?? null
+                : `http://127.0.0.1:${port}`,
+            serverPort: port,
+          },
+        });
+        return;
+      }
+
+      if (pathname === "/api/v1/os/connection" && req.method === "POST") {
+        if (!opts.os) {
+          send(res, 503, { ok: false, error: "os_not_composed" });
+          return;
+        }
+        const body = (await readBody(req)) as Partial<ConnectionProfile>;
+        try {
+          const ready = sanitizeConnectionProfile(body);
+          if (ready.mode === "remote" && !ready.remoteUrl) {
+            send(res, 400, { ok: false, error: "remote_url_required" });
+            return;
+          }
+          const saved = opts.os.store.setConnectionProfile(ready);
+          send(res, 200, { ok: true, profile: saved });
+        } catch (err) {
+          send(res, 400, {
+            ok: false,
+            error: err instanceof Error ? err.message : String(err),
+          });
+        }
+        return;
+      }
+
+      if (pathname === "/api/v1/os/connection/test" && req.method === "POST") {
+        const body = (await readBody(req)) as { remoteUrl?: string };
+        const result = await testRemoteHealth(String(body?.remoteUrl || ""));
+        send(res, result.ok ? 200 : 400, result);
+        return;
+      }
+
+      // First-run setup (équivalent SetupWizard sans IPC Electron).
+      if (pathname === "/api/v1/os/setup" && req.method === "GET") {
+        if (!opts.os) {
+          send(res, 503, { ok: false, error: "os_not_composed" });
+          return;
+        }
+        const store = opts.os.store;
+        const keys = store.getLlmKeys?.() ?? {};
+        const auth = store.getLocalAuth?.();
+        send(res, 200, {
+          ok: true,
+          setupComplete: store.isSetupComplete(),
+          hasOpenai: Boolean(keys.openai),
+          username: auth?.authUser ?? null,
+          recoveryHint: store.isSetupComplete()
+            ? "recovery key déjà enregistrée"
+            : null,
+        });
+        return;
+      }
+
+      if (pathname === "/api/v1/os/setup" && req.method === "POST") {
+        if (!opts.os) {
+          send(res, 503, { ok: false, error: "os_not_composed" });
+          return;
+        }
+        const body = (await readBody(req)) as {
+          username?: string;
+          password?: string;
+          openaiKey?: string;
+          recoveryKey?: string;
+          stayLoggedIn?: boolean;
+        };
+        try {
+          const recoveryKey =
+            String(body.recoveryKey || "").trim() || generateRecoveryKey();
+          opts.os.store.applyFirstRunSetup({
+            username: String(body.username || ""),
+            password: String(body.password || ""),
+            openaiKey: String(body.openaiKey || "sk-setup-placeholder"),
+            recoveryKey,
+            stayLoggedIn: body.stayLoggedIn !== false,
+          });
+          send(res, 200, {
+            ok: true,
+            setupComplete: true,
+            recoveryKey,
+            username: String(body.username || "").trim(),
+          });
+        } catch (err) {
+          send(res, 400, {
+            ok: false,
+            error: err instanceof Error ? err.message : String(err),
+          });
+        }
         return;
       }
 

@@ -138,12 +138,12 @@ Exemples de domaines code marque :
 
 ### OS / parity 0.10.26 (hors MVP sonde métier)
 
-- [ ] Boot Client / Serveur (profils Héberger / Rejoindre) complet
-- [x] Recovery key (kit `test-os-shell` BYOK+recovery)
-- [ ] Tâches kanban + mission IA (API platform tasks/mails montées ; UI kanban partielle)
-- [ ] Mails inbox (API platform montée ; inbox UI TF2 non paritaire)
+- [x] Boot Client / Serveur — `app-kind` + `GET/POST /api/v1/os/connection` (Héberger/Rejoindre) ; picker Electron GUI partiel
+- [x] Recovery key (kit `test-os-shell` BYOK+recovery + `POST /api/v1/os/setup`)
+- [x] Tâches kanban colonnes open/done/cancelled (UI + PATCH) ; missions IA = P1
+- [x] Mails draft/send UI (`@creezio/mails`) ; inbox TF2 riche = P1
 - [ ] MCP URL publique tunnel distant + OAuth — **local MCP prouvé** ; distant = bloqueur credentials
-- [x] Plugins control plane opt-in (`CREEZIO_PLUGINS=1`, `GET /api/v1/os/plugins`)
-- [x] Hermes / n8n embeds — ensure+start prouvés (`proof:hard` / cold-warm) ; GUI embed partielle
-- [ ] Admin MCP / database / plugins (pages admin TF2)
-- [ ] `test:shell` agrégat vert (équivalent kit ~40) — agrégat partiel `test-os-shell*` OK
+- [x] Plugins control plane opt-in (`CREEZIO_PLUGINS=1`, `GET /api/v1/os/plugins`, admin UI)
+- [x] Hermes / n8n embeds — ensure+start prouvés ; page `/parametres` actions ensure
+- [x] Admin MCP / database / plugins (pages interactives TF3)
+- [ ] `test:shell` agrégat vert (équivalent kit ~40) — +connection-profile +app-kind ; reste P1

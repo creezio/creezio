@@ -1,42 +1,35 @@
 # Preuve TempoFlow3 — statut vivant
 
-## Gates automatisées (2026-08-01 soir)
+## Gates automatisées (2026-08-01 — vague audit P0)
 
 | Gate | Résultat | Limite |
 |------|----------|--------|
-| `proof:hard` | **61/61 SUCCESS** | + optimiser commande GET/apply + dispatch graph ; pas GUI AdsPower |
-| `proof:oracle` | 33/33 (pages) | Parité pages ≠ profondeur TF2 partout |
-| `reset-tempoflow3.mjs --no-proof` | OK | `owned-by-brand` préserve métier |
-| `test-os-owned-by-brand` | OK | + merge `package.json` ownedByBrand |
-| `test-os-shell` / contracts | OK | Contrats + BYOK/recovery/updater |
-| `test-os-cold-warm` | OK ready + **n8n start** | free-port via lsof (fuser absent CI) |
-| `test-os-native-pnp` | 4/4 | Marque neuve apply → tsc → `/os/ready` |
-| `test-os-plugins` | 2/2 | feature-off + `CREEZIO_PLUGINS=1` listPlugins |
-| `test-os-electron-runtime-smoke` | wiring OK | Launch xvfb optionnel / skip CI |
+| `proof:hard` | **73/73 SUCCESS** | connection/setup/plugins/kanban/UI OS ; pas GUI AdsPower |
+| `proof:oracle` | **34/34** (+ anti-stubs OS) | |
+| `test-os-connection-profile` | setup + connection HTTP | |
+| `test-os-app-kind` | client/server resolve | |
+| `test-os-plugins` | 2/2 | |
+| `test-os-cold-warm` | n8n start | |
+| `test-os-native-pnp` | 4/4 | |
+| `brand apply-modules` | inventaire + owned-by-brand | pas codegen bonus |
 
-## Avancées kit cette itération
+## Audit
 
-- `creezio:owned-by-brand` + merge `package.json` `creezio.ownedByBrand`
-- n8n `ensureN8nDesktopPortFree` + kill listeners via **lsof** (pas seulement fuser)
-- Optimiser commande + dispatch score/graph
-- Reset scripté `scripts/reset-tempoflow3.mjs`
-- CREATE-BRAND §4b documenté
+Voir `AUDIT-GAPS-2026-08-01.md` — plan P0 exécuté, P1/P2 restants documentés.
 
-## Encore ouvert vs DoD handoff
+## Encore ouvert
 
-- Tunnel Cloudflare **distant** — **bloqueur credentials** ; local MCP prouvé
-- Plugins control plane (`CREEZIO_PLUGINS=1`) non prouvé
-- Smoke Electron GUI réel systématique (xvfb/AdsPower)
-- Agrégat `test:shell` 0.10.26 complet (~40 scripts)
-- Atelier optimiser canvas TF2 / admin MCP OAuth / tasks-mails comportement
-- Checklist OS oracle encore partiellement `[ ]`
+- Tunnel Cloudflare distant (credentials)
+- Atelier optimiser canvas TF2 / navigateur fournisseur
+- MCP OAuth routes harness
+- `test:shell` ~40 complets
+- AdsPower / xvfb GUI
 
 ## Commandes
 
 ```bash
-node scripts/reset-tempoflow3.mjs --no-proof
-cd apps/tempoflow3 && npm run proof:hard
-node --test scripts/test-os-shell.mjs scripts/test-os-owned-by-brand.mjs
-node --test scripts/test-os-cold-warm.mjs   # ~2 min
-node --test scripts/test-os-native-pnp.mjs
+node --test scripts/test-os-connection-profile.mjs scripts/test-os-app-kind.mjs
+node packages/factory/bin/creezio.js brand apply-modules \
+  --spec apps/tempoflow3/brand-spec --out apps/tempoflow3
+cd apps/tempoflow3 && npm run proof:oracle && npm run proof:hard
 ```

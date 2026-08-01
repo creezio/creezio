@@ -1,24 +1,50 @@
-async function load() {
-  const base = process.env.METIER_BASE_URL || "http://127.0.0.1:18791";
-  try {
-    const res = await fetch(`${base}/mcp`, {
-      cache: "no-store",
-      headers: {},
-    });
-    if (!res.ok) return { error: res.status };
-    return res.json();
-  } catch (e) {
-    return { error: e instanceof Error ? e.message : String(e) };
-  }
-}
+/** creezio:owned-by-brand */
+"use client";
 
-export default async function Page() {
-  const data = await load();
+import { useEffect, useState } from "react";
+import { metierBase } from "@/lib/metier-base";
+
+export default function Page() {
+  const base = metierBase();
+  const [tools, setTools] = useState<Array<{ name?: string; description?: string }>>(
+    [],
+  );
+  const [publicMcp, setPublicMcp] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    void Promise.all([
+      fetch(`${base}/mcp`).then((r) => r.json()),
+      fetch(`${base}/api/v1/os/tunnel/status`).then((r) => r.json()),
+    ])
+      .then(([mcp, tunnel]) => {
+        setTools(mcp.tools || []);
+        setPublicMcp(tunnel.publicMcp || null);
+      })
+      .catch((e) => setError(e instanceof Error ? e.message : String(e)));
+  }, [base]);
+
   return (
     <section>
       <h1>Admin MCP</h1>
-      <pre style={{ whiteSpace: "pre-wrap" }}>{JSON.stringify(data, null, 2)}</pre>
-      <p>UI interactive desktop : <code>resources/renderer/index.html</code></p>
+      <p>Outils MCP exposés par le kit (surface locale ou tunnel).</p>
+      <p>
+        URL publique :{" "}
+        <code>{publicMcp || `${base}/mcp`}</code>
+      </p>
+      <ul>
+        {tools.map((t) => (
+          <li key={t.name}>
+            <strong>{t.name}</strong>
+            {t.description ? ` — ${t.description}` : ""}
+          </li>
+        ))}
+      </ul>
+      {!tools.length && !error ? <p>Aucun outil.</p> : null}
+      {error ? <p style={{ color: "#8b1e1e" }}>{error}</p> : null}
+      <p style={{ opacity: 0.75 }}>
+        OAuth MCP distant : bloqueur credentials / routes admin kit (P1).
+      </p>
     </section>
   );
 }

@@ -1,20 +1,17 @@
-async function load() {
-  const base = process.env.METIER_BASE_URL || "http://127.0.0.1:18791";
-  try {
-    const res = await fetch(`${base}/api/v1/modules/data-mapping`, { cache: "no-store" });
-    if (!res.ok) return { error: res.status };
-    return res.json();
-  } catch (e) {
-    return { error: e instanceof Error ? e.message : String(e) };
-  }
-}
+/** creezio:owned-by-brand */
+"use client";
 
-export default async function Page() {
-  const data = await load();
+import { MetierCrud } from "@/components/MetierCrud";
+
+export default function Page() {
   return (
-    <section>
-      <h1>data-mapping</h1>
-      <pre style={{ whiteSpace: "pre-wrap" }}>{JSON.stringify(data, null, 2)}</pre>
-    </section>
+    <MetierCrud
+      title="Data mapping"
+      entity="data-mapping"
+      fields={[
+        { name: "libelle_externe", label: "Libellé externe", required: true },
+        { name: "produit_id", label: "Produit id", required: true },
+      ]}
+    />
   );
 }

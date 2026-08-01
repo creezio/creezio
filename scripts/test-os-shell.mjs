@@ -33,6 +33,15 @@ test("shell.aggregate contracts suite", () => {
   assert.equal(r.status, 0, r.stdout + r.stderr);
 });
 
+test("shell.app-kind", () => {
+  const r = spawnSync(
+    process.execPath,
+    ["--test", path.join(ROOT, "scripts/test-os-app-kind.mjs")],
+    { encoding: "utf8", cwd: ROOT },
+  );
+  assert.equal(r.status, 0, r.stdout + r.stderr);
+});
+
 test("shell.byok+recovery local-config", () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "os-shell-cfg-"));
   const store = createLocalConfigStoreSync({

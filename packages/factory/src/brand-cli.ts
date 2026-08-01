@@ -75,13 +75,83 @@ Usage:
   creezio brand init --id <id> --name <Name> --domain <host> [--out <dir>]
   creezio brand doctor [--spec <brand-spec-dir>]
   creezio brand apply --spec <brand-spec-dir> --out <app-dir> [--force]
+  creezio brand apply-modules --spec <brand-spec-dir> --out <app-dir>
   creezio brand smoke --app <app-dir>
 
 Notes:
   - BrandSpec = SoT déclarative (brand.yaml, product.md, modules/*)
   - apply réutilise le scaffold --from-prd (ProductModel) + pose brand-spec/
+  - apply-modules inventorie modules/*/prd.md et refuse d'écraser owned-by-brand
   - Runtime desktop = @creezio/app-runtime (startBrandDesktop)
 `);
+}
+
+/**
+ * Inventaire modules BrandSpec + garde-fous owned-by-brand.
+ * Codegen riche bonus = P1 ; ici on pose un inventaire + checklist.
+ */
+function applyBrandModules(specDir: string, appDir: string): {
+  modules: string[];
+  protectedFiles: string[];
+  notes: string[];
+} {
+  const modulesDir = path.join(specDir, "modules");
+  const modules: string[] = [];
+  if (fs.existsSync(modulesDir)) {
+    for (const name of fs.readdirSync(modulesDir)) {
+      const prd = path.join(modulesDir, name, "prd.md");
+      if (fs.existsSync(prd)) modules.push(name);
+    }
+  }
+  modules.sort();
+
+  const candidates = [
+    "src/electron/brand-bonus-api.ts",
+    "src/electron/brand-module-api.ts",
+    "src/electron/brand-migrations.ts",
+    "src/electron/vertical-slot.ts",
+    "package.json",
+  ];
+  const protectedFiles: string[] = [];
+  for (const rel of candidates) {
+    const abs = path.join(appDir, rel);
+    if (!fs.existsSync(abs)) continue;
+    const raw = fs.readFileSync(abs, "utf8");
+    if (
+      raw.includes("creezio:owned-by-brand") ||
+      (rel === "package.json" && /"ownedByBrand"\s*:\s*true/.test(raw))
+    ) {
+      protectedFiles.push(rel);
+    }
+  }
+
+  const inventoryPath = path.join(appDir, "brand-spec", "MODULES-INVENTORY.md");
+  fs.mkdirSync(path.dirname(inventoryPath), { recursive: true });
+  const body = [
+    "# Modules BrandSpec (apply-modules)",
+    "",
+    `Généré: ${new Date().toISOString()}`,
+    "",
+    "## Modules déclarés",
+    ...modules.map((m) => `- \`${m}\` ← modules/${m}/prd.md`),
+    "",
+    "## Fichiers protégés owned-by-brand (non écrasés)",
+    ...protectedFiles.map((f) => `- \`${f}\``),
+    "",
+    "## Suite manuelle / P1",
+    "- Enrichir `brand-bonus-api.ts` pour chaque module sans marker factory",
+    "- Pages UI sous `ui/app/<module>/` avec `/** creezio:owned-by-brand */`",
+    "- Ne jamais wipe avec `brand apply --force` sans markers",
+    "",
+  ].join("\n");
+  fs.writeFileSync(inventoryPath, body, "utf8");
+
+  const notes = [
+    `inventory → ${path.relative(process.cwd(), inventoryPath)}`,
+    `${modules.length} modules`,
+    `${protectedFiles.length} fichiers protégés`,
+  ];
+  return { modules, protectedFiles, notes };
 }
 
 function kitRoot(): string {
@@ -225,6 +295,24 @@ export async function runBrandCli(argv: string[]): Promise<void> {
     return;
   }
 
+  if (args.sub === "apply-modules") {
+    if (!args.spec || !args.out) {
+      printBrandHelp();
+      throw new Error("brand apply-modules requiert --spec et --out");
+    }
+    const specDir = path.resolve(args.spec);
+    const outDir = path.resolve(args.out);
+    if (!fs.existsSync(path.join(specDir, "brand.yaml")) && !fs.existsSync(path.join(specDir, "product.md"))) {
+      throw new Error(`BrandSpec invalide: ${specDir}`);
+    }
+    const result = applyBrandModules(specDir, outDir);
+    console.log(`✓ brand apply-modules`);
+    console.log(`  modules ${result.modules.join(", ") || "(aucun)"}`);
+    console.log(`  protected ${result.protectedFiles.join(", ") || "(aucun)"}`);
+    for (const n of result.notes) console.log(`  ${n}`);
+    return;
+  }
+
   if (args.sub === "smoke") {
     const appDir = path.resolve(args.app || process.cwd());
     const smoke = path.join(appDir, "scripts/test-metier-parcours.mjs");
@@ -252,6 +340,6 @@ export async function runBrandCli(argv: string[]): Promise<void> {
   }
 
   throw new Error(
-    `Sous-commande brand inconnue: ${args.sub} (init|doctor|apply|smoke)`,
+    `Sous-commande brand inconnue: ${args.sub} (init|doctor|apply|apply-modules|smoke)`,
   );
 }

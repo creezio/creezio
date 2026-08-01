@@ -16,13 +16,15 @@ const NAV = [
   ["/optimiser", "Optimiser"],
   ["/dispatch", "Dispatch"],
   ["/stack", "Mes produits"],
+  ["/likes", "Likes"],
   ["/releves", "Relevés"],
   ["/scan", "Scan"],
-  ["/skus", "SKUs"],
-  ["/promotions", "Promotions"],
   ["/taches", "Tâches"],
   ["/mails", "Mails"],
   ["/setup", "Setup"],
+  ["/configuration", "Config"],
+  ["/parametres", "Paramètres"],
+  ["/admin/plugins", "Plugins"],
   ["/developers", "MCP"],
 ] as const;
 

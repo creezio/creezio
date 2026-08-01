@@ -105,6 +105,43 @@ record(
   `manquant: ${stillMissing.join(", ") || "aucun"}`,
 );
 
+// Anti-stub OS : pages plateforme ne doivent plus être des placeholders.
+const osUiAntiStub = [
+  "login",
+  "setup",
+  "onboarding",
+  "configuration",
+  "parametres",
+  "collaborateurs",
+  "cockpit",
+  "admin/plugins",
+  "admin/database",
+  "admin/mcp",
+  "mails",
+  "taches",
+  "likes",
+];
+const stubPages = [];
+for (const rel of osUiAntiStub) {
+  const p = path.join(root, `ui/app/${rel}/page.tsx`);
+  if (!fs.existsSync(p)) {
+    stubPages.push(`${rel}:missing`);
+    continue;
+  }
+  const src = fs.readFileSync(p, "utf8");
+  if (/Surface exposée par l'OS Creezio/.test(src)) {
+    stubPages.push(`${rel}:placeholder`);
+  }
+  if (!/use client|fetch\(|MetierCrud|LoginForm|SetupWizard/.test(src)) {
+    stubPages.push(`${rel}:no-interaction`);
+  }
+}
+record(
+  "ui.os-pages-not-stubs",
+  stubPages.length === 0,
+  stubPages.join(", ") || "interactives",
+);
+
 // --- Renderer SPA vs Next ---
 const renderer = fs.readFileSync(
   path.join(root, "resources/renderer/index.html"),
@@ -129,7 +166,14 @@ record("build.electron-tsc", build.status === 0, build.status === 0 ? "tsc ok" :
 const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "tf3-oracle-"));
 const port = 19100 + Math.floor(Math.random() * 800);
 const child = spawn(process.execPath, [path.join(root, "scripts/brand-kernel-harness.mjs")], {
-  env: { ...toolEnv, METIER_DATA_DIR: dataDir, METIER_PORT: String(port), MEILI_SKIP_INDEX: "1" },
+  env: {
+    ...toolEnv,
+    METIER_DATA_DIR: dataDir,
+    METIER_PORT: String(port),
+    MEILI_SKIP_INDEX: "1",
+    // Oracle = pages + API métier ; warm n8n = cold-warm / proof:hard.
+    CREEZIO_NATIVE_WARM: "0",
+  },
   stdio: ["ignore", "pipe", "pipe"],
 });
 

@@ -45,26 +45,27 @@ Puis **TempoFlow3** doit atteindre une **parité comportementale** avec TempoFlo
 
 ### Ce qui N’EST PAS fini (DoD incomplet)
 
+Audit détaillé : `docs/experiences/tempoflow3/AUDIT-GAPS-2026-08-01.md`.
+
 #### A. OS kit
 
-1. **Tunnel Cloudflare distant** — **bloqueur credentials** : pas de `CREEZIO_TUNNEL_PROVISION_URL` / `_TOKEN` dans cet environnement. Fallback local MCP **prouvé** (`enableLocalPublicSurface` + `/mcp`).  
-2. **n8n start cold** — **prouvé** via lsof kill + `ensureN8nDesktopPortFree` (`test-os-cold-warm` + `proof:hard` os.n8n-start). Surveiller race « reuse vs spawn » si zombie healthz OK.  
-3. **Plugins control plane** — **prouvé** opt-in (`CREEZIO_PLUGINS=1`, `GET /api/v1/os/plugins`, `test-os-plugins`). Pas encore admin UI TF2.  
-4. **Electron GUI** AdsPower / xvfb systématique non vert en CI.  
-5. **`test:shell` 0.10.26 complet** (~40 scripts) — agrégat kit partiel seulement.  
-6. **BrandSpec modules → code auto** — owned-by-brand protège, mais ne génère pas le bonus depuis YAML.
+1. **Tunnel Cloudflare distant** — **bloqueur credentials**. Local MCP + setup/connection HTTP **prouvés**.  
+2. **n8n start cold** — **prouvé** (lsof free-port).  
+3. **Plugins** — control plane + admin UI **prouvés** ; admin analytics/OAuth = P1.  
+4. **Electron GUI** AdsPower / xvfb CI.  
+5. **`test:shell` ~40** — +connection-profile +app-kind ; reste P1.  
+6. **BrandSpec apply-modules** — inventaire + garde-fous **OK** ; codegen bonus YAML = P1.
 
 #### B. TempoFlow3 profondeur TF2
 
-- Optimiser commande GET/apply + dispatch score/graph **amorcés** (pas atelier canvas TF2)  
-- Navigateur fournisseur / site riche  
-- Admin MCP OAuth, analytics, request-logs  
-- Tasks kanban + missions IA + mails inbox **comportement**  
-- Parcours UI navigateur non prouvé  
+- UI OS stubs **éliminés** (login/setup/config/admin/taches/mails/likes…)  
+- Optimiser canvas TF2 / navigateur fournisseur slots = P1  
+- MCP OAuth distant = P1/D  
+- Missions IA = P1  
 
-#### C. Checklist oracle OS encore `[ ]`
+#### C. Oracle OS
 
-Boot Client/Serveur, recovery E2E desktop, MCP public distant+OAuth, plugins, embeds GUI, admin, `test:shell` complet.
+Majorité cochée ; restant : tunnel distant+OAuth, `test:shell` complet.
 
 ---
 

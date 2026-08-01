@@ -1,24 +1,41 @@
-async function load() {
-  const base = process.env.METIER_BASE_URL || "http://127.0.0.1:18791";
-  try {
-    const res = await fetch(`${base}/mcp`, {
-      cache: "no-store",
-      headers: {},
-    });
-    if (!res.ok) return { error: res.status };
-    return res.json();
-  } catch (e) {
-    return { error: e instanceof Error ? e.message : String(e) };
-  }
-}
+/** creezio:owned-by-brand */
+"use client";
 
-export default async function Page() {
-  const data = await load();
+import { useEffect, useState } from "react";
+import { metierBase } from "@/lib/metier-base";
+
+export default function Page() {
+  const base = metierBase();
+  const [tools, setTools] = useState<Array<{ name?: string }>>([]);
+  const [publicMcp, setPublicMcp] = useState<string | null>(null);
+
+  useEffect(() => {
+    void Promise.all([
+      fetch(`${base}/mcp`).then((r) => r.json()),
+      fetch(`${base}/api/v1/os/tunnel/status`).then((r) => r.json()),
+    ]).then(([mcp, tunnel]) => {
+      setTools(mcp.tools || []);
+      setPublicMcp(tunnel.publicMcp || `${base}/mcp`);
+    });
+  }, [base]);
+
   return (
     <section>
       <h1>Developers / MCP</h1>
-      <pre style={{ whiteSpace: "pre-wrap" }}>{JSON.stringify(data, null, 2)}</pre>
-      <p>UI interactive desktop : <code>resources/renderer/index.html</code></p>
+      <p>
+        Endpoint : <code>{publicMcp}</code>
+      </p>
+      <p>{tools.length} outils disponibles.</p>
+      <ul>
+        {tools.map((t) => (
+          <li key={t.name}>{t.name}</li>
+        ))}
+      </ul>
+      <p>
+        <a href="/admin/mcp" style={{ color: "#0f3d32" }}>
+          Admin MCP
+        </a>
+      </p>
     </section>
   );
 }

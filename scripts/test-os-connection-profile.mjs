@@ -1,0 +1,129 @@
+#!/usr/bin/env node
+/**
+ * Connection profile Héberger / Rejoindre via HTTP OS.
+ */
+import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import { test } from "node:test";
+import { fileURLToPath, pathToFileURL } from "node:url";
+import {
+  defaultLocalProfile,
+  sanitizeConnectionProfile,
+  resolveBootProfile,
+} from "../packages/platform-core/dist/index.js";
+import { startBrandKernelHarness } from "../packages/app-runtime/dist/index.js";
+
+const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+const TF3 = path.join(ROOT, "apps/tempoflow3");
+
+test("connection-profile pure sanitize + resolveBoot", () => {
+  const local = defaultLocalProfile();
+  assert.equal(local.mode, "local");
+  const remote = sanitizeConnectionProfile({
+    mode: "remote",
+    remoteUrl: "example.com:9999",
+    chosen: true,
+  });
+  assert.equal(remote.mode, "remote");
+  assert.match(String(remote.remoteUrl), /^http/);
+  const boot = resolveBootProfile(null);
+  assert.equal(boot.showPicker, true);
+});
+
+test("connection + setup HTTP sur harness TF3", async () => {
+  if (!fs.existsSync(path.join(TF3, "src/electron/brand-migrations.ts"))) {
+    return;
+  }
+  const build = spawnSync(
+    process.execPath,
+    [path.join(ROOT, "node_modules/typescript/bin/tsc"), "-p", "tsconfig.electron.json"],
+    {
+      encoding: "utf8",
+      cwd: TF3,
+      env: {
+        ...process.env,
+        CREEZIO_ROOT: ROOT,
+        NODE_PATH: path.join(ROOT, "node_modules"),
+        CREEZIO_NATIVE_WARM: "0",
+      },
+    },
+  );
+  assert.equal(build.status, 0, build.stderr);
+
+  const electron = path.join(TF3, "build/electron");
+  const manifestMod = await import(
+    pathToFileURL(path.join(electron, "app-manifest.js")).href
+  );
+  const migMod = await import(
+    pathToFileURL(path.join(electron, "brand-migrations.js")).href
+  );
+  const apiMod = await import(
+    pathToFileURL(path.join(electron, "brand-module-api.js")).href
+  );
+  const feedMod = await import(
+    pathToFileURL(path.join(electron, "meili-feed.js")).href
+  );
+  const manifestKey = Object.keys(manifestMod).find((k) =>
+    k.endsWith("Manifest"),
+  );
+
+  process.env.CREEZIO_NATIVE_WARM = "0";
+  const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "os-conn-"));
+  const handle = await startBrandKernelHarness({
+    brandId: "tempoflow3",
+    appRoot: TF3,
+    dataDir,
+    manifest: manifestMod[manifestKey],
+    brandMigrations: migMod.brandMigrations(),
+    registerModuleApi: apiMod.registerBrandModuleApi,
+    beforeBoot: feedMod.applyBrandMeiliConfig,
+    meiliFeed: feedMod.brandMeiliFeed,
+    skipIndex: true,
+  });
+
+  try {
+    const get0 = await (await fetch(`${handle.baseUrl}/api/v1/os/connection`)).json();
+    assert.equal(get0.ok, true);
+    assert.equal(get0.profile.mode, "local");
+
+    const setRemote = await fetch(`${handle.baseUrl}/api/v1/os/connection`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        mode: "remote",
+        remoteUrl: "http://127.0.0.1:9",
+        chosen: true,
+      }),
+    });
+    const setBody = await setRemote.json();
+    assert.equal(setRemote.status, 200, JSON.stringify(setBody));
+    assert.equal(setBody.profile.mode, "remote");
+
+    const setup0 = await (await fetch(`${handle.baseUrl}/api/v1/os/setup`)).json();
+    assert.equal(setup0.ok, true);
+    assert.equal(setup0.setupComplete, false);
+
+    const setupPost = await fetch(`${handle.baseUrl}/api/v1/os/setup`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        username: "ops",
+        password: "secret1",
+        openaiKey: "sk-test-conn-profile",
+      }),
+    });
+    const setupBody = await setupPost.json();
+    assert.equal(setupPost.status, 200, JSON.stringify(setupBody));
+    assert.equal(setupBody.setupComplete, true);
+    assert.ok(setupBody.recoveryKey);
+
+    const setup1 = await (await fetch(`${handle.baseUrl}/api/v1/os/setup`)).json();
+    assert.equal(setup1.setupComplete, true);
+    assert.equal(setup1.username, "ops");
+  } finally {
+    await handle.close();
+  }
+});
