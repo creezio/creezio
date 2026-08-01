@@ -14,15 +14,16 @@
       .search-row { display: flex; gap: .5rem; margin-top: .85rem; align-items: center; flex-wrap: wrap; }
       .search-row input { min-width: 14rem; }
       .engine { font-size: .85rem; opacity: .7; }
-      nav { display: flex; gap: 1rem; padding: .85rem 1.5rem; flex-wrap: wrap; }
+      nav { display: flex; gap: .85rem; padding: .85rem 1.5rem; flex-wrap: wrap; }
       nav a { color: #0f3d32; }
-      main { padding: 1.5rem; max-width: 52rem; margin: 0 auto; }
+      main { padding: 1.5rem; max-width: 56rem; margin: 0 auto; }
       .panel { display: none; }
       .panel.active { display: block; }
       button, input { font: inherit; padding: .4rem .65rem; margin: .2rem 0; }
       table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
       th, td { text-align: left; padding: .4rem; border-bottom: 1px solid rgba(0,0,0,.08); }
       .err { color: #8b1e1e; }
+      .os { opacity: .85; font-size: .92rem; }
     </style>
   </head>
   <body>
@@ -42,13 +43,42 @@
           <a href="#prix" data-page="prix">Prix</a>
           <a href="#panier" data-page="panier">Panier</a>
           <a href="#commandes" data-page="commandes">Commandes</a>
+          <a href="#optimiser" data-page="optimiser">Optimiser</a>
+          <a href="#stack" data-page="stack">Mes produits</a>
+          <a href="#releves" data-page="releves">Relevés</a>
+          <a href="#scan" data-page="scan">Scan</a>
+          <a href="#marketplaces" data-page="marketplaces">Marketplaces</a>
+          <a href="#skus" data-page="skus">SKUs</a>
+          <a href="#promotions" data-page="promotions">Promotions</a>
+          <a href="#setup" data-page="setup" class="os">Setup</a>
+          <a href="#login" data-page="login" class="os">Login</a>
+          <a href="#taches" data-page="taches" class="os">Tâches</a>
+          <a href="#mails" data-page="mails" class="os">Mails</a>
     </nav>
     <main id="app">
       <p>Chargement API métier…</p>
     </main>
     <script>
       let BASE = localStorage.getItem("METIER_BASE_URL") || "http://127.0.0.1:18791";
-      const PAGES = [{"id":"dashboard","path":"/dashboard","title":"Dashboard","kind":"dashboard"},{"id":"fournisseurs","path":"/fournisseurs","title":"Fournisseurs","entityId":"fournisseurs","kind":"list"},{"id":"produits","path":"/produits","title":"Produits","entityId":"produits","kind":"list"},{"id":"prix","path":"/prix","title":"Prix","entityId":"prix","kind":"list"},{"id":"panier","path":"/panier","title":"Panier","entityId":"panier_lignes","kind":"flow"},{"id":"commandes","path":"/commandes","title":"Commandes","entityId":"commandes","kind":"list"}];
+      const PAGES = [
+        {"id":"dashboard","path":"/dashboard","title":"Dashboard","kind":"dashboard"},
+        {"id":"fournisseurs","path":"/fournisseurs","title":"Fournisseurs","entityId":"fournisseurs","kind":"list"},
+        {"id":"produits","path":"/produits","title":"Produits","entityId":"produits","kind":"list"},
+        {"id":"prix","path":"/prix","title":"Prix","entityId":"prix","kind":"list"},
+        {"id":"panier","path":"/panier","title":"Panier","entityId":"panier_lignes","kind":"flow"},
+        {"id":"commandes","path":"/commandes","title":"Commandes","entityId":"commandes","kind":"list"},
+        {"id":"optimiser","path":"/optimiser","title":"Optimiser","entityId":"optimiser","kind":"api"},
+        {"id":"stack","path":"/stack","title":"Mes produits","entityId":"stack","kind":"api"},
+        {"id":"releves","path":"/releves","title":"Relevés","entityId":"releves","kind":"api"},
+        {"id":"scan","path":"/scan","title":"Scan","entityId":"scan","kind":"api"},
+        {"id":"marketplaces","path":"/marketplaces","title":"Marketplaces","entityId":"marketplaces","kind":"api"},
+        {"id":"skus","path":"/skus","title":"SKUs","entityId":"skus","kind":"api"},
+        {"id":"promotions","path":"/promotions","title":"Promotions","entityId":"promotions","kind":"api"},
+        {"id":"setup","path":"/setup","title":"Setup","kind":"os"},
+        {"id":"login","path":"/login","title":"Login","kind":"os"},
+        {"id":"taches","path":"/taches","title":"Tâches","kind":"os-tasks"},
+        {"id":"mails","path":"/mails","title":"Mails","kind":"os-mails"}
+      ];
       const ENTITIES = ["fournisseurs","produits","prix","panier_lignes","commandes"];
       const BRIDGE = window.creezioDesktop || window["tempoflow3Desktop"];
 
@@ -66,7 +96,7 @@
 
       async function api(path, init) {
         const res = await fetch(BASE + path, {
-          headers: { "content-type": "application/json" },
+          headers: { "content-type": "application/json", "x-creezio-user-id": "desktop-user" },
           ...init,
         });
         const body = await res.json().catch(() => ({}));
@@ -95,11 +125,56 @@
           "</tbody></table></section>";
       }
 
+      async function renderOs(page) {
+        const main = document.getElementById("app");
+        if (page.kind === "os-tasks") {
+          const data = await api("/api/v1/platform/platform-tasks/list");
+          const tasks = data.tasks || [];
+          main.innerHTML = "<section class='panel active'><h2>Tâches (OS)</h2><p>" +
+            tasks.length + " tâche(s)</p><ul>" +
+            tasks.map((t) => "<li>" + (t.title || t.id) + " — " + (t.status || "") + "</li>").join("") +
+            "</ul></section>";
+          return;
+        }
+        if (page.kind === "os-mails") {
+          const data = await api("/api/v1/platform/platform-mails/list");
+          const mails = data.mails || [];
+          main.innerHTML = "<section class='panel active'><h2>Mails (OS)</h2><p>" +
+            mails.length + " mail(s)</p></section>";
+          return;
+        }
+        main.innerHTML = "<section class='panel active'><h2>" + page.title +
+          "</h2><p>Surface OS Creezio (session desktop / auth).</p></section>";
+      }
+
+      async function renderApiList(page) {
+        const main = document.getElementById("app");
+        const data = await api("/api/v1/modules/" + page.entityId);
+        const items = data.items || data.skus || data.promotions || data.candidates || [];
+        main.innerHTML = "<section class='panel active'><h2>" + page.title +
+          "</h2><p>" + items.length + " élément(s)</p><pre>" +
+          JSON.stringify(items.slice(0, 20), null, 2) + "</pre></section>";
+      }
+
       async function renderPage(pageId) {
         const page = PAGES.find((p) => p.id === pageId) || PAGES[0];
         const entityId = page.entityId || page.id;
         const main = document.getElementById("app");
         try {
+          if (page.kind === "os" || page.kind === "os-tasks" || page.kind === "os-mails") {
+            await renderOs(page);
+            return;
+          }
+          if (page.kind === "api" || page.kind === "dashboard") {
+            if (page.kind === "dashboard") {
+              const data = await api("/api/v1/modules/dashboard");
+              main.innerHTML = "<section class='panel active'><h2>Dashboard</h2><pre>" +
+                JSON.stringify(data, null, 2) + "</pre></section>";
+              return;
+            }
+            await renderApiList(page);
+            return;
+          }
           const data = await api("/api/v1/modules/" + entityId);
           const entity = [{"id":"fournisseurs","label":"Fournisseur","labelPlural":"Fournisseurs","archivable":true,"fields":[{"name":"nom","type":"text","required":true,"label":"Nom"},{"name":"contact","type":"text","label":"Contact"},{"name":"email","type":"text","label":"Email"},{"name":"telephone","type":"text","label":"Téléphone"},{"name":"site_web","type":"text","label":"Site web"},{"name":"notes","type":"text","label":"Notes"}]},{"id":"produits","label":"Produit","labelPlural":"Produits","archivable":true,"fields":[{"name":"nom","type":"text","required":true,"label":"Nom"},{"name":"unite","type":"text","label":"Unité"},{"name":"categorie","type":"text","label":"Catégorie"},{"name":"fournisseur_id","type":"ref","ref":"fournisseurs","label":"Fournisseur"}]},{"id":"prix","label":"Prix","labelPlural":"Prix","fields":[{"name":"produit_id","type":"ref","ref":"produits","required":true,"label":"Produit"},{"name":"fournisseur_id","type":"ref","ref":"fournisseurs","required":true,"label":"Fournisseur"},{"name":"montant","type":"number","required":true,"label":"Montant HT"},{"name":"devise","type":"text","label":"Devise"},{"name":"promo","type":"boolean","label":"Promo"},{"name":"promo_label","type":"text","label":"Libellé promo"}]},{"id":"panier_lignes","label":"Ligne panier","labelPlural":"Panier","fields":[{"name":"produit_id","type":"ref","ref":"produits","required":true,"label":"Produit"},{"name":"fournisseur_id","type":"ref","ref":"fournisseurs","required":true,"label":"Fournisseur"},{"name":"quantite","type":"number","required":true,"label":"Quantité"},{"name":"prix_unitaire","type":"number","label":"Prix unitaire"}]},{"id":"commandes","label":"Commande","labelPlural":"Commandes","fields":[{"name":"fournisseur_id","type":"ref","ref":"fournisseurs","required":true,"label":"Fournisseur"},{"name":"statut","type":"text","required":true,"label":"Statut"},{"name":"total_ht","type":"number","label":"Total HT"},{"name":"notes","type":"text","label":"Notes"}]}].find((e) => e.id === entityId);
           const fields = (entity && entity.fields) || [{ name: "nom", type: "text", required: true, label: "Nom" }];

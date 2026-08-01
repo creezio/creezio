@@ -32,6 +32,8 @@ export type StartBrandDesktopConfig = {
   brandMigrations?: readonly SqliteMigration[];
   registerModuleApi?: (api: ApiKernel) => void;
   beforeBoot?: () => void;
+  /** Monter tasks/mails/assistant natifs (défaut true). */
+  enablePlatformServices?: boolean;
   /** Feed Meili marque (optionnel — sans feed = pas de boot Meili). */
   meiliFeed?: BrandMeiliFeed;
   /** Items nav brand (slot vertical). */
@@ -60,6 +62,7 @@ export type StartBrandKernelHarnessConfig = {
   brandMigrations?: readonly SqliteMigration[];
   registerModuleApi?: (api: ApiKernel) => void;
   beforeBoot?: () => void;
+  enablePlatformServices?: boolean;
   meiliFeed?: BrandMeiliFeed;
   /** Racine app (pour binaire meili resources/). */
   appRoot: string;

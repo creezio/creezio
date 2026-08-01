@@ -29,6 +29,7 @@ function resolveBootKernel(
       brandMigrations: config.brandMigrations,
       registerModuleApi: config.registerModuleApi,
       beforeBoot: config.beforeBoot,
+      enablePlatformServices: config.enablePlatformServices,
     });
   }
   throw new Error(

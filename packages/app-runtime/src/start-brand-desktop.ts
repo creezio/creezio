@@ -1,6 +1,7 @@
 /**
  * Façade desktop marque — absorbe l'orchestration OS.
  * La marque déclare : manifest, bootKernel, feed, nav.
+ * Le kit monte kernel HTTP, session, Meili, MCP, nav cœur.
  */
 import fs from "node:fs";
 import path from "node:path";
@@ -15,7 +16,6 @@ import {
   maybeBootBrandMeili,
 } from "@creezio/electron-shell";
 import { createMcpFacade } from "@creezio/mcp-facade";
-import { createMemoryAuthStore } from "@creezio/auth";
 import { createNavShellAdapter } from "@creezio/shell-ui";
 import { brandKernelBooter } from "./create-brand-kernel.js";
 import type {
@@ -32,6 +32,7 @@ function resolveBootKernel(config: StartBrandDesktopConfig): BootBrandKernelFn {
       brandMigrations: config.brandMigrations,
       registerModuleApi: config.registerModuleApi,
       beforeBoot: config.beforeBoot,
+      enablePlatformServices: config.enablePlatformServices,
     });
   }
   throw new Error(
@@ -126,16 +127,52 @@ export async function startBrandDesktop(
     brandId: manifest.brandId,
     allowUnauthenticated: true,
     listApiMounts: () => api.listMounts(),
-    discoverToolsBySpace: async () => ({ module: [], plugin: [] }),
+    discoverToolsBySpace: async () => ({
+      module: api
+        .listMounts()
+        .filter((m) => m.space === "module")
+        .map((m) => ({
+          name: `module.${m.id}.health`,
+          description: `Health module ${m.id}`,
+          space: "module" as const,
+          ownerId: m.id,
+          handler: async () => ({
+            ok: true,
+            content: { module: m.id, api: kernelHttp.baseUrl },
+          }),
+        })),
+      plugin: [],
+    }),
   });
-  const auth = createMemoryAuthStore();
+  mcp.registerTool({
+    name: "module.platform.list_mounts",
+    description: "Liste les mounts API kernel (modules + platform)",
+    space: "module",
+    ownerId: "platform",
+    handler: async () => ({
+      ok: true,
+      content: { mounts: api.listMounts() },
+    }),
+  });
+
   const navShell = createNavShellAdapter();
   if (config.navItems?.length) {
     navShell.registerBrandNav(config.navItems);
   }
+  // Alias OS FR (parity TF2 / oracle paths)
+  navShell.registerBrandNav([
+    { id: "os.setup", label: "Setup", href: "/setup", group: "core" },
+    { id: "os.login", label: "Login", href: "/login", group: "core" },
+    { id: "os.taches", label: "Tâches", href: "/taches", group: "core" },
+    { id: "os.mails", label: "Mails", href: "/mails", group: "core" },
+    {
+      id: "os.developers",
+      label: "Developers",
+      href: "/developers",
+      group: "core",
+    },
+  ]);
   const navModel = navShell.getRenderModel();
-  void mcp;
-  void auth;
 
   const cleanup = async () => {
     meiliStop?.();
@@ -188,9 +225,11 @@ export async function startBrandDesktop(
     : path.join(__dirname, "../../resources/renderer/index.html");
   await win.loadFile(renderer);
 
+  const mounts = api.listMounts();
+  const mcpTools = await mcp.listTools();
   log(
     "nav",
-    `merged=${navModel.items.length} mounts=${api.listMounts().length} setup=${session.isSetupComplete()} api=${kernelHttp.baseUrl} search=${searchEngine}`,
+    `merged=${navModel.items.length} mounts=${mounts.length} mcp=${mcpTools.tools.length} setup=${session.isSetupComplete()} api=${kernelHttp.baseUrl} search=${searchEngine}`,
   );
 
   app.on("will-quit", () => {

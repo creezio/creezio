@@ -11,6 +11,11 @@
     { "path": "../electron-shell" },
     { "path": "../mcp-facade" },
     { "path": "../auth" },
-    { "path": "../shell-ui" }
+    { "path": "../shell-ui" },
+    { "path": "../assistant" },
+    { "path": "../tasks" },
+    { "path": "../mails" },
+    { "path": "../api-kernel" },
+    { "path": "../platform-core" }
   ]
 }

@@ -63,10 +63,22 @@ function createOptimiserMount(): ApiMount {
       if (parts[0] === "suggest" && method === "POST") {
         const body = (req.body || {}) as {
           from?: string;
+          produit_id?: string;
+          quantite?: number;
           besoins?: Array<{ produit_id: string; quantite: number }>;
         };
         let besoins = body.besoins || [];
-        if (body.from === "panier" || (!besoins.length && body.from !== "list")) {
+        if (body.produit_id) {
+          besoins = [
+            {
+              produit_id: body.produit_id,
+              quantite: Number(body.quantite) || 1,
+            },
+          ];
+        } else if (
+          body.from === "panier" ||
+          (!besoins.length && body.from !== "list")
+        ) {
           const lignes = db
             .prepare(`SELECT produit_id, quantite, fournisseur_id, prix_unitaire FROM panier_lignes`)
             .all() as Array<{
@@ -143,6 +155,8 @@ function createOptimiserMount(): ApiMount {
           status: 200,
           body: {
             propositions,
+            suggestions: propositions,
+            items: propositions,
             total_actuel: Math.round(totalActuel * 100) / 100,
             total_optimise: Math.round(totalOptimise * 100) / 100,
             economie_eur: economie,
@@ -815,6 +829,170 @@ export function enrichDashboardBody(
   };
 }
 
+function createSkusMount(): ApiMount {
+  return {
+    dbLayer: "brand",
+    handle: async ({ req, subPath, db }) => {
+      if (!db) return { status: 503, body: { error: "db_unavailable" } };
+      const method = req.method.toUpperCase();
+      const parts = subPath.split("/").filter(Boolean);
+      if (parts.length === 0 && method === "GET") {
+        const rows = db
+          .prepare(
+            `SELECT id, nom, unite, categorie, fournisseur_id, archived_at
+             FROM produits ORDER BY nom ASC`,
+          )
+          .all() as Array<Record<string, unknown>>;
+        const items = rows.map((r) => ({
+          id: r.id,
+          sku: String(r.id).slice(0, 8).toUpperCase(),
+          nom: r.nom,
+          unite: r.unite,
+          categorie: r.categorie,
+          fournisseur_id: r.fournisseur_id,
+          archived_at: r.archived_at,
+        }));
+        return { status: 200, body: { items, skus: items } };
+      }
+      if (parts.length === 1 && method === "GET") {
+        const row = db
+          .prepare(`SELECT * FROM produits WHERE id = ?`)
+          .get(parts[0]) as Record<string, unknown> | undefined;
+        if (!row) return { status: 404, body: { error: "not_found" } };
+        return {
+          status: 200,
+          body: {
+            ...row,
+            sku: String(row.id).slice(0, 8).toUpperCase(),
+          },
+        };
+      }
+      return { status: 404, body: { error: "not_found", subPath } };
+    },
+  };
+}
+
+function createPromotionsMount(): ApiMount {
+  return {
+    dbLayer: "brand",
+    handle: async ({ req, subPath, db }) => {
+      if (!db) return { status: 503, body: { error: "db_unavailable" } };
+      const method = req.method.toUpperCase();
+      const parts = subPath.split("/").filter(Boolean);
+      if (parts.length === 0 && method === "GET") {
+        const items = db
+          .prepare(
+            `SELECT p.*, pr.nom AS produit_nom, f.nom AS fournisseur_nom
+             FROM prix p
+             LEFT JOIN produits pr ON pr.id = p.produit_id
+             LEFT JOIN fournisseurs f ON f.id = p.fournisseur_id
+             WHERE COALESCE(p.promo, 0) = 1
+             ORDER BY p.created_at DESC`,
+          )
+          .all();
+        return { status: 200, body: { items, promotions: items } };
+      }
+      return { status: 404, body: { error: "not_found", subPath } };
+    },
+  };
+}
+
+function createDispatchMount(): ApiMount {
+  return {
+    dbLayer: "brand",
+    handle: async ({ req, subPath, db }) => {
+      if (!db) return { status: 503, body: { error: "db_unavailable" } };
+      const method = req.method.toUpperCase();
+      const parts = subPath.split("/").filter(Boolean);
+      if (parts[0] === "candidates" && method === "GET") {
+        const lignes = db
+          .prepare(
+            `SELECT pl.*, pr.nom AS produit_nom, f.nom AS fournisseur_nom
+             FROM panier_lignes pl
+             LEFT JOIN produits pr ON pr.id = pl.produit_id
+             LEFT JOIN fournisseurs f ON f.id = pl.fournisseur_id
+             ORDER BY f.nom, pr.nom`,
+          )
+          .all() as Array<Record<string, unknown>>;
+        const byFournisseur = new Map<string, typeof lignes>();
+        for (const l of lignes) {
+          const fid = String(l.fournisseur_id || "unknown");
+          if (!byFournisseur.has(fid)) byFournisseur.set(fid, []);
+          byFournisseur.get(fid)!.push(l);
+        }
+        const candidates = [...byFournisseur.entries()].map(
+          ([fournisseur_id, items]) => ({
+            fournisseur_id,
+            fournisseur_nom: items[0]?.fournisseur_nom || fournisseur_id,
+            lignes: items,
+            total_lignes: items.length,
+          }),
+        );
+        return {
+          status: 200,
+          body: { candidates, items: candidates },
+        };
+      }
+      if (parts.length === 0 && method === "GET") {
+        return {
+          status: 200,
+          body: { ok: true, hint: "GET /dispatch/candidates" },
+        };
+      }
+      return { status: 404, body: { error: "not_found", subPath } };
+    },
+  };
+}
+
+function createSiteMount(): ApiMount {
+  return {
+    dbLayer: "brand",
+    handle: async ({ req, subPath, db }) => {
+      if (!db) return { status: 503, body: { error: "db_unavailable" } };
+      const method = req.method.toUpperCase();
+      const parts = subPath.split("/").filter(Boolean);
+      if (parts.length === 1 && method === "GET") {
+        const f = db
+          .prepare(`SELECT * FROM fournisseurs WHERE id = ?`)
+          .get(parts[0]) as Record<string, unknown> | undefined;
+        if (!f) return { status: 404, body: { error: "not_found" } };
+        const produits = db
+          .prepare(
+            `SELECT id, nom, unite, categorie FROM produits
+             WHERE fournisseur_id = ? AND archived_at IS NULL
+             ORDER BY nom`,
+          )
+          .all(parts[0]);
+        const promos = db
+          .prepare(
+            `SELECT * FROM prix WHERE fournisseur_id = ? AND COALESCE(promo,0)=1
+             ORDER BY created_at DESC`,
+          )
+          .all(parts[0]);
+        return {
+          status: 200,
+          body: {
+            fournisseur: f,
+            site_web: f.site_web || null,
+            produits,
+            promotions: promos,
+          },
+        };
+      }
+      if (parts.length === 0 && method === "GET") {
+        const items = db
+          .prepare(
+            `SELECT id, nom, site_web, contact, email FROM fournisseurs
+             WHERE archived_at IS NULL ORDER BY nom`,
+          )
+          .all();
+        return { status: 200, body: { items } };
+      }
+      return { status: 404, body: { error: "not_found", subPath } };
+    },
+  };
+}
+
 export function registerBrandBonusApi(api: ApiKernel): void {
   api.registerModuleApi("optimiser", createOptimiserMount());
   api.registerModuleApi("stack", createStackMount());
@@ -823,8 +1001,14 @@ export function registerBrandBonusApi(api: ApiKernel): void {
   api.registerModuleApi("marketplaces", createCrudSimpleMount("marketplaces", ["nom"]));
   api.registerModuleApi("secteurs", createCrudSimpleMount("secteurs", ["nom"]));
   api.registerModuleApi("agregateurs", createCrudSimpleMount("agregateurs", ["nom"]));
-  api.registerModuleApi(
-    "data_mappings",
-    createCrudSimpleMount("data_mappings", ["libelle_externe", "produit_id"]),
-  );
+  const dataMapping = createCrudSimpleMount("data_mappings", [
+    "libelle_externe",
+    "produit_id",
+  ]);
+  api.registerModuleApi("data_mappings", dataMapping);
+  api.registerModuleApi("data-mapping", dataMapping);
+  api.registerModuleApi("skus", createSkusMount());
+  api.registerModuleApi("promotions", createPromotionsMount());
+  api.registerModuleApi("dispatch", createDispatchMount());
+  api.registerModuleApi("site", createSiteMount());
 }
