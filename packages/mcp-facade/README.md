@@ -1,81 +1,131 @@
-# `@creezio/mcp-facade`
+# @creezio/mcp-facade
 
-**Une seule façade / proxy MCP** = MCP de l'app. Pas de « produit MCP Creezio » séparé.
+## Rôle
 
-## Contrat SoT `listTools` (D-P18)
+`@creezio/mcp-facade` fournit la façade MCP unique d'une app Creezio. Il n'y a pas un "MCP produit Creezio" separe : Electron, Hono `/mcp` et le bridge assistant doivent s'appuyer sur la meme factory et exposer le meme ensemble metier, modulo la surface publique (`canonical`, `legacy-preferred`, `both`).
 
-| Surface | Source |
-|---------|--------|
-| Electron brand-runtime | `createBrandMcpFacade` / `create*BrandMcp` |
-| Hono `/mcp` | `bindFacadeToolsToHono(facade, …)` (+ host-only tools) |
-| Assistant `mcp-bridge` | même factory, `publicSurface: "canonical"` |
+Le package couvre :
 
-Les trois doivent exposer le **même ensemble métier** (modulo `publicSurface` / aliases).  
-Tools host (desktop, AI tasks) restent hors factory — jamais de doublon métier.
+- registre dynamique de tools MCP ;
+- namespaces `core.*` / `creezio.*`, `module.<ownerId>.*`, `plugin.<ownerId>.*` ;
+- aliases legacy (`get_panier` -> `module.panier.get`) sans double exposition ;
+- policies d'autorisation et deny cross-layer ;
+- JWT Bearer minimal ;
+- proxy Hono/Streamable HTTP ;
+- OAuth 2.1 MCP avec PKCE, DCR, refresh rotation, well-known metadata et CORS/rate limit ;
+- factory marque `createBrandMcpFacade` ;
+- host tools plateforme dont `open_external_tab` ;
+- admin MCP (policies, clients OAuth, diagnostics, routes et UI).
 
-## Capacités
+Surfaces publiees :
 
-| Phase | Surface |
-|-------|---------|
-| H1 | Tools cœur + `discoverTools` + JWT |
-| H2 | `listToolsBySpace` / `discoverToolsBySpace` |
-| **H4** | Registry, namespacing, **aliases legacy**, policies deny cross-layer, `publicSurface` |
-| **M9** | `wrapMcpFacadeWithHonoProxy` + contrat `MCP_PRODUCT_EXECUTOR` + `createCoreMcpTools` |
-| **D-P18** | OAuth 2.1 / PKCE / well-known + factory Hono `/mcp` + `createBrandMcpFacade` |
+| Import | Usage |
+|---|---|
+| `@creezio/mcp-facade` | façade, namespaces, JWT, OAuth, Hono, host tools, admin |
+| `@creezio/mcp-facade/ui` | UI React admin MCP : `McpAdminClient` |
 
-### Namespaces
+## Périmètre (kit vs marque)
 
-- `creezio.*` / `core.*` — cœur (réservé façade)
-- `module.<ownerId>.*` — métier brand
-- `plugin.<ownerId>.*` — sidecars orga
+Ce qui appartient au kit :
 
-### Anti double exposition
+- la mécanique MCP commune (`listTools`, `listToolsBySpace`, `callTool`) ;
+- le parsing et l'assertion des namespaces ;
+- la surface publique et les aliases ;
+- les tools coeur `creezio.*` / `core.*` exposes par `createCoreMcpTools` ;
+- le proxy Hono et le binding `bindFacadeToolsToHono` ;
+- OAuth MCP : clients, authorization codes, access/refresh tokens, PKCE S256, scopes, routes, metadata ;
+- le host tool generique `open_external_tab` ;
+- admin MCP : policies, clients, audit/metrics/diagnostics ;
+- UI admin generique.
+
+Ce qui reste dans la marque :
+
+- handlers metier (`mcp-tools.ts`) : panier, GED, VASP, dossiers, catalogue, etc. ;
+- aliases publics historiques (`mcp-aliases.ts`) ;
+- resolution API Kernel et mounts metier ;
+- session/cookie/auth utilisateur injectes dans OAuth ;
+- DB concrete, migrations et secret JWT ;
+- resolution d'URL metier pour `open_external_tab` ;
+- host tools non MCP-metier : desktop, AI tasks, dispatch vers utilisateurs ;
+- transport concret `StreamableHTTPTransport` et `buildMcpServer`.
+
+Regle importante : les host tools (desktop, AI tasks, introspection) restent hors factory metier. Ne dupliquer aucun handler panier/GED/VASP dans Hono si la façade sait deja le decouvrir.
+
+## Installation / build
+
+```bash
+npm install
+npm run build -w @creezio/mcp-facade
+npm run typecheck -w @creezio/mcp-facade
+```
+
+Artefacts :
+
+- ESM : `dist/`
+- CJS Electron : `dist-cjs/`
+- UI source : `ui/`
+
+Dependances directes : `@creezio/api-kernel`, `@creezio/platform-core`, `hono`, `jose`, `zod`. Les dependances React/UI sont optionnelles et ne concernent que `./ui`.
+
+## Configuration
+
+### Façade de base
 
 ```ts
 import { createMcpFacade } from "@creezio/mcp-facade";
 
-const mcp = createMcpFacade({
+const facade = createMcpFacade({
   jwtSecret: process.env.MCP_JWT_SECRET,
-  publicSurface: "legacy-preferred", // masque module.panier.get si alias get_panier
+  publicSurface: "legacy-preferred",
   aliases: {
     get_panier: "module.panier.get",
-    add_to_panier: "module.panier.add_ligne",
   },
-  discoverToolsBySpace: async () => ({ module: [/* … */], plugin: [] }),
+  discoverToolsBySpace: async () => ({
+    module: await discoverModuleTools(),
+    plugin: await discoverPluginTools(),
+  }),
 });
-
-await mcp.callTool("get_panier", {}); // → handler module.panier.get
 ```
 
-`publicSurface` : `legacy-preferred` (défaut H4) | `canonical` | `both`.
+`publicSurface` :
 
-## Factory marque (DX)
+| Mode | Effet |
+|---|---|
+| `legacy-preferred` | defaut ; expose l'alias legacy et masque le canonique correspondant |
+| `canonical` | expose uniquement les noms namespaces |
+| `both` | expose alias + canonique ; utile en debug, deconseille en production |
+
+### Namespaces
+
+Namespaces valides :
+
+- `creezio.*` ou `core.*` : coeur reserve au kit ;
+- `module.<ownerId>.*` : modules metier de la marque ;
+- `plugin.<ownerId>.*` : plugins/sidecars rattaches a une organisation ou un owner plugin.
+
+`ownerId` doit commencer par une lettre et contenir uniquement lettres, chiffres, `_` ou `-`, longueur max 63.
 
 ```ts
-import { createBrandMcpFacade } from "@creezio/mcp-facade";
-import { BRAND_MCP_ALIASES } from "./mcp-aliases";
-import { createBrandModuleMcpTools } from "./mcp-tools";
+import {
+  assertNamespacedToolName,
+  parseNamespacedToolName,
+} from "@creezio/mcp-facade";
 
-export function createMyBrandMcp(api, options = {}) {
-  return createBrandMcpFacade({
-    api,
-    aliases: BRAND_MCP_ALIASES,
-    discoverModuleTools: createBrandModuleMcpTools,
-    publicSurface: "legacy-preferred",
-    ...options,
-  });
-}
+const parsed = parseNamespacedToolName("module.panier.get");
+// { space: "module", ownerId: "panier", rest: "get" }
+
+assertNamespacedToolName("module", "module.panier.get", "panier");
 ```
 
-Reste en marque : `mcp-tools.ts` (handlers métier), `mcp-aliases.ts` (noms legacy publics).
+Les aliases legacy (`get_panier`) ne passent pas `assertNamespacedToolName`; ils doivent etre declares via `aliases` ou `registerAlias`.
 
-## Brancher OAuth + `/mcp`
+### OAuth + `/mcp`
 
 ```ts
 import {
   configureMcpOAuth,
-  createMcpOAuthRoutes,
   createMcpHonoApp,
+  createMcpOAuthRoutes,
   ensureMcpAdminSchema,
   resolveMcpCorsOrigin,
 } from "@creezio/mcp-facade";
@@ -84,20 +134,26 @@ import { StreamableHTTPTransport } from "@hono/mcp";
 configureMcpOAuth({
   getWriteDb,
   tableExists,
-  // pas de hardcode domaine marque
+  getJwtSecret: () => process.env.MCP_JWT_SECRET!,
+  resolvePublicUrl: () =>
+    process.env.MCP_PUBLIC_URL ||
+    process.env.APP_PUBLIC_URL ||
+    process.env.APP_BASE_URL ||
+    null,
 });
 
 const oauthRoutes = createMcpOAuthRoutes({
   productName: "Ma Marque CRM",
   resourceName: "Ma Marque CRM MCP",
-  consentScopesHtml: `<li>…</li>`,
+  consentScopesHtml: "<li>Lire et executer les tools autorises</li>",
   session: {
     getSessionFromContext,
     authenticateUser,
     validateCredentials,
     getOwnerId: () => getOwner()?.id ?? null,
-    createSessionCookie, // injectable — ne pas hardcoder le nom de cookie
+    createSessionCookie,
   },
+  resolveCookieSecure,
 });
 
 export const mcpApp = createMcpHonoApp({
@@ -114,27 +170,219 @@ export const mcpApp = createMcpHonoApp({
       sessionIdGenerator: undefined,
       enableJsonResponse: true,
     }),
-  buildMcpServer, // mince : façade + bindFacadeToolsToHono + host-only
+  buildMcpServer,
 });
 ```
 
-## Checklist extinction fichiers locaux
+Routes OAuth exposees par le kit :
 
-Après cutover marque, supprimer (ou stub ≤ ~40 LOC délégant) :
+- `GET /.well-known/oauth-authorization-server`
+- `GET /.well-known/oauth-protected-resource`
+- `POST /oauth/register`
+- `GET /oauth/authorize`
+- `POST /oauth/authorize`
+- `POST /oauth/token`
+- `ALL /mcp` via `createMcpHonoApp`
 
-- [ ] `src/lib/mcp-oauth.ts` → `configureMcpOAuth` + re-exports kit
-- [ ] `src/server/mcp/oauth.ts` → `createMcpOAuthRoutes({…})`
-- [ ] `src/server/mcp/rate-limit.ts` / `cors-policy.ts` → kit
-- [ ] logique transport dans `src/server/mcp/app.ts` → `createMcpHonoApp`
-- [ ] tools métier inline dans `server.ts` → `electron/modules/mcp-tools.ts` (+ aliases)
-- [ ] host-tools = host-only (desktop / AI), zéro panier/GED/VASP dupliqué
+Scopes : `MCP_SCOPE`, `MCP_SCOPE_LEGACY`, `MCP_SCOPE_READ`, `MCP_SCOPE_WRITE`, `MCP_SCOPES`.
 
-## Host tools plateforme
+## API publique (exports + exemples)
 
-`CREEZIO_PLATFORM_HOST_MCP_TOOL_NAMES` : `open_external_tab`, `list_tools_by_space`.  
-- `open_external_tab` → `createOpenExternalTabHostMcpTools` (adapters marque :
-  resolve / toOpenTabParams / dispatch / users).  
-- Workflows AI tasks (`create_ai_task`, …) → `createAiTaskHostMcpTools` dans
-  `@creezio/tasks` (host-only, SoT partagée TF/CV).  
-Reste marque : résolution URL métier (+ discovery TF `list_tools_by_space`) et
-façade. Le métier (panier, GED, dossiers VASP) **ne va jamais** dans le kit.
+### Façade MCP
+
+Exports principaux :
+
+- `createMcpFacade`, type `McpFacade`
+- types : `McpToolDefinition`, `McpRegisteredTool`, `McpToolHandler`, `McpToolCallResult`, `McpToolSpace`
+- `listTools`, `listToolsBySpace`, `callTool`, `registerTool`, `registerAlias`
+
+```ts
+const mcp = createMcpFacade({
+  allowUnauthenticated: true,
+  discoverToolsBySpace: async () => ({
+    module: [
+      {
+        name: "module.notes.create",
+        description: "Cree une note",
+        space: "module",
+        ownerId: "notes",
+        handler: async (args) => ({ ok: true, content: args }),
+      },
+    ],
+  }),
+});
+
+await mcp.callTool("module.notes.create", { title: "Hello" });
+```
+
+### Factory marque
+
+```ts
+import { createBrandMcpFacade } from "@creezio/mcp-facade";
+import { BRAND_MCP_ALIASES } from "./mcp-aliases";
+import { createBrandModuleMcpTools } from "./mcp-tools";
+
+export function createMyBrandMcp(api, options = {}) {
+  return createBrandMcpFacade({
+    api,
+    aliases: BRAND_MCP_ALIASES,
+    discoverModuleTools: createBrandModuleMcpTools,
+    discoverPluginTools: createBrandPluginTools,
+    publicSurface: "legacy-preferred",
+    ...options,
+  });
+}
+```
+
+`createBrandMcpFacade` configure par defaut :
+
+- `allowUnauthenticated: true` pour compat runtime local ;
+- `enforceNamespaces: true` ;
+- `defaultCrossLayerDeny: true` ;
+- `listApiMounts: () => api.listMounts()` ;
+- `discoverToolsBySpace` avec modules et plugins.
+
+### Hono / SDK MCP
+
+Exports principaux :
+
+- `bindFacadeToolsToHono`
+- `mcpFacadeResultToSdk`
+- `wrapMcpFacadeWithHonoProxy`
+- `MCP_PRODUCT_EXECUTOR`, `resolveMcpFacadeRole`
+
+```ts
+import { bindFacadeToolsToHono } from "@creezio/mcp-facade";
+
+export async function buildMcpServer(ctx) {
+  const server = createSdkMcpServer();
+  const facade = createMyBrandMcp(api, { publicSurface: "canonical" });
+  await bindFacadeToolsToHono(facade, server.registerTool.bind(server), {
+    bearerToken: ctx.accessToken,
+  });
+  registerHostTools(server, ctx);
+  return server;
+}
+```
+
+### JWT, policies et ACL
+
+Exports principaux :
+
+- `signMcpJwt`, `verifyMcpBearer`
+- `composeToolPolicies`, `denyCrossLayerToolCall`, `createDenyUnauthorizedPluginToolPolicy`
+- types `McpAuthorizeContext`, `McpToolPolicyDecision`
+
+```ts
+const authorize = composeToolPolicies(
+  denyCrossLayerToolCall,
+  async (ctx) => {
+    if (ctx.space === "plugin" && !ctx.orgId) {
+      return { allow: false, reason: "missing_org" };
+    }
+    return { allow: true };
+  },
+);
+```
+
+### OAuth store et routes
+
+Exports principaux :
+
+- `configureMcpOAuth`, `getMcpOAuthAdapters`, `mcpOauthReady`
+- `registerClient`, `getClient`, `verifyClientSecret`
+- `createAuthCode`, `peekAuthCode`, `consumeAuthCode`, `verifyPkceS256`
+- `createRefreshToken`, `rotateRefreshToken`
+- `signAccessToken`, `verifyAccessToken`
+- `resolveMcpPublicUrl`, `mcpBaseUrl`, `mcpResourceUrl`, `resourceAcceptable`
+- `checkMcpRateLimit`, `rateLimitHeaders`, `resolveMcpCorsOrigin`
+- `createMcpOAuthRoutes`, `createMcpHonoApp`
+
+La DB est injectee via `McpOAuthAdapters`; le kit ne choisit pas le fichier SQLite.
+
+### Host tools plateforme
+
+`CREEZIO_PLATFORM_HOST_MCP_TOOL_NAMES` contient :
+
+- `open_external_tab`
+- `list_tools_by_space`
+
+`open_external_tab` est enregistre par `createOpenExternalTabHostMcpTools`. Le kit fournit le schema et les garde-fous owner/target user ; la marque fournit resolution et dispatch.
+
+```ts
+import { createOpenExternalTabHostMcpTools } from "@creezio/mcp-facade";
+
+createOpenExternalTabHostMcpTools({
+  registerTool,
+  getActorUserId: () => ctx.userId,
+  resolveOpenTabRequest: ({ url, fournisseur_id, outil_slug, title }) =>
+    resolveBrandExternalTab({ url, fournisseur_id, outil_slug, title }),
+  toOpenTabParams: (resolved) => toDesktopOpenTabParams(resolved),
+  dispatchOpenTabAction,
+  getUserById,
+  getOwner,
+  includeOutilSlug: true,
+});
+```
+
+Le schema accepte `url`, `fournisseur_id`, `title`, `target_user_id`, et optionnellement `outil_slug`. Seul le compte principal owner peut cibler un autre utilisateur.
+
+### Admin MCP et UI
+
+Exports admin :
+
+- `configureMcpAdmin`, `ensureMcpAdminSchema`
+- `listMcpToolPolicies`, `getMcpToolPolicy`, `updateMcpToolPolicy`
+- `listMcpClients`, `setMcpClientEnabled`, `revokeMcpClient`, `rotateMcpClientSecret`
+- `mcpAdminStatus`, `mcpDiagnostics`, `mcpMetrics`, `auditMcpAdmin`, `listMcpAuditLogs`, `exportMcpDiagnostics`
+- `createMcpAdminRoutes`
+
+UI :
+
+```tsx
+import { McpAdminClient } from "@creezio/mcp-facade/ui";
+```
+
+## Flux / fonctionnement
+
+1. La marque cree ses tools metier namespacies (`module.<owner>.*`) et ses aliases legacy.
+2. `createBrandMcpFacade` regroupe core tools, modules et plugins.
+3. `listTools` applique `publicSurface` pour eviter alias + canonique en double.
+4. `callTool` resout l'alias vers le canonique, verifie le Bearer si necessaire, applique les policies, puis appelle le handler.
+5. Hono `/mcp` construit un serveur SDK, bind la façade, ajoute les host tools et traite le transport Streamable HTTP.
+6. OAuth 2.1 gere en amont l'enregistrement client, l'autorisation utilisateur, le token exchange et les refresh tokens.
+7. Les tools host (`open_external_tab`, AI tasks ailleurs) restent dans le host runtime, pas dans la factory metier.
+
+## Intégration marques
+
+Checklist :
+
+1. Migrer les tables OAuth/admin MCP cote marque et fournir `getWriteDb` / `tableExists`.
+2. Configurer `configureMcpOAuth` avec secret JWT et URL publique resolue.
+3. Creer `createMcpOAuthRoutes` avec session, credentials et cookie injectes.
+4. Creer `createMcpHonoApp` avec transport, API key auth optionnelle et `buildMcpServer`.
+5. Remplacer les registries metier inline par `createBrandMcpFacade`.
+6. Mettre les handlers metier dans `mcp-tools.ts` et aliases dans `mcp-aliases.ts`.
+7. Utiliser `bindFacadeToolsToHono` dans Hono et la meme factory dans Electron/assistant.
+8. Ajouter les host tools explicitement apres la façade (`open_external_tab`, AI tasks via `@creezio/tasks`).
+9. Monter les routes admin MCP sous une protection owner.
+10. Supprimer ou reduire a des reexports/stubs les anciens fichiers locaux OAuth, CORS, rate-limit et app `/mcp`.
+
+## Dépendances @creezio/*
+
+| Dependance | Rôle |
+|---|---|
+| `@creezio/api-kernel` | API Kernel injecte a `createBrandMcpFacade`, `listMounts()` |
+| `@creezio/platform-core` | version architecture et helpers plateforme |
+
+Interactions importantes :
+
+- `@creezio/auth` fournit souvent session/cookie/credentials pour OAuth.
+- `@creezio/product-hub` peut fournir l'ACL plugins pour `createDenyUnauthorizedPluginToolPolicy`.
+- `@creezio/tasks` porte les host tools AI tasks, hors façade metier.
+- `@creezio/shell-ui` fournit des helpers de cookie/origin et l'UI admin d'app autour de `McpAdminClient`.
+
+## Voir aussi → AGENTS.md + docs/FILES.md
+
+- [`AGENTS.md`](./AGENTS.md) : consignes de modification pour agents.
+- [`docs/FILES.md`](./docs/FILES.md) : inventaire fichier par fichier des exports et responsabilites.

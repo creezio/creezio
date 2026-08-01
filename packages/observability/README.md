@@ -1,81 +1,324 @@
-# `@creezio/observability`
+# @creezio/observability
 
-Module **natif plateforme** — une seule SoT pour events, ops journal, fleet
-agent, usage analytics, request-logs (+ UI admin) et **fleet-collector** ops.
+## Rôle
 
-Générique : pas de parcours métier resto / VASP / cabinet. Branding et domaines
-uniquement via injection (`configure*` / env / hooks).
+`@creezio/observability` regroupe les briques d'observabilité Creezio :
 
-## Surfaces SoT
+- store d'événements activité / plugin usage / control-plane ;
+- `ApiMount` `/platform/observability` ;
+- ops journal desktop JSONL, règles de boot et émission d'événements ;
+- agent flotte desktop opt-in, fleet activity et samples ;
+- usage analytics UI/admin ;
+- request logs API/MCP avec redaction ;
+- UI admin analytics, request logs et endpoints ;
+- `fleet-collector` autonome (`creezio-fleet-collector`).
 
-| Surface | Entrée kit | Notes |
-|---------|------------|--------|
-| Store V2 (activité / CP / usages) | `createSqliteObservabilityStore`, `createObservabilityApiMount` | C4 |
-| Ops journal / rules / emit | `initOpsJournal`, `track`, `emitOpsEvent`, … | R4 / **P29** — émission SoT `TF2EVENT` (`OPS_EVENT_PREFIX`) ; lecture dual-read `OPS_EVENT_PREFIXES` = `TF2EVENT` + `CertivanEVENT` (ne pas casser) |
-| Fleet agent + activity + samples | `createFleetAgent`, `recordFleetAction`, `createFleetSamples` | M7 — hooks chemins / consent / endpoint |
-| Usage analytics | `configureUsageAnalytics`, routes + `ui` | N6 |
-| Request-logs | `configureRequestLogs`, middleware, routes, `ui` | O5 |
-| **Fleet collector** (ops VPS) | `fleet-collector/server.mjs` | **P25** — binaire neutre, env injection |
+Le package est marque-agnostique : endpoints, consentement, identité d'installation, chemins et labels UI sont injectés par la marque ou par env neutre.
 
-## Injection marque (`configure*` / hooks)
+## Périmètre kit vs marque
 
-| API / env | Rôle |
-|-----------|------|
-| `configureUsageAnalytics({ getDb, … })` | DB + session usage |
-| `configureUsageAnalyticsUiBrand({ aidAttr, titlebarAttr, … })` | Attributs DOM / chrome UI |
-| `configureRequestLogs` / `CREEZIO_*` (+ fallbacks legacy) | Capacité ring, state dir flotte |
-| `createFleetAgent({ endpoint, getConsent, getInstallId, getHeartbeatExtras, … })` | Endpoints flotte + extras métier |
-| Fleet-collector env | `CREEZIO_FLEET_*` / `FLEET_*` (+ dual-read `TF2_*` / `CERTIVAN_*`) — domaine, tunnel suffix, titres UI |
+**Kit**
 
-## Checklist extinction jumeaux marques
+- Fournit les schémas/stores observability.
+- Enregistre les événements et agrégations génériques.
+- Écrit un journal ops local best-effort, avec redaction.
+- Produit les heartbeats/crash/bundles de flotte via hooks.
+- Capture les logs API/MCP dans un ring buffer mémoire et miroir JSONL.
+- Stocke et agrège les événements usage analytics.
+- Fournit routes Hono ingest/admin et UI React admin.
+- Fournit un collector HTTP autonome pour la flotte.
 
-- [ ] Pas de `lib/usage-analytics*` local
-- [ ] Pas de `lib/request-logs*` + clients admin locaux
-- [ ] Pas de `electron/ops-*`, `fleet-agent`, `fleet-activity`, `fleet-samples`, `fleet-telemetry` locaux
-- [ ] Pas de twin `crm/scripts/fleet-collector/{server,ops-api,public}` — wrapper ≤80 LOC ou invoke vendor
-- [ ] Mounts routes / pages admin ≤80 LOC
-- [ ] Fidu : `features.fleet=false` / pas d’admin analytics — **respecter**
+**Marque**
 
-## Hors scope
+- Configure les DB adapters (`configureUsageAnalytics`) et request logs (`configureRequestLogs`).
+- Configure les tokens UI analytics (`configureUsageAnalyticsUiBrand`).
+- Appelle `initOpsJournal`, `track*` et `createFleetAgent` depuis l'app desktop.
+- Fournit consentement, install id, version, santé services, samples et commandes distantes.
+- Monte les middlewares `requestLogApiMiddleware` / `requestLogMcpMiddleware`.
+- Monte les routes analytics/admin avec auth owner.
+- Déploie/configure le `fleet-collector` et ses secrets.
 
-- **ai-screencast** → `@creezio/electron-shell` + `@creezio/shell-ui`
-- **page-trails / ops-track / server-incident** encore dans `@creezio/shell-ui` (P2 optionnel)
-- Samples métier CV `electron/fleet-dossier-samples.ts` (via `getHeartbeatExtras`) — **reste marque**
-- Cockpit / onboarding / auth / shell sidebar → autres packages
+## Installation/build
 
-## Wiring marque mince (exemple)
+```bash
+npm run build -w @creezio/observability
+npm run typecheck -w @creezio/observability
+npm run test:fleet-collector -w @creezio/observability
+```
+
+Lancement collector :
+
+```bash
+npm run fleet-collector -w @creezio/observability
+# ou
+npx creezio-fleet-collector
+```
+
+Exports :
+
+- `@creezio/observability` : stores, helpers, ops, fleet, usage, request logs.
+- `@creezio/observability/ui` : UI admin et tracker client.
+- `@creezio/observability/fleet-collector/*` : collector autonome.
+
+## Configuration détaillée
+
+### Store observability et `ApiMount`
 
 ```ts
-// electron/host-runtime-ctx.ts — endpoints flotte marque
-fleet: {
-  envEndpointKey: "TF2_FLEET_ENDPOINT",
-  defaultEndpoint: "https://fleet.tempoflow.fr/i-<token>",
+import {
+  createObservabilityApiMount,
+  createSqliteObservabilityStore,
+} from "@creezio/observability";
+
+const store = createSqliteObservabilityStore({ db });
+const mount = createObservabilityApiMount(store);
+```
+
+### Usage analytics
+
+```ts
+import {
+  configureUsageAnalytics,
+  configureUsageAnalyticsUiBrand,
+} from "@creezio/observability";
+
+configureUsageAnalytics({
+  getWriteDb: () => db,
+  getDb: () => db,
+  tableExists: (name) => Boolean(db.prepare("SELECT 1 FROM sqlite_master WHERE name=?").get(name)),
+});
+
+configureUsageAnalyticsUiBrand({
+  aidAttr: "data-brand-aid",
+  titlebarNoDragClass: "brand-titlebar-no-drag",
+  mirrorFleetAction: (payload) => recordFleetAction(payload),
+});
+```
+
+`configureUsageAnalytics({ getWriteDb })` est requis avant les routes et queries usage.
+
+### Request logs
+
+```ts
+import {
+  configureRequestLogs,
+  requestLogApiMiddleware,
+  requestLogMcpMiddleware,
+} from "@creezio/observability";
+
+configureRequestLogs({
+  getFleetStateDir: () => "/var/lib/brand/fleet-state",
+});
+
+api.use("/api/v1/*", requestLogApiMiddleware);
+mcp.use("/mcp/*", requestLogMcpMiddleware);
+```
+
+Si `getFleetStateDir` est absent, le package lit :
+
+- `CREEZIO_FLEET_STATE_DIR`
+- `TF2_FLEET_STATE_DIR`
+- `CERTIVAN_FLEET_STATE_DIR`
+- `FIDU_FLEET_STATE_DIR`
+
+### Ops journal
+
+```ts
+import {
+  initOpsJournal,
+  setOpsJournalHooks,
+  track,
+  trackDecision,
+} from "@creezio/observability";
+
+setOpsJournalHooks({
+  log: (scope, line) => logger.info(`[${scope}] ${line}`),
+  onAnomaly: (evt) => reportAnomaly(evt),
+});
+
+initOpsJournal(userDataDir, appVersion);
+
+track({ level: "info", kind: "boot.start", ctx: { appVersion } });
+trackDecision("service.meili", "ok", { durationMs: 120 });
+```
+
+Le journal écrit dans `<userData>/ops`, garde une rétention bornée et ne doit jamais faire crasher l'app.
+
+### Fleet agent
+
+```ts
+import { createFleetAgent } from "@creezio/observability";
+
+const fleet = createFleetAgent({
+  baseUrl: "https://fleet.example.com/i-token",
+  getConfig: () => telemetryConfig,
+  isScopeActive: (cfg, scope) => cfg.enabled && Boolean(cfg.scopes[scope]),
+  getInstallId: () => installId,
+  getAppVersion: () => appVersion,
+  getTunnelInfo: () => ({ slug: "demo", hostname: "demo.example.com" }),
+  log: (scope, line) => logger.info(`[${scope}] ${line}`),
+});
+
+fleet.startFleetAgent({
+  appKind: "server",
+  getHealth: async () => ({ next: "ok", hermes: "ok" }),
+  getRequestLogsSample: async () => listRequestLogs({ limit: 20 }).logs,
+  getHeartbeatExtras: async () => ({ dossierStats: { open: 12 } }),
+});
+```
+
+### Fleet collector env
+
+Le collector lit des env neutres, avec dual-read legacy :
+
+- `CREEZIO_FLEET_PORT` / `FLEET_PORT`
+- `CREEZIO_FLEET_INGEST_TOKEN` / `FLEET_INGEST_TOKEN`
+- `CREEZIO_FLEET_OPS_USER`, `_PASS`, `_TOKEN`
+- `CREEZIO_FLEET_DIR` / `FLEET_DIR`
+- `FLEET_PUBLIC_DOMAIN` / `CREEZIO_FLEET_DOMAIN`
+- `CREEZIO_FLEET_TUNNEL_SUFFIX`
+- `CREEZIO_FLEET_UI_TITLE`, `_MARK`, `_HOME_TITLE`, `_REALM`
+- `CREEZIO_FLEET_UI_EXTRAS_TITLE`
+- `CREEZIO_FLEET_UI_ETAT_LABELS`
+
+Voir [fleet-collector/README.md](./fleet-collector/README.md).
+
+## API publique avec exemples
+
+### Observability store / ApiMount
+
+Endpoints de `createObservabilityApiMount(store)` :
+
+- `GET /events`
+- `POST /events`
+- `GET /usage`
+- `GET /orgs`
+- `GET /summary`
+
+```bash
+curl "$API/platform/observability/events?kind=activity&limit=20"
+curl -X POST "$API/platform/observability/events" \
+  -H "Content-Type: application/json" \
+  -d '{"kind":"activity","action":"page_view","userId":"u1","meta":{"path":"/dashboard"}}'
+```
+
+### Usage analytics routes
+
+```ts
+import {
+  createUsageAnalyticsAdminRoutes,
+  createUsageAnalyticsIngestRoutes,
+} from "@creezio/observability";
+
+api.route(
+  "/usage",
+  createUsageAnalyticsIngestRoutes({
+    getSession: async (c) => c.get("session") ?? null,
+    getUserKind: (userId) => getUser(userId)?.kind ?? "human",
+  }),
+);
+
+admin.route("/", createUsageAnalyticsAdminRoutes());
+```
+
+Endpoints :
+
+- `POST /usage/events`
+- `GET /analytics/overview`
+- `GET /analytics/timeline`
+- `GET /analytics/pages`
+- `GET /analytics/clicks`
+- `GET /analytics/users`
+- `GET /analytics/events`
+- `GET /analytics/productivity`
+- `DELETE /analytics/events`
+
+### Request logs
+
+```ts
+import {
+  createRequestLogsRoutes,
+  listRequestLogs,
+} from "@creezio/observability";
+
+admin.route("/admin", createRequestLogsRoutes());
+
+const recentErrors = listRequestLogs({
+  source: "api",
+  errorsOnly: true,
+  limit: 50,
+});
+```
+
+Routes :
+
+- `GET /request-logs?limit=100&source=api|mcp|all&q=...&errorsOnly=1`
+- `DELETE /request-logs`
+
+### UI
+
+```tsx
+import {
+  AnalyticsClient,
+  RequestLogsClient,
+  UsageAnalyticsProvider,
+} from "@creezio/observability/ui";
+
+export function AdminObservability() {
+  return (
+    <UsageAnalyticsProvider session={{ userId: "u1", username: "Owner" }}>
+      <AnalyticsClient />
+      <RequestLogsClient />
+    </UsageAnalyticsProvider>
+  );
 }
-
-// src/server/routes/usage-analytics.ts — wrap kit + session (≤20 LOC)
-import { createUsageAnalyticsAdminRoutes } from "@creezio/observability";
-
-// Fleet collector systemd / scripts :
-// node vendor/creezio/observability/fleet-collector/server.mjs
-// avec TF2_FLEET_* ou CREEZIO_FLEET_* + CREEZIO_FLEET_UI_TITLE / TUNNEL_SUFFIX
 ```
 
-## Fleet-collector (D-P25)
+## Flux
 
-Voir [`fleet-collector/README.md`](./fleet-collector/README.md).
+### Usage analytics
 
-```bash
-npm run test:fleet-collector -w @creezio/observability
-npm run fleet-collector -w @creezio/observability
-```
+1. `UsageAnalyticsProvider` installe le tracker client.
+2. Les clics et pages sont annotés via `aidAttr`.
+3. Les événements sont batchés vers `POST /usage/events`.
+4. `insertUsageEvents` écrit en SQLite.
+5. Les routes admin agrègent overview, timeline, pages, clicks, users et productivité.
+6. Optionnellement, `mirrorFleetAction` copie les actions vers le buffer flotte.
 
-## Gates kit
+### Request logs
 
-```bash
-npm run build -w @creezio/observability && npm run build:cjs
-node --test scripts/test-phase-v2.mjs scripts/test-phase-c4.mjs
-node --test scripts/test-phase-r4.mjs scripts/test-phase-m7.mjs scripts/test-phase-m7p.mjs
-node --test scripts/test-phase-n6.mjs scripts/test-phase-n6p.mjs
-node --test scripts/test-phase-o5.mjs scripts/test-phase-o5p.mjs
-node --test scripts/test-phase-p25.mjs
-```
+1. Les middlewares lisent requête/réponse de manière best-effort.
+2. Les secrets sont redacted par nom de clé et patterns de valeur.
+3. `pushRequestLog` ajoute au ring buffer mémoire.
+4. Si un fleet state dir est configuré, un résumé JSONL est écrit pour l'agent flotte.
+5. L'UI admin lit/purge via `createRequestLogsRoutes`.
+
+### Ops journal et fleet
+
+1. `initOpsJournal` crée un boot id et un fichier JSONL.
+2. `track*` enregistre décisions, anomalies, crashes et événements externes.
+3. `createFleetAgent` construit des heartbeats opt-in selon scopes.
+4. L'agent poste `/heartbeat`, `/crash`, `/bundle` et poll `/commands`.
+5. `fleet-collector` stocke les données et expose une UI ops.
+
+## Intégration marques
+
+- Configurer usage analytics avant les routes et avant l'UI tracker.
+- Brancher request logs tôt dans la stack Hono, avant auth, mais redaction toujours active.
+- Monter les routes admin derrière auth owner.
+- Initialiser ops journal après logger et avant les services à diagnostiquer.
+- Créer un `FleetAgent` uniquement si la télémétrie opt-in est disponible.
+- Garder les extras métier opaques (`dossierStats`, etc.) dans `getHeartbeatExtras`.
+- Déployer `fleet-collector` avec tokens forts et Basic/Bearer ops.
+
+## Dépendances
+
+- Runtime : `@creezio/api-kernel`, `@creezio/platform-core`, `hono`.
+- UI peer : `react`, `next`, `lucide-react`, `recharts`, Radix UI, `clsx`, `tailwind-merge`, `class-variance-authority`.
+- Node runtime pour ops/fleet collector : `fs`, `path`, `os`, HTTP.
+
+## Voir aussi
+
+- [AGENTS.md](./AGENTS.md)
+- [docs/FILES.md](./docs/FILES.md)
+- [fleet-collector/README.md](./fleet-collector/README.md)

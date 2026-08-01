@@ -7,6 +7,25 @@ Monorepo **plateforme** pour les desktops Creezio (TempoFlow, Certivan, Fidu)
 > Source d'extraction (lecture seule) : `/opt/docker/creezio-kit-src` = `creezio/tempoflow2` @ **v0.10.26**.  
 > Cadre architecture : **`ARCHITECTURE_VERSION = "H6"`** — H0–H5 + freeze I0–I8.
 
+## Documentation (dispatchée)
+
+La doc n’est **pas** un seul fichier : chaque package / app a son trio.
+
+| Entrée | Contenu |
+|--------|---------|
+| **[AGENTS.md](./AGENTS.md)** | Guide agents IA (frontières, où modifier, pièges) |
+| **[docs/PACKAGES.md](./docs/PACKAGES.md)** | Index de **tous** les packages + liens |
+| `packages/<pkg>/README.md` | Rôle, config, API, flux, intégration marques |
+| `packages/<pkg>/AGENTS.md` | Règles agents pour ce package |
+| `packages/<pkg>/docs/FILES.md` | Inventaire **fichier par fichier** |
+| `apps/*/README.md` + `AGENTS.md` + `docs/FILES.md` | Console ops + DemoBrand |
+| `scripts/README.md` + `AGENTS.md` | Gates de phases + build CJS |
+
+Exemple : runtime Electron →
+[packages/electron-shell/README.md](./packages/electron-shell/README.md) ·
+[AGENTS](./packages/electron-shell/AGENTS.md) ·
+[FILES](./packages/electron-shell/docs/FILES.md).
+
 ## Architecture (Phases H0 → H5 + I0…)
 
 | Doc | Contenu |

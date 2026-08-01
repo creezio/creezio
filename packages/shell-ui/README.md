@@ -1,75 +1,284 @@
-# `@creezio/shell-ui`
+# @creezio/shell-ui
 
-Navigation **native Creezio** + **chrome shell CRM** + slots pour le métier marque.
+## Rôle
 
-Package surface :
+`@creezio/shell-ui` fournit la navigation native Creezio, les slots de navigation et le chrome CRM partage entre marques : primitives UI, sidebar, workspace a onglets, recherche globale, surfaces desktop/site externe, settings desktop, layouts et petites libs plateforme.
 
-| Export | Contenu |
-|--------|---------|
-| `@creezio/shell-ui` | nav registry, brand tokens, libs plateforme |
-| `@creezio/shell-ui/ui` | primitives + AppShell + **sidebar / workspace / search / site-slot** |
+Le package a deux couches :
 
-## Contrat marque (O9 / P1)
+| Import | Contenu |
+|---|---|
+| `@creezio/shell-ui` | noyau bas niveau : registry nav, slots, brand tokens, helpers/lib plateforme |
+| `@creezio/shell-ui/ui` | React UI : primitives, AppShell, sidebar, workspace, search, desktop surfaces, settings |
 
-> **Marque = wiring + métier + slots `brand.*` only.**  
-> Le chrome shell (sidebar, onglets, search modal, site slot) vit **uniquement**
-> dans ce package. Zéro jumeau TF↔CV↔Fidu pour ces surfaces.
+Point d'arbitrage important : historiquement, `shell-ui` etait "nav + slots" (H1/I7). Le package contient aujourd'hui aussi du chrome CRM extrait des apps (sidebar, workspace, search, settings, libs client). Selon `docs/AUDIT-SHELL-UI-SCOPE.md`, ce n'est pas seulement un mauvais nom : c'est le SoT court terme pour le chrome shell CRM, tandis que onboarding, cockpit, splash et auth restent dans leurs packages dedies.
+
+## Périmètre (kit vs marque)
+
+### Dans le kit
+
+Noyau nav / slots :
+
+- `CoreNavItem`, `NavSlotId`, `NavSlot`
+- `CORE_NAV_ITEMS`, `createNavRegistry`, `mergeNav`
+- `createNavShellAdapter`
+- slots `brand-primary`, `brand-secondary`, `plugins`
+
+Chrome CRM / UI :
+
+- primitives shadcn-like (`Button`, `Input`, `Card`, `Dialog`, `Command`, etc.) ;
+- sidebar CRM (`Sidebar`, `CrmSidebar`) et host `configureSidebar` ;
+- workspace a onglets (`TabWorkspaceProvider`, `WorkspaceShell`, `WorkspaceRoot`, `WorkspaceTabBar`) ;
+- recherche globale (`configureGlobalSearch`, `GlobalSearchProvider`) ;
+- surfaces desktop/site externe (`ExternalSiteSlot`, `DesktopBridge`, `SiteLink`) ;
+- settings desktop (`DesktopHermesSettings`, `DesktopN8nSettings`, `ApiKeysSettings`, etc.) ;
+- composants layout (`AppShell`, `PageChrome`, `EntityHeader`, `SectionViewShell`) ;
+- helpers plateforme (`resolvePublicOrigin`, `resolveCookieSecure`, scopes API, URL images, keep-alive, trails, telemetry best-effort).
+
+### Dans la marque
+
+- items nav metier avec ids `brand.*` et hrefs produit ;
+- ACL de visibilite (`canShowHref`) ;
+- icones et ordre des liens principaux/admin ;
+- recherche concrete (Meili, fallback DB, labels d'index) ;
+- contexte detail produit / page meta / breadcrumbs metier ;
+- providers metier (`PanierProvider`, RTI, GED, VASP, etc.) ;
+- routes Next (`/site/[id]`, pages settings/admin) ;
+- libelles utilisateur propres a la marque ;
+- choix de `desktopApiGlobal`, prefixe API key, nom produit ;
+- wiring client dans un fichier boot.
+
+### Hors scope a ne pas reabsorber
+
+| Domaine | Package SoT |
+|---|---|
+| Login, session UI | `@creezio/auth/ui` |
+| Setup / onboarding | `@creezio/onboarding/ui` |
+| Cockpit serveur | `@creezio/cockpit/ui` |
+| Splash desktop | `@creezio/electron-shell` |
+| Tasks AI panel | `@creezio/tasks/ui`, injecte via `configureAiActivityPanel` |
+| Auth store/session | `@creezio/auth` |
+
+Conclusion de l'audit : "NATIF shell" est une classification plateforme, pas une obligation de tout mettre dans un seul package. `shell-ui` garde nav + slots + chrome CRM mince ; onboarding/cockpit/splash/auth restent separes.
+
+## Installation / build
+
+```bash
+npm install
+npm run build -w @creezio/shell-ui
+npm run typecheck -w @creezio/shell-ui
+```
+
+Artefacts :
+
+- ESM : `dist/`
+- CJS Electron : `dist-cjs/`
+- UI source : `ui/`
+
+Dependances directes : `@creezio/brand-config`, `@creezio/shell`, `clsx`, `tailwind-merge`. Les dependances React/Radix/Next/Recharts/cmdk/lucide/sonner sont peer dependencies optionnelles car elles concernent `./ui`.
+
+## Configuration
+
+### Brand tokens
 
 ```ts
-import { createNavShellAdapter } from "@creezio/shell-ui";
+import { configureShellUiBrand } from "@creezio/shell-ui";
+
+configureShellUiBrand({
+  desktopApiGlobal: "mybrandDesktop",
+  publicHostSuffix: "mybrand.example",
+  titlebarDragClass: "mybrand-titlebar-drag",
+  titlebarNoDragClass: "mybrand-titlebar-no-drag",
+  apiKeyPrefix: "mybrand_live_",
+  productName: "Ma Marque",
+  aidAttr: "data-creezio-aid",
+});
+```
+
+`getShellDesktopApi()` lit `window[desktopApiGlobal]` de maniere souple et retourne `undefined` cote serveur.
+
+### Boot client marque typique
+
+Un seul fichier de wiring est attendu cote marque, par exemple `crm/src/lib/shell-ui/configure-shell-ui-client.ts`.
+
+```ts
 import {
-  configureShellUiBrand,
-  configureSidebar,
-  configureGlobalSearch,
   configureDefaultNewTabHref,
-  TabWorkspaceProvider,
-  WorkspaceRoot,
-  ExternalSiteSlot,
+  configureGlobalSearch,
+  configureSidebar,
+  configureShellUiBrand,
 } from "@creezio/shell-ui/ui";
 
-configureShellUiBrand({ productName: "MaMarque", desktopApiGlobal: "…" });
+configureShellUiBrand({
+  productName: "Ma Marque",
+  desktopApiGlobal: "mybrandDesktop",
+  apiKeyPrefix: "mybrand_live_",
+});
+
 configureSidebar({
-  getNavItems: () => [/* icons + hrefs marque */],
-  canShowHref: (href, me) => /* ACL marque */,
+  getNavItems: () => brandNavItems,
+  getAdminItems: () => brandAdminItems,
+  canShowHref: (href, me) => canAccessHref(href, me),
+  resolveForcedActiveHref: (pathname, search) =>
+    resolveForcedActiveHref(pathname, search),
 });
+
 configureGlobalSearch({
-  search: (q, signal) => /* Meili / fallback marque */,
-  indexLabels: { /* … */ },
+  placeholder: "Rechercher...",
+  indexLabels: { products: "Produits", clients: "Clients" },
+  search: (query, signal) => searchBrandIndexes(query, signal),
 });
+
 configureDefaultNewTabHref("/dashboard");
 ```
 
-Boot client marque = **un seul** fichier typique :
-`crm/src/lib/shell-ui/configure-shell-ui-client.ts`.
+### Nav slots bas niveau
 
-## Surfaces chrome SoT (`./ui`)
+La marque enregistre seulement ses items ; le kit ne connait pas les ids metier.
 
-| Surface | Export principal | Injection marque |
-|---------|------------------|------------------|
-| Sidebar CRM | `Sidebar` / `CrmSidebar` | `configureSidebar` |
-| Tab workspace | `TabWorkspaceProvider` | `configureDefaultNewTabHref`, `configureProductDetailCtx`, desktop via `getShellDesktopApi` |
-| Workspace chrome | `WorkspaceShell`, `WorkspaceRoot` | slots `sidebar` / `footbar` / `wrapWorkspace` / `banners` |
-| Recherche globale | `GlobalSearchProvider` | `configureGlobalSearch` |
-| Site externe desktop | `ExternalSiteSlot` | route marque `/site/[id]` ; opts `siteId` |
+```ts
+import { createNavShellAdapter } from "@creezio/shell-ui";
 
-Hosts historiques (toujours valides) : `configureTabWorkspaceHost`,
-`configureGlobalSearchHost`, `configureAiActivityPanel`.
+const shell = createNavShellAdapter();
+shell.registerBrandNav(
+  [{ id: "brand.notes", label: "Notes", href: "/notes", group: "brand" }],
+  "brand-primary",
+);
+shell.registerBrandNav(
+  [{ id: "brand.plugin-x", label: "Plugin X", href: "/plugins/x", group: "plugin" }],
+  "plugins",
+);
 
-## Hors scope (ne pas ré-absorber)
+const model = shell.getRenderModel();
+```
 
-| Domaine | Package |
-|---------|---------|
-| Login | `@creezio/auth/ui` |
-| Setup / onboarding | `@creezio/onboarding/ui` |
-| Cockpit serveur | `@creezio/cockpit/ui` |
-| Tasks AI panel | `@creezio/tasks/ui` → `configureAiActivityPanel` |
+Slots disponibles :
 
-Aussi hors shell-ui : `nav-config` / `page-meta` métier, panier/RTI/GED,
-adapters nav `brand.*`.
+| Slot | Usage |
+|---|---|
+| `brand-primary` | navigation metier principale |
+| `brand-secondary` | liens secondaires metier |
+| `plugins` | items issus de plugins Product Hub ou equivalents |
 
-## Checklist extinction jumeaux marques
+Le render model groupe les items par `core`, `brand`, `plugin`.
 
-Après cutover, ces fichiers **doivent être absents** (pas de re-export) :
+## API publique (exports + exemples)
+
+### Package root `@creezio/shell-ui`
+
+Exports nav :
+
+- types `CoreNavItem`, `NavItem`, `NavSlot`, `NavSlotId`
+- `CORE_NAV_ITEMS`, `coreNavItems`
+- `createNavRegistry`, `mergeNav`
+- `createNavShellAdapter`
+
+Exports brand :
+
+- `configureShellUiBrand`, `getShellUiBrand`, `getShellDesktopApi`, `resetShellUiBrandForTests`
+
+Exports helpers :
+
+- scopes API : `API_SCOPE_FULL`, `API_SCOPE_CRM_READ`, `API_SCOPE_CRM_WRITE`, `API_SCOPE_TASKS_RUN`, `normalizeApiScopes`, `parseApiKeyScopes`, `apiKeyAllowsMethod`, `apiKeyAllowsTasks`, `scopesFromPluginPermissions`
+- utils : `cn`, `formatDate`, `formatDateTime`, `formatMoney`, `parsePage`, `formatVariationPct`, `formatDeltaMoney`, `variationTone`
+- origin/cookie : `resolvePublicOrigin`, `resolveCookieSecure`, `isLoopbackHost`
+- ops : `trackServer`, `trackServerDebounced`, `reportServerIncident`
+- UI helpers purs : `haversineKm`, `thumbUrl`, `optimizeCoverUrl`, `buildCatalogSuspenseKey`, `normalizeTabDocumentUrl`, `isSameTabDocument`, `isSameTabOrigin`
+- desktop home/keepalive : `CRM_HOME_PATH`, `SERVER_COCKPIT_PATH`, `resolveDesktopHomePath`, `rankKeepAliveEvictionKeys`
+
+```ts
+import {
+  apiKeyAllowsMethod,
+  createNavShellAdapter,
+  resolveCookieSecure,
+} from "@creezio/shell-ui";
+
+const canWrite = apiKeyAllowsMethod("crm:write", "POST");
+const secure = resolveCookieSecure(headers, {
+  appPublicUrl: process.env.APP_PUBLIC_URL,
+});
+```
+
+### UI `@creezio/shell-ui/ui`
+
+Exports majeurs :
+
+- brand/hosts : `configureShellUiBrand`, `configureTabWorkspaceHost`, `configureGlobalSearchHost`, `configureAiActivityPanel`
+- primitives : `Button`, `Badge`, `Input`, `Card`, `Tabs`, `Dialog`, `Sheet`, `DropdownMenu`, `Command`, `Toaster`, `ChartContainer`, etc.
+- layout : `AppShell`, `PageChrome`, `PageToolbarProvider`, `SectionViewShell`, `EntityHeader`, `Sidebar`, `CrmSidebar`, `configureSidebar`
+- workspace : `TabWorkspaceProvider`, `WorkspaceShell`, `WorkspaceRoot`, `WorkspaceTabBar`, `KeepAliveOutlet`, `createTab`, `createExternalSiteTab`
+- search : `configureGlobalSearch`, `GlobalSearchProvider`, `GlobalSearchTrigger`, `SearchInput`, `search-history`
+- desktop : `ExternalSiteSlot`, `DesktopBridge`, `AuthWindowChrome`, `WindowChromeControls`, `SiteLink`
+- settings : `DesktopHermesSettings`, `DesktopN8nSettings`, `DesktopTunnel`, `ApiKeysSettings`, `AccountSettings`, etc.
+
+```tsx
+import {
+  GlobalSearchProvider,
+  Sidebar,
+  TabWorkspaceProvider,
+  WorkspaceRoot,
+} from "@creezio/shell-ui/ui";
+
+export function AppChrome({ children }) {
+  return (
+    <TabWorkspaceProvider>
+      <GlobalSearchProvider>
+        <WorkspaceRoot sidebar={<Sidebar />}>{children}</WorkspaceRoot>
+      </GlobalSearchProvider>
+    </TabWorkspaceProvider>
+  );
+}
+```
+
+### Sites externes : noms neutres vs alias legacy
+
+La terminologie kit est neutre :
+
+| SoT kit | Alias deprecie TF |
+|---|---|
+| `OpenExternalSiteOpts`, `openExternalSite`, `siteId` | `OpenSupplierSiteOpts`, `openSupplierSite`, `fournisseurId` |
+| `ExternalSiteSlot`, `ExternalSiteTabMeta`, `createExternalSiteTab` | `SupplierSiteSlot`, `SupplierTabMeta`, `createSupplierTab` |
+| `siteIdFromHref`, `isExternalSiteHref` | `fournisseurIdFromHref`, `isSupplierHref` |
+
+Ne pas ajouter de nouveau libelle utilisateur "fournisseur" dans le kit. Les alias existent pour cutover, mais les nouveaux appels doivent utiliser les noms `ExternalSite`.
+
+## Flux / fonctionnement
+
+### Nav slots
+
+1. `CORE_NAV_ITEMS` fournit les items Creezio de base.
+2. La marque appelle `registerBrandNav(items, slot)`.
+3. `mergeNav` combine core + marque.
+4. `getRenderModel()` classe les items en groupes `core`, `brand`, `plugin`.
+5. L'UI React ou un rendu HTML minimal consomme le render model.
+
+### Chrome CRM
+
+1. La marque configure `ShellUiBrand`, `SidebarHost`, `GlobalSearchConfig` et defaults workspace.
+2. `Sidebar` lit `getSidebarHost()` et applique ACL/active href.
+3. `TabWorkspaceProvider` gere onglets, historique, keep-alive, liens externes et verrouillages.
+4. `WorkspaceShell` / `WorkspaceRoot` composent sidebar, tab bar, footbar, banners et children metier.
+5. `GlobalSearchProvider` appelle la fonction `search` injectee par la marque et ouvre les resultats via workspace.
+6. `ExternalSiteSlot` coordonne les etats de chargement webview/site externe avec le desktop.
+
+### Settings et libs client
+
+Les settings desktop sont dans `shell-ui/ui/settings` pour eviter les jumeaux TF/CV/Fidu a court terme. Si ce domaine grossit, une extraction future vers `@creezio/desktop-settings` est envisagee, mais elle n'est pas le SoT actuel.
+
+## Intégration marques
+
+Checklist :
+
+1. Appeler `configureShellUiBrand`.
+2. Configurer `configureSidebar` avec nav items, admin items, ACL, render plugins/tools si besoin.
+3. Configurer `configureGlobalSearch`.
+4. Configurer workspace : `configureDefaultNewTabHref`, `configureSidebarCollapsedKey`, `configureProductDetailCtx` si necessaire.
+5. Remplacer les composants locaux par les imports `@creezio/shell-ui/ui`.
+6. Garder un `WorkspaceRoot` local uniquement s'il compose des providers/banners metier minces.
+7. Migrer les surfaces "supplier" vers "external site" pour les nouveaux usages.
+8. Ne pas remettre onboarding/cockpit/auth/splash dans ce package.
+
+Jumeaux marques a supprimer apres cutover :
 
 - `src/components/layout/sidebar.tsx`
 - `src/components/workspace/tab-workspace-context.tsx`
@@ -77,34 +286,22 @@ Après cutover, ces fichiers **doivent être absents** (pas de re-export) :
 - `src/components/global-search-provider.tsx`
 - `src/components/desktop/supplier-site-slot.tsx`
 
-`workspace-root.tsx` peut rester **mince** (compose `WorkspaceRoot` kit +
-`PanierProvider` / banners marque) ou importer directement le kit.
+## Dépendances @creezio/*
 
-## Nav bas niveau (H1 / I7)
+| Dependance | Rôle |
+|---|---|
+| `@creezio/brand-config` | contexte marque et convergence config |
+| `@creezio/shell` | types desktop, IPC/bridge et shell runtime |
 
-> **Marque = `registerBrandNav` only** — pas de hardcode des ids métier
-> (`panier`, `dispatch`…) dans le kit. Utiliser `brand.*` + href produit.
+Peer optional / interactions :
 
-```ts
-import { createNavShellAdapter, CORE_NAV_ITEMS, createNavRegistry, mergeNav } from "@creezio/shell-ui";
+- `@creezio/auth` : `SessionProvider`, `LoginForm`; shell-ui ne possede pas l'auth.
+- `@creezio/assistant` : surfaces AI optionnelles.
+- `@creezio/tasks` : panel AI tasks injecte via `configureAiActivityPanel`.
+- `@creezio/onboarding`, `@creezio/cockpit`, `@creezio/electron-shell` : packages dedies, hors shell-ui.
 
-const shell = createNavShellAdapter();
-shell.registerBrandNav([
-  { id: "brand.notes", label: "Notes", href: "/notes" },
-]);
-const model = shell.getRenderModel();
-```
+## Voir aussi → AGENTS.md + docs/FILES.md
 
-## ADR domaine (P29)
-
-Voir [`docs/ADR-no-brand-domain-in-native-packages.md`](../../docs/ADR-no-brand-domain-in-native-packages.md) :
-
-| SoT kit (préféré) | Alias déprécié TF |
-|-------------------|-------------------|
-| `OpenExternalSiteOpts` / `openExternalSite` / `siteId` | `OpenSupplierSiteOpts` / `openSupplierSite` / `fournisseurId` |
-| `ExternalSiteSlot` / `ExternalSiteTabMeta` / `createExternalSiteTab` | `SupplierSiteSlot` / `SupplierTabMeta` / `createSupplierTab` |
-| `siteIdFromHref` / `isExternalSiteHref` | `fournisseurIdFromHref` / `isSupplierHref` |
-
-- Aucun label utilisateur « Site fournisseur » dans le kit
-- Aucun `window.tempoflowDesktop` — `getShellDesktopApi()` + `configureShellUiBrand`
-- Gate : `node --test scripts/test-phase-p-shell-ui.mjs` (+ `test-phase-p29.mjs`)
+- [`AGENTS.md`](./AGENTS.md) : consignes de modification pour agents.
+- [`docs/FILES.md`](./docs/FILES.md) : inventaire fichier par fichier.
+- [`../../docs/AUDIT-SHELL-UI-SCOPE.md`](../../docs/AUDIT-SHELL-UI-SCOPE.md) : arbitrage nav slots vs chrome CRM et frontieres avec onboarding/cockpit/splash/auth.
