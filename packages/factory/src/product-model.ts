@@ -2,7 +2,11 @@
  * ProductModel — contrat intermédiaire entre un brief produit (PRD) et le scaffold.
  *
  * Le brief reste non technique. Le parsing produit un modèle structuré que les
- * générateurs métier consomment. Pas de SQL / Electron / Hono dans le PRD.
+ * générateurs **génériques** consomment (CRUD + wiring OS).
+ *
+ * Anti-triche : on n’injecte PAS un clone TempoFlow (optimiser/scan/stack…).
+ * Le cœur inféré du PRD « fournisseurs → prix → panier → commande » suffit
+ * pour le bootstrap ; les modules suivants sont écrits par l’agent (mini-PRDs).
  */
 
 export type FieldType = "text" | "number" | "date" | "boolean" | "ref" | "json";
@@ -55,7 +59,7 @@ export interface ProductModel {
   flows: ProductFlow[];
   platformNeeds: PlatformNeeds;
   sourcePrdPath?: string;
-  /** Vertical détecté (ex. chr) — active templates factory riches. */
+  /** Vertical détecté — n’active PAS de templates métier riches. */
   vertical?: "chr" | "generic";
 }
 
@@ -90,6 +94,7 @@ export function defaultPlatformNeeds(): PlatformNeeds {
   };
 }
 
+/** Cœur achats détecté (fournisseurs + panier + commandes). */
 export function isChrModel(model: ProductModel): boolean {
   return (
     model.vertical === "chr" ||
@@ -99,8 +104,11 @@ export function isChrModel(model: ProductModel): boolean {
   );
 }
 
-/** Catalogue CHR complet (oracle onglets TempoFlow). */
-export function chrCatalogEntities(): ProductEntity[] {
+/**
+ * Cœur minimum déduit du PRD « fournisseurs → prix → panier → commande ».
+ * Pas de modules bonus (optimiser, scan, stack…) — ceux-là = agent + mini-PRDs.
+ */
+export function corePurchaseEntities(): ProductEntity[] {
   return [
     {
       id: "fournisseurs",
@@ -125,7 +133,6 @@ export function chrCatalogEntities(): ProductEntity[] {
         { name: "nom", type: "text", required: true, label: "Nom" },
         { name: "unite", type: "text", label: "Unité" },
         { name: "categorie", type: "text", label: "Catégorie" },
-        { name: "secteur_id", type: "ref", ref: "secteurs", label: "Secteur" },
         {
           name: "fournisseur_id",
           type: "ref",
@@ -157,7 +164,6 @@ export function chrCatalogEntities(): ProductEntity[] {
         { name: "devise", type: "text", label: "Devise" },
         { name: "promo", type: "boolean", label: "Promo" },
         { name: "promo_label", type: "text", label: "Libellé promo" },
-        { name: "promo_fin", type: "date", label: "Fin promo" },
       ],
     },
     {
@@ -200,104 +206,10 @@ export function chrCatalogEntities(): ProductEntity[] {
         { name: "notes", type: "text", label: "Notes" },
       ],
     },
-    {
-      id: "stack_items",
-      label: "Stack",
-      labelPlural: "Mes produits",
-      fields: [
-        {
-          name: "produit_id",
-          type: "ref",
-          ref: "produits",
-          required: true,
-          label: "Produit",
-        },
-      ],
-    },
-    {
-      id: "releves",
-      label: "Relevé",
-      labelPlural: "Relevés",
-      fields: [
-        { name: "date_releve", type: "date", required: true, label: "Date" },
-        {
-          name: "fournisseur_id",
-          type: "ref",
-          ref: "fournisseurs",
-          required: true,
-          label: "Fournisseur",
-        },
-        { name: "source", type: "text", label: "Source" },
-      ],
-    },
-    {
-      id: "scan_sessions",
-      label: "Scan",
-      labelPlural: "Scans",
-      fields: [
-        { name: "statut", type: "text", required: true, label: "Statut" },
-        { name: "note", type: "text", label: "Note" },
-      ],
-    },
-    {
-      id: "marketplaces",
-      label: "Marketplace",
-      labelPlural: "Marketplaces",
-      fields: [
-        { name: "nom", type: "text", required: true, label: "Nom" },
-        { name: "url", type: "text", label: "URL" },
-        { name: "notes", type: "text", label: "Notes" },
-      ],
-    },
-    {
-      id: "secteurs",
-      label: "Secteur",
-      labelPlural: "Secteurs",
-      fields: [
-        { name: "nom", type: "text", required: true, label: "Nom" },
-        { name: "description", type: "text", label: "Description" },
-      ],
-    },
-    {
-      id: "agregateurs",
-      label: "Agrégateur",
-      labelPlural: "Agrégateurs",
-      fields: [
-        { name: "nom", type: "text", required: true, label: "Nom" },
-        { name: "url", type: "text", label: "URL" },
-        { name: "notes", type: "text", label: "Notes" },
-      ],
-    },
-    {
-      id: "data_mappings",
-      label: "Mapping",
-      labelPlural: "Data-mapping",
-      fields: [
-        {
-          name: "libelle_fournisseur",
-          type: "text",
-          required: true,
-          label: "Libellé fournisseur",
-        },
-        {
-          name: "fournisseur_id",
-          type: "ref",
-          ref: "fournisseurs",
-          label: "Fournisseur",
-        },
-        {
-          name: "produit_id",
-          type: "ref",
-          ref: "produits",
-          required: true,
-          label: "Produit interne",
-        },
-      ],
-    },
   ];
 }
 
-export function chrCatalogPages(): ProductPage[] {
+export function corePurchasePages(): ProductPage[] {
   return [
     { id: "dashboard", path: "/dashboard", title: "Dashboard", kind: "dashboard" },
     {
@@ -329,66 +241,23 @@ export function chrCatalogPages(): ProductPage[] {
       entityId: "commandes",
       kind: "list",
     },
-    { id: "optimiser", path: "/optimiser", title: "Optimiser", kind: "flow" },
-    {
-      id: "stack",
-      path: "/stack",
-      title: "Mes produits",
-      entityId: "stack_items",
-      kind: "list",
-    },
-    {
-      id: "releves",
-      path: "/releves",
-      title: "Relevés",
-      entityId: "releves",
-      kind: "list",
-    },
-    {
-      id: "scan",
-      path: "/scan",
-      title: "Scan",
-      entityId: "scan_sessions",
-      kind: "flow",
-    },
-    {
-      id: "marketplaces",
-      path: "/marketplaces",
-      title: "Marketplaces",
-      entityId: "marketplaces",
-      kind: "list",
-    },
-    {
-      id: "secteurs",
-      path: "/secteurs",
-      title: "Secteurs",
-      entityId: "secteurs",
-      kind: "list",
-    },
-    {
-      id: "agregateurs",
-      path: "/agregateurs",
-      title: "Agrégateurs",
-      entityId: "agregateurs",
-      kind: "list",
-    },
-    {
-      id: "data-mapping",
-      path: "/data-mapping",
-      title: "Data-mapping",
-      entityId: "data_mappings",
-      kind: "list",
-    },
   ];
 }
 
-export function chrOrderFlow(): ProductFlow {
+export function coreOrderFlow(): ProductFlow {
   return {
     id: "commande_fournisseur",
     label: "Commander chez un fournisseur",
     steps: ["fournisseurs", "produits", "prix", "panier", "commandes"],
   };
 }
+
+/** @deprecated alias — préférer corePurchaseEntities (cœur PRD, pas catalogue oracle). */
+export const chrCatalogEntities = corePurchaseEntities;
+/** @deprecated alias */
+export const chrCatalogPages = corePurchasePages;
+/** @deprecated alias */
+export const chrOrderFlow = coreOrderFlow;
 
 function extractBrandName(text: string, fallbackH1: string): string {
   const fromNom = text.match(/^\s*Nom\s*:\s*(.+)$/im)?.[1]?.trim();
@@ -437,9 +306,9 @@ export function parseProductPrd(
       brandName,
       domain: `${brandId}.local`,
       tagline,
-      entities: chrCatalogEntities(),
-      pages: chrCatalogPages(),
-      flows: [chrOrderFlow()],
+      entities: corePurchaseEntities(),
+      pages: corePurchasePages(),
+      flows: [coreOrderFlow()],
       platformNeeds: defaultPlatformNeeds(),
       sourcePrdPath: opts?.sourcePath,
       vertical: "chr",

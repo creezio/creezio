@@ -3,7 +3,7 @@
  */
 import type { ApiKernel } from "@creezio/api-kernel";
 
-const ENTITIES = ["fournisseurs","produits","prix","panier_lignes","commandes","stack_items","releves","scan_sessions","marketplaces","secteurs","agregateurs","data_mappings"];
+const ENTITIES = ["fournisseurs","produits","prix","panier_lignes","commandes"];
 
 export function registerBrandModuleApi(api: ApiKernel): void {
   for (const entity of ENTITIES) {

@@ -1,6 +1,7 @@
 # TempoFlow
 
-Application métier générée par `creezio new-app --from-prd` (vertical CHR complet).
+Application métier bootstrapée par `creezio new-app --from-prd`
+(cœur achats générique).
 
 ## Identité
 
@@ -9,7 +10,7 @@ Application métier générée par `creezio new-app --from-prd` (vertical CHR co
 | brandId | `tempoflow3` |
 | tagline | Prix fournisseurs, catalogue et commandes pour la restauration |
 | vertical | `chr` |
-| entities | fournisseurs, produits, prix, panier_lignes, commandes, stack_items, releves, scan_sessions, marketplaces, secteurs, agregateurs, data_mappings |
+| entities | fournisseurs, produits, prix, panier_lignes, commandes |
 | sandbox | `true` |
 
 ## Tests
@@ -19,11 +20,8 @@ npm test
 npm run metier:api
 ```
 
-UI interactive : `resources/renderer/index.html` (SPA métier).  
-Pages Next : `ui/app/**` (listent l'API brand).  
-Desktop smoke profile (sans GUI) : `npm run test:desktop-smoke-profile`.
+## Plateforme vs métier
 
-## Plateforme
-
-First-run / login / IPC = `@creezio/electron-shell` (`createDesktopSessionStore`).
-Le métier vit **dans ce repo** — pas de store/IPC OS custom marque.
+- **OS** : `@creezio/*` (`createDesktopSessionStore`, boot, host-stack…).
+- **Bootstrap factory** : CRUD générique depuis ProductModel — pas un clone produit.
+- **Modules riches** : écrits dans ce repo à partir des mini-PRDs / brief, pas via templates TempoFlow.

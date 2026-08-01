@@ -14,16 +14,22 @@ et un squelette OS sans métier.
 
 1. **`creezio new-app --from-prd <prd.md>`** parse un brief → `ProductModel`
    (entities, pages, flows, platformNeeds) puis scaffold une app marque.
-2. **Les générateurs** (`packages/factory/src/generators/*`) vivent dans le kit.
+2. **Les générateurs** (`packages/factory/src/generators/*`) sont **génériques**
+   (CRUD + wiring OS depuis le modèle). Pas de dossier
+   `templates/chr` contenant un clone TempoFlow (API/SPA/oracle).
 3. **Le code métier généré** (SQL brand, API, pages, nav) est écrit **dans le
    repo / dossier marque**, jamais dans `@creezio/platform-core` ni autre package
    natif (ADR no-brand-domain).
 4. Les ids réservés (`tempoflow`, `certivan`, `fidu`) sont suffixés (`tempoflow3`)
    pour les sandboxes issues d’un PRD.
+5. Pour un PRD « fournisseurs / prix / panier / commandes », le parseur n’émet
+   que le **cœur achats** (5 entités). Les modules bonus (optimiser, scan…)
+   sont ajoutés **par l’agent** via mini-PRDs — c’est ce qui prouve que creezio
+   + sa doc suffisent, sans triche par template produit.
 
 ## Conséquences
 
-- Un agent peut suivre uniquement `PROMPT-PRODUIT.md` + cette commande.
-- Enrichir le catalogue CHR = enrichir les heuristiques / générateurs kit, pas
-  le prompt utilisateur.
-- DemoBrand reste la sandbox OS « notes » ; TempoFlow3-like vient du PRD.
+- Un agent peut bootstrapper avec `PROMPT-PRODUIT.md` + `--from-prd`, puis
+  enrichir module par module.
+- Versionner un monolithe TempoFlow sous `templates/` invalide l’expérience.
+- DemoBrand reste la sandbox OS « notes » ; TempoFlow3 = sonde from-scratch.

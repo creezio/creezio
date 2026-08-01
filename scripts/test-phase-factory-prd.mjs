@@ -59,7 +59,7 @@ test("F1.1 safeBrandId réserve tempoflow → tempoflow3", () => {
   assert.equal(safeBrandId("Acme CHR"), "acmechr");
 });
 
-test("F1.2 parseProductPrd PRD TempoFlow → catalogue CHR", () => {
+test("F1.2 parseProductPrd PRD TempoFlow → cœur achats (pas catalogue oracle)", () => {
   const md = fs.readFileSync(PRD, "utf8");
   const model = parseProductPrd(md, { sourcePath: PRD });
   assert.equal(model.brandId, EXPECTED.brandId);
@@ -73,8 +73,9 @@ test("F1.2 parseProductPrd PRD TempoFlow → catalogue CHR", () => {
     EXPECTED.pagePaths,
   );
   assert.equal(model.vertical, "chr");
-  assert.ok(model.entities.some((e) => e.id === "stack_items"));
-  assert.ok(model.pages.some((p) => p.id === "optimiser"));
+  assert.equal(model.entities.length, 5);
+  assert.ok(!model.entities.some((e) => e.id === "stack_items"));
+  assert.ok(!model.pages.some((p) => p.id === "optimiser"));
   assert.equal(model.flows[0]?.id, EXPECTED.flowId);
   assert.equal(model.platformNeeds.auth, true);
   assert.equal(model.platformNeeds.desktop, true);
@@ -127,9 +128,10 @@ test("F1–F4 scaffold --from-prd génère métier + wiring", () => {
     "scripts/test-allowlist.mjs",
     "scripts/test-desktop-smoke-profile.mjs",
     "ui/app/fournisseurs/page.tsx",
+    "ui/app/produits/page.tsx",
+    "ui/app/prix/page.tsx",
     "ui/app/panier/page.tsx",
     "ui/app/commandes/page.tsx",
-    "ui/app/optimiser/page.tsx",
     "ui/app/dashboard/page.tsx",
     "src/lib/paths.ts",
     "src/lib/host-stack.ts",
@@ -171,8 +173,8 @@ test("F1–F4 scaffold --from-prd génère métier + wiring", () => {
   assert.match(schema, /CREATE TABLE IF NOT EXISTS fournisseurs/);
   assert.match(schema, /CREATE TABLE IF NOT EXISTS panier_lignes/);
   assert.match(schema, /CREATE TABLE IF NOT EXISTS commandes/);
-  assert.match(schema, /CREATE TABLE IF NOT EXISTS stack_items/);
-  assert.match(schema, /CREATE TABLE IF NOT EXISTS data_mappings/);
+  assert.doesNotMatch(schema, /CREATE TABLE IF NOT EXISTS stack_items/);
+  assert.doesNotMatch(schema, /CREATE TABLE IF NOT EXISTS data_mappings/);
 
   const nav = fs.readFileSync(
     path.join(outDir, "src/electron/vertical-slot.ts"),
@@ -180,11 +182,18 @@ test("F1–F4 scaffold --from-prd génère métier + wiring", () => {
   );
   assert.match(nav, /brand\.fournisseurs/);
   assert.match(nav, /brand\.panier/);
-  assert.match(nav, /brand\.optimiser/);
+  assert.doesNotMatch(nav, /brand\.optimiser/);
 
   const api = fs.readFileSync(path.join(outDir, "scripts/metier-api.mjs"), "utf8");
-  assert.match(api, /optimiser\/suggest/);
-  assert.match(api, /scan\/start/);
+  assert.match(api, /commandes\/from-panier/);
+  assert.doesNotMatch(api, /optimiser\/suggest/);
+  assert.doesNotMatch(api, /scan\/start/);
+
+  // Anti-triche : pas de templates métier TempoFlow versionnés.
+  assert.ok(
+    !fs.existsSync(path.join(ROOT, "packages/factory/templates/chr")),
+    "templates/chr ne doit plus exister (triche évaluation)",
+  );
 
   const pkg = JSON.parse(
     fs.readFileSync(path.join(outDir, "package.json"), "utf8"),

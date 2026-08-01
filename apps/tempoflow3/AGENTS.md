@@ -1,8 +1,11 @@
 # AGENTS — TempoFlow
 
-Marque légère générée via `creezio new-app --from-prd`.
-Métier ici ; OS = `@creezio/*` (`createDesktopSessionStore`).
-Ne pas inventer de store/IPC/login dans la marque.
+Marque légère bootstrapée via `creezio new-app --from-prd`.
+
+- **OS** = `@creezio/*` (`createDesktopSessionStore`).
+- **Bootstrap** = CRUD générique ProductModel (pas un template produit).
+- **Modules** = écrits ici depuis les mini-PRDs / brief — ne pas importer
+  de clone TempoFlow ni de templates métier riches du kit.
 
 ```bash
 npm test

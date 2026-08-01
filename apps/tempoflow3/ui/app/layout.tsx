@@ -20,14 +20,6 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           <a href="/prix">Prix</a>
           <a href="/panier">Panier</a>
           <a href="/commandes">Commandes</a>
-          <a href="/optimiser">Optimiser</a>
-          <a href="/stack">Mes produits</a>
-          <a href="/releves">Relevés</a>
-          <a href="/scan">Scan</a>
-          <a href="/marketplaces">Marketplaces</a>
-          <a href="/secteurs">Secteurs</a>
-          <a href="/agregateurs">Agrégateurs</a>
-          <a href="/data-mapping">Data-mapping</a>
         </nav>
         <main style={{ padding: "1.5rem", maxWidth: "56rem", margin: "0 auto" }}>{children}</main>
       </body>

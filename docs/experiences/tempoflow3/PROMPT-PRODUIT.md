@@ -49,4 +49,9 @@ Si pour réussir on est obligé d’enrichir ce prompt avec du jargon kit
 (`brand-runtime`, `sync-vendor`, `test:shell`, phases P0…), alors
 **l’expérience produit a échoué** : il faut faire évoluer creezio pour qu’un
 brief comme ci-dessus suffise (ex. `creezio new-app --from-prd`, doc agent
-« créer une marque métier », templates métier, etc.).
+« créer une marque métier », générateurs génériques).
+
+**Aussi un échec** : si l’agent « réussit » uniquement parce qu’un template
+kit contient déjà tout TempoFlow (API/SPA/oracle pré-cuits). La preuve valide
+= bootstrap générique + construction module par module (mini-PRDs), en
+s’appuyant sur la doc creezio — pas sur un dump produit versionné.

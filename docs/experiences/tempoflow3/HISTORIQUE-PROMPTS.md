@@ -8,7 +8,12 @@ l’ordre, pour obtenir TempoFlow3.
 - On ne colle **jamais** de code source TempoFlow2 / 0.10.26.
 - On ne dit pas « copie `crm/lib/commande-queries.ts` ».
 - On décrit le **produit** ; l’agent s’appuie sur **creezio**
-  (`new-app --from-prd`, packages `@creezio/*`, générateurs).
+  (`new-app --from-prd`, packages `@creezio/*`, générateurs **génériques**,
+  documentation).
+- **Interdit** : un dossier kit `templates/chr` (ou équivalent) qui dump
+  l’API/SPA/oracle TempoFlow au Prompt 1 — ça invalide l’évaluation
+  (« creezio documenté ? »). Le bootstrap = OS + CRUD cœur ; chaque module
+  riche est **écrit** dans la marque (mini-PRDs), avec raisonnement visible.
 - Si l’agent est bloqué faute de générique → **corriger creezio**, pas le prompt.
 - Le repo marque reste **léger** : métier + wiring mince. Le lourd
   (auth, fenêtre, MAJ, assistant, tâches, mails, plugins, tunnel, MCP…)
@@ -64,7 +69,7 @@ hors ce que la factory produit au Prompt 1.
 
 ## Prompt 1 — Bootstrap depuis le PRD produit
 
-*Crée le squelette + cœur CHR via la factory.*
+*Crée le squelette OS + cœur achats générique (CRUD). Pas le produit complet.*
 
 ```text
 À partir du cadre confirmé, crée TempoFlow3 maintenant.
@@ -72,6 +77,7 @@ hors ce que la factory produit au Prompt 1.
 Utilise uniquement :
 - creezio/docs/experiences/tempoflow3/PRD-PRODUIT.md
 - la factory creezio : new-app --from-prd
+- la doc @creezio/* (pas tempoflow2, pas de templates produit riches)
 
 Commande attendue (adapte le chemin out si besoin) :
   creezio new-app \
@@ -84,15 +90,17 @@ Ensuite :
 2. Vérifie que brandId = tempoflow3 (pas tempoflow réservé).
 3. Vérifie que le dossier marque ne contient pas de launchers OS
    recopiés (Hermes/n8n/Meili/updater maison) — ça doit venir du kit.
-4. Résume ce qui est généré (entities, pages, smokes) sans inventer
-   de modules hors PRD.
+4. Résume ce qui est généré : attendu = cœur
+   fournisseurs / produits / prix / panier / commandes (+ dashboard).
+   Pas optimiser / scan / stack / marketplaces à ce stade.
+5. Les prochains messages (mini-PRDs) te feront **écrire** chaque module
+   dans la marque — ne les invente pas via un template kit.
 
 Ne lis pas / ne copie pas le code métier de tempoflow2 pour cette étape.
 ```
 
-**Statut** : ✅ exécuté (et prompts 2–13 enchaînés) — voir
-[JOURNAL-CREATION.md](./JOURNAL-CREATION.md), [RAPPORT.md](./RAPPORT.md),
-[PROBLEMES.md](./PROBLEMES.md).
+**Statut** : ✅ rejoué (cœur 5 entités, sans templates CHR) — voir
+[JOURNAL-CREATION.md](./JOURNAL-CREATION.md).
 
 ---
 

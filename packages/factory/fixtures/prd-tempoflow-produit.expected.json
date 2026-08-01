@@ -7,14 +7,7 @@
     "produits",
     "prix",
     "panier_lignes",
-    "commandes",
-    "stack_items",
-    "releves",
-    "scan_sessions",
-    "marketplaces",
-    "secteurs",
-    "agregateurs",
-    "data_mappings"
+    "commandes"
   ],
   "pagePaths": [
     "/dashboard",
@@ -22,15 +15,7 @@
     "/produits",
     "/prix",
     "/panier",
-    "/commandes",
-    "/optimiser",
-    "/stack",
-    "/releves",
-    "/scan",
-    "/marketplaces",
-    "/secteurs",
-    "/agregateurs",
-    "/data-mapping"
+    "/commandes"
   ],
   "flowId": "commande_fournisseur",
   "platformNeeds": {

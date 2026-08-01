@@ -1,10 +1,11 @@
 # Problèmes rencontrés — et corrections
 
-## P1 — Factory MVP trop étroit → **CORRIGÉ**
+## P1 — Factory MVP trop étroit → **REVISITÉ (P8)**
 
-**Avant** : `--from-prd` ne générait que 5 entités CHR.  
-**Fix kit** : `ProductModel.vertical = "chr"` avec 12 entités + 14 pages ;
-templates versionnés `packages/factory/templates/chr/*` (API, SPA, smokes, SQL).
+**Avant** : cœur trop mince, puis sur-correction via templates CHR riches (12
+entités) = triche.  
+**Cible** : cœur 5 entités génériques au Prompt 1 ; modules bonus via mini-PRDs
+dans la marque (P8).
 
 ## P2 — Runtime desktop vs CI → **CORRIGÉ**
 
@@ -36,16 +37,24 @@ sandbox monorepo acceptée ; extraction repo externe = propagation ultérieure.
 ## P7 — First-run / login réimplémentés dans la marque → **CORRIGÉ**
 
 **Avant** : store fichier + IPC setup/login inventés dans `apps/tempoflow3`
-(puis copiés dans `templates/chr/`) — frontière OS/métier violée.
+— frontière OS/métier violée.
 
 **Fix kit** : `@creezio/electron-shell` expose `createDesktopSessionStore`,
 `registerDesktopSessionIpc`, `spawnBrandMetierApi`. La factory `--from-prd`
-génère un main/preload mince qui **consomme** ces APIs. Templates CHR =
-métier seulement. Allowlist interdit `local-config-store` / `ipc-bridge` marque.
+génère un main/preload mince qui **consomme** ces APIs.
+
+## P8 — Templates CHR = triche évaluation → **CORRIGÉ**
+
+**Avant** : `packages/factory/templates/chr/*` dumpait API/SPA/oracle TempoFlow
+(12 entités, optimiser/scan…) au Prompt 1 — l’agent ne « créait » rien.
+
+**Fix** : dossier `templates/chr` **supprimé**. Parse PRD → cœur 5 entités.
+Générateurs génériques uniquement. Modules bonus = agent + mini-PRDs dans
+la marque. Gate factory assert `templates/chr` absent.
 
 ---
 
-## Vérification « delete + regen »
+## Vérification « delete + regen » (Prompt 1)
 
 ```bash
 rm -rf apps/tempoflow3
@@ -54,5 +63,4 @@ creezio new-app --from-prd docs/experiences/tempoflow3/PRD-PRODUIT.md \
 cd apps/tempoflow3 && npm test
 ```
 
-Résultat attendu : smokes verts **sans** retouche OS marque
-(pas de `local-config-store.ts` / `ipc-bridge.ts` dans la marque).
+Attendu : cœur uniquement (pas optimiser/scan) ; OS kit ; puis mini-PRDs.

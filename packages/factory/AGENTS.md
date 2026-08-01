@@ -19,6 +19,9 @@ Les générateurs vivent ici. Le métier généré **n’entre pas** dans
 - Ne pas recycler des GUID, feeds ou tokens de production.
 - Ne pas hardcoder le SQL TempoFlow dans un package natif — seulement via
   générateurs → fichiers marque.
+- **Ne pas** versionner un clone métier TempoFlow sous `templates/` (SPA/API
+  oracle, optimiser/scan…). Bootstrap = générateurs génériques + ProductModel
+  cœur ; modules riches = agent + mini-PRDs dans la marque.
 - Ne pas écraser des fichiers existants sans `--force`.
 - Ne pas exiger des flags techniques si `--from-prd` suffit.
 - Ne pas toucher `docs/FILES.md` sans demande dédiée.

@@ -60,54 +60,6 @@ const BRAND_NAV: CoreNavItem[] = [
     "label": "Commandes",
     "href": "/commandes",
     "group": "brand"
-  },
-  {
-    "id": "brand.optimiser",
-    "label": "Optimiser",
-    "href": "/optimiser",
-    "group": "brand"
-  },
-  {
-    "id": "brand.stack",
-    "label": "Mes produits",
-    "href": "/stack",
-    "group": "brand"
-  },
-  {
-    "id": "brand.releves",
-    "label": "Relevés",
-    "href": "/releves",
-    "group": "brand"
-  },
-  {
-    "id": "brand.scan",
-    "label": "Scan",
-    "href": "/scan",
-    "group": "brand"
-  },
-  {
-    "id": "brand.marketplaces",
-    "label": "Marketplaces",
-    "href": "/marketplaces",
-    "group": "brand"
-  },
-  {
-    "id": "brand.secteurs",
-    "label": "Secteurs",
-    "href": "/secteurs",
-    "group": "brand"
-  },
-  {
-    "id": "brand.agregateurs",
-    "label": "Agrégateurs",
-    "href": "/agregateurs",
-    "group": "brand"
-  },
-  {
-    "id": "brand.data-mapping",
-    "label": "Data-mapping",
-    "href": "/data-mapping",
-    "group": "brand"
   }
 ];
 

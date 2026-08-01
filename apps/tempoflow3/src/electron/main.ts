@@ -104,7 +104,7 @@ async function main(): Promise<void> {
 
   log(
     "nav",
-    `merged=${navModel.items.length} brand=${navModel.groups.find((g) => g.id === "brand")?.items.length || 0} entities=12 pages=14 setup=${session.isSetupComplete()} metierPort=${METIER_PORT}`,
+    `merged=${navModel.items.length} brand=${navModel.groups.find((g) => g.id === "brand")?.items.length || 0} entities=5 pages=6 setup=${session.isSetupComplete()} metierPort=${METIER_PORT}`,
   );
 
   app.on("will-quit", () => {

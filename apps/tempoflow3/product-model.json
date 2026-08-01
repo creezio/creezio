@@ -66,12 +66,6 @@
           "label": "Catégorie"
         },
         {
-          "name": "secteur_id",
-          "type": "ref",
-          "ref": "secteurs",
-          "label": "Secteur"
-        },
-        {
           "name": "fournisseur_id",
           "type": "ref",
           "ref": "fournisseurs",
@@ -118,11 +112,6 @@
           "name": "promo_label",
           "type": "text",
           "label": "Libellé promo"
-        },
-        {
-          "name": "promo_fin",
-          "type": "date",
-          "label": "Fin promo"
         }
       ]
     },
@@ -187,153 +176,6 @@
           "label": "Notes"
         }
       ]
-    },
-    {
-      "id": "stack_items",
-      "label": "Stack",
-      "labelPlural": "Mes produits",
-      "fields": [
-        {
-          "name": "produit_id",
-          "type": "ref",
-          "ref": "produits",
-          "required": true,
-          "label": "Produit"
-        }
-      ]
-    },
-    {
-      "id": "releves",
-      "label": "Relevé",
-      "labelPlural": "Relevés",
-      "fields": [
-        {
-          "name": "date_releve",
-          "type": "date",
-          "required": true,
-          "label": "Date"
-        },
-        {
-          "name": "fournisseur_id",
-          "type": "ref",
-          "ref": "fournisseurs",
-          "required": true,
-          "label": "Fournisseur"
-        },
-        {
-          "name": "source",
-          "type": "text",
-          "label": "Source"
-        }
-      ]
-    },
-    {
-      "id": "scan_sessions",
-      "label": "Scan",
-      "labelPlural": "Scans",
-      "fields": [
-        {
-          "name": "statut",
-          "type": "text",
-          "required": true,
-          "label": "Statut"
-        },
-        {
-          "name": "note",
-          "type": "text",
-          "label": "Note"
-        }
-      ]
-    },
-    {
-      "id": "marketplaces",
-      "label": "Marketplace",
-      "labelPlural": "Marketplaces",
-      "fields": [
-        {
-          "name": "nom",
-          "type": "text",
-          "required": true,
-          "label": "Nom"
-        },
-        {
-          "name": "url",
-          "type": "text",
-          "label": "URL"
-        },
-        {
-          "name": "notes",
-          "type": "text",
-          "label": "Notes"
-        }
-      ]
-    },
-    {
-      "id": "secteurs",
-      "label": "Secteur",
-      "labelPlural": "Secteurs",
-      "fields": [
-        {
-          "name": "nom",
-          "type": "text",
-          "required": true,
-          "label": "Nom"
-        },
-        {
-          "name": "description",
-          "type": "text",
-          "label": "Description"
-        }
-      ]
-    },
-    {
-      "id": "agregateurs",
-      "label": "Agrégateur",
-      "labelPlural": "Agrégateurs",
-      "fields": [
-        {
-          "name": "nom",
-          "type": "text",
-          "required": true,
-          "label": "Nom"
-        },
-        {
-          "name": "url",
-          "type": "text",
-          "label": "URL"
-        },
-        {
-          "name": "notes",
-          "type": "text",
-          "label": "Notes"
-        }
-      ]
-    },
-    {
-      "id": "data_mappings",
-      "label": "Mapping",
-      "labelPlural": "Data-mapping",
-      "fields": [
-        {
-          "name": "libelle_fournisseur",
-          "type": "text",
-          "required": true,
-          "label": "Libellé fournisseur"
-        },
-        {
-          "name": "fournisseur_id",
-          "type": "ref",
-          "ref": "fournisseurs",
-          "label": "Fournisseur"
-        },
-        {
-          "name": "produit_id",
-          "type": "ref",
-          "ref": "produits",
-          "required": true,
-          "label": "Produit interne"
-        }
-      ]
     }
   ],
   "pages": [
@@ -376,61 +218,6 @@
       "path": "/commandes",
       "title": "Commandes",
       "entityId": "commandes",
-      "kind": "list"
-    },
-    {
-      "id": "optimiser",
-      "path": "/optimiser",
-      "title": "Optimiser",
-      "kind": "flow"
-    },
-    {
-      "id": "stack",
-      "path": "/stack",
-      "title": "Mes produits",
-      "entityId": "stack_items",
-      "kind": "list"
-    },
-    {
-      "id": "releves",
-      "path": "/releves",
-      "title": "Relevés",
-      "entityId": "releves",
-      "kind": "list"
-    },
-    {
-      "id": "scan",
-      "path": "/scan",
-      "title": "Scan",
-      "entityId": "scan_sessions",
-      "kind": "flow"
-    },
-    {
-      "id": "marketplaces",
-      "path": "/marketplaces",
-      "title": "Marketplaces",
-      "entityId": "marketplaces",
-      "kind": "list"
-    },
-    {
-      "id": "secteurs",
-      "path": "/secteurs",
-      "title": "Secteurs",
-      "entityId": "secteurs",
-      "kind": "list"
-    },
-    {
-      "id": "agregateurs",
-      "path": "/agregateurs",
-      "title": "Agrégateurs",
-      "entityId": "agregateurs",
-      "kind": "list"
-    },
-    {
-      "id": "data-mapping",
-      "path": "/data-mapping",
-      "title": "Data-mapping",
-      "entityId": "data_mappings",
       "kind": "list"
     }
   ],

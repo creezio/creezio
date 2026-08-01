@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 /**
- * Smoke parcours CHR + modules étendus TempoFlow.
+ * Smoke parcours CHR — fournisseurs → produit/prix → panier → commande.
+ * Généré par creezio factory --from-prd.
  */
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
@@ -23,9 +24,7 @@ async function waitHealth() {
     try {
       const res = await fetch(`http://127.0.0.1:${port}/health`);
       if (res.ok) return;
-    } catch {
-      /* retry */
-    }
+    } catch { /* retry */ }
     await new Promise((r) => setTimeout(r, 100));
   }
   throw new Error("metier-api health timeout");
@@ -35,7 +34,7 @@ async function json(method, urlPath, body) {
   const res = await fetch(`http://127.0.0.1:${port}${urlPath}`, {
     method,
     headers: { "content-type": "application/json" },
-    body: body !== undefined ? JSON.stringify(body) : undefined,
+    body: body ? JSON.stringify(body) : undefined,
   });
   const data = await res.json();
   assert.ok(res.ok, `${method} ${urlPath} -> ${res.status} ${JSON.stringify(data)}`);
@@ -45,148 +44,49 @@ async function json(method, urlPath, body) {
 async function main() {
   await waitHealth();
 
-  // Dashboard
-  const dash = await json("GET", "/api/v1/brand/dashboard");
-  assert.ok(Array.isArray(dash.raccourcis));
-
-  // Fournisseurs
-  const f1 = await json("POST", "/api/v1/brand/fournisseurs", {
+  const fournisseur = await json("POST", "/api/v1/brand/fournisseurs", {
     nom: "Metro CHR",
     contact: "Jean",
-    site_web: "https://metro.test",
+    email: "jean@metro.test",
   });
-  const f2 = await json("POST", "/api/v1/brand/fournisseurs", {
-    nom: "Promocash",
-    contact: "Marie",
-  });
+  assert.ok(fournisseur.id);
 
-  // Secteur + marketplace
-  const secteur = await json("POST", "/api/v1/brand/secteurs", {
-    nom: "Légumes",
-    description: "Frais",
-  });
-  await json("POST", "/api/v1/brand/marketplaces", { nom: "Rungis digital" });
-  await json("POST", "/api/v1/brand/agregateurs", { nom: "AgriAgg", url: "https://agg.test" });
-
-  // Produits
-  const pTomate = await json("POST", "/api/v1/brand/produits", {
+  const produit = await json("POST", "/api/v1/brand/produits", {
     nom: "Tomates",
     unite: "kg",
     categorie: "légumes",
-    secteur_id: secteur.id,
-    fournisseur_id: f1.id,
-  });
-  const pSalade = await json("POST", "/api/v1/brand/produits", {
-    nom: "Salade",
-    unite: "pièce",
-    fournisseur_id: f1.id,
+    fournisseur_id: fournisseur.id,
   });
 
-  // Prix + historique + promo (f2 encore actif — P5)
-  await json("POST", "/api/v1/brand/prix", {
-    produit_id: pTomate.id,
-    fournisseur_id: f1.id,
-    montant: 2.8,
-    devise: "EUR",
-  });
-  await json("POST", "/api/v1/brand/prix", {
-    produit_id: pTomate.id,
-    fournisseur_id: f1.id,
+  const prix = await json("POST", "/api/v1/brand/prix", {
+    produit_id: produit.id,
+    fournisseur_id: fournisseur.id,
     montant: 2.4,
     devise: "EUR",
-    promo: true,
-    promo_label: "-14%",
   });
-  await json("POST", "/api/v1/brand/prix", {
-    produit_id: pTomate.id,
-    fournisseur_id: f2.id,
-    montant: 3.1,
-    devise: "EUR",
-  });
-  const hist = await json(
-    "GET",
-    `/api/v1/brand/prix/historique?produit_id=${pTomate.id}&fournisseur_id=${f1.id}`,
-  );
-  assert.ok(hist.items.length >= 2);
+  assert.equal(prix.montant, 2.4);
 
-  // Archive après les prix (historique conserve l'id)
-  await json("DELETE", `/api/v1/brand/fournisseurs/${f2.id}`);
-  const archived = await json("GET", "/api/v1/brand/fournisseurs?archived=1");
-  assert.equal(archived.items.length, 1);
-
-  // Data-mapping
-  await json("POST", "/api/v1/brand/data_mappings", {
-    libelle_fournisseur: "TOMATE RONDE",
-    fournisseur_id: f1.id,
-    produit_id: pTomate.id,
-  });
-  const resolved = await json("POST", "/api/v1/brand/data-mapping/resolve", {
-    libelle: "TOMATE RONDE",
-    fournisseur_id: f1.id,
-  });
-  assert.equal(resolved.produit.id, pTomate.id);
-
-  // Stack
-  await json("POST", "/api/v1/brand/stack/toggle", { produit_id: pTomate.id });
-  await json("POST", "/api/v1/brand/stack/toggle", { produit_id: pSalade.id });
-  await json("POST", "/api/v1/brand/stack/toggle", { produit_id: pSalade.id }); // remove
-  const stack = await json("GET", "/api/v1/brand/stack/enriched");
-  assert.equal(stack.items.length, 1);
-
-  // Panier
   await json("POST", "/api/v1/brand/panier_lignes", {
-    produit_id: pTomate.id,
-    fournisseur_id: f1.id,
+    produit_id: produit.id,
+    fournisseur_id: fournisseur.id,
     quantite: 5,
     prix_unitaire: 2.4,
   });
-  const totaux = await json("GET", "/api/v1/brand/panier/totaux");
-  assert.equal(totaux.total_ht, 12);
 
-  // Optimiser
-  const opt = await json("POST", "/api/v1/brand/optimiser/suggest", {
-    besoins: [{ produit_id: pTomate.id, quantite: 2 }],
-  });
-  assert.ok(opt.suggestions.length >= 1);
-  assert.ok(opt.economie_ht >= 0);
-
-  // Commande
   const commande = await json("POST", "/api/v1/brand/commandes/from-panier", {
-    fournisseur_id: f1.id,
+    fournisseur_id: fournisseur.id,
   });
   assert.equal(commande.statut, "brouillon");
   assert.equal(commande.total_ht, 12);
-  const sent = await json("POST", `/api/v1/brand/commandes/${commande.id}/statut`, {
-    statut: "envoyee",
-  });
-  assert.equal(sent.statut, "envoyee");
+  assert.ok(Array.isArray(commande.lignes) && commande.lignes.length === 1);
 
-  // Relevés
-  const releve = await json("POST", "/api/v1/brand/releves", {
-    date_releve: "2026-08-01",
-    fournisseur_id: f1.id,
-    source: "magasin",
-    lignes: [{ produit_id: pTomate.id, montant: 2.2 }],
-  });
-  const applied = await json("POST", `/api/v1/brand/releves/${releve.id}/apply`, {});
-  assert.equal(applied.applied, 1);
+  const panier = await json("GET", "/api/v1/brand/panier_lignes");
+  assert.equal(panier.items.length, 0);
 
-  // Scan
-  const scan = await json("POST", "/api/v1/brand/scan/start", {
-    note: "étiquette",
-    propositions: [
-      { nom: "Courgettes", montant: 1.9, fournisseur_id: f1.id, unite: "kg" },
-    ],
-  });
-  const validated = await json("POST", `/api/v1/brand/scan/${scan.id}/validate`, {});
-  assert.ok(validated.results.produits.length + validated.results.prix.length >= 1);
+  const commandes = await json("GET", "/api/v1/brand/commandes");
+  assert.equal(commandes.items.length, 1);
 
-  // Schema pages
-  const schema = await json("GET", "/api/v1/brand/schema");
-  assert.ok(schema.pages.some((p) => p.id === "optimiser"));
-  assert.ok(schema.entities.includes("data_mappings"));
-
-  console.log("OK test:metier-parcours TempoFlow (cœur + modules étendus)");
+  console.log("OK test:metier-parcours fournisseurs→prix→panier→commande");
   child.kill("SIGTERM");
   process.exit(0);
 }

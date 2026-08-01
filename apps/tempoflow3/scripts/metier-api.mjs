@@ -1,7 +1,15 @@
 #!/usr/bin/env node
 /**
- * API métier TempoFlow — store JSON local (sans deps natives).
- * Couvre le cœur CHR + optimiser / stack / relevés / scan / référentiels.
+ * API métier TempoFlow3 — écrite dans la marque (prompts 2–6 / mini-PRDs).
+ *
+ * Bootstrap factory = CRUD générique. Ce fichier a été enrichi from scratch :
+ * - 01 fournisseurs : archive + recherche
+ * - 02 produits : archive + recherche + filtre fournisseur
+ * - 03 prix : historique (inserts), filtres, promo
+ * - 04 panier : totaux + sous-totaux fournisseur
+ * - 05 commandes : from-panier + statuts MVP
+ *
+ * Store JSON fichier (smoke sans Electron). Pas de copie tempoflow2.
  */
 import http from "node:http";
 import fs from "node:fs";
@@ -10,41 +18,18 @@ import { randomUUID } from "node:crypto";
 import { fileURLToPath } from "node:url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const ROOT = path.resolve(__dirname, "..");
+const ROOT = path.resolve(__dirname, "../..");
 const DATA_DIR = process.env.METIER_DATA_DIR || path.join(ROOT, ".data-metier");
 const PORT = Number(process.env.METIER_PORT || process.env.PORT || 18791);
-
 const ENTITY_IDS = [
   "fournisseurs",
   "produits",
   "prix",
   "panier_lignes",
   "commandes",
-  "stack_items",
-  "releves",
-  "scan_sessions",
-  "marketplaces",
-  "secteurs",
-  "agregateurs",
-  "data_mappings",
 ];
-
-const PAGES = [
-  { id: "dashboard", path: "/dashboard", title: "Dashboard" },
-  { id: "fournisseurs", path: "/fournisseurs", title: "Fournisseurs" },
-  { id: "produits", path: "/produits", title: "Produits" },
-  { id: "prix", path: "/prix", title: "Prix" },
-  { id: "panier", path: "/panier", title: "Panier" },
-  { id: "commandes", path: "/commandes", title: "Commandes" },
-  { id: "optimiser", path: "/optimiser", title: "Optimiser" },
-  { id: "stack", path: "/stack", title: "Mes produits" },
-  { id: "releves", path: "/releves", title: "Relevés" },
-  { id: "scan", path: "/scan", title: "Scan" },
-  { id: "marketplaces", path: "/marketplaces", title: "Marketplaces" },
-  { id: "secteurs", path: "/secteurs", title: "Secteurs" },
-  { id: "agregateurs", path: "/agregateurs", title: "Agrégateurs" },
-  { id: "data-mapping", path: "/data-mapping", title: "Data-mapping" },
-];
+const ARCHIVABLE = new Set(["fournisseurs", "produits"]);
+const COMMANDE_STATUTS = new Set(["brouillon", "envoyee", "recue"]);
 
 function now() {
   return new Date().toISOString();
@@ -56,16 +41,6 @@ function ensureStore() {
   if (!fs.existsSync(storePath)) {
     const empty = Object.fromEntries(ENTITY_IDS.map((id) => [id, []]));
     fs.writeFileSync(storePath, JSON.stringify(empty, null, 2));
-  } else {
-    const data = JSON.parse(fs.readFileSync(storePath, "utf8"));
-    let dirty = false;
-    for (const id of ENTITY_IDS) {
-      if (!Array.isArray(data[id])) {
-        data[id] = [];
-        dirty = true;
-      }
-    }
-    if (dirty) fs.writeFileSync(storePath, JSON.stringify(data, null, 2));
   }
   return storePath;
 }
@@ -105,27 +80,58 @@ function readBody(req) {
   });
 }
 
-function latestPrix(store, produitId, fournisseurId) {
-  const rows = (store.prix || [])
-    .filter(
-      (p) =>
-        p.produit_id === produitId &&
-        (!fournisseurId || p.fournisseur_id === fournisseurId),
-    )
-    .sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)));
-  return rows[0] || null;
+function isArchived(row) {
+  return Boolean(row.archived_at);
 }
 
-function resolveProduitByLabel(store, libelle, fournisseurId) {
-  const map = (store.data_mappings || []).find(
-    (m) =>
-      m.libelle_fournisseur?.toLowerCase() === String(libelle).toLowerCase() &&
-      (!fournisseurId || !m.fournisseur_id || m.fournisseur_id === fournisseurId),
-  );
-  if (map) return (store.produits || []).find((p) => p.id === map.produit_id);
-  return (store.produits || []).find(
-    (p) => p.nom?.toLowerCase() === String(libelle).toLowerCase(),
-  );
+function filterList(entity, items, url) {
+  let out = items.slice();
+  if (ARCHIVABLE.has(entity)) {
+    const archived = url.searchParams.get("archived") || "0";
+    if (archived === "0") out = out.filter((r) => !isArchived(r));
+    else if (archived === "1") out = out.filter((r) => isArchived(r));
+  }
+  const q = (url.searchParams.get("q") || "").trim().toLowerCase();
+  if (q) {
+    out = out.filter((r) => {
+      const hay = [r.nom, r.contact, r.email, r.categorie, r.promo_label]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+      return hay.includes(q);
+    });
+  }
+  if (entity === "produits" || entity === "prix" || entity === "panier_lignes" || entity === "commandes") {
+    const fid = url.searchParams.get("fournisseur_id");
+    if (fid) out = out.filter((r) => r.fournisseur_id === fid);
+  }
+  if (entity === "prix") {
+    const pid = url.searchParams.get("produit_id");
+    if (pid) out = out.filter((r) => r.produit_id === pid);
+    if (url.searchParams.get("promo") === "1") {
+      out = out.filter((r) => Boolean(r.promo));
+    }
+  }
+  return out;
+}
+
+function panierSummary(lignes) {
+  const by = new Map();
+  let total = 0;
+  for (const l of lignes) {
+    const line = Number(l.quantite || 0) * Number(l.prix_unitaire || 0);
+    total += line;
+    const fid = l.fournisseur_id || "unknown";
+    const cur = by.get(fid) || { fournisseur_id: fid, lignes: 0, total_ht: 0 };
+    cur.lignes += 1;
+    cur.total_ht += line;
+    by.set(fid, cur);
+  }
+  return {
+    items: lignes,
+    total_ht: total,
+    by_fournisseur: [...by.values()],
+  };
 }
 
 async function handle(req, res) {
@@ -140,48 +146,37 @@ async function handle(req, res) {
     return send(res, 200, {
       brandId: "tempoflow3",
       entities: ENTITY_IDS,
-      pages: PAGES,
-      flows: [{ id: "commande_fournisseur", steps: ["fournisseurs", "produits", "prix", "panier", "commandes"] }],
-    });
-  }
-
-  // ---- Dashboard ----
-  if (req.method === "GET" && url.pathname === "/api/v1/brand/dashboard") {
-    const store = readStore();
-    const fournisseursActifs = (store.fournisseurs || []).filter((f) => !f.archived_at);
-    const promos = (store.prix || []).filter((p) => p.promo);
-    const commandes = [...(store.commandes || [])].sort((a, b) =>
-      String(b.created_at).localeCompare(String(a.created_at)),
-    );
-    return send(res, 200, {
-      fournisseurs_actifs: fournisseursActifs.length,
-      lignes_panier: (store.panier_lignes || []).length,
-      commandes_recentes: commandes.slice(0, 5),
-      promos_recentes: promos.slice(0, 5),
-      raccourcis: [
-        { title: "Continuer mon panier", path: "/panier" },
-        { title: "Voir les promos", path: "/prix" },
-        { title: "Fournisseurs", path: "/fournisseurs" },
-        { title: "Commandes", path: "/commandes" },
+      pages: [
+        { id: "dashboard", path: "/dashboard", title: "Dashboard" },
+        { id: "fournisseurs", path: "/fournisseurs", title: "Fournisseurs" },
+        { id: "produits", path: "/produits", title: "Produits" },
+        { id: "prix", path: "/prix", title: "Prix" },
+        { id: "panier", path: "/panier", title: "Panier" },
+        { id: "commandes", path: "/commandes", title: "Commandes" },
+      ],
+      flows: [
+        {
+          id: "commande_fournisseur",
+          label: "Commander chez un fournisseur",
+          steps: ["fournisseurs", "produits", "prix", "panier", "commandes"],
+        },
       ],
     });
   }
 
-  // ---- Panier totaux ----
-  if (req.method === "GET" && url.pathname === "/api/v1/brand/panier/totaux") {
+  if (url.pathname === "/api/v1/brand/dashboard" && req.method === "GET") {
     const store = readStore();
-    const lignes = store.panier_lignes || [];
-    const byF = {};
-    let total = 0;
-    for (const l of lignes) {
-      const line = Number(l.quantite || 0) * Number(l.prix_unitaire || 0);
-      total += line;
-      byF[l.fournisseur_id] = (byF[l.fournisseur_id] || 0) + line;
-    }
-    return send(res, 200, { total_ht: total, par_fournisseur: byF, lignes: lignes.length });
+    return send(res, 200, {
+      fournisseurs: (store.fournisseurs || []).filter((r) => !isArchived(r)).length,
+      produits: (store.produits || []).filter((r) => !isArchived(r)).length,
+      prix: (store.prix || []).length,
+      panier_lignes: (store.panier_lignes || []).length,
+      commandes: (store.commandes || []).length,
+      promos: (store.prix || []).filter((p) => p.promo).length,
+    });
   }
 
-  // ---- Commande depuis panier ----
+  // Mini-PRD 05 — commande depuis panier
   if (req.method === "POST" && url.pathname === "/api/v1/brand/commandes/from-panier") {
     const body = await readBody(req);
     const store = readStore();
@@ -199,10 +194,10 @@ async function handle(req, res) {
       created_at: now(),
       updated_at: now(),
       fournisseur_id: fournisseurId,
-      statut: body.statut || "brouillon",
+      statut: "brouillon",
       total_ht: total,
       notes: body.notes || "",
-      lignes: related,
+      lignes: related.map((l) => ({ ...l })),
     };
     store.commandes = store.commandes || [];
     store.commandes.push(commande);
@@ -211,421 +206,82 @@ async function handle(req, res) {
     return send(res, 201, commande);
   }
 
-  // ---- Statut commande ----
-  if (req.method === "POST" && url.pathname.match(/^\/api\/v1\/brand\/commandes\/[^/]+\/statut$/)) {
-    const id = url.pathname.split("/")[5];
-    const body = await readBody(req);
-    const store = readStore();
-    const cmd = (store.commandes || []).find((c) => c.id === id);
-    if (!cmd) return send(res, 404, { error: "not_found" });
-    const allowed = ["brouillon", "envoyee", "recue", "annulee"];
-    if (!allowed.includes(body.statut)) return send(res, 400, { error: "statut_invalide", allowed });
-    cmd.statut = body.statut;
-    cmd.updated_at = now();
-    writeStore(store);
-    return send(res, 200, cmd);
-  }
-
-  // ---- Optimiser ----
-  if (req.method === "POST" && url.pathname === "/api/v1/brand/optimiser/suggest") {
-    const body = await readBody(req);
-    const store = readStore();
-    const besoins = body.besoins || [];
-    // besoins: [{ produit_id, quantite }] — sinon dérive du panier
-    const lines =
-      besoins.length > 0
-        ? besoins
-        : (store.panier_lignes || []).map((l) => ({
-            produit_id: l.produit_id,
-            quantite: l.quantite,
-          }));
-    if (!lines.length) return send(res, 400, { error: "aucun_besoin" });
-
-    const suggestions = [];
-    let totalOptimise = 0;
-    let totalReference = 0;
-    for (const need of lines) {
-      const prixList = (store.prix || [])
-        .filter((p) => p.produit_id === need.produit_id)
-        .sort((a, b) => Number(a.montant) - Number(b.montant));
-      if (!prixList.length) {
-        suggestions.push({
-          produit_id: need.produit_id,
-          quantite: need.quantite,
-          error: "pas_de_prix",
-        });
-        continue;
-      }
-      const best = prixList[0];
-      const worst = prixList[prixList.length - 1];
-      const q = Number(need.quantite || 1);
-      const lineBest = q * Number(best.montant);
-      const lineWorst = q * Number(worst.montant);
-      totalOptimise += lineBest;
-      totalReference += lineWorst;
-      suggestions.push({
-        produit_id: need.produit_id,
-        quantite: q,
-        fournisseur_id: best.fournisseur_id,
-        prix_unitaire: best.montant,
-        line_ht: lineBest,
-        ecart_vs_max: lineWorst - lineBest,
-        score: Math.round((1 - Number(best.montant) / Math.max(Number(worst.montant), 0.01)) * 100),
-      });
-    }
-    return send(res, 200, {
-      suggestions,
-      total_optimise_ht: totalOptimise,
-      total_reference_ht: totalReference,
-      economie_ht: totalReference - totalOptimise,
-    });
-  }
-
-  if (req.method === "POST" && url.pathname === "/api/v1/brand/optimiser/apply") {
-    const body = await readBody(req);
-    const store = readStore();
-    const suggestions = body.suggestions || [];
-    if (!suggestions.length) return send(res, 400, { error: "aucune_suggestion" });
-    store.panier_lignes = store.panier_lignes || [];
-    for (const s of suggestions) {
-      if (!s.fournisseur_id || s.error) continue;
-      store.panier_lignes.push({
-        id: randomUUID(),
-        created_at: now(),
-        updated_at: now(),
-        produit_id: s.produit_id,
-        fournisseur_id: s.fournisseur_id,
-        quantite: s.quantite,
-        prix_unitaire: s.prix_unitaire,
-      });
-    }
-    writeStore(store);
-    return send(res, 200, { ok: true, lignes_panier: store.panier_lignes.length });
-  }
-
-  // ---- Stack ----
-  if (req.method === "POST" && url.pathname === "/api/v1/brand/stack/toggle") {
-    const body = await readBody(req);
-    if (!body.produit_id) return send(res, 400, { error: "produit_id_requis" });
-    const store = readStore();
-    store.stack_items = store.stack_items || [];
-    const idx = store.stack_items.findIndex((s) => s.produit_id === body.produit_id);
-    if (idx >= 0) {
-      const [removed] = store.stack_items.splice(idx, 1);
-      writeStore(store);
-      return send(res, 200, { action: "removed", item: removed });
-    }
-    const item = {
-      id: randomUUID(),
-      created_at: now(),
-      updated_at: now(),
-      produit_id: body.produit_id,
-    };
-    store.stack_items.push(item);
-    writeStore(store);
-    return send(res, 201, { action: "added", item });
-  }
-
-  if (req.method === "GET" && url.pathname === "/api/v1/brand/stack/enriched") {
-    const store = readStore();
-    const items = (store.stack_items || []).map((s) => {
-      const produit = (store.produits || []).find((p) => p.id === s.produit_id);
-      const prix = latestPrix(store, s.produit_id, produit?.fournisseur_id);
-      return { ...s, produit, prix_actuel: prix };
-    });
-    return send(res, 200, { items });
-  }
-
-  // ---- Relevés apply ----
-  if (req.method === "POST" && url.pathname.match(/^\/api\/v1\/brand\/releves\/[^/]+\/apply$/)) {
-    const id = url.pathname.split("/")[5];
-    const store = readStore();
-    const releve = (store.releves || []).find((r) => r.id === id);
-    if (!releve) return send(res, 404, { error: "not_found" });
-    const lignes = releve.lignes || [];
-    const created = [];
-    for (const line of lignes) {
-      let produitId = line.produit_id;
-      if (!produitId && line.libelle) {
-        const resolved = resolveProduitByLabel(store, line.libelle, releve.fournisseur_id);
-        produitId = resolved?.id;
-      }
-      if (!produitId || line.montant == null) continue;
-      const row = {
-        id: randomUUID(),
-        created_at: now(),
-        updated_at: now(),
-        produit_id: produitId,
-        fournisseur_id: releve.fournisseur_id,
-        montant: Number(line.montant),
-        devise: line.devise || "EUR",
-        promo: Boolean(line.promo),
-        promo_label: line.promo_label || null,
-        source_releve_id: releve.id,
-      };
-      store.prix = store.prix || [];
-      store.prix.push(row);
-      created.push(row);
-    }
-    writeStore(store);
-    return send(res, 200, { applied: created.length, prix: created });
-  }
-
-  // ---- Scan ----
-  if (req.method === "POST" && url.pathname === "/api/v1/brand/scan/start") {
-    const body = await readBody(req);
-    const store = readStore();
-    const session = {
-      id: randomUUID(),
-      created_at: now(),
-      updated_at: now(),
-      statut: "propose",
-      note: body.note || "",
-      // propositions métier (mapping) — capture/IA = OS creezio côté produit
-      propositions: body.propositions || [],
-    };
-    store.scan_sessions = store.scan_sessions || [];
-    store.scan_sessions.push(session);
-    writeStore(store);
-    return send(res, 201, session);
-  }
-
-  if (req.method === "POST" && url.pathname.match(/^\/api\/v1\/brand\/scan\/[^/]+\/validate$/)) {
-    const id = url.pathname.split("/")[5];
-    const body = await readBody(req);
-    const store = readStore();
-    const session = (store.scan_sessions || []).find((s) => s.id === id);
-    if (!session) return send(res, 404, { error: "not_found" });
-    const accepted = body.propositions || session.propositions || [];
-    const results = { produits: [], prix: [] };
-    for (const prop of accepted) {
-      if (prop.skip) continue;
-      let produitId = prop.produit_id;
-      if (!produitId && prop.nom) {
-        const existing = resolveProduitByLabel(store, prop.nom, prop.fournisseur_id);
-        if (existing) produitId = existing.id;
-        else {
-          const p = {
-            id: randomUUID(),
-            created_at: now(),
-            updated_at: now(),
-            nom: prop.nom,
-            unite: prop.unite || "kg",
-            categorie: prop.categorie || "",
-            fournisseur_id: prop.fournisseur_id || null,
-          };
-          store.produits = store.produits || [];
-          store.produits.push(p);
-          results.produits.push(p);
-          produitId = p.id;
-        }
-      }
-      if (produitId && prop.montant != null && prop.fournisseur_id) {
-        const prix = {
-          id: randomUUID(),
-          created_at: now(),
-          updated_at: now(),
-          produit_id: produitId,
-          fournisseur_id: prop.fournisseur_id,
-          montant: Number(prop.montant),
-          devise: prop.devise || "EUR",
-          promo: Boolean(prop.promo),
-          source_scan_id: session.id,
-        };
-        store.prix = store.prix || [];
-        store.prix.push(prix);
-        results.prix.push(prix);
-      }
-    }
-    session.statut = "valide";
-    session.updated_at = now();
-    writeStore(store);
-    return send(res, 200, { session, results });
-  }
-
-  // ---- Data-mapping resolve ----
-  if (req.method === "POST" && url.pathname === "/api/v1/brand/data-mapping/resolve") {
-    const body = await readBody(req);
-    const store = readStore();
-    const produit = resolveProduitByLabel(store, body.libelle, body.fournisseur_id);
-    if (!produit) return send(res, 404, { error: "unmapped" });
-    return send(res, 200, { produit });
-  }
-
-  // ---- Search catalogue ----
-  if (req.method === "GET" && url.pathname === "/api/v1/brand/search") {
-    const q = (url.searchParams.get("q") || "").toLowerCase().trim();
-    const store = readStore();
-    if (!q) return send(res, 200, { produits: [], fournisseurs: [], prix: [] });
-    const produits = (store.produits || []).filter(
-      (p) => !p.archived_at && JSON.stringify(p).toLowerCase().includes(q),
-    );
-    const fournisseurs = (store.fournisseurs || []).filter(
-      (f) => !f.archived_at && JSON.stringify(f).toLowerCase().includes(q),
-    );
-    const prix = (store.prix || []).filter((p) => {
-      const prod = (store.produits || []).find((x) => x.id === p.produit_id);
-      return (
-        String(p.montant).includes(q) ||
-        (prod && String(prod.nom).toLowerCase().includes(q)) ||
-        (p.promo_label && String(p.promo_label).toLowerCase().includes(q))
-      );
-    });
-    return send(res, 200, { q, produits, fournisseurs, prix });
-  }
-
-  // ---- Promotions (vue prix promo) ----
-  if (req.method === "GET" && url.pathname === "/api/v1/brand/promotions") {
-    const store = readStore();
-    const items = (store.prix || [])
-      .filter((p) => p.promo)
-      .map((p) => {
-        const produit = (store.produits || []).find((x) => x.id === p.produit_id);
-        const fournisseur = (store.fournisseurs || []).find(
-          (x) => x.id === p.fournisseur_id,
-        );
-        return { ...p, produit, fournisseur };
-      });
-    return send(res, 200, { items });
-  }
-
-  // ---- SKUs (alias produits MVP) ----
-  if (req.method === "GET" && url.pathname === "/api/v1/brand/skus") {
-    const store = readStore();
-    const items = (store.produits || [])
-      .filter((p) => !p.archived_at)
-      .map((p) => ({
-        id: p.id,
-        sku: `SKU-${String(p.id).slice(0, 8)}`,
-        produit_id: p.id,
-        nom: p.nom,
-        unite: p.unite,
-        fournisseur_id: p.fournisseur_id,
-      }));
-    return send(res, 200, { items });
-  }
-
-  // ---- Site fournisseur ----
-  if (req.method === "GET" && url.pathname.match(/^\/api\/v1\/brand\/site\/[^/]+\/?$/)) {
-    const id = url.pathname.split("/").pop();
-    const store = readStore();
-    const fournisseur = (store.fournisseurs || []).find((f) => f.id === id);
-    if (!fournisseur) return send(res, 404, { error: "not_found" });
-    const produits = (store.produits || []).filter(
-      (p) => p.fournisseur_id === id && !p.archived_at,
-    );
-    const prix = (store.prix || []).filter((p) => p.fournisseur_id === id);
-    return send(res, 200, { fournisseur, produits, prix });
-  }
-
-  // ---- Dispatch candidats (répartition simple par fournisseur) ----
-  if (req.method === "POST" && url.pathname === "/api/v1/brand/dispatch/candidates") {
-    const body = await readBody(req);
-    const store = readStore();
-    const besoins = body.besoins || (store.panier_lignes || []).map((l) => ({
-      produit_id: l.produit_id,
-      quantite: l.quantite,
-    }));
-    const candidates = [];
-    for (const need of besoins) {
-      const prixList = (store.prix || [])
-        .filter((p) => p.produit_id === need.produit_id)
-        .sort((a, b) => Number(a.montant) - Number(b.montant));
-      candidates.push({
-        produit_id: need.produit_id,
-        quantite: need.quantite,
-        options: prixList.map((p, i) => ({
-          fournisseur_id: p.fournisseur_id,
-          prix_unitaire: p.montant,
-          rank: i + 1,
-          promo: Boolean(p.promo),
-        })),
-        recommended: prixList[0]
-          ? {
-              fournisseur_id: prixList[0].fournisseur_id,
-              prix_unitaire: prixList[0].montant,
-            }
-          : null,
-      });
-    }
-    return send(res, 200, { candidates });
-  }
-
-  // ---- API publique minimale ----
-  if (req.method === "GET" && url.pathname === "/api/public/v1/health") {
-    return send(res, 200, {
-      ok: true,
-      brandId: "tempoflow3",
-      public: true,
-      ts: now(),
-    });
-  }
-  if (req.method === "GET" && url.pathname === "/api/public/v1/catalog") {
-    const store = readStore();
-    return send(res, 200, {
-      produits: (store.produits || [])
-        .filter((p) => !p.archived_at)
-        .map((p) => ({ id: p.id, nom: p.nom, unite: p.unite })),
-      count: (store.produits || []).filter((p) => !p.archived_at).length,
-    });
-  }
-
-  // ---- Prix history helper ----
-  if (req.method === "GET" && url.pathname === "/api/v1/brand/prix/historique") {
-    const produitId = url.searchParams.get("produit_id");
-    const fournisseurId = url.searchParams.get("fournisseur_id");
-    const store = readStore();
-    let rows = store.prix || [];
-    if (produitId) rows = rows.filter((p) => p.produit_id === produitId);
-    if (fournisseurId) rows = rows.filter((p) => p.fournisseur_id === fournisseurId);
-    rows = [...rows].sort((a, b) => String(a.created_at).localeCompare(String(b.created_at)));
-    return send(res, 200, { items: rows });
-  }
-
-  // ---- CRUD générique ----
   const listMatch = url.pathname.match(/^\/api\/v1\/brand\/([^/]+)\/?$/);
   const itemMatch = url.pathname.match(/^\/api\/v1\/brand\/([^/]+)\/([^/]+)\/?$/);
+  const archiveMatch = url.pathname.match(
+    /^\/api\/v1\/brand\/([^/]+)\/([^/]+)\/archive\/?$/,
+  );
+
+  // Mini-PRD 01/02 — archiver sans supprimer
+  if (archiveMatch && req.method === "POST") {
+    const entity = archiveMatch[1];
+    const id = archiveMatch[2];
+    if (!ARCHIVABLE.has(entity)) return send(res, 400, { error: "not_archivable" });
+    const store = readStore();
+    const items = store[entity] || [];
+    const idx = items.findIndex((r) => r.id === id);
+    if (idx < 0) return send(res, 404, { error: "not_found" });
+    items[idx] = { ...items[idx], archived_at: now(), updated_at: now() };
+    store[entity] = items;
+    writeStore(store);
+    return send(res, 200, items[idx]);
+  }
 
   if (listMatch) {
     const entity = listMatch[1];
     if (!ENTITY_IDS.includes(entity)) return send(res, 404, { error: "unknown_entity" });
     const store = readStore();
     if (req.method === "GET") {
-      let items = store[entity] || [];
-      const q = (url.searchParams.get("q") || "").toLowerCase();
-      const archived = url.searchParams.get("archived");
-      if (entity === "fournisseurs" || entity === "produits") {
-        if (archived === "1") items = items.filter((i) => i.archived_at);
-        else if (archived !== "all") items = items.filter((i) => !i.archived_at);
+      const items = filterList(entity, store[entity] || [], url);
+      if (entity === "panier_lignes") {
+        return send(res, 200, panierSummary(items));
       }
-      if (q) {
-        items = items.filter((i) =>
-          JSON.stringify(i).toLowerCase().includes(q),
-        );
-      }
-      const fournisseurId = url.searchParams.get("fournisseur_id");
-      if (fournisseurId) items = items.filter((i) => i.fournisseur_id === fournisseurId);
-      const produitId = url.searchParams.get("produit_id");
-      if (produitId) items = items.filter((i) => i.produit_id === produitId);
-      const promo = url.searchParams.get("promo");
-      if (promo === "1") items = items.filter((i) => i.promo);
       return send(res, 200, { items });
     }
     if (req.method === "POST") {
       const body = await readBody(req);
+      if (entity === "fournisseurs" && !String(body.nom || "").trim()) {
+        return send(res, 400, { error: "nom_required" });
+      }
+      if (entity === "produits" && !String(body.nom || "").trim()) {
+        return send(res, 400, { error: "nom_required" });
+      }
+      if (entity === "prix") {
+        if (!body.produit_id || !body.fournisseur_id || body.montant == null) {
+          return send(res, 400, { error: "prix_fields_required" });
+        }
+      }
       const row = {
+        ...body,
         id: body.id || randomUUID(),
         created_at: now(),
         updated_at: now(),
-        ...body,
       };
-      row.id = body.id || row.id;
-      // stack unique produit
-      if (entity === "stack_items") {
-        const exists = (store.stack_items || []).find((s) => s.produit_id === row.produit_id);
-        if (exists) return send(res, 409, { error: "already_in_stack", item: exists });
+      if (ARCHIVABLE.has(entity) && row.archived_at === undefined) {
+        row.archived_at = null;
+      }
+      if (entity === "prix") {
+        row.montant = Number(row.montant);
+        row.promo = Boolean(row.promo);
+        row.devise = row.devise || "EUR";
+      }
+      if (entity === "panier_lignes") {
+        row.quantite = Number(row.quantite);
+        if (row.prix_unitaire == null) {
+          const prices = (store.prix || [])
+            .filter(
+              (p) =>
+                p.produit_id === row.produit_id &&
+                p.fournisseur_id === row.fournisseur_id,
+            )
+            .sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)));
+          if (prices[0]) row.prix_unitaire = Number(prices[0].montant);
+        } else {
+          row.prix_unitaire = Number(row.prix_unitaire);
+        }
       }
       store[entity] = store[entity] || [];
+      // Prix : toujours une nouvelle entrée (historique mini-PRD 03)
       store[entity].push(row);
       writeStore(store);
       return send(res, 201, row);
@@ -641,24 +297,16 @@ async function handle(req, res) {
     const idx = items.findIndex((r) => r.id === id);
     if (req.method === "GET") {
       if (idx < 0) return send(res, 404, { error: "not_found" });
-      const row = items[idx];
-      // enrichissement fiche fournisseur / produit
-      if (entity === "fournisseurs") {
-        const produits = (store.produits || []).filter((p) => p.fournisseur_id === id && !p.archived_at);
-        const prix = (store.prix || []).filter((p) => p.fournisseur_id === id);
-        return send(res, 200, { ...row, produits, prix_count: prix.length });
-      }
-      if (entity === "produits") {
-        const prix = (store.prix || [])
-          .filter((p) => p.produit_id === id)
-          .sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)));
-        return send(res, 200, { ...row, prix, prix_actuel: prix[0] || null });
-      }
-      return send(res, 200, row);
+      return send(res, 200, items[idx]);
     }
     if (req.method === "PATCH") {
       if (idx < 0) return send(res, 404, { error: "not_found" });
       const body = await readBody(req);
+      if (entity === "commandes" && body.statut != null) {
+        if (!COMMANDE_STATUTS.has(String(body.statut))) {
+          return send(res, 400, { error: "statut_invalide" });
+        }
+      }
       items[idx] = { ...items[idx], ...body, id, updated_at: now() };
       store[entity] = items;
       writeStore(store);
@@ -666,13 +314,9 @@ async function handle(req, res) {
     }
     if (req.method === "DELETE") {
       if (idx < 0) return send(res, 404, { error: "not_found" });
-      // soft archive for fournisseurs/produits
-      if (entity === "fournisseurs" || entity === "produits") {
-        items[idx].archived_at = now();
-        items[idx].updated_at = now();
-        store[entity] = items;
-        writeStore(store);
-        return send(res, 200, items[idx]);
+      // Fournisseurs / produits : préférer archive (mini-PRD) — DELETE hard OK pour panier
+      if (ARCHIVABLE.has(entity)) {
+        return send(res, 400, { error: "use_archive" });
       }
       const [removed] = items.splice(idx, 1);
       store[entity] = items;

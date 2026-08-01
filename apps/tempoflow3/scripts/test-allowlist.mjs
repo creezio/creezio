@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Prompt 13 — audit allowlist marque (pas de launchers OS / store custom).
+ * Audit allowlist marque — pas de launchers OS / store session custom.
  */
 import assert from "node:assert/strict";
 import fs from "node:fs";
@@ -22,7 +22,11 @@ const forbiddenNameSnippets = [
 
 function walk(dir, out = []) {
   for (const ent of fs.readdirSync(dir, { withFileTypes: true })) {
-    if (ent.name === "node_modules" || ent.name === "build" || ent.name === ".data-metier") {
+    if (
+      ent.name === "node_modules" ||
+      ent.name === "build" ||
+      ent.name === ".data-metier"
+    ) {
       continue;
     }
     const p = path.join(dir, ent.name);
@@ -63,18 +67,9 @@ assert.match(main, /registerDesktopSessionIpc/);
 assert.match(main, /spawnBrandMetierApi/);
 assert.doesNotMatch(main, /createFileLocalConfigStore/);
 
-const nav = fs.readFileSync(path.join(root, "src/electron/vertical-slot.ts"), "utf8");
-for (const id of [
-  "fournisseurs",
-  "panier",
-  "commandes",
-  "optimiser",
-  "stack",
-  "releves",
-  "scan",
-  "marketplaces",
-]) {
-  assert.match(nav, new RegExp(id));
-}
+const modelJson = JSON.parse(
+  fs.readFileSync(path.join(root, "product-model.json"), "utf8"),
+);
+assert.equal(modelJson.brandId, "tempoflow3");
 
 console.log("OK test:allowlist TempoFlow (marque légère, OS = kit)");

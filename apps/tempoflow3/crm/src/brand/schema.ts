@@ -88,12 +88,6 @@ export const BRAND_ENTITIES: BrandEntity[] = [
         "label": "Catégorie"
       },
       {
-        "name": "secteur_id",
-        "type": "ref",
-        "ref": "secteurs",
-        "label": "Secteur"
-      },
-      {
         "name": "fournisseur_id",
         "type": "ref",
         "ref": "fournisseurs",
@@ -141,11 +135,6 @@ export const BRAND_ENTITIES: BrandEntity[] = [
         "name": "promo_label",
         "type": "text",
         "label": "Libellé promo"
-      },
-      {
-        "name": "promo_fin",
-        "type": "date",
-        "label": "Fin promo"
       }
     ]
   },
@@ -210,160 +199,6 @@ export const BRAND_ENTITIES: BrandEntity[] = [
         "name": "notes",
         "type": "text",
         "label": "Notes"
-      }
-    ]
-  },
-  {
-    "id": "stack_items",
-    "label": "Stack",
-    "labelPlural": "Mes produits",
-    "archivable": false,
-    "fields": [
-      {
-        "name": "produit_id",
-        "type": "ref",
-        "ref": "produits",
-        "required": true,
-        "label": "Produit"
-      }
-    ]
-  },
-  {
-    "id": "releves",
-    "label": "Relevé",
-    "labelPlural": "Relevés",
-    "archivable": false,
-    "fields": [
-      {
-        "name": "date_releve",
-        "type": "date",
-        "required": true,
-        "label": "Date"
-      },
-      {
-        "name": "fournisseur_id",
-        "type": "ref",
-        "ref": "fournisseurs",
-        "required": true,
-        "label": "Fournisseur"
-      },
-      {
-        "name": "source",
-        "type": "text",
-        "label": "Source"
-      }
-    ]
-  },
-  {
-    "id": "scan_sessions",
-    "label": "Scan",
-    "labelPlural": "Scans",
-    "archivable": false,
-    "fields": [
-      {
-        "name": "statut",
-        "type": "text",
-        "required": true,
-        "label": "Statut"
-      },
-      {
-        "name": "note",
-        "type": "text",
-        "label": "Note"
-      }
-    ]
-  },
-  {
-    "id": "marketplaces",
-    "label": "Marketplace",
-    "labelPlural": "Marketplaces",
-    "archivable": false,
-    "fields": [
-      {
-        "name": "nom",
-        "type": "text",
-        "required": true,
-        "label": "Nom"
-      },
-      {
-        "name": "url",
-        "type": "text",
-        "label": "URL"
-      },
-      {
-        "name": "notes",
-        "type": "text",
-        "label": "Notes"
-      }
-    ]
-  },
-  {
-    "id": "secteurs",
-    "label": "Secteur",
-    "labelPlural": "Secteurs",
-    "archivable": false,
-    "fields": [
-      {
-        "name": "nom",
-        "type": "text",
-        "required": true,
-        "label": "Nom"
-      },
-      {
-        "name": "description",
-        "type": "text",
-        "label": "Description"
-      }
-    ]
-  },
-  {
-    "id": "agregateurs",
-    "label": "Agrégateur",
-    "labelPlural": "Agrégateurs",
-    "archivable": false,
-    "fields": [
-      {
-        "name": "nom",
-        "type": "text",
-        "required": true,
-        "label": "Nom"
-      },
-      {
-        "name": "url",
-        "type": "text",
-        "label": "URL"
-      },
-      {
-        "name": "notes",
-        "type": "text",
-        "label": "Notes"
-      }
-    ]
-  },
-  {
-    "id": "data_mappings",
-    "label": "Mapping",
-    "labelPlural": "Data-mapping",
-    "archivable": false,
-    "fields": [
-      {
-        "name": "libelle_fournisseur",
-        "type": "text",
-        "required": true,
-        "label": "Libellé fournisseur"
-      },
-      {
-        "name": "fournisseur_id",
-        "type": "ref",
-        "ref": "fournisseurs",
-        "label": "Fournisseur"
-      },
-      {
-        "name": "produit_id",
-        "type": "ref",
-        "ref": "produits",
-        "required": true,
-        "label": "Produit interne"
       }
     ]
   }

@@ -1,26 +1,31 @@
-# Rapport TempoFlow3 — après correction + regen
-
-**Date** : 2026-08-01
+# Rapport TempoFlow3 — évaluation creezio (from scratch)
 
 ## Verdict
 
-La solution **fonctionne mieux** : après correction des gaps factory, un
-`rm -rf` + `creezio new-app --from-prd` reproduit l’app complète **sans
-édition manuelle** de la marque.
+L’expérience est **valide uniquement** si :
 
-| Critère | Avant | Après |
-|---------|-------|-------|
-| Onglets CHR via factory | 5 entités | 12 entités / 14 pages |
-| Smoke desktop sans GUI | ❌ | ✅ `test:desktop-smoke-profile` |
-| Pages Next utiles | stubs | listes API + dashboard |
-| Smoke archive/prix | ordre fragile | archive après prix |
-| Regen from scratch | retouches marque | **1 commande** |
+1. Prompt 1 = bootstrap **générique** (OS kit + cœur 5 entités CRUD) ;
+2. Modules riches = **écrits dans la marque** depuis mini-PRDs / doc creezio ;
+3. Aucun dump TempoFlow sous `packages/factory/templates/`.
 
-## Ce qui vient de creezio
+Un succès obtenu via template produit pré-cuit **n’évalue pas** creezio.
 
-Factory templates `packages/factory/templates/chr/*` + ProductModel `vertical: chr`
-+ wiring `@creezio/*`.
+## Ce qui a été corrigé (P8)
 
-## Ce qui est dans tempoflow3
+- Suppression de `packages/factory/templates/chr/` (API/SPA/oracle).
+- ProductModel cœur = 5 entités (pas 12).
+- Journal + HISTORIQUE documentent le raisonnement module par module.
 
-Uniquement le résultat généré (métier + wiring mince) — regenerate anytime.
+## Preuve actuelle
+
+| Check | Résultat |
+|-------|----------|
+| `templates/chr` absent | ✅ |
+| Prompt 1 regen → 5 entités | ✅ |
+| `npm test` TF3 (parcours + mini-PRD 01–05 + OS) | ✅ |
+| Gate `test-phase-factory-prd.mjs` | ✅ |
+
+## Suite
+
+Prompts 7+ (optimiser, stack, relevés, scan, marketplaces…) — même méthode :
+lire mini-PRD → écrire schema/API/UI/smoke dans la marque → pas de template.
