@@ -46,7 +46,7 @@ type ElectronApp = {
   whenReady: () => Promise<void>;
   quit: () => void;
   on: (event: string, cb: () => void) => void;
-  resourcesPath: string;
+  resourcesPath?: string;
 };
 
 type ElectronIpcMain = unknown;
@@ -66,6 +66,20 @@ async function loadElectron(): Promise<{
     BrowserWindow: ElectronBrowserWindow;
     ipcMain: ElectronIpcMain;
   };
+}
+
+function resolveResourcesRoot(
+  app: ElectronApp,
+  electronDirname: string,
+  resourcesRel?: string,
+): string {
+  if (app.isPackaged) {
+    return (
+      app.resourcesPath ||
+      path.join(path.dirname(process.execPath), "resources")
+    );
+  }
+  return path.join(electronDirname, resourcesRel || "../../resources");
 }
 
 export async function startBrandDesktop(
@@ -101,22 +115,33 @@ export async function startBrandDesktop(
   let searchEngine: BrandDesktopHandle["searchEngine"] = "off";
   let meiliStop: (() => void) | null = null;
 
+  const resourcesRoot = resolveResourcesRoot(
+    app,
+    __dirname,
+    config.resourcesRel,
+  );
+
   if (config.meiliFeed) {
-    const resourcesRoot = app.isPackaged
-      ? app.resourcesPath
-      : path.join(__dirname, config.resourcesRel || "../../resources");
     const meiliBin = path.join(resourcesRoot, "meili");
-    const meiliBoot = await maybeBootBrandMeili({
-      binaryPath: fs.existsSync(meiliBin) ? meiliBin : null,
-      dataDir: path.join(boot.userDataDir, "meili"),
-      userDataDir: boot.userDataDir,
-      dbPath: runtime.getBrand().path,
-      feed: config.meiliFeed,
-      log: (line) => log("meili", line),
-    });
-    searchEngine = meiliBoot.engine;
-    if (meiliBoot.meili) {
-      meiliStop = () => meiliBoot.meili?.stop();
+    try {
+      const meiliBoot = await maybeBootBrandMeili({
+        binaryPath: fs.existsSync(meiliBin) ? meiliBin : null,
+        dataDir: path.join(boot.userDataDir, "meili"),
+        userDataDir: boot.userDataDir,
+        dbPath: runtime.getBrand().path,
+        feed: config.meiliFeed,
+        log: (line) => log("meili", line),
+      });
+      searchEngine = meiliBoot.engine;
+      if (meiliBoot.meili) {
+        meiliStop = () => meiliBoot.meili?.stop();
+      }
+    } catch (err) {
+      log(
+        "meili",
+        `boot skipped: ${err instanceof Error ? err.message : String(err)}`,
+      );
+      searchEngine = "off";
     }
   }
 
@@ -220,9 +245,7 @@ export async function startBrandDesktop(
     },
   });
 
-  const renderer = app.isPackaged
-    ? path.join(app.resourcesPath, "renderer", "index.html")
-    : path.join(__dirname, "../../resources/renderer/index.html");
+  const renderer = path.join(resourcesRoot, "renderer", "index.html");
   await win.loadFile(renderer);
 
   const mounts = api.listMounts();

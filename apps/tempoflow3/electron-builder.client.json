@@ -138,6 +138,7 @@
     }
   ],
   "asar": true,
+  "npmRebuild": false,
   "nsis": {
     "oneClick": false,
     "allowToChangeInstallationDirectory": true,
