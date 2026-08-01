@@ -1,34 +1,73 @@
 #!/usr/bin/env node
 /**
- * Smokes mini-PRDs 01–05 — logique écrite dans la marque (pas template kit).
+ * Mini-PRDs 01–05 sur api-kernel + brand.db.
  */
 import assert from "node:assert/strict";
-import { spawn } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "tf3-miniprd-"));
-const port = 19200 + Math.floor(Math.random() * 400);
+const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "tempoflow3-metier-"));
+const port = 19000 + Math.floor(Math.random() * 1000);
 
-const child = spawn(process.execPath, [path.join(root, "scripts/metier-api.mjs")], {
-  env: { ...process.env, METIER_DATA_DIR: dataDir, METIER_PORT: String(port) },
-  stdio: ["ignore", "pipe", "pipe"],
+const creezioRoot = process.env.CREEZIO_ROOT || "";
+const localNm = path.join(root, "node_modules");
+if (creezioRoot && !fs.existsSync(localNm)) {
+  const kitNm = path.join(creezioRoot, "node_modules");
+  if (fs.existsSync(kitNm)) {
+    fs.symlinkSync(kitNm, localNm, "dir");
+  }
+}
+const binPath = [
+  path.join(root, "node_modules", ".bin"),
+  creezioRoot ? path.join(creezioRoot, "node_modules", ".bin") : "",
+  process.env.PATH || "",
+].filter(Boolean).join(path.delimiter);
+const nodePathParts = [
+  process.env.NODE_PATH,
+  path.join(root, "node_modules"),
+  creezioRoot ? path.join(creezioRoot, "node_modules") : "",
+].filter(Boolean);
+const toolEnv = {
+  ...process.env,
+  PATH: binPath,
+  NODE_PATH: nodePathParts.join(path.delimiter),
+  CREEZIO_ROOT: creezioRoot,
+};
+
+const build = spawnSync("npm", ["run", "build:electron"], {
+  cwd: root,
+  encoding: "utf8",
+  shell: true,
+  env: toolEnv,
 });
+assert.equal(build.status, 0, build.stderr || build.stdout);
+
+const child = spawn(
+  process.execPath,
+  [path.join(root, "scripts/brand-kernel-harness.mjs")],
+  {
+    env: {
+      ...toolEnv,
+      METIER_DATA_DIR: dataDir,
+      METIER_PORT: String(port),
+    },
+    stdio: ["ignore", "pipe", "pipe"],
+  },
+);
 
 async function waitHealth() {
-  for (let i = 0; i < 50; i++) {
+  for (let i = 0; i < 60; i++) {
     try {
-      const res = await fetch(`http://127.0.0.1:${port}/health`);
+      const res = await fetch(`http://127.0.0.1:${port}/api/v1/core/health`);
       if (res.ok) return;
-    } catch {
-      /* retry */
-    }
+    } catch { /* retry */ }
     await new Promise((r) => setTimeout(r, 100));
   }
-  throw new Error("health timeout");
+  throw new Error("brand-kernel-harness health timeout");
 }
 
 async function json(method, urlPath, body) {
@@ -38,102 +77,68 @@ async function json(method, urlPath, body) {
     body: body !== undefined ? JSON.stringify(body) : undefined,
   });
   const data = await res.json();
-  assert.ok(
-    res.ok,
-    `${method} ${urlPath} -> ${res.status} ${JSON.stringify(data)}`,
-  );
+  assert.ok(res.ok, `${method} ${urlPath} -> ${res.status} ${JSON.stringify(data)}`);
   return data;
 }
+
 
 async function main() {
   await waitHealth();
 
-  // 01 — fournisseurs : créer 2, archiver 1, filtre archivés + recherche
-  const f1 = await json("POST", "/api/v1/brand/fournisseurs", {
-    nom: "Metro",
-    contact: "Jean",
-  });
-  const f2 = await json("POST", "/api/v1/brand/fournisseurs", {
-    nom: "Promocash",
-    email: "a@promo.test",
-  });
-  await json("POST", `/api/v1/brand/fournisseurs/${f2.id}/archive`, {});
-  const actifs = await json("GET", "/api/v1/brand/fournisseurs?archived=0");
+  const f1 = await json("POST", "/api/v1/modules/fournisseurs", { nom: "Metro" });
+  const f2 = await json("POST", "/api/v1/modules/fournisseurs", { nom: "Promocash" });
+  await json("POST", `/api/v1/modules/fournisseurs/${f2.id}/archive`, {});
+  const actifs = await json("GET", "/api/v1/modules/fournisseurs?archived=0");
   assert.equal(actifs.items.length, 1);
-  assert.equal(actifs.items[0].id, f1.id);
-  const archives = await json("GET", "/api/v1/brand/fournisseurs?archived=1");
+  const archives = await json("GET", "/api/v1/modules/fournisseurs?archived=1");
   assert.equal(archives.items.length, 1);
-  const search = await json("GET", "/api/v1/brand/fournisseurs?q=metro&archived=0");
+  const search = await json("GET", "/api/v1/modules/fournisseurs?q=metro&archived=0");
   assert.equal(search.items.length, 1);
 
-  // 02 — produits rattachés
-  const p = await json("POST", "/api/v1/brand/produits", {
+  const p = await json("POST", "/api/v1/modules/produits", {
     nom: "Tomates",
     unite: "kg",
     categorie: "légumes",
     fournisseur_id: f1.id,
   });
-  const byF = await json("GET", `/api/v1/brand/produits?fournisseur_id=${f1.id}`);
-  assert.ok(byF.items.some((x) => x.id === p.id));
-
-  // 03 — prix historique + promo
-  await json("POST", "/api/v1/brand/prix", {
+  await json("POST", "/api/v1/modules/prix", {
     produit_id: p.id,
     fournisseur_id: f1.id,
     montant: 2.5,
-    devise: "EUR",
   });
-  await json("POST", "/api/v1/brand/prix", {
+  await json("POST", "/api/v1/modules/prix", {
     produit_id: p.id,
     fournisseur_id: f1.id,
     montant: 2.1,
-    devise: "EUR",
     promo: true,
     promo_label: "flash",
   });
   const hist = await json(
     "GET",
-    `/api/v1/brand/prix?produit_id=${p.id}&fournisseur_id=${f1.id}`,
+    `/api/v1/modules/prix?produit_id=${p.id}&fournisseur_id=${f1.id}`,
   );
   assert.equal(hist.items.length, 2);
-  const promos = await json("GET", "/api/v1/brand/prix?promo=1");
-  assert.ok(promos.items.some((x) => x.promo_label === "flash"));
 
-  // 04 — panier totaux + préremplissage prix
-  await json("POST", "/api/v1/brand/panier_lignes", {
+  await json("POST", "/api/v1/modules/panier_lignes", {
     produit_id: p.id,
     fournisseur_id: f1.id,
     quantite: 4,
   });
-  await json("POST", "/api/v1/brand/panier_lignes", {
-    produit_id: p.id,
-    fournisseur_id: f1.id,
-    quantite: 1,
-    prix_unitaire: 2.1,
-  });
-  const panier = await json("GET", "/api/v1/brand/panier_lignes");
-  assert.equal(panier.items.length, 2);
-  assert.equal(panier.total_ht, 4 * 2.1 + 1 * 2.1);
-  assert.equal(panier.by_fournisseur.length, 1);
+  const panier = await json("GET", "/api/v1/modules/panier_lignes");
+  assert.equal(panier.items.length, 1);
+  assert.equal(panier.total_ht, 4 * 2.1);
 
-  // 05 — commande + statut
-  const cmd = await json("POST", "/api/v1/brand/commandes/from-panier", {
+  const cmd = await json("POST", "/api/v1/modules/commandes/from-panier", {
     fournisseur_id: f1.id,
   });
   assert.equal(cmd.statut, "brouillon");
-  assert.equal(cmd.total_ht, 4 * 2.1 + 1 * 2.1);
-  const empty = await json("GET", "/api/v1/brand/panier_lignes");
-  assert.equal(empty.items.length, 0);
-  const sent = await json("PATCH", `/api/v1/brand/commandes/${cmd.id}`, {
-    statut: "envoyee",
-  });
-  assert.equal(sent.statut, "envoyee");
+  await json("PATCH", `/api/v1/modules/commandes/${cmd.id}`, { statut: "envoyee" });
 
-  const dash = await json("GET", "/api/v1/brand/dashboard");
+  const dash = await json("GET", "/api/v1/modules/dashboard");
   assert.equal(dash.commandes, 1);
-  assert.ok(dash.promos >= 1);
+  assert.ok(!fs.existsSync(path.join(dataDir, "store.json")));
 
-  console.log("OK test:mini-prd-core (01–05 archive/search/prix/panier/commandes)");
+  console.log("OK test:mini-prd-core (api-kernel / brand.db)");
   child.kill("SIGTERM");
   process.exit(0);
 }

@@ -1,4 +1,10 @@
--- Schéma brand généré depuis ProductModel (tempoflow3)
+/**
+ * Migrations brand tempoflow3 — généré --from-prd (SQL métier marque).
+ * Appliquées via createSqliteRuntime (OS @creezio/platform-core).
+ */
+import { composeMigrations, type SqliteMigration } from "@creezio/platform-core";
+
+export const BRAND_SCHEMA_SQL = `-- Schéma brand généré depuis ProductModel (tempoflow3)
 -- Ne pas déplacer dans @creezio/platform-core (ADR no-brand-domain).
 
 CREATE TABLE IF NOT EXISTS fournisseurs (
@@ -56,3 +62,11 @@ CREATE TABLE IF NOT EXISTS commandes (
   total_ht REAL,
   notes TEXT
 );
+`;
+
+export function brandMigrations(): SqliteMigration[] {
+  return composeMigrations({
+    id: "fromprd_brand_001_schema",
+    sql: BRAND_SCHEMA_SQL,
+  });
+}

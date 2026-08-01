@@ -217,7 +217,7 @@ if (isMain) {
 
 export function renderMetierQueriesTs(model: ProductModel): string {
   return `/**
- * Queries métier ${model.brandId} — client HTTP vers l'API brand générée.
+ * Queries métier ${model.brandId} — client HTTP vers api-kernel (/api/v1/modules).
  */
 const DEFAULT_BASE =
   process.env.METIER_BASE_URL || "http://127.0.0.1:18791";
@@ -243,14 +243,14 @@ export async function metierFetch(
 }
 
 export async function listEntity(entityId: string) {
-  const data = (await metierFetch(\`/api/v1/brand/\${entityId}\`)) as {
+  const data = (await metierFetch(\`/api/v1/modules/\${entityId}\`)) as {
     items: unknown[];
   };
   return data.items;
 }
 
 export async function createEntity(entityId: string, payload: Record<string, unknown>) {
-  return metierFetch(\`/api/v1/brand/\${entityId}\`, {
+  return metierFetch(\`/api/v1/modules/\${entityId}\`, {
     method: "POST",
     body: JSON.stringify(payload),
   });

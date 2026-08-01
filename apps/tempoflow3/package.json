@@ -2,16 +2,15 @@
   "name": "@creezio/app-tempoflow3",
   "private": true,
   "version": "0.1.0",
-  "description": "TempoFlow — app métier générée depuis PRD (kit Creezio)",
+  "description": "TempoFlow — marque métier sur OS Creezio (api-kernel + SQLite)",
   "type": "module",
   "main": "./build/electron/main.js",
   "scripts": {
     "build": "npm run build:electron",
     "build:electron": "tsc -p tsconfig.electron.json",
     "typecheck": "tsc -p tsconfig.electron.json --noEmit",
-    "metier:api": "node scripts/metier-api.mjs",
+    "metier:api": "npm run build:electron && node scripts/brand-kernel-harness.mjs",
     "test:metier-parcours": "node scripts/test-metier-parcours.mjs",
-    "test:mini-prd-core": "node scripts/test-mini-prd-core.mjs",
     "test:first-run-auth": "node scripts/test-first-run-auth.mjs",
     "test:setup-login": "node scripts/test-setup-login.mjs",
     "test:desktop-smoke-profile": "node scripts/test-desktop-smoke-profile.mjs",
@@ -21,6 +20,7 @@
     "electron:publish": "CREEZIO_BRAND=tempoflow3 bash ../../packages/desktop-tooling/scripts/publish-desktop.sh",
     "electron:publish:dry": "CREEZIO_BRAND=tempoflow3 bash ../../packages/desktop-tooling/scripts/publish-desktop.sh --dry-run",
     "desktop:dev": "npm run build:electron && electron .",
+    "test:mini-prd-core": "node scripts/test-mini-prd-core.mjs",
     "test": "npm run test:metier-parcours && npm run test:mini-prd-core && npm run test:first-run-auth && npm run test:setup-login && npm run test:allowlist && npm run test:desktop-smoke-profile"
   },
   "dependencies": {
@@ -50,6 +50,7 @@
   },
   "creezio": {
     "fromPrd": true,
+    "nativeKernel": true,
     "brandId": "tempoflow3",
     "vertical": "chr",
     "entities": [

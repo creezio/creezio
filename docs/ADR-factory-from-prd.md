@@ -26,6 +26,10 @@ et un squelette OS sans métier.
    que le **cœur achats** (5 entités). Les modules bonus (optimiser, scan…)
    sont ajoutés **par l’agent** via mini-PRDs — c’est ce qui prouve que creezio
    + sa doc suffisent, sans triche par template produit.
+6. Le scaffold branche l’**OS natif** : `brand-migrations` + `bootBrandKernel`
+   (`createSqliteRuntime` + `createApiKernel` + mounts SQL). Les smokes
+   utilisent `brand-kernel-harness.mjs` (même stack, sans Electron). Un serveur
+   JSON fichier n’est **pas** le chemin nominal.
 
 ## Conséquences
 

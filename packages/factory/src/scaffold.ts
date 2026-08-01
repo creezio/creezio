@@ -126,9 +126,32 @@ function renderPackageJson(m: AppManifest): string {
   );
 }
 
+function renderTsconfigBase(): string {
+  // Copie locale — l’app générée doit compiler hors monorepo (/tmp smokes, extraction).
+  return `{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "Node16",
+    "moduleResolution": "Node16",
+    "lib": ["ES2022"],
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    "strict": true,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "isolatedModules": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": false
+  }
+}
+`;
+}
+
 function renderTsconfigElectron(): string {
   return `{
-  "extends": "../../tsconfig.base.json",
+  "extends": "./tsconfig.base.json",
   "compilerOptions": {
     "outDir": "build/electron",
     "rootDir": "src/electron",
@@ -158,6 +181,7 @@ declare module "electron" {
     setName: (name: string) => void;
     setAppUserModelId: (id: string) => void;
     getVersion: () => string;
+    on: (event: string, listener: (...args: unknown[]) => void) => void;
   };
 
   export class BrowserWindow {
@@ -168,6 +192,13 @@ declare module "electron" {
 
   export const contextBridge: {
     exposeInMainWorld: (apiKey: string, api: unknown) => void;
+  };
+
+  export const ipcMain: {
+    handle: (
+      channel: string,
+      listener: (event: unknown, ...args: unknown[]) => unknown | Promise<unknown>,
+    ) => void;
   };
 
   export const ipcRenderer: {
@@ -652,6 +683,12 @@ export function scaffoldNewApp(opts: NewAppOptions): ScaffoldResult {
   writeFile(
     path.join(outDir, "package.json"),
     renderPackageJson(manifest),
+    force,
+    written,
+  );
+  writeFile(
+    path.join(outDir, "tsconfig.base.json"),
+    renderTsconfigBase(),
     force,
     written,
   );

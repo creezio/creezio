@@ -9,12 +9,15 @@ qui dump déjà tout le métier TempoFlow.
 | Étape | Statut | Notes |
 |-------|--------|-------|
 | P8 — retrait `templates/chr` | ✅ | anti-triche |
+| Phase A — factory native | ✅ | migrations + runtime + mounts SQL + harness |
+| Phase B — reset TF3 sur kernel | ✅ | plus de sidecar JSON / `store.json` |
 | Prompt 1 — bootstrap cœur générique | ✅ | 5 entités, CRUD factory |
-| Prompt 2 — Fournisseurs | ✅ | archive + `?q=` + `?archived=` |
+| Prompt 2 — Fournisseurs | ✅ | archive + `?q=` + `?archived=` (mounts SQL) |
 | Prompt 3 — Produits | ✅ | rattachement fournisseur + filtres |
 | Prompt 4 — Prix | ✅ | historique inserts + promo |
 | Prompt 5 — Panier | ✅ | totaux / sous-totaux / prérempli tarif |
 | Prompt 6 — Commandes | ✅ | from-panier + statuts MVP |
+| Phase C — Meili générique | ⏳ | indexeur encore `tf2_*` |
 | Prompts 7+ — modules bonus | ⏳ | optimiser, stack, scan… un par un |
 
 ---
@@ -23,14 +26,15 @@ qui dump déjà tout le métier TempoFlow.
 
 1. PRD = succès « fournisseurs → prix → panier → commande ».
 2. Factory parse → ProductModel **5 entités** (pas 12 oracle).
-3. Générateurs **génériques** → SQL/API/UI CRUD + OS kit.
-4. Assert : aucun `optimiser/suggest` / `scan/start` / `templates/chr`.
+3. Générateurs **natifs OS** → `brand-migrations` + `bootBrandKernel` + mounts `/api/v1/modules/*`.
+4. Assert : aucun `optimiser/suggest` / `scan/start` / `templates/chr` / `metier-api.mjs` / `store.json`.
 5. `npm test` smokes OS + parcours cœur verts.
 
 ## Raisonnement Prompts 2–6 (marque)
 
-Sans lire tempoflow2. Sources : mini-PRDs + schéma déjà généré (`archived_at`
-présent pour fournisseurs/produits).
+Sans lire tempoflow2. Sources : mini-PRDs + schéma généré (`archived_at`
+présent pour fournisseurs/produits). Règles portées dans
+`src/electron/brand-module-api.ts` (SQL sur `ctx.db`), pas dans un sidecar.
 
 | Mini-PRD | Décision d’implémentation |
 |----------|---------------------------|
@@ -40,22 +44,33 @@ présent pour fournisseurs/produits).
 | 04 Panier | GET renvoie `{ items, total_ht, by_fournisseur }` ; si `prix_unitaire` omis → dernier tarif connu. |
 | 05 Commandes | `from-panier` fige les lignes, vide le panier du fournisseur ; PATCH statut ∈ `{brouillon,envoyee,recue}`. |
 
-Fichiers marque touchés (écrits / enrichis, pas régénérés depuis un dump) :
+Fichiers marque (chemin natif) :
 
-- `scripts/metier-api.mjs`
-- `scripts/test-mini-prd-core.mjs`
-- `crm/src/brand/schema.sql` (`promo_fin`)
+- `src/electron/brand-migrations.ts`
+- `src/electron/brand-module-api.ts`
+- `src/electron/brand-runtime.ts`
+- `src/electron/main.ts` (`bootBrandKernel`, pas `spawnBrandMetierApi`)
+- `scripts/brand-kernel-harness.mjs`
+- `crm/src/brand/schema.sql`
 - `resources/renderer/index.html`
 
 ## Preuve
 
 ```bash
-# Prompt 1 clean-room
+# Clean-room from-prd (factory Phase A)
 rm -rf apps/tempoflow3
 creezio new-app --from-prd docs/experiences/tempoflow3/PRD-PRODUIT.md \
   --out apps/tempoflow3 --force
-cd apps/tempoflow3 && npm test   # cœur générique
 
-# Puis (cette itération) enrichissements mini-PRDs 01–05 + 
-# npm run test:mini-prd-core
+# Smokes = même kernel + SQLite (CREEZIO_ROOT pour deps monorepo hors workspace)
+cd apps/tempoflow3
+CREEZIO_ROOT=$(pwd)/../.. NODE_PATH=$CREEZIO_ROOT/node_modules npm test
+
+# Gates factory
+node --test scripts/test-phase-factory-prd.mjs \
+  scripts/test-phase-factory-prd-experience.mjs
 ```
+
+Preuves d’absence sidecar : pas de `scripts/metier-api.mjs`, pas de
+`store.json` sous le dataDir de smoke ; health `/api/v1/core/health` +
+CRUD `/api/v1/modules/*` sur `brand.db`.

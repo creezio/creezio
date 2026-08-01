@@ -1,27 +1,28 @@
 # TempoFlow
 
-Application métier bootstrapée par `creezio new-app --from-prd`
-(cœur achats générique).
+Marque métier sur **OS Creezio** (`creezio new-app --from-prd`).
+
+## Architecture
+
+| Couche | Technologie |
+|--------|-------------|
+| OS | `@creezio/api-kernel` + `createSqliteRuntime` + session desktop |
+| Métier | schema brand + mounts `/api/v1/modules/*` |
+| Smoke | `scripts/brand-kernel-harness.mjs` (même kernel, sans Electron) |
+
+**Interdit** : sidecar `metier-api.mjs` / `store.json` comme source de vérité.
 
 ## Identité
 
 | Champ | Valeur |
 |-------|--------|
 | brandId | `tempoflow3` |
-| tagline | Prix fournisseurs, catalogue et commandes pour la restauration |
-| vertical | `chr` |
 | entities | fournisseurs, produits, prix, panier_lignes, commandes |
-| sandbox | `true` |
+| vertical | `chr` |
 
 ## Tests
 
 ```bash
 npm test
-npm run metier:api
+npm run metier:api   # harness kernel natif
 ```
-
-## Plateforme vs métier
-
-- **OS** : `@creezio/*` (`createDesktopSessionStore`, boot, host-stack…).
-- **Bootstrap factory** : CRUD générique depuis ProductModel — pas un clone produit.
-- **Modules riches** : écrits dans ce repo à partir des mini-PRDs / brief, pas via templates TempoFlow.

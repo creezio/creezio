@@ -1,8 +1,6 @@
 /**
- * Orchestration scaffold --from-prd (F1–F4).
- *
- * Génère OS + CRUD générique depuis ProductModel.
- * Pas de templates métier TempoFlow / CHR riches (anti-triche évaluation).
+ * Orchestration scaffold --from-prd.
+ * Chemin natif OS : SQLite + api-kernel (pas de sidecar JSON métier).
  */
 import fs from "node:fs";
 import path from "node:path";
@@ -11,7 +9,6 @@ import { isChrModel, type ProductModel } from "./product-model.js";
 import {
   renderBrandSchemaSql,
   renderBrandSchemaTs,
-  renderMetierApiMjs,
   renderMetierQueriesTs,
   renderNextLayoutTsx,
   renderNextHomePage,
@@ -21,16 +18,20 @@ import {
   renderPathsTs,
   renderConnectionProfileTs,
   renderTunnelServiceUrlsTs,
-  renderBrandModuleApiTs,
   renderCreezioBootTs,
   renderHostStackBindingsTs,
   renderDesktopPresenceTs,
-  renderMainFromPrdTs,
   renderPreloadFromPrdTs,
+  renderBrandMigrationsTs,
+  renderBrandModuleApiTs,
+  renderBrandRuntimeTs,
+  renderBrandKernelHarnessMjs,
+  renderMainFromPrdNativeTs,
   renderMetierParcoursSmoke,
   renderFirstRunAuthSmoke,
   renderSetupLoginSmoke,
   renderAllowlistSmoke,
+  renderMiniPrdCoreSmoke,
 } from "./generators/index.js";
 
 function writeFile(
@@ -53,7 +54,7 @@ function renderPackageJsonFromPrd(m: AppManifest, model: ProductModel): string {
     build: "npm run build:electron",
     "build:electron": "tsc -p tsconfig.electron.json",
     typecheck: "tsc -p tsconfig.electron.json --noEmit",
-    "metier:api": "node scripts/metier-api.mjs",
+    "metier:api": "npm run build:electron && node scripts/brand-kernel-harness.mjs",
     "test:metier-parcours": "node scripts/test-metier-parcours.mjs",
     "test:first-run-auth": "node scripts/test-first-run-auth.mjs",
     "test:setup-login": "node scripts/test-setup-login.mjs",
@@ -64,9 +65,15 @@ function renderPackageJsonFromPrd(m: AppManifest, model: ProductModel): string {
     "electron:publish": `CREEZIO_BRAND=${m.brandId} bash ../../packages/desktop-tooling/scripts/publish-desktop.sh`,
     "electron:publish:dry": `CREEZIO_BRAND=${m.brandId} bash ../../packages/desktop-tooling/scripts/publish-desktop.sh --dry-run`,
     "desktop:dev": "npm run build:electron && electron .",
-    test:
-      "npm run test:metier-parcours && npm run test:first-run-auth && npm run test:setup-login && npm run test:allowlist && npm run test:desktop-smoke-profile",
   };
+  if (chr) {
+    scripts["test:mini-prd-core"] = "node scripts/test-mini-prd-core.mjs";
+    scripts.test =
+      "npm run test:metier-parcours && npm run test:mini-prd-core && npm run test:first-run-auth && npm run test:setup-login && npm run test:allowlist && npm run test:desktop-smoke-profile";
+  } else {
+    scripts.test =
+      "npm run test:metier-parcours && npm run test:first-run-auth && npm run test:setup-login && npm run test:allowlist && npm run test:desktop-smoke-profile";
+  }
 
   return (
     JSON.stringify(
@@ -74,7 +81,7 @@ function renderPackageJsonFromPrd(m: AppManifest, model: ProductModel): string {
         name: `@creezio/app-${m.brandId}`,
         private: true,
         version: "0.1.0",
-        description: `${m.client.productName} — app métier générée depuis PRD (kit Creezio)`,
+        description: `${m.client.productName} — marque métier sur OS Creezio (api-kernel + SQLite)`,
         type: "module",
         main: "./build/electron/main.js",
         scripts,
@@ -103,6 +110,7 @@ function renderPackageJsonFromPrd(m: AppManifest, model: ProductModel): string {
         },
         creezio: {
           fromPrd: true,
+          nativeKernel: true,
           brandId: m.brandId,
           vertical: model.vertical || (chr ? "chr" : "generic"),
           entities: model.entities.map((e) => e.id),
@@ -120,31 +128,32 @@ function renderReadmeFromPrd(m: AppManifest, model: ProductModel): string {
   const chr = isChrModel(model);
   return `# ${m.client.productName}
 
-Application métier bootstrapée par \`creezio new-app --from-prd\`
-(${chr ? "cœur achats générique" : "métier générique"}).
+Marque métier sur **OS Creezio** (\`creezio new-app --from-prd\`).
+
+## Architecture
+
+| Couche | Technologie |
+|--------|-------------|
+| OS | \`@creezio/api-kernel\` + \`createSqliteRuntime\` + session desktop |
+| Métier | schema brand + mounts \`/api/v1/modules/*\` |
+| Smoke | \`scripts/brand-kernel-harness.mjs\` (même kernel, sans Electron) |
+
+**Interdit** : sidecar \`metier-api.mjs\` / \`store.json\` comme source de vérité.
 
 ## Identité
 
 | Champ | Valeur |
 |-------|--------|
 | brandId | \`${m.brandId}\` |
-| tagline | ${model.tagline} |
-| vertical | \`${model.vertical || (chr ? "chr" : "generic")}\` |
 | entities | ${model.entities.map((e) => e.id).join(", ")} |
-| sandbox | \`${Boolean(m.sandbox)}\` |
+| vertical | \`${model.vertical || (chr ? "chr" : "generic")}\` |
 
 ## Tests
 
 \`\`\`bash
 npm test
-npm run metier:api
+npm run metier:api   # harness kernel natif
 \`\`\`
-
-## Plateforme vs métier
-
-- **OS** : \`@creezio/*\` (\`createDesktopSessionStore\`, boot, host-stack…).
-- **Bootstrap factory** : CRUD générique depuis ProductModel — pas un clone produit.
-- **Modules riches** : écrits dans ce repo à partir des mini-PRDs / brief, pas via templates TempoFlow.
 `;
 }
 
@@ -168,19 +177,17 @@ import { fileURLToPath } from "node:url";
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const hostStack = fs.readFileSync(path.join(root, "src/lib/host-stack.ts"), "utf8");
 assert.match(hostStack, /createBrandHostStack/);
-assert.match(hostStack, /pluginsFeatureOff:\\s*true/);
 const main = fs.readFileSync(path.join(root, "src/electron/main.ts"), "utf8");
 assert.match(main, /prepareDesktopBoot/);
-assert.match(main, /installBrandDesktopRuntime/);
+assert.match(main, /bootBrandKernel/);
 assert.match(main, /createDesktopSessionStore/);
-assert.match(main, /registerDesktopSessionIpc/);
-console.log("OK test:desktop-smoke-profile (${model.brandId})");
+const runtime = fs.readFileSync(path.join(root, "src/electron/brand-runtime.ts"), "utf8");
+assert.match(runtime, /createSqliteRuntime/);
+assert.match(runtime, /createApiKernel/);
+console.log("OK test:desktop-smoke-profile (${model.brandId} native)");
 `;
 }
 
-/**
- * Écrit les artefacts --from-prd (générateurs génériques uniquement).
- */
 export function writeFromPrdArtifacts(opts: {
   outDir: string;
   manifest: AppManifest;
@@ -189,6 +196,19 @@ export function writeFromPrdArtifacts(opts: {
   written: string[];
 }): void {
   const { outDir, manifest, model, force, written } = opts;
+  const chr = isChrModel(model);
+
+  // Purge legacy sidecar JSON si --force (chemin natif uniquement).
+  if (force) {
+    for (const rel of [
+      "scripts/metier-api.mjs",
+      "src/lib/brand-module-api.ts",
+      "scripts/test-oracle-mvp.mjs",
+    ]) {
+      const p = path.join(outDir, rel);
+      if (fs.existsSync(p)) fs.unlinkSync(p);
+    }
+  }
 
   writeFile(
     path.join(outDir, "product-model.json"),
@@ -224,8 +244,8 @@ export function writeFromPrdArtifacts(opts: {
   );
 
   writeFile(
-    path.join(outDir, "scripts/metier-api.mjs"),
-    renderMetierApiMjs(model),
+    path.join(outDir, "scripts/brand-kernel-harness.mjs"),
+    renderBrandKernelHarnessMjs(model),
     force,
     written,
   );
@@ -259,6 +279,14 @@ export function writeFromPrdArtifacts(opts: {
     force,
     written,
   );
+  if (chr) {
+    writeFile(
+      path.join(outDir, "scripts/test-mini-prd-core.mjs"),
+      renderMiniPrdCoreSmoke(model),
+      force,
+      written,
+    );
+  }
 
   writeFile(
     path.join(outDir, "ui/app/layout.tsx"),
@@ -284,7 +312,10 @@ export function writeFromPrdArtifacts(opts: {
 
   writeFile(
     path.join(outDir, "resources/renderer/index.html"),
-    renderMetierRendererHtml(model),
+    renderMetierRendererHtml(model).replaceAll(
+      "/api/v1/brand/",
+      "/api/v1/modules/",
+    ),
     force,
     written,
   );
@@ -296,8 +327,26 @@ export function writeFromPrdArtifacts(opts: {
     written,
   );
   writeFile(
+    path.join(outDir, "src/electron/brand-migrations.ts"),
+    renderBrandMigrationsTs(model),
+    force,
+    written,
+  );
+  writeFile(
+    path.join(outDir, "src/electron/brand-module-api.ts"),
+    renderBrandModuleApiTs(model),
+    force,
+    written,
+  );
+  writeFile(
+    path.join(outDir, "src/electron/brand-runtime.ts"),
+    renderBrandRuntimeTs(manifest, model),
+    force,
+    written,
+  );
+  writeFile(
     path.join(outDir, "src/electron/main.ts"),
-    renderMainFromPrdTs(manifest, model),
+    renderMainFromPrdNativeTs(manifest, model),
     force,
     written,
   );
@@ -326,12 +375,7 @@ export function writeFromPrdArtifacts(opts: {
     force,
     written,
   );
-  writeFile(
-    path.join(outDir, "src/lib/brand-module-api.ts"),
-    renderBrandModuleApiTs(model),
-    force,
-    written,
-  );
+  // Plus de brand-module-api stub dans src/lib — mounts = src/electron
   writeFile(
     path.join(outDir, "src/lib/creezio-boot.ts"),
     renderCreezioBootTs(manifest),
@@ -362,12 +406,12 @@ export function writeFromPrdArtifacts(opts: {
     path.join(outDir, "AGENTS.md"),
     `# AGENTS — ${manifest.client.productName}
 
-Marque légère bootstrapée via \`creezio new-app --from-prd\`.
+Marque légère sur **OS Creezio**.
 
-- **OS** = \`@creezio/*\` (\`createDesktopSessionStore\`).
-- **Bootstrap** = CRUD générique ProductModel (pas un template produit).
-- **Modules** = écrits ici depuis les mini-PRDs / brief — ne pas importer
-  de clone TempoFlow ni de templates métier riches du kit.
+- Runtime = \`bootBrandKernel\` (SQLite + api-kernel)
+- API métier = \`/api/v1/modules/*\`
+- Session = \`createDesktopSessionStore\`
+- **Interdit** : \`metier-api.mjs\`, \`store.json\`, launchers OS recopiés
 
 \`\`\`bash
 npm test

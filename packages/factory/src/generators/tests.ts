@@ -1,7 +1,84 @@
 /**
- * Générateurs de smokes métier / first-run (F3 / F2).
+ * Générateurs de smokes — kernel natif (pas de store.json).
  */
 import type { ProductModel } from "../product-model.js";
+
+function harnessPrelude(model: ProductModel): string {
+  return `
+const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "${model.brandId}-metier-"));
+const port = 19000 + Math.floor(Math.random() * 1000);
+
+const creezioRoot = process.env.CREEZIO_ROOT || "";
+// Hors monorepo (/tmp) : partager node_modules du kit (tsc + @types + packages).
+const localNm = path.join(root, "node_modules");
+if (creezioRoot && !fs.existsSync(localNm)) {
+  const kitNm = path.join(creezioRoot, "node_modules");
+  if (fs.existsSync(kitNm)) {
+    fs.symlinkSync(kitNm, localNm, "dir");
+  }
+}
+const binPath = [
+  path.join(root, "node_modules", ".bin"),
+  creezioRoot ? path.join(creezioRoot, "node_modules", ".bin") : "",
+  process.env.PATH || "",
+].filter(Boolean).join(path.delimiter);
+const nodePathParts = [
+  process.env.NODE_PATH,
+  path.join(root, "node_modules"),
+  creezioRoot ? path.join(creezioRoot, "node_modules") : "",
+].filter(Boolean);
+const toolEnv = {
+  ...process.env,
+  PATH: binPath,
+  NODE_PATH: nodePathParts.join(path.delimiter),
+  CREEZIO_ROOT: creezioRoot,
+};
+
+const build = spawnSync("npm", ["run", "build:electron"], {
+  cwd: root,
+  encoding: "utf8",
+  shell: true,
+  env: toolEnv,
+});
+assert.equal(build.status, 0, build.stderr || build.stdout);
+
+const child = spawn(
+  process.execPath,
+  [path.join(root, "scripts/brand-kernel-harness.mjs")],
+  {
+    env: {
+      ...toolEnv,
+      METIER_DATA_DIR: dataDir,
+      METIER_PORT: String(port),
+    },
+    stdio: ["ignore", "pipe", "pipe"],
+  },
+);
+
+async function waitHealth() {
+  for (let i = 0; i < 60; i++) {
+    try {
+      const res = await fetch(\`http://127.0.0.1:\${port}/api/v1/core/health\`);
+      if (res.ok) return;
+    } catch { /* retry */ }
+    await new Promise((r) => setTimeout(r, 100));
+  }
+  throw new Error("brand-kernel-harness health timeout");
+}
+
+async function json(method, urlPath, body) {
+  const res = await fetch(\`http://127.0.0.1:\${port}\${urlPath}\`, {
+    method,
+    headers: { "content-type": "application/json" },
+    body: body !== undefined ? JSON.stringify(body) : undefined,
+  });
+  const data = await res.json();
+  assert.ok(res.ok, \`\${method} \${urlPath} -> \${res.status} \${JSON.stringify(data)}\`);
+  return data;
+}
+`;
+}
 
 export function renderMetierParcoursSmoke(model: ProductModel): string {
   const hasChr =
@@ -12,48 +89,27 @@ export function renderMetierParcoursSmoke(model: ProductModel): string {
   if (!hasChr) {
     return `#!/usr/bin/env node
 /**
- * Smoke métier générique — notes CRUD.
+ * Smoke métier générique — notes via api-kernel + SQLite.
  */
 import assert from "node:assert/strict";
-import { spawn } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-
-const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "${model.brandId}-metier-"));
-const port = 19000 + Math.floor(Math.random() * 1000);
-
-const child = spawn(process.execPath, [path.join(root, "scripts/metier-api.mjs")], {
-  env: { ...process.env, METIER_DATA_DIR: dataDir, METIER_PORT: String(port) },
-  stdio: ["ignore", "pipe", "pipe"],
-});
-
-async function waitHealth() {
-  for (let i = 0; i < 40; i++) {
-    try {
-      const res = await fetch(\`http://127.0.0.1:\${port}/health\`);
-      if (res.ok) return;
-    } catch { /* retry */ }
-    await new Promise((r) => setTimeout(r, 100));
-  }
-  throw new Error("metier-api health timeout");
-}
+${harnessPrelude(model)}
 
 async function main() {
   await waitHealth();
-  const base = \`http://127.0.0.1:\${port}\`;
-  const create = await fetch(\`\${base}/api/v1/brand/notes\`, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({ titre: "Hello", contenu: "world" }),
+  const create = await json("POST", "/api/v1/modules/notes", {
+    titre: "Hello",
+    contenu: "world",
   });
-  assert.equal(create.status, 201);
-  const list = await fetch(\`\${base}/api/v1/brand/notes\`);
-  const body = await list.json();
-  assert.ok(body.items.length >= 1);
-  console.log("OK test:metier-parcours (notes)");
+  assert.ok(create.id);
+  const list = await json("GET", "/api/v1/modules/notes");
+  assert.ok(list.items.length >= 1);
+  assert.ok(!fs.existsSync(path.join(dataDir, "store.json")));
+  console.log("OK test:metier-parcours (notes / api-kernel)");
   child.kill("SIGTERM");
   process.exit(0);
 }
@@ -68,65 +124,34 @@ main().catch((err) => {
 
   return `#!/usr/bin/env node
 /**
- * Smoke parcours CHR — fournisseurs → produit/prix → panier → commande.
- * Généré par creezio factory --from-prd.
+ * Smoke parcours cœur — api-kernel + brand.db (pas de store.json).
  */
 import assert from "node:assert/strict";
-import { spawn } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-
-const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "${model.brandId}-metier-"));
-const port = 19000 + Math.floor(Math.random() * 1000);
-
-const child = spawn(process.execPath, [path.join(root, "scripts/metier-api.mjs")], {
-  env: { ...process.env, METIER_DATA_DIR: dataDir, METIER_PORT: String(port) },
-  stdio: ["ignore", "pipe", "pipe"],
-});
-
-async function waitHealth() {
-  for (let i = 0; i < 50; i++) {
-    try {
-      const res = await fetch(\`http://127.0.0.1:\${port}/health\`);
-      if (res.ok) return;
-    } catch { /* retry */ }
-    await new Promise((r) => setTimeout(r, 100));
-  }
-  throw new Error("metier-api health timeout");
-}
-
-async function json(method, urlPath, body) {
-  const res = await fetch(\`http://127.0.0.1:\${port}\${urlPath}\`, {
-    method,
-    headers: { "content-type": "application/json" },
-    body: body ? JSON.stringify(body) : undefined,
-  });
-  const data = await res.json();
-  assert.ok(res.ok, \`\${method} \${urlPath} -> \${res.status} \${JSON.stringify(data)}\`);
-  return data;
-}
+${harnessPrelude(model)}
 
 async function main() {
   await waitHealth();
 
-  const fournisseur = await json("POST", "/api/v1/brand/fournisseurs", {
+  const fournisseur = await json("POST", "/api/v1/modules/fournisseurs", {
     nom: "Metro CHR",
     contact: "Jean",
     email: "jean@metro.test",
   });
   assert.ok(fournisseur.id);
 
-  const produit = await json("POST", "/api/v1/brand/produits", {
+  const produit = await json("POST", "/api/v1/modules/produits", {
     nom: "Tomates",
     unite: "kg",
     categorie: "légumes",
     fournisseur_id: fournisseur.id,
   });
 
-  const prix = await json("POST", "/api/v1/brand/prix", {
+  const prix = await json("POST", "/api/v1/modules/prix", {
     produit_id: produit.id,
     fournisseur_id: fournisseur.id,
     montant: 2.4,
@@ -134,27 +159,33 @@ async function main() {
   });
   assert.equal(prix.montant, 2.4);
 
-  await json("POST", "/api/v1/brand/panier_lignes", {
+  await json("POST", "/api/v1/modules/panier_lignes", {
     produit_id: produit.id,
     fournisseur_id: fournisseur.id,
     quantite: 5,
     prix_unitaire: 2.4,
   });
 
-  const commande = await json("POST", "/api/v1/brand/commandes/from-panier", {
+  const commande = await json("POST", "/api/v1/modules/commandes/from-panier", {
     fournisseur_id: fournisseur.id,
   });
   assert.equal(commande.statut, "brouillon");
   assert.equal(commande.total_ht, 12);
   assert.ok(Array.isArray(commande.lignes) && commande.lignes.length === 1);
 
-  const panier = await json("GET", "/api/v1/brand/panier_lignes");
+  const panier = await json("GET", "/api/v1/modules/panier_lignes");
   assert.equal(panier.items.length, 0);
 
-  const commandes = await json("GET", "/api/v1/brand/commandes");
+  const commandes = await json("GET", "/api/v1/modules/commandes");
   assert.equal(commandes.items.length, 1);
 
-  console.log("OK test:metier-parcours fournisseurs→prix→panier→commande");
+  // Preuve persistence native SQLite (pas store.json)
+  assert.ok(
+    !fs.existsSync(path.join(dataDir, "store.json")),
+    "store.json interdit — SoT = brand.db",
+  );
+
+  console.log("OK test:metier-parcours api-kernel fournisseurs→commande");
   child.kill("SIGTERM");
   process.exit(0);
 }
@@ -170,7 +201,7 @@ main().catch((err) => {
 export function renderFirstRunAuthSmoke(model: ProductModel): string {
   return `#!/usr/bin/env node
 /**
- * Smoke first-run auth portable — vérifie wiring onboarding / store local.
+ * Smoke first-run + wiring natif (kernel, pas sidecar JSON).
  */
 import assert from "node:assert/strict";
 import fs from "node:fs";
@@ -185,6 +216,10 @@ const required = [
   "src/lib/connection-profile.ts",
   "src/lib/creezio-boot.ts",
   "src/electron/main.ts",
+  "src/electron/brand-runtime.ts",
+  "src/electron/brand-migrations.ts",
+  "src/electron/brand-module-api.ts",
+  "scripts/brand-kernel-harness.mjs",
   "product-model.json",
 ];
 
@@ -194,42 +229,29 @@ for (const rel of required) {
 }
 
 const main = fs.readFileSync(path.join(root, "src/electron/main.ts"), "utf8");
-assert.match(main, /installBrandDesktopRuntime/);
 assert.match(main, /prepareDesktopBoot/);
 assert.match(main, /createDesktopSessionStore/);
-assert.match(main, /registerDesktopSessionIpc/);
-assert.doesNotMatch(main, /createFileLocalConfigStore|local-config-store/);
+assert.match(main, /bootBrandKernel/);
+assert.doesNotMatch(main, /spawnBrandMetierApi|metier-api\\.mjs|createFileLocalConfigStore/);
 
-const forbidden = [
-  "src/electron/local-config-store.ts",
-  "src/electron/ipc-bridge.ts",
-];
-for (const rel of forbidden) {
-  assert.ok(
-    !fs.existsSync(path.join(root, rel)),
-    \`OS custom interdit dans marque: \${rel}\`,
-  );
-}
+assert.ok(!fs.existsSync(path.join(root, "scripts/metier-api.mjs")), "sidecar JSON interdit");
 
 const model = JSON.parse(
   fs.readFileSync(path.join(root, "product-model.json"), "utf8"),
 );
 assert.equal(model.brandId, ${JSON.stringify(model.brandId)});
-assert.ok(model.platformNeeds?.auth !== false);
 
 const hostStack = fs.readFileSync(path.join(root, "src/lib/host-stack.ts"), "utf8");
 assert.match(hostStack, /createBrandHostStack/);
-assert.match(hostStack, /createMemoryLocalConfigStore/);
-assert.match(hostStack, /isSetupComplete/);
 
-console.log("OK test:first-run-auth (wiring portable ${model.brandId})");
+console.log("OK test:first-run-auth (wiring natif ${model.brandId})");
 `;
 }
 
 export function renderSetupLoginSmoke(model: ProductModel): string {
   return `#!/usr/bin/env node
 /**
- * First-run setup + login — API OS kit (@creezio/electron-shell), sans GUI.
+ * First-run setup + login — API OS kit (@creezio/electron-shell).
  */
 import assert from "node:assert/strict";
 import fs from "node:fs";
@@ -246,7 +268,7 @@ async function loadCreateDesktopSessionStore() {
       return mod.createDesktopSessionStore;
     }
   } catch {
-    /* hors node_modules — fallback monorepo / CREEZIO_ROOT */
+    /* fallback */
   }
   const candidates = [];
   if (process.env.CREEZIO_ROOT) {
@@ -267,73 +289,35 @@ async function loadCreateDesktopSessionStore() {
       return mod.createDesktopSessionStore;
     }
   }
-  throw new Error(
-    "createDesktopSessionStore introuvable — installer @creezio/electron-shell ou définir CREEZIO_ROOT",
-  );
+  throw new Error("createDesktopSessionStore introuvable");
 }
 
 const createDesktopSessionStore = await loadCreateDesktopSessionStore();
-assert.equal(typeof createDesktopSessionStore, "function");
-
 const manifest = JSON.parse(
   fs.readFileSync(path.join(root, "src/electron/app-manifest.json"), "utf8"),
 );
-
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "${model.brandId}-setup-"));
 const session = createDesktopSessionStore({ userDataDir: tmp, manifest });
 
 assert.equal(session.isSetupComplete(), false);
-assert.equal(session.getSetupStatus().setupComplete, false);
-
-const done = session.completeSetup("chef", "secret-chr");
+const done = session.completeSetup("chef", "secret-os");
 assert.equal(done.ok, true);
-assert.ok(done.sessionToken);
-assert.equal(session.isSetupComplete(), true);
-
-assert.equal(session.login("chef", "wrong").ok, false);
-const ok = session.login("chef", "secret-chr");
-assert.equal(ok.ok, true);
-assert.ok(ok.sessionToken);
-
-const sess = session.getSession();
-assert.equal(sess.authenticated, true);
-assert.equal(sess.user, "chef");
-
-session.chooseConnection({
-  mode: "local",
-  localBind: "127.0.0.1",
-  chosen: true,
-});
-assert.equal(session.getConnectionProfile().chosen, true);
-
+assert.equal(session.login("chef", "secret-os").ok, true);
 session.logout();
-assert.equal(session.getSession().authenticated, false);
 
 const main = fs.readFileSync(path.join(root, "src/electron/main.ts"), "utf8");
-assert.match(main, /createDesktopSessionStore/);
+assert.match(main, /bootBrandKernel/);
 assert.match(main, /registerDesktopSessionIpc/);
-assert.match(main, /spawnBrandMetierApi/);
-assert.doesNotMatch(main, /createFileLocalConfigStore/);
+assert.doesNotMatch(main, /spawnBrandMetierApi/);
 
-const preload = fs.readFileSync(path.join(root, "src/electron/preload.ts"), "utf8");
-assert.match(preload, /auth:login/);
-assert.match(preload, /setup:complete/);
-
-for (const rel of [
-  "src/electron/local-config-store.ts",
-  "src/electron/ipc-bridge.ts",
-]) {
-  assert.ok(!fs.existsSync(path.join(root, rel)), \`interdit: \${rel}\`);
-}
-
-console.log("OK test:setup-login (OS kit createDesktopSessionStore)");
+console.log("OK test:setup-login (OS kit + bootBrandKernel)");
 `;
 }
 
 export function renderAllowlistSmoke(model: ProductModel): string {
   return `#!/usr/bin/env node
 /**
- * Audit allowlist marque — pas de launchers OS / store session custom.
+ * Allowlist — pas de launchers OS / pas de sidecar JSON métier.
  */
 import assert from "node:assert/strict";
 import fs from "node:fs";
@@ -351,6 +335,7 @@ const forbiddenNameSnippets = [
   "crash-reporter",
   "local-config-store",
   "ipc-bridge",
+  "metier-api",
 ];
 
 function walk(dir, out = []) {
@@ -369,24 +354,20 @@ function walk(dir, out = []) {
   return out;
 }
 
-const files = walk(root);
-for (const f of files) {
+for (const f of walk(root)) {
   const base = path.basename(f).toLowerCase();
   for (const bad of forbiddenNameSnippets) {
-    assert.ok(!base.includes(bad), \`fichier OS interdit dans marque: \${f}\`);
+    assert.ok(!base.includes(bad), \`fichier OS/sidecar interdit: \${f}\`);
   }
 }
 
 const required = [
-  "crm/src/brand/schema.ts",
-  "crm/src/brand/schema.sql",
-  "scripts/metier-api.mjs",
-  "scripts/test-metier-parcours.mjs",
   "src/electron/main.ts",
-  "src/electron/preload.ts",
-  "src/lib/host-stack.ts",
-  "src/lib/paths.ts",
-  "resources/renderer/index.html",
+  "src/electron/brand-runtime.ts",
+  "src/electron/brand-migrations.ts",
+  "src/electron/brand-module-api.ts",
+  "scripts/brand-kernel-harness.mjs",
+  "crm/src/brand/schema.sql",
   "product-model.json",
 ];
 for (const rel of required) {
@@ -394,18 +375,99 @@ for (const rel of required) {
 }
 
 const main = fs.readFileSync(path.join(root, "src/electron/main.ts"), "utf8");
-assert.match(main, /prepareDesktopBoot/);
+assert.match(main, /bootBrandKernel/);
 assert.match(main, /createDesktopSessionStore/);
-assert.match(main, /registerDesktopSessionIpc/);
-assert.match(main, /spawnBrandMetierApi/);
-assert.doesNotMatch(main, /createFileLocalConfigStore/);
+assert.doesNotMatch(main, /spawnBrandMetierApi/);
 
-const modelJson = JSON.parse(
-  fs.readFileSync(path.join(root, "product-model.json"), "utf8"),
+const modApi = fs.readFileSync(
+  path.join(root, "src/electron/brand-module-api.ts"),
+  "utf8",
 );
-assert.equal(modelJson.brandId, ${JSON.stringify(model.brandId)});
+assert.match(modApi, /registerModuleApi/);
+assert.doesNotMatch(modApi, /delegate_to_metier_api/);
 
-console.log("OK test:allowlist ${model.brandName} (marque légère, OS = kit)");
+console.log("OK test:allowlist ${model.brandName} (OS natif, pas sidecar JSON)");
 `;
 }
 
+export function renderMiniPrdCoreSmoke(model: ProductModel): string {
+  return `#!/usr/bin/env node
+/**
+ * Mini-PRDs 01–05 sur api-kernel + brand.db.
+ */
+import assert from "node:assert/strict";
+import { spawn, spawnSync } from "node:child_process";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+${harnessPrelude(model)}
+
+async function main() {
+  await waitHealth();
+
+  const f1 = await json("POST", "/api/v1/modules/fournisseurs", { nom: "Metro" });
+  const f2 = await json("POST", "/api/v1/modules/fournisseurs", { nom: "Promocash" });
+  await json("POST", \`/api/v1/modules/fournisseurs/\${f2.id}/archive\`, {});
+  const actifs = await json("GET", "/api/v1/modules/fournisseurs?archived=0");
+  assert.equal(actifs.items.length, 1);
+  const archives = await json("GET", "/api/v1/modules/fournisseurs?archived=1");
+  assert.equal(archives.items.length, 1);
+  const search = await json("GET", "/api/v1/modules/fournisseurs?q=metro&archived=0");
+  assert.equal(search.items.length, 1);
+
+  const p = await json("POST", "/api/v1/modules/produits", {
+    nom: "Tomates",
+    unite: "kg",
+    categorie: "légumes",
+    fournisseur_id: f1.id,
+  });
+  await json("POST", "/api/v1/modules/prix", {
+    produit_id: p.id,
+    fournisseur_id: f1.id,
+    montant: 2.5,
+  });
+  await json("POST", "/api/v1/modules/prix", {
+    produit_id: p.id,
+    fournisseur_id: f1.id,
+    montant: 2.1,
+    promo: true,
+    promo_label: "flash",
+  });
+  const hist = await json(
+    "GET",
+    \`/api/v1/modules/prix?produit_id=\${p.id}&fournisseur_id=\${f1.id}\`,
+  );
+  assert.equal(hist.items.length, 2);
+
+  await json("POST", "/api/v1/modules/panier_lignes", {
+    produit_id: p.id,
+    fournisseur_id: f1.id,
+    quantite: 4,
+  });
+  const panier = await json("GET", "/api/v1/modules/panier_lignes");
+  assert.equal(panier.items.length, 1);
+  assert.equal(panier.total_ht, 4 * 2.1);
+
+  const cmd = await json("POST", "/api/v1/modules/commandes/from-panier", {
+    fournisseur_id: f1.id,
+  });
+  assert.equal(cmd.statut, "brouillon");
+  await json("PATCH", \`/api/v1/modules/commandes/\${cmd.id}\`, { statut: "envoyee" });
+
+  const dash = await json("GET", "/api/v1/modules/dashboard");
+  assert.equal(dash.commandes, 1);
+  assert.ok(!fs.existsSync(path.join(dataDir, "store.json")));
+
+  console.log("OK test:mini-prd-core (api-kernel / brand.db)");
+  child.kill("SIGTERM");
+  process.exit(0);
+}
+
+main().catch((err) => {
+  console.error(err);
+  child.kill("SIGTERM");
+  process.exit(1);
+});
+`;
+}

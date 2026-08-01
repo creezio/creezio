@@ -40,8 +40,8 @@ sandbox monorepo acceptée ; extraction repo externe = propagation ultérieure.
 — frontière OS/métier violée.
 
 **Fix kit** : `@creezio/electron-shell` expose `createDesktopSessionStore`,
-`registerDesktopSessionIpc`, `spawnBrandMetierApi`. La factory `--from-prd`
-génère un main/preload mince qui **consomme** ces APIs.
+`registerDesktopSessionIpc`. La factory `--from-prd` génère un main/preload
+mince qui **consomme** ces APIs (+ `bootBrandKernel`, pas un sidecar métier).
 
 ## P8 — Templates CHR = triche évaluation → **CORRIGÉ**
 
@@ -52,6 +52,15 @@ génère un main/preload mince qui **consomme** ces APIs.
 Générateurs génériques uniquement. Modules bonus = agent + mini-PRDs dans
 la marque. Gate factory assert `templates/chr` absent.
 
+## P9 — Sidecar JSON (`metier-api.mjs` / `store.json`) hors contrat → **CORRIGÉ**
+
+**Avant** : factory `--from-prd` naissait avec un serveur Node + `store.json`
+et des mounts kernel en 501 — TempoFlow « marchait » hors OS.
+
+**Fix kit** : générateurs natifs (`brand-migrations`, `bootBrandKernel`, mounts
+SQL, `brand-kernel-harness`). Smokes hors monorepo : `CREEZIO_ROOT` + symlink
+`node_modules` + `tsconfig.base.json` local. Gates F3 + expérience 11/11.
+
 ---
 
 ## Vérification « delete + regen » (Prompt 1)
@@ -60,7 +69,9 @@ la marque. Gate factory assert `templates/chr` absent.
 rm -rf apps/tempoflow3
 creezio new-app --from-prd docs/experiences/tempoflow3/PRD-PRODUIT.md \
   --out apps/tempoflow3 --force
-cd apps/tempoflow3 && npm test
+cd apps/tempoflow3
+CREEZIO_ROOT=$(pwd)/../.. NODE_PATH=$CREEZIO_ROOT/node_modules npm test
 ```
 
-Attendu : cœur uniquement (pas optimiser/scan) ; OS kit ; puis mini-PRDs.
+Attendu : cœur uniquement (pas optimiser/scan) ; runtime `brand.db` +
+`/api/v1/modules/*` ; **aucun** `metier-api.mjs` / `store.json` ; puis mini-PRDs.

@@ -198,7 +198,7 @@ export function renderMetierRendererHtml(model: ProductModel): string {
         const entityId = page.entityId || page.id;
         const main = document.getElementById("app");
         try {
-          const data = await api("/api/v1/brand/" + entityId);
+          const data = await api("/api/v1/modules/" + entityId);
           const entity = ${JSON.stringify(model.entities)}.find((e) => e.id === entityId);
           const fields = (entity && entity.fields) || [{ name: "nom", type: "text", required: true, label: "Nom" }];
           main.innerHTML =
@@ -217,7 +217,7 @@ export function renderMetierRendererHtml(model: ProductModel): string {
             for (const f of fields) {
               if (f.type === "number" && payload[f.name] !== "") payload[f.name] = Number(payload[f.name]);
             }
-            await api("/api/v1/brand/" + entityId, { method: "POST", body: JSON.stringify(payload) });
+            await api("/api/v1/modules/" + entityId, { method: "POST", body: JSON.stringify(payload) });
             renderPage(page.id);
           };
         } catch (err) {

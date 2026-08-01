@@ -1,11 +1,11 @@
 # AGENTS — TempoFlow
 
-Marque légère bootstrapée via `creezio new-app --from-prd`.
+Marque légère sur **OS Creezio**.
 
-- **OS** = `@creezio/*` (`createDesktopSessionStore`).
-- **Bootstrap** = CRUD générique ProductModel (pas un template produit).
-- **Modules** = écrits ici depuis les mini-PRDs / brief — ne pas importer
-  de clone TempoFlow ni de templates métier riches du kit.
+- Runtime = `bootBrandKernel` (SQLite + api-kernel)
+- API métier = `/api/v1/modules/*`
+- Session = `createDesktopSessionStore`
+- **Interdit** : `metier-api.mjs`, `store.json`, launchers OS recopiés
 
 ```bash
 npm test

@@ -24,6 +24,10 @@ fonctionner → creezio (factory / wiring / Meili générique) n’est pas au ni
 
 ## 1. État actuel (inventaire honnête)
 
+**MAJ 2026-08-01** — Phases **A** et **B** livrées : factory génère le chemin
+natif ; TF3 reset + regen ; smokes verts sur `brand.db` / `/api/v1/modules/*` ;
+gates `test-phase-factory-prd*.mjs` 11/11. Reste **C** (Meili), **D** (Next), **E** (bonus).
+
 ### 1.1 Ce qui est OK (aligné intention)
 
 | Élément | Où | Note |
@@ -31,43 +35,30 @@ fonctionner → creezio (factory / wiring / Meili générique) n’est pas au ni
 | Anti-triche templates CHR | factory | Plus de dump TempoFlow en template |
 | Session first-run / login IPC | `@creezio/electron-shell` `createDesktopSessionStore` | OS, pas marque |
 | ProductModel cœur 5 entités | `product-model.ts` | Bootstrap mince |
-| Schéma SQL brand généré | `crm/src/brand/schema.sql` | Existe mais **non branché** à l’API |
+| Runtime natif factory | `brand-migrations` + `bootBrandKernel` + mounts SQL | Phase A |
+| Harness Node | `scripts/brand-kernel-harness.mjs` | Même kernel que desktop |
+| Mini-PRDs 01–05 | mounts SQL marque | archive, filtres, panier, from-panier |
 | Host-stack feature-off | `src/lib/host-stack.ts` | Wiring mince OK en smoke |
-| Allowlist anti-launchers | smokes | Interdit meili-launcher recopié, etc. |
+| Allowlist anti-sidecar | smokes | Interdit `metier-api.mjs` / `store.json` SoT |
 
-### 1.2 Écarts critiques (hors contrat)
+### 1.2 Écarts restants (après A–B)
 
 | Écart | Aujourd’hui | Cible OS |
 |-------|-------------|----------|
-| **Persistance métier** | `scripts/metier-api.mjs` → `.data-metier/store.json` | `createSqliteRuntime` → `brand.db` |
-| **HTTP métier** | serveur Node parallèle `:18791` `/api/v1/brand/*` | `createApiKernel` + `/api/v1/modules/<id>/*` |
-| **Mounts kernel** | `brand-module-api.ts` → **501** `delegate_to_metier_api` | Handlers SQL réels sur `ctx.db` |
-| **Main Electron** | `spawnBrandMetierApi` + kernel sans `sqliteRuntime` | Boot runtime natif (demobrand-like) |
-| **Recherche** | filtre string in-process | `startMeili` + index feed configurable |
-| **Smokes** | spawn sidecar JSON | Harness Node = **même** kernel + SQLite |
-| **Schema.sql** | orphelin | Source de vérité via `brand-migrations` |
-| **UI queries** | `METIER_BASE_URL` → sidecar | Base URL kernel / Hono mount |
+| **Recherche** | filtre string / pas Meili boot | `startMeili` + index feed configurable |
+| **UI Next** | SPA renderer + pages Next squelette | Hono/Next sur le même kernel |
+| **Modules bonus** | hors ProductModel cœur | mini-PRDs 06–11 |
 
-### 1.3 Fichiers coupables (à traiter)
-
-**Factory (génère le mauvais chemin)**  
-- `packages/factory/src/generators/api.ts` — `renderMetierApiMjs` (SoT JSON)  
-- `packages/factory/src/generators/wiring.ts` — `spawnBrandMetierApi`, mounts 501  
-- `packages/factory/src/scaffold-from-prd.ts` — écrit `metier-api.mjs`  
-- `packages/factory/src/generators/tests.ts` — smokes contre sidecar  
-- `packages/electron-shell/.../desktop-session.ts` — `spawnBrandMetierApi`
-
-**Marque TF3 (état dérivé)**  
-- `apps/tempoflow3/scripts/metier-api.mjs`  
-- `apps/tempoflow3/src/lib/brand-module-api.ts` (501)  
-- `apps/tempoflow3/src/electron/main.ts` (spawn sidecar)  
-- `apps/tempoflow3/crm/src/lib/metier-queries.ts` (pointe sidecar)  
-- `apps/tempoflow3/scripts/test-*.mjs` (parcours / mini-prd contre JSON)
+### 1.3 Fichiers encore à traiter (C+)
 
 **Kit Meili (trop TF / incomplet pour OS générique)**  
 - `packages/electron-shell/src/host/meili/indexer.ts` — SQL + index `tf2_*` hardcodés  
 - `packages/electron-shell/src/host/meili/index-schema.ts` — UIDs `tf2_*`, fingerprint TF  
 - `configureMeiliCatalogSqlTables` — seulement compteurs, pas le document builder
+
+**Legacy encore présent (non SoT)**  
+- `spawnBrandMetierApi` dans electron-shell — ne plus être le chemin factory  
+- `renderMetierApiMjs` — ne plus écrit par `--from-prd`
 
 ---
 
@@ -271,5 +262,5 @@ A1–A3 (générateurs natifs)
 
 ## 10. Prochaine action concrète
 
-Démarrer **Phase A1–A5** dans creezio (factory + harness), sans toucher encore aux modules bonus TF3.  
-Une fois le clean-room `--from-prd` vert sur kernel+SQLite, enchaîner **Phase B** (port mini-PRDs 01–05).
+Phases **A** et **B** closes. Enchaîner **Phase C** (Meili générique configurable),
+puis **D** (Next/desktop sur le même kernel), puis **E** (modules bonus 06–11).

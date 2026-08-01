@@ -14,6 +14,7 @@ declare module "electron" {
     setName: (name: string) => void;
     setAppUserModelId: (id: string) => void;
     getVersion: () => string;
+    on: (event: string, listener: (...args: unknown[]) => void) => void;
   };
 
   export class BrowserWindow {
@@ -24,6 +25,13 @@ declare module "electron" {
 
   export const contextBridge: {
     exposeInMainWorld: (apiKey: string, api: unknown) => void;
+  };
+
+  export const ipcMain: {
+    handle: (
+      channel: string,
+      listener: (event: unknown, ...args: unknown[]) => unknown | Promise<unknown>,
+    ) => void;
   };
 
   export const ipcRenderer: {

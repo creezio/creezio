@@ -46,11 +46,30 @@ test("expérience: dry-run agent = new-app --from-prd seulement", () => {
   assert.ok(model.entities.some((e) => e.id === "fournisseurs"));
   assert.ok(model.entities.some((e) => e.id === "commandes"));
 
+  assert.ok(
+    fs.existsSync(path.join(outDir, "src/electron/brand-runtime.ts")),
+    "runtime natif manquant",
+  );
+  assert.ok(!fs.existsSync(path.join(outDir, "scripts/metier-api.mjs")));
+
   const smoke = spawnSync(
     process.execPath,
     [path.join(outDir, "scripts/test-metier-parcours.mjs")],
-    { encoding: "utf8", cwd: outDir, timeout: 30000 },
+    {
+      encoding: "utf8",
+      cwd: outDir,
+      timeout: 120000,
+      env: {
+        ...process.env,
+        CREEZIO_ROOT: ROOT,
+        NODE_PATH: path.join(ROOT, "node_modules"),
+        PATH: [
+          path.join(ROOT, "node_modules", ".bin"),
+          process.env.PATH || "",
+        ].join(path.delimiter),
+      },
+    },
   );
   assert.equal(smoke.status, 0, smoke.stderr + "\n" + smoke.stdout);
-  console.log("expérience 5/5: brief → app → parcours commande OK");
+  console.log("expérience 5/5: brief → app → parcours kernel OK");
 });

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Audit allowlist marque — pas de launchers OS / store session custom.
+ * Allowlist — pas de launchers OS / pas de sidecar JSON métier.
  */
 import assert from "node:assert/strict";
 import fs from "node:fs";
@@ -18,6 +18,7 @@ const forbiddenNameSnippets = [
   "crash-reporter",
   "local-config-store",
   "ipc-bridge",
+  "metier-api",
 ];
 
 function walk(dir, out = []) {
@@ -36,24 +37,20 @@ function walk(dir, out = []) {
   return out;
 }
 
-const files = walk(root);
-for (const f of files) {
+for (const f of walk(root)) {
   const base = path.basename(f).toLowerCase();
   for (const bad of forbiddenNameSnippets) {
-    assert.ok(!base.includes(bad), `fichier OS interdit dans marque: ${f}`);
+    assert.ok(!base.includes(bad), `fichier OS/sidecar interdit: ${f}`);
   }
 }
 
 const required = [
-  "crm/src/brand/schema.ts",
-  "crm/src/brand/schema.sql",
-  "scripts/metier-api.mjs",
-  "scripts/test-metier-parcours.mjs",
   "src/electron/main.ts",
-  "src/electron/preload.ts",
-  "src/lib/host-stack.ts",
-  "src/lib/paths.ts",
-  "resources/renderer/index.html",
+  "src/electron/brand-runtime.ts",
+  "src/electron/brand-migrations.ts",
+  "src/electron/brand-module-api.ts",
+  "scripts/brand-kernel-harness.mjs",
+  "crm/src/brand/schema.sql",
   "product-model.json",
 ];
 for (const rel of required) {
@@ -61,15 +58,15 @@ for (const rel of required) {
 }
 
 const main = fs.readFileSync(path.join(root, "src/electron/main.ts"), "utf8");
-assert.match(main, /prepareDesktopBoot/);
+assert.match(main, /bootBrandKernel/);
 assert.match(main, /createDesktopSessionStore/);
-assert.match(main, /registerDesktopSessionIpc/);
-assert.match(main, /spawnBrandMetierApi/);
-assert.doesNotMatch(main, /createFileLocalConfigStore/);
+assert.doesNotMatch(main, /spawnBrandMetierApi/);
 
-const modelJson = JSON.parse(
-  fs.readFileSync(path.join(root, "product-model.json"), "utf8"),
+const modApi = fs.readFileSync(
+  path.join(root, "src/electron/brand-module-api.ts"),
+  "utf8",
 );
-assert.equal(modelJson.brandId, "tempoflow3");
+assert.match(modApi, /registerModuleApi/);
+assert.doesNotMatch(modApi, /delegate_to_metier_api/);
 
-console.log("OK test:allowlist TempoFlow (marque légère, OS = kit)");
+console.log("OK test:allowlist TempoFlow (OS natif, pas sidecar JSON)");

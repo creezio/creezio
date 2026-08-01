@@ -2,7 +2,7 @@ export {
   renderBrandSchemaSql,
   renderBrandSchemaTs,
 } from "./schema.js";
-export { renderMetierApiMjs, renderMetierQueriesTs } from "./api.js";
+export { renderMetierQueriesTs } from "./api.js";
 export {
   renderNextLayoutTsx,
   renderNextHomePage,
@@ -14,16 +14,22 @@ export {
   renderPathsTs,
   renderConnectionProfileTs,
   renderTunnelServiceUrlsTs,
-  renderBrandModuleApiTs,
   renderCreezioBootTs,
   renderHostStackBindingsTs,
   renderDesktopPresenceTs,
-  renderMainFromPrdTs,
   renderPreloadFromPrdTs,
 } from "./wiring.js";
+export {
+  renderBrandMigrationsTs,
+  renderBrandModuleApiTs,
+  renderBrandRuntimeTs,
+  renderBrandKernelHarnessMjs,
+  renderMainFromPrdNativeTs,
+} from "./native-runtime.js";
 export {
   renderMetierParcoursSmoke,
   renderFirstRunAuthSmoke,
   renderSetupLoginSmoke,
   renderAllowlistSmoke,
+  renderMiniPrdCoreSmoke,
 } from "./tests.js";

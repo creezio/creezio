@@ -51,7 +51,9 @@ Si pour réussir on est obligé d’enrichir ce prompt avec du jargon kit
 brief comme ci-dessus suffise (ex. `creezio new-app --from-prd`, doc agent
 « créer une marque métier », générateurs génériques).
 
-**Aussi un échec** : si l’agent « réussit » uniquement parce qu’un template
-kit contient déjà tout TempoFlow (API/SPA/oracle pré-cuits). La preuve valide
-= bootstrap générique + construction module par module (mini-PRDs), en
-s’appuyant sur la doc creezio — pas sur un dump produit versionné.
+**Aussi un échec** :
+- template kit qui dump déjà tout TempoFlow ;
+- sidecar JSON (\`metier-api.mjs\` / \`store.json\`) à la place de
+  api-kernel + SQLite natifs.
+
+La preuve valide = bootstrap OS natif + métier marque (mini-PRDs) + doc creezio.

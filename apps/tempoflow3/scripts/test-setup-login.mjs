@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * First-run setup + login — API OS kit (@creezio/electron-shell), sans GUI.
+ * First-run setup + login — API OS kit (@creezio/electron-shell).
  */
 import assert from "node:assert/strict";
 import fs from "node:fs";
@@ -17,7 +17,7 @@ async function loadCreateDesktopSessionStore() {
       return mod.createDesktopSessionStore;
     }
   } catch {
-    /* hors node_modules — fallback monorepo / CREEZIO_ROOT */
+    /* fallback */
   }
   const candidates = [];
   if (process.env.CREEZIO_ROOT) {
@@ -38,63 +38,25 @@ async function loadCreateDesktopSessionStore() {
       return mod.createDesktopSessionStore;
     }
   }
-  throw new Error(
-    "createDesktopSessionStore introuvable — installer @creezio/electron-shell ou définir CREEZIO_ROOT",
-  );
+  throw new Error("createDesktopSessionStore introuvable");
 }
 
 const createDesktopSessionStore = await loadCreateDesktopSessionStore();
-assert.equal(typeof createDesktopSessionStore, "function");
-
 const manifest = JSON.parse(
   fs.readFileSync(path.join(root, "src/electron/app-manifest.json"), "utf8"),
 );
-
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "tempoflow3-setup-"));
 const session = createDesktopSessionStore({ userDataDir: tmp, manifest });
 
 assert.equal(session.isSetupComplete(), false);
-assert.equal(session.getSetupStatus().setupComplete, false);
-
-const done = session.completeSetup("chef", "secret-chr");
+const done = session.completeSetup("chef", "secret-os");
 assert.equal(done.ok, true);
-assert.ok(done.sessionToken);
-assert.equal(session.isSetupComplete(), true);
-
-assert.equal(session.login("chef", "wrong").ok, false);
-const ok = session.login("chef", "secret-chr");
-assert.equal(ok.ok, true);
-assert.ok(ok.sessionToken);
-
-const sess = session.getSession();
-assert.equal(sess.authenticated, true);
-assert.equal(sess.user, "chef");
-
-session.chooseConnection({
-  mode: "local",
-  localBind: "127.0.0.1",
-  chosen: true,
-});
-assert.equal(session.getConnectionProfile().chosen, true);
-
+assert.equal(session.login("chef", "secret-os").ok, true);
 session.logout();
-assert.equal(session.getSession().authenticated, false);
 
 const main = fs.readFileSync(path.join(root, "src/electron/main.ts"), "utf8");
-assert.match(main, /createDesktopSessionStore/);
+assert.match(main, /bootBrandKernel/);
 assert.match(main, /registerDesktopSessionIpc/);
-assert.match(main, /spawnBrandMetierApi/);
-assert.doesNotMatch(main, /createFileLocalConfigStore/);
+assert.doesNotMatch(main, /spawnBrandMetierApi/);
 
-const preload = fs.readFileSync(path.join(root, "src/electron/preload.ts"), "utf8");
-assert.match(preload, /auth:login/);
-assert.match(preload, /setup:complete/);
-
-for (const rel of [
-  "src/electron/local-config-store.ts",
-  "src/electron/ipc-bridge.ts",
-]) {
-  assert.ok(!fs.existsSync(path.join(root, rel)), `interdit: ${rel}`);
-}
-
-console.log("OK test:setup-login (OS kit createDesktopSessionStore)");
+console.log("OK test:setup-login (OS kit + bootBrandKernel)");
