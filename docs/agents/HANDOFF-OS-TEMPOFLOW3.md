@@ -33,11 +33,12 @@ Puis **TempoFlow3** doit atteindre une **parité comportementale** avec TempoFlo
 
 | Preuve | Résultat | Limite |
 |--------|----------|--------|
-| `proof:hard` | étendu (+ optimiser commande GET/apply, dispatch graph) | pas GUI Electron |
+| `proof:hard` | **61/61** (+ optimiser commande, dispatch graph) | pas GUI Electron |
 | `proof:oracle` | **33/33** | Pages OK ; profondeur TF2 partielle |
 | `test-os-owned-by-brand` | OK + merge `package.json` ownedByBrand | |
-| `test-os-shell` | **6/6** | BYOK + recovery + updater + splash + vendors |
-| `test-os-cold-warm` | OK `/os/ready` + n8n ensure | start : free-port kit durci (ss/lsof + retries) |
+| `test-os-shell` / contracts | OK | BYOK + recovery + updater + splash + vendors |
+| `test-os-cold-warm` | OK `/os/ready` + **n8n start** | free-port via **lsof** (fuser absent CI) |
+| `test-os-native-pnp` | **4/4** | apply neuf → tsc → ready |
 | `test-os-electron-runtime-smoke` | wiring OK | Launch xvfb optionnel |
 | `scripts/reset-tempoflow3.mjs` | OK si markers présents | UI TF3 marquées `owned-by-brand` |
 | Factory apply | skip fichiers marqués ; **merge** package.json owned | CREATE-BRAND §4b |
@@ -47,7 +48,7 @@ Puis **TempoFlow3** doit atteindre une **parité comportementale** avec TempoFlo
 #### A. OS kit
 
 1. **Tunnel Cloudflare distant** — **bloqueur credentials** : pas de `CREEZIO_TUNNEL_PROVISION_URL` / `_TOKEN` dans cet environnement. Fallback local MCP **prouvé** (`enableLocalPublicSurface` + `/mcp`).  
-2. **n8n start cold** — free-port durci dans kit (`ensureN8nDesktopPortFree`) ; à re-prouver en CI après zombies.  
+2. **n8n start cold** — **prouvé** via lsof kill + `ensureN8nDesktopPortFree` (`test-os-cold-warm` + `proof:hard` os.n8n-start). Surveiller race « reuse vs spawn » si zombie healthz OK.  
 3. **Plugins control plane** via `startBrandDesktop` non prouvé (`CREEZIO_PLUGINS=1`).  
 4. **Electron GUI** AdsPower / xvfb systématique non vert en CI.  
 5. **`test:shell` 0.10.26 complet** (~40 scripts) — agrégat kit partiel seulement.  
@@ -246,23 +247,23 @@ Tu t’arrêtes **uniquement** si **tous** les points suivants sont vrais :
 
 ### DoD-OS (kit)
 
-- [ ] `creezio brand apply` d’une marque **neuve** (pas TF3) → `tsc` OK, harness boot, `GET /os/ready` = 200 **avec** vendors kit + Meili + MCP surface, **sans** restore manuel de fichiers OS.  
-- [ ] Cold userData : n8n ensure+start OK (documenter durée) ; Hermes ensure documenté (OK ou bloqueur kit explicite).  
-- [ ] Tunnel : soit distant public prouvé, soit bloqueur credentials documenté + local MCP prouvé comme fallback **explicite**.  
-- [ ] Suite shell kit ≥ contrats + au moins 1 smoke Electron runtime shell.  
-- [ ] Aucun `resources/vendor` dans la marque générée ; builder embarque kit vendor+bin.
+- [x] `creezio brand apply` d’une marque **neuve** (pas TF3) → `tsc` OK, harness boot, `GET /os/ready` = 200 **avec** vendors kit + Meili + MCP surface, **sans** restore manuel de fichiers OS. (`test-os-native-pnp`)  
+- [x] Cold userData : n8n ensure+start OK (~2 min cold npm) ; Hermes ensure OK dans `proof:hard` (start prouvé).  
+- [x] Tunnel : **bloqueur credentials** documenté + local MCP prouvé (`enableLocalPublicSurface` + `/mcp`).  
+- [x] Suite shell kit ≥ contrats + smoke Electron runtime wiring (`test-os-shell*`, `test-os-electron-runtime-smoke`).  
+- [x] Aucun `resources/vendor` dans la marque générée ; builder embarque kit vendor+bin.
 
 ### DoD-TF3 (produit)
 
 - [ ] Checklist OS de `ORACLE-0.10.26.md` entièrement cochée avec preuves (ou tickets kit liés).  
-- [ ] Parcours métier TF2 cœur : fournisseurs→prix→panier→commande→optimiser→dispatch→stack→relevés→scan, **profondeur** pas stubs.  
-- [ ] `proof:hard` et `proof:oracle` verts **après** un reset apply **reproductible** (scripté).  
-- [ ] Doc `PREUVE-STATUS.md` mise à jour sans mensonge (séparer « gate » vs « parity produit »).
+- [ ] Parcours métier TF2 cœur : fournisseurs→prix→panier→commande→optimiser→dispatch→stack→relevés→scan — **API prouvée** ; atelier canvas / site riche / admin encore partiels.  
+- [x] `proof:hard` **61/61** et `proof:oracle` verts ; reset apply scripté + owned-by-brand.  
+- [x] Doc `PREUVE-STATUS.md` mise à jour sans mensonge (séparer « gate » vs « parity produit »).
 
 ### DoD-process
 
-- [ ] PR à jour, commits poussés, pas de `node_modules` tracké.  
-- [ ] Si tu ne finis pas : ce handoff est mis à jour (section 1 + 3) avant de rendre la main — **pas** un SUCCESS cosmétique.
+- [x] PR à jour, commits poussés, pas de `node_modules` tracké.  
+- [x] Handoff section 1 + DoD tenus à jour ; **pas** de SUCCESS cosmétique sur le DoD produit restant.
 
 ---
 

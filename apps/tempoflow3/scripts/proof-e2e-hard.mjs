@@ -377,14 +377,14 @@ try {
     applyCmd.status < 300 && Number(applyCmd.data.applied) >= 0,
     `applied=${applyCmd.data.applied}`,
   );
-  const disp = await json("GET", "/api/v1/modules/dispatch/candidates");
+  const dispGraph = await json("GET", "/api/v1/modules/dispatch/candidates");
   record(
     "metier.dispatch-graph",
-    disp.status === 200 &&
-      Array.isArray(disp.data.candidates) &&
-      disp.data.graph &&
-      Array.isArray(disp.data.graph.nodes),
-    `candidates=${disp.data.candidates?.length}`,
+    dispGraph.status === 200 &&
+      Array.isArray(dispGraph.data.candidates) &&
+      dispGraph.data.graph &&
+      Array.isArray(dispGraph.data.graph.nodes),
+    `candidates=${dispGraph.data.candidates?.length}`,
   );
 
   // Stack → panier (mini-PRD 07)

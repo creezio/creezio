@@ -366,6 +366,59 @@ function isN8nReadyLogLine(line: string): boolean {
   );
 }
 
+/** Chemins absolus utilitaires réseau (hors allowlist resolveSystemBinary). */
+function resolvePortTool(name: "lsof" | "fuser"): string | null {
+  const candidates =
+    name === "lsof"
+      ? ["/usr/bin/lsof", "/bin/lsof", "/usr/sbin/lsof"]
+      : ["/usr/bin/fuser", "/bin/fuser", "/usr/sbin/fuser"];
+  for (const c of candidates) {
+    if (fs.existsSync(c)) return c;
+  }
+  return null;
+}
+
+/** PIDs écouteurs TCP (Linux/mac) — lsof d’abord (fuser souvent absent en CI). */
+function listenerPidsOnPort(port: number): number[] {
+  const pids = new Set<number>();
+  const push = (raw: string) => {
+    for (const line of raw.split(/\r?\n/)) {
+      const n = Number(line.trim());
+      if (Number.isInteger(n) && n > 0) pids.add(n);
+    }
+  };
+  try {
+    const lsof = resolvePortTool("lsof");
+    if (lsof) {
+      const out = execFileSync(
+        lsof,
+        ["-tiTCP:" + String(port), "-sTCP:LISTEN"],
+        { timeout: 5000, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] },
+      );
+      push(out);
+    }
+  } catch {
+    /* aucun listener / lsof KO */
+  }
+  try {
+    const fuser = resolvePortTool("fuser");
+    if (fuser) {
+      const out = execFileSync(fuser, [`${port}/tcp`], {
+        timeout: 5000,
+        encoding: "utf8",
+        stdio: ["ignore", "pipe", "pipe"],
+      });
+      for (const m of out.matchAll(/\b(\d+)\b/g)) {
+        const n = Number(m[1]);
+        if (n > 0) pids.add(n);
+      }
+    }
+  } catch {
+    /* */
+  }
+  return [...pids];
+}
+
 /** Best-effort : libérer le port desktop (zombie après crash / retry). */
 function killListenerOnPort(port: number): void {
   try {
@@ -383,20 +436,26 @@ function killListenerOnPort(port: number): void {
       );
       return;
     }
-    // fuser → ss/lsof fallback (certains CI n'ont pas fuser/psmisc).
+    for (const pid of listenerPidsOnPort(port)) {
+      try {
+        process.kill(pid, "SIGKILL");
+      } catch {
+        /* déjà mort / permission */
+      }
+    }
+    // Fallback shell si lsof/fuser absents du PATH sandbox.
     const bash = resolveSystemBinary("bash");
-    if (!bash) return;
-    const script = [
-      `fuser -k ${port}/tcp >/dev/null 2>&1 || true`,
-      // ss : PIDs des listeners TCP
-      `pids=$(ss -ltnp "sport = :${port}" 2>/dev/null | sed -n 's/.*pid=\\([0-9]\\+\\).*/\\1/p' | sort -u)`,
-      `for p in $pids; do kill -9 "$p" 2>/dev/null || true; done`,
-      // lsof fallback
-      `if command -v lsof >/dev/null 2>&1; then`,
-      `  lsof -tiTCP:${port} -sTCP:LISTEN 2>/dev/null | xargs -r kill -9 2>/dev/null || true`,
-      `fi`,
-    ].join("; ");
-    execFileSync(bash, ["-lc", script], { timeout: 8000, stdio: "ignore" });
+    if (bash && listenerPidsOnPort(port).length > 0) {
+      execFileSync(
+        bash,
+        [
+          "-lc",
+          `fuser -k ${port}/tcp >/dev/null 2>&1 || true; ` +
+            `command -v lsof >/dev/null && lsof -tiTCP:${port} -sTCP:LISTEN 2>/dev/null | while read p; do kill -9 "$p" 2>/dev/null || true; done`,
+        ],
+        { timeout: 8000, stdio: "ignore" },
+      );
+    }
   } catch {
     /* best-effort */
   }

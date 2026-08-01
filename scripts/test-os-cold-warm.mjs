@@ -52,6 +52,26 @@ test("cold-warm n8n + os/ready sur TF3 (userData neuf)", async () => {
   );
 
   // Libère un éventuel n8n zombie left by proof:hard (port fixe 15678).
+  // fuser souvent absent en CI → lsof + kill.
+  try {
+    const lsof = spawnSync(
+      "lsof",
+      ["-tiTCP:15678", "-sTCP:LISTEN"],
+      { encoding: "utf8" },
+    );
+    for (const pid of String(lsof.stdout || "")
+      .split(/\s+/)
+      .map((x) => Number(x))
+      .filter((n) => Number.isInteger(n) && n > 0)) {
+      try {
+        process.kill(pid, "SIGKILL");
+      } catch {
+        /* */
+      }
+    }
+  } catch {
+    /* */
+  }
   try {
     spawnSync("fuser", ["-k", "15678/tcp"], { encoding: "utf8" });
   } catch {
@@ -96,11 +116,19 @@ test("cold-warm n8n + os/ready sur TF3 (userData neuf)", async () => {
       n8nBody.nativeReady || n8nBody.entry,
       `n8n entry attendu: ${JSON.stringify(n8nBody)}`,
     );
-
-    // Soft : started peut timeout owner HTTP mais entry doit exister après warm
     assert.ok(
       readyBody.soft?.n8nEntry === true || n8nBody.entry,
       "n8n soft entry",
+    );
+    // Après free-port kit (lsof) : start doit réussir (pas seulement ensure).
+    const health = await fetch("http://127.0.0.1:15678/healthz").catch(
+      () => null,
+    );
+    assert.ok(
+      (health && health.status >= 200 && health.status < 500) ||
+        n8nBody.running === true ||
+        n8nBody.uiUrl,
+      `n8n doit être démarré (healthz ou status): ${JSON.stringify(n8nBody)}`,
     );
   } finally {
     await handle?.close();
