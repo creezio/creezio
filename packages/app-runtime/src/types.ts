@@ -39,6 +39,11 @@ export type StartBrandDesktopConfig = {
    * `lite` = kernel HTTP + Meili seulement (sonde minimale).
    */
   desktopProfile?: "full" | "lite";
+  /**
+   * `window` (défaut) = BrowserWindow + Next/SPA.
+   * `runtime` = installBrandDesktopRuntime (splash/tray/embeds) via kit.
+   */
+  desktopShell?: "window" | "runtime";
   /** Feed Meili marque (optionnel — sans feed = pas de boot Meili). */
   meiliFeed?: BrandMeiliFeed;
   /** Items nav brand (slot vertical). */

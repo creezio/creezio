@@ -29,3 +29,8 @@ export {
   startBrandUiPlane,
   type BrandUiPlaneHandle,
 } from "./start-brand-ui-plane.js";
+export {
+  installBrandOsDesktop,
+  brandPreloadPath,
+  type InstallBrandOsDesktopOptions,
+} from "./install-brand-os-desktop.js";

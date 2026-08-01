@@ -21,6 +21,7 @@ import { brandKernelBooter } from "./create-brand-kernel.js";
 import { composeBrandOs } from "./compose-brand-os.js";
 import { listenBrandOsHttp } from "./listen-brand-os-http.js";
 import { startBrandUiPlane } from "./start-brand-ui-plane.js";
+import { installBrandOsDesktop } from "./install-brand-os-desktop.js";
 import type {
   BrandDesktopHandle,
   BootBrandKernelFn,
@@ -93,6 +94,7 @@ export async function startBrandDesktop(
   const manifest = config.manifest;
   const __dirname = config.electronDirname;
   const desktopProfile = config.desktopProfile || "full";
+  const desktopShell = config.desktopShell || "window";
 
   const boot = await prepareDesktopBoot(manifest);
   initLogger(boot.userDataDir, config.logBasename || manifest.logBasename);
@@ -253,6 +255,43 @@ export async function startBrandDesktop(
     };
   }
 
+  // Shell runtime prod (splash/tray/embeds) — hosts déjà composés dans le kit.
+  if (desktopShell === "runtime" && os) {
+    const electronMod = await import("electron");
+    installBrandOsDesktop({
+      manifest,
+      os,
+      appKind: boot.appKind,
+      bootBehavior: boot.bootBehavior,
+      bootProfileLaunch: boot.profileLaunch,
+      sessionPartition: boot.sessionPartition,
+      electron: electronMod as unknown as Parameters<
+        typeof installBrandOsDesktop
+      >[0]["electron"],
+      bootBrandRuntime: async () => ({
+        ok: true,
+        metierBaseUrl: httpServer.baseUrl,
+        ui: uiPlane.kind,
+        uiBaseUrl: uiPlane.baseUrl,
+      }),
+      shutdownBrandRuntime: cleanup,
+    });
+    log(
+      "nav",
+      `shell=runtime mounts=${api.listMounts().length} os=full ui=${uiPlane.kind} api=${httpServer.baseUrl}`,
+    );
+    app.on("will-quit", () => {
+      void cleanup();
+    });
+    return {
+      baseUrl: httpServer.baseUrl,
+      port: httpServer.port,
+      searchEngine,
+      desktopProfile,
+      close: cleanup,
+    };
+  }
+
   await app.whenReady();
 
   registerDesktopSessionIpc({
@@ -292,7 +331,7 @@ export async function startBrandDesktop(
   const mcpTools = await mcp.listTools();
   log(
     "nav",
-    `merged=${navModel.items.length} mounts=${mounts.length} mcp=${mcpTools.tools.length} os=${desktopProfile} ui=${uiPlane.kind} setup=${session.isSetupComplete()} api=${httpServer.baseUrl} search=${searchEngine}`,
+    `merged=${navModel.items.length} mounts=${mounts.length} mcp=${mcpTools.tools.length} os=${desktopProfile} ui=${uiPlane.kind} shell=${desktopShell} setup=${session.isSetupComplete()} api=${httpServer.baseUrl} search=${searchEngine}`,
   );
 
   app.on("will-quit", () => {
