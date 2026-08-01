@@ -1,16 +1,23 @@
 # Expérience TempoFlow3 — prouver l’OS Creezio
 
-## Intention
+## Intention (vraie)
 
-Recréer **TempoFlow** dans un nouveau repo `tempoflow3` en partant :
+Donner un **brief produit non technique** (« app pour restaurateurs qui
+surveillent les prix fournisseurs… ») et vérifier que, grâce à **creezio**,
+l’app se crée toute seule.
 
-1. du kit **`creezio`** (natif / OS) ;
-2. d’un **PRD / cahier des charges** structuré ;
-3. d’une **suite de prompts** numérotés et rejouables.
+- Si ça marche → l’OS est un vrai OS.  
+- Si l’agent a besoin d’un roman technique (`host-stack`, sync vendor, P0…) →
+  **ce n’est pas le brief qu’il faut complexifier : c’est creezio à modifier**
+  (factory « from PRD », doc agent, scaffolds).
 
-Objectif : vérifier que l’OS permet de reconstruire une marque **métier-only**
-dont le comportement applicatif égale au minimum la baseline qui **fonctionnait
-parfaitement avant le grand refactor kit**.
+Entrées produit (à utiliser en premier) :
+
+- [PRD-PRODUIT.md](./PRD-PRODUIT.md)  
+- [PROMPT-PRODUIT.md](./PROMPT-PRODUIT.md)  
+
+Le reste de ce dossier (oracle 0.10.26, allowlist, prompts ingénieur P0–P12)
+sert seulement de **filet / audit interne**, pas de brief utilisateur.
 
 ## Deux références (ne pas mélanger)
 
