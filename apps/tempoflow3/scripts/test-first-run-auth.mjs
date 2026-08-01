@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Smoke first-run auth portable — wiring onboarding / store local.
+ * Smoke first-run auth portable — vérifie wiring onboarding / store local.
  */
 import assert from "node:assert/strict";
 import fs from "node:fs";
@@ -19,7 +19,8 @@ const required = [
 ];
 
 for (const rel of required) {
-  assert.ok(fs.existsSync(path.join(root, rel)), `manquant: ${rel}`);
+  const p = path.join(root, rel);
+  assert.ok(fs.existsSync(p), `manquant: ${rel}`);
 }
 
 const main = fs.readFileSync(path.join(root, "src/electron/main.ts"), "utf8");

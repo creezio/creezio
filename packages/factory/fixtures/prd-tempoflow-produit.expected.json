@@ -1,19 +1,36 @@
 {
   "brandId": "tempoflow3",
   "brandName": "TempoFlow",
+  "vertical": "chr",
   "entityIds": [
     "fournisseurs",
     "produits",
     "prix",
     "panier_lignes",
-    "commandes"
+    "commandes",
+    "stack_items",
+    "releves",
+    "scan_sessions",
+    "marketplaces",
+    "secteurs",
+    "agregateurs",
+    "data_mappings"
   ],
   "pagePaths": [
+    "/dashboard",
     "/fournisseurs",
     "/produits",
     "/prix",
     "/panier",
-    "/commandes"
+    "/commandes",
+    "/optimiser",
+    "/stack",
+    "/releves",
+    "/scan",
+    "/marketplaces",
+    "/secteurs",
+    "/agregateurs",
+    "/data-mapping"
   ],
   "flowId": "commande_fournisseur",
   "platformNeeds": {

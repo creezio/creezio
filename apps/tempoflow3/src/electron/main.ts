@@ -79,7 +79,7 @@ async function main(): Promise<void> {
 
   log(
     "nav",
-    `merged=${navModel.items.length} brand=${navModel.groups.find((g) => g.id === "brand")?.items.length || 0} entities=5 pages=5`,
+    `merged=${navModel.items.length} brand=${navModel.groups.find((g) => g.id === "brand")?.items.length || 0} entities=12 pages=14`,
   );
 }
 

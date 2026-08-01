@@ -2,12 +2,16 @@
 
 Tout fichier hors de cette liste doit être **justifié** (gap kit) ou **supprimé**.
 
-## Racine repo
+> **Sandbox kit** : `apps/tempoflow3` dans le monorepo creezio est une forme
+> valide de preuve OS (génération factory). Un repo GitHub externe séparé
+> reste l’objectif propagation, pas un prérequis pour valider le métier.
+
+## Racine repo / app
 
 - `README.md`, `AGENTS.md`, `docs/**` (expérience, métier, parity)
 - `.gitignore`, `.env.example`, `requirements.txt` (si utile)
-- `data/` (gitignore DB locales)
-- `scripts/` racine minces (ops) — pas de runtime natif
+- `data/` / `.data-metier/` (gitignore DB locales)
+- `scripts/` — API métier + smokes (générés factory), pas de launchers OS
 
 ## `crm/` config
 

@@ -1,31 +1,9 @@
-async function load(path: string) {
-  const base = process.env.METIER_BASE_URL || "http://127.0.0.1:18791";
-  try {
-    const res = await fetch(`${base}${path}`, { cache: "no-store" });
-    if (!res.ok) return null;
-    return res.json();
-  } catch {
-    return null;
-  }
-}
-
-export default async function Page() {
-  const data = await load("/api/v1/brand/schema");
-  const page = (data?.pages || []).find(
-    (x: { id: string; path: string }) => x.id === "optimiser" || x.path === "/optimiser",
-  );
-  const title = page?.title || "optimiser";
+export default function Page() {
   return (
     <section>
-      <h1>{title}</h1>
-      <p>
-        Surface métier TempoFlow3 — données via API brand (
-        <code>METIER_BASE_URL</code>).
-      </p>
-      <p>
-        UI interactive : renderer desktop{" "}
-        <code>resources/renderer/index.html#optimiser</code>.
-      </p>
+      <h1>Optimiser</h1>
+      <p>Surface métier TempoFlow — utiliser le renderer SPA pour les actions.</p>
+      <p><code>resources/renderer/index.html#optimiser</code></p>
     </section>
   );
 }

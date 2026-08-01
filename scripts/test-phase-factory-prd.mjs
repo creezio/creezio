@@ -72,6 +72,9 @@ test("F1.2 parseProductPrd PRD TempoFlow → catalogue CHR", () => {
     model.pages.map((p) => p.path),
     EXPECTED.pagePaths,
   );
+  assert.equal(model.vertical, "chr");
+  assert.ok(model.entities.some((e) => e.id === "stack_items"));
+  assert.ok(model.pages.some((p) => p.id === "optimiser"));
   assert.equal(model.flows[0]?.id, EXPECTED.flowId);
   assert.equal(model.platformNeeds.auth, true);
   assert.equal(model.platformNeeds.desktop, true);
@@ -120,9 +123,13 @@ test("F1–F4 scaffold --from-prd génère métier + wiring", () => {
     "scripts/metier-api.mjs",
     "scripts/test-metier-parcours.mjs",
     "scripts/test-first-run-auth.mjs",
+    "scripts/test-allowlist.mjs",
+    "scripts/test-desktop-smoke-profile.mjs",
     "ui/app/fournisseurs/page.tsx",
     "ui/app/panier/page.tsx",
     "ui/app/commandes/page.tsx",
+    "ui/app/optimiser/page.tsx",
+    "ui/app/dashboard/page.tsx",
     "src/lib/paths.ts",
     "src/lib/host-stack.ts",
     "src/lib/creezio-boot.ts",
@@ -149,6 +156,8 @@ test("F1–F4 scaffold --from-prd génère métier + wiring", () => {
   assert.match(schema, /CREATE TABLE IF NOT EXISTS fournisseurs/);
   assert.match(schema, /CREATE TABLE IF NOT EXISTS panier_lignes/);
   assert.match(schema, /CREATE TABLE IF NOT EXISTS commandes/);
+  assert.match(schema, /CREATE TABLE IF NOT EXISTS stack_items/);
+  assert.match(schema, /CREATE TABLE IF NOT EXISTS data_mappings/);
 
   const nav = fs.readFileSync(
     path.join(outDir, "src/electron/vertical-slot.ts"),
@@ -156,12 +165,20 @@ test("F1–F4 scaffold --from-prd génère métier + wiring", () => {
   );
   assert.match(nav, /brand\.fournisseurs/);
   assert.match(nav, /brand\.panier/);
+  assert.match(nav, /brand\.optimiser/);
+
+  const api = fs.readFileSync(path.join(outDir, "scripts/metier-api.mjs"), "utf8");
+  assert.match(api, /optimiser\/suggest/);
+  assert.match(api, /scan\/start/);
 
   const pkg = JSON.parse(
     fs.readFileSync(path.join(outDir, "package.json"), "utf8"),
   );
   assert.equal(pkg.creezio?.fromPrd, true);
+  assert.equal(pkg.creezio?.vertical, "chr");
   assert.ok(pkg.scripts["test:metier-parcours"]);
+  assert.ok(pkg.scripts["test:allowlist"]);
+  assert.ok(pkg.scripts["test:desktop-smoke-profile"]);
 });
 
 test("F3 smoke test:metier-parcours sur app générée", () => {
@@ -183,7 +200,7 @@ test("F3 smoke test:metier-parcours sur app générée", () => {
     { encoding: "utf8", cwd: outDir, timeout: 30000 },
   );
   assert.equal(smoke.status, 0, smoke.stderr + "\n" + smoke.stdout);
-  assert.match(smoke.stdout, /fournisseurs→prix→panier→commande/);
+  assert.match(smoke.stdout, /OK test:metier-parcours/);
 
   const firstRun = spawnSync(
     process.execPath,
@@ -191,6 +208,20 @@ test("F3 smoke test:metier-parcours sur app générée", () => {
     { encoding: "utf8", cwd: outDir },
   );
   assert.equal(firstRun.status, 0, firstRun.stderr + "\n" + firstRun.stdout);
+
+  const allow = spawnSync(
+    process.execPath,
+    [path.join(outDir, "scripts/test-allowlist.mjs")],
+    { encoding: "utf8", cwd: outDir },
+  );
+  assert.equal(allow.status, 0, allow.stderr + "\n" + allow.stdout);
+
+  const desk = spawnSync(
+    process.execPath,
+    [path.join(outDir, "scripts/test-desktop-smoke-profile.mjs")],
+    { encoding: "utf8", cwd: outDir },
+  );
+  assert.equal(desk.status, 0, desk.stderr + "\n" + desk.stdout);
 });
 
 test("F5 AGENTS racine documente brief produit", () => {

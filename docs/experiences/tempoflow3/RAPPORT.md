@@ -1,31 +1,26 @@
-# Rapport TempoFlow3 — prompts 0→13
+# Rapport TempoFlow3 — après correction + regen
 
-**Date** : 2026-08-01  
-**Artefact** : `apps/tempoflow3`  
-**Playbook** : [HISTORIQUE-PROMPTS.md](./HISTORIQUE-PROMPTS.md)
+**Date** : 2026-08-01
 
 ## Verdict
 
-| Critère | Résultat |
-|---------|----------|
-| Brief → bootstrap factory | ✅ |
-| Parcours fournisseurs → prix → panier → commande | ✅ smoke |
-| Onglets mini-PRDs 2–12 | ✅ API + UI SPA + nav |
-| Repo marque sans launchers OS | ✅ `test:allowlist` |
-| Capacités lourdes via creezio (wiring) | ✅ paths/host-stack/boot/auth refs |
-| Parity visuelle complète oracle 0.10.26 | ⏳ F6 / E2E Electron |
+La solution **fonctionne mieux** : après correction des gaps factory, un
+`rm -rf` + `creezio new-app --from-prd` reproduit l’app complète **sans
+édition manuelle** de la marque.
 
-## Ce qui vient de Creezio (lourd)
+| Critère | Avant | Après |
+|---------|-------|-------|
+| Onglets CHR via factory | 5 entités | 12 entités / 14 pages |
+| Smoke desktop sans GUI | ❌ | ✅ `test:desktop-smoke-profile` |
+| Pages Next utiles | stubs | listes API + dashboard |
+| Smoke archive/prix | ordre fragile | archive après prix |
+| Regen from scratch | retouches marque | **1 commande** |
 
-`@creezio/electron-shell`, `brand-config`, `shell-ui`, `api-kernel`,
-`mcp-facade`, `auth`, `onboarding`, `product-hub`, factory `--from-prd`.
+## Ce qui vient de creezio
 
-## Ce qui est dans tempoflow3 (léger)
+Factory templates `packages/factory/templates/chr/*` + ProductModel `vertical: chr`
++ wiring `@creezio/*`.
 
-Schéma brand, API métier JSON, UI onglets, queries, smokes métier,
-wiring mince (`src/lib/*`).
+## Ce qui est dans tempoflow3
 
-## Gaps restants
-
-Voir [PROBLEMES.md](./PROBLEMES.md) — surtout GUI Electron E2E et
-générateurs factory pour modules au-delà du CHR MVP.
+Uniquement le résultat généré (métier + wiring mince) — regenerate anytime.

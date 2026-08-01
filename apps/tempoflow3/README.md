@@ -1,39 +1,29 @@
-# TempoFlow3
+# TempoFlow
 
-Application métier **légère** pour restaurateurs / achats CHR, sur OS
-**Creezio**. Bootstrap factory + enrichissement prompts 2–13
-(`docs/experiences/tempoflow3/HISTORIQUE-PROMPTS.md`).
+Application métier générée par `creezio new-app --from-prd` (vertical CHR complet).
 
 ## Identité
 
 | Champ | Valeur |
 |-------|--------|
 | brandId | `tempoflow3` |
-| Métier | fournisseurs, catalogue, prix, panier, commandes, optimiser, stack, relevés, scan, marketplaces… |
-| OS | `@creezio/*` (auth, desktop, assistant, tasks, mails, plugins…) |
+| tagline | Prix fournisseurs, catalogue et commandes pour la restauration |
+| vertical | `chr` |
+| entities | fournisseurs, produits, prix, panier_lignes, commandes, stack_items, releves, scan_sessions, marketplaces, secteurs, agregateurs, data_mappings |
+| sandbox | `true` |
 
-## Démarrage rapide
+## Tests
 
 ```bash
-# API métier locale
-npm run metier:api
-
-# Smokes
 npm test
+npm run metier:api
 ```
 
-Parcours validé : **fournisseurs → prix → panier → commande** (+ modules étendus).
+UI interactive : `resources/renderer/index.html` (SPA métier).  
+Pages Next : `ui/app/**` (listent l'API brand).  
+Desktop smoke profile (sans GUI) : `npm run test:desktop-smoke-profile`.
 
-## Structure
+## Plateforme
 
-- `crm/src/brand/` — schéma métier
-- `scripts/metier-api.mjs` — API HTTP brand
-- `resources/renderer/index.html` — UI SPA tous onglets
-- `ui/app/` — pages App Router
-- `src/lib/` — wiring mince OS
-- `src/electron/` — boot desktop (`installBrandDesktopRuntime`)
-
-## Anti-triche
-
-Pas de copie de launchers depuis tempoflow2. Gaps génériques → creezio.
-Voir `docs/experiences/tempoflow3/PROBLEMES.md` et `JOURNAL-CREATION.md`.
+Le générique (auth, fenêtres, MAJ, assistant…) vient de `@creezio/*`.
+Le métier vit **dans ce repo**.

@@ -1,22 +1,9 @@
 /**
- * Surface module API brand — mounts métier TempoFlow3.
+ * Surface module API brand — enregistre les mounts métier.
  */
 import type { ApiKernel } from "@creezio/api-kernel";
 
-const ENTITIES = [
-  "fournisseurs",
-  "produits",
-  "prix",
-  "panier_lignes",
-  "commandes",
-  "stack_items",
-  "releves",
-  "scan_sessions",
-  "marketplaces",
-  "secteurs",
-  "agregateurs",
-  "data_mappings",
-];
+const ENTITIES = ["fournisseurs","produits","prix","panier_lignes","commandes","stack_items","releves","scan_sessions","marketplaces","secteurs","agregateurs","data_mappings"];
 
 export function registerBrandModuleApi(api: ApiKernel): void {
   for (const entity of ENTITIES) {

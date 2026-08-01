@@ -48,10 +48,56 @@ ${model.flows[0] ? model.flows[0].steps.map((s) => `        <li key="${s}">${s}<
 export function renderNextEntityPage(model: ProductModel, pageId: string): string {
   const page = model.pages.find((p) => p.id === pageId);
   const title = page?.title || pageId;
-  const entityId = page?.entityId || pageId;
+  const entityId = page?.entityId;
+
+  if (page?.kind === "dashboard" || pageId === "dashboard") {
+    return `async function loadDashboard() {
+  const base = process.env.METIER_BASE_URL || "http://127.0.0.1:18791";
+  try {
+    const res = await fetch(\`\${base}/api/v1/brand/dashboard\`, { cache: "no-store" });
+    if (!res.ok) return null;
+    return res.json();
+  } catch { return null; }
+}
+
+export default async function Page() {
+  const d = await loadDashboard() as {
+    fournisseurs_actifs?: number;
+    lignes_panier?: number;
+    raccourcis?: { title: string; path: string }[];
+  } | null;
+  return (
+    <section>
+      <h1>${title}</h1>
+      <p>Fournisseurs actifs : {d?.fournisseurs_actifs ?? "—"} · Panier : {d?.lignes_panier ?? "—"}</p>
+      <ul>
+        {(d?.raccourcis || []).map((r) => (
+          <li key={r.path}><a href={r.path}>{r.title}</a></li>
+        ))}
+      </ul>
+      <p>UI interactive : <code>resources/renderer/index.html#dashboard</code></p>
+    </section>
+  );
+}
+`;
+  }
+
+  if (!entityId || pageId === "optimiser") {
+    return `export default function Page() {
+  return (
+    <section>
+      <h1>${title}</h1>
+      <p>Surface métier ${model.brandName} — utiliser le renderer SPA pour les actions.</p>
+      <p><code>resources/renderer/index.html#${pageId}</code></p>
+    </section>
+  );
+}
+`;
+  }
+
   return `/**
  * Page métier ${title} — générée --from-prd.
- * Données via API brand (METIER_BASE_URL).
+ * Liste réelle via API brand (plus un stub vide).
  */
 async function loadItems() {
   const base = process.env.METIER_BASE_URL || "http://127.0.0.1:18791";
@@ -75,10 +121,11 @@ export default async function Page() {
         {items.map((item) => (
           <li key={String(item.id)}>
             <code>{String(item.id).slice(0, 8)}</code>{" "}
-            {String(item.nom || item.titre || item.statut || item.montant || "")}
+            {String(item.nom || item.titre || item.statut || item.montant || item.libelle_fournisseur || "")}
           </li>
         ))}
       </ul>
+      <p>UI interactive : <code>resources/renderer/index.html#${pageId}</code></p>
     </section>
   );
 }

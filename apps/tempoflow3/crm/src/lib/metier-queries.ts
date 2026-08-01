@@ -40,6 +40,12 @@ export async function createEntity(entityId: string, payload: Record<string, unk
 
 export const BRAND_PAGES = [
   {
+    "id": "dashboard",
+    "path": "/dashboard",
+    "title": "Dashboard",
+    "kind": "dashboard"
+  },
+  {
     "id": "fournisseurs",
     "path": "/fournisseurs",
     "title": "Fournisseurs",
@@ -72,6 +78,61 @@ export const BRAND_PAGES = [
     "path": "/commandes",
     "title": "Commandes",
     "entityId": "commandes",
+    "kind": "list"
+  },
+  {
+    "id": "optimiser",
+    "path": "/optimiser",
+    "title": "Optimiser",
+    "kind": "flow"
+  },
+  {
+    "id": "stack",
+    "path": "/stack",
+    "title": "Mes produits",
+    "entityId": "stack_items",
+    "kind": "list"
+  },
+  {
+    "id": "releves",
+    "path": "/releves",
+    "title": "Relevés",
+    "entityId": "releves",
+    "kind": "list"
+  },
+  {
+    "id": "scan",
+    "path": "/scan",
+    "title": "Scan",
+    "entityId": "scan_sessions",
+    "kind": "flow"
+  },
+  {
+    "id": "marketplaces",
+    "path": "/marketplaces",
+    "title": "Marketplaces",
+    "entityId": "marketplaces",
+    "kind": "list"
+  },
+  {
+    "id": "secteurs",
+    "path": "/secteurs",
+    "title": "Secteurs",
+    "entityId": "secteurs",
+    "kind": "list"
+  },
+  {
+    "id": "agregateurs",
+    "path": "/agregateurs",
+    "title": "Agrégateurs",
+    "entityId": "agregateurs",
+    "kind": "list"
+  },
+  {
+    "id": "data-mapping",
+    "path": "/data-mapping",
+    "title": "Data-mapping",
+    "entityId": "data_mappings",
     "kind": "list"
   }
 ] as const;

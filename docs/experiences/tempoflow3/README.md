@@ -25,18 +25,21 @@ Si l’agent doit tricher (copier tempoflow2) ou digérer un roman technique →
 
 | Étape | Statut |
 |-------|--------|
-| Factory `--from-prd` (F0–F5) | ✅ dans creezio |
-| Prompt 0–1 (cadre + bootstrap) | ✅ |
-| Prompts 2–12 (tous onglets métier) | ✅ implémentés dans `apps/tempoflow3` |
-| Prompt 13 (audit allowlist) | ✅ `npm test` / `test:allowlist` |
+| Factory CHR complète (P1–P5 corrigés) | ✅ templates `packages/factory/templates/chr` |
+| Delete + regen from-prd | ✅ reproduit sans retouche marque |
+| `apps/tempoflow3` `npm test` | ✅ 4 smokes (métier, auth, allowlist, desktop) |
 
 ```bash
+# preuve clean-room
+rm -rf apps/tempoflow3
+creezio new-app --from-prd docs/experiences/tempoflow3/PRD-PRODUIT.md \
+  --out apps/tempoflow3 --force
 cd apps/tempoflow3 && npm test
-npm run metier:api   # UI : resources/renderer/index.html
 ```
 
-Problèmes rencontrés : [PROBLEMES.md](./PROBLEMES.md).  
-Journal : [JOURNAL-CREATION.md](./JOURNAL-CREATION.md).
+Problèmes + fixes : [PROBLEMES.md](./PROBLEMES.md).  
+Journal : [JOURNAL-CREATION.md](./JOURNAL-CREATION.md).  
+Rapport : [RAPPORT.md](./RAPPORT.md).
 
 ## Deux références (ne pas mélanger)
 

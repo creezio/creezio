@@ -70,4 +70,4 @@ for (const id of [
   assert.match(nav, new RegExp(id));
 }
 
-console.log("OK test:allowlist TempoFlow (marque légère, pas de launchers OS)");
+console.log("OK test:allowlist __BRAND_NAME__ (marque légère, pas de launchers OS)");

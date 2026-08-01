@@ -1,11 +1,11 @@
 /**
  * Orchestration scaffold --from-prd (F1–F4).
- * Étend le squelette OS avec ProductModel → métier + wiring.
+ * Vertical CHR → templates riches ; sinon générateurs génériques.
  */
 import fs from "node:fs";
 import path from "node:path";
 import type { AppManifest } from "@creezio/brand-config";
-import type { ProductModel } from "./product-model.js";
+import { isChrModel, type ProductModel } from "./product-model.js";
 import {
   renderBrandSchemaSql,
   renderBrandSchemaTs,
@@ -27,6 +27,14 @@ import {
   renderMetierParcoursSmoke,
   renderFirstRunAuthSmoke,
 } from "./generators/index.js";
+import {
+  renderChrMetierApi,
+  renderChrRendererHtml,
+  renderChrSchemaSql,
+  renderChrMetierParcoursSmoke,
+  renderChrAllowlistSmoke,
+  renderChrDesktopSmokeProfile,
+} from "./generators/chr-templates.js";
 
 function writeFile(
   filePath: string,
@@ -43,6 +51,29 @@ function writeFile(
 }
 
 function renderPackageJsonFromPrd(m: AppManifest, model: ProductModel): string {
+  const chr = isChrModel(model);
+  const scripts: Record<string, string> = {
+    build: "npm run build:electron",
+    "build:electron": "tsc -p tsconfig.electron.json",
+    typecheck: "tsc -p tsconfig.electron.json --noEmit",
+    "metier:api": "node scripts/metier-api.mjs",
+    "test:metier-parcours": "node scripts/test-metier-parcours.mjs",
+    "test:first-run-auth": "node scripts/test-first-run-auth.mjs",
+    "test:desktop-smoke-profile": "node scripts/test-desktop-smoke-profile.mjs",
+    "electron:config:client": "node scripts/build-builder-config.mjs client",
+    "electron:config:server": "node scripts/build-builder-config.mjs server",
+    "electron:publish": `CREEZIO_BRAND=${m.brandId} bash ../../packages/desktop-tooling/scripts/publish-desktop.sh`,
+    "electron:publish:dry": `CREEZIO_BRAND=${m.brandId} bash ../../packages/desktop-tooling/scripts/publish-desktop.sh --dry-run`,
+  };
+  if (chr) {
+    scripts["test:allowlist"] = "node scripts/test-allowlist.mjs";
+    scripts.test =
+      "npm run test:metier-parcours && npm run test:first-run-auth && npm run test:allowlist && npm run test:desktop-smoke-profile";
+  } else {
+    scripts.test =
+      "npm run test:metier-parcours && npm run test:first-run-auth && npm run test:desktop-smoke-profile";
+  }
+
   return (
     JSON.stringify(
       {
@@ -52,20 +83,7 @@ function renderPackageJsonFromPrd(m: AppManifest, model: ProductModel): string {
         description: `${m.client.productName} — app métier générée depuis PRD (kit Creezio)`,
         type: "module",
         main: "./build/electron/main.js",
-        scripts: {
-          build: "npm run build:electron",
-          "build:electron": "tsc -p tsconfig.electron.json",
-          typecheck: "tsc -p tsconfig.electron.json --noEmit",
-          "metier:api": "node scripts/metier-api.mjs",
-          "test:metier-parcours": "node scripts/test-metier-parcours.mjs",
-          "test:first-run-auth": "node scripts/test-first-run-auth.mjs",
-          "electron:config:client":
-            "node scripts/build-builder-config.mjs client",
-          "electron:config:server":
-            "node scripts/build-builder-config.mjs server",
-          "electron:publish": `CREEZIO_BRAND=${m.brandId} bash ../../packages/desktop-tooling/scripts/publish-desktop.sh`,
-          "electron:publish:dry": `CREEZIO_BRAND=${m.brandId} bash ../../packages/desktop-tooling/scripts/publish-desktop.sh --dry-run`,
-        },
+        scripts,
         dependencies: {
           "@creezio/brand-config": "0.1.0",
           "@creezio/shell": "0.1.0",
@@ -92,6 +110,7 @@ function renderPackageJsonFromPrd(m: AppManifest, model: ProductModel): string {
         creezio: {
           fromPrd: true,
           brandId: m.brandId,
+          vertical: model.vertical || (chr ? "chr" : "generic"),
           entities: model.entities.map((e) => e.id),
           flows: model.flows.map((f) => f.id),
         },
@@ -104,9 +123,10 @@ function renderPackageJsonFromPrd(m: AppManifest, model: ProductModel): string {
 }
 
 function renderReadmeFromPrd(m: AppManifest, model: ProductModel): string {
+  const chr = isChrModel(model);
   return `# ${m.client.productName}
 
-Application métier générée par \`creezio new-app --from-prd\`.
+Application métier générée par \`creezio new-app --from-prd\`${chr ? " (vertical CHR complet)" : ""}.
 
 ## Identité
 
@@ -114,44 +134,58 @@ Application métier générée par \`creezio new-app --from-prd\`.
 |-------|--------|
 | brandId | \`${m.brandId}\` |
 | tagline | ${model.tagline} |
+| vertical | \`${model.vertical || (chr ? "chr" : "generic")}\` |
 | entities | ${model.entities.map((e) => e.id).join(", ")} |
-| flow | ${model.flows.map((f) => f.label).join("; ") || "—"} |
 | sandbox | \`${Boolean(m.sandbox)}\` |
 
-## Parcours smoke
+## Tests
 
 \`\`\`bash
-npm run test:metier-parcours
-npm run test:first-run-auth
-\`\`\`
-
-API métier locale :
-
-\`\`\`bash
+npm test
 npm run metier:api
-# → http://127.0.0.1:18791
 \`\`\`
 
-## Structure clé
-
-- \`product-model.json\` — modèle issu du PRD
-- \`crm/src/brand/schema.ts\` + \`schema.sql\` — schéma marque
-- \`scripts/metier-api.mjs\` — API HTTP métier
-- \`ui/app/\` — pages App Router
-- \`src/lib/\` — wiring générique (paths, host-stack, boot…)
-- \`src/electron/\` — desktop (\`installBrandDesktopRuntime\`)
-- \`resources/renderer/index.html\` — UI SPA métier
+UI interactive : \`resources/renderer/index.html\` (SPA métier).  
+Pages Next : \`ui/app/**\` (listent l'API brand).  
+Desktop smoke profile (sans GUI) : \`npm run test:desktop-smoke-profile\`.
 
 ## Plateforme
 
 Le générique (auth, fenêtres, MAJ, assistant…) vient de \`@creezio/*\`.
-Le métier (${model.entities.map((e) => e.id).join(", ")}) vit **dans ce repo**.
+Le métier vit **dans ce repo**.
+`;
+}
+
+function renderGitignore(): string {
+  return `node_modules/
+build/
+dist-electron/
+.data-metier/
+*.log
+.DS_Store
+`;
+}
+
+function renderDesktopSmokeGeneric(model: ProductModel): string {
+  return `#!/usr/bin/env node
+import assert from "node:assert/strict";
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+const hostStack = fs.readFileSync(path.join(root, "src/lib/host-stack.ts"), "utf8");
+assert.match(hostStack, /createBrandHostStack/);
+assert.match(hostStack, /pluginsFeatureOff:\\s*true/);
+const main = fs.readFileSync(path.join(root, "src/electron/main.ts"), "utf8");
+assert.match(main, /prepareDesktopBoot/);
+assert.match(main, /installBrandDesktopRuntime/);
+console.log("OK test:desktop-smoke-profile (${model.brandId})");
 `;
 }
 
 /**
- * Écrit les artefacts --from-prd par-dessus / en complément du scaffold OS.
- * Doit être appelé après scaffoldNewApp de base (ou avec les mêmes outDir/force).
+ * Écrit les artefacts --from-prd.
  */
 export function writeFromPrdArtifacts(opts: {
   outDir: string;
@@ -161,6 +195,7 @@ export function writeFromPrdArtifacts(opts: {
   written: string[];
 }): void {
   const { outDir, manifest, model, force, written } = opts;
+  const chr = isChrModel(model);
 
   writeFile(
     path.join(outDir, "product-model.json"),
@@ -168,13 +203,13 @@ export function writeFromPrdArtifacts(opts: {
     force,
     written,
   );
-
   writeFile(
     path.join(outDir, "package.json"),
     renderPackageJsonFromPrd(manifest, model),
     force,
     written,
   );
+  writeFile(path.join(outDir, ".gitignore"), renderGitignore(), force, written);
 
   writeFile(
     path.join(outDir, "crm/src/brand/schema.ts"),
@@ -184,7 +219,7 @@ export function writeFromPrdArtifacts(opts: {
   );
   writeFile(
     path.join(outDir, "crm/src/brand/schema.sql"),
-    renderBrandSchemaSql(model),
+    chr ? renderChrSchemaSql(model) : renderBrandSchemaSql(model),
     force,
     written,
   );
@@ -197,13 +232,13 @@ export function writeFromPrdArtifacts(opts: {
 
   writeFile(
     path.join(outDir, "scripts/metier-api.mjs"),
-    renderMetierApiMjs(model),
+    chr ? renderChrMetierApi(model) : renderMetierApiMjs(model),
     force,
     written,
   );
   writeFile(
     path.join(outDir, "scripts/test-metier-parcours.mjs"),
-    renderMetierParcoursSmoke(model),
+    chr ? renderChrMetierParcoursSmoke(model) : renderMetierParcoursSmoke(model),
     force,
     written,
   );
@@ -213,6 +248,22 @@ export function writeFromPrdArtifacts(opts: {
     force,
     written,
   );
+  writeFile(
+    path.join(outDir, "scripts/test-desktop-smoke-profile.mjs"),
+    chr
+      ? renderChrDesktopSmokeProfile(model)
+      : renderDesktopSmokeGeneric(model),
+    force,
+    written,
+  );
+  if (chr) {
+    writeFile(
+      path.join(outDir, "scripts/test-allowlist.mjs"),
+      renderChrAllowlistSmoke(model),
+      force,
+      written,
+    );
+  }
 
   writeFile(
     path.join(outDir, "ui/app/layout.tsx"),
@@ -238,7 +289,7 @@ export function writeFromPrdArtifacts(opts: {
 
   writeFile(
     path.join(outDir, "resources/renderer/index.html"),
-    renderMetierRendererHtml(model),
+    chr ? renderChrRendererHtml(model) : renderMetierRendererHtml(model),
     force,
     written,
   );
@@ -302,6 +353,22 @@ export function writeFromPrdArtifacts(opts: {
   writeFile(
     path.join(outDir, "README.md"),
     renderReadmeFromPrd(manifest, model),
+    force,
+    written,
+  );
+
+  writeFile(
+    path.join(outDir, "AGENTS.md"),
+    `# AGENTS — ${manifest.client.productName}
+
+Marque légère générée via \`creezio new-app --from-prd\`.
+Métier ici ; OS = \`@creezio/*\`. Ne pas copier de launchers depuis d'autres marques.
+
+\`\`\`bash
+npm test
+npm run metier:api
+\`\`\`
+`,
     force,
     written,
   );

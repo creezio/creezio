@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Smoke parcours CHR + modules étendus TempoFlow.
+ * Smoke parcours CHR + modules étendus __BRAND_NAME__.
  */
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
@@ -10,7 +10,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "tempoflow3-metier-"));
+const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "__BRAND_ID__-metier-"));
 const port = 19000 + Math.floor(Math.random() * 1000);
 
 const child = spawn(process.execPath, [path.join(root, "scripts/metier-api.mjs")], {
@@ -186,7 +186,7 @@ async function main() {
   assert.ok(schema.pages.some((p) => p.id === "optimiser"));
   assert.ok(schema.entities.includes("data_mappings"));
 
-  console.log("OK test:metier-parcours TempoFlow (cœur + modules étendus)");
+  console.log("OK test:metier-parcours __BRAND_NAME__ (cœur + modules étendus)");
   child.kill("SIGTERM");
   process.exit(0);
 }

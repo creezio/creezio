@@ -18,5 +18,6 @@ export {
   chrCatalogPages,
   chrOrderFlow,
   defaultPlatformNeeds,
+  isChrModel,
 } from "./product-model.js";
 export { writeFromPrdArtifacts } from "./scaffold-from-prd.js";

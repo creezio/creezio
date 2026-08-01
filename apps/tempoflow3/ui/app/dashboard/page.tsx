@@ -1,31 +1,28 @@
-async function load(path: string) {
+async function loadDashboard() {
   const base = process.env.METIER_BASE_URL || "http://127.0.0.1:18791";
   try {
-    const res = await fetch(`${base}${path}`, { cache: "no-store" });
+    const res = await fetch(`${base}/api/v1/brand/dashboard`, { cache: "no-store" });
     if (!res.ok) return null;
     return res.json();
-  } catch {
-    return null;
-  }
+  } catch { return null; }
 }
 
 export default async function Page() {
-  const data = await load("/api/v1/brand/schema");
-  const page = (data?.pages || []).find(
-    (x: { id: string; path: string }) => x.id === "dashboard" || x.path === "/dashboard",
-  );
-  const title = page?.title || "dashboard";
+  const d = await loadDashboard() as {
+    fournisseurs_actifs?: number;
+    lignes_panier?: number;
+    raccourcis?: { title: string; path: string }[];
+  } | null;
   return (
     <section>
-      <h1>{title}</h1>
-      <p>
-        Surface métier TempoFlow3 — données via API brand (
-        <code>METIER_BASE_URL</code>).
-      </p>
-      <p>
-        UI interactive : renderer desktop{" "}
-        <code>resources/renderer/index.html#dashboard</code>.
-      </p>
+      <h1>Dashboard</h1>
+      <p>Fournisseurs actifs : {d?.fournisseurs_actifs ?? "—"} · Panier : {d?.lignes_panier ?? "—"}</p>
+      <ul>
+        {(d?.raccourcis || []).map((r) => (
+          <li key={r.path}><a href={r.path}>{r.title}</a></li>
+        ))}
+      </ul>
+      <p>UI interactive : <code>resources/renderer/index.html#dashboard</code></p>
     </section>
   );
 }

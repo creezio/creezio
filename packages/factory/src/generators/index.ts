@@ -24,3 +24,11 @@ export {
   renderMetierParcoursSmoke,
   renderFirstRunAuthSmoke,
 } from "./tests.js";
+export {
+  renderChrMetierApi,
+  renderChrRendererHtml,
+  renderChrSchemaSql,
+  renderChrMetierParcoursSmoke,
+  renderChrAllowlistSmoke,
+  renderChrDesktopSmokeProfile,
+} from "./chr-templates.js";

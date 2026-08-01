@@ -10,14 +10,15 @@
     "build:electron": "tsc -p tsconfig.electron.json",
     "typecheck": "tsc -p tsconfig.electron.json --noEmit",
     "metier:api": "node scripts/metier-api.mjs",
-    "test": "npm run test:metier-parcours && npm run test:first-run-auth && npm run test:allowlist",
     "test:metier-parcours": "node scripts/test-metier-parcours.mjs",
     "test:first-run-auth": "node scripts/test-first-run-auth.mjs",
-    "test:allowlist": "node scripts/test-allowlist.mjs",
+    "test:desktop-smoke-profile": "node scripts/test-desktop-smoke-profile.mjs",
     "electron:config:client": "node scripts/build-builder-config.mjs client",
     "electron:config:server": "node scripts/build-builder-config.mjs server",
     "electron:publish": "CREEZIO_BRAND=tempoflow3 bash ../../packages/desktop-tooling/scripts/publish-desktop.sh",
-    "electron:publish:dry": "CREEZIO_BRAND=tempoflow3 bash ../../packages/desktop-tooling/scripts/publish-desktop.sh --dry-run"
+    "electron:publish:dry": "CREEZIO_BRAND=tempoflow3 bash ../../packages/desktop-tooling/scripts/publish-desktop.sh --dry-run",
+    "test:allowlist": "node scripts/test-allowlist.mjs",
+    "test": "npm run test:metier-parcours && npm run test:first-run-auth && npm run test:allowlist && npm run test:desktop-smoke-profile"
   },
   "dependencies": {
     "@creezio/brand-config": "0.1.0",
@@ -47,6 +48,7 @@
   "creezio": {
     "fromPrd": true,
     "brandId": "tempoflow3",
+    "vertical": "chr",
     "entities": [
       "fournisseurs",
       "produits",
@@ -63,8 +65,7 @@
     ],
     "flows": [
       "commande_fournisseur"
-    ],
-    "promptsCompleted": "0-13"
+    ]
   },
   "license": "UNLICENSED"
 }

@@ -11,7 +11,6 @@ export interface ProductField {
   name: string;
   type: FieldType;
   required?: boolean;
-  /** Entity id for type "ref" */
   ref?: string;
   label?: string;
 }
@@ -21,7 +20,6 @@ export interface ProductEntity {
   label: string;
   labelPlural: string;
   fields: ProductField[];
-  /** Soft-delete style archive */
   archivable?: boolean;
 }
 
@@ -29,7 +27,6 @@ export interface ProductPage {
   id: string;
   path: string;
   title: string;
-  /** Entity this page primarily manages, if any */
   entityId?: string;
   kind: "list" | "detail" | "form" | "flow" | "dashboard";
 }
@@ -37,7 +34,6 @@ export interface ProductPage {
 export interface ProductFlow {
   id: string;
   label: string;
-  /** Ordered entity / page ids participating in the flow */
   steps: string[];
 }
 
@@ -58,13 +54,19 @@ export interface ProductModel {
   pages: ProductPage[];
   flows: ProductFlow[];
   platformNeeds: PlatformNeeds;
-  /** Source PRD path if any */
   sourcePrdPath?: string;
+  /** Vertical détecté (ex. chr) — active templates factory riches. */
+  vertical?: "chr" | "generic";
 }
 
-const RESERVED_BRAND_IDS = new Set(["tempoflow", "certivan", "fidu", "creezio", "demobrand"]);
+const RESERVED_BRAND_IDS = new Set([
+  "tempoflow",
+  "certivan",
+  "fidu",
+  "creezio",
+  "demobrand",
+]);
 
-/** Sanitize brand id; reserved kit brand ids get a `3` suffix (e.g. tempoflow → tempoflow3). */
 export function safeBrandId(raw: string): string {
   let id = raw
     .normalize("NFD")
@@ -83,12 +85,21 @@ export function defaultPlatformNeeds(): PlatformNeeds {
     auth: true,
     desktop: true,
     pluginApi: true,
-    chat: false,
+    chat: true,
     sync: false,
   };
 }
 
-/** Catalogue CHR minimal (fournisseurs → panier → commande) — oracle TempoFlow 0.10.26. */
+export function isChrModel(model: ProductModel): boolean {
+  return (
+    model.vertical === "chr" ||
+    (model.entities.some((e) => e.id === "fournisseurs") &&
+      model.entities.some((e) => e.id === "panier_lignes") &&
+      model.entities.some((e) => e.id === "commandes"))
+  );
+}
+
+/** Catalogue CHR complet (oracle onglets TempoFlow). */
 export function chrCatalogEntities(): ProductEntity[] {
   return [
     {
@@ -101,6 +112,7 @@ export function chrCatalogEntities(): ProductEntity[] {
         { name: "contact", type: "text", label: "Contact" },
         { name: "email", type: "text", label: "Email" },
         { name: "telephone", type: "text", label: "Téléphone" },
+        { name: "site_web", type: "text", label: "Site web" },
         { name: "notes", type: "text", label: "Notes" },
       ],
     },
@@ -113,7 +125,13 @@ export function chrCatalogEntities(): ProductEntity[] {
         { name: "nom", type: "text", required: true, label: "Nom" },
         { name: "unite", type: "text", label: "Unité" },
         { name: "categorie", type: "text", label: "Catégorie" },
-        { name: "fournisseur_id", type: "ref", ref: "fournisseurs", label: "Fournisseur" },
+        { name: "secteur_id", type: "ref", ref: "secteurs", label: "Secteur" },
+        {
+          name: "fournisseur_id",
+          type: "ref",
+          ref: "fournisseurs",
+          label: "Fournisseur",
+        },
       ],
     },
     {
@@ -121,10 +139,25 @@ export function chrCatalogEntities(): ProductEntity[] {
       label: "Prix",
       labelPlural: "Prix",
       fields: [
-        { name: "produit_id", type: "ref", ref: "produits", required: true, label: "Produit" },
-        { name: "fournisseur_id", type: "ref", ref: "fournisseurs", required: true, label: "Fournisseur" },
+        {
+          name: "produit_id",
+          type: "ref",
+          ref: "produits",
+          required: true,
+          label: "Produit",
+        },
+        {
+          name: "fournisseur_id",
+          type: "ref",
+          ref: "fournisseurs",
+          required: true,
+          label: "Fournisseur",
+        },
         { name: "montant", type: "number", required: true, label: "Montant HT" },
         { name: "devise", type: "text", label: "Devise" },
+        { name: "promo", type: "boolean", label: "Promo" },
+        { name: "promo_label", type: "text", label: "Libellé promo" },
+        { name: "promo_fin", type: "date", label: "Fin promo" },
       ],
     },
     {
@@ -132,8 +165,20 @@ export function chrCatalogEntities(): ProductEntity[] {
       label: "Ligne panier",
       labelPlural: "Panier",
       fields: [
-        { name: "produit_id", type: "ref", ref: "produits", required: true, label: "Produit" },
-        { name: "fournisseur_id", type: "ref", ref: "fournisseurs", required: true, label: "Fournisseur" },
+        {
+          name: "produit_id",
+          type: "ref",
+          ref: "produits",
+          required: true,
+          label: "Produit",
+        },
+        {
+          name: "fournisseur_id",
+          type: "ref",
+          ref: "fournisseurs",
+          required: true,
+          label: "Fournisseur",
+        },
         { name: "quantite", type: "number", required: true, label: "Quantité" },
         { name: "prix_unitaire", type: "number", label: "Prix unitaire" },
       ],
@@ -143,10 +188,110 @@ export function chrCatalogEntities(): ProductEntity[] {
       label: "Commande",
       labelPlural: "Commandes",
       fields: [
-        { name: "fournisseur_id", type: "ref", ref: "fournisseurs", required: true, label: "Fournisseur" },
+        {
+          name: "fournisseur_id",
+          type: "ref",
+          ref: "fournisseurs",
+          required: true,
+          label: "Fournisseur",
+        },
         { name: "statut", type: "text", required: true, label: "Statut" },
         { name: "total_ht", type: "number", label: "Total HT" },
         { name: "notes", type: "text", label: "Notes" },
+      ],
+    },
+    {
+      id: "stack_items",
+      label: "Stack",
+      labelPlural: "Mes produits",
+      fields: [
+        {
+          name: "produit_id",
+          type: "ref",
+          ref: "produits",
+          required: true,
+          label: "Produit",
+        },
+      ],
+    },
+    {
+      id: "releves",
+      label: "Relevé",
+      labelPlural: "Relevés",
+      fields: [
+        { name: "date_releve", type: "date", required: true, label: "Date" },
+        {
+          name: "fournisseur_id",
+          type: "ref",
+          ref: "fournisseurs",
+          required: true,
+          label: "Fournisseur",
+        },
+        { name: "source", type: "text", label: "Source" },
+      ],
+    },
+    {
+      id: "scan_sessions",
+      label: "Scan",
+      labelPlural: "Scans",
+      fields: [
+        { name: "statut", type: "text", required: true, label: "Statut" },
+        { name: "note", type: "text", label: "Note" },
+      ],
+    },
+    {
+      id: "marketplaces",
+      label: "Marketplace",
+      labelPlural: "Marketplaces",
+      fields: [
+        { name: "nom", type: "text", required: true, label: "Nom" },
+        { name: "url", type: "text", label: "URL" },
+        { name: "notes", type: "text", label: "Notes" },
+      ],
+    },
+    {
+      id: "secteurs",
+      label: "Secteur",
+      labelPlural: "Secteurs",
+      fields: [
+        { name: "nom", type: "text", required: true, label: "Nom" },
+        { name: "description", type: "text", label: "Description" },
+      ],
+    },
+    {
+      id: "agregateurs",
+      label: "Agrégateur",
+      labelPlural: "Agrégateurs",
+      fields: [
+        { name: "nom", type: "text", required: true, label: "Nom" },
+        { name: "url", type: "text", label: "URL" },
+        { name: "notes", type: "text", label: "Notes" },
+      ],
+    },
+    {
+      id: "data_mappings",
+      label: "Mapping",
+      labelPlural: "Data-mapping",
+      fields: [
+        {
+          name: "libelle_fournisseur",
+          type: "text",
+          required: true,
+          label: "Libellé fournisseur",
+        },
+        {
+          name: "fournisseur_id",
+          type: "ref",
+          ref: "fournisseurs",
+          label: "Fournisseur",
+        },
+        {
+          name: "produit_id",
+          type: "ref",
+          ref: "produits",
+          required: true,
+          label: "Produit interne",
+        },
       ],
     },
   ];
@@ -154,11 +299,86 @@ export function chrCatalogEntities(): ProductEntity[] {
 
 export function chrCatalogPages(): ProductPage[] {
   return [
-    { id: "fournisseurs", path: "/fournisseurs", title: "Fournisseurs", entityId: "fournisseurs", kind: "list" },
-    { id: "produits", path: "/produits", title: "Produits", entityId: "produits", kind: "list" },
+    { id: "dashboard", path: "/dashboard", title: "Dashboard", kind: "dashboard" },
+    {
+      id: "fournisseurs",
+      path: "/fournisseurs",
+      title: "Fournisseurs",
+      entityId: "fournisseurs",
+      kind: "list",
+    },
+    {
+      id: "produits",
+      path: "/produits",
+      title: "Produits",
+      entityId: "produits",
+      kind: "list",
+    },
     { id: "prix", path: "/prix", title: "Prix", entityId: "prix", kind: "list" },
-    { id: "panier", path: "/panier", title: "Panier", entityId: "panier_lignes", kind: "flow" },
-    { id: "commandes", path: "/commandes", title: "Commandes", entityId: "commandes", kind: "list" },
+    {
+      id: "panier",
+      path: "/panier",
+      title: "Panier",
+      entityId: "panier_lignes",
+      kind: "flow",
+    },
+    {
+      id: "commandes",
+      path: "/commandes",
+      title: "Commandes",
+      entityId: "commandes",
+      kind: "list",
+    },
+    { id: "optimiser", path: "/optimiser", title: "Optimiser", kind: "flow" },
+    {
+      id: "stack",
+      path: "/stack",
+      title: "Mes produits",
+      entityId: "stack_items",
+      kind: "list",
+    },
+    {
+      id: "releves",
+      path: "/releves",
+      title: "Relevés",
+      entityId: "releves",
+      kind: "list",
+    },
+    {
+      id: "scan",
+      path: "/scan",
+      title: "Scan",
+      entityId: "scan_sessions",
+      kind: "flow",
+    },
+    {
+      id: "marketplaces",
+      path: "/marketplaces",
+      title: "Marketplaces",
+      entityId: "marketplaces",
+      kind: "list",
+    },
+    {
+      id: "secteurs",
+      path: "/secteurs",
+      title: "Secteurs",
+      entityId: "secteurs",
+      kind: "list",
+    },
+    {
+      id: "agregateurs",
+      path: "/agregateurs",
+      title: "Agrégateurs",
+      entityId: "agregateurs",
+      kind: "list",
+    },
+    {
+      id: "data-mapping",
+      path: "/data-mapping",
+      title: "Data-mapping",
+      entityId: "data_mappings",
+      kind: "list",
+    },
   ];
 }
 
@@ -170,10 +390,6 @@ export function chrOrderFlow(): ProductFlow {
   };
 }
 
-/**
- * Parse a French product PRD into a ProductModel.
- * Heuristics: brand name from first H1; CHR keywords → catalogue; else notes entity.
- */
 function extractBrandName(text: string, fallbackH1: string): string {
   const fromNom = text.match(/^\s*Nom\s*:\s*(.+)$/im)?.[1]?.trim();
   if (fromNom) return fromNom.replace(/[.。].*$/, "").trim();
@@ -188,12 +404,17 @@ function extractBrandName(text: string, fallbackH1: string): string {
   return cleaned || "BrandApp";
 }
 
-export function parseProductPrd(markdown: string, opts?: { sourcePath?: string; brandId?: string; brandName?: string }): ProductModel {
+export function parseProductPrd(
+  markdown: string,
+  opts?: { sourcePath?: string; brandId?: string; brandName?: string },
+): ProductModel {
   const text = markdown.replace(/\r\n/g, "\n");
   const h1 = text.match(/^#\s+(.+)$/m)?.[1]?.trim() ?? "Nouvelle app";
   const brandName =
     opts?.brandName?.trim() || extractBrandName(text, h1) || "BrandApp";
-  const brandId = opts?.brandId ? safeBrandId(opts.brandId) : safeBrandId(brandName);
+  const brandId = opts?.brandId
+    ? safeBrandId(opts.brandId)
+    : safeBrandId(brandName);
 
   const lower = text.toLowerCase();
   const isChr =
@@ -201,8 +422,14 @@ export function parseProductPrd(markdown: string, opts?: { sourcePath?: string; 
     (/\bpanier\b/.test(lower) || /\bcommande/.test(lower)) &&
     (/\bprix\b/.test(lower) || /\bproduit/.test(lower));
 
-  const taglineMatch = text.match(/\*\*Une phrase\*\*\s*[—\-:]\s*(.+)/i) || text.match(/^>\s*(.+)$/m);
-  const tagline = taglineMatch?.[1]?.trim() ?? `Application métier ${brandName}`;
+  const taglineMatch =
+    text.match(/\*\*Une phrase\*\*\s*[—\-:]\s*(.+)/i) ||
+    text.match(/^>\s*(.+)$/m);
+  const tagline =
+    taglineMatch?.[1]?.trim() ??
+    (isChr
+      ? "Prix fournisseurs, catalogue et commandes pour la restauration"
+      : `Application métier ${brandName}`);
 
   if (isChr) {
     return {
@@ -215,10 +442,10 @@ export function parseProductPrd(markdown: string, opts?: { sourcePath?: string; 
       flows: [chrOrderFlow()],
       platformNeeds: defaultPlatformNeeds(),
       sourcePrdPath: opts?.sourcePath,
+      vertical: "chr",
     };
   }
 
-  // Fallback générique : une entité notes + pages minimales
   return {
     brandId,
     brandName,
@@ -235,10 +462,19 @@ export function parseProductPrd(markdown: string, opts?: { sourcePath?: string; 
         ],
       },
     ],
-    pages: [{ id: "notes", path: "/notes", title: "Notes", entityId: "notes", kind: "list" }],
+    pages: [
+      {
+        id: "notes",
+        path: "/notes",
+        title: "Notes",
+        entityId: "notes",
+        kind: "list",
+      },
+    ],
     flows: [],
     platformNeeds: defaultPlatformNeeds(),
     sourcePrdPath: opts?.sourcePath,
+    vertical: "generic",
   };
 }
 

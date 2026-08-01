@@ -1,31 +1,34 @@
-async function load(path: string) {
+/**
+ * Page métier Data-mapping — générée --from-prd.
+ * Liste réelle via API brand (plus un stub vide).
+ */
+async function loadItems() {
   const base = process.env.METIER_BASE_URL || "http://127.0.0.1:18791";
   try {
-    const res = await fetch(`${base}${path}`, { cache: "no-store" });
-    if (!res.ok) return null;
-    return res.json();
+    const res = await fetch(`${base}/api/v1/brand/data_mappings`, { cache: "no-store" });
+    if (!res.ok) return [];
+    const data = (await res.json()) as { items?: Record<string, unknown>[] };
+    return data.items || [];
   } catch {
-    return null;
+    return [];
   }
 }
 
 export default async function Page() {
-  const data = await load("/api/v1/brand/schema");
-  const page = (data?.pages || []).find(
-    (x: { id: string; path: string }) =>
-      x.id === "data-mapping" || x.path === "/data-mapping",
-  );
+  const items = await loadItems();
   return (
     <section>
-      <h1>{page?.title || "Data-mapping"}</h1>
-      <p>
-        Surface métier TempoFlow3 — données via API brand (
-        <code>METIER_BASE_URL</code>).
-      </p>
-      <p>
-        UI interactive : renderer desktop{" "}
-        <code>resources/renderer/index.html#data-mapping</code>.
-      </p>
+      <h1>Data-mapping</h1>
+      <p>Entité <code>data_mappings</code> — {items.length} élément(s).</p>
+      <ul>
+        {items.map((item) => (
+          <li key={String(item.id)}>
+            <code>{String(item.id).slice(0, 8)}</code>{" "}
+            {String(item.nom || item.titre || item.statut || item.montant || item.libelle_fournisseur || "")}
+          </li>
+        ))}
+      </ul>
+      <p>UI interactive : <code>resources/renderer/index.html#data-mapping</code></p>
     </section>
   );
 }

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * API métier TempoFlow — store JSON local (sans deps natives).
+ * API métier __BRAND_NAME__ — store JSON local (sans deps natives).
  * Couvre le cœur CHR + optimiser / stack / relevés / scan / référentiels.
  */
 import http from "node:http";
@@ -133,12 +133,12 @@ async function handle(req, res) {
   if (req.method === "OPTIONS") return send(res, 204, {});
 
   if (url.pathname === "/health") {
-    return send(res, 200, { ok: true, brandId: "tempoflow3" });
+    return send(res, 200, { ok: true, brandId: "__BRAND_ID__" });
   }
 
   if (url.pathname === "/api/v1/brand/schema") {
     return send(res, 200, {
-      brandId: "tempoflow3",
+      brandId: "__BRAND_ID__",
       entities: ENTITY_IDS,
       pages: PAGES,
       flows: [{ id: "commande_fournisseur", steps: ["fournisseurs", "produits", "prix", "panier", "commandes"] }],
@@ -574,7 +574,7 @@ export function startMetierServer(port = PORT) {
   });
   return new Promise((resolve) => {
     server.listen(port, "127.0.0.1", () => {
-      console.log(`metier-api tempoflow3 on http://127.0.0.1:${port}`);
+      console.log(`metier-api __BRAND_ID__ on http://127.0.0.1:${port}`);
       resolve(server);
     });
   });
