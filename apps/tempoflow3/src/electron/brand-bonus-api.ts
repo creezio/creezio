@@ -1,4 +1,5 @@
 /**
+ * creezio:owned-by-brand
  * Mounts métier bonus TempoFlow3 — mini-PRDs 06–11.
  * Écrit dans la marque (pas de template factory CHR).
  */
@@ -52,6 +53,101 @@ function latestPrix(
   return row || null;
 }
 
+function suggestForBesoins(
+  db: Db,
+  besoins: Array<{ produit_id: string; quantite: number; fournisseur_id?: string }>,
+): {
+  propositions: Array<Record<string, unknown>>;
+  suggestions: Array<Record<string, unknown>>;
+  items: Array<Record<string, unknown>>;
+  total_actuel: number;
+  total_optimise: number;
+  economie_eur: number;
+  orientation: string;
+} {
+  const propositions: Array<Record<string, unknown>> = [];
+  let totalActuel = 0;
+  let totalOptimise = 0;
+  for (const b of besoins) {
+    const qty = Number(b.quantite) || 1;
+    const actuel = b.fournisseur_id
+      ? latestPrix(db, b.produit_id, b.fournisseur_id)
+      : (() => {
+          const panierLigne = db
+            .prepare(
+              `SELECT fournisseur_id, prix_unitaire FROM panier_lignes WHERE produit_id = ? LIMIT 1`,
+            )
+            .get(b.produit_id) as
+            | { fournisseur_id: string; prix_unitaire: number | null }
+            | undefined;
+          if (!panierLigne) return latestPrix(db, b.produit_id);
+          return {
+            fournisseur_id: panierLigne.fournisseur_id,
+            montant:
+              panierLigne.prix_unitaire ??
+              latestPrix(db, b.produit_id, panierLigne.fournisseur_id)?.montant ??
+              0,
+            promo: 0,
+          };
+        })();
+    const best = latestPrix(db, b.produit_id);
+    if (!best) {
+      propositions.push({
+        produit_id: b.produit_id,
+        quantite: qty,
+        error: "prix_inconnu",
+      });
+      continue;
+    }
+    const curUnit = actuel?.montant ?? best.montant;
+    const optUnit = best.montant;
+    const ecart = (curUnit - optUnit) * qty;
+    totalActuel += curUnit * qty;
+    totalOptimise += optUnit * qty;
+    const produit = db
+      .prepare(`SELECT id, nom FROM produits WHERE id = ?`)
+      .get(b.produit_id) as { id: string; nom: string } | undefined;
+    const four = db
+      .prepare(`SELECT id, nom FROM fournisseurs WHERE id = ?`)
+      .get(best.fournisseur_id) as { id: string; nom: string } | undefined;
+    const fromFour = actuel?.fournisseur_id
+      ? (db
+          .prepare(`SELECT id, nom FROM fournisseurs WHERE id = ?`)
+          .get(actuel.fournisseur_id) as { id: string; nom: string } | undefined)
+      : undefined;
+    propositions.push({
+      produit_id: b.produit_id,
+      produit_nom: produit?.nom || b.produit_id,
+      quantite: qty,
+      from_fournisseur_id: actuel?.fournisseur_id || null,
+      from_fournisseur_nom: fromFour?.nom || null,
+      to_fournisseur_id: best.fournisseur_id,
+      fournisseur_id: best.fournisseur_id,
+      fournisseur_nom: four?.nom || best.fournisseur_id,
+      from_montant: curUnit,
+      to_montant: optUnit,
+      prix_unitaire: optUnit,
+      prix_actuel: curUnit,
+      economy: Math.round(ecart * 100) / 100,
+      ecart_eur: Math.round(ecart * 100) / 100,
+      score: ecart > 0 ? "meilleur" : ecart < 0 ? "pire" : "egal",
+    });
+  }
+  const economie = Math.round((totalActuel - totalOptimise) * 100) / 100;
+  return {
+    propositions,
+    suggestions: propositions,
+    items: propositions,
+    total_actuel: Math.round(totalActuel * 100) / 100,
+    total_optimise: Math.round(totalOptimise * 100) / 100,
+    economie_eur: economie,
+    orientation:
+      economie > 0
+        ? `Économie potentielle ${economie} € HT en changeant de fournisseur.`
+        : "Le panier / la commande est déjà au meilleur prix connu.",
+  };
+}
+
 function createOptimiserMount(): ApiMount {
   return {
     dbLayer: "brand",
@@ -59,6 +155,41 @@ function createOptimiserMount(): ApiMount {
       if (!db) return { status: 503, body: { error: "db_unavailable" } };
       const method = req.method.toUpperCase();
       const parts = subPath.split("/").filter(Boolean);
+
+      // GET /optimiser?commande_id=… — suggestions depuis lignes commande (UI détail).
+      if (parts.length === 0 && method === "GET") {
+        const commandeId = qstr(req, "commande_id");
+        if (!commandeId) {
+          return {
+            status: 200,
+            body: { hint: "GET ?commande_id= ou POST /suggest|/apply" },
+          };
+        }
+        const cmd = db
+          .prepare(`SELECT id FROM commandes WHERE id = ?`)
+          .get(commandeId);
+        if (!cmd) return { status: 404, body: { error: "commande_not_found" } };
+        const lignes = db
+          .prepare(
+            `SELECT produit_id, quantite, fournisseur_id, prix_unitaire
+             FROM commande_lignes WHERE commande_id = ?`,
+          )
+          .all(commandeId) as Array<{
+          produit_id: string;
+          quantite: number;
+          fournisseur_id: string;
+          prix_unitaire: number | null;
+        }>;
+        const besoins = lignes.map((l) => ({
+          produit_id: l.produit_id,
+          quantite: Number(l.quantite) || 1,
+          fournisseur_id: l.fournisseur_id,
+        }));
+        return {
+          status: 200,
+          body: { commande_id: commandeId, ...suggestForBesoins(db, besoins) },
+        };
+      }
 
       if (parts[0] === "suggest" && method === "POST") {
         const body = (req.body || {}) as {
@@ -95,81 +226,12 @@ function createOptimiserMount(): ApiMount {
         if (!besoins.length) {
           return { status: 400, body: { error: "besoins_vides" } };
         }
-
-        const propositions = [];
-        let totalActuel = 0;
-        let totalOptimise = 0;
-        for (const b of besoins) {
-          const qty = Number(b.quantite) || 1;
-          const panierLigne = db
-            .prepare(
-              `SELECT fournisseur_id, prix_unitaire FROM panier_lignes WHERE produit_id = ? LIMIT 1`,
-            )
-            .get(b.produit_id) as
-            | { fournisseur_id: string; prix_unitaire: number | null }
-            | undefined;
-          const actuel = panierLigne
-            ? {
-                fournisseur_id: panierLigne.fournisseur_id,
-                montant:
-                  panierLigne.prix_unitaire ??
-                  latestPrix(db, b.produit_id, panierLigne.fournisseur_id)
-                    ?.montant ??
-                  0,
-              }
-            : latestPrix(db, b.produit_id);
-          const best = latestPrix(db, b.produit_id);
-          if (!best) {
-            propositions.push({
-              produit_id: b.produit_id,
-              quantite: qty,
-              error: "prix_inconnu",
-            });
-            continue;
-          }
-          const curUnit = actuel?.montant ?? best.montant;
-          const optUnit = best.montant;
-          const ecart = (curUnit - optUnit) * qty;
-          totalActuel += curUnit * qty;
-          totalOptimise += optUnit * qty;
-          const produit = db
-            .prepare(`SELECT id, nom FROM produits WHERE id = ?`)
-            .get(b.produit_id) as { id: string; nom: string } | undefined;
-          const four = db
-            .prepare(`SELECT id, nom FROM fournisseurs WHERE id = ?`)
-            .get(best.fournisseur_id) as { id: string; nom: string } | undefined;
-          propositions.push({
-            produit_id: b.produit_id,
-            produit_nom: produit?.nom || b.produit_id,
-            quantite: qty,
-            fournisseur_id: best.fournisseur_id,
-            fournisseur_nom: four?.nom || best.fournisseur_id,
-            prix_unitaire: optUnit,
-            prix_actuel: curUnit,
-            ecart_eur: Math.round(ecart * 100) / 100,
-            score: ecart > 0 ? "meilleur" : ecart < 0 ? "pire" : "egal",
-          });
-        }
-        const economie = Math.round((totalActuel - totalOptimise) * 100) / 100;
-        return {
-          status: 200,
-          body: {
-            propositions,
-            suggestions: propositions,
-            items: propositions,
-            total_actuel: Math.round(totalActuel * 100) / 100,
-            total_optimise: Math.round(totalOptimise * 100) / 100,
-            economie_eur: economie,
-            orientation:
-              economie > 0
-                ? `Économie potentielle ${economie} € HT en changeant de fournisseur.`
-                : "Le panier est déjà au meilleur prix connu.",
-          },
-        };
+        return { status: 200, body: suggestForBesoins(db, besoins) };
       }
 
       if (parts[0] === "apply" && method === "POST") {
         const body = (req.body || {}) as {
+          commande_id?: string;
           propositions?: Array<{
             produit_id: string;
             quantite: number;
@@ -177,6 +239,73 @@ function createOptimiserMount(): ApiMount {
             prix_unitaire: number;
           }>;
         };
+
+        // Appliquer sur une commande existante (UI /commandes/[id]/optimiser).
+        if (body.commande_id) {
+          const commandeId = body.commande_id;
+          const cmd = db
+            .prepare(`SELECT id FROM commandes WHERE id = ?`)
+            .get(commandeId);
+          if (!cmd) return { status: 404, body: { error: "commande_not_found" } };
+          const lignes = db
+            .prepare(
+              `SELECT id, produit_id, quantite, fournisseur_id FROM commande_lignes
+               WHERE commande_id = ?`,
+            )
+            .all(commandeId) as Array<{
+            id: string;
+            produit_id: string;
+            quantite: number;
+            fournisseur_id: string;
+          }>;
+          let applied = 0;
+          let totalHt = 0;
+          const ts = now();
+          for (const l of lignes) {
+            const best = latestPrix(db, l.produit_id);
+            if (!best) {
+              totalHt += 0;
+              continue;
+            }
+            const qty = Number(l.quantite) || 1;
+            const lineTotal = best.montant * qty;
+            totalHt += lineTotal;
+            db.prepare(
+              `UPDATE commande_lignes
+               SET fournisseur_id = ?, prix_unitaire = ?, total_ligne = ?
+               WHERE id = ?`,
+            ).run(best.fournisseur_id, best.montant, lineTotal, l.id);
+            applied += 1;
+          }
+          const rounded = Math.round(totalHt * 100) / 100;
+          try {
+            db.prepare(
+              `UPDATE commandes SET total_ht = ?, updated_at = ? WHERE id = ?`,
+            ).run(rounded, ts, commandeId);
+          } catch {
+            try {
+              db.prepare(`UPDATE commandes SET total_ht = ? WHERE id = ?`).run(
+                rounded,
+                commandeId,
+              );
+            } catch {
+              /* */
+            }
+          }
+          const items = db
+            .prepare(`SELECT * FROM commande_lignes WHERE commande_id = ?`)
+            .all(commandeId);
+          return {
+            status: 200,
+            body: {
+              applied,
+              commande_id: commandeId,
+              total_ht: rounded,
+              items,
+            },
+          };
+        }
+
         let props = body.propositions || [];
         if (!props.length) {
           const lignes = db
@@ -930,16 +1059,50 @@ function createDispatchMount(): ApiMount {
           byFournisseur.get(fid)!.push(l);
         }
         const candidates = [...byFournisseur.entries()].map(
-          ([fournisseur_id, items]) => ({
-            fournisseur_id,
-            fournisseur_nom: items[0]?.fournisseur_nom || fournisseur_id,
-            lignes: items,
-            total_lignes: items.length,
-          }),
+          ([fournisseur_id, items]) => {
+            let total_ht = 0;
+            let wins = 0;
+            for (const l of items) {
+              const qty = Number(l.quantite) || 1;
+              const unit = Number(l.prix_unitaire) || 0;
+              total_ht += unit * qty;
+              const best = latestPrix(db, String(l.produit_id));
+              if (best && best.fournisseur_id === fournisseur_id) wins += 1;
+            }
+            return {
+              fournisseur_id,
+              fournisseur_nom: items[0]?.fournisseur_nom || fournisseur_id,
+              lignes: items,
+              total_lignes: items.length,
+              total_ht: Math.round(total_ht * 100) / 100,
+              score_wins: wins,
+            };
+          },
+        );
+        candidates.sort(
+          (a, b) => b.score_wins - a.score_wins || a.total_ht - b.total_ht,
         );
         return {
           status: 200,
-          body: { candidates, items: candidates },
+          body: {
+            candidates,
+            items: candidates,
+            graph: {
+              nodes: candidates.map((c) => ({
+                id: c.fournisseur_id,
+                label: c.fournisseur_nom,
+                wins: c.score_wins,
+                total_ht: c.total_ht,
+              })),
+              edges: candidates.flatMap((c) =>
+                (c.lignes || []).map((l) => ({
+                  from: c.fournisseur_id,
+                  to: String(l.produit_id),
+                  quantite: l.quantite,
+                })),
+              ),
+            },
+          },
         };
       }
       if (parts.length === 0 && method === "GET") {
@@ -1027,6 +1190,117 @@ function createSiteMount(): ApiMount {
   };
 }
 
+/** GET/POST /api/v1/modules/commande-versions/:commandeId[/versionId] */
+function createCommandeVersionsMount(): ApiMount {
+  return {
+    dbLayer: "brand",
+    handle: async ({ req, subPath, db }) => {
+      if (!db) return { status: 503, body: { error: "db_unavailable" } };
+      const method = req.method.toUpperCase();
+      const parts = subPath.split("/").filter(Boolean);
+      const commandeId = parts[0];
+      if (!commandeId) {
+        return { status: 400, body: { error: "commande_id_required" } };
+      }
+
+      if (parts.length === 1 && method === "GET") {
+        const items = db
+          .prepare(
+            `SELECT id, commande_id, created_at, statut, total_ht
+             FROM commande_versions WHERE commande_id = ?
+             ORDER BY created_at DESC`,
+          )
+          .all(commandeId);
+        return { status: 200, body: { items } };
+      }
+
+      if (parts.length === 1 && method === "POST") {
+        const cmd = db
+          .prepare(`SELECT * FROM commandes WHERE id = ?`)
+          .get(commandeId) as Record<string, unknown> | undefined;
+        if (!cmd) return { status: 404, body: { error: "not_found" } };
+        const lignes = db
+          .prepare(`SELECT * FROM commande_lignes WHERE commande_id = ?`)
+          .all(commandeId);
+        const id = randomUUID();
+        const created = new Date().toISOString();
+        db.prepare(
+          `INSERT INTO commande_versions
+           (id, commande_id, created_at, statut, total_ht, snapshot_json)
+           VALUES (?, ?, ?, ?, ?, ?)`,
+        ).run(
+          id,
+          commandeId,
+          created,
+          String(cmd.statut || ""),
+          Number(cmd.total_ht || 0),
+          JSON.stringify({ commande: cmd, lignes }),
+        );
+        return {
+          status: 201,
+          body: { id, commande_id: commandeId, created_at: created },
+        };
+      }
+
+      if (parts.length === 2 && method === "GET") {
+        const row = db
+          .prepare(
+            `SELECT * FROM commande_versions WHERE id = ? AND commande_id = ?`,
+          )
+          .get(parts[1], commandeId) as
+          | { snapshot_json?: string }
+          | undefined;
+        if (!row) return { status: 404, body: { error: "not_found" } };
+        return {
+          status: 200,
+          body: {
+            ...row,
+            snapshot: JSON.parse(String(row.snapshot_json || "{}")),
+          },
+        };
+      }
+
+      return { status: 404, body: { error: "not_found", subPath } };
+    },
+  };
+}
+
+function createLikesMount(): ApiMount {
+  return {
+    dbLayer: "brand",
+    handle: async ({ req, subPath, db }) => {
+      if (!db) return { status: 503, body: { error: "db_unavailable" } };
+      const method = req.method.toUpperCase();
+      if (!subPath && method === "GET") {
+        const items = db
+          .prepare(
+            `SELECT l.produit_id AS id, l.created_at, p.nom
+             FROM produit_likes l
+             LEFT JOIN produits p ON p.id = l.produit_id
+             ORDER BY l.created_at DESC`,
+          )
+          .all();
+        return { status: 200, body: { items } };
+      }
+      const produitId = subPath.split("/").filter(Boolean)[0];
+      if (!produitId) return { status: 400, body: { error: "produit_id" } };
+      if (method === "POST") {
+        db.prepare(
+          `INSERT OR REPLACE INTO produit_likes (produit_id, created_at) VALUES (?, ?)`,
+        ).run(produitId, new Date().toISOString());
+        return { status: 201, body: { ok: true, produit_id: produitId } };
+      }
+      if (method === "DELETE") {
+        db.prepare(`DELETE FROM produit_likes WHERE produit_id = ?`).run(
+          produitId,
+        );
+        return { status: 200, body: { ok: true } };
+      }
+      return { status: 405, body: { error: "method_not_allowed" } };
+    },
+  };
+}
+
 export function registerBrandBonusApi(api: ApiKernel): void {
   api.registerModuleApi("optimiser", createOptimiserMount());
   api.registerModuleApi("stack", createStackMount());
@@ -1045,4 +1319,6 @@ export function registerBrandBonusApi(api: ApiKernel): void {
   api.registerModuleApi("promotions", createPromotionsMount());
   api.registerModuleApi("dispatch", createDispatchMount());
   api.registerModuleApi("site", createSiteMount());
+  api.registerModuleApi("commande-versions", createCommandeVersionsMount());
+  api.registerModuleApi("likes", createLikesMount());
 }

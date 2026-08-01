@@ -24,7 +24,7 @@ startBrandDesktop({
   beforeBoot: applyBrandMeiliConfig,
   meiliFeed: brandMeiliFeed,
   navItems: verticalSlot.items,
-  // Défaut kit = runtime. Opt-out : CREEZIO_DESKTOP_SHELL=window
+  // Défaut kit = "runtime". Opt-out explicite pour CI/fenêtre seule.
   desktopShell:
     process.env.CREEZIO_DESKTOP_SHELL === "window" ? "window" : "runtime",
 }).catch((err) => {

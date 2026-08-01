@@ -1,4 +1,5 @@
 /**
+ * creezio:owned-by-brand
  * Migrations brand tempoflow3 — cœur from-prd + bonus mini-PRDs 06–11.
  */
 import { composeMigrations, type SqliteMigration } from "@creezio/platform-core";
@@ -181,6 +182,24 @@ CREATE TABLE IF NOT EXISTS commande_lignes (
 );
 `;
 
+/** Historique versions commande (parité TF2). */
+export const BRAND_COMMANDES_VERSIONS_SQL = `
+CREATE TABLE IF NOT EXISTS commande_versions (
+  id TEXT PRIMARY KEY,
+  commande_id TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  statut TEXT,
+  total_ht REAL,
+  snapshot_json TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS produit_likes (
+  produit_id TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  PRIMARY KEY (produit_id)
+);
+`;
+
 export function brandMigrations(): SqliteMigration[] {
   return composeMigrations(
     {
@@ -194,6 +213,10 @@ export function brandMigrations(): SqliteMigration[] {
     {
       id: "fromprd_brand_003_commande_lignes",
       sql: BRAND_COMMANDES_LIGNES_SQL,
+    },
+    {
+      id: "fromprd_brand_004_versions_likes",
+      sql: BRAND_COMMANDES_VERSIONS_SQL,
     },
   );
 }

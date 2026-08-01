@@ -60,6 +60,21 @@ Si un besoin OS manque → **gap kit** (`@creezio/app-runtime` /
 | Jumeau `listenBrandKernelHttp` dans main | Contourne la façade |
 | UIDs Meili `tf2_*` | Legacy marque prod |
 
+## 4b. Fichiers métier protégés (`owned-by-brand`)
+
+Après enrichissement manuel (bonus API, UI interactive, migrations riches),
+protéger contre `creezio brand apply --force` :
+
+1. **Sources TS/TSX/MD** — première ligne / en-tête :
+   `/** creezio:owned-by-brand */`
+2. **`package.json`** — `"creezio": { "ownedByBrand": true, … }`  
+   → apply **merge** (conserve `creezio.*` + scripts métier, met à jour le shell deps).
+
+Sans marker, `--force` réécrit le fichier avec le template factory (stubs).
+Gate : `node --test scripts/test-os-owned-by-brand.mjs`.
+
+Reset clean-room TF3 : `node scripts/reset-tempoflow3.mjs` (backup + apply + build).
+
 ## 5. Sonde TempoFlow3
 
 Référence vivante : `apps/tempoflow3/brand-spec/` + gates

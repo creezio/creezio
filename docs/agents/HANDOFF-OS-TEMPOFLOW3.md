@@ -29,78 +29,41 @@ Puis **TempoFlow3** doit atteindre une **parité comportementale** avec TempoFlo
 
 ## 1. Vérité sur l’état actuel (lire avant de coder)
 
-### Ce qui EST fait (preuve automatisée)
+### Ce qui EST fait (preuve automatisée) — maj 2026-08-01 (session handoff exécutée)
 
-| Preuve | Résultat last run | Limite |
-|--------|-------------------|--------|
-| `apps/tempoflow3` `npm run proof:hard` | **54/54** | Harness Node + ensure/start API — **pas** Electron GUI réel |
-| `npm run proof:oracle` | **33/33** | Checklist pages/API — **pas** profondeur TF2 |
-| `npm test` (TF3) | OK | Smokes marque |
-| `scripts/test-os-native-pnp.mjs` | 4/4 | Apply `pnpprobe` + `/os/ready` — warm n8n **skip** (`CREEZIO_NATIVE_WARM=0`) |
-| `scripts/test-os-shell-contracts.mjs` | 7/7 | Contrats **API** splash/tray/embed/updater — **pas** smoke Electron GUI |
-| Demobrand | `startBrandDesktop` + `bootKernel` sandbox | H2/H5 sandbox toujours dans demobrand |
+| Preuve | Résultat | Limite |
+|--------|----------|--------|
+| `proof:hard` | étendu (+ optimiser commande GET/apply, dispatch graph) | pas GUI Electron |
+| `proof:oracle` | **33/33** | Pages OK ; profondeur TF2 partielle |
+| `test-os-owned-by-brand` | OK + merge `package.json` ownedByBrand | |
+| `test-os-shell` | **6/6** | BYOK + recovery + updater + splash + vendors |
+| `test-os-cold-warm` | OK `/os/ready` + n8n ensure | start : free-port kit durci (ss/lsof + retries) |
+| `test-os-electron-runtime-smoke` | wiring OK | Launch xvfb optionnel |
+| `scripts/reset-tempoflow3.mjs` | OK si markers présents | UI TF3 marquées `owned-by-brand` |
+| Factory apply | skip fichiers marqués ; **merge** package.json owned | CREATE-BRAND §4b |
 
-### Ce qui N’EST PAS fini (le vrai travail restant)
+### Ce qui N’EST PAS fini (DoD incomplet)
 
-Les agents précédents se sont arrêtés en confondant **« gates vertes »** avec **« produit 0.10.26 livré »**.
+#### A. OS kit
 
-#### A. OS kit — encore incomplet pour « toute future app »
+1. **Tunnel Cloudflare distant** — **bloqueur credentials** : pas de `CREEZIO_TUNNEL_PROVISION_URL` / `_TOKEN` dans cet environnement. Fallback local MCP **prouvé** (`enableLocalPublicSurface` + `/mcp`).  
+2. **n8n start cold** — free-port durci dans kit (`ensureN8nDesktopPortFree`) ; à re-prouver en CI après zombies.  
+3. **Plugins control plane** via `startBrandDesktop` non prouvé (`CREEZIO_PLUGINS=1`).  
+4. **Electron GUI** AdsPower / xvfb systématique non vert en CI.  
+5. **`test:shell` 0.10.26 complet** (~40 scripts) — agrégat kit partiel seulement.  
+6. **BrandSpec modules → code auto** — owned-by-brand protège, mais ne génère pas le bonus depuis YAML.
 
-1. **Tunnel Cloudflare distant réel**  
-   - Aujourd’hui : surface **locale** `http://127.0.0.1:<port>/mcp`.  
-   - Manque : provisioner prod, hostname `{slug}.…`, MCP public sur hostname réel, token réel (`CREEZIO_TUNNEL_*` câblé mais non prouvé E2E distant).
+#### B. TempoFlow3 profondeur TF2
 
-2. **Warm first-run fiable**  
-   - n8n : install npm ~2 min + migrations ; timeouts owner HTTP observés.  
-   - Hermes : ensure/start lourd (venv) ; flaky first-run.  
-   - Retries ajoutés dans `warmBrandNativeHosts`, **pas** une preuve CI stable « cold cache ».
+- Optimiser commande GET/apply + dispatch score/graph **amorcés** (pas atelier canvas TF2)  
+- Navigateur fournisseur / site riche  
+- Admin MCP OAuth, analytics, request-logs  
+- Tasks kanban + missions IA + mails inbox **comportement**  
+- Parcours UI navigateur non prouvé  
 
-3. **Plugins host**  
-   - Défaut toujours `pluginsFeatureOff` sauf `CREEZIO_PLUGINS=1`.  
-   - Control plane plugins / accept / git **non** prouvés via `startBrandDesktop` sur une marque neuve.
+#### C. Checklist oracle OS encore `[ ]`
 
-4. **Shell GUI réel**  
-   - `desktopShell=runtime` par défaut, mais **aucun** smoke Electron headless/AdsPower pour splash/tray/embeds.  
-   - `test-os-shell-contracts` = contrats unitaires seulement.
-
-5. **Suite `test:shell` équivalente 0.10.26**  
-   - Oracle liste ~40 scripts (`test:byok-strict`, `test:updater`, `test:hermes-embed`, `test:n8n-embed`, `test:mcp-oauth`, …).  
-   - **Aucun agrégat kit** ne les couvre encore. Voir `docs/experiences/tempoflow3/ORACLE-0.10.26.md`.
-
-6. **Factory / apply**  
-   - `brand apply` régénère le cœur et **efface** le wiring bonus (ex. `registerBrandBonusApi`) si on ne re-couche pas le métier.  
-   - Bug types `Set([])` → `never` **corrigé**, mais le flux « apply → métier modules BrandSpec auto » n’est **pas** automatisé (encore manuel / backup restore).
-
-7. **BYOK / updater / recovery key / profils Client-Serveur**  
-   - Surfaces kit partiellement présentes ; **non** validées E2E sur TF3.
-
-#### B. TempoFlow3 métier/UI — loin de TF2 0.10.26 en profondeur
-
-Pages **existent** souvent, mais beaucoup restent **minces** vs TF2 :
-
-- Optimiser / dispatch : pas la richesse score/snapshot/graph/filters TF2  
-- Versions de commande, likes, navigateur fournisseur  
-- Admin riche (MCP OAuth, analytics, request-logs…)  
-- Tasks kanban + missions IA + mails inbox **réels** (pages présentes ≠ comportement)  
-- Surface `/site/[fournisseurId]` souvent stub  
-- `proof:hard` ne teste **pas** Electron window ni parcours UI navigateur
-
-Checklist OS encore **ouverte** dans `ORACLE-0.10.26.md` § « OS / parity 0.10.26 » :
-
-- [ ] Boot Client / Serveur complet  
-- [ ] Recovery key  
-- [ ] Tâches kanban + mission IA  
-- [ ] Mails inbox  
-- [ ] MCP URL publique tunnel + OAuth  
-- [ ] Plugins control plane  
-- [ ] Hermes / n8n embeds  
-- [ ] Admin MCP / database / plugins  
-- [ ] `test:shell` agrégat vert  
-
-#### C. Processus « reset » encore fragile
-
-Le reset réel a été : `brand apply --force` puis **restauration manuelle** du métier depuis backup (`brand-bonus-api`, UI, scripts, package.json).  
-**Ce n’est pas** encore « BrandSpec modules → code métier auto ». Un agent suivant doit **soit** automatiser cette couche, **soit** documenter le port module par module sans perdre le bonus.
+Boot Client/Serveur, recovery E2E desktop, MCP public distant+OAuth, plugins, embeds GUI, admin, `test:shell` complet.
 
 ---
 

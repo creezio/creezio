@@ -359,6 +359,33 @@ try {
     apply.status < 300 && apply.data.applied === true,
     `status=${apply.status}`,
   );
+  // Optimiser par commande (UI /commandes/[id]/optimiser) — pas stub GET 404.
+  const optCmd = await json(
+    "GET",
+    `/api/v1/modules/optimiser?commande_id=${encodeURIComponent(cmd.data.id)}`,
+  );
+  record(
+    "metier.optimiser-commande-get",
+    optCmd.status === 200 && Array.isArray(optCmd.data.suggestions),
+    `status=${optCmd.status} n=${optCmd.data.suggestions?.length}`,
+  );
+  const applyCmd = await json("POST", "/api/v1/modules/optimiser/apply", {
+    commande_id: cmd.data.id,
+  });
+  record(
+    "metier.optimiser-commande-apply",
+    applyCmd.status < 300 && Number(applyCmd.data.applied) >= 0,
+    `applied=${applyCmd.data.applied}`,
+  );
+  const disp = await json("GET", "/api/v1/modules/dispatch/candidates");
+  record(
+    "metier.dispatch-graph",
+    disp.status === 200 &&
+      Array.isArray(disp.data.candidates) &&
+      disp.data.graph &&
+      Array.isArray(disp.data.graph.nodes),
+    `candidates=${disp.data.candidates?.length}`,
+  );
 
   // Stack → panier (mini-PRD 07)
   const stackAdd = await json("POST", "/api/v1/modules/stack", {
@@ -497,6 +524,27 @@ try {
     const r = await json("GET", pth);
     record(id, r.status < 300, `status=${r.status}`);
   }
+
+  const ver = await json("POST", `/api/v1/modules/commande-versions/${cmd.data.id}`, {});
+  record(
+    "metier.commande-version-create",
+    ver.status < 300 && ver.data.id,
+    ver.data.id || ver.data.error,
+  );
+  const verList = await json("GET", `/api/v1/modules/commande-versions/${cmd.data.id}`);
+  record(
+    "metier.commande-versions",
+    verList.status === 200 && (verList.data.items?.length || 0) >= 1,
+    `n=${verList.data.items?.length}`,
+  );
+  const like = await json("POST", `/api/v1/modules/likes/${p.data.id}`, {});
+  record("metier.like-add", like.status < 300, like.data.error || "ok");
+  const likes = await json("GET", "/api/v1/modules/likes");
+  record(
+    "metier.likes",
+    likes.status === 200 && (likes.data.items?.length || 0) >= 1,
+    `n=${likes.data.items?.length}`,
+  );
 
   // Pages UI Next critiques présentes (plus de stubs JSON-only pour le cœur)
   for (const rel of [

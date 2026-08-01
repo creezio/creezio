@@ -41,7 +41,10 @@ export function renderBrandModuleApiTs(model: ProductModel): string {
  * Généré --from-prd (CRUD SQL natif). Règles riches = enrichissement marque.
  */
 import { randomUUID } from "node:crypto";
+import { createRequire } from "node:module";
 import type { ApiKernel, ApiMount, ApiRequest } from "@creezio/api-kernel";
+
+const require = createRequire(import.meta.url);
 
 const ENTITY_IDS: readonly string[] = ${JSON.stringify(entityIds)};
 const ARCHIVABLE = new Set<string>(${JSON.stringify(archivable)});
@@ -442,6 +445,15 @@ export function registerBrandModuleApi(api: ApiKernel): void {
   api.registerModuleApi("schema", createSchemaMount());
   api.registerModuleApi("dashboard", createDashboardMount());
   api.registerModuleApi("search", createSearchMount());
+  // Bonus marque optionnel (brand-bonus-api.ts) — ignore si absent.
+  try {
+    const bonus = require("./brand-bonus-api.js") as {
+      registerBrandBonusApi?: (a: ApiKernel) => void;
+    };
+    bonus.registerBrandBonusApi?.(api);
+  } catch {
+    /* pas de bonus */
+  }
 }
 `;
 }

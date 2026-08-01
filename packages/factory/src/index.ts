@@ -25,3 +25,8 @@ export {
   isChrModel,
 } from "./product-model.js";
 export { writeFromPrdArtifacts } from "./scaffold-from-prd.js";
+export {
+  writeAppFile,
+  isOwnedByBrand,
+  OWNED_BY_BRAND_MARKER,
+} from "./write-app-file.js";

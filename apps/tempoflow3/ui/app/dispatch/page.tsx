@@ -1,3 +1,4 @@
+/** creezio:owned-by-brand */
 "use client";
 
 import { useEffect, useState } from "react";
@@ -7,6 +8,8 @@ type Candidate = {
   fournisseur_id: string;
   fournisseur_nom?: string;
   total_lignes?: number;
+  total_ht?: number;
+  score_wins?: number;
   lignes?: unknown[];
 };
 
@@ -69,6 +72,10 @@ export default function Page() {
           >
             <strong>{c.fournisseur_nom || c.fournisseur_id.slice(0, 8)}</strong>
             <span>{c.total_lignes ?? c.lignes?.length ?? 0} lignes</span>
+            <span>{c.total_ht != null ? `${c.total_ht} €` : ""}</span>
+            <span>
+              {c.score_wins != null ? `${c.score_wins} wins prix` : ""}
+            </span>
             <button type="button" onClick={() => void apply(c.fournisseur_id)}>
               Appliquer au panier
             </button>

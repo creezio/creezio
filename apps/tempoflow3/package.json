@@ -71,7 +71,8 @@
     ],
     "flows": [
       "commande_fournisseur"
-    ]
+    ],
+    "ownedByBrand": true
   },
   "license": "UNLICENSED",
   "author": "TempoFlow <dev@tempoflow3.local>"

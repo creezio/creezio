@@ -1,3 +1,4 @@
+/** creezio:owned-by-brand */
 import { MetierCrud } from "@/components/MetierCrud";
 
 export default function Page() {

@@ -16,6 +16,7 @@ import {
 import { MINIMAL_PNG_BASE64 } from "./minimal-png.js";
 import type { ProductModel } from "./product-model.js";
 import { writeFromPrdArtifacts } from "./scaffold-from-prd.js";
+import { writeAppFile } from "./write-app-file.js";
 
 export type NewAppOptions = {
   brandId: string;
@@ -44,12 +45,7 @@ function writeFile(
   force: boolean,
   written: string[],
 ): void {
-  if (fs.existsSync(filePath) && !force) {
-    throw new Error(`Fichier existe déjà (utilisez --force): ${filePath}`);
-  }
-  fs.mkdirSync(path.dirname(filePath), { recursive: true });
-  fs.writeFileSync(filePath, content);
-  written.push(filePath);
+  writeAppFile(filePath, content, force, written);
 }
 
 function exportName(m: AppManifest): string {

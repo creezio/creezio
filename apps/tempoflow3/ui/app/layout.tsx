@@ -1,3 +1,4 @@
+/** creezio:owned-by-brand */
 import type { ReactNode } from "react";
 
 export const metadata = {

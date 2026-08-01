@@ -1,3 +1,4 @@
+/** creezio:owned-by-brand */
 "use client";
 
 import { useEffect, useState } from "react";
@@ -85,6 +86,9 @@ export default function Page() {
         ))}
         <a href={`/commandes/${id}/optimiser`} style={{ color: "#0f3d32" }}>
           Optimiser
+        </a>
+        <a href={`/commandes/${id}/versions`} style={{ color: "#0f3d32" }}>
+          Versions
         </a>
       </div>
       <table style={{ width: "100%", marginTop: "1rem", borderCollapse: "collapse" }}>

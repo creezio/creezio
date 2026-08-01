@@ -1,6 +1,6 @@
 # Preuve E2E dure TempoFlow3
 
-**Mission : SUCCESS** (54 pass / 0 fail)
+**Mission : SUCCESS** (58 pass / 0 fail)
 
 | Check | Result | Detail |
 |-------|--------|--------|
@@ -10,12 +10,12 @@
 | `arch.installBrandOsDesktop` | ✅ | installBrandOsDesktop kit |
 | `arch.compose-in-kit` | ✅ | composeBrandOs |
 | `build.electron` | ✅ | ok |
-| `api.health` | ✅ | port 19470 |
+| `api.health` | ✅ | port 19650 |
 | `os.status` | ✅ | {"hermes":true,"n8n":true,"tunnel":true,"meili":true,"plugins":"feature-off"} |
 | `os.hosts-constructed` | ✅ | hermes=startHermes,stopHermes,stopHermesAndWait n8n=startN8n,stopN8n,getRunningN8n |
 | `mcp.http-list` | ✅ | n=7 |
 | `mcp.os-tool` | ✅ | module.platform.list_mounts,module.os.status |
-| `os.tasks-create` | ✅ | b446421e-ae69-4853-9e49-8b08f5b2f495 |
+| `os.tasks-create` | ✅ | 0afa1c56-331a-4f0f-babc-bcecea21233c |
 | `os.platform-tasks` | ✅ | status=200 |
 | `os.platform-mails` | ✅ | status=200 |
 | `arch.kit-vendor-hermes` | ✅ | /agent/repos/creezio/packages/electron-shell/resources/vendor/hermes-agent |
@@ -23,14 +23,14 @@
 | `arch.no-brand-vendor` | ✅ | vendor OS hors marque |
 | `os.hermes-status` | ✅ | binary=null |
 | `os.n8n-status` | ✅ | entry=null |
-| `os.n8n-ensure` | ✅ | /tmp/tf3-hard-ddmOgZ/n8n-runtime/node_modules/n8n/bin/n8n |
-| `os.n8n-start` | ✅ | /tmp/tf3-hard-ddmOgZ/n8n-runtime/node_modules/n8n/bin/n8n |
-| `os.hermes-ensure` | ✅ | /tmp/tf3-hard-ddmOgZ/hermes-runtime/os-profile/.hermes/hermes-agent/venv/bin/hermes |
-| `os.hermes-start` | ✅ | /tmp/tf3-hard-ddmOgZ/hermes-runtime/os-profile/.hermes/hermes-agent/venv/bin/hermes |
-| `os.tunnel-status` | ✅ | mcp=http://127.0.0.1:19470/mcp |
+| `os.n8n-ensure` | ✅ | /tmp/tf3-hard-HCtlMS/n8n-runtime/node_modules/n8n/bin/n8n |
+| `os.n8n-start` | ✅ | /tmp/tf3-hard-HCtlMS/n8n-runtime/node_modules/n8n/bin/n8n |
+| `os.hermes-ensure` | ✅ | /tmp/tf3-hard-HCtlMS/hermes-runtime/os-profile/.hermes/hermes-agent/venv/bin/hermes |
+| `os.hermes-start` | ✅ | /tmp/tf3-hard-HCtlMS/hermes-runtime/os-profile/.hermes/hermes-agent/venv/bin/hermes |
+| `os.tunnel-status` | ✅ | mcp=http://127.0.0.1:19650/mcp |
 | `os.mcp-public` | ✅ | status=200 tools=7 |
-| `metier.fournisseur` | ✅ | 047eb27b-944e-422d-aba6-274c9a51bf0f |
-| `metier.commande` | ✅ | dde9ab9e-2ae8-4b31-9b81-c2133bfb9b04 |
+| `metier.fournisseur` | ✅ | 0d24d02a-f6aa-4430-a8c4-ada36dc43bb6 |
+| `metier.commande` | ✅ | f220ffa0-1648-4b70-8f82-020f2bb7f548 |
 | `metier.commande-detail` | ✅ | lignes=1 |
 | `metier.produit-detail` | ✅ | prix=1 |
 | `metier.optimiser` | ✅ | status=200 |
@@ -38,8 +38,8 @@
 | `metier.stack-add` | ✅ | ok |
 | `metier.stack-list` | ✅ | n=1 |
 | `metier.stack-panier` | ✅ | ok |
-| `metier.releve-create` | ✅ | lignes=3 id=98c8a7e1-6473-406e-ba2b-3df00586fcba |
-| `metier.releve-apply-prix` | ✅ | promo_label=releve:98c8a7e1-6473-406e-ba2b-3df00586fcba |
+| `metier.releve-create` | ✅ | lignes=3 id=5e33ec17-af2e-4804-8983-cccf3931e9a8 |
+| `metier.releve-apply-prix` | ✅ | promo_label=releve:5e33ec17-af2e-4804-8983-cccf3931e9a8 |
 | `metier.scan-start` | ✅ | props=2 |
 | `metier.scan-validate` | ✅ | {"produits":2,"prix":2,"releves":1} |
 | `metier.scan-list` | ✅ | n=1 |
@@ -51,6 +51,10 @@
 | `metier.site` | ✅ | status=200 |
 | `metier.data-mapping` | ✅ | status=200 |
 | `metier.dashboard` | ✅ | status=200 |
+| `metier.commande-version-create` | ✅ | dfd8a2d7-ff46-4a1b-8148-d056c67ff33b |
+| `metier.commande-versions` | ✅ | n=1 |
+| `metier.like-add` | ✅ | ok |
+| `metier.likes` | ✅ | n=1 |
 | `ui.dashboard/page.tsx` | ✅ | interactive |
 | `ui.dispatch/page.tsx` | ✅ | interactive |
 | `ui.promotions/page.tsx` | ✅ | interactive |

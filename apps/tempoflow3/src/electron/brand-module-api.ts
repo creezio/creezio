@@ -1,6 +1,7 @@
 /**
+ * creezio:owned-by-brand
  * Mounts métier tempoflow3 — api-kernel /api/v1/modules/* + brand.db.
- * Généré --from-prd (CRUD SQL natif). Règles riches = enrichissement marque.
+ * Enrichi (bonus) — ne pas écraser via brand apply --force.
  */
 import { randomUUID } from "node:crypto";
 import type { ApiKernel, ApiMount, ApiRequest } from "@creezio/api-kernel";

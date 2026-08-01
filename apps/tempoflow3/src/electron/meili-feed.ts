@@ -1,3 +1,4 @@
+/** creezio:owned-by-brand */
 /**
  * Feed Meili marque tempoflow3 — config OS (pas de moteur maison).
  * UIDs génériques catalog_* (interdit tf2_* dans le feed marque).

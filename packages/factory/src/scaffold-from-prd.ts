@@ -29,18 +29,15 @@ import {
   renderMeiliConfigSmoke,
 } from "./generators/index.js";
 
+import { writeAppFile } from "./write-app-file.js";
+
 function writeFile(
   filePath: string,
   content: string | Buffer,
   force: boolean,
   written: string[],
 ): void {
-  if (fs.existsSync(filePath) && !force) {
-    throw new Error(`Fichier existe déjà (utilisez --force): ${filePath}`);
-  }
-  fs.mkdirSync(path.dirname(filePath), { recursive: true });
-  fs.writeFileSync(filePath, content);
-  written.push(filePath);
+  writeAppFile(filePath, content, force, written);
 }
 
 function renderPackageJsonFromPrd(m: AppManifest, model: ProductModel): string {
