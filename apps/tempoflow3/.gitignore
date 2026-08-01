@@ -4,3 +4,4 @@ dist-electron/
 .data-metier/
 *.log
 .DS_Store
+node_modules
