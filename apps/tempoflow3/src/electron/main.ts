@@ -22,9 +22,9 @@ startBrandDesktop({
   beforeBoot: applyBrandMeiliConfig,
   meiliFeed: brandMeiliFeed,
   navItems: verticalSlot.items,
-  // TEMPOFLOW3_DESKTOP_SHELL=runtime → installBrandDesktopRuntime (kit)
+  // Défaut = runtime kit (splash/tray). TEMPOFLOW3_DESKTOP_SHELL=window pour fenêtre seule.
   desktopShell:
-    process.env.TEMPOFLOW3_DESKTOP_SHELL === "runtime" ? "runtime" : "window",
+    process.env.TEMPOFLOW3_DESKTOP_SHELL === "window" ? "window" : "runtime",
 }).catch((err) => {
   console.error(err);
   app.exit(1);

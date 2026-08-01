@@ -205,6 +205,101 @@ try {
     `status=${apply.status}`,
   );
 
+  // Stack → panier (mini-PRD 07)
+  const stackAdd = await json("POST", "/api/v1/modules/stack", {
+    produit_id: p.data.id,
+  });
+  record(
+    "metier.stack-add",
+    stackAdd.status < 300 && stackAdd.data.in_stack === true,
+    stackAdd.data.error || "ok",
+  );
+  const stackList = await json("GET", "/api/v1/modules/stack");
+  record(
+    "metier.stack-list",
+    stackList.status === 200 &&
+      Array.isArray(stackList.data.items) &&
+      stackList.data.items.some((x) => x.produit_id === p.data.id),
+    `n=${stackList.data.items?.length}`,
+  );
+  const stackPanier = await json("POST", `/api/v1/modules/stack/${p.data.id}/panier`, {
+    quantite: 1,
+  });
+  record(
+    "metier.stack-panier",
+    stackPanier.status < 300 && stackPanier.data.ok === true,
+    stackPanier.data.error || "ok",
+  );
+
+  // Relevés → apply-prix (mini-PRD 08)
+  const p2 = await json("POST", "/api/v1/modules/produits", {
+    nom: "Navet Hard",
+    fournisseur_id: f.data.id,
+  });
+  const p3 = await json("POST", "/api/v1/modules/produits", {
+    nom: "Poireau Hard",
+    fournisseur_id: f.data.id,
+  });
+  const releve = await json("POST", "/api/v1/modules/releves", {
+    fournisseur_id: f.data.id,
+    source: "magasin",
+    lignes: [
+      { produit_id: p.data.id, montant: 1.55, libelle: "carotte" },
+      { produit_id: p2.data.id, montant: 0.9, libelle: "navet" },
+      { produit_id: p3.data.id, montant: 1.1, libelle: "poireau" },
+    ],
+  });
+  record(
+    "metier.releve-create",
+    releve.status < 300 && releve.data.lignes?.length === 3,
+    `lignes=${releve.data.lignes?.length} id=${releve.data.id}`,
+  );
+  const applyPrix = await json(
+    "POST",
+    `/api/v1/modules/releves/${releve.data.id}/apply-prix`,
+    {},
+  );
+  record(
+    "metier.releve-apply-prix",
+    applyPrix.status < 300 &&
+      applyPrix.data.prix_crees === 3 &&
+      String(applyPrix.data.tracabilite || "").includes("releve:"),
+    applyPrix.data.tracabilite || applyPrix.data.error,
+  );
+
+  // Scan → validate (mini-PRD 09)
+  const scan = await json("POST", "/api/v1/modules/scan/start", {
+    notes: "proof hard",
+    lignes_texte: [`ScanProof A|3.3|${f.data.id}`, `ScanProof B|4.4|${f.data.id}`],
+  });
+  record(
+    "metier.scan-start",
+    scan.status < 300 && scan.data.propositions?.length >= 2,
+    `props=${scan.data.propositions?.length}`,
+  );
+  const scanVal = await json("POST", `/api/v1/modules/scan/${scan.data.id}/validate`, {});
+  record(
+    "metier.scan-validate",
+    scanVal.status < 300 &&
+      scanVal.data.statut === "valide" &&
+      (scanVal.data.written?.prix || 0) >= 2,
+    JSON.stringify(scanVal.data.written || scanVal.data.error),
+  );
+  const scanList = await json("GET", "/api/v1/modules/scan");
+  record(
+    "metier.scan-list",
+    scanList.status === 200 && Array.isArray(scanList.data.items),
+    `n=${scanList.data.items?.length}`,
+  );
+
+  // Archi shell runtime par défaut
+  record(
+    "arch.desktop-shell-runtime-default",
+    /desktopShell:[\s\S]*\? "window" : "runtime"/.test(main) ||
+      /TEMPOFLOW3_DESKTOP_SHELL === "window"/.test(main),
+    "runtime par défaut",
+  );
+
   for (const [id, pth] of [
     ["metier.dispatch", "/api/v1/modules/dispatch/candidates"],
     ["metier.skus", "/api/v1/modules/skus"],

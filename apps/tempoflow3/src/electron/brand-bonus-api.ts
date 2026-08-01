@@ -464,6 +464,15 @@ function createScanMount(): ApiMount {
       const parts = subPath.split("/").filter(Boolean);
 
       // Mapping métier seulement — capture/IA = OS creezio (assistant).
+      if (parts.length === 0 && method === "GET") {
+        const items = db
+          .prepare(
+            `SELECT * FROM scan_sessions ORDER BY created_at DESC LIMIT 50`,
+          )
+          .all();
+        return { status: 200, body: { items } };
+      }
+
       if (parts[0] === "start" && method === "POST") {
         const body = (req.body || {}) as {
           notes?: string;
