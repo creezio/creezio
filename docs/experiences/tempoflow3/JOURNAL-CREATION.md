@@ -21,6 +21,11 @@ qui dump déjà tout le métier TempoFlow.
 | Phase D — desktop kernel HTTP + Meili | ✅ | `listenBrandKernelHttp` + `maybeBootBrandMeili` + SPA search |
 | Phase E — modules bonus 06–11 | ✅ | `brand-bonus-api.ts` + `test:mini-prd-bonus` |
 | Phase F — BrandSpec + façade | ✅ | `brand-spec/` + `@creezio/app-runtime` + `creezio brand *` |
+| Probe agent clean-room | ✅ | reset → apply → gap glue OS → fix kit → reset → métier 01–11 |
+
+**Gap trouvé en probe** : apply injectait encore `src/lib/host-stack`, `brand-runtime`, stubs.  
+**Fix kit** : `createBrandKernel` dans `@creezio/app-runtime` ; marque = migrations + mounts + feed + nav.  
+**Reprise** : reset + apply + port métier mini-PRDs ; `npm test` 8/8.
 
 ---
 
