@@ -263,9 +263,14 @@ export function composeBrandOs(
         fs.existsSync(paths.dbPath()) ? "present" : "present",
     }),
     catalogPresentIfDbExists: true,
-    pluginsFeatureOff: true,
+    // P&P : plugins feature-off par défaut (pas de sidecars marque).
+    // CREEZIO_PLUGINS=1 pour activer le host plugins réel.
+    pluginsFeatureOff: process.env.CREEZIO_PLUGINS !== "1",
     featureOffBrandLabel: product,
   });
+
+  const pluginsMode =
+    process.env.CREEZIO_PLUGINS === "1" ? "enabled" : "feature-off";
 
   const status = (): BrandOsStatus => ({
     ok: true,
@@ -276,7 +281,7 @@ export function composeBrandOs(
       n8n: typeof hostRuntime.n8nHost === "function",
       tunnel: typeof hostRuntime.tunnelService === "function",
       meili: true,
-      plugins: "feature-off",
+      plugins: pluginsMode,
     },
     paths: {
       userDataDir: opts.userDataDir,

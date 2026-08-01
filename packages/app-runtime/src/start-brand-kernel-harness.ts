@@ -4,12 +4,16 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { maybeBootBrandMeili } from "@creezio/electron-shell";
+import {
+  ensureKitOsBinaries,
+  kitBinaryPaths,
+  listenBrandKernelHttp,
+  maybeBootBrandMeili,
+} from "@creezio/electron-shell";
 import { createMcpFacade } from "@creezio/mcp-facade";
 import { brandKernelBooter } from "./create-brand-kernel.js";
 import { composeBrandOs } from "./compose-brand-os.js";
 import { listenBrandOsHttp } from "./listen-brand-os-http.js";
-import { listenBrandKernelHttp } from "@creezio/electron-shell";
 import { warmBrandNativeHosts } from "./warm-brand-native-hosts.js";
 import type {
   BootBrandKernelFn,
@@ -50,6 +54,16 @@ export async function startBrandKernelHarness(
     fs.mkdtempSync(path.join(os.tmpdir(), `${config.brandId}-kernel-`));
   const desktopProfile = config.desktopProfile || "full";
 
+  // P&P : binaires kit (Meili/cloudflared) avant Meili/tunnel — jamais dans la marque.
+  if (process.env.CREEZIO_SKIP_KIT_BINARIES !== "1") {
+    const bins = await ensureKitOsBinaries();
+    if (!bins.ok) {
+      console.warn(
+        `[creezio-os] harness binaires kit incomplets: ${bins.errors.join("; ") || "meili/cloudflared manquants"}`,
+      );
+    }
+  }
+
   const bootKernel = resolveBootKernel(config);
   const { api, runtime, close: closeKernel } = bootKernel({
     userDataDir: dataDir,
@@ -71,17 +85,13 @@ export async function startBrandKernelHarness(
   let meiliStop: (() => void) | null = null;
 
   if (config.meiliFeed) {
-    const kitMeili = path.join(
-      process.env.CREEZIO_ROOT || path.resolve(config.appRoot, "../.."),
-      "packages/electron-shell/resources/bin/meili",
-    );
+    const kitMeili = kitBinaryPaths().meili;
     const meiliBin =
       config.meiliBinary !== undefined
         ? config.meiliBinary
         : process.env.MEILI_BINARY ||
-          (fs.existsSync(kitMeili)
-            ? kitMeili
-            : path.join(config.appRoot, "resources", "meili"));
+          kitMeili ||
+          path.join(config.appRoot, "resources", "meili");
     const meiliBoot = await maybeBootBrandMeili({
       binaryPath:
         meiliBin && fs.existsSync(meiliBin) ? meiliBin : null,

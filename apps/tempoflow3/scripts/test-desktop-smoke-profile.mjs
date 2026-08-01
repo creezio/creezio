@@ -12,7 +12,7 @@ assert.match(main, /@creezio\/app-runtime/);
 assert.match(main, /desktopShell/);
 assert.match(
   main,
-  /TEMPOFLOW3_DESKTOP_SHELL === "window" \? "window" : "runtime"/,
+  /CREEZIO_DESKTOP_SHELL === "window" \? "window" : "runtime"/,
   "shell runtime par défaut (kit splash/tray)",
 );
 assert.doesNotMatch(main, /spawnBrandMetierApi|listenBrandKernelHttp|prepareDesktopBoot|bootBrandKernel|brand-runtime/);

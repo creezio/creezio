@@ -271,6 +271,12 @@ export {
   kitOsResourcesRoot,
   kitOsVendorDir,
 } from "./host/kit-os-resources.js";
+export {
+  ensureKitOsBinaries,
+  kitBinaryPaths,
+  type EnsureKitBinariesResult,
+  type KitBinaryName,
+} from "./host/ensure-kit-binaries.js";
 
 /* ── O3 : jumeaux Electron plateforme (extract gold TF) ── */
 export type { N8nApiKeyBrand, N8nApiKeyStored } from "./host/n8n/api-key.js";

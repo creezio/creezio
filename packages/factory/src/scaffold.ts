@@ -97,6 +97,7 @@ function renderPackageJson(m: AppManifest): string {
           "electron:remote-build:dry": `CREEZIO_BRAND=${m.brandId} bash ../../packages/desktop-tooling/scripts/remote-build-win.sh --dry-run`,
         },
         dependencies: {
+          "@creezio/app-runtime": "0.1.0",
           "@creezio/brand-config": "0.1.0",
           "@creezio/shell": "0.1.0",
           "@creezio/platform-core": "0.1.0",
@@ -312,92 +313,97 @@ function renderInstallerNsh(): string {
 `;
 }
 
+function renderBareBrandMigrationsTs(): string {
+  return `/**
+ * Migrations brand vides — squelette sans --from-prd.
+ * Remplacées par le schéma métier lors d'un apply / --from-prd.
+ */
+import type { SqliteMigration } from "@creezio/platform-core";
+
+export function brandMigrations(): SqliteMigration[] {
+  return [];
+}
+`;
+}
+
+function renderBareBrandModuleApiTs(): string {
+  return `/**
+ * Mounts métier vides — squelette. OS natif via startBrandDesktop.
+ */
+import type { ApiKernel } from "@creezio/api-kernel";
+
+export function registerBrandModuleApi(_api: ApiKernel): void {
+  /* marque : monter /api/v1/modules/* ici */
+}
+`;
+}
+
+function renderBareBrandHarnessMjs(brandId: string): string {
+  return `#!/usr/bin/env node
+/**
+ * Harness Node — façade @creezio/app-runtime (OS natif P&P).
+ */
+import path from "node:path";
+import { pathToFileURL, fileURLToPath } from "node:url";
+import { startBrandKernelHarness } from "@creezio/app-runtime";
+
+const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+const PORT = Number(process.env.METIER_PORT || process.env.PORT || 18791);
+const electron = path.join(root, "build/electron");
+
+const manifestMod = await import(
+  pathToFileURL(path.join(electron, "app-manifest.js")).href
+);
+const migMod = await import(
+  pathToFileURL(path.join(electron, "brand-migrations.js")).href
+);
+const apiMod = await import(
+  pathToFileURL(path.join(electron, "brand-module-api.js")).href
+);
+
+const manifestExport = Object.keys(manifestMod).find((k) =>
+  k.endsWith("Manifest"),
+);
+if (!manifestExport) throw new Error("AppManifest introuvable");
+
+await startBrandKernelHarness({
+  brandId: ${JSON.stringify(brandId)},
+  appRoot: root,
+  port: PORT,
+  manifest: manifestMod[manifestExport],
+  brandMigrations: migMod.brandMigrations(),
+  registerModuleApi: apiMod.registerBrandModuleApi,
+});
+`;
+}
+
 function renderMainTs(m: AppManifest): string {
   const name = exportName(m);
   return `/**
- * Main Electron mince — boot plateforme uniquement.
- * Le métier vit dans vertical-slot.ts (vide par défaut).
+ * Main Electron — déclaration marque uniquement.
+ * Orchestration OS = @creezio/app-runtime (P&P natif).
+ * Opt-out shell : CREEZIO_DESKTOP_SHELL=window
  */
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { app, BrowserWindow } from "electron";
-import {
-  initLogger,
-  log,
-  prepareDesktopBoot,
-  writeAppKindFile,
-} from "@creezio/electron-shell";
+import { app } from "electron";
+import { startBrandDesktop } from "@creezio/app-runtime";
 import { ${name} as manifest } from "./app-manifest.js";
-import { createApiKernel } from "@creezio/api-kernel";
-import { createMcpFacade } from "@creezio/mcp-facade";
-import { createMemoryAuthStore } from "@creezio/auth";
-import { createNavShellAdapter } from "@creezio/shell-ui";
 import { verticalSlot } from "./vertical-slot.js";
+import { brandMigrations } from "./brand-migrations.js";
+import { registerBrandModuleApi } from "./brand-module-api.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-async function main(): Promise<void> {
-  const boot = await prepareDesktopBoot(manifest);
-  initLogger(boot.userDataDir, manifest.logBasename);
-  log("boot", \`kind=\${boot.appKind} product=\${manifest.client.productName}\`);
-
-  writeAppKindFile(
-    __dirname,
-    boot.appKind === "legacy" ? "client" : boot.appKind,
-  );
-
-  // Wiring H6/I* — api-kernel + mcp-facade + auth + shell-ui adapter.
-  // Isolation multi-DB + stores sqlite : voir demobrand sandbox-runtime.ts
-  // (preuve I1–I7) — à brancher quand la marque est prête.
-  const api = createApiKernel({ brandId: manifest.brandId });
-  const mcp = createMcpFacade({
-    brandId: manifest.brandId,
-    allowUnauthenticated: true,
-    listApiMounts: () => api.listMounts(),
-    discoverToolsBySpace: async () => ({ module: [], plugin: [] }),
-  });
-  const auth = createMemoryAuthStore();
-  const navShell = createNavShellAdapter();
-  navShell.registerBrandNav(verticalSlot.items);
-  const navModel = navShell.getRenderModel();
-  void mcp;
-  void auth;
-
-  const gotLock = app.requestSingleInstanceLock();
-  if (!gotLock) {
-    app.quit();
-    return;
-  }
-
-  await app.whenReady();
-
-  const win = new BrowserWindow({
-    width: 1100,
-    height: 720,
-    title:
-      boot.appKind === "server"
-        ? manifest.server.productName
-        : manifest.client.productName,
-    webPreferences: {
-      preload: path.join(__dirname, "preload.js"),
-      contextIsolation: true,
-      nodeIntegration: false,
-      partition: boot.sessionPartition,
-    },
-  });
-
-  const renderer = app.isPackaged
-    ? path.join(process.resourcesPath, "renderer", "index.html")
-    : path.join(__dirname, "../../resources/renderer/index.html");
-  await win.loadFile(renderer);
-
-  log(
-    "nav",
-    \`merged=\${navModel.items.length} brand=\${navModel.groups.find((g) => g.id === "brand")?.items.length || 0} apiMounts=\${api.listMounts().length}\`,
-  );
-}
-
-main().catch((err) => {
+startBrandDesktop({
+  manifest,
+  electronDirname: __dirname,
+  brandMigrations: brandMigrations(),
+  registerModuleApi: registerBrandModuleApi,
+  navItems: verticalSlot.items,
+  desktopShell:
+    process.env.CREEZIO_DESKTOP_SHELL === "window" ? "window" : "runtime",
+}).catch((err) => {
   console.error(err);
   app.exit(1);
 });
@@ -731,6 +737,24 @@ export function scaffoldNewApp(opts: NewAppOptions): ScaffoldResult {
   writeFile(
     path.join(outDir, "src/electron/app-manifest.json"),
     JSON.stringify(manifest, null, 2) + "\n",
+    force,
+    written,
+  );
+  writeFile(
+    path.join(outDir, "src/electron/brand-migrations.ts"),
+    renderBareBrandMigrationsTs(),
+    force,
+    written,
+  );
+  writeFile(
+    path.join(outDir, "src/electron/brand-module-api.ts"),
+    renderBareBrandModuleApiTs(),
+    force,
+    written,
+  );
+  writeFile(
+    path.join(outDir, "scripts/brand-kernel-harness.mjs"),
+    renderBareBrandHarnessMjs(manifest.brandId),
     force,
     written,
   );

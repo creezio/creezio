@@ -14,6 +14,8 @@ import {
   registerDesktopSessionIpc,
   listenBrandKernelHttp,
   maybeBootBrandMeili,
+  ensureKitOsBinaries,
+  kitBinaryPaths,
 } from "@creezio/electron-shell";
 import { createMcpFacade } from "@creezio/mcp-facade";
 import { createNavShellAdapter } from "@creezio/shell-ui";
@@ -95,13 +97,24 @@ export async function startBrandDesktop(
   const manifest = config.manifest;
   const __dirname = config.electronDirname;
   const desktopProfile = config.desktopProfile || "full";
-  const desktopShell = config.desktopShell || "window";
+  // P&P : runtime kit par défaut (splash/tray/embeds). Opt-out = "window".
+  const desktopShell = config.desktopShell || "runtime";
+
+  // Binaires OS kit (Meili/cloudflared) — avant Meili/tunnel.
+  if (process.env.CREEZIO_SKIP_KIT_BINARIES !== "1") {
+    const bins = await ensureKitOsBinaries();
+    if (!bins.ok) {
+      console.warn(
+        `[creezio-os] binaires kit incomplets: ${bins.errors.join("; ") || "meili/cloudflared manquants"}`,
+      );
+    }
+  }
 
   const boot = await prepareDesktopBoot(manifest);
   initLogger(boot.userDataDir, config.logBasename || manifest.logBasename);
   log(
     "boot",
-    `kind=${boot.appKind} product=${manifest.client.productName} facade=startBrandDesktop profile=${desktopProfile}`,
+    `kind=${boot.appKind} product=${manifest.client.productName} facade=startBrandDesktop profile=${desktopProfile} shell=${desktopShell} kitBin=${JSON.stringify(kitBinaryPaths())}`,
   );
 
   writeAppKindFile(
@@ -141,10 +154,17 @@ export async function startBrandDesktop(
   let meiliStop: (() => void) | null = null;
 
   if (config.meiliFeed) {
-    const meiliBin = path.join(resourcesRoot, "meili");
+    // P&P : binaire kit d'abord (resources/bin/meili), jamais requis dans la marque.
+    const kitMeili = kitBinaryPaths().meili;
+    const brandMeili = path.join(resourcesRoot, "meili");
+    const meiliBin =
+      kitMeili ||
+      (fs.existsSync(brandMeili) ? brandMeili : null) ||
+      path.join(resourcesRoot, "bin", "meili");
     try {
       const meiliBoot = await maybeBootBrandMeili({
-        binaryPath: fs.existsSync(meiliBin) ? meiliBin : null,
+        binaryPath:
+          meiliBin && fs.existsSync(meiliBin) ? meiliBin : null,
         dataDir: path.join(boot.userDataDir, "meili"),
         userDataDir: boot.userDataDir,
         dbPath: runtime.getBrand().path,

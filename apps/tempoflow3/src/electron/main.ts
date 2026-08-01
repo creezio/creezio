@@ -22,9 +22,9 @@ startBrandDesktop({
   beforeBoot: applyBrandMeiliConfig,
   meiliFeed: brandMeiliFeed,
   navItems: verticalSlot.items,
-  // Défaut = runtime kit (splash/tray). TEMPOFLOW3_DESKTOP_SHELL=window pour fenêtre seule.
+  // Défaut kit = runtime. Opt-out : CREEZIO_DESKTOP_SHELL=window
   desktopShell:
-    process.env.TEMPOFLOW3_DESKTOP_SHELL === "window" ? "window" : "runtime",
+    process.env.CREEZIO_DESKTOP_SHELL === "window" ? "window" : "runtime",
 }).catch((err) => {
   console.error(err);
   app.exit(1);

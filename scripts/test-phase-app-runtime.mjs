@@ -90,21 +90,30 @@ test("AR3 harness façade boote kernel TF3", async () => {
     k.endsWith("Manifest"),
   );
   const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "ar-harness-"));
-  const handle = await startBrandKernelHarness({
-    brandId: "tempoflow3",
-    appRoot: TF3,
-    dataDir,
-    manifest: manifestMod[manifestKey],
-    brandMigrations: migMod.brandMigrations(),
-    registerModuleApi: apiMod.registerBrandModuleApi,
-    beforeBoot: feedMod.applyBrandMeiliConfig,
-    meiliFeed: feedMod.brandMeiliFeed,
-    skipIndex: true,
-  });
-  assert.ok(handle.baseUrl.startsWith("http://"));
-  const res = await fetch(`${handle.baseUrl}/api/v1/core/architecture`);
-  assert.equal(res.status, 200);
-  await handle.close();
+  const prevWarm = process.env.CREEZIO_NATIVE_WARM;
+  process.env.CREEZIO_NATIVE_WARM = "0";
+  try {
+    const handle = await startBrandKernelHarness({
+      brandId: "tempoflow3",
+      appRoot: TF3,
+      dataDir,
+      manifest: manifestMod[manifestKey],
+      brandMigrations: migMod.brandMigrations(),
+      registerModuleApi: apiMod.registerBrandModuleApi,
+      beforeBoot: feedMod.applyBrandMeiliConfig,
+      meiliFeed: feedMod.brandMeiliFeed,
+      skipIndex: true,
+    });
+    assert.ok(handle.baseUrl.startsWith("http://"));
+    const res = await fetch(`${handle.baseUrl}/api/v1/core/architecture`);
+    assert.equal(res.status, 200);
+    const ready = await fetch(`${handle.baseUrl}/api/v1/os/ready`);
+    assert.equal(ready.status, 200, await ready.text());
+    await handle.close();
+  } finally {
+    if (prevWarm === undefined) delete process.env.CREEZIO_NATIVE_WARM;
+    else process.env.CREEZIO_NATIVE_WARM = prevWarm;
+  }
 });
 
 test("AR4 factory génère main startBrandDesktop sans glue OS", () => {
@@ -122,9 +131,12 @@ test("AR4 factory génère main startBrandDesktop sans glue OS", () => {
   const main = fs.readFileSync(path.join(outDir, "src/electron/main.ts"), "utf8");
   assert.match(main, /startBrandDesktop/);
   assert.match(main, /brandMigrations/);
+  assert.match(main, /desktopShell/);
+  assert.match(main, /CREEZIO_DESKTOP_SHELL/);
   assert.doesNotMatch(main, /listenBrandKernelHttp|bootBrandKernel/);
   assert.ok(!fs.existsSync(path.join(outDir, "src/lib/host-stack.ts")));
   assert.ok(!fs.existsSync(path.join(outDir, "src/electron/brand-runtime.ts")));
+  assert.ok(!fs.existsSync(path.join(outDir, "resources/vendor")));
   const pkg = JSON.parse(
     fs.readFileSync(path.join(outDir, "package.json"), "utf8"),
   );

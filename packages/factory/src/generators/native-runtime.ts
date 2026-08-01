@@ -556,7 +556,9 @@ export function renderMainFromPrdNativeTs(
   const manifestExport = `${exportName}Manifest`;
   return `/**
  * Main Electron — déclaration marque uniquement (métier + identité).
- * Orchestration OS = @creezio/app-runtime.
+ * Orchestration OS = @creezio/app-runtime (P&P natif : shell runtime,
+ * hosts Hermes/n8n/tunnel, Meili/cloudflared kit, MCP local).
+ * Opt-out shell : CREEZIO_DESKTOP_SHELL=window
  */
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -578,6 +580,9 @@ startBrandDesktop({
   beforeBoot: applyBrandMeiliConfig,
   meiliFeed: brandMeiliFeed,
   navItems: verticalSlot.items,
+  // Défaut kit = "runtime". Opt-out explicite pour CI/fenêtre seule.
+  desktopShell:
+    process.env.CREEZIO_DESKTOP_SHELL === "window" ? "window" : "runtime",
 }).catch((err) => {
   console.error(err);
   app.exit(1);

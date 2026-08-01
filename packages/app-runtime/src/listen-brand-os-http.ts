@@ -2,7 +2,13 @@
  * HTTP OS + métier — kernel api-kernel + MCP JSON + status hosts.
  * Un seul port loopback pour SPA / preuves / agents.
  */
+import fs from "node:fs";
 import http from "node:http";
+import path from "node:path";
+import {
+  kitBinaryPaths,
+  kitOsVendorDir,
+} from "@creezio/electron-shell";
 import { findFreePort } from "@creezio/platform-core";
 import type { ApiKernel } from "@creezio/api-kernel";
 import type { McpFacade } from "@creezio/mcp-facade";
@@ -75,6 +81,101 @@ export async function listenBrandOsHttp(opts: {
           return;
         }
         send(res, 200, opts.os.status());
+        return;
+      }
+
+      // Agrégat prêt-à-l'emploi — une seule sonde pour preuves P&P multi-marques.
+      if (pathname === "/api/v1/os/ready" && req.method === "GET") {
+        if (!opts.os) {
+          send(res, 503, {
+            ok: false,
+            ready: false,
+            error: "os_not_composed",
+          });
+          return;
+        }
+        const bins = kitBinaryPaths();
+        const hermes = opts.os.hostRuntime.hermesHost() as unknown as {
+          findHermesBinary: () => string | null;
+          getHermesStatusPayload: (mode: "local" | "remote") => {
+            status?: string;
+          };
+        };
+        const n8n = opts.os.hostRuntime.n8nHost() as unknown as {
+          findN8nEntry: () => string | null;
+          getN8nStatusPayload: (mode: "local" | "remote") => {
+            status?: string;
+          };
+        };
+        const tunnel = opts.os.hostRuntime.tunnelService() as unknown as {
+          getTunnelStatus?: () => {
+            publicUrl?: string | null;
+            configured?: boolean;
+          };
+          publicMcpUrl?: () => string | null;
+          enableLocalPublicSurface?: (o: {
+            localPort: number;
+          }) => { publicMcp: string };
+        };
+        if (
+          process.env.CREEZIO_TUNNEL_LOCAL !== "0" &&
+          typeof tunnel.enableLocalPublicSurface === "function" &&
+          !tunnel.publicMcpUrl?.()
+        ) {
+          tunnel.enableLocalPublicSurface({ localPort: port });
+        }
+        const hermesBinary = hermes.findHermesBinary();
+        const n8nEntry = n8n.findN8nEntry();
+        const n8nVendorManifest = path.join(
+          kitOsVendorDir("n8n"),
+          "runtime-manifest.json",
+        );
+        const hermesVendorManifest = path.join(
+          kitOsVendorDir("hermes-agent"),
+          "runtime-manifest.json",
+        );
+        const publicMcp = tunnel.publicMcpUrl?.() ?? null;
+        const mcpTools = await opts.mcp.listTools();
+        const mounts = opts.api.listMounts();
+        const checks = {
+          osComposed: true,
+          kitMeili: Boolean(bins.meili),
+          kitCloudflared: Boolean(bins.cloudflared),
+          kitN8nVendor: fs.existsSync(n8nVendorManifest),
+          kitHermesVendor: fs.existsSync(hermesVendorManifest),
+          n8nEntry: Boolean(n8nEntry),
+          hermesBinary: Boolean(hermesBinary),
+          tunnelMcpSurface: Boolean(publicMcp),
+          mcpTools: mcpTools.tools.length > 0,
+          apiMounts: mounts.length > 0,
+        };
+        // Ready P&P = composition + vendors/binaires kit + surface MCP + mounts.
+        // Entry/binary installés = soft (ensure first-run peut les poser).
+        const ready =
+          checks.osComposed &&
+          checks.kitMeili &&
+          checks.kitN8nVendor &&
+          checks.kitHermesVendor &&
+          checks.tunnelMcpSurface &&
+          checks.mcpTools &&
+          checks.apiMounts;
+        send(res, ready ? 200 : 503, {
+          ok: ready,
+          ready,
+          checks,
+          publicMcp,
+          hermesBinary,
+          n8nEntry,
+          hermesStatus: hermes.getHermesStatusPayload("local")?.status ?? null,
+          n8nStatus: n8n.getN8nStatusPayload("local")?.status ?? null,
+          mcpToolCount: mcpTools.tools.length,
+          apiMountCount: mounts.length,
+          soft: {
+            n8nEntry: checks.n8nEntry,
+            hermesBinary: checks.hermesBinary,
+            kitCloudflared: checks.kitCloudflared,
+          },
+        });
         return;
       }
 

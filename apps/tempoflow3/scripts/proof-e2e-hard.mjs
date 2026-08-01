@@ -451,7 +451,7 @@ try {
   record(
     "arch.desktop-shell-runtime-default",
     /desktopShell:[\s\S]*\? "window" : "runtime"/.test(main) ||
-      /TEMPOFLOW3_DESKTOP_SHELL === "window"/.test(main),
+      /CREEZIO_DESKTOP_SHELL === "window"/.test(main),
     "runtime par défaut",
   );
 

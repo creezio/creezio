@@ -148,6 +148,18 @@ test("scaffoldNewApp génère structure + builder configs", () => {
   assert.ok(pkg.dependencies["@creezio/shell-ui"]);
   assert.ok(pkg.dependencies["@creezio/api-kernel"]);
   assert.ok(pkg.dependencies["@creezio/auth"]);
+  assert.ok(pkg.dependencies["@creezio/app-runtime"]);
+  const main = fs.readFileSync(
+    path.join(outDir, "src/electron/main.ts"),
+    "utf8",
+  );
+  assert.match(main, /startBrandDesktop/);
+  assert.match(main, /desktopShell/);
+  assert.doesNotMatch(main, /prepareDesktopBoot/);
+  assert.ok(fs.existsSync(path.join(outDir, "src/electron/brand-migrations.ts")));
+  assert.ok(
+    fs.existsSync(path.join(outDir, "scripts/brand-kernel-harness.mjs")),
+  );
   const vertical = fs.readFileSync(
     path.join(outDir, "src/electron/vertical-slot.ts"),
     "utf8",
