@@ -17,6 +17,7 @@
     "electron:remote-build:dry": "CREEZIO_BRAND=demobrand bash ../../packages/desktop-tooling/scripts/remote-build-win.sh --dry-run"
   },
   "dependencies": {
+    "@creezio/app-runtime": "0.1.0",
     "@creezio/brand-config": "0.1.0",
     "@creezio/shell": "0.1.0",
     "@creezio/shell-ui": "0.1.0",

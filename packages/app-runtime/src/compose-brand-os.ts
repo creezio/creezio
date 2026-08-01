@@ -32,11 +32,16 @@ export type ComposeBrandOsOptions = {
   resourcesRoot: string;
   /** __dirname electron compilé (preload / scripts). */
   electronDirname: string;
-  /** Tunnel provision (sinon defaults sandbox depuis manifest). */
+  /** Tunnel provision (sinon defaults sandbox / env CREEZIO_TUNNEL_*). */
   tunnel?: {
     baseUrl?: string;
     token?: string;
   };
+  /**
+   * Host plugins réel (défaut feature-off).
+   * Opt-in : `pluginsFeatureOff: false` ou `CREEZIO_PLUGINS=1`.
+   */
+  pluginsFeatureOff?: boolean;
 };
 
 export type BrandOsComposition = {
@@ -171,6 +176,20 @@ export function composeBrandOs(
   const prefix = m.envPrefix;
   const product = m.client.productName;
   const domain = m.tunnelRootDomain || m.domains?.primary || "localhost";
+  const pluginsFeatureOff =
+    opts.pluginsFeatureOff !== undefined
+      ? opts.pluginsFeatureOff
+      : process.env.CREEZIO_PLUGINS !== "1";
+  const tunnelBaseUrl =
+    opts.tunnel?.baseUrl ||
+    process.env.CREEZIO_TUNNEL_PROVISION_URL ||
+    process.env[`${prefix}_TUNNEL_PROVISION_URL`] ||
+    `https://${domain}/tunnel-sandbox`;
+  const tunnelToken =
+    opts.tunnel?.token ||
+    process.env.CREEZIO_TUNNEL_PROVISION_TOKEN ||
+    process.env[`${prefix}_TUNNEL_PROVISION_TOKEN`] ||
+    "sandbox";
 
   const hostRuntime = createBrandHostRuntime({
     manifest: m,
@@ -206,10 +225,9 @@ export function composeBrandOs(
     },
     tunnel: {
       envBaseUrlKey: `${prefix}_TUNNEL_PROVISION_URL`,
-      defaultBaseUrl:
-        opts.tunnel?.baseUrl || `https://${domain}/tunnel-sandbox`,
+      defaultBaseUrl: tunnelBaseUrl,
       envTokenKey: `${prefix}_TUNNEL_PROVISION_TOKEN`,
-      defaultToken: opts.tunnel?.token || "sandbox",
+      defaultToken: tunnelToken,
       mailRootDomain: domain,
     },
     npmUserDataSegment: `${m.brandId}-npm`,
@@ -264,13 +282,12 @@ export function composeBrandOs(
     }),
     catalogPresentIfDbExists: true,
     // P&P : plugins feature-off par défaut (pas de sidecars marque).
-    // CREEZIO_PLUGINS=1 pour activer le host plugins réel.
-    pluginsFeatureOff: process.env.CREEZIO_PLUGINS !== "1",
+    // Opt-in : composeBrandOs({ pluginsFeatureOff: false }) ou CREEZIO_PLUGINS=1.
+    pluginsFeatureOff,
     featureOffBrandLabel: product,
   });
 
-  const pluginsMode =
-    process.env.CREEZIO_PLUGINS === "1" ? "enabled" : "feature-off";
+  const pluginsMode = pluginsFeatureOff ? "feature-off" : "enabled";
 
   const status = (): BrandOsStatus => ({
     ok: true,

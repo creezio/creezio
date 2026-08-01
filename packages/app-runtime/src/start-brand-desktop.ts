@@ -147,6 +147,9 @@ export async function startBrandDesktop(
       isPackaged: app.isPackaged,
       resourcesRoot,
       electronDirname: __dirname,
+      ...(config.pluginsFeatureOff !== undefined
+        ? { pluginsFeatureOff: config.pluginsFeatureOff }
+        : {}),
     });
   }
 

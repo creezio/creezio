@@ -44,6 +44,10 @@ export type StartBrandDesktopConfig = {
    * `window` = BrowserWindow seule (opt-out tests/CI).
    */
   desktopShell?: "window" | "runtime";
+  /**
+   * Host plugins kit (défaut feature-off). `false` ou `CREEZIO_PLUGINS=1` = on.
+   */
+  pluginsFeatureOff?: boolean;
   /** Feed Meili marque (optionnel — sans feed = pas de boot Meili). */
   meiliFeed?: BrandMeiliFeed;
   /** Items nav brand (slot vertical). */

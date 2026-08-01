@@ -193,13 +193,13 @@ export async function startBrandKernelHarness(
 
   // Fullstack OS ready : ensure/start natifs depuis le kit (pas la marque).
   // CREEZIO_NATIVE_WARM=0 pour skip (smokes rapides) ; défaut = warm n8n.
-  // Hermes : CREEZIO_NATIVE_WARM_HERMES=1 (install lourde first-run).
+  // Hermes : aligné desktop — on sauf CREEZIO_NATIVE_WARM_HERMES=0.
   if (
     brandOs &&
     desktopProfile === "full" &&
     process.env.CREEZIO_NATIVE_WARM !== "0"
   ) {
-    const warmHermes = process.env.CREEZIO_NATIVE_WARM_HERMES === "1";
+    const warmHermes = process.env.CREEZIO_NATIVE_WARM_HERMES !== "0";
     const warm = await warmBrandNativeHosts(brandOs, {
       start: process.env.CREEZIO_NATIVE_START !== "0",
       n8n: true,
