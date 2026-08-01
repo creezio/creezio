@@ -38,5 +38,14 @@
         ]
       }
     ]
+  },
+  "electronVersion": "35.7.5",
+  "linux": {
+    "target": [
+      "AppImage",
+      "dir"
+    ],
+    "category": "Office",
+    "icon": "resources/icons/client.png"
   }
 }

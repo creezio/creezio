@@ -101,6 +101,10 @@ export function writeAppKindFile(
   outDir: string,
   kind: "server" | "client",
 ): string {
+  // En asar packagé, le dossier n'est pas inscriptible — no-op.
+  if (outDir.includes(`${path.sep}app.asar`) || outDir.includes(".asar")) {
+    return path.join(outDir, APP_KIND_FILENAME);
+  }
   fs.mkdirSync(outDir, { recursive: true });
   const out = path.join(outDir, APP_KIND_FILENAME);
   fs.writeFileSync(out, JSON.stringify({ kind }, null, 2) + "\n", "utf8");

@@ -35,6 +35,14 @@
     "type": "git",
     "url": "https://github.com/creezio/creezio.git"
   },
-  "dependencies": {},
-  "devDependencies": {}
+  "dependencies": {
+    "app-builder-bin": "^5.0.0-alpha.10"
+  },
+  "devDependencies": {
+    "@electron/asar": "^4.2.1",
+    "@types/node": "^22.15.3",
+    "electron": "^35.7.5",
+    "electron-builder": "^25.1.8",
+    "typescript": "^5.8.3"
+  }
 }
