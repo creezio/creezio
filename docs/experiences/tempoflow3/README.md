@@ -26,18 +26,17 @@ Si l’agent doit tricher (copier tempoflow2) ou digérer un roman technique →
 | Étape | Statut |
 |-------|--------|
 | Factory `--from-prd` (F0–F5) | ✅ dans creezio |
-| Prompt 0–1 (cadre + bootstrap) | ✅ `apps/tempoflow3` + smokes verts |
-| Prompts 2–12 (enrichissement onglets) | ⏳ mini-PRDs prêts, à enchaîner |
-| Prompt 13 (audit allowlist / oracle) | ⏳ |
-
-Bootstrap déjà joué :
+| Prompt 0–1 (cadre + bootstrap) | ✅ |
+| Prompts 2–12 (tous onglets métier) | ✅ implémentés dans `apps/tempoflow3` |
+| Prompt 13 (audit allowlist) | ✅ `npm test` / `test:allowlist` |
 
 ```bash
-creezio new-app \
-  --from-prd docs/experiences/tempoflow3/PRD-PRODUIT.md \
-  --out apps/tempoflow3 --force
-cd apps/tempoflow3 && npm run test:metier-parcours
+cd apps/tempoflow3 && npm test
+npm run metier:api   # UI : resources/renderer/index.html
 ```
+
+Problèmes rencontrés : [PROBLEMES.md](./PROBLEMES.md).  
+Journal : [JOURNAL-CREATION.md](./JOURNAL-CREATION.md).
 
 ## Deux références (ne pas mélanger)
 

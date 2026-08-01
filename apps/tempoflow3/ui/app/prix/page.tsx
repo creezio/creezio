@@ -1,33 +1,31 @@
-/**
- * Page métier Prix — générée --from-prd.
- * Données via API brand (METIER_BASE_URL).
- */
-async function loadItems() {
+async function load(path: string) {
   const base = process.env.METIER_BASE_URL || "http://127.0.0.1:18791";
   try {
-    const res = await fetch(`${base}/api/v1/brand/prix`, { cache: "no-store" });
-    if (!res.ok) return [];
-    const data = (await res.json()) as { items?: Record<string, unknown>[] };
-    return data.items || [];
+    const res = await fetch(`${base}${path}`, { cache: "no-store" });
+    if (!res.ok) return null;
+    return res.json();
   } catch {
-    return [];
+    return null;
   }
 }
 
 export default async function Page() {
-  const items = await loadItems();
+  const data = await load("/api/v1/brand/schema");
+  const page = (data?.pages || []).find(
+    (x: { id: string; path: string }) => x.id === "prix" || x.path === "/prix",
+  );
+  const title = page?.title || "prix";
   return (
     <section>
-      <h1>Prix</h1>
-      <p>Entité <code>prix</code> — {items.length} élément(s).</p>
-      <ul>
-        {items.map((item) => (
-          <li key={String(item.id)}>
-            <code>{String(item.id).slice(0, 8)}</code>{" "}
-            {String(item.nom || item.titre || item.statut || item.montant || "")}
-          </li>
-        ))}
-      </ul>
+      <h1>{title}</h1>
+      <p>
+        Surface métier TempoFlow3 — données via API brand (
+        <code>METIER_BASE_URL</code>).
+      </p>
+      <p>
+        UI interactive : renderer desktop{" "}
+        <code>resources/renderer/index.html#prix</code>.
+      </p>
     </section>
   );
 }

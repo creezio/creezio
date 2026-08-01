@@ -10,8 +10,10 @@
     "build:electron": "tsc -p tsconfig.electron.json",
     "typecheck": "tsc -p tsconfig.electron.json --noEmit",
     "metier:api": "node scripts/metier-api.mjs",
+    "test": "npm run test:metier-parcours && npm run test:first-run-auth && npm run test:allowlist",
     "test:metier-parcours": "node scripts/test-metier-parcours.mjs",
     "test:first-run-auth": "node scripts/test-first-run-auth.mjs",
+    "test:allowlist": "node scripts/test-allowlist.mjs",
     "electron:config:client": "node scripts/build-builder-config.mjs client",
     "electron:config:server": "node scripts/build-builder-config.mjs server",
     "electron:publish": "CREEZIO_BRAND=tempoflow3 bash ../../packages/desktop-tooling/scripts/publish-desktop.sh",
@@ -50,11 +52,19 @@
       "produits",
       "prix",
       "panier_lignes",
-      "commandes"
+      "commandes",
+      "stack_items",
+      "releves",
+      "scan_sessions",
+      "marketplaces",
+      "secteurs",
+      "agregateurs",
+      "data_mappings"
     ],
     "flows": [
       "commande_fournisseur"
-    ]
+    ],
+    "promptsCompleted": "0-13"
   },
   "license": "UNLICENSED"
 }

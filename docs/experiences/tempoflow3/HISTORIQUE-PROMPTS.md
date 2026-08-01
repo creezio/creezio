@@ -90,7 +90,9 @@ Ensuite :
 Ne lis pas / ne copie pas le code métier de tempoflow2 pour cette étape.
 ```
 
-**Statut session** : ✅ exécuté — voir [JOURNAL-CREATION.md](./JOURNAL-CREATION.md).
+**Statut** : ✅ exécuté (et prompts 2–13 enchaînés) — voir
+[JOURNAL-CREATION.md](./JOURNAL-CREATION.md), [RAPPORT.md](./RAPPORT.md),
+[PROBLEMES.md](./PROBLEMES.md).
 
 ---
 

@@ -12,19 +12,19 @@ async function load(path: string) {
 export default async function Page() {
   const data = await load("/api/v1/brand/schema");
   const page = (data?.pages || []).find(
-    (x: { id: string; path: string }) => x.id === "produits" || x.path === "/produits",
+    (x: { id: string; path: string }) =>
+      x.id === "data-mapping" || x.path === "/data-mapping",
   );
-  const title = page?.title || "produits";
   return (
     <section>
-      <h1>{title}</h1>
+      <h1>{page?.title || "Data-mapping"}</h1>
       <p>
         Surface métier TempoFlow3 — données via API brand (
         <code>METIER_BASE_URL</code>).
       </p>
       <p>
         UI interactive : renderer desktop{" "}
-        <code>resources/renderer/index.html#produits</code>.
+        <code>resources/renderer/index.html#data-mapping</code>.
       </p>
     </section>
   );

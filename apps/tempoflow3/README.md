@@ -1,42 +1,39 @@
-# TempoFlow
+# TempoFlow3
 
-Application métier générée par `creezio new-app --from-prd`.
+Application métier **légère** pour restaurateurs / achats CHR, sur OS
+**Creezio**. Bootstrap factory + enrichissement prompts 2–13
+(`docs/experiences/tempoflow3/HISTORIQUE-PROMPTS.md`).
 
 ## Identité
 
 | Champ | Valeur |
 |-------|--------|
 | brandId | `tempoflow3` |
-| tagline | Application métier TempoFlow |
-| entities | fournisseurs, produits, prix, panier_lignes, commandes |
-| flow | Commander chez un fournisseur |
-| sandbox | `true` |
+| Métier | fournisseurs, catalogue, prix, panier, commandes, optimiser, stack, relevés, scan, marketplaces… |
+| OS | `@creezio/*` (auth, desktop, assistant, tasks, mails, plugins…) |
 
-## Parcours smoke
+## Démarrage rapide
 
 ```bash
-npm run test:metier-parcours
-npm run test:first-run-auth
-```
-
-API métier locale :
-
-```bash
+# API métier locale
 npm run metier:api
-# → http://127.0.0.1:18791
+
+# Smokes
+npm test
 ```
 
-## Structure clé
+Parcours validé : **fournisseurs → prix → panier → commande** (+ modules étendus).
 
-- `product-model.json` — modèle issu du PRD
-- `crm/src/brand/schema.ts` + `schema.sql` — schéma marque
-- `scripts/metier-api.mjs` — API HTTP métier
+## Structure
+
+- `crm/src/brand/` — schéma métier
+- `scripts/metier-api.mjs` — API HTTP brand
+- `resources/renderer/index.html` — UI SPA tous onglets
 - `ui/app/` — pages App Router
-- `src/lib/` — wiring générique (paths, host-stack, boot…)
-- `src/electron/` — desktop (`installBrandDesktopRuntime`)
-- `resources/renderer/index.html` — UI SPA métier
+- `src/lib/` — wiring mince OS
+- `src/electron/` — boot desktop (`installBrandDesktopRuntime`)
 
-## Plateforme
+## Anti-triche
 
-Le générique (auth, fenêtres, MAJ, assistant…) vient de `@creezio/*`.
-Le métier (fournisseurs, produits, prix, panier_lignes, commandes) vit **dans ce repo**.
+Pas de copie de launchers depuis tempoflow2. Gaps génériques → creezio.
+Voir `docs/experiences/tempoflow3/PROBLEMES.md` et `JOURNAL-CREATION.md`.

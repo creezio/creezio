@@ -12,9 +12,9 @@ async function load(path: string) {
 export default async function Page() {
   const data = await load("/api/v1/brand/schema");
   const page = (data?.pages || []).find(
-    (x: { id: string; path: string }) => x.id === "produits" || x.path === "/produits",
+    (x: { id: string; path: string }) => x.id === "dashboard" || x.path === "/dashboard",
   );
-  const title = page?.title || "produits";
+  const title = page?.title || "dashboard";
   return (
     <section>
       <h1>{title}</h1>
@@ -24,7 +24,7 @@ export default async function Page() {
       </p>
       <p>
         UI interactive : renderer desktop{" "}
-        <code>resources/renderer/index.html#produits</code>.
+        <code>resources/renderer/index.html#dashboard</code>.
       </p>
     </section>
   );
