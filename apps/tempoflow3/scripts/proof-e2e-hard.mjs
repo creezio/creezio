@@ -48,6 +48,11 @@ record(
   "hosts dans @creezio/app-runtime",
 );
 record(
+  "arch.installBrandOsDesktop",
+  fs.existsSync(path.join(creezioRoot, "packages/app-runtime/src/install-brand-os-desktop.ts")),
+  "installBrandOsDesktop kit",
+);
+record(
   "arch.compose-in-kit",
   fs.existsSync(
     path.join(creezioRoot, "packages/app-runtime/src/compose-brand-os.ts"),
