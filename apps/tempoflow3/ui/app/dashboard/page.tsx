@@ -8,27 +8,19 @@ async function loadDashboard() {
 }
 
 export default async function Page() {
-  const d = (await loadDashboard()) as {
-    orientation?: string;
+  const d = await loadDashboard() as {
     fournisseurs?: number;
+    produits?: number;
     panier_lignes?: number;
-    promos?: number;
-    stack?: number;
-    raccourcis?: { title: string; path: string }[];
+    commandes?: number;
   } | null;
   return (
     <section>
       <h1>Dashboard</h1>
-      <p><strong>{d?.orientation ?? "—"}</strong></p>
       <p>
-        Fournisseurs : {d?.fournisseurs ?? "—"} · Panier : {d?.panier_lignes ?? "—"} ·
-        Promos : {d?.promos ?? "—"} · Stack : {d?.stack ?? "—"}
+        Fournisseurs : {d?.fournisseurs ?? "—"} · Produits : {d?.produits ?? "—"} ·
+        Panier : {d?.panier_lignes ?? "—"} · Commandes : {d?.commandes ?? "—"}
       </p>
-      <ul>
-        {(d?.raccourcis || []).map((r) => (
-          <li key={r.path}><a href={r.path}>{r.title}</a></li>
-        ))}
-      </ul>
       <p>UI interactive : <code>resources/renderer/index.html#dashboard</code></p>
     </section>
   );

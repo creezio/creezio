@@ -3,10 +3,9 @@
 Marque légère sur **OS Creezio**.
 
 - Desktop = `startBrandDesktop` (`@creezio/app-runtime`)
-- Kernel = `bootBrandKernel` (SQLite + api-kernel)
-- API métier = `/api/v1/modules/*`
-- BrandSpec = `brand-spec/` (SoT déclarative)
-- **Interdit** : `metier-api.mjs`, `store.json`, jumeau d'orchestration OS
+- Déclaration = migrations + `registerModuleApi` + feed + nav
+- Métier = `brand-module-api.ts` + `brand-bonus-api.ts` + `brand-spec/`
+- **Interdit** : glue OS (`src/lib/*`, `brand-runtime`), sidecar JSON
 
 ```bash
 npm test

@@ -9,18 +9,33 @@ import { startBrandKernelHarness } from "@creezio/app-runtime";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const PORT = Number(process.env.METIER_PORT || process.env.PORT || 18791);
+const electron = path.join(root, "build/electron");
 
-const bootMod = await import(
-  pathToFileURL(path.join(root, "build/electron/brand-runtime.js")).href
+const manifestMod = await import(
+  pathToFileURL(path.join(electron, "app-manifest.js")).href
+);
+const migMod = await import(
+  pathToFileURL(path.join(electron, "brand-migrations.js")).href
+);
+const apiMod = await import(
+  pathToFileURL(path.join(electron, "brand-module-api.js")).href
 );
 const feedMod = await import(
-  pathToFileURL(path.join(root, "build/electron/meili-feed.js")).href
+  pathToFileURL(path.join(electron, "meili-feed.js")).href
 );
+
+const manifestExport = Object.keys(manifestMod).find((k) =>
+  k.endsWith("Manifest"),
+);
+if (!manifestExport) throw new Error("AppManifest introuvable");
 
 await startBrandKernelHarness({
   brandId: "tempoflow3",
   appRoot: root,
   port: PORT,
-  bootKernel: (opts) => bootMod.bootBrandKernel(opts),
+  manifest: manifestMod[manifestExport],
+  brandMigrations: migMod.brandMigrations(),
+  registerModuleApi: apiMod.registerBrandModuleApi,
+  beforeBoot: feedMod.applyBrandMeiliConfig,
   meiliFeed: feedMod.brandMeiliFeed,
 });

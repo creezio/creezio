@@ -56,7 +56,7 @@ session.logout();
 
 const main = fs.readFileSync(path.join(root, "src/electron/main.ts"), "utf8");
 assert.match(main, /startBrandDesktop/);
-assert.match(main, /bootBrandKernel/);
-assert.doesNotMatch(main, /spawnBrandMetierApi/);
+assert.match(main, /brandMigrations|registerModuleApi/);
+assert.doesNotMatch(main, /spawnBrandMetierApi|bootBrandKernel/);
 
 console.log("OK test:setup-login (OS kit + startBrandDesktop)");

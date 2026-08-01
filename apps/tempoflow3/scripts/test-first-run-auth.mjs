@@ -10,14 +10,11 @@ import { fileURLToPath } from "node:url";
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
 const required = [
-  "src/lib/host-stack.ts",
-  "src/lib/paths.ts",
-  "src/lib/connection-profile.ts",
-  "src/lib/creezio-boot.ts",
   "src/electron/main.ts",
-  "src/electron/brand-runtime.ts",
   "src/electron/brand-migrations.ts",
   "src/electron/brand-module-api.ts",
+  "src/electron/meili-feed.ts",
+  "src/electron/vertical-slot.ts",
   "scripts/brand-kernel-harness.mjs",
   "product-model.json",
 ];
@@ -27,20 +24,25 @@ for (const rel of required) {
   assert.ok(fs.existsSync(p), `manquant: ${rel}`);
 }
 
+const forbidden = [
+  "src/lib/host-stack.ts",
+  "src/electron/brand-runtime.ts",
+  "src/electron/product-hub-stub.ts",
+  "scripts/metier-api.mjs",
+];
+for (const rel of forbidden) {
+  assert.ok(!fs.existsSync(path.join(root, rel)), `interdit: ${rel}`);
+}
+
 const main = fs.readFileSync(path.join(root, "src/electron/main.ts"), "utf8");
 assert.match(main, /startBrandDesktop/);
-assert.match(main, /bootBrandKernel/);
+assert.match(main, /brandMigrations|registerModuleApi/);
 assert.match(main, /@creezio\/app-runtime/);
-assert.doesNotMatch(main, /spawnBrandMetierApi|metier-api\.mjs|createFileLocalConfigStore|listenBrandKernelHttp|prepareDesktopBoot/);
-
-assert.ok(!fs.existsSync(path.join(root, "scripts/metier-api.mjs")), "sidecar JSON interdit");
+assert.doesNotMatch(main, /spawnBrandMetierApi|metier-api\.mjs|bootBrandKernel|brand-runtime|listenBrandKernelHttp|prepareDesktopBoot/);
 
 const model = JSON.parse(
   fs.readFileSync(path.join(root, "product-model.json"), "utf8"),
 );
 assert.equal(model.brandId, "tempoflow3");
-
-const hostStack = fs.readFileSync(path.join(root, "src/lib/host-stack.ts"), "utf8");
-assert.match(hostStack, /createBrandHostStack/);
 
 console.log("OK test:first-run-auth (wiring natif tempoflow3)");

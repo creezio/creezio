@@ -1,27 +1,16 @@
 /**
- * Slot métier vertical — TempoFlow (généré --from-prd).
- * Nav brand uniquement via @creezio/shell-ui.
+ * Slot métier vertical — TempoFlow (nav marque uniquement).
  */
 import {
   createNavRegistry,
   type CoreNavItem,
   type NavRegistry,
 } from "@creezio/shell-ui";
-import {
-  createDemoPluginRequest,
-  tempoflow3ProductHubTokens,
-  getTempoflow3ProductHubStore,
-} from "./product-hub-stub.js";
 
 export type VerticalSlot = {
   brandId: string;
   items: CoreNavItem[];
   nav: NavRegistry;
-  productHub: {
-    tokens: typeof tempoflow3ProductHubTokens;
-    getStore: typeof getTempoflow3ProductHubStore;
-    createRequest: typeof createDemoPluginRequest;
-  };
 };
 
 const BRAND_NAV: CoreNavItem[] = [
@@ -48,9 +37,4 @@ export const verticalSlot: VerticalSlot = {
   brandId: "tempoflow3",
   items: nav.getBrandNav(),
   nav,
-  productHub: {
-    tokens: tempoflow3ProductHubTokens,
-    getStore: getTempoflow3ProductHubStore,
-    createRequest: createDemoPluginRequest,
-  },
 };

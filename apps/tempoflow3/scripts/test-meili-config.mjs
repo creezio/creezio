@@ -165,10 +165,24 @@ const port = fake.address().port;
 const host = `http://127.0.0.1:${port}`;
 
 const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "tempoflow3-meili-idx-"));
-const bootMod = await import(
-  pathToFileURL(path.join(root, "build/electron/brand-runtime.js")).href
+const { createBrandKernel } = await import("@creezio/app-runtime");
+const manifestMod = await import(
+  pathToFileURL(path.join(root, "build/electron/app-manifest.js")).href
 );
-const { runtime, close } = bootMod.bootBrandKernel({ userDataDir: dataDir });
+const migMod = await import(
+  pathToFileURL(path.join(root, "build/electron/brand-migrations.js")).href
+);
+const apiMod = await import(
+  pathToFileURL(path.join(root, "build/electron/brand-module-api.js")).href
+);
+const manifestKey = Object.keys(manifestMod).find((k) => k.endsWith("Manifest"));
+const { runtime, close } = createBrandKernel({
+  manifest: manifestMod[manifestKey],
+  userDataDir: dataDir,
+  brandMigrations: migMod.brandMigrations(),
+  registerModuleApi: apiMod.registerBrandModuleApi,
+  beforeBoot: feedMod.applyBrandMeiliConfig,
+});
 const brand = runtime.getBrand();
 const resolvedDb = brand.path;
 assert.ok(fs.existsSync(resolvedDb), "brand.db attendu après boot");

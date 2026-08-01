@@ -241,6 +241,6 @@
     "chat": true,
     "sync": false
   },
-  "sourcePrdPath": "/agent/repos/creezio/docs/experiences/tempoflow3/PRD-PRODUIT.md",
+  "sourcePrdPath": "/agent/repos/creezio/apps/tempoflow3/brand-spec/product.md",
   "vertical": "chr"
 }
