@@ -79,6 +79,7 @@ test("electron.runtime launch smoke (si electron+xvfb)", async () => {
         ELECTRON_USER_DATA: userData,
       },
       stdio: ["ignore", "pipe", "pipe"],
+      detached: true,
     },
   );
   child.stdout.on("data", (d) => {
@@ -90,7 +91,13 @@ test("electron.runtime launch smoke (si electron+xvfb)", async () => {
 
   await new Promise((r) => setTimeout(r, 6000));
   try {
-    child.kill("SIGKILL");
+    if (child.pid) {
+      try {
+        process.kill(-child.pid, "SIGKILL");
+      } catch {
+        child.kill("SIGKILL");
+      }
+    }
   } catch {
     /* */
   }
