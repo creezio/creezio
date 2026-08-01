@@ -149,6 +149,8 @@ try {
   const tasks = await json("GET", "/api/v1/platform/platform-tasks/list", undefined, {
     "x-creezio-user-id": "proof-user",
   });
+  const createdTask = await json("POST", "/api/v1/platform/platform-tasks/create", { title: "Proof task", body: "hard" }, { "x-creezio-user-id": "proof-user" });
+  record("os.tasks-create", createdTask.status < 300 && createdTask.data.task?.id, createdTask.data.task?.id || createdTask.data.error);
   record("os.platform-tasks", tasks.status === 200 && Array.isArray(tasks.data.tasks), `status=${tasks.status}`);
 
   const mails = await json("GET", "/api/v1/platform/platform-mails/list", undefined, {

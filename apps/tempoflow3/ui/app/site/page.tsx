@@ -1,24 +1,28 @@
 async function load() {
   const base = process.env.METIER_BASE_URL || "http://127.0.0.1:18791";
   try {
-    const res = await fetch(`${base}/api/v1/modules/site`, {
-      cache: "no-store",
-      headers: {},
-    });
-    if (!res.ok) return { error: res.status };
+    const res = await fetch(`${base}/api/v1/modules/site`, { cache: "no-store" });
+    if (!res.ok) return { items: [] };
     return res.json();
-  } catch (e) {
-    return { error: e instanceof Error ? e.message : String(e) };
+  } catch {
+    return { items: [] };
   }
 }
 
 export default async function Page() {
   const data = await load();
+  const items = data.items || [];
   return (
     <section>
       <h1>Sites fournisseurs</h1>
-      <pre style={{ whiteSpace: "pre-wrap" }}>{JSON.stringify(data, null, 2)}</pre>
-      <p>UI interactive desktop : <code>resources/renderer/index.html</code></p>
+      <ul>
+        {items.map((f: { id: string; nom: string; site_web?: string }) => (
+          <li key={f.id}>
+            <a href={`/site/${f.id}`}>{f.nom}</a>
+            {f.site_web ? ` — ${f.site_web}` : ""}
+          </li>
+        ))}
+      </ul>
     </section>
   );
 }
