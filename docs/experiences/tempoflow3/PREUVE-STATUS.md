@@ -1,27 +1,33 @@
 # Preuve TempoFlow3 — statut vivant
 
-## Prouvé
+## Prouvé (post-reset 2026-08-01)
 
 | Item | Preuve |
 |------|--------|
-| Natif kit (vendor+binaires, pas la marque) | `arch.kit-*` / `arch.no-brand-vendor` |
+| Reset clean-room BrandSpec apply | `brand doctor` + `brand apply --force` → main mince P&P |
+| Natif kit (vendor+binaires, pas la marque) | `arch.kit-*` / pas de `resources/vendor` marque |
 | n8n + Hermes ensure/start | `os.n8n-*` / `os.hermes-*` |
 | MCP public (surface locale) | `os.tunnel-status` / `os.mcp-public` |
 | Meili kit | `arch.kit-binaries` |
-| Métier + dispatch + détails commande/produit | `metier.*` |
-| UI interactive (dashboard, stack, relevés, scan, dispatch, optimiser, détails…) | pages Next |
+| Métier + dispatch + détails | `metier.*` |
+| UI interactive + détails TF2 manquants | `fournisseurs/[id]`, `skus/[id]`, `marketplaces/[id]`, `commandes/[id]/optimiser`, `/mcp`, `/server-cockpit` |
 | `proof:hard` | **54/54 SUCCESS** |
+| Demobrand OS P&P | `startBrandDesktop` + bootKernel sandbox |
+| Contrats shell kit | `scripts/test-os-shell-contracts.mjs` |
 
-## Reste vs TF2 0.10.26
+## Hors scope résolu
 
-1. Tunnel Cloudflare distant (provisioner prod)
-2. UX TF2 restante (versions commande, navigateur, likes, marketplaces/[id] riches…)
-3. Smoke Electron GUI splash/tray/embeds
-4. Suite `test:shell`
+1. Demobrand → `startBrandDesktop`
+2. Warm n8n/Hermes avec retries ; Hermes aligné desktop
+3. Tunnel provision via `CREEZIO_TUNNEL_*`
+4. Suite shell kit (splash/tray/embed/updater)
+5. Pages UX TF2 manquantes listées ci-dessus
 
 ## Commandes
 
 ```bash
-node packages/electron-shell/scripts/ensure-kit-binaries.mjs
+creezio brand doctor --spec apps/tempoflow3/brand-spec
+creezio brand apply --spec apps/tempoflow3/brand-spec --out apps/tempoflow3 --force
+# puis re-couche métier (bonus API / UI) depuis brand-spec/modules
 cd apps/tempoflow3 && npm run proof:hard
 ```

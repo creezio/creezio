@@ -11,13 +11,13 @@
 | `ui.parity-0.10.26-pages` | ✅ | manquant: aucun |
 | `ui.renderer-has-bonus-nav` | ✅ | SPA embarquée doit exposer nav bonus (sinon UI Electron incomplète) |
 | `build.electron-tsc` | ✅ | tsc ok |
-| `api.health` | ✅ | port 19856 |
-| `api.fournisseurs.create` | ✅ | 83b76d41-42f2-49d0-8dd8-baffb69ecff3 |
+| `api.health` | ✅ | port 19454 |
+| `api.fournisseurs.create` | ✅ | 6c4e6524-42c4-4576-a30b-fe48792ddfcb |
 | `api.fournisseurs.archive-filter` | ✅ | n=1 |
-| `api.produits.create` | ✅ | cb94689c-5c3f-46c3-8ae7-72aa5dd752ea |
-| `api.prix.create` | ✅ | 3f7a1bc5-7c57-458b-9574-6ed95b0997fb |
-| `api.panier.add` | ✅ | 97c0a7d6-9ecb-4bac-8cc6-7007e207efea |
-| `api.commandes.from-panier` | ✅ | b7e54e32-47d5-4224-b93f-45fb98433ebb |
+| `api.produits.create` | ✅ | f9836686-563b-4cf6-9276-39b7f01d3b98 |
+| `api.prix.create` | ✅ | 48d52ef5-0917-49c5-9427-07d143785e6f |
+| `api.panier.add` | ✅ | a1312b45-5f38-41a1-9508-9ca89c5be4f4 |
+| `api.commandes.from-panier` | ✅ | cd622066-7c52-45d4-b419-8fcaace6ca50 |
 | `api.optimiser.suggest` | ✅ | status=200 |
 | `api.stack.list` | ✅ | status=200 |
 | `api.releves.list` | ✅ | status=200 |

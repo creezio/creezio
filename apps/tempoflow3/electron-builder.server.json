@@ -21,6 +21,14 @@
     {
       "from": "resources/renderer",
       "to": "renderer"
+    },
+    {
+      "from": "node_modules/@creezio/electron-shell/resources/vendor",
+      "to": "vendor"
+    },
+    {
+      "from": "node_modules/@creezio/electron-shell/resources/bin",
+      "to": "bin"
     }
   ],
   "asar": true,

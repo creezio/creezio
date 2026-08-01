@@ -75,9 +75,15 @@ export default function Page() {
           {filtered.map((s) => (
             <tr key={s.id}>
               <td>
-                <code>{s.sku || s.id.slice(0, 8)}</code>
+                <a href={`/skus/${s.id}`} style={{ color: "#0f3d32" }}>
+                  <code>{s.sku || s.id.slice(0, 8)}</code>
+                </a>
               </td>
-              <td>{s.nom}</td>
+              <td>
+                <a href={`/produits/${s.id}`} style={{ color: "#0f3d32" }}>
+                  {s.nom}
+                </a>
+              </td>
               <td>{s.unite || "—"}</td>
               <td>
                 <button type="button" onClick={() => void addStack(s.id)}>

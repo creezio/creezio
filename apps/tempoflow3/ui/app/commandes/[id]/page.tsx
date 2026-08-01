@@ -83,6 +83,9 @@ export default function Page() {
             → {s}
           </button>
         ))}
+        <a href={`/commandes/${id}/optimiser`} style={{ color: "#0f3d32" }}>
+          Optimiser
+        </a>
       </div>
       <table style={{ width: "100%", marginTop: "1rem", borderCollapse: "collapse" }}>
         <thead>

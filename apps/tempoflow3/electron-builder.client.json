@@ -137,17 +137,15 @@
       "to": "renderer"
     },
     {
-      "from": "../../packages/electron-shell/resources/vendor",
+      "from": "node_modules/@creezio/electron-shell/resources/vendor",
       "to": "vendor"
     },
     {
-      "from": "../../packages/electron-shell/resources/bin",
-      "to": "bin",
-      "filter": ["**/*", "!**/.gitkeep"]
+      "from": "node_modules/@creezio/electron-shell/resources/bin",
+      "to": "bin"
     }
   ],
   "asar": true,
-  "npmRebuild": false,
   "nsis": {
     "oneClick": false,
     "allowToChangeInstallationDirectory": true,
@@ -178,14 +176,5 @@
     "provider": "generic",
     "url": "https://tempoflow3.local/dl-sandboxa6dd97fbd7ea5672b283334a/",
     "useMultipleRangeRequest": false
-  },
-  "electronVersion": "35.7.5",
-  "linux": {
-    "target": [
-      "AppImage",
-      "dir"
-    ],
-    "category": "Office",
-    "icon": "resources/icons/client.png"
   }
 }
