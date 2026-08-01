@@ -3,7 +3,7 @@
  * Preuve dure TempoFlow3 — échoue si OS kit / MCP / métier / archi incomplets.
  * Critère : composition OS réelle (hosts construits), pas seulement existsSync.
  */
-import { spawn } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -34,6 +34,32 @@ const toolEnv = {
   ].join(path.delimiter),
 };
 
+// Binaires OS kit (Meili / cloudflared) — hors marque
+const ensureBins = spawnSync(
+  process.execPath,
+  [
+    path.join(
+      creezioRoot,
+      "packages/electron-shell/scripts/ensure-kit-binaries.mjs",
+    ),
+  ],
+  { encoding: "utf8", env: toolEnv },
+);
+record(
+  "arch.kit-binaries",
+  ensureBins.status === 0 &&
+    fs.existsSync(
+      path.join(creezioRoot, "packages/electron-shell/resources/bin/meili"),
+    ) &&
+    fs.existsSync(
+      path.join(
+        creezioRoot,
+        "packages/electron-shell/resources/bin/cloudflared",
+      ),
+    ),
+  ensureBins.status === 0 ? "meili+cloudflared" : ensureBins.stderr || ensureBins.stdout,
+);
+
 // Archi
 const main = fs.readFileSync(path.join(root, "src/electron/main.ts"), "utf8");
 record(
@@ -61,7 +87,6 @@ record(
 );
 
 // Build
-const { spawnSync } = await import("node:child_process");
 const build = spawnSync("npm", ["run", "build:electron"], {
   cwd: root,
   encoding: "utf8",
@@ -77,7 +102,8 @@ const child = spawn(process.execPath, [path.join(root, "scripts/brand-kernel-har
     ...toolEnv,
     METIER_DATA_DIR: dataDir,
     METIER_PORT: String(port),
-    MEILI_SKIP_INDEX: "1",
+    // Index Meili autorisé si binaire kit présent.
+    MEILI_SKIP_INDEX: process.env.MEILI_SKIP_INDEX || "0",
     // Warm fait par les checks API ensure/start (pas au boot harness).
     CREEZIO_NATIVE_WARM: "0",
   },
@@ -193,11 +219,19 @@ try {
     n8nEnsure.status < 300 && n8nEnsure.data.ok === true && Boolean(n8nEnsure.data.entry),
     n8nEnsure.data.entry || n8nEnsure.data.detail || n8nEnsure.data.error,
   );
-  const n8nStart = await json("POST", "/api/v1/os/n8n/start", {});
+  // n8n start : premier boot = migrations longues — retry
+  let n8nStart = await json("POST", "/api/v1/os/n8n/start", {});
+  for (let i = 0; i < 8 && !(n8nStart.data?.running === true); i++) {
+    await new Promise((r) => setTimeout(r, 5000));
+    n8nStart = await json("POST", "/api/v1/os/n8n/start", {});
+  }
   record(
     "os.n8n-start",
     n8nStart.status < 300 && n8nStart.data.ok === true && n8nStart.data.running === true,
-    n8nStart.data.entry || n8nStart.data.error || JSON.stringify(n8nStart.data.status || {}),
+    n8nStart.data.entry ||
+      n8nStart.data.error ||
+      n8nStart.data.status?.detail ||
+      JSON.stringify(n8nStart.data.status || {}),
   );
 
   const hermesEnsure = await json("POST", "/api/v1/os/hermes/ensure", {});
@@ -223,7 +257,40 @@ try {
   }
 
   const tunnel = await json("GET", "/api/v1/os/tunnel/status");
-  record("os.tunnel-status", tunnel.status === 200 && tunnel.data.ok, `mcp=${tunnel.data.publicMcp}`);
+  record(
+    "os.tunnel-status",
+    tunnel.status === 200 && tunnel.data.ok && Boolean(tunnel.data.publicMcp),
+    `mcp=${tunnel.data.publicMcp}`,
+  );
+  // MCP public joignable (surface locale kit ou tunnel)
+  if (tunnel.data.publicMcp) {
+    try {
+      const mcpUrl = new URL(tunnel.data.publicMcp);
+      const mcpRes = await fetch(mcpUrl, { method: "GET" });
+      const mcpBody = await mcpRes.json().catch(() => ({}));
+      record(
+        "os.mcp-public",
+        mcpRes.status === 200 &&
+          (Array.isArray(mcpBody.tools) || mcpBody.ok === true),
+        `status=${mcpRes.status} tools=${mcpBody.tools?.length ?? "?"}`,
+      );
+    } catch (e) {
+      record(
+        "os.mcp-public",
+        false,
+        e instanceof Error ? e.message : String(e),
+      );
+    }
+  } else {
+    const local = await json("POST", "/api/v1/os/tunnel/local", {
+      localPort: port,
+    });
+    record(
+      "os.tunnel-local",
+      local.status < 300 && Boolean(local.data.publicMcp),
+      local.data.publicMcp || local.data.error,
+    );
+  }
 
   // Métier cœur
   const f = await json("POST", "/api/v1/modules/fournisseurs", { nom: "Hard Proof Metro" });
@@ -360,15 +427,63 @@ try {
     "runtime par défaut",
   );
 
+  const f2 = await json("POST", "/api/v1/modules/fournisseurs", {
+    nom: "Hard Proof Promocash",
+  });
+  const pAlt = await json("POST", "/api/v1/modules/produits", {
+    nom: "Carotte Alt",
+    fournisseur_id: f2.data.id,
+  });
+  await json("POST", "/api/v1/modules/prix", {
+    produit_id: pAlt.data.id,
+    fournisseur_id: f2.data.id,
+    montant: 0.9,
+  });
+  await json("POST", "/api/v1/modules/panier_lignes", {
+    produit_id: pAlt.data.id,
+    fournisseur_id: f2.data.id,
+    quantite: 2,
+  });
+  const disp = await json("GET", "/api/v1/modules/dispatch/candidates");
+  record(
+    "metier.dispatch",
+    disp.status < 300 && (disp.data.candidates?.length || 0) >= 1,
+    `n=${disp.data.candidates?.length}`,
+  );
+  const dispApply = await json("POST", "/api/v1/modules/dispatch/apply", {
+    fournisseur_id: f.data.id,
+  });
+  record(
+    "metier.dispatch-apply",
+    dispApply.status < 300 && dispApply.data.applied === true,
+    `items=${dispApply.data.items?.length} removed=${dispApply.data.removed}`,
+  );
+
   for (const [id, pth] of [
-    ["metier.dispatch", "/api/v1/modules/dispatch/candidates"],
     ["metier.skus", "/api/v1/modules/skus"],
     ["metier.promotions", "/api/v1/modules/promotions"],
     ["metier.site", `/api/v1/modules/site/${f.data.id}`],
     ["metier.data-mapping", "/api/v1/modules/data-mapping"],
+    ["metier.dashboard", "/api/v1/modules/dashboard"],
   ]) {
     const r = await json("GET", pth);
     record(id, r.status < 300, `status=${r.status}`);
+  }
+
+  // Pages UI Next critiques présentes (plus de stubs JSON-only pour le cœur)
+  for (const rel of [
+    "ui/app/dashboard/page.tsx",
+    "ui/app/dispatch/page.tsx",
+    "ui/app/promotions/page.tsx",
+    "ui/app/skus/page.tsx",
+    "ui/app/stack/page.tsx",
+  ]) {
+    const src = fs.readFileSync(path.join(root, rel), "utf8");
+    record(
+      `ui.${rel.split("/").slice(-2).join("/")}`,
+      /use client/.test(src) && !/JSON\.stringify\(data/.test(src),
+      "interactive",
+    );
   }
 } catch (err) {
   record("suite", false, err instanceof Error ? err.message : String(err));

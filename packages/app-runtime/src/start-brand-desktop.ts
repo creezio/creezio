@@ -224,6 +224,20 @@ export async function startBrandDesktop(
     );
   }
 
+  if (os && desktopProfile === "full" && process.env.CREEZIO_TUNNEL_LOCAL !== "0") {
+    const tunnel = os.hostRuntime.tunnelService() as unknown as {
+      enableLocalPublicSurface: (o: {
+        localPort: number;
+        slug?: string;
+      }) => { publicMcp: string };
+    };
+    const local = tunnel.enableLocalPublicSurface({
+      localPort: httpServer.port,
+      slug: manifest.brandId,
+    });
+    log("tunnel", `surface locale mcp=${local.publicMcp}`);
+  }
+
   const navShell = createNavShellAdapter();
   if (config.navItems?.length) {
     navShell.registerBrandNav(config.navItems);

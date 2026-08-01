@@ -273,14 +273,107 @@ export async function listenBrandOsHttp(opts: {
           return;
         }
         const tunnel = opts.os.hostRuntime.tunnelService() as unknown as {
-          getStatus?: () => unknown;
+          getTunnelStatus?: () => {
+            publicUrl?: string | null;
+            online?: boolean;
+            configured?: boolean;
+          };
+          publicMcpUrl?: () => string | null;
           publicUrlForEmbedService?: (s: string) => string | null;
+          enableLocalPublicSurface?: (o: {
+            localPort: number;
+          }) => { publicMcp: string };
         };
+        let status = tunnel.getTunnelStatus?.() ?? null;
+        // Fullstack ready : surface MCP locale dès le premier status si non configuré.
+        if (
+          process.env.CREEZIO_TUNNEL_LOCAL !== "0" &&
+          !status?.configured &&
+          typeof tunnel.enableLocalPublicSurface === "function"
+        ) {
+          tunnel.enableLocalPublicSurface({ localPort: port });
+          status = tunnel.getTunnelStatus?.() ?? status;
+        }
+        const publicMcp =
+          tunnel.publicMcpUrl?.() ??
+          (status?.publicUrl
+            ? `${String(status.publicUrl).replace(/\/$/, "")}/mcp`
+            : null);
         send(res, 200, {
           ok: true,
-          status: tunnel.getStatus?.() ?? null,
-          publicMcp: tunnel.publicUrlForEmbedService?.("mcp") ?? null,
+          status,
+          publicMcp,
+          publicN8n: tunnel.publicUrlForEmbedService?.("n8n") ?? null,
+          publicHermes: tunnel.publicUrlForEmbedService?.("hermes") ?? null,
         });
+        return;
+      }
+
+      if (pathname === "/api/v1/os/tunnel/local" && req.method === "POST") {
+        if (!opts.os) {
+          send(res, 503, { ok: false, error: "os_not_composed" });
+          return;
+        }
+        const tunnel = opts.os.hostRuntime.tunnelService() as unknown as {
+          enableLocalPublicSurface: (o: {
+            localPort: number;
+            slug?: string;
+          }) => { ok: true; publicUrl: string; publicMcp: string };
+          getTunnelStatus: () => unknown;
+        };
+        const body = (await readBody(req)) as {
+          localPort?: number;
+          slug?: string;
+        };
+        const localPort =
+          Number(body?.localPort) > 0 ? Number(body.localPort) : port;
+        const enabled = tunnel.enableLocalPublicSurface({
+          localPort,
+          slug: body?.slug,
+        });
+        send(res, 200, {
+          ...enabled,
+          status: tunnel.getTunnelStatus(),
+        });
+        return;
+      }
+
+      if (pathname === "/api/v1/os/tunnel/start" && req.method === "POST") {
+        if (!opts.os) {
+          send(res, 503, { ok: false, error: "os_not_composed" });
+          return;
+        }
+        const tunnel = opts.os.hostRuntime.tunnelService() as unknown as {
+          startCloudflared: () => Promise<void>;
+          getTunnelStatus: () => { online?: boolean; error?: string | null };
+          publicMcpUrl: () => string | null;
+          enableLocalPublicSurface: (o: {
+            localPort: number;
+          }) => { ok: true; publicUrl: string; publicMcp: string };
+        };
+        try {
+          await tunnel.startCloudflared();
+          let status = tunnel.getTunnelStatus();
+          // Sans token/bin cloudflared → surface locale MCP (fullstack ready).
+          if (!status.online && !tunnel.publicMcpUrl()) {
+            tunnel.enableLocalPublicSurface({ localPort: port });
+            status = tunnel.getTunnelStatus();
+          }
+          send(res, 200, {
+            ok: true,
+            status,
+            publicMcp: tunnel.publicMcpUrl(),
+          });
+        } catch (err) {
+          tunnel.enableLocalPublicSurface({ localPort: port });
+          send(res, 200, {
+            ok: true,
+            fallback: "local",
+            detail: err instanceof Error ? err.message : String(err),
+            status: tunnel.getTunnelStatus(),
+            publicMcp: tunnel.publicMcpUrl(),
+          });
+        }
         return;
       }
 

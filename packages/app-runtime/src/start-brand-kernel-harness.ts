@@ -71,11 +71,17 @@ export async function startBrandKernelHarness(
   let meiliStop: (() => void) | null = null;
 
   if (config.meiliFeed) {
+    const kitMeili = path.join(
+      process.env.CREEZIO_ROOT || path.resolve(config.appRoot, "../.."),
+      "packages/electron-shell/resources/bin/meili",
+    );
     const meiliBin =
       config.meiliBinary !== undefined
         ? config.meiliBinary
         : process.env.MEILI_BINARY ||
-          path.join(config.appRoot, "resources", "meili");
+          (fs.existsSync(kitMeili)
+            ? kitMeili
+            : path.join(config.appRoot, "resources", "meili"));
     const meiliBoot = await maybeBootBrandMeili({
       binaryPath:
         meiliBin && fs.existsSync(meiliBin) ? meiliBin : null,
@@ -117,6 +123,27 @@ export async function startBrandKernelHarness(
     });
   }
 
+  // Surface MCP locale AVANT listen — évite course status=null au premier GET.
+  if (
+    brandOs &&
+    desktopProfile === "full" &&
+    process.env.CREEZIO_TUNNEL_LOCAL !== "0" &&
+    port &&
+    port > 0
+  ) {
+    const tunnel = brandOs.hostRuntime.tunnelService() as unknown as {
+      enableLocalPublicSurface: (o: {
+        localPort: number;
+        slug?: string;
+      }) => { publicMcp: string };
+    };
+    const local = tunnel.enableLocalPublicSurface({
+      localPort: port,
+      slug: config.brandId,
+    });
+    console.log(`brand-kernel-harness tunnel local mcp=${local.publicMcp}`);
+  }
+
   const httpServer =
     desktopProfile === "full"
       ? await listenBrandOsHttp({
@@ -130,6 +157,25 @@ export async function startBrandKernelHarness(
           ...(port && port > 0 ? { port } : {}),
         });
   process.env.METIER_BASE_URL = httpServer.baseUrl;
+
+  // Si port auto-assigné : brancher la surface locale après coup.
+  if (
+    brandOs &&
+    desktopProfile === "full" &&
+    process.env.CREEZIO_TUNNEL_LOCAL !== "0" &&
+    !(port && port > 0)
+  ) {
+    const tunnel = brandOs.hostRuntime.tunnelService() as unknown as {
+      enableLocalPublicSurface: (o: {
+        localPort: number;
+        slug?: string;
+      }) => { publicMcp: string };
+    };
+    tunnel.enableLocalPublicSurface({
+      localPort: httpServer.port,
+      slug: config.brandId,
+    });
+  }
 
   console.log(
     `brand-kernel-harness ${config.brandId} on ${httpServer.baseUrl} data=${dataDir} search=${searchEngine} os=${desktopProfile}`,

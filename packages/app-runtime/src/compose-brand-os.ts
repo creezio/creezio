@@ -125,7 +125,18 @@ function buildBrandPaths(opts: ComposeBrandOsOptions) {
     },
     nodeBinary: () => process.execPath,
     meiliDataDir: () => path.join(opts.userDataDir, "meili"),
-    meiliBinary: () => path.join(opts.resourcesRoot, "meili"),
+    meiliBinary: () => {
+      const name = process.platform === "win32" ? "meili.exe" : "meili";
+      const candidates = [
+        path.join(opts.resourcesRoot, "meili"),
+        path.join(opts.resourcesRoot, "bin", name),
+        path.join(shellPackageRoot(), "resources", "bin", name),
+      ];
+      for (const c of candidates) {
+        if (fs.existsSync(c)) return c;
+      }
+      return candidates[0]!;
+    },
     n8nHomeDir: () => path.join(opts.userDataDir, "n8n"),
     hermesHomeDir: () => path.join(opts.userDataDir, "hermes"),
     nodeModulesPathForScripts: () => {

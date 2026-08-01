@@ -292,22 +292,23 @@ export function buildElectronBuilderConfig(
  * `node_modules/@creezio/…` reste.
  */
 function ensureKitOsVendorExtraResources(base: JsonRecord): void {
-  const from = "node_modules/@creezio/electron-shell/resources/vendor";
+  const vendorFrom =
+    "node_modules/@creezio/electron-shell/resources/vendor";
+  const binFrom = "node_modules/@creezio/electron-shell/resources/bin";
   const extra = Array.isArray(base.extraResources)
     ? ([...base.extraResources] as unknown[])
     : [];
-  const already = extra.some((entry) => {
-    if (typeof entry !== "object" || entry === null) return false;
-    const f = String((entry as { from?: string }).from || "");
-    return (
-      f === from ||
-      f.endsWith("@creezio/electron-shell/resources/vendor") ||
-      f === "vendor" ||
-      f.endsWith("/resources/vendor")
-    );
-  });
-  if (!already) {
-    extra.push({ from, to: "vendor" });
+  const has = (suffix: string) =>
+    extra.some((entry) => {
+      if (typeof entry !== "object" || entry === null) return false;
+      const f = String((entry as { from?: string }).from || "");
+      return f === suffix || f.endsWith(suffix);
+    });
+  if (!has("electron-shell/resources/vendor") && !has("/resources/vendor")) {
+    extra.push({ from: vendorFrom, to: "vendor" });
+  }
+  if (!has("electron-shell/resources/bin") && !has("/resources/bin")) {
+    extra.push({ from: binFrom, to: "bin" });
   }
   base.extraResources = extra;
 }

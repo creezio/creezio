@@ -16,3 +16,10 @@ var/
 
 apps/*/ui/node_modules/
 apps/*/ui/.next/
+
+# Binaires OS kit (téléchargés via electron-shell/scripts/ensure-kit-binaries.mjs)
+packages/electron-shell/resources/bin/meili
+packages/electron-shell/resources/bin/meilisearch
+packages/electron-shell/resources/bin/cloudflared
+packages/electron-shell/resources/bin/cloudflared.exe
+packages/electron-shell/resources/bin/meili.exe

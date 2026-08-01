@@ -326,8 +326,9 @@ function buildStore(
   function getTunnelConfig(): TunnelConfig | null {
     const cfg = readFile();
     const meta = cfg.tunnelMeta;
-    const token = open(cfg.tunnelToken);
-    if (!meta || !token) return null;
+    if (!meta) return null;
+    // Token vide autorisé = surface locale (sans Cloudflare).
+    const token = open(cfg.tunnelToken) ?? "";
     return { ...meta, tunnelToken: token };
   }
 

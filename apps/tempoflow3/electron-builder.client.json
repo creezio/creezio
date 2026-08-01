@@ -139,6 +139,11 @@
     {
       "from": "../../packages/electron-shell/resources/vendor",
       "to": "vendor"
+    },
+    {
+      "from": "../../packages/electron-shell/resources/bin",
+      "to": "bin",
+      "filter": ["**/*", "!**/.gitkeep"]
     }
   ],
   "asar": true,

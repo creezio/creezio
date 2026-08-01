@@ -948,6 +948,31 @@ function createDispatchMount(): ApiMount {
           body: { ok: true, hint: "GET /dispatch/candidates" },
         };
       }
+      // Appliquer un candidat : ne garder dans le panier que les lignes du fournisseur.
+      if (parts[0] === "apply" && method === "POST") {
+        const body = (req.body || {}) as { fournisseur_id?: string };
+        if (!body.fournisseur_id) {
+          return { status: 400, body: { error: "fournisseur_id_required" } };
+        }
+        const before = (
+          db.prepare(`SELECT COUNT(*) AS c FROM panier_lignes`).get() as {
+            c: number;
+          }
+        ).c;
+        db.prepare(
+          `DELETE FROM panier_lignes WHERE fournisseur_id IS NULL OR fournisseur_id != ?`,
+        ).run(body.fournisseur_id);
+        const items = db.prepare(`SELECT * FROM panier_lignes`).all();
+        return {
+          status: 200,
+          body: {
+            applied: true,
+            fournisseur_id: body.fournisseur_id,
+            removed: Math.max(0, before - items.length),
+            items,
+          },
+        };
+      }
       return { status: 404, body: { error: "not_found", subPath } };
     },
   };

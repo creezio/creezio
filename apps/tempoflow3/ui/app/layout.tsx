@@ -13,6 +13,7 @@ const NAV = [
   ["/panier", "Panier"],
   ["/commandes", "Commandes"],
   ["/optimiser", "Optimiser"],
+  ["/dispatch", "Dispatch"],
   ["/stack", "Mes produits"],
   ["/releves", "Relevés"],
   ["/scan", "Scan"],
