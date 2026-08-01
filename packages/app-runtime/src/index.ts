@@ -25,3 +25,7 @@ export {
   listenBrandOsHttp,
   type BrandOsHttpHandle,
 } from "./listen-brand-os-http.js";
+export {
+  startBrandUiPlane,
+  type BrandUiPlaneHandle,
+} from "./start-brand-ui-plane.js";

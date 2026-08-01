@@ -115,8 +115,14 @@ function buildBrandPaths(opts: ComposeBrandOsOptions) {
     dbPath: () => brandDb,
     assistantDbPath: () => path.join(opts.userDataDir, "assistant.db"),
     uploadsDir: () => path.join(opts.userDataDir, "uploads"),
-    nextServerEntry: () =>
-      path.join(opts.electronDirname, "../../ui/server.js"),
+    nextServerEntry: () => {
+      const standalone = path.join(
+        opts.electronDirname,
+        "../../ui/.next/standalone/server.js",
+      );
+      if (fs.existsSync(standalone)) return standalone;
+      return path.join(opts.electronDirname, "../../ui/server.js");
+    },
     nodeBinary: () => process.execPath,
     meiliDataDir: () => path.join(opts.userDataDir, "meili"),
     meiliBinary: () => path.join(opts.resourcesRoot, "meili"),

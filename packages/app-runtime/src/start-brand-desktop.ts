@@ -20,6 +20,7 @@ import { createNavShellAdapter } from "@creezio/shell-ui";
 import { brandKernelBooter } from "./create-brand-kernel.js";
 import { composeBrandOs } from "./compose-brand-os.js";
 import { listenBrandOsHttp } from "./listen-brand-os-http.js";
+import { startBrandUiPlane } from "./start-brand-ui-plane.js";
 import type {
   BrandDesktopHandle,
   BootBrandKernelFn,
@@ -55,6 +56,7 @@ type ElectronIpcMain = unknown;
 
 type ElectronBrowserWindow = new (opts: Record<string, unknown>) => {
   loadFile: (p: string) => Promise<void>;
+  loadURL: (u: string) => Promise<void>;
 };
 
 async function loadElectron(): Promise<{
@@ -224,8 +226,15 @@ export async function startBrandDesktop(
   ]);
   const navModel = navShell.getRenderModel();
 
+  const appRoot = path.resolve(__dirname, "../..");
+  const uiPlane = await startBrandUiPlane({
+    appRoot,
+    metierBaseUrl: httpServer.baseUrl,
+  });
+
   const cleanup = async () => {
     meiliStop?.();
+    await uiPlane.close();
     await httpServer.close();
     os?.close();
     closeKernel();
@@ -272,14 +281,18 @@ export async function startBrandDesktop(
     },
   });
 
-  const renderer = path.join(resourcesRoot, "renderer", "index.html");
-  await win.loadFile(renderer);
+  if (uiPlane.kind === "next" && uiPlane.baseUrl) {
+    await win.loadURL(uiPlane.baseUrl);
+  } else {
+    const renderer = path.join(resourcesRoot, "renderer", "index.html");
+    await win.loadFile(renderer);
+  }
 
   const mounts = api.listMounts();
   const mcpTools = await mcp.listTools();
   log(
     "nav",
-    `merged=${navModel.items.length} mounts=${mounts.length} mcp=${mcpTools.tools.length} os=${desktopProfile} setup=${session.isSetupComplete()} api=${httpServer.baseUrl} search=${searchEngine}`,
+    `merged=${navModel.items.length} mounts=${mounts.length} mcp=${mcpTools.tools.length} os=${desktopProfile} ui=${uiPlane.kind} setup=${session.isSetupComplete()} api=${httpServer.baseUrl} search=${searchEngine}`,
   );
 
   app.on("will-quit", () => {
