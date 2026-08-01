@@ -66,3 +66,22 @@ test("C5 ADR documente BrandMeiliFeed", () => {
   );
   assert.match(adr, /BrandMeiliFeed|configureMeiliBrandFeed/);
 });
+
+test("D1 kit expose listenBrandKernelHttp + maybeBootBrandMeili", () => {
+  const httpSrc = fs.readFileSync(
+    path.join(ROOT, "packages/electron-shell/src/host/brand-kernel-http.ts"),
+    "utf8",
+  );
+  assert.match(httpSrc, /export async function listenBrandKernelHttp/);
+  const bootSrc = fs.readFileSync(
+    path.join(ROOT, "packages/electron-shell/src/host/brand-meili-boot.ts"),
+    "utf8",
+  );
+  assert.match(bootSrc, /export async function maybeBootBrandMeili/);
+  const barrel = fs.readFileSync(
+    path.join(ROOT, "packages/electron-shell/src/index.ts"),
+    "utf8",
+  );
+  assert.match(barrel, /listenBrandKernelHttp/);
+  assert.match(barrel, /maybeBootBrandMeili/);
+});

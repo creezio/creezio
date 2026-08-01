@@ -54,7 +54,7 @@ export function renderNextEntityPage(model: ProductModel, pageId: string): strin
     return `async function loadDashboard() {
   const base = process.env.METIER_BASE_URL || "http://127.0.0.1:18791";
   try {
-    const res = await fetch(\`\${base}/api/v1/brand/dashboard\`, { cache: "no-store" });
+    const res = await fetch(\`\${base}/api/v1/modules/dashboard\`, { cache: "no-store" });
     if (!res.ok) return null;
     return res.json();
   } catch { return null; }
@@ -62,19 +62,18 @@ export function renderNextEntityPage(model: ProductModel, pageId: string): strin
 
 export default async function Page() {
   const d = await loadDashboard() as {
-    fournisseurs_actifs?: number;
-    lignes_panier?: number;
-    raccourcis?: { title: string; path: string }[];
+    fournisseurs?: number;
+    produits?: number;
+    panier_lignes?: number;
+    commandes?: number;
   } | null;
   return (
     <section>
       <h1>${title}</h1>
-      <p>Fournisseurs actifs : {d?.fournisseurs_actifs ?? "—"} · Panier : {d?.lignes_panier ?? "—"}</p>
-      <ul>
-        {(d?.raccourcis || []).map((r) => (
-          <li key={r.path}><a href={r.path}>{r.title}</a></li>
-        ))}
-      </ul>
+      <p>
+        Fournisseurs : {d?.fournisseurs ?? "—"} · Produits : {d?.produits ?? "—"} ·
+        Panier : {d?.panier_lignes ?? "—"} · Commandes : {d?.commandes ?? "—"}
+      </p>
       <p>UI interactive : <code>resources/renderer/index.html#dashboard</code></p>
     </section>
   );
@@ -97,12 +96,12 @@ export default async function Page() {
 
   return `/**
  * Page métier ${title} — générée --from-prd.
- * Liste réelle via API brand (plus un stub vide).
+ * Liste réelle via api-kernel /api/v1/modules/* (même kernel que desktop).
  */
 async function loadItems() {
   const base = process.env.METIER_BASE_URL || "http://127.0.0.1:18791";
   try {
-    const res = await fetch(\`\${base}/api/v1/brand/${entityId}\`, { cache: "no-store" });
+    const res = await fetch(\`\${base}/api/v1/modules/${entityId}\`, { cache: "no-store" });
     if (!res.ok) return [];
     const data = (await res.json()) as { items?: Record<string, unknown>[] };
     return data.items || [];
@@ -149,6 +148,9 @@ export function renderMetierRendererHtml(model: ProductModel): string {
       header { padding: 1.5rem; border-bottom: 1px solid rgba(20,32,28,.08); }
       h1 { margin: 0; font-size: 2rem; letter-spacing: -.02em; }
       .tag { opacity: .75; margin-top: .35rem; }
+      .search-row { display: flex; gap: .5rem; margin-top: .85rem; align-items: center; flex-wrap: wrap; }
+      .search-row input { min-width: 14rem; }
+      .engine { font-size: .85rem; opacity: .7; }
       nav { display: flex; gap: 1rem; padding: .85rem 1.5rem; flex-wrap: wrap; }
       nav a { color: #0f3d32; }
       main { padding: 1.5rem; max-width: 52rem; margin: 0 auto; }
@@ -164,6 +166,11 @@ export function renderMetierRendererHtml(model: ProductModel): string {
     <header>
       <h1>${model.brandName}</h1>
       <p class="tag">${model.tagline}</p>
+      <form class="search-row" id="global-search">
+        <input name="q" type="search" placeholder="Recherche catalogue…" autocomplete="off" />
+        <button type="submit">Chercher</button>
+        <span class="engine" id="search-engine"></span>
+      </form>
     </header>
     <nav>
           ${nav}
@@ -172,9 +179,22 @@ export function renderMetierRendererHtml(model: ProductModel): string {
       <p>Chargement API métier…</p>
     </main>
     <script>
-      const BASE = localStorage.getItem("METIER_BASE_URL") || "http://127.0.0.1:18791";
+      let BASE = localStorage.getItem("METIER_BASE_URL") || "http://127.0.0.1:18791";
       const PAGES = ${JSON.stringify(model.pages)};
       const ENTITIES = ${JSON.stringify(model.entities.map((e) => e.id))};
+      const BRIDGE = window.creezioDesktop || window[${JSON.stringify(model.brandId + "Desktop")}];
+
+      async function resolveBase() {
+        try {
+          if (BRIDGE && BRIDGE.getInfo) {
+            const info = await BRIDGE.getInfo();
+            if (info && info.metierBaseUrl) {
+              BASE = info.metierBaseUrl;
+              localStorage.setItem("METIER_BASE_URL", BASE);
+            }
+          }
+        } catch (_) { /* harness / navigateur */ }
+      }
 
       async function api(path, init) {
         const res = await fetch(BASE + path, {
@@ -191,6 +211,20 @@ export function renderMetierRendererHtml(model: ProductModel): string {
         return '<label>' + (f.label || f.name) +
           '<br/><input name="' + f.name + '" type="' + type + '" ' +
           (f.required ? "required" : "") + '/></label>';
+      }
+
+      async function renderSearch(q) {
+        const main = document.getElementById("app");
+        const data = await api("/api/v1/modules/search?q=" + encodeURIComponent(q));
+        document.getElementById("search-engine").textContent = "moteur: " + (data.engine || "?");
+        const items = data.items || [];
+        main.innerHTML =
+          "<section class='panel active'><h2>Recherche</h2><p>" + items.length +
+          " résultat(s)</p><table><thead><tr><th>source</th><th>id</th><th>libellé</th></tr></thead><tbody>" +
+          items.map((row) => "<tr><td>" + (row._index || row._table || "") + "</td><td>" +
+            String(row.id).slice(0, 8) + "</td><td>" + (row.nom || row.titre || row.contact || "") +
+            "</td></tr>").join("") +
+          "</tbody></table></section>";
       }
 
       async function renderPage(pageId) {
@@ -222,7 +256,7 @@ export function renderMetierRendererHtml(model: ProductModel): string {
           };
         } catch (err) {
           main.innerHTML = "<p class='err'>API métier indisponible (" + err.message +
-            "). Lancez <code>npm run metier:api</code>.</p>";
+            "). Desktop boot le kernel HTTP ; hors Electron : <code>npm run metier:api</code>.</p>";
         }
       }
 
@@ -232,7 +266,12 @@ export function renderMetierRendererHtml(model: ProductModel): string {
           renderPage(a.getAttribute("data-page"));
         });
       });
-      renderPage(PAGES[0] && PAGES[0].id);
+      document.getElementById("global-search").onsubmit = async (ev) => {
+        ev.preventDefault();
+        const q = new FormData(ev.target).get("q");
+        if (q) await renderSearch(String(q));
+      };
+      resolveBase().then(() => renderPage(PAGES[0] && PAGES[0].id));
     </script>
   </body>
 </html>

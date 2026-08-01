@@ -89,6 +89,15 @@ export type { RunningMeili, StartMeiliOptions } from "./host/meili-launcher.js";
 export { startMeili } from "./host/meili-launcher.js";
 
 export type {
+  BrandKernelHttpHandle,
+  BrandKernelLike,
+} from "./host/brand-kernel-http.js";
+export { listenBrandKernelHttp } from "./host/brand-kernel-http.js";
+
+export type { BrandMeiliBootResult } from "./host/brand-meili-boot.js";
+export { maybeBootBrandMeili } from "./host/brand-meili-boot.js";
+
+export type {
   RunningServer,
   StartServerCoreOptions,
   StartServerPaths,

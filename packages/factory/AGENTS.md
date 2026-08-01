@@ -25,6 +25,8 @@ Les générateurs vivent ici. Le métier généré **n’entre pas** dans
   mounts `/api/v1/modules/*` + harness `brand-kernel-harness.mjs`.
 - **Ne pas** hardcoder des UIDs Meili `tf2_*` dans le feed marque : générer
   `meili-feed.ts` avec `catalog_*` + `configureMeiliBrandFeed`.
+- Desktop from-prd : `listenBrandKernelHttp` + `maybeBootBrandMeili` (pas le
+  monolithe `installBrandDesktopRuntime` pour la sonde) ; SPA via `metierBaseUrl`.
 - Ne pas écraser des fichiers existants sans `--force`.
 - Ne pas exiger des flags techniques si `--from-prd` suffit.
 - Ne pas toucher `docs/FILES.md` sans demande dédiée.

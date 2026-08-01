@@ -567,12 +567,12 @@ export function renderBrandKernelHarnessMjs(model: ProductModel): string {
  * Harness Node — même api-kernel + SQLite que le desktop (pas de store.json).
  * Usage: npm run build:electron && METIER_DATA_DIR=... METIER_PORT=... node scripts/brand-kernel-harness.mjs
  */
-import http from "node:http";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { fileURLToPath } from "node:url";
+import { listenBrandKernelHttp, maybeBootBrandMeili } from "@creezio/electron-shell";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const PORT = Number(process.env.METIER_PORT || process.env.PORT || 18791);
@@ -583,75 +583,36 @@ const DATA_DIR =
 const bootMod = await import(
   pathToFileURL(path.join(root, "build/electron/brand-runtime.js")).href
 );
-const { api, close } = bootMod.bootBrandKernel({ userDataDir: DATA_DIR });
+const feedMod = await import(
+  pathToFileURL(path.join(root, "build/electron/meili-feed.js")).href
+);
+const { api, runtime, close } = bootMod.bootBrandKernel({ userDataDir: DATA_DIR });
 
-function readBody(req) {
-  return new Promise((resolve, reject) => {
-    const chunks = [];
-    req.on("data", (c) => chunks.push(c));
-    req.on("end", () => {
-      const raw = Buffer.concat(chunks).toString("utf8");
-      if (!raw) return resolve(undefined);
-      try {
-        resolve(JSON.parse(raw));
-      } catch (err) {
-        reject(err);
-      }
-    });
-    req.on("error", reject);
-  });
-}
-
-const server = http.createServer(async (req, res) => {
-  try {
-    if (req.method === "OPTIONS") {
-      res.writeHead(204, {
-        "access-control-allow-origin": "*",
-        "access-control-allow-methods": "GET,POST,PATCH,DELETE,OPTIONS",
-        "access-control-allow-headers": "content-type",
-      });
-      res.end();
-      return;
-    }
-    const url = new URL(req.url || "/", \`http://127.0.0.1:\${PORT}\`);
-    const query = Object.fromEntries(url.searchParams.entries());
-    const body = ["POST", "PUT", "PATCH"].includes(req.method || "")
-      ? await readBody(req)
-      : undefined;
-    const result = await api.handle({
-      method: req.method || "GET",
-      path: url.pathname,
-      body,
-      query,
-      headers: req.headers,
-    });
-    const payload = JSON.stringify(result.body ?? {});
-    res.writeHead(result.status || 200, {
-      "content-type": "application/json; charset=utf-8",
-      "access-control-allow-origin": "*",
-      ...(result.headers || {}),
-    });
-    res.end(payload);
-  } catch (err) {
-    res.writeHead(500, { "content-type": "application/json" });
-    res.end(JSON.stringify({ error: String(err?.message || err) }));
-  }
+const meiliBin =
+  process.env.MEILI_BINARY ||
+  path.join(root, "resources", "meili");
+const meiliBoot = await maybeBootBrandMeili({
+  binaryPath: fs.existsSync(meiliBin) ? meiliBin : null,
+  dataDir: path.join(DATA_DIR, "meili"),
+  userDataDir: DATA_DIR,
+  dbPath: runtime.getBrand().path,
+  feed: feedMod.brandMeiliFeed,
+  index: process.env.MEILI_SKIP_INDEX !== "1",
 });
 
-server.listen(PORT, "127.0.0.1", () => {
-  console.log(
-    \`brand-kernel-harness ${model.brandId} on http://127.0.0.1:\${PORT} data=\${DATA_DIR}\`,
-  );
-});
+const httpServer = await listenBrandKernelHttp({ api, port: PORT });
+console.log(
+  \`brand-kernel-harness ${model.brandId} on \${httpServer.baseUrl} data=\${DATA_DIR} search=\${meiliBoot.engine}\`,
+);
 
-function shutdown() {
-  server.close(() => {
-    close();
-    process.exit(0);
-  });
+async function shutdown() {
+  meiliBoot.meili?.stop();
+  await httpServer.close();
+  close();
+  process.exit(0);
 }
-process.on("SIGTERM", shutdown);
-process.on("SIGINT", shutdown);
+process.on("SIGTERM", () => void shutdown());
+process.on("SIGINT", () => void shutdown());
 `;
 }
 
@@ -664,9 +625,11 @@ export function renderMainFromPrdNativeTs(
   );
   const manifestExport = `${exportName}Manifest`;
   return `/**
- * Main Electron — OS kit + runtime natif (SQLite + api-kernel).
+ * Main Electron — OS kit + runtime natif (SQLite + api-kernel + HTTP).
  * Généré --from-prd. Pas de sidecar JSON métier.
+ * Meili optionnel via maybeBootBrandMeili (sans binaire → SQL).
  */
+import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { app, BrowserWindow, ipcMain } from "electron";
@@ -675,9 +638,10 @@ import {
   log,
   prepareDesktopBoot,
   writeAppKindFile,
-  installBrandDesktopRuntime,
   createDesktopSessionStore,
   registerDesktopSessionIpc,
+  listenBrandKernelHttp,
+  maybeBootBrandMeili,
 } from "@creezio/electron-shell";
 import { createMcpFacade } from "@creezio/mcp-facade";
 import { createMemoryAuthStore } from "@creezio/auth";
@@ -685,6 +649,7 @@ import { createNavShellAdapter } from "@creezio/shell-ui";
 import { ${manifestExport} as manifest } from "./app-manifest.js";
 import { verticalSlot } from "./vertical-slot.js";
 import { bootBrandKernel } from "./brand-runtime.js";
+import { brandMeiliFeed } from "./meili-feed.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -703,10 +668,26 @@ async function main(): Promise<void> {
     manifest,
   });
 
-  const { api, close: closeKernel } = bootBrandKernel({
+  const { api, runtime, close: closeKernel } = bootBrandKernel({
     userDataDir: boot.userDataDir,
     isPackaged: app.isPackaged,
   });
+
+  const resourcesRoot = app.isPackaged
+    ? process.resourcesPath
+    : path.join(__dirname, "../../resources");
+  const meiliBin = path.join(resourcesRoot, "meili");
+  const meiliBoot = await maybeBootBrandMeili({
+    binaryPath: fs.existsSync(meiliBin) ? meiliBin : null,
+    dataDir: path.join(boot.userDataDir, "meili"),
+    userDataDir: boot.userDataDir,
+    dbPath: runtime.getBrand().path,
+    feed: brandMeiliFeed,
+    log: (line) => log("meili", line),
+  });
+
+  const kernelHttp = await listenBrandKernelHttp({ api });
+  process.env.METIER_BASE_URL = kernelHttp.baseUrl;
 
   const mcp = createMcpFacade({
     brandId: manifest.brandId,
@@ -720,10 +701,12 @@ async function main(): Promise<void> {
   const navModel = navShell.getRenderModel();
   void mcp;
   void auth;
-  void installBrandDesktopRuntime;
 
   const gotLock = app.requestSingleInstanceLock();
   if (!gotLock) {
+    meiliBoot.meili?.stop();
+    await kernelHttp.close();
+    closeKernel();
     app.quit();
     return;
   }
@@ -737,6 +720,7 @@ async function main(): Promise<void> {
       brandId: manifest.brandId,
       productName: manifest.client.productName,
       appKind: boot.appKind,
+      metierPort: kernelHttp.port,
     },
   });
 
@@ -762,10 +746,12 @@ async function main(): Promise<void> {
 
   log(
     "nav",
-    \`merged=\${navModel.items.length} mounts=\${api.listMounts().length} entities=${model.entities.length} setup=\${session.isSetupComplete()}\`,
+    \`merged=\${navModel.items.length} mounts=\${api.listMounts().length} entities=${model.entities.length} setup=\${session.isSetupComplete()} api=\${kernelHttp.baseUrl} search=\${meiliBoot.engine}\`,
   );
 
   app.on("will-quit", () => {
+    meiliBoot.meili?.stop();
+    void kernelHttp.close();
     closeKernel();
   });
 }

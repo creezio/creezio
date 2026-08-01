@@ -179,6 +179,10 @@ async function main() {
   const commandes = await json("GET", "/api/v1/modules/commandes");
   assert.equal(commandes.items.length, 1);
 
+  const search = await json("GET", "/api/v1/modules/search?q=tom");
+  assert.ok(search.engine === "sql" || search.engine === "meili");
+  assert.ok(Array.isArray(search.items) && search.items.length >= 1);
+
   // Preuve persistence native SQLite (pas store.json)
   assert.ok(
     !fs.existsSync(path.join(dataDir, "store.json")),
@@ -232,6 +236,8 @@ const main = fs.readFileSync(path.join(root, "src/electron/main.ts"), "utf8");
 assert.match(main, /prepareDesktopBoot/);
 assert.match(main, /createDesktopSessionStore/);
 assert.match(main, /bootBrandKernel/);
+assert.match(main, /listenBrandKernelHttp/);
+assert.match(main, /maybeBootBrandMeili/);
 assert.doesNotMatch(main, /spawnBrandMetierApi|metier-api\\.mjs|createFileLocalConfigStore/);
 
 assert.ok(!fs.existsSync(path.join(root, "scripts/metier-api.mjs")), "sidecar JSON interdit");

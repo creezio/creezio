@@ -11,6 +11,9 @@
       header { padding: 1.5rem; border-bottom: 1px solid rgba(20,32,28,.08); }
       h1 { margin: 0; font-size: 2rem; letter-spacing: -.02em; }
       .tag { opacity: .75; margin-top: .35rem; }
+      .search-row { display: flex; gap: .5rem; margin-top: .85rem; align-items: center; flex-wrap: wrap; }
+      .search-row input { min-width: 14rem; }
+      .engine { font-size: .85rem; opacity: .7; }
       nav { display: flex; gap: 1rem; padding: .85rem 1.5rem; flex-wrap: wrap; }
       nav a { color: #0f3d32; }
       main { padding: 1.5rem; max-width: 52rem; margin: 0 auto; }
@@ -26,6 +29,11 @@
     <header>
       <h1>TempoFlow</h1>
       <p class="tag">Prix fournisseurs, catalogue et commandes pour la restauration</p>
+      <form class="search-row" id="global-search">
+        <input name="q" type="search" placeholder="Recherche catalogue…" autocomplete="off" />
+        <button type="submit">Chercher</button>
+        <span class="engine" id="search-engine"></span>
+      </form>
     </header>
     <nav>
           <a href="#dashboard" data-page="dashboard">Dashboard</a>
@@ -39,9 +47,22 @@
       <p>Chargement API métier…</p>
     </main>
     <script>
-      const BASE = localStorage.getItem("METIER_BASE_URL") || "http://127.0.0.1:18791";
+      let BASE = localStorage.getItem("METIER_BASE_URL") || "http://127.0.0.1:18791";
       const PAGES = [{"id":"dashboard","path":"/dashboard","title":"Dashboard","kind":"dashboard"},{"id":"fournisseurs","path":"/fournisseurs","title":"Fournisseurs","entityId":"fournisseurs","kind":"list"},{"id":"produits","path":"/produits","title":"Produits","entityId":"produits","kind":"list"},{"id":"prix","path":"/prix","title":"Prix","entityId":"prix","kind":"list"},{"id":"panier","path":"/panier","title":"Panier","entityId":"panier_lignes","kind":"flow"},{"id":"commandes","path":"/commandes","title":"Commandes","entityId":"commandes","kind":"list"}];
       const ENTITIES = ["fournisseurs","produits","prix","panier_lignes","commandes"];
+      const BRIDGE = window.creezioDesktop || window["tempoflow3Desktop"];
+
+      async function resolveBase() {
+        try {
+          if (BRIDGE && BRIDGE.getInfo) {
+            const info = await BRIDGE.getInfo();
+            if (info && info.metierBaseUrl) {
+              BASE = info.metierBaseUrl;
+              localStorage.setItem("METIER_BASE_URL", BASE);
+            }
+          }
+        } catch (_) { /* harness / navigateur */ }
+      }
 
       async function api(path, init) {
         const res = await fetch(BASE + path, {
@@ -58,6 +79,20 @@
         return '<label>' + (f.label || f.name) +
           '<br/><input name="' + f.name + '" type="' + type + '" ' +
           (f.required ? "required" : "") + '/></label>';
+      }
+
+      async function renderSearch(q) {
+        const main = document.getElementById("app");
+        const data = await api("/api/v1/modules/search?q=" + encodeURIComponent(q));
+        document.getElementById("search-engine").textContent = "moteur: " + (data.engine || "?");
+        const items = data.items || [];
+        main.innerHTML =
+          "<section class='panel active'><h2>Recherche</h2><p>" + items.length +
+          " résultat(s)</p><table><thead><tr><th>source</th><th>id</th><th>libellé</th></tr></thead><tbody>" +
+          items.map((row) => "<tr><td>" + (row._index || row._table || "") + "</td><td>" +
+            String(row.id).slice(0, 8) + "</td><td>" + (row.nom || row.titre || row.contact || "") +
+            "</td></tr>").join("") +
+          "</tbody></table></section>";
       }
 
       async function renderPage(pageId) {
@@ -89,7 +124,7 @@
           };
         } catch (err) {
           main.innerHTML = "<p class='err'>API métier indisponible (" + err.message +
-            "). Lancez <code>npm run metier:api</code>.</p>";
+            "). Desktop boot le kernel HTTP ; hors Electron : <code>npm run metier:api</code>.</p>";
         }
       }
 
@@ -99,7 +134,12 @@
           renderPage(a.getAttribute("data-page"));
         });
       });
-      renderPage(PAGES[0] && PAGES[0].id);
+      document.getElementById("global-search").onsubmit = async (ev) => {
+        ev.preventDefault();
+        const q = new FormData(ev.target).get("q");
+        if (q) await renderSearch(String(q));
+      };
+      resolveBase().then(() => renderPage(PAGES[0] && PAGES[0].id));
     </script>
   </body>
 </html>

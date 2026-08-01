@@ -74,6 +74,17 @@ smoke `test:meili-config` (binaire absent → null ; fake HTTP → index/search)
 
 ---
 
+## P11 — Desktop from-prd sans façade HTTP kernel → **CORRIGÉ**
+
+**Avant** : main Electron bootait le kernel en mémoire mais la SPA attendait
+un serveur `:18791` (souvent le vieux sidecar) ; Next pointait `/api/v1/brand/*`.
+
+**Fix kit** : `listenBrandKernelHttp` + `maybeBootBrandMeili` ; main/harness
+partagent la façade ; IPC `metierBaseUrl` ; SPA search `/modules/search` ;
+pages Next → `/api/v1/modules/*`.
+
+---
+
 ## Vérification « delete + regen » (Prompt 1)
 
 ```bash

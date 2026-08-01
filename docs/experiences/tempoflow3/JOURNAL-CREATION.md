@@ -18,7 +18,7 @@ qui dump déjà tout le métier TempoFlow.
 | Prompt 5 — Panier | ✅ | totaux / sous-totaux / prérempli tarif |
 | Prompt 6 — Commandes | ✅ | from-panier + statuts MVP |
 | Phase C — Meili générique | ✅ | `BrandMeiliFeed` + `catalog_*` + smoke fake/fallback |
-| Phase D — Next/desktop Meili boot | ⏳ | brancher startMeili + UI kernel |
+| Phase D — desktop kernel HTTP + Meili | ✅ | `listenBrandKernelHttp` + `maybeBootBrandMeili` + SPA search |
 | Prompts 7+ — modules bonus | ⏳ | optimiser, stack, scan… un par un |
 
 ---

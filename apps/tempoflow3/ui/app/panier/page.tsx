@@ -1,11 +1,11 @@
 /**
  * Page métier Panier — générée --from-prd.
- * Liste réelle via API brand (plus un stub vide).
+ * Liste réelle via api-kernel /api/v1/modules/* (même kernel que desktop).
  */
 async function loadItems() {
   const base = process.env.METIER_BASE_URL || "http://127.0.0.1:18791";
   try {
-    const res = await fetch(`${base}/api/v1/brand/panier_lignes`, { cache: "no-store" });
+    const res = await fetch(`${base}/api/v1/modules/panier_lignes`, { cache: "no-store" });
     if (!res.ok) return [];
     const data = (await res.json()) as { items?: Record<string, unknown>[] };
     return data.items || [];

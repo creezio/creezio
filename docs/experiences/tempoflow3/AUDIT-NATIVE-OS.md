@@ -24,10 +24,10 @@ fonctionner → creezio (factory / wiring / Meili générique) n’est pas au ni
 
 ## 1. État actuel (inventaire honnête)
 
-**MAJ 2026-08-01** — Phases **A**, **B** et **C** (socle) livrées : factory
-natif + TF3 sur kernel ; Meili = `BrandMeiliFeed` / UIDs `catalog_*` + smoke
-fake Meili / fallback sans binaire. Reste **D** (Next/desktop boot Meili réel),
-**E** (modules bonus) ; cutover complet readiness Meili hors child-process.
+**MAJ 2026-08-01** — Phases **A–D (socle)** livrées : factory natif + TF3
+kernel HTTP desktop + Meili optionnel (`maybeBootBrandMeili`) + SPA search +
+Next sur `/api/v1/modules/*`. Reste **E** (modules bonus) ; coherence-query
+feed descriptor ; `installBrandDesktopRuntime` complet hors scope sonde.
 
 ### 1.1 Ce qui est OK (aligné intention)
 
@@ -42,13 +42,13 @@ fake Meili / fallback sans binaire. Reste **D** (Next/desktop boot Meili réel),
 | Host-stack feature-off | `src/lib/host-stack.ts` | Wiring mince OK en smoke |
 | Allowlist anti-sidecar | smokes | Interdit `metier-api.mjs` / `store.json` SoT |
 
-### 1.2 Écarts restants (après A–C socle)
+### 1.2 Écarts restants (après A–D socle)
 
 | Écart | Aujourd’hui | Cible OS |
 |-------|-------------|----------|
-| **Meili boot desktop** | feed + indexeur générique + smoke fake ; pas encore `startMeili` dans main TF3 | brancher runtime desktop + binary optionnel |
+| **Desktop runtime complet** | boot mince (kernel HTTP + Meili optionnel + SPA) — pas `installBrandDesktopRuntime` | brancher hosts lourds si besoin prod |
 | **Cohérence child-process** | feed process-local ; legacy decideMeiliReady encore tf2_* | descriptor feed pour coherence-query |
-| **UI Next** | SPA renderer + pages Next squelette | Hono/Next sur le même kernel |
+| **Next serveur embarqué** | pages Next pointent `/modules/*` ; pas de process Next dans main sonde | mount Hono/Next optionnel |
 | **Modules bonus** | hors ProductModel cœur | mini-PRDs 06–11 |
 
 ### 1.3 Fichiers encore à traiter (C+)
@@ -264,6 +264,5 @@ A1–A3 (générateurs natifs)
 
 ## 10. Prochaine action concrète
 
-Phases **A–C (socle)** closes (`BrandMeiliFeed`, factory `meili-feed.ts`,
-`test:meili-config`). Enchaîner **Phase D** (boot desktop / Next sur le même
-kernel + `startMeili` optionnel), puis **E** (modules bonus 06–11).
+Phases **A–D (socle)** closes. Enchaîner **Phase E** (modules bonus 06–11 +
+ALLOWLIST/ORACLE/rapport gaps).

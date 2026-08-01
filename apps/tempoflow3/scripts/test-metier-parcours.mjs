@@ -128,6 +128,10 @@ async function main() {
   const commandes = await json("GET", "/api/v1/modules/commandes");
   assert.equal(commandes.items.length, 1);
 
+  const search = await json("GET", "/api/v1/modules/search?q=tom");
+  assert.ok(search.engine === "sql" || search.engine === "meili");
+  assert.ok(Array.isArray(search.items) && search.items.length >= 1);
+
   // Preuve persistence native SQLite (pas store.json)
   assert.ok(
     !fs.existsSync(path.join(dataDir, "store.json")),

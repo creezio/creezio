@@ -1,7 +1,9 @@
 /**
- * Main Electron — OS kit + runtime natif (SQLite + api-kernel).
+ * Main Electron — OS kit + runtime natif (SQLite + api-kernel + HTTP).
  * Généré --from-prd. Pas de sidecar JSON métier.
+ * Meili optionnel via maybeBootBrandMeili (sans binaire → SQL).
  */
+import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { app, BrowserWindow, ipcMain } from "electron";
@@ -10,9 +12,10 @@ import {
   log,
   prepareDesktopBoot,
   writeAppKindFile,
-  installBrandDesktopRuntime,
   createDesktopSessionStore,
   registerDesktopSessionIpc,
+  listenBrandKernelHttp,
+  maybeBootBrandMeili,
 } from "@creezio/electron-shell";
 import { createMcpFacade } from "@creezio/mcp-facade";
 import { createMemoryAuthStore } from "@creezio/auth";
@@ -20,6 +23,7 @@ import { createNavShellAdapter } from "@creezio/shell-ui";
 import { tempoflow3Manifest as manifest } from "./app-manifest.js";
 import { verticalSlot } from "./vertical-slot.js";
 import { bootBrandKernel } from "./brand-runtime.js";
+import { brandMeiliFeed } from "./meili-feed.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -38,10 +42,26 @@ async function main(): Promise<void> {
     manifest,
   });
 
-  const { api, close: closeKernel } = bootBrandKernel({
+  const { api, runtime, close: closeKernel } = bootBrandKernel({
     userDataDir: boot.userDataDir,
     isPackaged: app.isPackaged,
   });
+
+  const resourcesRoot = app.isPackaged
+    ? process.resourcesPath
+    : path.join(__dirname, "../../resources");
+  const meiliBin = path.join(resourcesRoot, "meili");
+  const meiliBoot = await maybeBootBrandMeili({
+    binaryPath: fs.existsSync(meiliBin) ? meiliBin : null,
+    dataDir: path.join(boot.userDataDir, "meili"),
+    userDataDir: boot.userDataDir,
+    dbPath: runtime.getBrand().path,
+    feed: brandMeiliFeed,
+    log: (line) => log("meili", line),
+  });
+
+  const kernelHttp = await listenBrandKernelHttp({ api });
+  process.env.METIER_BASE_URL = kernelHttp.baseUrl;
 
   const mcp = createMcpFacade({
     brandId: manifest.brandId,
@@ -55,10 +75,12 @@ async function main(): Promise<void> {
   const navModel = navShell.getRenderModel();
   void mcp;
   void auth;
-  void installBrandDesktopRuntime;
 
   const gotLock = app.requestSingleInstanceLock();
   if (!gotLock) {
+    meiliBoot.meili?.stop();
+    await kernelHttp.close();
+    closeKernel();
     app.quit();
     return;
   }
@@ -72,6 +94,7 @@ async function main(): Promise<void> {
       brandId: manifest.brandId,
       productName: manifest.client.productName,
       appKind: boot.appKind,
+      metierPort: kernelHttp.port,
     },
   });
 
@@ -97,10 +120,12 @@ async function main(): Promise<void> {
 
   log(
     "nav",
-    `merged=${navModel.items.length} mounts=${api.listMounts().length} entities=5 setup=${session.isSetupComplete()}`,
+    `merged=${navModel.items.length} mounts=${api.listMounts().length} entities=5 setup=${session.isSetupComplete()} api=${kernelHttp.baseUrl} search=${meiliBoot.engine}`,
   );
 
   app.on("will-quit", () => {
+    meiliBoot.meili?.stop();
+    void kernelHttp.close();
     closeKernel();
   });
 }

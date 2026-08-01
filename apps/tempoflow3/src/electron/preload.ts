@@ -1,5 +1,5 @@
 /**
- * Preload — bridge desktop OS kit (setup / auth / connexion).
+ * Preload — bridge desktop OS kit (setup / auth / connexion / apiBaseUrl).
  * Généré par creezio new-app --from-prd.
  */
 import { contextBridge, ipcRenderer } from "electron";
@@ -21,3 +21,4 @@ const api = {
 };
 
 contextBridge.exposeInMainWorld(BRIDGE_NAME, api);
+contextBridge.exposeInMainWorld("creezioDesktop", api);
