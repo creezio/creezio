@@ -174,11 +174,17 @@ export async function listenBrandOsHttp(opts: {
           connectionMode: "local",
           autoBootstrap: true,
         });
+        const status = hermes.getHermesStatusPayload("local") as {
+          detail?: string;
+          status?: string;
+          logs?: string[];
+        };
         send(res, running ? 200 : 500, {
           ok: Boolean(running),
           running: Boolean(running),
           binary: hermes.findHermesBinary(),
-          status: hermes.getHermesStatusPayload("local"),
+          status,
+          detail: status?.detail || null,
         });
         return;
       }
