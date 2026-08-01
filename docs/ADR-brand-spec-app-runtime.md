@@ -30,7 +30,21 @@ divergence.
 - `creezio new-app --from-prd` reste supporté (compat) ; le chemin nominal
   agent = BrandSpec → apply.
 
+## Évolution (2026-08-01)
+
+`desktopProfile: "full"` (défaut) compose dans `@creezio/app-runtime` :
+
+- `composeBrandOs` → `createBrandHostRuntime` + `createBrandHostStack`
+  (Hermes / n8n / tunnel / Meili / factory-reset, plugins feature-off)
+- `listenBrandOsHttp` → api-kernel + `/mcp` + `/api/v1/os/*`
+- tasks/mails/assistant via `createBrandKernel`
+
+La marque **ne** contient **pas** `host-stack.ts`.  
+`installBrandDesktopRuntime` (WebContentsView / splash / tray Next) reste
+une couche supérieure à absorber ensuite derrière la même façade
+(Next UI plane), sans jumeau marque.
+
 ## Non-objectifs
 
 - Pas de questionnaire utilisateur final CHR dans le kit.
-- Pas d'absorption du monolithe `installBrandDesktopRuntime` (TempoFlow prod).
+- Pas de copie du monolithe TF2 dans `apps/<marque>`.

@@ -2,8 +2,8 @@ export default function Page() {
   return (
     <section>
       <h1>Collaborateurs</h1>
-      <p>Surface TempoFlow3 — câblée OS/métier Creezio.</p>
-      <p>UI interactive : <code>resources/renderer/index.html#collaborateurs</code></p>
+      <p>OS auth / users kit</p>
+      <p>Surface exposée par l'OS Creezio — pas de jumeau dans la marque.</p>
     </section>
   );
 }

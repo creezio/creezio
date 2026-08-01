@@ -15,3 +15,13 @@ export {
   type CreateBrandKernelOptions,
   type BrandKernelBoot,
 } from "./create-brand-kernel.js";
+export {
+  composeBrandOs,
+  type ComposeBrandOsOptions,
+  type BrandOsComposition,
+  type BrandOsStatus,
+} from "./compose-brand-os.js";
+export {
+  listenBrandOsHttp,
+  type BrandOsHttpHandle,
+} from "./listen-brand-os-http.js";

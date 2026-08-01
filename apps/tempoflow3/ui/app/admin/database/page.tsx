@@ -1,9 +1,9 @@
 export default function Page() {
   return (
     <section>
-      <h1>Database</h1>
-      <p>Surface TempoFlow3 — câblée OS/métier Creezio.</p>
-      <p>UI interactive : <code>resources/renderer/index.html#admin-database</code></p>
+      <h1>Admin Database</h1>
+      <p>core.db + brand.db OS</p>
+      <p>Surface exposée par l'OS Creezio — pas de jumeau dans la marque.</p>
     </section>
   );
 }

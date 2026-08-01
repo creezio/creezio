@@ -1,14 +1,15 @@
 /**
- * Harness Node — même façade HTTP + Meili que le desktop, sans Electron.
+ * Harness Node — même façade HTTP + Meili + OS que le desktop, sans Electron.
  */
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import {
-  listenBrandKernelHttp,
-  maybeBootBrandMeili,
-} from "@creezio/electron-shell";
+import { maybeBootBrandMeili } from "@creezio/electron-shell";
+import { createMcpFacade } from "@creezio/mcp-facade";
 import { brandKernelBooter } from "./create-brand-kernel.js";
+import { composeBrandOs } from "./compose-brand-os.js";
+import { listenBrandOsHttp } from "./listen-brand-os-http.js";
+import { listenBrandKernelHttp } from "@creezio/electron-shell";
 import type {
   BootBrandKernelFn,
   BrandKernelHarnessHandle,
@@ -46,11 +47,24 @@ export async function startBrandKernelHarness(
     config.dataDir ||
     process.env.METIER_DATA_DIR ||
     fs.mkdtempSync(path.join(os.tmpdir(), `${config.brandId}-kernel-`));
+  const desktopProfile = config.desktopProfile || "full";
 
   const bootKernel = resolveBootKernel(config);
   const { api, runtime, close: closeKernel } = bootKernel({
     userDataDir: dataDir,
   });
+
+  const resourcesRoot = path.join(config.appRoot, "resources");
+  let brandOs = null as ReturnType<typeof composeBrandOs> | null;
+  if (desktopProfile === "full" && config.manifest) {
+    brandOs = composeBrandOs({
+      manifest: config.manifest,
+      userDataDir: dataDir,
+      isPackaged: false,
+      resourcesRoot,
+      electronDirname: path.join(config.appRoot, "build/electron"),
+    });
+  }
 
   let searchEngine: BrandKernelHarnessHandle["searchEngine"] = "off";
   let meiliStop: (() => void) | null = null;
@@ -76,19 +90,54 @@ export async function startBrandKernelHarness(
     }
   }
 
-  const httpServer = await listenBrandKernelHttp({
-    api,
-    ...(port && port > 0 ? { port } : {}),
+  const mcp = createMcpFacade({
+    brandId: config.brandId,
+    allowUnauthenticated: true,
+    listApiMounts: () => api.listMounts(),
+    discoverToolsBySpace: async () => ({ module: [], plugin: [] }),
   });
+  mcp.registerTool({
+    name: "module.platform.list_mounts",
+    description: "Liste mounts API",
+    space: "module",
+    ownerId: "platform",
+    handler: async () => ({
+      ok: true,
+      content: { mounts: api.listMounts() },
+    }),
+  });
+  if (brandOs) {
+    mcp.registerTool({
+      name: "module.os.status",
+      description: "Statut OS hosts",
+      space: "module",
+      ownerId: "os",
+      handler: async () => ({ ok: true, content: brandOs!.status() }),
+    });
+  }
+
+  const httpServer =
+    desktopProfile === "full"
+      ? await listenBrandOsHttp({
+          api,
+          mcp,
+          os: brandOs,
+          ...(port && port > 0 ? { port } : {}),
+        })
+      : await listenBrandKernelHttp({
+          api,
+          ...(port && port > 0 ? { port } : {}),
+        });
   process.env.METIER_BASE_URL = httpServer.baseUrl;
 
   console.log(
-    `brand-kernel-harness ${config.brandId} on ${httpServer.baseUrl} data=${dataDir} search=${searchEngine}`,
+    `brand-kernel-harness ${config.brandId} on ${httpServer.baseUrl} data=${dataDir} search=${searchEngine} os=${desktopProfile}`,
   );
 
   const close = async () => {
     meiliStop?.();
     await httpServer.close();
+    brandOs?.close();
     closeKernel();
   };
 
@@ -103,6 +152,7 @@ export async function startBrandKernelHarness(
     port: httpServer.port,
     dataDir,
     searchEngine,
+    desktopProfile,
     api,
     runtime,
     close,

@@ -34,6 +34,11 @@ export type StartBrandDesktopConfig = {
   beforeBoot?: () => void;
   /** Monter tasks/mails/assistant natifs (défaut true). */
   enablePlatformServices?: boolean;
+  /**
+   * `full` (défaut) = compose hosts Hermes/n8n/tunnel + MCP HTTP + OS status.
+   * `lite` = kernel HTTP + Meili seulement (sonde minimale).
+   */
+  desktopProfile?: "full" | "lite";
   /** Feed Meili marque (optionnel — sans feed = pas de boot Meili). */
   meiliFeed?: BrandMeiliFeed;
   /** Items nav brand (slot vertical). */
@@ -52,6 +57,7 @@ export type BrandDesktopHandle = {
   baseUrl: string;
   port: number;
   searchEngine: "meili" | "sql-fallback" | "off";
+  desktopProfile: "full" | "lite";
   close: () => Promise<void>;
 };
 
@@ -63,6 +69,8 @@ export type StartBrandKernelHarnessConfig = {
   registerModuleApi?: (api: ApiKernel) => void;
   beforeBoot?: () => void;
   enablePlatformServices?: boolean;
+  /** Défaut `full` — même composition OS que le desktop. */
+  desktopProfile?: "full" | "lite";
   meiliFeed?: BrandMeiliFeed;
   /** Racine app (pour binaire meili resources/). */
   appRoot: string;
@@ -77,6 +85,7 @@ export type BrandKernelHarnessHandle = {
   port: number;
   dataDir: string;
   searchEngine: "meili" | "sql-fallback" | "off";
+  desktopProfile: "full" | "lite";
   api: ApiKernel;
   runtime: SqliteRuntime;
   close: () => Promise<void>;

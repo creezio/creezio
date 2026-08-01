@@ -25,7 +25,8 @@
     "test": "npm run test:metier-parcours && npm run test:mini-prd-core && npm run test:mini-prd-bonus && npm run test:first-run-auth && npm run test:setup-login && npm run test:allowlist && npm run test:meili-config && npm run test:desktop-smoke-profile",
     "test:mini-prd-bonus": "node scripts/test-mini-prd-bonus.mjs",
     "pack:linux": "npm run build:electron && electron-builder --config electron-builder.client.json --linux AppImage dir --x64",
-    "proof:oracle": "node scripts/proof-oracle-0.10.26.mjs"
+    "proof:oracle": "node scripts/proof-oracle-0.10.26.mjs",
+    "proof:hard": "node scripts/proof-e2e-hard.mjs"
   },
   "dependencies": {
     "@creezio/api-kernel": "0.1.0",

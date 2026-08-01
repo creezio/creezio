@@ -1,7 +1,7 @@
 /**
  * Façade desktop marque — absorbe l'orchestration OS.
- * La marque déclare : manifest, bootKernel, feed, nav.
- * Le kit monte kernel HTTP, session, Meili, MCP, nav cœur.
+ * Profile `full` : hosts Hermes/n8n/tunnel + MCP HTTP + tasks/mails.
+ * Profile `lite` : kernel + Meili seulement.
  */
 import fs from "node:fs";
 import path from "node:path";
@@ -18,6 +18,8 @@ import {
 import { createMcpFacade } from "@creezio/mcp-facade";
 import { createNavShellAdapter } from "@creezio/shell-ui";
 import { brandKernelBooter } from "./create-brand-kernel.js";
+import { composeBrandOs } from "./compose-brand-os.js";
+import { listenBrandOsHttp } from "./listen-brand-os-http.js";
 import type {
   BrandDesktopHandle,
   BootBrandKernelFn,
@@ -88,12 +90,13 @@ export async function startBrandDesktop(
   const { app, BrowserWindow, ipcMain } = await loadElectron();
   const manifest = config.manifest;
   const __dirname = config.electronDirname;
+  const desktopProfile = config.desktopProfile || "full";
 
   const boot = await prepareDesktopBoot(manifest);
   initLogger(boot.userDataDir, config.logBasename || manifest.logBasename);
   log(
     "boot",
-    `kind=${boot.appKind} product=${manifest.client.productName} facade=startBrandDesktop`,
+    `kind=${boot.appKind} product=${manifest.client.productName} facade=startBrandDesktop profile=${desktopProfile}`,
   );
 
   writeAppKindFile(
@@ -112,14 +115,25 @@ export async function startBrandDesktop(
     isPackaged: app.isPackaged,
   });
 
-  let searchEngine: BrandDesktopHandle["searchEngine"] = "off";
-  let meiliStop: (() => void) | null = null;
-
   const resourcesRoot = resolveResourcesRoot(
     app,
     __dirname,
     config.resourcesRel,
   );
+
+  let os = null as ReturnType<typeof composeBrandOs> | null;
+  if (desktopProfile === "full") {
+    os = composeBrandOs({
+      manifest,
+      userDataDir: boot.userDataDir,
+      isPackaged: app.isPackaged,
+      resourcesRoot,
+      electronDirname: __dirname,
+    });
+  }
+
+  let searchEngine: BrandDesktopHandle["searchEngine"] = "off";
+  let meiliStop: (() => void) | null = null;
 
   if (config.meiliFeed) {
     const meiliBin = path.join(resourcesRoot, "meili");
@@ -145,9 +159,6 @@ export async function startBrandDesktop(
     }
   }
 
-  const kernelHttp = await listenBrandKernelHttp({ api });
-  process.env.METIER_BASE_URL = kernelHttp.baseUrl;
-
   const mcp = createMcpFacade({
     brandId: manifest.brandId,
     allowUnauthenticated: true,
@@ -163,7 +174,7 @@ export async function startBrandDesktop(
           ownerId: m.id,
           handler: async () => ({
             ok: true,
-            content: { module: m.id, api: kernelHttp.baseUrl },
+            content: { module: m.id },
           }),
         })),
       plugin: [],
@@ -171,7 +182,7 @@ export async function startBrandDesktop(
   });
   mcp.registerTool({
     name: "module.platform.list_mounts",
-    description: "Liste les mounts API kernel (modules + platform)",
+    description: "Liste les mounts API kernel",
     space: "module",
     ownerId: "platform",
     handler: async () => ({
@@ -179,12 +190,26 @@ export async function startBrandDesktop(
       content: { mounts: api.listMounts() },
     }),
   });
+  if (os) {
+    mcp.registerTool({
+      name: "module.os.status",
+      description: "Statut hosts OS Creezio (Hermes/n8n/tunnel)",
+      space: "module",
+      ownerId: "os",
+      handler: async () => ({ ok: true, content: os!.status() }),
+    });
+  }
+
+  const httpServer =
+    desktopProfile === "full"
+      ? await listenBrandOsHttp({ api, mcp, os })
+      : await listenBrandKernelHttp({ api });
+  process.env.METIER_BASE_URL = httpServer.baseUrl;
 
   const navShell = createNavShellAdapter();
   if (config.navItems?.length) {
     navShell.registerBrandNav(config.navItems);
   }
-  // Alias OS FR (parity TF2 / oracle paths)
   navShell.registerBrandNav([
     { id: "os.setup", label: "Setup", href: "/setup", group: "core" },
     { id: "os.login", label: "Login", href: "/login", group: "core" },
@@ -201,7 +226,8 @@ export async function startBrandDesktop(
 
   const cleanup = async () => {
     meiliStop?.();
-    await kernelHttp.close();
+    await httpServer.close();
+    os?.close();
     closeKernel();
   };
 
@@ -210,9 +236,10 @@ export async function startBrandDesktop(
     await cleanup();
     app.quit();
     return {
-      baseUrl: kernelHttp.baseUrl,
-      port: kernelHttp.port,
+      baseUrl: httpServer.baseUrl,
+      port: httpServer.port,
       searchEngine,
+      desktopProfile,
       close: cleanup,
     };
   }
@@ -226,7 +253,7 @@ export async function startBrandDesktop(
       brandId: manifest.brandId,
       productName: manifest.client.productName,
       appKind: boot.appKind,
-      metierPort: kernelHttp.port,
+      metierPort: httpServer.port,
     },
   });
 
@@ -252,7 +279,7 @@ export async function startBrandDesktop(
   const mcpTools = await mcp.listTools();
   log(
     "nav",
-    `merged=${navModel.items.length} mounts=${mounts.length} mcp=${mcpTools.tools.length} setup=${session.isSetupComplete()} api=${kernelHttp.baseUrl} search=${searchEngine}`,
+    `merged=${navModel.items.length} mounts=${mounts.length} mcp=${mcpTools.tools.length} os=${desktopProfile} setup=${session.isSetupComplete()} api=${httpServer.baseUrl} search=${searchEngine}`,
   );
 
   app.on("will-quit", () => {
@@ -260,9 +287,10 @@ export async function startBrandDesktop(
   });
 
   return {
-    baseUrl: kernelHttp.baseUrl,
-    port: kernelHttp.port,
+    baseUrl: httpServer.baseUrl,
+    port: httpServer.port,
     searchEngine,
+    desktopProfile,
     close: cleanup,
   };
 }

@@ -54,6 +54,7 @@
           <a href="#login" data-page="login" class="os">Login</a>
           <a href="#taches" data-page="taches" class="os">Tâches</a>
           <a href="#mails" data-page="mails" class="os">Mails</a>
+          <a href="#os" data-page="os" class="os">OS / MCP</a>
     </nav>
     <main id="app">
       <p>Chargement API métier…</p>
@@ -77,7 +78,8 @@
         {"id":"setup","path":"/setup","title":"Setup","kind":"os"},
         {"id":"login","path":"/login","title":"Login","kind":"os"},
         {"id":"taches","path":"/taches","title":"Tâches","kind":"os-tasks"},
-        {"id":"mails","path":"/mails","title":"Mails","kind":"os-mails"}
+        {"id":"mails","path":"/mails","title":"Mails","kind":"os-mails"},
+        {"id":"os","path":"/os","title":"OS / MCP","kind":"os-status"}
       ];
       const ENTITIES = ["fournisseurs","produits","prix","panier_lignes","commandes"];
       const BRIDGE = window.creezioDesktop || window["tempoflow3Desktop"];
@@ -141,6 +143,16 @@
           const mails = data.mails || [];
           main.innerHTML = "<section class='panel active'><h2>Mails (OS)</h2><p>" +
             mails.length + " mail(s)</p></section>";
+          return;
+        }
+        if (page.kind === "os-status") {
+          const st = await api("/api/v1/os/status");
+          const hosts = await api("/api/v1/os/hosts");
+          const mcp = await api("/mcp");
+          main.innerHTML = "<section class='panel active'><h2>OS Creezio</h2>" +
+            "<p>Hosts composés dans <code>@creezio/app-runtime</code> (pas dans la marque).</p>" +
+            "<pre>" + JSON.stringify({ status: st, constructed: hosts.constructed, mcpTools: (mcp.tools||[]).length }, null, 2) +
+            "</pre></section>";
           return;
         }
         main.innerHTML = "<section class='panel active'><h2>" + page.title +
