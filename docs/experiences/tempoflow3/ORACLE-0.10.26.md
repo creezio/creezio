@@ -139,11 +139,11 @@ Exemples de domaines code marque :
 ### OS / parity 0.10.26 (hors MVP sonde métier)
 
 - [ ] Boot Client / Serveur (profils Héberger / Rejoindre) complet
-- [ ] Recovery key
-- [ ] Tâches kanban + mission IA
-- [ ] Mails inbox
-- [ ] MCP URL publique tunnel + OAuth
-- [ ] Plugins control plane
-- [ ] Hermes / n8n embeds
-- [ ] Admin MCP / database / plugins
-- [ ] `test:shell` agrégat vert (équivalent kit)
+- [x] Recovery key (kit `test-os-shell` BYOK+recovery)
+- [ ] Tâches kanban + mission IA (API platform tasks/mails montées ; UI kanban partielle)
+- [ ] Mails inbox (API platform montée ; inbox UI TF2 non paritaire)
+- [ ] MCP URL publique tunnel distant + OAuth — **local MCP prouvé** ; distant = bloqueur credentials
+- [x] Plugins control plane opt-in (`CREEZIO_PLUGINS=1`, `GET /api/v1/os/plugins`)
+- [x] Hermes / n8n embeds — ensure+start prouvés (`proof:hard` / cold-warm) ; GUI embed partielle
+- [ ] Admin MCP / database / plugins (pages admin TF2)
+- [ ] `test:shell` agrégat vert (équivalent kit ~40) — agrégat partiel `test-os-shell*` OK

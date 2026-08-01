@@ -13,6 +13,7 @@ import {
   createBrandHostStack,
   createLocalConfigStoreSync,
   createLocalSplashSteps,
+  createPluginsHost,
   log,
   type BrandHostSingletons,
   type BrandHostStack,
@@ -285,6 +286,17 @@ export function composeBrandOs(
     // Opt-in : composeBrandOs({ pluginsFeatureOff: false }) ou CREEZIO_PLUGINS=1.
     pluginsFeatureOff,
     featureOffBrandLabel: product,
+    ...(!pluginsFeatureOff
+      ? {
+          getPlugins: (() => {
+            let host: ReturnType<typeof createPluginsHost> | null = null;
+            return () =>
+              (host ??= createPluginsHost({
+                ctx: hostRuntime.hostRuntimeContext(),
+              }));
+          })(),
+        }
+      : {}),
   });
 
   const pluginsMode = pluginsFeatureOff ? "feature-off" : "enabled";

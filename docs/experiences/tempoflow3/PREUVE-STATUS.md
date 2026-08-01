@@ -11,6 +11,7 @@
 | `test-os-shell` / contracts | OK | Contrats + BYOK/recovery/updater |
 | `test-os-cold-warm` | OK ready + **n8n start** | free-port via lsof (fuser absent CI) |
 | `test-os-native-pnp` | 4/4 | Marque neuve apply → tsc → `/os/ready` |
+| `test-os-plugins` | 2/2 | feature-off + `CREEZIO_PLUGINS=1` listPlugins |
 | `test-os-electron-runtime-smoke` | wiring OK | Launch xvfb optionnel / skip CI |
 
 ## Avancées kit cette itération

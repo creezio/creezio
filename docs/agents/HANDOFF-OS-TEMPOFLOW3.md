@@ -49,7 +49,7 @@ Puis **TempoFlow3** doit atteindre une **parité comportementale** avec TempoFlo
 
 1. **Tunnel Cloudflare distant** — **bloqueur credentials** : pas de `CREEZIO_TUNNEL_PROVISION_URL` / `_TOKEN` dans cet environnement. Fallback local MCP **prouvé** (`enableLocalPublicSurface` + `/mcp`).  
 2. **n8n start cold** — **prouvé** via lsof kill + `ensureN8nDesktopPortFree` (`test-os-cold-warm` + `proof:hard` os.n8n-start). Surveiller race « reuse vs spawn » si zombie healthz OK.  
-3. **Plugins control plane** via `startBrandDesktop` non prouvé (`CREEZIO_PLUGINS=1`).  
+3. **Plugins control plane** — **prouvé** opt-in (`CREEZIO_PLUGINS=1`, `GET /api/v1/os/plugins`, `test-os-plugins`). Pas encore admin UI TF2.  
 4. **Electron GUI** AdsPower / xvfb systématique non vert en CI.  
 5. **`test:shell` 0.10.26 complet** (~40 scripts) — agrégat kit partiel seulement.  
 6. **BrandSpec modules → code auto** — owned-by-brand protège, mais ne génère pas le bonus depuis YAML.

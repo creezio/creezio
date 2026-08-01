@@ -410,6 +410,44 @@ export async function listenBrandOsHttp(opts: {
         return;
       }
 
+      if (pathname === "/api/v1/os/plugins" && req.method === "GET") {
+        if (!opts.os) {
+          send(res, 503, { ok: false, error: "os_not_composed" });
+          return;
+        }
+        const mode = opts.os.status().hosts.plugins;
+        if (mode === "feature-off") {
+          send(res, 200, {
+            ok: true,
+            mode: "feature-off",
+            plugins: [],
+            hint: "CREEZIO_PLUGINS=1 pour activer le control plane kit",
+          });
+          return;
+        }
+        try {
+          const host = opts.os.hostStack.hostPlugins() as {
+            listPlugins: () => unknown[];
+            getStatus?: () => unknown;
+          };
+          const plugins = host.listPlugins();
+          send(res, 200, {
+            ok: true,
+            mode: "enabled",
+            plugins,
+            count: plugins.length,
+            status: host.getStatus?.() ?? null,
+          });
+        } catch (err) {
+          send(res, 500, {
+            ok: false,
+            mode: "enabled",
+            error: err instanceof Error ? err.message : String(err),
+          });
+        }
+        return;
+      }
+
       if (pathname === "/api/v1/os/tunnel/local" && req.method === "POST") {
         if (!opts.os) {
           send(res, 503, { ok: false, error: "os_not_composed" });
