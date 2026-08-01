@@ -1,6 +1,8 @@
 /**
  * Scaffold d'une app marque Client+Serveur consommant @creezio/*.
- * Pas de catalogue TempoFlow — nav core placeholder + slot métier vide.
+ *
+ * Mode classique (`--name/--id/--domain`) : OS shell + slot métier vide.
+ * Mode `--from-prd` : ProductModel → schéma / API / UI / nav / wiring / smokes.
  */
 
 import fs from "node:fs";
@@ -12,6 +14,8 @@ import {
   validateAppManifest,
 } from "@creezio/brand-config";
 import { MINIMAL_PNG_BASE64 } from "./minimal-png.js";
+import type { ProductModel } from "./product-model.js";
+import { writeFromPrdArtifacts } from "./scaffold-from-prd.js";
 
 export type NewAppOptions = {
   brandId: string;
@@ -23,12 +27,15 @@ export type NewAppOptions = {
   sandbox?: boolean;
   force?: boolean;
   kitRoot?: string;
+  /** Présent si `creezio new-app --from-prd` */
+  productModel?: ProductModel;
 };
 
 export type ScaffoldResult = {
   outDir: string;
   manifest: AppManifest;
   writtenFiles: string[];
+  productModel?: ProductModel;
 };
 
 function writeFile(
@@ -753,5 +760,20 @@ export function scaffoldNewApp(opts: NewAppOptions): ScaffoldResult {
     );
   }
 
-  return { outDir, manifest, writtenFiles: written };
+  if (opts.productModel) {
+    writeFromPrdArtifacts({
+      outDir,
+      manifest,
+      model: opts.productModel,
+      force,
+      written,
+    });
+  }
+
+  return {
+    outDir,
+    manifest,
+    writtenFiles: written,
+    productModel: opts.productModel,
+  };
 }

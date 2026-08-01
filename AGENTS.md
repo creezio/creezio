@@ -93,6 +93,29 @@ restart après PUT files efface le process respawné.
 4. Adapter wiring / tests marque si l’API publique change.
 5. `test:shell` / gates marque.
 
+## Créer une marque depuis un brief produit
+
+Happy path **non technique** (expérience TempoFlow3) :
+
+1. Lire uniquement
+   [`docs/experiences/tempoflow3/PROMPT-PRODUIT.md`](./docs/experiences/tempoflow3/PROMPT-PRODUIT.md)
+   et le PRD qu’il pointe
+   ([`PRD-PRODUIT.md`](./docs/experiences/tempoflow3/PRD-PRODUIT.md)).
+2. Générer l’app :
+
+```bash
+creezio new-app \
+  --from-prd docs/experiences/tempoflow3/PRD-PRODUIT.md \
+  --out /tmp/tempoflow3 --force
+cd /tmp/tempoflow3 && npm run test:metier-parcours
+```
+
+3. Si un générique manque → **corriger creezio** (factory / générateurs /
+   packages natifs), pas enrichir le prompt avec du jargon kit.
+
+Pas besoin de MASTER-PROMPT / P0–P12 pour ce parcours. Détail ADR :
+[`docs/ADR-factory-from-prd.md`](./docs/ADR-factory-from-prd.md).
+
 ## Ne pas faire
 
 - Committer des secrets / PAT.
@@ -100,6 +123,8 @@ restart après PUT files efface le process respawné.
 - Modifier `docs/PHASE-*.md` historiques pour cacher une régression (ajouter une note / nouvelle phase).
 - Toucher `apps/demobrand` comme produit client — c’est une sandbox kit.
 - Réécrire toute la doc dans un seul fichier à la racine.
+- Exiger un plan ingénieur (host-stack, sync-vendor, phases P*) pour un brief
+  produit : utiliser `--from-prd` à la place.
 
 ## Liens rapides
 
@@ -107,3 +132,5 @@ restart après PUT files efface le process respawné.
 - [docs/MATRICE-NATIVE-METIER-PLUGIN.md](./docs/MATRICE-NATIVE-METIER-PLUGIN.md)
 - [docs/PROPAGATION.md](./docs/PROPAGATION.md)
 - [docs/ETAT-DES-LIEUX-INTENTION.md](./docs/ETAT-DES-LIEUX-INTENTION.md)
+- [docs/experiences/tempoflow3/PROMPT-PRODUIT.md](./docs/experiences/tempoflow3/PROMPT-PRODUIT.md)
+- [docs/ADR-factory-from-prd.md](./docs/ADR-factory-from-prd.md)

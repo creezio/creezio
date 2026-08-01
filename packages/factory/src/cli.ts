@@ -1,14 +1,21 @@
 /**
- * CLI `creezio new-app` — factory Phase D.
+ * CLI `creezio new-app` — factory OS + app métier depuis PRD.
  *
  * Usage:
  *   creezio new-app --name DemoBrand --id demobrand --domain demobrand.creez.io
- *   npm run factory:new-app -- --name DemoBrand --id demobrand
+ *   creezio new-app --from-prd docs/experiences/tempoflow3/PRD-PRODUIT.md --out /tmp/tf3
  */
 
+import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { scaffoldNewApp, type NewAppOptions } from "./scaffold.js";
+import {
+  assertProductModel,
+  parseProductPrd,
+  safeBrandId,
+  type ProductModel,
+} from "./product-model.js";
 
 export type CliArgs = {
   command: string;
@@ -21,6 +28,7 @@ export type CliArgs = {
   force?: boolean;
   sandbox?: boolean;
   help?: boolean;
+  fromPrd?: string;
 };
 
 export function parseArgs(argv: string[]): CliArgs {
@@ -48,6 +56,9 @@ export function parseArgs(argv: string[]): CliArgs {
     else if (a.startsWith("--feed-token="))
       out.feedToken = a.slice("--feed-token=".length);
     else if (a === "--feed-token") out.feedToken = rest.shift();
+    else if (a.startsWith("--from-prd="))
+      out.fromPrd = a.slice("--from-prd=".length);
+    else if (a === "--from-prd") out.fromPrd = rest.shift();
     else throw new Error(`Argument inconnu: ${a}`);
   }
   return out;
@@ -57,9 +68,17 @@ function printHelp(): void {
   console.log(`creezio — factory kit Creezio
 
 Usage:
+  creezio new-app --from-prd <prd.md> [--out <dir>] [overrides]
   creezio new-app --name <ProductName> --id <brandId> --domain <host> [options]
 
-Options:
+Mode produit (recommandé) :
+  --from-prd      Brief / PRD markdown non technique
+                  Dérive name / id / domain ; génère métier + wiring OS
+
+Overrides optionnels avec --from-prd :
+  --name, --id, --domain, --out, --env-prefix, --feed-token, --sandbox/--no-sandbox, --force
+
+Mode technique (squelette OS vide) :
   --name          Nom produit (ex. DemoBrand)
   --id            brandId court (ex. demobrand)
   --domain        Domaine feed/tunnel (ex. demobrand.creez.io)
@@ -71,15 +90,48 @@ Options:
   --force         Écrase les fichiers existants
   -h, --help      Aide
 
-Équivalent npm:
-  npm run factory:new-app -- --name DemoBrand --id demobrand --domain demobrand.creez.io
+Exemples:
+  creezio new-app --from-prd docs/experiences/tempoflow3/PRD-PRODUIT.md --out /tmp/tempoflow3
+  creezio new-app --name DemoBrand --id demobrand --domain demobrand.creez.io
 `);
 }
 
 function kitRoot(): string {
-  // packages/factory/dist → ../../
+  // packages/factory/dist → ../../..
   const here = path.dirname(fileURLToPath(import.meta.url));
   return path.resolve(here, "../../..");
+}
+
+function loadProductModel(args: CliArgs, root: string): ProductModel {
+  const prdPath = path.resolve(root, args.fromPrd!);
+  if (!fs.existsSync(prdPath)) {
+    // aussi accepter chemin absolu déjà résolu
+    const abs = path.resolve(args.fromPrd!);
+    if (!fs.existsSync(abs)) {
+      throw new Error(`PRD introuvable: ${args.fromPrd}`);
+    }
+    return finalizeModel(parseProductPrd(fs.readFileSync(abs, "utf8"), {
+      sourcePath: abs,
+      brandId: args.id,
+      brandName: args.name,
+    }), args);
+  }
+  return finalizeModel(
+    parseProductPrd(fs.readFileSync(prdPath, "utf8"), {
+      sourcePath: prdPath,
+      brandId: args.id,
+      brandName: args.name,
+    }),
+    args,
+  );
+}
+
+function finalizeModel(model: ProductModel, args: CliArgs): ProductModel {
+  if (args.id) model.brandId = safeBrandId(args.id);
+  if (args.name) model.brandName = args.name.trim();
+  if (args.domain) model.domain = args.domain.trim();
+  assertProductModel(model);
+  return model;
 }
 
 export async function runCli(argv: string[]): Promise<void> {
@@ -94,30 +146,57 @@ export async function runCli(argv: string[]): Promise<void> {
     throw new Error(`Commande inconnue: ${args.command} (seul new-app est supporté)`);
   }
 
-  if (!args.name || !args.id || !args.domain) {
-    printHelp();
-    throw new Error("--name, --id et --domain sont requis");
+  const root = kitRoot();
+  let productModel: ProductModel | undefined;
+  let brandId: string;
+  let productName: string;
+  let domain: string;
+
+  if (args.fromPrd) {
+    productModel = loadProductModel(args, root);
+    brandId = productModel.brandId;
+    productName = productModel.brandName;
+    domain = args.domain?.trim() || productModel.domain;
+  } else {
+    if (!args.name || !args.id || !args.domain) {
+      printHelp();
+      throw new Error(
+        "Soit --from-prd <file>, soit --name + --id + --domain sont requis",
+      );
+    }
+    brandId = args.id;
+    productName = args.name;
+    domain = args.domain;
   }
 
-  const root = kitRoot();
   const outDir = path.resolve(
-    args.out || path.join(root, "apps", args.id.trim().toLowerCase()),
+    args.out || path.join(root, "apps", brandId.trim().toLowerCase()),
   );
 
   const opts: NewAppOptions = {
-    brandId: args.id,
-    productName: args.name,
-    domain: args.domain,
+    brandId,
+    productName,
+    domain,
     outDir,
     envPrefix: args.envPrefix,
     feedToken: args.feedToken,
     sandbox: args.sandbox !== false,
     force: Boolean(args.force),
     kitRoot: root,
+    productModel,
   };
 
   const result = scaffoldNewApp(opts);
   console.log(`✓ AppManifest ${result.manifest.brandId}`);
+  if (result.productModel) {
+    console.log(`  from-prd     ${result.productModel.sourcePrdPath || args.fromPrd}`);
+    console.log(
+      `  entities     ${result.productModel.entities.map((e) => e.id).join(", ")}`,
+    );
+    console.log(
+      `  pages        ${result.productModel.pages.map((p) => p.path).join(", ")}`,
+    );
+  }
   console.log(`  client GUID  ${result.manifest.client.nsisGuid}`);
   console.log(`  server GUID  ${result.manifest.server.nsisGuid}`);
   console.log(`  feed client  ${result.manifest.client.feedUrl}`);
@@ -128,8 +207,15 @@ export async function runCli(argv: string[]): Promise<void> {
   }
   console.log("");
   console.log("Suite:");
-  console.log(`  cd ${result.outDir} && npm install && npm run build`);
-  console.log(
-    `  npm run desktop:publish -- --brand=${result.manifest.brandId} --dry-run`,
-  );
+  if (result.productModel) {
+    console.log(`  cd ${result.outDir}`);
+    console.log(`  npm run test:metier-parcours`);
+    console.log(`  npm run test:first-run-auth`);
+    console.log(`  npm run metier:api   # API locale métier`);
+  } else {
+    console.log(`  cd ${result.outDir} && npm install && npm run build`);
+    console.log(
+      `  npm run desktop:publish -- --brand=${result.manifest.brandId} --dry-run`,
+    );
+  }
 }

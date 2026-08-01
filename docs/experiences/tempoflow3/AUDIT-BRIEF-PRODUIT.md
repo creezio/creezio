@@ -1,9 +1,16 @@
 # Audit — brief produit non technique → app TempoFlow
 
 **Date** : 2026-08-01  
+**Mise à jour** : 2026-08-01 — phases **F0→F5 livrées** (`creezio new-app --from-prd`,
+générateurs métier, smokes, gates
+`scripts/test-phase-factory-prd*.mjs`).  
 **Question** : un prompt du type « app pour restaurateurs / prix fournisseurs /
 panier / commandes » + le repo `creezio` suffisent-ils à créer TempoFlow3 ?  
-**Réponse** : **Non.** Preuves ci-dessous. Ce n’est pas une opinion.
+**Réponse (avant F0–F5)** : **Non.** Preuves historiques ci-dessous.  
+**Réponse (après F0–F5)** : **Oui pour le MVP parcours**
+`fournisseurs → prix → panier → commande` via
+`creezio new-app --from-prd docs/experiences/tempoflow3/PRD-PRODUIT.md`.
+Parity complète oracle 0.10.26 = phase F6 (hors scope de cette livraison).
 
 ---
 
