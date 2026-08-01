@@ -166,6 +166,21 @@ CREATE TABLE IF NOT EXISTS data_mappings (
 );
 `;
 
+/** Snapshot lignes commande (détail TF2-like). */
+export const BRAND_COMMANDES_LIGNES_SQL = `
+CREATE TABLE IF NOT EXISTS commande_lignes (
+  id TEXT PRIMARY KEY,
+  commande_id TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  produit_id TEXT,
+  produit_nom TEXT,
+  fournisseur_id TEXT,
+  quantite REAL NOT NULL,
+  prix_unitaire REAL,
+  total_ligne REAL
+);
+`;
+
 export function brandMigrations(): SqliteMigration[] {
   return composeMigrations(
     {
@@ -175,6 +190,10 @@ export function brandMigrations(): SqliteMigration[] {
     {
       id: "fromprd_brand_002_bonus_modules",
       sql: BRAND_BONUS_SQL,
+    },
+    {
+      id: "fromprd_brand_003_commande_lignes",
+      sql: BRAND_COMMANDES_LIGNES_SQL,
     },
   );
 }

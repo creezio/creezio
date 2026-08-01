@@ -51,8 +51,50 @@ function createEntityMount(table: string): ApiMount {
       if (parts.length === 1) {
         const id = parts[0]!;
         if (method === "GET") {
-          const row = db.prepare(`SELECT * FROM ${table} WHERE id = ?`).get(id);
+          const row = db
+            .prepare(`SELECT * FROM ${table} WHERE id = ?`)
+            .get(id) as Record<string, unknown> | undefined;
           if (!row) return { status: 404, body: { error: "not_found" } };
+          if (table === "commandes") {
+            const lignes = db
+              .prepare(
+                `SELECT * FROM commande_lignes WHERE commande_id = ? ORDER BY created_at`,
+              )
+              .all(id);
+            const four = db
+              .prepare(`SELECT id, nom FROM fournisseurs WHERE id = ?`)
+              .get(row.fournisseur_id) as
+              | { id: string; nom: string }
+              | undefined;
+            return {
+              status: 200,
+              body: {
+                ...row,
+                fournisseur_nom: four?.nom || null,
+                lignes,
+                nb_lignes: lignes.length,
+              },
+            };
+          }
+          if (table === "produits") {
+            const prix = db
+              .prepare(
+                `SELECT * FROM prix WHERE produit_id = ? ORDER BY montant ASC, created_at DESC`,
+              )
+              .all(id);
+            const inStack = db
+              .prepare(`SELECT 1 AS x FROM stack_produits WHERE produit_id = ?`)
+              .get(id);
+            return {
+              status: 200,
+              body: {
+                ...row,
+                sku: String(row.id).slice(0, 8).toUpperCase(),
+                prix,
+                in_stack: Boolean(inStack),
+              },
+            };
+          }
           return { status: 200, body: row };
         }
         if (method === "PATCH") {
@@ -242,9 +284,34 @@ function createEntityMount(table: string): ApiMount {
           total,
           body.notes || "",
         );
+        for (const l of related) {
+          const produit = db
+            .prepare(`SELECT nom FROM produits WHERE id = ?`)
+            .get(l.produit_id) as { nom?: string } | undefined;
+          const q = Number(l.quantite || 0);
+          const pu = Number(l.prix_unitaire || 0);
+          db.prepare(
+            `INSERT INTO commande_lignes
+             (id, commande_id, created_at, produit_id, produit_nom, fournisseur_id, quantite, prix_unitaire, total_ligne)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          ).run(
+            randomUUID(),
+            id,
+            created,
+            l.produit_id,
+            produit?.nom || "",
+            l.fournisseur_id,
+            q,
+            pu,
+            q * pu,
+          );
+        }
         db.prepare(`DELETE FROM panier_lignes WHERE fournisseur_id = ?`).run(
           fournisseurId,
         );
+        const lignesSaved = db
+          .prepare(`SELECT * FROM commande_lignes WHERE commande_id = ?`)
+          .all(id);
         return {
           status: 201,
           body: {
@@ -255,11 +322,10 @@ function createEntityMount(table: string): ApiMount {
             statut: "brouillon",
             total_ht: total,
             notes: body.notes || "",
-            lignes: related,
+            lignes: lignesSaved,
           },
         };
       }
-
 
       return { status: 404, body: { error: "not_found", subPath } };
     },

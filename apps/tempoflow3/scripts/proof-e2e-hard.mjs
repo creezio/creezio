@@ -219,11 +219,25 @@ try {
     n8nEnsure.status < 300 && n8nEnsure.data.ok === true && Boolean(n8nEnsure.data.entry),
     n8nEnsure.data.entry || n8nEnsure.data.detail || n8nEnsure.data.error,
   );
-  // n8n start : premier boot = migrations longues — retry
+  // n8n start : premier boot = migrations longues — retry + poll status
   let n8nStart = await json("POST", "/api/v1/os/n8n/start", {});
-  for (let i = 0; i < 8 && !(n8nStart.data?.running === true); i++) {
+  for (let i = 0; i < 24 && !(n8nStart.data?.running === true); i++) {
     await new Promise((r) => setTimeout(r, 5000));
     n8nStart = await json("POST", "/api/v1/os/n8n/start", {});
+    if (n8nStart.data?.running) break;
+    const st = await json("GET", "/api/v1/os/n8n/status");
+    if (st.data?.status?.status === "running") {
+      n8nStart = {
+        status: 200,
+        data: {
+          ok: true,
+          running: true,
+          entry: st.data.entry,
+          status: st.data.status,
+        },
+      };
+      break;
+    }
   }
   record(
     "os.n8n-start",
@@ -314,6 +328,20 @@ try {
     fournisseur_id: f.data.id,
   });
   record("metier.commande", cmd.status < 300 && cmd.data.id, cmd.data.id || JSON.stringify(cmd.data));
+  const cmdDetail = await json("GET", `/api/v1/modules/commandes/${cmd.data.id}`);
+  record(
+    "metier.commande-detail",
+    cmdDetail.status === 200 &&
+      Array.isArray(cmdDetail.data.lignes) &&
+      cmdDetail.data.lignes.length >= 1,
+    `lignes=${cmdDetail.data.lignes?.length}`,
+  );
+  const prodDetail = await json("GET", `/api/v1/modules/produits/${p.data.id}`);
+  record(
+    "metier.produit-detail",
+    prodDetail.status === 200 && Array.isArray(prodDetail.data.prix),
+    `prix=${prodDetail.data.prix?.length}`,
+  );
 
   const opt = await json("POST", "/api/v1/modules/optimiser/suggest", {
     produit_id: p.data.id,
