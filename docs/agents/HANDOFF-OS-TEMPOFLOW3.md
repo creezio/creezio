@@ -50,7 +50,7 @@ Audit : `docs/experiences/tempoflow3/AUDIT-GAPS-2026-08-01.md`.
 #### A. OS kit
 
 1. **Tunnel Cloudflare distant** — **bloqueur credentials**. Local MCP + OAuth loopback **prouvés**.  
-2. **Electron GUI** AdsPower (xvfb smoke possible).  
+2. **Electron GUI** — smoke xvfb OK ; parcours manuel desktop si besoin.  
 3. **`test:shell` ~40** TF2 — extensions kit OK, suite complète non.  
 
 #### B. TempoFlow3 profondeur TF2
@@ -61,7 +61,7 @@ Audit : `docs/experiences/tempoflow3/AUDIT-GAPS-2026-08-01.md`.
 
 #### C. Oracle OS
 
-Majorité cochée ; restant : tunnel distant, AdsPower, shell TF2 complet.
+Majorité cochée ; restant : tunnel distant, shell TF2 complet.
 
 ---
 
@@ -147,7 +147,7 @@ startBrandDesktop({
 ### Phase 4 — Preuve opérateur
 
 1. Reset clean : wipe app sauf `brand-spec` → apply → modules → build → proof.  
-2. Parcours manuel (ou AdsPower si dispo) : first-run → catalogue → panier → commande → optimiser → MCP public.  
+2. Parcours manuel desktop (ou smoke xvfb) : first-run → catalogue → panier → commande → optimiser → MCP public.  
 3. Mettre à jour `ORACLE-0.10.26.md` checklist OS en `[x]` **uniquement** avec preuves.
 
 ---

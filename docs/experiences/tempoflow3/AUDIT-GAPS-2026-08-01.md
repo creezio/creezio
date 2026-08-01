@@ -4,7 +4,7 @@ Date : 2026-08-01. Ref TF2 : `v0.10.26` / `e36e4d0`.
 
 ## Verdict
 
-Kit OS boot/P&P et métier API TF3 **largement prouvés**. Vague P1 livrée : OAuth/admin harness, canvas optimiser, navigateur slots, apply-modules scaffold. Bloqueurs restants surtout **externes** (tunnel distant, AdsPower).
+Kit OS boot/P&P et métier API TF3 **largement prouvés**. Vague P1 livrée : OAuth/admin harness, canvas optimiser, navigateur slots, apply-modules scaffold. Bloqueur externe principal : tunnel Cloudflare distant (credentials).
 
 ## Déjà OK (A)
 
@@ -30,6 +30,6 @@ Kit OS boot/P&P et métier API TF3 **largement prouvés**. Vague P1 livrée : OA
 ## Restant (P2 / externes)
 
 - Tunnel Cloudflare distant (`CREEZIO_TUNNEL_PROVISION_*`)
-- AdsPower / profondeur GUI
 - `test:shell` ~40 scripts TF2 complets
 - ReactFlow atelier optimiser pixel-parity / missions IA
+- Profondeur GUI Electron au-delà du smoke xvfb

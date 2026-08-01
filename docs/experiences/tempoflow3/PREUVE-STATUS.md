@@ -4,7 +4,7 @@
 
 | Gate | Résultat | Limite |
 |------|----------|--------|
-| `proof:hard` | **81/81 SUCCESS** | OAuth+canvas+slots+admin ; pas AdsPower |
+| `proof:hard` | **81/81 SUCCESS** | OAuth+canvas+slots+admin ; GUI Electron = xvfb smoke |
 | `proof:oracle` | **37/37 SUCCESS** | |
 | `test-os-mcp-oauth` | **PASS** well-known + DCR + admin | loopback |
 | `test-os-shell-more` | **PASS** | profile/recovery/tunnel |
@@ -30,7 +30,6 @@ Voir `AUDIT-GAPS-2026-08-01.md`.
 ## Encore ouvert (externes / profondeur)
 
 - Tunnel Cloudflare distant (`CREEZIO_TUNNEL_PROVISION_*`)
-- AdsPower GUI
 - `test:shell` ~40 scripts TF2 complets
 - ReactFlow optimiser TF2 pixel-perfect / missions IA riches
 
