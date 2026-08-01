@@ -22,6 +22,7 @@ import { composeBrandOs } from "./compose-brand-os.js";
 import { listenBrandOsHttp } from "./listen-brand-os-http.js";
 import { startBrandUiPlane } from "./start-brand-ui-plane.js";
 import { installBrandOsDesktop } from "./install-brand-os-desktop.js";
+import { warmBrandNativeHosts } from "./warm-brand-native-hosts.js";
 import type {
   BrandDesktopHandle,
   BootBrandKernelFn,
@@ -209,6 +210,19 @@ export async function startBrandDesktop(
       ? await listenBrandOsHttp({ api, mcp, os })
       : await listenBrandKernelHttp({ api });
   process.env.METIER_BASE_URL = httpServer.baseUrl;
+
+  // Fullstack natif kit (n8n + Hermes) — CREEZIO_NATIVE_WARM=0 pour skip.
+  if (os && desktopProfile === "full" && process.env.CREEZIO_NATIVE_WARM !== "0") {
+    const warm = await warmBrandNativeHosts(os, {
+      start: process.env.CREEZIO_NATIVE_START !== "0",
+      n8n: true,
+      hermes: process.env.CREEZIO_NATIVE_WARM_HERMES !== "0",
+    });
+    log(
+      "native",
+      `warm n8n.started=${warm.n8n.started} entry=${warm.n8n.entry} hermes.started=${warm.hermes.started} binary=${warm.hermes.binary}`,
+    );
+  }
 
   const navShell = createNavShellAdapter();
   if (config.navItems?.length) {

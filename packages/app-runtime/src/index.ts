@@ -34,3 +34,7 @@ export {
   brandPreloadPath,
   type InstallBrandOsDesktopOptions,
 } from "./install-brand-os-desktop.js";
+export {
+  warmBrandNativeHosts,
+  type WarmNativeHostsResult,
+} from "./warm-brand-native-hosts.js";

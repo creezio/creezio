@@ -37,7 +37,8 @@
   },
   "files": [
     "dist",
-    "dist-cjs"
+    "dist-cjs",
+    "resources"
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json",

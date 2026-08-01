@@ -10,6 +10,7 @@ import { brandKernelBooter } from "./create-brand-kernel.js";
 import { composeBrandOs } from "./compose-brand-os.js";
 import { listenBrandOsHttp } from "./listen-brand-os-http.js";
 import { listenBrandKernelHttp } from "@creezio/electron-shell";
+import { warmBrandNativeHosts } from "./warm-brand-native-hosts.js";
 import type {
   BootBrandKernelFn,
   BrandKernelHarnessHandle,
@@ -133,6 +134,25 @@ export async function startBrandKernelHarness(
   console.log(
     `brand-kernel-harness ${config.brandId} on ${httpServer.baseUrl} data=${dataDir} search=${searchEngine} os=${desktopProfile}`,
   );
+
+  // Fullstack OS ready : ensure/start natifs depuis le kit (pas la marque).
+  // CREEZIO_NATIVE_WARM=0 pour skip (smokes rapides) ; défaut = warm n8n.
+  // Hermes : CREEZIO_NATIVE_WARM_HERMES=1 (install lourde first-run).
+  if (
+    brandOs &&
+    desktopProfile === "full" &&
+    process.env.CREEZIO_NATIVE_WARM !== "0"
+  ) {
+    const warmHermes = process.env.CREEZIO_NATIVE_WARM_HERMES === "1";
+    const warm = await warmBrandNativeHosts(brandOs, {
+      start: process.env.CREEZIO_NATIVE_START !== "0",
+      n8n: true,
+      hermes: warmHermes,
+    });
+    console.log(
+      `brand-kernel-harness native warm n8n=${JSON.stringify(warm.n8n)} hermes=${JSON.stringify(warm.hermes)}`,
+    );
+  }
 
   const close = async () => {
     meiliStop?.();

@@ -78,6 +78,8 @@ const child = spawn(process.execPath, [path.join(root, "scripts/brand-kernel-har
     METIER_DATA_DIR: dataDir,
     METIER_PORT: String(port),
     MEILI_SKIP_INDEX: "1",
+    // Warm fait par les checks API ensure/start (pas au boot harness).
+    CREEZIO_NATIVE_WARM: "0",
   },
   stdio: ["ignore", "pipe", "pipe"],
 });
@@ -158,10 +160,68 @@ try {
   });
   record("os.platform-mails", mails.status === 200 && Array.isArray(mails.data.mails), `status=${mails.status}`);
 
+  // Vendor OS = kit @creezio/electron-shell (interdit dans la marque)
+  const kitVendorRoot = path.join(
+    creezioRoot,
+    "packages/electron-shell/resources/vendor",
+  );
+  record(
+    "arch.kit-vendor-hermes",
+    fs.existsSync(path.join(kitVendorRoot, "hermes-agent/runtime-manifest.json")),
+    path.join(kitVendorRoot, "hermes-agent"),
+  );
+  record(
+    "arch.kit-vendor-n8n",
+    fs.existsSync(path.join(kitVendorRoot, "n8n/runtime-manifest.json")),
+    path.join(kitVendorRoot, "n8n"),
+  );
+  record(
+    "arch.no-brand-vendor",
+    !fs.existsSync(path.join(root, "resources/vendor")),
+    "vendor OS hors marque",
+  );
+
   const hermes = await json("GET", "/api/v1/os/hermes/status");
   record("os.hermes-status", hermes.status === 200 && hermes.data.ok, `binary=${hermes.data.binary}`);
   const n8n = await json("GET", "/api/v1/os/n8n/status");
   record("os.n8n-status", n8n.status === 200 && n8n.data.ok, `entry=${n8n.data.entry}`);
+
+  // Natif réel via kit : ensure + start
+  const n8nEnsure = await json("POST", "/api/v1/os/n8n/ensure", {});
+  record(
+    "os.n8n-ensure",
+    n8nEnsure.status < 300 && n8nEnsure.data.ok === true && Boolean(n8nEnsure.data.entry),
+    n8nEnsure.data.entry || n8nEnsure.data.detail || n8nEnsure.data.error,
+  );
+  const n8nStart = await json("POST", "/api/v1/os/n8n/start", {});
+  record(
+    "os.n8n-start",
+    n8nStart.status < 300 && n8nStart.data.ok === true && n8nStart.data.running === true,
+    n8nStart.data.entry || n8nStart.data.error || JSON.stringify(n8nStart.data.status || {}),
+  );
+
+  const hermesEnsure = await json("POST", "/api/v1/os/hermes/ensure", {});
+  record(
+    "os.hermes-ensure",
+    hermesEnsure.status < 300 &&
+      hermesEnsure.data.ok === true &&
+      Boolean(hermesEnsure.data.binary),
+    hermesEnsure.data.binary ||
+      hermesEnsure.data.detail ||
+      hermesEnsure.data.error ||
+      `status=${hermesEnsure.status}`,
+  );
+  if (hermesEnsure.data?.ok && hermesEnsure.data?.binary) {
+    const hermesStart = await json("POST", "/api/v1/os/hermes/start", {});
+    record(
+      "os.hermes-start",
+      hermesStart.status < 300 && hermesStart.data.ok === true,
+      hermesStart.data.binary || hermesStart.data.error || "started",
+    );
+  } else {
+    record("os.hermes-start", false, "skip — ensure sans binary");
+  }
+
   const tunnel = await json("GET", "/api/v1/os/tunnel/status");
   record("os.tunnel-status", tunnel.status === 200 && tunnel.data.ok, `mcp=${tunnel.data.publicMcp}`);
 

@@ -114,10 +114,71 @@ export async function listenBrandOsHttp(opts: {
           ) => unknown;
           findHermesBinary: () => string | null;
         };
+        const binary = hermes.findHermesBinary();
         send(res, 200, {
           ok: true,
           status: hermes.getHermesStatusPayload("local"),
+          binary,
+          nativeReady: Boolean(binary),
+        });
+        return;
+      }
+
+      if (pathname === "/api/v1/os/hermes/ensure" && req.method === "POST") {
+        if (!opts.os) {
+          send(res, 503, { ok: false, error: "os_not_composed" });
+          return;
+        }
+        const hermes = opts.os.hostRuntime.hermesHost() as unknown as {
+          ensureHermesRuntimeFromUi: (opts?: {
+            onLog?: (line: string) => void;
+          }) => Promise<{
+            ok: boolean;
+            detail?: string;
+            binary?: string | null;
+            phase?: string;
+          }>;
+          findHermesBinary: () => string | null;
+        };
+        const logs: string[] = [];
+        const result = await hermes.ensureHermesRuntimeFromUi({
+          onLog: (line) => {
+            logs.push(line);
+            if (logs.length > 80) logs.shift();
+          },
+        });
+        send(res, result.ok ? 200 : 500, {
+          ok: result.ok,
+          detail: result.detail,
+          phase: result.phase,
+          binary: result.binary ?? hermes.findHermesBinary(),
+          logs: logs.slice(-20),
+        });
+        return;
+      }
+
+      if (pathname === "/api/v1/os/hermes/start" && req.method === "POST") {
+        if (!opts.os) {
+          send(res, 503, { ok: false, error: "os_not_composed" });
+          return;
+        }
+        const hermes = opts.os.hostRuntime.hermesHost() as unknown as {
+          startHermes: (opts: {
+            connectionMode: "local" | "remote";
+            autoBootstrap?: boolean;
+          }) => Promise<unknown>;
+          getHermesStatusPayload: (mode: "local" | "remote") => unknown;
+          findHermesBinary: () => string | null;
+        };
+        const running = await hermes.startHermes({
+          connectionMode: "local",
+          autoBootstrap: true,
+        });
+        send(res, running ? 200 : 500, {
+          ok: Boolean(running),
+          running: Boolean(running),
           binary: hermes.findHermesBinary(),
+          status: hermes.getHermesStatusPayload("local"),
         });
         return;
       }
@@ -131,10 +192,71 @@ export async function listenBrandOsHttp(opts: {
           getN8nStatusPayload: (mode: "local" | "remote") => unknown;
           findN8nEntry: () => string | null;
         };
+        const entry = n8n.findN8nEntry();
         send(res, 200, {
           ok: true,
           status: n8n.getN8nStatusPayload("local"),
+          entry,
+          nativeReady: Boolean(entry),
+        });
+        return;
+      }
+
+      if (pathname === "/api/v1/os/n8n/ensure" && req.method === "POST") {
+        if (!opts.os) {
+          send(res, 503, { ok: false, error: "os_not_composed" });
+          return;
+        }
+        const n8n = opts.os.hostRuntime.n8nHost() as unknown as {
+          ensureN8nRuntimeFromUi: (opts?: {
+            onLog?: (line: string) => void;
+          }) => Promise<{
+            ok: boolean;
+            detail?: string;
+            entryPath?: string | null;
+            phase?: string;
+          }>;
+          findN8nEntry: () => string | null;
+        };
+        const logs: string[] = [];
+        const result = await n8n.ensureN8nRuntimeFromUi({
+          onLog: (line) => {
+            logs.push(line);
+            if (logs.length > 80) logs.shift();
+          },
+        });
+        send(res, result.ok ? 200 : 500, {
+          ok: result.ok,
+          detail: result.detail,
+          phase: result.phase,
+          entry: result.entryPath ?? n8n.findN8nEntry(),
+          logs: logs.slice(-20),
+        });
+        return;
+      }
+
+      if (pathname === "/api/v1/os/n8n/start" && req.method === "POST") {
+        if (!opts.os) {
+          send(res, 503, { ok: false, error: "os_not_composed" });
+          return;
+        }
+        const n8n = opts.os.hostRuntime.n8nHost() as unknown as {
+          startN8n: (opts: {
+            connectionMode: "local" | "remote";
+            autoBootstrap?: boolean;
+          }) => Promise<unknown>;
+          getN8nStatusPayload: (mode: "local" | "remote") => unknown;
+          findN8nEntry: () => string | null;
+        };
+        const running = await n8n.startN8n({
+          connectionMode: "local",
+          autoBootstrap: true,
+        });
+        send(res, running ? 200 : 500, {
+          ok: Boolean(running),
+          running: Boolean(running),
           entry: n8n.findN8nEntry(),
+          status: n8n.getN8nStatusPayload("local"),
         });
         return;
       }

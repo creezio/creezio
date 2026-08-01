@@ -135,6 +135,10 @@
     {
       "from": "resources/renderer",
       "to": "renderer"
+    },
+    {
+      "from": "../../packages/electron-shell/resources/vendor",
+      "to": "vendor"
     }
   ],
   "asar": true,

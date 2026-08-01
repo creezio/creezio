@@ -266,6 +266,11 @@ export {
   n8nVendorDir,
   __resetN8nBootstrapStateForTests,
 } from "./host/n8n/runtime-bootstrap.js";
+export {
+  electronShellPackageRoot,
+  kitOsResourcesRoot,
+  kitOsVendorDir,
+} from "./host/kit-os-resources.js";
 
 /* ── O3 : jumeaux Electron plateforme (extract gold TF) ── */
 export type { N8nApiKeyBrand, N8nApiKeyStored } from "./host/n8n/api-key.js";
