@@ -103,6 +103,59 @@ export async function listenBrandOsHttp(opts: {
         return;
       }
 
+      if (pathname === "/api/v1/os/hermes/status" && req.method === "GET") {
+        if (!opts.os) {
+          send(res, 503, { ok: false, error: "os_not_composed" });
+          return;
+        }
+        const hermes = opts.os.hostRuntime.hermesHost() as unknown as {
+          getHermesStatusPayload: (
+            mode: "local" | "remote",
+          ) => unknown;
+          findHermesBinary: () => string | null;
+        };
+        send(res, 200, {
+          ok: true,
+          status: hermes.getHermesStatusPayload("local"),
+          binary: hermes.findHermesBinary(),
+        });
+        return;
+      }
+
+      if (pathname === "/api/v1/os/n8n/status" && req.method === "GET") {
+        if (!opts.os) {
+          send(res, 503, { ok: false, error: "os_not_composed" });
+          return;
+        }
+        const n8n = opts.os.hostRuntime.n8nHost() as unknown as {
+          getN8nStatusPayload: (mode: "local" | "remote") => unknown;
+          findN8nEntry: () => string | null;
+        };
+        send(res, 200, {
+          ok: true,
+          status: n8n.getN8nStatusPayload("local"),
+          entry: n8n.findN8nEntry(),
+        });
+        return;
+      }
+
+      if (pathname === "/api/v1/os/tunnel/status" && req.method === "GET") {
+        if (!opts.os) {
+          send(res, 503, { ok: false, error: "os_not_composed" });
+          return;
+        }
+        const tunnel = opts.os.hostRuntime.tunnelService() as unknown as {
+          getStatus?: () => unknown;
+          publicUrlForEmbedService?: (s: string) => string | null;
+        };
+        send(res, 200, {
+          ok: true,
+          status: tunnel.getStatus?.() ?? null,
+          publicMcp: tunnel.publicUrlForEmbedService?.("mcp") ?? null,
+        });
+        return;
+      }
+
       if (
         (pathname === "/mcp" || pathname === "/api/v1/mcp") &&
         (req.method === "GET" || req.method === "POST")

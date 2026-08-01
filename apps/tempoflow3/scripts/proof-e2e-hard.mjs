@@ -151,6 +151,13 @@ try {
   });
   record("os.platform-mails", mails.status === 200 && Array.isArray(mails.data.mails), `status=${mails.status}`);
 
+  const hermes = await json("GET", "/api/v1/os/hermes/status");
+  record("os.hermes-status", hermes.status === 200 && hermes.data.ok, `binary=${hermes.data.binary}`);
+  const n8n = await json("GET", "/api/v1/os/n8n/status");
+  record("os.n8n-status", n8n.status === 200 && n8n.data.ok, `entry=${n8n.data.entry}`);
+  const tunnel = await json("GET", "/api/v1/os/tunnel/status");
+  record("os.tunnel-status", tunnel.status === 200 && tunnel.data.ok, `mcp=${tunnel.data.publicMcp}`);
+
   // Métier cœur
   const f = await json("POST", "/api/v1/modules/fournisseurs", { nom: "Hard Proof Metro" });
   record("metier.fournisseur", f.status < 300 && f.data.id, f.data.id || f.data.error);
@@ -181,6 +188,14 @@ try {
     "metier.optimiser",
     opt.status < 300 && Array.isArray(opt.data.suggestions),
     `status=${opt.status}`,
+  );
+  const apply = await json("POST", "/api/v1/modules/optimiser/apply", {
+    propositions: opt.data.suggestions,
+  });
+  record(
+    "metier.optimiser-apply",
+    apply.status < 300 && apply.data.applied === true,
+    `status=${apply.status}`,
   );
 
   for (const [id, pth] of [
