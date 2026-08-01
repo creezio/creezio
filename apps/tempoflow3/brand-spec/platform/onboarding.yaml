@@ -1,0 +1,9 @@
+enabled: true
+slugPlaceholder: mon-resto
+requireOpenaiKey: false
+afterCompleteHref: /onboarding
+stepLabels:
+  - Compte
+  - Récupération
+  - Tunnel
+  - OpenAI

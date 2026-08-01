@@ -1,6 +1,7 @@
 export type { NewAppOptions, ScaffoldResult } from "./scaffold.js";
 export { scaffoldNewApp, renderManifestTs } from "./scaffold.js";
 export { runCli, parseArgs } from "./cli.js";
+export { runBrandCli, parseBrandArgs } from "./brand-cli.js";
 export type {
   ProductModel,
   ProductEntity,

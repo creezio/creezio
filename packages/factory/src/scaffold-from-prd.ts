@@ -89,6 +89,7 @@ function renderPackageJsonFromPrd(m: AppManifest, model: ProductModel): string {
         main: "./build/electron/main.js",
         scripts,
         dependencies: {
+          "@creezio/app-runtime": "0.1.0",
           "@creezio/brand-config": "0.1.0",
           "@creezio/shell": "0.1.0",
           "@creezio/platform-core": "0.1.0",
@@ -139,9 +140,11 @@ Marque métier sur **OS Creezio** (\`creezio new-app --from-prd\`).
 |--------|-------------|
 | OS | \`@creezio/api-kernel\` + \`createSqliteRuntime\` + session desktop |
 | Métier | schema brand + mounts \`/api/v1/modules/*\` |
-| Smoke | \`scripts/brand-kernel-harness.mjs\` (même kernel, sans Electron) |
+| Desktop | \`@creezio/app-runtime\` \`startBrandDesktop\` (main mince) |
+| Smoke | \`scripts/brand-kernel-harness.mjs\` → \`startBrandKernelHarness\` |
 
 **Interdit** : sidecar \`metier-api.mjs\` / \`store.json\` comme source de vérité.
+**Interdit** : jumeau d'orchestration OS dans \`main.ts\` (utiliser la façade).
 
 ## Identité
 
@@ -181,13 +184,10 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const hostStack = fs.readFileSync(path.join(root, "src/lib/host-stack.ts"), "utf8");
 assert.match(hostStack, /createBrandHostStack/);
 const main = fs.readFileSync(path.join(root, "src/electron/main.ts"), "utf8");
-assert.match(main, /prepareDesktopBoot/);
+assert.match(main, /startBrandDesktop/);
 assert.match(main, /bootBrandKernel/);
-assert.match(main, /createDesktopSessionStore/);
-assert.match(main, /listenBrandKernelHttp/);
-assert.match(main, /maybeBootBrandMeili/);
-assert.match(main, /metierPort/);
-assert.doesNotMatch(main, /spawnBrandMetierApi/);
+assert.match(main, /@creezio\\/app-runtime/);
+assert.doesNotMatch(main, /spawnBrandMetierApi|listenBrandKernelHttp|prepareDesktopBoot/);
 const runtime = fs.readFileSync(path.join(root, "src/electron/brand-runtime.ts"), "utf8");
 assert.match(runtime, /createSqliteRuntime/);
 assert.match(runtime, /createApiKernel/);
@@ -195,8 +195,8 @@ const harness = fs.readFileSync(
   path.join(root, "scripts/brand-kernel-harness.mjs"),
   "utf8",
 );
-assert.match(harness, /listenBrandKernelHttp/);
-assert.match(harness, /maybeBootBrandMeili/);
+assert.match(harness, /startBrandKernelHarness/);
+assert.match(harness, /@creezio\\/app-runtime/);
 const renderer = fs.readFileSync(
   path.join(root, "resources/renderer/index.html"),
   "utf8",
@@ -439,10 +439,10 @@ export function writeFromPrdArtifacts(opts: {
 
 Marque légère sur **OS Creezio**.
 
-- Runtime = \`bootBrandKernel\` (SQLite + api-kernel)
+- Desktop = \`startBrandDesktop\` (@creezio/app-runtime)
+- Kernel = \`bootBrandKernel\` (SQLite + api-kernel, déclaration marque)
 - API métier = \`/api/v1/modules/*\`
-- Session = \`createDesktopSessionStore\`
-- **Interdit** : \`metier-api.mjs\`, \`store.json\`, launchers OS recopiés
+- **Interdit** : \`metier-api.mjs\`, \`store.json\`, jumeau d'orchestration OS
 
 \`\`\`bash
 npm test

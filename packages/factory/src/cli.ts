@@ -1,9 +1,10 @@
 /**
- * CLI `creezio new-app` — factory OS + app métier depuis PRD.
+ * CLI `creezio` — factory OS + BrandSpec.
  *
  * Usage:
  *   creezio new-app --name DemoBrand --id demobrand --domain demobrand.creez.io
  *   creezio new-app --from-prd docs/experiences/tempoflow3/PRD-PRODUIT.md --out /tmp/tf3
+ *   creezio brand init|doctor|apply|smoke …
  */
 
 import fs from "node:fs";
@@ -16,6 +17,7 @@ import {
   safeBrandId,
   type ProductModel,
 } from "./product-model.js";
+import { printBrandHelp, runBrandCli } from "./brand-cli.js";
 
 export type CliArgs = {
   command: string;
@@ -29,12 +31,20 @@ export type CliArgs = {
   sandbox?: boolean;
   help?: boolean;
   fromPrd?: string;
+  /** Args restants pour sous-commandes (brand …). */
+  rest?: string[];
 };
 
 export function parseArgs(argv: string[]): CliArgs {
   const out: CliArgs = { command: "", sandbox: true };
   const rest = [...argv];
   out.command = rest.shift() || "";
+
+  if (out.command === "brand") {
+    out.rest = rest;
+    if (rest.includes("--help") || rest.includes("-h")) out.help = true;
+    return out;
+  }
 
   while (rest.length) {
     const a = rest.shift()!;
@@ -70,34 +80,32 @@ function printHelp(): void {
 Usage:
   creezio new-app --from-prd <prd.md> [--out <dir>] [overrides]
   creezio new-app --name <ProductName> --id <brandId> --domain <host> [options]
+  creezio brand init|doctor|apply|smoke …
 
 Mode produit (recommandé) :
   --from-prd      Brief / PRD markdown non technique
-                  Dérive name / id / domain ; génère métier + wiring OS
+                  Dérive name / id / domain ; génère métier + wiring OS mince
+
+BrandSpec (agent créateur) :
+  creezio brand init --id <id> --name <Name> --domain <host>
+  creezio brand doctor --spec <brand-spec>
+  creezio brand apply --spec <brand-spec> --out <app> --force
+  creezio brand smoke --app <app>
 
 Overrides optionnels avec --from-prd :
   --name, --id, --domain, --out, --env-prefix, --feed-token, --sandbox/--no-sandbox, --force
 
 Mode technique (squelette OS vide) :
-  --name          Nom produit (ex. DemoBrand)
-  --id            brandId court (ex. demobrand)
-  --domain        Domaine feed/tunnel (ex. demobrand.creez.io)
-  --out           Dossier cible (défaut: apps/<id> sous la racine kit)
-  --env-prefix    Préfixe env (défaut: ID upper)
-  --feed-token    Token /dl-<token>/ (défaut: sandbox déterministe)
-  --sandbox       Marque sandbox (défaut: oui)
-  --no-sandbox    Désactive le flag sandbox (rare)
-  --force         Écrase les fichiers existants
-  -h, --help      Aide
+  --name, --id, --domain, --out, --env-prefix, --feed-token, --sandbox, --force
+  -h, --help
 
 Exemples:
   creezio new-app --from-prd docs/experiences/tempoflow3/PRD-PRODUIT.md --out /tmp/tempoflow3
-  creezio new-app --name DemoBrand --id demobrand --domain demobrand.creez.io
+  creezio brand apply --spec apps/tempoflow3/brand-spec --out apps/tempoflow3 --force
 `);
 }
 
 function kitRoot(): string {
-  // packages/factory/dist → ../../..
   const here = path.dirname(fileURLToPath(import.meta.url));
   return path.resolve(here, "../../..");
 }
@@ -105,7 +113,6 @@ function kitRoot(): string {
 function loadProductModel(args: CliArgs, root: string): ProductModel {
   const prdPath = path.resolve(root, args.fromPrd!);
   if (!fs.existsSync(prdPath)) {
-    // aussi accepter chemin absolu déjà résolu
     const abs = path.resolve(args.fromPrd!);
     if (!fs.existsSync(abs)) {
       throw new Error(`PRD introuvable: ${args.fromPrd}`);
@@ -136,6 +143,22 @@ function finalizeModel(model: ProductModel, args: CliArgs): ProductModel {
 
 export async function runCli(argv: string[]): Promise<void> {
   const args = parseArgs(argv);
+  if (args.command === "brand") {
+    const rest = args.rest || [];
+    if (
+      args.help ||
+      rest[0] === "--help" ||
+      rest[0] === "-h" ||
+      rest.length === 0
+    ) {
+      printBrandHelp();
+      if (rest.length === 0 && !args.help) process.exit(1);
+      return;
+    }
+    await runBrandCli(rest);
+    return;
+  }
+
   if (args.help || !args.command) {
     printHelp();
     if (!args.command) process.exit(args.help ? 0 : 1);
@@ -143,7 +166,9 @@ export async function runCli(argv: string[]): Promise<void> {
   }
 
   if (args.command !== "new-app") {
-    throw new Error(`Commande inconnue: ${args.command} (seul new-app est supporté)`);
+    throw new Error(
+      `Commande inconnue: ${args.command} (new-app | brand)`,
+    );
   }
 
   const root = kitRoot();
@@ -211,7 +236,6 @@ export async function runCli(argv: string[]): Promise<void> {
     console.log(`  cd ${result.outDir}`);
     console.log(`  npm run test:metier-parcours`);
     console.log(`  npm run test:first-run-auth`);
-    console.log(`  npm run metier:api   # API locale métier`);
   } else {
     console.log(`  cd ${result.outDir} && npm install && npm run build`);
     console.log(

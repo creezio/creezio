@@ -26,6 +26,7 @@
     "test": "npm run test:metier-parcours && npm run test:mini-prd-core && npm run test:mini-prd-bonus && npm run test:first-run-auth && npm run test:setup-login && npm run test:allowlist && npm run test:meili-config && npm run test:desktop-smoke-profile"
   },
   "dependencies": {
+    "@creezio/app-runtime": "0.1.0",
     "@creezio/brand-config": "0.1.0",
     "@creezio/shell": "0.1.0",
     "@creezio/platform-core": "0.1.0",

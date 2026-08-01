@@ -2,17 +2,20 @@
 
 ## Mission
 
-Maintenir le CLI `creezio new-app` :
+Maintenir le CLI `creezio` :
 
-1. **Mode OS** (`--name/--id/--domain`) : squelette Client+Serveur générique,
+1. **Mode OS** (`new-app --name/--id/--domain`) : squelette Client+Serveur,
    slot métier vide (sandbox technique).
-2. **Mode produit** (`--from-prd <prd.md>`) : parser un brief non technique →
-   `ProductModel` → générer schéma brand, API métier, pages UI, nav, wiring
-   runtime et smokes **dans le dossier marque**.
+2. **Mode produit** (`new-app --from-prd <prd.md>`) : brief → `ProductModel` →
+   artefacts métier + **main mince** (`startBrandDesktop`).
+3. **BrandSpec** (`brand init|doctor|apply|smoke`) : SoT déclarative agent →
+   apply via scaffold (ADR `docs/ADR-brand-spec-app-runtime.md`).
 
 Les générateurs vivent ici. Le métier généré **n’entre pas** dans
 `@creezio/platform-core` (ADR `docs/ADR-factory-from-prd.md` +
 `ADR-no-brand-domain-in-native-packages.md`).
+L’orchestration OS vit dans `@creezio/app-runtime` — **ne pas** la régénérer
+en jumeau dans `main.ts`.
 
 ## Ne pas faire
 
@@ -25,8 +28,8 @@ Les générateurs vivent ici. Le métier généré **n’entre pas** dans
   mounts `/api/v1/modules/*` + harness `brand-kernel-harness.mjs`.
 - **Ne pas** hardcoder des UIDs Meili `tf2_*` dans le feed marque : générer
   `meili-feed.ts` avec `catalog_*` + `configureMeiliBrandFeed`.
-- Desktop from-prd : `listenBrandKernelHttp` + `maybeBootBrandMeili` (pas le
-  monolithe `installBrandDesktopRuntime` pour la sonde) ; SPA via `metierBaseUrl`.
+- Desktop from-prd : `startBrandDesktop` / `startBrandKernelHarness`
+  (`@creezio/app-runtime`) — pas le monolithe `installBrandDesktopRuntime`.
 - Ne pas écraser des fichiers existants sans `--force`.
 - Ne pas exiger des flags techniques si `--from-prd` suffit.
 - Ne pas toucher `docs/FILES.md` sans demande dédiée.
@@ -34,10 +37,10 @@ Les générateurs vivent ici. Le métier généré **n’entre pas** dans
 ## Points d'entrée
 
 - `bin/creezio.js` : binaire npm.
-- `src/cli.ts` : parsing (`--from-prd`, `--name`, …) et `new-app`.
+- `src/cli.ts` : `new-app` + dispatch `brand`.
+- `src/brand-cli.ts` : BrandSpec init/doctor/apply/smoke.
 - `src/product-model.ts` : `ProductModel`, `parseProductPrd`, `safeBrandId`.
-- `src/scaffold.ts` : scaffold OS + branchement `productModel`.
-- `src/scaffold-from-prd.ts` : artefacts métier + wiring.
+- `src/scaffold.ts` / `scaffold-from-prd.ts` : artefacts.
 - `src/generators/*` : schema, api, ui, nav, wiring, tests.
 - `fixtures/prd-tempoflow-produit.md` : gold CHR.
 - `src/index.ts` : exports publics.

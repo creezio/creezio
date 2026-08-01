@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 /**
  * Allowlist — pas de launchers OS / pas de sidecar JSON métier.
+ * Main mince = startBrandDesktop (pas d'orchestration OS locale).
  */
 import assert from "node:assert/strict";
 import fs from "node:fs";
@@ -55,15 +56,23 @@ const required = [
   "crm/src/brand/schema.sql",
   "crm/src/brand/schema-bonus.sql",
   "product-model.json",
+  "brand-spec/brand.yaml",
 ];
 for (const rel of required) {
   assert.ok(fs.existsSync(path.join(root, rel)), `manquant: ${rel}`);
 }
 
 const main = fs.readFileSync(path.join(root, "src/electron/main.ts"), "utf8");
+assert.match(main, /startBrandDesktop/);
 assert.match(main, /bootBrandKernel/);
-assert.match(main, /createDesktopSessionStore/);
-assert.doesNotMatch(main, /spawnBrandMetierApi/);
+assert.match(main, /@creezio\/app-runtime/);
+assert.doesNotMatch(main, /spawnBrandMetierApi|listenBrandKernelHttp|prepareDesktopBoot/);
+
+const harness = fs.readFileSync(
+  path.join(root, "scripts/brand-kernel-harness.mjs"),
+  "utf8",
+);
+assert.match(harness, /startBrandKernelHarness/);
 
 const modApi = fs.readFileSync(
   path.join(root, "src/electron/brand-module-api.ts"),
@@ -77,4 +86,4 @@ const feed = fs.readFileSync(path.join(root, "src/electron/meili-feed.ts"), "utf
 assert.match(feed, /brandMeiliFeed|createChrCatalogMeiliFeed/);
 assert.doesNotMatch(feed, /tf2_produits|tf2_marketplaces/);
 
-console.log("OK test:allowlist TempoFlow (OS natif, pas sidecar JSON)");
+console.log("OK test:allowlist TempoFlow (façade app-runtime, pas sidecar JSON)");

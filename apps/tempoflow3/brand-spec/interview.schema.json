@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "BrandInterview",
+  "type": "object",
+  "required": ["brandName", "domain", "tagline", "users", "entities", "flows"],
+  "properties": {
+    "brandName": { "type": "string", "minLength": 2 },
+    "domain": { "type": "string", "minLength": 3 },
+    "tagline": { "type": "string" },
+    "vertical": { "enum": ["chr", "generic"] },
+    "users": {
+      "type": "array",
+      "items": { "type": "string" },
+      "minItems": 1
+    },
+    "entities": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "label"],
+        "properties": {
+          "id": { "type": "string" },
+          "label": { "type": "string" },
+          "fields": { "type": "array", "items": { "type": "string" } }
+        }
+      }
+    },
+    "flows": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "label", "steps"],
+        "properties": {
+          "id": { "type": "string" },
+          "label": { "type": "string" },
+          "steps": { "type": "array", "items": { "type": "string" } }
+        }
+      }
+    },
+    "platform": {
+      "type": "object",
+      "properties": {
+        "meili": { "type": "boolean" },
+        "mcp": { "type": "boolean" },
+        "chat": { "type": "boolean" },
+        "onboarding": { "type": "boolean" }
+      }
+    }
+  }
+}

@@ -24,15 +24,15 @@ Tout fichier hors de cette liste doit être **justifié** (gap kit) ou **supprim
 ## `crm/electron/` — wiring + métier seulement
 
 **Wiring (mince)**  
-`main.ts`, `preload.ts`, `brand.ts`, `brand-runtime.ts`, `host-stack.ts`,
-`host-runtime-ctx.ts`, `host-n2-bindings.ts`, `plugin-host-bindings.ts`,
-`plugin-hub-store.ts`, `creezio-boot.ts`, `paths.ts`, `profile.ts`, `app-kind.ts`,
-`ua.ts`, `window-chrome-html.ts` (si brand tokens seulement),
-`connection-profile.ts`, seeds marque (`hermes-*-seed.ts`) **si** contenus métier.
+`main.ts` (= `startBrandDesktop` uniquement), `preload.ts`, `brand-runtime.ts`,
+`brand-migrations.ts`, `brand-module-api.ts`, `meili-feed.ts`, `vertical-slot.ts`,
+`host-stack.ts`, `creezio-boot.ts`, `paths.ts`, …
++ `brand-spec/` (YAML + modules PRD — SoT déclarative).
 
 **Interdit (OS kit — ne pas réimplémenter)**  
-`local-config-store.ts`, `ipc-bridge.ts`, handlers `setup:*` / `auth:*` custom.
-→ `createDesktopSessionStore` / `registerDesktopSessionIpc` (`@creezio/electron-shell`).
+`local-config-store.ts`, `ipc-bridge.ts`, handlers `setup:*` / `auth:*` custom,
+jumeau `listenBrandKernelHttp` / `prepareDesktopBoot` dans `main.ts`.
+→ `@creezio/app-runtime` (`startBrandDesktop`) + session kit.
 
 **Métier**  
 `modules/**` (catalogue, panier, dispatch, optimiser, relevés, scan, stack, statut…),

@@ -85,6 +85,14 @@ Chemins + runtime (H1 paths, H2 handles) :
 Aujourd’hui : placeholders factory (`nav-core.ts` + `vertical-slot.ts`).  
 Cible H1 : `@creezio/shell-ui` (ou équivalent) avec contrat de slots typé.
 
+### Runtime marque : une façade desktop
+
+Les marques from-prd / BrandSpec démarrent via **`@creezio/app-runtime`**
+(`startBrandDesktop` / `startBrandKernelHarness`).  
+`main.ts` = déclaration (manifest, `bootKernel`, feed, nav) — **pas** une
+copie de l’orchestration OS. Voir ADR `docs/ADR-brand-spec-app-runtime.md`
+et `docs/agents/CREATE-BRAND.md`.
+
 ### API + MCP : une façade unique
 
 Un seul domaine / une seule API d’entrée qui **proxifie** :

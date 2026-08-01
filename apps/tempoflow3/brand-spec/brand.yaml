@@ -1,0 +1,33 @@
+brandId: tempoflow3
+brandName: TempoFlow
+domain: tempoflow3.local
+tagline: Prix fournisseurs, catalogue et commandes pour la restauration
+vertical: chr
+sandbox: true
+
+platform:
+  auth: true
+  desktop: true
+  pluginApi: true
+  chat: true
+  sync: false
+  meili: true
+  mcp: true
+  onboarding: true
+
+meili:
+  enabled: true
+  feedPreset: chr-catalog
+
+mcp:
+  enabled: true
+  allowUnauthenticated: true
+  spaces:
+    - module
+    - plugin
+
+onboarding:
+  enabled: true
+  slugPlaceholder: mon-resto
+  requireOpenaiKey: false
+  afterCompleteHref: /onboarding

@@ -1,13 +1,15 @@
-# AGENTS — TempoFlow
+# AGENTS — TempoFlow (sonde)
 
 Marque légère sur **OS Creezio**.
 
-- Runtime = `bootBrandKernel` (SQLite + api-kernel)
+- Desktop = `startBrandDesktop` (`@creezio/app-runtime`)
+- Kernel = `bootBrandKernel` (SQLite + api-kernel)
 - API métier = `/api/v1/modules/*`
-- Session = `createDesktopSessionStore`
-- **Interdit** : `metier-api.mjs`, `store.json`, launchers OS recopiés
+- BrandSpec = `brand-spec/` (SoT déclarative)
+- **Interdit** : `metier-api.mjs`, `store.json`, jumeau d'orchestration OS
 
 ```bash
 npm test
 npm run metier:api
+creezio brand doctor --spec brand-spec
 ```

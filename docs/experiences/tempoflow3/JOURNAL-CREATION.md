@@ -20,6 +20,7 @@ qui dump déjà tout le métier TempoFlow.
 | Phase C — Meili générique | ✅ | `BrandMeiliFeed` + `catalog_*` + smoke fake/fallback |
 | Phase D — desktop kernel HTTP + Meili | ✅ | `listenBrandKernelHttp` + `maybeBootBrandMeili` + SPA search |
 | Phase E — modules bonus 06–11 | ✅ | `brand-bonus-api.ts` + `test:mini-prd-bonus` |
+| Phase F — BrandSpec + façade | ✅ | `brand-spec/` + `@creezio/app-runtime` + `creezio brand *` |
 
 ---
 

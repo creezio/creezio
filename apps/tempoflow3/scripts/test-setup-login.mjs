@@ -55,8 +55,8 @@ assert.equal(session.login("chef", "secret-os").ok, true);
 session.logout();
 
 const main = fs.readFileSync(path.join(root, "src/electron/main.ts"), "utf8");
+assert.match(main, /startBrandDesktop/);
 assert.match(main, /bootBrandKernel/);
-assert.match(main, /registerDesktopSessionIpc/);
 assert.doesNotMatch(main, /spawnBrandMetierApi/);
 
-console.log("OK test:setup-login (OS kit + bootBrandKernel)");
+console.log("OK test:setup-login (OS kit + startBrandDesktop)");

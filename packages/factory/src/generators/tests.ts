@@ -233,12 +233,10 @@ for (const rel of required) {
 }
 
 const main = fs.readFileSync(path.join(root, "src/electron/main.ts"), "utf8");
-assert.match(main, /prepareDesktopBoot/);
-assert.match(main, /createDesktopSessionStore/);
+assert.match(main, /startBrandDesktop/);
 assert.match(main, /bootBrandKernel/);
-assert.match(main, /listenBrandKernelHttp/);
-assert.match(main, /maybeBootBrandMeili/);
-assert.doesNotMatch(main, /spawnBrandMetierApi|metier-api\\.mjs|createFileLocalConfigStore/);
+assert.match(main, /@creezio\\/app-runtime/);
+assert.doesNotMatch(main, /spawnBrandMetierApi|metier-api\\.mjs|createFileLocalConfigStore|listenBrandKernelHttp|prepareDesktopBoot/);
 
 assert.ok(!fs.existsSync(path.join(root, "scripts/metier-api.mjs")), "sidecar JSON interdit");
 
@@ -312,11 +310,11 @@ assert.equal(session.login("chef", "secret-os").ok, true);
 session.logout();
 
 const main = fs.readFileSync(path.join(root, "src/electron/main.ts"), "utf8");
+assert.match(main, /startBrandDesktop/);
 assert.match(main, /bootBrandKernel/);
-assert.match(main, /registerDesktopSessionIpc/);
 assert.doesNotMatch(main, /spawnBrandMetierApi/);
 
-console.log("OK test:setup-login (OS kit + bootBrandKernel)");
+console.log("OK test:setup-login (OS kit + startBrandDesktop)");
 `;
 }
 
@@ -382,9 +380,9 @@ for (const rel of required) {
 }
 
 const main = fs.readFileSync(path.join(root, "src/electron/main.ts"), "utf8");
+assert.match(main, /startBrandDesktop/);
 assert.match(main, /bootBrandKernel/);
-assert.match(main, /createDesktopSessionStore/);
-assert.doesNotMatch(main, /spawnBrandMetierApi/);
+assert.doesNotMatch(main, /spawnBrandMetierApi|listenBrandKernelHttp/);
 
 const modApi = fs.readFileSync(
   path.join(root, "src/electron/brand-module-api.ts"),

@@ -39,7 +39,8 @@ Voir `package.json` script `build:packages`. Ordre typique :
 `brand-config` → `shell` → `platform-core` → `product-hub` → `api-kernel` →
 `mcp-facade` → `auth` → `shell-ui` → `onboarding` → `cockpit` → `assistant` →
 `tasks` → `mails` → `observability` → `automations` → `database` →
-`electron-shell` → `desktop-tooling` → `factory` → `propagation` → `build:cjs`.
+`electron-shell` → `app-runtime` → `brand-spec` → `desktop-tooling` →
+`factory` → `propagation` → `build:cjs`.
 
 Après changement runtime consommé par les marques : `npm run build:packages` puis
 resync vendor (`scripts/sync-creezio-vendor.sh` côté marque, `CREEZIO_KIT_ROOT`).
@@ -65,8 +66,10 @@ resync vendor (`scripts/sync-creezio-vendor.sh` côté marque, `CREEZIO_KIT_ROOT
 | Automations lifecycle plugins/org | `automations` |
 | Admin Database CRUD | `database` |
 | Electron host / plugins / sidecars | `electron-shell` |
+| Façade desktop marque (`startBrandDesktop`) | `app-runtime` |
+| BrandSpec YAML / doctor | `brand-spec` |
 | Publish / remote-build | `desktop-tooling` |
-| `creezio new-app` | `factory` |
+| `creezio new-app` / `creezio brand` | `factory` |
 | Semver / impact / registre org | `propagation` |
 
 ## Tests
@@ -93,7 +96,14 @@ restart après PUT files efface le process respawné.
 4. Adapter wiring / tests marque si l’API publique change.
 5. `test:shell` / gates marque.
 
-## Créer une marque depuis un brief produit
+## Créer une marque (BrandSpec + brief produit)
+
+Chemin nominal agent : interview → `brand-spec/` → `creezio brand apply`
+(voir [docs/agents/CREATE-BRAND.md](./docs/agents/CREATE-BRAND.md)).
+
+Compat : `creezio new-app --from-prd` reste supporté.
+
+## Créer une marque depuis un brief produit (legacy --from-prd)
 
 Happy path **non technique** (expérience TempoFlow3) :
 

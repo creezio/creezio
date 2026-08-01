@@ -124,9 +124,10 @@ test("F1–F4 scaffold --from-prd génère runtime natif (pas sidecar JSON)", ()
   assert.ok(!fs.existsSync(path.join(ROOT, "packages/factory/templates/chr")));
 
   const main = fs.readFileSync(path.join(outDir, "src/electron/main.ts"), "utf8");
+  assert.match(main, /startBrandDesktop/);
   assert.match(main, /bootBrandKernel/);
-  assert.match(main, /createDesktopSessionStore/);
-  assert.doesNotMatch(main, /spawnBrandMetierApi/);
+  assert.match(main, /@creezio\/app-runtime/);
+  assert.doesNotMatch(main, /spawnBrandMetierApi|listenBrandKernelHttp/);
 
   const runtime = fs.readFileSync(
     path.join(outDir, "src/electron/brand-runtime.ts"),
