@@ -43,9 +43,9 @@ export function renderBrandModuleApiTs(model: ProductModel): string {
 import { randomUUID } from "node:crypto";
 import type { ApiKernel, ApiMount, ApiRequest } from "@creezio/api-kernel";
 
-const ENTITY_IDS = ${JSON.stringify(entityIds)} as const;
-const ARCHIVABLE = new Set(${JSON.stringify(archivable)});
-const COMMANDE_STATUTS = new Set(["brouillon", "envoyee", "recue"]);
+const ENTITY_IDS: readonly string[] = ${JSON.stringify(entityIds)};
+const ARCHIVABLE = new Set<string>(${JSON.stringify(archivable)});
+const COMMANDE_STATUTS = new Set<string>(["brouillon", "envoyee", "recue"]);
 const TABLE_COLS: Record<string, string[]> = ${JSON.stringify(
     Object.fromEntries(
       model.entities.map((e) => [
@@ -351,25 +351,31 @@ function createDashboardMount(): ApiMount {
             c: number;
           }
         ).c;
+      const entityCount = (table: string, where = "") =>
+        ENTITY_IDS.includes(table) ? count(table, where) : 0;
       return {
         status: 200,
         body: {
           fournisseurs: ARCHIVABLE.has("fournisseurs")
-            ? count("fournisseurs", "WHERE archived_at IS NULL")
-            : count("fournisseurs"),
+            ? entityCount("fournisseurs", "WHERE archived_at IS NULL")
+            : entityCount("fournisseurs"),
           produits: ARCHIVABLE.has("produits")
-            ? count("produits", "WHERE archived_at IS NULL")
-            : count("produits"),
-          prix: ENTITY_IDS.includes("prix" as never) ? count("prix") : 0,
-          panier_lignes: ENTITY_IDS.includes("panier_lignes" as never)
-            ? count("panier_lignes")
-            : 0,
-          commandes: ENTITY_IDS.includes("commandes" as never)
-            ? count("commandes")
-            : 0,
-          promos: ENTITY_IDS.includes("prix" as never)
+            ? entityCount("produits", "WHERE archived_at IS NULL")
+            : entityCount("produits"),
+          prix: entityCount("prix"),
+          panier_lignes: entityCount("panier_lignes"),
+          commandes: entityCount("commandes"),
+          promos: ENTITY_IDS.includes("prix")
             ? count("prix", "WHERE promo = 1")
             : 0,
+          entities: Object.fromEntries(
+            ENTITY_IDS.map((id) => [
+              id,
+              ARCHIVABLE.has(id)
+                ? count(id, "WHERE archived_at IS NULL")
+                : count(id),
+            ]),
+          ),
         },
       };
     },

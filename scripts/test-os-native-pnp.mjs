@@ -184,12 +184,22 @@ test("PnP3 harness OS ready sur marque apply (non-TF3)", async () => {
       throw new Error("PnP2 doit précéder PnP3");
     })();
 
-  const build = spawnSync("npx", ["tsc", "-p", "tsconfig.electron.json"], {
-    encoding: "utf8",
-    cwd: appDir,
-    env: SMOKE_ENV,
-    shell: true,
-  });
+  // App hors workspace : lier node_modules kit pour @types/node + @creezio/*.
+  const nm = path.join(appDir, "node_modules");
+  if (!fs.existsSync(nm)) {
+    fs.symlinkSync(path.join(ROOT, "node_modules"), nm, "dir");
+  }
+  const tscBin = path.join(ROOT, "node_modules/typescript/bin/tsc");
+  assert.ok(fs.existsSync(tscBin), "typescript monorepo requis");
+  const build = spawnSync(
+    process.execPath,
+    [tscBin, "-p", "tsconfig.electron.json"],
+    {
+      encoding: "utf8",
+      cwd: appDir,
+      env: SMOKE_ENV,
+    },
+  );
   assert.equal(build.status, 0, build.stderr + "\n" + build.stdout);
 
   const electron = path.join(appDir, "build/electron");
@@ -211,6 +221,11 @@ test("PnP3 harness OS ready sur marque apply (non-TF3)", async () => {
   assert.ok(manifestKey, "manifest export");
 
   const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "os-pnp-data-"));
+  // Gate P&P = composition + ready (pas install n8n 2min). Warm = preuve séparée.
+  const prevWarm = process.env.CREEZIO_NATIVE_WARM;
+  const prevTunnel = process.env.CREEZIO_TUNNEL_LOCAL;
+  process.env.CREEZIO_NATIVE_WARM = "0";
+  process.env.CREEZIO_TUNNEL_LOCAL = "1";
   const handle = await startBrandKernelHarness({
     brandId: "pnpprobe",
     appRoot: appDir,
@@ -291,6 +306,10 @@ test("PnP3 harness OS ready sur marque apply (non-TF3)", async () => {
     assert.equal(readyBody.checks.apiMounts, true);
   } finally {
     await handle.close();
+    if (prevWarm === undefined) delete process.env.CREEZIO_NATIVE_WARM;
+    else process.env.CREEZIO_NATIVE_WARM = prevWarm;
+    if (prevTunnel === undefined) delete process.env.CREEZIO_TUNNEL_LOCAL;
+    else process.env.CREEZIO_TUNNEL_LOCAL = prevTunnel;
   }
 });
 
