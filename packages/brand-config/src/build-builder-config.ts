@@ -11,6 +11,8 @@
  * ```
  */
 
+import fs from "node:fs";
+import path from "node:path";
 import type { AppKind, AppManifest, ExeIdentity } from "./types.js";
 import { exeForKind } from "./types.js";
 
@@ -55,18 +57,18 @@ export const CREEZIO_ASAR_RUNTIME_PACKAGES = [
 ] as const;
 
 /**
- * Deps npm runtime du main Electron (hors @creezio/*).
+ * Seeds npm runtime du main Electron (hors @creezio/*).
  *
- * Piège packagé (TF3 Server Win) : files exclut tout node_modules puis ne
- * ré-inclut que electron-updater. Les @creezio/* en file:vendor passent
- * (symlink → vendor réel), mais hono / zod / jose restent sous
- * node_modules/pkg → ERR_MODULE_NOT_FOUND au boot
- * (mount-brand-mcp-surface.js → import from "hono").
+ * Piège packagé : files exclut tout node_modules ; les @creezio/* en
+ * file:vendor passent (symlink → vendor), mais hono / better-sqlite3 /
+ * zod restent sous node_modules/pkg → ERR_MODULE_NOT_FOUND au boot.
  *
- * Ces globs ré-incluent les packages nécessaires à toutes les marques
- * native-kernel — pas un hack TF3.
+ * `collectNpmRuntimePackages()` étend ces seeds à la clôture transitive
+ * (package.json deps) en ignorant les outils d'install (prebuild-install…).
+ * Emballage via FileSet objet (fiable vs globs réordonnés par e-builder).
  */
 export const CREEZIO_ASAR_NPM_RUNTIME_PACKAGES = [
+  // HTTP / validation (api-kernel, app-runtime, auth, mcp, …)
   "hono",
   "@hono/zod-openapi",
   "@hono/zod-validator",
@@ -74,9 +76,58 @@ export const CREEZIO_ASAR_NPM_RUNTIME_PACKAGES = [
   "openapi3-ts",
   "zod",
   "jose",
+  // Assistant chat-db (natif — asarUnpack *.node)
+  "better-sqlite3",
+  "bindings",
+  "file-uri-to-path",
+  // Divers kit
   "yaml",
   "clsx",
   "tailwind-merge",
+] as const;
+
+/** Deps d'install only — jamais nécessaires au runtime packagé. */
+export const CREEZIO_ASAR_NPM_INSTALL_ONLY = [
+  "prebuild-install",
+  "node-abi",
+  "napi-build-utils",
+  "simple-get",
+  "simple-concat",
+  "expand-template",
+  "github-from-package",
+  "rc",
+  "deep-extend",
+  "ini",
+  "minimist",
+  "strip-json-comments",
+  "tar-fs",
+  "tar-stream",
+  "tunnel-agent",
+  "mkdirp-classic",
+  "pump",
+  "end-of-stream",
+  "once",
+  "wrappy",
+  "bl",
+  "buffer",
+  "base64-js",
+  "ieee754",
+  "readable-stream",
+  "string_decoder",
+  "util-deprecate",
+  "safe-buffer",
+  "inherits",
+  "fs-constants",
+  "chownr",
+  "detect-libc",
+  "mimic-response",
+  "decompress-response",
+] as const;
+
+/** Patterns asarUnpack pour binaires natifs (better-sqlite3 .node). */
+export const CREEZIO_ASAR_UNPACK_NATIVE = [
+  "**/*.node",
+  "**/better-sqlite3/build/**",
 ] as const;
 
 /** Liste des modules main Electron réservés à l'hôte (exclus du paquet Client). */
@@ -153,6 +204,11 @@ export type BuildBuilderConfigOptions = {
    * Défaut : `CREEZIO_WIN_BIN_STAGE` ou `.creezio/win-bin-stage`.
    */
   winBinStage?: string;
+  /**
+   * Racine app marque (pour clôture transitive node_modules).
+   * Défaut : `CREEZIO_APP_ROOT` ou `process.cwd()`.
+   */
+  appRoot?: string;
 };
 
 type JsonRecord = Record<string, unknown>;
@@ -236,17 +292,70 @@ function creezioAsarFileSets(): JsonRecord[] {
 }
 
 /**
- * Filesets `{from,to}` pour deps npm runtime (hono, zod…).
- * Les globs `node_modules/hono/**` sont réordonnés par electron-builder
- * AVANT `!node_modules/**` → exclus à nouveau. Les FileSet objet (comme
- * vendor/creezio) contournent nodeModuleFilePatterns — fiable.
+ * Clôture transitive des seeds npm runtime depuis `appRoot/node_modules`.
+ * Ignore les outils d'install (prebuild-install…) et les packages absents.
  */
-function npmRuntimeAsarFileSets(): JsonRecord[] {
-  return CREEZIO_ASAR_NPM_RUNTIME_PACKAGES.map((name) => ({
+export function collectNpmRuntimePackages(appRoot?: string): string[] {
+  const root = path.resolve(
+    appRoot || process.env.CREEZIO_APP_ROOT || process.cwd(),
+  );
+  const nm = path.join(root, "node_modules");
+  const installOnly = new Set<string>(CREEZIO_ASAR_NPM_INSTALL_ONLY);
+  const seen = new Set<string>();
+  const queue: string[] = [...CREEZIO_ASAR_NPM_RUNTIME_PACKAGES];
+
+  while (queue.length) {
+    const name = queue.shift()!;
+    if (seen.has(name) || installOnly.has(name)) continue;
+    const pkgJson = path.join(nm, ...name.split("/"), "package.json");
+    if (!fs.existsSync(pkgJson)) continue;
+    seen.add(name);
+    try {
+      const pkg = JSON.parse(fs.readFileSync(pkgJson, "utf8")) as {
+        dependencies?: Record<string, string>;
+      };
+      for (const dep of Object.keys(pkg.dependencies || {})) {
+        if (!seen.has(dep) && !installOnly.has(dep)) queue.push(dep);
+      }
+    } catch {
+      /* ignore malformed */
+    }
+  }
+  return [...seen].sort();
+}
+
+/**
+ * Filesets `{from,to}` pour deps npm runtime (+ clôture transitive).
+ * FileSet objet (comme vendor/creezio) — les globs sont réordonnés avant
+ * `!node_modules` par electron-builder et restent exclus.
+ */
+function npmRuntimeAsarFileSets(appRoot?: string): JsonRecord[] {
+  const names = collectNpmRuntimePackages(appRoot);
+  const list = names.length ? names : [...CREEZIO_ASAR_NPM_RUNTIME_PACKAGES];
+  return list.map((name) => ({
     from: `node_modules/${name}`,
     to: `node_modules/${name}`,
-    filter: ["**/*", "!**/*.md", "!**/LICENSE*", "!**/license*"],
+    filter: [
+      "**/*",
+      "!**/*.md",
+      "!**/LICENSE*",
+      "!**/license*",
+      "!**/prebuilds/**",
+      "!**/docs/**",
+    ],
   }));
+}
+
+/** Garantit asarUnpack des binaires natifs (.node / better-sqlite3). */
+function ensureAsarUnpackNative(base: JsonRecord): void {
+  const prev = Array.isArray(base.asarUnpack)
+    ? (base.asarUnpack as unknown[])
+    : [];
+  const next = [...prev];
+  for (const pat of CREEZIO_ASAR_UNPACK_NATIVE) {
+    if (!next.includes(pat)) next.push(pat);
+  }
+  base.asarUnpack = next;
 }
 
 function filesExcludeNodeModules(files: unknown[]): boolean {
@@ -277,20 +386,29 @@ function hasNpmRuntimeFileset(files: unknown[], pkg: string): boolean {
 
 /** Retire les anciens globs `node_modules/<pkg>/**` (inefficaces vs !node_modules). */
 function stripLegacyNpmRuntimeGlobs(files: unknown[]): unknown[] {
-  const legacy = new Set(
-    CREEZIO_ASAR_NPM_RUNTIME_PACKAGES.map((name) => `node_modules/${name}/**/*`),
-  );
-  return files.filter((entry) => !(typeof entry === "string" && legacy.has(entry)));
+  return files.filter((entry) => {
+    if (typeof entry !== "string") return true;
+    if (!entry.startsWith("node_modules/") || !entry.endsWith("/**/*")) {
+      return true;
+    }
+    // Conserver les includes electron-updater (base TF2) — retirer seulement
+    // les globs seeds runtime qu'on remplace par des FileSets.
+    const pkg = entry.slice("node_modules/".length, -"/**/*".length);
+    return !(CREEZIO_ASAR_NPM_RUNTIME_PACKAGES as readonly string[]).includes(
+      pkg,
+    );
+  });
 }
 
 /**
- * Ré-inclut les packages runtime @creezio/* + deps npm (hono…) dans l'asar
+ * Ré-inclut les packages runtime @creezio/* + deps npm (clôture) dans l'asar
  * quand la config exclut `node_modules/**` (pattern TF2 / Certivan / Fidu / TF3).
  * Idempotent : n'ajoute que les filesets manquants.
  */
 function ensureCreezioVendorInAsar(
   base: JsonRecord,
   pack: boolean | undefined,
+  appRoot?: string,
 ): void {
   let files = Array.isArray(base.files) ? [...(base.files as unknown[])] : [];
   const shouldPack =
@@ -306,7 +424,7 @@ function ensureCreezioVendorInAsar(
     const pkg = String(set.from).replace(/^vendor\/creezio\//, "");
     if (!hasVendorFileset(next, pkg)) next.push(set);
   }
-  for (const set of npmRuntimeAsarFileSets()) {
+  for (const set of npmRuntimeAsarFileSets(appRoot)) {
     const pkg = String(set.from).replace(/^node_modules\//, "");
     if (!hasNpmRuntimeFileset(next, pkg)) next.push(set);
   }
@@ -471,8 +589,19 @@ export function buildElectronBuilderConfig(
     normalizeBuildElectronFileset(base);
   }
 
-  ensureCreezioVendorInAsar(base, options.packCreezioVendor);
+  ensureCreezioVendorInAsar(
+    base,
+    options.packCreezioVendor,
+    options.appRoot || process.env.CREEZIO_APP_ROOT,
+  );
+  ensureAsarUnpackNative(base);
   ensureAsarExcludesKitBins(base);
+
+  // Parité TF2 : better-sqlite3 / natifs via prebuild win (ensure-win-native),
+  // jamais rebuild ABI Electron hôte Linux pendant cross-pack.
+  if (base.npmRebuild === undefined) {
+    base.npmRebuild = false;
+  }
 
   // Client slim (TF2) : PAS de bins. Serveur / client fat (Fidu) : bins Win only.
   const includeBin = kind === "server" || (kind === "client" && !clientSlim);

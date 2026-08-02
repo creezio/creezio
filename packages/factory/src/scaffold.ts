@@ -121,10 +121,11 @@ function renderPackageJson(m: AppManifest): string {
           "@creezio/electron-shell": "0.1.0",
           "@creezio/desktop-tooling": "0.1.0",
           "electron-updater": "^6.3.9",
-          // Deps npm runtime main (asar !node_modules → globs kit) — pas seulement transitifs
+          // Deps npm runtime main (asar FileSets kit) — pas seulement transitifs
           "hono": "^4.12.30",
           "zod": "^4.0.0",
           "jose": "^6.0.0",
+          "better-sqlite3": "^12.11.1",
         },
         devDependencies: {
           "@types/node": "^22.15.3",

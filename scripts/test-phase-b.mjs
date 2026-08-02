@@ -171,10 +171,24 @@ test("updater reduce + builder config", () => {
     serverFiles.some(
       (e) =>
         typeof e === "object" &&
+        e?.from === "node_modules/better-sqlite3" &&
+        e?.to === "node_modules/better-sqlite3",
+    ),
+    "server : asar FileSet better-sqlite3",
+  );
+  assert.ok(
+    serverFiles.some(
+      (e) =>
+        typeof e === "object" &&
         e?.from === "node_modules/zod" &&
         e?.to === "node_modules/zod",
     ),
     "server : asar FileSet zod",
+  );
+  const unpack = serverCfg.asarUnpack || [];
+  assert.ok(
+    unpack.some((p) => String(p).includes(".node")),
+    "server : asarUnpack *.node (natifs)",
   );
 
   const clientCfg = buildElectronBuilderConfig(certivanManifest, "client", base);
