@@ -27,9 +27,13 @@ export { fiduManifest } from "./manifests/fidu.js";
 export { demobrandManifest } from "./manifests/demobrand.js";
 
 export {
+  ASAR_EXCLUDE_KIT_BINS,
   CREEZIO_ASAR_RUNTIME_PACKAGES,
   DEFAULT_HOST_ONLY_ELECTRON_MODULES,
+  DEFAULT_WIN_BIN_STAGE,
+  WIN_SERVER_BIN_FILTER,
   buildElectronBuilderConfig,
+  isKitBinExtraResource,
 } from "./build-builder-config.js";
 export type { BuildBuilderConfigOptions } from "./build-builder-config.js";
 

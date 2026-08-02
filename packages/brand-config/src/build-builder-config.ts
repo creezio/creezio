@@ -70,6 +70,25 @@ export const DEFAULT_HOST_ONLY_ELECTRON_MODULES = [
   "factory-reset",
 ] as const;
 
+/**
+ * Binaires Windows serveur via `win.extraResources` (filtre) — jamais dans l'asar.
+ * Parité TF2 : `meilisearch-win.exe` + `cloudflared.exe` ; `meili.exe` = alias kit.
+ */
+export const WIN_SERVER_BIN_FILTER = [
+  "cloudflared.exe",
+  "meilisearch-win.exe",
+  "meili.exe",
+] as const;
+
+/** Exclusion asar : bins kit ne doivent jamais être emballés dans app.asar. */
+export const ASAR_EXCLUDE_KIT_BINS = "!**/electron-shell/resources/bin/**";
+
+/**
+ * Stage relatif marque pour bins Win (cross-compile Linux → Windows).
+ * Surcharge : env `CREEZIO_WIN_BIN_STAGE`.
+ */
+export const DEFAULT_WIN_BIN_STAGE = ".creezio/win-bin-stage";
+
 export type BuildBuilderConfigOptions = {
   /** Modules host-only à exclure du paquet Client (défaut = liste TF2). */
   hostOnlyModules?: readonly string[];
@@ -90,6 +109,11 @@ export type BuildBuilderConfigOptions = {
    * - `undefined` (défaut) : auto si `files` contient une exclusion `!node_modules`
    */
   packCreezioVendor?: boolean;
+  /**
+   * Stage bins Windows serveur (`win.extraResources` → `bin/`).
+   * Défaut : `CREEZIO_WIN_BIN_STAGE` ou `.creezio/win-bin-stage`.
+   */
+  winBinStage?: string;
 };
 
 type JsonRecord = Record<string, unknown>;
@@ -151,7 +175,8 @@ function creezioAsarFileSets(): JsonRecord[] {
   return CREEZIO_ASAR_RUNTIME_PACKAGES.map((name) => ({
     from: `vendor/creezio/${name}`,
     to: `node_modules/@creezio/${name}`,
-    filter: ["package.json", "dist-cjs/**/*"],
+    // Jamais resources/bin (Meili/cloudflared) dans l'asar — serveur = extraResources.
+    filter: ["package.json", "dist-cjs/**/*", "!resources/bin/**"],
   }));
 }
 
@@ -200,6 +225,70 @@ function ensureCreezioVendorInAsar(
     return;
   }
   base.files = [...files, ...creezioAsarFileSets()];
+}
+
+/** Garantit l'exclusion asar des bins kit (Linux+Win fat). */
+function ensureAsarExcludesKitBins(base: JsonRecord): void {
+  const files = Array.isArray(base.files) ? [...(base.files as unknown[])] : [];
+  const has = files.some(
+    (entry) =>
+      typeof entry === "string" &&
+      entry.includes("electron-shell/resources/bin"),
+  );
+  if (!has) {
+    files.push(ASAR_EXCLUDE_KIT_BINS);
+  }
+  base.files = files;
+}
+
+function entryFrom(entry: unknown): string {
+  if (typeof entry === "string") return entry;
+  if (entry && typeof entry === "object") {
+    return String((entry as { from?: string }).from || "");
+  }
+  return "";
+}
+
+function entryTo(entry: unknown): string {
+  if (entry && typeof entry === "object") {
+    return String((entry as { to?: string }).to || "");
+  }
+  return "";
+}
+
+/** Détecte un mapping extraResources vers `bin/` (kit ou stage). */
+export function isKitBinExtraResource(entry: unknown): boolean {
+  const from = entryFrom(entry);
+  const to = entryTo(entry);
+  if (to === "bin" || to.endsWith("/bin")) return true;
+  return (
+    from.includes("electron-shell/resources/bin") ||
+    from.includes("/resources/bin") ||
+    from.includes("win-bin-stage") ||
+    from.endsWith("/bin")
+  );
+}
+
+function stripKitBinExtraResources(list: unknown[]): unknown[] {
+  return list.filter((entry) => !isKitBinExtraResource(entry));
+}
+
+function hasKitOsVendor(extra: unknown[]): boolean {
+  return extra.some((entry) => {
+    const f = entryFrom(entry);
+    return (
+      f.includes("electron-shell/resources/vendor") ||
+      f.endsWith("/resources/vendor")
+    );
+  });
+}
+
+function resolveWinBinStage(options: BuildBuilderConfigOptions): string {
+  return (
+    options.winBinStage ||
+    process.env.CREEZIO_WIN_BIN_STAGE ||
+    DEFAULT_WIN_BIN_STAGE
+  );
 }
 
 /**
@@ -276,7 +365,14 @@ export function buildElectronBuilderConfig(
   }
 
   ensureCreezioVendorInAsar(base, options.packCreezioVendor);
-  ensureKitOsVendorExtraResources(base);
+  ensureAsarExcludesKitBins(base);
+
+  // Client slim (TF2) : PAS de bins. Serveur / client fat (Fidu) : bins Win only.
+  const includeBin = kind === "server" || (kind === "client" && !clientSlim);
+  ensureKitOsVendorExtraResources(base, {
+    includeBin,
+    winBinStage: resolveWinBinStage(options),
+  });
 
   if (manifest.copyright) {
     base.copyright = manifest.copyright;
@@ -290,26 +386,46 @@ export function buildElectronBuilderConfig(
  * `@creezio/electron-shell/resources/vendor` — jamais depuis la marque.
  * Filtre clientSlim retire seulement `vendor/` local marque ; ce chemin
  * `node_modules/@creezio/…` reste.
+ *
+ * Bins : **jamais** le dossier kit `electron-shell/resources/bin` en bloc
+ * (Linux+Win → double packing asar + extraResources ≈ +450 Mo). Client slim
+ * = zéro bin. Serveur = `win.extraResources` filtré depuis un stage Win.
  */
-function ensureKitOsVendorExtraResources(base: JsonRecord): void {
+function ensureKitOsVendorExtraResources(
+  base: JsonRecord,
+  opts: { includeBin: boolean; winBinStage: string },
+): void {
   const vendorFrom =
     "node_modules/@creezio/electron-shell/resources/vendor";
-  const binFrom = "node_modules/@creezio/electron-shell/resources/bin";
-  const extra = Array.isArray(base.extraResources)
+  let extra = Array.isArray(base.extraResources)
     ? ([...base.extraResources] as unknown[])
     : [];
-  const has = (suffix: string) =>
-    extra.some((entry) => {
-      if (typeof entry !== "object" || entry === null) return false;
-      const f = String((entry as { from?: string }).from || "");
-      return f === suffix || f.endsWith(suffix);
-    });
-  if (!has("electron-shell/resources/vendor") && !has("/resources/vendor")) {
+
+  // Retirer tout mapping bin top-level (y compris legacy kit unfiltered).
+  extra = stripKitBinExtraResources(extra);
+
+  if (!hasKitOsVendor(extra)) {
     extra.push({ from: vendorFrom, to: "vendor" });
   }
-  if (!has("electron-shell/resources/bin") && !has("/resources/bin")) {
-    extra.push({ from: binFrom, to: "bin" });
-  }
   base.extraResources = extra;
-}
 
+  const win = asRecord(base.win);
+  let winExtra = Array.isArray(win.extraResources)
+    ? ([...win.extraResources] as unknown[])
+    : [];
+  winExtra = stripKitBinExtraResources(winExtra);
+
+  if (opts.includeBin) {
+    const already = winExtra.some((entry) => isKitBinExtraResource(entry));
+    if (!already) {
+      winExtra.push({
+        from: opts.winBinStage,
+        to: "bin",
+        filter: [...WIN_SERVER_BIN_FILTER],
+      });
+    }
+  }
+
+  win.extraResources = winExtra;
+  base.win = win;
+}

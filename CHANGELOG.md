@@ -3,6 +3,21 @@
 
 ## [Unreleased]
 
+### Packaging Electron Windows (client slim / server bins)
+
+- `buildElectronBuilderConfig` : client slim **sans** `resources/bin` (parité TF2) ;
+  serveur embarque bins Win-only via `win.extraResources` depuis
+  `.creezio/win-bin-stage` (filtre `cloudflared.exe` / `meilisearch-win.exe`) —
+  **jamais** le dossier kit `electron-shell/resources/bin` en bloc dans asar
+  ni extraResources (cause du client TF3 ~622 Mo).
+- Exclusion asar systématique `!**/electron-shell/resources/bin/**`.
+- `sync-creezio-vendor.sh` : copie `resources/vendor` electron-shell, **pas**
+  les bins fat.
+- `desktop-tooling/scripts/stage-win-bins.sh` + factory `pack:win` /
+  `pack:win:server` / `electron:stage-win-bins`.
+- Factory `electron-builder.base.json` : `!node_modules/**` + electron-updater
+  (évite d’embarquer tout `node_modules` dans l’asar).
+
 ### Added
 - **Phase P cockpit** — `@creezio/cockpit` (ServerCockpitShell + CockpitClient +
   configureCockpit) ; cutover TF→CV→Fidu ; extinction jumeaux UI ;

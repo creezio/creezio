@@ -17,7 +17,8 @@
     "creezio-resolve-publish-config": "./scripts/resolve-config.mjs",
     "creezio-desktop-build-status": "./scripts/desktop-build-status.mjs",
     "creezio-publish-desktop": "./scripts/publish-desktop.sh",
-    "creezio-remote-build-win": "./scripts/remote-build-win.sh"
+    "creezio-remote-build-win": "./scripts/remote-build-win.sh",
+    "creezio-stage-win-bins": "./scripts/stage-win-bins.sh"
   },
   "files": [
     "dist",

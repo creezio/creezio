@@ -191,6 +191,27 @@ for name in "${PACKAGES[@]}"; do
   if [[ -d "${src}/email-worker" ]]; then
     cp -a "${src}/email-worker" "${out}/"
   fi
+  # electron-shell : vendor OS (Hermes/n8n) oui ; bins fat (Meili/cloudflared) NON —
+  # ils ne doivent jamais atterrir dans vendor marques → asar. Serveur Win les
+  # prend via stage `.creezio/win-bin-stage` (desktop-tooling/stage-win-bins.sh).
+  if [[ -d "${src}/resources" ]]; then
+    if [[ "${name}" == "electron-shell" ]]; then
+      mkdir -p "${out}/resources/bin"
+      if [[ -d "${src}/resources/vendor" ]]; then
+        cp -a "${src}/resources/vendor" "${out}/resources/"
+      fi
+      if [[ -f "${src}/resources/bin/.gitkeep" ]]; then
+        cp -a "${src}/resources/bin/.gitkeep" "${out}/resources/bin/"
+      else
+        : > "${out}/resources/bin/.gitkeep"
+      fi
+      if [[ -f "${src}/resources/bin/README.md" ]]; then
+        cp -a "${src}/resources/bin/README.md" "${out}/resources/bin/"
+      fi
+    else
+      cp -a "${src}/resources" "${out}/"
+    fi
+  fi
   node -e '
 const fs = require("fs");
 const path = process.argv[1];

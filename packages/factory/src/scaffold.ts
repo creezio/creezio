@@ -87,6 +87,12 @@ function renderPackageJson(m: AppManifest): string {
             "node scripts/build-builder-config.mjs client",
           "electron:config:server":
             "node scripts/build-builder-config.mjs server",
+          "electron:stage-win-bins":
+            "bash node_modules/@creezio/desktop-tooling/scripts/stage-win-bins.sh",
+          "pack:win":
+            "npm run electron:config:client && npm run build:electron && CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --config electron-builder.client.json --win nsis --x64 -c.win.signAndEditExecutable=false",
+          "pack:win:server":
+            "npm run electron:stage-win-bins && npm run electron:config:server && npm run build:electron && CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --config electron-builder.server.json --win nsis --x64 -c.win.signAndEditExecutable=false",
           "electron:publish": `CREEZIO_BRAND=${m.brandId} bash ../../packages/desktop-tooling/scripts/publish-desktop.sh`,
           "electron:publish:dry": `CREEZIO_BRAND=${m.brandId} bash ../../packages/desktop-tooling/scripts/publish-desktop.sh --dry-run`,
           "electron:remote-build": `CREEZIO_BRAND=${m.brandId} bash ../../packages/desktop-tooling/scripts/remote-build-win.sh`,
@@ -231,7 +237,29 @@ function renderElectronBuilderBase(m: AppManifest): string {
           output: "dist-electron",
           buildResources: "resources",
         },
-        files: ["build/electron/**/*", "package.json"],
+        // Parité TF2 : exclure node_modules (sinon bins kit + deps → asar ~450 Mo).
+        // @creezio/* runtime ré-inclus via buildElectronBuilderConfig (vendor/).
+        files: [
+          "build/electron/**/*",
+          "package.json",
+          "!node_modules/**/*",
+          "node_modules/electron-updater/**/*",
+          "node_modules/builder-util-runtime/**/*",
+          "node_modules/fs-extra/**/*",
+          "node_modules/jsonfile/**/*",
+          "node_modules/universalify/**/*",
+          "node_modules/graceful-fs/**/*",
+          "node_modules/js-yaml/**/*",
+          "node_modules/argparse/**/*",
+          "node_modules/semver/**/*",
+          "node_modules/lazy-val/**/*",
+          "node_modules/lodash.escaperegexp/**/*",
+          "node_modules/lodash.isequal/**/*",
+          "node_modules/tiny-typed-emitter/**/*",
+          "node_modules/debug/**/*",
+          "node_modules/ms/**/*",
+          "node_modules/sax/**/*",
+        ],
         extraResources: [
           {
             from: "build/electron",

@@ -132,6 +132,14 @@ Options principales :
 - `nsisInclude` : force le fichier include NSIS (`installer.nsh` par défaut) ou `false`.
 - `iconDir` : dossier relatif des icônes `client.png` / `server.png`.
 - `packCreezioVendor` : embarque les packages runtime `@creezio/*` depuis `vendor/creezio/` dans l'asar.
+- `winBinStage` : stage bins Windows serveur (défaut `.creezio/win-bin-stage` ou `CREEZIO_WIN_BIN_STAGE`).
+
+Packaging bins (parité TF2) :
+
+- **Client slim** : pas de `resources/bin` (ni asar, ni extraResources).
+- **Serveur** : `win.extraResources` filtré (`WIN_SERVER_BIN_FILTER`) depuis le stage ;
+  jamais le dossier kit `electron-shell/resources/bin` en bloc.
+- Exclusion asar systématique : `ASAR_EXCLUDE_KIT_BINS`.
 
 `CREEZIO_ASAR_RUNTIME_PACKAGES` inclut notamment `brand-config`, `platform-core`, `product-hub`, `shell`, `electron-shell`, `api-kernel`, `mcp-facade`, `shell-ui` et `auth`.
 

@@ -61,6 +61,12 @@ function renderPackageJsonFromPrd(m: AppManifest, model: ProductModel): string {
     "test:meili-config": "node scripts/test-meili-config.mjs",
     "electron:config:client": "node scripts/build-builder-config.mjs client",
     "electron:config:server": "node scripts/build-builder-config.mjs server",
+    "electron:stage-win-bins":
+      "bash node_modules/@creezio/desktop-tooling/scripts/stage-win-bins.sh",
+    "pack:win":
+      "npm run electron:config:client && npm run build:electron && CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --config electron-builder.client.json --win nsis --x64 -c.win.signAndEditExecutable=false",
+    "pack:win:server":
+      "npm run electron:stage-win-bins && npm run electron:config:server && npm run build:electron && CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --config electron-builder.server.json --win nsis --x64 -c.win.signAndEditExecutable=false",
     "electron:publish": `CREEZIO_BRAND=${m.brandId} bash ../../packages/desktop-tooling/scripts/publish-desktop.sh`,
     "electron:publish:dry": `CREEZIO_BRAND=${m.brandId} bash ../../packages/desktop-tooling/scripts/publish-desktop.sh --dry-run`,
     "desktop:dev": "npm run build:electron && electron .",

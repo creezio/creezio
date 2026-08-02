@@ -170,6 +170,34 @@ test("updater reduce + builder config", () => {
     ),
     "client slim : asar embarque aussi @creezio/*",
   );
+  assert.ok(
+    (clientCfg.files || []).some(
+      (e) =>
+        typeof e === "string" && e.includes("electron-shell/resources/bin"),
+    ),
+    "asar exclut electron-shell/resources/bin",
+  );
+  assert.ok(
+    !extras.some(
+      (e) =>
+        String(e.from || e).includes("resources/bin") ||
+        String(e.from || e).includes("win-bin-stage"),
+    ),
+    "client slim : pas de bin en extraResources",
+  );
+  assert.deepEqual(clientCfg.win?.extraResources || [], []);
+  const serverWin = serverCfg.win?.extraResources || [];
+  assert.ok(
+    serverWin.some(
+      (e) =>
+        e &&
+        typeof e === "object" &&
+        e.to === "bin" &&
+        Array.isArray(e.filter) &&
+        e.filter.includes("meilisearch-win.exe"),
+    ),
+    "server : win.extraResources bin Win-only",
+  );
 });
 
 test("paths / env brand / factory targets", () => {

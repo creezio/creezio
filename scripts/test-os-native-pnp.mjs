@@ -152,24 +152,60 @@ Desktop Creezio natif.
   );
   assert.match(harness, /startBrandKernelHarness/);
 
-  // electron-builder doit injecter kit vendor + bin
+  // electron-builder : vendor kit toujours ; bins = serveur Win only (pas client).
   const manifest = JSON.parse(
     fs.readFileSync(path.join(appDir, "src/electron/app-manifest.json"), "utf8"),
   );
   const base = JSON.parse(
     fs.readFileSync(path.join(appDir, "electron-builder.base.json"), "utf8"),
   );
-  const cfg = buildElectronBuilderConfig(manifest, "client", base);
-  const froms = (cfg.extraResources || []).map((e) =>
+  const clientCfg = buildElectronBuilderConfig(manifest, "client", base);
+  const serverCfg = buildElectronBuilderConfig(manifest, "server", base);
+  const clientFroms = (clientCfg.extraResources || []).map((e) =>
     typeof e === "string" ? e : String(e.from || ""),
   );
   assert.ok(
-    froms.some((f) => f.includes("electron-shell/resources/vendor")),
-    `extraResources vendor kit manquant: ${JSON.stringify(froms)}`,
+    clientFroms.some((f) => f.includes("electron-shell/resources/vendor")),
+    `extraResources vendor kit manquant: ${JSON.stringify(clientFroms)}`,
   );
   assert.ok(
-    froms.some((f) => f.includes("electron-shell/resources/bin")),
-    `extraResources bin kit manquant: ${JSON.stringify(froms)}`,
+    !clientFroms.some(
+      (f) => f.includes("resources/bin") || f.includes("win-bin-stage"),
+    ),
+    `client slim ne doit PAS embarquer bin: ${JSON.stringify(clientFroms)}`,
+  );
+  assert.ok(
+    Array.isArray(clientCfg.win?.extraResources) &&
+      clientCfg.win.extraResources.length === 0,
+    "client slim : win.extraResources vide (parité TF2)",
+  );
+  assert.ok(
+    (clientCfg.files || []).some(
+      (e) =>
+        typeof e === "string" && e.includes("electron-shell/resources/bin"),
+    ),
+    "asar doit exclure electron-shell/resources/bin",
+  );
+  const winExtra = serverCfg.win?.extraResources || [];
+  assert.ok(
+    winExtra.some(
+      (e) =>
+        typeof e === "object" &&
+        e &&
+        String(e.to || "") === "bin" &&
+        Array.isArray(e.filter) &&
+        e.filter.includes("cloudflared.exe"),
+    ),
+    `server win.extraResources bin filtré manquant: ${JSON.stringify(winExtra)}`,
+  );
+  assert.ok(
+    !(serverCfg.extraResources || []).some(
+      (e) =>
+        typeof e === "object" &&
+        e &&
+        String(e.from || "").includes("electron-shell/resources/bin"),
+    ),
+    "server : pas de bin kit unfiltered en top-level extraResources",
   );
 
   // Persiste chemin pour PnP3

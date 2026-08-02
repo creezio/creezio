@@ -245,7 +245,7 @@ test("sandbox demobrand présente et compilée", () => {
 
 test("buildElectronBuilderConfig demobrand", () => {
   const base = {
-    files: ["build/electron/**/*"],
+    files: ["build/electron/**/*", "!node_modules/**/*"],
     extraResources: [{ from: "build/electron", to: "build/electron" }],
   };
   const client = buildElectronBuilderConfig(demobrandManifest, "client", base);
@@ -254,6 +254,12 @@ test("buildElectronBuilderConfig demobrand", () => {
   assert.equal(server.appId, "io.creezio.demobrand.server");
   assert.equal(client.publish.url, demobrandManifest.client.feedUrl);
   assert.equal(server.publish.url, demobrandManifest.server.feedUrl);
+  assert.deepEqual(client.win?.extraResources || [], []);
+  assert.ok(
+    (server.win?.extraResources || []).some(
+      (e) => e?.to === "bin" && e?.filter?.includes("cloudflared.exe"),
+    ),
+  );
 });
 
 test("resolvePublishConfig demobrand dry-run ready", () => {
