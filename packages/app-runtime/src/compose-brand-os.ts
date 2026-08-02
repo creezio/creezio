@@ -43,6 +43,20 @@ export type ComposeBrandOsOptions = {
    * Opt-in : `pluginsFeatureOff: false` ou `CREEZIO_PLUGINS=1`.
    */
   pluginsFeatureOff?: boolean;
+  /**
+   * Host catalogue distant (marque CHR). Sans = seed local (DB déjà présente).
+   */
+  catalogHost?: {
+    RateEstimator: unknown;
+    formatEta: (seconds: number | null | undefined) => string;
+    ensureCatalogPresent: (
+      onProgress: (p: {
+        phase: string;
+        percent: number | null;
+        detail?: string;
+      }) => void,
+    ) => Promise<"present" | "installed" | string>;
+  };
 };
 
 export type BrandOsComposition = {
@@ -281,17 +295,18 @@ export function composeBrandOs(
       seedHermesSkills: async () => ({ ok: true, seeded: 0 }),
     }),
     meiliCoherence: "kit",
-    getCatalog: () => ({
-      RateEstimator: class {
-        sample() {
-          return 0;
-        }
+    getCatalog: () =>
+      opts.catalogHost || {
+        RateEstimator: class {
+          sample() {
+            return 0;
+          }
+        },
+        formatEta: () => "",
+        ensureCatalogPresent: async () =>
+          fs.existsSync(paths.dbPath()) ? "present" : "present",
       },
-      formatEta: () => "",
-      ensureCatalogPresent: async () =>
-        fs.existsSync(paths.dbPath()) ? "present" : "present",
-    }),
-    catalogPresentIfDbExists: true,
+    catalogPresentIfDbExists: !opts.catalogHost,
     // P&P : plugins feature-off par défaut (pas de sidecars marque).
     // Opt-in : composeBrandOs({ pluginsFeatureOff: false }) ou CREEZIO_PLUGINS=1.
     pluginsFeatureOff,

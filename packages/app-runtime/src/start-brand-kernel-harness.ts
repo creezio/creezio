@@ -82,6 +82,7 @@ export async function startBrandKernelHarness(
       isPackaged: false,
       resourcesRoot,
       electronDirname: path.join(config.appRoot, "build/electron"),
+      ...(config.catalogHost ? { catalogHost: config.catalogHost } : {}),
     });
   }
 
@@ -115,7 +116,12 @@ export async function startBrandKernelHarness(
     brandId: config.brandId,
     allowUnauthenticated: true,
     listApiMounts: () => api.listMounts(),
-    discoverToolsBySpace: async () => ({ module: [], plugin: [] }),
+    discoverToolsBySpace: async () => {
+      const brandTools = config.discoverModuleTools
+        ? await config.discoverModuleTools(api)
+        : [];
+      return { module: brandTools, plugin: [] };
+    },
   });
   mcp.registerTool({
     name: "module.platform.list_mounts",

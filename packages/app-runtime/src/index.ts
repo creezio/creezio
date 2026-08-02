@@ -1,6 +1,7 @@
 export type {
   BrandKernelHandle,
   BootBrandKernelFn,
+  BrandCatalogHost,
   StartBrandDesktopConfig,
   BrandDesktopHandle,
   StartBrandKernelHarnessConfig,

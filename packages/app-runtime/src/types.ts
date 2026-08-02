@@ -6,6 +6,7 @@ import type {
 } from "@creezio/platform-core";
 import type { BrandMeiliFeed } from "@creezio/electron-shell/meili";
 import type { CoreNavItem } from "@creezio/shell-ui";
+import type { McpRegisteredTool } from "@creezio/mcp-facade";
 
 /** Kernel marque déjà booted (SQLite + api-kernel + mounts). */
 export type BrandKernelHandle = {
@@ -18,6 +19,22 @@ export type BootBrandKernelFn = (opts: {
   userDataDir: string;
   isPackaged?: boolean;
 }) => BrandKernelHandle;
+
+/**
+ * Host catalogue distant (marque CHR) — injecté dans composeBrandOs.
+ * Contrat minimal consommé par brand-desktop-runtime splash.
+ */
+export type BrandCatalogHost = {
+  RateEstimator: unknown;
+  formatEta: (seconds: number | null | undefined) => string;
+  ensureCatalogPresent: (
+    onProgress: (p: {
+      phase: string;
+      percent: number | null;
+      detail?: string;
+    }) => void,
+  ) => Promise<"present" | "installed" | string>;
+};
 
 /**
  * Déclaration marque pour startBrandDesktop.
@@ -52,6 +69,17 @@ export type StartBrandDesktopConfig = {
   meiliFeed?: BrandMeiliFeed;
   /** Items nav brand (slot vertical). */
   navItems?: CoreNavItem[];
+  /**
+   * Catalogue distant marque (ensureCatalogPresent). Sans = seed local no-op.
+   */
+  catalogHost?: BrandCatalogHost;
+  /**
+   * Tools MCP métier (`module.*`) — catalogue / panier / SKU…
+   * Fusionnés avec les tools health auto-générés depuis les mounts.
+   */
+  discoverModuleTools?: (
+    api: ApiKernel,
+  ) => McpRegisteredTool[] | Promise<McpRegisteredTool[]>;
   window?: {
     width?: number;
     height?: number;
@@ -87,6 +115,10 @@ export type StartBrandKernelHarnessConfig = {
   dataDir?: string;
   meiliBinary?: string | null;
   skipIndex?: boolean;
+  catalogHost?: BrandCatalogHost;
+  discoverModuleTools?: (
+    api: ApiKernel,
+  ) => McpRegisteredTool[] | Promise<McpRegisteredTool[]>;
 };
 
 export type BrandKernelHarnessHandle = {

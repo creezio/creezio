@@ -154,6 +154,7 @@ export async function startBrandDesktop(
       ...(config.pluginsFeatureOff !== undefined
         ? { pluginsFeatureOff: config.pluginsFeatureOff }
         : {}),
+      ...(config.catalogHost ? { catalogHost: config.catalogHost } : {}),
     });
   }
 
@@ -195,8 +196,8 @@ export async function startBrandDesktop(
     brandId: manifest.brandId,
     allowUnauthenticated: true,
     listApiMounts: () => api.listMounts(),
-    discoverToolsBySpace: async () => ({
-      module: api
+    discoverToolsBySpace: async () => {
+      const health = api
         .listMounts()
         .filter((m) => m.space === "module")
         .map((m) => ({
@@ -208,9 +209,12 @@ export async function startBrandDesktop(
             ok: true,
             content: { module: m.id },
           }),
-        })),
-      plugin: [],
-    }),
+        }));
+      const brandTools = config.discoverModuleTools
+        ? await config.discoverModuleTools(api)
+        : [];
+      return { module: [...health, ...brandTools], plugin: [] };
+    },
   });
   mcp.registerTool({
     name: "module.platform.list_mounts",
