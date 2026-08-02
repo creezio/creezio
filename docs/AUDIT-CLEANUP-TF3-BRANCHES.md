@@ -206,12 +206,12 @@ Expérimental (ne pas merger tel quel)
 
 ### P3 — Cleanup + sync marques
 
-| ID | Tâche | Done falsifiable | Dépendances | Effort |
-|----|-------|------------------|-------------|--------|
-| P3.1 | Delete remote branches creezio `cursor/native-*`, `integrate-native-kit`, `factory-from-prd` (après P1.6) | `git ls-remote` sans ces refs | P1.6 | S |
-| P3.2 | Delete remote cutovers certivan/fidu (`cursor/*` listés §B) | Idem sur les 2 repos | P0.3 | S |
-| P3.3 | Resync vendor Certivan + Fidu + smoke minimal | SYNC kitSha aligné ; pas de régression tests OS paths | P2.3 | M |
-| P3.4 | Windows TF3 : machine Win réelle + bins kit win (hors scope actuel) | Verdict Win mis à jour (PASS ou FAIL honnête) | P2.2 | L |
+| ID | Tâche | Done falsifiable | Dépendances | Effort | Statut |
+|----|-------|------------------|-------------|--------|--------|
+| P3.1 | Delete remote branches creezio `cursor/native-*`, `integrate-native-kit`, `factory-from-prd` (après P1.6) | `git ls-remote` sans ces refs | P1.6 | S | **DONE** (§J) |
+| P3.2 | Delete remote cutovers certivan/fidu (`cursor/*` listés §B) | Idem sur les 2 repos | P0.3 | S | **DONE** (§J) |
+| P3.3 | Resync vendor Certivan + Fidu (+ TF2 gold) | SYNC kitSha aligné tip | P2.3 | M | **DONE** `e52963c` (§J) |
+| P3.4 | Windows TF3 : machine Win réelle + bins kit win (hors scope actuel) | Verdict Win mis à jour (PASS ou FAIL honnête) | P2.2 | L | deferred |
 
 ---
 
@@ -295,14 +295,12 @@ Après merge P3 gates :
 3. **Historique** : divergences tip vs main sur packages P1 déjà mergés — ignorer (SoT main).
 4. Vendor TF3 : resync `kitSha` → tip creezio post-merge (pas `878c641` si tip a avancé).
 
-### Branches `cursor/*` encore intouchables / à ne pas delete
+### Branches `cursor/*` (post-P3 §J)
 
 | Branche | Note |
 |---------|------|
-| `cursor/tempoflow3-create-457d` | **unique** tip taggé — **garder** jusqu’à sign-off P3 |
-| `cursor/factory-from-prd-457d` | contenu absorbé via #29 ; delete OK en P3 |
-| `cursor/native-*` / `integrate-*` / `pshell5` | fully in main — delete OK P3 |
-| `cursor/native-shell-ui-sot-457d` | contenu fully in main — delete OK P3 |
+| `cursor/tempoflow3-create-457d` | **KEPT** — tip = tag `archive/tf3-probe-65b9273` |
+| `cursor/factory-from-prd-457d` + `native-*` / `integrate-*` / `pshell5` / `native-shell-ui-sot` | **DELETED** en P3 (§J.2) |
 
 ## I. Extract kit gates OS + demobrand (2026-08-02)
 
@@ -315,4 +313,59 @@ Après merge P3 gates :
 | creezio tip | `60ce0f5` |
 | tempoflow3 | `2c59fb8` ; `kitSha=60ce0f5` |
 | Tip-only kit légitime | **0** — résiduels = 24 docs expérience déjà dans TF3 |
+
+## J. P3 cleanup + vendor sync marques (2026-08-02)
+
+Prérequis : `npm run build:packages` kit @ `e52963c` **avant** tout sync (anti-wipe).
+
+### J.1 Vendor `kitSha` (liste complète H6)
+
+| Marque | Avant | Après | Commit push | Notes |
+|--------|-------|-------|-------------|-------|
+| tempoflow2 | `9c474c2` | **`e52963c`** | [`f02a58a`](https://github.com/creezio/tempoflow2/commit/f02a58a) | gold priorité ; 18 packages |
+| certivan-app | `9c474c2` | **`e52963c`** | [`d1fc109`](https://github.com/creezio/certivan-app/commit/d1fc109) | 18 packages |
+| fidu | `9c474c2` | **`e52963c`** | [`582dc3a`](https://github.com/creezio/fidu/commit/582dc3a) | 18 packages |
+| tempoflow3 | `e52963c` | **`e52963c`** | — (déjà tip) | 16 packages incl. brand-spec + app-runtime |
+
+Auteur commits marques : `Creezio <dev@creez.io>`. Message : `chore(vendor): pin kitSha to creezio tip e52963c`.
+
+### J.2 Purge branches `cursor/*` — décisions
+
+| Repo | Branche | Motif | Action |
+|------|---------|-------|--------|
+| creezio | `cursor/factory-from-prd-457d` | unique vs main+tag = 0 (dans archive) ; factory absorbé #29 | **DELETED** |
+| creezio | `cursor/integrate-native-kit-457d` | ahead=0 / ancêtre main | **DELETED** |
+| creezio | `cursor/native-*-sot-457d` (×10) + `pshell5` | ahead=0 / ancêtre main | **DELETED** |
+| creezio | `cursor/native-shell-ui-sot-457d` | ahead=1 orphelin ; blob `test-phase-p-shell-ui.mjs` sha256 = main | **DELETED** |
+| creezio | `cursor/tempoflow3-create-457d` @ `65b9273` | tip archive ; résiduels docs tip-only | **KEPT** |
+| creezio | tag `archive/tf3-probe-65b9273` | freeze historique | **KEPT** |
+| certivan-app | 16× cutover/integrate/resync/sync/fix-mcp/fix-os | ahead=0 / in main | **DELETED** |
+| certivan-app | `cursor/certivan-plugin-factory-457d` | PR #19 MERGED ; 5 fichiers tip = main | **DELETED** |
+| certivan-app | `cursor/fix-shell-embed-tests-457d` | PR #21 MERGED ; 10 fichiers tip = main | **DELETED** |
+| fidu | 15× cutover/integrate/resync/sync/fix-os | ahead=0 / in main | **DELETED** |
+| fidu | `cursor/fix-shell-embed-tests-457d` | PR #19 MERGED ; 4 fichiers tip = main | **DELETED** |
+| tempoflow2 / tempoflow3 | — | aucune `cursor/*` remote | — |
+
+**Totaux deleted** : creezio 14 ; certivan-app 18 ; fidu 16. **Kept** : `cursor/tempoflow3-create-457d` + tag archive.
+
+### J.3 Statut tâches P3
+
+| ID | Statut | Preuve |
+|----|--------|--------|
+| P3.1 | **DONE** | `git ls-remote` creezio : seul `cursor/tempoflow3-create-457d` reste |
+| P3.2 | **DONE** | certivan-app / fidu : 0 branche `cursor/*` remote |
+| P3.3 | **DONE** | vendor ×3 (TF2/CV/Fidu) + TF3 déjà tip → `kitSha=e52963c` |
+| P3.4 | deferred | Windows TF3 hors scope |
+
+### J.4 Références tip post-P3
+
+| Item | Valeur |
+|------|--------|
+| creezio `main` (kit) | `e52963c` |
+| tempoflow2 `main` | `f02a58a` / `kitSha=e52963c` |
+| certivan-app `main` | `d1fc109` / `kitSha=e52963c` |
+| fidu `main` | `582dc3a` / `kitSha=e52963c` |
+| tempoflow3 `main` | `e42ff99` / `kitSha=e52963c` |
+| Archive TF3 | tag `archive/tf3-probe-65b9273` → `65b9273` |
+| Branche TF3 probe | `cursor/tempoflow3-create-457d` **conservée** |
 
