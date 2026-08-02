@@ -13,8 +13,16 @@ export const CORE_NAV_ITEMS: readonly CoreNavItem[] = [
     href: "/assistant",
     group: "core",
   },
-  { id: "core.tasks", label: "Tâches", href: "/tasks", group: "core" },
+  { id: "core.tasks", label: "Tâches", href: "/taches", group: "core" },
   { id: "core.mails", label: "Mails", href: "/mails", group: "core" },
+  { id: "core.setup", label: "Setup", href: "/setup", group: "core" },
+  { id: "core.login", label: "Login", href: "/login", group: "core" },
+  {
+    id: "core.developers",
+    label: "Developers",
+    href: "/developers",
+    group: "core",
+  },
   { id: "core.about", label: "À propos", href: "/about", group: "core" },
 ] as const;
 

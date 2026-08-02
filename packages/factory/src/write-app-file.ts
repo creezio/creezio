@@ -67,6 +67,28 @@ export function mergeOwnedPackageJson(
 }
 
 /**
+ * Pages OS kit — jamais propriété marque. Écrase même `owned-by-brand`
+ * (pollution historique agents qui ont marqué mails/mcp/setup).
+ */
+export function writeOsUiAppFile(
+  filePath: string,
+  content: string | Buffer,
+  written: string[],
+): boolean {
+  fs.mkdirSync(path.dirname(filePath), { recursive: true });
+  const existed = fs.existsSync(filePath);
+  const wasOwned = existed && isOwnedByBrand(filePath);
+  fs.writeFileSync(filePath, content);
+  written.push(filePath);
+  if (wasOwned) {
+    console.log(
+      `overwrite OS UI (was owned-by-brand) ${path.relative(process.cwd(), filePath)}`,
+    );
+  }
+  return true;
+}
+
+/**
  * @returns true si écrit, false si skip (owned-by-brand)
  */
 export function writeAppFile(

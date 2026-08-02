@@ -9,6 +9,12 @@ export {
   renderNextEntityPage,
   renderMetierRendererHtml,
 } from "./ui.js";
+export {
+  listOsUiPages,
+  renderUiPackageJson,
+  renderUiNextConfig,
+  renderNextLayoutWithOsNav,
+} from "./os-ui.js";
 export { renderVerticalSlotFromModel } from "./nav.js";
 export {
   renderPathsTs,

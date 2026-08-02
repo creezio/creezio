@@ -91,6 +91,9 @@ export * from "./workspace/window-chrome-controls";
 export * from "./workspace/ai-workspace-agent-host";
 export * from "./workspace/use-location-search";
 
+/* ── Pages OS composées (wrappers marque = re-export) ── */
+export { DesktopSettingsPage } from "./os-pages/desktop-settings-page";
+
 /* ── Settings desktop ── */
 export * from "./settings/desktop-hermes-settings";
 export * from "./settings/desktop-n8n-settings";

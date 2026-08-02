@@ -24,3 +24,7 @@ packages/electron-shell/resources/bin/cloudflared
 packages/electron-shell/resources/bin/cloudflared.exe
 packages/electron-shell/resources/bin/meili.exe
 
+
+.github-token
+.env
+.env.local

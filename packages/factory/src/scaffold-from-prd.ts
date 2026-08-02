@@ -10,10 +10,13 @@ import {
   renderBrandSchemaSql,
   renderBrandSchemaTs,
   renderMetierQueriesTs,
-  renderNextLayoutTsx,
   renderNextHomePage,
   renderNextEntityPage,
   renderMetierRendererHtml,
+  listOsUiPages,
+  renderUiPackageJson,
+  renderUiNextConfig,
+  renderNextLayoutWithOsNav,
   renderVerticalSlotFromModel,
   renderPreloadFromPrdTs,
   renderBrandMigrationsTs,
@@ -29,7 +32,7 @@ import {
   renderMeiliConfigSmoke,
 } from "./generators/index.js";
 
-import { writeAppFile } from "./write-app-file.js";
+import { writeAppFile, writeOsUiAppFile } from "./write-app-file.js";
 
 function writeFile(
   filePath: string,
@@ -309,10 +312,20 @@ export function writeFromPrdArtifacts(opts: {
     );
   }
 
-  writeFile(
+  // Infra UI OS (deps kit + boot) — écrasable même si marque a pollué.
+  writeOsUiAppFile(
+    path.join(outDir, "ui/package.json"),
+    renderUiPackageJson(manifest),
+    written,
+  );
+  writeOsUiAppFile(
+    path.join(outDir, "ui/next.config.mjs"),
+    renderUiNextConfig(),
+    written,
+  );
+  writeOsUiAppFile(
     path.join(outDir, "ui/app/layout.tsx"),
-    renderNextLayoutTsx(model),
-    force,
+    renderNextLayoutWithOsNav(model),
     written,
   );
   writeFile(
@@ -327,6 +340,14 @@ export function writeFromPrdArtifacts(opts: {
       path.join(outDir, `ui/app/${seg}/page.tsx`),
       renderNextEntityPage(model, page.id),
       force,
+      written,
+    );
+  }
+  // Surfaces OS = wrappers kit (@creezio/*/ui). Toujours écrasables (jamais owned-by-brand).
+  for (const osPage of listOsUiPages(manifest)) {
+    writeOsUiAppFile(
+      path.join(outDir, `ui/app/${osPage.rel}`),
+      osPage.source,
       written,
     );
   }
@@ -398,9 +419,13 @@ export function writeFromPrdArtifacts(opts: {
 Marque légère sur **OS Creezio**.
 
 - Desktop = \`startBrandDesktop\` (@creezio/app-runtime)
-- Déclaration = migrations + \`registerModuleApi\` + feed + nav
+- Déclaration = migrations + \`registerModuleApi\` + feed + nav métier
 - API métier = \`/api/v1/modules/*\`
-- **Interdit** : glue OS (\`src/lib/*\`, \`brand-runtime\`), sidecar JSON
+- UI OS (\`/mails\`, \`/taches\`, \`/setup\`, \`/login\`, MCP, admin…) =
+  **wrappers** \`@creezio/*/ui\` générés factory — **ne pas** réécrire ni marquer
+  \`owned-by-brand\`
+- **Interdit** : glue OS (\`src/lib/*\`, \`brand-runtime\`), sidecar JSON,
+  fetch maison vers \`/api/v1/os/*\` dans \`ui/app\`
 
 \`\`\`bash
 npm test
