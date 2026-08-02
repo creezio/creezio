@@ -44,6 +44,11 @@ export {
   createFileSinkMailProvider,
 } from "./providers/file-sink.js";
 export type { CreateFileSinkMailProviderOptions } from "./providers/file-sink.js";
+export {
+  SMTP_ENV_PROVIDER_ID,
+  createSmtpEnvMailProvider,
+} from "./providers/smtp-env.js";
+export type { CreateSmtpEnvMailProviderOptions } from "./providers/smtp-env.js";
 export { createMailsApiMount } from "./api-mount.js";
 export { indexKitInboundMail } from "./env-bridge.js";
 export { getKitMailsStore, resetKitMailsStoreForTests } from "./env-store.js";
