@@ -7,7 +7,7 @@
 La mission concrète du package :
 
 - définir le contrat `AppManifest` Client + Serveur ;
-- exposer les manifests `tempoflowManifest`, `certivanManifest`, `fiduManifest`, `demobrandManifest` ;
+- exposer les manifests `tempoflowManifest`, `tempoflow3Manifest` (sandbox), `certivanManifest`, `fiduManifest`, `demobrandManifest` ;
 - fournir un registre typé (`manifests`, `BrandId`, `getManifest`, `listBrandIds`, `listProductionBrandIds`, `isSandboxBrand`) ;
 - dériver les noms d'env, partitions Chromium, feeds, aliases d'artifacts et dossiers de build ;
 - produire des manifests sandbox pour la factory via `createAppManifest` ;

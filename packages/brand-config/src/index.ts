@@ -22,6 +22,7 @@ export {
 } from "./types.js";
 
 export { tempoflowManifest } from "./manifests/tempoflow.js";
+export { tempoflow3Manifest } from "./manifests/tempoflow3.js";
 export { certivanManifest } from "./manifests/certivan.js";
 export { fiduManifest } from "./manifests/fidu.js";
 export { demobrandManifest } from "./manifests/demobrand.js";
@@ -50,6 +51,7 @@ export {
 export type { AppManifestSpec } from "./create-manifest.js";
 
 import { tempoflowManifest } from "./manifests/tempoflow.js";
+import { tempoflow3Manifest } from "./manifests/tempoflow3.js";
 import { certivanManifest } from "./manifests/certivan.js";
 import { fiduManifest } from "./manifests/fidu.js";
 import { demobrandManifest } from "./manifests/demobrand.js";
@@ -58,6 +60,7 @@ import type { AppManifest } from "./types.js";
 /** Registre des manifests connus (prod + sandboxes factory). */
 export const manifests = {
   tempoflow: tempoflowManifest,
+  tempoflow3: tempoflow3Manifest,
   certivan: certivanManifest,
   fidu: fiduManifest,
   demobrand: demobrandManifest,

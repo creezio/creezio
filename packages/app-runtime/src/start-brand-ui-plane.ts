@@ -39,16 +39,25 @@ export async function startBrandUiPlane(opts: {
       ? opts.preferredPort
       : await findFreePort();
   const standaloneRoot = path.dirname(entry);
-  // Next standalone attend .next/static à côté
+  // Next standalone attend .next/static à côté du server.js.
+  // Toujours resync (BUILD_ID / chunks) — un dossier stale provoque HTTP 400
+  // sur `/_next/static/*` et une erreur client hydratation.
   const staticSrc = path.join(opts.appRoot, "ui/.next/static");
   const staticDst = path.join(standaloneRoot, ".next/static");
-  if (fs.existsSync(staticSrc) && !fs.existsSync(staticDst)) {
+  if (fs.existsSync(staticSrc)) {
     fs.mkdirSync(path.dirname(staticDst), { recursive: true });
+    fs.rmSync(staticDst, { recursive: true, force: true });
     fs.cpSync(staticSrc, staticDst, { recursive: true });
+    const buildIdSrc = path.join(opts.appRoot, "ui/.next/BUILD_ID");
+    const buildIdDst = path.join(standaloneRoot, ".next/BUILD_ID");
+    if (fs.existsSync(buildIdSrc)) {
+      fs.copyFileSync(buildIdSrc, buildIdDst);
+    }
   }
   const publicSrc = path.join(opts.appRoot, "ui/public");
   const publicDst = path.join(standaloneRoot, "public");
-  if (fs.existsSync(publicSrc) && !fs.existsSync(publicDst)) {
+  if (fs.existsSync(publicSrc)) {
+    fs.rmSync(publicDst, { recursive: true, force: true });
     fs.cpSync(publicSrc, publicDst, { recursive: true });
   }
 

@@ -168,6 +168,16 @@ function applyExeIdentity(
     ...asRecord(base.win),
     icon: iconFor(kind, opts.iconDir),
   };
+  // Linux AppImage/dir : electron-builder CollectIcons exige un dossier
+  // `NxN.png` (ou icon.png) — `resources/icons/{kind}.png` seul échoue.
+  base.linux = {
+    category: "Office",
+    icon: opts.iconDir.replace(/\/+$/, ""),
+    ...asRecord(base.linux),
+  };
+  if (!base.icon) {
+    base.icon = `${opts.iconDir.replace(/\/+$/, "")}/512x512.png`;
+  }
 }
 
 function creezioAsarFileSets(): JsonRecord[] {
