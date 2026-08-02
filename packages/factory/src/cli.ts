@@ -31,6 +31,8 @@ export type CliArgs = {
   sandbox?: boolean;
   help?: boolean;
   fromPrd?: string;
+  /** Dossier icônes marque (client.png / server.png [/ tray-icon.png]). */
+  iconsDir?: string;
   /** Args restants pour sous-commandes (brand …). */
   rest?: string[];
 };
@@ -69,6 +71,9 @@ export function parseArgs(argv: string[]): CliArgs {
     else if (a.startsWith("--from-prd="))
       out.fromPrd = a.slice("--from-prd=".length);
     else if (a === "--from-prd") out.fromPrd = rest.shift();
+    else if (a.startsWith("--icons-dir="))
+      out.iconsDir = a.slice("--icons-dir=".length);
+    else if (a === "--icons-dir") out.iconsDir = rest.shift();
     else throw new Error(`Argument inconnu: ${a}`);
   }
   return out;
@@ -94,13 +99,16 @@ BrandSpec (agent créateur) :
 
 Overrides optionnels avec --from-prd :
   --name, --id, --domain, --out, --env-prefix, --feed-token, --sandbox/--no-sandbox, --force
+  --icons-dir   Dossier marque : client.png + server.png (+ tray-icon.png)
+                (sinon brand-spec/icons/ si présent ; sinon placeholder 1×1)
 
 Mode technique (squelette OS vide) :
   --name, --id, --domain, --out, --env-prefix, --feed-token, --sandbox, --force
-  -h, --help
+  --icons-dir, -h, --help
 
 Exemples:
-  creezio new-app --from-prd docs/experiences/tempoflow3/PRD-PRODUIT.md --out /tmp/tempoflow3
+  creezio new-app --from-prd docs/experiences/tempoflow3/PRD-PRODUIT.md --out /tmp/tempoflow3 \\
+    --icons-dir /opt/docker/tempoflow2/crm/resources/icons
   creezio brand apply --spec apps/tempoflow3/brand-spec --out apps/tempoflow3 --force
 `);
 }
@@ -208,6 +216,7 @@ export async function runCli(argv: string[]): Promise<void> {
     sandbox: args.sandbox !== false,
     force: Boolean(args.force),
     kitRoot: root,
+    iconsDir: args.iconsDir ? path.resolve(args.iconsDir) : undefined,
     productModel,
   };
 

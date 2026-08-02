@@ -25,6 +25,10 @@ import { exeForKind } from "./types.js";
  *
  * On copie donc depuis `vendor/creezio/<pkg>` (fichiers réels) vers
  * `node_modules/@creezio/<pkg>` dans l'asar — indépendant des symlinks npm.
+ *
+ * Note : les symlinks `file:` vers `vendor/` échappent souvent au filtre
+ * `!node_modules/**` (chemin réel hors node_modules). Les deps npm « vraies »
+ * (hono, zod…) restent exclues → voir `CREEZIO_ASAR_NPM_RUNTIME_PACKAGES`.
  */
 export const CREEZIO_ASAR_RUNTIME_PACKAGES = [
   "brand-config",
@@ -37,6 +41,42 @@ export const CREEZIO_ASAR_RUNTIME_PACKAGES = [
   "mcp-facade",
   "shell-ui",
   "auth",
+  // PnP / from-prd — orchestration + surfaces OS dans le main
+  "app-runtime",
+  "assistant",
+  "tasks",
+  "mails",
+  "observability",
+  "database",
+  "onboarding",
+  "cockpit",
+  "os-ui",
+  "brand-spec",
+] as const;
+
+/**
+ * Deps npm runtime du main Electron (hors @creezio/*).
+ *
+ * Piège packagé (TF3 Server Win) : files exclut tout node_modules puis ne
+ * ré-inclut que electron-updater. Les @creezio/* en file:vendor passent
+ * (symlink → vendor réel), mais hono / zod / jose restent sous
+ * node_modules/pkg → ERR_MODULE_NOT_FOUND au boot
+ * (mount-brand-mcp-surface.js → import from "hono").
+ *
+ * Ces globs ré-incluent les packages nécessaires à toutes les marques
+ * native-kernel — pas un hack TF3.
+ */
+export const CREEZIO_ASAR_NPM_RUNTIME_PACKAGES = [
+  "hono",
+  "@hono/zod-openapi",
+  "@hono/zod-validator",
+  "@asteasolutions/zod-to-openapi",
+  "openapi3-ts",
+  "zod",
+  "jose",
+  "yaml",
+  "clsx",
+  "tailwind-merge",
 ] as const;
 
 /** Liste des modules main Electron réservés à l'hôte (exclus du paquet Client). */
@@ -184,31 +224,29 @@ function creezioAsarFileSets(): JsonRecord[] {
   return CREEZIO_ASAR_RUNTIME_PACKAGES.map((name) => ({
     from: `vendor/creezio/${name}`,
     to: `node_modules/@creezio/${name}`,
+    // dist (ESM app-runtime/os-ui/brand-spec) + dist-cjs (dual package).
     // Jamais resources/bin (Meili/cloudflared) dans l'asar — serveur = extraResources.
-    filter: ["package.json", "dist-cjs/**/*", "!resources/bin/**"],
+    filter: [
+      "package.json",
+      "dist/**/*",
+      "dist-cjs/**/*",
+      "!resources/bin/**",
+    ],
   }));
 }
 
-function filesAlreadyPackCreezio(files: unknown[]): boolean {
-  return files.some((entry) => {
-    if (typeof entry === "string") {
-      return (
-        entry.includes("node_modules/@creezio") ||
-        entry.includes("vendor/creezio/")
-      );
-    }
-    if (entry && typeof entry === "object") {
-      const rec = entry as { from?: string; to?: string };
-      const from = String(rec.from || "");
-      const to = String(rec.to || "");
-      return (
-        from.includes("vendor/creezio/") ||
-        to.includes("node_modules/@creezio/") ||
-        from.includes("node_modules/@creezio")
-      );
-    }
-    return false;
-  });
+/**
+ * Filesets `{from,to}` pour deps npm runtime (hono, zod…).
+ * Les globs `node_modules/hono/**` sont réordonnés par electron-builder
+ * AVANT `!node_modules/**` → exclus à nouveau. Les FileSet objet (comme
+ * vendor/creezio) contournent nodeModuleFilePatterns — fiable.
+ */
+function npmRuntimeAsarFileSets(): JsonRecord[] {
+  return CREEZIO_ASAR_NPM_RUNTIME_PACKAGES.map((name) => ({
+    from: `node_modules/${name}`,
+    to: `node_modules/${name}`,
+    filter: ["**/*", "!**/*.md", "!**/LICENSE*", "!**/license*"],
+  }));
 }
 
 function filesExcludeNodeModules(files: unknown[]): boolean {
@@ -217,23 +255,62 @@ function filesExcludeNodeModules(files: unknown[]): boolean {
   );
 }
 
+function hasVendorFileset(files: unknown[], pkg: string): boolean {
+  const from = `vendor/creezio/${pkg}`;
+  return files.some(
+    (entry) =>
+      entry &&
+      typeof entry === "object" &&
+      String((entry as { from?: string }).from || "") === from,
+  );
+}
+
+function hasNpmRuntimeFileset(files: unknown[], pkg: string): boolean {
+  const from = `node_modules/${pkg}`;
+  return files.some(
+    (entry) =>
+      entry &&
+      typeof entry === "object" &&
+      String((entry as { from?: string }).from || "") === from,
+  );
+}
+
+/** Retire les anciens globs `node_modules/<pkg>/**` (inefficaces vs !node_modules). */
+function stripLegacyNpmRuntimeGlobs(files: unknown[]): unknown[] {
+  const legacy = new Set(
+    CREEZIO_ASAR_NPM_RUNTIME_PACKAGES.map((name) => `node_modules/${name}/**/*`),
+  );
+  return files.filter((entry) => !(typeof entry === "string" && legacy.has(entry)));
+}
+
 /**
- * Ré-inclut les packages runtime @creezio/* dans l'asar quand la config
- * exclut `node_modules/**` (pattern TF2 / Certivan / Fidu).
+ * Ré-inclut les packages runtime @creezio/* + deps npm (hono…) dans l'asar
+ * quand la config exclut `node_modules/**` (pattern TF2 / Certivan / Fidu / TF3).
+ * Idempotent : n'ajoute que les filesets manquants.
  */
 function ensureCreezioVendorInAsar(
   base: JsonRecord,
   pack: boolean | undefined,
 ): void {
-  const files = Array.isArray(base.files) ? [...(base.files as unknown[])] : [];
+  let files = Array.isArray(base.files) ? [...(base.files as unknown[])] : [];
   const shouldPack =
     pack === true ||
     (pack !== false && filesExcludeNodeModules(files));
-  if (!shouldPack || filesAlreadyPackCreezio(files)) {
+  if (!shouldPack) {
     base.files = files;
     return;
   }
-  base.files = [...files, ...creezioAsarFileSets()];
+  files = stripLegacyNpmRuntimeGlobs(files);
+  const next = [...files];
+  for (const set of creezioAsarFileSets()) {
+    const pkg = String(set.from).replace(/^vendor\/creezio\//, "");
+    if (!hasVendorFileset(next, pkg)) next.push(set);
+  }
+  for (const set of npmRuntimeAsarFileSets()) {
+    const pkg = String(set.from).replace(/^node_modules\//, "");
+    if (!hasNpmRuntimeFileset(next, pkg)) next.push(set);
+  }
+  base.files = next;
 }
 
 /** Garantit l'exclusion asar des bins kit (Linux+Win fat). */

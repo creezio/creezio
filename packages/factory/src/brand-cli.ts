@@ -32,6 +32,8 @@ export type BrandCliArgs = {
   force?: boolean;
   help?: boolean;
   vertical?: "chr" | "generic";
+  /** Dossier icônes marque (sinon `<spec>/icons`). */
+  iconsDir?: string;
 };
 
 export function parseBrandArgs(argv: string[]): BrandCliArgs {
@@ -61,7 +63,10 @@ export function parseBrandArgs(argv: string[]): BrandCliArgs {
     } else if (a === "--vertical") {
       const v = rest.shift();
       out.vertical = v === "chr" ? "chr" : "generic";
-    } else {
+    } else if (a.startsWith("--icons-dir="))
+      out.iconsDir = a.slice("--icons-dir=".length);
+    else if (a === "--icons-dir") out.iconsDir = rest.shift();
+    else {
       throw new Error(`Argument inconnu (brand): ${a}`);
     }
   }
@@ -74,13 +79,14 @@ export function printBrandHelp(): void {
 Usage:
   creezio brand init --id <id> --name <Name> --domain <host> [--out <dir>]
   creezio brand doctor [--spec <brand-spec-dir>]
-  creezio brand apply --spec <brand-spec-dir> --out <app-dir> [--force]
+  creezio brand apply --spec <brand-spec-dir> --out <app-dir> [--force] [--icons-dir <dir>]
   creezio brand apply-modules --spec <brand-spec-dir> --out <app-dir>
   creezio brand smoke --app <app-dir>
 
 Notes:
   - BrandSpec = SoT déclarative (brand.yaml, product.md, modules/*)
   - apply réutilise le scaffold --from-prd (ProductModel) + pose brand-spec/
+  - Icônes : --icons-dir ou <spec>/icons/{client,server}.png (pas le PNG 1×1)
   - apply-modules inventorie modules/*/prd.md et refuse d'écraser owned-by-brand
   - Runtime desktop = @creezio/app-runtime (startBrandDesktop)
 `);
@@ -333,6 +339,12 @@ export async function runBrandCli(argv: string[]): Promise<void> {
       throw new Error("brand apply refusé: doctor en erreur");
     }
     const model = productModelFromSpec(specDir);
+    const iconsDir =
+      (args.iconsDir && path.resolve(args.iconsDir)) ||
+      (fs.existsSync(path.join(specDir, "icons", "client.png")) ||
+      fs.existsSync(path.join(specDir, "icons", "server.png"))
+        ? path.join(specDir, "icons")
+        : undefined);
     const result = scaffoldNewApp({
       brandId: model.brandId,
       productName: model.brandName,
@@ -341,6 +353,7 @@ export async function runBrandCli(argv: string[]): Promise<void> {
       sandbox: doctor.spec?.brand.sandbox !== false,
       force: Boolean(args.force),
       kitRoot: root,
+      iconsDir,
       productModel: model,
     });
     copyBrandSpecIntoApp(specDir, outDir, Boolean(args.force));

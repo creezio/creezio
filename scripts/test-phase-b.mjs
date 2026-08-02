@@ -147,6 +147,8 @@ test("updater reduce + builder config", () => {
     "product-hub",
     "shell",
     "electron-shell",
+    "app-runtime",
+    "api-kernel",
   ]) {
     assert.ok(
       serverFiles.some(
@@ -156,6 +158,24 @@ test("updater reduce + builder config", () => {
       `server : asar embarque @creezio/${pkg}`,
     );
   }
+  assert.ok(
+    serverFiles.some(
+      (e) =>
+        typeof e === "object" &&
+        e?.from === "node_modules/hono" &&
+        e?.to === "node_modules/hono",
+    ),
+    "server : asar FileSet hono (deps npm runtime, hors symlink vendor)",
+  );
+  assert.ok(
+    serverFiles.some(
+      (e) =>
+        typeof e === "object" &&
+        e?.from === "node_modules/zod" &&
+        e?.to === "node_modules/zod",
+    ),
+    "server : asar FileSet zod",
+  );
 
   const clientCfg = buildElectronBuilderConfig(certivanManifest, "client", base);
   assert.equal(clientCfg.appId, certivanManifest.client.appId);

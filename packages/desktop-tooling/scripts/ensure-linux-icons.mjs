@@ -52,11 +52,20 @@ if (!fs.existsSync(client)) {
   process.exit(1);
 }
 
+function needsRegen(out) {
+  if (!fs.existsSync(out) || fs.statSync(out).size < 100) return true;
+  // Regénérer si client.png a été remplacé (mtime plus récent).
+  return fs.statSync(client).mtimeMs > fs.statSync(out).mtimeMs;
+}
+
+const force = process.env.CREEZIO_ICONS_FORCE === "1" ||
+  process.argv.includes("--force");
+
 const ffmpeg = spawnSync("ffmpeg", ["-version"], { encoding: "utf8" });
 if (ffmpeg.status === 0) {
   for (const s of sizes) {
     const out = path.join(icons, `${s}x${s}.png`);
-    if (fs.existsSync(out) && fs.statSync(out).size > 100) continue;
+    if (!force && !needsRegen(out)) continue;
     const r = spawnSync(
       "ffmpeg",
       ["-y", "-i", client, "-vf", `scale=${s}:${s}`, out],
@@ -72,7 +81,7 @@ if (ffmpeg.status === 0) {
 } else {
   for (const s of sizes) {
     const out = path.join(icons, `${s}x${s}.png`);
-    if (!fs.existsSync(out)) fs.copyFileSync(client, out);
+    if (force || needsRegen(out)) fs.copyFileSync(client, out);
   }
   fs.copyFileSync(client, path.join(icons, "icon.png"));
   fs.copyFileSync(client, path.join(appRoot, "resources", "icon.png"));

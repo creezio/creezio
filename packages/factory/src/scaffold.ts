@@ -28,6 +28,11 @@ export type NewAppOptions = {
   sandbox?: boolean;
   force?: boolean;
   kitRoot?: string;
+  /**
+   * Dossier d'icônes marque (`client.png`, `server.png`, optionnel `tray-icon.png`).
+   * Sinon : `brand-spec/icons/` sous outDir / à côté, sinon placeholder minimal.
+   */
+  iconsDir?: string;
   /** Présent si `creezio new-app --from-prd` */
   productModel?: ProductModel;
 };
@@ -116,6 +121,10 @@ function renderPackageJson(m: AppManifest): string {
           "@creezio/electron-shell": "0.1.0",
           "@creezio/desktop-tooling": "0.1.0",
           "electron-updater": "^6.3.9",
+          // Deps npm runtime main (asar !node_modules → globs kit) — pas seulement transitifs
+          "hono": "^4.12.30",
+          "zod": "^4.0.0",
+          "jose": "^6.0.0",
         },
         devDependencies: {
           "@types/node": "^22.15.3",
@@ -691,6 +700,85 @@ Ne **jamais** pointer \`dockerDlName\` / feedToken vers \`dl-tempoflow\`, \`dl-f
 `;
 }
 
+/** PNG 1×1 = placeholder factory (à remplacer avant publish). */
+const MINIMAL_PNG = Buffer.from(MINIMAL_PNG_BASE64, "base64");
+
+function resolveIconsDir(outDir: string, iconsDir?: string): string | null {
+  const candidates = [
+    iconsDir,
+    path.join(outDir, "brand-spec", "icons"),
+    path.join(outDir, "resources", "brand-icons"),
+  ].filter(Boolean) as string[];
+  for (const dir of candidates) {
+    const abs = path.resolve(dir);
+    if (
+      fs.existsSync(path.join(abs, "client.png")) ||
+      fs.existsSync(path.join(abs, "server.png"))
+    ) {
+      return abs;
+    }
+  }
+  return null;
+}
+
+function isSubstantialPng(filePath: string): boolean {
+  try {
+    const st = fs.statSync(filePath);
+    if (st.size < 2000) return false;
+    const buf = fs.readFileSync(filePath);
+    if (buf.length < 24 || buf[0] !== 0x89) return false;
+    return buf.readUInt32BE(16) >= 128;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Pose client/server (+ tray) marque si fournis ; sinon conserve des PNG
+ * déjà substantiels ; sinon placeholder minimal (ne pas publier tel quel).
+ */
+function writeBrandIcons(
+  outDir: string,
+  opts: NewAppOptions,
+  force: boolean,
+  written: string[],
+): void {
+  const iconsOut = path.join(outDir, "resources", "icons");
+  fs.mkdirSync(iconsOut, { recursive: true });
+  const srcDir = resolveIconsDir(outDir, opts.iconsDir);
+  const names = ["client.png", "server.png"] as const;
+
+  for (const name of names) {
+    const dest = path.join(iconsOut, name);
+    const fromSrc = srcDir ? path.join(srcDir, name) : "";
+    if (fromSrc && fs.existsSync(fromSrc)) {
+      fs.copyFileSync(fromSrc, dest);
+      written.push(dest);
+      continue;
+    }
+    if (isSubstantialPng(dest)) {
+      // Ne pas écraser une icône marque déjà en place par le placeholder 1×1.
+      continue;
+    }
+    writeFile(dest, MINIMAL_PNG, force, written);
+  }
+
+  const trayDest = path.join(outDir, "resources", "tray-icon.png");
+  const trayCandidates = srcDir
+    ? [
+        path.join(srcDir, "tray-icon.png"),
+        path.join(srcDir, "..", "tray-icon.png"),
+      ]
+    : [];
+  for (const traySrc of trayCandidates) {
+    if (fs.existsSync(traySrc)) {
+      fs.copyFileSync(traySrc, trayDest);
+      written.push(trayDest);
+      break;
+    }
+  }
+}
+
 /**
  * Génère l'arborescence app + configs Client/Serveur.
  */
@@ -713,7 +801,6 @@ export function scaffoldNewApp(opts: NewAppOptions): ScaffoldResult {
   const outDir = path.resolve(opts.outDir);
   const force = Boolean(opts.force);
   const written: string[] = [];
-  const png = Buffer.from(MINIMAL_PNG_BASE64, "base64");
   const name = exportName(manifest);
 
   writeFile(
@@ -824,18 +911,7 @@ export function scaffoldNewApp(opts: NewAppOptions): ScaffoldResult {
     force,
     written,
   );
-  writeFile(
-    path.join(outDir, "resources/icons/client.png"),
-    png,
-    force,
-    written,
-  );
-  writeFile(
-    path.join(outDir, "resources/icons/server.png"),
-    png,
-    force,
-    written,
-  );
+  writeBrandIcons(outDir, opts, force, written);
   writeFile(path.join(outDir, "README.md"), renderReadme(manifest), force, written);
 
   const base = JSON.parse(
