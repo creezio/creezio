@@ -39,7 +39,8 @@ Voir `package.json` script `build:packages`. Ordre typique :
 `brand-config` → `shell` → `platform-core` → `product-hub` → `api-kernel` →
 `mcp-facade` → `auth` → `shell-ui` → `onboarding` → `cockpit` → `assistant` →
 `tasks` → `mails` → `observability` → `automations` → `database` →
-`electron-shell` → `desktop-tooling` → `factory` → `propagation` → `build:cjs`.
+`electron-shell` → `app-runtime` → `brand-spec` → `desktop-tooling` →
+`factory` → `propagation` → `build:cjs`.
 
 Après changement runtime consommé par les marques : `npm run build:packages` puis
 resync vendor (`scripts/sync-creezio-vendor.sh` côté marque, `CREEZIO_KIT_ROOT`).
@@ -65,8 +66,10 @@ resync vendor (`scripts/sync-creezio-vendor.sh` côté marque, `CREEZIO_KIT_ROOT
 | Automations lifecycle plugins/org | `automations` |
 | Admin Database CRUD | `database` |
 | Electron host / plugins / sidecars | `electron-shell` |
+| Façade desktop marque (`startBrandDesktop`) | `app-runtime` |
+| BrandSpec YAML / doctor | `brand-spec` |
 | Publish / remote-build | `desktop-tooling` |
-| `creezio new-app` | `factory` |
+| `creezio new-app` / `creezio brand` | `factory` |
 | Semver / impact / registre org | `propagation` |
 
 ## Tests
@@ -93,6 +96,36 @@ restart après PUT files efface le process respawné.
 4. Adapter wiring / tests marque si l’API publique change.
 5. `test:shell` / gates marque.
 
+## Créer une marque (BrandSpec + brief produit)
+
+Chemin nominal agent : interview → `brand-spec/` → `creezio brand apply`
+(voir [docs/agents/CREATE-BRAND.md](./docs/agents/CREATE-BRAND.md)).
+
+Compat : `creezio new-app --from-prd` reste supporté.
+
+## Créer une marque depuis un brief produit (legacy --from-prd)
+
+Happy path **non technique** (expérience TempoFlow3) :
+
+1. Suivre la suite ordonnée
+   [`docs/experiences/tempoflow3/HISTORIQUE-PROMPTS.md`](./docs/experiences/tempoflow3/HISTORIQUE-PROMPTS.md)
+   (cadre → bootstrap → **mini-PRDs par onglet**).
+2. Bootstrap :
+
+```bash
+creezio new-app \
+  --from-prd docs/experiences/tempoflow3/PRD-PRODUIT.md \
+  --out apps/tempoflow3 --force
+cd apps/tempoflow3 && npm run test:metier-parcours
+```
+
+3. Enrichir **un module à la fois** via `mini-prds/*.md` — jamais en collant
+   du code tempoflow2.
+4. Si un générique manque → **corriger creezio**, pas le prompt.
+
+Journal : [`JOURNAL-CREATION.md`](./docs/experiences/tempoflow3/JOURNAL-CREATION.md).  
+ADR : [`docs/ADR-factory-from-prd.md`](./docs/ADR-factory-from-prd.md).
+
 ## Ne pas faire
 
 - Committer des secrets / PAT.
@@ -100,6 +133,8 @@ restart après PUT files efface le process respawné.
 - Modifier `docs/PHASE-*.md` historiques pour cacher une régression (ajouter une note / nouvelle phase).
 - Toucher `apps/demobrand` comme produit client — c’est une sandbox kit.
 - Réécrire toute la doc dans un seul fichier à la racine.
+- Exiger un plan ingénieur (host-stack, sync-vendor, phases P*) pour un brief
+  produit : utiliser `--from-prd` à la place.
 
 ## Liens rapides
 
@@ -107,3 +142,5 @@ restart après PUT files efface le process respawné.
 - [docs/MATRICE-NATIVE-METIER-PLUGIN.md](./docs/MATRICE-NATIVE-METIER-PLUGIN.md)
 - [docs/PROPAGATION.md](./docs/PROPAGATION.md)
 - [docs/ETAT-DES-LIEUX-INTENTION.md](./docs/ETAT-DES-LIEUX-INTENTION.md)
+- [docs/experiences/tempoflow3/PROMPT-PRODUIT.md](./docs/experiences/tempoflow3/PROMPT-PRODUIT.md)
+- [docs/ADR-factory-from-prd.md](./docs/ADR-factory-from-prd.md)

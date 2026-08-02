@@ -6,5 +6,8 @@
     "composite": true
   },
   "include": ["src/**/*.ts"],
-  "references": [{ "path": "../brand-config" }]
+  "references": [
+    { "path": "../brand-config" },
+    { "path": "../brand-spec" }
+  ]
 }
