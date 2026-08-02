@@ -6,9 +6,9 @@ import { spawnSync } from "node:child_process";
 import {
   type AppKind,
   type BrandId,
-  getManifest,
   latestYmlUrl,
   listBrandIds,
+  resolveManifest,
 } from "@creezio/brand-config";
 import { type LatestYmlMeta, parseLatestYml } from "./parse-latest-yml.js";
 
@@ -25,7 +25,7 @@ export type FeedSnapshot = {
 };
 
 export type BrandFeedsSnapshot = {
-  brandId: BrandId;
+  brandId: string;
   generatedAt: string;
   client: FeedSnapshot;
   server: FeedSnapshot;
@@ -63,10 +63,10 @@ function curlGet(url: string, maxTime = 12): {
 }
 
 export function fetchFeedSnapshot(
-  brandId: BrandId,
+  brandId: string,
   kind: AppKind,
 ): FeedSnapshot {
-  const manifest = getManifest(brandId);
+  const manifest = resolveManifest(brandId);
   const ymlUrl = latestYmlUrl(manifest, kind);
   const feedUrl = manifest[kind].feedUrl.replace(/\/+$/, "") + "/";
   const { status, body, error } = curlGet(ymlUrl);
@@ -88,10 +88,8 @@ export function fetchFeedSnapshot(
   };
 }
 
-export function fetchBrandFeeds(brandId: BrandId): BrandFeedsSnapshot {
-  if (!listBrandIds().includes(brandId)) {
-    throw new Error(`Marque inconnue: ${brandId}`);
-  }
+export function fetchBrandFeeds(brandId: string): BrandFeedsSnapshot {
+  resolveManifest(brandId);
   return {
     brandId,
     generatedAt: new Date().toISOString(),

@@ -150,6 +150,37 @@ test("F1–F4 scaffold --from-prd génère runtime natif (pas sidecar JSON)", ()
   assert.equal(pkg.creezio?.nativeKernel, true);
   assert.ok(pkg.scripts["metier:api"].includes("brand-kernel-harness"));
   assert.ok(pkg.scripts["test:meili-config"]);
+  assert.ok(pkg.scripts["pack:linux"], "pack:linux générique --from-prd");
+  assert.ok(pkg.scripts["pack:linux:server"], "pack:linux:server");
+  assert.ok(pkg.scripts["e2e:browser"], "e2e:browser");
+  assert.ok(pkg.scripts["smoke:tunnel-catalog"], "smoke:tunnel-catalog");
+  assert.ok(
+    fs.existsSync(path.join(outDir, "scripts/ensure-linux-icons.mjs")),
+    "ensure-linux-icons",
+  );
+  assert.ok(
+    fs.existsSync(path.join(outDir, "scripts/load-local-env.mjs")),
+    "load-local-env",
+  );
+  assert.ok(
+    fs.existsSync(path.join(outDir, "scripts/e2e-browser-parcours.mjs")),
+    "e2e-browser-parcours",
+  );
+  assert.ok(
+    fs.existsSync(path.join(outDir, "ui/lib/metier-base.ts")),
+    "metier-base same-origin",
+  );
+  const e2eProxy = fs.readFileSync(
+    path.join(outDir, "scripts/e2e-browser-parcours.mjs"),
+    "utf8",
+  );
+  assert.match(e2eProxy, /desktop-tooling\/scripts\/e2e-browser-parcours/);
+  const nextCfg = fs.readFileSync(
+    path.join(outDir, "ui/next.config.mjs"),
+    "utf8",
+  );
+  assert.match(nextCfg, /rewrites/);
+  assert.match(nextCfg, /\/api\/v1\/:path\*/);
 });
 
 test("F3 smoke kernel natif sur app générée", () => {

@@ -31,6 +31,12 @@ import {
   renderAllowlistSmoke,
   renderMiniPrdCoreSmoke,
   renderMeiliConfigSmoke,
+  renderMetierBaseTs,
+  renderEnsureLinuxIconsMjs,
+  renderLoadLocalEnvMjs,
+  renderSmokeTunnelCatalogMjs,
+  renderEnvExample,
+  renderE2eBrowserParcoursMjs,
 } from "./generators/index.js";
 
 import { writeAppFile, writeOsUiAppFile } from "./write-app-file.js";
@@ -67,8 +73,21 @@ function renderPackageJsonFromPrd(m: AppManifest, model: ProductModel): string {
       "npm run electron:config:client && npm run build:electron && CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --config electron-builder.client.json --win nsis --x64 -c.win.signAndEditExecutable=false",
     "pack:win:server":
       "npm run electron:stage-win-bins && npm run electron:config:server && npm run build:electron && CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --config electron-builder.server.json --win nsis --x64 -c.win.signAndEditExecutable=false",
-    "electron:publish": `CREEZIO_BRAND=${m.brandId} bash ../../packages/desktop-tooling/scripts/publish-desktop.sh`,
-    "electron:publish:dry": `CREEZIO_BRAND=${m.brandId} bash ../../packages/desktop-tooling/scripts/publish-desktop.sh --dry-run`,
+    "pack:linux":
+      "node scripts/ensure-linux-icons.mjs && npm run electron:config:client && npm run build:electron && electron-builder --config electron-builder.client.json --linux AppImage dir --x64",
+    "pack:linux:dir":
+      "node scripts/ensure-linux-icons.mjs && npm run electron:config:client && npm run build:electron && electron-builder --config electron-builder.client.json --linux dir --x64",
+    "pack:linux:server":
+      "node scripts/ensure-linux-icons.mjs && npm run electron:config:server && npm run build:electron && electron-builder --config electron-builder.server.json --linux AppImage dir --x64",
+    "e2e:browser": "node scripts/e2e-browser-parcours.mjs",
+    "e2e:browser:keep": "node scripts/e2e-browser-parcours.mjs --keep",
+    "test:e2e-browser": "node scripts/e2e-browser-parcours.mjs",
+    "smoke:tunnel": "node scripts/smoke-tunnel.mjs",
+    "smoke:tunnel-catalog": "node scripts/smoke-tunnel-catalog.mjs",
+    // Prefer vendor/ (marque sync) puis node_modules ; CREEZIO_APP_ROOT pour resolveManifest.
+    "electron:publish": `CREEZIO_BRAND=${m.brandId} CREEZIO_APP_ROOT=. bash node_modules/@creezio/desktop-tooling/scripts/publish-desktop.sh`,
+    "electron:publish:linux": `CREEZIO_BRAND=${m.brandId} CREEZIO_APP_ROOT=. bash node_modules/@creezio/desktop-tooling/scripts/publish-desktop.sh --platform=linux`,
+    "electron:publish:dry": `CREEZIO_BRAND=${m.brandId} CREEZIO_APP_ROOT=. bash node_modules/@creezio/desktop-tooling/scripts/publish-desktop.sh --dry-run`,
     "desktop:dev": "npm run build:electron && electron .",
   };
   if (chr) {
@@ -341,6 +360,68 @@ export function writeFromPrdArtifacts(opts: {
   writeOsUiAppFile(
     path.join(outDir, "ui/tsconfig.json"),
     renderUiTsconfig(),
+    written,
+  );
+  writeFile(
+    path.join(outDir, "ui/lib/metier-base.ts"),
+    renderMetierBaseTs(),
+    force,
+    written,
+  );
+  // Thin wrappers → SoT @creezio/desktop-tooling/scripts/*
+  const toolingProxy = (rel: string) => `#!/usr/bin/env node
+/** Thin → @creezio/desktop-tooling/scripts/${rel} (SoT kit). */
+import { spawnSync } from "node:child_process";
+import fs from "node:fs";
+import path from "node:path";
+const root = process.cwd();
+const cands = [
+  path.join(root, "vendor/creezio/desktop-tooling/scripts/${rel}"),
+  path.join(root, "node_modules/@creezio/desktop-tooling/scripts/${rel}"),
+];
+const script = cands.find((p) => fs.existsSync(p));
+if (!script) throw new Error("${rel} kit manquant — sync vendor / npm i");
+const r = spawnSync(process.execPath, [script, ...process.argv.slice(2)], {
+  cwd: root,
+  env: { ...process.env, CREEZIO_APP_ROOT: root },
+  stdio: "inherit",
+});
+process.exit(r.status ?? 1);
+`;
+  writeFile(
+    path.join(outDir, "scripts/ensure-linux-icons.mjs"),
+    toolingProxy("ensure-linux-icons.mjs"),
+    force,
+    written,
+  );
+  writeFile(
+    path.join(outDir, "scripts/load-local-env.mjs"),
+    renderLoadLocalEnvMjs(),
+    force,
+    written,
+  );
+  writeFile(
+    path.join(outDir, "scripts/smoke-tunnel.mjs"),
+    toolingProxy("smoke-tunnel.mjs"),
+    force,
+    written,
+  );
+  writeFile(
+    path.join(outDir, "scripts/smoke-tunnel-catalog.mjs"),
+    toolingProxy("smoke-tunnel-catalog.mjs"),
+    force,
+    written,
+  );
+  writeFile(
+    path.join(outDir, "scripts/e2e-browser-parcours.mjs"),
+    toolingProxy("e2e-browser-parcours.mjs"),
+    force,
+    written,
+  );
+  writeFile(
+    path.join(outDir, ".env.example"),
+    renderEnvExample(model),
+    force,
     written,
   );
   writeOsUiAppFile(

@@ -43,3 +43,11 @@ export {
   renderMiniPrdCoreSmoke,
   renderMeiliConfigSmoke,
 } from "./tests.js";
+export {
+  renderMetierBaseTs,
+  renderEnsureLinuxIconsMjs,
+  renderLoadLocalEnvMjs,
+  renderSmokeTunnelCatalogMjs,
+  renderEnvExample,
+  renderE2eBrowserParcoursMjs,
+} from "./linux-e2e.js";

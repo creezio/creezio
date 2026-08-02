@@ -8,21 +8,21 @@ import path from "node:path";
 import {
   type AppKind,
   type AppManifest,
-  type BrandId,
   appKindEnvKey,
   distDirForKind,
   exeForKind,
   feedBaseUrl,
-  getManifest,
   latestYmlUrl,
   listBrandIds,
   resolveArtifactFileName,
   resolveLatestAlias,
+  resolveManifest,
   serverPlatformEnvKey,
 } from "@creezio/brand-config";
 
 export type ResolvedPublishConfig = {
-  brandId: BrandId;
+  /** brandId registre ou from-prd (string libre si JSON marque). */
+  brandId: string;
   kind: AppKind;
   envPrefix: string;
   productName: string;
@@ -57,6 +57,10 @@ export type ResolvedPublishConfig = {
   npmPublishCmd: string;
   npmRemoteBuildCmd: string;
   npmBuildStatusCmd: string;
+  /** Extension artefact : exe (win) ou AppImage (linux). */
+  artifactExt: string;
+  /** Manifest updater : latest.yml (win) ou latest-linux.yml. */
+  latestYmlName: string;
 };
 
 function readAppVersion(appRoot: string): string {
@@ -71,23 +75,39 @@ function readAppVersion(appRoot: string): string {
 }
 
 export type ResolvePublishConfigOptions = {
-  brandId: BrandId;
+  /** Registre kit ou brandId from-prd (résolu via app-manifest.json). */
+  brandId: string;
   kind?: AppKind;
   appRoot?: string;
   version?: string;
   /** Override DL host dir (`{ENV}_DL_DIR`). */
   hostDlRoot?: string;
+  /** Artefact publish : Windows NSIS (défaut) ou Linux AppImage. */
+  platform?: "win" | "linux";
 };
 
 export function resolvePublishConfig(
   opts: ResolvePublishConfigOptions,
 ): ResolvedPublishConfig {
-  const brandId = opts.brandId;
-  if (!listBrandIds().includes(brandId)) {
-    throw new Error(`Marque inconnue: ${brandId}`);
-  }
-  const manifest: AppManifest = getManifest(brandId);
+  const brandId = opts.brandId.trim().toLowerCase();
+  if (!brandId) throw new Error("brandId requis");
+  // Pré-résoudre appRoot pour fallback JSON hors registre.
+  const appRootHint = path.resolve(
+    opts.appRoot || process.env.CREEZIO_APP_ROOT || process.cwd(),
+  );
+  const manifest: AppManifest = resolveManifest(brandId, {
+    appRoot: appRootHint,
+  });
   const kind: AppKind = opts.kind === "server" ? "server" : "client";
+  const platform: "win" | "linux" =
+    opts.platform === "linux" ||
+    process.env.CREEZIO_PLATFORM === "linux" ||
+    process.env.CREEZIO_PLATFORM === "AppImage"
+      ? "linux"
+      : "win";
+  const artifactExt = platform === "linux" ? "AppImage" : "exe";
+  const latestYmlName =
+    platform === "linux" ? "latest-linux.yml" : "latest.yml";
   const exe = exeForKind(manifest, kind);
   const appRoot = path.resolve(
     opts.appRoot ||
@@ -142,15 +162,20 @@ export function resolvePublishConfig(
     appRoot,
     distDir: distRel,
     distAbs,
-    exeFileName: resolveArtifactFileName(exe, version),
-    latestAlias: resolveLatestAlias(exe),
+    exeFileName: resolveArtifactFileName(exe, version, artifactExt),
+    latestAlias: resolveLatestAlias(exe, artifactExt),
     legacyAlias:
-      kind === "client" && manifest.publish.legacyClientAlias
+      platform === "win" &&
+      kind === "client" &&
+      manifest.publish.legacyClientAlias
         ? manifest.publish.legacyClientAlias
         : null,
     feedBase,
     feedUrl: feedBase,
-    latestYmlUrl: latestYmlUrl(manifest, kind),
+    latestYmlUrl:
+      platform === "linux"
+        ? `${feedBase}/${latestYmlName}`
+        : latestYmlUrl(manifest, kind),
     dockerDlName: manifest.publish.dockerDlName,
     dockerDlDir,
     hostDlRoot,
@@ -171,6 +196,8 @@ export function resolvePublishConfig(
     npmPublishCmd: `CREEZIO_BRAND=${brandId} bash scripts/electron/publish-desktop.sh`,
     npmRemoteBuildCmd: `CREEZIO_BRAND=${brandId} bash scripts/electron/remote-build-win.sh`,
     npmBuildStatusCmd: `CREEZIO_BRAND=${brandId} npm run electron:build-status`,
+    artifactExt,
+    latestYmlName,
   };
 }
 
@@ -189,6 +216,8 @@ export function toShellExports(cfg: ResolvedPublishConfig): string {
     ["CREEZIO_EXE", cfg.exeFileName],
     ["CREEZIO_ALIAS", cfg.latestAlias],
     ["CREEZIO_LEGACY_ALIAS", cfg.legacyAlias || ""],
+    ["CREEZIO_ARTIFACT_EXT", cfg.artifactExt],
+    ["CREEZIO_LATEST_YML", cfg.latestYmlName],
     ["CREEZIO_FEED_URL", cfg.feedUrl],
     ["CREEZIO_LATEST_YML_URL", cfg.latestYmlUrl],
     ["CREEZIO_DOCKER_DL_NAME", cfg.dockerDlName],
@@ -217,14 +246,29 @@ function shellQuote(v: string): string {
   return `'${v.replace(/'/g, `'\\''`)}'`;
 }
 
-export function parseBrandArg(raw: string | undefined): BrandId {
+/**
+ * Parse --brand / CREEZIO_BRAND.
+ * Accepte le registre kit OU une marque from-prd si app-manifest.json
+ * est trouvable (CREEZIO_APP_ROOT / cwd).
+ */
+export function parseBrandArg(raw: string | undefined): string {
   const id = (raw || process.env.CREEZIO_BRAND || "").trim().toLowerCase();
-  if (!listBrandIds().includes(id as BrandId)) {
+  if (!id) {
     throw new Error(
-      `Marque requise (--brand=… ou CREEZIO_BRAND). Connues: ${listBrandIds().join(", ")}`,
+      `Marque requise (--brand=… ou CREEZIO_BRAND). Connues: ${listBrandIds().join(", ")} (+ from-prd via app-manifest.json)`,
     );
   }
-  return id as BrandId;
+  const appRoot = process.env.CREEZIO_APP_ROOT || process.cwd();
+  try {
+    resolveManifest(id, { appRoot });
+  } catch (e) {
+    throw new Error(
+      e instanceof Error
+        ? e.message
+        : `Marque inconnue: ${id}. Connues: ${listBrandIds().join(", ")}`,
+    );
+  }
+  return id;
 }
 
 export function parseKindArg(raw: string | undefined): AppKind {

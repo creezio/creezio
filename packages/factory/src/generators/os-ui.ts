@@ -268,6 +268,13 @@ import { fileURLToPath } from "node:url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
+/** Cible kernel pour rewrite same-origin (UI plane navigateur / MCP). */
+const metierProxyTarget = (
+  process.env.METIER_BASE_URL ||
+  process.env.NEXT_PUBLIC_METIER_BASE_URL ||
+  "http://127.0.0.1:18791"
+).replace(/\\/$/, "");
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   output: "standalone",
@@ -288,6 +295,14 @@ const nextConfig = {
     "@creezio/database",
     "@creezio/observability",
   ],
+  async rewrites() {
+    return [
+      {
+        source: "/api/v1/:path*",
+        destination: \`\${metierProxyTarget}/api/v1/:path*\`,
+      },
+    ];
+  },
   webpack: (config) => {
     // Imports depuis vendor/… résolvent les peers installés dans ui/node_modules.
     config.resolve.modules = [

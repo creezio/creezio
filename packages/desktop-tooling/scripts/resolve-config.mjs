@@ -22,7 +22,12 @@ const brandId = parseBrandArg(get("brand"));
 const kind = parseKindArg(get("kind"));
 const appRoot = get("app-root");
 const version = get("version");
-const cfg = resolvePublishConfig({ brandId, kind, appRoot, version });
+const platformRaw = (get("platform") || process.env.CREEZIO_PLATFORM || "win")
+  .trim()
+  .toLowerCase();
+const platform =
+  platformRaw === "linux" || platformRaw === "appimage" ? "linux" : "win";
+const cfg = resolvePublishConfig({ brandId, kind, appRoot, version, platform });
 
 if (args.includes("--export-shell")) {
   console.log(toShellExports(cfg));

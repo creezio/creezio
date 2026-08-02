@@ -93,8 +93,13 @@ function renderPackageJson(m: AppManifest): string {
             "npm run electron:config:client && npm run build:electron && CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --config electron-builder.client.json --win nsis --x64 -c.win.signAndEditExecutable=false",
           "pack:win:server":
             "npm run electron:stage-win-bins && npm run electron:config:server && npm run build:electron && CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --config electron-builder.server.json --win nsis --x64 -c.win.signAndEditExecutable=false",
-          "electron:publish": `CREEZIO_BRAND=${m.brandId} bash ../../packages/desktop-tooling/scripts/publish-desktop.sh`,
-          "electron:publish:dry": `CREEZIO_BRAND=${m.brandId} bash ../../packages/desktop-tooling/scripts/publish-desktop.sh --dry-run`,
+          "pack:linux":
+            "node node_modules/@creezio/desktop-tooling/scripts/ensure-linux-icons.mjs && npm run electron:config:client && npm run build:electron && electron-builder --config electron-builder.client.json --linux AppImage dir --x64",
+          "pack:linux:server":
+            "node node_modules/@creezio/desktop-tooling/scripts/ensure-linux-icons.mjs && npm run electron:config:server && npm run build:electron && electron-builder --config electron-builder.server.json --linux AppImage dir --x64",
+          "electron:publish": `CREEZIO_BRAND=${m.brandId} bash node_modules/@creezio/desktop-tooling/scripts/publish-desktop.sh`,
+          "electron:publish:linux": `CREEZIO_BRAND=${m.brandId} bash node_modules/@creezio/desktop-tooling/scripts/publish-desktop.sh --platform=linux`,
+          "electron:publish:dry": `CREEZIO_BRAND=${m.brandId} bash node_modules/@creezio/desktop-tooling/scripts/publish-desktop.sh --dry-run`,
           "electron:remote-build": `CREEZIO_BRAND=${m.brandId} bash ../../packages/desktop-tooling/scripts/remote-build-win.sh`,
           "electron:remote-build:dry": `CREEZIO_BRAND=${m.brandId} bash ../../packages/desktop-tooling/scripts/remote-build-win.sh --dry-run`,
         },

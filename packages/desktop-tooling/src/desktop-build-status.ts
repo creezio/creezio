@@ -7,9 +7,8 @@ import { execFileSync, spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import {
-  type BrandId,
-  getManifest,
   resolveArtifactFileName,
+  resolveManifest,
 } from "@creezio/brand-config";
 import { fetchFeedSnapshot } from "./fetch-feed.js";
 import { parseLatestYml } from "./parse-latest-yml.js";
@@ -275,7 +274,7 @@ function deriveState(input: {
 }
 
 export type CollectDesktopBuildStatusOptions = {
-  brandId: BrandId;
+  brandId: string;
   appRoot?: string;
   remote?: boolean;
 };
@@ -288,7 +287,7 @@ export function collectDesktopBuildStatus(
     kind: "client",
     appRoot: opts.appRoot,
   });
-  const manifest = getManifest(opts.brandId);
+  const manifest = resolveManifest(opts.brandId, { appRoot: opts.appRoot });
   const appRoot = cfg.appRoot;
   const dist = path.join(appRoot, "dist-electron");
   const codeVer = codeVersion(appRoot);

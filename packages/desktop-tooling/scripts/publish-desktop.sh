@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Publie l'installeur NSIS + latest.yml (+ blockmap) vers le feed auto-update.
+# Publie l'installeur (NSIS win / AppImage linux) + latest*.yml vers le feed.
 # Générique multi-marque — paramétré par AppManifest (@creezio/brand-config).
 #
 # Usage (depuis le crm/ d'une app, ou avec --app-root) :
@@ -8,8 +8,9 @@
 #   bash …/publish-desktop.sh --brand=fidu --dry-run
 #
 # Variables :
-#   CREEZIO_BRAND / --brand     tempoflow|certivan|fidu (requis)
+#   CREEZIO_BRAND / --brand     tempoflow|certivan|fidu|tempoflow3… (requis)
 #   CREEZIO_KIND / --kind       client|server (défaut: client)
+#   CREEZIO_PLATFORM / --platform  win|linux (défaut: win ; linux = AppImage)
 #   CREEZIO_APP_ROOT / --app-root
 #   VERSION                     override version package.json
 #   {ENV}_DL_DIR                override dossier DL hôte
@@ -22,6 +23,7 @@ RESOLVE="${SCRIPT_DIR}/resolve-config.mjs"
 
 BRAND="${CREEZIO_BRAND:-}"
 KIND="${CREEZIO_KIND:-client}"
+PLATFORM="${CREEZIO_PLATFORM:-win}"
 APP_ROOT="${CREEZIO_APP_ROOT:-}"
 DRY_RUN=0
 
@@ -36,6 +38,8 @@ while [[ $# -gt 0 ]]; do
     --brand) BRAND="$2"; shift ;;
     --kind=*) KIND="${1#*=}" ;;
     --kind) KIND="$2"; shift ;;
+    --platform=*) PLATFORM="${1#*=}" ;;
+    --platform) PLATFORM="$2"; shift ;;
     --app-root=*) APP_ROOT="${1#*=}" ;;
     --app-root) APP_ROOT="$2"; shift ;;
     --dry-run) DRY_RUN=1 ;;
@@ -46,6 +50,11 @@ while [[ $# -gt 0 ]]; do
 done
 
 [[ -n "${BRAND}" ]] || { echo "ERROR: --brand / CREEZIO_BRAND requis" >&2; exit 2; }
+case "${PLATFORM}" in
+  win|windows|nsis) PLATFORM="win" ;;
+  linux|appimage|AppImage) PLATFORM="linux" ;;
+  *) echo "ERROR: --platform win|linux (reçu: ${PLATFORM})" >&2; exit 2 ;;
+esac
 
 # Si pas d'app-root : cwd seulement si c'est un crm Electron marque,
 # sinon laisser resolve-config utiliser manifest.publish.defaultAppRoot.
@@ -57,7 +66,7 @@ if [[ -z "${APP_ROOT}" ]]; then
   fi
 fi
 
-RESOLVE_ARGS=(--brand="${BRAND}" --kind="${KIND}")
+RESOLVE_ARGS=(--brand="${BRAND}" --kind="${KIND}" --platform="${PLATFORM}")
 [[ -n "${APP_ROOT}" ]] && RESOLVE_ARGS+=(--app-root="${APP_ROOT}")
 [[ -n "${VERSION:-}" ]] && RESOLVE_ARGS+=(--version="${VERSION}")
 
@@ -79,15 +88,16 @@ TITLE="${CREEZIO_TITLE}"
 VERSION="${CREEZIO_VERSION}"
 KIND="${CREEZIO_KIND}"
 BLOCKMAP="${EXE}.blockmap"
-LATEST_YML="latest.yml"
-TMP_YML="/tmp/creezio-${BRAND}-${KIND}-latest.yml"
+LATEST_YML="${CREEZIO_LATEST_YML:-latest.yml}"
+TMP_YML="/tmp/creezio-${BRAND}-${KIND}-${PLATFORM}-latest.yml"
 
 if [[ "${DRY_RUN}" -eq 1 ]]; then
-  echo "→ DRY-RUN publication ${TITLE} ${VERSION} (brand=${BRAND} kind=${KIND})"
+  echo "→ DRY-RUN publication ${TITLE} ${VERSION} (brand=${BRAND} kind=${KIND} platform=${PLATFORM})"
   echo "  source : ${DIST}/${EXE}"
   echo "  feed   : ${FEED_URL}/"
   echo "  dl     : ${DL_DIR} (docker ${DOCKER_DL_DIR})"
   echo "  alias  : ${ALIAS}"
+  echo "  yml    : ${LATEST_YML}"
   [[ -n "${LEGACY_ALIAS}" ]] && echo "  legacy : ${LEGACY_ALIAS}"
   echo "  artefacts présents : $([[ -f "${DIST}/${EXE}" ]] && echo oui || echo non)"
   exit 0
