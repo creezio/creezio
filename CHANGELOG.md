@@ -11,6 +11,8 @@
   **jamais** le dossier kit `electron-shell/resources/bin` en bloc dans asar
   ni extraResources (cause du client TF3 ~622 Mo).
 - Exclusion asar systématique `!**/electron-shell/resources/bin/**`.
+- Fileset `build/electron` toujours en forme objet (sinon `!node_modules/**`
+  → asar sans `main.js` sur le serveur).
 - `sync-creezio-vendor.sh` : copie `resources/vendor` electron-shell, **pas**
   les bins fat.
 - `desktop-tooling/scripts/stage-win-bins.sh` + factory `pack:win` /

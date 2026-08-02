@@ -292,6 +292,32 @@ function resolveWinBinStage(options: BuildBuilderConfigOptions): string {
 }
 
 /**
+ * Normalise le glob build/electron en fileset objet {from,to,filter}.
+ * Les négations plates (!node_modules) cassent sinon la collecte asar
+ * (main.js absent) — piège TF2 / electron-builder.
+ */
+function normalizeBuildElectronFileset(
+  base: JsonRecord,
+  filterExtra: readonly string[] = [],
+): void {
+  const filter = ["**/*", ...filterExtra];
+  base.files = (Array.isArray(base.files) ? base.files : []).map((entry) => {
+    if (entry === "build/electron/**/*") {
+      return { from: "build/electron", to: "build/electron", filter: [...filter] };
+    }
+    if (entry && typeof entry === "object") {
+      const rec = entry as { from?: string; to?: string; filter?: unknown };
+      if (rec.from === "build/electron" && (!rec.to || rec.to === "build/electron")) {
+        const prev = Array.isArray(rec.filter) ? (rec.filter as string[]) : ["**/*"];
+        const merged = [...new Set([...prev, ...filterExtra])];
+        return { ...rec, to: "build/electron", filter: merged };
+      }
+    }
+    return entry;
+  });
+}
+
+/**
  * Applique les overrides Client (retire vendor/, filtre modules host-only).
  */
 function applyClientSlim(
@@ -316,15 +342,7 @@ function applyClientSlim(
     extraResources: [],
   };
 
-  base.files = (Array.isArray(base.files) ? base.files : []).map((entry) =>
-    entry === "build/electron/**/*"
-      ? {
-          from: "build/electron",
-          to: "build/electron",
-          filter: ["**/*", ...filterNegations],
-        }
-      : entry,
-  );
+  normalizeBuildElectronFileset(base, filterNegations);
 
   base.extraResources = (
     Array.isArray(base.extraResources) ? base.extraResources : []
@@ -362,6 +380,9 @@ export function buildElectronBuilderConfig(
 
   if (kind === "client" && clientSlim) {
     applyClientSlim(base, hostOnly);
+  } else {
+    // Serveur / client fat : fileset objet obligatoire si !node_modules/**.
+    normalizeBuildElectronFileset(base);
   }
 
   ensureCreezioVendorInAsar(base, options.packCreezioVendor);

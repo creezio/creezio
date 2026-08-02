@@ -198,6 +198,15 @@ test("updater reduce + builder config", () => {
     ),
     "server : win.extraResources bin Win-only",
   );
+  assert.ok(
+    (serverCfg.files || []).some(
+      (e) =>
+        typeof e === "object" &&
+        e?.from === "build/electron" &&
+        Array.isArray(e?.filter),
+    ),
+    "server : build/electron en fileset objet (évite asar sans main.js)",
+  );
 });
 
 test("paths / env brand / factory targets", () => {
