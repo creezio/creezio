@@ -512,7 +512,7 @@ aucun import inverse dans `packages/shell-ui/**`.
 9. ✅ Aucun `components/setup/setup-wizard.tsx` local.
 10. ✅ Aucun moteur `onboarding-wizard.tsx` / `onboarding-shell.tsx` / `micro.tsx`
     local (hosts `onboarding-host.tsx` + `step-*.tsx` + types + transport).
-11. ⏸️ Smoke desktop first-run (manuel / AdsPower) — hors gate CI package.
+11. ⏸️ Smoke desktop first-run (manuel / xvfb) — hors gate CI package.
 
 ---
 

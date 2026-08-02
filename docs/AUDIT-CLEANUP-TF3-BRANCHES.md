@@ -274,17 +274,26 @@ Expérimental (ne pas merger tel quel)
 
 
 
-## H. Reste tip #25 post-extract app (P2.1)
+## H. Reste tip #25 post-extract app (P2.1) → P3 kit gates
 
 Freeze : `archive/tf3-probe-65b9273`. **Ne pas** `git push --delete` `cursor/tempoflow3-create-457d` tant que relecture OK.
 
 | Zone | Statut |
 |------|--------|
 | `apps/tempoflow3/**` (113 fichiers) | **Extrait** → [`tempoflow3@044002a`](https://github.com/creezio/tempoflow3/commit/044002a7fe8fe169e86a19bbdd0f4aefbb0ca65b) |
-| Docs expérience tip-only + HANDOFF | **Copiés** dans tempoflow3 `docs/` |
-| `scripts/test-os-*.mjs`, `reset-tempoflow3.mjs`, `test-phase-create-brand.mjs` | **Encore tip-only** (kit) — cherry-pick P3 |
-| Tweaks `apps/demobrand` tip | Revue sélective |
-| PR #25 | **Closed** — app extracted ; reste tip documenté |
+| Docs expérience tip-only + HANDOFF | **Copiés** dans tempoflow3 `docs/` — **résiduels justifiés** hors kit `main` |
+| `scripts/test-os-*.mjs`, `reset-tempoflow3.mjs`, `test-phase-create-brand.mjs` | **PORTÉ** → branche `extract/os-gates-demobrand` (chemins probe externes) |
+| Tweaks `apps/demobrand` tip + `brand-config` kit OS vendor | **PORTÉ** (même PR) |
+| PR #25 | **Closed** — app extracted ; kit gates absorbés progressivement |
+
+### Checklist « remaining on tag only » (inventaire `git diff main...65b9273`)
+
+Après merge P3 gates :
+
+1. **0 fichier kit légitime tip-only** attendu (scripts OS / demobrand / brand-config / gates).
+2. **Résiduel justifié** : `docs/experiences/tempoflow3/*` tip-only + `docs/agents/HANDOFF-OS-TEMPOFLOW3.md` — SoT = repo `tempoflow3` (déjà importés) ; protocole oracle reste #23 sur kit.
+3. **Historique** : divergences tip vs main sur packages P1 déjà mergés — ignorer (SoT main).
+4. Vendor TF3 : resync `kitSha` → tip creezio post-merge (pas `878c641` si tip a avancé).
 
 ### Branches `cursor/*` encore intouchables / à ne pas delete
 
@@ -294,4 +303,13 @@ Freeze : `archive/tf3-probe-65b9273`. **Ne pas** `git push --delete` `cursor/tem
 | `cursor/factory-from-prd-457d` | contenu absorbé via #29 ; delete OK en P3 |
 | `cursor/native-*` / `integrate-*` / `pshell5` | fully in main — delete OK P3 |
 | `cursor/native-shell-ui-sot-457d` | contenu fully in main — delete OK P3 |
+
+## I. Extract kit gates OS + demobrand (2026-08-02)
+
+| Item | Preuve |
+|------|--------|
+| Branche | `extract/os-gates-demobrand` |
+| Contenu | gates OS, create-brand, reset TF3 (probe externe), demobrand `startBrandDesktop`, `ensureKitOsVendorExtraResources`, gitignore bins, docs archi |
+| `apps/tempoflow3` | **non** réintroduit |
+| Probe path | `scripts/lib/resolve-probe-brand.mjs` → env / sibling `/opt/docker/tempoflow3` |
 

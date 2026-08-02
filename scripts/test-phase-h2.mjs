@@ -372,6 +372,9 @@ test("H2 docs + demobrand sandbox source présents", () => {
     path.join(ROOT, "apps/demobrand/src/electron/main.ts"),
     "utf8",
   );
+  assert.match(main, /startBrandDesktop/);
   assert.match(main, /createDemobrandSandbox/);
   assert.match(main, /setDemobrandProductHubStore/);
+  assert.match(main, /bootKernel/);
+  assert.doesNotMatch(main, /prepareDesktopBoot/);
 });

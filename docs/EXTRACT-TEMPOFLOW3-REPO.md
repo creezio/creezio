@@ -31,15 +31,28 @@
 5. **Ne pas** modifier tempoflow2 gold (pas de resync TF2 requis pour ce sync ESM-only).
 6. PR #25 fermée superseded-by-extract ; tag archive conservé.
 
-## Reste tip (uniquement sur tag / branche — **pas** dans tempoflow3)
+## Reste tip — checklist « remaining on tag only » (post P3 kit gates)
 
-Ces chemins restent sur `archive/tf3-probe-65b9273` / `cursor/tempoflow3-create-457d` — **pas une perte app** (kit / demobrand) :
+Freeze : `archive/tf3-probe-65b9273`. Branche `cursor/tempoflow3-create-457d` **gardée**.
 
-| Zone | Action |
-|------|--------|
-| `scripts/test-os-*.mjs`, `scripts/reset-tempoflow3.mjs`, `scripts/test-phase-create-brand.mjs` | Cherry-pick kit éventuel (P3) |
-| Tweaks tip `apps/demobrand/**` | Revue sélective |
-| Diffs tip sur packages déjà mergés P1 | SoT = `main` ; tip = historique |
+| Zone tip (vs `main` au moment de l’extract) | Destination | Statut |
+|---------------------------------------------|-------------|--------|
+| `apps/tempoflow3/**` (113) | repo `tempoflow3` | **DONE** @ `044002a` |
+| Docs expérience tip-only + HANDOFF | repo `tempoflow3` `docs/` | **DONE** (volontairement absents du kit `main`) |
+| `scripts/test-os-*.mjs` + `lib/resolve-probe-brand.mjs` | creezio `main` (PR extract/os-gates) | **PORTÉ** — chemins TF3 → `CREEZIO_TEMPOFLOW3_ROOT` / sibling |
+| `scripts/test-phase-create-brand.mjs` + wire `npm test` | creezio `main` | **PORTÉ** |
+| `scripts/reset-tempoflow3.mjs` | creezio kit (résout probe externe) | **PORTÉ** |
+| Tweaks `apps/demobrand` (`startBrandDesktop`) | creezio `main` | **PORTÉ** |
+| `brand-config` `ensureKitOsVendorExtraResources` | creezio `main` | **PORTÉ** |
+| `.gitignore` bins kit + `ARCHITECTURE-INTENTION` façade | creezio `main` | **PORTÉ** |
+| Gates `test-phase-d` / `h2` / `meili-feed` asserts tip | creezio `main` | **PORTÉ** (sans régresser gates sandbox P1) |
+| Diffs tip packages P1 déjà mergés | — | SoT = `main` ; tip = historique |
+| Docs expérience **divergées** tip vs #23 sur kit | TF3 repo / #23 | **Justifié tip-only côté kit** (SoT expérience = TF3 + protocole #23) |
+
+### Résiduel justifié encore « seulement sur tag » (kit)
+
+Aucun fichier **kit légitime** attendu uniquement sur le tag après merge de `extract/os-gates-demobrand`.  
+Résiduels tip-only restants = **docs expérience** déjà dans `creezio/tempoflow3` (pas à réintroduire dans le monorepo kit) + historique packages P1 divergés (SoT main).
 
 ## Hors scope immédiat
 
