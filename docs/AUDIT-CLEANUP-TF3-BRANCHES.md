@@ -308,8 +308,11 @@ Après merge P3 gates :
 
 | Item | Preuve |
 |------|--------|
-| Branche | `extract/os-gates-demobrand` |
+| Branche / PR | `extract/os-gates-demobrand` → [#31](https://github.com/creezio/creezio/pull/31) **MERGED** |
 | Contenu | gates OS, create-brand, reset TF3 (probe externe), demobrand `startBrandDesktop`, `ensureKitOsVendorExtraResources`, gitignore bins, docs archi |
 | `apps/tempoflow3` | **non** réintroduit |
 | Probe path | `scripts/lib/resolve-probe-brand.mjs` → env / sibling `/opt/docker/tempoflow3` |
+| creezio tip | `60ce0f5` |
+| tempoflow3 | `2c59fb8` ; `kitSha=60ce0f5` |
+| Tip-only kit légitime | **0** — résiduels = 24 docs expérience déjà dans TF3 |
 

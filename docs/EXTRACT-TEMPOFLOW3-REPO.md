@@ -1,9 +1,9 @@
 # Extract `apps/tempoflow3` → `creezio/tempoflow3`
 
 > Dépendances kit P1 : **mergées** (#26–#29).  
-> Repo cible : https://github.com/creezio/tempoflow3 @ **`ed35989`** (import app `044002a` + vendor)  
+> Repo cible : https://github.com/creezio/tempoflow3 @ **`2c59fb8`** (import app `044002a` + vendor)  
 > Source freeze : tag `archive/tf3-probe-65b9273` (`65b9273`).  
-> Vendor pin : `kitSha=9112d3f` (creezio `main` tip post PR #31 + docs).
+> Vendor pin : `kitSha=60ce0f5` (creezio `main` post PR #31 ; sync TF3 aligné).
 
 ## Statut P2.1 — DONE (2026-08-02)
 
@@ -13,7 +13,7 @@
 | Docs expérience tip | `docs/experiences/tempoflow3/**` dans le repo TF3 |
 | Vendor `@creezio/*` | `npm run electron:sync-vendor` → `vendor/creezio` (+ brand-spec, app-runtime) |
 | Smoke | `typecheck` / `build:electron` / `build:ui` **PASS** — voir `docs/SMOKE-IMPORT.md` (TF3) |
-| Push `main` | app `044002a` ; vendor sync `c2ad3fc` |
+| Push `main` | app `044002a` ; vendor sync `2c59fb8` (`kitSha=60ce0f5`) |
 | Clone local | `/opt/docker/tempoflow3` |
 | Branche `cursor/tempoflow3-create-457d` | **gardée** (tag archive) |
 | PR #25 | fermée « app extracted » |
