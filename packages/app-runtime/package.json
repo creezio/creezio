@@ -1,0 +1,48 @@
+{
+  "name": "@creezio/app-runtime",
+  "version": "0.1.0",
+  "description": "Façade runtime marque — startBrandDesktop / startBrandKernelHarness (orchestration OS)",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@creezio/api-kernel": "0.1.0",
+    "@creezio/assistant": "0.1.0",
+    "@creezio/auth": "0.1.0",
+    "@creezio/brand-config": "0.1.0",
+    "@creezio/electron-shell": "0.1.0",
+    "@creezio/mails": "0.1.0",
+    "@creezio/mcp-facade": "0.1.0",
+    "@creezio/platform-core": "0.1.0",
+    "@creezio/shell-ui": "0.1.0",
+    "@creezio/tasks": "0.1.0",
+    "hono": "^4.12.33"
+  },
+  "peerDependencies": {
+    "electron": ">=28"
+  },
+  "peerDependenciesMeta": {
+    "electron": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.3",
+    "typescript": "^5.8.3"
+  },
+  "license": "UNLICENSED"
+}

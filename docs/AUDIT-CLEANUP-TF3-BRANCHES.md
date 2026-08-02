@@ -255,8 +255,8 @@ Expérimental (ne pas merger tel quel)
 | P0.3 | **DONE** | Certivan : 13 deletes **accidentels** (fichiers présents sur HEAD, working tree only) → `git restore` ; `main` clean |
 | P0.4 | deferred | Pas rejoué `proof:hard` cette session (focus extract kit) |
 | P1.1 | **MERGED** | PR [#26](https://github.com/creezio/creezio/pull/26) → `main` |
-| P1.3 | **IN PR** | `extract/electron-shell` avant P1.2 (deps compile app-runtime) — session desktop, Meili feed, kit binaries, vendor install scripts |
-| P1.2 | pending | app-runtime après merge shell |
+| P1.3 | **MERGED** | PR [#27](https://github.com/creezio/creezio/pull/27) → `main` (shell avant runtime pour deps) |
+| P1.2 | **IN PR** | `extract/app-runtime` — composeBrandOs / startBrandDesktop / harness |
 | P1.4 | pending | factory `--from-prd` |
 | P2 | blocked on P1 | Repo `creezio/tempoflow3` non créé |
 
