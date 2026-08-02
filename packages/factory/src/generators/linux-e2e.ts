@@ -1,8 +1,41 @@
 /**
- * Artefacts UI/env liés pack Linux / E2E navigateur.
- * Les scripts exécutables vivent dans @creezio/desktop-tooling/scripts/.
+ * Artefacts pack Linux / E2E / env pour --from-prd.
+ * SoT exécutable = @creezio/desktop-tooling/scripts/* ;
+ * ici on génère wrappers minces + metier-base + .env.example.
  */
 import type { ProductModel } from "../product-model.js";
+
+function renderToolingWrapper(
+  scriptName: string,
+  opts?: { passAppRootArg?: boolean },
+): string {
+  const passRoot = opts?.passAppRootArg
+    ? "const args = [script, root, ...process.argv.slice(2)];"
+    : "const args = [script, ...process.argv.slice(2)];";
+  return `#!/usr/bin/env node
+/** Thin → @creezio/desktop-tooling/scripts/${scriptName} (SoT kit). */
+import { spawnSync } from "node:child_process";
+import fs from "node:fs";
+import path from "node:path";
+
+const root = process.cwd();
+const cands = [
+  path.join(root, "vendor/creezio/desktop-tooling/scripts/${scriptName}"),
+  path.join(root, "node_modules/@creezio/desktop-tooling/scripts/${scriptName}"),
+];
+const script = cands.find((p) => fs.existsSync(p));
+if (!script) {
+  throw new Error("${scriptName} kit manquant — sync vendor / npm i");
+}
+${passRoot}
+const r = spawnSync(process.execPath, args, {
+  cwd: root,
+  env: { ...process.env, CREEZIO_APP_ROOT: root },
+  stdio: "inherit",
+});
+process.exit(r.status ?? 1);
+`;
+}
 
 /** Base URL API métier — same-origin navigateur + rewrite Next. */
 export function renderMetierBaseTs(): string {
@@ -34,7 +67,17 @@ export function metierBase(): string {
 `;
 }
 
-/** Copie locale du helper kit (importable par smokes marque). */
+export function renderEnsureLinuxIconsMjs(): string {
+  return renderToolingWrapper("ensure-linux-icons.mjs", {
+    passAppRootArg: true,
+  });
+}
+
+export function renderE2eBrowserParcoursMjs(_model: ProductModel): string {
+  return renderToolingWrapper("e2e-browser-parcours.mjs");
+}
+
+/** Copie locale importable (smokes marque : \`import { loadLocalEnv } from …\`). */
 export function renderLoadLocalEnvMjs(): string {
   return `/**
  * Charge \`<app>/.env\` (gitignoré) dans process.env.
@@ -84,7 +127,9 @@ const isMain =
   process.argv[1] &&
   path.resolve(process.argv[1]) === fileURLToPath(import.meta.url);
 if (isMain) {
-  const r = loadLocalEnv(process.argv[2] ? path.resolve(process.argv[2]) : DEFAULT_ROOT);
+  const r = loadLocalEnv(
+    process.argv[2] ? path.resolve(process.argv[2]) : DEFAULT_ROOT,
+  );
   console.log(
     JSON.stringify(
       { loaded: r.loaded, path: r.path, keyCount: r.keys.length, keys: r.keys },
@@ -96,10 +141,72 @@ if (isMain) {
 `;
 }
 
+/**
+ * Smoke tunnel + HEAD catalogue (générique).
+ * Download massif reste opt-in / vertical marque.
+ */
+export function renderSmokeTunnelCatalogMjs(model: ProductModel): string {
+  const brandUpper = model.brandId.toUpperCase().replace(/[^A-Z0-9]/g, "_");
+  return `#!/usr/bin/env node
+/**
+ * Smoke ops : tunnel provisioner + HEAD catalogue (optionnel).
+ * Secrets : \`.env\` (voir \`.env.example\`).
+ */
+import assert from "node:assert/strict";
+import { loadLocalEnv } from "./load-local-env.mjs";
+
+const root = process.cwd();
+loadLocalEnv(root);
+
+const tunnelUrl = (
+  process.env.${brandUpper}_TUNNEL_PROVISION_URL ||
+  process.env.CREEZIO_TUNNEL_PROVISION_URL ||
+  ""
+).replace(/\\/$/, "");
+const tunnelToken =
+  process.env.${brandUpper}_TUNNEL_PROVISION_TOKEN ||
+  process.env.CREEZIO_TUNNEL_PROVISION_TOKEN ||
+  "";
+const catalogUrl =
+  process.env.${brandUpper}_CATALOG_URL ||
+  process.env.CREEZIO_CATALOG_URL ||
+  "";
+
+assert.ok(tunnelUrl, "TUNNEL_PROVISION_URL manquant (.env)");
+assert.ok(tunnelToken, "TUNNEL_PROVISION_TOKEN manquant (.env)");
+
+const health = await fetch(\`\${tunnelUrl}/health\`);
+assert.equal(health.status, 200, \`tunnel /health HTTP \${health.status}\`);
+const healthJson = await health.json();
+assert.equal(healthJson.ok, true);
+
+const slug = \`\${process.env.npm_package_name || "brand"}-smoke-\${Date.now().toString(36).slice(-6)}\`;
+const check = await fetch(\`\${tunnelUrl}/check?slug=\${slug}\`, {
+  headers: { Authorization: \`Bearer \${tunnelToken}\` },
+});
+assert.equal(check.status, 200, \`tunnel /check HTTP \${check.status}\`);
+const checkJson = await check.json();
+assert.equal(checkJson.ok, true);
+
+console.log("OK tunnel", JSON.stringify({
+  health: healthJson.service,
+  hostname: checkJson.hostname,
+  available: checkJson.available,
+}));
+
+if (catalogUrl) {
+  const head = await fetch(catalogUrl, { method: "HEAD" });
+  assert.equal(head.status, 200, \`catalog HEAD HTTP \${head.status}\`);
+  console.log("OK catalog HEAD", catalogUrl.split("/").pop());
+} else {
+  console.log("skip catalog (pas de CATALOG_URL)");
+}
+`;
+}
+
 export function renderEnvExample(model: ProductModel): string {
   const brandUpper = model.brandId.toUpperCase().replace(/[^A-Z0-9]/g, "_");
   return `# Copier vers \`.env\` (gitignoré). Secrets hors git.
-# Préférer les alias kit génériques ; préfixe marque optionnel.
 
 # --- Tunnel Cloudflare (provisioner) ---
 CREEZIO_TUNNEL_PROVISION_URL=https://example.invalid/tunnel-<TOKEN>
@@ -107,18 +214,8 @@ CREEZIO_TUNNEL_PROVISION_TOKEN=<TOKEN>
 # ${brandUpper}_TUNNEL_PROVISION_URL=…
 # ${brandUpper}_TUNNEL_PROVISION_TOKEN=…
 
-# --- Catalogue distant (optionnel, vertical CHR) ---
+# --- Catalogue distant (optionnel) ---
 # CREEZIO_CATALOG_URL=https://example.invalid/catalog.db.gz
 # ${brandUpper}_CATALOG_URL=…
 `;
 }
-
-/** Chemins scripts génériques @creezio/desktop-tooling. */
-export const TOOLING_ENSURE_LINUX_ICONS =
-  "node node_modules/@creezio/desktop-tooling/scripts/ensure-linux-icons.mjs";
-export const TOOLING_E2E_BROWSER =
-  "node node_modules/@creezio/desktop-tooling/scripts/e2e-browser-parcours.mjs";
-export const TOOLING_SMOKE_TUNNEL_CATALOG =
-  "node node_modules/@creezio/desktop-tooling/scripts/smoke-tunnel-catalog.mjs";
-export const TOOLING_PUBLISH =
-  "bash node_modules/@creezio/desktop-tooling/scripts/publish-desktop.sh";

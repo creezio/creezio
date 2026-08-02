@@ -32,10 +32,9 @@ import {
   renderMiniPrdCoreSmoke,
   renderMeiliConfigSmoke,
   renderMetierBaseTs,
-  renderEnsureLinuxIconsMjs,
   renderLoadLocalEnvMjs,
-  renderSmokeTunnelCatalogMjs,
   renderEnvExample,
+  renderEnsureLinuxIconsMjs,
   renderE2eBrowserParcoursMjs,
 } from "./generators/index.js";
 
@@ -390,7 +389,7 @@ process.exit(r.status ?? 1);
 `;
   writeFile(
     path.join(outDir, "scripts/ensure-linux-icons.mjs"),
-    toolingProxy("ensure-linux-icons.mjs"),
+    renderEnsureLinuxIconsMjs(),
     force,
     written,
   );
@@ -414,7 +413,7 @@ process.exit(r.status ?? 1);
   );
   writeFile(
     path.join(outDir, "scripts/e2e-browser-parcours.mjs"),
-    toolingProxy("e2e-browser-parcours.mjs"),
+    renderE2eBrowserParcoursMjs(model),
     force,
     written,
   );
