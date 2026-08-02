@@ -132,11 +132,21 @@ function buildBrandPaths(opts: ComposeBrandOsOptions) {
     nodeBinary: () => process.execPath,
     meiliDataDir: () => path.join(opts.userDataDir, "meili"),
     meiliBinary: () => {
-      const name = process.platform === "win32" ? "meili.exe" : "meili";
+      // Parité TF2 : meilisearch-win.exe sous Windows ; meili en Linux kit.
+      const winName = "meilisearch-win.exe";
+      const unixName = "meili";
+      const name = process.platform === "win32" ? winName : unixName;
       const candidates = [
-        path.join(opts.resourcesRoot, "meili"),
         path.join(opts.resourcesRoot, "bin", name),
+        path.join(opts.resourcesRoot, name),
         path.join(shellPackageRoot(), "resources", "bin", name),
+        // Fallbacks legacy (anciens stages / ensure-kit).
+        ...(process.platform === "win32"
+          ? [
+              path.join(opts.resourcesRoot, "bin", "meili.exe"),
+              path.join(shellPackageRoot(), "resources", "bin", "meili.exe"),
+            ]
+          : [path.join(opts.resourcesRoot, "meili")]),
       ];
       for (const c of candidates) {
         if (fs.existsSync(c)) return c;

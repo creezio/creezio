@@ -5,7 +5,7 @@ Convention :
 | Fichier | Usage |
 |---------|--------|
 | `meili`, `cloudflared` | Dev / preuves Linux (`ensure-kit-binaries.mjs`) |
-| `meilisearch-win.exe`, `cloudflared.exe`, `meili.exe` | Packaging **serveur** Windows |
+| `meilisearch-win.exe`, `cloudflared.exe` | Packaging **serveur** Windows (parité TF2, pas d’alias `meili.exe`) |
 
 **Règles packaging**
 

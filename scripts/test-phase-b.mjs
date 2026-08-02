@@ -194,9 +194,11 @@ test("updater reduce + builder config", () => {
         typeof e === "object" &&
         e.to === "bin" &&
         Array.isArray(e.filter) &&
-        e.filter.includes("meilisearch-win.exe"),
+        e.filter.includes("meilisearch-win.exe") &&
+        e.filter.includes("cloudflared.exe") &&
+        !e.filter.includes("meili.exe"),
     ),
-    "server : win.extraResources bin Win-only",
+    "server : win.extraResources bin Win-only (meilisearch-win + cloudflared, pas meili.exe)",
   );
   assert.ok(
     (serverCfg.files || []).some(

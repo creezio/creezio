@@ -72,12 +72,11 @@ export const DEFAULT_HOST_ONLY_ELECTRON_MODULES = [
 
 /**
  * Binaires Windows serveur via `win.extraResources` (filtre) — jamais dans l'asar.
- * Parité TF2 : `meilisearch-win.exe` + `cloudflared.exe` ; `meili.exe` = alias kit.
+ * Parité TF2 : uniquement `meilisearch-win.exe` + `cloudflared.exe` (pas d'alias meili.exe).
  */
 export const WIN_SERVER_BIN_FILTER = [
   "cloudflared.exe",
   "meilisearch-win.exe",
-  "meili.exe",
 ] as const;
 
 /** Exclusion asar : bins kit ne doivent jamais être emballés dans app.asar. */

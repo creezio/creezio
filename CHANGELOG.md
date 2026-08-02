@@ -10,6 +10,9 @@
   `.creezio/win-bin-stage` (filtre `cloudflared.exe` / `meilisearch-win.exe`) —
   **jamais** le dossier kit `electron-shell/resources/bin` en bloc dans asar
   ni extraResources (cause du client TF3 ~622 Mo).
+- `WIN_SERVER_BIN_FILTER` / `stage-win-bins.sh` : plus d’alias `meili.exe`
+  (doublon ~121 Mo) — uniquement `meilisearch-win.exe` + `cloudflared.exe` ;
+  runtime `compose-brand-os` résout `meilisearch-win.exe` sous Windows.
 - Exclusion asar systématique `!**/electron-shell/resources/bin/**`.
 - Fileset `build/electron` toujours en forme objet (sinon `!node_modules/**`
   → asar sans `main.js` sur le serveur).
