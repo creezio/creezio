@@ -1,15 +1,34 @@
 /**
- * Générateur pages OS Next — wrappers fins qui consomment les exports UI kit
- * (`@creezio/<pkg>/ui`). La marque ne réimplémente PAS mails/tasks/mcp/setup.
+ * Catalogue OS Next — source de vérité = `@creezio/os-ui/routes`.
+ * La factory ne versionne PLUS ces pages dans ui/app/ d'une marque :
+ * elles sont matérialisées localement sous `ui/app/(creezio-os)/` (gitignoré).
  */
 import type { AppManifest } from "@creezio/brand-config";
 import type { ProductModel } from "../product-model.js";
 
 export type OsUiPageSpec = {
-  /** Chemin relatif sous ui/app/ (ex. "mails/page.tsx") */
+  /** Chemin relatif sous routes/ (ex. "mails/page.tsx") */
   rel: string;
   source: string;
 };
+
+/** Segments OS interdits dans ui/app/ versionné d'une marque. */
+export const FORBIDDEN_BRAND_OS_UI_SEGMENTS = [
+  "admin",
+  "cockpit",
+  "collaborateurs",
+  "configuration",
+  "developers",
+  "login",
+  "mails",
+  "mcp",
+  "onboarding",
+  "parametres",
+  "server-cockpit",
+  "settings",
+  "setup",
+  "taches",
+] as const;
 
 function pageClient(importLine: string, jsx: string): string {
   return `"use client";
@@ -25,38 +44,11 @@ ${jsx}
 }
 
 /**
- * Catalogue des surfaces OS natives à scaffolder dans toute marque from-prd.
- * Pas de marker owned-by-brand : le kit peut les régénérer.
+ * Catalogue des surfaces OS (référence / sync package os-ui).
+ * Ne plus écrire ces chemins dans le git de la marque.
  */
-export function listOsUiPages(manifest: AppManifest): OsUiPageSpec[] {
-  const bridge = manifest.bridgeName;
-  const product = manifest.client.productName;
-  const hostSuffix = manifest.domains?.primary || `${manifest.brandId}.local`;
-
+export function listOsUiPages(_manifest: AppManifest): OsUiPageSpec[] {
   return [
-    {
-      rel: "lib/creezio-ui-boot.tsx",
-      source: `"use client";
-
-import { useEffect, type ReactNode } from "react";
-import { configureShellUiBrand } from "@creezio/shell-ui";
-
-/**
- * Boot client OS — identity desktop + tokens shell-ui.
- * Généré factory ; ne pas y mettre de métier marque.
- */
-export function CreezioUiBoot({ children }: { children: ReactNode }) {
-  useEffect(() => {
-    configureShellUiBrand({
-      desktopApiGlobal: ${JSON.stringify(bridge)},
-      productName: ${JSON.stringify(product)},
-      publicHostSuffix: ${JSON.stringify(hostSuffix)},
-    });
-  }, []);
-  return <>{children}</>;
-}
-`,
-    },
     {
       rel: "mails/page.tsx",
       source: pageClient(
@@ -216,11 +208,14 @@ export function renderUiPackageJson(_manifest: AppManifest): string {
         private: true,
         version: "0.1.0",
         scripts: {
+          "predev": "npm run os-ui:materialize --prefix ..",
+          "prebuild": "npm run os-ui:materialize --prefix ..",
           dev: "next dev -p 18790",
           build: "next build",
           start: "node .next/standalone/server.js",
         },
         dependencies: {
+          "@creezio/os-ui": "file:../vendor/creezio/os-ui",
           "@creezio/shell-ui": "file:../vendor/creezio/shell-ui",
           "@creezio/assistant": "file:../vendor/creezio/assistant",
           "@creezio/mails": "file:../vendor/creezio/mails",
@@ -280,6 +275,7 @@ const nextConfig = {
   // Sources vendor kit : typés dans creezio (workspaces). Ici, peers résolus via webpack.
   typescript: { ignoreBuildErrors: true },
   transpilePackages: [
+    "@creezio/os-ui",
     "@creezio/shell-ui",
     "@creezio/assistant",
     "@creezio/mails",
@@ -337,21 +333,20 @@ export function renderUiTsconfig(): string {
 `;
 }
 
-/** Layout marque : nav métier + liens OS kit (pas de fetch maison). */
+/**
+ * Layout marque : nav métier uniquement.
+ * Les surfaces OS vivent dans @creezio/os-ui (matérialisées hors git).
+ * Boot identity via props marque — pas de dossier OS versionné.
+ */
 export function renderNextLayoutWithOsNav(model: ProductModel): string {
   const brandLinks = model.pages
     .map((p) => `    [${JSON.stringify(p.path)}, ${JSON.stringify(p.title)}]`)
     .join(",\n");
-  const osLinks = [
-    `["/taches", "Tâches"]`,
-    `["/mails", "Mails"]`,
-    `["/setup", "Setup"]`,
-    `["/settings", "Réglages"]`,
-    `["/developers", "MCP"]`,
-  ].join(",\n  ");
+  const bridge = `${model.brandId}Desktop`;
+  const host = model.domain || `${model.brandId}.local`;
 
   return `import type { ReactNode } from "react";
-import { CreezioUiBoot } from "./lib/creezio-ui-boot";
+import { CreezioUiBoot } from "@creezio/os-ui/boot";
 
 export const metadata = {
   title: ${JSON.stringify(model.brandName)},
@@ -360,10 +355,6 @@ export const metadata = {
 
 const BRAND_NAV = [
 ${brandLinks}
-] as const;
-
-const OS_NAV = [
-  ${osLinks}
 ] as const;
 
 export default function RootLayout({ children }: { children: ReactNode }) {
@@ -380,7 +371,11 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           minHeight: "100vh",
         }}
       >
-        <CreezioUiBoot>
+        <CreezioUiBoot
+          desktopApiGlobal={${JSON.stringify(bridge)}}
+          productName={${JSON.stringify(model.brandName)}}
+          publicHostSuffix={${JSON.stringify(host)}}
+        >
           <header
             style={{
               padding: "1.25rem 1.5rem",
@@ -407,12 +402,6 @@ export default function RootLayout({ children }: { children: ReactNode }) {
                 {label}
               </a>
             ))}
-            <span style={{ opacity: 0.35 }}>|</span>
-            {OS_NAV.map(([href, label]) => (
-              <a key={href} href={href} style={{ color: "#3d5a52", fontSize: "0.95em" }}>
-                {label}
-              </a>
-            ))}
           </nav>
           <main
             style={{ padding: "1.5rem", maxWidth: "56rem", margin: "0 auto" }}
@@ -424,5 +413,26 @@ export default function RootLayout({ children }: { children: ReactNode }) {
     </html>
   );
 }
+`;
+}
+
+/** Script marque : matérialise ui/app/(creezio-os) depuis vendor. */
+export function renderMaterializeOsUiScript(): string {
+  return `#!/usr/bin/env node
+/**
+ * Matérialise les pages OS kit sous ui/app/(creezio-os)/ (gitignoré).
+ * Ne pas versionner de dossier OS dans ui/app/.
+ */
+import { spawnSync } from "node:child_process";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+const script = path.join(root, "vendor/creezio/os-ui/scripts/materialize.mjs");
+const r = spawnSync(process.execPath, [script, "--app-root", root], {
+  stdio: "inherit",
+  env: { ...process.env, CREEZIO_BRAND_ROOT: root },
+});
+process.exit(r.status ?? 1);
 `;
 }

@@ -13,11 +13,11 @@ import {
   renderNextHomePage,
   renderNextEntityPage,
   renderMetierRendererHtml,
-  listOsUiPages,
   renderUiPackageJson,
   renderUiNextConfig,
   renderUiTsconfig,
   renderNextLayoutWithOsNav,
+  renderMaterializeOsUiScript,
   renderVerticalSlotFromModel,
   renderPreloadFromPrdTs,
   renderBrandMigrationsTs,
@@ -47,8 +47,10 @@ function writeFile(
 function renderPackageJsonFromPrd(m: AppManifest, model: ProductModel): string {
   const chr = isChrModel(model);
   const scripts: Record<string, string> = {
-    build: "npm run build:electron",
+    build: "npm run build:electron && npm run build:ui",
     "build:electron": "tsc -p tsconfig.electron.json",
+    "build:ui": "npm run build --prefix ui",
+    "os-ui:materialize": "node scripts/materialize-os-ui.mjs",
     typecheck: "tsc -p tsconfig.electron.json --noEmit",
     "metier:api": "npm run build:electron && node scripts/brand-kernel-harness.mjs",
     "test:metier-parcours": "node scripts/test-metier-parcours.mjs",
@@ -88,6 +90,7 @@ function renderPackageJsonFromPrd(m: AppManifest, model: ProductModel): string {
           "@creezio/shell": "0.1.0",
           "@creezio/platform-core": "0.1.0",
           "@creezio/product-hub": "0.1.0",
+          "@creezio/os-ui": "0.1.0",
           "@creezio/shell-ui": "0.1.0",
           "@creezio/api-kernel": "0.1.0",
           "@creezio/mcp-facade": "0.1.0",
@@ -159,11 +162,15 @@ npm run metier:api   # harness kernel natif
 
 function renderGitignore(): string {
   return `node_modules/
+ui/node_modules/
+ui/.next/
 build/
 dist-electron/
 .data-metier/
 *.log
 .DS_Store
+# Surfaces OS matérialisées depuis @creezio/os-ui — jamais versionnées dans la marque
+ui/app/(creezio-os)/
 `;
 }
 
@@ -349,14 +356,13 @@ export function writeFromPrdArtifacts(opts: {
       written,
     );
   }
-  // Surfaces OS = wrappers kit (@creezio/*/ui). Toujours écrasables (jamais owned-by-brand).
-  for (const osPage of listOsUiPages(manifest)) {
-    writeOsUiAppFile(
-      path.join(outDir, `ui/app/${osPage.rel}`),
-      osPage.source,
-      written,
-    );
-  }
+  // Surfaces OS = @creezio/os-ui (matérialisées hors git). Pas de dossier OS versionné.
+  writeFile(
+    path.join(outDir, "scripts/materialize-os-ui.mjs"),
+    renderMaterializeOsUiScript(),
+    force,
+    written,
+  );
 
   writeFile(
     path.join(outDir, "resources/renderer/index.html"),

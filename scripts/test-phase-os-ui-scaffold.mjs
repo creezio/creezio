@@ -1,6 +1,6 @@
 /**
- * Gate : factory --from-prd génère des wrappers OS (exports @creezio/<pkg>/ui),
- * pas de fetch maison /api/v1/os|platform dans ui/app OS.
+ * Gate : factory --from-prd ne versionne PLUS de pages OS dans ui/app/.
+ * Les surfaces OS vivent dans @creezio/os-ui et sont matérialisées hors git.
  */
 import assert from "node:assert/strict";
 import fs from "node:fs";
@@ -14,19 +14,25 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const CLI = path.join(ROOT, "packages/factory/bin/creezio.js");
 const PRD = path.join(ROOT, "docs/experiences/tempoflow3/PRD-PRODUIT.md");
 
-const OS_PAGES = [
-  "ui/app/mails/page.tsx",
-  "ui/app/taches/page.tsx",
-  "ui/app/setup/page.tsx",
-  "ui/app/login/page.tsx",
-  "ui/app/developers/page.tsx",
-  "ui/app/settings/page.tsx",
-  "ui/app/lib/creezio-ui-boot.tsx",
+const FORBIDDEN_OS_DIRS = [
+  "mails",
+  "taches",
+  "setup",
+  "login",
+  "developers",
+  "settings",
+  "admin",
+  "cockpit",
+  "mcp",
 ];
 
-test("os-ui scaffold : wrappers kit, pas de fetch OS maison", () => {
+test("os-ui scaffold : zéro page OS versionnée, materialize + boot kit", () => {
   assert.ok(fs.existsSync(CLI), "factory CLI");
   assert.ok(fs.existsSync(PRD), "PRD produit");
+  assert.ok(
+    fs.existsSync(path.join(ROOT, "packages/os-ui/routes/mails/page.tsx")),
+    "@creezio/os-ui routes",
+  );
 
   const out = fs.mkdtempSync(path.join(os.tmpdir(), "creezio-os-ui-"));
   const r = spawnSync(
@@ -36,41 +42,41 @@ test("os-ui scaffold : wrappers kit, pas de fetch OS maison", () => {
   );
   assert.equal(r.status, 0, r.stderr || r.stdout);
 
-  for (const rel of OS_PAGES) {
-    const p = path.join(out, rel);
-    assert.ok(fs.existsSync(p), `manque ${rel}`);
-    const src = fs.readFileSync(p, "utf8");
+  for (const seg of FORBIDDEN_OS_DIRS) {
     assert.ok(
-      !src.includes("creezio:owned-by-brand"),
-      `${rel} ne doit pas être owned-by-brand`,
+      !fs.existsSync(path.join(out, "ui/app", seg)),
+      `ne doit pas versionner ui/app/${seg}`,
     );
   }
-
-  const mails = fs.readFileSync(path.join(out, "ui/app/mails/page.tsx"), "utf8");
-  assert.match(mails, /@creezio\/mails\/ui/);
-  assert.doesNotMatch(mails, /\/api\/v1\/platform\/platform-mails/);
-
-  const taches = fs.readFileSync(
-    path.join(out, "ui/app/taches/page.tsx"),
-    "utf8",
+  assert.ok(
+    !fs.existsSync(path.join(out, "ui/app/lib/creezio-ui-boot.tsx")),
+    "pas de boot OS versionné",
   );
-  assert.match(taches, /@creezio\/tasks\/ui/);
+
+  assert.ok(
+    fs.existsSync(path.join(out, "scripts/materialize-os-ui.mjs")),
+    "script materialize",
+  );
+  const gitignore = fs.readFileSync(path.join(out, ".gitignore"), "utf8");
+  assert.match(gitignore, /\(creezio-os\)/);
 
   const uiPkg = JSON.parse(
     fs.readFileSync(path.join(out, "ui/package.json"), "utf8"),
   );
-  assert.ok(uiPkg.dependencies["@creezio/shell-ui"]);
-  assert.ok(uiPkg.dependencies["@creezio/mails"]);
-
-  const nextCfg = fs.readFileSync(
-    path.join(out, "ui/next.config.mjs"),
-    "utf8",
-  );
-  assert.match(nextCfg, /transpilePackages/);
+  assert.ok(uiPkg.dependencies["@creezio/os-ui"]);
+  assert.ok(uiPkg.scripts.prebuild);
 
   const layout = fs.readFileSync(path.join(out, "ui/app/layout.tsx"), "utf8");
+  assert.match(layout, /@creezio\/os-ui\/boot/);
   assert.match(layout, /CreezioUiBoot/);
-  assert.match(layout, /\/mails/);
+  assert.doesNotMatch(layout, /OS_NAV/);
+  assert.doesNotMatch(layout, /\/mails/);
+
+  const allow = fs.readFileSync(
+    path.join(out, "scripts/test-allowlist.mjs"),
+    "utf8",
+  );
+  assert.match(allow, /page OS versionnée interdite/);
 
   fs.rmSync(out, { recursive: true, force: true });
 });

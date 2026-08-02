@@ -30,6 +30,7 @@ DEFAULT_PACKAGES=(
   desktop-tooling
   api-kernel
   mcp-facade
+  os-ui
   shell-ui
   onboarding
   cockpit
@@ -171,6 +172,13 @@ for name in "${PACKAGES[@]}"; do
   fi
   if [[ -d "${src}/ui" ]]; then
     cp -a "${src}/ui" "${out}/"
+  fi
+  # @creezio/os-ui : pages Next + boot client (hors git marque)
+  if [[ -d "${src}/routes" ]]; then
+    cp -a "${src}/routes" "${out}/"
+  fi
+  if [[ -d "${src}/src" ]]; then
+    cp -a "${src}/src" "${out}/"
   fi
   if [[ -d "${src}/templates" ]]; then
     cp -a "${src}/templates" "${out}/"

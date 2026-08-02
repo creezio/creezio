@@ -41,9 +41,10 @@ en jumeau dans `main.ts`.
 - `src/brand-cli.ts` : BrandSpec init/doctor/apply/smoke.
 - `src/product-model.ts` : `ProductModel`, `parseProductPrd`, `safeBrandId`.
 - `src/scaffold.ts` / `scaffold-from-prd.ts` : artefacts.
-- `src/generators/*` : schema, api, ui, **os-ui** (wrappers `@creezio/<pkg>/ui`), nav, wiring, tests.
-- Pages OS (`/mails`, `/taches`, `/setup`…) = wrappers kit via `generators/os-ui.ts` —
-  **jamais** `owned-by-brand`, toujours écrasables (`writeOsUiAppFile`).
+- `src/generators/*` : schema, api, ui, **os-ui** (réf. + layout métier-only), nav, wiring, tests.
+- Pages OS (`/mails`, `/taches`, `/setup`…) vivent dans **`@creezio/os-ui`** ;
+  matérialisées sous `ui/app/(creezio-os)/` (gitignoré). **Interdit** de les
+  versionner dans `ui/app/` d'une marque.
 - `fixtures/prd-tempoflow-produit.md` : gold CHR.
 - `src/index.ts` : exports publics.
 

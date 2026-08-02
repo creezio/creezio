@@ -349,7 +349,10 @@ function walk(dir, out = []) {
     if (
       ent.name === "node_modules" ||
       ent.name === "build" ||
-      ent.name === ".data-metier"
+      ent.name === ".data-metier" ||
+      ent.name === "vendor" ||
+      ent.name === ".git" ||
+      ent.name === "(creezio-os)"
     ) {
       continue;
     }
@@ -365,6 +368,37 @@ for (const f of walk(root)) {
   for (const bad of forbiddenNameSnippets) {
     assert.ok(!base.includes(bad), \`fichier OS/sidecar interdit: \${f}\`);
   }
+}
+
+// ui/app versionné = métier uniquement (pas de pages OS natives).
+const forbiddenOsUiDirs = [
+  "admin",
+  "cockpit",
+  "collaborateurs",
+  "configuration",
+  "developers",
+  "login",
+  "mails",
+  "mcp",
+  "onboarding",
+  "parametres",
+  "server-cockpit",
+  "settings",
+  "setup",
+  "taches",
+];
+const uiApp = path.join(root, "ui/app");
+if (fs.existsSync(uiApp)) {
+  for (const seg of forbiddenOsUiDirs) {
+    assert.ok(
+      !fs.existsSync(path.join(uiApp, seg)),
+      \`page OS versionnée interdite dans la marque: ui/app/\${seg} (utiliser @creezio/os-ui)\`,
+    );
+  }
+  assert.ok(
+    !fs.existsSync(path.join(uiApp, "lib/creezio-ui-boot.tsx")),
+    "boot OS versionné interdit — importer @creezio/os-ui/boot",
+  );
 }
 
 const required = [
