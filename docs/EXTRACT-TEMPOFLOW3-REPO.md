@@ -1,9 +1,9 @@
 # Extract `apps/tempoflow3` → `creezio/tempoflow3`
 
 > Dépendances kit P1 : **mergées** (#26–#29).  
-> Repo cible : https://github.com/creezio/tempoflow3 @ **`c2ad3fc`** (import app `044002a` + vendor)  
+> Repo cible : https://github.com/creezio/tempoflow3 @ **`ed35989`** (import app `044002a` + vendor)  
 > Source freeze : tag `archive/tf3-probe-65b9273` (`65b9273`).  
-> Vendor pin : `kitSha=27430d2` (creezio `main` post PR #31 OS gates).
+> Vendor pin : `kitSha=9112d3f` (creezio `main` tip post PR #31 + docs).
 
 ## Statut P2.1 — DONE (2026-08-02)
 
