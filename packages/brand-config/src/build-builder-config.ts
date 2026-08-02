@@ -276,6 +276,7 @@ export function buildElectronBuilderConfig(
   }
 
   ensureCreezioVendorInAsar(base, options.packCreezioVendor);
+  ensureKitOsVendorExtraResources(base);
 
   if (manifest.copyright) {
     base.copyright = manifest.copyright;
@@ -283,3 +284,32 @@ export function buildElectronBuilderConfig(
 
   return base;
 }
+
+/**
+ * Vendor OS natif (Hermes/n8n manifests + install scripts) depuis le kit
+ * `@creezio/electron-shell/resources/vendor` — jamais depuis la marque.
+ * Filtre clientSlim retire seulement `vendor/` local marque ; ce chemin
+ * `node_modules/@creezio/…` reste.
+ */
+function ensureKitOsVendorExtraResources(base: JsonRecord): void {
+  const vendorFrom =
+    "node_modules/@creezio/electron-shell/resources/vendor";
+  const binFrom = "node_modules/@creezio/electron-shell/resources/bin";
+  const extra = Array.isArray(base.extraResources)
+    ? ([...base.extraResources] as unknown[])
+    : [];
+  const has = (suffix: string) =>
+    extra.some((entry) => {
+      if (typeof entry !== "object" || entry === null) return false;
+      const f = String((entry as { from?: string }).from || "");
+      return f === suffix || f.endsWith(suffix);
+    });
+  if (!has("electron-shell/resources/vendor") && !has("/resources/vendor")) {
+    extra.push({ from: vendorFrom, to: "vendor" });
+  }
+  if (!has("electron-shell/resources/bin") && !has("/resources/bin")) {
+    extra.push({ from: binFrom, to: "bin" });
+  }
+  base.extraResources = extra;
+}
+

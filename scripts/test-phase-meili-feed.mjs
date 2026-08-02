@@ -49,16 +49,11 @@ test("C3 export package ./meili sans barrel Electron", () => {
   assert.ok(pkg.exports["./meili"]);
 });
 
-test("C4 factory génère meili-feed hors tf2_* (si generator présent)", () => {
-  const nativePath = path.join(
-    ROOT,
-    "packages/factory/src/generators/native-runtime.ts",
+test("C4 factory génère meili-feed hors tf2_*", () => {
+  const native = fs.readFileSync(
+    path.join(ROOT, "packages/factory/src/generators/native-runtime.ts"),
+    "utf8",
   );
-  if (!fs.existsSync(nativePath)) {
-    assert.ok(true, "factory native-runtime absent — extract factory ultérieure");
-    return;
-  }
-  const native = fs.readFileSync(nativePath, "utf8");
   assert.match(native, /renderMeiliFeedTs/);
   assert.match(native, /createChrCatalogMeiliFeed/);
   assert.match(native, /createSearchMount/);
