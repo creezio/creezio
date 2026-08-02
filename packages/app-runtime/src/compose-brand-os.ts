@@ -7,7 +7,10 @@ import fs from "node:fs";
 import path from "node:path";
 import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
-import type { AppManifest } from "@creezio/brand-config";
+import {
+  isFeatureEnabled,
+  type AppManifest,
+} from "@creezio/brand-config";
 import {
   createBrandHostRuntime,
   createBrandHostStack,
@@ -15,6 +18,7 @@ import {
   createLocalSplashSteps,
   createPluginsHost,
   log,
+  logFileTail,
   type BrandHostSingletons,
   type BrandHostStack,
   type LocalConfigStore,
@@ -81,6 +85,7 @@ export type BrandOsStatus = {
     tunnel: boolean;
     meili: boolean;
     plugins: "feature-off" | "enabled";
+    fleet: "feature-off" | "enabled";
   };
   paths: {
     userDataDir: string;
@@ -205,6 +210,8 @@ export function composeBrandOs(
     opts.pluginsFeatureOff !== undefined
       ? opts.pluginsFeatureOff
       : process.env.CREEZIO_PLUGINS !== "1";
+  /** Fleet = manifest.features.fleet (Fidu false ; TF/CV/TF3 true). */
+  const fleetEnabled = isFeatureEnabled(m, "fleet");
   const tunnelBaseUrl =
     opts.tunnel?.baseUrl ||
     process.env.CREEZIO_TUNNEL_PROVISION_URL ||
@@ -215,6 +222,10 @@ export function composeBrandOs(
     process.env.CREEZIO_TUNNEL_PROVISION_TOKEN ||
     process.env[`${prefix}_TUNNEL_PROVISION_TOKEN`] ||
     "sandbox";
+  const fleetDefaultEndpoint =
+    process.env.CREEZIO_FLEET_ENDPOINT ||
+    process.env[`${prefix}_FLEET_ENDPOINT`] ||
+    `https://fleet.${domain}/ingest-disabled`;
 
   const hostRuntime = createBrandHostRuntime({
     manifest: m,
@@ -255,6 +266,26 @@ export function composeBrandOs(
       defaultToken: tunnelToken,
       mailRootDomain: domain,
     },
+    ...(fleetEnabled
+      ? {
+          fleet: {
+            envEndpointKey: `${prefix}_FLEET_ENDPOINT`,
+            defaultEndpoint: fleetDefaultEndpoint,
+            getAppVersion: () => {
+              try {
+                const req = createRequire(
+                  path.join(process.cwd(), "package.json"),
+                );
+                return req("electron").app.getVersion() as string;
+              } catch {
+                return process.env.npm_package_version || "0.0.0";
+              }
+            },
+            log: (scope: string, line: string) => log(scope, line),
+            logFileTail: (maxBytes?: number) => logFileTail(maxBytes),
+          },
+        }
+      : {}),
     npmUserDataSegment: `${m.brandId}-npm`,
     secretFilePrefix: m.brandId,
     hermesBridge: "full",
@@ -283,10 +314,26 @@ export function composeBrandOs(
     portEnvKey: `${prefix}_DESKTOP_PORT`,
     defaultPort: 18790,
     envPrefix: prefix,
+    includeFleetOpsDirs: fleetEnabled,
     getHermesHost: () => hostRuntime.hermesHost(),
     getHermesCrmKeySurface: () => hostRuntime.hermesCrmKeySurface(),
     getN8nHost: () => hostRuntime.n8nHost(),
     getTunnelService: () => hostRuntime.tunnelService(),
+    ...(fleetEnabled && hostRuntime.fleetAgent
+      ? {
+          getFleetAgent: () => hostRuntime.fleetAgent!(),
+          getFleetSamples: () =>
+            hostRuntime.fleetSamples
+              ? hostRuntime.fleetSamples()
+              : {
+                  sampleAssistantChats: () => [],
+                  sampleHermesChats: () => [],
+                  sampleRequestLogs: () => [],
+                  sampleUsers: () => [],
+                  sampleSessions: () => [],
+                },
+        }
+      : {}),
     getNodeRuntime: () => ({
       ensureDesktopNode: hostRuntime.ensureNode,
       ready: true,
@@ -325,6 +372,7 @@ export function composeBrandOs(
   });
 
   const pluginsMode = pluginsFeatureOff ? "feature-off" : "enabled";
+  const fleetMode = fleetEnabled ? "enabled" : "feature-off";
 
   const status = (): BrandOsStatus => ({
     ok: true,
@@ -336,6 +384,7 @@ export function composeBrandOs(
       tunnel: typeof hostRuntime.tunnelService === "function",
       meili: true,
       plugins: pluginsMode,
+      fleet: fleetMode,
     },
     paths: {
       userDataDir: opts.userDataDir,
@@ -347,7 +396,7 @@ export function composeBrandOs(
 
   log(
     "os",
-    `composeBrandOs brand=${m.brandId} hermes/n8n/tunnel ready setup=${store.isSetupComplete()}`,
+    `composeBrandOs brand=${m.brandId} hermes/n8n/tunnel fleet=${fleetMode} ready setup=${store.isSetupComplete()}`,
   );
 
   return {
