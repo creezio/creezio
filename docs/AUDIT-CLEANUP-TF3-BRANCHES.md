@@ -244,4 +244,28 @@ Expérimental (ne pas merger tel quel)
 
 ---
 
-*Fin audit — livrable doc only.*
+---
+
+## G. Statut exécution (session 2026-08-02)
+
+| ID | Statut | Preuve |
+|----|--------|--------|
+| P0.1 | **DONE** | Commentaires PR [#25](https://github.com/creezio/creezio/pull/25#issuecomment-5158955110) / [#24](https://github.com/creezio/creezio/pull/24#issuecomment-5158955183) — superseded by progressive extract ; PRs laissées ouvertes |
+| P0.2 | **DONE** | Tag annoté `archive/tf3-probe-65b9273` → `65b9273` poussé sur `origin` |
+| P0.3 | **DONE** | Certivan : 13 deletes **accidentels** (fichiers présents sur HEAD, working tree only) → `git restore` ; `main` clean |
+| P0.4 | deferred | Pas rejoué `proof:hard` cette session (focus extract kit) |
+| P1.1 | **IN PR** | Branche `extract/brand-spec` — package + ADR + CREATE-BRAND + bridge onboarding + gate BS1–BS5 |
+| P1.2–P1.4 | pending | app-runtime → electron-shell → factory `--from-prd` |
+| P2 | blocked on P1 | Repo `creezio/tempoflow3` non créé |
+
+### Inventaire `cursor/*` creezio (aucune delete)
+
+| Branche | Classification | Action |
+|---------|----------------|--------|
+| `tempoflow3-create-457d` | **unique @ 65b9273** (taggé) | Garder jusqu’à extract |
+| `factory-from-prd-457d` | **only in 65b9273** (ancêtre) | Garder jusqu’à extract factory |
+| `native-shell-ui-sot-457d` | tip commit orphelin ; **contenu fully in main** (P-shell.5 identique) | OK delete plus tard (P3) |
+| `integrate-native-kit` + `native-*-sot` + `pshell5` | **fully in main** (`ahead=0`) | OK delete P3 |
+
+*Fin audit — livrable doc + exécution P0/P1 en cours.*
+
