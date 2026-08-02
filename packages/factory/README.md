@@ -2,65 +2,26 @@
 
 ## Rôle
 
-`@creezio/factory` fournit le CLI `creezio new-app` pour generer un squelette d'application marque Client + Serveur consommant le kit `@creezio/*`.
+CLI `creezio new-app` pour générer une application marque Client + Serveur
+consommant `@creezio/*`, avec option **création depuis un brief produit**
+(`--from-prd`).
 
-## Périmètre
+## Deux modes
 
-Inclus :
-
-- parsing CLI `creezio new-app` ;
-- creation d'un `AppManifest` via `@creezio/brand-config` ;
-- generation d'une app Electron minimale ;
-- configs electron-builder client/serveur ;
-- resources renderer et icones placeholder ;
-- slot metier vide, nav core et Product Hub stub sandbox.
-
-Hors perimetre :
-
-- migration d'une marque existante ;
-- injection de catalogue TempoFlow/Fidu/Certivan ;
-- provisioning de feeds production ;
-- runtime desktop complet avance, qui vit dans `@creezio/electron-shell`.
-
-## Installation/build
+### Mode produit — `--from-prd`
 
 ```bash
-npm install
-npm run build -w @creezio/factory
-npm run typecheck -w @creezio/factory
+creezio new-app \
+  --from-prd docs/experiences/tempoflow3/PRD-PRODUIT.md \
+  --out /tmp/tempoflow3
 ```
 
-Le binaire publie est :
+1. Parse le PRD → `ProductModel` (entities, pages, flows, platformNeeds).
+2. Dérive `brandId` / `name` / `domain` (ex. TempoFlow → `tempoflow3`).
+3. Génère OS shell + métier marque (schéma, API HTTP, pages, nav, wiring).
+4. Fournit `npm run test:metier-parcours` (fournisseurs → panier → commande).
 
-```bash
-creezio new-app --help
-```
-
-## Configuration
-
-Arguments obligatoires :
-
-- `--name` : nom produit ;
-- `--id` : `brandId` court ;
-- `--domain` : domaine feed/tunnel.
-
-Options :
-
-- `--out` : dossier cible, defaut `apps/<id>` sous la racine kit ;
-- `--env-prefix` : prefixe env, defaut `ID` uppercase ;
-- `--feed-token` : token `/dl-<token>/`, defaut sandbox deterministe ;
-- `--sandbox` / `--no-sandbox` ;
-- `--force` pour ecraser les fichiers existants.
-
-## API publique + exemples
-
-Exports :
-
-- `parseArgs`, `runCli` ;
-- `scaffoldNewApp`, `renderManifestTs` ;
-- types `NewAppOptions`, `ScaffoldResult`.
-
-CLI :
+### Mode technique — flags
 
 ```bash
 creezio new-app \
@@ -69,66 +30,51 @@ creezio new-app \
   --domain demobrand.creez.io
 ```
 
-API Node :
+Squelette OS + slot métier vide (comportement historique Phase D).
+
+## Options
+
+| Option | Description |
+|--------|-------------|
+| `--from-prd` | Chemin PRD markdown |
+| `--name` / `--id` / `--domain` | Requis sans PRD ; overrides avec PRD |
+| `--out` | Dossier cible (défaut `apps/<id>`) |
+| `--env-prefix` | Préfixe env |
+| `--feed-token` | Token feed sandbox |
+| `--sandbox` / `--no-sandbox` | Flag sandbox (défaut oui) |
+| `--force` | Écrase les fichiers existants |
+
+## API publique
 
 ```ts
-import { scaffoldNewApp } from "@creezio/factory";
-
-const result = scaffoldNewApp({
-  brandId: "demobrand",
-  productName: "DemoBrand",
-  domain: "demobrand.creez.io",
-  outDir: "/opt/docker/creezio/apps/demobrand",
-  sandbox: true,
-});
+import {
+  scaffoldNewApp,
+  parseProductPrd,
+  safeBrandId,
+  parseArgs,
+  runCli,
+} from "@creezio/factory";
 ```
 
-Fichiers generes principaux :
+## Artefacts `--from-prd`
 
-- `package.json`
-- `tsconfig.electron.json`
-- `electron-builder.base.json`
-- `electron-builder.client.json`
-- `electron-builder.server.json`
-- `src/electron/app-manifest.ts`
-- `src/electron/main.ts`
-- `src/electron/preload.ts`
-- `src/electron/nav-core.ts`
-- `src/electron/vertical-slot.ts`
-- `src/electron/product-hub-stub.ts`
-- `resources/renderer/index.html`
-- `resources/icons/{client,server}.png`
-- `README.md`
+- `product-model.json`
+- `crm/src/brand/schema.{ts,sql}`
+- `scripts/metier-api.mjs` + `test-metier-parcours.mjs`
+- `ui/app/**` pages App Router
+- `src/lib/{paths,host-stack,creezio-boot,…}.ts` wiring générique
+- `src/electron/main.ts` → `installBrandDesktopRuntime` + boot shell
+- `resources/renderer/index.html` UI SPA métier
 
-## Flux
+## Build
 
-1. Le CLI parse `new-app`.
-2. `createAppManifest` genere identite, feeds, GUID NSIS, deep-link et prefixe env.
-3. `validateAppManifest` bloque les manifests invalides.
-4. Les fichiers sont ecrits dans `outDir`.
-5. Les configs electron-builder client/serveur sont derivees du manifest.
-6. Le CLI affiche la suite : `npm install`, build et dry-run publish.
-
-## Intégration marques
-
-Le squelette est volontairement minimal :
-
-- `main.ts` branche `prepareDesktopBoot`, `api-kernel`, `mcp-facade`, auth memoire et shell-ui ;
-- `vertical-slot.ts` est vide par defaut ;
-- `product-hub-stub.ts` utilise un store memoire sandbox ;
-- les icones PNG sont placeholders a remplacer avant publication.
-
-Une marque de production doit remplacer les GUID/feeds sandbox, completer le slot metier et brancher ses stores persistants.
-
-## Dépendances
-
-- `@creezio/brand-config` pour `AppManifest`, validation et electron-builder ;
-- `@creezio/product-hub` pour le stub sandbox ;
-- TypeScript et Node.
+```bash
+npm run build -w @creezio/factory
+npm run typecheck -w @creezio/factory
+```
 
 ## Voir aussi
 
 - `AGENTS.md`
-- `docs/FILES.md`
-- `packages/desktop-tooling/README.md`
-- `packages/electron-shell/README.md`
+- `docs/ADR-factory-from-prd.md`
+- `docs/experiences/tempoflow3/`

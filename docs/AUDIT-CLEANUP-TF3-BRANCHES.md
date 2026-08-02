@@ -256,8 +256,8 @@ Expérimental (ne pas merger tel quel)
 | P0.4 | deferred | Pas rejoué `proof:hard` cette session (focus extract kit) |
 | P1.1 | **MERGED** | PR [#26](https://github.com/creezio/creezio/pull/26) → `main` |
 | P1.3 | **MERGED** | PR [#27](https://github.com/creezio/creezio/pull/27) → `main` (shell avant runtime pour deps) |
-| P1.2 | **IN PR** | `extract/app-runtime` — composeBrandOs / startBrandDesktop / harness |
-| P1.4 | pending | factory `--from-prd` |
+| P1.2 | **MERGED** | PR [#28](https://github.com/creezio/creezio/pull/28) → `main` |
+| P1.4 | **IN PR** | `extract/factory-from-prd` — tip #25 (pas #24) + brand CLI + gates |
 | P2 | blocked on P1 | Repo `creezio/tempoflow3` non créé |
 
 ### Inventaire `cursor/*` creezio (aucune delete)

@@ -2,76 +2,77 @@
 
 ## Mission
 
-Maintenir le CLI `creezio new-app` et le scaffold d'app marque sandbox Client + Serveur. Le resultat doit rester generique, minimal et sans vertical metier.
+Maintenir le CLI `creezio` :
+
+1. **Mode OS** (`new-app --name/--id/--domain`) : squelette Client+Serveur,
+   slot métier vide (sandbox technique).
+2. **Mode produit** (`new-app --from-prd <prd.md>`) : brief → `ProductModel` →
+   artefacts métier + **main mince** (`startBrandDesktop`).
+3. **BrandSpec** (`brand init|doctor|apply|smoke`) : SoT déclarative agent →
+   apply via scaffold (ADR `docs/ADR-brand-spec-app-runtime.md`).
+
+Les générateurs vivent ici. Le métier généré **n’entre pas** dans
+`@creezio/platform-core` (ADR `docs/ADR-factory-from-prd.md` +
+`ADR-no-brand-domain-in-native-packages.md`).
+L’orchestration OS vit dans `@creezio/app-runtime` — **ne pas** la régénérer
+en jumeau dans `main.ts`.
 
 ## Ne pas faire
 
 - Ne pas recycler des GUID, feeds ou tokens de production.
-- Ne pas injecter de catalogue TempoFlow/Fidu/Certivan dans le scaffold.
-- Ne pas ecraser des fichiers existants sans `--force`.
-- Ne pas ajouter de dependances runtime lourdes si le squelette peut rester minimal.
-- Ne pas toucher `docs/FILES.md` sans demande dediee.
+- Ne pas hardcoder le SQL TempoFlow dans un package natif — seulement via
+  générateurs → fichiers marque.
+- **Ne pas** versionner un clone métier TempoFlow sous `templates/`.
+- **Ne pas** générer un sidecar JSON (`metier-api.mjs` / `store.json`) comme
+  SoT métier. Chemin nominal = `createSqliteRuntime` + `createApiKernel` +
+  mounts `/api/v1/modules/*` + harness `brand-kernel-harness.mjs`.
+- **Ne pas** hardcoder des UIDs Meili `tf2_*` dans le feed marque : générer
+  `meili-feed.ts` avec `catalog_*` + `configureMeiliBrandFeed`.
+- Desktop from-prd : `startBrandDesktop` / `startBrandKernelHarness`
+  (`@creezio/app-runtime`) — pas le monolithe `installBrandDesktopRuntime`.
+- Ne pas écraser des fichiers existants sans `--force`.
+- Ne pas exiger des flags techniques si `--from-prd` suffit.
+- Ne pas toucher `docs/FILES.md` sans demande dédiée.
 
 ## Points d'entrée
 
 - `bin/creezio.js` : binaire npm.
-- `src/cli.ts` : parsing et commande `new-app`.
-- `src/scaffold.ts` : generation des fichiers.
-- `src/minimal-png.ts` : icone placeholder.
+- `src/cli.ts` : `new-app` + dispatch `brand`.
+- `src/brand-cli.ts` : BrandSpec init/doctor/apply/smoke.
+- `src/product-model.ts` : `ProductModel`, `parseProductPrd`, `safeBrandId`.
+- `src/scaffold.ts` / `scaffold-from-prd.ts` : artefacts.
+- `src/generators/*` : schema, api, ui, nav, wiring, tests.
+- `fixtures/prd-tempoflow-produit.md` : gold CHR.
 - `src/index.ts` : exports publics.
 
 ## Modifier sans casser
 
-- Garder `new-app` comme seule commande tant que l'API publique ne change pas explicitement.
-- Toute nouvelle option CLI doit etre ajoutee a `CliArgs`, `parseArgs`, `printHelp` et `NewAppOptions` si elle affecte le scaffold.
-- Les fichiers generes doivent compiler sans installer le binaire Electron.
-- `--force` doit rester la seule voie d'ecrasement.
-- Les chemins generes doivent rester relatifs a la racine app et compatibles monorepo.
-
-## Config brand
-
-Le scaffold prend :
-
-- `brandId`
-- `productName`
-- `domain`
-- `envPrefix`
-- `feedToken`
-- `sandbox`
-- `outDir`
-
-Ces valeurs alimentent `createAppManifest`. Une marque production doit revoir manifest, feeds, icons, installer et slot metier avant publish.
+- Toute nouvelle option CLI → `CliArgs`, `parseArgs`, `printHelp`, `NewAppOptions`.
+- `safeBrandId` doit continuer à mapper `tempoflow` → `tempoflow3`.
+- Les smokes générés (`test:metier-parcours`, `test:first-run-auth`) doivent
+  rester exécutables sans binaire Electron.
+- `--force` reste la seule voie d'écrasement.
 
 ## Tests/gates
 
-Avant validation :
-
 ```bash
-npm run typecheck -w @creezio/factory
 npm run build -w @creezio/factory
+node --test scripts/test-phase-factory-prd.mjs
+node --test scripts/test-phase-factory-prd-experience.mjs
 ```
 
-Smoke recommande dans un dossier temporaire :
+Smoke manuel :
 
 ```bash
 node packages/factory/bin/creezio.js new-app \
-  --name DemoBrand \
-  --id demobrand-smoke \
-  --domain demobrand-smoke.creez.io \
-  --out /tmp/demobrand-smoke
+  --from-prd docs/experiences/tempoflow3/PRD-PRODUIT.md \
+  --out /tmp/tempoflow3 --force
+cd /tmp/tempoflow3 && npm run test:metier-parcours
 ```
-
-Puis verifier `package.json`, `app-manifest.json` et configs electron-builder.
-
-## Fichiers sensibles
-
-- `src/scaffold.ts` : toute la surface generee.
-- `src/cli.ts` : contrat CLI utilisateur.
-- `src/minimal-png.ts` : placeholder seulement, ne pas considerer production-ready.
 
 ## Liens
 
 - `README.md`
-- `docs/FILES.md`
-- `packages/brand-config/README.md` si present
-- `packages/desktop-tooling/README.md`
+- `docs/ADR-factory-from-prd.md`
+- `docs/experiences/tempoflow3/PROMPT-PRODUIT.md`
+- `docs/experiences/tempoflow3/PRD-PRODUIT.md`
