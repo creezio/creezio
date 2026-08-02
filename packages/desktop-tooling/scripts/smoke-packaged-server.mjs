@@ -165,6 +165,10 @@ while (Date.now() - started < timeoutMs) {
     reason = "MODULE_NOT_FOUND";
     break;
   }
+  if (/\[main\] ERREUR:/.test(log) && !/shell=runtime mounts=/.test(log) && !/api=http:\/\//.test(log)) {
+    reason = "main_erreur";
+    break;
+  }
   if (exitCode !== null && exitCode !== 0) {
     reason = `exit_${exitCode}`;
     break;
@@ -191,13 +195,17 @@ while (Date.now() - started < timeoutMs) {
     reason = `health ${health.path} :${health.port} → ${health.code}`;
     break;
   }
-  if (bootOk && child.exitCode === null && exitCode === null) {
-    // Process alive + boot progressed past n8n-block / mcp ready
-    if (/oauth ready=|warm différé|shell=runtime mounts=|\[nav\]/.test(log)) {
-      ok = true;
-      reason = "boot_ok_alive";
-      break;
-    }
+  // boot_ok_alive : exiger [nav] (shell + API exposés). warm différé seul = trop tôt.
+  if (
+    bootOk &&
+    child.exitCode === null &&
+    exitCode === null &&
+    /\[nav\] shell=/.test(log) &&
+    !/\[main\] ERREUR:/.test(log)
+  ) {
+    ok = true;
+    reason = "boot_ok_alive";
+    break;
   }
 }
 
