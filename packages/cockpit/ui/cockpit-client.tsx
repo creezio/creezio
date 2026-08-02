@@ -18,8 +18,8 @@ import {
   RefreshCw,
   ShieldCheck,
 } from "lucide-react";
-import { Badge } from "@creezio/shell-ui/ui";
-import { Button } from "@creezio/shell-ui/ui";
+import { Badge } from "@creezio/shell-ui/ui/kit";
+import { Button } from "@creezio/shell-ui/ui/kit";
 import { AiActivityPanel } from "@creezio/tasks/ui";
 import { cn } from "@creezio/shell-ui";
 import type { CockpitConfig } from "@creezio/cockpit";

@@ -113,21 +113,21 @@ export default function Page() {
     {
       rel: "settings/page.tsx",
       source: pageClient(
-        `import { DesktopSettingsPage } from "@creezio/shell-ui/ui";`,
+        `import { DesktopSettingsPage } from "@creezio/shell-ui/ui/os-pages";`,
         `    <DesktopSettingsPage />`,
       ),
     },
     {
       rel: "configuration/page.tsx",
       source: pageClient(
-        `import { DesktopSettingsPage } from "@creezio/shell-ui/ui";`,
+        `import { DesktopSettingsPage } from "@creezio/shell-ui/ui/os-pages";`,
         `    <DesktopSettingsPage />`,
       ),
     },
     {
       rel: "parametres/page.tsx",
       source: pageClient(
-        `import { DesktopSettingsPage } from "@creezio/shell-ui/ui";`,
+        `import { DesktopSettingsPage } from "@creezio/shell-ui/ui/os-pages";`,
         `    <DesktopSettingsPage />`,
       ),
     },
@@ -197,7 +197,7 @@ export default function Page() {
     {
       rel: "collaborateurs/page.tsx",
       source: pageClient(
-        `import { AccountSettings } from "@creezio/shell-ui/ui";`,
+        `import { AccountSettings } from "@creezio/shell-ui/ui/settings/account-settings";`,
         `    <>
       <h1>Collaborateurs</h1>
       <p style={{ opacity: 0.75 }}>Compte local / session — OS Creezio.</p>
@@ -222,6 +222,7 @@ export function renderUiPackageJson(_manifest: AppManifest): string {
         },
         dependencies: {
           "@creezio/shell-ui": "file:../vendor/creezio/shell-ui",
+          "@creezio/assistant": "file:../vendor/creezio/assistant",
           "@creezio/mails": "file:../vendor/creezio/mails",
           "@creezio/tasks": "file:../vendor/creezio/tasks",
           "@creezio/auth": "file:../vendor/creezio/auth",
@@ -231,12 +232,24 @@ export function renderUiPackageJson(_manifest: AppManifest): string {
           "@creezio/cockpit": "file:../vendor/creezio/cockpit",
           "@creezio/database": "file:../vendor/creezio/database",
           "@creezio/observability": "file:../vendor/creezio/observability",
+          "@radix-ui/react-avatar": "^1.1.10",
+          "@radix-ui/react-dialog": "^1.1.14",
+          "@radix-ui/react-dropdown-menu": "^2.1.15",
+          "@radix-ui/react-label": "^2.1.7",
+          "@radix-ui/react-scroll-area": "^1.2.9",
+          "@radix-ui/react-select": "^2.2.5",
+          "@radix-ui/react-separator": "^1.1.7",
+          "@radix-ui/react-slot": "^1.2.3",
+          "@radix-ui/react-tabs": "^1.1.12",
+          "@tanstack/react-table": "^8.21.3",
           next: "15.3.3",
           react: "19.1.0",
           "react-dom": "19.1.0",
           "lucide-react": "^0.511.0",
           sonner: "^2.0.3",
           "date-fns": "^4.1.0",
+          cmdk: "^1.1.1",
+          recharts: "^2.15.3",
           "class-variance-authority": "^0.7.1",
           clsx: "^2.1.1",
           "tailwind-merge": "^3.3.0",
@@ -255,12 +268,20 @@ export function renderUiPackageJson(_manifest: AppManifest): string {
 }
 
 export function renderUiNextConfig(): string {
-  return `/** @type {import('next').NextConfig} */
+  return `import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+/** @type {import('next').NextConfig} */
 const nextConfig = {
   output: "standalone",
   reactStrictMode: true,
+  // Sources vendor kit : typés dans creezio (workspaces). Ici, peers résolus via webpack.
+  typescript: { ignoreBuildErrors: true },
   transpilePackages: [
     "@creezio/shell-ui",
+    "@creezio/assistant",
     "@creezio/mails",
     "@creezio/tasks",
     "@creezio/auth",
@@ -271,9 +292,48 @@ const nextConfig = {
     "@creezio/database",
     "@creezio/observability",
   ],
+  webpack: (config) => {
+    // Imports depuis vendor/… résolvent les peers installés dans ui/node_modules.
+    config.resolve.modules = [
+      path.join(__dirname, "node_modules"),
+      ...(config.resolve.modules || ["node_modules"]),
+    ];
+    return config;
+  },
 };
 
 export default nextConfig;
+`;
+}
+
+/** tsconfig UI — paths pour typer les sources vendor contre peers ui/. */
+export function renderUiTsconfig(): string {
+  return `{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["dom", "dom.iterable", "es2022"],
+    "allowJs": false,
+    "skipLibCheck": true,
+    "strict": true,
+    "noEmit": true,
+    "esModuleInterop": true,
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "jsx": "preserve",
+    "incremental": true,
+    "plugins": [{ "name": "next" }],
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./*"],
+      "next": ["./node_modules/next"],
+      "next/*": ["./node_modules/next/*"]
+    }
+  },
+  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
+  "exclude": ["node_modules"]
+}
 `;
 }
 

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { getShellDesktopApi } from "@creezio/shell-ui";
-import { openAiWorkspaceView } from "@creezio/shell-ui/ui";
+import { openAiWorkspaceView } from "@creezio/shell-ui/ui/kit";
 import { toast } from "sonner";
 import type { CockpitConfig } from "@creezio/cockpit";
 import { resolveCockpitConfig } from "@creezio/cockpit";

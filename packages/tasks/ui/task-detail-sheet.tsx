@@ -17,17 +17,17 @@ import {
 import { formatDistanceToNow } from "date-fns";
 import { fr } from "date-fns/locale";
 import { toast } from "sonner";
-import { Badge } from "@creezio/shell-ui/ui";
-import { Button } from "@creezio/shell-ui/ui";
-import { ScrollArea } from "@creezio/shell-ui/ui";
+import { Badge } from "@creezio/shell-ui/ui/kit";
+import { Button } from "@creezio/shell-ui/ui/kit";
+import { ScrollArea } from "@creezio/shell-ui/ui/kit";
 import {
   Sheet,
   SheetContent,
   SheetDescription,
   SheetHeader,
   SheetTitle,
-} from "@creezio/shell-ui/ui";
-import { openAiWorkspaceView } from "@creezio/shell-ui/ui";
+} from "@creezio/shell-ui/ui/kit";
+import { openAiWorkspaceView } from "@creezio/shell-ui/ui/kit";
 import { cn } from "@creezio/shell-ui";
 import { AiActivityPanel } from "./ai-activity-panel";
 import {

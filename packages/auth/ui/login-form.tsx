@@ -4,7 +4,7 @@ import { FormEvent, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import { getShellDesktopApi } from "@creezio/shell-ui";
-import { Button, Input, isRemoteDesktopClient } from "@creezio/shell-ui/ui";
+import { Button, Input, isRemoteDesktopClient } from "@creezio/shell-ui/ui/kit";
 
 type Mode = "login" | "recover" | "factory";
 

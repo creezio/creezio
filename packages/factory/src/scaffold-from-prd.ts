@@ -16,6 +16,7 @@ import {
   listOsUiPages,
   renderUiPackageJson,
   renderUiNextConfig,
+  renderUiTsconfig,
   renderNextLayoutWithOsNav,
   renderVerticalSlotFromModel,
   renderPreloadFromPrdTs,
@@ -321,6 +322,11 @@ export function writeFromPrdArtifacts(opts: {
   writeOsUiAppFile(
     path.join(outDir, "ui/next.config.mjs"),
     renderUiNextConfig(),
+    written,
+  );
+  writeOsUiAppFile(
+    path.join(outDir, "ui/tsconfig.json"),
+    renderUiTsconfig(),
     written,
   );
   writeOsUiAppFile(

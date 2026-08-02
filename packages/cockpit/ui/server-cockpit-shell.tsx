@@ -24,10 +24,10 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { getShellUiBrand, cn } from "@creezio/shell-ui";
-import { Badge } from "@creezio/shell-ui/ui";
-import { Button } from "@creezio/shell-ui/ui";
-import { Input } from "@creezio/shell-ui/ui";
-import { isRemoteDesktopClient } from "@creezio/shell-ui/ui";
+import { Badge } from "@creezio/shell-ui/ui/kit";
+import { Button } from "@creezio/shell-ui/ui/kit";
+import { Input } from "@creezio/shell-ui/ui/kit";
+import { isRemoteDesktopClient } from "@creezio/shell-ui/ui/kit";
 import { AiActivityPanel } from "@creezio/tasks/ui";
 import {
   buildJoinLink,

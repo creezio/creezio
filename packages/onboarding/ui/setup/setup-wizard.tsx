@@ -7,7 +7,7 @@
 
 import { FormEvent, useEffect, useState } from "react";
 import { Check, Copy, Loader2 } from "lucide-react";
-import { Button, Input } from "@creezio/shell-ui/ui";
+import { Button, Input } from "@creezio/shell-ui/ui/kit";
 import { getShellDesktopApi, getShellUiBrand } from "@creezio/shell-ui";
 import {
   DEFAULT_SETUP_ACCENT,

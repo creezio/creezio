@@ -11,9 +11,9 @@ import {
   Search,
   Trash2,
 } from "lucide-react";
-import { Button } from "@creezio/shell-ui/ui";
-import { Input } from "@creezio/shell-ui/ui";
-import { ScrollArea } from "@creezio/shell-ui/ui";
+import { Button } from "@creezio/shell-ui/ui/kit";
+import { Input } from "@creezio/shell-ui/ui/kit";
+import { ScrollArea } from "@creezio/shell-ui/ui/kit";
 import { cn } from "@creezio/shell-ui";
 
 type EmailRow = {

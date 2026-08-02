@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Bot, Loader2, Maximize2, MonitorPlay, Play, RotateCcw, Square } from "lucide-react";
 import { toast } from "sonner";
-import { Button } from "@creezio/shell-ui/ui";
+import { Button } from "@creezio/shell-ui/ui/kit";
 import { cn } from "@creezio/shell-ui";
 
 type LogRow = {

@@ -13,6 +13,7 @@ export {
   listOsUiPages,
   renderUiPackageJson,
   renderUiNextConfig,
+  renderUiTsconfig,
   renderNextLayoutWithOsNav,
 } from "./os-ui.js";
 export { renderVerticalSlotFromModel } from "./nav.js";

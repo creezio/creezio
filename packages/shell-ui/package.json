@@ -16,6 +16,21 @@
       "types": "./ui/index.ts",
       "import": "./ui/index.ts",
       "default": "./ui/index.ts"
+    },
+    "./ui/kit": {
+      "types": "./ui/kit.ts",
+      "import": "./ui/kit.ts",
+      "default": "./ui/kit.ts"
+    },
+    "./ui/os-pages": {
+      "types": "./ui/os-pages/index.ts",
+      "import": "./ui/os-pages/index.ts",
+      "default": "./ui/os-pages/index.ts"
+    },
+    "./ui/settings/*": {
+      "types": "./ui/settings/*.tsx",
+      "import": "./ui/settings/*.tsx",
+      "default": "./ui/settings/*.tsx"
     }
   },
   "files": [
