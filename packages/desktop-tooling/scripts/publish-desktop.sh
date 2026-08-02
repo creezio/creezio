@@ -207,8 +207,13 @@ copy_to_dl "${DIST}/${LATEST_YML}" "${LATEST_YML}" "${DL_DIR}"
 echo "  + ${LATEST_YML} (copié en dernier)"
 
 echo "  vérif HTTP…"
+# L’index directory peut être 403 (autoindex nginx off) — ce n’est pas un échec
+# de publication. On exige les artefacts (yml + exe/AppImage).
 HTTP_DIR="$(curl -sS -o /dev/null -w '%{http_code}' "${FEED_URL}/")"
-[[ "${HTTP_DIR}" == "200" ]] || die "index feed HTTP ${HTTP_DIR} (attendu 200, pas 403)"
+case "${HTTP_DIR}" in
+  200|403) echo "  index feed HTTP ${HTTP_DIR} (listing optionnel)" ;;
+  *) die "index feed HTTP ${HTTP_DIR} (attendu 200 ou 403)" ;;
+esac
 
 HTTP_YML="$(curl -sS -o "${TMP_YML}" -w '%{http_code}' "${FEED_URL}/${LATEST_YML}")"
 [[ "${HTTP_YML}" == "200" ]] || die "latest.yml HTTP ${HTTP_YML}"
