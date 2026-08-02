@@ -257,8 +257,8 @@ Expérimental (ne pas merger tel quel)
 | P1.1 | **MERGED** | PR [#26](https://github.com/creezio/creezio/pull/26) → `main` |
 | P1.3 | **MERGED** | PR [#27](https://github.com/creezio/creezio/pull/27) → `main` (shell avant runtime pour deps) |
 | P1.2 | **MERGED** | PR [#28](https://github.com/creezio/creezio/pull/28) → `main` |
-| P1.4 | **IN PR** | `extract/factory-from-prd` — tip #25 (pas #24) + brand CLI + gates |
-| P2 | blocked on P1 | Repo `creezio/tempoflow3` non créé |
+| P1.4 | **MERGED** | PR [#29](https://github.com/creezio/creezio/pull/29) ; #24 closed superseded |
+| P2.1 bootstrap | **DONE** | Repo privé [`creezio/tempoflow3`](https://github.com/creezio/tempoflow3) + README plan import ; **import app pas encore fait** (~113 fichiers `apps/tempoflow3` + ~169 paths tip restants) |
 
 ### Inventaire `cursor/*` creezio (aucune delete)
 
@@ -270,4 +270,26 @@ Expérimental (ne pas merger tel quel)
 | `integrate-native-kit` + `native-*-sot` + `pshell5` | **fully in main** (`ahead=0`) | OK delete P3 |
 
 *Fin audit — livrable doc + exécution P0/P1 en cours.*
+
+
+
+## H. Reste tip #25 non encore sur `main` (post-P1)
+
+Freeze : `archive/tf3-probe-65b9273`. **Ne pas** `git push --delete` `cursor/tempoflow3-create-457d`.
+
+| Zone | Action |
+|------|--------|
+| `apps/tempoflow3/**` (~113 fichiers) | Import → [`creezio/tempoflow3`](https://github.com/creezio/tempoflow3) (P2 import) |
+| Preuves / scripts OS tip (`scripts/test-os-*.mjs`, proof app) | Suivre import repo ou cherry-pick kit-only |
+| Tweaks `apps/demobrand` tip | Revue sélective |
+| PR #25 | Garder ouverte jusqu’import app |
+
+### Branches `cursor/*` encore intouchables / à ne pas delete
+
+| Branche | Note |
+|---------|------|
+| `cursor/tempoflow3-create-457d` | **unique** tip taggé — garder |
+| `cursor/factory-from-prd-457d` | contenu absorbé via #29 ; delete OK en P3 |
+| `cursor/native-*` / `integrate-*` / `pshell5` | fully in main — delete OK P3 |
+| `cursor/native-shell-ui-sot-457d` | contenu fully in main — delete OK P3 |
 
