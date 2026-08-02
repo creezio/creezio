@@ -12,6 +12,12 @@
       "require": "./dist-cjs/index.js",
       "default": "./dist/index.js"
     },
+    "./meili": {
+      "types": "./dist/host/meili/index.d.ts",
+      "import": "./dist/host/meili/index.js",
+      "require": "./dist-cjs/host/meili/index.js",
+      "default": "./dist/host/meili/index.js"
+    },
     "./browser-tabs": {
       "types": "./dist/host/browser-tabs/index.d.ts",
       "import": "./dist/host/browser-tabs/index.js",
@@ -21,6 +27,9 @@
   },
   "typesVersions": {
     "*": {
+      "meili": [
+        "./dist/host/meili/index.d.ts"
+      ],
       "browser-tabs": [
         "./dist/host/browser-tabs/index.d.ts"
       ]
@@ -28,7 +37,8 @@
   },
   "files": [
     "dist",
-    "dist-cjs"
+    "dist-cjs",
+    "resources"
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json",

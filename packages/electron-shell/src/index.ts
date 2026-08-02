@@ -89,6 +89,15 @@ export type { RunningMeili, StartMeiliOptions } from "./host/meili-launcher.js";
 export { startMeili } from "./host/meili-launcher.js";
 
 export type {
+  BrandKernelHttpHandle,
+  BrandKernelLike,
+} from "./host/brand-kernel-http.js";
+export { listenBrandKernelHttp } from "./host/brand-kernel-http.js";
+
+export type { BrandMeiliBootResult } from "./host/brand-meili-boot.js";
+export { maybeBootBrandMeili } from "./host/brand-meili-boot.js";
+
+export type {
   RunningServer,
   StartServerCoreOptions,
   StartServerPaths,
@@ -257,6 +266,17 @@ export {
   n8nVendorDir,
   __resetN8nBootstrapStateForTests,
 } from "./host/n8n/runtime-bootstrap.js";
+export {
+  electronShellPackageRoot,
+  kitOsResourcesRoot,
+  kitOsVendorDir,
+} from "./host/kit-os-resources.js";
+export {
+  ensureKitOsBinaries,
+  kitBinaryPaths,
+  type EnsureKitBinariesResult,
+  type KitBinaryName,
+} from "./host/ensure-kit-binaries.js";
 
 /* ── O3 : jumeaux Electron plateforme (extract gold TF) ── */
 export type { N8nApiKeyBrand, N8nApiKeyStored } from "./host/n8n/api-key.js";
@@ -575,6 +595,17 @@ export type {
   BrandDesktopVertical,
 } from "./desktop/brand-desktop-runtime.js";
 
+export type {
+  DesktopSessionApi,
+  DesktopSessionInfo,
+  DesktopSessionStatus,
+} from "./desktop/desktop-session.js";
+export {
+  createDesktopSessionStore,
+  registerDesktopSessionIpc,
+  spawnBrandMetierApi,
+} from "./desktop/desktop-session.js";
+
 /* ── Phase N2 : jumeaux hosts → kit ── */
 export type { CrashKind, CrashReporterConfig } from "./host/crash-reporter.js";
 export {
@@ -639,11 +670,15 @@ export {
  * (pas le barrel principal : évite de tirer `electron` dans les tests Node). */
 
 export type {
+  BrandMeiliDocument,
+  BrandMeiliFeed,
+  BrandMeiliIndexSpec,
   CatalogIndexUid,
   CatalogSqlCounts,
   CoherenceDbSnapshot,
   GedIndexUid,
   GedSqlCounts,
+  GenericCatalogIndexUid,
   MeiliCatalogSqlTables,
   MeiliCoherencePaths,
   MeiliFingerprint,
@@ -653,24 +688,32 @@ export type {
 export {
   CATALOG_INDEXES,
   GED_INDEXES,
+  GENERIC_CATALOG_INDEXES,
   INDEX_SCHEMA_VERSION,
   MEILI_FINGERPRINT_META_KEY,
   MEILI_INDEX_IN_PROGRESS_KEY,
   buildFingerprint,
+  configureMeiliBrandFeed,
   configureMeiliCatalogSqlTables,
   configureMeiliCoherencePaths,
   countCatalogSql,
   countGedSql,
+  createChrCatalogMeiliFeed,
   decideMeiliReady,
+  expectedCountsForFeed,
   expectedMeiliCounts,
+  getMeiliBrandFeed,
   getMeiliCatalogSqlTables,
   parseFingerprint,
   readCoherenceDbSnapshot,
   readFingerprintFromDb,
   readIndexInProgress,
   readSqliteSchemaVersion,
+  resetMeiliBrandFeedForTests,
   resetMeiliCatalogSqlTablesForTests,
+  runFeedIndexation,
   runIndexation,
+  searchMeiliIndexes,
   serializeFingerprint,
   writeFingerprintToDb,
 } from "./host/meili/index.js";

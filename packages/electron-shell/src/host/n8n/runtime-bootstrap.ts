@@ -19,6 +19,7 @@ import {
 } from "@creezio/platform-core";
 import type { HostRuntimeContext } from "../context.js";
 import { hostLog, hostProductName } from "../context.js";
+import { kitOsVendorDir } from "../kit-os-resources.js";
 import { runNpmCli } from "../npm-cli.js";
 
 export type N8nBootstrapPhase =
@@ -56,10 +57,15 @@ function setPhase(p: N8nBootstrapPhase): void {
 }
 
 export function n8nVendorDir(ctx: HostRuntimeContext): string {
+  // Marque d’abord (packaged), sinon kit OS Creezio — jamais à inventer dans la marque.
   const candidates = [
     path.join(ctx.resourcesRoot, "vendor", "n8n"),
     path.join(ctx.resourcesRoot, "resources", "vendor", "n8n"),
+    kitOsVendorDir("n8n"),
   ];
+  for (const p of candidates) {
+    if (fs.existsSync(path.join(p, "runtime-manifest.json"))) return p;
+  }
   for (const p of candidates) {
     if (fs.existsSync(p)) return p;
   }

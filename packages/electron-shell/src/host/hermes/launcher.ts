@@ -306,6 +306,7 @@ function findHermesBinary(): string | null {
 }
 
 function ensureApiKey(home: string): string {
+  fs.mkdirSync(home, { recursive: true });
   const prefix = ctx.secretFilePrefix || ctx.manifest.brandId || "desktop";
   /** Canon marque : `.certivan-api-server-key` / `.tempoflow-api-server-key`. */
   const keyFile = path.join(home, `.${prefix}-api-server-key`);

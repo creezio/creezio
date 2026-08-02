@@ -644,16 +644,34 @@ async function deleteIndexIfExists(meili: MeiliClient, uid: string, log: LogFn):
 }
 
 /**
- * Lance l'indexation complète (produits, marketplaces, index unifié).
- * Réutilisable depuis le main process Electron ou en CLI.
+ * Lance l'indexation.
+ * - Avec `feed` (ou feed configuré via configureMeiliBrandFeed) → chemin générique.
+ * - Sans feed → legacy TempoFlow `tf2_*` (compat TF2 / dual-read).
  */
 export async function runIndexation(opts?: {
   dbPath?: string;
   meiliHost?: string;
   masterKey?: string;
   log?: (line: string) => void;
+  feed?: import("./feed.js").BrandMeiliFeed;
+  appVersion?: string;
 }): Promise<void> {
   const log: LogFn = opts?.log ?? ((line) => console.log(line));
+  const { getMeiliBrandFeed } = await import("./feed.js");
+  const feed = opts?.feed ?? getMeiliBrandFeed();
+  if (feed) {
+    const { runFeedIndexation } = await import("./generic-indexer.js");
+    await runFeedIndexation({
+      feed,
+      dbPath: opts?.dbPath,
+      meiliHost: opts?.meiliHost,
+      masterKey: opts?.masterKey,
+      log,
+      appVersion: opts?.appVersion,
+    });
+    return;
+  }
+
   const dbPath = opts?.dbPath ?? process.env.DB_PATH;
   const meiliHost = opts?.meiliHost ?? process.env.MEILI_HOST;
   const masterKey = opts?.masterKey ?? process.env.MEILI_MASTER_KEY ?? "";

@@ -21,6 +21,21 @@ export type {
 } from "./index-schema.js";
 
 export {
+  GENERIC_CATALOG_INDEXES,
+  configureMeiliBrandFeed,
+  createChrCatalogMeiliFeed,
+  expectedCountsForFeed,
+  getMeiliBrandFeed,
+  resetMeiliBrandFeedForTests,
+} from "./feed.js";
+export type {
+  BrandMeiliDocument,
+  BrandMeiliFeed,
+  BrandMeiliIndexSpec,
+  GenericCatalogIndexUid,
+} from "./feed.js";
+
+export {
   buildFingerprint,
   countCatalogSql,
   countGedSql,
@@ -42,3 +57,4 @@ export {
 } from "./coherence.js";
 
 export { runIndexation } from "./indexer.js";
+export { runFeedIndexation, searchMeiliIndexes } from "./generic-indexer.js";

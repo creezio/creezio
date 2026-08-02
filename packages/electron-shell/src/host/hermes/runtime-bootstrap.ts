@@ -15,6 +15,7 @@ import https from "node:https";
 import path from "node:path";
 import type { HostRuntimeContext } from "../context.js";
 import { hostLog, hostProductName } from "../context.js";
+import { kitOsVendorDir } from "../kit-os-resources.js";
 import { applyOsSandboxEnv, setSandboxEnvVar } from "../sandbox/embed-sandbox.js";
 import { resolveSystemBinary } from "../sandbox/os-sandbox.js";
 import { resolveDesktopNodeBinary } from "../node-runtime.js";
@@ -72,10 +73,15 @@ function setPhase(p: BootstrapPhase): void {
 }
 
 export function hermesVendorDir(ctx: HostRuntimeContext): string {
+  // Marque d’abord (packaged resourcesPath/vendor), sinon kit OS Creezio.
   const candidates = [
     path.join(ctx.resourcesRoot, "vendor", "hermes-agent"),
     path.join(ctx.resourcesRoot, "resources", "vendor", "hermes-agent"),
+    kitOsVendorDir("hermes-agent"),
   ];
+  for (const p of candidates) {
+    if (fs.existsSync(path.join(p, "runtime-manifest.json"))) return p;
+  }
   for (const p of candidates) {
     if (fs.existsSync(p)) return p;
   }

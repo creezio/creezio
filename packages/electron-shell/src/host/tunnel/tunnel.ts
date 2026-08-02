@@ -17,6 +17,7 @@ import {
 } from "@creezio/platform-core";
 import type { HostRuntimeContext } from "../context.js";
 import { hostLog, hostProductName } from "../context.js";
+import { kitOsResourcesRoot } from "../kit-os-resources.js";
 import type { LocalConfigStore, TunnelConfig } from "../local-config.js";
 import { applyOsSandboxEnv } from "../sandbox/embed-sandbox.js";
 
@@ -50,6 +51,16 @@ export type TunnelService = {
     | { ok: false; error: string }
   >;
   configureTunnelIngress: (ports: TunnelIngressPorts) => Promise<void>;
+  /**
+   * Surface publique locale (sans Cloudflare) — MCP = `{publicUrl}/mcp`.
+   * Utilisé quand le provisioner distant n’est pas joignable / en harness.
+   */
+  enableLocalPublicSurface: (opts: {
+    localPort: number;
+    slug?: string;
+  }) => { ok: true; publicUrl: string; publicMcp: string };
+  /** CRM public URL + `/mcp` (tunnel réel ou surface locale). */
+  publicMcpUrl: () => string | null;
   publicUrlForEmbedService: (service: TunnelEmbedService) => string | null;
   startCloudflared: () => Promise<void>;
   stopCloudflared: () => void;
@@ -116,18 +127,12 @@ function cloudflaredBinary(
     const override = (process.env[envKey] || "").trim();
     if (override && fs.existsSync(override)) return override;
   }
+  const name =
+    process.platform === "win32" ? "cloudflared.exe" : "cloudflared";
   const candidates = [
-    path.join(
-      ctx.resourcesRoot,
-      "bin",
-      process.platform === "win32" ? "cloudflared.exe" : "cloudflared",
-    ),
-    path.join(
-      ctx.resourcesRoot,
-      "resources",
-      "bin",
-      process.platform === "win32" ? "cloudflared.exe" : "cloudflared",
-    ),
+    path.join(ctx.resourcesRoot, "bin", name),
+    path.join(ctx.resourcesRoot, "resources", "bin", name),
+    path.join(kitOsResourcesRoot(), "bin", name),
   ];
   for (const p of candidates) {
     if (fs.existsSync(p)) return p;
@@ -156,16 +161,28 @@ export function createTunnelService(opts: {
 
   function getTunnelStatus(): TunnelRuntimeStatus {
     const cfg = store.getTunnelConfig();
-    const publicUrls = cfg?.hostname
-      ? buildTunnelPublicUrls(cfg.hostname)
-      : null;
+    const isLocalSurface =
+      Boolean(cfg?.publicUrl?.startsWith("http://127.0.0.1")) ||
+      cfg?.tunnelToken === "local" ||
+      String(cfg?.tunnelId || "").startsWith("local-");
+    const publicUrls = isLocalSurface
+      ? cfg?.publicUrls || {
+          crm: cfg!.publicUrl,
+          n8n: `http://127.0.0.1:${N8N_DESKTOP_PORT}`,
+          hermes: `http://127.0.0.1:${HERMES_DESKTOP_WEBUI_PORT}`,
+        }
+      : cfg?.hostname
+        ? buildTunnelPublicUrls(cfg.hostname)
+        : null;
     return {
       configured: Boolean(cfg),
       slug: cfg?.slug ?? null,
       hostname: cfg?.hostname ?? null,
       publicUrl: cfg?.publicUrl ?? null,
       publicUrls,
-      online: online && Boolean(child && !child.killed),
+      online: isLocalSurface
+        ? online
+        : online && Boolean(child && !child.killed),
       error: lastError,
       pcMustBeOn: true,
     };
@@ -299,7 +316,55 @@ export function createTunnelService(opts: {
   ): string | null {
     const cfg = store.getTunnelConfig();
     if (!cfg?.hostname) return null;
+    // Surface locale : hostname = 127.0.0.1:port → publicUrl déjà canonique.
+    if (cfg.publicUrl?.startsWith("http://127.0.0.1")) {
+      if (service === "n8n") {
+        return `http://127.0.0.1:${N8N_DESKTOP_PORT}`;
+      }
+      if (service === "hermes") {
+        return `http://127.0.0.1:${HERMES_DESKTOP_WEBUI_PORT}`;
+      }
+    }
     return buildTunnelPublicUrls(cfg.hostname)[service] || null;
+  }
+
+  function publicMcpUrl(): string | null {
+    const cfg = store.getTunnelConfig();
+    if (!cfg?.publicUrl) return null;
+    return `${String(cfg.publicUrl).replace(/\/$/, "")}/mcp`;
+  }
+
+  function enableLocalPublicSurface(opts: {
+    localPort: number;
+    slug?: string;
+  }): { ok: true; publicUrl: string; publicMcp: string } {
+    const slug = (opts.slug || ctx.manifest.brandId || "local")
+      .toLowerCase()
+      .replace(/[^a-z0-9-]+/g, "-");
+    const publicUrl = `http://127.0.0.1:${opts.localPort}`;
+    const hostname = `127.0.0.1:${opts.localPort}`;
+    store.setTunnelConfig({
+      slug,
+      hostname,
+      publicUrl,
+      tunnelId: `local-${slug}`,
+      tunnelToken: "local",
+      localPort: opts.localPort,
+      publicUrls: {
+        crm: publicUrl,
+        n8n: `http://127.0.0.1:${N8N_DESKTOP_PORT}`,
+        hermes: `http://127.0.0.1:${HERMES_DESKTOP_WEBUI_PORT}`,
+      },
+      emailDomain: `${slug}.mail.localhost`,
+      servicePorts: {
+        n8n: N8N_DESKTOP_PORT,
+        hermes: HERMES_DESKTOP_WEBUI_PORT,
+      },
+    });
+    online = true;
+    lastError = null;
+    hostLog(ctx, "tunnel", `surface locale MCP ${publicUrl}/mcp`);
+    return { ok: true, publicUrl, publicMcp: `${publicUrl}/mcp` };
   }
 
   async function startCloudflared(): Promise<void> {
@@ -395,6 +460,8 @@ export function createTunnelService(opts: {
     checkTunnelSlug,
     reserveTunnel,
     configureTunnelIngress,
+    enableLocalPublicSurface,
+    publicMcpUrl,
     publicUrlForEmbedService,
     startCloudflared,
     stopCloudflared,
