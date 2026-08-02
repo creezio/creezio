@@ -36,3 +36,6 @@ export {
   prevStepIndex,
   shouldShowInterstitial,
 } from "./engine.js";
+
+export type { OnboardingSpecInput } from "./from-brand-spec.js";
+export { setupWizardConfigFromSpec } from "./from-brand-spec.js";
