@@ -254,8 +254,10 @@ Expérimental (ne pas merger tel quel)
 | P0.2 | **DONE** | Tag annoté `archive/tf3-probe-65b9273` → `65b9273` poussé sur `origin` |
 | P0.3 | **DONE** | Certivan : 13 deletes **accidentels** (fichiers présents sur HEAD, working tree only) → `git restore` ; `main` clean |
 | P0.4 | deferred | Pas rejoué `proof:hard` cette session (focus extract kit) |
-| P1.1 | **IN PR** | Branche `extract/brand-spec` — package + ADR + CREATE-BRAND + bridge onboarding + gate BS1–BS5 |
-| P1.2–P1.4 | pending | app-runtime → electron-shell → factory `--from-prd` |
+| P1.1 | **MERGED** | PR [#26](https://github.com/creezio/creezio/pull/26) → `main` |
+| P1.3 | **IN PR** | `extract/electron-shell` avant P1.2 (deps compile app-runtime) — session desktop, Meili feed, kit binaries, vendor install scripts |
+| P1.2 | pending | app-runtime après merge shell |
+| P1.4 | pending | factory `--from-prd` |
 | P2 | blocked on P1 | Repo `creezio/tempoflow3` non créé |
 
 ### Inventaire `cursor/*` creezio (aucune delete)
