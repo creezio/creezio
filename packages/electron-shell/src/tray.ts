@@ -6,6 +6,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { log, logError } from "./logger.js";
+import { loadElectron } from "./host/load-electron.js";
 
 const TRAY_ICON_FALLBACK_B64 =
   "iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAACAklEQVR42u2X2U7CQBSGeZwCgkvdtUAv+gx9g8IENC5xiUsUA/SKt5qkEMAoRmtcohKBtO/QHHMSLswMygytd/7Jd9P2XxISOo3F/iUhxfIMxfLqiuVRxfJ8xfKCEf7oGt4zIi+O54cknh+68fwQBMFnSejiRGGgJgoDmigMYErQq05VniR9M0n6QZL0ISSYYUqVzxQ/zZniJ0SM2IhUqaemSr0gVepBxGDm5J8jvfVB01sf8EfQ38u330l6+x2+E1ZsHnb8OGB2582d3XmD74QVm4cdY8vndl+Nud1XYAmrcZnYxQ2Y33upz++9AEtYjcvELm7Awv4zXdh/BlFYyXixixugHjz56sETiMJKxotd3IDFw8dg8fARRGEl48UubsDSkRssHbkgCisZL3ZxA5aPH/zl4wcQhZWMF7u4ASsn93Tl5B5EYSXjxS5uwOrpXX319A5EYSXjxS5uwNpZ11g764IorGS82DX233D9/NZdP78FEViJ+rDjx3fBxsUN2bi4ARFYifqw49c34ublNd28vIZJsBLxYPbE84BW7qhauRNo5Q5EDGaKnQ+1q7apXbUhYuTOhZlKy8xUWkGm0oLQYIY51ck4W22qWWqTZqtNmBL0qqG/D3K1BsnVGm6u1gBB8FkS+ReSbjuGbjt13Xaobju+bjvBCH90De8ZsX9J6AvaetnzgauSsgAAAABJRU5ErkJggg==";
@@ -28,24 +29,6 @@ export type TrayControllerOptions = {
   openAiWorkspace?: (userId: string) => void;
   closeAiWorkspace?: (userId: string) => void;
 };
-
-/**
- * Charge electron en sync pour le main CJS des marques.
- * `eval("require")` hérite du scope CJS (dist-cjs) sans `import.meta`.
- */
-function loadElectron(): typeof import("electron") {
-  try {
-    // eslint-disable-next-line no-eval
-    const req = eval("require") as NodeRequire;
-    return req("electron") as typeof import("electron");
-  } catch (e) {
-    throw new Error(
-      `@creezio/electron-shell tray: require('electron') indisponible (${
-        e instanceof Error ? e.message : e
-      })`,
-    );
-  }
-}
 
 export class TrayController {
   private tray: InstanceType<typeof import("electron").Tray> | null = null;

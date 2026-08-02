@@ -101,7 +101,7 @@ function renderPackageJson(m: AppManifest): string {
           "pack:linux":
             "node node_modules/@creezio/desktop-tooling/scripts/ensure-linux-icons.mjs && npm run electron:config:client && npm run build:electron && electron-builder --config electron-builder.client.json --linux AppImage dir --x64",
           "pack:linux:server":
-            "node node_modules/@creezio/desktop-tooling/scripts/ensure-linux-icons.mjs && npm run electron:config:server && npm run build:electron && electron-builder --config electron-builder.server.json --linux AppImage dir --x64",
+            "node node_modules/@creezio/desktop-tooling/scripts/ensure-linux-icons.mjs && npm run electron:ensure-linux-native && npm run electron:config:server && npm run build:electron && electron-builder --config electron-builder.server.json --linux AppImage dir --x64",
           "electron:publish": `CREEZIO_BRAND=${m.brandId} bash node_modules/@creezio/desktop-tooling/scripts/publish-desktop.sh`,
           "electron:publish:linux": `CREEZIO_BRAND=${m.brandId} bash node_modules/@creezio/desktop-tooling/scripts/publish-desktop.sh --platform=linux`,
           "electron:publish:dry": `CREEZIO_BRAND=${m.brandId} bash node_modules/@creezio/desktop-tooling/scripts/publish-desktop.sh --dry-run`,

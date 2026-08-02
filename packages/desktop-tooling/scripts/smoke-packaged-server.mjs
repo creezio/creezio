@@ -1,0 +1,227 @@
+#!/usr/bin/env node
+/**
+ * Smoke headless du serveur Electron packagé (linux-unpacked).
+ *
+ * Usage :
+ *   node …/smoke-packaged-server.mjs [appRoot]
+ *   CREEZIO_SMOKE_TIMEOUT_MS=45000 …
+ *
+ * Exit 0 si process alive + (health HTTP OU log boot OK) sans MODULE_NOT_FOUND.
+ */
+import { spawn, spawnSync } from "node:child_process";
+import fs from "node:fs";
+import http from "node:http";
+import path from "node:path";
+import { setTimeout as sleep } from "node:timers/promises";
+
+const appRoot = path.resolve(process.argv[2] || process.cwd());
+const timeoutMs = Number(process.env.CREEZIO_SMOKE_TIMEOUT_MS || 45_000);
+const unpacked = path.join(appRoot, "dist-electron-server", "linux-unpacked");
+const logPath = process.env.CREEZIO_SMOKE_LOG || "/tmp/tf3-smoke-packaged-server.log";
+
+function findBinary() {
+  if (!fs.existsSync(unpacked)) {
+    throw new Error(`missing ${unpacked} — run pack:linux:server first`);
+  }
+  const entries = fs.readdirSync(unpacked);
+  const preferred = entries.find((n) => /Server$/i.test(n) || /-Server$/i.test(n));
+  const candidates = (preferred ? [preferred] : entries)
+    .map((n) => path.join(unpacked, n))
+    .filter((p) => {
+      try {
+        const st = fs.statSync(p);
+        return st.isFile() && (st.mode & 0o111) !== 0 && !p.endsWith(".so");
+      } catch {
+        return false;
+      }
+    })
+    .filter((p) => !/chrome|crashpad|sandbox/i.test(path.basename(p)));
+  if (!candidates.length) throw new Error(`no executable in ${unpacked}`);
+  return candidates[0];
+}
+
+function httpGet(url, ms = 1500) {
+  return new Promise((resolve) => {
+    const req = http.get(url, { timeout: ms }, (res) => {
+      res.resume();
+      resolve(res.statusCode || 0);
+    });
+    req.on("error", () => resolve(0));
+    req.on("timeout", () => {
+      req.destroy();
+      resolve(0);
+    });
+  });
+}
+
+async function probeHealth(ports) {
+  for (const port of ports) {
+    for (const p of [
+      "/api/v1/core/health",
+      "/api/v1/os/ready",
+      "/api/v1/os/status",
+      "/api/v1/os/connection",
+    ]) {
+      const code = await httpGet(`http://127.0.0.1:${port}${p}`);
+      // Meili/autres renvoient souvent 404 HTML — exiger 2xx seulement.
+      if (code >= 200 && code < 300) return { port, path: p, code };
+    }
+  }
+  return null;
+}
+
+function collectListenPorts(rootPid) {
+  const r = spawnSync("ss", ["-ltnp"], { encoding: "utf8" });
+  if (r.status !== 0) return [];
+  // Inclure descendants (xvfb-run → electron).
+  const pids = new Set([rootPid]);
+  try {
+    const pst = spawnSync("ps", ["-eo", "pid=,ppid="], { encoding: "utf8" });
+    const rows = (pst.stdout || "")
+      .trim()
+      .split("\n")
+      .map((l) => l.trim().split(/\s+/).map(Number))
+      .filter((a) => a.length === 2 && a[0] > 0);
+    let grew = true;
+    while (grew) {
+      grew = false;
+      for (const [pid, ppid] of rows) {
+        if (pids.has(ppid) && !pids.has(pid)) {
+          pids.add(pid);
+          grew = true;
+        }
+      }
+    }
+  } catch {
+    /* ignore */
+  }
+  const ports = new Set();
+  for (const line of (r.stdout || "").split("\n")) {
+    let hit = false;
+    for (const pid of pids) {
+      if (line.includes(`pid=${pid}`)) {
+        hit = true;
+        break;
+      }
+    }
+    if (!hit) continue;
+    const m = line.match(/:(\d+)\s/);
+    if (m) ports.add(Number(m[1]));
+  }
+  return [...ports];
+}
+
+const bin = findBinary();
+fs.writeFileSync(logPath, "");
+console.log(`smoke-packaged-server: bin=${bin}`);
+console.log(`smoke-packaged-server: log=${logPath} timeout=${timeoutMs}ms`);
+
+const useXvfb = Boolean(spawnSync("bash", ["-lc", "command -v xvfb-run"]).stdout?.toString().trim());
+const args = ["--no-sandbox", "--disable-gpu"];
+const env = {
+  ...process.env,
+  ELECTRON_ENABLE_LOGGING: "1",
+  ELECTRON_ENABLE_STACK_DUMPING: "1",
+  // Skip long n8n npm for smoke of UI/API plane; shell still boots.
+  CREEZIO_NATIVE_WARM: process.env.CREEZIO_NATIVE_WARM || "0",
+  CREEZIO_NATIVE_WARM_HERMES: process.env.CREEZIO_NATIVE_WARM_HERMES || "0",
+};
+
+let child;
+if (useXvfb) {
+  child = spawn("xvfb-run", ["-a", bin, ...args], {
+    cwd: unpacked,
+    env,
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+} else {
+  child = spawn(bin, args, {
+    cwd: unpacked,
+    env: { ...env, DISPLAY: process.env.DISPLAY || "" },
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+}
+
+const logFd = fs.openSync(logPath, "a");
+const append = (buf) => {
+  fs.writeSync(logFd, buf);
+  process.stdout.write(buf);
+};
+child.stdout?.on("data", append);
+child.stderr?.on("data", append);
+
+const started = Date.now();
+let ok = false;
+let reason = "timeout";
+let exitCode = null;
+child.on("exit", (code) => {
+  exitCode = code;
+});
+
+while (Date.now() - started < timeoutMs) {
+  await sleep(1000);
+  const log = fs.readFileSync(logPath, "utf8");
+  if (/MODULE_NOT_FOUND|Cannot find module/.test(log)) {
+    reason = "MODULE_NOT_FOUND";
+    break;
+  }
+  if (exitCode !== null && exitCode !== 0) {
+    reason = `exit_${exitCode}`;
+    break;
+  }
+  const bootOk =
+    /\[boot\] kind=/.test(log) &&
+    (/\[nav\] /.test(log) ||
+      /shell=runtime/.test(log) ||
+      /oauth ready=/.test(log) ||
+      /warm différé/.test(log) ||
+      /api=http:\/\//.test(log));
+  const ports = child.pid ? collectListenPorts(child.pid) : [];
+  const apiFromLog = [...log.matchAll(/api=http:\/\/127\.0\.0\.1:(\d+)/g)].map((m) =>
+    Number(m[1]),
+  );
+  const logPorts = [...log.matchAll(/http:\/\/127\.0\.0\.1:(\d+)/g)].map((m) =>
+    Number(m[1]),
+  );
+  const health = await probeHealth(
+    [...new Set([...apiFromLog, ...ports, ...logPorts])].filter(Boolean),
+  );
+  if (health) {
+    ok = true;
+    reason = `health ${health.path} :${health.port} → ${health.code}`;
+    break;
+  }
+  if (bootOk && child.exitCode === null && exitCode === null) {
+    // Process alive + boot progressed past n8n-block / mcp ready
+    if (/oauth ready=|warm différé|shell=runtime mounts=|\[nav\]/.test(log)) {
+      ok = true;
+      reason = "boot_ok_alive";
+      break;
+    }
+  }
+}
+
+try {
+  if (child.pid) {
+    process.kill(-child.pid, "SIGTERM");
+  }
+} catch {
+  try {
+    child.kill("SIGTERM");
+  } catch {
+    /* ignore */
+  }
+}
+await sleep(800);
+try {
+  child.kill("SIGKILL");
+} catch {
+  /* ignore */
+}
+fs.closeSync(logFd);
+
+console.log(`smoke-packaged-server: ${ok ? "OK" : "FAIL"} (${reason})`);
+console.log(`smoke-packaged-server: log tail:`);
+const lines = fs.readFileSync(logPath, "utf8").trim().split("\n");
+console.log(lines.slice(-40).join("\n"));
+process.exit(ok ? 0 : 1);

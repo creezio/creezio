@@ -1615,11 +1615,18 @@ export function installBrandDesktopRuntime(deps: BrandDesktopDeps): void {
       }
       const baseUrl = crmBaseUrl() || server?.baseUrl || "";
       if (!baseUrl) return { ok: false as const, error: "serveur non démarré" };
+      const adminPreloadCandidates = [
+        deps.paths.preloadPath("preload-app.js"),
+        deps.paths.preloadPath("preload.js"),
+      ];
+      const adminPreload =
+        adminPreloadCandidates.find((p) => fs.existsSync(p)) ||
+        adminPreloadCandidates[0]!;
       return openAdminWindow({
         baseUrl,
         partition: deps.sessionPartition,
         productName: deps.manifest.client.productName,
-        preloadPath: deps.paths.preloadPath("preload-app.js"),
+        preloadPath: adminPreload,
         instrument: (v) => deps.vertical.instrumentWebContents(v.webContents, "admin-window"),
       });
     });
@@ -2591,9 +2598,14 @@ export function installBrandDesktopRuntime(deps: BrandDesktopDeps): void {
     });
     const w = win;
 
-    // Preload HORS asar (resources/electron) : chemin disque réel, vérifiable.
+    // Preload : TF2/CV/Fidu = preload-app.js ; factory/TF3 = preload.js.
     // Un preload manquant/incassable = plus d'API desktop → on veut le SAVOIR.
-    const appPreload = deps.paths.preloadPath("preload-app.js");
+    const preloadCandidates = [
+      deps.paths.preloadPath("preload-app.js"),
+      deps.paths.preloadPath("preload.js"),
+    ];
+    const appPreload =
+      preloadCandidates.find((p) => fs.existsSync(p)) || preloadCandidates[0]!;
     if (!fs.existsSync(appPreload)) {
       deps.vertical.reportCrash("web-event", { view: "crm", event: "preload-missing", preloadPath: appPreload });
     }

@@ -77,7 +77,7 @@ function renderPackageJsonFromPrd(m: AppManifest, model: ProductModel): string {
     "pack:linux:dir":
       "node scripts/ensure-linux-icons.mjs && npm run electron:config:client && npm run build:electron && electron-builder --config electron-builder.client.json --linux dir --x64",
     "pack:linux:server":
-      "node scripts/ensure-linux-icons.mjs && npm run electron:config:server && npm run build:electron && electron-builder --config electron-builder.server.json --linux AppImage dir --x64",
+      "node scripts/ensure-linux-icons.mjs && npm run electron:ensure-linux-native && npm run electron:config:server && npm run build:electron && electron-builder --config electron-builder.server.json --linux AppImage dir --x64",
     "e2e:browser": "node scripts/e2e-browser-parcours.mjs",
     "e2e:browser:keep": "node scripts/e2e-browser-parcours.mjs --keep",
     "test:e2e-browser": "node scripts/e2e-browser-parcours.mjs",

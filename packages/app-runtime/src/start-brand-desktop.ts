@@ -117,7 +117,19 @@ export async function startBrandDesktop(
     }
   }
 
-  const boot = await prepareDesktopBoot(manifest);
+  const resourcesPath =
+    typeof (process as NodeJS.Process & { resourcesPath?: string }).resourcesPath ===
+    "string"
+      ? (process as NodeJS.Process & { resourcesPath?: string }).resourcesPath || ""
+      : "";
+  const boot = await prepareDesktopBoot(manifest, {
+    appKindDirs: [
+      __dirname,
+      path.dirname(process.execPath),
+      path.join(resourcesPath, "app"),
+      path.join(resourcesPath, "build", "electron"),
+    ],
+  });
   initLogger(boot.userDataDir, config.logBasename || manifest.logBasename);
   log(
     "boot",
@@ -282,7 +294,16 @@ export async function startBrandDesktop(
   }
 
   // Fullstack natif kit (n8n + Hermes) — CREEZIO_NATIVE_WARM=0 pour skip.
-  if (os && desktopProfile === "full" && process.env.CREEZIO_NATIVE_WARM !== "0") {
+  // shell=runtime : le splash (installBrandOsDesktop) ensure/start n8n+Hermes
+  // avec UI — un warm bloquant ICI laisse l'utilisateur sans fenêtre ("rien").
+  const skipWarmForRuntimeShell =
+    desktopShell === "runtime" && process.env.CREEZIO_NATIVE_WARM !== "1";
+  if (
+    os &&
+    desktopProfile === "full" &&
+    process.env.CREEZIO_NATIVE_WARM !== "0" &&
+    !skipWarmForRuntimeShell
+  ) {
     const warm = await warmBrandNativeHosts(os, {
       start: process.env.CREEZIO_NATIVE_START !== "0",
       n8n: true,
@@ -291,6 +312,11 @@ export async function startBrandDesktop(
     log(
       "native",
       `warm n8n.started=${warm.n8n.started} entry=${warm.n8n.entry} hermes.started=${warm.hermes.started} binary=${warm.hermes.binary}`,
+    );
+  } else if (skipWarmForRuntimeShell && os && desktopProfile === "full") {
+    log(
+      "native",
+      "warm différé au shell runtime (splash) — pas de blocage pré-UI",
     );
   }
 

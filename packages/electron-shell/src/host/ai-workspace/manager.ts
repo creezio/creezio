@@ -460,7 +460,12 @@ export class AiWorkspaceManager {
   ): Promise<AiWorkspace> {
     const partition = aiPartitionName(userId);
     const b = getAiWorkspaceHostBindings();
-    const appPreload = b.preloadPath("preload-app.js");
+    const preloadCandidates = [
+      b.preloadPath("preload-app.js"),
+      b.preloadPath("preload.js"),
+    ];
+    const appPreload =
+      preloadCandidates.find((p) => fs.existsSync(p)) || preloadCandidates[0]!;
     if (!fs.existsSync(appPreload)) {
       b.reportCrash("web-event", {
         view: "ai-crm",

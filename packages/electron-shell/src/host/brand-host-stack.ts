@@ -20,6 +20,7 @@ import {
 } from "./crash-reporter.js";
 import { decideMeiliReady, INDEX_SCHEMA_VERSION } from "./meili/index.js";
 import { createFeatureOffHost } from "./feature-off-host.js";
+import { loadElectron } from "./load-electron.js";
 
 export type BrandHostPathsModule = {
   dbPath: () => string;
@@ -91,8 +92,7 @@ function loadElectronApp(): {
   getVersion: () => string;
   getPath: (name: "userData") => string;
 } {
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  return require("electron").app;
+  return loadElectron().app;
 }
 
 /**
