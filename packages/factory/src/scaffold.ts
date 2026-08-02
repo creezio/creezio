@@ -110,6 +110,7 @@ function renderPackageJson(m: AppManifest): string {
           "@creezio/auth": "0.1.0",
           "@creezio/electron-shell": "0.1.0",
           "@creezio/desktop-tooling": "0.1.0",
+          "electron-updater": "^6.3.9",
         },
         devDependencies: {
           "@types/node": "^22.15.3",
