@@ -19,7 +19,10 @@ import {
 } from "@creezio/electron-shell";
 import { createMcpFacade } from "@creezio/mcp-facade";
 import { createNavShellAdapter } from "@creezio/shell-ui";
-import { brandKernelBooter } from "./create-brand-kernel.js";
+import {
+  brandKernelBooter,
+  type BrandKernelBoot,
+} from "./create-brand-kernel.js";
 import { composeBrandOs } from "./compose-brand-os.js";
 import { listenBrandOsHttp } from "./listen-brand-os-http.js";
 import {
@@ -132,10 +135,12 @@ export async function startBrandDesktop(
   });
 
   const bootKernel = resolveBootKernel(config);
-  const { api, runtime, close: closeKernel } = bootKernel({
+  const kernelBoot = bootKernel({
     userDataDir: boot.userDataDir,
     isPackaged: app.isPackaged,
-  });
+  }) as BrandKernelBoot;
+  const { api, runtime, close: closeKernel, mails } = kernelBoot;
+  process.env.CREEZIO_CORE_DB_PATH = runtime.paths.core;
 
   const resourcesRoot = resolveResourcesRoot(
     app,
@@ -243,6 +248,7 @@ export async function startBrandDesktop(
           api,
           mcp,
           os,
+          getMailsStore: () => mails ?? null,
           mcpSurfaceFetch: async (request) => {
             if (!mcpSurface) {
               return new Response(

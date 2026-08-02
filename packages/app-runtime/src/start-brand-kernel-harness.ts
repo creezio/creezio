@@ -11,7 +11,10 @@ import {
   maybeBootBrandMeili,
 } from "@creezio/electron-shell";
 import { createMcpFacade } from "@creezio/mcp-facade";
-import { brandKernelBooter } from "./create-brand-kernel.js";
+import {
+  brandKernelBooter,
+  type BrandKernelBoot,
+} from "./create-brand-kernel.js";
 import { composeBrandOs } from "./compose-brand-os.js";
 import { listenBrandOsHttp } from "./listen-brand-os-http.js";
 import {
@@ -69,9 +72,12 @@ export async function startBrandKernelHarness(
   }
 
   const bootKernel = resolveBootKernel(config);
-  const { api, runtime, close: closeKernel } = bootKernel({
+  const kernelBoot = bootKernel({
     userDataDir: dataDir,
-  });
+  }) as BrandKernelBoot;
+  const { api, runtime, close: closeKernel, mails } = kernelBoot;
+  // Inbox Hono + getKitMailsStore (bindings marque / SMTP) partagent core.db.
+  process.env.CREEZIO_CORE_DB_PATH = runtime.paths.core;
 
   const resourcesRoot = path.join(config.appRoot, "resources");
   let brandOs = null as ReturnType<typeof composeBrandOs> | null;
@@ -172,6 +178,7 @@ export async function startBrandKernelHarness(
           mcp,
           os: brandOs,
           ...(port && port > 0 ? { port } : {}),
+          getMailsStore: () => mails ?? null,
           mcpSurfaceFetch: async (request) => {
             if (!mcpSurface) {
               return new Response(JSON.stringify({ error: "mcp_surface_pending" }), {

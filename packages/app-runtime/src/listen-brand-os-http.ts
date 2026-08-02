@@ -18,7 +18,12 @@ import {
 } from "@creezio/platform-core";
 import type { ApiKernel } from "@creezio/api-kernel";
 import type { McpFacade } from "@creezio/mcp-facade";
+import type { SqliteMailsStore } from "@creezio/mails";
 import type { BrandOsComposition } from "./compose-brand-os.js";
+import {
+  emailSurfaceHandlesPath,
+  mountBrandEmailSurface,
+} from "./mount-brand-email-surface.js";
 
 export type BrandOsHttpHandle = {
   port: number;
@@ -73,9 +78,46 @@ export async function listenBrandOsHttp(opts: {
    */
   mcpSurfaceFetch?: (request: Request) => Promise<Response>;
   mcpSurfaceHandlesPath?: (pathname: string) => boolean;
+  /**
+   * Store mails kernel (sinon routes email via CREEZIO_CORE_DB_PATH).
+   * Expose POST /api/v1/email/inbound (Worker Cloudflare).
+   */
+  getMailsStore?: () => SqliteMailsStore | null;
 }): Promise<BrandOsHttpHandle> {
   const host = opts.host || "127.0.0.1";
   const port = opts.port && opts.port > 0 ? opts.port : await findFreePort();
+  const emailSurface = mountBrandEmailSurface(
+    opts.getMailsStore ? { getStore: opts.getMailsStore } : undefined,
+  );
+
+  async function proxyHono(
+    req: http.IncomingMessage,
+    res: http.ServerResponse,
+    url: URL,
+    fetchFn: (request: Request) => Promise<Response>,
+  ): Promise<void> {
+    const chunks: Buffer[] = [];
+    for await (const c of req) chunks.push(c as Buffer);
+    const bodyBuf = Buffer.concat(chunks);
+    const headers = new Headers();
+    for (const [k, v] of Object.entries(req.headers)) {
+      if (v == null) continue;
+      if (Array.isArray(v)) v.forEach((x) => headers.append(k, x));
+      else headers.set(k, v);
+    }
+    const request = new Request(url.toString(), {
+      method: req.method || "GET",
+      headers,
+      body:
+        ["GET", "HEAD"].includes(req.method || "GET") || bodyBuf.length === 0
+          ? undefined
+          : bodyBuf,
+    });
+    const response = await fetchFn(request);
+    res.writeHead(response.status, Object.fromEntries(response.headers));
+    const ab = Buffer.from(await response.arrayBuffer());
+    res.end(ab);
+  }
 
   const server = http.createServer(async (req, res) => {
     try {
@@ -86,32 +128,20 @@ export async function listenBrandOsHttp(opts: {
       const url = new URL(req.url || "/", `http://${host}:${port}`);
       const pathname = url.pathname;
 
+      // Inbox Worker path — avant api-kernel (sinon 404 platform_not_mounted).
+      if (emailSurfaceHandlesPath(pathname)) {
+        await proxyHono(req, res, url, async (request) =>
+          emailSurface.app.fetch(request),
+        );
+        return;
+      }
+
       // Proxy Hono OAuth / admin MCP (avant handlers JSON OS).
       if (
         opts.mcpSurfaceFetch &&
         opts.mcpSurfaceHandlesPath?.(pathname)
       ) {
-        const chunks: Buffer[] = [];
-        for await (const c of req) chunks.push(c as Buffer);
-        const bodyBuf = Buffer.concat(chunks);
-        const headers = new Headers();
-        for (const [k, v] of Object.entries(req.headers)) {
-          if (v == null) continue;
-          if (Array.isArray(v)) v.forEach((x) => headers.append(k, x));
-          else headers.set(k, v);
-        }
-        const request = new Request(url.toString(), {
-          method: req.method || "GET",
-          headers,
-          body:
-            ["GET", "HEAD"].includes(req.method || "GET") || bodyBuf.length === 0
-              ? undefined
-              : bodyBuf,
-        });
-        const response = await opts.mcpSurfaceFetch(request);
-        res.writeHead(response.status, Object.fromEntries(response.headers));
-        const ab = Buffer.from(await response.arrayBuffer());
-        res.end(ab);
+        await proxyHono(req, res, url, opts.mcpSurfaceFetch);
         return;
       }
 

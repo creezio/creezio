@@ -44,3 +44,8 @@ export {
   mcpSurfaceHandlesPath,
   type BrandMcpSurface,
 } from "./mount-brand-mcp-surface.js";
+export {
+  mountBrandEmailSurface,
+  emailSurfaceHandlesPath,
+  type BrandEmailSurface,
+} from "./mount-brand-email-surface.js";
