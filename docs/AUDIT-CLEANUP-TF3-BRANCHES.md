@@ -258,7 +258,8 @@ Expérimental (ne pas merger tel quel)
 | P1.3 | **MERGED** | PR [#27](https://github.com/creezio/creezio/pull/27) → `main` (shell avant runtime pour deps) |
 | P1.2 | **MERGED** | PR [#28](https://github.com/creezio/creezio/pull/28) → `main` |
 | P1.4 | **MERGED** | PR [#29](https://github.com/creezio/creezio/pull/29) ; #24 closed superseded |
-| P2.1 bootstrap | **DONE** | Repo privé [`creezio/tempoflow3`](https://github.com/creezio/tempoflow3) + README plan import ; **import app pas encore fait** (~113 fichiers `apps/tempoflow3` + ~169 paths tip restants) |
+| P2.1 bootstrap | **DONE** | Repo privé [`creezio/tempoflow3`](https://github.com/creezio/tempoflow3) + README plan import |
+| P2.1 import | **DONE** | App `apps/tempoflow3` (113/113, sha256=tag) + docs expérience tip → [`tempoflow3@044002a`](https://github.com/creezio/tempoflow3/commit/044002a7fe8fe169e86a19bbdd0f4aefbb0ca65b) ; vendor `kitSha=878c641` ; clone `/opt/docker/tempoflow3` ; smoke tsc+UI PASS (half-state tests) ; PR #25 closed extract |
 
 ### Inventaire `cursor/*` creezio (aucune delete)
 
@@ -273,22 +274,23 @@ Expérimental (ne pas merger tel quel)
 
 
 
-## H. Reste tip #25 non encore sur `main` (post-P1)
+## H. Reste tip #25 post-extract app (P2.1)
 
-Freeze : `archive/tf3-probe-65b9273`. **Ne pas** `git push --delete` `cursor/tempoflow3-create-457d`.
+Freeze : `archive/tf3-probe-65b9273`. **Ne pas** `git push --delete` `cursor/tempoflow3-create-457d` tant que relecture OK.
 
-| Zone | Action |
+| Zone | Statut |
 |------|--------|
-| `apps/tempoflow3/**` (~113 fichiers) | Import → [`creezio/tempoflow3`](https://github.com/creezio/tempoflow3) (P2 import) |
-| Preuves / scripts OS tip (`scripts/test-os-*.mjs`, proof app) | Suivre import repo ou cherry-pick kit-only |
+| `apps/tempoflow3/**` (113 fichiers) | **Extrait** → [`tempoflow3@044002a`](https://github.com/creezio/tempoflow3/commit/044002a7fe8fe169e86a19bbdd0f4aefbb0ca65b) |
+| Docs expérience tip-only + HANDOFF | **Copiés** dans tempoflow3 `docs/` |
+| `scripts/test-os-*.mjs`, `reset-tempoflow3.mjs`, `test-phase-create-brand.mjs` | **Encore tip-only** (kit) — cherry-pick P3 |
 | Tweaks `apps/demobrand` tip | Revue sélective |
-| PR #25 | Garder ouverte jusqu’import app |
+| PR #25 | **Closed** — app extracted ; reste tip documenté |
 
 ### Branches `cursor/*` encore intouchables / à ne pas delete
 
 | Branche | Note |
 |---------|------|
-| `cursor/tempoflow3-create-457d` | **unique** tip taggé — garder |
+| `cursor/tempoflow3-create-457d` | **unique** tip taggé — **garder** jusqu’à sign-off P3 |
 | `cursor/factory-from-prd-457d` | contenu absorbé via #29 ; delete OK en P3 |
 | `cursor/native-*` / `integrate-*` / `pshell5` | fully in main — delete OK P3 |
 | `cursor/native-shell-ui-sot-457d` | contenu fully in main — delete OK P3 |

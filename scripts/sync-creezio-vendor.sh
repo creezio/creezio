@@ -99,10 +99,10 @@ if [[ ! -f "${KIT}/packages/brand-config/dist-cjs/index.js" ]]; then
   (cd "${KIT}" && npm run build:packages)
 fi
 
-# Assert CJS présent pour chaque package
+# Assert dist présent ; dist-cjs optionnel (packages ESM-only : brand-spec, app-runtime)
 for name in "${PACKAGES[@]}"; do
   src="${KIT}/packages/${name}"
-  [[ -d "${src}/dist" && -d "${src}/dist-cjs" ]] || {
+  [[ -d "${src}/dist" ]] || {
     echo "▸ missing dist for ${name} — build:packages…"
     (cd "${KIT}" && npm run build:packages)
     break
@@ -158,7 +158,11 @@ for name in "${PACKAGES[@]}"; do
   mkdir -p "${out}"
   cp -a "${src}/package.json" "${out}/"
   cp -a "${src}/dist" "${out}/"
-  cp -a "${src}/dist-cjs" "${out}/"
+  if [[ -d "${src}/dist-cjs" ]]; then
+    cp -a "${src}/dist-cjs" "${out}/"
+  else
+    echo "  (ESM-only — pas de dist-cjs)"
+  fi
   if [[ -d "${src}/scripts" ]]; then
     cp -a "${src}/scripts" "${out}/"
   fi
@@ -167,6 +171,9 @@ for name in "${PACKAGES[@]}"; do
   fi
   if [[ -d "${src}/ui" ]]; then
     cp -a "${src}/ui" "${out}/"
+  fi
+  if [[ -d "${src}/templates" ]]; then
+    cp -a "${src}/templates" "${out}/"
   fi
   if [[ -d "${src}/fleet-collector" ]]; then
     cp -a "${src}/fleet-collector" "${out}/"
