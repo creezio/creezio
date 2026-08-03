@@ -9,7 +9,7 @@
  * tsconfig.cjs (module: commonjs) — TS1343 sinon.
  */
 import { createRequire } from "node:module";
-import path from "node:path";
+import { createAppRequire } from "@creezio/platform-core";
 
 export function loadElectron(): typeof import("electron") {
   const errors: string[] = [];
@@ -35,7 +35,7 @@ export function loadElectron(): typeof import("electron") {
 
   // 3) Fallback cwd (tests / harness)
   try {
-    const req = createRequire(path.join(process.cwd(), "package.json"));
+    const req = createAppRequire();
     return req("electron") as typeof import("electron");
   } catch (e) {
     errors.push(`cwd: ${e instanceof Error ? e.message : e}`);

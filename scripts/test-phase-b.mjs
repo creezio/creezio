@@ -9,6 +9,8 @@ import {
   certivanManifest,
   fiduManifest,
   buildElectronBuilderConfig,
+  collectCreezioRuntimePackages,
+  CREEZIO_ASAR_RUNTIME_PACKAGES,
   envKey,
   exeForKind,
   getManifest,
@@ -31,6 +33,7 @@ import {
   factoryResetTargets,
   buildNextHostEnv,
   feedUrlForKind,
+  createAppRequire,
 } from "../packages/platform-core/dist/index.js";
 import { IpcChannels, createDesktopApi } from "../packages/shell/dist/index.js";
 import {
@@ -149,6 +152,11 @@ test("updater reduce + builder config", () => {
     "electron-shell",
     "app-runtime",
     "api-kernel",
+    "auth",
+    "mcp-facade",
+    "assistant",
+    "tasks",
+    "mails",
   ]) {
     assert.ok(
       serverFiles.some(
@@ -158,6 +166,23 @@ test("updater reduce + builder config", () => {
       `server : asar embarque @creezio/${pkg}`,
     );
   }
+  const collected = collectCreezioRuntimePackages();
+  for (const pkg of CREEZIO_ASAR_RUNTIME_PACKAGES) {
+    assert.ok(
+      collected.includes(pkg),
+      `collectCreezioRuntimePackages inclut le plancher ${pkg}`,
+    );
+  }
+  assert.ok(
+    collected.includes("auth"),
+    "collectCreezioRuntimePackages : auth obligatoire",
+  );
+  const appReq = createAppRequire();
+  assert.ok(
+    typeof appReq.resolve("@creezio/brand-config") === "string",
+    "createAppRequire résout @creezio/brand-config",
+  );
+
   assert.ok(
     serverFiles.some(
       (e) =>

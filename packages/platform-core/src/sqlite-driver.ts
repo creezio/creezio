@@ -5,8 +5,7 @@
  * Pas d'`import.meta` — dual-build CJS (Electron) l'interdit.
  */
 
-import { createRequire } from "node:module";
-import path from "node:path";
+import { createAppRequire } from "./app-require.js";
 
 export type SqliteStatement = {
   run(...params: unknown[]): unknown;
@@ -26,7 +25,7 @@ export type OpenSqliteDatabase = (dbPath: string) => SqliteDatabase;
  * Ouvre une DB via `node:sqlite` (Node ≥ 22.5) — tests kit / sandbox.
  */
 export function openNodeSqliteDatabase(dbPath: string): SqliteDatabase {
-  const require = createRequire(path.join(process.cwd(), "package.json"));
+  const require = createAppRequire();
   const mod = require("node:sqlite") as {
     DatabaseSync: new (path: string) => {
       exec(sql: string): void;

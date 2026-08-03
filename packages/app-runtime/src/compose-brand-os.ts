@@ -5,7 +5,6 @@
  */
 import fs from "node:fs";
 import path from "node:path";
-import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
 import {
   isFeatureEnabled,
@@ -29,6 +28,7 @@ import {
   resolveCoreDbPath,
   resolveLocalConfigPath,
   type PathsContext,
+  createAppRequire,
 } from "@creezio/platform-core";
 
 export type ComposeBrandOsOptions = {
@@ -103,7 +103,7 @@ export type BrandOsStatus = {
 
 function shellPackageRoot(): string {
   try {
-    const req = createRequire(path.join(process.cwd(), "package.json"));
+    const req = createAppRequire();
     const entry = req.resolve("@creezio/electron-shell");
     // …/packages/electron-shell/dist/index.js → package root
     return path.resolve(path.dirname(entry), "..");
@@ -297,9 +297,7 @@ export function composeBrandOs(
             defaultEndpoint: fleetDefaultEndpoint,
             getAppVersion: () => {
               try {
-                const req = createRequire(
-                  path.join(process.cwd(), "package.json"),
-                );
+                const req = createAppRequire();
                 return req("electron").app.getVersion() as string;
               } catch {
                 return process.env.npm_package_version || "0.0.0";

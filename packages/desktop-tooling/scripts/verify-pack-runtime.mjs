@@ -1,13 +1,20 @@
 #!/usr/bin/env node
 /**
- * Gate pré-publish : vérifie que l'asar win-unpacked embarque les deps
- * runtime critiques (hono, better-sqlite3 + .node, zod…).
+ * Gate pré-publish — clôture runtime asar.
+ *
+ * 1. Embarquement : chaque `@creezio/*` (plancher + deps marque − tooling)
+ *    + seeds npm (hono, better-sqlite3, …) présents dans app.asar
+ * 2. Resolve : depuis extract asar, `createRequire(asar/package.json)` résout
+ *    chaque `require('@creezio/…')` / `import '…'` scanné dans l'asar + deps
+ *    npm critiques — échoue si UN seul module manque
+ * 3. Natifs better-sqlite3 (.node PE win) + parité tray/NSIS
  *
  * Usage :
- *   node …/verify-pack-runtime.mjs [appRoot] [--kind=server|client]
+ *   node …/verify-pack-runtime.mjs [appRoot] [--kind=server|client] [--platform=win|linux]
  * Exit 1 si manquant — ne pas publier.
  */
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { createRequire } from "node:module";
 import { pathToFileURL } from "node:url";
@@ -15,11 +22,41 @@ import { pathToFileURL } from "node:url";
 const args = process.argv.slice(2);
 const kindArg = args.find((a) => a.startsWith("--kind="));
 const kind = kindArg ? kindArg.slice("--kind=".length) : "server";
+const platformArg = args.find((a) => a.startsWith("--platform="));
+const platform = platformArg ? platformArg.slice("--platform=".length) : "win";
 const appRoot = path.resolve(
   args.find((a) => !a.startsWith("--")) || process.cwd(),
 );
 
-const REQUIRED = [
+const TOOLING_ONLY = new Set([
+  "desktop-tooling",
+  "factory",
+  "propagation",
+]);
+
+const FLOOR_CREEZIO = [
+  "brand-config",
+  "platform-core",
+  "product-hub",
+  "shell",
+  "electron-shell",
+  "api-kernel",
+  "mcp-facade",
+  "shell-ui",
+  "auth",
+  "app-runtime",
+  "assistant",
+  "tasks",
+  "mails",
+  "observability",
+  "database",
+  "onboarding",
+  "cockpit",
+  "os-ui",
+  "brand-spec",
+];
+
+const NPM_SEEDS = [
   "hono",
   "better-sqlite3",
   "bindings",
@@ -31,13 +68,15 @@ const REQUIRED = [
 
 const distDir =
   kind === "client" ? "dist-electron" : "dist-electron-server";
-const unpacked = path.join(appRoot, distDir, "win-unpacked");
+const unpackedName =
+  platform === "linux" ? "linux-unpacked" : "win-unpacked";
+const unpacked = path.join(appRoot, distDir, unpackedName);
 const asarPath = path.join(unpacked, "resources", "app.asar");
 const unpackedAsar = path.join(unpacked, "resources", "app.asar.unpacked");
 
 if (!fs.existsSync(asarPath)) {
   console.error(`verify-pack-runtime: asar manquant: ${asarPath}`);
-  console.error("  → lancer pack:win / pack:win:server d'abord");
+  console.error("  → lancer pack:win / pack:linux d'abord");
   process.exit(1);
 }
 
@@ -54,6 +93,40 @@ try {
   }
 }
 
+function readJson(p) {
+  return JSON.parse(fs.readFileSync(p, "utf8"));
+}
+
+function brandCreezioPackages() {
+  const pkgPath = path.join(appRoot, "package.json");
+  const out = new Set(FLOOR_CREEZIO);
+  if (!fs.existsSync(pkgPath)) return [...out].sort();
+  const deps = readJson(pkgPath).dependencies || {};
+  for (const name of Object.keys(deps)) {
+    if (!name.startsWith("@creezio/")) continue;
+    const short = name.slice("@creezio/".length);
+    if (!TOOLING_ONLY.has(short)) out.add(short);
+  }
+  // clôture transitive vendor
+  const queue = [...out];
+  const seen = new Set();
+  while (queue.length) {
+    const short = queue.shift();
+    if (seen.has(short) || TOOLING_ONLY.has(short)) continue;
+    const vp = path.join(appRoot, "vendor/creezio", short, "package.json");
+    if (!fs.existsSync(vp)) continue;
+    seen.add(short);
+    out.add(short);
+    const vdeps = readJson(vp).dependencies || {};
+    for (const d of Object.keys(vdeps)) {
+      if (!d.startsWith("@creezio/")) continue;
+      const s = d.slice("@creezio/".length);
+      if (!seen.has(s) && !TOOLING_ONLY.has(s)) queue.push(s);
+    }
+  }
+  return [...out].sort();
+}
+
 const list = Asar.listPackage(asarPath);
 const tops = new Set();
 for (const p of list) {
@@ -61,25 +134,29 @@ for (const p of list) {
   if (m) tops.add(m[1]);
 }
 
-const missing = REQUIRED.filter((p) => !tops.has(p));
-if (missing.length) {
+const requiredCreezio = brandCreezioPackages().map((s) => `@creezio/${s}`);
+const missingPresent = [
+  ...requiredCreezio.filter((p) => !tops.has(p)),
+  ...NPM_SEEDS.filter((p) => !tops.has(p)),
+];
+if (missingPresent.length) {
   console.error("verify-pack-runtime: packages manquants dans asar:");
-  for (const m of missing) console.error("  -", m);
+  for (const m of missingPresent) console.error("  -", m);
   process.exit(1);
 }
 
 // .node : dans asar ou asar.unpacked
 const nodeInAsar = list.some((p) => String(p).endsWith(".node"));
 let nodeUnpacked = false;
-function walk(dir) {
+function walkNodes(dir) {
   if (!fs.existsSync(dir)) return;
   for (const ent of fs.readdirSync(dir, { withFileTypes: true })) {
     const full = path.join(dir, ent.name);
-    if (ent.isDirectory()) walk(full);
+    if (ent.isDirectory()) walkNodes(full);
     else if (ent.name.endsWith(".node")) nodeUnpacked = true;
   }
 }
-walk(unpackedAsar);
+walkNodes(unpackedAsar);
 
 if (!nodeInAsar && !nodeUnpacked) {
   console.error(
@@ -88,11 +165,70 @@ if (!nodeInAsar && !nodeUnpacked) {
   process.exit(1);
 }
 
-// Smoke resolve depuis extract temporaire
+/** Nom de package npm valide (évite commentaires `…` / placeholders). */
+function isValidPackageId(id) {
+  if (!id || id.startsWith(".") || id.startsWith("node:")) return false;
+  if (id.startsWith("@")) {
+    return /^@[a-z0-9][\w.-]*\/[a-z0-9][\w.-]*$/i.test(id);
+  }
+  return /^[a-z0-9][\w.-]*$/i.test(id);
+}
+
+/** Scan require/import dans sources JS de l'extract. */
+function scanModuleIds(rootDir) {
+  const ids = new Set();
+  const re =
+    /(?:require\s*\(\s*|from\s+|import\s*\(\s*)['"](@?[^'"]+)['"]/g;
+  function walk(dir) {
+    if (!fs.existsSync(dir)) return;
+    for (const ent of fs.readdirSync(dir, { withFileTypes: true })) {
+      const full = path.join(dir, ent.name);
+      if (ent.isDirectory()) {
+        if (
+          ent.name === "node_modules" &&
+          !full.includes(`${path.sep}node_modules${path.sep}@creezio`)
+        ) {
+          if (!full.endsWith(`${path.sep}node_modules`)) continue;
+          const creezioDir = path.join(full, "@creezio");
+          if (fs.existsSync(creezioDir)) walk(creezioDir);
+          continue;
+        }
+        walk(full);
+        continue;
+      }
+      if (!/\.(js|cjs|mjs)$/.test(ent.name)) continue;
+      const st = fs.statSync(full);
+      if (st.size > 2_000_000) continue;
+      let src;
+      try {
+        src = fs.readFileSync(full, "utf8");
+      } catch {
+        continue;
+      }
+      re.lastIndex = 0;
+      let m;
+      while ((m = re.exec(src))) {
+        let id = m[1];
+        if (!id || id.startsWith(".") || id.startsWith("node:")) continue;
+        if (id.startsWith("@")) {
+          const parts = id.split("/");
+          if (parts.length < 2) continue;
+          id = `${parts[0]}/${parts[1]}`;
+        } else {
+          id = id.split("/")[0];
+        }
+        if (isValidPackageId(id)) ids.add(id);
+      }
+    }
+  }
+  walk(path.join(rootDir, "build"));
+  walk(path.join(rootDir, "node_modules", "@creezio"));
+  return ids;
+}
+
 const tmp = fs.mkdtempSync(path.join(appRoot, ".tmp", "pack-runtime-"));
 try {
   Asar.extractAll(asarPath, tmp);
-  // Copier unpacked .node par-dessus si besoin
   if (fs.existsSync(unpackedAsar)) {
     fs.cpSync(unpackedAsar, tmp, { recursive: true });
   }
@@ -104,6 +240,95 @@ try {
     process.exit(1);
   }
 
+  // Require ancré DANS l'asar (équivalent createAppRequire packagé)
+  const asarReq = createRequire(path.join(tmp, "package.json"));
+  // Aussi depuis platform-core (ancrage module — piège cwd installDir)
+  const coreEntry = path.join(
+    tmp,
+    "node_modules/@creezio/platform-core/dist-cjs/index.js",
+  );
+  const coreReq = fs.existsSync(coreEntry)
+    ? createRequire(coreEntry)
+    : asarReq;
+
+  const scanned = scanModuleIds(tmp);
+  const mustResolve = new Set([
+    ...requiredCreezio,
+    ...NPM_SEEDS,
+    ...[...scanned].filter(
+      (id) =>
+        id.startsWith("@creezio/") ||
+        NPM_SEEDS.includes(id) ||
+        id === "hono" ||
+        id === "zod" ||
+        id === "jose" ||
+        id.startsWith("@hono/") ||
+        id === "better-sqlite3" ||
+        id === "yaml" ||
+        id === "clsx" ||
+        id === "tailwind-merge" ||
+        id === "openapi3-ts" ||
+        id === "@asteasolutions/zod-to-openapi",
+    ),
+  ]);
+
+  // Ne pas exiger electron / react / next dans le main packagé
+  const resolveSkip = new Set([
+    "electron",
+    "react",
+    "react-dom",
+    "next",
+    "lucide-react",
+    "typescript",
+  ]);
+
+  const unresolved = [];
+  for (const id of [...mustResolve].sort()) {
+    if (resolveSkip.has(id)) continue;
+    // tooling never in asar
+    if (id.startsWith("@creezio/")) {
+      const short = id.slice("@creezio/".length);
+      if (TOOLING_ONLY.has(short)) continue;
+    }
+    let ok = false;
+    for (const req of [asarReq, coreReq]) {
+      try {
+        req.resolve(id);
+        ok = true;
+        break;
+      } catch {
+        /* try next */
+      }
+    }
+    if (!ok) unresolved.push(id);
+  }
+
+  if (unresolved.length) {
+    console.error("verify-pack-runtime: MODULE_NOT_FOUND (resolve asar):");
+    for (const m of unresolved) console.error("  -", m);
+    process.exit(1);
+  }
+
+  // Preuve anti-régression documentaire : createRequire({installDir}) hors
+  // de tout arbre node_modules (simule Win installDir) échoue pour
+  // @creezio/auth — alors que l'ancrage asar ci-dessus réussit.
+  // Skip si NODE_PATH pollue la résolution.
+  if (!process.env.NODE_PATH) {
+    const fakeCwd = fs.mkdtempSync(path.join(os.tmpdir(), "creezio-pack-fake-"));
+    try {
+      const badReq = createRequire(path.join(fakeCwd, "package.json"));
+      badReq.resolve("@creezio/auth");
+      console.error(
+        "verify-pack-runtime: ATTENDU que resolve depuis installDir vide échoue",
+      );
+      process.exit(1);
+    } catch {
+      /* attendu — piège cwd packagé */
+    } finally {
+      fs.rmSync(fakeCwd, { recursive: true, force: true });
+    }
+  }
+
   // import hono (ESM)
   const honoMod = await import(
     pathToFileURL(path.join(tmp, "node_modules/hono/dist/index.js")).href
@@ -113,8 +338,21 @@ try {
     process.exit(1);
   }
 
-  // better-sqlite3 : require CJS — sur Linux le .node est win32 → on vérifie
-  // seulement la présence du fichier + package.json (load natif = hôte Win).
+  // Charge effective @creezio/auth (CJS) depuis ancrage asar
+  try {
+    const auth = asarReq("@creezio/auth");
+    if (!auth || typeof auth !== "object") {
+      console.error("verify-pack-runtime: @creezio/auth load vide");
+      process.exit(1);
+    }
+  } catch (e) {
+    console.error(
+      "verify-pack-runtime: require('@creezio/auth') échoue:",
+      e instanceof Error ? e.message : e,
+    );
+    process.exit(1);
+  }
+
   const nodeFile = path.join(
     tmp,
     "node_modules/better-sqlite3/build/Release/better_sqlite3.node",
@@ -133,16 +371,26 @@ try {
     console.error("verify-pack-runtime: better_sqlite3.node format inconnu");
     process.exit(1);
   }
-  // Pack win doit être PE (MZ). Si on pack linux, ELF ok.
-  const expectWin = kind === "server" || kind === "client";
-  if (expectWin && process.env.CREEZIO_VERIFY_WIN_NATIVE !== "0" && !isMz) {
+  if (
+    platform === "win" &&
+    process.env.CREEZIO_VERIFY_WIN_NATIVE !== "0" &&
+    !isMz
+  ) {
     console.error(
       "verify-pack-runtime: better_sqlite3.node n'est pas win32 (MZ) — relancer ensure-win-native-modules",
     );
     process.exit(1);
   }
+  if (platform === "linux" && !isElf && process.env.CREEZIO_VERIFY_LINUX_NATIVE !== "0") {
+    // cross-pack win native dans linux-unpacked est OK si on vérifie win ;
+    // pour linux pack, attendre ELF
+    if (!isMz) {
+      console.error("verify-pack-runtime: better_sqlite3.node ni ELF ni MZ");
+      process.exit(1);
+    }
+  }
 
-  // Parité TF2 server : tray / auto-launch / factory-reset dans le runtime packagé.
+  // Parité TF2 server : tray / auto-launch / factory-reset
   const parityNeedles = [
     "TrayController",
     "applyLaunchAtStartup",
@@ -161,24 +409,18 @@ try {
       tmp,
       "node_modules/@creezio/electron-shell/dist-cjs/desktop/brand-desktop-runtime.js",
     ),
-    path.join(tmp, "vendor/creezio/electron-shell/dist/tray.js"),
-    path.join(
-      tmp,
-      "vendor/creezio/electron-shell/dist/desktop/brand-desktop-runtime.js",
-    ),
   ];
   let asarBlob = "";
   for (const f of shellCandidates) {
     if (fs.existsSync(f)) asarBlob += fs.readFileSync(f, "utf8");
   }
   if (!asarBlob) {
-    // Dernier recours : chercher tray.js sous l'extract.
     const walk = (dir) => {
       if (!fs.existsSync(dir) || asarBlob.length > 50_000) return;
       for (const ent of fs.readdirSync(dir, { withFileTypes: true })) {
         const full = path.join(dir, ent.name);
         if (ent.isDirectory()) {
-          if (ent.name === "node_modules" && !dir.endsWith("tmp")) continue;
+          if (ent.name === "node_modules" && !dir.includes("@creezio")) continue;
           walk(full);
         } else if (
           ent.name === "tray.js" ||
@@ -188,7 +430,7 @@ try {
         }
       }
     };
-    walk(tmp);
+    walk(path.join(tmp, "node_modules/@creezio/electron-shell"));
   }
   const missingParity = parityNeedles.filter((n) => !asarBlob.includes(n));
   if (missingParity.length) {
@@ -200,7 +442,7 @@ try {
   }
 
   const installerNsh = path.join(appRoot, "installer.nsh");
-  if (fs.existsSync(installerNsh)) {
+  if (fs.existsSync(installerNsh) && platform === "win") {
     const nsh = fs.readFileSync(installerNsh, "utf8");
     if (
       /placeholder \(custom macros marque\)/.test(nsh) ||
@@ -214,15 +456,30 @@ try {
     }
   }
 
+  // Preuve createAppRequire présent dans platform-core packagé
+  const appRequireCandidates = [
+    path.join(tmp, "node_modules/@creezio/platform-core/dist-cjs/app-require.js"),
+    path.join(tmp, "node_modules/@creezio/platform-core/dist/app-require.js"),
+  ];
+  const hasAppRequire = appRequireCandidates.some((f) => fs.existsSync(f));
+  if (!hasAppRequire) {
+    console.error(
+      "verify-pack-runtime: createAppRequire absent de platform-core dans asar — sync vendor / rebuild kit",
+    );
+    process.exit(1);
+  }
+
   console.log("verify-pack-runtime: OK");
-  console.log("  asar     ", asarPath);
-  console.log("  packages ", REQUIRED.join(", "));
+  console.log("  asar       ", asarPath);
+  console.log("  @creezio   ", requiredCreezio.length, "packages");
+  console.log("  resolved   ", mustResolve.size, "ids (scan+seeds)");
   console.log(
-    "  .node    ",
+    "  .node      ",
     isMz ? "win32 PE" : "ELF",
     nodeUnpacked ? "(asar.unpacked)" : "(asar)",
   );
-  console.log("  parity   ", parityNeedles.join(", "));
+  console.log("  parity     ", parityNeedles.join(", "));
+  console.log("  appRequire ", "present");
 } finally {
   fs.rmSync(tmp, { recursive: true, force: true });
 }

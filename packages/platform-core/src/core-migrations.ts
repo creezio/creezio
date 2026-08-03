@@ -11,13 +11,13 @@
  * - autres steps plateforme (api_keys, mcp, tasks brand, emails, analytics, …)
  *   → `platformHistoricalMigrations()` (brand.db / schema_version)
  *
- * Chargement SQL via `createRequire` (cwd app) pour éviter le cycle
+ * Chargement SQL via `createAppRequire` (asar-safe) pour éviter le cycle
  * compile-time `platform-core → auth|product-hub → platform-core`.
+ * Ne jamais ancrer sur `process.cwd()` — packagé Win = installDir sans node_modules.
  */
 
-import path from "node:path";
-import { createRequire } from "node:module";
 import { composeMigrations, type SqliteMigration } from "./sqlite-migrations.js";
+import { createAppRequire } from "./app-require.js";
 
 /** IDs stables (TF gold H3 / I10 / R2) — ne pas renommer après apply. */
 export const PLATFORM_CORE_MIGRATION_IDS = [
@@ -47,7 +47,7 @@ type HubSqlMod = {
 };
 
 function loadWorkspaceRequire(): NodeRequire {
-  return createRequire(path.join(process.cwd(), "package.json"));
+  return createAppRequire();
 }
 
 function loadAuthSql(req: NodeRequire): string {

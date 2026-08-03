@@ -6,6 +6,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { createRequire } from "node:module";
+import { createAppRequire } from "@creezio/platform-core";
 import { fileURLToPath } from "node:url";
 
 let cachedRoot: string | null = null;
@@ -64,7 +65,7 @@ export function electronShellPackageRoot(): string {
 
   // 2) Depuis cwd (dev / harness)
   try {
-    const req = createRequire(path.join(process.cwd(), "package.json"));
+    const req = createAppRequire();
     const entry = req.resolve("@creezio/electron-shell");
     const root = resolveFromEntry(entry);
     if (root) {

@@ -6,8 +6,18 @@
  * `configureMeiliCatalogSqlTables` — défaut TF produits + fournisseurs).
  */
 
-import { createRequire } from "node:module";
 import path from "node:path";
+import { createAppRequire } from "@creezio/platform-core";
+import {
+  INDEX_SCHEMA_VERSION,
+  MEILI_FINGERPRINT_META_KEY,
+  MEILI_INDEX_IN_PROGRESS_KEY,
+  getMeiliCatalogSqlTables,
+  parseFingerprint,
+  serializeFingerprint,
+  type CatalogSqlCounts,
+  type MeiliFingerprint,
+} from "./index-schema.js";
 
 type SqliteStmt = {
   get(...args: unknown[]): unknown;
@@ -23,20 +33,9 @@ type DatabaseCtor = new (
 };
 
 function loadDatabase(): DatabaseCtor {
-  const req = createRequire(path.join(process.cwd(), "package.json"));
+  const req = createAppRequire();
   return req("better-sqlite3") as DatabaseCtor;
 }
-
-import {
-  INDEX_SCHEMA_VERSION,
-  MEILI_FINGERPRINT_META_KEY,
-  MEILI_INDEX_IN_PROGRESS_KEY,
-  getMeiliCatalogSqlTables,
-  parseFingerprint,
-  serializeFingerprint,
-  type CatalogSqlCounts,
-  type MeiliFingerprint,
-} from "./index-schema.js";
 
 export type GedSqlCounts = CatalogSqlCounts;
 

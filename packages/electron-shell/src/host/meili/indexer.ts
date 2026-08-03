@@ -23,9 +23,9 @@
  * Env : DB_PATH (requis), MEILI_HOST (requis), MEILI_MASTER_KEY (optionnel).
  */
 
-import { createRequire } from "node:module";
 import path from "node:path";
 import fs from "node:fs";
+import { createAppRequire } from "@creezio/platform-core";
 import {
   INDEX_SCHEMA_VERSION,
   MEILI_FINGERPRINT_META_KEY,
@@ -49,7 +49,7 @@ function openSqlite(
   dbPath: string,
   opts?: { readonly?: boolean; fileMustExist?: boolean },
 ): SqliteDb {
-  const req = createRequire(path.join(process.cwd(), "package.json"));
+  const req = createAppRequire();
   const Database = req("better-sqlite3") as new (
     f: string,
     o?: { readonly?: boolean; fileMustExist?: boolean },

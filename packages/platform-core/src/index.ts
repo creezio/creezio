@@ -68,6 +68,7 @@ export type {
   SqliteStatement,
 } from "./sqlite-driver.js";
 export { openNodeSqliteDatabase } from "./sqlite-driver.js";
+export { createAppRequire } from "./app-require.js";
 
 export type {
   EnsureMigrationsResult,

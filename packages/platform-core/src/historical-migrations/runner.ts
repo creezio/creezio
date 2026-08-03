@@ -11,9 +11,9 @@
 
 import fs from "node:fs";
 import path from "node:path";
-import { createRequire } from "node:module";
 import type { HistoricalMigration, HistoricalSqliteDb } from "./types.js";
 import { platformHistoricalMigrations } from "./steps/index.js";
+import { createAppRequire } from "../app-require.js";
 
 export type HistoricalMigrationReport = {
   from: number;
@@ -29,13 +29,13 @@ type BetterSqliteCtor = new (filename: string) => HistoricalSqliteDb & {
 };
 
 function loadBetterSqlite3(): BetterSqliteCtor {
-  const req = createRequire(path.join(process.cwd(), "package.json"));
+  const req = createAppRequire();
   return req("better-sqlite3") as BetterSqliteCtor;
 }
 
 function emitOpsSafe(payload: Record<string, unknown>): void {
   try {
-    const req = createRequire(path.join(process.cwd(), "package.json"));
+    const req = createAppRequire();
     const obs = req("@creezio/observability") as {
       emitOpsEvent?: (p: Record<string, unknown>) => void;
     };

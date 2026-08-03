@@ -17,20 +17,16 @@ import type { AppKind, AppManifest, ExeIdentity } from "./types.js";
 import { exeForKind } from "./types.js";
 
 /**
- * Packages @creezio/* requis au runtime du main Electron packagé.
- * (desktop-tooling = tooling de build uniquement — hors asar.)
+ * Plancher @creezio/* toujours emballé (boot main Electron).
+ * La liste effective = plancher ∪ deps `@creezio/*` du package.json marque
+ * ∪ clôture transitive vendor — voir `collectCreezioRuntimePackages()`.
  *
- * Les apps marques branchent ces packages via `file:vendor/creezio/…` (symlink
- * dans node_modules). Or electron-builder.yml exclut `node_modules/**` puis
- * ne ré-inclut que electron-updater → crash packaged :
- * `Cannot find module '@creezio/brand-config'`.
+ * Les apps marques branchent via `file:vendor/creezio/…`. electron-builder
+ * exclut `node_modules/**` → on copie depuis `vendor/creezio/<pkg>` vers
+ * `node_modules/@creezio/<pkg>` dans l'asar (indépendant des symlinks npm).
  *
- * On copie donc depuis `vendor/creezio/<pkg>` (fichiers réels) vers
- * `node_modules/@creezio/<pkg>` dans l'asar — indépendant des symlinks npm.
- *
- * Note : les symlinks `file:` vers `vendor/` échappent souvent au filtre
- * `!node_modules/**` (chemin réel hors node_modules). Les deps npm « vraies »
- * (hono, zod…) restent exclues → voir `CREEZIO_ASAR_NPM_RUNTIME_PACKAGES`.
+ * Ne plus maintenir une allowlist partielle seule : tout oubli = MODULE_NOT_FOUND
+ * packagé. Les deps npm « vraies » (hono, zod…) → `CREEZIO_ASAR_NPM_RUNTIME_PACKAGES`.
  */
 export const CREEZIO_ASAR_RUNTIME_PACKAGES = [
   "brand-config",
@@ -54,6 +50,17 @@ export const CREEZIO_ASAR_RUNTIME_PACKAGES = [
   "cockpit",
   "os-ui",
   "brand-spec",
+] as const;
+
+/**
+ * Packages @creezio/* tooling-only — jamais nécessaires au runtime packagé
+ * (scripts publish / factory / propagation). Exclus même s’ils figurent
+ * dans dependencies du package.json marque.
+ */
+export const CREEZIO_ASAR_TOOLING_ONLY = [
+  "desktop-tooling",
+  "factory",
+  "propagation",
 ] as const;
 
 /**
@@ -279,29 +286,86 @@ function applyExeIdentity(
   }
 }
 
-function creezioAsarFileSets(): JsonRecord[] {
-  return CREEZIO_ASAR_RUNTIME_PACKAGES.map((name) => {
-    // shell-ui / os-ui / product-hub… : sources `ui/` consommées par Next.
-    const withUi = new Set([
-      "shell-ui",
-      "os-ui",
-      "product-hub",
-      "auth",
-      "onboarding",
-      "cockpit",
-      "assistant",
-      "tasks",
-      "mails",
-      "mcp-facade",
-      "database",
-      "observability",
-    ]);
+const CREEZIO_ASAR_WITH_UI = new Set([
+  "shell-ui",
+  "os-ui",
+  "product-hub",
+  "auth",
+  "onboarding",
+  "cockpit",
+  "assistant",
+  "tasks",
+  "mails",
+  "mcp-facade",
+  "database",
+  "observability",
+]);
+
+function resolveAppRoot(appRoot?: string): string {
+  return path.resolve(
+    appRoot || process.env.CREEZIO_APP_ROOT || process.cwd(),
+  );
+}
+
+function readJsonDeps(pkgJsonPath: string): string[] {
+  if (!fs.existsSync(pkgJsonPath)) return [];
+  try {
+    const pkg = JSON.parse(fs.readFileSync(pkgJsonPath, "utf8")) as {
+      dependencies?: Record<string, string>;
+    };
+    return Object.keys(pkg.dependencies || {});
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Clôture @creezio/* runtime pour l'asar :
+ * plancher `CREEZIO_ASAR_RUNTIME_PACKAGES`
+ * ∪ `@creezio/*` du package.json marque (hors tooling)
+ * ∪ deps `@creezio/*` transitives des package.json vendor/.
+ * Ne retourne que les packages présents sous `vendor/creezio/<name>`.
+ */
+export function collectCreezioRuntimePackages(appRoot?: string): string[] {
+  const root = resolveAppRoot(appRoot);
+  const tooling = new Set<string>(CREEZIO_ASAR_TOOLING_ONLY);
+  const seeds = new Set<string>(CREEZIO_ASAR_RUNTIME_PACKAGES);
+
+  for (const dep of readJsonDeps(path.join(root, "package.json"))) {
+    if (!dep.startsWith("@creezio/")) continue;
+    const short = dep.slice("@creezio/".length);
+    if (!tooling.has(short)) seeds.add(short);
+  }
+
+  const seen = new Set<string>();
+  const queue = [...seeds];
+  while (queue.length) {
+    const name = queue.shift()!;
+    if (seen.has(name) || tooling.has(name)) continue;
+    const vendorPkg = path.join(root, "vendor", "creezio", name, "package.json");
+    if (!fs.existsSync(vendorPkg)) continue;
+    seen.add(name);
+    for (const dep of readJsonDeps(vendorPkg)) {
+      if (!dep.startsWith("@creezio/")) continue;
+      const short = dep.slice("@creezio/".length);
+      if (!seen.has(short) && !tooling.has(short)) queue.push(short);
+    }
+  }
+
+  // Si vendor absent (sandbox kit), retomber sur le plancher.
+  if (!seen.size) return [...CREEZIO_ASAR_RUNTIME_PACKAGES];
+  return [...seen].sort();
+}
+
+function creezioAsarFileSets(appRoot?: string): JsonRecord[] {
+  const names = collectCreezioRuntimePackages(appRoot);
+  return names.map((name) => {
     const filter = [
       "package.json",
       "dist/**/*",
       "dist-cjs/**/*",
       "!resources/bin/**",
-      ...(withUi.has(name) ? ["ui/**/*"] : []),
+      ...(CREEZIO_ASAR_WITH_UI.has(name) ? ["ui/**/*"] : []),
     ];
     return {
       from: `vendor/creezio/${name}`,
@@ -316,13 +380,26 @@ function creezioAsarFileSets(): JsonRecord[] {
  * Ignore les outils d'install (prebuild-install…) et les packages absents.
  */
 export function collectNpmRuntimePackages(appRoot?: string): string[] {
-  const root = path.resolve(
-    appRoot || process.env.CREEZIO_APP_ROOT || process.cwd(),
-  );
+  const root = resolveAppRoot(appRoot);
   const nm = path.join(root, "node_modules");
   const installOnly = new Set<string>(CREEZIO_ASAR_NPM_INSTALL_ONLY);
   const seen = new Set<string>();
   const queue: string[] = [...CREEZIO_ASAR_NPM_RUNTIME_PACKAGES];
+
+  // Seeds supplémentaires depuis dependencies npm « vraies » de la marque
+  // (hors @creezio/* et tooling electron-builder).
+  const brandSkip = new Set([
+    ...CREEZIO_ASAR_NPM_INSTALL_ONLY,
+    "electron",
+    "electron-builder",
+    "electron-updater",
+    "typescript",
+    "@types/node",
+  ]);
+  for (const dep of readJsonDeps(path.join(root, "package.json"))) {
+    if (dep.startsWith("@creezio/")) continue;
+    if (!brandSkip.has(dep)) queue.push(dep);
+  }
 
   while (queue.length) {
     const name = queue.shift()!;
@@ -330,15 +407,10 @@ export function collectNpmRuntimePackages(appRoot?: string): string[] {
     const pkgJson = path.join(nm, ...name.split("/"), "package.json");
     if (!fs.existsSync(pkgJson)) continue;
     seen.add(name);
-    try {
-      const pkg = JSON.parse(fs.readFileSync(pkgJson, "utf8")) as {
-        dependencies?: Record<string, string>;
-      };
-      for (const dep of Object.keys(pkg.dependencies || {})) {
-        if (!seen.has(dep) && !installOnly.has(dep)) queue.push(dep);
+    for (const dep of readJsonDeps(pkgJson)) {
+      if (!seen.has(dep) && !installOnly.has(dep) && !dep.startsWith("@creezio/")) {
+        queue.push(dep);
       }
-    } catch {
-      /* ignore malformed */
     }
   }
   return [...seen].sort();
@@ -440,7 +512,7 @@ function ensureCreezioVendorInAsar(
   }
   files = stripLegacyNpmRuntimeGlobs(files);
   const next = [...files];
-  for (const set of creezioAsarFileSets()) {
+  for (const set of creezioAsarFileSets(appRoot)) {
     const pkg = String(set.from).replace(/^vendor\/creezio\//, "");
     if (!hasVendorFileset(next, pkg)) next.push(set);
   }

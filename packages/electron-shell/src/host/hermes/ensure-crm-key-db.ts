@@ -4,10 +4,10 @@
  * Ne jamais importer depuis electron/main (ABI better-sqlite3).
  */
 
-import { createRequire } from "node:module";
 import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
+import { createAppRequire } from "@creezio/platform-core";
 
 type SqliteStmt = {
   get(...args: unknown[]): unknown;
@@ -20,7 +20,7 @@ type DatabaseCtor = new (filename: string) => {
 };
 
 function loadDatabase(): DatabaseCtor {
-  const req = createRequire(path.join(process.cwd(), "package.json"));
+  const req = createAppRequire();
   return req("better-sqlite3") as DatabaseCtor;
 }
 

@@ -2,8 +2,7 @@
  * Driver SQLite minimal — dual-build CJS Electron (pas d'import.meta).
  */
 
-import { createRequire } from "node:module";
-import path from "node:path";
+import { createAppRequire } from "@creezio/platform-core";
 
 export type SqliteStatement = {
   run(...params: unknown[]): unknown;
@@ -20,7 +19,7 @@ export type SqliteDatabase = {
 export type OpenSqliteDatabase = (path: string) => SqliteDatabase;
 
 export function openNodeSqliteDatabase(dbPath: string): SqliteDatabase {
-  const require = createRequire(path.join(process.cwd(), "package.json"));
+  const require = createAppRequire();
   const mod = require("node:sqlite") as {
     DatabaseSync: new (path: string) => {
       exec(sql: string): void;

@@ -2,8 +2,7 @@
  * Driver SQLite minimal — compatible better-sqlite3 / node:sqlite.
  * Port Database TempoFlow → @creezio/database (R1).
  */
-import { createRequire } from "node:module";
-import path from "node:path";
+import { createAppRequire } from "@creezio/platform-core";
 
 export type SqliteRunResult = {
   changes: number;
@@ -25,7 +24,7 @@ export type SqliteDatabase = {
 export type OpenSqliteDatabase = (path: string) => SqliteDatabase;
 
 export function openNodeSqliteDatabase(dbPath: string): SqliteDatabase {
-  const require = createRequire(path.join(process.cwd(), "package.json"));
+  const require = createAppRequire();
   const mod = require("node:sqlite") as {
     DatabaseSync: new (path: string) => {
       exec(sql: string): void;

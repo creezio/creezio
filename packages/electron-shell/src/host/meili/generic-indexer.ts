@@ -3,9 +3,9 @@
  * Indexeur Meili générique piloté par BrandMeiliFeed.
  * Pas de SQL TF / agrégateurs hardcodés.
  */
-import { createRequire } from "node:module";
 import path from "node:path";
 import fs from "node:fs";
+import { createAppRequire } from "@creezio/platform-core";
 import { emitOpsEvent } from "@creezio/observability";
 import {
   MEILI_FINGERPRINT_META_KEY,
@@ -33,7 +33,7 @@ function openSqlite(
   dbPath: string,
   opts?: { readonly?: boolean; fileMustExist?: boolean },
 ): SqliteDb {
-  const req = createRequire(path.join(process.cwd(), "package.json"));
+  const req = createAppRequire();
   try {
     const Database = req("better-sqlite3") as new (
       f: string,

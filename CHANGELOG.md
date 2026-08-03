@@ -3,6 +3,18 @@
 
 ## [Unreleased]
 
+### Fixed — Win Server `Cannot find module '@creezio/auth'`
+
+- **Cause** : `createRequire(process.cwd()/package.json)` ancré sur
+  `{installDir}` (sans `node_modules`) alors que les `@creezio/*` sont dans
+  `app.asar` — Require stack `…\TempoFlow-Server\package.json`.
+- **Fix** : `createAppRequire()` (`@creezio/platform-core`) — ancrage module
+  asar-safe ; remplace tous les `createRequire(cwd)` runtime.
+- **Packaging** : `collectCreezioRuntimePackages()` dérive plancher ∪ deps
+  marque ∪ transitive vendor (plus d’allowlist partielle seule).
+- **Gate** : `verify-pack-runtime.mjs` résout depuis asar extract chaque
+  `@creezio/*` + seeds npm scannés — échoue si un seul module manque.
+
 ### Fixed — raccourcis Server Docker (`xdg-open` manquant)
 
 - `TempoFlow-Server-{N}.desktop` : `Exec` → `~/bin/open-creezio-server-N`

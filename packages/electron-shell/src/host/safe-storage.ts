@@ -3,9 +3,10 @@
  * Fallback plain si backend OS indisponible (documenté TF2).
  */
 
-import { createRequire } from "node:module";
-import path from "node:path";
-import type { StoredValue } from "@creezio/platform-core";
+import {
+  createAppRequire,
+  type StoredValue,
+} from "@creezio/platform-core";
 
 export type SafeStorageBackend = {
   isEncryptionAvailable: () => boolean;
@@ -25,7 +26,7 @@ export async function loadElectronSafeStorage(): Promise<SafeStorageBackend> {
  */
 export function loadElectronSafeStorageSync(): SafeStorageBackend | null {
   try {
-    const req = createRequire(path.join(process.cwd(), "package.json"));
+    const req = createAppRequire();
     const electron = req("electron") as { safeStorage?: SafeStorageBackend };
     return electron.safeStorage ?? null;
   } catch {
