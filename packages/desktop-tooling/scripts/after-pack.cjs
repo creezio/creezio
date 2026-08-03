@@ -5,11 +5,13 @@
  * Aucune marque hardcodée : lit `build/electron/app-kind.json`.
  *
  * 1. Client léger : n'embarque pas le standalone Next.
- * 2. Serveur / legacy : copie `build/server` + garantit better-sqlite3
- *    conforme à la plateforme cible (PE/ELF).
+ * 2. Serveur / legacy : copie `build/server` (ou assemble ui/.next/standalone)
+ *    vers resources/server. better-sqlite3 imposé seulement s'il est présent
+ *    (TF2) — Next UI-only (TF3) OK sans.
  *
  * Usage dans electron-builder.yml d'une app :
  *   afterPack: node_modules/@creezio/desktop-tooling/scripts/after-pack.cjs
+ *   (ou vendor/creezio/desktop-tooling/scripts/after-pack.cjs)
  */
 const fs = require("node:fs");
 const path = require("node:path");
@@ -28,6 +30,7 @@ function binFormat(file) {
 /** Tous les better_sqlite3.node sous `dir` (récursif). */
 function findBindings(dir) {
   const found = [];
+  if (!fs.existsSync(dir)) return found;
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
     const p = path.join(dir, entry.name);
     if (entry.isDirectory()) found.push(...findBindings(p));
@@ -50,6 +53,37 @@ function packagedAppKind(root) {
   }
 }
 
+function assembleFromUiStandalone(root, dest) {
+  const candidates = [
+    path.join(root, "ui", ".next", "standalone"),
+    path.join(root, ".next", "standalone"),
+  ];
+  const standalone = candidates.find((c) =>
+    fs.existsSync(path.join(c, "server.js")),
+  );
+  if (!standalone) {
+    throw new Error(
+      "afterPack : ni build/server ni ui/.next/standalone — lancer build:ui + electron:build-server",
+    );
+  }
+  fs.cpSync(standalone, dest, { recursive: true });
+  const staticSrc = standalone.includes(`${path.sep}ui${path.sep}`)
+    ? path.join(root, "ui", ".next", "static")
+    : path.join(root, ".next", "static");
+  if (fs.existsSync(staticSrc)) {
+    fs.cpSync(staticSrc, path.join(dest, ".next", "static"), {
+      recursive: true,
+    });
+  }
+  const publicSrc = standalone.includes(`${path.sep}ui${path.sep}`)
+    ? path.join(root, "ui", "public")
+    : path.join(root, "public");
+  if (fs.existsSync(publicSrc)) {
+    fs.cpSync(publicSrc, path.join(dest, "public"), { recursive: true });
+  }
+  console.log(`  • afterPack : assembled from ${path.relative(root, standalone)}`);
+}
+
 module.exports = async function afterPack(context) {
   const root = context.packager.projectDir;
   const kind = packagedAppKind(root);
@@ -65,11 +99,23 @@ module.exports = async function afterPack(context) {
   }
 
   const src = path.join(root, "build", "server");
-  fs.cpSync(src, dest, { recursive: true });
-  console.log(`  • afterPack : build/server copié intégralement → ${dest}`);
+  if (fs.existsSync(path.join(src, "server.js"))) {
+    fs.cpSync(src, dest, { recursive: true });
+    console.log(`  • afterPack : build/server copié intégralement → ${dest}`);
+  } else {
+    assembleFromUiStandalone(root, dest);
+  }
 
   const platform = context.electronPlatformName; // "win32" | "linux" | "darwin"
   const expected = platform === "win32" ? "PE" : "ELF";
+  const bindings = findBindings(dest);
+
+  if (bindings.length === 0) {
+    console.log(
+      "  • afterPack : Next UI-only (pas de better-sqlite3 dans resources/server) — OK",
+    );
+    return;
+  }
 
   if (platform === "win32") {
     const winNode = path.join(root, "resources-win", "better_sqlite3.node");
@@ -78,17 +124,7 @@ module.exports = async function afterPack(context) {
         "afterPack : resources-win/better_sqlite3.node absent ou pas un binaire Windows (PE).",
       );
     }
-    const canonical = path.join(
-      dest,
-      "node_modules",
-      "better-sqlite3",
-      "build",
-      "Release",
-      "better_sqlite3.node",
-    );
-    const targets = findBindings(dest);
-    if (!targets.includes(canonical)) targets.push(canonical);
-    for (const t of targets) {
+    for (const t of bindings) {
       fs.mkdirSync(path.dirname(t), { recursive: true });
       fs.copyFileSync(winNode, t);
       console.log(`  • afterPack : binding WINDOWS → ${path.relative(dest, t)}`);
@@ -97,11 +133,6 @@ module.exports = async function afterPack(context) {
 
   const resources = path.join(context.appOutDir, "resources");
   const all = findBindings(resources);
-  if (all.length === 0) {
-    throw new Error(
-      "afterPack : aucun better_sqlite3.node dans le paquet — serveur inutilisable.",
-    );
-  }
   for (const b of all) {
     const fmt = binFormat(b);
     console.log(`  • afterPack : vérif ${path.relative(resources, b)} = ${fmt}`);

@@ -20,11 +20,20 @@ export async function startBrandUiPlane(opts: {
   metierBaseUrl: string;
   preferredPort?: number;
 }): Promise<BrandUiPlaneHandle> {
-  const entry = path.join(
-    opts.appRoot,
-    "ui/.next/standalone/server.js",
-  );
-  if (!fs.existsSync(entry)) {
+  const entryCandidates = [
+    path.join(opts.appRoot, "resources", "server", "server.js"),
+    path.join(opts.appRoot, "ui/.next/standalone/server.js"),
+    path.join(opts.appRoot, "build/server/server.js"),
+    path.join(opts.appRoot, ".next/standalone/server.js"),
+  ];
+  // Packagé Electron : resourcesPath/server (appRoot peut être asar).
+  const resourcesPath = (process as NodeJS.Process & { resourcesPath?: string })
+    .resourcesPath;
+  if (typeof resourcesPath === "string" && resourcesPath) {
+    entryCandidates.unshift(path.join(resourcesPath, "server", "server.js"));
+  }
+  const entry = entryCandidates.find((p) => fs.existsSync(p));
+  if (!entry) {
     log("ui", "Next standalone absent — SPA renderer");
     return {
       kind: "spa",
@@ -42,22 +51,40 @@ export async function startBrandUiPlane(opts: {
   // Next standalone attend .next/static à côté du server.js.
   // Toujours resync (BUILD_ID / chunks) — un dossier stale provoque HTTP 400
   // sur `/_next/static/*` et une erreur client hydratation.
-  const staticSrc = path.join(opts.appRoot, "ui/.next/static");
+  // Packagé : static déjà dans resources/server/.next/static (afterPack).
+  const staticCandidates = [
+    path.join(opts.appRoot, "ui/.next/static"),
+    path.join(opts.appRoot, ".next/static"),
+  ];
+  const staticSrc = staticCandidates.find((p) => fs.existsSync(p));
   const staticDst = path.join(standaloneRoot, ".next/static");
-  if (fs.existsSync(staticSrc)) {
+  if (staticSrc && !fs.existsSync(staticDst)) {
     fs.mkdirSync(path.dirname(staticDst), { recursive: true });
+    fs.cpSync(staticSrc, staticDst, { recursive: true });
+    for (const buildIdSrc of [
+      path.join(opts.appRoot, "ui/.next/BUILD_ID"),
+      path.join(opts.appRoot, ".next/BUILD_ID"),
+    ]) {
+      if (fs.existsSync(buildIdSrc)) {
+        fs.copyFileSync(
+          buildIdSrc,
+          path.join(standaloneRoot, ".next/BUILD_ID"),
+        );
+        break;
+      }
+    }
+  } else if (staticSrc && fs.existsSync(staticDst)) {
+    // Dev : resync pour éviter chunks stale.
     fs.rmSync(staticDst, { recursive: true, force: true });
     fs.cpSync(staticSrc, staticDst, { recursive: true });
-    const buildIdSrc = path.join(opts.appRoot, "ui/.next/BUILD_ID");
-    const buildIdDst = path.join(standaloneRoot, ".next/BUILD_ID");
-    if (fs.existsSync(buildIdSrc)) {
-      fs.copyFileSync(buildIdSrc, buildIdDst);
-    }
   }
-  const publicSrc = path.join(opts.appRoot, "ui/public");
+  const publicCandidates = [
+    path.join(opts.appRoot, "ui/public"),
+    path.join(opts.appRoot, "public"),
+  ];
+  const publicSrc = publicCandidates.find((p) => fs.existsSync(p));
   const publicDst = path.join(standaloneRoot, "public");
-  if (fs.existsSync(publicSrc)) {
-    fs.rmSync(publicDst, { recursive: true, force: true });
+  if (publicSrc && !fs.existsSync(publicDst)) {
     fs.cpSync(publicSrc, publicDst, { recursive: true });
   }
 

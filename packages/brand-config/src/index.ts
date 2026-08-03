@@ -47,6 +47,7 @@ export {
   nsisGuidFromAppId,
   uuidV5,
 } from "./nsis-guid.js";
+export { renderNsisInstallerInclude } from "./render-nsis-installer.js";
 export {
   createAppManifest,
   defaultFeedToken,

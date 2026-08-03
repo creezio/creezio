@@ -250,6 +250,9 @@ function applyExeIdentity(
     shortcutName: exe.productName,
     uninstallDisplayName: exe.productName,
     guid: exe.nsisGuid,
+    // Include custom : LangString manquants (ex. Vietnamese) ne doivent pas
+    // faire échouer makensis (warningsAsErrors electron-builder).
+    warningsAsErrors: false,
   };
   if (opts.nsisInclude !== false) {
     nsis.include = opts.nsisInclude;
@@ -277,18 +280,35 @@ function applyExeIdentity(
 }
 
 function creezioAsarFileSets(): JsonRecord[] {
-  return CREEZIO_ASAR_RUNTIME_PACKAGES.map((name) => ({
-    from: `vendor/creezio/${name}`,
-    to: `node_modules/@creezio/${name}`,
-    // dist (ESM app-runtime/os-ui/brand-spec) + dist-cjs (dual package).
-    // Jamais resources/bin (Meili/cloudflared) dans l'asar — serveur = extraResources.
-    filter: [
+  return CREEZIO_ASAR_RUNTIME_PACKAGES.map((name) => {
+    // shell-ui / os-ui / product-hub… : sources `ui/` consommées par Next.
+    const withUi = new Set([
+      "shell-ui",
+      "os-ui",
+      "product-hub",
+      "auth",
+      "onboarding",
+      "cockpit",
+      "assistant",
+      "tasks",
+      "mails",
+      "mcp-facade",
+      "database",
+      "observability",
+    ]);
+    const filter = [
       "package.json",
       "dist/**/*",
       "dist-cjs/**/*",
       "!resources/bin/**",
-    ],
-  }));
+      ...(withUi.has(name) ? ["ui/**/*"] : []),
+    ];
+    return {
+      from: `vendor/creezio/${name}`,
+      to: `node_modules/@creezio/${name}`,
+      filter,
+    };
+  });
 }
 
 /**
@@ -601,6 +621,21 @@ export function buildElectronBuilderConfig(
   // jamais rebuild ABI Electron hôte Linux pendant cross-pack.
   if (base.npmRebuild === undefined) {
     base.npmRebuild = false;
+  }
+
+  // afterPack : embarque Next standalone dans resources/server (serveur).
+  if (!base.afterPack) {
+    const afterPackCandidates = [
+      "vendor/creezio/desktop-tooling/scripts/after-pack.cjs",
+      "node_modules/@creezio/desktop-tooling/scripts/after-pack.cjs",
+    ];
+    const appRoot = options.appRoot || process.env.CREEZIO_APP_ROOT || "";
+    const resolved = afterPackCandidates.find((rel) =>
+      appRoot
+        ? fs.existsSync(path.join(appRoot, rel))
+        : fs.existsSync(rel),
+    );
+    base.afterPack = resolved || afterPackCandidates[0];
   }
 
   // Client slim (TF2) : PAS de bins. Serveur / client fat (Fidu) : bins Win only.

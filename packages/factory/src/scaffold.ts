@@ -11,6 +11,7 @@ import {
   type AppManifest,
   buildElectronBuilderConfig,
   createAppManifest,
+  renderNsisInstallerInclude,
   validateAppManifest,
 } from "@creezio/brand-config";
 import { MINIMAL_PNG_BASE64 } from "./minimal-png.js";
@@ -338,6 +339,7 @@ import {
   buildElectronBuilderConfig,
   getManifest,
   listBrandIds,
+  renderNsisInstallerInclude,
 } from "@creezio/brand-config";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -363,16 +365,16 @@ const cfg = buildElectronBuilderConfig(manifest, kind, base);
 const out = path.join(root, \`electron-builder.\${kind}.json\`);
 fs.writeFileSync(out, JSON.stringify(cfg, null, 2) + "\\n");
 console.log("wrote", out);
+
+// Parité TF2 : options install (démarrage auto) + désinstall profonde.
+const nsh = path.join(root, "installer.nsh");
+fs.writeFileSync(nsh, renderNsisInstallerInclude(manifest));
+console.log("wrote", nsh);
 `;
 }
 
-function renderInstallerNsh(): string {
-  return `; NSIS include généré — placeholder (custom macros marque).
-!macro customInstall
-!macroend
-!macro customUnInstall
-!macroend
-`;
+function renderInstallerNsh(m: AppManifest): string {
+  return renderNsisInstallerInclude(m);
 }
 
 function renderBareBrandMigrationsTs(): string {
@@ -858,7 +860,7 @@ export function scaffoldNewApp(opts: NewAppOptions): ScaffoldResult {
   );
   writeFile(
     path.join(outDir, "installer.nsh"),
-    renderInstallerNsh(),
+    renderInstallerNsh(manifest),
     force,
     written,
   );

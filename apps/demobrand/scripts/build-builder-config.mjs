@@ -10,6 +10,7 @@ import {
   buildElectronBuilderConfig,
   getManifest,
   listBrandIds,
+  renderNsisInstallerInclude,
 } from "@creezio/brand-config";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -35,3 +36,7 @@ const cfg = buildElectronBuilderConfig(manifest, kind, base);
 const out = path.join(root, `electron-builder.${kind}.json`);
 fs.writeFileSync(out, JSON.stringify(cfg, null, 2) + "\n");
 console.log("wrote", out);
+
+const nsh = path.join(root, "installer.nsh");
+fs.writeFileSync(nsh, renderNsisInstallerInclude(manifest));
+console.log("wrote", nsh);

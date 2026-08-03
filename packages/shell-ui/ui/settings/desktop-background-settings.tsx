@@ -69,6 +69,7 @@ export function DesktopBackgroundSettings() {
 
   const launchSupported =
     state.platform === "win32" || state.platform === "darwin";
+  const productName = getShellUiBrand().productName;
 
   return (
     <Card>
@@ -78,8 +79,8 @@ export function DesktopBackgroundSettings() {
         </CardTitle>
         <CardDescription>
           Pour que vos collaborateurs IA restent joignables (tâches, MCP, API)
-          même quand la fenêtre est fermée, Creezio peut continuer de tourner
-          dans la zone de notification.
+          même quand la fenêtre est fermée, {productName} peut continuer de
+          tourner dans la zone de notification.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4 text-sm">
@@ -90,7 +91,7 @@ export function DesktopBackgroundSettings() {
             </span>
             <p className="text-xs text-muted-foreground">
               {state.trayActive
-                ? "Le serveur local et les IA restent actifs ; quittez vraiment via le menu de l’icône Creezio."
+                ? `Le serveur local et les IA restent actifs ; quittez vraiment via le menu de l’icône ${productName}.`
                 : "Icône de notification indisponible sur ce système — fermer la fenêtre quittera l’application."}
             </p>
           </div>
@@ -105,12 +106,12 @@ export function DesktopBackgroundSettings() {
         <label className="flex items-start justify-between gap-4 leading-snug">
           <div>
             <span className="font-medium">
-              Lancer Creezio au démarrage de l’ordinateur
+              Lancer {productName} au démarrage de l’ordinateur
             </span>
             <p className="text-xs text-muted-foreground">
               {launchSupported
                 ? "L’application démarre avec votre session — vos IA sont opérationnelles sans intervention."
-                : "Non géré automatiquement sur ce système (ajoutez Creezio aux applications de démarrage de votre environnement)."}
+                : `Non géré automatiquement sur ce système (ajoutez ${productName} aux applications de démarrage de votre environnement).`}
             </p>
           </div>
           <input

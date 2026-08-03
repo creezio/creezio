@@ -142,6 +142,78 @@ try {
     process.exit(1);
   }
 
+  // Parité TF2 server : tray / auto-launch / factory-reset dans le runtime packagé.
+  const parityNeedles = [
+    "TrayController",
+    "applyLaunchAtStartup",
+    "setLoginItemSettings",
+    "config:factory-reset",
+    "launchAtStartup",
+  ];
+  const shellCandidates = [
+    path.join(tmp, "node_modules/@creezio/electron-shell/dist/tray.js"),
+    path.join(tmp, "node_modules/@creezio/electron-shell/dist-cjs/tray.js"),
+    path.join(
+      tmp,
+      "node_modules/@creezio/electron-shell/dist/desktop/brand-desktop-runtime.js",
+    ),
+    path.join(
+      tmp,
+      "node_modules/@creezio/electron-shell/dist-cjs/desktop/brand-desktop-runtime.js",
+    ),
+    path.join(tmp, "vendor/creezio/electron-shell/dist/tray.js"),
+    path.join(
+      tmp,
+      "vendor/creezio/electron-shell/dist/desktop/brand-desktop-runtime.js",
+    ),
+  ];
+  let asarBlob = "";
+  for (const f of shellCandidates) {
+    if (fs.existsSync(f)) asarBlob += fs.readFileSync(f, "utf8");
+  }
+  if (!asarBlob) {
+    // Dernier recours : chercher tray.js sous l'extract.
+    const walk = (dir) => {
+      if (!fs.existsSync(dir) || asarBlob.length > 50_000) return;
+      for (const ent of fs.readdirSync(dir, { withFileTypes: true })) {
+        const full = path.join(dir, ent.name);
+        if (ent.isDirectory()) {
+          if (ent.name === "node_modules" && !dir.endsWith("tmp")) continue;
+          walk(full);
+        } else if (
+          ent.name === "tray.js" ||
+          ent.name === "brand-desktop-runtime.js"
+        ) {
+          asarBlob += fs.readFileSync(full, "utf8");
+        }
+      }
+    };
+    walk(tmp);
+  }
+  const missingParity = parityNeedles.filter((n) => !asarBlob.includes(n));
+  if (missingParity.length) {
+    console.error(
+      "verify-pack-runtime: hooks desktop manquants dans asar:",
+      missingParity.join(", "),
+    );
+    process.exit(1);
+  }
+
+  const installerNsh = path.join(appRoot, "installer.nsh");
+  if (fs.existsSync(installerNsh)) {
+    const nsh = fs.readFileSync(installerNsh, "utf8");
+    if (
+      /placeholder \(custom macros marque\)/.test(nsh) ||
+      !/customUnWelcomePage/.test(nsh) ||
+      !/launchAtStartup/.test(nsh)
+    ) {
+      console.error(
+        "verify-pack-runtime: installer.nsh placeholder ou incomplet (parité TF2)",
+      );
+      process.exit(1);
+    }
+  }
+
   console.log("verify-pack-runtime: OK");
   console.log("  asar     ", asarPath);
   console.log("  packages ", REQUIRED.join(", "));
@@ -150,6 +222,7 @@ try {
     isMz ? "win32 PE" : "ELF",
     nodeUnpacked ? "(asar.unpacked)" : "(asar)",
   );
+  console.log("  parity   ", parityNeedles.join(", "));
 } finally {
   fs.rmSync(tmp, { recursive: true, force: true });
 }
