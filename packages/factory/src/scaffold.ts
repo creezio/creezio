@@ -86,7 +86,8 @@ function renderPackageJson(m: AppManifest): string {
         main: "./build/electron/main.js",
         scripts: {
           build: "npm run build:electron",
-          "build:electron": "tsc -p tsconfig.electron.json",
+          "build:electron":
+            "tsc -p tsconfig.electron.json && tsc -p tsconfig.preload.json",
           typecheck: "tsc -p tsconfig.electron.json --noEmit",
           "electron:config:client":
             "node scripts/build-builder-config.mjs client",
@@ -178,7 +179,28 @@ function renderTsconfigElectron(): string {
     "types": ["node"],
     "skipLibCheck": true
   },
-  "include": ["src/electron/**/*.ts", "src/electron/**/*.d.ts"]
+  "include": ["src/electron/**/*.ts", "src/electron/**/*.d.ts"],
+  "exclude": ["src/electron/preload.ts"]
+}
+`;
+}
+
+/** Preload sandbox Electron = CommonJS (pas ESM). */
+function renderTsconfigPreload(): string {
+  return `{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "module": "CommonJS",
+    "moduleResolution": "Node",
+    "outDir": "build/electron",
+    "rootDir": "src/electron",
+    "lib": ["ES2022", "DOM"],
+    "types": ["node"],
+    "skipLibCheck": true,
+    "declaration": false,
+    "declarationMap": false
+  },
+  "include": ["src/electron/preload.ts"]
 }
 `;
 }
@@ -819,6 +841,12 @@ export function scaffoldNewApp(opts: NewAppOptions): ScaffoldResult {
   writeFile(
     path.join(outDir, "tsconfig.electron.json"),
     renderTsconfigElectron(),
+    force,
+    written,
+  );
+  writeFile(
+    path.join(outDir, "tsconfig.preload.json"),
+    renderTsconfigPreload(),
     force,
     written,
   );

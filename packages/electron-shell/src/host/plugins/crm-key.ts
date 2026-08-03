@@ -11,6 +11,7 @@ import {
   getPluginHostBindings,
   pluginCrmKeyFileName,
 } from "./brand-bindings.js";
+import { envForNodeScriptSpawn } from "../node-runtime.js";
 
 export type PluginCrmKeyStored = {
   apiKey: string;
@@ -93,16 +94,16 @@ function upsertDb(
     });
   }
   return new Promise((resolve) => {
+    const bin = bindings.nodeBinary();
     const env: NodeJS.ProcessEnv = {
-      ...process.env,
+      ...envForNodeScriptSpawn(bin),
       DB_PATH: bindings.dbPath(),
     };
     delete env.ELECTRON_BINARY;
-    delete env.ELECTRON_RUN_AS_NODE;
     const nm = bindings.nodeModulesPathForScripts?.();
     if (nm) env.NODE_PATH = nm;
     const child = spawn(
-      bindings.nodeBinary(),
+      bin,
       [script, bindings.dbPath(), apiKey, name, scopes],
       { env, stdio: ["ignore", "pipe", "pipe"], windowsHide: true },
     );

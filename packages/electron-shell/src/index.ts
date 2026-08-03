@@ -169,6 +169,7 @@ export {
   compareNodeVersions,
   ensureDesktopNode,
   ensureTempoflowNode,
+  envForNodeScriptSpawn,
   nodeSatisfiesMin,
   nodeUserBinary,
   nodeUserDir,

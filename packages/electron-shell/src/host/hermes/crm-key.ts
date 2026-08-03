@@ -10,6 +10,7 @@ import path from "node:path";
 import type { N8nApiKeyBrand } from "../n8n/api-key.js";
 import { getN8nBridgeEnv } from "../n8n/api-key.js";
 import { getPluginControlBridgeEnv } from "../plugins/control-extras.js";
+import { envForNodeScriptSpawn } from "../node-runtime.js";
 
 export type HermesCrmKeyBrand = {
   apiKeyPrefix: string;
@@ -140,17 +141,17 @@ export async function ensureHermesCrmApiKey(opts: {
   }
 
   return new Promise((resolve) => {
+    const bin = opts.paths.nodeBinary;
     const env: NodeJS.ProcessEnv = {
-      ...process.env,
+      ...envForNodeScriptSpawn(bin),
       DB_PATH: opts.paths.dbPath,
     };
     delete env.ELECTRON_BINARY;
-    delete env.ELECTRON_RUN_AS_NODE;
     if (opts.paths.nodeModulesPathForScripts) {
       env.NODE_PATH = opts.paths.nodeModulesPathForScripts;
     }
     const child = spawn(
-      opts.paths.nodeBinary,
+      bin,
       [script, opts.paths.dbPath, stored!.apiKey, opts.brand.keyName],
       { env, stdio: ["ignore", "pipe", "pipe"], windowsHide: true },
     );

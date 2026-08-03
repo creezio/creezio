@@ -18,7 +18,11 @@ import {
   getInstallId,
   reportCrash,
 } from "./crash-reporter.js";
-import { decideMeiliReady, INDEX_SCHEMA_VERSION } from "./meili/index.js";
+import {
+  configureMeiliCoherencePaths,
+  decideMeiliReady,
+  INDEX_SCHEMA_VERSION,
+} from "./meili/index.js";
 import { createFeatureOffHost } from "./feature-off-host.js";
 import { loadElectron } from "./load-electron.js";
 
@@ -28,6 +32,8 @@ export type BrandHostPathsModule = {
   uploadsDir: () => string;
   nextServerEntry: () => string;
   nodeBinary: () => string;
+  nodeScript: (rel: string) => string;
+  nodeModulesPathForScripts?: () => string | null | undefined;
   meiliDataDir: () => string;
   meiliBinary: () => string;
   userDataDir: () => string;
@@ -225,6 +231,14 @@ export function createBrandHostStack(cfg: BrandHostStackConfig) {
   const hostMeiliCoherence = lazy(() => {
     if (cfg.meiliCoherence === "kit") {
       bootN2();
+      const paths = cfg.getPaths();
+      configureMeiliCoherencePaths({
+        dbPath: () => paths.dbPath(),
+        nodeBinary: () => paths.nodeBinary(),
+        nodeScript: (rel) => paths.nodeScript(rel),
+        nodeModulesPathForScripts: () =>
+          paths.nodeModulesPathForScripts?.() ?? null,
+      });
       return { decideMeiliReady, INDEX_SCHEMA_VERSION };
     }
     return cfg.meiliCoherence();

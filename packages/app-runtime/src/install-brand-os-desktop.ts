@@ -155,9 +155,16 @@ export function installBrandOsDesktop(
           return null;
         }
       },
+      // Stub tabs (marques sans onglets fournisseurs) — API complète pour
+      // registerIpc (setOnChanged / list) sinon crash shell runtime.
       createSupplierTabs: () => ({
         dispose: () => undefined,
         open: () => undefined,
+        list: () => [],
+        closeAll: () => undefined,
+        setOnChanged: (_cb: () => void) => undefined,
+        setOnLoadState: (_cb: (ev: unknown) => void) => undefined,
+        setOnAfterBounds: (_cb: () => void) => undefined,
       }),
       createAiWorkspaces: (
         win: ConstructorParameters<typeof AiWorkspaceManager>[0],

@@ -53,7 +53,8 @@ function renderPackageJsonFromPrd(m: AppManifest, model: ProductModel): string {
   const chr = isChrModel(model);
   const scripts: Record<string, string> = {
     build: "npm run build:electron && npm run build:ui",
-    "build:electron": "tsc -p tsconfig.electron.json",
+    "build:electron":
+      "tsc -p tsconfig.electron.json && tsc -p tsconfig.preload.json",
     "build:ui": "npm run build --prefix ui",
     "os-ui:materialize": "node scripts/materialize-os-ui.mjs",
     typecheck: "tsc -p tsconfig.electron.json --noEmit",

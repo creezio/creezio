@@ -39,6 +39,7 @@ import {
   trackDecision,
   trackExternal,
 } from "@creezio/observability";
+import { envForNodeScriptSpawn } from "../host/node-runtime.js";
 
 export type BrandDesktopHosts = {
   catalog: () => any;
@@ -807,10 +808,16 @@ export function installBrandDesktopRuntime(deps: BrandDesktopDeps): void {
 
   /** Migrations SQLite dans un process Node vanilla (ABI better-sqlite3). */
   function runMigrationsInNode(): Promise<void> {
+    const script = deps.paths.nodeScript(path.join("migrations", "runner.js"));
+    // Marques native-kernel (TF3 / factory) : migrations déjà appliquées
+    // in-process via createBrandKernel — pas de runner.js TF2.
+    if (!fs.existsSync(script)) {
+      log("migrate", `skip — pas de runner.js (${script})`);
+      return Promise.resolve();
+    }
     return new Promise((resolve, reject) => {
-      const script = deps.paths.nodeScript(path.join("migrations", "runner.js"));
-      const env = { ...process.env };
-      delete env.ELECTRON_RUN_AS_NODE;
+      const bin = deps.paths.nodeBinary();
+      const env = envForNodeScriptSpawn(bin);
       const nm = deps.paths.nodeModulesPathForScripts();
       if (nm) env.NODE_PATH = nm;
       // Packagé : resources/seeds ; aussi exposé via TF2_RESOURCES_PATH.
@@ -819,8 +826,11 @@ export function installBrandDesktopRuntime(deps: BrandDesktopDeps): void {
         const seeds = path.join(process.resourcesPath, "seeds");
         if (!env[`${deps.envPrefix}_SEEDS_DIR`]) env[`${deps.envPrefix}_SEEDS_DIR`] = seeds;
       }
-      log("migrate", `spawn ${deps.paths.nodeBinary()} ${script}`);
-      const child = spawn(deps.paths.nodeBinary(), [script, deps.paths.dbPath()], {
+      log(
+        "migrate",
+        `spawn ${bin} ${script}${env.ELECTRON_RUN_AS_NODE ? " (ELECTRON_RUN_AS_NODE)" : ""}`,
+      );
+      const child = spawn(bin, [script, deps.paths.dbPath()], {
         env,
         stdio: ["ignore", "pipe", "pipe"],
         windowsHide: true,
@@ -906,8 +916,8 @@ export function installBrandDesktopRuntime(deps: BrandDesktopDeps): void {
   function runIndexerWithProgress(m: any): Promise<void> {
     return new Promise((resolve, reject) => {
       const script = deps.paths.nodeScript("meili-indexer.js");
-      const env = { ...process.env };
-      delete env.ELECTRON_RUN_AS_NODE;
+      const bin = deps.paths.nodeBinary();
+      const env = envForNodeScriptSpawn(bin);
       const nm = deps.paths.nodeModulesPathForScripts();
       if (nm) env.NODE_PATH = nm;
       env.DB_PATH = deps.paths.dbPath();
@@ -915,7 +925,7 @@ export function installBrandDesktopRuntime(deps: BrandDesktopDeps): void {
       env.MEILI_MASTER_KEY = m.masterKey;
       env[`${deps.envPrefix}_APP_VERSION`] = app.getVersion();
       log("indexer", `indexation initiale (${script})`);
-      const child = spawn(deps.paths.nodeBinary(), [script], {
+      const child = spawn(bin, [script], {
         env,
         stdio: ["ignore", "pipe", "pipe"],
         windowsHide: true,
@@ -1649,29 +1659,38 @@ export function installBrandDesktopRuntime(deps: BrandDesktopDeps): void {
       assistantChrome?.setMode(mode);
     });
 
-    ownerManager.setOnChanged(() => {
-      try {
-        if (!view.webContents.isDestroyed()) {
-          view.webContents.send("tabs:changed", ownerManager.list());
+    if (typeof ownerManager?.setOnChanged === "function") {
+      ownerManager.setOnChanged(() => {
+        try {
+          if (!view.webContents.isDestroyed()) {
+            view.webContents.send(
+              "tabs:changed",
+              typeof ownerManager.list === "function" ? ownerManager.list() : [],
+            );
+          }
+        } catch (e) {
+          logError("tabs", e);
         }
-      } catch (e) {
-        logError("tabs", e);
-      }
-    });
+      });
+    }
 
-    ownerManager.setOnLoadState((ev) => {
-      try {
-        if (!view.webContents.isDestroyed()) {
-          view.webContents.send("tabs:load-state", ev);
+    if (typeof ownerManager?.setOnLoadState === "function") {
+      ownerManager.setOnLoadState((ev: unknown) => {
+        try {
+          if (!view.webContents.isDestroyed()) {
+            view.webContents.send("tabs:load-state", ev);
+          }
+        } catch (e) {
+          logError("tabs", e);
         }
-      } catch (e) {
-        logError("tabs", e);
-      }
-    });
+      });
+    }
 
-    ownerManager.setOnAfterBounds(() => {
-      assistantChrome?.ensureTop();
-    });
+    if (typeof ownerManager?.setOnAfterBounds === "function") {
+      ownerManager.setOnAfterBounds(() => {
+        assistantChrome?.ensureTop();
+      });
+    }
 
     // Erreurs JS de la page (window.onerror / unhandledrejection), forwardées
     // par le preload : log persistant + rapport débouncé au collecteur.
@@ -2975,20 +2994,23 @@ export function installBrandDesktopRuntime(deps: BrandDesktopDeps): void {
         isPackaged: deps.paths.isPackaged(),
         appVersion: app.getVersion(),
       });
+      const mods = Array.isArray(brandRt.mountedModules)
+        ? brandRt.mountedModules
+        : [];
       log(
         "h3",
-        `brand runtime ready — modules=[${brandRt.mountedModules.join(",")}] ` +
-          `core=${brandRt.runtime.paths.core} brand=${brandRt.runtime.paths.brand}`,
+        `brand runtime ready — modules=[${mods.join(",")}] ` +
+          `core=${brandRt.runtime?.paths?.core} brand=${brandRt.runtime?.paths?.brand}`,
       );
       track({
         level: "event",
         kind: "h3.brand_runtime.ready",
         outcome: "ok",
-        ctx: { modules: brandRt.mountedModules.join(",") },
+        ctx: { modules: mods.join(",") },
       });
       splashDone(
         "runtime",
-        `OK — modules ${brandRt.mountedModules.join(", ")}`,
+        `OK — modules ${mods.join(", ") || "kit"}`,
       );
     } catch (e) {
       const reason = e instanceof Error ? e.message : String(e);
@@ -3114,8 +3136,19 @@ export function installBrandDesktopRuntime(deps: BrandDesktopDeps): void {
         detail: "Vérification / installation du runtime Node piné",
         percent: 10,
       });
-      const nodeReady = await deps.hosts.nodeRuntime().ensureTempoflowNode({
-        onLog: (line) => {
+      const nodeRt = deps.hosts.nodeRuntime() as {
+        ensureDesktopNode?: (o: unknown) => Promise<{ ok: boolean; detail?: string }>;
+        ensureTempoflowNode?: (o: unknown) => Promise<{ ok: boolean; detail?: string }>;
+      };
+      const ensureNode =
+        nodeRt.ensureDesktopNode || nodeRt.ensureTempoflowNode;
+      if (!ensureNode) {
+        throw new Error(
+          "nodeRuntime.ensureDesktopNode/ensureTempoflowNode manquant",
+        );
+      }
+      const nodeReady = await ensureNode({
+        onLog: (line: string) => {
           scoped("node")(line);
           if (isSplashProgressLine(line)) {
             const detail = sanitizeSplashDetail(line);

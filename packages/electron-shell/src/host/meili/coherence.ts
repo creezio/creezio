@@ -15,6 +15,7 @@ import {
   type GedIndexUid,
 } from "./index-schema.js";
 import type { RunningMeili } from "../meili-launcher.js";
+import { envForNodeScriptSpawn } from "../node-runtime.js";
 
 export type MeiliCoherencePaths = {
   dbPath: () => string;
@@ -53,11 +54,14 @@ type CoherenceDbSnapshot = {
 function queryDbSnapshot(dbFile: string): CoherenceDbSnapshot {
   const p = requirePaths();
   const script = p.nodeScript("meili-coherence-query.js");
-  const env: NodeJS.ProcessEnv = { ...process.env, DB_PATH: dbFile };
-  delete env.ELECTRON_RUN_AS_NODE;
+  const bin = p.nodeBinary();
+  const env: NodeJS.ProcessEnv = {
+    ...envForNodeScriptSpawn(bin),
+    DB_PATH: dbFile,
+  };
   const nm = p.nodeModulesPathForScripts();
   if (nm) env.NODE_PATH = nm;
-  const r = spawnSync(p.nodeBinary(), [script], {
+  const r = spawnSync(bin, [script], {
     env,
     encoding: "utf8",
     windowsHide: true,
