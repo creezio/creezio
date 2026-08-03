@@ -2789,7 +2789,18 @@ export function installBrandDesktopRuntime(deps: BrandDesktopDeps): void {
       return;
     }
 
-    const { profile, showPicker } = deps.vertical.resolveBootProfile(deps.store().getConnectionProfileStored());
+    const resolved = deps.vertical.resolveBootProfile(
+      deps.store().getConnectionProfileStored(),
+    );
+    // Compat stubs marque : accepter soit `{ profile, showPicker }` soit un profil nu.
+    const profile =
+      resolved && typeof resolved === "object" && "profile" in resolved
+        ? (resolved as { profile: unknown }).profile
+        : resolved;
+    const showPicker =
+      resolved && typeof resolved === "object" && "showPicker" in resolved
+        ? Boolean((resolved as { showPicker?: boolean }).showPicker)
+        : true;
     if (!showPicker) {
       // Garde-fou : deps.vertical.resolveBootProfile doit toujours renvoyer true (pas de skip silencieux).
       log("main", "WARN deps.vertical.resolveBootProfile.showPicker=false — forçage picker");
@@ -2800,7 +2811,12 @@ export function installBrandDesktopRuntime(deps: BrandDesktopDeps): void {
     setSplashStatus(
       joinOnly ? "Choix du serveur à rejoindre…" : "Choix : héberger ou rejoindre…",
     );
-    const last = deps.vertical.sanitizeConnectionProfile(profile);
+    const last = deps.vertical.sanitizeConnectionProfile(profile) || {
+      mode: "local",
+      localBind: "127.0.0.1",
+      remoteUrl: null,
+      chosen: false,
+    };
     const localSetupDone = deps.store().isSetupComplete();
     let recallLine = "";
     if (joinOnly) {
