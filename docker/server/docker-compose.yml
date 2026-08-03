@@ -5,6 +5,8 @@
 #   docker compose -p creezio-servers -f $CREEZIO_KIT_ROOT/docker/server/docker-compose.yml up -d --build
 #
 # Ou via CLI : creezio server-docker up --brand-root /opt/docker/tempoflow3
+#
+# Pattern instances : server-1, server-2, … (chiffres uniquement, pas de lettres).
 
 name: creezio-servers
 
@@ -30,31 +32,31 @@ x-brand-server: &brand-server
     - creezio-servers
 
 services:
-  server-a:
+  server-1:
     <<: *brand-server
-    container_name: creezio-server-a
+    container_name: creezio-server-1
     ports:
-      - "${SERVER_A_PORT:-18791}:18791"
+      - "${SERVER_1_PORT:-18791}:18791"
     environment:
       <<: *brand-env
       PORT: "18791"
       METIER_PORT: "18791"
-      INSTANCE_ID: server-a
+      INSTANCE_ID: server-1
     volumes:
-      - ${DATA_DIR:-./data}/server-a:/data
+      - ${DATA_DIR:-./data}/server-1:/data
 
-  server-b:
+  server-2:
     <<: *brand-server
-    container_name: creezio-server-b
+    container_name: creezio-server-2
     ports:
-      - "${SERVER_B_PORT:-18792}:18791"
+      - "${SERVER_2_PORT:-18792}:18791"
     environment:
       <<: *brand-env
       PORT: "18791"
       METIER_PORT: "18791"
-      INSTANCE_ID: server-b
+      INSTANCE_ID: server-2
     volumes:
-      - ${DATA_DIR:-./data}/server-b:/data
+      - ${DATA_DIR:-./data}/server-2:/data
 
 networks:
   creezio-servers:

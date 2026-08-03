@@ -32,8 +32,11 @@ test("docker/server artefacts présents", () => {
     "utf8",
   );
   assert.match(compose, /name:\s*creezio-servers/);
-  assert.match(compose, /server-a/);
-  assert.match(compose, /server-b/);
+  assert.match(compose, /server-1/);
+  assert.match(compose, /server-2/);
+  assert.doesNotMatch(compose, /server-[a-z]\b/);
+  assert.match(compose, /SERVER_1_PORT/);
+  assert.match(compose, /SERVER_2_PORT/);
 });
 
 test("CLI creezio server-docker help", () => {
@@ -46,6 +49,21 @@ test("CLI creezio server-docker help", () => {
   assert.match(r.stdout, /server-docker/);
   assert.match(r.stdout, /build/);
   assert.match(r.stdout, /proof/);
+  assert.match(r.stdout, /SERVER_1_PORT/);
+  assert.match(r.stdout, /Server-\{N\}|\.desktop/);
+});
+
+test("CLI source : instances numériques + raccourcis bureau", () => {
+  const src = fs.readFileSync(
+    path.join(root, "packages/factory/src/server-docker-cli.ts"),
+    "utf8",
+  );
+  assert.match(src, /server-1/);
+  assert.match(src, /server-2/);
+  assert.match(src, /writeServerDesktopShortcuts/);
+  assert.match(src, /Desktop/);
+  assert.match(src, /Bureau/);
+  assert.doesNotMatch(src, /server-a|SERVER_A_PORT/);
 });
 
 test("listenBrandOsHttp exporte resolveBrandOsHttpHost", () => {

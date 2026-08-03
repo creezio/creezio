@@ -38,7 +38,7 @@ Squelette OS + slot métier vide (comportement historique Phase D).
 creezio server-docker proof --brand-root /opt/docker/tempoflow3
 ```
 
-Image générique + Compose multi-instances (`server-a` / `server-b`) —
+Image générique + Compose multi-instances (`server-1` / `server-2`) —
 SoT dans `docker/server/` (sans Electron/AppImage). Voir `docker/server/README.md`.
 
 ## Options
