@@ -12,6 +12,7 @@ import { spawn, spawnSync } from "node:child_process";
 import fs from "node:fs";
 import http from "node:http";
 import path from "node:path";
+import os from "node:os";
 import { setTimeout as sleep } from "node:timers/promises";
 
 const appRoot = path.resolve(process.argv[2] || process.cwd());
@@ -118,8 +119,14 @@ console.log(`smoke-packaged-server: log=${logPath} timeout=${timeoutMs}ms`);
 
 const useXvfb = Boolean(spawnSync("bash", ["-lc", "command -v xvfb-run"]).stdout?.toString().trim());
 const args = ["--no-sandbox", "--disable-gpu"];
+const smokeHome = fs.mkdtempSync(path.join(os.tmpdir(), "creezio-smoke-home-"));
+fs.mkdirSync(path.join(smokeHome, "config"), { recursive: true });
+fs.mkdirSync(path.join(smokeHome, "data"), { recursive: true });
 const env = {
   ...process.env,
+  HOME: smokeHome,
+  XDG_CONFIG_HOME: path.join(smokeHome, "config"),
+  XDG_DATA_HOME: path.join(smokeHome, "data"),
   ELECTRON_ENABLE_LOGGING: "1",
   ELECTRON_ENABLE_STACK_DUMPING: "1",
   // Skip long n8n npm for smoke of UI/API plane; shell still boots.
@@ -161,7 +168,12 @@ child.on("exit", (code) => {
 while (Date.now() - started < timeoutMs) {
   await sleep(1000);
   const log = fs.readFileSync(logPath, "utf8");
-  if (/MODULE_NOT_FOUND|Cannot find module/.test(log)) {
+  // MODULE_NOT_FOUND du main Electron (asar) — pas les stderr children meili/etc.
+  if (
+    /Error: Cannot find module ['"][^'"]*node_modules/.test(log) ||
+    /ERR_MODULE_NOT_FOUND/.test(log) ||
+    (/\[main\] ERREUR:/.test(log) && /Cannot find module/.test(log))
+  ) {
     reason = "MODULE_NOT_FOUND";
     break;
   }
@@ -181,14 +193,13 @@ while (Date.now() - started < timeoutMs) {
       /warm différé/.test(log) ||
       /api=http:\/\//.test(log));
   const ports = child.pid ? collectListenPorts(child.pid) : [];
-  const apiFromLog = [...log.matchAll(/api=http:\/\/127\.0\.0\.1:(\d+)/g)].map((m) =>
-    Number(m[1]),
-  );
-  const logPorts = [...log.matchAll(/http:\/\/127\.0\.0\.1:(\d+)/g)].map((m) =>
-    Number(m[1]),
-  );
+  const apiFromLog = [
+    ...log.matchAll(/api=http:\/\/127\.0\.0\.1:(\d+)/g),
+    ...log.matchAll(/oauth ready=true public=http:\/\/127\.0\.0\.1:(\d+)/g),
+  ].map((m) => Number(m[1]));
+  // Ne pas sonder tous les ports du log (Meili 404 ≠ health OS).
   const health = await probeHealth(
-    [...new Set([...apiFromLog, ...ports, ...logPorts])].filter(Boolean),
+    [...new Set([...apiFromLog, ...ports])].filter(Boolean),
   );
   if (health) {
     ok = true;
