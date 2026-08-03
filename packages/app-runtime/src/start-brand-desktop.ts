@@ -351,15 +351,26 @@ async function startBrandDesktopBody(args: {
   if (config.meiliFeed) {
     // P&P : binaire kit d'abord (resources/bin/meili), jamais requis dans la marque.
     const kitMeili = kitBinaryPaths().meili;
-    const brandMeili = path.join(resourcesRoot, "meili");
-    const meiliBin =
-      kitMeili ||
-      (fs.existsSync(brandMeili) ? brandMeili : null) ||
-      path.join(resourcesRoot, "bin", "meili");
+    const meiliCandidates = [
+      kitMeili,
+      process.platform === "win32"
+        ? path.join(resourcesRoot, "bin", "meilisearch-win.exe")
+        : path.join(resourcesRoot, "bin", "meili"),
+      // Compatibilité avec les anciens stages Windows.
+      ...(process.platform === "win32"
+        ? [
+            path.join(resourcesRoot, "bin", "meili.exe"),
+            path.join(resourcesRoot, "meili.exe"),
+          ]
+        : [path.join(resourcesRoot, "meili")]),
+    ];
+    const meiliBin = meiliCandidates.find(
+      (candidate): candidate is string =>
+        typeof candidate === "string" && fs.existsSync(candidate),
+    );
     try {
       const meiliBoot = await maybeBootBrandMeili({
-        binaryPath:
-          meiliBin && fs.existsSync(meiliBin) ? meiliBin : null,
+        binaryPath: meiliBin || null,
         dataDir: path.join(boot.userDataDir, "meili"),
         userDataDir: boot.userDataDir,
         dbPath: runtime.getBrand().path,

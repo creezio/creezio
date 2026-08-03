@@ -80,6 +80,38 @@ if (!fs.existsSync(asarPath)) {
   process.exit(1);
 }
 
+// Les sidecars serveur Windows doivent être des extraResources top-level :
+// Electron ne peut pas spawn un exécutable dans app.asar. Ce contrôle lit le
+// résultat réel du pack, pas seulement la config electron-builder.
+if (platform === "win" && kind === "server") {
+  const binDir = path.join(unpacked, "resources", "bin");
+  const requiredBins = ["meilisearch-win.exe", "cloudflared.exe"];
+  const missingBins = requiredBins.filter(
+    (name) => !fs.existsSync(path.join(binDir, name)),
+  );
+  if (missingBins.length) {
+    console.error(
+      "verify-pack-runtime: sidecars Windows manquants dans resources/bin:",
+    );
+    for (const name of missingBins) console.error("  -", name);
+    console.error("  → lancer electron:stage-win-bins avant le pack serveur");
+    process.exit(1);
+  }
+  for (const name of requiredBins) {
+    const candidate = path.join(binDir, name);
+    const fd = fs.openSync(candidate, "r");
+    const signature = Buffer.alloc(2);
+    fs.readSync(fd, signature, 0, 2, 0);
+    fs.closeSync(fd);
+    if (signature[0] !== 0x4d || signature[1] !== 0x5a) {
+      console.error(
+        `verify-pack-runtime: ${name} n'est pas un exécutable Windows PE (MZ)`,
+      );
+      process.exit(1);
+    }
+  }
+}
+
 const require = createRequire(import.meta.url);
 let Asar;
 try {
@@ -480,6 +512,9 @@ try {
   );
   console.log("  parity     ", parityNeedles.join(", "));
   console.log("  appRequire ", "present");
+  if (platform === "win" && kind === "server") {
+    console.log("  sidecars   ", "meilisearch-win.exe, cloudflared.exe (PE)");
+  }
 } finally {
   fs.rmSync(tmp, { recursive: true, force: true });
 }

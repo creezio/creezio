@@ -20,14 +20,50 @@ export type EnsureKitBinariesResult = {
   errors: string[];
 };
 
-const DEFAULTS: Record<KitBinaryName, string> = {
-  meili:
-    process.env.CREEZIO_MEILI_URL ||
-    "https://github.com/meilisearch/meilisearch/releases/download/v1.11.3/meilisearch-linux-amd64",
-  cloudflared:
-    process.env.CREEZIO_CLOUDFLARED_URL ||
-    "https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64",
-};
+function defaultDownloadUrl(name: KitBinaryName): string {
+  if (name === "meili") {
+    if (process.env.CREEZIO_MEILI_URL) return process.env.CREEZIO_MEILI_URL;
+    return process.platform === "win32"
+      ? "https://github.com/meilisearch/meilisearch/releases/download/v1.11.3/meilisearch-windows-amd64.exe"
+      : "https://github.com/meilisearch/meilisearch/releases/download/v1.11.3/meilisearch-linux-amd64";
+  }
+  if (process.env.CREEZIO_CLOUDFLARED_URL) {
+    return process.env.CREEZIO_CLOUDFLARED_URL;
+  }
+  return process.platform === "win32"
+    ? "https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-windows-amd64.exe"
+    : "https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64";
+}
+
+function binaryFileName(name: KitBinaryName): string {
+  if (process.platform !== "win32") return name;
+  // Le package Windows porte le nom canonique du stage electron-builder.
+  // Conserver `meili.exe` en lecture comme alias des paquets historiques,
+  // mais ne jamais le générer dans les nouveaux paquets.
+  return name === "meili" ? "meilisearch-win.exe" : "cloudflared.exe";
+}
+
+function binaryNames(name: KitBinaryName): string[] {
+  const canonical = binaryFileName(name);
+  if (process.platform !== "win32" || name !== "meili") return [canonical];
+  return [canonical, "meili.exe", "meilisearch.exe"];
+}
+
+function packagedBinDir(): string | null {
+  const resourcesPath = (process as NodeJS.Process & { resourcesPath?: string })
+    .resourcesPath;
+  if (!resourcesPath || !path.isAbsolute(resourcesPath) || resourcesPath === path.sep) {
+    return null;
+  }
+  return path.join(resourcesPath, "bin");
+}
+
+function binaryDirs(): string[] {
+  return [
+    ...(packagedBinDir() ? [packagedBinDir()!] : []),
+    path.join(kitOsResourcesRoot(), "bin"),
+  ];
+}
 
 function download(url: string, dest: string): Promise<void> {
   return new Promise((resolve, reject) => {
@@ -66,9 +102,7 @@ async function ensureOne(
 ): Promise<{ path: string | null; downloaded: boolean; error?: string }> {
   const dest = path.join(
     binDir,
-    process.platform === "win32" && name === "cloudflared"
-      ? "cloudflared.exe"
-      : name,
+    binaryFileName(name),
   );
   if (fs.existsSync(dest) && fs.statSync(dest).size > 1000) {
     return { path: dest, downloaded: false };
@@ -78,7 +112,7 @@ async function ensureOne(
   }
   const tmp = `${dest}.tmp`;
   try {
-    await download(DEFAULTS[name], tmp);
+    await download(defaultDownloadUrl(name), tmp);
     fs.chmodSync(tmp, 0o755);
     fs.renameSync(tmp, dest);
     return { path: dest, downloaded: true };
@@ -102,16 +136,21 @@ export function kitBinaryPaths(): {
   meili: string | null;
   cloudflared: string | null;
 } {
-  const binDir = path.join(kitOsResourcesRoot(), "bin");
-  const meili = path.join(binDir, "meili");
-  const cf = path.join(
-    binDir,
-    process.platform === "win32" ? "cloudflared.exe" : "cloudflared",
-  );
+  const dirs = binaryDirs();
+  const binDir = dirs[0]!;
+  const resolve = (name: KitBinaryName): string | null => {
+    for (const dir of dirs) {
+      for (const file of binaryNames(name)) {
+        const candidate = path.join(dir, file);
+        if (fs.existsSync(candidate)) return candidate;
+      }
+    }
+    return null;
+  };
   return {
     binDir,
-    meili: fs.existsSync(meili) ? meili : null,
-    cloudflared: fs.existsSync(cf) ? cf : null,
+    meili: resolve("meili"),
+    cloudflared: resolve("cloudflared"),
   };
 }
 
@@ -120,17 +159,9 @@ export function kitBinaryPaths(): {
  * No-op rapide si déjà présents.
  */
 function resolveWritableBinDir(): string {
-  // Packagé Electron : binaires sous process.resourcesPath/bin (jamais /resources).
-  try {
-    const rp = (process as NodeJS.Process & { resourcesPath?: string })
-      .resourcesPath;
-    if (rp && path.isAbsolute(rp) && rp !== path.sep) {
-      const candidate = path.join(rp, "bin");
-      return candidate;
-    }
-  } catch {
-    /* ignore */
-  }
+  // Packagé Electron : binaires sous process.resourcesPath/bin (hors app.asar).
+  const packaged = packagedBinDir();
+  if (packaged) return packaged;
   return path.join(kitOsResourcesRoot(), "bin");
 }
 
@@ -158,19 +189,11 @@ export async function ensureKitOsBinaries(): Promise<EnsureKitBinariesResult> {
 
   if (process.env.CREEZIO_SKIP_KIT_BINARIES === "1") {
     const existing = kitBinaryPaths();
-    // Aussi chercher sous binDir résolu (resourcesPath packagé).
-    const meiliP = path.join(binDir, "meili");
-    const cfP = path.join(
-      binDir,
-      process.platform === "win32" ? "cloudflared.exe" : "cloudflared",
-    );
     return {
       ok: true,
       binDir,
-      meili: fs.existsSync(meiliP)
-        ? meiliP
-        : existing.meili,
-      cloudflared: fs.existsSync(cfP) ? cfP : existing.cloudflared,
+      meili: existing.meili,
+      cloudflared: existing.cloudflared,
       downloaded,
       errors,
     };
