@@ -6,32 +6,77 @@
 import fs from "node:fs";
 import path from "node:path";
 import { createRequire } from "node:module";
+import { fileURLToPath } from "node:url";
 
 let cachedRoot: string | null = null;
+
+/**
+ * Dossier du module compilé (dist/host ou dist-cjs/host).
+ * ESM packagé (asar) : pas de `__dirname` → `import.meta.url`.
+ * CJS (dist-cjs) : `import.meta` absent → `__dirname`.
+ * `import.meta` / `__dirname` lus via eval pour rester compilables dual ESM/CJS.
+ */
+function compiledHostDir(): string {
+  try {
+    // eslint-disable-next-line no-eval
+    const metaUrl = eval("import.meta.url") as string;
+    return path.dirname(fileURLToPath(metaUrl));
+  } catch {
+    /* CJS */
+  }
+  try {
+    // eslint-disable-next-line no-eval
+    return eval("__dirname") as string;
+  } catch {
+    return process.cwd();
+  }
+}
+
+function resolveFromEntry(entry: string): string | null {
+  // dist/index.js ou dist-cjs/index.js → package root
+  let root = path.resolve(path.dirname(entry), "..");
+  if (!fs.existsSync(path.join(root, "resources", "vendor"))) {
+    // si resolve pointe dans dist/host/… remonter encore
+    const alt = path.resolve(root, "..");
+    if (fs.existsSync(path.join(alt, "resources", "vendor"))) {
+      root = alt;
+    }
+  }
+  return fs.existsSync(path.join(root, "package.json")) ? root : null;
+}
 
 /** Racine package electron-shell (…/packages/electron-shell). */
 export function electronShellPackageRoot(): string {
   if (cachedRoot && fs.existsSync(cachedRoot)) return cachedRoot;
+
+  // 1) Depuis ce module (fiable en asar ESM + CJS)
   try {
-    const req = createRequire(path.join(process.cwd(), "package.json"));
+    const req = createRequire(path.join(compiledHostDir(), "kit-os-resources.js"));
     const entry = req.resolve("@creezio/electron-shell");
-    // dist/index.js ou dist-cjs/index.js → package root
-    cachedRoot = path.resolve(path.dirname(entry), "..");
-    if (
-      !fs.existsSync(path.join(cachedRoot, "resources", "vendor"))
-    ) {
-      // si resolve pointe dans dist/host/… (rare) remonter encore
-      const alt = path.resolve(cachedRoot, "..");
-      if (fs.existsSync(path.join(alt, "resources", "vendor"))) {
-        cachedRoot = alt;
-      }
+    const root = resolveFromEntry(entry);
+    if (root) {
+      cachedRoot = root;
+      return cachedRoot;
     }
-    return cachedRoot;
   } catch {
     /* fallthrough */
   }
-  // Fallback : depuis ce fichier compilé (dist/host ou dist-cjs/host)
-  cachedRoot = path.resolve(__dirname, "../..");
+
+  // 2) Depuis cwd (dev / harness)
+  try {
+    const req = createRequire(path.join(process.cwd(), "package.json"));
+    const entry = req.resolve("@creezio/electron-shell");
+    const root = resolveFromEntry(entry);
+    if (root) {
+      cachedRoot = root;
+      return cachedRoot;
+    }
+  } catch {
+    /* fallthrough */
+  }
+
+  // 3) Fallback : remonter depuis ce fichier compilé
+  cachedRoot = path.resolve(compiledHostDir(), "../..");
   return cachedRoot;
 }
 
