@@ -23,6 +23,7 @@ via Docker, multi-instances, sans AppImage/Electron.
 | `Dockerfile` | Image générique (context = racine marque) |
 | `docker-compose.yml` | Exemple `server-1` + `server-2` |
 | `brand.dockerignore` | Template ignore (posé en `.dockerignore` marque) |
+| `creezio-open-url.sh` | Opener navigateur (firefox/gio/xdg-open…) → `~/bin/` |
 | `README.md` | Doc humaine launch 1/N + config Docker vs Electron |
 | CLI `creezio server-docker` | `build` / `up` / `down` / `ps` / `proof` + `.desktop` |
 
@@ -30,7 +31,9 @@ via Docker, multi-instances, sans AppImage/Electron.
 
 - Volumes : `{BRAND_ROOT}/docker-data/servers/server-N` → `/data` (= userData).
 - First-run : UI HTTP `/setup` (pas de tray/NSIS) ; seed via env `CREEZIO_*`.
-- Raccourcis : `{Product}-Server-{N}.desktop` sur `~/Desktop` + `~/Bureau`.
+- Raccourcis : `{Product}-Server-{N}.desktop` → `~/bin/open-creezio-server-N`
+  (**jamais** `Exec=xdg-open` seul — souvent absent hors desktop).
+- Preuve `proof` : lance réellement le wrapper sous `DISPLAY=:10` si présent.
 
 ## Modifier
 

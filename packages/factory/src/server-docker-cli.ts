@@ -76,6 +76,7 @@ Env:
   SERVER_DESKTOP_PRODUCT  (override nom raccourcis, défaut brandName BrandSpec)
 
 Après up : raccourcis ~/Desktop et ~/Bureau → {Product}-Server-{N}.desktop
+  Exec = ~/bin/open-creezio-server <url> (wrapper firefox/chromium/xdg-open/gio)
 
 Doc: docker/server/README.md
 `);
@@ -238,15 +239,111 @@ function resolveInstancePort(inst: ServerInstance): number {
   return inst.defaultPort;
 }
 
+/** Script générique URL → navigateur (copié depuis docker/server/). */
+export const CREEZIO_OPEN_URL_BIN = "creezio-open-url";
+
+/** Fallback inline si le script kit est absent (tests / kit partiel). */
+const CREEZIO_OPEN_URL_FALLBACK = `#!/usr/bin/env bash
+set -euo pipefail
+URL="\${1:-}"
+[[ -n "\$URL" ]] || { echo "usage: creezio-open-url <url>" >&2; exit 2; }
+if [[ -z "\${DISPLAY:-}" ]]; then
+  for sock in /tmp/.X11-unix/X10 /tmp/.X11-unix/X*; do
+    [[ -S "\$sock" ]] || continue
+    n="\${sock##*/X}"
+    [[ "\$n" =~ ^[0-9]+$ ]] || continue
+    export DISPLAY=":\$n"
+    break
+  done
+fi
+export XAUTHORITY="\${XAUTHORITY:-\${HOME:-/home/deploy}/.Xauthority}"
+for c in firefox chromium chromium-browser google-chrome google-chrome-stable \\
+  brave-browser microsoft-edge xdg-open x-www-browser sensible-browser; do
+  if command -v "\$c" >/dev/null 2>&1; then
+    nohup "\$c" "\$URL" >/dev/null 2>&1 &
+    echo "opened with \$c → \$URL (pid \$!)"
+    exit 0
+  fi
+done
+if command -v gio >/dev/null 2>&1; then
+  nohup gio open "\$URL" >/dev/null 2>&1 &
+  echo "opened with gio → \$URL"; exit 0
+fi
+if command -v exo-open >/dev/null 2>&1; then
+  nohup exo-open --launch WebBrowser "\$URL" >/dev/null 2>&1 &
+  echo "opened with exo-open → \$URL"; exit 0
+fi
+echo "creezio-open-url: aucun navigateur pour \$URL" >&2
+exit 1
+`;
+
+function binDir(): string {
+  const d = path.join(os.homedir(), "bin");
+  fs.mkdirSync(d, { recursive: true });
+  return d;
+}
+
+function chmod755(p: string): void {
+  try {
+    fs.chmodSync(p, 0o755);
+  } catch {
+    /* ignore */
+  }
+}
+
+/**
+ * Installe ~/bin/creezio-open-url (copie kit docker/server/creezio-open-url.sh).
+ */
+export function ensureCreezioOpenUrl(kitRoot?: string): string {
+  const dest = path.join(binDir(), CREEZIO_OPEN_URL_BIN);
+  const kit = path.resolve(
+    kitRoot || process.env.CREEZIO_KIT_ROOT || kitRootDefault(),
+  );
+  const src = path.join(kit, "docker/server/creezio-open-url.sh");
+  if (fs.existsSync(src)) {
+    fs.copyFileSync(src, dest);
+  } else {
+    fs.writeFileSync(dest, CREEZIO_OPEN_URL_FALLBACK, { mode: 0o755 });
+  }
+  chmod755(dest);
+  return dest;
+}
+
+/** @deprecated alias — préférer ensureCreezioOpenUrl */
+export function ensureOpenCreezioServerWrapper(kitRoot?: string): string {
+  return ensureCreezioOpenUrl(kitRoot);
+}
+
+/**
+ * Wrapper par instance : ~/bin/open-creezio-server-N → URL fixe.
+ * Les .desktop appellent ce binaire (pas xdg-open direct).
+ */
+export function writeOpenCreezioServerN(opts: {
+  n: number;
+  url: string;
+  openUrlBin: string;
+}): string {
+  const dest = path.join(binDir(), `open-creezio-server-${opts.n}`);
+  const body = `#!/usr/bin/env bash
+# Raccourci Docker server-${opts.n} — généré par creezio server-docker
+set -euo pipefail
+exec "${opts.openUrlBin}" "${opts.url}"
+`;
+  fs.writeFileSync(dest, body, { mode: 0o755 });
+  chmod755(dest);
+  return dest;
+}
+
 function desktopFileContent(opts: {
   name: string;
   comment: string;
-  url: string;
   icon: string | null;
+  /** Chemin absolu du wrapper open-creezio-server-N (sans args). */
+  execPath: string;
 }): string {
-  const exec = opts.url.includes("'")
-    ? `xdg-open "${opts.url}"`
-    : `xdg-open '${opts.url}'`;
+  const exec = opts.execPath.includes(" ")
+    ? `"${opts.execPath}"`
+    : opts.execPath;
   const lines = [
     "[Desktop Entry]",
     "Version=1.0",
@@ -258,7 +355,7 @@ function desktopFileContent(opts: {
   if (opts.icon) lines.push(`Icon=${opts.icon}`);
   lines.push(
     "Terminal=false",
-    "Categories=Network;Office;",
+    "Categories=Network;",
     "StartupNotify=true",
   );
   return `${lines.join("\n")}\n`;
@@ -267,46 +364,57 @@ function desktopFileContent(opts: {
 /**
  * Génère/met à jour les raccourcis Linux pour chaque instance Compose up.
  * Cibles : ~/Desktop et ~/Bureau (si présents).
+ * Exec → ~/bin/open-creezio-server-N (firefox/chromium/gio/xdg-open…).
  */
 export function writeServerDesktopShortcuts(opts: {
   brandRoot: string;
+  kitRoot?: string;
   instances?: ServerInstance[];
-}): { files: string[]; product: string } {
+}): {
+  files: string[];
+  product: string;
+  wrappers: string[];
+  openUrlBin: string;
+} {
   const instances = opts.instances || DEFAULT_SERVER_INSTANCES;
   const product = inferProductName(opts.brandRoot);
   const slug = sanitizeDesktopProduct(product);
   const icon = resolveServerIcon(opts.brandRoot);
+  const openUrlBin = ensureCreezioOpenUrl(opts.kitRoot);
   const dirs = desktopDirs();
   const files: string[] = [];
+  const wrappers: string[] = [];
   if (!dirs.length) {
     console.log(
       "⚠ aucun ~/Desktop ni ~/Bureau — raccourcis .desktop non écrits",
     );
-    return { files, product };
+    return { files, product, wrappers, openUrlBin };
   }
   for (const inst of instances) {
     const port = resolveInstancePort(inst);
     const url = `http://127.0.0.1:${port}/`;
+    const wrapper = writeOpenCreezioServerN({
+      n: inst.n,
+      url,
+      openUrlBin,
+    });
+    wrappers.push(wrapper);
     const baseName = `${slug}-Server-${inst.n}.desktop`;
     const body = desktopFileContent({
       name: `${product} Server ${inst.n}`,
       comment: `${product} serveur Docker (${inst.id}) — UI/API :${port} (setup /settings via HTTP)`,
-      url,
       icon,
+      execPath: wrapper,
     });
     for (const dir of dirs) {
       const dest = path.join(dir, baseName);
       fs.writeFileSync(dest, body, { mode: 0o755 });
-      try {
-        fs.chmodSync(dest, 0o755);
-      } catch {
-        /* ignore */
-      }
+      chmod755(dest);
       files.push(dest);
-      console.log(`+ raccourci ${dest} → ${url}`);
+      console.log(`+ raccourci ${dest} → Exec=${wrapper} (${url})`);
     }
   }
-  return { files, product };
+  return { files, product, wrappers, openUrlBin };
 }
 
 function ensureElectronBuild(brandRoot: string): void {
@@ -414,6 +522,7 @@ export async function runServerDockerCli(argv: string[]): Promise<void> {
 
     const shortcuts = writeServerDesktopShortcuts({
       brandRoot: paths.brandRoot,
+      kitRoot: paths.kit,
     });
 
     if (args.sub === "proof") {
@@ -451,7 +560,44 @@ export async function runServerDockerCli(argv: string[]): Promise<void> {
         if (!fs.existsSync(f)) {
           throw new Error(`raccourci manquant: ${f}`);
         }
+        const body = fs.readFileSync(f, "utf8");
+        if (/^Exec=.*xdg-open/m.test(body)) {
+          throw new Error(`raccourci utilise encore xdg-open direct: ${f}`);
+        }
+        if (!/^Exec=.*open-creezio-server-\d+/m.test(body)) {
+          throw new Error(`raccourci sans Exec open-creezio-server-N: ${f}`);
+        }
       }
+      for (const w of shortcuts.wrappers) {
+        if (!fs.existsSync(w)) {
+          throw new Error(`wrapper manquant: ${w}`);
+        }
+      }
+      // Smoke réel : lancer le wrapper server-1 (DISPLAY xrdp si besoin).
+      const smokeEnv: NodeJS.ProcessEnv = {
+        ...process.env,
+        HOME: os.homedir(),
+        XAUTHORITY:
+          process.env.XAUTHORITY || path.join(os.homedir(), ".Xauthority"),
+      };
+      if (!smokeEnv.DISPLAY) {
+        const x10 = "/tmp/.X11-unix/X10";
+        smokeEnv.DISPLAY = fs.existsSync(x10) ? ":10" : ":0";
+      }
+      const wrapper1 = shortcuts.wrappers[0]!;
+      const smoke = spawnSync(wrapper1, [], {
+        encoding: "utf8",
+        env: smokeEnv,
+        timeout: 15000,
+      });
+      if (smoke.status !== 0) {
+        throw new Error(
+          `preuve wrapper échouée (${wrapper1}): status=${smoke.status} stderr=${smoke.stderr || smoke.stdout || "?"}`,
+        );
+      }
+      console.log(
+        `✓ wrapper ${path.basename(wrapper1)} → ${(smoke.stdout || "").trim() || "ok"}`,
+      );
       console.log(
         `✓ preuve server-docker : ${instances.length} instances OK + ${shortcuts.files.length} raccourcis (${shortcuts.product})`,
       );

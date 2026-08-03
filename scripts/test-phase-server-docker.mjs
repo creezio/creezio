@@ -16,6 +16,7 @@ test("docker/server artefacts présents", () => {
     "Dockerfile",
     "docker-compose.yml",
     "brand.dockerignore",
+    "creezio-open-url.sh",
     "README.md",
     "AGENTS.md",
   ]) {
@@ -24,6 +25,13 @@ test("docker/server artefacts présents", () => {
       `manquant: docker/server/${f}`,
     );
   }
+  const opener = fs.readFileSync(
+    path.join(dockerServer, "creezio-open-url.sh"),
+    "utf8",
+  );
+  assert.match(opener, /firefox/);
+  assert.match(opener, /gio/);
+  assert.match(opener, /xdg-open/);
   const df = fs.readFileSync(path.join(dockerServer, "Dockerfile"), "utf8");
   assert.match(df, /brand-kernel-harness/);
   assert.match(df, /CREEZIO_HTTP_HOST/);
@@ -61,9 +69,16 @@ test("CLI source : instances numériques + raccourcis bureau", () => {
   assert.match(src, /server-1/);
   assert.match(src, /server-2/);
   assert.match(src, /writeServerDesktopShortcuts/);
+  assert.match(src, /ensureCreezioOpenUrl/);
+  assert.match(src, /writeOpenCreezioServerN/);
+  assert.match(src, /open-creezio-server-/);
+  assert.match(src, /creezio-open-url/);
   assert.match(src, /Desktop/);
   assert.match(src, /Bureau/);
   assert.doesNotMatch(src, /server-a|SERVER_A_PORT/);
+  // Plus d'Exec .desktop = xdg-open seul (erreur « No such file »).
+  assert.doesNotMatch(src, /Exec=\$?\{?xdg-open/);
+  assert.doesNotMatch(src, /`xdg-open '/);
 });
 
 test("listenBrandOsHttp exporte resolveBrandOsHttpHost", () => {

@@ -91,7 +91,7 @@ curl -sS http://127.0.0.1:18792/api/v1/core/health   # server-2
 # Raccourcis générés (Linux RDP / bureau) :
 #   ~/Desktop/TempoFlow-Server-1.desktop
 #   ~/Bureau/TempoFlow-Server-1.desktop
-#   (idem Server-2) — Exec: xdg-open http://127.0.0.1:PORT/
+#   Exec → ~/bin/open-creezio-server-1 → creezio-open-url → firefox/…
 
 creezio server-docker down --brand-root /opt/docker/tempoflow3
 ```
@@ -101,12 +101,19 @@ Override marque TF3 : `--project tf3-servers`.
 
 ## Raccourcis bureau Linux
 
-À chaque `up` / `proof`, le CLI écrit des `.desktop` sur `~/Desktop` et `~/Bureau`
-(s’ils existent) :
+À chaque `up` / `proof`, le CLI écrit :
 
-- Nom : `{Product}-Server-{N}.desktop` (ex. `TempoFlow-Server-1.desktop`)
-- `Exec` : `xdg-open 'http://127.0.0.1:PORT/'`
-- `Icon` : `resources/icons/server.png` (ou `brand-spec/icons/server.png`)
+| Artefact | Rôle |
+|----------|------|
+| `~/bin/creezio-open-url` | Script kit (copie) : essaie firefox → chromium → gio → exo-open → xdg-open |
+| `~/bin/open-creezio-server-N` | Wrapper par instance (URL `http://127.0.0.1:PORT/` figée) |
+| `~/Desktop\|Bureau/{Product}-Server-{N}.desktop` | `Exec=/…/open-creezio-server-N` (**pas** `xdg-open` direct) |
+
+Prérequis hôte RDP/XFCE : un navigateur (`sudo snap install firefox`) et idéalement
+`sudo apt-get install -y xdg-utils`. Le `.desktop` ne plante plus si `xdg-open`
+est absent — le wrapper tombe sur firefox/gio.
+
+`Icon` : `resources/icons/server.png` (ou `brand-spec/icons/server.png`).
 
 ## Wiring marque (TF3 / futures)
 
