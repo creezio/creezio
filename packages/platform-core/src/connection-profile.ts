@@ -94,6 +94,62 @@ export function resolveBootProfile(
   return { profile, showPicker: true };
 }
 
+/**
+ * Profil de secours selon le kind d'app (serveur → local, client → remote).
+ * Jamais `undefined` — toujours un objet avec `.mode`.
+ */
+export function defaultProfileForAppKind(
+  appKind: string | null | undefined,
+): ConnectionProfile {
+  const kind = String(appKind || "")
+    .trim()
+    .toLowerCase();
+  if (kind === "client") {
+    return {
+      mode: "remote",
+      remoteUrl: null,
+      localBind: "127.0.0.1",
+      chosen: false,
+    };
+  }
+  return defaultLocalProfile();
+}
+
+/**
+ * Normalise le retour de `resolveBootProfile` (ou stubs marque) :
+ * - `{ profile, showPicker }` canonique
+ * - profil nu `{ mode, … }` (anciens stubs OS)
+ * - `null` / `undefined` / non-objet → défaut selon `appKind`
+ *
+ * Garantit `profile.mode` toujours défini (plus de crash « reading 'mode' »).
+ */
+export function unwrapBootProfileResult(
+  resolved: unknown,
+  appKind?: string | null,
+): { profile: ConnectionProfile; showPicker: boolean } {
+  const fallback = defaultProfileForAppKind(appKind);
+  if (!resolved || typeof resolved !== "object") {
+    return { profile: fallback, showPicker: true };
+  }
+  const obj = resolved as Record<string, unknown>;
+  if ("profile" in obj) {
+    const inner = obj.profile;
+    const profile =
+      inner && typeof inner === "object"
+        ? sanitizeConnectionProfile(inner as Partial<ConnectionProfile>)
+        : fallback;
+    return {
+      profile: profile?.mode ? profile : fallback,
+      showPicker: "showPicker" in obj ? Boolean(obj.showPicker) : true,
+    };
+  }
+  const bare = sanitizeConnectionProfile(obj as Partial<ConnectionProfile>);
+  return {
+    profile: bare?.mode ? bare : fallback,
+    showPicker: true,
+  };
+}
+
 export function assertProfileReady(
   profile: ConnectionProfile,
 ): ConnectionProfile {

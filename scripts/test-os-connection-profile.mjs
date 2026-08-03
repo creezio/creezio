@@ -12,8 +12,10 @@ import { test } from "node:test";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import {
   defaultLocalProfile,
+  defaultProfileForAppKind,
   sanitizeConnectionProfile,
   resolveBootProfile,
+  unwrapBootProfileResult,
 } from "../packages/platform-core/dist/index.js";
 import { startBrandKernelHarness } from "../packages/app-runtime/dist/index.js";
 import { resolveProbeBrandRoot } from "./lib/resolve-probe-brand.mjs";
@@ -33,6 +35,34 @@ test("connection-profile pure sanitize + resolveBoot", () => {
   assert.match(String(remote.remoteUrl), /^http/);
   const boot = resolveBootProfile(null);
   assert.equal(boot.showPicker, true);
+});
+
+test("unwrapBootProfileResult — stubs nu / undefined ne cassent jamais .mode", () => {
+  // Ancien stub OS : profil nu (pas {profile,showPicker}) → mode défini.
+  const bare = unwrapBootProfileResult({ mode: "local", chosen: true }, "client");
+  assert.equal(bare.profile.mode, "local");
+  assert.equal(bare.showPicker, true);
+
+  // Destructuration historique `{ profile } = bare` → profile undefined.
+  const brokenStub = unwrapBootProfileResult(undefined, "client");
+  assert.equal(brokenStub.profile.mode, "remote");
+  assert.ok(brokenStub.profile.mode);
+
+  const serverDefault = unwrapBootProfileResult(null, "server");
+  assert.equal(serverDefault.profile.mode, "local");
+
+  const nestedEmpty = unwrapBootProfileResult(
+    { profile: undefined, showPicker: true },
+    "server",
+  );
+  assert.equal(nestedEmpty.profile.mode, "local");
+
+  const canon = unwrapBootProfileResult(resolveBootProfile(null), "legacy");
+  assert.equal(canon.profile.mode, "local");
+  assert.equal(canon.showPicker, true);
+
+  assert.equal(defaultProfileForAppKind("client").mode, "remote");
+  assert.equal(defaultProfileForAppKind("server").mode, "local");
 });
 
 test("connection + setup HTTP sur harness probe brand", async () => {

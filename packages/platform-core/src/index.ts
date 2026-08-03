@@ -187,12 +187,14 @@ export type {
 export {
   assertProfileReady,
   defaultLocalProfile,
+  defaultProfileForAppKind,
   normalizeLocalBind,
   normalizeRemoteUrl,
   resolveBootProfile,
   sanitizeConnectionProfile,
   testRemoteHealth,
   unsetConnectionProfile,
+  unwrapBootProfileResult,
 } from "./connection-profile.js";
 
 export type { ProfileLaunch, ProfileMode } from "./profile-launch.js";

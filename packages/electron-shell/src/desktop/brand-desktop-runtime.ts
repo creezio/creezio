@@ -40,6 +40,10 @@ import {
   trackDecision,
   trackExternal,
 } from "@creezio/observability";
+import {
+  defaultProfileForAppKind,
+  unwrapBootProfileResult,
+} from "@creezio/platform-core";
 import { envForNodeScriptSpawn } from "../host/node-runtime.js";
 
 export type BrandDesktopHosts = {
@@ -645,7 +649,10 @@ export function installBrandDesktopRuntime(deps: BrandDesktopDeps): void {
     if (deps.appKind === "server") return; // l'app Serveur ignore les deep-links join
     const target = deps.vertical.parseJoinDeepLink(url);
     if (!target) return;
-    if (deps.bootProfileLaunch.mode === "join" && deps.bootProfileLaunch.serverUrl === target) {
+    if (
+      deps.bootProfileLaunch?.mode === "join" &&
+      deps.bootProfileLaunch?.serverUrl === target
+    ) {
       showMainWindow();
       return;
     }
@@ -2751,13 +2758,19 @@ export function installBrandDesktopRuntime(deps: BrandDesktopDeps): void {
    * Pas de case bind LAN ici : tunnel = accès distant (config serveur / onboarding).
    */
   async function ensureConnectionChosen(view: any): Promise<void> {
+    const safeFallback = defaultProfileForAppKind(deps.appKind);
+
     // App Serveur : pas de picker — la stack locale démarre directement
     // (le splash de progression prend le relais tout de suite).
     if (deps.bootBehavior.forceLocalProfile) {
-      const stored = deps.store().getConnectionProfile();
+      const stored = deps.store().getConnectionProfile?.() ?? null;
+      const bind =
+        stored && typeof stored === "object" && stored.localBind === "0.0.0.0"
+          ? "0.0.0.0"
+          : "127.0.0.1";
       const direct: any = {
         mode: "local",
-        localBind: stored.localBind === "0.0.0.0" ? "0.0.0.0" : "127.0.0.1",
+        localBind: bind,
         chosen: true,
       };
       activeConnectionProfile = direct;
@@ -2772,10 +2785,11 @@ export function installBrandDesktopRuntime(deps: BrandDesktopDeps): void {
 
     // Profil join (argv --tf2-profile=join: ou deep-link tempoflow://join/…) :
     // le serveur cible est déjà connu → picker sauté, connexion directe.
-    if (deps.bootProfileLaunch.mode === "join" && deps.bootProfileLaunch.serverUrl) {
+    const launch = deps.bootProfileLaunch;
+    if (launch && launch.mode === "join" && launch.serverUrl) {
       const direct = deps.vertical.assertProfileReady({
         mode: "remote",
-        remoteUrl: deps.bootProfileLaunch.serverUrl,
+        remoteUrl: launch.serverUrl,
         chosen: true,
       });
       activeConnectionProfile = direct;
@@ -2789,18 +2803,20 @@ export function installBrandDesktopRuntime(deps: BrandDesktopDeps): void {
       return;
     }
 
-    const resolved = deps.vertical.resolveBootProfile(
-      deps.store().getConnectionProfileStored(),
+    let resolved: unknown;
+    try {
+      resolved = deps.vertical.resolveBootProfile(
+        deps.store().getConnectionProfileStored?.() ?? null,
+      );
+    } catch (e) {
+      logError("main", e);
+      resolved = null;
+    }
+    // Compat stubs marque : `{ profile, showPicker }` OU profil nu OU undefined.
+    const { profile, showPicker } = unwrapBootProfileResult(
+      resolved,
+      deps.appKind,
     );
-    // Compat stubs marque : accepter soit `{ profile, showPicker }` soit un profil nu.
-    const profile =
-      resolved && typeof resolved === "object" && "profile" in resolved
-        ? (resolved as { profile: unknown }).profile
-        : resolved;
-    const showPicker =
-      resolved && typeof resolved === "object" && "showPicker" in resolved
-        ? Boolean((resolved as { showPicker?: boolean }).showPicker)
-        : true;
     if (!showPicker) {
       // Garde-fou : deps.vertical.resolveBootProfile doit toujours renvoyer true (pas de skip silencieux).
       log("main", "WARN deps.vertical.resolveBootProfile.showPicker=false — forçage picker");
@@ -2811,12 +2827,16 @@ export function installBrandDesktopRuntime(deps: BrandDesktopDeps): void {
     setSplashStatus(
       joinOnly ? "Choix du serveur à rejoindre…" : "Choix : héberger ou rejoindre…",
     );
-    const last = deps.vertical.sanitizeConnectionProfile(profile) || {
-      mode: "local",
-      localBind: "127.0.0.1",
-      remoteUrl: null,
-      chosen: false,
-    };
+    let last: any;
+    try {
+      last = deps.vertical.sanitizeConnectionProfile?.(profile);
+    } catch (e) {
+      logError("main", e);
+      last = null;
+    }
+    if (!last || typeof last !== "object" || !last.mode) {
+      last = { ...safeFallback };
+    }
     const localSetupDone = deps.store().isSetupComplete();
     let recallLine = "";
     if (joinOnly) {
@@ -2860,11 +2880,16 @@ export function installBrandDesktopRuntime(deps: BrandDesktopDeps): void {
     const chosen = await new Promise<any>((resolve) => {
       connectionChoiceResolver = resolve;
     });
-    activeConnectionProfile = chosen;
+    activeConnectionProfile =
+      chosen && typeof chosen === "object" && chosen.mode
+        ? chosen
+        : { ...safeFallback, chosen: true };
     log(
       "main",
-      `profil connexion choisi : ${chosen.mode}` +
-        (chosen.mode === "remote" ? ` → ${chosen.remoteUrl}` : ` (bind ${chosen.localBind})`) +
+      `profil connexion choisi : ${activeConnectionProfile.mode}` +
+        (activeConnectionProfile.mode === "remote"
+          ? ` → ${activeConnectionProfile.remoteUrl}`
+          : ` (bind ${activeConnectionProfile.localBind})`) +
         " — démarrage serveur / remote ensuite",
     );
     await view.webContents.loadURL(splashHtmlUrl()).catch(() => {});
