@@ -272,19 +272,21 @@ try {
     process.exit(1);
   }
 
-  // La cohérence Meili est exécutée par Node vanilla : le script ne peut pas
-  // vivre seulement dans app.asar. Il est donc une extraResource du kit.
-  const coherenceQuery = path.join(
-    unpacked,
-    "resources",
-    "scripts",
-    "meili-coherence-query.cjs",
-  );
-  if (!fs.existsSync(coherenceQuery)) {
-    console.error(
-      "verify-pack-runtime: meili coherence-query absent de resources/scripts",
+  if (kind === "server") {
+    // La cohérence Meili est exécutée par Node vanilla : le script ne peut pas
+    // vivre seulement dans app.asar. Il est donc une extraResource serveur.
+    const coherenceQuery = path.join(
+      unpacked,
+      "resources",
+      "scripts",
+      "meili-coherence-query.cjs",
     );
-    process.exit(1);
+    if (!fs.existsSync(coherenceQuery)) {
+      console.error(
+        "verify-pack-runtime: meili coherence-query absent de resources/scripts",
+      );
+      process.exit(1);
+    }
   }
 
   // Require ancré DANS l'asar (équivalent createAppRequire packagé)
@@ -527,7 +529,9 @@ try {
   );
   console.log("  parity     ", parityNeedles.join(", "));
   console.log("  appRequire ", "present");
-  console.log("  coherence  ", "meili coherence-query external present");
+  if (kind === "server") {
+    console.log("  coherence  ", "meili coherence-query external present");
+  }
   if (platform === "win" && kind === "server") {
     console.log("  sidecars   ", "meilisearch-win.exe, cloudflared.exe (PE)");
   }
