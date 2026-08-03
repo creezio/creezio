@@ -7,6 +7,7 @@
 Missions principales :
 
 - résoudre les chemins `userData`, DB, logs, uploads, ressources et preloads depuis un `PathsContext` ;
+- résoudre le layout packagé `{installDir}/data/` (`resolvePackagedDataDir`, `guessPackagedDataDir`) ;
 - porter le split `server` / `client` / `legacy` ;
 - définir le schéma `local-config` commun ;
 - gérer le layout SQLite `core` / `brand` / `plugin/<id>` ;

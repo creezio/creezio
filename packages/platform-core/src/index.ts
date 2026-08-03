@@ -3,19 +3,23 @@ export {
 } from "./architecture-version.js";
 export type { ArchitectureVersion } from "./architecture-version.js";
 
-export type { PathsContext } from "./paths.js";
+export type { PathsContext, InstallDataResolveOpts } from "./paths.js";
 export {
+  INSTALL_DATA_DIRNAME,
   feedUrlForKind,
+  guessPackagedDataDir,
   meiliBinaryCandidates,
   resolveAssistantDbPath,
   resolveDbPath,
   resolveHermesHomeDir,
+  resolveInstallRoot,
   resolveLocalConfigPath,
   resolveLogsDir,
   resolveMainLogPath,
   resolveMeiliDataDir,
   resolveN8nHomeDir,
   resolveNodeRuntimeDir,
+  resolvePackagedDataDir,
   resolvePreloadPath,
   resolveResourcesRoot,
   resolveTunnelHomeDir,

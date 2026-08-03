@@ -239,6 +239,29 @@ try {
 }
 fs.closeSync(logFd);
 
+// Preuve layout kit : {installDir}/data/logs/ (pas Roaming / XDG seul).
+const installDataLogs = path.join(unpacked, "data", "logs");
+let installDataOk = false;
+try {
+  if (fs.existsSync(installDataLogs)) {
+    const logs = fs.readdirSync(installDataLogs).filter((f) => f.endsWith(".log"));
+    installDataOk = logs.length > 0;
+    console.log(
+      `smoke-packaged-server: install-data logs=${installDataLogs} files=${logs.join(",") || "(aucun)"}`,
+    );
+  } else {
+    console.log(`smoke-packaged-server: install-data ABSENT ${installDataLogs}`);
+  }
+} catch (e) {
+  console.log(
+    `smoke-packaged-server: install-data check error: ${e instanceof Error ? e.message : e}`,
+  );
+}
+if (ok && !installDataOk) {
+  ok = false;
+  reason = "missing_install_data_logs";
+}
+
 console.log(`smoke-packaged-server: ${ok ? "OK" : "FAIL"} (${reason})`);
 console.log(`smoke-packaged-server: log tail:`);
 const lines = fs.readFileSync(logPath, "utf8").trim().split("\n");

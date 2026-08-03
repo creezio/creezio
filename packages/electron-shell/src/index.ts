@@ -4,6 +4,8 @@
 
 export {
   initLogger,
+  initEarlyBootLogger,
+  ensureLogsDir,
   log,
   logError,
   logFilePath,
@@ -13,6 +15,10 @@ export {
   scoped,
   feedChildLine,
   setOpsLineHandler,
+} from "./logger.js";
+export type {
+  EarlyBootLogResult,
+  EarlyBootLogSource,
 } from "./logger.js";
 
 export {

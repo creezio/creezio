@@ -27,6 +27,10 @@ test("renderNsisInstallerInclude — TF3 segments + macros profondes", () => {
   assert.match(nsh, /launchAtStartup/);
   assert.match(nsh, /installer-prefs\.json/);
   assert.match(nsh, /Software\\Microsoft\\Windows\\CurrentVersion\\Run/);
+  // Layout kit : données sous $INSTDIR\data (pas Roaming).
+  assert.match(nsh, /\$INSTDIR\\data/);
+  assert.match(nsh, /\$INSTDIR\\data\\logs/);
+  assert.match(nsh, /\$INSTDIR\\data\\crash-reports/);
   assert.doesNotMatch(nsh, /placeholder \(custom macros marque\)/);
   assert.doesNotMatch(nsh, /TF2-Server\.exe/);
   assert.doesNotMatch(nsh, /tempoflow2-crm/);

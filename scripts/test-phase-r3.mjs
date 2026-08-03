@@ -31,8 +31,10 @@ check("dist-cjs electron-shell présent", () => {
 
 const shell = require(shellCjs);
 
-check("logger API (scoped / recentLines / logFileTail)", () => {
+check("logger API (scoped / recentLines / logFileTail / early)", () => {
   assert.equal(typeof shell.initLogger, "function");
+  assert.equal(typeof shell.initEarlyBootLogger, "function");
+  assert.equal(typeof shell.ensureLogsDir, "function");
   assert.equal(typeof shell.scoped, "function");
   assert.equal(typeof shell.recentLines, "function");
   assert.equal(typeof shell.logFileTail, "function");

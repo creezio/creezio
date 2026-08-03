@@ -6,7 +6,13 @@
 import fs from "node:fs";
 import path from "node:path";
 import {
+  guessPackagedDataDir,
+  resolvePackagedDataDir,
+} from "@creezio/platform-core";
+import {
   initLogger,
+  initEarlyBootLogger,
+  ensureLogsDir,
   log,
   prepareDesktopBoot,
   writeAppKindFile,
@@ -22,6 +28,7 @@ import {
   reportCrash,
   crashEndpoint,
   crashLogHint,
+  crashReportsDir,
 } from "@creezio/electron-shell";
 import { createMcpFacade } from "@creezio/mcp-facade";
 import { createNavShellAdapter } from "@creezio/shell-ui";
@@ -68,7 +75,29 @@ type ElectronApp = {
   on: (event: string, cb: () => void) => void;
   getVersion?: () => string;
   resourcesPath?: string;
+  getPath?: (name: string) => string;
+  setPath?: (name: string, p: string) => void;
 };
+
+/** Ancre userData sous {installDir}/data — avant crash-reporter / sqlite. */
+function anchorPackagedUserData(app: ElectronApp): string | null {
+  if (!app.isPackaged || typeof app.setPath !== "function") return null;
+  const dataDir = resolvePackagedDataDir({
+    execPath: process.execPath,
+    isPackaged: true,
+    env: process.env,
+  });
+  if (!dataDir) return null;
+  try {
+    fs.mkdirSync(dataDir, { recursive: true });
+    ensureLogsDir(dataDir);
+    fs.mkdirSync(path.join(dataDir, "crash-reports"), { recursive: true });
+    app.setPath("userData", dataDir);
+    return dataDir;
+  } catch {
+    return null;
+  }
+}
 
 type ElectronIpcMain = unknown;
 
@@ -107,14 +136,35 @@ function resolveResourcesRoot(
 export async function startBrandDesktop(
   config: StartBrandDesktopConfig,
 ): Promise<BrandDesktopHandle> {
-  const { app, BrowserWindow, ipcMain } = await loadElectron();
   const manifest = config.manifest;
+  const logBasename = config.logBasename || manifest.logBasename;
+
+  // Ultra-early : {install}/data/logs si arbre packagé détecté, sinon early-logs/tmpdir.
+  const guessedData = guessPackagedDataDir({ execPath: process.execPath });
+  const early = initEarlyBootLogger({
+    basename: logBasename,
+    userDataDir: guessedData,
+    exePath: process.execPath,
+  });
+
+  const { app, BrowserWindow, ipcMain } = await loadElectron();
   const __dirname = config.electronDirname;
   const desktopProfile = config.desktopProfile || "full";
   // P&P : runtime kit par défaut (splash/tray/embeds). Opt-out = "window".
   const desktopShell = config.desktopShell || "runtime";
 
-  // Crash reporter le plus tôt possible (avant prepareDesktopBoot / binaires).
+  // 1) Ancrer userData sous {installDir}/data AVANT crash-reporter / sqlite.
+  const anchored =
+    anchorPackagedUserData(app as ElectronApp) ||
+    (() => {
+      try {
+        return typeof app.getPath === "function" ? app.getPath("userData") : "";
+      } catch {
+        return "";
+      }
+    })();
+
+  // 2) Crash reporter + logger sur le vrai chemin (install/data).
   const prefix = manifest.envPrefix;
   const crashEp =
     (config.crashEndpoint || "").trim() ||
@@ -127,20 +177,22 @@ export async function startBrandDesktop(
     defaultEndpoint: crashEp || "http://127.0.0.1/crash-disabled",
   });
   installGlobalHandlers();
-  let earlyUserData = "";
-  try {
-    const getPath = (app as ElectronApp & { getPath?: (name: string) => string })
-      .getPath;
-    earlyUserData = typeof getPath === "function" ? getPath("userData") : "";
-  } catch {
-    earlyUserData = "";
-  }
-  if (earlyUserData) {
-    initLogger(earlyUserData, config.logBasename || manifest.logBasename);
+  if (anchored) {
+    initEarlyBootLogger({
+      basename: logBasename,
+      userDataDir: anchored,
+      exePath: process.execPath,
+    });
     initCrashReporter(
-      earlyUserData,
+      anchored,
       process.env.npm_package_version || app.getVersion?.() || "0.0.0",
     );
+    log(
+      "boot",
+      `userData=${anchored} layout=${app.isPackaged ? "install-data" : "dev"}`,
+    );
+  } else if (early.logFile) {
+    log("early", `log=${early.logFile} source=${early.source}`);
   }
 
   try {
@@ -155,12 +207,39 @@ export async function startBrandDesktop(
       desktopShell,
     });
   } catch (e) {
+    const message = e instanceof Error ? e.message : String(e);
     reportCrash("boot-failure", {
       step: "startBrandDesktop",
-      message: e instanceof Error ? e.message : String(e),
+      message,
       stack: e instanceof Error ? e.stack : undefined,
       logHint: crashLogHint(),
+      earlyLog: early.logFile || null,
+      earlySource: early.source,
+      userData: anchored || null,
     });
+    try {
+      const electronMod = (await import("electron")) as unknown as {
+        dialog?: { showErrorBox?: (title: string, content: string) => void };
+      };
+      const product =
+        manifest.server?.productName ||
+        manifest.client?.productName ||
+        manifest.brandId;
+      const dataHint =
+        anchored ||
+        guessedData ||
+        path.join(path.dirname(process.execPath), "data");
+      electronMod.dialog?.showErrorBox?.(
+        `${product} — démarrage impossible`,
+        `${message}\n\n` +
+          `Journal : ${crashLogHint() || path.join(dataHint, "logs")}\n` +
+          `Rapports : ${crashReportsDir() || path.join(dataHint, "crash-reports")}\n` +
+          `Données : ${dataHint}\n` +
+          `\nUn rapport a été enregistré localement et envoyé au support si le réseau est disponible.`,
+      );
+    } catch {
+      /* headless / dialog indisponible */
+    }
     throw e;
   }
 }
@@ -209,6 +288,12 @@ async function startBrandDesktopBody(args: {
       path.join(resourcesPath, "build", "electron"),
     ],
   });
+  // Segment server/client : logs/ dès le premier setPath (pas attendre whenReady).
+  try {
+    ensureLogsDir(boot.userDataDir);
+  } catch {
+    /* best-effort */
+  }
   initLogger(boot.userDataDir, config.logBasename || manifest.logBasename);
   // Ré-init sur le vrai userData (server vs client peuvent différer).
   initCrashReporter(

@@ -4,12 +4,80 @@
  * Pas d'import Electron ici (testable depuis Node). L'appelant fournit
  * `userDataRoot` (ex. `app.getPath("userData")`) et `isPackaged`.
  *
+ * Layout packagé (échelle kit) : `{installDir}/data/` — logs, crash-reports,
+ * sqlite, embeds. Pas de Roaming/%APPDATA% pour les données runtime.
+ *
  * Source d'abstraction : electron/paths.ts (TF2 0.10.26 / Certivan / Fidu).
  */
 
+import fs from "node:fs";
 import path from "node:path";
 import type { AppManifest } from "@creezio/brand-config";
 import { envKey } from "@creezio/brand-config";
+
+/** Nom du dossier data sous l'install (portable). */
+export const INSTALL_DATA_DIRNAME = "data";
+
+export type InstallDataResolveOpts = {
+  execPath: string;
+  isPackaged: boolean;
+  env?: NodeJS.ProcessEnv;
+  /** Sous-dossier (défaut `data`). */
+  dataDirName?: string;
+};
+
+/**
+ * Racine d'installation writable (dossier contenant l'exe / l'AppImage).
+ * `null` si non packagé.
+ *
+ * - Windows NSIS / linux-unpacked : `dirname(execPath)`
+ * - AppImage : `dirname($APPIMAGE)` (le squashfs monté est read-only)
+ */
+export function resolveInstallRoot(
+  opts: InstallDataResolveOpts,
+): string | null {
+  if (!opts.isPackaged) return null;
+  const env = opts.env ?? process.env;
+  const appImage = (env.APPIMAGE || "").trim();
+  if (appImage) return path.dirname(path.resolve(appImage));
+  return path.dirname(path.resolve(opts.execPath));
+}
+
+/**
+ * userData packagé = `{installRoot}/data`.
+ * `null` si non packagé (garder le défaut Electron / remap segment).
+ */
+export function resolvePackagedDataDir(
+  opts: InstallDataResolveOpts,
+): string | null {
+  const root = resolveInstallRoot(opts);
+  if (!root) return null;
+  return path.join(root, opts.dataDirName || INSTALL_DATA_DIRNAME);
+}
+
+/**
+ * Heuristique avant `app.isPackaged` : `resources/` à côté de l'exe,
+ * ou `$APPIMAGE`. Sert au log ultra-early.
+ */
+export function guessPackagedDataDir(opts: {
+  execPath: string;
+  env?: NodeJS.ProcessEnv;
+  dataDirName?: string;
+  existsSync?: (p: string) => boolean;
+}): string | null {
+  const env = opts.env ?? process.env;
+  const exists = opts.existsSync ?? ((p: string) => fs.existsSync(p));
+  const name = opts.dataDirName || INSTALL_DATA_DIRNAME;
+  const appImage = (env.APPIMAGE || "").trim();
+  if (appImage) {
+    return path.join(path.dirname(path.resolve(appImage)), name);
+  }
+  const install = path.dirname(path.resolve(opts.execPath));
+  if (exists(path.join(install, "resources"))) {
+    return path.join(install, name);
+  }
+  return null;
+}
 
 export type PathsContext = {
   manifest: AppManifest;

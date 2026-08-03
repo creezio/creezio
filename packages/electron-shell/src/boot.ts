@@ -4,7 +4,8 @@
  * Les apps marques appellent `prepareDesktopBoot(manifest)` **avant**
  * `app.requestSingleInstanceLock()` pour isoler userData Client/Serveur.
  *
- * Le monolithe main.ts (catalogue, tabs fournisseurs, Hermes…) reste vertical.
+ * Packagé : userData = `{installDir}/data/` (portable, pas Roaming).
+ * Dev : remap segment APPDATA historique si kind client/server.
  */
 
 import fs from "node:fs";
@@ -20,11 +21,13 @@ import {
   parseProfileArgv,
   readAppKindFile,
   resolveAppKind,
+  resolvePackagedDataDir,
   userDataDirForAppKind,
   type BootBehavior,
   type ProfileLaunch,
   type RuntimeAppKind,
 } from "@creezio/platform-core";
+import { ensureLogsDir } from "./logger.js";
 
 export type DesktopBootContext = {
   manifest: AppManifest;
@@ -34,6 +37,8 @@ export type DesktopBootContext = {
   sessionPartition: string;
   /** userData effectif après éventuel setPath. */
   userDataDir: string;
+  /** true si ancré sous {installDir}/data. */
+  installDataLayout: boolean;
 };
 
 export type PrepareDesktopBootOptions = {
@@ -71,19 +76,48 @@ export async function prepareDesktopBoot(
   const bootBehavior = bootBehaviorFor(appKind, profileLaunch);
 
   let userData = app.getPath("userData");
-  if (appKind === "server" || appKind === "client") {
+  let installDataLayout = false;
+
+  // Packagé : ancrer sous {installDir}/data (writable, visible pour l'utilisateur).
+  if (app.isPackaged) {
+    const dataDir = resolvePackagedDataDir({
+      execPath: process.execPath,
+      isPackaged: true,
+      env,
+    });
+    if (dataDir) {
+      fs.mkdirSync(dataDir, { recursive: true });
+      if (path.resolve(dataDir) !== path.resolve(userData)) {
+        app.setPath("userData", dataDir);
+        userData = dataDir;
+      }
+      installDataLayout = true;
+    }
+  } else if (appKind === "server" || appKind === "client") {
+    // Dev / unpackaged : remap segment historique (comportement inchangé).
     const target = userDataDirForAppKind(manifest, appKind, userData);
     if (target && path.resolve(target) !== path.resolve(userData)) {
       fs.mkdirSync(target, { recursive: true });
       app.setPath("userData", target);
       userData = target;
     }
+  }
+
+  if (appKind === "server" || appKind === "client") {
     app.setName(displayNameFor(manifest, appKind));
     try {
       app.setAppUserModelId(appUserModelIdFor(manifest, appKind));
     } catch {
       /* non-Windows */
     }
+  }
+
+  // Premier lancement : créer logs/ + crash-reports/ immédiatement.
+  try {
+    ensureLogsDir(userData);
+    fs.mkdirSync(path.join(userData, "crash-reports"), { recursive: true });
+  } catch {
+    /* best-effort — initEarlyBootLogger / initLogger ont des fallbacks */
   }
 
   return {
@@ -93,6 +127,7 @@ export async function prepareDesktopBoot(
     profileLaunch,
     sessionPartition: appSessionPartition(manifest),
     userDataDir: userData,
+    installDataLayout,
   };
 }
 

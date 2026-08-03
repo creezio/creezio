@@ -4125,15 +4125,13 @@ export function installBrandDesktopRuntime(deps: BrandDesktopDeps): void {
         stack: e instanceof Error ? e.stack : undefined,
         stage: deps.vertical.getBootStage(),
       });
-      const udSeg =
-        deps.appKind === "server"
-          ? deps.manifest.server?.userDataSegment
-          : deps.manifest.client?.userDataSegment;
+      const dataRoot = deps.paths.userDataDir();
       dialog.showErrorBox(
         `${productName} — le démarrage a échoué`,
         `${e instanceof Error ? e.message : e}\n\n` +
-          `Journal : ${crashLogHint()}\n` +
-          `Rapports : ${crashReportsDir() || `%APPDATA%\\${udSeg || "…"}\\crash-reports`}\n\n` +
+          `Journal : ${crashLogHint() || `${dataRoot}\\logs`}\n` +
+          `Rapports : ${crashReportsDir() || `${dataRoot}\\crash-reports`}\n` +
+          `Données : ${dataRoot}\n\n` +
           `Un rapport a été enregistré localement et envoyé au support si le réseau est disponible.`,
       );
       app.quit();

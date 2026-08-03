@@ -4,6 +4,7 @@
  */
 
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 
 const MAX_LOG_BYTES = 8 * 1024 * 1024;
@@ -29,6 +30,74 @@ export function setOpsLineHandler(
   opsLineHandler = handler;
 }
 
+/** Crée `userData/logs/` immédiatement (premier lancement / avant initLogger). */
+export function ensureLogsDir(userDataDir: string): string {
+  const dir = path.join(userDataDir, "logs");
+  fs.mkdirSync(dir, { recursive: true });
+  return dir;
+}
+
+export type EarlyBootLogSource = "userData" | "exe" | "tmpdir";
+
+export type EarlyBootLogResult = {
+  logDir: string;
+  logFile: string;
+  source: EarlyBootLogSource;
+};
+
+/**
+ * Logger ultra-early (avant prepareDesktopBoot / userData server).
+ * Essaye userData → dossier `early-logs` à côté de l’exe → tmpdir.
+ * Écrit la 1ʳᵉ ligne de façon synchrone (utile si crash preload/native ensuite).
+ */
+export function initEarlyBootLogger(opts: {
+  basename?: string;
+  userDataDir?: string | null;
+  /** Défaut : process.execPath */
+  exePath?: string;
+}): EarlyBootLogResult {
+  const basename = opts.basename || logBasename || "creezio-main";
+  logBasename = basename;
+  const exePath = opts.exePath || process.execPath;
+  const candidates: { dir: string; source: EarlyBootLogSource }[] = [];
+  if (opts.userDataDir) {
+    candidates.push({
+      dir: path.join(opts.userDataDir, "logs"),
+      source: "userData",
+    });
+  }
+  candidates.push({
+    dir: path.join(path.dirname(exePath), "early-logs"),
+    source: "exe",
+  });
+  candidates.push({
+    dir: path.join(os.tmpdir(), `creezio-early-${basename}`),
+    source: "tmpdir",
+  });
+
+  for (const c of candidates) {
+    try {
+      fs.mkdirSync(c.dir, { recursive: true });
+      const file = path.join(c.dir, `${basename}.log`);
+      const line = `${new Date().toISOString()} [early] --- démarrage early source=${c.source} ---`;
+      fs.appendFileSync(file, `${line}\n`, "utf8");
+      logDir = c.dir;
+      logFile = file;
+      ring.push(line);
+      if (ring.length > RING_SIZE) ring.shift();
+      try {
+        console.log(line);
+      } catch {
+        /* ignore */
+      }
+      return { logDir: c.dir, logFile: file, source: c.source };
+    } catch {
+      /* essai suivant */
+    }
+  }
+  return { logDir: "", logFile: "", source: "tmpdir" };
+}
+
 /** À appeler tôt (après app.whenReady) avec le dossier userData. */
 export function initLogger(
   userDataDir: string,
@@ -36,8 +105,7 @@ export function initLogger(
 ): void {
   try {
     logBasename = basename;
-    logDir = path.join(userDataDir, "logs");
-    fs.mkdirSync(logDir, { recursive: true });
+    logDir = ensureLogsDir(userDataDir);
     logFile = path.join(logDir, `${logBasename}.log`);
     archivePreviousBootLog();
     log("logger", `--- démarrage ${new Date().toISOString()} ---`);

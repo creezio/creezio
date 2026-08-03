@@ -32,6 +32,27 @@ repos marque.**
 4. **Fidu** : `features.plugins` / `features.fleet` peuvent être `false` — ne pas forcer.
 5. **Dual-write interdit** : cutovers C* terminés ; pas de shadow brand « en plus » du kit.
 
+## Install-dir data layout (toutes marques)
+
+Packagé (`app.isPackaged`) : **toutes** les données runtime vivent sous
+`{installDir}/data/` — pas sous Roaming / `%APPDATA%`.
+
+| Chemin | Contenu |
+|--------|---------|
+| `{installDir}/data/` | `userData` Electron (`app.setPath`) |
+| `{installDir}/data/logs/` | journal main (`{logBasename}.log`) |
+| `{installDir}/data/crash-reports/` | JSON crash + `pending/` |
+| `{installDir}/data/sqlite/`, embeds… | DB, Hermes/n8n homes, Meili… |
+
+- Windows NSIS : `Local\Programs\<Product>\data\` (writable utilisateur).
+- AppImage : `{dirname($APPIMAGE)}/data/` (le mount squashfs est read-only).
+- Dev / non packagé : comportement Electron + remap `userDataSegment` inchangé.
+- SoT : `resolvePackagedDataDir` / `guessPackagedDataDir` (`@creezio/platform-core`),
+  ancré dans `startBrandDesktop` + `prepareDesktopBoot` — la factory/`--from-prd`
+  hérite automatiquement via `@creezio/app-runtime`.
+- NSIS : crée `$INSTDIR\data` à l’install ; purge optionnelle à la désinstall.
+- Ne **pas** documenter Roaming comme lieu des logs pour les builds packagés.
+
 ## Ordre de build / dépendances
 
 Voir `package.json` script `build:packages`. Ordre typique :
