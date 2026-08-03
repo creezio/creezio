@@ -18,6 +18,10 @@ import {
   type ProductModel,
 } from "./product-model.js";
 import { printBrandHelp, runBrandCli } from "./brand-cli.js";
+import {
+  printServerDockerHelp,
+  runServerDockerCli,
+} from "./server-docker-cli.js";
 
 export type CliArgs = {
   command: string;
@@ -33,7 +37,7 @@ export type CliArgs = {
   fromPrd?: string;
   /** Dossier icônes marque (client.png / server.png [/ tray-icon.png]). */
   iconsDir?: string;
-  /** Args restants pour sous-commandes (brand …). */
+  /** Args restants pour sous-commandes (brand … / server-docker …). */
   rest?: string[];
 };
 
@@ -42,7 +46,7 @@ export function parseArgs(argv: string[]): CliArgs {
   const rest = [...argv];
   out.command = rest.shift() || "";
 
-  if (out.command === "brand") {
+  if (out.command === "brand" || out.command === "server-docker") {
     out.rest = rest;
     if (rest.includes("--help") || rest.includes("-h")) out.help = true;
     return out;
@@ -86,6 +90,7 @@ Usage:
   creezio new-app --from-prd <prd.md> [--out <dir>] [overrides]
   creezio new-app --name <ProductName> --id <brandId> --domain <host> [options]
   creezio brand init|doctor|apply|smoke …
+  creezio server-docker build|up|down|ps|proof --brand-root <app>
 
 Mode produit (recommandé) :
   --from-prd      Brief / PRD markdown non technique
@@ -96,6 +101,10 @@ BrandSpec (agent créateur) :
   creezio brand doctor --spec <brand-spec>
   creezio brand apply --spec <brand-spec> --out <app> --force
   creezio brand smoke --app <app>
+
+Serveur Docker headless (multi-instances, sans Electron) :
+  creezio server-docker build|up|down|proof --brand-root <marque>
+  Doc : docker/server/README.md
 
 Overrides optionnels avec --from-prd :
   --name, --id, --domain, --out, --env-prefix, --feed-token, --sandbox/--no-sandbox, --force
@@ -110,6 +119,7 @@ Exemples:
   creezio new-app --from-prd docs/experiences/tempoflow3/PRD-PRODUIT.md --out /tmp/tempoflow3 \\
     --icons-dir /opt/docker/tempoflow2/crm/resources/icons
   creezio brand apply --spec apps/tempoflow3/brand-spec --out apps/tempoflow3 --force
+  creezio server-docker proof --brand-root /opt/docker/tempoflow3
 `);
 }
 
@@ -167,6 +177,16 @@ export async function runCli(argv: string[]): Promise<void> {
     return;
   }
 
+  if (args.command === "server-docker") {
+    const rest = args.rest || [];
+    if (args.help || rest[0] === "--help" || rest[0] === "-h") {
+      printServerDockerHelp();
+      return;
+    }
+    await runServerDockerCli(rest);
+    return;
+  }
+
   if (args.help || !args.command) {
     printHelp();
     if (!args.command) process.exit(args.help ? 0 : 1);
@@ -175,7 +195,7 @@ export async function runCli(argv: string[]): Promise<void> {
 
   if (args.command !== "new-app") {
     throw new Error(
-      `Commande inconnue: ${args.command} (new-app | brand)`,
+      `Commande inconnue: ${args.command} (new-app | brand | server-docker)`,
     );
   }
 

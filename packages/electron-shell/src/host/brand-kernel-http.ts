@@ -43,15 +43,32 @@ function readBody(req: http.IncomingMessage): Promise<unknown> {
   });
 }
 
+function resolveKernelHttpHost(explicit?: string): string {
+  const raw = String(
+    explicit ||
+      process.env.CREEZIO_HTTP_HOST ||
+      process.env.METIER_HOST ||
+      "127.0.0.1",
+  ).trim();
+  if (raw === "0.0.0.0" || raw === "*" || raw === "::") return "0.0.0.0";
+  return raw || "127.0.0.1";
+}
+
+function advertiseBaseUrl(host: string, port: number): string {
+  const advertise = host === "0.0.0.0" ? "127.0.0.1" : host;
+  return `http://${advertise}:${port}`;
+}
+
 /**
- * Ouvre un serveur HTTP loopback qui délègue à `api.handle`.
+ * Ouvre un serveur HTTP qui délègue à `api.handle`.
+ * Bind Docker : `CREEZIO_HTTP_HOST=0.0.0.0`.
  */
 export async function listenBrandKernelHttp(opts: {
   api: BrandKernelLike;
   port?: number;
   host?: string;
 }): Promise<BrandKernelHttpHandle> {
-  const host = opts.host || "127.0.0.1";
+  const host = resolveKernelHttpHost(opts.host);
   const port = opts.port && opts.port > 0 ? opts.port : await findFreePort();
 
   const server = http.createServer(async (req, res) => {
@@ -98,7 +115,7 @@ export async function listenBrandKernelHttp(opts: {
 
   return {
     port,
-    baseUrl: `http://${host}:${port}`,
+    baseUrl: advertiseBaseUrl(host, port),
     server,
     close: () =>
       new Promise((resolve, reject) => {

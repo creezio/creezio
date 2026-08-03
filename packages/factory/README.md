@@ -32,6 +32,15 @@ creezio new-app \
 
 Squelette OS + slot métier vide (comportement historique Phase D).
 
+### Serveur Docker headless
+
+```bash
+creezio server-docker proof --brand-root /opt/docker/tempoflow3
+```
+
+Image générique + Compose multi-instances (`server-a` / `server-b`) —
+SoT dans `docker/server/` (sans Electron/AppImage). Voir `docker/server/README.md`.
+
 ## Options
 
 | Option | Description |

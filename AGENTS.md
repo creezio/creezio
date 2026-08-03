@@ -70,6 +70,7 @@ resync vendor (`scripts/sync-creezio-vendor.sh` côté marque, `CREEZIO_KIT_ROOT
 | BrandSpec YAML / doctor | `brand-spec` |
 | Publish / remote-build | `desktop-tooling` |
 | `creezio new-app` / `creezio brand` | `factory` |
+| Serveur Docker headless multi-instances | `docker/server` + `creezio server-docker` |
 | Semver / impact / registre org | `propagation` |
 
 ## Tests

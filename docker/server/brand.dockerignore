@@ -1,0 +1,35 @@
+# Copié en `.dockerignore` à la racine marque avant `docker build`
+# (CLI `creezio server-docker build` le pose si absent).
+
+.git
+.gitignore
+.env
+.env.*
+!.env.example
+**/.env
+**/.env.*
+**/node_modules
+**/dist-electron
+**/dist-electron-server
+**/ui
+**/ui/node_modules
+**/ui/.next
+**/dumps
+**/crm
+**/src
+**/data
+**/docker-data
+**/docker-data/**
+**/*.AppImage
+**/*.exe
+**/*.blockmap
+**/latest*.yml
+**/.DS_Store
+**/coverage
+**/tmp
+**/*.log
+agent-transcripts
+.cursor
+docs
+*.md
+!README.md

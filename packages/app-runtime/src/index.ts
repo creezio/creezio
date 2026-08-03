@@ -24,6 +24,7 @@ export {
 } from "./compose-brand-os.js";
 export {
   listenBrandOsHttp,
+  resolveBrandOsHttpHost,
   type BrandOsHttpHandle,
 } from "./listen-brand-os-http.js";
 export {

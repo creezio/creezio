@@ -20,6 +20,8 @@ Toute évolution Meili / HTTP kernel / session IPC se fait **ici** (ou dans
 - Surface MCP locale : `CREEZIO_TUNNEL_LOCAL` (défaut on)
 - Sonde agrégée : `GET /api/v1/os/ready`
 - Opt-out shell : `CREEZIO_DESKTOP_SHELL=window`
+- Bind Docker/headless : `CREEZIO_HTTP_HOST=0.0.0.0` (ou `METIER_HOST`)
+  — voir `docker/server/` + `creezio server-docker`
 
 ## Ne pas faire
 

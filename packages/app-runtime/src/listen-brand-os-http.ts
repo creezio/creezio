@@ -67,6 +67,23 @@ function send(
   res.end(payload);
 }
 
+/** Bind HTTP — Docker/headless : `CREEZIO_HTTP_HOST=0.0.0.0` (ou METIER_HOST). */
+export function resolveBrandOsHttpHost(explicit?: string): string {
+  const raw = String(
+    explicit ||
+      process.env.CREEZIO_HTTP_HOST ||
+      process.env.METIER_HOST ||
+      "127.0.0.1",
+  ).trim();
+  if (raw === "0.0.0.0" || raw === "*" || raw === "::") return "0.0.0.0";
+  return raw || "127.0.0.1";
+}
+
+function advertiseBaseUrl(host: string, port: number): string {
+  const advertise = host === "0.0.0.0" ? "127.0.0.1" : host;
+  return `http://${advertise}:${port}`;
+}
+
 export async function listenBrandOsHttp(opts: {
   api: ApiKernel;
   mcp: McpFacade;
@@ -84,7 +101,7 @@ export async function listenBrandOsHttp(opts: {
    */
   getMailsStore?: () => SqliteMailsStore | null;
 }): Promise<BrandOsHttpHandle> {
-  const host = opts.host || "127.0.0.1";
+  const host = resolveBrandOsHttpHost(opts.host);
   const port = opts.port && opts.port > 0 ? opts.port : await findFreePort();
   const emailSurface = mountBrandEmailSurface(
     opts.getMailsStore ? { getStore: opts.getMailsStore } : undefined,
@@ -763,7 +780,7 @@ export async function listenBrandOsHttp(opts: {
 
   return {
     port,
-    baseUrl: `http://${host}:${port}`,
+    baseUrl: advertiseBaseUrl(host, port),
     server,
     close: () =>
       new Promise((resolve, reject) => {

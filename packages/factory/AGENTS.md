@@ -37,7 +37,8 @@ en jumeau dans `main.ts`.
 ## Points d'entrée
 
 - `bin/creezio.js` : binaire npm.
-- `src/cli.ts` : `new-app` + dispatch `brand`.
+- `src/cli.ts` : `new-app` + dispatch `brand` / `server-docker`.
+- `src/server-docker-cli.ts` : serveurs marque headless (`docker/server`).
 - `src/brand-cli.ts` : BrandSpec init/doctor/apply/smoke.
 - `src/product-model.ts` : `ProductModel`, `parseProductPrd`, `safeBrandId`.
 - `src/scaffold.ts` / `scaffold-from-prd.ts` : artefacts.
