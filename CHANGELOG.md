@@ -3,6 +3,13 @@
 
 ## [Unreleased]
 
+### Fixed — raccourcis Server Docker (`xdg-open` manquant)
+
+- `TempoFlow-Server-{N}.desktop` : `Exec` → `~/bin/open-creezio-server-N`
+  → `~/bin/creezio-open-url` (firefox/chromium/`gio`/…), plus `xdg-open` seul.
+- Cause user : `Failed to execute child process "xdg-open" (No such file…)`.
+- CLI `creezio server-docker` pose les wrappers à chaque `up` / `proof`.
+
 ### Packaging Electron Windows (client slim / server bins)
 
 - `buildElectronBuilderConfig` : client slim **sans** `resources/bin` (parité TF2) ;
