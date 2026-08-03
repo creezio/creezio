@@ -73,12 +73,21 @@ test("CLI source : instances numériques + raccourcis bureau", () => {
   assert.match(src, /writeOpenCreezioServerN/);
   assert.match(src, /open-creezio-server-/);
   assert.match(src, /creezio-open-url/);
+  assert.match(src, /markDesktopTrusted|metadata::trusted/);
+  assert.match(src, /StartupNotify=false/);
   assert.match(src, /Desktop/);
   assert.match(src, /Bureau/);
   assert.doesNotMatch(src, /server-a|SERVER_A_PORT/);
   // Plus d'Exec .desktop = xdg-open seul (erreur « No such file »).
   assert.doesNotMatch(src, /Exec=\$?\{?xdg-open/);
   assert.doesNotMatch(src, /`xdg-open '/);
+  const sh = fs.readFileSync(
+    path.join(root, "docker/server/creezio-open-url.sh"),
+    "utf8",
+  );
+  assert.match(sh, /\.local\/firefox\/firefox/);
+  assert.match(sh, /open-server\.log/);
+  assert.match(sh, /\/snap\/bin\/firefox/);
 });
 
 test("listenBrandOsHttp exporte resolveBrandOsHttpHost", () => {

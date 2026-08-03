@@ -22,6 +22,13 @@
 - Cause user : `Failed to execute child process "xdg-open" (No such file…)`.
 - CLI `creezio server-docker` pose les wrappers à chaque `up` / `proof`.
 
+### Fixed — double-clic Server-N silencieux (XFCE / xrdp)
+
+- Causes : `.desktop` non `metadata::trusted` ; `StartupNotify=true` sur bash ;
+  snap Firefox tué hors cgroup (`is not a snap cgroup`) ; faux succès `gio open`.
+- Fix : trust + `StartupNotify=false` ; log `~/.local/state/tempoflow-server/open-server.log` ;
+  priorité `~/.local/firefox/firefox` (tarball) puis `/snap/bin/firefox`.
+
 ### Packaging Electron Windows (client slim / server bins)
 
 - `buildElectronBuilderConfig` : client slim **sans** `resources/bin` (parité TF2) ;

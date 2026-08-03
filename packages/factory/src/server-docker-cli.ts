@@ -244,9 +244,13 @@ export const CREEZIO_OPEN_URL_BIN = "creezio-open-url";
 
 /** Fallback inline si le script kit est absent (tests / kit partiel). */
 const CREEZIO_OPEN_URL_FALLBACK = `#!/usr/bin/env bash
-set -euo pipefail
+set -u
 URL="\${1:-}"
-[[ -n "\$URL" ]] || { echo "usage: creezio-open-url <url>" >&2; exit 2; }
+LOG_DIR="\${XDG_STATE_HOME:-\${HOME:-/home/deploy}/.local/state}/tempoflow-server"
+LOG="\$LOG_DIR/open-server.log"
+mkdir -p "\$LOG_DIR" 2>/dev/null || true
+log() { echo "[\$(date -Iseconds 2>/dev/null || date)] \$*" >>"\$LOG" 2>/dev/null || true; echo "\$*" >&2; }
+[[ -n "\$URL" ]] || { log "ERROR usage: creezio-open-url <url>"; exit 2; }
 if [[ -z "\${DISPLAY:-}" ]]; then
   for sock in /tmp/.X11-unix/X10 /tmp/.X11-unix/X*; do
     [[ -S "\$sock" ]] || continue
@@ -257,24 +261,19 @@ if [[ -z "\${DISPLAY:-}" ]]; then
   done
 fi
 export XAUTHORITY="\${XAUTHORITY:-\${HOME:-/home/deploy}/.Xauthority}"
-for c in firefox chromium chromium-browser google-chrome google-chrome-stable \\
-  brave-browser microsoft-edge xdg-open x-www-browser sensible-browser; do
-  if command -v "\$c" >/dev/null 2>&1; then
-    nohup "\$c" "\$URL" >/dev/null 2>&1 &
-    echo "opened with \$c → \$URL (pid \$!)"
-    exit 0
+export PATH="/snap/bin:/usr/local/bin:/usr/bin:/bin:\${PATH:-}"
+export PATH="\${HOME:-/home/deploy}/bin:\${HOME:-/home/deploy}/.local/firefox:/snap/bin:/usr/bin:/bin:\${PATH:-}"
+log "start url=\$URL DISPLAY=\${DISPLAY:-}"
+for bin in "\${HOME:-/home/deploy}/.local/firefox/firefox" /snap/bin/firefox \\
+  /usr/bin/firefox-esr /usr/bin/firefox firefox \\
+  /usr/bin/chromium-browser /usr/bin/chromium chromium; do
+  if [[ -x "\$bin" ]] || command -v "\$bin" >/dev/null 2>&1; then
+    r="\$bin"; [[ -x "\$bin" ]] || r="\$(command -v "\$bin")"
+    nohup env MOZ_DISABLE_CONTENT_SANDBOX=1 "\$r" "\$URL" >>"\$LOG" 2>&1 &
+    log "OK \$r → \$URL (pid \$!)"; echo "opened with \$r → \$URL (pid \$!)"; exit 0
   fi
 done
-if command -v gio >/dev/null 2>&1; then
-  nohup gio open "\$URL" >/dev/null 2>&1 &
-  echo "opened with gio → \$URL"; exit 0
-fi
-if command -v exo-open >/dev/null 2>&1; then
-  nohup exo-open --launch WebBrowser "\$URL" >/dev/null 2>&1 &
-  echo "opened with exo-open → \$URL"; exit 0
-fi
-echo "creezio-open-url: aucun navigateur pour \$URL" >&2
-exit 1
+log "ERROR aucun navigateur pour \$URL"; exit 1
 `;
 
 function binDir(): string {
@@ -326,12 +325,31 @@ export function writeOpenCreezioServerN(opts: {
   const dest = path.join(binDir(), `open-creezio-server-${opts.n}`);
   const body = `#!/usr/bin/env bash
 # Raccourci Docker server-${opts.n} — généré par creezio server-docker
-set -euo pipefail
+set -u
+LOG_DIR="\${XDG_STATE_HOME:-\${HOME:-/home/deploy}/.local/state}/tempoflow-server"
+LOG="\$LOG_DIR/open-server.log"
+mkdir -p "\$LOG_DIR" 2>/dev/null || true
+echo "[\$(date -Iseconds 2>/dev/null || date)] open-creezio-server-${opts.n} → ${opts.url} DISPLAY=\${DISPLAY:-}" >>"\$LOG" 2>/dev/null || true
+export PATH="/snap/bin:/usr/local/bin:/usr/bin:/bin:\${PATH:-}"
 exec "${opts.openUrlBin}" "${opts.url}"
 `;
   fs.writeFileSync(dest, body, { mode: 0o755 });
   chmod755(dest);
   return dest;
+}
+
+function markDesktopTrusted(desktopPath: string): void {
+  // XFCE/GNOME refuse le double-clic tant que metadata::trusted n'est pas true.
+  const r = spawnSync(
+    "gio",
+    ["set", desktopPath, "metadata::trusted", "true"],
+    { encoding: "utf8" },
+  );
+  if (r.status !== 0) {
+    console.log(
+      `⚠ gio set metadata::trusted échoué pour ${desktopPath}: ${r.stderr || r.stdout || r.status}`,
+    );
+  }
 }
 
 function desktopFileContent(opts: {
@@ -356,7 +374,8 @@ function desktopFileContent(opts: {
   lines.push(
     "Terminal=false",
     "Categories=Network;",
-    "StartupNotify=true",
+    // false : le wrapper bash n'émet pas de startup notification → sinon XFCE « rien ».
+    "StartupNotify=false",
   );
   return `${lines.join("\n")}\n`;
 }
@@ -410,8 +429,9 @@ export function writeServerDesktopShortcuts(opts: {
       const dest = path.join(dir, baseName);
       fs.writeFileSync(dest, body, { mode: 0o755 });
       chmod755(dest);
+      markDesktopTrusted(dest);
       files.push(dest);
-      console.log(`+ raccourci ${dest} → Exec=${wrapper} (${url})`);
+      console.log(`+ raccourci ${dest} → Exec=${wrapper} (${url}) [trusted]`);
     }
   }
   return { files, product, wrappers, openUrlBin };

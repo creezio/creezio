@@ -105,13 +105,15 @@ Override marque TF3 : `--project tf3-servers`.
 
 | Artefact | Rôle |
 |----------|------|
-| `~/bin/creezio-open-url` | Script kit (copie) : essaie firefox → chromium → gio → exo-open → xdg-open |
-| `~/bin/open-creezio-server-N` | Wrapper par instance (URL `http://127.0.0.1:PORT/` figée) |
+| `~/bin/creezio-open-url` | Script kit : `~/.local/firefox` → snap firefox → chromium → gio → xdg-open |
+| `~/bin/open-creezio-server-N` | Wrapper par instance (URL `http://127.0.0.1:PORT/` figée) + log |
 | `~/Desktop\|Bureau/{Product}-Server-{N}.desktop` | `Exec=/…/open-creezio-server-N` (**pas** `xdg-open` direct) |
 
-Prérequis hôte RDP/XFCE : un navigateur (`sudo snap install firefox`) et idéalement
-`sudo apt-get install -y xdg-utils`. Le `.desktop` ne plante plus si `xdg-open`
-est absent — le wrapper tombe sur firefox/gio.
+- Log : `~/.local/state/tempoflow-server/open-server.log`
+- Trust XFCE : `gio set … metadata::trusted true` (posé par le CLI)
+- `StartupNotify=false` (évite silence XFCE sur wrapper bash)
+- Préférer Firefox **tarball** dans `~/.local/firefox` : le snap échoue souvent
+  hors cgroup session (`is not a snap cgroup`) sous xrdp / agents.
 
 `Icon` : `resources/icons/server.png` (ou `brand-spec/icons/server.png`).
 
