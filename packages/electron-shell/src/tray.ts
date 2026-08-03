@@ -156,17 +156,41 @@ export function installCloseToTray(
     isQuitting: () => boolean;
     closeToTrayEnabled: () => boolean;
     productName?: string;
+    /** Si true (ex. boot raté), X / Alt+F4 quitte vraiment au lieu de masquer. */
+    forceQuitOnClose?: () => boolean;
   },
 ): void {
+  // 2ᵉ fermeture (fenêtre déjà masquée, ou double Alt+F4 < 2s) → quit réel.
+  // Évite les zombies XFCE/RDP quand le tray est peu visible et le boot a planté.
+  let lastHideAt = 0;
   win.on("close", ((e: { preventDefault: () => void }) => {
     if (opts.isQuitting()) return;
     if (!opts.trayActive()) return;
     if (!opts.closeToTrayEnabled()) return;
+    if (opts.forceQuitOnClose?.()) {
+      log("tray", "fermeture forcée (boot/état non prêt) — quit");
+      return;
+    }
+    let alreadyHidden = false;
+    try {
+      alreadyHidden = !win.isVisible();
+    } catch {
+      alreadyHidden = false;
+    }
+    const now = Date.now();
+    if (alreadyHidden || (lastHideAt > 0 && now - lastHideAt < 2000)) {
+      log(
+        "tray",
+        `2ᵉ fermeture — quit réel (${opts.productName ?? "app"})`,
+      );
+      return;
+    }
     e.preventDefault();
     win.hide();
+    lastHideAt = now;
     log(
       "tray",
-      `fenêtre masquée — ${opts.productName ?? "app"} reste actif en arrière-plan`,
+      `fenêtre masquée — ${opts.productName ?? "app"} reste actif en arrière-plan (re-fermer = quitter)`,
     );
   }) as never);
 }

@@ -174,6 +174,8 @@ export function installBrandDesktopRuntime(deps: BrandDesktopDeps): void {
   let assistantChrome: AssistantChromeOverlay | null = null;
   let trayController: TrayController | null = null;
   let quitting = false;
+  /** true une fois setupAndStart OK — avant ça, X/Alt+F4 quitte (pas close-to-tray). */
+  let bootReady = false;
   /** Début du boot local (boîte noire : durée totale boot.done / boot.failed). */
   let bootLocalStartedAt = 0;
   /** true pendant un redémarrage Next (changement de clé BYOK) — ignore child-exit. */
@@ -2621,7 +2623,13 @@ export function installBrandDesktopRuntime(deps: BrandDesktopDeps): void {
       title: deps.appKind === "server" ? productNameServer : productName,
       backgroundColor: "#14182f",
       autoHideMenuBar: true,
-      ...(framelessWin ? { frame: false, thickFrame: true } : {}),
+      // Linux/XFCE/xrdp : décorations natives explicites (X / Alt+F4).
+      closable: true,
+      minimizable: true,
+      maximizable: true,
+      ...(framelessWin
+        ? { frame: false, thickFrame: true }
+        : { frame: true }),
     });
     const w = win;
 
@@ -2663,6 +2671,8 @@ export function installBrandDesktopRuntime(deps: BrandDesktopDeps): void {
       trayActive: () => trayController?.active ?? false,
       isQuitting: () => quitting,
       closeToTrayEnabled: () => deps.store().getBackgroundSettings().closeToTray,
+      // Boot raté / splash : quitter vraiment (évite fenêtre grise zombie sous RDP).
+      forceQuitOnClose: () => !bootReady,
     });
 
     // Fermeture RÉELLE de la fenêtre principale (tray inactif / closeToTray
@@ -3985,8 +3995,10 @@ export function installBrandDesktopRuntime(deps: BrandDesktopDeps): void {
       try {
         await ensureConnectionChosen(view);
         await setupAndStart(view);
+        bootReady = true;
         return;
       } catch (e) {
+        bootReady = false;
         logError("main", e);
         track({
           level: "error",
