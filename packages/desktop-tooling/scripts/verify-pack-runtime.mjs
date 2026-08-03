@@ -287,6 +287,16 @@ try {
       );
       process.exit(1);
     }
+    // Le CRM principal est le Next standalone (parité TF2) : sans lui le shell
+    // runtime n'a rien à charger après le splash.
+    const nextEntry = path.join(unpacked, "resources", "server", "server.js");
+    if (!fs.existsSync(nextEntry)) {
+      console.error(
+        "verify-pack-runtime: Next standalone absent de resources/server/server.js",
+      );
+      console.error("  → lancer build:ui + electron:build-server avant le pack");
+      process.exit(1);
+    }
   }
 
   // Require ancré DANS l'asar (équivalent createAppRequire packagé)
@@ -500,6 +510,15 @@ try {
     ) {
       console.error(
         "verify-pack-runtime: installer.nsh placeholder ou incomplet (parité TF2)",
+      );
+      process.exit(1);
+    }
+    // Sans customRemoveFiles, electron-builder fait RMDir /r $INSTDIR :
+    // désinstallation lente ET data purgé même case décochée / à l'upgrade.
+    if (!/customRemoveFiles/.test(nsh)) {
+      console.error(
+        "verify-pack-runtime: installer.nsh sans customRemoveFiles — " +
+          "purge lente de {installDir}\\data et perte de données à l'upgrade",
       );
       process.exit(1);
     }

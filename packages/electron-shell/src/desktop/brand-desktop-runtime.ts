@@ -816,16 +816,20 @@ export function installBrandDesktopRuntime(deps: BrandDesktopDeps): void {
 
   /* ─────────────────────── Sous-process Node vanilla ─────────────────────── */
 
-  /** Migrations SQLite dans un process Node vanilla (ABI better-sqlite3). */
-  function runMigrationsInNode(): Promise<void> {
+  /**
+   * Migrations SQLite dans un process Node vanilla (ABI better-sqlite3).
+   * Retourne la voie réellement empruntée pour un jalon splash honnête.
+   */
+  function runMigrationsInNode(): Promise<"runner" | "kernel"> {
     const script = deps.paths.nodeScript(path.join("migrations", "runner.js"));
-    // Marques native-kernel (TF3 / factory) : migrations déjà appliquées
-    // in-process via createBrandKernel — pas de runner.js TF2.
+    // Marques native-kernel (TF3 / factory) : migrations core/brand déjà
+    // appliquées in-process par createBrandKernel — le runner.js legacy TF2
+    // n'existe pas. Ce n'est pas un « skip » : la base est bien à jour.
     if (!fs.existsSync(script)) {
-      log("migrate", `skip — pas de runner.js (${script})`);
-      return Promise.resolve();
+      log("migrate", "migrations kernel appliquées in-process (pas de runner.js legacy)");
+      return Promise.resolve("kernel");
     }
-    return new Promise((resolve, reject) => {
+    return new Promise<"runner" | "kernel">((resolve, reject) => {
       const bin = deps.paths.nodeBinary();
       const env = envForNodeScriptSpawn(bin);
       const nm = deps.paths.nodeModulesPathForScripts();
@@ -864,7 +868,7 @@ export function installBrandDesktopRuntime(deps: BrandDesktopDeps): void {
         reject(e);
       });
       child.on("exit", (code) => {
-        if (code === 0) return resolve();
+        if (code === 0) return resolve("runner");
         deps.vertical.reportCrash("child-exit", { child: "migrations", code, stderr: stderrTail.join("\n") });
         reject(new Error(`migrations exit ${code}`));
       });
@@ -3007,11 +3011,12 @@ export function installBrandDesktopRuntime(deps: BrandDesktopDeps): void {
       connectionMode: "local",
       n8n: n8nCfg,
     });
-    // Les installations cold (Node, npm, uv, clone Hermes) durent plusieurs
-    // minutes. Elles ne doivent jamais retenir le CRM : on les réchauffe une
-    // fois l'interface chargée. L'ancien contrat bloquant reste disponible
-    // pour diagnostics explicites.
-    const deferEmbedWarm = process.env.CREEZIO_EMBEDS_BLOCK_UI !== "1";
+    // Contrat produit TF2 : la stack native s'installe et démarre PENDANT le
+    // splash, avec une ligne + barre + chrono par outil. L'utilisateur voit la
+    // progression et arrive sur un CRM dont les services sont réellement
+    // disponibles. Opt-out diagnostic : CREEZIO_EMBEDS_BLOCK_UI=0 (warm différé
+    // après l'UI, services indisponibles au premier écran).
+    const deferEmbedWarm = process.env.CREEZIO_EMBEDS_BLOCK_UI === "0";
     const needHermes = configuredNeedHermes && !deferEmbedWarm;
     const needN8n = configuredNeedN8n && !deferEmbedWarm;
     const needNode = needN8n;
@@ -3052,13 +3057,19 @@ export function installBrandDesktopRuntime(deps: BrandDesktopDeps): void {
       percent: 30,
     });
     const migrationsStarted = Date.now();
-    await runMigrationsInNode();
-    splashDone("migrations", "Migrations appliquées");
+    const migrationsPath = await runMigrationsInNode();
+    splashDone(
+      "migrations",
+      migrationsPath === "kernel"
+        ? "Migrations kernel appliquées (core + brand)"
+        : "Migrations appliquées",
+    );
     track({
       level: "event",
       kind: "migrations.done",
       outcome: "ok",
       durationMs: Date.now() - migrationsStarted,
+      ctx: { path: migrationsPath },
     });
 
     /* 2b. Runtime brand H6 — nominal (échec VISIBLE sur splash + crash-collector).

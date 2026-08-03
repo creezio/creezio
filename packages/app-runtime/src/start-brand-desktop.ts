@@ -29,6 +29,7 @@ import {
   crashEndpoint,
   crashLogHint,
   crashReportsDir,
+  splashDataUrl,
 } from "@creezio/electron-shell";
 import { createMcpFacade } from "@creezio/mcp-facade";
 import { createNavShellAdapter } from "@creezio/shell-ui";
@@ -117,6 +118,105 @@ async function loadElectron(): Promise<{
     BrowserWindow: ElectronBrowserWindow;
     ipcMain: ElectronIpcMain;
   };
+}
+
+type BootSplashHandle = {
+  status: (headline: string, detail: string, percent: number) => void;
+  close: () => void;
+};
+
+/**
+ * Fenêtre IMMÉDIATE avant tout travail lourd (parité TF2 `main.ts`).
+ *
+ * Le kernel (core.db + brand.db), la surface HTTP OS et MCP se montent avant
+ * que le shell runtime ne crée sa fenêtre : sur un poste Windows froid
+ * (Defender + grosse base) cela laissait plusieurs dizaines de secondes sans
+ * aucune fenêtre — l'utilisateur ne voyait « rien ». Ce splash de transition
+ * est remplacé par la coquille du shell runtime dès qu'elle existe.
+ *
+ * Opt-out : `CREEZIO_BOOT_SPLASH=0`.
+ */
+async function openEarlyBootSplash(
+  app: ElectronApp,
+  BrowserWindowCtor: ElectronBrowserWindow,
+  opts: { productName: string; bridgeName: string },
+): Promise<BootSplashHandle | null> {
+  if (process.env.CREEZIO_BOOT_SPLASH === "0") return null;
+  try {
+    await app.whenReady();
+    const Ctor = BrowserWindowCtor as unknown as new (
+      o: Record<string, unknown>,
+    ) => {
+      loadURL: (u: string) => Promise<void>;
+      close: () => void;
+      isDestroyed: () => boolean;
+      webContents: {
+        isDestroyed: () => boolean;
+        executeJavaScript: (code: string) => Promise<unknown>;
+      };
+    };
+    const win = new Ctor({
+      width: 860,
+      height: 560,
+      center: true,
+      resizable: false,
+      frame: false,
+      show: true,
+      backgroundColor: "#14182f",
+      title: opts.productName,
+      webPreferences: { contextIsolation: true, nodeIntegration: false },
+    });
+    await win.loadURL(
+      splashDataUrl({
+        productName: opts.productName,
+        bridgeName: opts.bridgeName,
+      }),
+    );
+    const startedAt = Date.now();
+    const status = (headline: string, detail: string, percent: number) => {
+      const model = {
+        headline,
+        bootStartedAt: startedAt,
+        overallPercent: percent,
+        footer: "Préparation du poste — la fenêtre principale suit.",
+        steps: [
+          {
+            id: "runtime",
+            label: "Runtime plateforme",
+            status: "running",
+            detail,
+            percent,
+            startedAt,
+            endedAt: null,
+          },
+        ],
+      };
+      try {
+        if (win.isDestroyed() || win.webContents.isDestroyed()) return;
+        void win.webContents
+          .executeJavaScript(
+            `window.__setBoot && window.__setBoot(${JSON.stringify(model)})`,
+          )
+          .catch(() => undefined);
+      } catch {
+        /* fenêtre déjà remplacée */
+      }
+    };
+    status("Démarrage…", "Initialisation du runtime plateforme", 5);
+    return {
+      status,
+      close: () => {
+        try {
+          if (!win.isDestroyed()) win.close();
+        } catch {
+          /* déjà fermée */
+        }
+      },
+    };
+  } catch {
+    // Pas d'affichage (CI headless, harness) : le boot continue sans splash.
+    return null;
+  }
 }
 
 function resolveResourcesRoot(
@@ -324,13 +424,34 @@ async function startBrandDesktopBody(args: {
     manifest,
   });
 
+  // Fenêtre AVANT le travail lourd (parité TF2) : le kernel SQLite, la surface
+  // HTTP OS et MCP prennent des dizaines de secondes sur un poste Windows
+  // froid. Remplacée par la coquille du shell runtime (installBrandOsDesktop).
+  const bootSplash =
+    desktopShell === "runtime"
+      ? await openEarlyBootSplash(app, BrowserWindow, {
+          productName:
+            boot.appKind === "server"
+              ? manifest.server.productName
+              : manifest.client.productName,
+          bridgeName: manifest.bridgeName,
+        })
+      : null;
+
   const bootKernel = resolveBootKernel(config);
+  bootSplash?.status(
+    "Base de données…",
+    "Migrations core + brand (SQLite)",
+    15,
+  );
   const kernelBoot = bootKernel({
     userDataDir: boot.userDataDir,
     isPackaged: app.isPackaged,
   }) as BrandKernelBoot;
   const { api, runtime, close: closeKernel, mails } = kernelBoot;
   process.env.CREEZIO_CORE_DB_PATH = runtime.paths.core;
+  // Chemin brand exposé aux hosts marque (import catalogue, outils Node).
+  process.env.CREEZIO_BRAND_DB_PATH = runtime.paths.brand;
 
   const resourcesRoot = resolveResourcesRoot(
     app,
@@ -446,6 +567,7 @@ async function startBrandDesktopBody(args: {
   }
 
   let mcpSurface: ReturnType<typeof mountBrandMcpSurface> | null = null;
+  bootSplash?.status("Services plateforme…", "API locale + façade MCP", 45);
   const httpServer =
     desktopProfile === "full"
       ? await listenBrandOsHttp({
@@ -561,6 +683,7 @@ async function startBrandDesktopBody(args: {
         });
 
   const cleanup = async () => {
+    bootSplash?.close();
     meiliStop?.();
     await uiPlane.close();
     await httpServer.close();
@@ -584,6 +707,8 @@ async function startBrandDesktopBody(args: {
   // Shell runtime prod (splash/tray/embeds) — hosts déjà composés dans le kit.
   if (desktopShell === "runtime" && os) {
     const electronMod = await import("electron");
+    // La coquille du shell runtime prend le relais immédiatement.
+    bootSplash?.close();
     installBrandOsDesktop({
       manifest,
       os,
@@ -594,17 +719,19 @@ async function startBrandDesktopBody(args: {
       electron: electronMod as unknown as Parameters<
         typeof installBrandOsDesktop
       >[0]["electron"],
+      // Le shell runtime démarre lui-même le CRM Next (host server-launcher,
+      // health 120 s) : le plan UI de cette façade n'est pas utilisé ici.
       bootBrandRuntime: async () => ({
         ok: true,
         metierBaseUrl: httpServer.baseUrl,
-        ui: uiPlane.kind,
-        uiBaseUrl: uiPlane.baseUrl,
+        ui: "next-runtime",
+        uiBaseUrl: null,
       }),
       shutdownBrandRuntime: cleanup,
     });
     log(
       "nav",
-      `shell=runtime mounts=${api.listMounts().length} os=full ui=${uiPlane.kind} api=${httpServer.baseUrl}`,
+      `shell=runtime mounts=${api.listMounts().length} os=full ui=next-runtime api=${httpServer.baseUrl}`,
     );
     app.on("will-quit", () => {
       void cleanup();
