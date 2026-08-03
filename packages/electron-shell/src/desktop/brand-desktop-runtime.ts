@@ -8,6 +8,7 @@ import path from "node:path";
 import fs from "node:fs";
 import { closeAdminWindow, openAdminWindow } from "../admin-window.js";
 import { initLogger, log, logError, logFilePath, scoped, setOpsLineHandler } from "../logger.js";
+import { crashLogHint, crashReportsDir } from "../host/crash-reporter.js";
 import {
   activateSplashStep,
   completeSplashStep,
@@ -4022,9 +4023,21 @@ export function installBrandDesktopRuntime(deps: BrandDesktopDeps): void {
 
     bootWithRetry().catch((e) => {
       logError("main", e);
+      deps.vertical.reportCrash("boot-failure", {
+        message: e instanceof Error ? e.message : String(e),
+        stack: e instanceof Error ? e.stack : undefined,
+        stage: deps.vertical.getBootStage(),
+      });
+      const udSeg =
+        deps.appKind === "server"
+          ? deps.manifest.server?.userDataSegment
+          : deps.manifest.client?.userDataSegment;
       dialog.showErrorBox(
         `${productName} — le démarrage a échoué`,
-        `${e instanceof Error ? e.message : e}\n\nJournal : ${logFilePath() || "userData/logs"}`,
+        `${e instanceof Error ? e.message : e}\n\n` +
+          `Journal : ${crashLogHint()}\n` +
+          `Rapports : ${crashReportsDir() || `%APPDATA%\\${udSeg || "…"}\\crash-reports`}\n\n` +
+          `Un rapport a été enregistré localement et envoyé au support si le réseau est disponible.`,
       );
       app.quit();
     });

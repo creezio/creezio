@@ -612,6 +612,9 @@ export type { CrashKind, CrashReporterConfig } from "./host/crash-reporter.js";
 export {
   configureCrashReporter,
   crashEndpoint,
+  crashLogHint,
+  crashReportsDir,
+  flushPendingCrashReports,
   getBootStage,
   getBootTimeline,
   getInstallId,

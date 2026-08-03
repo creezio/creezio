@@ -1,26 +1,27 @@
 /**
- * Rapport de crash : fichier local (userData/logs/) + envoi automatique au
- * collecteur de l'éditeur (télémétrie de crash — service autonome sur le VPS,
- * voir scripts/crash-collector/).
+ * Rapport de crash : fichier local (userData/logs/ + crash-reports/) + envoi
+ * automatique au collecteur éditeur (télémétrie — service autonome VPS).
  *
  * Règles :
  * - best-effort intégral : timeout court, try/catch partout, JAMAIS de throw ;
  * - l'envoi ne bloque rien (fire-and-forget) ;
- * - identifiant d'installation anonyme (uuid v4 généré au 1er lancement,
- *   persisté dans userData) pour regrouper les rapports d'une même machine.
+ * - queue fichier si hors-ligne → flush au rapport suivant / flushPending ;
+ * - identifiant d'installation anonyme (uuid v4, persisté userData).
  */
 
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import crypto from "node:crypto";
-import { recentLines, log, logFileTail } from "../logger.js";
+import { recentLines, log, logFileTail, logFilePath } from "../logger.js";
 
 export type CrashReporterConfig = {
-  /** URL collecteur par défaut (marque). */
-  defaultEndpoint: string;
-  /** Env override (ex. TF2_CRASH_ENDPOINT / CERTIVAN_CRASH_ENDPOINT). */
+  /** URL collecteur par défaut (marque). Absente = conserve la valeur courante. */
+  defaultEndpoint?: string;
+  /** Env override (ex. TF2_CRASH_ENDPOINT / TEMPOFLOW3_CRASH_ENDPOINT). */
   endpointEnvKey?: string;
+  /** brandId joint aux rapports (filtre VPS). */
+  brandId?: string;
   /** Miroir flotte optionnel (marque). */
   sendFleetCrash?: (report: Record<string, unknown>) => void | Promise<void>;
 };
@@ -30,7 +31,12 @@ let config: CrashReporterConfig = {
 };
 
 export function configureCrashReporter(next: CrashReporterConfig): void {
-  config = next;
+  const { defaultEndpoint, ...rest } = next;
+  config = {
+    ...config,
+    ...rest,
+    ...(defaultEndpoint !== undefined ? { defaultEndpoint } : {}),
+  };
 }
 
 function resolveCrashEndpoint(): string {
@@ -39,12 +45,21 @@ function resolveCrashEndpoint(): string {
     const fromEnv = (process.env[key] || "").trim();
     if (fromEnv) return fromEnv;
   }
-  return config.defaultEndpoint;
+  const globalEnv = (process.env.CREEZIO_CRASH_ENDPOINT || "").trim();
+  if (globalEnv) return globalEnv;
+  return config.defaultEndpoint || "http://127.0.0.1/crash-disabled";
+}
+
+function isUploadEnabled(): boolean {
+  const ep = resolveCrashEndpoint();
+  return Boolean(ep) && !/crash-disabled/i.test(ep);
 }
 
 let installId = "unknown";
 let appVersion = "0.0.0";
 let crashDir: string | null = null;
+let crashReportsDirPath: string | null = null;
+let pendingDir: string | null = null;
 let bootStage = "init";
 const bootTimeline: { at: string; stage: string }[] = [];
 
@@ -68,11 +83,30 @@ export function getBootTimeline(): { at: string; stage: string }[] {
   return bootTimeline.slice();
 }
 
+/** Dossier des JSON crash (userData/crash-reports). */
+export function crashReportsDir(): string | null {
+  return crashReportsDirPath;
+}
+
+/** Chemin journal texte principal (logger). */
+export function crashLogHint(): string {
+  return (
+    logFilePath() ||
+    crashReportsDirPath ||
+    crashDir ||
+    path.join(os.tmpdir(), "creezio-crash")
+  );
+}
+
 export function initCrashReporter(userDataDir: string, version: string): void {
   appVersion = version;
   try {
     crashDir = path.join(userDataDir, "logs");
+    crashReportsDirPath = path.join(userDataDir, "crash-reports");
+    pendingDir = path.join(crashReportsDirPath, "pending");
     fs.mkdirSync(crashDir, { recursive: true });
+    fs.mkdirSync(crashReportsDirPath, { recursive: true });
+    fs.mkdirSync(pendingDir, { recursive: true });
     const idFile = path.join(userDataDir, "install-id");
     try {
       installId = fs.readFileSync(idFile, "utf8").trim();
@@ -85,8 +119,14 @@ export function initCrashReporter(userDataDir: string, version: string): void {
         /* best-effort */
       }
     }
+    // Flush différé des rapports hors-ligne précédents.
+    setTimeout(() => {
+      void flushPendingCrashReports();
+    }, 2_000);
   } catch {
     crashDir = null;
+    crashReportsDirPath = null;
+    pendingDir = null;
   }
 }
 
@@ -115,6 +155,33 @@ export type CrashKind =
   /** Anomalie détectée par la boîte noire (ops-rules) — remontée always-on. */
   | "ops-anomaly";
 
+function writeLocalReport(
+  report: Record<string, unknown>,
+  kind: string,
+  timestamp: string,
+): void {
+  const name = `crash-${timestamp.replace(/[:.]/g, "-")}-${kind}.json`;
+  const body = JSON.stringify(report, null, 2);
+  for (const dir of [crashReportsDirPath, crashDir]) {
+    if (!dir) continue;
+    try {
+      fs.writeFileSync(path.join(dir, name), body);
+    } catch {
+      /* best-effort */
+    }
+  }
+}
+
+function enqueuePending(report: Record<string, unknown>): void {
+  if (!pendingDir) return;
+  try {
+    const name = `pending-${Date.now()}-${crypto.randomBytes(4).toString("hex")}.json`;
+    fs.writeFileSync(path.join(pendingDir, name), JSON.stringify(report));
+  } catch {
+    /* best-effort */
+  }
+}
+
 /**
  * Enregistre un rapport localement puis l'envoie au collecteur.
  * Ne throw jamais.
@@ -127,6 +194,7 @@ export function reportCrash(kind: CrashKind, detail: Record<string, unknown>): v
   const timestamp = new Date().toISOString();
   const report: Record<string, unknown> = {
     kind,
+    brandId: config.brandId || null,
     installId,
     appVersion,
     bootStage,
@@ -138,39 +206,37 @@ export function reportCrash(kind: CrashKind, detail: Record<string, unknown>): v
     detail,
     bootTimeline: getBootTimeline(),
     recentLog: recentLines(isBootFail ? 800 : 120),
+    localPaths: {
+      crashReports: crashReportsDirPath,
+      logs: crashDir,
+      logFile: logFilePath(),
+    },
   };
   if (isBootFail) {
     const tail = logFileTail(150_000);
     if (tail != null) report.logFileTail = tail;
   }
 
-  // 1) trace locale (consultable hors-ligne / envoyable manuellement)
+  writeLocalReport(report, kind, timestamp);
   try {
-    if (crashDir) {
-      const name = `crash-${timestamp.replace(/[:.]/g, "-")}-${kind}.json`;
-      fs.writeFileSync(path.join(crashDir, name), JSON.stringify(report, null, 2));
-    }
-  } catch {
-    /* best-effort */
-  }
-  try {
-    log("crash", `${kind} @ ${bootStage}: ${JSON.stringify(detail).slice(0, 500)}`);
+    log(
+      "crash",
+      `${kind} @ ${bootStage}: ${JSON.stringify(detail).slice(0, 500)} → ${crashLogHint()}`,
+    );
   } catch {
     /* best-effort */
   }
 
-  // 2) envoi distant fire-and-forget (collecteur crash legacy)
-  void sendReport(report);
+  void sendReport(report).then((ok) => {
+    if (!ok && isUploadEnabled()) enqueuePending(report);
+  });
 
-  // 3) miroir flotte optionnel (hook marque)
   if (config.sendFleetCrash) {
     void Promise.resolve(config.sendFleetCrash(report)).catch(() => {
       /* best-effort */
     });
   }
 
-  // 4) miroir boîte noire (import dynamique anti-cycle) — sauf ops-anomaly,
-  // qui EST déjà un événement du journal (sinon boucle).
   if (kind !== "ops-anomaly") {
     void import("@creezio/observability")
       .then((m) => m.trackCrashMirror(kind, detail))
@@ -205,21 +271,73 @@ export function reportCrashDebounced(
   reportCrash(kind, detail);
 }
 
-async function sendReport(report: Record<string, unknown>): Promise<void> {
+async function postReport(report: Record<string, unknown>): Promise<boolean> {
+  if (!isUploadEnabled()) return false;
   try {
-    await fetch(resolveCrashEndpoint(), {
+    const res = await fetch(resolveCrashEndpoint(), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(report),
-      signal: AbortSignal.timeout(5000),
+      signal: AbortSignal.timeout(8_000),
     });
+    return res.ok || res.status === 204;
   } catch {
-    /* hors-ligne / collecteur down : le rapport local reste disponible */
+    return false;
   }
 }
 
-/** Handlers globaux du process principal — à installer au tout début. */
+async function sendReport(report: Record<string, unknown>): Promise<boolean> {
+  const ok = await postReport(report);
+  if (ok) {
+    try {
+      log("crash", `upload OK → ${resolveCrashEndpoint().replace(/\/[^/]+$/, "/***")} `);
+    } catch {
+      /* ignore */
+    }
+  }
+  return ok;
+}
+
+/** Renvoie les rapports pending (hors-ligne) — best-effort. */
+export async function flushPendingCrashReports(): Promise<number> {
+  if (!pendingDir || !isUploadEnabled()) return 0;
+  let sent = 0;
+  try {
+    const files = fs.readdirSync(pendingDir).filter((f) => f.endsWith(".json"));
+    for (const f of files.slice(0, 40)) {
+      const full = path.join(pendingDir, f);
+      try {
+        const report = JSON.parse(fs.readFileSync(full, "utf8")) as Record<
+          string,
+          unknown
+        >;
+        if (await postReport(report)) {
+          fs.unlinkSync(full);
+          sent += 1;
+        }
+      } catch {
+        /* skip corrupt */
+      }
+    }
+  } catch {
+    /* best-effort */
+  }
+  if (sent > 0) {
+    try {
+      log("crash", `flush pending: ${sent} rapport(s) envoyé(s)`);
+    } catch {
+      /* ignore */
+    }
+  }
+  return sent;
+}
+
+let globalHandlersInstalled = false;
+
+/** Handlers globaux du process principal — à installer au tout début (idempotent). */
 export function installGlobalHandlers(): void {
+  if (globalHandlersInstalled) return;
+  globalHandlersInstalled = true;
   process.on("uncaughtException", (e) => {
     reportCrash("uncaughtException", {
       message: e?.message,

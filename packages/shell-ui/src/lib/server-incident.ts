@@ -4,32 +4,88 @@
  * sollicitée ». Best-effort, jamais bloquant, dédupliqué (1 envoi max par
  * type d'incident par heure) pour ne pas inonder le collecteur.
  *
- * Actif uniquement si TF2_CRASH_ENDPOINT est injecté dans l'environnement
- * (fait par electron/server-launcher.ts) — en déploiement web classique,
- * cette fonction est un no-op.
+ * Actif uniquement si `{PREFIX}_CRASH_ENDPOINT` (ou `CREEZIO_CRASH_ENDPOINT`)
+ * est injecté dans l'environnement (fait par brand-host-stack / server-launcher).
+ * En déploiement web classique, cette fonction est un no-op.
  */
 
-const ENDPOINT = process.env.TF2_CRASH_ENDPOINT || "";
-const INSTALL_ID = process.env.TF2_INSTALL_ID || "server";
 const DEDUP_MS = 3600_000;
-
 const lastSent = new Map<string, number>();
 
+function firstEnv(...keys: string[]): string {
+  for (const k of keys) {
+    const v = (process.env[k] || "").trim();
+    if (v) return v;
+  }
+  return "";
+}
+
+/** Prefixe marque (ex. TEMPOFLOW3) si injecté, sinon scan `*_CRASH_ENDPOINT`. */
+function resolveCrashEndpoint(): string {
+  const direct = firstEnv(
+    "CREEZIO_CRASH_ENDPOINT",
+    "TEMPOFLOW3_CRASH_ENDPOINT",
+    "TF2_CRASH_ENDPOINT",
+    "CERTIVAN_CRASH_ENDPOINT",
+    "FIDU_CRASH_ENDPOINT",
+  );
+  if (direct) return direct;
+  for (const [k, v] of Object.entries(process.env)) {
+    if (k.endsWith("_CRASH_ENDPOINT") && (v || "").trim()) {
+      return v!.trim();
+    }
+  }
+  return "";
+}
+
+function resolveInstallId(): string {
+  return (
+    firstEnv(
+      "CREEZIO_INSTALL_ID",
+      "TEMPOFLOW3_INSTALL_ID",
+      "TF2_INSTALL_ID",
+      "CERTIVAN_INSTALL_ID",
+      "FIDU_INSTALL_ID",
+    ) ||
+    (() => {
+      for (const [k, v] of Object.entries(process.env)) {
+        if (k.endsWith("_INSTALL_ID") && (v || "").trim()) return v!.trim();
+      }
+      return "server";
+    })()
+  );
+}
+
+function resolveAppVersion(): string {
+  return (
+    firstEnv(
+      "CREEZIO_APP_VERSION",
+      "TEMPOFLOW3_APP_VERSION",
+      "TF2_APP_VERSION",
+      "CERTIVAN_APP_VERSION",
+      "FIDU_APP_VERSION",
+      "npm_package_version",
+    ) || "unknown"
+  );
+}
+
 export function reportServerIncident(kind: string, detail: Record<string, unknown>): void {
-  if (!ENDPOINT) return;
+  const endpoint = resolveCrashEndpoint();
+  if (!endpoint) return;
   const now = Date.now();
   const prev = lastSent.get(kind) || 0;
   if (now - prev < DEDUP_MS) return;
   lastSent.set(kind, now);
 
   console.error(`[incident] ${kind}: ${JSON.stringify(detail).slice(0, 300)}`);
-  void fetch(ENDPOINT, {
+  void fetch(endpoint, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       kind: `server-${kind}`,
-      installId: INSTALL_ID,
-      appVersion: process.env.TF2_APP_VERSION || "unknown",
+      brandId: firstEnv("CREEZIO_BRAND_ID", "CREEZIO_BRAND") || null,
+      installId: resolveInstallId(),
+      appVersion: resolveAppVersion(),
       platform: process.platform,
       bootStage: "running",
       timestamp: new Date().toISOString(),

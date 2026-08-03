@@ -16,6 +16,12 @@ import {
   maybeBootBrandMeili,
   ensureKitOsBinaries,
   kitBinaryPaths,
+  configureCrashReporter,
+  initCrashReporter,
+  installGlobalHandlers,
+  reportCrash,
+  crashEndpoint,
+  crashLogHint,
 } from "@creezio/electron-shell";
 import { createMcpFacade } from "@creezio/mcp-facade";
 import { createNavShellAdapter } from "@creezio/shell-ui";
@@ -60,6 +66,7 @@ type ElectronApp = {
   whenReady: () => Promise<void>;
   quit: () => void;
   on: (event: string, cb: () => void) => void;
+  getVersion?: () => string;
   resourcesPath?: string;
 };
 
@@ -107,6 +114,78 @@ export async function startBrandDesktop(
   // P&P : runtime kit par défaut (splash/tray/embeds). Opt-out = "window".
   const desktopShell = config.desktopShell || "runtime";
 
+  // Crash reporter le plus tôt possible (avant prepareDesktopBoot / binaires).
+  const prefix = manifest.envPrefix;
+  const crashEp =
+    (config.crashEndpoint || "").trim() ||
+    (process.env[`${prefix}_CRASH_ENDPOINT`] || "").trim() ||
+    (process.env.CREEZIO_CRASH_ENDPOINT || "").trim() ||
+    "";
+  configureCrashReporter({
+    brandId: manifest.brandId,
+    endpointEnvKey: `${prefix}_CRASH_ENDPOINT`,
+    defaultEndpoint: crashEp || "http://127.0.0.1/crash-disabled",
+  });
+  installGlobalHandlers();
+  let earlyUserData = "";
+  try {
+    const getPath = (app as ElectronApp & { getPath?: (name: string) => string })
+      .getPath;
+    earlyUserData = typeof getPath === "function" ? getPath("userData") : "";
+  } catch {
+    earlyUserData = "";
+  }
+  if (earlyUserData) {
+    initLogger(earlyUserData, config.logBasename || manifest.logBasename);
+    initCrashReporter(
+      earlyUserData,
+      process.env.npm_package_version || app.getVersion?.() || "0.0.0",
+    );
+  }
+
+  try {
+    return await startBrandDesktopBody({
+      config,
+      app,
+      BrowserWindow,
+      ipcMain,
+      manifest,
+      __dirname,
+      desktopProfile,
+      desktopShell,
+    });
+  } catch (e) {
+    reportCrash("boot-failure", {
+      step: "startBrandDesktop",
+      message: e instanceof Error ? e.message : String(e),
+      stack: e instanceof Error ? e.stack : undefined,
+      logHint: crashLogHint(),
+    });
+    throw e;
+  }
+}
+
+async function startBrandDesktopBody(args: {
+  config: StartBrandDesktopConfig;
+  app: ElectronApp;
+  BrowserWindow: ElectronBrowserWindow;
+  ipcMain: ElectronIpcMain;
+  manifest: StartBrandDesktopConfig["manifest"];
+  __dirname: string;
+  desktopProfile: "full" | "lite";
+  desktopShell: "runtime" | "window";
+}): Promise<BrandDesktopHandle> {
+  const {
+    config,
+    app,
+    BrowserWindow,
+    ipcMain,
+    manifest,
+    __dirname,
+    desktopProfile,
+    desktopShell,
+  } = args;
+
   // Binaires OS kit (Meili/cloudflared) — avant Meili/tunnel.
   if (process.env.CREEZIO_SKIP_KIT_BINARIES !== "1") {
     const bins = await ensureKitOsBinaries();
@@ -131,9 +210,14 @@ export async function startBrandDesktop(
     ],
   });
   initLogger(boot.userDataDir, config.logBasename || manifest.logBasename);
+  // Ré-init sur le vrai userData (server vs client peuvent différer).
+  initCrashReporter(
+    boot.userDataDir,
+    process.env.npm_package_version || app.getVersion?.() || "0.0.0",
+  );
   log(
     "boot",
-    `kind=${boot.appKind} product=${manifest.client.productName} facade=startBrandDesktop profile=${desktopProfile} shell=${desktopShell} kitBin=${JSON.stringify(kitBinaryPaths())}`,
+    `kind=${boot.appKind} product=${manifest.client.productName} facade=startBrandDesktop profile=${desktopProfile} shell=${desktopShell} crashUpload=${/crash-disabled/i.test(crashEndpoint()) ? "off" : "on"} kitBin=${JSON.stringify(kitBinaryPaths())}`,
   );
 
   writeAppKindFile(
@@ -172,6 +256,7 @@ export async function startBrandDesktop(
         ? { pluginsFeatureOff: config.pluginsFeatureOff }
         : {}),
       ...(config.catalogHost ? { catalogHost: config.catalogHost } : {}),
+      ...(config.crashEndpoint ? { crashEndpoint: config.crashEndpoint } : {}),
     });
   }
 

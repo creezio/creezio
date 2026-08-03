@@ -12,6 +12,7 @@ import {
   type AppManifest,
 } from "@creezio/brand-config";
 import {
+  configureCrashReporter,
   createBrandHostRuntime,
   createBrandHostStack,
   createLocalConfigStoreSync,
@@ -61,6 +62,11 @@ export type ComposeBrandOsOptions = {
       }) => void,
     ) => Promise<"present" | "installed" | string>;
   };
+  /**
+   * URL collecteur de crash (POST JSON). Sinon env
+   * `CREEZIO_CRASH_ENDPOINT` / `{PREFIX}_CRASH_ENDPOINT`, sinon désactivé.
+   */
+  crashEndpoint?: string;
 };
 
 export type BrandOsComposition = {
@@ -238,6 +244,13 @@ export function composeBrandOs(
     process.env[`${prefix}_FLEET_ENDPOINT`] ||
     `https://fleet.${domain}/ingest-disabled`;
 
+  const crashDefaultEndpoint = (
+    opts.crashEndpoint ||
+    process.env.CREEZIO_CRASH_ENDPOINT ||
+    process.env[`${prefix}_CRASH_ENDPOINT`] ||
+    "http://127.0.0.1/crash-disabled"
+  ).trim();
+
   const hostRuntime = createBrandHostRuntime({
     manifest: m,
     store: () => store,
@@ -304,6 +317,35 @@ export function composeBrandOs(
     ensureDbScriptPath: () => ensureCrmKeyDbScript(),
     log: (scope, line) => log(scope, line),
   });
+
+  // Miroir flotte + brandId (startBrandDesktop a déjà fixé l'endpoint tôt).
+  // Ne pas écraser un endpoint valide avec crash-disabled.
+  configureCrashReporter({
+    brandId: m.brandId,
+    endpointEnvKey: `${prefix}_CRASH_ENDPOINT`,
+    ...(/crash-disabled/i.test(crashDefaultEndpoint)
+      ? {}
+      : { defaultEndpoint: crashDefaultEndpoint }),
+    ...(fleetEnabled && hostRuntime.fleetAgent
+      ? {
+          sendFleetCrash: (report) => {
+            try {
+              hostRuntime.fleetAgent!().sendFleetCrash(report);
+            } catch {
+              /* best-effort */
+            }
+          },
+        }
+      : {}),
+  });
+  if (/crash-disabled/i.test(crashDefaultEndpoint)) {
+    log("crash", "collecteur distant désactivé (pas d'endpoint marque/env)");
+  } else {
+    log(
+      "crash",
+      `collecteur=${crashDefaultEndpoint.replace(/\/crash-[^/?]+/, "/crash-…")}`,
+    );
+  }
 
   const hostStack = createBrandHostStack({
     ensureN2Configured: () => undefined,

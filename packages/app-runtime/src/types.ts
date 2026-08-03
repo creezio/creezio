@@ -88,6 +88,12 @@ export type StartBrandDesktopConfig = {
   resourcesRel?: string;
   /** Log basename override. */
   logBasename?: string;
+  /**
+   * URL collecteur crash (POST JSON). Sinon env
+   * `{ENV_PREFIX}_CRASH_ENDPOINT` / `CREEZIO_CRASH_ENDPOINT`.
+   * Sans valeur → upload désactivé (fichiers locaux uniquement).
+   */
+  crashEndpoint?: string;
 };
 
 export type BrandDesktopHandle = {
