@@ -896,7 +896,22 @@ export function installBrandDesktopRuntime(deps: BrandDesktopDeps): void {
    */
   async function meiliIndexReady(m: any): Promise<any> {
     const started = Date.now();
-    const decision = await deps.hosts.meiliCoherence().decideMeiliReady(m, deps.paths.dbPath());
+    let decision: any;
+    try {
+      decision = await deps.hosts
+        .meiliCoherence()
+        .decideMeiliReady(m, deps.paths.dbPath());
+    } catch (e) {
+      const reason = e instanceof Error ? e.message : String(e);
+      // La vérification de cohérence est une optimisation de recherche : un
+      // script absent/corrompu ne doit jamais bloquer l'ouverture du CRM.
+      log("main", `meili.ready skip (cohérence indisponible): ${reason}`);
+      trackDecision("meili.ready", "skip-coherence-unavailable", {
+        reason: reason.slice(0, 300),
+        durationMs: Date.now() - started,
+      });
+      return null;
+    }
     log(
       "main",
       `meili.ready ready=${decision.ready} reason=${decision.reason} ` +
@@ -2458,7 +2473,14 @@ export function installBrandDesktopRuntime(deps: BrandDesktopDeps): void {
         deps.vertical.setBootStage("index");
         const reindexStarted = Date.now();
         await runIndexerWithProgress(meili);
-        const decision = await deps.hosts.meiliCoherence().decideMeiliReady(meili, deps.paths.dbPath());
+        const decision = await meiliIndexReady(meili);
+        if (!decision) {
+          return {
+            ok: true as const,
+            degraded: true as const,
+            detail: "Réindexation lancée, contrôle de cohérence indisponible",
+          };
+        }
         log(
           "main",
           `meili.reindex done ready=${decision.ready} reason=${decision.reason}`,
@@ -2977,14 +2999,21 @@ export function installBrandDesktopRuntime(deps: BrandDesktopDeps): void {
 
     const hermesCfg = deps.store().getHermesEmbedConfig();
     const n8nCfg = deps.store().getN8nEmbedConfig();
-    const needHermes = deps.vertical.shouldSpawnEmbeddedHermes({
+    const configuredNeedHermes = deps.vertical.shouldSpawnEmbeddedHermes({
       connectionMode: "local",
       hermes: hermesCfg,
     });
-    const needN8n = deps.vertical.shouldSpawnEmbeddedN8n({
+    const configuredNeedN8n = deps.vertical.shouldSpawnEmbeddedN8n({
       connectionMode: "local",
       n8n: n8nCfg,
     });
+    // Les installations cold (Node, npm, uv, clone Hermes) durent plusieurs
+    // minutes. Elles ne doivent jamais retenir le CRM : on les réchauffe une
+    // fois l'interface chargée. L'ancien contrat bloquant reste disponible
+    // pour diagnostics explicites.
+    const deferEmbedWarm = process.env.CREEZIO_EMBEDS_BLOCK_UI !== "1";
+    const needHermes = configuredNeedHermes && !deferEmbedWarm;
+    const needN8n = configuredNeedN8n && !deferEmbedWarm;
     const needNode = needN8n;
     const needTunnel = Boolean(deps.hosts.tunnel().publicUrlForServer());
 
@@ -3129,7 +3158,13 @@ export function installBrandDesktopRuntime(deps: BrandDesktopDeps): void {
       });
       try {
         const decision = await meiliIndexReady(meili);
-        if (!decision.ready) {
+        if (!decision) {
+          splashPatch("index", {
+            status: "skip",
+            detail: "Contrôle de cohérence indisponible — indexation reportée",
+            percent: 100,
+          });
+        } else if (!decision.ready) {
           // Le POURQUOI de la réindexation, visible utilisateur (fini le muet).
           splashPatch("index", {
             detail: `Réindexation nécessaire : ${decision.reason}`,
@@ -3678,6 +3713,70 @@ export function installBrandDesktopRuntime(deps: BrandDesktopDeps): void {
         );
         splashDone("login", "Écran de connexion");
       }
+    }
+
+    // La fenêtre CRM est maintenant visible. Les embeds peuvent télécharger
+    // Node/n8n/Hermes sans écran noir et sans dialogue bloquant. Les statuts
+    // restent consultables dans le shell, les logs et le cockpit.
+    if (deferEmbedWarm && (configuredNeedHermes || configuredNeedN8n)) {
+      void (async () => {
+        log(
+          "native",
+          "warm différé après UI — Hermes/n8n s'installent en arrière-plan",
+        );
+        if (configuredNeedN8n) {
+          const nodeRuntime = deps.hosts.nodeRuntime() as {
+            ensureDesktopNode?: (opts: {
+              onLog?: (line: string) => void;
+            }) => Promise<{ ok: boolean; detail?: string }>;
+          };
+          try {
+            const node = await nodeRuntime.ensureDesktopNode?.({
+              onLog: (line) => log("node", line),
+            });
+            if (!node?.ok) {
+              log(
+                "native",
+                `warm n8n différé ignoré: ${node?.detail || "Node indisponible"}`,
+              );
+              return;
+            }
+          } catch (e) {
+            logError("node", e);
+            return;
+          }
+        }
+        const [hermesWarm, n8nWarm] = await Promise.allSettled([
+          configuredNeedHermes
+            ? deps.hosts.hermes().startHermes({
+                connectionMode: "local",
+                hermesConfig: hermesCfg,
+                autoBootstrap: true,
+                onLog: (line) => log("hermes", line),
+              })
+            : Promise.resolve(null),
+          configuredNeedN8n
+            ? deps.hosts.n8n().startN8n({
+                connectionMode: "local",
+                n8nConfig: n8nCfg,
+                autoBootstrap: true,
+                onLog: (line) => log("n8n", line),
+              })
+            : Promise.resolve(null),
+        ]);
+        if (hermesWarm.status === "fulfilled" && hermesWarm.value) {
+          hermes = hermesWarm.value as typeof hermes;
+          log("native", "warm Hermes différé prêt");
+        } else if (hermesWarm.status === "rejected") {
+          logError("hermes", hermesWarm.reason);
+        }
+        if (n8nWarm.status === "fulfilled" && n8nWarm.value) {
+          n8n = n8nWarm.value as typeof n8n;
+          log("native", "warm n8n différé prêt");
+        } else if (n8nWarm.status === "rejected") {
+          logError("n8n", n8nWarm.reason);
+        }
+      })();
     }
 
     /* 7. Bridge bot ↔ onglets fournisseurs (après compte créé) */

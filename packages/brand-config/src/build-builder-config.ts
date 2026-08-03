@@ -740,6 +740,8 @@ function ensureKitOsVendorExtraResources(
 ): void {
   const vendorFrom =
     "node_modules/@creezio/electron-shell/resources/vendor";
+  const scriptsFrom =
+    "node_modules/@creezio/electron-shell/resources/scripts";
   let extra = Array.isArray(base.extraResources)
     ? ([...base.extraResources] as unknown[])
     : [];
@@ -749,6 +751,18 @@ function ensureKitOsVendorExtraResources(
 
   if (!hasKitOsVendor(extra)) {
     extra.push({ from: vendorFrom, to: "vendor" });
+  }
+  // Scripts Node génériques exécutés hors app.asar (cohérence SQLite/Meili).
+  // Ils doivent être présents avant le premier boot serveur, sans dépendre
+  // d'un build/electron spécifique à chaque marque.
+  if (
+    !extra.some(
+      (entry) =>
+        entryFrom(entry).includes("electron-shell/resources/scripts") ||
+        entryTo(entry) === "scripts",
+    )
+  ) {
+    extra.push({ from: scriptsFrom, to: "scripts" });
   }
   base.extraResources = extra;
 

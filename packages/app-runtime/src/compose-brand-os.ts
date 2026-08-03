@@ -128,6 +128,32 @@ function ensureCrmKeyDbScript(): string {
   return candidates[0]!;
 }
 
+/**
+ * Le lecteur SQLite de cohérence Meili appartient au kit, pas au build
+ * Electron de la marque. Les anciens builds le cherchaient sous
+ * `build/electron/meili-coherence-query.js`, un chemin absent de l'asar.
+ */
+function meiliCoherenceQueryScript(opts: ComposeBrandOsOptions): string {
+  const root = shellPackageRoot();
+  const candidates = [
+    // Packagé : Node vanilla ne sait pas exécuter un .js dans app.asar.
+    // electron-builder copie ce script autonome sous resources/scripts.
+    path.join(
+      opts.resourcesRoot,
+      "scripts",
+      "meili-coherence-query.cjs",
+    ),
+    // Dev / tests : ressource du package kit.
+    path.join(root, "resources/scripts/meili-coherence-query.cjs"),
+    path.join(root, "dist/host/meili/coherence-query.js"),
+    path.join(root, "dist-cjs/host/meili/coherence-query.js"),
+  ];
+  for (const candidate of candidates) {
+    if (fs.existsSync(candidate)) return candidate;
+  }
+  return candidates[0]!;
+}
+
 function buildBrandPaths(opts: ComposeBrandOsOptions) {
   const pathsCtx: PathsContext = {
     manifest: opts.manifest,
@@ -195,7 +221,10 @@ function buildBrandPaths(opts: ComposeBrandOsOptions) {
       const cand = path.join(opts.electronDirname, "../../../node_modules");
       return fs.existsSync(cand) ? cand : null;
     },
-    nodeScript: (rel: string) => path.join(opts.electronDirname, rel),
+    nodeScript: (rel: string) =>
+      rel === "meili-coherence-query.js"
+        ? meiliCoherenceQueryScript(opts)
+        : path.join(opts.electronDirname, rel),
     preloadPath: (name: string) => path.join(opts.electronDirname, name),
     gitBinary: () => null as string | null,
     envPrefix: m.envPrefix,

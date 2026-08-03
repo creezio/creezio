@@ -265,14 +265,23 @@ async function startBrandDesktopBody(args: {
     desktopShell,
   } = args;
 
-  // Binaires OS kit (Meili/cloudflared) — avant Meili/tunnel.
+  // Binaires OS kit (Meili/cloudflared) : leur téléchargement ne doit jamais
+  // retarder la création du shell/splash. Les launchers vérifient eux-mêmes
+  // leur présence et basculent en mode dégradé si nécessaire.
   if (process.env.CREEZIO_SKIP_KIT_BINARIES !== "1") {
-    const bins = await ensureKitOsBinaries();
-    if (!bins.ok) {
-      console.warn(
-        `[creezio-os] binaires kit incomplets: ${bins.errors.join("; ") || "meili/cloudflared manquants"}`,
+    void ensureKitOsBinaries()
+      .then((bins) => {
+        if (!bins.ok) {
+          console.warn(
+            `[creezio-os] binaires kit incomplets: ${bins.errors.join("; ") || "meili/cloudflared manquants"}`,
+          );
+        }
+      })
+      .catch((e) =>
+        console.warn(
+          `[creezio-os] téléchargement binaires différé: ${e instanceof Error ? e.message : e}`,
+        ),
       );
-    }
   }
 
   const resourcesPath =
@@ -348,7 +357,9 @@ async function startBrandDesktopBody(args: {
   let searchEngine: BrandDesktopHandle["searchEngine"] = "off";
   let meiliStop: (() => void) | null = null;
 
-  if (config.meiliFeed) {
+  // Le shell runtime démarre Meili depuis le splash. Le faire ici aussi
+  // produisait un second spawn pré-UI et réintroduisait un chemin legacy.
+  if (config.meiliFeed && desktopShell !== "runtime") {
     // P&P : binaire kit d'abord (resources/bin/meili), jamais requis dans la marque.
     const kitMeili = kitBinaryPaths().meili;
     const meiliCandidates = [
@@ -533,11 +544,21 @@ async function startBrandDesktopBody(args: {
   ]);
   const navModel = navShell.getRenderModel();
 
-  const appRoot = path.resolve(__dirname, "../..");
-  const uiPlane = await startBrandUiPlane({
-    appRoot,
-    metierBaseUrl: httpServer.baseUrl,
-  });
+  // Le shell runtime démarre son serveur Next après l'affichage du splash.
+  // Pré-démarrer un second plan UI ici retardait la première fenêtre jusqu'au
+  // timeout Next puis basculait inutilement vers la SPA.
+  const uiPlane =
+    desktopShell === "runtime"
+      ? {
+          kind: "spa" as const,
+          baseUrl: null,
+          child: null,
+          close: async () => undefined,
+        }
+      : await startBrandUiPlane({
+          appRoot: path.resolve(__dirname, "../.."),
+          metierBaseUrl: httpServer.baseUrl,
+        });
 
   const cleanup = async () => {
     meiliStop?.();
