@@ -119,11 +119,62 @@ export function kitBinaryPaths(): {
  * Télécharge Meili + cloudflared si manquants.
  * No-op rapide si déjà présents.
  */
+function resolveWritableBinDir(): string {
+  // Packagé Electron : binaires sous process.resourcesPath/bin (jamais /resources).
+  try {
+    const rp = (process as NodeJS.Process & { resourcesPath?: string })
+      .resourcesPath;
+    if (rp && path.isAbsolute(rp) && rp !== path.sep) {
+      const candidate = path.join(rp, "bin");
+      return candidate;
+    }
+  } catch {
+    /* ignore */
+  }
+  return path.join(kitOsResourcesRoot(), "bin");
+}
+
 export async function ensureKitOsBinaries(): Promise<EnsureKitBinariesResult> {
-  const binDir = path.join(kitOsResourcesRoot(), "bin");
-  fs.mkdirSync(binDir, { recursive: true });
+  const binDir = resolveWritableBinDir();
   const downloaded: KitBinaryName[] = [];
   const errors: string[] = [];
+
+  try {
+    fs.mkdirSync(binDir, { recursive: true });
+  } catch (e) {
+    // Soft : ne jamais planter le boot (EACCES /resources/bin vu en AppImage).
+    const msg = e instanceof Error ? e.message : String(e);
+    errors.push(`mkdir ${binDir}: ${msg}`);
+    const existing = kitBinaryPaths();
+    return {
+      ok: Boolean(existing.meili || existing.cloudflared),
+      binDir,
+      meili: existing.meili,
+      cloudflared: existing.cloudflared,
+      downloaded,
+      errors,
+    };
+  }
+
+  if (process.env.CREEZIO_SKIP_KIT_BINARIES === "1") {
+    const existing = kitBinaryPaths();
+    // Aussi chercher sous binDir résolu (resourcesPath packagé).
+    const meiliP = path.join(binDir, "meili");
+    const cfP = path.join(
+      binDir,
+      process.platform === "win32" ? "cloudflared.exe" : "cloudflared",
+    );
+    return {
+      ok: true,
+      binDir,
+      meili: fs.existsSync(meiliP)
+        ? meiliP
+        : existing.meili,
+      cloudflared: fs.existsSync(cfP) ? cfP : existing.cloudflared,
+      downloaded,
+      errors,
+    };
+  }
 
   const meili = await ensureOne("meili", binDir);
   if (meili.downloaded) downloaded.push("meili");
