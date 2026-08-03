@@ -200,6 +200,11 @@ for name in "${PACKAGES[@]}"; do
       if [[ -d "${src}/resources/vendor" ]]; then
         cp -a "${src}/resources/vendor" "${out}/resources/"
       fi
+      # Scripts Node lancés hors asar (ex. cohérence Meili) : légers, génériques
+      # et requis dans resources/scripts par le pack serveur.
+      if [[ -d "${src}/resources/scripts" ]]; then
+        cp -a "${src}/resources/scripts" "${out}/resources/"
+      fi
       if [[ -f "${src}/resources/bin/.gitkeep" ]]; then
         cp -a "${src}/resources/bin/.gitkeep" "${out}/resources/bin/"
       else
