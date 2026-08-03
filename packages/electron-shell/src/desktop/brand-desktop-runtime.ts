@@ -3353,10 +3353,54 @@ export function installBrandDesktopRuntime(deps: BrandDesktopDeps): void {
     }
 
     if (needHermes && (!hermes?.apiUrl || !hermes.webuiUrl)) {
+      // Soft-boot : TF2 plantait parfois ici (install.sh exit 126 / CLI absente).
+      // On ouvre l’UI quand même + retry Hermes en arrière-plan (pas fail-hard).
       const st = deps.hosts.hermes().getHermesStatusPayload("local");
-      throw new Error(
-        `Hermes doit être prêt avant l’interface.\n${st.detail}${st.bootstrapError ? `\n${st.bootstrapError}` : ""}`,
-      );
+      const hermesSoftMsg = `Hermes indisponible pour l’instant — interface ouverte, retry en arrière-plan.\n${st.detail}${st.bootstrapError ? `\n${st.bootstrapError}` : ""}`;
+      logError("hermes", hermesSoftMsg);
+      splashPatch("hermes", {
+        status: "error",
+        detail: hermesSoftMsg,
+        percent: 100,
+      });
+      track({
+        level: "error",
+        kind: "embed.hermes",
+        outcome: "degraded",
+        reason: hermesSoftMsg.slice(0, 300),
+      });
+      const hermesCfgRetry = hermesCfg;
+      const retryHermesBg = async () => {
+        const delaysMs = [5_000, 15_000, 45_000, 90_000, 180_000];
+        for (let i = 0; i < delaysMs.length; i++) {
+          await new Promise((r) => setTimeout(r, delaysMs[i]!));
+          try {
+            if (deps.hosts.hermes().getRunningHermes()?.apiUrl) return;
+            log(
+              "hermes",
+              `retry background Hermes (${i + 1}/${delaysMs.length})…`,
+            );
+            const again = await deps.hosts.hermes().startHermes({
+              connectionMode: "local",
+              hermesConfig: hermesCfgRetry,
+              onLog: (line) => scoped("hermes")(line),
+              autoBootstrap: true,
+            });
+            if (again?.apiUrl) {
+              hermes = again;
+              log(
+                "main",
+                `Hermes API prêt (retry) sur ${again.apiUrl}${again.webuiUrl ? ` · WebUI ${again.webuiUrl}` : ""}`,
+              );
+              return;
+            }
+          } catch (e) {
+            logError("hermes-retry", e);
+          }
+        }
+        log("hermes", "retry background épuisé — Hermes reste indisponible");
+      };
+      void retryHermesBg();
     }
     if (needN8n && !n8n?.uiUrl) {
       const st = deps.hosts.n8n().getN8nStatusPayload("local");

@@ -37,6 +37,7 @@ import {
   ensureHermesWebuiTree,
   getBootstrapError,
   getBootstrapPhase,
+  hermesRuntimeCacheDir,
   hermesVendorDir,
   hermesWebuiInstallDir,
   resolveHermesAgentDir,
@@ -260,7 +261,8 @@ function hermesToolPathDirs(primaryDir: string): string[] {
 }
 
 function findHermesBinary(): string | null {
-  const runtime = path.join(ctx.userDataDir, "hermes-runtime");
+  // Même racine que le bootstrap (space-safe si userData a des espaces).
+  const runtime = hermesRuntimeCacheDir(ctx);
   const profile = path.join(runtime, "os-profile");
   const localApp = path.join(runtime, "bin");
   const vendorBin = path.join(hermesVendorDir(ctx), "bin");
@@ -279,6 +281,9 @@ function findHermesBinary(): string | null {
           "Scripts",
         )
       : path.join(profile, ".hermes", "hermes-agent", "venv", "bin");
+  // Legacy (userData à espaces) — migration / installs antérieures.
+  const legacyRuntime = path.join(ctx.userDataDir, "hermes-runtime");
+  const legacyProfile = path.join(legacyRuntime, "os-profile");
   const resolved = resolveHermesBinary({
     platform: process.platform,
     env: process.env,
@@ -288,6 +293,9 @@ function findHermesBinary(): string | null {
       sandLocalBin,
       sandHermesBin,
       sandAgentScripts,
+      path.join(legacyRuntime, "bin"),
+      path.join(legacyProfile, ".hermes", "bin"),
+      path.join(legacyProfile, ".hermes", "hermes-agent", "venv", "bin"),
     ].filter(Boolean),
     // OS TempoFlow : jamais de `which`/`where` — sandbox uniquement.
     // Overrides env autorisés seulement hors build packagé (dev/tests).

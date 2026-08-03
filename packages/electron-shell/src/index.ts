@@ -232,6 +232,8 @@ export {
   hermesAgentDirCandidates,
   hermesInstallOsProfileDir,
   hermesRuntimeCacheDir,
+  hermesSpaceSafeUserDataRoot,
+  patchHermesInstallShForSpaces,
   hermesVendorDir,
   hermesWebuiInstallDir,
   installHermesAgent,

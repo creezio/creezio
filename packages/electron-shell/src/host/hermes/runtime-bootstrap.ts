@@ -117,10 +117,59 @@ export function vendoredInstallScriptPath(
   return null;
 }
 
+/**
+ * Racine userData sans espaces pour les scripts shell tiers (install.sh).
+ * Ex. `…/TempoFlow Server` → `…/TempoFlow-Server` — sinon `$UV_CMD --version`
+ * non quoté dans l’installeur officiel sort en exit 126.
+ */
+export function hermesSpaceSafeUserDataRoot(userDataDir: string): string {
+  if (!/\s/.test(userDataDir)) return userDataDir;
+  const parent = path.dirname(userDataDir);
+  const base = path.basename(userDataDir).replace(/\s+/g, "-");
+  return path.join(parent, base);
+}
+
 export function hermesRuntimeCacheDir(ctx: HostRuntimeContext): string {
-  const dir = path.join(ctx.userDataDir, "hermes-runtime");
+  // Install/bootstrap Hermes : jamais d’espace dans le chemin (install.sh).
+  const root = hermesSpaceSafeUserDataRoot(ctx.userDataDir);
+  const dir = path.join(root, "hermes-runtime");
   fs.mkdirSync(dir, { recursive: true });
+  // Compat : garder un lien/miroir sous l’ancien chemin à espaces si différent.
+  try {
+    const legacy = path.join(ctx.userDataDir, "hermes-runtime");
+    if (legacy !== dir && !fs.existsSync(legacy)) {
+      try {
+        fs.symlinkSync(
+          dir,
+          legacy,
+          process.platform === "win32" ? "junction" : "dir",
+        );
+      } catch {
+        /* best-effort */
+      }
+    }
+  } catch {
+    /* ignore */
+  }
   return dir;
+}
+
+/** Corrige les invocations non quotées de $UV_CMD dans install.sh (espaces). */
+export function patchHermesInstallShForSpaces(scriptPath: string): void {
+  if (!fs.existsSync(scriptPath)) return;
+  const raw = fs.readFileSync(scriptPath, "utf8");
+  const patched = raw
+    .replace(
+      /UV_VERSION=\$\(\$UV_CMD --version 2>\/dev\/null\)/g,
+      'UV_VERSION=$("$UV_CMD" --version 2>/dev/null)',
+    )
+    .replace(
+      /UV_VERSION=\$\(\$UV_CMD --version\)/g,
+      'UV_VERSION=$("$UV_CMD" --version)',
+    );
+  if (patched !== raw) {
+    fs.writeFileSync(scriptPath, patched, "utf8");
+  }
 }
 
 /**
@@ -554,7 +603,9 @@ export async function installHermesAgent(
       } else {
         await downloadToFile(posix.scriptUrl, sh, opts.onLog);
       }
+      // Checksum AVANT patch local (le patch quote $UV_CMD — hors amont).
       verifyInstallScriptChecksum(sh, posix.scriptSha256, opts.onLog);
+      patchHermesInstallShForSpaces(sh);
       fs.chmodSync(sh, 0o755);
       const bash = resolveSystemBinary("bash");
       if (!bash) {
