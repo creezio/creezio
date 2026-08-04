@@ -3,9 +3,9 @@
 #
 # Image modulaire par variant (SERVER_VARIANT) :
 #   base    (défaut) — kernel + API + CRM Next + Meili
-#   browser (futur)  — + chromium/xvfb/fonts pour un sidecar navigateur IA
-#                      (stage placeholder, rien d'implémenté, image base
-#                      jamais alourdie). Données navigateur : /data/browser.
+#   browser          — + chromium/xvfb/fonts : sidecar navigateur IA
+#                      (CREEZIO_BROWSER_SIDECAR=1, profils /data/browser).
+#                      L'image base n'est jamais alourdie.
 #
 # Build context = racine marque (ex. tempoflow3) :
 #   docker build -f $CREEZIO_KIT_ROOT/docker/server/Dockerfile \
@@ -83,12 +83,24 @@ HEALTHCHECK --interval=10s --timeout=3s --start-period=45s --retries=8 \
 CMD ["node", "scripts/brand-kernel-harness.mjs"]
 
 # ---------------------------------------------------------------------------
-# Variant browser (FUTUR — placeholder non implémenté, ne pas activer).
-# Ajoutera : chromium + xvfb + fonts + ENV CREEZIO_BROWSER_SIDECAR=1,
-# profil navigateur persistant sous /data/browser (même volume /data).
-# Activation prévue : docker build --build-arg SERVER_VARIANT=browser …
+# Variant browser — sidecar navigateur IA (CREEZIO_BROWSER_SIDECAR=1) :
+#   chromium + xvfb + fonts (liberation/noto) + libs rendu.
+# Profils persistants /data/browser/<aiUserId> (même volume /data).
+# Recommandé au run : --shm-size=1g (Chromium /dev/shm) — appliqué par le
+# CLI `creezio server-docker create --browser`.
+# Activation : docker build --build-arg SERVER_VARIANT=browser …
 # ---------------------------------------------------------------------------
 FROM runtime-base AS runtime-browser
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends \
+    chromium xvfb \
+    fonts-liberation fonts-noto-core fonts-noto-color-emoji \
+    libnss3 libatk-bridge2.0-0 libgtk-3-0 libgbm1 libasound2 libxss1 \
+  && rm -rf /var/lib/apt/lists/* \
+  && chromium --version
+ENV CREEZIO_BROWSER_SIDECAR=1 \
+    CREEZIO_CHROMIUM_BIN=/usr/bin/chromium \
+    CREEZIO_BROWSER_DATA_DIR=/data/browser
 
 # Stage final : sélectionné par SERVER_VARIANT (base par défaut).
 FROM runtime-${SERVER_VARIANT} AS runtime

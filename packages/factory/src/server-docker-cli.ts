@@ -39,6 +39,8 @@ export type ServerDockerArgs = {
   env: Record<string, string>;
   /** create : warm n8n/Hermes dans le container. */
   warm?: boolean;
+  /** create : variant browser (Chromium sidecar IA, shm 1 Go). */
+  browser?: boolean;
   /** rm : supprimer aussi le volume data. */
   purgeData?: boolean;
   /** logs : nombre de lignes (défaut 200). */
@@ -80,6 +82,7 @@ export function parseServerDockerArgs(argv: string[]): ServerDockerArgs {
     else if (a === "--no-build") out.noBuild = true;
     else if (a === "--expose") out.bind = "0.0.0.0";
     else if (a === "--warm") out.warm = true;
+    else if (a === "--browser") out.browser = true;
     else if (a === "--purge-data") out.purgeData = true;
     else if (a === "--follow" || a === "-f") out.follow = true;
     else if (a.startsWith("--port=")) out.port = Number(a.slice(7));
@@ -114,7 +117,9 @@ export function printServerDockerHelp(): void {
   console.log(`creezio server-docker — serveurs marque headless (Docker)
 
 Instances nommées (registre docker-data/servers.json — recommandé) :
-  creezio server-docker create <nom> --brand-root <app> [--port N] [--expose] [--warm] [--env K=V]…
+  creezio server-docker create <nom> --brand-root <app> [--port N] [--expose] [--warm] [--browser] [--env K=V]…
+    --browser : image variant browser (Chromium+Xvfb, sidecar navigateur IA,
+                profils /data/browser, shm 1 Go)
   creezio server-docker start  <nom> --brand-root <app>
   creezio server-docker stop   <nom> --brand-root <app>
   creezio server-docker rm     <nom> --brand-root <app> [--purge-data]
@@ -650,7 +655,9 @@ function ensureUiBuild(brandRoot: string): void {
 function dockerBuildImage(
   paths: ReturnType<typeof resolvePaths>,
   env: NodeJS.ProcessEnv,
+  opts?: { variant?: "base" | "browser"; image?: string },
 ): void {
+  const variant = opts?.variant || "base";
   ensureBrandStandalone(paths.brandRoot, paths.kit);
   ensureElectronBuild(paths.brandRoot);
   ensureUiBuild(paths.brandRoot);
@@ -660,8 +667,10 @@ function dockerBuildImage(
       "build",
       "-f",
       paths.dockerfile,
+      "--build-arg",
+      `SERVER_VARIANT=${variant}`,
       "-t",
-      String(env.SERVER_IMAGE),
+      opts?.image || String(env.SERVER_IMAGE),
       paths.brandRoot,
     ],
     env,
@@ -949,11 +958,11 @@ async function runRegistrySubcommand(
     if (st.exists) {
       throw new Error(`container ${containerName} existe déjà — docker rm -f ?`);
     }
-    if (!dockerImageExists(registry.image) || !args.noBuild) {
-      if (!dockerImageExists(registry.image)) {
-        console.log(`image ${registry.image} absente — build…`);
-        dockerBuildImage(paths, env);
-      }
+    const variant = args.browser ? ("browser" as const) : ("base" as const);
+    const image = serverImageName(brandId, variant);
+    if (!dockerImageExists(image)) {
+      console.log(`image ${image} absente — build (variant ${variant})…`);
+      dockerBuildImage(paths, env, { variant, image });
     }
     const port =
       args.port && args.port > 0 ? args.port : await allocateServerPort(registry);
@@ -967,6 +976,7 @@ async function runRegistrySubcommand(
       dataDir: path.join("docker-data", "servers", name),
       createdAt: new Date().toISOString(),
       ...(Object.keys(extraEnv).length ? { env: extraEnv } : {}),
+      ...(variant === "browser" ? { variant } : {}),
     };
     fs.mkdirSync(instanceDataDirAbs(paths.brandRoot, inst), {
       recursive: true,
@@ -976,7 +986,7 @@ async function runRegistrySubcommand(
       buildDockerRunArgs({
         brandRoot: paths.brandRoot,
         brandId,
-        image: registry.image,
+        image,
         inst,
       }),
       env,

@@ -43,6 +43,50 @@ creezio server-docker create prod --brand-root … --bind 172.17.0.1
 Pour l'admin (`18800`) : ajouter en plus une **Access List** NPM (ou laisser
 la Basic auth intégrée — les deux se cumulent).
 
+## Client Electron (kind=client) derrière le proxy
+
+Le client thin se connecte au serveur via l'URL saisie dans le picker
+(« Rejoindre un serveur ») ou pré-provisionnée (`defaultServerUrl` du
+manifest / `<ENVPREFIX>_DEFAULT_SERVER_URL`). Exigences proxy :
+
+1. **Websockets Support : ON** — UI Next, assistant.
+2. **SSE sans buffering** — le bridge computer-use du client et le
+   screencast « Voir comme IA » sont des streams `text/event-stream`
+   long-lived. Dans NPM, onglet *Advanced* du proxy host :
+
+```nginx
+proxy_buffering off;
+proxy_cache off;
+proxy_read_timeout 1h;
+proxy_send_timeout 1h;
+```
+
+3. **`/health`** doit répondre 200 à travers le proxy : le client teste
+   cette route (`testRemoteHealth`) avant de valider l'URL et pour la
+   bannière offline/reconnexion.
+
+### Alternative tunnel cloudflared
+
+`cloudflared` supporte nativement SSE + WebSockets sans réglage : un tunnel
+`https://<slug>.<domaine>` → `http://127.0.0.1:1879x` suffit (c'est le mode
+provisionné par l'onboarding marque). Pas de buffering à désactiver.
+
+### Cookies fournisseurs — rien à synchroniser
+
+Les sessions fournisseurs des humains (onglets incrustés `openTab`) vivent
+dans des partitions Chromium **locales** persistantes du poste client
+(`persist:<brand>-site-<id>`) : elles ne transitent jamais par le serveur.
+Côté serveur, l'IA a ses propres profils Chromium persistants sous
+`/data/browser/<aiUserId>` (variant `--browser`). Les deux mondes sont
+étanches par conception — aucune synchro de cookies à configurer.
+
+### Reconnexion client
+
+- Health KO → l'app affiche l'écran offline et relance `testRemoteHealth`
+  (backoff) ; le bridge computer-use se reconnecte seul (backoff SSE).
+- « Changer de serveur » : `connection:rechoose` (menu) → repasse par le
+  picker au prochain démarrage.
+
 ## Garde-fous
 
 - Ne jamais exposer `--expose`/`SERVER_BIND=0.0.0.0` sans firewall + TLS.

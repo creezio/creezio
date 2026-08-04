@@ -16,6 +16,8 @@ export const SERVER_PORT_BASE = 18790;
 export const SERVER_CONTAINER_PORT = 18791;
 export const SERVER_LABEL = "creezio.server";
 
+export type ServerVariant = "base" | "browser";
+
 export type ServerRegistryInstance = {
   name: string;
   containerName: string;
@@ -25,6 +27,8 @@ export type ServerRegistryInstance = {
   dataDir: string;
   createdAt: string;
   env?: Record<string, string>;
+  /** Variant image (base par défaut ; browser = sidecar navigateur IA). */
+  variant?: ServerVariant;
 };
 
 export type ServerRegistry = {
@@ -34,7 +38,16 @@ export type ServerRegistry = {
   instances: ServerRegistryInstance[];
 };
 
-export function serverImageName(brandId: string): string {
+export function serverImageName(
+  brandId: string,
+  variant: ServerVariant = "base",
+): string {
+  if (variant === "browser") {
+    return (
+      process.env.SERVER_IMAGE_BROWSER ||
+      `creezio-server-${brandId}-browser:local`
+    );
+  }
   return process.env.SERVER_IMAGE || `creezio-server-${brandId}:local`;
 }
 
@@ -142,6 +155,8 @@ export function buildDockerRunArgs(opts: {
     inst.containerName,
     "--restart",
     "unless-stopped",
+    // Chromium sidecar : /dev/shm 64 Mo par défaut = crashs renderer.
+    ...(inst.variant === "browser" ? ["--shm-size=1g"] : []),
     "-p",
     `${inst.bind}:${inst.port}:${SERVER_CONTAINER_PORT}`,
     "-v",
@@ -154,6 +169,8 @@ export function buildDockerRunArgs(opts: {
     `creezio.instance=${inst.name}`,
     "--label",
     `creezio.port=${inst.port}`,
+    "--label",
+    `creezio.variant=${inst.variant || "base"}`,
     "--label",
     `creezio.brand-root=${brandRoot}`,
     "-e",

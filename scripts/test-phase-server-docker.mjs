@@ -38,12 +38,18 @@ test("docker/server artefacts présents", () => {
   // Chantier embeds : Meili Linux embarqué dans l'image (plus de sql-fallback).
   assert.match(df, /meilisearch-linux-amd64/);
   assert.match(df, /MEILI_BINARY=\/opt\/creezio\/bin\/meilisearch/);
-  // Image modulaire par variant : base (défaut) + placeholder browser sidecar
-  // (non implémenté — l'ajout futur ne doit pas être cassant).
+  // Image modulaire par variant : base (défaut) + browser sidecar IA
+  // (chromium + xvfb + fonts, env CREEZIO_BROWSER_SIDECAR).
   assert.match(df, /ARG SERVER_VARIANT=base/);
   assert.match(df, /AS runtime-base/);
   assert.match(df, /FROM runtime-base AS runtime-browser/);
   assert.match(df, /FROM runtime-\$\{SERVER_VARIANT\} AS runtime/);
+  assert.match(df, /chromium xvfb/);
+  assert.match(df, /fonts-liberation/);
+  assert.match(df, /libnss3/);
+  assert.match(df, /CREEZIO_BROWSER_SIDECAR=1/);
+  assert.match(df, /CREEZIO_CHROMIUM_BIN=\/usr\/bin\/chromium/);
+  assert.match(df, /CREEZIO_BROWSER_DATA_DIR=\/data\/browser/);
   // Pas de domaine marque dans l'image générique.
   assert.doesNotMatch(df, /TF3_|TEMPOFLOW|CERTIVAN|FIDU/);
   const compose = fs.readFileSync(
@@ -147,6 +153,16 @@ test("CLI registre d'instances : create/start/stop/rm/logs/ls + admin", () => {
   assert.match(reg, /creezio-server-\$\{brandId\}:local/);
   assert.match(reg, /creezio\.server/);
   assert.match(reg, /18790/);
+  // Variant browser : image suffixée, shm ≥ 1 Go, label admin.
+  assert.match(reg, /-browser:local/);
+  assert.match(reg, /--shm-size=1g/);
+  assert.match(reg, /creezio\.variant/);
+  const cli = fs.readFileSync(
+    path.join(root, "packages/factory/src/server-docker-cli.ts"),
+    "utf8",
+  );
+  assert.match(cli, /--browser/);
+  assert.match(cli, /SERVER_VARIANT/);
 });
 
 test("boot progress headless : reporter + early-listen + boot-status", () => {
