@@ -8,6 +8,7 @@ Gates de phases + outils kit.
 | [`kit-version.mjs`](../kit-version.mjs) | !usrbinenv node |
 | [`propagation-impact.mjs`](../propagation-impact.mjs) | !usrbinenv node |
 | [`sync-creezio-vendor.sh`](../sync-creezio-vendor.sh) | !usrbinenv bash |
+| [`test-fast.mjs`](../test-fast.mjs) | Runner gates fail-fast lisible (`npm run test:fast`) — séquentiel, stop 1re rouge, `--from`/`--only`/`--skip`, skip-list env VPS documenté, JSONL /tmp/creezio-test-fast.log |
 | [`test-mails-inbox.mjs`](../test-mails-inbox.mjs) |  |
 | [`test-phase-b.mjs`](../test-phase-b.mjs) | !usrbinenv node |
 | [`test-phase-b2.mjs`](../test-phase-b2.mjs) | !usrbinenv node |
@@ -26,6 +27,7 @@ Gates de phases + outils kit.
 | [`test-phase-h3.mjs`](../test-phase-h3.mjs) |  |
 | [`test-phase-h4.mjs`](../test-phase-h4.mjs) |  |
 | [`test-phase-h5.mjs`](../test-phase-h5.mjs) | !usrbinenv node |
+| [`test-phase-hybrid.mjs`](../test-phase-hybrid.mjs) | Gate architecture hybride : browser-host (driver partagé, sans electron), surface plateforme + sidecar IA, client thin `requireRemoteProfile`, bridge session, `defaultServerUrl`, onglets réels install-brand-os-desktop, Hermes `--skip-browser` conditionnel |
 | [`test-phase-i0.mjs`](../test-phase-i0.mjs) |  |
 | [`test-phase-i1.mjs`](../test-phase-i1.mjs) |  |
 | [`test-phase-i2.mjs`](../test-phase-i2.mjs) |  |
