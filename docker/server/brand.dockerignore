@@ -1,5 +1,6 @@
+# creezio-dockerignore v2 — UI Next standalone incluse dans l'image.
 # Copié en `.dockerignore` à la racine marque avant `docker build`
-# (CLI `creezio server-docker build` le pose si absent).
+# (CLI `creezio server-docker build` le pose / rafraîchit si marqueur absent).
 
 .git
 .gitignore
@@ -12,8 +13,6 @@
 **/dist-electron
 **/dist-electron-server
 **/ui
-**/ui/node_modules
-**/ui/.next
 **/dumps
 **/crm
 **/src
@@ -33,3 +32,11 @@ agent-transcripts
 docs
 *.md
 !README.md
+node-compile-cache
+
+# UI Next standalone (CRM navigateur dans le container) — ré-inclusion après
+# l'exclusion **/ui et **/node_modules (dockerignore : dernier motif gagnant).
+!ui/.next/standalone/**
+!ui/.next/static/**
+!ui/.next/BUILD_ID
+!ui/public/**
