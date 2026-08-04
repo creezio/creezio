@@ -16,7 +16,7 @@ function loc(file) {
 }
 
 test("M5.1 PHASE-M5.md exige jumeaux morts + installHermesAgent", () => {
-  const doc = fs.readFileSync(path.join(root, "docs/PHASE-M5.md"), "utf8");
+  const doc = fs.readFileSync(path.join(root, "docs/archive/PHASE-M5.md"), "utf8");
   assert.match(doc, /hermes-runtime-bootstrap/);
   assert.match(doc, /n8n-runtime-bootstrap/);
   assert.match(doc, /installHermesAgent/);

@@ -36,7 +36,7 @@ function exists(dir, rel) {
 }
 
 test("N8.1 PHASE-N8.md + PLAN-N N8 livré", () => {
-  const phase = fs.readFileSync(path.join(root, "docs/PHASE-N8.md"), "utf8");
+  const phase = fs.readFileSync(path.join(root, "docs/archive/PHASE-N8.md"), "utf8");
   assert.match(phase, /Gates LOC|allowlists/i);
   assert.match(phase, /Sign-off|gates verts/i);
   assert.match(phase, /test-phase-n8/);
@@ -44,7 +44,7 @@ test("N8.1 PHASE-N8.md + PLAN-N N8 livré", () => {
   assert.match(phase, /≤800|≤260|≤150|≤80|≤40/);
   assert.doesNotMatch(phase, PAPERCLIP_RE);
 
-  const plan = fs.readFileSync(path.join(root, "docs/PLAN-N.md"), "utf8");
+  const plan = fs.readFileSync(path.join(root, "docs/archive/PLAN-N.md"), "utf8");
   assert.match(plan, /## N8 — Gates LOC/);
   assert.match(plan, /PHASE-N8\.md/);
   assert.match(plan, /Done|livr|Sign-off/i);

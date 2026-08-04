@@ -16,12 +16,12 @@ function loc(file) {
 }
 
 test("O1.1 PHASE-O1.md + PLAN-O O1", () => {
-  const phase = fs.readFileSync(path.join(root, "docs/PHASE-O1.md"), "utf8");
+  const phase = fs.readFileSync(path.join(root, "docs/archive/PHASE-O1.md"), "utf8");
   assert.match(phase, /Anti-façades Electron|plugin-control-api/i);
   assert.match(phase, /Sign-off|gates verts/i);
   assert.match(phase, /test-phase-o1/);
   assert.match(phase, /NON done|façade/i);
-  const plan = fs.readFileSync(path.join(root, "docs/PLAN-O.md"), "utf8");
+  const plan = fs.readFileSync(path.join(root, "docs/archive/PLAN-O.md"), "utf8");
   assert.match(plan, /## O1 — Anti-façades Electron/);
   assert.match(plan, /PHASE-O1|O1 — Anti-façades Electron mince.*✅/);
 });

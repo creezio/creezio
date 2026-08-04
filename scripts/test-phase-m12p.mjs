@@ -14,7 +14,7 @@ const fiduRoot = resolveBrandCrmRoot("fidu");
 const MAX = 800;
 
 test("M12p.1 PHASE-M12p.md", () => {
-  const doc = fs.readFileSync(path.join(root, "docs/PHASE-M12p.md"), "utf8");
+  const doc = fs.readFileSync(path.join(root, "docs/archive/PHASE-M12p.md"), "utf8");
   assert.match(doc, /installBrandDesktopRuntime/);
   assert.match(doc, /Fidu/);
   assert.match(doc, /800/);

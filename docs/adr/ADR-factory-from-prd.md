@@ -1,6 +1,6 @@
 # ADR — Factory `new-app --from-prd`
 
-**Statut** : accepté  
+**Statut** : accepté — implémenté  
 **Date** : 2026-08-01  
 **Lié** : `ADR-no-brand-domain-in-native-packages.md`, expérience `docs/experiences/tempoflow3/`
 

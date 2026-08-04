@@ -13,7 +13,7 @@ const tfCrm = resolveBrandCrmRoot("tempoflow2");
 const dbPkg = path.join(root, "packages/database");
 
 test("M2.1 PHASE-M2.md exige panels kit + route mince", () => {
-  const doc = fs.readFileSync(path.join(root, "docs/PHASE-M2.md"), "utf8");
+  const doc = fs.readFileSync(path.join(root, "docs/archive/PHASE-M2.md"), "utf8");
   assert.match(doc, /@creezio\/database\/ui/);
   assert.match(doc, /createAdminDatabaseRoutes/);
   assert.match(doc, /≤\s*~?150|mince/i);

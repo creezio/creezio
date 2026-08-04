@@ -58,7 +58,7 @@ function assertControlApiBudget(dir, label) {
 }
 
 test("N1p.1 PHASE-N1p.md + PLAN-N N1p livré", () => {
-  const phase = fs.readFileSync(path.join(root, "docs/PHASE-N1p.md"), "utf8");
+  const phase = fs.readFileSync(path.join(root, "docs/archive/PHASE-N1p.md"), "utf8");
   assert.match(phase, /Cutover plugins runtime/i);
   assert.match(phase, /fadb3e4|configurePluginHost/);
   assert.match(phase, /Sign-off|gates verts/i);
@@ -67,7 +67,7 @@ test("N1p.1 PHASE-N1p.md + PLAN-N N1p livré", () => {
   assert.match(phase, /Certivan/i);
   assert.match(phase, /Fidu/i);
 
-  const plan = fs.readFileSync(path.join(root, "docs/PLAN-N.md"), "utf8");
+  const plan = fs.readFileSync(path.join(root, "docs/archive/PLAN-N.md"), "utf8");
   assert.match(plan, /## N1p — Cutover plugins runtime/);
   assert.match(plan, /PHASE-N1p\.md/);
   assert.match(plan, /Done|livr/i);

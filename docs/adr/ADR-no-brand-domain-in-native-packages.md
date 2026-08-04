@@ -2,7 +2,7 @@
 
 | | |
 |--|--|
-| **Statut** | Accepté (2026-07-30) — contrainte d’intention post-O9 |
+| **Statut** | Accepté — implémenté (2026-07-30) — contrainte d’intention post-O9 |
 | **Contexte** | Extract O9 a promu du vocabulaire TempoFlow (`supplier` / `fournisseur`, panier, optimiser…) dans `@creezio/shell-ui`, `@creezio/shell`, `@creezio/electron-shell`, `@creezio/assistant` |
 
 ## Décision

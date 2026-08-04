@@ -54,7 +54,7 @@ test("F0.1 factory AGENTS autorise --from-prd", () => {
 });
 
 test("F0.2 ADR factory-from-prd présent", () => {
-  const adr = path.join(ROOT, "docs/ADR-factory-from-prd.md");
+  const adr = path.join(ROOT, "docs/adr/ADR-factory-from-prd.md");
   assert.ok(fs.existsSync(adr));
   const body = fs.readFileSync(adr, "utf8");
   assert.match(body, /générateurs/);

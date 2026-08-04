@@ -143,5 +143,5 @@ test("V2.4 package + console sources présents", () => {
       path.join(root, "apps/console/src/components/ObservabilityPanel.tsx"),
     ),
   );
-  assert.ok(fs.existsSync(path.join(root, "docs/PHASE-V2.md")));
+  assert.ok(fs.existsSync(path.join(root, "docs/archive/PHASE-V2.md")));
 });

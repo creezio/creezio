@@ -15,7 +15,7 @@ const modulesPath = path.join(tfRoot, "modules");
 const electronModulesPath = path.join(tfRoot, "electron/modules");
 
 test("M10.1 PHASE-M10.md présent", () => {
-  const docPath = path.join(root, "docs/PHASE-M10.md");
+  const docPath = path.join(root, "docs/archive/PHASE-M10.md");
   assert.ok(fs.existsSync(docPath));
   const doc = fs.readFileSync(docPath, "utf8");
   assert.match(doc, /symlink/i);

@@ -15,13 +15,13 @@ const PAPERCLIP_RE = /paperclipApi|startPaperclip\b|paperclip-launcher/;
 const BRANDS = ["tempoflow2", "certivan-app", "fidu"];
 
 test("O10.1 PHASE-O10.md + PLAN-O O10", () => {
-  const phase = fs.readFileSync(path.join(root, "docs/PHASE-O10.md"), "utf8");
+  const phase = fs.readFileSync(path.join(root, "docs/archive/PHASE-O10.md"), "utf8");
   assert.match(phase, /SYNC|kitSha|matrice|allowlist/i);
   assert.match(phase, /Sign-off|gates verts/i);
   assert.match(phase, /test-phase-o10/);
   assert.doesNotMatch(phase, PAPERCLIP_RE);
 
-  const plan = fs.readFileSync(path.join(root, "docs/PLAN-O.md"), "utf8");
+  const plan = fs.readFileSync(path.join(root, "docs/archive/PLAN-O.md"), "utf8");
   assert.match(plan, /## O10 — Polish SYNC/);
   assert.match(plan, /PHASE-O10\.md/);
   assert.match(plan, /O10 — Polish SYNC.*✅|## O10 —[\s\S]*?✅/);
@@ -62,7 +62,7 @@ test("O10.2 SYNC kitSha tip ×3 + dry-run", () => {
 
 test("O10.3 matrice mentionne O* / shell-ui cutover", () => {
   const mat = fs.readFileSync(
-    path.join(root, "docs/MATRICE-NATIVE-METIER-PLUGIN.md"),
+    path.join(root, "docs/archive/MATRICE-NATIVE-METIER-PLUGIN.md"),
     "utf8",
   );
   assert.match(mat, /PLAN-O|O9p|shell-ui/i);

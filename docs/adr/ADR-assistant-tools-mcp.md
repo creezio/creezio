@@ -2,7 +2,7 @@
 
 | | |
 |--|--|
-| **Statut** | Accepté (O4r + **O4r2** + **O4r3** + **O4r4** — 2026-07-30) |
+| **Statut** | Accepté — implémenté (O4r + O4r2 + O4r3 + O4r4, 2026-07-30) |
 | **Contexte** | Remédiation silo `brand-chat-tools` / `TOOL_DEFINITIONS` ×3, puis mini-registre `mcp-bridge`, puis handlers Hono `/mcp` parallèles |
 
 ## Décision

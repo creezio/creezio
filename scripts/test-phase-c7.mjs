@@ -119,7 +119,7 @@ test("C7.3 demobrand startControlPlane + ACL deny cross-org", async () => {
 });
 
 test("C7.4 docs PHASE-C7", () => {
-  const phase = fs.readFileSync(path.join(root, "docs/PHASE-C7.md"), "utf8");
+  const phase = fs.readFileSync(path.join(root, "docs/archive/PHASE-C7.md"), "utf8");
   assert.match(phase, /Sign-off|TERMINÉE/i);
   assert.match(phase, /startHostPluginControlPlane/);
 });

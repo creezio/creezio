@@ -16,10 +16,10 @@ function exists(p) {
 
 test("I0 docs livrables présents", () => {
   for (const p of [
-    "docs/PHASE-I0.md",
-    "docs/BACKLOG-I0.md",
-    "docs/REPUBLISH-POLICY.md",
-    "docs/gates/POST-H5.md",
+    "docs/archive/PHASE-I0.md",
+    "docs/archive/BACKLOG-I0.md",
+    "docs/archive/REPUBLISH-POLICY.md",
+    "docs/archive/gates/POST-H5.md",
     "scripts/sync-creezio-vendor.sh",
   ]) {
     assert.ok(exists(p), `missing ${p}`);

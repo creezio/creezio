@@ -17,7 +17,7 @@ function loc(file) {
 }
 
 test("M3p.1 PHASE-M3p.md Certivan puis Fidu", () => {
-  const doc = fs.readFileSync(path.join(root, "docs/PHASE-M3p.md"), "utf8");
+  const doc = fs.readFileSync(path.join(root, "docs/archive/PHASE-M3p.md"), "utf8");
   assert.match(doc, /Certivan/);
   assert.match(doc, /Fidu/);
   assert.match(doc, /startHostPluginControlPlane/);

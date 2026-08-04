@@ -2,7 +2,7 @@
 
 ## Statut
 
-Accepté (2026-08-01).
+Accepté — implémenté (2026-08-01).
 
 ## Contexte
 

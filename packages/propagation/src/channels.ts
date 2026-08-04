@@ -44,7 +44,7 @@ export const UPDATE_CHANNELS: readonly UpdateChannel[] = [
       "PR automatisable : bump deps @creezio/* + checklist gate G1",
     targetHint: "/opt/docker/certivan-app",
     automatable: true,
-    gateDoc: "docs/gates/G1-CERTIVAN.md",
+    gateDoc: "docs/archive/gates/G1-CERTIVAN.md",
   },
   {
     id: "brand-pr-fidu",
@@ -53,7 +53,7 @@ export const UPDATE_CHANNELS: readonly UpdateChannel[] = [
       "PR automatisable : bump deps @creezio/* + checklist gate G2",
     targetHint: "/opt/docker/fidu",
     automatable: true,
-    gateDoc: "docs/gates/G2-FIDU.md",
+    gateDoc: "docs/archive/gates/G2-FIDU.md",
   },
   {
     id: "brand-pr-tempoflow",
@@ -62,7 +62,7 @@ export const UPDATE_CHANNELS: readonly UpdateChannel[] = [
       "PR automatisable : bump deps @creezio/* + checklist gate G3",
     targetHint: "creezio/tempoflow2",
     automatable: true,
-    gateDoc: "docs/gates/G3-TEMPOFLOW.md",
+    gateDoc: "docs/archive/gates/G3-TEMPOFLOW.md",
   },
   {
     id: "brand-pr-demobrand",

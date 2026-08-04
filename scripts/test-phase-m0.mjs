@@ -10,7 +10,7 @@ import { fileURLToPath } from "node:url";
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
 test("M0.1 PHASE-M0.md existe et fige freeze anti-stub", () => {
-  const doc = fs.readFileSync(path.join(root, "docs/PHASE-M0.md"), "utf8");
+  const doc = fs.readFileSync(path.join(root, "docs/archive/PHASE-M0.md"), "utf8");
   assert.match(doc, /Baseline anti-demi-mesure|vision stricte/i);
   assert.match(doc, /stub ≠ done|stubs? \/ façades? \/ jumeaux/i);
   assert.match(doc, /src\/lib\/database/);
@@ -19,7 +19,7 @@ test("M0.1 PHASE-M0.md existe et fige freeze anti-stub", () => {
 });
 
 test("M0.2 PLAN-M.md couvre M0→M16 et engagement gate", () => {
-  const doc = fs.readFileSync(path.join(root, "docs/PLAN-M.md"), "utf8");
+  const doc = fs.readFileSync(path.join(root, "docs/archive/PLAN-M.md"), "utf8");
   assert.match(doc, /M0 → M1 → M1p/);
   assert.match(doc, /\bM16\b/);
   assert.match(doc, /pas de M\(n\+1\) tant que[\s\S]*gate M\(n\) rouge/);
@@ -28,7 +28,7 @@ test("M0.2 PLAN-M.md couvre M0→M16 et engagement gate", () => {
 });
 
 test("M0.3 inventaire M0 contient dettes mesurables (LOC / chemins)", () => {
-  const doc = fs.readFileSync(path.join(root, "docs/PHASE-M0.md"), "utf8");
+  const doc = fs.readFileSync(path.join(root, "docs/archive/PHASE-M0.md"), "utf8");
   assert.match(doc, /local-config\.ts/);
   assert.match(doc, /plugin-control-api\.ts/);
   assert.match(doc, /main\.ts/);
@@ -41,7 +41,7 @@ test("M0.3 inventaire M0 contient dettes mesurables (LOC / chemins)", () => {
 
 test("M0.4 matrice référence vision stricte M*", () => {
   const doc = fs.readFileSync(
-    path.join(root, "docs/MATRICE-NATIVE-METIER-PLUGIN.md"),
+    path.join(root, "docs/archive/MATRICE-NATIVE-METIER-PLUGIN.md"),
     "utf8",
   );
   assert.match(doc, /PHASE-M0|PLAN-M|vision stricte/i);

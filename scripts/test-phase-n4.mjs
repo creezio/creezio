@@ -57,7 +57,7 @@ function walkTs(dir) {
 }
 
 test("N4.1 PHASE-N4.md + PLAN-N N4", () => {
-  const phase = fs.readFileSync(path.join(root, "docs/PHASE-N4.md"), "utf8");
+  const phase = fs.readFileSync(path.join(root, "docs/archive/PHASE-N4.md"), "utf8");
   assert.match(phase, /Migrations historiques plateforme/i);
   assert.match(phase, /369a7bf/);
   assert.match(phase, /platformHistoricalMigrations/);
@@ -67,7 +67,7 @@ test("N4.1 PHASE-N4.md + PLAN-N N4", () => {
   assert.match(phase, /migrate-legacy|sections_json|PRAGMA/i);
   assert.doesNotMatch(phase, PAPERCLIP_RE);
 
-  const plan = fs.readFileSync(path.join(root, "docs/PLAN-N.md"), "utf8");
+  const plan = fs.readFileSync(path.join(root, "docs/archive/PLAN-N.md"), "utf8");
   assert.match(plan, /## N4 — Migrations historiques plateforme → kit/);
   assert.match(plan, /PHASE-N4\.md/);
   assert.match(plan, /Done|livr/i);

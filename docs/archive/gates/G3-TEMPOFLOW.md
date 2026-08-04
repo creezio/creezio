@@ -73,7 +73,7 @@
 ## Notes ops
 
 - **Node** : AGENTS.md TF mentionne 22.22.2 ; VPS Creezio = **22.22.1** (≥ `TF2_NODE_MIN_FOR_EMBEDS` 22.22.0) — OK pour embeds/tests.
-- **Publish path** : feed prod = NPM du VPS TempoFlow (`deploy@104.168.10.36`), pas `/data/dl-*` du NPM Creezio. `remote-build-win.sh --publish` build OK ; copie feed faite via `docker cp` distant.
+- **Publish path** : feed prod = NPM du VPS TempoFlow (`deploy@<vps-build>`), pas `/data/dl-*` du NPM Creezio. `remote-build-win.sh --publish` build OK ; copie feed faite via `docker cp` distant.
 - **optimiser-snapshot** (#72) : smoke data-dépendant (catalogue seed) — non bloquant ; logique optimiser/guard/panier/dispatch verts.
 
 ## Interdits pendant G3

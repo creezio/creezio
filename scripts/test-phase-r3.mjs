@@ -81,7 +81,7 @@ check("updater / tray / host façades exportées", () => {
 });
 
 check("PHASE-R3.md présent", () => {
-  assert.ok(fs.existsSync(path.join(root, "docs/PHASE-R3.md")));
+  assert.ok(fs.existsSync(path.join(root, "docs/archive/PHASE-R3.md")));
 });
 
 if (process.exitCode) {

@@ -39,7 +39,7 @@ const FORBIDDEN_PLATFORM = [
 ];
 
 test("M15.1 PHASE-M15.md", () => {
-  const doc = fs.readFileSync(path.join(root, "docs/PHASE-M15.md"), "utf8");
+  const doc = fs.readFileSync(path.join(root, "docs/archive/PHASE-M15.md"), "utf8");
   assert.match(doc, /Allowlist|allowlist/i);
   assert.match(doc, /GED|ged/);
   assert.match(doc, /platformCoreMigrations/);
@@ -83,7 +83,7 @@ test("M15.4 main slim + Paperclip absent", () => {
 });
 
 test("M15.5 PLAN-M.md section M15", () => {
-  const plan = fs.readFileSync(path.join(root, "docs/PLAN-M.md"), "utf8");
+  const plan = fs.readFileSync(path.join(root, "docs/archive/PLAN-M.md"), "utf8");
   assert.match(plan, /## M15 — Fidu gold/);
   assert.match(plan, /platformCoreMigrations|GED|allowlist/i);
 });

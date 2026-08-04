@@ -43,21 +43,21 @@ test("O4r3.1 kit bindFacadeToolsToHono exporté", () => {
 
 test("O4r3.2 ADR + PHASE-O4r3 + PLAN-O", () => {
   const adr = fs.readFileSync(
-    path.join(root, "docs/ADR-assistant-tools-mcp.md"),
+    path.join(root, "docs/adr/ADR-assistant-tools-mcp.md"),
     "utf8",
   );
   assert.match(adr, /O4r3/);
   assert.match(adr, /bindFacadeToolsToHono|Hono.*create\*BrandMcp|même SoT/i);
 
   const phase = fs.readFileSync(
-    path.join(root, "docs/PHASE-O4r3.md"),
+    path.join(root, "docs/archive/PHASE-O4r3.md"),
     "utf8",
   );
   assert.match(phase, /test-phase-o4r3/);
   assert.match(phase, /Sign-off|gates/i);
   assert.match(phase, /bindFacadeToolsToHono/);
 
-  const plan = fs.readFileSync(path.join(root, "docs/PLAN-O.md"), "utf8");
+  const plan = fs.readFileSync(path.join(root, "docs/archive/PLAN-O.md"), "utf8");
   assert.match(plan, /## O4r3 —/);
   assert.match(plan, /PHASE-O4r3\.md/);
 });

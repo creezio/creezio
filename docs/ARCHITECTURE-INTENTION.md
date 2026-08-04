@@ -1,11 +1,10 @@
-# Architecture intention — Creezio (cadre H0)
+# Architecture intention — Creezio
 
-> **Phase H0** — décisions **verrouillées** par l’utilisateur (2026-07-29).  
-> Ce document fixe le *pourquoi* et le *où* ; le *comment packagé* est dans
-> [BACKLOG-H1-PACKAGES.md](BACKLOG-H1-PACKAGES.md).  
+> Décisions **verrouillées** par l’utilisateur (2026-07-29). Ce document fixe
+> le *pourquoi* et le *où* ; l’architecture opérationnelle est dans
+> [ARCHITECTURE.md](./ARCHITECTURE.md).  
 > Constante runtime : `ARCHITECTURE_VERSION` dans `@creezio/platform-core`
-> (`"H6"` freeze I0–I8 ; était `"H5"` ACL / `"H4"` MCP / `"H3"` modules /
-> `"H2"` isolation / `"H1"` packages / `"H0"` cadre).
+> (`"H6"` — historique des paliers dans [archive/](./archive/)).
 
 ---
 
@@ -82,15 +81,15 @@ Chemins + runtime (H1 paths, H2 handles) :
 - Ce n’est **pas** « la nav TempoFlow générique » — TempoFlow (ou Fidu…) *remplit*
   les slots.
 
-Aujourd’hui : placeholders factory (`nav-core.ts` + `vertical-slot.ts`).  
-Cible H1 : `@creezio/shell-ui` (ou équivalent) avec contrat de slots typé.
+Implémentation : `@creezio/shell-ui` (contrat de slots typé,
+`registerBrandNav`) ; la factory scaffolde `vertical-slot.ts` côté marque.
 
 ### Runtime marque : une façade desktop
 
 Les marques from-prd / BrandSpec démarrent via **`@creezio/app-runtime`**
 (`startBrandDesktop` / `startBrandKernelHarness`).  
 `main.ts` = déclaration (manifest, `bootKernel`, feed, nav) — **pas** une
-copie de l’orchestration OS. Voir ADR `docs/ADR-brand-spec-app-runtime.md`
+copie de l’orchestration OS. Voir ADR `docs/adr/ADR-brand-spec-app-runtime.md`
 et `docs/agents/CREATE-BRAND.md`.
 
 ### API + MCP : une façade unique
@@ -113,8 +112,7 @@ découverts. Pas de « produit MCP Creezio » séparé du MCP de l’app.
 
 ### Multi-exe Client + Serveur par marque
 
-Chaque `AppManifest` expose **toujours** `client` + `server` + `publish`
-(déjà livré Phases A–G).
+Chaque `AppManifest` expose **toujours** `client` + `server` + `publish`.
 
 ### Serveur neuf — jour 0
 
@@ -150,7 +148,7 @@ Chaque `AppManifest` expose **toujours** `client` + `server` + `publish`
                     │ proxifie cœur + modules + plugins
 ```
 
-### Propagation (rappel Phases F)
+### Propagation
 
 - **Descente** : kit → vertical marque → org → user (entitlements).
 - **Remontée** : plugin terrain → review org → intégration marque → (rare)
@@ -176,21 +174,21 @@ Voir [PROPAGATION.md](PROPAGATION.md).
    TempoFlow **et** Certivan **et** Fidu est **plateforme** `@creezio/*`
    (config optionnelle ok). Le métier = ce qui est spécifique à **une seule**
    marque. Pas de « question bloquante » pour reclasser tasks/cockpit/onboarding/
-   shell/fleet/mails/hub/… — preuve dans [ETAT-DES-LIEUX-INTENTION.md](ETAT-DES-LIEUX-INTENTION.md) §0–B.
+   shell/fleet/mails/hub/… — preuve historique dans
+   [archive/ETAT-DES-LIEUX-INTENTION.md](./archive/ETAT-DES-LIEUX-INTENTION.md) §0–B.
 
 ---
 
 ## 5. Frontière kit vs marques
 
-| Dans le kit (`/opt/docker/creezio`) | Hors kit (repos marques) |
-|-------------------------------------|---------------------------|
-| Packages `@creezio/*`, console, factory, demobrand | tempoflow2, fidu, certivan-app |
+| Dans le kit (racine du repo creezio) | Hors kit (repos marques) |
+|--------------------------------------|---------------------------|
+| Packages `@creezio/*`, console, factory, demobrand | tempoflow2/3, fidu, certivan-app |
 | Contrats, hosts, tooling, Product Hub générique | Domaine métier, seeds, UI CRM, migrations exécutées |
-| Docs cadre H0 / backlog H1 | Releases exe marque, feeds publish |
+| Docs cadre + architecture | Releases exe marque, feeds publish |
 
-Phases A→G (extraction + gates) : **terminées** — voir [DOD-PHASE-A-G.md](DOD-PHASE-A-G.md).  
-Phase H0 : **cadre** — ce document + matrice + backlog.  
-Phase H1 : **création des packages** listés dans le backlog.
+L'extraction historique (phases, gates de premier branchement) est terminée
+et archivée : [archive/](./archive/).
 
 ---
 
@@ -198,8 +196,8 @@ Phase H1 : **création des packages** listés dans le backlog.
 
 | Doc | Rôle |
 |-----|------|
-| [MATRICE-NATIVE-METIER-PLUGIN.md](MATRICE-NATIVE-METIER-PLUGIN.md) | Cartographie + statut ✅/🟡/❌ |
-| [BACKLOG-H1-PACKAGES.md](BACKLOG-H1-PACKAGES.md) | Packages `@creezio/*` à créer |
-| [PHASE-H0.md](PHASE-H0.md) | Sign-off H0 |
-| [PLATFORM-VS-VERTICAL.md](PLATFORM-VS-VERTICAL.md) | Matrice de portage historique A–G |
+| [ARCHITECTURE.md](ARCHITECTURE.md) | Modes de déploiement, boot, admin, navigateur IA |
+| [MATRICE-NATIVE-METIER-PLUGIN.md](MATRICE-NATIVE-METIER-PLUGIN.md) | Qui possède quoi : natif / métier / plugin |
+| [PLATFORM-VS-VERTICAL.md](PLATFORM-VS-VERTICAL.md) | Règles de décision kit vs marque |
 | [PROPAGATION.md](PROPAGATION.md) | Semver / canaux / extension points |
+| [archive/](./archive/) | Journal historique (phases, plans, gates) |

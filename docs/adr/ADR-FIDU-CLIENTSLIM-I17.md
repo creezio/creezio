@@ -2,7 +2,7 @@
 
 | | |
 |--|--|
-| **Statut** | **Accepté** |
+| **Statut** | Accepté — remplacé par [ADR-FIDU-CLIENTSLIM-D5](ADR-FIDU-CLIENTSLIM-D5.md) |
 | **Date** | 2026-07-29 |
 | **Contexte** | Gate G2 / fondation H6 (I17) |
 

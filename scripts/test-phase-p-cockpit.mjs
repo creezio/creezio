@@ -203,7 +203,7 @@ test("P-CKPT.5 workspace wiring + vendor sync liste", () => {
 
 test("P-CKPT.6 PHASE doc implemented + UI exports stables", () => {
   const phase = fs.readFileSync(
-    path.join(root, "docs/PHASE-P-COCKPIT.md"),
+    path.join(root, "docs/archive/PHASE-P-COCKPIT.md"),
     "utf8",
   );
   assert.match(phase, /implémenté|implemented/i);

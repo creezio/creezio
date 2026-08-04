@@ -55,7 +55,7 @@ function assertAbsent(dir, files) {
 }
 
 test("N4p.1 PHASE-N4p.md + PLAN-N", () => {
-  const phase = fs.readFileSync(path.join(root, "docs/PHASE-N4p.md"), "utf8");
+  const phase = fs.readFileSync(path.join(root, "docs/archive/PHASE-N4p.md"), "utf8");
   assert.match(phase, /Cutover migrations/i);
   assert.match(phase, /b2234b9|37ea6e6|da7e356|1763332/);
   assert.match(phase, /Sign-off|gates verts/i);
@@ -63,7 +63,7 @@ test("N4p.1 PHASE-N4p.md + PLAN-N", () => {
   assert.match(phase, /≤\s*150|runner/i);
   assert.doesNotMatch(phase, PAPERCLIP_RE);
 
-  const plan = fs.readFileSync(path.join(root, "docs/PLAN-N.md"), "utf8");
+  const plan = fs.readFileSync(path.join(root, "docs/archive/PLAN-N.md"), "utf8");
   assert.match(plan, /## N4p — Cutover migrations/);
   assert.match(plan, /PHASE-N4p\.md/);
   assert.match(plan, /Done|livr/i);

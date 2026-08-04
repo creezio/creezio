@@ -2,7 +2,7 @@
 
 | | |
 |--|--|
-| **Statut** | **Accepté — `false` définitif (jusqu’à critères ci-dessous)** |
+| **Statut** | **Accepté — implémenté** (`false` définitif jusqu’aux critères ci-dessous) |
 | **Date** | 2026-07-29 |
 | **Remplace** | [ADR-FIDU-CLIENTSLIM-I17.md](ADR-FIDU-CLIENTSLIM-I17.md) « reporté » flou |
 

@@ -103,7 +103,7 @@ test("I5 UI files présents", () => {
   for (const p of [
     "apps/demobrand/resources/renderer/admin-plugins.html",
     "apps/demobrand/resources/renderer/admin-plugins.js",
-    "docs/PHASE-I5.md",
+    "docs/archive/PHASE-I5.md",
   ]) {
     assert.ok(fs.existsSync(path.join(ROOT, p)), p);
   }

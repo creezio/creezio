@@ -37,7 +37,7 @@ const FORBIDDEN_PLATFORM = [
 ];
 
 test("M14.1 PHASE-M14.md", () => {
-  const doc = fs.readFileSync(path.join(root, "docs/PHASE-M14.md"), "utf8");
+  const doc = fs.readFileSync(path.join(root, "docs/archive/PHASE-M14.md"), "utf8");
   assert.match(doc, /Allowlist|allowlist/i);
   assert.match(doc, /rti|RTI/);
   assert.match(doc, /platformCoreMigrations/);
@@ -80,7 +80,7 @@ test("M14.4 main slim + Paperclip absent", () => {
 });
 
 test("M14.5 PLAN-M.md section M14", () => {
-  const plan = fs.readFileSync(path.join(root, "docs/PLAN-M.md"), "utf8");
+  const plan = fs.readFileSync(path.join(root, "docs/archive/PLAN-M.md"), "utf8");
   assert.match(plan, /## M14 — Certivan gold/);
   assert.match(plan, /platformCoreMigrations|RTI|allowlist/i);
 });

@@ -25,7 +25,7 @@ function locDir(dir) {
 }
 
 test("M8.1 PHASE-M8.md présent", () => {
-  const docPath = path.join(root, "docs/PHASE-M8.md");
+  const docPath = path.join(root, "docs/archive/PHASE-M8.md");
   assert.ok(fs.existsSync(docPath));
   const doc = fs.readFileSync(docPath, "utf8");
   assert.match(doc, /@creezio\/auth/);

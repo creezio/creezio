@@ -38,7 +38,7 @@ const O_GATES = [
 ];
 
 test("O11.1 PHASE-O11.md freeze honnête", () => {
-  const doc = fs.readFileSync(path.join(root, "docs/PHASE-O11.md"), "utf8");
+  const doc = fs.readFileSync(path.join(root, "docs/archive/PHASE-O11.md"), "utf8");
   assert.match(doc, /Freeze|freeze/);
   assert.match(doc, /Sign-off|gates verts/i);
   assert.match(doc, /test-phase-o11/);
@@ -52,7 +52,7 @@ test("O11.1 PHASE-O11.md freeze honnête", () => {
 });
 
 test("O11.2 PLAN-O O0→O11 documentés Done", () => {
-  const plan = fs.readFileSync(path.join(root, "docs/PLAN-O.md"), "utf8");
+  const plan = fs.readFileSync(path.join(root, "docs/archive/PLAN-O.md"), "utf8");
   for (const h of [
     "## O0 —",
     "## O1 —",
@@ -90,7 +90,7 @@ test("O11.3 gates o0–o11 dans package.json", () => {
 
 test("O11.4 matrice O11 + % vision honnête", () => {
   const mat = fs.readFileSync(
-    path.join(root, "docs/MATRICE-NATIVE-METIER-PLUGIN.md"),
+    path.join(root, "docs/archive/MATRICE-NATIVE-METIER-PLUGIN.md"),
     "utf8",
   );
   assert.match(mat, /O0→O11|PHASE-O11|O11/);
@@ -140,7 +140,7 @@ test("O11.6 Paperclip absent runtime kit electron-shell", () => {
 });
 
 test("O11.7 dettes documentées (GED / argsPreview)", () => {
-  const doc = fs.readFileSync(path.join(root, "docs/PHASE-O11.md"), "utf8");
+  const doc = fs.readFileSync(path.join(root, "docs/archive/PHASE-O11.md"), "utf8");
   assert.match(doc, /createFiduModuleMcpTools|GED Fidu/i);
   assert.match(doc, /argsPreview/);
   assert.match(doc, /jumeaux/i);

@@ -11,7 +11,7 @@ import { fileURLToPath } from "node:url";
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
 test("M16.1 PHASE-M16.md freeze", () => {
-  const doc = fs.readFileSync(path.join(root, "docs/PHASE-M16.md"), "utf8");
+  const doc = fs.readFileSync(path.join(root, "docs/archive/PHASE-M16.md"), "utf8");
   assert.match(doc, /Freeze|freeze/);
   assert.match(doc, /dry-run|DRY_RUN/i);
   assert.match(doc, /M14|M15/);
@@ -21,7 +21,7 @@ test("M16.1 PHASE-M16.md freeze", () => {
 
 test("M16.2 matrice freeze + gold M*", () => {
   const mat = fs.readFileSync(
-    path.join(root, "docs/MATRICE-NATIVE-METIER-PLUGIN.md"),
+    path.join(root, "docs/archive/MATRICE-NATIVE-METIER-PLUGIN.md"),
     "utf8",
   );
   assert.match(mat, /jamais\s*[«"']?\s*stub OK|NON done|stub\s*\/\s*jumeau/i);
@@ -32,7 +32,7 @@ test("M16.2 matrice freeze + gold M*", () => {
 });
 
 test("M16.3 PLAN-M M13–M16 documentés", () => {
-  const plan = fs.readFileSync(path.join(root, "docs/PLAN-M.md"), "utf8");
+  const plan = fs.readFileSync(path.join(root, "docs/archive/PLAN-M.md"), "utf8");
   assert.match(plan, /## M13 — Audit TF métier-only/);
   assert.match(plan, /## M14 — Certivan gold/);
   assert.match(plan, /## M15 — Fidu gold/);
@@ -47,7 +47,7 @@ test("M16.4 gates M13–M15 présents", () => {
       `test-phase-m${n}`,
     );
     assert.ok(
-      fs.existsSync(path.join(root, `docs/PHASE-M${n}.md`)),
+      fs.existsSync(path.join(root, `docs/archive/PHASE-M${n}.md`)),
       `PHASE-M${n}`,
     );
   }

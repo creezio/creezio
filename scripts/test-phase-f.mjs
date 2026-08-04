@@ -190,7 +190,7 @@ test("gates G1→G2→G3 documentées", () => {
     assert.ok(fs.existsSync(p), `missing ${g.doc}`);
   }
   assert.ok(fs.existsSync(path.join(ROOT, "docs/PROPAGATION.md")));
-  assert.ok(fs.existsSync(path.join(ROOT, "docs/PHASE-F.md")));
+  assert.ok(fs.existsSync(path.join(ROOT, "docs/archive/PHASE-F.md")));
   assert.ok(
     fs.existsSync(
       path.join(ROOT, ".github/PULL_REQUEST_TEMPLATE/kit-bump.md"),

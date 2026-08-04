@@ -52,7 +52,7 @@ test("I6 console API + panel sources présents", () => {
     "apps/console/src/app/api/org-plugins/route.ts",
     "apps/console/src/lib/org-plugin-registry.ts",
     "apps/console/src/components/OrgPluginsPanel.tsx",
-    "docs/PHASE-I6.md",
+    "docs/archive/PHASE-I6.md",
   ]) {
     assert.ok(fs.existsSync(path.join(ROOT, p)), p);
   }

@@ -22,7 +22,7 @@ test("R2.1 package + docs PHASE-R2", () => {
   assert.ok(
     fs.existsSync(path.join(root, "packages/product-hub/package.json")),
   );
-  const doc = fs.readFileSync(path.join(root, "docs/PHASE-R2.md"), "utf8");
+  const doc = fs.readFileSync(path.join(root, "docs/archive/PHASE-R2.md"), "utf8");
   assert.match(doc, /core\.db/);
   assert.match(doc, /PRODUCT_HUB_RUNTIME_SQL|split-brain|SoT/);
   assert.match(PRODUCT_HUB_CORE_SQL, /plugin_products/);

@@ -31,7 +31,7 @@ Chaque marque expose désormais :
 |-------|-------------------|------------------|--------------|
 | `dockerDlName` | `dl-tempoflow` | `dl-certivan` | `dl-fidu` |
 | `hostDlDirDefault` | volume npm_data… | … | … |
-| `remoteBuildHost` | `deploy@104.168.10.36` | idem | idem |
+| `remoteBuildHost` | `deploy@<vps-build>` | idem | idem |
 | `remoteBuildRoot` | `/opt/docker/tempoflow2-build` | `…/certivan-build` | `…/fidu-build` |
 | `statusFile` | `/tmp/tempoflow-build-status.json` | … | … |
 | `buildServerArtifact` | `true` | `true` | `true` (G2) |

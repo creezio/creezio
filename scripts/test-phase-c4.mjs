@@ -73,11 +73,11 @@ test("C4.3 demobrand automations persist + obs sqlite", async () => {
 });
 
 test("C4.4 docs PHASE-C4 + matrice V2/V3", () => {
-  const phase = fs.readFileSync(path.join(root, "docs/PHASE-C4.md"), "utf8");
+  const phase = fs.readFileSync(path.join(root, "docs/archive/PHASE-C4.md"), "utf8");
   assert.match(phase, /Sign-off|TERMINÉE/i);
   assert.match(phase, /SQLite|vendor|TempoFlow|console/i);
   const matrice = fs.readFileSync(
-    path.join(root, "docs/MATRICE-NATIVE-METIER-PLUGIN.md"),
+    path.join(root, "docs/archive/MATRICE-NATIVE-METIER-PLUGIN.md"),
     "utf8",
   );
   assert.match(matrice, /C4/);

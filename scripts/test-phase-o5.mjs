@@ -29,14 +29,14 @@ function walkTs(dir) {
 }
 
 test("O5.1 PHASE-O5.md + PLAN-O O5", () => {
-  const phase = fs.readFileSync(path.join(root, "docs/PHASE-O5.md"), "utf8");
+  const phase = fs.readFileSync(path.join(root, "docs/archive/PHASE-O5.md"), "utf8");
   assert.match(phase, /request-logs|RequestLogsClient/i);
   assert.match(phase, /Sign-off|gates verts/i);
   assert.match(phase, /test-phase-o5/);
   assert.match(phase, /configureRequestLogs|createRequestLogsRoutes/);
   assert.doesNotMatch(phase, PAPERCLIP_RE);
 
-  const plan = fs.readFileSync(path.join(root, "docs/PLAN-O.md"), "utf8");
+  const plan = fs.readFileSync(path.join(root, "docs/archive/PLAN-O.md"), "utf8");
   assert.match(plan, /## O5 — Admin request-logs/);
   assert.match(plan, /PHASE-O5\.md/);
   assert.match(plan, /O5 — Admin request-logs.*✅|## O5 —[\s\S]*?✅/);

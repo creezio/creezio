@@ -22,7 +22,7 @@ function loc(file) {
 }
 
 test("M4.1 PHASE-M4.md exige jumeau mort + createLocalConfigStore", () => {
-  const doc = fs.readFileSync(path.join(root, "docs/PHASE-M4.md"), "utf8");
+  const doc = fs.readFileSync(path.join(root, "docs/archive/PHASE-M4.md"), "utf8");
   assert.match(doc, /local-config\.ts/);
   assert.match(doc, /createLocalConfigStore/);
   assert.match(doc, /jumeau|absent/i);

@@ -77,5 +77,6 @@ Reset clean-room TF3 : `node scripts/reset-tempoflow3.mjs` (backup + apply + bui
 
 ## 5. Sonde TempoFlow3
 
-Référence vivante : `apps/tempoflow3/brand-spec/` + gates
+Référence vivante : le repo marque `tempoflow3` (frère du kit —
+`brand-spec/` à sa racine) + gates kit
 `scripts/test-phase-brand-spec.mjs` / `test-phase-app-runtime.mjs`.

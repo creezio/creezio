@@ -75,7 +75,7 @@ export function impactForPackageBump(input: {
         gateId: g.gateId,
         brandId,
         label: g.label,
-        checklistDoc: `docs/gates/${g.gateId}-${brandId.toUpperCase()}.md`,
+        checklistDoc: `docs/archive/gates/${g.gateId}-${brandId.toUpperCase()}.md`,
       };
     })
     .sort((a, b) => a.gateId.localeCompare(b.gateId));

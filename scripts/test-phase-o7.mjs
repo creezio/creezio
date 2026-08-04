@@ -36,7 +36,7 @@ function loc(file) {
 }
 
 test("O7.1 PHASE-O7.md + PLAN-O O7 livré", () => {
-  const phase = fs.readFileSync(path.join(root, "docs/PHASE-O7.md"), "utf8");
+  const phase = fs.readFileSync(path.join(root, "docs/archive/PHASE-O7.md"), "utf8");
   assert.match(phase, /Host wirings mince/i);
   assert.match(phase, /Sign-off|gates verts/i);
   assert.match(phase, /test-phase-o7/);
@@ -46,7 +46,7 @@ test("O7.1 PHASE-O7.md + PLAN-O O7 livré", () => {
   assert.match(phase, /NON done|façades/i);
   assert.doesNotMatch(phase, PAPERCLIP_RE);
 
-  const plan = fs.readFileSync(path.join(root, "docs/PLAN-O.md"), "utf8");
+  const plan = fs.readFileSync(path.join(root, "docs/archive/PLAN-O.md"), "utf8");
   assert.match(plan, /## O7 — Host wirings mince/);
   assert.match(plan, /PHASE-O7\.md/);
 });

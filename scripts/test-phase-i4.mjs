@@ -135,11 +135,11 @@ test("I4 demobrand controlPlaneAcl + E2E install owner", async () => {
 
 test("I4 docs migration présents", () => {
   assert.ok(
-    fs.existsSync(path.join(ROOT, "docs/CONTROL-PLANE-BRAND-MIGRATION.md")),
+    fs.existsSync(path.join(ROOT, "docs/archive/CONTROL-PLANE-BRAND-MIGRATION.md")),
   );
-  assert.ok(fs.existsSync(path.join(ROOT, "docs/PHASE-I4.md")));
+  assert.ok(fs.existsSync(path.join(ROOT, "docs/archive/PHASE-I4.md")));
   const mig = fs.readFileSync(
-    path.join(ROOT, "docs/CONTROL-PLANE-BRAND-MIGRATION.md"),
+    path.join(ROOT, "docs/archive/CONTROL-PLANE-BRAND-MIGRATION.md"),
     "utf8",
   );
   assert.match(mig, /startHostPluginControlPlane/);

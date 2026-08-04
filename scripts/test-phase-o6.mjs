@@ -38,13 +38,13 @@ const DELETED_LIBS = [
 ];
 
 test("O6.1 PHASE-O6.md + PLAN-O O6", () => {
-  const phase = fs.readFileSync(path.join(root, "docs/PHASE-O6.md"), "utf8");
+  const phase = fs.readFileSync(path.join(root, "docs/archive/PHASE-O6.md"), "utf8");
   assert.match(phase, /dé-TF|drop-tempoflow-catering|tombstone/i);
   assert.match(phase, /Sign-off|gates verts/i);
   assert.match(phase, /test-phase-o6/);
   assert.doesNotMatch(phase, PAPERCLIP_RE);
 
-  const plan = fs.readFileSync(path.join(root, "docs/PLAN-O.md"), "utf8");
+  const plan = fs.readFileSync(path.join(root, "docs/archive/PLAN-O.md"), "utf8");
   assert.match(plan, /## O6 — Certivan dé-TF/);
   assert.match(plan, /PHASE-O6\.md/);
   assert.match(plan, /O6 — Certivan dé-TF.*✅|## O6 —[\s\S]*?✅/);
@@ -133,7 +133,7 @@ test("O6.3 libs catering absentes + queries métier", () => {
 });
 
 test("O6.4 Paperclip mort + gate npm test", () => {
-  const phase = fs.readFileSync(path.join(root, "docs/PHASE-O6.md"), "utf8");
+  const phase = fs.readFileSync(path.join(root, "docs/archive/PHASE-O6.md"), "utf8");
   assert.doesNotMatch(phase, PAPERCLIP_RE);
   const drop = fs.readFileSync(
     path.join(cv, "crm/electron/migrations/steps/043_drop_tempoflow_catering.ts"),

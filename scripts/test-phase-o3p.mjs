@@ -56,7 +56,7 @@ function gitHead(repoDir) {
 }
 
 test("O3p.1 PHASE-O3p.md + PLAN-O O3p livré", () => {
-  const phase = fs.readFileSync(path.join(root, "docs/PHASE-O3p.md"), "utf8");
+  const phase = fs.readFileSync(path.join(root, "docs/archive/PHASE-O3p.md"), "utf8");
   assert.match(phase, /Cutover jumeaux Electron/i);
   assert.match(phase, /Sign-off|gates verts/i);
   assert.match(phase, /test-phase-o3p/);
@@ -65,7 +65,7 @@ test("O3p.1 PHASE-O3p.md + PLAN-O O3p livré", () => {
   assert.match(phase, /69f0a5b|Fidu/i);
   assert.match(phase, /NON done|façades/i);
 
-  const plan = fs.readFileSync(path.join(root, "docs/PLAN-O.md"), "utf8");
+  const plan = fs.readFileSync(path.join(root, "docs/archive/PLAN-O.md"), "utf8");
   assert.match(plan, /## O3p — Cutover jumeaux Electron/);
   assert.match(plan, /PHASE-O3p\.md/);
   assert.match(plan, /O3p — Cutover.*✅|PHASE-O3p/);
@@ -106,7 +106,7 @@ test("O3p.3 wiring kit + brand opts (main / host-runtime-ctx)", () => {
 
 test("O3p.4 SHAs marques gold (documentés PHASE-O3p)", () => {
   // HEAD avance après O3p (O4p+) — le pin historique reste dans PHASE-O3p.md.
-  const phase = fs.readFileSync(path.join(root, "docs/PHASE-O3p.md"), "utf8");
+  const phase = fs.readFileSync(path.join(root, "docs/archive/PHASE-O3p.md"), "utf8");
   for (const [repo, sha] of Object.entries(EXPECTED_SHAS)) {
     assert.match(phase, new RegExp(sha), `${repo}: SHA ${sha} absent de PHASE-O3p`);
   }

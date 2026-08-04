@@ -68,7 +68,7 @@ function brandLoc(crmDir) {
 }
 
 test("N3p.1 PHASE-N3p.md + PLAN-N N3p livré", () => {
-  const phase = fs.readFileSync(path.join(root, "docs/PHASE-N3p.md"), "utf8");
+  const phase = fs.readFileSync(path.join(root, "docs/archive/PHASE-N3p.md"), "utf8");
   assert.match(phase, /Cutover assistant/i);
   assert.match(phase, /863406f|a358d5b/);
   assert.match(phase, /cfd4a49/);
@@ -78,7 +78,7 @@ test("N3p.1 PHASE-N3p.md + PLAN-N N3p livré", () => {
   assert.match(phase, /test-phase-n3p/);
   assert.doesNotMatch(phase, PAPERCLIP_RE);
 
-  const plan = fs.readFileSync(path.join(root, "docs/PLAN-N.md"), "utf8");
+  const plan = fs.readFileSync(path.join(root, "docs/archive/PLAN-N.md"), "utf8");
   assert.match(plan, /## N3p — Cutover assistant/);
   assert.match(plan, /PHASE-N3p\.md/);
   assert.match(plan, /Done|livr/i);

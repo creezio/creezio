@@ -61,16 +61,16 @@ test("O4r4.2 marques : pas de switch kind, utilise kit", () => {
 
 test("O4r4.3 docs PLAN + PHASE + ADR", () => {
   assert.match(
-    fs.readFileSync(path.join(root, "docs/PHASE-O4r4.md"), "utf8"),
+    fs.readFileSync(path.join(root, "docs/archive/PHASE-O4r4.md"), "utf8"),
     /test-phase-o4r4/,
   );
   assert.match(
-    fs.readFileSync(path.join(root, "docs/PLAN-O.md"), "utf8"),
+    fs.readFileSync(path.join(root, "docs/archive/PLAN-O.md"), "utf8"),
     /## O4r4 —/,
   );
   assert.match(
     fs.readFileSync(
-      path.join(root, "docs/ADR-assistant-tools-mcp.md"),
+      path.join(root, "docs/adr/ADR-assistant-tools-mcp.md"),
       "utf8",
     ),
     /O4r4/,

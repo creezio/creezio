@@ -42,7 +42,7 @@ const FULL_VENDOR = [
 ];
 
 test("P0.1 docs PLAN-P + ETAT §0 + PHASE-P0", () => {
-  const plan = fs.readFileSync(path.join(KIT_ROOT, "docs/PLAN-P.md"), "utf8");
+  const plan = fs.readFileSync(path.join(KIT_ROOT, "docs/archive/PLAN-P.md"), "utf8");
   assert.match(plan, /Plan P\*/);
   assert.match(plan, /\*\*P0\*\*/);
   assert.match(plan, /Gates intention/);
@@ -51,7 +51,7 @@ test("P0.1 docs PLAN-P + ETAT §0 + PHASE-P0", () => {
   assert.doesNotMatch(plan, PAPERCLIP_RE);
 
   const etat = fs.readFileSync(
-    path.join(KIT_ROOT, "docs/ETAT-DES-LIEUX-INTENTION.md"),
+    path.join(KIT_ROOT, "docs/archive/ETAT-DES-LIEUX-INTENTION.md"),
     "utf8",
   );
   assert.match(etat, /Règle d’arbitrage UNIQUE|règle ×3/i);
@@ -60,7 +60,7 @@ test("P0.1 docs PLAN-P + ETAT §0 + PHASE-P0", () => {
   assert.match(etat, /test-phase-p0-intention/);
   assert.doesNotMatch(etat, PAPERCLIP_RE);
 
-  const phase = fs.readFileSync(path.join(KIT_ROOT, "docs/PHASE-P0.md"), "utf8");
+  const phase = fs.readFileSync(path.join(KIT_ROOT, "docs/archive/PHASE-P0.md"), "utf8");
   assert.match(phase, /Gates intention|matrice honnête/i);
   assert.match(phase, /test-phase-p0-intention/);
   assert.match(phase, /cutover/i);
@@ -70,7 +70,7 @@ test("P0.1 docs PLAN-P + ETAT §0 + PHASE-P0", () => {
 
 test("P0.2 matrice : légende cutover + Shell CRM / Tasks = réalité cutover", () => {
   const matrice = fs.readFileSync(
-    path.join(KIT_ROOT, "docs/MATRICE-NATIVE-METIER-PLUGIN.md"),
+    path.join(KIT_ROOT, "docs/archive/MATRICE-NATIVE-METIER-PLUGIN.md"),
     "utf8",
   );
   assert.match(

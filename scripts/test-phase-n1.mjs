@@ -35,7 +35,7 @@ const REQUIRED_MODULES = [
 const PAPERCLIP_RE = /paperclipApi|startPaperclip|startPaperclip\b/;
 
 test("N1.1 PHASE-N1.md + PLAN-N section N1 livrée", () => {
-  const phase = fs.readFileSync(path.join(root, "docs/PHASE-N1.md"), "utf8");
+  const phase = fs.readFileSync(path.join(root, "docs/archive/PHASE-N1.md"), "utf8");
   assert.match(phase, /Runtime plugins Electron/i);
   assert.match(phase, /1aac0e2/);
   assert.match(phase, /configurePluginHost|PluginHostBindings/);
@@ -43,7 +43,7 @@ test("N1.1 PHASE-N1.md + PLAN-N section N1 livrée", () => {
   assert.match(phase, /test-phase-n1/);
   assert.match(phase, /wc -l|LOC/i);
 
-  const plan = fs.readFileSync(path.join(root, "docs/PLAN-N.md"), "utf8");
+  const plan = fs.readFileSync(path.join(root, "docs/archive/PLAN-N.md"), "utf8");
   assert.match(plan, /## N1 — Runtime plugins Electron → kit/);
   assert.match(plan, /PHASE-N1\.md/);
   assert.match(plan, /Done|livr/i);

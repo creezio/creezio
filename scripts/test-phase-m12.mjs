@@ -16,7 +16,7 @@ const tfRoot = resolveBrandCrmRoot("tempoflow2");
 const MAX_MAIN_LOC = 800;
 
 test("M12.1 PHASE-M12.md présent", () => {
-  const docPath = path.join(root, "docs/PHASE-M12.md");
+  const docPath = path.join(root, "docs/archive/PHASE-M12.md");
   assert.ok(fs.existsSync(docPath));
   const doc = fs.readFileSync(docPath, "utf8");
   assert.match(doc, /installBrandDesktopRuntime/);

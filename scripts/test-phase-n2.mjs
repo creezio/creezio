@@ -30,7 +30,7 @@ const REQUIRED = [
 ];
 
 test("N2.1 PHASE-N2.md + PLAN-N N2 livré", () => {
-  const phase = fs.readFileSync(path.join(root, "docs/PHASE-N2.md"), "utf8");
+  const phase = fs.readFileSync(path.join(root, "docs/archive/PHASE-N2.md"), "utf8");
   assert.match(phase, /Jumeaux hosts/i);
   assert.match(phase, /16b61f7/);
   assert.match(phase, /configureAiWorkspaceHost|configureMeiliCoherencePaths/);
@@ -38,7 +38,7 @@ test("N2.1 PHASE-N2.md + PLAN-N N2 livré", () => {
   assert.match(phase, /test-phase-n2/);
   assert.match(phase, /wc -l|LOC/i);
 
-  const plan = fs.readFileSync(path.join(root, "docs/PLAN-N.md"), "utf8");
+  const plan = fs.readFileSync(path.join(root, "docs/archive/PLAN-N.md"), "utf8");
   assert.match(plan, /## N2 — Jumeaux hosts → kit/);
   assert.match(plan, /PHASE-N2\.md/);
   assert.match(plan, /Done|livr/i);

@@ -19,14 +19,14 @@ const BRANDS = [
 ];
 
 test("O4p.1 PHASE-O4p.md + PLAN-O O4p", () => {
-  const phase = fs.readFileSync(path.join(root, "docs/PHASE-O4p.md"), "utf8");
+  const phase = fs.readFileSync(path.join(root, "docs/archive/PHASE-O4p.md"), "utf8");
   assert.match(phase, /assistant-chat|handleAssistantChat/i);
   assert.match(phase, /Sign-off|gates verts/i);
   assert.match(phase, /test-phase-o4p/);
   assert.match(phase, /92a03f3|1e97e72|f6d0fb8/);
   assert.doesNotMatch(phase, PAPERCLIP_RE);
 
-  const plan = fs.readFileSync(path.join(root, "docs/PLAN-O.md"), "utf8");
+  const plan = fs.readFileSync(path.join(root, "docs/archive/PLAN-O.md"), "utf8");
   assert.match(plan, /## O4p — Cutover `assistant-chat`/);
   assert.match(plan, /PHASE-O4p\.md/);
   assert.match(plan, /O4p — Cutover `assistant-chat`.*✅|## O4p —[\s\S]*?✅/);
@@ -88,7 +88,7 @@ test("O4p.3 kit handleAssistantChat + Paperclip mort", () => {
 });
 
 test("O4p.4 SHAs marques dans PHASE-O4p", () => {
-  const phase = fs.readFileSync(path.join(root, "docs/PHASE-O4p.md"), "utf8");
+  const phase = fs.readFileSync(path.join(root, "docs/archive/PHASE-O4p.md"), "utf8");
   for (const b of BRANDS) {
     assert.match(phase, new RegExp(b.sha), `${b.label} SHA manquant`);
   }

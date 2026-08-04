@@ -23,7 +23,7 @@ test("H4.0 ARCHITECTURE_VERSION >= H4", () => {
 });
 
 test("H4 docs BACKLOG + PHASE présents", () => {
-  for (const f of ["docs/BACKLOG-H4.md", "docs/PHASE-H4.md"]) {
+  for (const f of ["docs/archive/BACKLOG-H4.md", "docs/archive/PHASE-H4.md"]) {
     assert.ok(fs.existsSync(path.join(root, f)), f);
   }
 });

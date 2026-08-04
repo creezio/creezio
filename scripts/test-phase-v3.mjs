@@ -147,8 +147,8 @@ test("V3.4 docs vision V1–V3 présents", () => {
     path.dirname(new URL(import.meta.url).pathname),
     "..",
   );
-  assert.ok(fs.existsSync(path.join(root, "docs/PHASE-V3.md")));
-  assert.ok(fs.existsSync(path.join(root, "docs/VISION-V1-V3.md")));
+  assert.ok(fs.existsSync(path.join(root, "docs/archive/PHASE-V3.md")));
+  assert.ok(fs.existsSync(path.join(root, "docs/archive/VISION-V1-V3.md")));
   assert.ok(
     fs.existsSync(path.join(root, "packages/automations/package.json")),
   );

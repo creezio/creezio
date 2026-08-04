@@ -82,7 +82,7 @@ test("BS4 initBrandSpec écrit squelette", () => {
 });
 
 test("BS5 ADR + CREATE-BRAND docs", () => {
-  assert.ok(fs.existsSync(path.join(ROOT, "docs/ADR-brand-spec-app-runtime.md")));
+  assert.ok(fs.existsSync(path.join(ROOT, "docs/adr/ADR-brand-spec-app-runtime.md")));
   assert.ok(fs.existsSync(path.join(ROOT, "docs/agents/CREATE-BRAND.md")));
   const create = fs.readFileSync(
     path.join(ROOT, "docs/agents/CREATE-BRAND.md"),

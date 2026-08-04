@@ -17,7 +17,7 @@ const fiduElectron = path.join(resolveBrandCrmRoot("fidu"), "electron");
 const require = createRequire(import.meta.url);
 
 test("N5.1 PHASE-N5.md + PLAN-N N5", () => {
-  const phase = fs.readFileSync(path.join(root, "docs/PHASE-N5.md"), "utf8");
+  const phase = fs.readFileSync(path.join(root, "docs/archive/PHASE-N5.md"), "utf8");
   assert.match(phase, /Feature-off Fidu|createFeatureOffHost/i);
   assert.match(phase, /host-na-stubs/);
   assert.match(phase, /features\.plugins\s*=\s*false|plugins:\s*false/i);
@@ -25,7 +25,7 @@ test("N5.1 PHASE-N5.md + PLAN-N N5", () => {
   assert.match(phase, /test-phase-n5/);
   assert.doesNotMatch(phase, PAPERCLIP_RE);
 
-  const plan = fs.readFileSync(path.join(root, "docs/PLAN-N.md"), "utf8");
+  const plan = fs.readFileSync(path.join(root, "docs/archive/PLAN-N.md"), "utf8");
   assert.match(plan, /## N5 — Feature-off Fidu/);
   assert.match(plan, /PHASE-N5\.md/);
   assert.match(plan, /Done|livr/i);

@@ -38,13 +38,13 @@ const ABSENT = [
 ];
 
 test("O9p.1 PHASE-O9p.md + PLAN-O O9p", () => {
-  const phase = fs.readFileSync(path.join(root, "docs/PHASE-O9p.md"), "utf8");
+  const phase = fs.readFileSync(path.join(root, "docs/archive/PHASE-O9p.md"), "utf8");
   assert.match(phase, /shell-ui|Cutover|Sign-off|gates verts/i);
   assert.match(phase, /test-phase-o9p/);
   assert.match(phase, /ADR-no-brand-domain|Site externe|configure/);
   assert.doesNotMatch(phase, PAPERCLIP_RE);
 
-  const plan = fs.readFileSync(path.join(root, "docs/PLAN-O.md"), "utf8");
+  const plan = fs.readFileSync(path.join(root, "docs/archive/PLAN-O.md"), "utf8");
   assert.match(plan, /## O9p — Cutover jumeaux lib\/UI/);
   assert.match(plan, /PHASE-O9p\.md/);
   assert.match(plan, /O9p — Cutover jumeaux lib\/UI.*✅|## O9p —[\s\S]*?✅/);

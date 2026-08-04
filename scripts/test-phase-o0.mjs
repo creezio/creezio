@@ -59,13 +59,13 @@ const HOST_NA_STUBS = [
 ];
 
 test("O0.1 PHASE-O0.md + PLAN-O.md", () => {
-  const phase = fs.readFileSync(path.join(root, "docs/PHASE-O0.md"), "utf8");
+  const phase = fs.readFileSync(path.join(root, "docs/archive/PHASE-O0.md"), "utf8");
   assert.match(phase, /Hygiene SYNC|polish/i);
   assert.match(phase, /Sign-off|gates verts/i);
   assert.match(phase, /test-phase-o0/);
   assert.match(phase, /host-na-stubs/);
   assert.match(phase, /c85bb0f|51c7c22|5e5367d/);
-  const plan = fs.readFileSync(path.join(root, "docs/PLAN-O.md"), "utf8");
+  const plan = fs.readFileSync(path.join(root, "docs/archive/PLAN-O.md"), "utf8");
   assert.match(plan, /## O0 — Hygiene/);
   assert.match(plan, /## O1 — Anti-façades Electron/);
   assert.match(plan, /## O11 — Freeze (vision|plan O\*)/);

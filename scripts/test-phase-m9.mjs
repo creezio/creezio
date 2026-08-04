@@ -17,7 +17,7 @@ const tfRoot = resolveBrandCrmRoot("tempoflow2");
 const cvRoot = resolveBrandCrmRoot("certivan-app");
 
 test("M9.1 PHASE-M9.md présent", () => {
-  const docPath = path.join(root, "docs/PHASE-M9.md");
+  const docPath = path.join(root, "docs/archive/PHASE-M9.md");
   assert.ok(fs.existsSync(docPath));
   const doc = fs.readFileSync(docPath, "utf8");
   assert.match(doc, /@creezio\/mcp-facade/);

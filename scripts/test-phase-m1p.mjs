@@ -16,7 +16,7 @@ const FULL_VENDOR =
   /observability automations database|database.*observability|automations database/;
 
 test("M1p.1 PHASE-M1p.md documente Certivan puis Fidu", () => {
-  const doc = fs.readFileSync(path.join(root, "docs/PHASE-M1p.md"), "utf8");
+  const doc = fs.readFileSync(path.join(root, "docs/archive/PHASE-M1p.md"), "utf8");
   assert.match(doc, /Certivan/);
   assert.match(doc, /Fidu/);
   assert.match(doc, /liste complète/);

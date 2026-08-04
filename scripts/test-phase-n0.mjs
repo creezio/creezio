@@ -43,11 +43,11 @@ function walkTsFiles(dir, out = []) {
 }
 
 test("N0.1 PHASE-N0.md + PLAN-N.md", () => {
-  const phase = fs.readFileSync(path.join(root, "docs/PHASE-N0.md"), "utf8");
+  const phase = fs.readFileSync(path.join(root, "docs/archive/PHASE-N0.md"), "utf8");
   assert.match(phase, /Purge artefacts|Paperclip/i);
   assert.match(phase, /Sign-off|gates verts/i);
   assert.match(phase, /test-phase-n0/);
-  const plan = fs.readFileSync(path.join(root, "docs/PLAN-N.md"), "utf8");
+  const plan = fs.readFileSync(path.join(root, "docs/archive/PLAN-N.md"), "utf8");
   assert.match(plan, /## N0 — Purge artefacts/);
   assert.match(plan, /## N1 — Runtime plugins/);
   assert.match(plan, /## N9 — Freeze vision/);

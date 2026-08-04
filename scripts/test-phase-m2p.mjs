@@ -13,7 +13,7 @@ const certivan = resolveBrandCrmRoot("certivan-app");
 const fidu = resolveBrandCrmRoot("fidu");
 
 test("M2p.1 PHASE-M2p.md séquentiel Certivan→Fidu", () => {
-  const doc = fs.readFileSync(path.join(root, "docs/PHASE-M2p.md"), "utf8");
+  const doc = fs.readFileSync(path.join(root, "docs/archive/PHASE-M2p.md"), "utf8");
   assert.match(doc, /Certivan/);
   assert.match(doc, /Fidu/);
   assert.match(doc, /@creezio\/database\/ui/);

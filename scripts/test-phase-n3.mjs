@@ -57,7 +57,7 @@ function walkTs(dir) {
 }
 
 test("N3.1 PHASE-N3.md + PLAN-N N3", () => {
-  const phase = fs.readFileSync(path.join(root, "docs/PHASE-N3.md"), "utf8");
+  const phase = fs.readFileSync(path.join(root, "docs/archive/PHASE-N3.md"), "utf8");
   assert.match(phase, /Assistant/i);
   assert.match(phase, /4f37a9e|configureAssistantBrand|AssistantBrandTools/);
   assert.match(phase, /Sign-off|gates verts/i);
@@ -65,7 +65,7 @@ test("N3.1 PHASE-N3.md + PLAN-N N3", () => {
   assert.match(phase, /wc -l|LOC/i);
   assert.doesNotMatch(phase, PAPERCLIP_RE);
 
-  const plan = fs.readFileSync(path.join(root, "docs/PLAN-N.md"), "utf8");
+  const plan = fs.readFileSync(path.join(root, "docs/archive/PLAN-N.md"), "utf8");
   assert.match(plan, /## N3 — Assistant marque → `@creezio\/assistant`/);
   assert.match(plan, /PHASE-N3\.md/);
   assert.match(plan, /Done|livr/i);

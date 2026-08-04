@@ -14,8 +14,8 @@ import { createSqliteMailsStore } from "../packages/mails/dist/sqlite-store.js";
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
 test("C1 docs PHASE-C1 présents", () => {
-  assert.ok(fs.existsSync(path.join(ROOT, "docs/PHASE-C1.md")));
-  const c1 = fs.readFileSync(path.join(ROOT, "docs/PHASE-C1.md"), "utf8");
+  assert.ok(fs.existsSync(path.join(ROOT, "docs/archive/PHASE-C1.md")));
+  const c1 = fs.readFileSync(path.join(ROOT, "docs/archive/PHASE-C1.md"), "utf8");
   assert.match(c1, /kit-core/);
   assert.match(c1, /cutover/);
   assert.match(c1, /dual-write/);

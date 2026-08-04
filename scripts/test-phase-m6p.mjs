@@ -59,8 +59,8 @@ check("hermes bootstrap WEBUI_DEPS_MARKER_LEGACY_CERTIVAN + FIDU", () => {
 });
 
 check("PHASE-M6p.md présent", () => {
-  assert.ok(fs.existsSync(path.join(root, "docs/PHASE-M6p.md")));
-  const doc = read("docs/PHASE-M6p.md");
+  assert.ok(fs.existsSync(path.join(root, "docs/archive/PHASE-M6p.md")));
+  const doc = read("docs/archive/PHASE-M6p.md");
   assert.ok(doc.includes("Certivan"));
   assert.ok(doc.includes("Fidu"));
 });

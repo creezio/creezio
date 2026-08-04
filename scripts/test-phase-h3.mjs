@@ -24,7 +24,7 @@ test("H3.0 docs H3 présents (version bumpée en H4+)", () => {
 });
 
 test("H3 docs BACKLOG + PHASE présents", () => {
-  for (const f of ["docs/BACKLOG-H3.md", "docs/PHASE-H3.md"]) {
+  for (const f of ["docs/archive/BACKLOG-H3.md", "docs/archive/PHASE-H3.md"]) {
     assert.ok(fs.existsSync(path.join(root, f)), f);
   }
 });

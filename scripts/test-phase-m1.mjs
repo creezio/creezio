@@ -12,7 +12,7 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const tfCrm = resolveBrandCrmRoot("tempoflow2");
 
 test("M1.1 PHASE-M1.md existe et exige suppression shims", () => {
-  const doc = fs.readFileSync(path.join(root, "docs/PHASE-M1.md"), "utf8");
+  const doc = fs.readFileSync(path.join(root, "docs/archive/PHASE-M1.md"), "utf8");
   assert.match(doc, /sans shims|src\/lib\/database/i);
   assert.match(doc, /@creezio\/database/);
   assert.match(doc, /brand-database-host|brand-host/);

@@ -37,7 +37,7 @@ test("R1.1 package + docs PHASE-R1", () => {
     fs.readFileSync(path.join(root, "packages/database/package.json"), "utf8"),
   );
   assert.equal(pkg.name, "@creezio/database");
-  const doc = fs.readFileSync(path.join(root, "docs/PHASE-R1.md"), "utf8");
+  const doc = fs.readFileSync(path.join(root, "docs/archive/PHASE-R1.md"), "utf8");
   assert.match(doc, /@creezio\/database/);
   assert.match(doc, /TempoFlow|row-level/);
 });
@@ -154,7 +154,7 @@ test("R1.3 catalogue / CRUD / automation webhook outbox", async () => {
 
 test("R1.4 matrice Database = natif", () => {
   const doc = fs.readFileSync(
-    path.join(root, "docs/MATRICE-NATIVE-METIER-PLUGIN.md"),
+    path.join(root, "docs/archive/MATRICE-NATIVE-METIER-PLUGIN.md"),
     "utf8",
   );
   assert.match(doc, /Database admin \+ automations row-level/);

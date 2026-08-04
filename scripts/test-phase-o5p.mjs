@@ -26,13 +26,13 @@ const DELETED = [
 ];
 
 test("O5p.1 PHASE-O5p.md + PLAN-O O5p", () => {
-  const phase = fs.readFileSync(path.join(root, "docs/PHASE-O5p.md"), "utf8");
+  const phase = fs.readFileSync(path.join(root, "docs/archive/PHASE-O5p.md"), "utf8");
   assert.match(phase, /request-logs|RequestLogsClient/i);
   assert.match(phase, /Sign-off|gates verts/i);
   assert.match(phase, /test-phase-o5p/);
   assert.doesNotMatch(phase, PAPERCLIP_RE);
 
-  const plan = fs.readFileSync(path.join(root, "docs/PLAN-O.md"), "utf8");
+  const plan = fs.readFileSync(path.join(root, "docs/archive/PLAN-O.md"), "utf8");
   assert.match(plan, /## O5p — Cutover admin logs/);
   assert.match(plan, /PHASE-O5p\.md/);
   assert.match(plan, /O5p — Cutover admin logs.*✅|## O5p —[\s\S]*?✅/);
@@ -141,7 +141,7 @@ test("O5p.3 kit exports + Paperclip mort", () => {
 });
 
 test("O5p.4 SHAs marques dans PHASE-O5p", () => {
-  const phase = fs.readFileSync(path.join(root, "docs/PHASE-O5p.md"), "utf8");
+  const phase = fs.readFileSync(path.join(root, "docs/archive/PHASE-O5p.md"), "utf8");
   assert.match(phase, /TempoFlow/);
   assert.match(phase, /Certivan/);
   assert.match(phase, /Fidu/);

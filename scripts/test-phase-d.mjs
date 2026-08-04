@@ -276,7 +276,7 @@ test("resolvePublishConfig demobrand dry-run ready", () => {
 });
 
 test("docs PHASE-D.md + factory package", () => {
-  assert.ok(fs.existsSync(path.join(ROOT, "docs/PHASE-D.md")));
+  assert.ok(fs.existsSync(path.join(ROOT, "docs/archive/PHASE-D.md")));
   assert.ok(
     fs.existsSync(path.join(ROOT, "packages/factory/package.json")),
   );

@@ -16,7 +16,7 @@ const require = createRequire(path.join(root, "package.json"));
 const tfRoot = resolveBrandCrmRoot("tempoflow2");
 
 test("M11.1 PHASE-M11.md présent", () => {
-  const docPath = path.join(root, "docs/PHASE-M11.md");
+  const docPath = path.join(root, "docs/archive/PHASE-M11.md");
   assert.ok(fs.existsSync(docPath));
   const doc = fs.readFileSync(docPath, "utf8");
   assert.match(doc, /platformCoreMigrations/);

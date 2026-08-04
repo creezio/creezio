@@ -17,6 +17,7 @@ Racine : [../README.md](../README.md) · [../AGENTS.md](../AGENTS.md)
 | `@creezio/platform-core` | [README](../packages/platform-core/README.md) | [AGENTS](../packages/platform-core/AGENTS.md) | [FILES](../packages/platform-core/docs/FILES.md) |
 | `@creezio/electron-shell` | [README](../packages/electron-shell/README.md) | [AGENTS](../packages/electron-shell/AGENTS.md) | [FILES](../packages/electron-shell/docs/FILES.md) |
 | `@creezio/browser-host` | [README](../packages/browser-host/README.md) | [AGENTS](../packages/browser-host/AGENTS.md) | [FILES](../packages/browser-host/docs/FILES.md) |
+| `@creezio/app-runtime` | [README](../packages/app-runtime/README.md) | [AGENTS](../packages/app-runtime/AGENTS.md) | [FILES](../packages/app-runtime/docs/FILES.md) |
 | `@creezio/desktop-tooling` | [README](../packages/desktop-tooling/README.md) | [AGENTS](../packages/desktop-tooling/AGENTS.md) | [FILES](../packages/desktop-tooling/docs/FILES.md) |
 
 ## API / MCP / plugins
@@ -34,6 +35,7 @@ Racine : [../README.md](../README.md) · [../AGENTS.md](../AGENTS.md)
 |---------|--------|--------|----------|
 | `@creezio/auth` | [README](../packages/auth/README.md) | [AGENTS](../packages/auth/AGENTS.md) | [FILES](../packages/auth/docs/FILES.md) |
 | `@creezio/shell-ui` | [README](../packages/shell-ui/README.md) | [AGENTS](../packages/shell-ui/AGENTS.md) | [FILES](../packages/shell-ui/docs/FILES.md) |
+| `@creezio/os-ui` | [README](../packages/os-ui/README.md) | [AGENTS](../packages/os-ui/AGENTS.md) | [FILES](../packages/os-ui/docs/FILES.md) |
 | `@creezio/onboarding` | [README](../packages/onboarding/README.md) | [AGENTS](../packages/onboarding/AGENTS.md) | [FILES](../packages/onboarding/docs/FILES.md) |
 | `@creezio/cockpit` | [README](../packages/cockpit/README.md) | [AGENTS](../packages/cockpit/AGENTS.md) | [FILES](../packages/cockpit/docs/FILES.md) |
 | `@creezio/assistant` | [README](../packages/assistant/README.md) | [AGENTS](../packages/assistant/AGENTS.md) | [FILES](../packages/assistant/docs/FILES.md) |
@@ -46,6 +48,7 @@ Racine : [../README.md](../README.md) · [../AGENTS.md](../AGENTS.md)
 
 | Package | README | AGENTS | Fichiers |
 |---------|--------|--------|----------|
+| `@creezio/brand-spec` | — (voir AGENTS) | [AGENTS](../packages/brand-spec/AGENTS.md) | — |
 | `@creezio/factory` | [README](../packages/factory/README.md) | [AGENTS](../packages/factory/AGENTS.md) | [FILES](../packages/factory/docs/FILES.md) |
 | `@creezio/propagation` | [README](../packages/propagation/README.md) | [AGENTS](../packages/propagation/AGENTS.md) | [FILES](../packages/propagation/docs/FILES.md) |
 
@@ -70,11 +73,13 @@ brand-config
           └── platform-core
                 ├── product-hub ──► automations
                 ├── api-kernel ──► mcp-facade
-                ├── auth ──► shell-ui ──► onboarding / cockpit
+                ├── auth ──► shell-ui ──► os-ui / onboarding / cockpit
                 ├── assistant ──► tasks
                 ├── mails
                 ├── observability ──► automations
                 ├── database
-                └── electron-shell ──► desktop-tooling (publish)
+                ├── browser-host
+                └── electron-shell ──► app-runtime ──► brand-spec
+                          └── desktop-tooling (publish)
 factory / propagation  (transversal)
 ```

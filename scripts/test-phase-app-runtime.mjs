@@ -61,6 +61,6 @@ test("AR2 composeBrandOs assemble host stack (sandbox)", () => {
 
 test("AR3 ADR BrandSpec/app-runtime présent", () => {
   assert.ok(
-    fs.existsSync(path.join(ROOT, "docs/ADR-brand-spec-app-runtime.md")),
+    fs.existsSync(path.join(ROOT, "docs/adr/ADR-brand-spec-app-runtime.md")),
   );
 });

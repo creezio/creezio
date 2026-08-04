@@ -36,11 +36,11 @@ const BRAND_TWINS = [
 ];
 
 test("O3.1 PHASE-O3.md + PLAN-O O3", () => {
-  const phase = fs.readFileSync(path.join(root, "docs/PHASE-O3.md"), "utf8");
+  const phase = fs.readFileSync(path.join(root, "docs/archive/PHASE-O3.md"), "utf8");
   assert.match(phase, /Jumeaux Electron|extract only|api-key/i);
   assert.match(phase, /Sign-off|gates verts/i);
   assert.match(phase, /test-phase-o3/);
-  const plan = fs.readFileSync(path.join(root, "docs/PLAN-O.md"), "utf8");
+  const plan = fs.readFileSync(path.join(root, "docs/archive/PLAN-O.md"), "utf8");
   assert.match(plan, /## O3 — Jumeaux Electron/);
   assert.match(plan, /O3 — Jumeaux Electron.*✅|PHASE-O3/);
 });

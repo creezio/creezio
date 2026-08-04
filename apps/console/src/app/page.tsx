@@ -72,11 +72,11 @@ export default function HomePage() {
           </a>{" "}
           et{" "}
           <a
-            href="https://github.com/creezio/creezio/blob/main/docs/PHASE-F.md"
+            href="https://github.com/creezio/creezio/blob/main/docs/archive/PHASE-F.md"
             target="_blank"
             rel="noreferrer"
           >
-            docs/PHASE-F.md
+            docs/archive/PHASE-F.md
           </a>
           .
         </p>

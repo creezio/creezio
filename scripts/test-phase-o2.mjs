@@ -22,11 +22,11 @@ const FAÇADES = [
 ];
 
 test("O2.1 PHASE-O2.md + PLAN-O O2", () => {
-  const phase = fs.readFileSync(path.join(root, "docs/PHASE-O2.md"), "utf8");
+  const phase = fs.readFileSync(path.join(root, "docs/archive/PHASE-O2.md"), "utf8");
   assert.match(phase, /Anti-façades lib|chat-db|wraps/i);
   assert.match(phase, /Sign-off|gates verts/i);
   assert.match(phase, /test-phase-o2/);
-  const plan = fs.readFileSync(path.join(root, "docs/PLAN-O.md"), "utf8");
+  const plan = fs.readFileSync(path.join(root, "docs/archive/PLAN-O.md"), "utf8");
   assert.match(plan, /## O2 — Anti-façades lib/);
   assert.match(plan, /O2 — Anti-façades lib.*✅|PHASE-O2/);
 });

@@ -201,11 +201,11 @@ test("C3.4 demobrand E2E — scaffold C3 + MCP ACL", async () => {
 });
 
 test("C3.5 docs PHASE-C3 + matrice fabrique plus 🟡 toy", () => {
-  const phase = fs.readFileSync(path.join(root, "docs/PHASE-C3.md"), "utf8");
+  const phase = fs.readFileSync(path.join(root, "docs/archive/PHASE-C3.md"), "utf8");
   assert.match(phase, /Sign-off|TERMINÉE/i);
   assert.match(phase, /scaffold réel|PrdDrafter|console.*persist/i);
   const matrice = fs.readFileSync(
-    path.join(root, "docs/MATRICE-NATIVE-METIER-PLUGIN.md"),
+    path.join(root, "docs/archive/MATRICE-NATIVE-METIER-PLUGIN.md"),
     "utf8",
   );
   assert.match(matrice, /C3/);

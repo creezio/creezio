@@ -69,37 +69,37 @@ export function loadKitSnapshot(): KitConsoleSnapshot {
       {
         id: "republish",
         label: "REPUBLISH-POLICY.md",
-        href: "https://github.com/creezio/creezio/blob/main/docs/REPUBLISH-POLICY.md",
+        href: "https://github.com/creezio/creezio/blob/main/docs/archive/REPUBLISH-POLICY.md",
       },
       {
         id: "phase-i0",
         label: "PHASE-I0.md",
-        href: "https://github.com/creezio/creezio/blob/main/docs/PHASE-I0.md",
+        href: "https://github.com/creezio/creezio/blob/main/docs/archive/PHASE-I0.md",
       },
       {
         id: "post-h5",
         label: "Gate post-H5",
-        href: "https://github.com/creezio/creezio/blob/main/docs/gates/POST-H5.md",
+        href: "https://github.com/creezio/creezio/blob/main/docs/archive/gates/POST-H5.md",
       },
       {
         id: "phase-f",
         label: "PHASE-F.md",
-        href: "https://github.com/creezio/creezio/blob/main/docs/PHASE-F.md",
+        href: "https://github.com/creezio/creezio/blob/main/docs/archive/PHASE-F.md",
       },
       {
         id: "g1",
         label: "Gate G1 Certivan",
-        href: "https://github.com/creezio/creezio/blob/main/docs/gates/G1-CERTIVAN.md",
+        href: "https://github.com/creezio/creezio/blob/main/docs/archive/gates/G1-CERTIVAN.md",
       },
       {
         id: "g2",
         label: "Gate G2 Fidu",
-        href: "https://github.com/creezio/creezio/blob/main/docs/gates/G2-FIDU.md",
+        href: "https://github.com/creezio/creezio/blob/main/docs/archive/gates/G2-FIDU.md",
       },
       {
         id: "g3",
         label: "Gate G3 TempoFlow",
-        href: "https://github.com/creezio/creezio/blob/main/docs/gates/G3-TEMPOFLOW.md",
+        href: "https://github.com/creezio/creezio/blob/main/docs/archive/gates/G3-TEMPOFLOW.md",
       },
       {
         id: "platform",

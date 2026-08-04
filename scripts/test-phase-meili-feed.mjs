@@ -61,7 +61,7 @@ test("C4 factory génère meili-feed hors tf2_*", () => {
 
 test("C5 ADR documente BrandMeiliFeed", () => {
   const adr = fs.readFileSync(
-    path.join(ROOT, "docs/ADR-no-brand-domain-in-native-packages.md"),
+    path.join(ROOT, "docs/adr/ADR-no-brand-domain-in-native-packages.md"),
     "utf8",
   );
   assert.match(adr, /BrandMeiliFeed|configureMeiliBrandFeed/);

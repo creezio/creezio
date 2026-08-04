@@ -45,7 +45,7 @@ const REQUIRED = {
 };
 
 test("N6.1 PHASE-N6.md + PLAN-N", () => {
-  const phase = fs.readFileSync(path.join(root, "docs/PHASE-N6.md"), "utf8");
+  const phase = fs.readFileSync(path.join(root, "docs/archive/PHASE-N6.md"), "utf8");
   assert.match(phase, /Admin Plugins|MCP|analytics/i);
   assert.match(phase, /Sign-off|gates verts/i);
   assert.match(phase, /test-phase-n6/);
@@ -54,7 +54,7 @@ test("N6.1 PHASE-N6.md + PLAN-N", () => {
   assert.match(phase, /Exclu/);
   assert.doesNotMatch(phase, PAPERCLIP_RE);
 
-  const plan = fs.readFileSync(path.join(root, "docs/PLAN-N.md"), "utf8");
+  const plan = fs.readFileSync(path.join(root, "docs/archive/PLAN-N.md"), "utf8");
   assert.match(plan, /## N6 — Admin Plugins \/ MCP \/ analytics/);
   assert.match(plan, /PHASE-N6\.md/);
   assert.match(plan, /Done|livr|Sign-off/i);

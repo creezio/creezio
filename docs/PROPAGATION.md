@@ -1,21 +1,35 @@
-# Propagation — contrat kit → marques (Notion §3–4)
+# Propagation — contrat kit → marques
 
-> Phase F du kit `creezio/creezio` (contrats). **Phase G exécutée** : gates
-> [G1](gates/G1-CERTIVAN.md) / [G2](gates/G2-FIDU.md) / [G3](gates/G3-TEMPOFLOW.md)
-> signées — voir [DOD-PHASE-A-G.md](DOD-PHASE-A-G.md).
+Comment un changement du kit atteint les marques (TempoFlow, Certivan,
+Fidu, TempoFlow3…), et comment les innovations terrain remontent.
 
-## Modèle (rappel architecture)
+## Modèle
 
 ```
 L1 cœur (@creezio/*)
-  ↓ descente
-L2 produit métier (Certivan / Fidu / TempoFlow)
+  ↓ descente (sync vendor + PR marque)
+L2 produit métier (marques)
   ↓
 L3 organisation cliente (plugins / ACL org)
   ↓
 L4 utilisateur (plugins personnels)
   ↑ remontée innovations terrain
 ```
+
+## Chemin nominal
+
+1. Modifier le kit ; `npm run build:packages` ; `npm run test:kit` vert.
+2. Merge sur `main`.
+3. Côté marque :
+   `CREEZIO_KIT_ROOT=<kit> bash crm/scripts/electron/sync-creezio-vendor.sh`
+   — contrat canonique : [`scripts/sync-creezio-vendor.sh`](../scripts/sync-creezio-vendor.sh)
+   (copie les packages construits vers `crm/vendor/creezio`).
+4. Adapter le wiring marque si l'API publique change ; gates marque.
+
+Politique de republish des binaires desktop : voir
+[archive/REPUBLISH-POLICY.md](./archive/REPUBLISH-POLICY.md) (politique
+historique toujours applicable : republier tous les artefacts impactés d'une
+marque, feeds `latest.yml` cohérents).
 
 ## Semver `@creezio/*`
 
@@ -26,80 +40,47 @@ L4 utilisateur (plugins personnels)
 | `fix:` / `perf:` | **patch** |
 | `docs` / `test` / `chore` / `ci` / `build` / `style` / `refactor` | **none** (ou patch via `--force-patch`) |
 
-- Changelog racine : [`CHANGELOG.md`](../CHANGELOG.md) (Keep a Changelog sections).
-- Tooling : `npm run kit:version` (dry-run par défaut, `--apply` pour écrire).
-- Policy code : `@creezio/propagation` → `SEMVER_POLICY_SUMMARY`.
+- Changelog racine : [`CHANGELOG.md`](../CHANGELOG.md).
+- Tooling : `npm run kit:version` (dry-run par défaut, `--apply` pour écrire) ;
+  policy code : `@creezio/propagation` → `SEMVER_POLICY_SUMMARY`.
 
 ```bash
-# Prévisualiser bump + release notes
 npm run kit:version -- --package=@creezio/platform-core --bump=minor
-
-# Déduire depuis commits
 npm run kit:version -- --package=product-hub --from-commits --since=HEAD~10
-
-# Appliquer (package.json + CHANGELOG)
 npm run kit:version -- --package=@creezio/shell --bump=patch --apply
 ```
 
-## Canaux de mise à jour
-
-Contrat **kit bump → PR automatisable par marque** :
-
-| Canal | Cible | Automatisable | Gate |
-|-------|-------|---------------|------|
-| `kit-workspace` | `creezio/creezio` | oui (`kit:version`) | — |
-| `brand-pr-certivan` | `/opt/docker/certivan-app` | oui (Phase G) | G1 |
-| `brand-pr-fidu` | `/opt/docker/fidu` | oui (Phase G) | G2 |
-| `brand-pr-tempoflow` | `creezio/tempoflow2` | oui (Phase G) | G3 |
-| `brand-pr-demobrand` | `apps/demobrand` | oui (kit) | — |
-| `console-ops` | `apps/console` | lecture | — |
-
-Templates PR : [`.github/PULL_REQUEST_TEMPLATE/kit-bump.md`](../.github/PULL_REQUEST_TEMPLATE/kit-bump.md).
-
-Payloads générés par `buildAllBrandPrPayloads(impact)` — **aucune écriture**
-dans les repos marques en Phase F.
-
-## Mapping packages → surfaces
-
-| Package | Surfaces typiques |
-|---------|-------------------|
-| `brand-config` | deps, electron-builder, main, desktop-scripts |
-| `shell` | deps, preload, main |
-| `platform-core` | deps, main, next-host-env, SqliteRuntime, `ARCHITECTURE_VERSION` |
-| `product-hub` | deps, product-hub, main, ACL L3, control-plane |
-| `electron-shell` | deps, main, product-hub, next-host-env, plugin host |
-| `desktop-tooling` | deps, desktop-scripts, electron-builder |
-| `api-kernel` | deps, main (façade HTTP cœur + mounts modules/plugins) |
-| `mcp-facade` | deps, main (proxy MCP unifié H4/H5) |
-| `shell-ui` | deps, main, next UI (nav core + slots brand) |
-| `auth` | deps, main (session ; sqlite core dès I1) |
-| `assistant` | deps, main (chat ; sqlite core I2) — **vendor I3** |
-| `tasks` | deps, main (tasks plateforme sqlite I3) — **vendor I3** |
-| `mails` | deps, main (mails + file-sink I3) — **vendor I3** |
-| `factory` | sandbox demobrand |
-| `propagation` | console ops, semver/impact ; registre org (persisté I6) |
-
-Sync vendor marques : contrat canonique
-[`scripts/sync-creezio-vendor.sh`](../scripts/sync-creezio-vendor.sh)
-(wrappers dans chaque `crm/scripts/electron/`). Republish :
-[REPUBLISH-POLICY.md](REPUBLISH-POLICY.md).
-
-Dry-run impacts :
+## Impact d'un bump
 
 ```bash
 npm run kit:impact -- --package=@creezio/platform-core
 npm run kit:impact -- --package=electron-shell --bump=major --json
 ```
 
+Surfaces typiquement touchées par package : `brand-config` (deps,
+electron-builder), `shell` (preload/main), `platform-core` (SqliteRuntime,
+`ARCHITECTURE_VERSION`), `api-kernel` (façade HTTP), `mcp-facade` (proxy MCP),
+`shell-ui` (nav + chrome UI), `auth` (session), `assistant` / `tasks` /
+`mails` (modules CMS), `electron-shell` (runtime), `app-runtime` (façade
+boot), `os-ui` (pages OS à rematérialiser), `desktop-tooling` (publish),
+`factory` / `propagation` (outillage).
+
+## Canaux marque
+
+Contrat **kit bump → PR par marque** (`buildAllBrandPrPayloads(impact)`,
+template [`.github/PULL_REQUEST_TEMPLATE/kit-bump.md`](../.github/PULL_REQUEST_TEMPLATE/kit-bump.md)).
+Les gates historiques de premier branchement (G1/G2/G3) sont signées et
+archivées : [archive/gates/](./archive/gates/).
+
 ## Registre plugins org (L3)
 
 Contrat dans `@creezio/propagation` :
 
-- `OrgPluginRecord` + `createMemoryOrgPluginRegistry`
-- **I6** : `createFileOrgPluginRegistry({ filePath })` — persistance JSON ops
+- `OrgPluginRecord` + `createMemoryOrgPluginRegistry` /
+  `createFileOrgPluginRegistry({ filePath })` (persistance JSON ops)
 - Visibilités : `owner_only` → `pending_review` → `promoted_vertical` → `promoted_kit`
 - Remontée : `submitForOrgReview` → `proposeVerticalPromotion` → `proposeKitPromotion`
-- Console : `GET/POST /api/org-plugins` + panel (fichier `var/org-plugin-registry.json`)
+- Console : `GET/POST /api/org-plugins` (fichier `var/org-plugin-registry.json`)
 - Cloud registry / auto-promotion = hors scope
 
 ## Points d'extension
@@ -109,37 +90,13 @@ Contrat dans `@creezio/propagation` :
 | **Descente** | `kit.release.published` → `vertical.deps.bumped` → `org.feature.rolled_out` → `user.plugin.entitled` |
 | **Remontée** | `user.plugin.created` → `org.plugin.reviewed` → `vertical.plugin.promoted` → `kit.plugin.accepted` |
 
-Bus in-process : `createExtensionHookBus()` — les apps brancheront leurs
-adapters en Phase G.
+Bus in-process : `createExtensionHookBus()`.
 
-## Console
+## Console ops
 
-`apps/console` affiche :
-
-1. Versions packages kit (inventaire local workspace)
-2. Liens docs gates G1 / G2 / G3
-3. Parc feeds Client+Serveur (Phase C)
+`apps/console` affiche versions kit, canaux et parc feeds :
 
 ```bash
 npm run console:dev   # http://127.0.0.1:3080
 curl -s http://127.0.0.1:3080/api/kit-versions | jq .
 ```
-
-## Checklist avant bascule (Phase G)
-
-Ordre **strict** : G1 Certivan → G2 Fidu → G3 TempoFlow.
-
-Pour chaque gate (détail dans `docs/gates/`) :
-
-- [ ] Bump deps `@creezio/*` dans le `package.json` marque
-- [ ] Remplacer modules dupliqués listés dans [PLATFORM-VS-VERTICAL.md](PLATFORM-VS-VERTICAL.md)
-- [ ] `npm run build` + smoke Client (+ Serveur si applicable)
-- [ ] Feeds `latest.yml` OK
-- [ ] Runtime legacy encore disponible jusqu'à validation gate
-- [ ] PR avec template kit-bump
-
-## Hors scope Phase F
-
-- Commit / push sur fidu, certivan-app, tempoflow2
-- Publish npm registry privé
-- Exécution réelle des gates G1–G3

@@ -88,7 +88,7 @@ function isForbiddenReexportFacade(filePath) {
 }
 
 test("O8.1 PHASE-O8.md + PLAN-O O8 livré", () => {
-  const phase = fs.readFileSync(path.join(root, "docs/PHASE-O8.md"), "utf8");
+  const phase = fs.readFileSync(path.join(root, "docs/archive/PHASE-O8.md"), "utf8");
   assert.match(phase, /anti-façade|Gates anti-façade/i);
   assert.match(phase, /Sign-off|gates verts/i);
   assert.match(phase, /test-phase-o8/);
@@ -96,7 +96,7 @@ test("O8.1 PHASE-O8.md + PLAN-O O8 livré", () => {
   assert.match(phase, /≤80|≤100|≤120/);
   assert.doesNotMatch(phase, PAPERCLIP_RE);
 
-  const plan = fs.readFileSync(path.join(root, "docs/PLAN-O.md"), "utf8");
+  const plan = fs.readFileSync(path.join(root, "docs/archive/PLAN-O.md"), "utf8");
   assert.match(plan, /## O8 — Gates anti-façade/);
   assert.match(plan, /PHASE-O8\.md/);
 });

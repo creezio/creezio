@@ -62,7 +62,7 @@ export function collectKitInventory(kitRoot: string): KitInventory {
       packageJsonPath: version !== null ? packageJsonPath : null,
       docs: [
         "docs/PROPAGATION.md",
-        "docs/PHASE-F.md",
+        "docs/archive/PHASE-F.md",
         "docs/PLATFORM-VS-VERTICAL.md",
       ],
     };

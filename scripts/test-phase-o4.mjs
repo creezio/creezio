@@ -27,14 +27,14 @@ function walkTs(dir) {
 }
 
 test("O4.1 PHASE-O4.md + PLAN-O O4", () => {
-  const phase = fs.readFileSync(path.join(root, "docs/PHASE-O4.md"), "utf8");
+  const phase = fs.readFileSync(path.join(root, "docs/archive/PHASE-O4.md"), "utf8");
   assert.match(phase, /assistant-chat|handleAssistantChat/i);
   assert.match(phase, /Sign-off|gates verts/i);
   assert.match(phase, /test-phase-o4/);
   assert.match(phase, /configureAssistantBrand/);
   assert.doesNotMatch(phase, PAPERCLIP_RE);
 
-  const plan = fs.readFileSync(path.join(root, "docs/PLAN-O.md"), "utf8");
+  const plan = fs.readFileSync(path.join(root, "docs/archive/PLAN-O.md"), "utf8");
   assert.match(plan, /## O4 — `assistant-chat` générique/);
   assert.match(plan, /PHASE-O4\.md/);
   assert.match(plan, /O4 — `assistant-chat` générique.*✅|## O4 —[\s\S]*?✅/);

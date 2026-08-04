@@ -42,7 +42,7 @@ test("H5.0 ARCHITECTURE_VERSION >= H5", () => {
 });
 
 test("H5 docs BACKLOG + PHASE présents", () => {
-  for (const f of ["docs/BACKLOG-H5.md", "docs/PHASE-H5.md"]) {
+  for (const f of ["docs/archive/BACKLOG-H5.md", "docs/archive/PHASE-H5.md"]) {
     assert.ok(fs.existsSync(path.join(ROOT, f)), f);
   }
 });

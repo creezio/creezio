@@ -17,7 +17,7 @@ function loc(file) {
 }
 
 test("M3.1 PHASE-M3.md exige startHostPluginControlPlane + ≤40 LOC", () => {
-  const doc = fs.readFileSync(path.join(root, "docs/PHASE-M3.md"), "utf8");
+  const doc = fs.readFileSync(path.join(root, "docs/archive/PHASE-M3.md"), "utf8");
   assert.match(doc, /startHostPluginControlPlane/);
   assert.match(doc, /@creezio\/product-hub/);
   assert.match(doc, /≤\s*40|≤40/);

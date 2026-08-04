@@ -54,7 +54,7 @@ const FORBIDDEN_PLATFORM = [
 ];
 
 test("M13.1 PHASE-M13.md allowlist + audit", () => {
-  const doc = fs.readFileSync(path.join(root, "docs/PHASE-M13.md"), "utf8");
+  const doc = fs.readFileSync(path.join(root, "docs/archive/PHASE-M13.md"), "utf8");
   assert.match(doc, /Allowlist|allowlist/i);
   assert.match(doc, /panier/);
   assert.match(doc, /host-runtime-ctx/);
@@ -104,7 +104,7 @@ test("M13.4 wiring marque mince présent", () => {
 });
 
 test("M13.5 PLAN-M.md section M13", () => {
-  const plan = fs.readFileSync(path.join(root, "docs/PLAN-M.md"), "utf8");
+  const plan = fs.readFileSync(path.join(root, "docs/archive/PLAN-M.md"), "utf8");
   assert.match(plan, /## M13 — Audit TF métier-only/);
   assert.match(plan, /Allowlist|allowlist|métier-only/i);
 });

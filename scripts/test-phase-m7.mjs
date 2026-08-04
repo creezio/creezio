@@ -74,8 +74,8 @@ check("src ops/fleet-activity + fleet-samples présents", () => {
 });
 
 check("PHASE-M7.md présent", () => {
-  assert.ok(fs.existsSync(path.join(root, "docs/PHASE-M7.md")));
-  const doc = fs.readFileSync(path.join(root, "docs/PHASE-M7.md"), "utf8");
+  assert.ok(fs.existsSync(path.join(root, "docs/archive/PHASE-M7.md")));
+  const doc = fs.readFileSync(path.join(root, "docs/archive/PHASE-M7.md"), "utf8");
   assert.ok(doc.includes("fleet-agent"));
   assert.ok(doc.includes("@creezio/observability"));
 });

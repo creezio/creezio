@@ -6,26 +6,24 @@
 
 → **[../AGENTS.md](../AGENTS.md)** — règles globales pour agents.
 
-## Expériences OS
-
-→ **[experiences/tempoflow3/](./experiences/tempoflow3/)** — recréer TempoFlow
-métier-only depuis le kit ; oracle **v0.10.26** (`e36e4d0`, 27 juil. 2026),
-pas le tip post-refactor.
-
 ## Architecture & intention
 
 | Doc | Sujet |
 |-----|--------|
-| [ARCHITECTURE-INTENTION.md](./ARCHITECTURE-INTENTION.md) | Intention 3 couches |
-| [MATRICE-NATIVE-METIER-PLUGIN.md](./MATRICE-NATIVE-METIER-PLUGIN.md) | Cartographie Natif / Métier / Plugin |
-| [ETAT-DES-LIEUX-INTENTION.md](./ETAT-DES-LIEUX-INTENTION.md) | État des lieux post-cutovers |
-| [PLATFORM-VS-VERTICAL.md](./PLATFORM-VS-VERTICAL.md) | Plateforme vs vertical |
+| [ARCHITECTURE.md](./ARCHITECTURE.md) | Modes de déploiement, boot, admin, navigateur IA, propagation |
+| [ARCHITECTURE-INTENTION.md](./ARCHITECTURE-INTENTION.md) | Intention 3 couches (décisions verrouillées) |
+| [MATRICE-NATIVE-METIER-PLUGIN.md](./MATRICE-NATIVE-METIER-PLUGIN.md) | Qui possède quoi : natif / métier / plugin |
+| [PLATFORM-VS-VERTICAL.md](./PLATFORM-VS-VERTICAL.md) | Règles de décision kit vs marque |
 | [PROPAGATION.md](./PROPAGATION.md) | Propagation kit→marques |
-| [REPUBLISH-POLICY.md](./REPUBLISH-POLICY.md) | Politique republish |
+| [BACKLOG.md](./BACKLOG.md) | Dettes restantes assumées |
+| [adr/](./adr/) | Décisions d'architecture (ADR) en vigueur |
 
-## Phases & plans
+## Agents & fixtures
 
-Fichiers `PHASE-*.md`, `PLAN-*.md`, `BACKLOG-*.md`, `VISION-*.md`, ADRs, audits.
-Gates marques : [gates/](./gates/).
+- [agents/CREATE-BRAND.md](./agents/CREATE-BRAND.md) — créer une marque (BrandSpec)
+- [experiences/tempoflow3/](./experiences/tempoflow3/) — fixtures factory `--from-prd`
 
-Ces documents historiques **complètent** la doc package ; ils ne la remplacent pas.
+## Historique
+
+→ **[archive/](./archive/)** — journal de construction (phases, plans,
+backlogs d'époque, gates signées, audits). Ne décrit pas l'état courant.

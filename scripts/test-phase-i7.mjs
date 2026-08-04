@@ -58,5 +58,5 @@ test("I7 docs + README contrat", () => {
     "utf8",
   );
   assert.match(readme, /registerBrandNav only|registerBrandNav/i);
-  assert.ok(fs.existsSync(path.join(ROOT, "docs/PHASE-I7.md")));
+  assert.ok(fs.existsSync(path.join(ROOT, "docs/archive/PHASE-I7.md")));
 });

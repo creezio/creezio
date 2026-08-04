@@ -362,8 +362,8 @@ test("H2.4 demobrand sandbox E2E multi-DB + isolation", async () => {
 
 test("H2 docs + demobrand sandbox source présents", () => {
   for (const rel of [
-    "docs/BACKLOG-H2.md",
-    "docs/PHASE-H2.md",
+    "docs/archive/BACKLOG-H2.md",
+    "docs/archive/PHASE-H2.md",
     "apps/demobrand/src/electron/sandbox-runtime.ts",
   ]) {
     assert.ok(fs.existsSync(path.join(ROOT, rel)), rel);

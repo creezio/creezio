@@ -31,7 +31,7 @@ const BRANDS = [
 
 test("O4r2.1 ADR + PHASE-O4r2 + PLAN-O", () => {
   const adr = fs.readFileSync(
-    path.join(root, "docs/ADR-assistant-tools-mcp.md"),
+    path.join(root, "docs/adr/ADR-assistant-tools-mcp.md"),
     "utf8",
   );
   assert.match(adr, /O4r2/);
@@ -39,14 +39,14 @@ test("O4r2.1 ADR + PHASE-O4r2 + PLAN-O", () => {
   assert.match(adr, /mini-registre|second SoT|handlers en dur/i);
 
   const phase = fs.readFileSync(
-    path.join(root, "docs/PHASE-O4r2.md"),
+    path.join(root, "docs/archive/PHASE-O4r2.md"),
     "utf8",
   );
   assert.match(phase, /test-phase-o4r2/);
   assert.match(phase, /Sign-off|gates verts/i);
   assert.match(phase, /create\*BrandMcp|brand-mcp/);
 
-  const plan = fs.readFileSync(path.join(root, "docs/PLAN-O.md"), "utf8");
+  const plan = fs.readFileSync(path.join(root, "docs/archive/PLAN-O.md"), "utf8");
   assert.match(plan, /## O4r2 —/);
   assert.match(plan, /PHASE-O4r2\.md/);
 });

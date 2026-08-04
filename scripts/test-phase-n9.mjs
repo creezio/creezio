@@ -11,7 +11,7 @@ import { fileURLToPath } from "node:url";
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
 test("N9.1 PHASE-N9.md freeze", () => {
-  const doc = fs.readFileSync(path.join(root, "docs/PHASE-N9.md"), "utf8");
+  const doc = fs.readFileSync(path.join(root, "docs/archive/PHASE-N9.md"), "utf8");
   assert.match(doc, /Freeze|freeze/);
   assert.match(doc, /dry-run|DRY_RUN/i);
   assert.match(doc, /N8|N6p|N7/);
@@ -22,7 +22,7 @@ test("N9.1 PHASE-N9.md freeze", () => {
 
 test("N9.2 matrice freeze N9 + versions", () => {
   const mat = fs.readFileSync(
-    path.join(root, "docs/MATRICE-NATIVE-METIER-PLUGIN.md"),
+    path.join(root, "docs/archive/MATRICE-NATIVE-METIER-PLUGIN.md"),
     "utf8",
   );
   assert.match(mat, /N0→N9|PHASE-N9/);
@@ -34,7 +34,7 @@ test("N9.2 matrice freeze N9 + versions", () => {
 });
 
 test("N9.3 PLAN-N N0→N9 documentés Done", () => {
-  const plan = fs.readFileSync(path.join(root, "docs/PLAN-N.md"), "utf8");
+  const plan = fs.readFileSync(path.join(root, "docs/archive/PLAN-N.md"), "utf8");
   for (const h of [
     "## N0 —",
     "## N1 —",

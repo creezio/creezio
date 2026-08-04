@@ -47,8 +47,8 @@ check("getHeartbeatExtras + OPS_EVENT_PREFIXES dans kit", () => {
 });
 
 check("PHASE-M7p.md présent", () => {
-  assert.ok(fs.existsSync(path.join(root, "docs/PHASE-M7p.md")));
-  const doc = fs.readFileSync(path.join(root, "docs/PHASE-M7p.md"), "utf8");
+  assert.ok(fs.existsSync(path.join(root, "docs/archive/PHASE-M7p.md")));
+  const doc = fs.readFileSync(path.join(root, "docs/archive/PHASE-M7p.md"), "utf8");
   assert.ok(doc.includes("Certivan"));
   assert.ok(doc.includes("Fidu"));
 });

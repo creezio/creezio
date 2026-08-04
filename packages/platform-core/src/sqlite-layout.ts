@@ -8,7 +8,7 @@
  *   sous `{userData}/sqlite/` ;
  * - `resolveDbPath` reste un alias déprécié de la base métier (brand).
  *
- * Voir docs/PHASE-H1.md et ARCHITECTURE-INTENTION.md.
+ * Voir docs/archive/PHASE-H1.md et ARCHITECTURE-INTENTION.md.
  */
 
 import fs from "node:fs";

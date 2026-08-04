@@ -65,13 +65,13 @@ function walkTs(dir) {
 }
 
 test("O9.1 PHASE-O9.md + PLAN-O O9", () => {
-  const phase = fs.readFileSync(path.join(root, "docs/PHASE-O9.md"), "utf8");
+  const phase = fs.readFileSync(path.join(root, "docs/archive/PHASE-O9.md"), "utf8");
   assert.match(phase, /shell-ui|tasks\/ui|Sign-off|gates verts/i);
   assert.match(phase, /test-phase-o9/);
   assert.match(phase, /configureShellUiBrand|api-scopes/);
   assert.doesNotMatch(phase, PAPERCLIP_RE);
 
-  const plan = fs.readFileSync(path.join(root, "docs/PLAN-O.md"), "utf8");
+  const plan = fs.readFileSync(path.join(root, "docs/archive/PLAN-O.md"), "utf8");
   assert.match(plan, /## O9 — Jumeaux lib\/UI/);
   assert.match(plan, /O9 — Jumeaux lib\/UI.*✅|PHASE-O9/);
 });

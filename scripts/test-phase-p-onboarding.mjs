@@ -283,7 +283,7 @@ test("P.6 workspace wiring + vendor sync liste", () => {
 
 test("P.7 PHASE doc implemented + UI exports stables", () => {
   const phase = fs.readFileSync(
-    path.join(root, "docs/PHASE-P-ONBOARDING.md"),
+    path.join(root, "docs/archive/PHASE-P-ONBOARDING.md"),
     "utf8",
   );
   assert.match(phase, /implémenté|implemented/i);

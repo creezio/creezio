@@ -63,7 +63,7 @@ function loc(file) {
 }
 
 test("N2p.1 PHASE-N2p.md + PLAN-N N2p livré", () => {
-  const phase = fs.readFileSync(path.join(root, "docs/PHASE-N2p.md"), "utf8");
+  const phase = fs.readFileSync(path.join(root, "docs/archive/PHASE-N2p.md"), "utf8");
   assert.match(phase, /Cutover hosts/i);
   assert.match(phase, /9f44eb6/);
   assert.match(phase, /Sign-off|gates verts/i);
@@ -73,7 +73,7 @@ test("N2p.1 PHASE-N2p.md + PLAN-N N2p livré", () => {
   assert.match(phase, /393bb98|Fidu/i);
   assert.match(phase, /≤260|<=260|260 LOC/i);
 
-  const plan = fs.readFileSync(path.join(root, "docs/PLAN-N.md"), "utf8");
+  const plan = fs.readFileSync(path.join(root, "docs/archive/PLAN-N.md"), "utf8");
   assert.match(plan, /## N2p — Cutover hosts/);
   assert.match(plan, /PHASE-N2p\.md/);
   assert.match(plan, /Done|livr/i);
