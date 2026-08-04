@@ -18,6 +18,10 @@ import { MINIMAL_PNG_BASE64 } from "./minimal-png.js";
 import type { ProductModel } from "./product-model.js";
 import { writeFromPrdArtifacts } from "./scaffold-from-prd.js";
 import { writeAppFile } from "./write-app-file.js";
+import {
+  serverDockerNpmScripts,
+  renderCreezioCliProxyMjs,
+} from "./generators/server-docker-scripts.js";
 
 export type NewAppOptions = {
   brandId: string;
@@ -109,6 +113,8 @@ function renderPackageJson(m: AppManifest): string {
           "electron:publish:dry": `CREEZIO_BRAND=${m.brandId} bash node_modules/@creezio/desktop-tooling/scripts/publish-desktop.sh --dry-run`,
           "electron:remote-build": `CREEZIO_BRAND=${m.brandId} bash ../../packages/desktop-tooling/scripts/remote-build-win.sh`,
           "electron:remote-build:dry": `CREEZIO_BRAND=${m.brandId} bash ../../packages/desktop-tooling/scripts/remote-build-win.sh --dry-run`,
+          // Serveur Docker headless — architecture par défaut (kit SoT).
+          ...serverDockerNpmScripts(),
         },
         dependencies: {
           "@creezio/app-runtime": "0.1.0",
@@ -131,6 +137,9 @@ function renderPackageJson(m: AppManifest): string {
         },
         devDependencies: {
           "@types/node": "^22.15.3",
+          // Requis par build:electron (types preload) même en flux Docker-only.
+          electron: "35.7.5",
+          "electron-builder": "^25.1.8",
           typescript: "^5.8.3",
         },
         peerDependencies: {
@@ -903,6 +912,12 @@ export function scaffoldNewApp(opts: NewAppOptions): ScaffoldResult {
   writeFile(
     path.join(outDir, "scripts/brand-kernel-harness.mjs"),
     renderBareBrandHarnessMjs(manifest.brandId),
+    force,
+    written,
+  );
+  writeFile(
+    path.join(outDir, "scripts/creezio-cli.mjs"),
+    renderCreezioCliProxyMjs(),
     force,
     written,
   );

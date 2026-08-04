@@ -51,3 +51,7 @@ export {
   renderEnvExample,
   renderE2eBrowserParcoursMjs,
 } from "./linux-e2e.js";
+export {
+  serverDockerNpmScripts,
+  renderCreezioCliProxyMjs,
+} from "./server-docker-scripts.js";

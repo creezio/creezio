@@ -36,6 +36,8 @@ import {
   renderEnvExample,
   renderEnsureLinuxIconsMjs,
   renderE2eBrowserParcoursMjs,
+  serverDockerNpmScripts,
+  renderCreezioCliProxyMjs,
 } from "./generators/index.js";
 
 import { writeAppFile, writeOsUiAppFile } from "./write-app-file.js";
@@ -89,6 +91,8 @@ function renderPackageJsonFromPrd(m: AppManifest, model: ProductModel): string {
     "electron:publish:linux": `CREEZIO_BRAND=${m.brandId} CREEZIO_APP_ROOT=. bash node_modules/@creezio/desktop-tooling/scripts/publish-desktop.sh --platform=linux`,
     "electron:publish:dry": `CREEZIO_BRAND=${m.brandId} CREEZIO_APP_ROOT=. bash node_modules/@creezio/desktop-tooling/scripts/publish-desktop.sh --dry-run`,
     "desktop:dev": "npm run build:electron && electron .",
+    // Serveur Docker headless — architecture par défaut (kit SoT).
+    ...serverDockerNpmScripts(),
   };
   if (chr) {
     scripts["test:mini-prd-core"] = "node scripts/test-mini-prd-core.mjs";
@@ -132,6 +136,9 @@ function renderPackageJsonFromPrd(m: AppManifest, model: ProductModel): string {
         },
         devDependencies: {
           "@types/node": "^22.15.3",
+          // Requis par build:electron (types preload) même en flux Docker-only.
+          electron: "35.7.5",
+          "electron-builder": "^25.1.8",
           typescript: "^5.8.3",
         },
         peerDependencies: {
@@ -309,6 +316,12 @@ export function writeFromPrdArtifacts(opts: {
   writeFile(
     path.join(outDir, "scripts/brand-kernel-harness.mjs"),
     renderBrandKernelHarnessMjs(model),
+    force,
+    written,
+  );
+  writeFile(
+    path.join(outDir, "scripts/creezio-cli.mjs"),
+    renderCreezioCliProxyMjs(),
     force,
     written,
   );

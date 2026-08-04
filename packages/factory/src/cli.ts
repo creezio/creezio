@@ -13,6 +13,7 @@ import { fileURLToPath } from "node:url";
 import { scaffoldNewApp, type NewAppOptions } from "./scaffold.js";
 import {
   assertProductModel,
+  blankAppModel,
   parseProductPrd,
   safeBrandId,
   type ProductModel,
@@ -89,12 +90,18 @@ function printHelp(): void {
 Usage:
   creezio new-app --from-prd <prd.md> [--out <dir>] [overrides]
   creezio new-app --name <ProductName> --id <brandId> --domain <host> [options]
+  creezio demo-app --name <ProductName> [--id <brandId>] [--domain <host>] [--out <dir>]
   creezio brand init|doctor|apply|smoke …
-  creezio server-docker build|up|down|ps|proof --brand-root <app>
+  creezio server-docker create|start|stop|rm|logs|ls|admin|build|up|down|ps|proof --brand-root <app>
 
 Mode produit (recommandé) :
   --from-prd      Brief / PRD markdown non technique
                   Dérive name / id / domain ; génère métier + wiring OS mince
+
+App vierge 1 clic (demo-app) :
+  Toutes fonctions natives (auth, setup, mails, tâches, assistant, MCP,
+  admin DB, cockpit, plugins) + module exemple neutre "notes" + serveur
+  Docker par défaut (server-docker create out of the box).
 
 BrandSpec (agent créateur) :
   creezio brand init --id <id> --name <Name> --domain <host>
@@ -193,9 +200,9 @@ export async function runCli(argv: string[]): Promise<void> {
     return;
   }
 
-  if (args.command !== "new-app") {
+  if (args.command !== "new-app" && args.command !== "demo-app") {
     throw new Error(
-      `Commande inconnue: ${args.command} (new-app | brand | server-docker)`,
+      `Commande inconnue: ${args.command} (new-app | demo-app | brand | server-docker)`,
     );
   }
 
@@ -205,7 +212,18 @@ export async function runCli(argv: string[]): Promise<void> {
   let productName: string;
   let domain: string;
 
-  if (args.fromPrd) {
+  if (args.command === "demo-app") {
+    // App vierge 1 clic : natives complètes + module exemple neutre + Docker.
+    if (!args.name) {
+      printHelp();
+      throw new Error("demo-app: --name <ProductName> requis");
+    }
+    productName = args.name.trim();
+    brandId = safeBrandId(args.id || productName);
+    domain = args.domain?.trim() || `${brandId}.local`;
+    productModel = blankAppModel({ brandId, brandName: productName, domain });
+    assertProductModel(productModel);
+  } else if (args.fromPrd) {
     productModel = loadProductModel(args, root);
     brandId = productModel.brandId;
     productName = productModel.brandName;
@@ -265,6 +283,9 @@ export async function runCli(argv: string[]): Promise<void> {
     console.log(`  cd ${result.outDir}`);
     console.log(`  npm run test:metier-parcours`);
     console.log(`  npm run test:first-run-auth`);
+    console.log(
+      `  npm run server-docker:create -- demo   # serveur Docker + CRM navigateur`,
+    );
   } else {
     console.log(`  cd ${result.outDir} && npm install && npm run build`);
     console.log(

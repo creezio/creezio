@@ -1,0 +1,57 @@
+/**
+ * Scripts npm `server-docker:*` + résolveur CLI kit pour les apps générées.
+ * Toute app factory hérite du serveur Docker (harness + Dockerfile kit) —
+ * rien n'est copié à la main dans la marque.
+ */
+
+/** Scripts npm injectés dans le package.json généré. */
+export function serverDockerNpmScripts(): Record<string, string> {
+  const cli = "node scripts/creezio-cli.mjs server-docker";
+  return {
+    "server-docker:build": `${cli} build --brand-root .`,
+    "server-docker:create": `${cli} create --brand-root .`,
+    "server-docker:start": `${cli} start --brand-root .`,
+    "server-docker:stop": `${cli} stop --brand-root .`,
+    "server-docker:rm": `${cli} rm --brand-root .`,
+    "server-docker:logs": `${cli} logs --brand-root .`,
+    "server-docker:ls": `${cli} ls --brand-root .`,
+    "server-docker:admin": `${cli} admin up --brand-root .`,
+    "server-docker:up": `${cli} up --brand-root .`,
+    "server-docker:down": `${cli} down --brand-root .`,
+    "server-docker:proof": `${cli} proof --brand-root .`,
+  };
+}
+
+/** Résolveur CLI `creezio` : kit env → vendor → node_modules → chemin VPS. */
+export function renderCreezioCliProxyMjs(): string {
+  return `#!/usr/bin/env node
+/** Thin → CLI creezio (kit). Résolution : CREEZIO_KIT_ROOT > vendor > node_modules. */
+import { spawnSync } from "node:child_process";
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+const candidates = [
+  process.env.CREEZIO_KIT_ROOT &&
+    path.join(process.env.CREEZIO_KIT_ROOT, "packages/factory/bin/creezio.js"),
+  path.join(root, "vendor/creezio/factory/bin/creezio.js"),
+  path.join(root, "node_modules/@creezio/factory/bin/creezio.js"),
+  "/opt/docker/creezio/packages/factory/bin/creezio.js",
+].filter(Boolean);
+const cli = candidates.find((p) => fs.existsSync(p));
+if (!cli) {
+  console.error(
+    "CLI creezio introuvable — définir CREEZIO_KIT_ROOT (racine du kit creezio)",
+  );
+  process.exit(1);
+}
+const kitRoot = path.resolve(cli, "../../../..");
+const r = spawnSync(process.execPath, [cli, ...process.argv.slice(2)], {
+  cwd: root,
+  env: { ...process.env, CREEZIO_KIT_ROOT: process.env.CREEZIO_KIT_ROOT || kitRoot },
+  stdio: "inherit",
+});
+process.exit(r.status ?? 1);
+`;
+}

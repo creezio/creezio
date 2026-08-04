@@ -94,6 +94,43 @@ export function defaultPlatformNeeds(): PlatformNeeds {
   };
 }
 
+/**
+ * App vierge (`creezio demo-app`) — zéro vertical métier : toutes les
+ * fonctions natives OS (auth, setup, mails, tâches, assistant, MCP, admin,
+ * plugins) + un unique module d'exemple neutre `notes` (placeholder à
+ * remplacer par le métier réel via mini-PRDs).
+ */
+export function blankAppModel(opts: {
+  brandId: string;
+  brandName: string;
+  domain: string;
+}): ProductModel {
+  return {
+    brandId: safeBrandId(opts.brandId),
+    brandName: opts.brandName,
+    domain: opts.domain,
+    tagline: "App vierge sur OS Creezio — serveur Docker par défaut",
+    vertical: "generic",
+    entities: [
+      {
+        id: "notes",
+        label: "Note",
+        labelPlural: "Notes",
+        archivable: true,
+        fields: [
+          { name: "titre", type: "text", required: true, label: "Titre" },
+          { name: "contenu", type: "text", label: "Contenu" },
+        ],
+      },
+    ],
+    pages: [
+      { id: "notes", path: "/notes", title: "Notes", entityId: "notes", kind: "list" },
+    ],
+    flows: [],
+    platformNeeds: defaultPlatformNeeds(),
+  };
+}
+
 /** Cœur achats détecté (fournisseurs + panier + commandes). */
 export function isChrModel(model: ProductModel): boolean {
   return (
