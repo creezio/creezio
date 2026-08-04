@@ -6,7 +6,8 @@
   "main": "./dist-cjs/index.js",
   "types": "./dist/index.d.ts",
   "bin": {
-    "creezio-fleet-collector": "./fleet-collector/server.mjs"
+    "creezio-fleet-collector": "./fleet-collector/server.mjs",
+    "creezio-server-admin": "./fleet-collector/server-admin.mjs"
   },
   "exports": {
     ".": {
@@ -32,7 +33,9 @@
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "fleet-collector": "node fleet-collector/server.mjs",
-    "test:fleet-collector": "node fleet-collector/test-fleet-collector.mjs"
+    "server-admin": "node fleet-collector/server-admin.mjs",
+    "test:fleet-collector": "node fleet-collector/test-fleet-collector.mjs",
+    "test:server-admin": "node fleet-collector/test-server-admin.mjs"
   },
   "dependencies": {
     "@creezio/api-kernel": "0.1.0",

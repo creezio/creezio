@@ -1,0 +1,303 @@
+/**
+ * Tests locaux du Creezio Server Admin (spawn serveur éphémère).
+ *
+ * Ne requiert PAS docker : CREEZIO_DOCKER_SOCK pointe sur un chemin
+ * inexistant → état docker "unknown" attendu pour les instances du registre.
+ */
+import http from "node:http";
+import net from "node:net";
+import { spawn } from "node:child_process";
+import path from "node:path";
+import fs from "node:fs";
+import os from "node:os";
+import { fileURLToPath } from "node:url";
+import assert from "node:assert/strict";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const ADMIN_USER = "admin";
+const ADMIN_PASS = "test-admin-pass";
+const BASIC =
+  "Basic " + Buffer.from(`${ADMIN_USER}:${ADMIN_PASS}`).toString("base64");
+
+// Port éphémère : réservé par l'OS puis libéré pour le serveur admin.
+function ephemeralPort() {
+  return new Promise((resolve, reject) => {
+    const srv = net.createServer();
+    srv.listen(0, "127.0.0.1", () => {
+      const p = srv.address().port;
+      srv.close(() => resolve(p));
+    });
+    srv.on("error", reject);
+  });
+}
+const PORT = await ephemeralPort();
+// Ports des instances fixture : éphémères aussi (aucun vrai serveur ne doit
+// écouter dessus — le test attend un 504 sur le proxy boot-status).
+const INSTANCE_PORT_1 = await ephemeralPort();
+const INSTANCE_PORT_2 = await ephemeralPort();
+
+// Fixture : brandRoot avec registre servers.json (2 instances).
+const TMP = fs.mkdtempSync(path.join(os.tmpdir(), "creezio-server-admin-"));
+const BRAND_ROOT = path.join(TMP, "testbrand");
+fs.mkdirSync(path.join(BRAND_ROOT, "docker-data", "servers", "demo"), {
+  recursive: true,
+});
+fs.writeFileSync(
+  path.join(BRAND_ROOT, "package.json"),
+  JSON.stringify({ name: "@creezio/app-testbrand" }, null, 2),
+);
+fs.writeFileSync(
+  path.join(BRAND_ROOT, "docker-data", "servers.json"),
+  JSON.stringify(
+    {
+      version: 1,
+      brandId: "testbrand",
+      image: "creezio-server-testbrand:local",
+      instances: [
+        {
+          name: "demo",
+          containerName: "testbrand-server-demo",
+          port: INSTANCE_PORT_1,
+          bind: "127.0.0.1",
+          dataDir: "docker-data/servers/demo",
+          createdAt: "2026-08-04T00:00:00.000Z",
+          env: { CREEZIO_NATIVE_WARM: "1" },
+        },
+        {
+          name: "second",
+          containerName: "testbrand-server-second",
+          port: INSTANCE_PORT_2,
+          bind: "127.0.0.1",
+          dataDir: "docker-data/servers/second",
+          createdAt: "2026-08-04T00:00:00.000Z",
+        },
+      ],
+    },
+    null,
+    2,
+  ),
+);
+// Événements ops JSONL pour l'instance demo.
+const opsDir = path.join(BRAND_ROOT, "docker-data", "servers", "demo", "ops");
+fs.mkdirSync(opsDir, { recursive: true });
+fs.writeFileSync(
+  path.join(opsDir, "boot-test.jsonl"),
+  [
+    JSON.stringify({ ts: "2026-08-04T00:00:01Z", kind: "boot.start", seq: 1 }),
+    JSON.stringify({ ts: "2026-08-04T00:00:02Z", kind: "boot.done", seq: 2 }),
+    "ligne invalide pas du json",
+  ].join("\n") + "\n",
+);
+
+function req(method, urlPath, body, headers = {}) {
+  return new Promise((resolve, reject) => {
+    const r = http.request(
+      {
+        hostname: "127.0.0.1",
+        port: PORT,
+        path: urlPath,
+        method,
+        headers: {
+          "Content-Type": "application/json",
+          ...(body ? { "Content-Length": Buffer.byteLength(body) } : {}),
+          ...headers,
+        },
+      },
+      (res) => {
+        const chunks = [];
+        res.on("data", (c) => chunks.push(c));
+        res.on("end", () => {
+          const raw = Buffer.concat(chunks).toString("utf8");
+          let json = null;
+          try {
+            json = raw ? JSON.parse(raw) : null;
+          } catch {
+            json = raw;
+          }
+          resolve({ status: res.statusCode, json, raw });
+        });
+      },
+    );
+    r.on("error", reject);
+    if (body) r.write(body);
+    r.end();
+  });
+}
+
+const child = spawn(
+  process.execPath,
+  [path.join(__dirname, "server-admin.mjs")],
+  {
+    env: {
+      ...process.env,
+      CREEZIO_ADMIN_PORT: String(PORT),
+      CREEZIO_ADMIN_HOST: "127.0.0.1",
+      CREEZIO_ADMIN_USER: ADMIN_USER,
+      CREEZIO_ADMIN_PASS: ADMIN_PASS,
+      CREEZIO_ADMIN_BRAND_ROOTS: BRAND_ROOT,
+      // Socket inexistant → docker indisponible (le test n'exige PAS docker).
+      CREEZIO_DOCKER_SOCK: path.join(TMP, "nonexistent-docker.sock"),
+    },
+    stdio: ["ignore", "pipe", "pipe"],
+  },
+);
+
+// Readiness : poll (un sleep fixe flake quand la machine est chargée).
+{
+  const deadline = Date.now() + 10_000;
+  for (;;) {
+    try {
+      await req("GET", "/admin/api/health", null, { Authorization: BASIC });
+      break;
+    } catch {
+      if (Date.now() > deadline) throw new Error("admin pas prêt en 10s");
+      await new Promise((r) => setTimeout(r, 150));
+    }
+  }
+}
+
+try {
+  // 401 sans auth (UI + API).
+  const unauthUi = await req("GET", "/admin");
+  assert.equal(unauthUi.status, 401);
+  assert.ok(
+    String(unauthUi.raw).includes("unauthorized") ||
+      unauthUi.json?.error === "unauthorized",
+  );
+  const unauthApi = await req("GET", "/admin/api/servers");
+  assert.equal(unauthApi.status, 401);
+  const badCreds = await req("GET", "/admin/api/servers", null, {
+    Authorization:
+      "Basic " + Buffer.from(`${ADMIN_USER}:wrong`).toString("base64"),
+  });
+  assert.equal(badCreds.status, 401);
+
+  // 200 + HTML sur /admin avec Basic auth.
+  const ui = await req("GET", "/admin", null, { Authorization: BASIC });
+  assert.equal(ui.status, 200);
+  assert.ok(String(ui.raw).includes("<!DOCTYPE html>"));
+  assert.ok(String(ui.raw).includes("Creezio Server Admin"));
+
+  // Health.
+  const health = await req("GET", "/admin/api/health", null, {
+    Authorization: BASIC,
+  });
+  assert.equal(health.status, 200);
+  assert.equal(health.json.ok, true);
+  assert.equal(health.json.service, "creezio-server-admin");
+  assert.deepEqual(health.json.brandRoots, [BRAND_ROOT]);
+  assert.equal(health.json.docker, false);
+
+  // Servers : instances du registre, état docker "unknown" (docker absent).
+  const servers = await req("GET", "/admin/api/servers", null, {
+    Authorization: BASIC,
+  });
+  assert.equal(servers.status, 200);
+  assert.equal(servers.json.ok, true);
+  assert.equal(servers.json.docker, false);
+  assert.equal(servers.json.servers.length, 2);
+  const demo = servers.json.servers.find((s) => s.name === "demo");
+  assert.ok(demo, "instance demo présente");
+  assert.equal(demo.brandId, "testbrand");
+  assert.equal(demo.containerName, "testbrand-server-demo");
+  assert.equal(demo.port, INSTANCE_PORT_1);
+  assert.equal(demo.orphan, false);
+  assert.equal(demo.docker.state, "unknown");
+  assert.equal(demo.bootStatus, null);
+  assert.equal(demo.env.CREEZIO_NATIVE_WARM, "1");
+  const second = servers.json.servers.find((s) => s.name === "second");
+  assert.equal(second.docker.state, "unknown");
+
+  // Ops JSONL : événements parsés, lignes invalides ignorées.
+  const ops = await req(
+    "GET",
+    "/admin/api/servers/testbrand/demo/ops?limit=100",
+    null,
+    { Authorization: BASIC },
+  );
+  assert.equal(ops.status, 200);
+  assert.equal(ops.json.ok, true);
+  assert.equal(ops.json.events.length, 2);
+  assert.equal(ops.json.events[0].kind, "boot.start");
+  // Instance sans ops/ → vide, pas d'erreur.
+  const opsEmpty = await req(
+    "GET",
+    "/admin/api/servers/testbrand/second/ops",
+    null,
+    { Authorization: BASIC },
+  );
+  assert.equal(opsEmpty.status, 200);
+  assert.deepEqual(opsEmpty.json.events, []);
+
+  // Disk : tailles par instance + filesystem.
+  const disk = await req("GET", "/admin/api/disk", null, {
+    Authorization: BASIC,
+  });
+  assert.equal(disk.status, 200);
+  assert.equal(disk.json.ok, true);
+  assert.equal(disk.json.instances.length, 2);
+  assert.ok(
+    disk.json.instances.find((d) => d.name === "demo").sizeBytes > 0,
+    "taille data demo > 0 (fixtures ops)",
+  );
+  assert.ok(disk.json.filesystem.freeBytes > 0);
+
+  // Instance inconnue → 404.
+  const notFound = await req(
+    "GET",
+    "/admin/api/servers/testbrand/nope/ops",
+    null,
+    { Authorization: BASIC },
+  );
+  assert.equal(notFound.status, 404);
+
+  // Create : brandRoot hors CREEZIO_ADMIN_BRAND_ROOTS refusé.
+  const badRoot = await req(
+    "POST",
+    "/admin/api/servers",
+    JSON.stringify({ brandRoot: "/etc", name: "evil" }),
+    { Authorization: BASIC },
+  );
+  assert.equal(badRoot.status, 400);
+  // Create : nom invalide refusé.
+  const badName = await req(
+    "POST",
+    "/admin/api/servers",
+    JSON.stringify({ brandRoot: BRAND_ROOT, name: "Bad_Name!" }),
+    { Authorization: BASIC },
+  );
+  assert.equal(badName.status, 400);
+  // Create : nom déjà pris → 409 (avant tout appel docker).
+  const dup = await req(
+    "POST",
+    "/admin/api/servers",
+    JSON.stringify({ brandRoot: BRAND_ROOT, name: "demo" }),
+    { Authorization: BASIC },
+  );
+  assert.equal(dup.status, 409);
+
+  // Boot-status proxy : serveur injoignable → 504.
+  const bs = await req(
+    "GET",
+    "/admin/api/servers/testbrand/demo/boot-status",
+    null,
+    { Authorization: BASIC },
+  );
+  assert.equal(bs.status, 504);
+
+  // 0 domaine marque hardcodé dans les nouveaux fichiers.
+  const src =
+    fs.readFileSync(path.join(__dirname, "server-admin.mjs"), "utf8") +
+    fs.readFileSync(path.join(__dirname, "admin-docker.mjs"), "utf8") +
+    fs.readFileSync(path.join(__dirname, "public", "admin.html"), "utf8");
+  assert.ok(!/tempoflow\.fr|certivan\.creez\.io/i.test(src));
+
+  console.log("OK — server-admin (@creezio/observability)");
+} finally {
+  child.kill("SIGTERM");
+  try {
+    fs.rmSync(TMP, { recursive: true, force: true });
+  } catch {
+    /* ignore */
+  }
+}
