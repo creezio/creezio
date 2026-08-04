@@ -54,9 +54,11 @@ function writeFile(
 function renderPackageJsonFromPrd(m: AppManifest, model: ProductModel): string {
   const chr = isChrModel(model);
   const scripts: Record<string, string> = {
-    build: "npm run build:electron && npm run build:ui",
-    "build:electron":
+    build: "npm run build:runtime && npm run build:ui",
+    // build:runtime = TS main+preload (nom historique build:electron gardé en alias).
+    "build:runtime":
       "tsc -p tsconfig.electron.json && tsc -p tsconfig.preload.json",
+    "build:electron": "npm run build:runtime",
     "build:ui": "npm run build --prefix ui",
     "os-ui:materialize": "node scripts/materialize-os-ui.mjs",
     typecheck: "tsc -p tsconfig.electron.json --noEmit",

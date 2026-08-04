@@ -11,7 +11,7 @@
 #   docker build -f $CREEZIO_KIT_ROOT/docker/server/Dockerfile \
 #     -t creezio-server-<brandId>:local /path/to/brand
 #
-# Prérequis marque : `npm run build:electron` (dossier build/ présent)
+# Prérequis marque : `npm run build:runtime` (dossier build/ présent)
 #   + `npm run build:ui` si ui/ existe (CRM web servi par le container).
 # Runtime : startBrandKernelHarness via scripts/brand-kernel-harness.mjs
 #   → boot-status HTTP dès le démarrage (GET /api/v1/os/boot-status)

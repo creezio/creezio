@@ -14,6 +14,7 @@ import {
   type MeiliFingerprint,
   type GedIndexUid,
 } from "./index-schema.js";
+import { expectedCountsForFeed, getMeiliBrandFeed } from "./feed.js";
 import type { RunningMeili } from "../meili-launcher.js";
 import { envForNodeScriptSpawn } from "../node-runtime.js";
 
@@ -104,7 +105,8 @@ export type MeiliReadyDecision = {
   ready: boolean;
   reason: string;
   sql: GedSqlCounts;
-  meili: Partial<Record<GedIndexUid, number>>;
+  /** Docs par UID vérifié (UIDs du feed marque, sinon catalog_* génériques). */
+  meili: Record<string, number>;
   fingerprint: MeiliFingerprint | null;
   sqliteSchema: number;
   /** Indexation précédente interrompue (marqueur meta resté en place). */
@@ -113,6 +115,9 @@ export type MeiliReadyDecision = {
 
 /**
  * Ready seulement si fingerprint aligné + chaque index attendu peuplé si SQL > 0.
+ *
+ * UIDs + compteurs attendus : depuis le `BrandMeiliFeed` configuré si
+ * présent (marques feed) — sinon les UIDs génériques `catalog_*` par défaut.
  */
 export async function decideMeiliReady(
   m: RunningMeili,
@@ -122,8 +127,15 @@ export async function decideMeiliReady(
   const snap = queryDbSnapshot(dbFile);
   const { sql, sqliteSchema, fingerprint } = snap;
   const interruptedPrevious = Boolean(snap.indexInProgress);
-  const expected = expectedMeiliCounts(sql);
-  const meili: Partial<Record<GedIndexUid, number>> = {};
+  const feed = getMeiliBrandFeed();
+  const expectedSchema = feed ? feed.schemaVersion : INDEX_SCHEMA_VERSION;
+  const uids: readonly string[] = feed
+    ? feed.indexes.map((i) => i.uid)
+    : GED_INDEXES;
+  const expected: Record<string, number> = feed
+    ? expectedCountsForFeed(feed, sql)
+    : expectedMeiliCounts(sql);
+  const meili: Record<string, number> = {};
 
   const decide = (ready: boolean, reason: string): MeiliReadyDecision => ({
     ready,
@@ -143,10 +155,10 @@ export async function decideMeiliReady(
         : "fingerprint-absent",
     );
   }
-  if (fingerprint.indexSchema !== INDEX_SCHEMA_VERSION) {
+  if (fingerprint.indexSchema !== expectedSchema) {
     return decide(
       false,
-      `index-schema-mismatch fp=${fingerprint.indexSchema} want=${INDEX_SCHEMA_VERSION}`,
+      `index-schema-mismatch fp=${fingerprint.indexSchema} want=${expectedSchema}`,
     );
   }
   if (fingerprint.sqliteSchema !== sqliteSchema) {
@@ -156,7 +168,7 @@ export async function decideMeiliReady(
     );
   }
 
-  for (const uid of GED_INDEXES) {
+  for (const uid of uids) {
     const st = await meiliIndexStats(m, uid);
     if (!st.ok) {
       return decide(false, `meili-stats-error:${uid}`);
@@ -165,7 +177,7 @@ export async function decideMeiliReady(
       return decide(false, `index-missing:${uid}`);
     }
     meili[uid] = st.docs;
-    const want = expected[uid];
+    const want = expected[uid] ?? 0;
     if (want > 0 && st.docs === 0) {
       return decide(false, `index-empty-while-sql:${uid} sql=${want}`);
     }

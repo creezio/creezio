@@ -947,7 +947,7 @@ export function installBrandDesktopRuntime(deps: BrandDesktopDeps): void {
 
   /**
    * Indexes GED prêts ? Fingerprint + chaque index attendu peuplé si SQL > 0.
-   * (remplace l'ancien totalDocs > 0 qui skippait dès que tf2_produits était plein)
+   * (remplace l'ancien totalDocs > 0 qui skippait dès que le 1er index était plein)
    */
   async function meiliIndexReady(m: any): Promise<any> {
     const started = Date.now();
@@ -989,7 +989,7 @@ export function installBrandDesktopRuntime(deps: BrandDesktopDeps): void {
   }
 
   /**
-   * Indexation Meili BLOQUANTE avec progression live (lignes TF2PROGRESS émises
+   * Indexation Meili BLOQUANTE avec progression live (lignes {ENVPREFIX}PROGRESS émises
    * par meili-indexer sur stdout : {done, total} → %, ETA rafraîchie chaque
    * seconde). L'app n'affiche pas la recherche tant que l'index n'est pas prêt.
    */

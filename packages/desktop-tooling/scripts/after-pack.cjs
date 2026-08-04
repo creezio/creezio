@@ -84,11 +84,70 @@ function assembleFromUiStandalone(root, dest) {
   console.log(`  • afterPack : assembled from ${path.relative(root, standalone)}`);
 }
 
+/** Tous les fichiers `name` sous `dir` (récursif). */
+function findFiles(dir, name) {
+  const found = [];
+  if (!fs.existsSync(dir)) return found;
+  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+    const p = path.join(dir, entry.name);
+    if (entry.isDirectory()) found.push(...findFiles(p, name));
+    else if (entry.name === name) found.push(p);
+  }
+  return found;
+}
+
+/**
+ * Gate artefact : `browser-tab-preload.js` (onglets externes / pilotage IA)
+ * doit être présent dans l'app packagée — sinon les onglets seraient ouverts
+ * sans IPC (dégradés silencieux). Échec du build plutôt qu'un artefact bancal.
+ */
+function verifyBrowserTabPreload(context) {
+  const resources = path.join(context.appOutDir, "resources");
+  const needle = "browser-tab-preload.js";
+  const asarPath = path.join(resources, "app.asar");
+  if (fs.existsSync(asarPath)) {
+    let asar = null;
+    try {
+      asar = require("@electron/asar");
+    } catch {
+      try {
+        // eslint-disable-next-line n/no-missing-require
+        asar = require("asar");
+      } catch {
+        asar = null;
+      }
+    }
+    if (!asar) {
+      console.warn(
+        "  • afterPack : module asar introuvable — vérif browser-tab-preload sautée (app.asar non listable)",
+      );
+      return;
+    }
+    const entries = asar.listPackage(asarPath, {});
+    if (!entries.some((e) => e.endsWith(needle))) {
+      throw new Error(
+        `afterPack : ${needle} absent de app.asar — onglets externes muets. ` +
+          "Vérifier que vendor/creezio/electron-shell/dist* est bien packagé (files electron-builder).",
+      );
+    }
+  } else {
+    const appDir = path.join(resources, "app");
+    if (findFiles(appDir, needle).length === 0) {
+      throw new Error(
+        `afterPack : ${needle} absent de resources/app — onglets externes muets.`,
+      );
+    }
+  }
+  console.log(`  • afterPack : ${needle} présent dans l'artefact — OK`);
+}
+
 module.exports = async function afterPack(context) {
   const root = context.packager.projectDir;
   const kind = packagedAppKind(root);
   const dest = path.join(context.appOutDir, "resources", "server");
   fs.rmSync(dest, { recursive: true, force: true });
+
+  verifyBrowserTabPreload(context);
 
   // Client léger : allowLocalStack=false → jamais de serveur Next local.
   if (kind === "client") {

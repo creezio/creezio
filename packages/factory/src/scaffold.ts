@@ -92,9 +92,11 @@ function renderPackageJson(m: AppManifest): string {
         type: "module",
         main: "./build/electron/main.js",
         scripts: {
-          build: "npm run build:electron",
-          "build:electron":
+          build: "npm run build:runtime",
+          // build:runtime = TS main+preload (alias historique build:electron).
+          "build:runtime":
             "tsc -p tsconfig.electron.json && tsc -p tsconfig.preload.json",
+          "build:electron": "npm run build:runtime",
           typecheck: "tsc -p tsconfig.electron.json --noEmit",
           "electron:config:client":
             "node scripts/build-builder-config.mjs client",
@@ -732,7 +734,7 @@ Ne **jamais** pointer \`dockerDlName\` / feedToken vers \`dl-tempoflow\`, \`dl-f
 - Brancher demobrand-like : SqliteRuntime + auth/assistant/tasks/mails sqlite
 - Control plane : \`startHostPluginControlPlane\` + \`createPluginControlPlaneAclFromStore\`
 - Admin plugins L3 : helpers \`upsertPluginAclAdmin\`
-- Voir \`docs/FEATURE-PARITY-DEMOBRAND-H6.md\`
+- Voir \`docs/archive/FEATURE-PARITY-DEMOBRAND-H6.md\`
 `;
 }
 

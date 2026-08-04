@@ -43,5 +43,28 @@ node scripts/smoke-live.mjs
 |-----|-------|
 | `CREEZIO_CHROMIUM_BIN` | Chemin binaire Chromium prioritaire |
 | `CREEZIO_BROWSER_HEADFUL` | `1` = Xvfb headful (défaut container) |
+| `CREEZIO_BROWSER_PROXY` | Proxy sortant Chromium (`--proxy-server=`), ex. `http://user:pass@host:3128` |
+
+## Modèle de menace (profils IA)
+
+Les profils Chromium persistants (`{dataDir}/browser/<aiUserId>`) contiennent
+des **cookies et sessions en clair** (sessions CRM persona + sessions des
+sites externes visités par l'IA). À savoir :
+
+- **Accès disque hôte = accès aux sessions.** Les profils sont créés en
+  `0700` (propriétaire uniquement), mais quiconque a un accès root/volume
+  Docker sur l'hôte peut lire les cookies. Traiter le volume `data/browser`
+  comme un secret.
+- **Pas de chiffrement au repos** : Chromium sous Linux stocke les cookies
+  avec une clé locale triviale. Pour un besoin fort, monter le volume sur un
+  système de fichiers chiffré (LUKS / fscrypt) — non fourni par le kit
+  (dette assumée, voir `docs/BACKLOG.md` du kit).
+- **Proxy sortant** (`CREEZIO_BROWSER_PROXY`) : plombé jusqu'à
+  `--proxy-server=`. Limitation assumée : une IP **datacenter** (VPS, cloud)
+  est détectée/bloquée par beaucoup de sites ; une offre proxy résidentiel
+  n'est pas incluse dans le kit.
+- **Sandbox Chromium désactivé en container root** (`--no-sandbox` auto si
+  uid 0) : préférer un user non-root ou userns si l'IA visite des sites non
+  fiables.
 
 Voir [AGENTS.md](./AGENTS.md) et [docs/FILES.md](./docs/FILES.md).

@@ -21,6 +21,13 @@ export type ChromiumLaunchOptions = {
   display?: string;
   /** User-Agent forcé (sinon celui du binaire, override par page possible). */
   userAgent?: string;
+  /**
+   * Proxy sortant (`--proxy-server=`), ex. `http://user:pass@host:3128` ou
+   * `socks5://host:1080`. Limitation : un proxy datacenter n'anonymise pas —
+   * beaucoup de sites détectent/bloquent les plages IP datacenter (voir
+   * README § Modèle de menace).
+   */
+  proxyServer?: string;
   extraArgs?: string[];
   onLog?: (line: string) => void;
 };
@@ -93,7 +100,14 @@ export async function launchChromium(
       "Chromium introuvable — installer chromium (variant Docker browser) ou définir CREEZIO_CHROMIUM_BIN",
     );
   }
-  fs.mkdirSync(opts.userDataDir, { recursive: true });
+  // 0700 : le profil contient cookies/sessions en clair — accès propriétaire
+  // uniquement (voir README § Modèle de menace).
+  fs.mkdirSync(opts.userDataDir, { recursive: true, mode: 0o700 });
+  try {
+    fs.chmodSync(opts.userDataDir, 0o700);
+  } catch {
+    /* best-effort (FS sans permissions POSIX) */
+  }
   clearStaleProfileLocks(opts.userDataDir, opts.onLog);
 
   const display = opts.display ?? process.env.DISPLAY ?? "";
@@ -111,6 +125,7 @@ export async function launchChromium(
     "--window-size=1280,800",
     ...(headless ? ["--headless=new"] : []),
     ...(wantSandboxOff() ? ["--no-sandbox"] : []),
+    ...(opts.proxyServer ? [`--proxy-server=${opts.proxyServer}`] : []),
     ...(opts.userAgent ? [`--user-agent=${opts.userAgent}`] : []),
     ...(opts.extraArgs || []),
     "about:blank",

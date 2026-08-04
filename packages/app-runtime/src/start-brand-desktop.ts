@@ -24,6 +24,7 @@ import {
   kitBinaryPaths,
   configureCrashReporter,
   initCrashReporter,
+  installEarlyCrashWriter,
   installGlobalHandlers,
   reportCrash,
   crashEndpoint,
@@ -236,6 +237,11 @@ function resolveResourcesRoot(
 export async function startBrandDesktop(
   config: StartBrandDesktopConfig,
 ): Promise<BrandDesktopHandle> {
+  // Filet minimal AVANT toute résolution de chemins : un crash dans les
+  // premières lignes du boot laisse au moins un JSON early-*.json à côté de
+  // l'exécutable ({dirname(execPath)}/data/crash-reports/).
+  installEarlyCrashWriter();
+
   const manifest = config.manifest;
   const logBasename = config.logBasename || manifest.logBasename;
 

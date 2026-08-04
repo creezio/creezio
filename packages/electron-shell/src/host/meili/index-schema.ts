@@ -1,19 +1,21 @@
 /**
  * Schéma logique des index Meili catalogue.
  *
- * - Chemin générique (Phase C) : `BrandMeiliFeed` + UIDs `catalog_*`
- *   via `configureMeiliBrandFeed` / `runFeedIndexation`.
- * - Chemin legacy TF2 (défaut sans feed) :
- *     tf2_produits / tf2_marketplaces / tf2_all
+ * Le descripteur SoT est le `BrandMeiliFeed` de la marque (UIDs `catalog_*`
+ * via `configureMeiliBrandFeed` / `runFeedIndexation`). Ce module fournit :
+ * - les clés meta fingerprint / in-progress (partagées feed ↔ cohérence) ;
+ * - les UIDs génériques par défaut (`catalog_products` / `catalog_sites`)
+ *   utilisés par la cohérence quand aucun feed n'est configuré ;
+ * - les tables SQL comptées (`configureMeiliCatalogSqlTables`).
  *
- * Bumper INDEX_SCHEMA_VERSION à chaque changement d'indexes / settings / docs
- * pour forcer une réindexation au boot (legacy).
+ * Aucun UID marque ne vit dans le kit — une marque avec des UIDs
+ * historiques les porte dans SON feed.
  *
- * Les marques injectent tables SQL comptées via
- * `configureMeiliCatalogSqlTables` et/ou un feed complet.
+ * Bumper INDEX_SCHEMA_VERSION (ou feed.schemaVersion) à chaque changement
+ * d'indexes / settings / docs pour forcer une réindexation au boot.
  */
 
-/** v1 = produits / marketplaces / all (port shell depuis Fidu). */
+/** v1 = produits / sites (descripteur générique catalog_*). */
 export const INDEX_SCHEMA_VERSION = 1;
 
 export const MEILI_FINGERPRINT_META_KEY = "meili_index_fingerprint";
@@ -22,9 +24,8 @@ export const MEILI_FINGERPRINT_META_KEY = "meili_index_fingerprint";
 export const MEILI_INDEX_IN_PROGRESS_KEY = "meili_index_in_progress";
 
 export const CATALOG_INDEXES = [
-  "tf2_produits",
-  "tf2_marketplaces",
-  "tf2_all",
+  "catalog_products",
+  "catalog_sites",
 ] as const;
 
 export type CatalogIndexUid = (typeof CATALOG_INDEXES)[number];
@@ -35,15 +36,15 @@ export type GedIndexUid = CatalogIndexUid;
 
 /**
  * Tables SQL utilisées pour les compteurs de cohérence Meili.
- * Défaut = schéma TempoFlow (`produits` / `fournisseurs`).
- * Marques sans catalogue TF : `configureMeiliCatalogSqlTables`.
+ * Défaut = schéma CHR générique (`produits` / `fournisseurs`).
+ * Marques avec un autre schéma : `configureMeiliCatalogSqlTables`.
  */
 export type MeiliCatalogSqlTables = {
-  /** Table lignes « produits » (compteur → tf2_produits). */
+  /** Table lignes « produits » (compteur → catalog_products). */
   produits: string;
   /**
-   * Table lignes « sites / marketplaces » (compteur → tf2_marketplaces / tf2_all).
-   * Défaut TF : `fournisseurs`. Champ retourné dans CatalogSqlCounts.fournisseurs
+   * Table lignes « sites / marketplaces » (compteur → catalog_sites).
+   * Défaut CHR : `fournisseurs`. Champ retourné dans CatalogSqlCounts.fournisseurs
    * (nom historique du fingerprint — ne pas renommer sans bump schema).
    */
   sites: string;
@@ -93,10 +94,8 @@ export function expectedMeiliCounts(
   sql: CatalogSqlCounts,
 ): Record<CatalogIndexUid, number> {
   return {
-    tf2_produits: sql.produits,
-    tf2_marketplaces: sql.fournisseurs,
-    // Indexeur Tempo : tf2_all = marketplaces uniquement (pas de produits).
-    tf2_all: sql.fournisseurs,
+    catalog_products: sql.produits,
+    catalog_sites: sql.fournisseurs,
   };
 }
 

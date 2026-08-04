@@ -128,6 +128,8 @@ Instances nommées (registre docker-data/servers.json — recommandé) :
 
 Admin web multi-serveurs (fleet-collector étendu) :
   creezio server-docker admin up|down|status --brand-root <app> [--port 18800]
+  creezio server-docker admin add-brand <brandRoot> --brand-root <app>
+    (ajoute une marque au server-admin.json + recreate le container admin)
 
 Compose legacy (server-1 / server-2) :
   creezio server-docker build  --brand-root <app> [--kit-root <kit>]
@@ -611,10 +613,17 @@ function ensureBrandStandalone(brandRoot: string, kit: string): void {
 function ensureElectronBuild(brandRoot: string): void {
   const marker = path.join(brandRoot, "build/electron/app-manifest.js");
   if (fs.existsSync(marker)) return;
-  console.log("build/electron manquant — npm run build:electron…");
-  run("npm", ["run", "build:electron"], process.env, { cwd: brandRoot });
+  // build:runtime = nom nominal ; build:electron = alias historique.
+  const pkg = JSON.parse(
+    fs.readFileSync(path.join(brandRoot, "package.json"), "utf8"),
+  ) as { scripts?: Record<string, string> };
+  const script = pkg.scripts?.["build:runtime"]
+    ? "build:runtime"
+    : "build:electron";
+  console.log(`build/electron manquant — npm run ${script}…`);
+  run("npm", ["run", script], process.env, { cwd: brandRoot });
   if (!fs.existsSync(marker)) {
-    throw new Error(`build:electron n'a pas produit ${marker}`);
+    throw new Error(`${script} n'a pas produit ${marker}`);
   }
 }
 
@@ -783,7 +792,41 @@ async function runServerAdminSubcommand(
   paths: ReturnType<typeof resolvePaths>,
   env: NodeJS.ProcessEnv,
 ): Promise<void> {
-  const action = args.rest[0] || "up";
+  let action = args.rest[0] || "up";
+
+  if (action === "add-brand") {
+    const rootArg = args.rest[1];
+    if (!rootArg) {
+      throw new Error(
+        "creezio server-docker admin add-brand <brandRoot> --brand-root <app>",
+      );
+    }
+    const abs = path.resolve(rootArg);
+    if (!fs.existsSync(abs)) {
+      throw new Error(`brand root introuvable: ${abs}`);
+    }
+    const cfg = loadOrInitAdminConfig(paths.brandRoot);
+    if (cfg.brandRoots.includes(abs)) {
+      console.log(`= marque déjà enregistrée: ${abs}`);
+    } else {
+      cfg.brandRoots.push(abs);
+      const file = adminConfigPath(paths.brandRoot);
+      fs.writeFileSync(file, JSON.stringify(cfg, null, 2) + "\n", {
+        mode: 0o600,
+      });
+      console.log(`+ marque ajoutée à l'admin: ${abs}`);
+    }
+    const st = dockerContainerState(ADMIN_CONTAINER);
+    if (!st.exists) {
+      console.log(
+        "admin pas encore démarré — creezio server-docker admin up pour le lancer",
+      );
+      return;
+    }
+    // Recreate : le container doit monter le nouveau volume + env brandRoots.
+    console.log("~ recreate du container admin (nouveau volume marque)…");
+    action = "up";
+  }
 
   if (action === "down") {
     const st = dockerContainerState(ADMIN_CONTAINER);
@@ -806,7 +849,7 @@ async function runServerAdminSubcommand(
   }
 
   if (action !== "up") {
-    throw new Error(`admin ${action} inconnu (up|down|status)`);
+    throw new Error(`admin ${action} inconnu (up|down|status|add-brand)`);
   }
 
   const cfg = loadOrInitAdminConfig(paths.brandRoot, args.port);

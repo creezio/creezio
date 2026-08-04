@@ -450,12 +450,21 @@ export class SupplierTabManager {
     const ses = this.supplierSession(partitionKey);
     const preload = resolvePreloadPath();
     if (!fs.existsSync(preload)) {
+      // Artefact incomplet (packaging cassé) : sans preload, l'onglet serait
+      // ouvert mais muet (pas d'IPC, pilotage IA dégradé) — on refuse avec
+      // une erreur explicite que l'UI affiche en bannière, plutôt qu'un
+      // crash-report silencieux + onglet zombie.
       reportCrash("tab-error", { step: "openTab", missingPreload: preload });
+      throw new Error(
+        `Onglet externe indisponible : preload manquant dans l'artefact ` +
+          `(${preload}). Réinstaller l'application ou vérifier le packaging ` +
+          `(gate after-pack desktop-tooling).`,
+      );
     }
     const view = new WebContentsView({
       webPreferences: {
         session: ses,
-        ...(fs.existsSync(preload) ? { preload } : {}),
+        preload,
         contextIsolation: true,
         sandbox: true,
         nodeIntegration: false,

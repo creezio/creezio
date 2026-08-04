@@ -10,8 +10,13 @@
  * mountApiKernelOnHono(api, getBrandModuleApi(), {
  *   spaces: ["core", "platform", "modules", "plugins"],
  * });
- * // Routes flat Hono (/tasks, /panier, /auth…) restent en parallèle (dette cutover).
  * ```
+ *
+ * Contrat de composition : une app Hono marque peut garder ses propres routes
+ * en parallèle des espaces kernel — un 404 kernel « not mounted » appelle
+ * `next()` (`fallthroughOnNotFound`, défaut true) pour laisser ces routes
+ * répondre. Aucune marque du kit n'en dépend aujourd'hui, mais le mécanisme
+ * fait partie de l'API publique.
  */
 
 import type { Context, Next } from "hono";
@@ -44,8 +49,8 @@ export type MountApiKernelOnHonoOptions = {
   apiPrefix?: string;
   /**
    * Si true (défaut), un 404 kernel (`*_not_mounted` / `not_found` /
-   * `core_route_not_found`) appelle `next()` pour laisser les routes flat
-   * Hono répondre (ex. `/platform/contract`).
+   * `core_route_not_found`) appelle `next()` pour laisser d'éventuelles
+   * routes Hono propres à la marque répondre (contrat de composition).
    */
   fallthroughOnNotFound?: boolean;
 };
@@ -180,8 +185,8 @@ export function apiKernelToHonoHandler(
  * Monte les espaces façade du kernel sur une app Hono (souvent
  * `OpenAPIHono().basePath("/api/v1")`).
  *
- * Ne remplace pas les routes flat métier (`/tasks`, `/panier`, `/auth`…) —
- * elles restent jusqu'aux cutovers packages dédiés.
+ * Les routes Hono propres à la marque (hors espaces kernel) restent servies
+ * grâce au fallthrough — voir en-tête de fichier.
  *
  * Preferer `() => getBrandModuleApi()` pour ne pas toucher SQLite au import.
  */

@@ -31,3 +31,7 @@ packages/electron-shell/resources/bin/cloudflared.exe
 .github-token
 .env
 .env.local
+
+# Résidus outillage (pack fake dirs de tests, dumps locaux)
+creezio-pack-fake-*/
+dumps/

@@ -211,8 +211,26 @@ export async function setupAutoUpdater(
   }
 
   try {
-    const mod = await import("electron-updater");
-    autoUpdater = mod.autoUpdater as unknown as AutoUpdaterLike;
+    // electron-updater est publié en CJS : selon l'interop ESM (import()
+    // depuis un bundle CJS Electron vs ESM pur), l'export vit sur `mod`
+    // ou sur `mod.default`.
+    const mod = (await import("electron-updater")) as {
+      autoUpdater?: unknown;
+      default?: { autoUpdater?: unknown };
+    };
+    const au = mod.autoUpdater ?? mod.default?.autoUpdater;
+    if (!au) {
+      apply(
+        {
+          type: "disabled",
+          reason: "electron-updater sans export autoUpdater (interop ESM)",
+        },
+        log,
+      );
+      log("auto-update désactivé : export autoUpdater introuvable dans electron-updater.");
+      return;
+    }
+    autoUpdater = au as AutoUpdaterLike;
     autoUpdater.logger = {
       info: log,
       warn: log,

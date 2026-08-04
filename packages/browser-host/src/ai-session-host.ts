@@ -44,6 +44,8 @@ export type AiSessionHostOptions = {
   chromiumBinary?: string;
   headless?: boolean;
   display?: string;
+  /** Proxy sortant Chromium (`--proxy-server=`) — voir chromium-process.ts. */
+  proxyServer?: string;
   onLog?: (line: string) => void;
 };
 
@@ -178,6 +180,7 @@ export class AiSessionHost {
           ? { headless: this.opts.headless }
           : {}),
         ...(this.opts.display ? { display: this.opts.display } : {}),
+        ...(this.opts.proxyServer ? { proxyServer: this.opts.proxyServer } : {}),
         ...(this.opts.onLog ? { onLog: () => {} } : {}),
       });
       const crmPage = await browser.newPage();

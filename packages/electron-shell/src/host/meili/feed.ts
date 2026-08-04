@@ -2,11 +2,10 @@
  * Contrat d’alimentation Meili générique (Phase C).
  *
  * La marque fournit un feed (tables + indexes + mapping colonnes).
- * L’OS exécute startMeili / runIndexation / swap — sans SQL TF hardcodé
- * dans le chemin générique.
+ * L’OS exécute startMeili / runIndexation / swap — sans SQL marque hardcodé.
  *
- * Le chemin legacy `tf2_*` reste le défaut de `runIndexation()` sans `feed`
- * (compat TempoFlow2 / dual-read).
+ * Le feed est OBLIGATOIRE : `runIndexation()` sans feed configuré lève une
+ * erreur explicite (le kit n'embarque plus d'UIDs marque legacy).
  */
 
 export type BrandMeiliDocument = Record<string, unknown> & {
@@ -48,7 +47,7 @@ export type BrandMeiliFeed = {
   metaIndexUid?: string;
 };
 
-/** UIDs génériques recommandés (hors tf2_*). */
+/** UIDs génériques recommandés. */
 export const GENERIC_CATALOG_INDEXES = [
   "catalog_products",
   "catalog_sites",
@@ -73,7 +72,7 @@ export function resetMeiliBrandFeedForTests(): void {
 
 /**
  * Feed CHR cœur (produits + fournisseurs) — usable par factory --from-prd.
- * UIDs génériques `catalog_*` (pas tf2_*).
+ * UIDs génériques `catalog_*` (jamais d'UID marque).
  */
 export function createChrCatalogMeiliFeed(opts: {
   brandId: string;

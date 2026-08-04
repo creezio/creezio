@@ -11,10 +11,17 @@ Voie nominale (build image + run container, config auto-générée dans
 `{brandRoot}/docker-data/server-admin.json`) :
 
 ```bash
-creezio server-docker admin up --brand-root /opt/docker/tempoflow3 [--port 18800]
-creezio server-docker admin status --brand-root /opt/docker/tempoflow3
-creezio server-docker admin down  --brand-root /opt/docker/tempoflow3
+creezio server-docker admin up --brand-root <brandRoot> [--port 18800]
+creezio server-docker admin status --brand-root <brandRoot>
+creezio server-docker admin down  --brand-root <brandRoot>
 # → http://127.0.0.1:18800/admin (Basic auth)
+```
+
+Ajouter une autre marque à un admin existant (append au `server-admin.json`
+puis recreate du container, nouveau volume monté) :
+
+```bash
+creezio server-docker admin add-brand <autreBrandRoot> --brand-root <brandRoot>
 ```
 
 Build manuel de l'image :
@@ -28,7 +35,7 @@ Lancement direct sans Docker (dev) :
 
 ```bash
 CREEZIO_ADMIN_PASS=secret \
-CREEZIO_ADMIN_BRAND_ROOTS=/opt/docker/tempoflow3 \
+CREEZIO_ADMIN_BRAND_ROOTS=<brandRoot> \
 node packages/observability/fleet-collector/server-admin.mjs
 # ou via le bin npm : creezio-server-admin
 ```

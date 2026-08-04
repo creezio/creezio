@@ -55,6 +55,71 @@ function isUploadEnabled(): boolean {
   return Boolean(ep) && !/crash-disabled/i.test(ep);
 }
 
+/* ── Early crash writer ──────────────────────────────────────────────────
+ * Filet AVANT toute résolution de chemins (userData, logger, manifest…) :
+ * si le main crashe dans les toutes premières lignes du boot, on veut au
+ * moins un JSON sur disque à côté de l'exécutable. Aucune dépendance :
+ * dirname(execPath)/data/crash-reports/early-*.json (fallback tmpdir). */
+
+let earlyWriterInstalled = false;
+let earlyWriterActive = false;
+
+function writeEarlyCrashFile(kind: string, detail: Record<string, unknown>): void {
+  const stamp = new Date().toISOString().replace(/[:.]/g, "-");
+  const body = JSON.stringify(
+    {
+      kind,
+      early: true,
+      timestamp: new Date().toISOString(),
+      pid: process.pid,
+      execPath: process.execPath,
+      platform: process.platform,
+      arch: process.arch,
+      detail,
+    },
+    null,
+    2,
+  );
+  const candidates = [
+    path.join(path.dirname(process.execPath), "data", "crash-reports"),
+    path.join(os.tmpdir(), "creezio-crash"),
+  ];
+  for (const dir of candidates) {
+    try {
+      fs.mkdirSync(dir, { recursive: true });
+      fs.writeFileSync(path.join(dir, `early-${stamp}-${kind}.json`), body);
+      return;
+    } catch {
+      /* essayer le fallback suivant */
+    }
+  }
+}
+
+/**
+ * Handler minimal `uncaughtException`/`unhandledRejection` à installer dès la
+ * PREMIÈRE ligne du main (avant Electron, avant résolution des paths).
+ * Se désactive quand `initCrashReporter` prend le relais (rapports complets).
+ */
+export function installEarlyCrashWriter(): void {
+  if (earlyWriterInstalled) return;
+  earlyWriterInstalled = true;
+  earlyWriterActive = true;
+  process.on("uncaughtException", (e) => {
+    if (!earlyWriterActive) return;
+    writeEarlyCrashFile("uncaughtException", {
+      message: e?.message,
+      stack: e?.stack,
+    });
+  });
+  process.on("unhandledRejection", (reason) => {
+    if (!earlyWriterActive) return;
+    writeEarlyCrashFile("unhandledRejection", {
+      message: reason instanceof Error ? reason.message : String(reason),
+      stack: reason instanceof Error ? reason.stack : undefined,
+    });
+  });
+}
+
 let installId = "unknown";
 let appVersion = "0.0.0";
 let crashDir: string | null = null;
@@ -100,6 +165,8 @@ export function crashLogHint(): string {
 
 export function initCrashReporter(userDataDir: string, version: string): void {
   appVersion = version;
+  // Le reporter complet prend le relais — l'early writer se tait.
+  earlyWriterActive = false;
   try {
     crashDir = path.join(userDataDir, "logs");
     crashReportsDirPath = path.join(userDataDir, "crash-reports");

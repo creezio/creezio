@@ -112,6 +112,10 @@ export type FleetAgent = {
 
 export function createFleetAgent(opts: CreateFleetAgentOptions): FleetAgent {
   const baseUrl = opts.baseUrl.replace(/\/$/, "");
+  // Endpoint sentinelle « désactivé » (défaut compose-brand-os sans
+  // CREEZIO_FLEET_ENDPOINT) — même motif que crash-reporter /crash-disabled/ :
+  // aucun POST/GET réseau, pas de spam DNS/timeout dans les logs.
+  const ingestDisabled = /ingest-disabled/i.test(baseUrl);
   const heartbeatMs = opts.heartbeatMs ?? DEFAULT_HEARTBEAT_MS;
   const commandPollMs = opts.commandPollMs ?? DEFAULT_COMMAND_POLL_MS;
   const log = opts.log || ((scope, line) => console.log(`[${scope}] ${line}`));
@@ -235,6 +239,7 @@ export function createFleetAgent(opts: CreateFleetAgentOptions): FleetAgent {
   }
 
   async function sendFleetHeartbeat(): Promise<boolean> {
+    if (ingestDisabled) return false;
     if (!scopeOn("heartbeat")) return false;
     const body = await buildHeartbeatPayload();
     const r = await postJson("/heartbeat", body);
@@ -243,6 +248,7 @@ export function createFleetAgent(opts: CreateFleetAgentOptions): FleetAgent {
   }
 
   function sendFleetCrash(report: Record<string, unknown>): void {
+    if (ingestDisabled) return;
     if (!scopeOn("crashes")) return;
     void postJson("/crash", {
       ...report,
@@ -337,6 +343,12 @@ export function createFleetAgent(opts: CreateFleetAgentOptions): FleetAgent {
   async function uploadFleetDiagnostics(
     reason: string,
   ): Promise<{ ok: boolean; detail: string }> {
+    if (ingestDisabled) {
+      return {
+        ok: false,
+        detail: "télémétrie flotte désactivée (endpoint /ingest-disabled)",
+      };
+    }
     let bootSummary: unknown = null;
     try {
       bootSummary = currentBootSummary();
@@ -410,6 +422,13 @@ export function createFleetAgent(opts: CreateFleetAgentOptions): FleetAgent {
     }
     started = true;
     hooks = h;
+    if (ingestDisabled) {
+      log(
+        "fleet",
+        `télémétrie désactivée (endpoint sentinelle ${baseUrl}) — aucun envoi`,
+      );
+      return;
+    }
     log("fleet", `agent start endpoint=${baseUrl}`);
 
     const tick = () => {

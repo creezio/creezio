@@ -118,6 +118,12 @@ export async function startBrandBrowserSidecar(opts: {
     });
   };
 
+  // Proxy sortant optionnel (--proxy-server Chromium). Limitation assumée :
+  // proxy datacenter ≠ anonymat (plages IP détectées par beaucoup de sites) —
+  // voir packages/browser-host/README.md § Modèle de menace.
+  const proxyServer = String(process.env.CREEZIO_BROWSER_PROXY || "").trim();
+  if (proxyServer) log(`proxy sortant Chromium: ${proxyServer.replace(/\/\/[^@/]*@/, "//***@")}`);
+
   const host = new AiSessionHost({
     browserDataRoot,
     sessionCookieName: opts.sessionCookieName,
@@ -126,6 +132,7 @@ export async function startBrandBrowserSidecar(opts: {
     ...(opts.taskHref ? { taskHref: opts.taskHref } : {}),
     chromiumBinary,
     ...(display ? { display, headless: false } : { headless: true }),
+    ...(proxyServer ? { proxyServer } : {}),
     onLog: log,
   });
 

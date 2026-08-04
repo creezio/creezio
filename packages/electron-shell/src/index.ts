@@ -628,6 +628,7 @@ export {
   getInstallId,
   initCrashReporter,
   installGlobalHandlers,
+  installEarlyCrashWriter,
   reportCrash,
   reportCrashDebounced,
   setBootStage,
