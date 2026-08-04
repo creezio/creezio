@@ -43,7 +43,47 @@ Dockerfile cible `server/` via l'arg `SERVER_DIR` ; le layout plat legacy
 reste détecté automatiquement).
 
 Options `create` : `--port N`, `--expose` (bind 0.0.0.0 — sinon loopback),
-`--warm` (n8n/Hermes dans le container), `--env K=V` (répétable).
+`--warm` (n8n/Hermes dans le container), `--env K=V` (répétable),
+`--profile prod` (voir ci-dessous).
+
+## Profil « serveur de flotte prod » (`--profile prod`)
+
+`creezio server-docker create <nom> --profile prod` active en une commande la
+parité TF2 desktop complète, sans polluer les défauts test/CI :
+
+- `CREEZIO_NATIVE_WARM=1` (n8n + Hermes dans le container)
+- `CREEZIO_CATALOG=1` (téléchargement + **import** du catalogue après le listen)
+- forward des env **présents sur l'hôte** (jamais inventés) :
+  `CREEZIO_TUNNEL_PROVISION_URL` / `_TOKEN` / `CREEZIO_TUNNEL_SLUG`,
+  `CREEZIO_FLEET_ENDPOINT`, `CREEZIO_CRASH_ENDPOINT`, `CREEZIO_PLUGINS`,
+  `EMAIL_INBOUND_SECRET`
+
+Chaque phase reste individuellement pilotable par env (`--env K=V` prime) et
+**no-op propre** si non configurée : pas de tunnel sans provisioner, pas de
+fleet sans endpoint (fallback manifest), etc. Aucun side effect prod
+(DNS Cloudflare, collector) sans env explicite posé par l'opérateur.
+
+### Phases harness (parité TF2 desktop)
+
+Après le listen HTTP (`METIER_BASE_URL` posé), le harness rejoue les phases du
+runtime desktop — chacune a son étape boot-status :
+
+| Étape boot-status | Flag / env | Effet |
+|-------------------|-----------|-------|
+| `catalog` | `CREEZIO_CATALOG=1` | `ensureCatalogPresent` (téléchargement snapshot) |
+| `catalog-import` | idem + host `ensureCatalogImported` | projection snapshot → brand.db via `/api/v1/modules/catalog/import` |
+| `tunnel` | `CREEZIO_TUNNEL_PROVISION_URL` + `_TOKEN` | reserve + ingress + `cloudflared` (binaire embarqué dans l'image, `CREEZIO_CLOUDFLARED_BINARY`) ; `APP_PUBLIC_URL`/`MCP_PUBLIC_URL` suivent |
+| `plugins` | `CREEZIO_PLUGINS=1` | `startEnabledPlugins` + control API |
+| `hermes-bridge` | warm actif | clé CRM Hermes, seed contexte, pont n8n↔Hermes, webhook public n8n |
+| `fleet` | `CREEZIO_FLEET_ENDPOINT` (ou manifest) | fleet agent + crash endpoint (`CREEZIO_CRASH_ENDPOINT`) |
+
+Secret mails entrants : `EMAIL_INBOUND_SECRET` env prime, sinon persisté par
+instance dans la config store (parité `ensureInboundEmailSecret` desktop).
+
+Gates : `scripts/test-phase-harness-parity.mjs` (kit, hermétique) et
+`scripts/test-phase-factory-docker-parity.mjs` (opt-in `CREEZIO_FACTORY_DOCKER=1`
+— app neuve factory → image Docker → mêmes étapes boot-status, preuve
+d'héritage). Matrice : [PARITE-TF2.md](./PARITE-TF2.md).
 
 ## Admin web multi-serveurs
 
@@ -108,6 +148,12 @@ Pas de lettres (`server-a` / `server-b` interdit).
 | `METIER_DATA_DIR` | `/data` | Volume SQLite (`core`/`brand`) |
 | `CREEZIO_HTTP_HOST` | `0.0.0.0` | Bind Docker (obligatoire) |
 | `CREEZIO_NATIVE_WARM` | `0` | Skip n8n/Hermes au boot |
+| `CREEZIO_CATALOG` | `0` | Catalogue : présence + import post-listen |
+| `CREEZIO_PLUGINS` | `0` | Plugins host + control API |
+| `CREEZIO_TUNNEL_PROVISION_URL` / `_TOKEN` / `CREEZIO_TUNNEL_SLUG` | — | Tunnel Cloudflare (reserve/ingress/cloudflared) |
+| `CREEZIO_FLEET_ENDPOINT` / `CREEZIO_CRASH_ENDPOINT` | manifest | Fleet agent / crash reports |
+| `EMAIL_INBOUND_SECRET` | store | Secret webhooks mails entrants |
+| `CREEZIO_CLOUDFLARED_BINARY` | `/opt/creezio/bin/cloudflared` (image) | Binaire cloudflared |
 | `CREEZIO_TUNNEL_*` / `CREEZIO_CATALOG_*` | — | Optionnels (ne pas committer) |
 | `SERVER_DESKTOP_PRODUCT` | BrandSpec `brandName` | Prefixe des `.desktop` |
 

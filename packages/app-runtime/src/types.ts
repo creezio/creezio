@@ -34,6 +34,19 @@ export type BrandCatalogHost = {
       detail?: string;
     }) => void,
   ) => Promise<"present" | "installed" | string>;
+  /**
+   * Projection du snapshot dans brand.db via l'API kernel (POST
+   * /api/v1/modules/catalog/import). Le harness l'appelle APRÈS le listen
+   * HTTP (METIER_BASE_URL posé) — parité desktop où le listen précède le
+   * splash catalogue. Optionnel : marques sans import projeté.
+   */
+  ensureCatalogImported?: (
+    onProgress: (p: {
+      phase: string;
+      percent: number | null;
+      detail?: string;
+    }) => void,
+  ) => Promise<"imported" | "up-to-date" | "skipped" | string>;
 };
 
 /**

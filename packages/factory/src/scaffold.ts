@@ -546,41 +546,63 @@ export function registerBrandModuleApi(_api: ApiKernel): void {
 `;
 }
 
-function renderBareBrandHarnessMjs(brandId: string): string {
+function renderBareBrandHarnessMjs(m: AppManifest): string {
   return `#!/usr/bin/env node
 /**
  * Harness Node — façade @creezio/app-runtime (OS natif P&P).
+ * Fichier GÉNÉRÉ par la factory creezio (template kit — même façade pour
+ * toutes les marques ; modules optionnels chargés s'ils existent).
  */
+import fs from "node:fs";
 import path from "node:path";
 import { pathToFileURL, fileURLToPath } from "node:url";
-import { startBrandKernelHarness } from "@creezio/app-runtime";
+import {
+  applyBrandCatalogEnvDefaults,
+  startBrandKernelHarness,
+} from "@creezio/app-runtime";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const PORT = Number(process.env.METIER_PORT || process.env.PORT || 18791);
 const electron = path.join(root, "build/electron");
 
-const manifestMod = await import(
-  pathToFileURL(path.join(electron, "app-manifest.js")).href
-);
-const migMod = await import(
-  pathToFileURL(path.join(electron, "brand-migrations.js")).href
-);
-const apiMod = await import(
-  pathToFileURL(path.join(electron, "brand-module-api.js")).href
-);
+// Catalogue : léger par défaut (tests/CI) — Docker prod : CREEZIO_CATALOG=1.
+applyBrandCatalogEnvDefaults(${JSON.stringify(m.envPrefix)});
+
+const importMod = (name) =>
+  import(pathToFileURL(path.join(electron, name)).href);
+const importOptional = (name) =>
+  fs.existsSync(path.join(electron, name)) ? importMod(name) : null;
+
+const manifestMod = await importMod("app-manifest.js");
+const migMod = await importMod("brand-migrations.js");
+const apiMod = await importMod("brand-module-api.js");
+const catalogMod = await importOptional("catalog-sync.js");
+const mcpMod = await importOptional("brand-mcp-tools.js");
+const bindMod = await importOptional("brand-platform-bindings.js");
 
 const manifestExport = Object.keys(manifestMod).find((k) =>
   k.endsWith("Manifest"),
 );
 if (!manifestExport) throw new Error("AppManifest introuvable");
 
+const dataDir = process.env.METIER_DATA_DIR || undefined;
+
 await startBrandKernelHarness({
-  brandId: ${JSON.stringify(brandId)},
+  brandId: ${JSON.stringify(m.brandId)},
   appRoot: root,
   port: PORT,
   manifest: manifestMod[manifestExport],
   brandMigrations: migMod.brandMigrations(),
   registerModuleApi: apiMod.registerBrandModuleApi,
+  beforeBoot: () => {
+    bindMod?.applyBrandPlatformBindings?.();
+  },
+  ...(catalogMod?.createBrandCatalogHost
+    ? { catalogHost: catalogMod.createBrandCatalogHost(dataDir) }
+    : {}),
+  ...(mcpMod?.createBrandModuleMcpTools
+    ? { discoverModuleTools: mcpMod.createBrandModuleMcpTools }
+    : {}),
 });
 `;
 }
@@ -1378,7 +1400,7 @@ export function scaffoldNewApp(opts: NewAppOptions): ScaffoldResult {
     );
     writeFile(
       path.join(serverDir, "scripts/brand-kernel-harness.mjs"),
-      renderBareBrandHarnessMjs(manifest.brandId),
+      renderBareBrandHarnessMjs(manifest),
       force,
       written,
     );

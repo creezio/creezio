@@ -295,7 +295,7 @@ export function writeFromPrdArtifacts(opts: {
 
   writeFile(
     path.join(outDir, "scripts/brand-kernel-harness.mjs"),
-    renderBrandKernelHarnessMjs(model),
+    renderBrandKernelHarnessMjs(manifest, model),
     force,
     written,
   );

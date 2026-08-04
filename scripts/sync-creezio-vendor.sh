@@ -39,8 +39,11 @@ DEFAULT_PACKAGES=(
   tasks
   mails
   observability
+  browser-host
   automations
   database
+  brand-spec
+  app-runtime
 )
 
 if [[ -n "${CREEZIO_VENDOR_PACKAGES:-}" ]]; then

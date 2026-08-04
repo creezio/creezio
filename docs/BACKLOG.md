@@ -31,9 +31,11 @@ affaibli pour la masquer. (Backlogs d'époque : `docs/archive/BACKLOG-*.md`.)
   pré-cutover (pas de `crm/vendor/creezio`) et `certivan-app`/`fidu` sont
   absents — les 55 gates marques skippent (raison affichée). Les exécuter
   sur un poste avec les repos marque synchronisés.
-- **`test:env`** : `test-os-cold-warm` (réseau embeds + ~4 Go /tmp) et
+- **`test:env`** : `test-os-cold-warm` (réseau embeds + ~4 Go /tmp),
   `test-phase-factory-prd*` (npm install d'une app générée, binaire Electron
-  téléchargeable) sont opt-in (`CREEZIO_COLD_WARM=1` / `CREEZIO_FACTORY_PRD=1`).
+  téléchargeable) et `test-phase-factory-docker-parity` (app neuve factory →
+  image Docker, preuve d'héritage parité TF2) sont opt-in
+  (`CREEZIO_COLD_WARM=1` / `CREEZIO_FACTORY_PRD=1` / `CREEZIO_FACTORY_DOCKER=1`).
   Les gates factory-prd échouent aujourd'hui hors ligne car l'app générée n'a
   pas de `node_modules` (types `electron` introuvables au `tsc`) — piste :
   lien vers le `node_modules` du kit ou install dédiée dans la gate.

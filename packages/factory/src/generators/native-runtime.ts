@@ -519,37 +519,59 @@ export function applyBrandMeiliConfig(): void {
 `;
 }
 
-export function renderBrandKernelHarnessMjs(model: ProductModel): string {
+export function renderBrandKernelHarnessMjs(
+  m: AppManifest,
+  model: ProductModel,
+): string {
+  const prefix = m.envPrefix;
   return `#!/usr/bin/env node
 /**
  * Harness Node — façade @creezio/app-runtime (même kernel que le desktop).
  * Usage: npm run build:electron && METIER_DATA_DIR=... METIER_PORT=... node scripts/brand-kernel-harness.mjs
+ *
+ * Fichier GÉNÉRÉ par la factory creezio (template kit) : la même façade pour
+ * toutes les marques. Les modules optionnels (catalog-sync, brand-mcp-tools,
+ * brand-platform-bindings) sont chargés s'ils existent dans build/electron —
+ * le métier reste dans la marque, l'orchestration dans le kit.
  */
+import fs from "node:fs";
 import path from "node:path";
 import { pathToFileURL, fileURLToPath } from "node:url";
-import { startBrandKernelHarness } from "@creezio/app-runtime";
+import {
+  applyBrandCatalogEnvDefaults,
+  startBrandKernelHarness,
+} from "@creezio/app-runtime";
+import { loadLocalEnv } from "./load-local-env.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+loadLocalEnv(root);
 const PORT = Number(process.env.METIER_PORT || process.env.PORT || 18791);
 const electron = path.join(root, "build/electron");
 
-const manifestMod = await import(
-  pathToFileURL(path.join(electron, "app-manifest.js")).href
-);
-const migMod = await import(
-  pathToFileURL(path.join(electron, "brand-migrations.js")).href
-);
-const apiMod = await import(
-  pathToFileURL(path.join(electron, "brand-module-api.js")).href
-);
-const feedMod = await import(
-  pathToFileURL(path.join(electron, "meili-feed.js")).href
-);
+// Catalogue : léger par défaut (tests/CI — pas de download distant).
+// Docker prod : CREEZIO_CATALOG=1 (profil prod) ou ${prefix}_CATALOG_ENABLE=1.
+// À faire AVANT l'import des modules marque (ils lisent l'env à l'import).
+applyBrandCatalogEnvDefaults(${JSON.stringify(prefix)});
+
+const importMod = (name) =>
+  import(pathToFileURL(path.join(electron, name)).href);
+const importOptional = (name) =>
+  fs.existsSync(path.join(electron, name)) ? importMod(name) : null;
+
+const manifestMod = await importMod("app-manifest.js");
+const migMod = await importMod("brand-migrations.js");
+const apiMod = await importMod("brand-module-api.js");
+const feedMod = await importMod("meili-feed.js");
+const catalogMod = await importOptional("catalog-sync.js");
+const mcpMod = await importOptional("brand-mcp-tools.js");
+const bindMod = await importOptional("brand-platform-bindings.js");
 
 const manifestExport = Object.keys(manifestMod).find((k) =>
   k.endsWith("Manifest"),
 );
 if (!manifestExport) throw new Error("AppManifest introuvable");
+
+const dataDir = process.env.METIER_DATA_DIR || undefined;
 
 await startBrandKernelHarness({
   brandId: ${JSON.stringify(model.brandId)},
@@ -558,8 +580,17 @@ await startBrandKernelHarness({
   manifest: manifestMod[manifestExport],
   brandMigrations: migMod.brandMigrations(),
   registerModuleApi: apiMod.registerBrandModuleApi,
-  beforeBoot: feedMod.applyBrandMeiliConfig,
+  beforeBoot: () => {
+    feedMod.applyBrandMeiliConfig?.();
+    bindMod?.applyBrandPlatformBindings?.();
+  },
   meiliFeed: feedMod.brandMeiliFeed,
+  ...(catalogMod?.createBrandCatalogHost
+    ? { catalogHost: catalogMod.createBrandCatalogHost(dataDir) }
+    : {}),
+  ...(mcpMod?.createBrandModuleMcpTools
+    ? { discoverModuleTools: mcpMod.createBrandModuleMcpTools }
+    : {}),
 });
 `;
 }

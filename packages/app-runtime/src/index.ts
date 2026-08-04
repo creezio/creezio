@@ -81,3 +81,14 @@ export {
   SERVER_BROWSER_HOST_ID,
   type BrandBrowserSidecarHandle,
 } from "./wire-brand-browser-sidecar.js";
+export {
+  applyBrandCatalogEnvDefaults,
+  applyStoredEmailEnv,
+  harnessTunnelProvisionRequested,
+  runHarnessCatalogImportPhase,
+  runHarnessFleetPhase,
+  runHarnessHermesBridgePhase,
+  runHarnessPluginsPhase,
+  runHarnessTunnelPhase,
+  type HarnessTunnelPhaseResult,
+} from "./harness-server-phases.js";

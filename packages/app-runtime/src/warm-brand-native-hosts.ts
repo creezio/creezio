@@ -51,6 +51,11 @@ export async function warmBrandNativeHosts(
     n8n?: boolean;
     retries?: number;
     onLog?: (line: string) => void;
+    /**
+     * WEBHOOK_URL / N8N_EDITOR_BASE_URL publics (tunnel si provisionné,
+     * sinon URL locale) — parité TF2. `null`/absent = loopback.
+     */
+    n8nPublicBaseUrl?: string | null;
   },
 ): Promise<WarmNativeHostsResult> {
   const start = opts?.start !== false;
@@ -72,6 +77,7 @@ export async function warmBrandNativeHosts(
       startN8n: (o: {
         connectionMode: "local" | "remote";
         autoBootstrap?: boolean;
+        publicBaseUrl?: string | null;
       }) => Promise<unknown>;
       findN8nEntry: () => string | null;
     };
@@ -94,6 +100,9 @@ export async function warmBrandNativeHosts(
           const r = await n8n.startN8n({
             connectionMode: "local",
             autoBootstrap: true,
+            ...(opts?.n8nPublicBaseUrl
+              ? { publicBaseUrl: opts.n8nPublicBaseUrl }
+              : {}),
           });
           if (!r) throw new Error("n8n start returned falsy");
           return r;

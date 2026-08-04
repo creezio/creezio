@@ -39,6 +39,12 @@ export type ServerDockerArgs = {
   env: Record<string, string>;
   /** create : warm n8n/Hermes dans le container. */
   warm?: boolean;
+  /**
+   * create : profil de défauts env. `prod` = serveur flotte (warm natif +
+   * catalogue + forward des env tunnel/fleet/crash présents sur l'hôte).
+   * Les défauts test/CI restent inchangés sans profil.
+   */
+  profile?: "prod";
   /** create : variant browser (Chromium sidecar IA, shm 1 Go). */
   browser?: boolean;
   /** rm : supprimer aussi le volume data. */
@@ -83,6 +89,11 @@ export function parseServerDockerArgs(argv: string[]): ServerDockerArgs {
     else if (a === "--expose") out.bind = "0.0.0.0";
     else if (a === "--warm") out.warm = true;
     else if (a === "--browser") out.browser = true;
+    else if (a.startsWith("--profile=")) {
+      out.profile = a.slice(10) as ServerDockerArgs["profile"];
+    } else if (a === "--profile") {
+      out.profile = (rest.shift() || "") as ServerDockerArgs["profile"];
+    }
     else if (a === "--purge-data") out.purgeData = true;
     else if (a === "--follow" || a === "-f") out.follow = true;
     else if (a.startsWith("--port=")) out.port = Number(a.slice(7));
@@ -117,9 +128,14 @@ export function printServerDockerHelp(): void {
   console.log(`creezio server-docker — serveurs marque headless (Docker)
 
 Instances nommées (registre docker-data/servers.json — recommandé) :
-  creezio server-docker create <nom> --brand-root <app> [--port N] [--expose] [--warm] [--browser] [--env K=V]…
+  creezio server-docker create <nom> --brand-root <app> [--port N] [--expose] [--warm] [--browser] [--profile prod] [--env K=V]…
     --browser : image variant browser (Chromium+Xvfb, sidecar navigateur IA,
                 profils /data/browser, shm 1 Go)
+    --profile prod : serveur flotte — CREEZIO_NATIVE_WARM=1 + CREEZIO_CATALOG=1
+                + forward env hôte CREEZIO_TUNNEL_PROVISION_URL/_TOKEN/_SLUG,
+                CREEZIO_FLEET_ENDPOINT, CREEZIO_CRASH_ENDPOINT, CREEZIO_PLUGINS,
+                EMAIL_INBOUND_SECRET (uniquement s'ils sont posés — aucun
+                DNS/collector activé par défaut)
   creezio server-docker start  <nom> --brand-root <app>
   creezio server-docker stop   <nom> --brand-root <app>
   creezio server-docker rm     <nom> --brand-root <app> [--purge-data]
@@ -622,6 +638,7 @@ function ensureBrandStandalone(brandRoot: string, kit: string): void {
       "tasks",
       "mails",
       "observability",
+      "browser-host",
       "automations",
       "database",
       "brand-spec",
@@ -1103,7 +1120,29 @@ async function runRegistrySubcommand(
     }
     const port =
       args.port && args.port > 0 ? args.port : await allocateServerPort(registry);
-    const extraEnv: Record<string, string> = { ...args.env };
+    const extraEnv: Record<string, string> = {};
+    if (args.profile === "prod") {
+      // Profil « serveur flotte prod » : warm natif + catalogue activés,
+      // tunnel/fleet/crash forwardés depuis l'env hôte s'ils sont posés
+      // (jamais de valeur inventée — pas d'effet de bord infra implicite).
+      extraEnv.CREEZIO_NATIVE_WARM = "1";
+      extraEnv.CREEZIO_CATALOG = "1";
+      for (const key of [
+        "CREEZIO_TUNNEL_PROVISION_URL",
+        "CREEZIO_TUNNEL_PROVISION_TOKEN",
+        "CREEZIO_TUNNEL_SLUG",
+        "CREEZIO_FLEET_ENDPOINT",
+        "CREEZIO_CRASH_ENDPOINT",
+        "CREEZIO_PLUGINS",
+        "EMAIL_INBOUND_SECRET",
+      ]) {
+        const v = (env[key] || "").trim();
+        if (v) extraEnv[key] = v;
+      }
+    } else if (args.profile) {
+      throw new Error(`--profile inconnu: ${args.profile} (profils: prod)`);
+    }
+    Object.assign(extraEnv, args.env);
     if (args.warm) extraEnv.CREEZIO_NATIVE_WARM = "1";
     const inst: ServerRegistryInstance = {
       name,

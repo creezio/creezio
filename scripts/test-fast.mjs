@@ -75,6 +75,13 @@ const ENV_GATES = new Map([
       why: "npm install d'une app générée (binaire Electron téléchargeable)",
     },
   ],
+  [
+    "test-phase-factory-docker-parity.mjs",
+    {
+      optIn: "CREEZIO_FACTORY_DOCKER",
+      why: "app neuve factory + npm install + build UI + image Docker (~10 min)",
+    },
+  ],
 ]);
 
 // Une gate « marques » lit les repos marque : import des libs de résolution

@@ -39,6 +39,15 @@ import {
 } from "./start-brand-ui-plane.js";
 import { warmBrandNativeHosts } from "./warm-brand-native-hosts.js";
 import {
+  applyStoredEmailEnv,
+  harnessTunnelProvisionRequested,
+  runHarnessCatalogImportPhase,
+  runHarnessFleetPhase,
+  runHarnessHermesBridgePhase,
+  runHarnessPluginsPhase,
+  runHarnessTunnelPhase,
+} from "./harness-server-phases.js";
+import {
   mountBrandPlatformSurface,
   platformSurfaceHandlesPath,
   type BrandPlatformSurface,
@@ -99,17 +108,31 @@ export async function startBrandKernelHarness(
   const desktopProfile = config.desktopProfile || "full";
   const warmNative =
     desktopProfile === "full" && process.env.CREEZIO_NATIVE_WARM !== "0";
+  const pluginsOn =
+    desktopProfile === "full" && process.env.CREEZIO_PLUGINS === "1";
+  const tunnelRequested =
+    desktopProfile === "full" &&
+    Boolean(config.manifest) &&
+    harnessTunnelProvisionRequested(config.manifest!);
 
   const boot = createBootProgressReporter({
     brandId: config.brandId,
     dataDir,
     appVersion: readAppVersion(config.appRoot),
     warmNative,
+    needTunnel: tunnelRequested,
     needIndex:
       Boolean(config.meiliFeed) &&
       config.skipIndex !== true &&
       process.env.MEILI_SKIP_INDEX !== "1",
   });
+
+  // Étapes serveur dynamiques (parité TF2) — visibles dans boot-status dès
+  // le early-listen quand la phase est activée.
+  if (desktopProfile === "full" && config.catalogHost?.ensureCatalogImported) {
+    boot.register("catalog-import", "Import catalogue");
+  }
+  if (pluginsOn) boot.register("plugins", "Plugins");
 
   // Early-listen : boot-status disponible dès maintenant sur le port final
   // (Docker/headless — port fixe requis). Handoff plus bas sans coupure.
@@ -182,6 +205,8 @@ export async function startBrandKernelHarness(
   // assistant ne doivent jamais signer avec le fallback dev.
   const resourcesRoot = path.join(config.appRoot, "resources");
   let brandOs = null as ReturnType<typeof composeBrandOs> | null;
+  const warmHermes =
+    warmNative && process.env.CREEZIO_NATIVE_WARM_HERMES !== "0";
   if (desktopProfile === "full" && config.manifest) {
     brandOs = composeBrandOs({
       manifest: config.manifest,
@@ -191,6 +216,15 @@ export async function startBrandKernelHarness(
       electronDirname: path.join(config.appRoot, "build/electron"),
       ...(config.catalogHost ? { catalogHost: config.catalogHost } : {}),
     });
+    // Secret inbound mails / domaine (provisioner tunnel) → env in-process
+    // pour POST /api/v1/email/inbound. Jamais d'écrasement d'un env explicite.
+    applyStoredEmailEnv(brandOs, {
+      log: (line) => console.log(`[creezio-os] ${line}`),
+    });
+    if (warmHermes) boot.register("hermes-bridge", "Pont Hermes ↔ CRM");
+    if (brandOs.hostRuntime.fleetAgent) {
+      boot.register("fleet", "Agent flotte");
+    }
   }
 
   // Surface plateforme auth/tasks/assistant (Hono) sur le port unique.
@@ -360,12 +394,23 @@ export async function startBrandKernelHarness(
   advertisedBaseUrl = httpServer.baseUrl;
 
   if (brandOs && desktopProfile === "full" && config.manifest) {
+    // Issuer/resource OAuth MCP : URL tunnel publique quand disponible
+    // (parité desktop resolvePublicUrl) — sinon loopback proprement.
+    const publicOrigin = () => {
+      try {
+        const pub = brandOs!.hostRuntime.tunnelService().publicUrlForServer();
+        if (pub && /^https:\/\//.test(pub)) return pub;
+      } catch {
+        /* tunnel non composé */
+      }
+      return httpServer.baseUrl;
+    };
     mcpSurface = mountBrandMcpSurface({
       manifest: config.manifest,
       runtime,
       os: brandOs,
       mcp,
-      publicBaseUrl: () => httpServer.baseUrl,
+      publicBaseUrl: publicOrigin,
     });
     console.log(
       `brand-kernel-harness mcp-oauth ready=${mcpSurface.oauthReady()} public=${mcpSurface.publicUrl()}`,
@@ -417,6 +462,34 @@ export async function startBrandKernelHarness(
   boot.go("login", { detail: "Interface disponible" });
   boot.done("login", "Interface disponible");
 
+  const phaseLog = (scope: string) => (line: string) =>
+    console.log(`[${scope}] ${line}`);
+
+  // Import catalogue APRÈS le listen : METIER_BASE_URL est posé, l'API
+  // kernel répond — l'import projeté ne skippe plus (régression harness).
+  if (
+    brandOs &&
+    desktopProfile === "full" &&
+    config.catalogHost?.ensureCatalogImported
+  ) {
+    await runHarnessCatalogImportPhase({
+      boot,
+      catalogHost: config.catalogHost,
+    });
+  }
+
+  // Tunnel Cloudflare réel — uniquement sur env provisioner EXPLICITE
+  // (CREEZIO_TUNNEL_PROVISION_URL / ${PREFIX}_TUNNEL_PROVISION_URL).
+  if (brandOs && tunnelRequested && config.manifest) {
+    await runHarnessTunnelPhase({
+      boot,
+      os: brandOs,
+      manifest: config.manifest,
+      port: httpServer.port,
+      log: phaseLog("tunnel"),
+    });
+  }
+
   // Sidecar navigateur IA (variant Docker --browser : CREEZIO_BROWSER_SIDECAR=1).
   let browserSidecar: BrandBrowserSidecarHandle | null = null;
   if (platformSurface && browserSidecarRequested()) {
@@ -447,15 +520,25 @@ export async function startBrandKernelHarness(
   // CREEZIO_NATIVE_WARM=0 pour skip (défaut image Docker) ; =1 → n8n/Hermes
   // dans le même container, visibles dans boot-status.
   if (brandOs && warmNative) {
-    const warmHermes = process.env.CREEZIO_NATIVE_WARM_HERMES !== "0";
     boot.go("n8n", { detail: "Warm n8n…", parallel: true });
     if (warmHermes) {
       boot.go("hermes", { detail: "Warm Hermes…", parallel: true });
+    }
+    // Webhooks n8n : URL publique (tunnel réel si provisionné, sinon la
+    // surface locale) — parité TF2 WEBHOOK_URL / N8N_EDITOR_BASE_URL.
+    let n8nPublicBaseUrl: string | null = null;
+    try {
+      n8nPublicBaseUrl = brandOs.hostRuntime
+        .tunnelService()
+        .publicUrlForEmbedService("n8n");
+    } catch {
+      /* tunnel non composé */
     }
     const warm = await warmBrandNativeHosts(brandOs, {
       start: process.env.CREEZIO_NATIVE_START !== "0",
       n8n: true,
       hermes: warmHermes,
+      n8nPublicBaseUrl,
     });
     boot.patch("n8n", {
       status: warm.n8n.started ? "done" : "error",
@@ -476,11 +559,57 @@ export async function startBrandKernelHarness(
     console.log(
       `brand-kernel-harness native warm n8n=${JSON.stringify(warm.n8n)} hermes=${JSON.stringify(warm.hermes)}`,
     );
+
+    // Pont Hermes ↔ CRM/n8n (parité TF2 5a/5a3) : clé CRM + seed contexte
+    // + reapplyHermesBridge — derrière le warm Hermes uniquement.
+    if (warmHermes && config.manifest) {
+      await runHarnessHermesBridgePhase({
+        boot,
+        os: brandOs,
+        manifest: config.manifest,
+        port: httpServer.port,
+        log: phaseLog("hermes-bridge"),
+      });
+    }
+  }
+
+  // Plugins user (sidecars + control plane loopback) — CREEZIO_PLUGINS=1.
+  let pluginsPhase: Awaited<ReturnType<typeof runHarnessPluginsPhase>> | null =
+    null;
+  if (brandOs && pluginsOn) {
+    pluginsPhase = await runHarnessPluginsPhase({
+      boot,
+      os: brandOs,
+      port: httpServer.port,
+      log: phaseLog("plugins"),
+    });
+  }
+
+  // Agent flotte : no-op propre sur l'endpoint sentinelle ingest-disabled ;
+  // endpoint réel via CREEZIO_FLEET_ENDPOINT / ${PREFIX}_FLEET_ENDPOINT.
+  let fleetPhase: ReturnType<typeof runHarnessFleetPhase> = null;
+  if (brandOs && brandOs.hostRuntime.fleetAgent) {
+    fleetPhase = runHarnessFleetPhase({
+      boot,
+      os: brandOs,
+      searchEngine,
+      pluginsEnabled: pluginsOn,
+      log: phaseLog("fleet"),
+    });
   }
 
   boot.complete(`Serveur ${config.brandId} prêt`);
 
   const close = async () => {
+    fleetPhase?.stop();
+    await pluginsPhase?.close();
+    if (brandOs) {
+      try {
+        brandOs.hostRuntime.tunnelService().stopCloudflared();
+      } catch {
+        /* tunnel jamais composé */
+      }
+    }
     meiliStop?.();
     await browserSidecar?.close();
     platformSurface?.close();

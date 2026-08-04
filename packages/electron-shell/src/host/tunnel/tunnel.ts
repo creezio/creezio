@@ -124,8 +124,11 @@ function cloudflaredBinary(
 ): string | null {
   const envKey = `${ctx.manifest.envPrefix}_CLOUDFLARED_BINARY`;
   if (!ctx.isPackaged) {
-    const override = (process.env[envKey] || "").trim();
-    if (override && fs.existsSync(override)) return override;
+    // Override marque puis générique kit (image Docker : /opt/creezio/bin).
+    for (const key of [envKey, "CREEZIO_CLOUDFLARED_BINARY"]) {
+      const override = (process.env[key] || "").trim();
+      if (override && fs.existsSync(override)) return override;
+    }
   }
   const name =
     process.platform === "win32" ? "cloudflared.exe" : "cloudflared";

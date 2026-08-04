@@ -53,6 +53,18 @@ RUN apt-get update \
   && chmod 755 /usr/local/bin/meilisearch \
   && /usr/local/bin/meilisearch --version
 
+# cloudflared Linux embarqué — tunnel d'accès distant (parité TF2 desktop).
+# URL alignée sur ensure-kit-binaries.ts (CREEZIO_SKIP_KIT_BINARIES=1 au run :
+# le binaire vient de l'image, jamais téléchargé au boot).
+FROM node:22-bookworm-slim AS cloudflared
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends ca-certificates curl \
+  && rm -rf /var/lib/apt/lists/* \
+  && curl -fsSL -o /usr/local/bin/cloudflared \
+    https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64 \
+  && chmod 755 /usr/local/bin/cloudflared \
+  && /usr/local/bin/cloudflared --version
+
 FROM node:22-bookworm-slim AS runtime-base
 ARG SERVER_DIR
 RUN apt-get update \
@@ -61,6 +73,7 @@ RUN apt-get update \
 WORKDIR /app
 
 COPY --from=meili /usr/local/bin/meilisearch /opt/creezio/bin/meilisearch
+COPY --from=cloudflared /usr/local/bin/cloudflared /opt/creezio/bin/cloudflared
 
 # Sources / artefacts marque (voir brand.dockerignore v3 —
 # inclut <SERVER_DIR>/ui/.next/standalone + static si la marque a une UI Next)
@@ -83,6 +96,7 @@ ENV NODE_ENV=production \
     CREEZIO_TUNNEL_LOCAL=1 \
     CREEZIO_SKIP_KIT_BINARIES=1 \
     MEILI_BINARY=/opt/creezio/bin/meilisearch \
+    CREEZIO_CLOUDFLARED_BINARY=/opt/creezio/bin/cloudflared \
     METIER_DATA_DIR=/data \
     PORT=18791 \
     METIER_PORT=18791
