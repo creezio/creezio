@@ -23,7 +23,6 @@ x-brand-server: &brand-server
     CREEZIO_TUNNEL_LOCAL: ${CREEZIO_TUNNEL_LOCAL:-1}
     CREEZIO_SKIP_KIT_BINARIES: ${CREEZIO_SKIP_KIT_BINARIES:-1}
     METIER_DATA_DIR: /data
-    TF3_CATALOG_DISABLE: ${TF3_CATALOG_DISABLE:-1}
     # Optionnels (tunnel / catalog) — passer via env host, jamais committer secrets
     CREEZIO_TUNNEL_PROVISION_URL: ${CREEZIO_TUNNEL_PROVISION_URL:-}
     CREEZIO_TUNNEL_PROVISION_TOKEN: ${CREEZIO_TUNNEL_PROVISION_TOKEN:-}
@@ -31,12 +30,14 @@ x-brand-server: &brand-server
   networks:
     - creezio-servers
 
+# Sécurité : ports publiés sur loopback par défaut.
+# Opt-in exposition réseau : SERVER_BIND=0.0.0.0 (ou IP publique).
 services:
   server-1:
     <<: *brand-server
     container_name: creezio-server-1
     ports:
-      - "${SERVER_1_PORT:-18791}:18791"
+      - "${SERVER_BIND:-127.0.0.1}:${SERVER_1_PORT:-18791}:18791"
     environment:
       <<: *brand-env
       PORT: "18791"
@@ -49,7 +50,7 @@ services:
     <<: *brand-server
     container_name: creezio-server-2
     ports:
-      - "${SERVER_2_PORT:-18792}:18791"
+      - "${SERVER_BIND:-127.0.0.1}:${SERVER_2_PORT:-18792}:18791"
     environment:
       <<: *brand-env
       PORT: "18791"

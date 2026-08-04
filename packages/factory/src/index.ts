@@ -26,6 +26,18 @@ export {
 } from "./product-model.js";
 export { writeFromPrdArtifacts } from "./scaffold-from-prd.js";
 export {
+  loadServerRegistry,
+  saveServerRegistry,
+  allocateServerPort,
+  buildDockerRunArgs,
+  serverImageName,
+  serverContainerName,
+  validInstanceName,
+  registryPath,
+  type ServerRegistry,
+  type ServerRegistryInstance,
+} from "./server-docker-registry.js";
+export {
   writeAppFile,
   isOwnedByBrand,
   OWNED_BY_BRAND_MARKER,
