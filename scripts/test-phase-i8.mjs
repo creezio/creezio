@@ -38,7 +38,10 @@ test("I8 demobrand feature-parity surfaces I1–I7", () => {
   }
 });
 
-test("I8 factory scaffold utilise createNavShellAdapter", () => {
+// Depuis la façade app-runtime, le main scaffolder boote via startBrandDesktop
+// et la nav marque vit dans vertical-slot.ts (registerBrandNav). L'invariant I8
+// (« plus de mergeNav(coreNavItems…) hardcodé ») est conservé.
+test("I8 factory scaffold boote startBrandDesktop + registerBrandNav", () => {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "creezio-i8-factory-"));
   const outDir = path.join(tmp, "i8freeze");
   const result = scaffoldNewApp({
@@ -51,9 +54,12 @@ test("I8 factory scaffold utilise createNavShellAdapter", () => {
   });
   const mainPath = path.join(result.outDir, "src/electron/main.ts");
   const main = fs.readFileSync(mainPath, "utf8");
-  assert.match(main, /createNavShellAdapter/);
-  assert.match(main, /registerBrandNav/);
+  assert.match(main, /startBrandDesktop/);
   assert.ok(!main.includes("mergeNav(coreNavItems"));
+  const slotPath = path.join(result.outDir, "src/electron/vertical-slot.ts");
+  const slot = fs.readFileSync(slotPath, "utf8");
+  assert.match(slot, /registerBrandNav/);
+  assert.ok(!slot.includes("mergeNav(coreNavItems"));
 });
 
 test("I8 sync dry-run expect H6", () => {
@@ -77,8 +83,8 @@ test("I8 sync dry-run expect H6", () => {
 
 test("I8 docs freeze présents", () => {
   for (const p of [
-    "docs/PHASE-I8.md",
-    "docs/FEATURE-PARITY-DEMOBRAND-H6.md",
+    "docs/archive/PHASE-I8.md",
+    "docs/archive/FEATURE-PARITY-DEMOBRAND-H6.md",
   ]) {
     assert.ok(fs.existsSync(path.join(ROOT, p)), p);
   }

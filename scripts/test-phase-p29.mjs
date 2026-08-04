@@ -16,7 +16,7 @@ function read(rel) {
 }
 
 test("P29.1 ADR documente SoT + aliases + Meili configure + ops dual-read", () => {
-  const adr = read("docs/ADR-no-brand-domain-in-native-packages.md");
+  const adr = read("docs/adr/ADR-no-brand-domain-in-native-packages.md");
   assert.match(adr, /OpenExternalSiteOpts/);
   assert.match(adr, /OpenSupplierSiteOpts/);
   assert.match(adr, /siteId/);
@@ -97,12 +97,19 @@ test("P29.5 electron-shell : Meili tables configurables + driver external_*", ()
   const pkg = read("packages/electron-shell/src/index.ts");
   assert.match(pkg, /configureMeiliCatalogSqlTables/);
 
+  // Depuis l'extraction browser-host, les verbes du driver vivent dans
+  // shared-driver.ts (table partagée Electron/Chromium serveur). L'invariant
+  // reste : SoT external_* + alias supplier_* normalisé, verbes list_targets
+  // et screenshot supportés.
   const driver = read(
     "packages/electron-shell/src/host/browser-tabs/browser-tab-driver.ts",
   );
-  assert.match(driver, /case "external_list_targets"/);
-  assert.match(driver, /case "external_screenshot"/);
   assert.match(driver, /replace\(\/\^supplier_\//);
+  assert.match(driver, /driverVerbOf/);
+  assert.match(driver, /runDriverVerb/);
+  const shared = read("packages/browser-host/src/shared-driver.ts");
+  assert.match(shared, /case "list_targets"/);
+  assert.match(shared, /case "screenshot"/);
 
   const actions = read("packages/electron-shell/src/host/ai-workspace/actions.ts");
   assert.match(actions, /external_/);

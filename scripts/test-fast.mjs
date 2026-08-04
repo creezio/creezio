@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 /**
- * Runner de gates fail-fast et lisible (`npm run test:fast`).
+ * Runner de gates fail-fast et lisible — 3 suites (`test:kit` / `test:brands`
+ * / `test:env`).
  *
  * Contrairement à `npm test` (toutes les gates en un seul `node --test`,
  * sortie TAP illisible, aucun feedback avant la fin), ce runner :
@@ -10,133 +11,156 @@
  *   - journalise chaque gate en JSONL dans /tmp/creezio-test-fast.log.
  *
  * La liste des gates est lue depuis le script npm `test` (source of truth,
- * pas de seconde liste à maintenir).
+ * pas de seconde liste à maintenir). Chaque gate est classée AUTOMATIQUEMENT
+ * dans une suite (aucune liste figée de noms) :
+ *
+ *   kit    — gates pures kit : lisent uniquement ce repo. Doivent être 100 %
+ *            vertes partout, sans repos externes ni réseau.
+ *   brands — gates qui lisent les repos marque (import `lib/brand-roots.mjs`
+ *            ou `lib/intention-twins.mjs`, ou résolution `dockerRoot`).
+ *            Skip AUTO-DÉTECTÉ par marque référencée : repo absent, ou
+ *            `crm/vendor/creezio` absent (oracle pré-cutover / lecture seule).
+ *   env    — gates coûteuses/environnementales (liste ENV_GATES, documentée
+ *            dans scripts/README.md) : cold-warm (réseau embeds + ~4 Go /tmp),
+ *            factory-prd (npm install d'une app générée, binaire Electron
+ *            téléchargeable). Opt-in par variable d'env, sinon skip explicite.
+ *
+ * AUCUN assert n'est affaibli : une gate skippée l'est pour un prérequis
+ * d'environnement affiché en clair, jamais silencieusement.
  *
  * Options :
+ *   --suite <kit|brands|env|all>  suite à lancer (défaut kit)
  *   --from <gate>     reprendre à partir de cette gate (substring)
  *   --only <regex>    ne lancer que les gates qui matchent
- *   --skip <regex>    exclure des gates (en plus du skip-list défaut)
- *   --no-default-skip inclure aussi les gates environnementales connues
+ *   --skip <regex>    exclure des gates
  *   --keep-going      ne pas s'arrêter à la première rouge (inventaire)
  *   --timeout <s>     timeout par gate (défaut 300 s → FAIL timeout)
  *
- * Skip-list par défaut (DEFAULT_SKIP) : gates qui échouent sur ce VPS pour
- * des raisons d'ENVIRONNEMENT (réseau sortant filtré, oracle TF2 absent ou
- * en lecture seule, binaires embeds non provisionnés) — PAS parce que les
- * asserts seraient faux. Ne pas « fixer » ces gates en affaiblissant les
- * asserts ; les lancer avec `--no-default-skip` sur un poste complet.
- * Workflow : `npm run test:fast` → première rouge → corriger la cause →
- * `npm run test:fast -- --from <gate>` → itérer jusqu'au vert.
+ * Workflow : `npm run test:kit` → première rouge → corriger la cause →
+ * `npm run test:kit -- --from <gate>` → itérer jusqu'au vert.
  */
 
 import { spawn } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { BRAND_IDS, resolveBrandCrmRoot } from "./lib/brand-roots.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const LOG_FILE = process.env.CREEZIO_TEST_FAST_LOG || "/tmp/creezio-test-fast.log";
 
-// Gates environnementales préexistantes sur CE VPS (inventaire du
-// 2026-08-04, `--keep-going --no-default-skip`) : oracle tempoflow2 en
-// lecture seule / état différent (phases C7, I, M, N, O, P), apps générées
-// non installables offline (factory-prd F3), et test-os-cold-warm
-// (bootstrap embeds réseau + ~4 Go dans /tmp par run). AUCUN assert
-// affaibli — les relancer via `--no-default-skip` sur un poste complet.
-const DEFAULT_SKIP = [
-  "test-os-cold-warm.mjs",
-  "test-phase-c7.mjs",
-  "test-phase-factory-prd-experience.mjs",
-  "test-phase-factory-prd.mjs",
-  "test-phase-i2.mjs",
-  "test-phase-i8.mjs",
-  "test-phase-m1.mjs",
-  "test-phase-m10.mjs",
-  "test-phase-m11.mjs",
-  "test-phase-m12.mjs",
-  "test-phase-m12p.mjs",
-  "test-phase-m13.mjs",
-  "test-phase-m14.mjs",
-  "test-phase-m15.mjs",
-  "test-phase-m1p.mjs",
-  "test-phase-m2.mjs",
-  "test-phase-m2p.mjs",
-  "test-phase-m3.mjs",
-  "test-phase-m3p.mjs",
-  "test-phase-m4.mjs",
-  "test-phase-m5.mjs",
-  "test-phase-m7.mjs",
-  "test-phase-m8.mjs",
-  "test-phase-m8p.mjs",
-  "test-phase-m9.mjs",
-  "test-phase-n0.mjs",
-  "test-phase-n1p.mjs",
-  "test-phase-n2p.mjs",
-  "test-phase-n3p.mjs",
-  "test-phase-n4.mjs",
-  "test-phase-n4p.mjs",
-  "test-phase-n5.mjs",
-  "test-phase-n6p.mjs",
-  "test-phase-n7.mjs",
-  "test-phase-n8.mjs",
-  "test-phase-o0.mjs",
-  "test-phase-o1.mjs",
-  "test-phase-o10.mjs",
-  "test-phase-o11.mjs",
-  "test-phase-o2.mjs",
-  "test-phase-o3.mjs",
-  "test-phase-o3p.mjs",
-  "test-phase-o4.mjs",
-  "test-phase-o4p.mjs",
-  "test-phase-o4r.mjs",
-  "test-phase-o4r2.mjs",
-  "test-phase-o4r3.mjs",
-  "test-phase-o4r4.mjs",
-  "test-phase-o5.mjs",
-  "test-phase-o5p.mjs",
-  "test-phase-o6.mjs",
-  "test-phase-o7.mjs",
-  "test-phase-o8.mjs",
-  "test-phase-o9.mjs",
-  "test-phase-o9p.mjs",
-  "test-phase-p-cockpit.mjs",
-  "test-phase-p-onboarding.mjs",
-  "test-phase-p-shell-ui.mjs",
-  "test-phase-p0-intention.mjs",
-  "test-phase-p29.mjs",
-];
+/* ── Suites ─────────────────────────────────────────────────────────────── */
+
+// Gates environnementales (voir matrice dans scripts/README.md) :
+// prérequis lourds qui ne se détectent pas de façon fiable → opt-in explicite.
+const ENV_GATES = new Map([
+  [
+    "test-os-cold-warm.mjs",
+    {
+      optIn: "CREEZIO_COLD_WARM",
+      why: "bootstrap embeds réseau + ~4 Go dans /tmp par run",
+    },
+  ],
+  [
+    "test-phase-factory-prd.mjs",
+    {
+      optIn: "CREEZIO_FACTORY_PRD",
+      why: "npm install d'une app générée (binaire Electron téléchargeable)",
+    },
+  ],
+  [
+    "test-phase-factory-prd-experience.mjs",
+    {
+      optIn: "CREEZIO_FACTORY_PRD",
+      why: "npm install d'une app générée (binaire Electron téléchargeable)",
+    },
+  ],
+]);
+
+// Une gate « marques » lit les repos marque : import des libs de résolution
+// ou identifiant dockerRoot (twins /opt/docker | siblings).
+const BRAND_GATE_RE = /lib\/(brand-roots|intention-twins)\.mjs|dockerRoot/;
+
+/** État d'un repo marque pour les gates : utilisable, ou raison du skip. */
+function brandAvailability(id) {
+  const crm = resolveBrandCrmRoot(id);
+  if (!fs.existsSync(crm)) return { ok: false, why: `repo absent (${crm})` };
+  if (!fs.existsSync(path.join(crm, "vendor", "creezio"))) {
+    return {
+      ok: false,
+      why: "crm/vendor/creezio absent (oracle pré-cutover / lecture seule)",
+    };
+  }
+  return { ok: true };
+}
+
+const brandStates = new Map(BRAND_IDS.map((id) => [id, brandAvailability(id)]));
+
+/**
+ * Classe une gate et calcule son éventuel skip (avec raison explicite).
+ * @returns {{ suite: "kit"|"brands"|"env", skipReason: string|null }}
+ */
+function classifyGate(gatePath, base) {
+  const env = ENV_GATES.get(base);
+  if (env) {
+    const on = process.env[env.optIn] === "1";
+    return {
+      suite: "env",
+      skipReason: on ? null : `${env.optIn}=1 requis — ${env.why}`,
+    };
+  }
+  const src = fs.readFileSync(path.join(ROOT, gatePath), "utf8");
+  if (!BRAND_GATE_RE.test(src)) return { suite: "kit", skipReason: null };
+  const referenced = BRAND_IDS.filter((id) => src.includes(id));
+  const needed = referenced.length ? referenced : BRAND_IDS;
+  const missing = needed
+    .map((id) => ({ id, state: brandStates.get(id) }))
+    .filter((b) => !b.state.ok);
+  return {
+    suite: "brands",
+    skipReason: missing.length
+      ? missing.map((b) => `${b.id} : ${b.state.why}`).join(" ; ")
+      : null,
+  };
+}
 
 /* ── CLI ── */
 const args = process.argv.slice(2);
 const opt = {
+  suite: "kit",
   from: "",
   only: "",
   skip: "",
-  noDefaultSkip: false,
   keepGoing: false,
   timeoutS: 300,
 };
 for (let i = 0; i < args.length; i++) {
   const a = args[i];
-  if (a === "--from") opt.from = args[++i] || "";
+  if (a === "--suite") opt.suite = args[++i] || "";
+  else if (a.startsWith("--suite=")) opt.suite = a.slice(8);
+  else if (a === "--from") opt.from = args[++i] || "";
   else if (a.startsWith("--from=")) opt.from = a.slice(7);
   else if (a === "--only") opt.only = args[++i] || "";
   else if (a.startsWith("--only=")) opt.only = a.slice(7);
   else if (a === "--skip") opt.skip = args[++i] || "";
   else if (a.startsWith("--skip=")) opt.skip = a.slice(7);
-  else if (a === "--no-default-skip") opt.noDefaultSkip = true;
   else if (a === "--keep-going") opt.keepGoing = true;
   else if (a === "--timeout") opt.timeoutS = Number(args[++i]) || 300;
   else if (a.startsWith("--timeout=")) opt.timeoutS = Number(a.slice(10)) || 300;
   else if (a === "--help" || a === "-h") {
     console.log(
-      "Usage: npm run test:fast [-- --from <gate>] [--only <regex>] [--skip <regex>] [--no-default-skip] [--keep-going] [--timeout <s>]",
+      "Usage: npm run test:kit|test:brands|test:env [-- --from <gate>] [--only <regex>] [--skip <regex>] [--keep-going] [--timeout <s>]\n" +
+        "       node scripts/test-fast.mjs --suite <kit|brands|env|all>",
     );
     process.exit(0);
   } else {
     console.error(`option inconnue: ${a}`);
     process.exit(2);
   }
+}
+if (!["kit", "brands", "env", "all"].includes(opt.suite)) {
+  console.error(`--suite inconnu: ${opt.suite} (kit|brands|env|all)`);
+  process.exit(2);
 }
 
 /* ── Liste des gates depuis package.json (SoT) ── */
@@ -155,14 +179,20 @@ let started = !opt.from;
 const plan = [];
 for (const gate of gates) {
   const base = path.basename(gate);
+  const cls = classifyGate(gate, base);
+  if (opt.suite !== "all" && cls.suite !== opt.suite) continue;
   if (!started) {
     if (base.includes(opt.from) || gate.includes(opt.from)) started = true;
     else continue;
   }
   if (onlyRe && !onlyRe.test(base)) continue;
-  const skippedDefault = !opt.noDefaultSkip && DEFAULT_SKIP.includes(base);
   const skippedArg = Boolean(skipRe && skipRe.test(base));
-  plan.push({ gate, base, skipped: skippedDefault || skippedArg });
+  plan.push({
+    gate,
+    base,
+    suite: cls.suite,
+    skipReason: skippedArg ? "exclue par --skip" : cls.skipReason,
+  });
 }
 
 /* ── Couleurs (désactivées si pas un TTY) ── */
@@ -204,20 +234,19 @@ function runGate(gate) {
 
 const fmt = (ms) => (ms >= 10_000 ? `${Math.round(ms / 1000)}s` : `${(ms / 1000).toFixed(1)}s`);
 
-jsonl({ event: "run-start", gates: plan.length, opts: opt });
+jsonl({ event: "run-start", suite: opt.suite, gates: plan.length, opts: opt });
 console.log(
   dim(
-    `test:fast — ${plan.filter((p) => !p.skipped).length} gates (skip: ${plan.filter((p) => p.skipped).length}) → ${LOG_FILE}`,
+    `test:fast suite=${opt.suite} — ${plan.filter((p) => !p.skipReason).length} gates (skip: ${plan.filter((p) => p.skipReason).length}) → ${LOG_FILE}`,
   ),
 );
 
 let pass = 0;
 let fail = 0;
-let firstFail = null;
 for (const item of plan) {
-  if (item.skipped) {
-    console.log(`${yellow("∅")} ${item.base} ${dim("(skip environnement)")}`);
-    jsonl({ event: "gate", gate: item.base, status: "skip" });
+  if (item.skipReason) {
+    console.log(`${yellow("∅")} ${item.base} ${dim(`(skip : ${item.skipReason})`)}`);
+    jsonl({ event: "gate", gate: item.base, status: "skip", reason: item.skipReason });
     continue;
   }
   process.stdout.write(`▶ ${item.base} `);
@@ -236,12 +265,11 @@ for (const item of plan) {
       ms: r.ms,
     });
     if (!opt.keepGoing) {
-      firstFail = item;
       console.log(red(`\n━━━ sortie de ${item.base} ━━━`));
       console.log(r.out);
       console.log(
         red(
-          `━━━ FIN — corriger puis relancer : npm run test:fast -- --from ${item.base} ━━━`,
+          `━━━ FIN — corriger puis relancer : npm run test:${opt.suite === "all" ? "fast" : opt.suite} -- --from ${item.base} ━━━`,
         ),
       );
       break;
@@ -249,9 +277,9 @@ for (const item of plan) {
   }
 }
 
-jsonl({ event: "run-end", pass, fail });
+jsonl({ event: "run-end", suite: opt.suite, pass, fail });
 console.log(
-  `\n${pass} OK, ${fail} FAIL, ${plan.filter((p) => p.skipped).length} skip.`,
+  `\n${pass} OK, ${fail} FAIL, ${plan.filter((p) => p.skipReason).length} skip.`,
 );
 logStream.end();
 process.exit(fail ? 1 : 0);

@@ -14,7 +14,10 @@ Outils du monorepo **creezio** (hors packages npm).
 
 ```bash
 # Depuis la racine du kit
-npm test                 # toutes les gates listées dans package.json
+npm run test:kit         # gates pures kit — 100 % vertes partout (fail-fast)
+npm run test:brands      # gates lisant les repos marque (skip auto-détecté)
+npm run test:env         # gates environnementales (opt-in, skip explicite)
+npm test                 # toutes les gates en un node --test (CI complet)
 npm run build:cjs        # dual CJS uniquement
 npm run build:packages   # tsc packages + CJS
 npm run kit:impact -- --package=@creezio/platform-core
@@ -28,6 +31,25 @@ node --test scripts/test-phase-p29.mjs
 node --test scripts/test-phase-c2.mjs
 node --test scripts/test-phase-o11.mjs
 ```
+
+## Suites de gates (`test-fast.mjs`)
+
+`npm run test:kit` / `test:brands` / `test:env` partagent le même runner
+fail-fast (`scripts/test-fast.mjs`) : séquentiel, stop 1re rouge,
+`--from`/`--only`/`--skip`/`--keep-going`, journal JSONL
+`/tmp/creezio-test-fast.log`. La liste des gates vient du script npm `test`
+(SoT unique) ; la suite de chaque gate est **détectée automatiquement** —
+aucune liste figée de noms, aucun assert affaibli.
+
+| Suite | Détection | Prérequis | Skip |
+|-------|-----------|-----------|------|
+| `kit` | défaut (ne lit que ce repo) | aucun — doit être 100 % verte partout | jamais |
+| `brands` | la gate importe `scripts/lib/brand-roots.mjs` / `lib/intention-twins.mjs` ou résout `dockerRoot` | repos marque présents **et** synchronisés (`crm/vendor/creezio` existant) pour chaque marque référencée (`tempoflow2`, `certivan-app`, `fidu`) | auto : par marque manquante/désynchronisée, raison affichée |
+| `env` | liste `ENV_GATES` dans `test-fast.mjs` | `test-os-cold-warm.mjs` : `CREEZIO_COLD_WARM=1` (bootstrap embeds réseau, ~4 Go `/tmp`, ~10 min) ; `test-phase-factory-prd*.mjs` : `CREEZIO_FACTORY_PRD=1` (npm install d'une app générée, binaire Electron téléchargeable) | opt-in : skip explicite tant que la variable n'est pas posée |
+
+Workflow quotidien : `npm run test:kit` → première rouge → corriger →
+`npm run test:kit -- --from <gate>`. Sur un poste avec les repos marque à
+jour, `npm run test:brands` lance les 55 gates M/N/O/P + intention.
 
 ## Organisation
 

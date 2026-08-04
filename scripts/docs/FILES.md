@@ -8,7 +8,7 @@ Gates de phases + outils kit.
 | [`kit-version.mjs`](../kit-version.mjs) | !usrbinenv node |
 | [`propagation-impact.mjs`](../propagation-impact.mjs) | !usrbinenv node |
 | [`sync-creezio-vendor.sh`](../sync-creezio-vendor.sh) | !usrbinenv bash |
-| [`test-fast.mjs`](../test-fast.mjs) | Runner gates fail-fast lisible (`npm run test:fast`) — séquentiel, stop 1re rouge, `--from`/`--only`/`--skip`, skip-list env VPS documenté, JSONL /tmp/creezio-test-fast.log |
+| [`test-fast.mjs`](../test-fast.mjs) | Runner gates fail-fast lisible (`npm run test:kit`/`test:brands`/`test:env`) — suites auto-détectées (matrice dans README), séquentiel, stop 1re rouge, `--from`/`--only`/`--skip`, JSONL /tmp/creezio-test-fast.log |
 | [`test-mails-inbox.mjs`](../test-mails-inbox.mjs) |  |
 | [`test-phase-b.mjs`](../test-phase-b.mjs) | !usrbinenv node |
 | [`test-phase-b2.mjs`](../test-phase-b2.mjs) | !usrbinenv node |
