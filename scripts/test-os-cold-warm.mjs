@@ -12,10 +12,10 @@ import path from "node:path";
 import { test } from "node:test";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { startBrandKernelHarness } from "../packages/app-runtime/dist/index.js";
-import { resolveProbeBrandRoot } from "./lib/resolve-probe-brand.mjs";
+import { resolveProbeBrandServerDir } from "./lib/resolve-probe-brand.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const TF3 = resolveProbeBrandRoot(ROOT);
+const TF3 = resolveProbeBrandServerDir(ROOT);
 
 /* Hygiène /tmp : chaque run crée un userData de plusieurs Go sous
  * os.tmpdir()/os-cold-warm-*. On balaye au démarrage les restes de plus

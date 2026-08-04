@@ -65,12 +65,15 @@ test("docker/server artefacts présents", () => {
   // Sécurité : ports publiés sur loopback par défaut (opt-in SERVER_BIND).
   assert.match(compose, /\$\{SERVER_BIND:-127\.0\.0\.1\}:\$\{SERVER_1_PORT:-18791\}/);
   assert.match(compose, /\$\{SERVER_BIND:-127\.0\.0\.1\}:\$\{SERVER_2_PORT:-18792\}/);
-  // UI Next incluse dans l'image (dockerignore v2 avec ré-inclusions).
+  // UI Next incluse dans l'image (dockerignore v3 monorepo avec ré-inclusions
+  // server/ui + compat layout plat legacy).
   const di = fs.readFileSync(
     path.join(dockerServer, "brand.dockerignore"),
     "utf8",
   );
-  assert.match(di, /creezio-dockerignore v2/);
+  assert.match(di, /creezio-dockerignore v3/);
+  assert.match(di, /!server\/ui\/\.next\/standalone\/\*\*/);
+  assert.match(di, /!server\/ui\/\.next\/static\/\*\*/);
   assert.match(di, /!ui\/\.next\/standalone\/\*\*/);
   assert.match(di, /!ui\/\.next\/static\/\*\*/);
 });

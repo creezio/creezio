@@ -7,29 +7,39 @@
 #                      (CREEZIO_BROWSER_SIDECAR=1, profils /data/browser).
 #                      L'image base n'est jamais alourdie.
 #
+# Layout marque (SERVER_DIR) :
+#   server (défaut) — monorepo 3 livrables : client/ server/ admin/ + vendor racine
+#   .               — layout plat legacy (tout à la racine marque)
+#
 # Build context = racine marque (ex. tempoflow3) :
 #   docker build -f $CREEZIO_KIT_ROOT/docker/server/Dockerfile \
+#     --build-arg SERVER_DIR=server \
 #     -t creezio-server-<brandId>:local /path/to/brand
 #
-# Prérequis marque : `npm run build:runtime` (dossier build/ présent)
-#   + `npm run build:ui` si ui/ existe (CRM web servi par le container).
+# Prérequis marque : `npm run build:runtime` (dossier <SERVER_DIR>/build présent)
+#   + `npm run build:ui` si <SERVER_DIR>/ui existe (CRM web servi par le container).
 # Runtime : startBrandKernelHarness via scripts/brand-kernel-harness.mjs
 #   → boot-status HTTP dès le démarrage (GET /api/v1/os/boot-status)
 #   → reverse-proxy UI Next standalone (CRM navigateur sur /)
 # Bind HTTP Docker : CREEZIO_HTTP_HOST=0.0.0.0 (publier sur 127.0.0.1 côté hôte)
 
 ARG SERVER_VARIANT=base
+ARG SERVER_DIR=server
 
 FROM node:22-bookworm-slim AS deps
+ARG SERVER_DIR
 RUN apt-get update \
   && apt-get install -y --no-install-recommends \
     python3 make g++ ca-certificates curl \
   && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
-COPY package.json package-lock.json ./
+# Deps du livrable serveur (file:vendor/creezio/* → symlink vers /app/vendor)
+COPY ${SERVER_DIR}/package.json ${SERVER_DIR}/package-lock.json ./server-deps/
 COPY vendor ./vendor
 # electron est en devDependencies — omit=dev = image serveur sans GUI
-RUN npm ci --omit=dev \
+RUN ln -sfn ../vendor ./server-deps/vendor \
+  && cd server-deps \
+  && npm ci --omit=dev \
   && npm rebuild better-sqlite3
 
 # Meilisearch Linux embarqué — recherche réelle (plus de sql-fallback).
@@ -44,23 +54,28 @@ RUN apt-get update \
   && /usr/local/bin/meilisearch --version
 
 FROM node:22-bookworm-slim AS runtime-base
+ARG SERVER_DIR
 RUN apt-get update \
   && apt-get install -y --no-install-recommends ca-certificates curl \
   && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 
-COPY --from=deps /app/node_modules ./node_modules
-COPY --from=deps /app/package.json ./package.json
-COPY --from=deps /app/vendor ./vendor
 COPY --from=meili /usr/local/bin/meilisearch /opt/creezio/bin/meilisearch
 
-# Sources / artefacts marque (voir brand.dockerignore —
-# inclut ui/.next/standalone + static si la marque a une UI Next)
+# Sources / artefacts marque (voir brand.dockerignore v3 —
+# inclut <SERVER_DIR>/ui/.next/standalone + static si la marque a une UI Next)
 COPY . .
 
-# Garantir les deps rebuildées (COPY . ne ramène pas node_modules grâce au dockerignore)
-COPY --from=deps /app/node_modules ./node_modules
+# Deps rebuildées + vendor kit (COPY . ne ramène pas node_modules grâce au dockerignore).
+# node_modules à la RACINE contexte : les packages vendor résolvent leurs pairs
+# @creezio/* + deps npm par walk-up realpath (vendor/… → /app/node_modules).
 COPY --from=deps /app/vendor ./vendor
+COPY --from=deps /app/server-deps/node_modules ./node_modules
+
+# Workdir = livrable serveur (monorepo : /app/server ; plat : /app).
+# Le symlink vendor → ../vendor est recréé si absent (layout plat = no-op).
+WORKDIR /app/${SERVER_DIR}
+RUN [ -e vendor ] || ln -s ../vendor vendor
 
 ENV NODE_ENV=production \
     CREEZIO_HTTP_HOST=0.0.0.0 \

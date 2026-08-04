@@ -11,7 +11,7 @@ import os from "node:os";
 import path from "node:path";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
-import { resolveProbeBrandRoot } from "./lib/resolve-probe-brand.mjs";
+import { resolveProbeBrandServerDir } from "./lib/resolve-probe-brand.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const DEMO = path.join(ROOT, "apps/demobrand");
@@ -36,7 +36,7 @@ test("electron.runtime launch smoke (si electron+xvfb + probe brand)", async () 
     console.log("skip: CREEZIO_SKIP_ELECTRON_SMOKE=1");
     return;
   }
-  const probe = resolveProbeBrandRoot(ROOT);
+  const probe = resolveProbeBrandServerDir(ROOT);
   if (!probe) {
     console.log(
       "skip: probe brand absent (CREEZIO_TEMPOFLOW3_ROOT / ../tempoflow3)",

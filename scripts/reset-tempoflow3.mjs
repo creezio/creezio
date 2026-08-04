@@ -16,10 +16,14 @@ import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { resolveProbeBrandRoot } from "./lib/resolve-probe-brand.mjs";
+import {
+  resolveProbeBrandRoot,
+  resolveProbeBrandServerDir,
+} from "./lib/resolve-probe-brand.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const APP = resolveProbeBrandRoot(ROOT);
+const SERVER = resolveProbeBrandServerDir(ROOT);
 const CLI = path.join(ROOT, "packages/factory/bin/creezio.js");
 const noProof = process.argv.includes("--no-proof");
 
@@ -61,7 +65,24 @@ const stamp = new Date().toISOString().replace(/[:.]/g, "-");
 const backup = path.join("/tmp", `tf3-reset-${stamp}`);
 console.log(`APP=${APP}`);
 console.log(`backup → ${backup}`);
-fs.cpSync(APP, backup, { recursive: true });
+const SKIP_BACKUP = new Set([
+  "node_modules",
+  "docker-data",
+  "dist-electron",
+  "dist-electron-server",
+  "dumps",
+]);
+fs.cpSync(APP, backup, {
+  recursive: true,
+  filter: (src) => {
+    const rel = path.relative(APP, src);
+    const top = rel.split(path.sep)[0];
+    const second = rel.split(path.sep)[1];
+    if (SKIP_BACKUP.has(top)) return false;
+    if (second && SKIP_BACKUP.has(second)) return false;
+    return true;
+  },
+});
 
 run(process.execPath, [CLI, "brand", "doctor", "--spec", SPEC]);
 run(process.execPath, [
@@ -76,7 +97,7 @@ run(process.execPath, [
 ]);
 
 const mod = fs.readFileSync(
-  path.join(APP, "src/electron/brand-module-api.ts"),
+  path.join(SERVER, "src/electron/brand-module-api.ts"),
   "utf8",
 );
 if (!mod.includes("creezio:owned-by-brand")) {
@@ -86,18 +107,18 @@ if (!mod.includes("creezio:owned-by-brand")) {
 } else {
   console.log("OK brand-module-api préservé (owned-by-brand)");
 }
-if (!fs.existsSync(path.join(APP, "src/electron/brand-bonus-api.ts"))) {
+if (!fs.existsSync(path.join(SERVER, "src/electron/brand-bonus-api.ts"))) {
   console.warn("WARN: brand-bonus-api absent après apply");
 } else {
   console.log("OK brand-bonus-api présent");
 }
 
-run("npm", ["run", "build:electron"], APP);
-run("npm", ["run", "build:ui"], APP);
+run("npm", ["run", "build:electron"], SERVER);
+run("npm", ["run", "build:ui"], SERVER);
 
 if (!noProof) {
-  run("npm", ["run", "proof:oracle"], APP);
-  run("npm", ["run", "proof:hard"], APP);
+  run("npm", ["run", "proof:oracle"], SERVER);
+  run("npm", ["run", "proof:hard"], SERVER);
 }
 
 console.log(`\nRESET OK — backup=${backup}`);

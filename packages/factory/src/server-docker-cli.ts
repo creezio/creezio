@@ -168,7 +168,22 @@ function ensureDocker(): void {
 }
 
 /** Marqueur de version du template — un .dockerignore sans lui est rafraîchi. */
-const DOCKERIGNORE_MARKER = "# creezio-dockerignore v2";
+const DOCKERIGNORE_MARKER = "# creezio-dockerignore v3";
+
+/**
+ * Layout monorepo 3 livrables (client/ server/ admin/) : le livrable serveur
+ * vit sous `<brandRoot>/server`. Layout plat legacy : tout à la racine.
+ */
+export function resolveBrandServerDir(brandRoot: string): string {
+  const monorepo = path.join(brandRoot, "server");
+  if (fs.existsSync(path.join(monorepo, "package.json"))) return monorepo;
+  return brandRoot;
+}
+
+/** `server` (monorepo) ou `.` (plat) — consommé par le Dockerfile (ARG SERVER_DIR). */
+export function brandServerDirRel(brandRoot: string): string {
+  return resolveBrandServerDir(brandRoot) === brandRoot ? "." : "server";
+}
 
 function ensureBrandDockerignore(brandRoot: string, kit: string): void {
   const dest = path.join(brandRoot, ".dockerignore");
@@ -178,7 +193,7 @@ function ensureBrandDockerignore(brandRoot: string, kit: string): void {
     const cur = fs.readFileSync(dest, "utf8");
     if (cur.includes(DOCKERIGNORE_MARKER)) return;
     fs.copyFileSync(src, dest);
-    console.log(`~ .dockerignore rafraîchi (template kit v2 — UI Next incluse)`);
+    console.log(`~ .dockerignore rafraîchi (template kit v3 — layout monorepo)`);
     return;
   }
   fs.copyFileSync(src, dest);
@@ -188,6 +203,10 @@ function ensureBrandDockerignore(brandRoot: string, kit: string): void {
 function resolvePaths(args: ServerDockerArgs): {
   kit: string;
   brandRoot: string;
+  /** Livrable serveur : `<brandRoot>/server` (monorepo) ou brandRoot (plat). */
+  serverDir: string;
+  /** `server` ou `.` — transmis au Dockerfile via ARG SERVER_DIR. */
+  serverDirRel: string;
   composeFile: string;
   dockerfile: string;
   project: string;
@@ -211,6 +230,8 @@ function resolvePaths(args: ServerDockerArgs): {
   return {
     kit,
     brandRoot,
+    serverDir: resolveBrandServerDir(brandRoot),
+    serverDirRel: brandServerDirRel(brandRoot),
     composeFile,
     dockerfile,
     project: args.project || "creezio-servers",
@@ -243,6 +264,8 @@ function composeEnv(
     BRAND_ROOT: paths.brandRoot,
     CREEZIO_KIT_ROOT: paths.kit,
     BRAND_ID: brandId,
+    // Layout monorepo : livrable serveur sous server/ (Dockerfile ARG).
+    SERVER_DIR: paths.serverDirRel,
     // Image par marque — compose et `docker run` (registre) partagent le tag.
     SERVER_IMAGE: serverImageName(brandId),
     DATA_DIR:
@@ -252,18 +275,22 @@ function composeEnv(
 }
 
 function inferBrandId(brandRoot: string): string | null {
-  try {
-    const pkg = JSON.parse(
-      fs.readFileSync(path.join(brandRoot, "package.json"), "utf8"),
-    ) as { name?: string; creezio?: { brandId?: string } };
-    if (pkg.creezio?.brandId) return pkg.creezio.brandId;
-    if (!pkg.name) return null;
-    // "@creezio/app-tempoflow3" → "tempoflow3" (tag image / nom container).
-    const last = pkg.name.split("/").pop() || pkg.name;
-    return last.replace(/^app-/, "").replace(/[^a-z0-9-]/gi, "") || null;
-  } catch {
-    return null;
+  for (const dir of [brandRoot, resolveBrandServerDir(brandRoot)]) {
+    try {
+      const pkg = JSON.parse(
+        fs.readFileSync(path.join(dir, "package.json"), "utf8"),
+      ) as { name?: string; creezio?: { brandId?: string } };
+      if (pkg.creezio?.brandId) return pkg.creezio.brandId;
+      if (!pkg.name) continue;
+      // "@creezio/app-tempoflow3" → "tempoflow3" (tag image / nom container).
+      const last = pkg.name.split("/").pop() || pkg.name;
+      const id = last.replace(/^app-/, "").replace(/[^a-z0-9-]/gi, "");
+      if (id) return id;
+    } catch {
+      /* essayer le dossier suivant */
+    }
   }
+  return null;
 }
 
 /** Nom produit pour raccourcis (TempoFlow → TempoFlow-Server-1.desktop). */
@@ -277,13 +304,15 @@ export function inferProductName(brandRoot: string): string {
     const m = text.match(/^\s*brandName:\s*["']?([^\n#"']+)/m);
     if (m?.[1]) return m[1].trim();
   }
-  try {
-    const pkg = JSON.parse(
-      fs.readFileSync(path.join(brandRoot, "package.json"), "utf8"),
-    ) as { creezio?: { productName?: string }; description?: string };
-    if (pkg.creezio?.productName) return pkg.creezio.productName;
-  } catch {
-    /* ignore */
+  for (const dir of [brandRoot, resolveBrandServerDir(brandRoot)]) {
+    try {
+      const pkg = JSON.parse(
+        fs.readFileSync(path.join(dir, "package.json"), "utf8"),
+      ) as { creezio?: { productName?: string }; description?: string };
+      if (pkg.creezio?.productName) return pkg.creezio.productName;
+    } catch {
+      /* ignore */
+    }
   }
   const id = inferBrandId(brandRoot) || "Brand";
   return id.charAt(0).toUpperCase() + id.slice(1);
@@ -291,6 +320,8 @@ export function inferProductName(brandRoot: string): string {
 
 function resolveServerIcon(brandRoot: string): string | null {
   for (const rel of [
+    "server/resources/icons/server.png",
+    "client/resources/icons/server.png",
     "resources/icons/server.png",
     "brand-spec/icons/server.png",
     "icons/server.png",
@@ -530,7 +561,8 @@ export function writeServerDesktopShortcuts(opts: {
  * requis par le `npm ci` de l'image).
  */
 function ensureBrandStandalone(brandRoot: string, kit: string): void {
-  const pkgPath = path.join(brandRoot, "package.json");
+  const serverDir = resolveBrandServerDir(brandRoot);
+  const pkgPath = path.join(serverDir, "package.json");
   const pkg = JSON.parse(fs.readFileSync(pkgPath, "utf8")) as {
     dependencies?: Record<string, string>;
     devDependencies?: Record<string, string>;
@@ -551,6 +583,16 @@ function ensureBrandStandalone(brandRoot: string, kit: string): void {
     }
   }
   if (creezioPkgs.size === 0) return;
+
+  // Monorepo : vendor partagé racine + symlink server/vendor → ../vendor
+  // (les deps restent file:vendor/creezio/* dans server/package.json).
+  if (serverDir !== brandRoot) {
+    const link = path.join(serverDir, "vendor");
+    if (!fs.existsSync(link)) {
+      fs.symlinkSync("../vendor", link);
+      console.log("+ symlink server/vendor → ../vendor");
+    }
+  }
 
   const vendorDir = path.join(brandRoot, "vendor/creezio");
   if (!fs.existsSync(path.join(vendorDir, "SYNC.json"))) {
@@ -599,29 +641,30 @@ function ensureBrandStandalone(brandRoot: string, kit: string): void {
     console.log("package.json : deps @creezio/* → file:vendor/creezio/*");
   }
   if (
-    !fs.existsSync(path.join(brandRoot, "node_modules")) ||
-    !fs.existsSync(path.join(brandRoot, "package-lock.json")) ||
+    !fs.existsSync(path.join(serverDir, "node_modules")) ||
+    !fs.existsSync(path.join(serverDir, "package-lock.json")) ||
     rewrote
   ) {
     console.log("npm install (node_modules + package-lock)…");
     run("npm", ["install", "--no-audit", "--no-fund"], process.env, {
-      cwd: brandRoot,
+      cwd: serverDir,
     });
   }
 }
 
 function ensureElectronBuild(brandRoot: string): void {
-  const marker = path.join(brandRoot, "build/electron/app-manifest.js");
+  const serverDir = resolveBrandServerDir(brandRoot);
+  const marker = path.join(serverDir, "build/electron/app-manifest.js");
   if (fs.existsSync(marker)) return;
   // build:runtime = nom nominal ; build:electron = alias historique.
   const pkg = JSON.parse(
-    fs.readFileSync(path.join(brandRoot, "package.json"), "utf8"),
+    fs.readFileSync(path.join(serverDir, "package.json"), "utf8"),
   ) as { scripts?: Record<string, string> };
   const script = pkg.scripts?.["build:runtime"]
     ? "build:runtime"
     : "build:electron";
   console.log(`build/electron manquant — npm run ${script}…`);
-  run("npm", ["run", script], process.env, { cwd: brandRoot });
+  run("npm", ["run", script], process.env, { cwd: serverDir });
   if (!fs.existsSync(marker)) {
     throw new Error(`${script} n'a pas produit ${marker}`);
   }
@@ -632,7 +675,8 @@ function ensureElectronBuild(brandRoot: string): void {
  * Si `ui/` existe sans build standalone → `npm run build:ui` (ou build --prefix ui).
  */
 function ensureUiBuild(brandRoot: string): void {
-  const uiDir = path.join(brandRoot, "ui");
+  const serverDir = resolveBrandServerDir(brandRoot);
+  const uiDir = path.join(serverDir, "ui");
   if (!fs.existsSync(path.join(uiDir, "package.json"))) {
     console.log("⚠ pas de ui/ — le container servira l'API sans CRM web");
     return;
@@ -647,13 +691,13 @@ function ensureUiBuild(brandRoot: string): void {
   }
   console.log("ui/.next/standalone manquant — build UI Next…");
   const pkg = JSON.parse(
-    fs.readFileSync(path.join(brandRoot, "package.json"), "utf8"),
+    fs.readFileSync(path.join(serverDir, "package.json"), "utf8"),
   ) as { scripts?: Record<string, string> };
   if (pkg.scripts?.["build:ui"]) {
-    run("npm", ["run", "build:ui"], process.env, { cwd: brandRoot });
+    run("npm", ["run", "build:ui"], process.env, { cwd: serverDir });
   } else {
     run("npm", ["run", "build", "--prefix", "ui"], process.env, {
-      cwd: brandRoot,
+      cwd: serverDir,
     });
   }
   if (!fs.existsSync(marker)) {
@@ -678,6 +722,8 @@ function dockerBuildImage(
       paths.dockerfile,
       "--build-arg",
       `SERVER_VARIANT=${variant}`,
+      "--build-arg",
+      `SERVER_DIR=${paths.serverDirRel}`,
       "-t",
       opts?.image || String(env.SERVER_IMAGE),
       paths.brandRoot,
@@ -756,21 +802,73 @@ type AdminConfig = {
   brandRoots: string[];
 };
 
+/** Config runtime (avec secret) — gitignorée sous docker-data/. */
 function adminConfigPath(brandRoot: string): string {
   return path.join(brandRoot, "docker-data", "server-admin.json");
+}
+
+/**
+ * Config versionnable SANS secret — layout monorepo : `<brandRoot>/admin/`.
+ * Sert de SoT pour port / user / brandRoots ; le mot de passe reste
+ * exclusivement dans `docker-data/server-admin.json` (runtime, gitignoré).
+ */
+function adminVersionedConfigPath(brandRoot: string): string {
+  return path.join(brandRoot, "admin", "server-admin.json");
+}
+
+function saveAdminConfig(brandRoot: string, cfg: AdminConfig): void {
+  const runtimeFile = adminConfigPath(brandRoot);
+  fs.mkdirSync(path.dirname(runtimeFile), { recursive: true });
+  fs.writeFileSync(runtimeFile, JSON.stringify(cfg, null, 2) + "\n", {
+    mode: 0o600,
+  });
+  // Miroir versionnable sans secret — seulement si le dossier admin/ existe
+  // (layout 3 livrables) : ne pas polluer les marques plates legacy.
+  const versionedFile = adminVersionedConfigPath(brandRoot);
+  if (fs.existsSync(path.dirname(versionedFile))) {
+    const { pass: _pass, ...noSecret } = cfg;
+    fs.writeFileSync(
+      versionedFile,
+      JSON.stringify(noSecret, null, 2) + "\n",
+    );
+  }
 }
 
 function loadOrInitAdminConfig(
   brandRoot: string,
   port?: number,
 ): AdminConfig {
-  const file = adminConfigPath(brandRoot);
   let cfg: AdminConfig | null = null;
   try {
-    const raw = JSON.parse(fs.readFileSync(file, "utf8")) as AdminConfig;
+    const raw = JSON.parse(
+      fs.readFileSync(adminConfigPath(brandRoot), "utf8"),
+    ) as AdminConfig;
     if (raw && raw.user && raw.pass) cfg = raw;
   } catch {
     /* premier up */
+  }
+  // Défauts versionnés (admin/server-admin.json, sans pass) : port / user /
+  // brandRoots — fusionnés avec le runtime (union brandRoots).
+  try {
+    const versioned = JSON.parse(
+      fs.readFileSync(adminVersionedConfigPath(brandRoot), "utf8"),
+    ) as Partial<AdminConfig>;
+    if (versioned && typeof versioned === "object") {
+      if (!cfg) {
+        cfg = {
+          port: versioned.port || ADMIN_DEFAULT_PORT,
+          user: versioned.user || "admin",
+          pass: crypto.randomBytes(12).toString("base64url"),
+          brandRoots: [...(versioned.brandRoots || [])],
+        };
+      } else {
+        for (const root of versioned.brandRoots || []) {
+          if (!cfg.brandRoots.includes(root)) cfg.brandRoots.push(root);
+        }
+      }
+    }
+  } catch {
+    /* pas de config versionnée */
   }
   if (!cfg) {
     cfg = {
@@ -782,8 +880,7 @@ function loadOrInitAdminConfig(
   }
   if (port && port > 0) cfg.port = port;
   if (!cfg.brandRoots.includes(brandRoot)) cfg.brandRoots.push(brandRoot);
-  fs.mkdirSync(path.dirname(file), { recursive: true });
-  fs.writeFileSync(file, JSON.stringify(cfg, null, 2) + "\n", { mode: 0o600 });
+  saveAdminConfig(brandRoot, cfg);
   return cfg;
 }
 
@@ -810,10 +907,7 @@ async function runServerAdminSubcommand(
       console.log(`= marque déjà enregistrée: ${abs}`);
     } else {
       cfg.brandRoots.push(abs);
-      const file = adminConfigPath(paths.brandRoot);
-      fs.writeFileSync(file, JSON.stringify(cfg, null, 2) + "\n", {
-        mode: 0o600,
-      });
+      saveAdminConfig(paths.brandRoot, cfg);
       console.log(`+ marque ajoutée à l'admin: ${abs}`);
     }
     const st = dockerContainerState(ADMIN_CONTAINER);

@@ -11,10 +11,10 @@ import path from "node:path";
 import { test } from "node:test";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { startBrandKernelHarness } from "../packages/app-runtime/dist/index.js";
-import { resolveProbeBrandRoot } from "./lib/resolve-probe-brand.mjs";
+import { resolveProbeBrandServerDir } from "./lib/resolve-probe-brand.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const TF3 = resolveProbeBrandRoot(ROOT);
+const TF3 = resolveProbeBrandServerDir(ROOT);
 
 test("mcp oauth well-known + DCR + admin status", async () => {
   if (!TF3 || !fs.existsSync(path.join(TF3, "src/electron/brand-migrations.ts"))) {

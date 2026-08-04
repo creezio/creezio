@@ -1,4 +1,5 @@
-# creezio-dockerignore v2 — UI Next standalone incluse dans l'image.
+# creezio-dockerignore v3 — layout monorepo 3 livrables (client/ server/ admin/)
+# + compat layout plat legacy. UI Next standalone incluse dans l'image.
 # Copié en `.dockerignore` à la racine marque avant `docker build`
 # (CLI `creezio server-docker build` le pose / rafraîchit si marqueur absent).
 
@@ -19,6 +20,8 @@
 **/data
 **/docker-data
 **/docker-data/**
+client
+admin
 **/*.AppImage
 **/*.exe
 **/*.blockmap
@@ -36,6 +39,12 @@ node-compile-cache
 
 # UI Next standalone (CRM navigateur dans le container) — ré-inclusion après
 # l'exclusion **/ui et **/node_modules (dockerignore : dernier motif gagnant).
+# Layout monorepo (server/ui) :
+!server/ui/.next/standalone/**
+!server/ui/.next/static/**
+!server/ui/.next/BUILD_ID
+!server/ui/public/**
+# Layout plat legacy (ui à la racine) :
 !ui/.next/standalone/**
 !ui/.next/static/**
 !ui/.next/BUILD_ID

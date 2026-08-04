@@ -18,10 +18,10 @@ import {
   unwrapBootProfileResult,
 } from "../packages/platform-core/dist/index.js";
 import { startBrandKernelHarness } from "../packages/app-runtime/dist/index.js";
-import { resolveProbeBrandRoot } from "./lib/resolve-probe-brand.mjs";
+import { resolveProbeBrandServerDir } from "./lib/resolve-probe-brand.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const TF3 = resolveProbeBrandRoot(ROOT);
+const TF3 = resolveProbeBrandServerDir(ROOT);
 
 test("connection-profile pure sanitize + resolveBoot", () => {
   const local = defaultLocalProfile();
