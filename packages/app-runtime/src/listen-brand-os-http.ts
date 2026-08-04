@@ -84,6 +84,40 @@ function advertiseBaseUrl(host: string, port: number): string {
   return `http://${advertise}:${port}`;
 }
 
+/** Proxy HTTP brut (stream) — UI Next standalone derrière le port unique. */
+function proxyRawHttp(
+  req: http.IncomingMessage,
+  res: http.ServerResponse,
+  targetBase: string,
+): void {
+  const target = new URL(targetBase);
+  const upstream = http.request(
+    {
+      hostname: target.hostname,
+      port: target.port,
+      path: req.url || "/",
+      method: req.method || "GET",
+      headers: {
+        ...req.headers,
+        host: `${target.hostname}:${target.port}`,
+      },
+    },
+    (upRes) => {
+      res.writeHead(upRes.statusCode || 502, upRes.headers);
+      upRes.pipe(res);
+    },
+  );
+  upstream.on("error", (err) => {
+    if (!res.headersSent) {
+      res.writeHead(502, { "content-type": "application/json" });
+    }
+    res.end(
+      JSON.stringify({ ok: false, error: "ui_proxy_error", detail: err.message }),
+    );
+  });
+  req.pipe(upstream);
+}
+
 export async function listenBrandOsHttp(opts: {
   api: ApiKernel;
   mcp: McpFacade;
@@ -100,9 +134,31 @@ export async function listenBrandOsHttp(opts: {
    * Expose POST /api/v1/email/inbound (Worker Cloudflare).
    */
   getMailsStore?: () => SqliteMailsStore | null;
+  /**
+   * Handoff early-listen boot (listenBrandBootHttp) : reprend le même
+   * http.Server déjà à l'écoute — zéro coupure de port pendant le boot.
+   */
+  existingServer?: http.Server;
+  /**
+   * Splash serveur : modèle boot exposé sur GET /api/v1/os/boot-status
+   * (voir createBootProgressReporter).
+   */
+  getBootStatus?: () => unknown | null;
+  /**
+   * Reverse-proxy UI Next standalone (CRM navigateur) : les chemins non-API
+   * sont proxifiés vers cette base (démarrée par startBrandUiPlane).
+   * `null` tant que l'UI n'est pas prête → 503 ui_starting.
+   */
+  uiProxyTarget?: () => string | null;
 }): Promise<BrandOsHttpHandle> {
   const host = resolveBrandOsHttpHost(opts.host);
-  const port = opts.port && opts.port > 0 ? opts.port : await findFreePort();
+  const existingAddr = opts.existingServer?.address();
+  const port =
+    typeof existingAddr === "object" && existingAddr?.port
+      ? existingAddr.port
+      : opts.port && opts.port > 0
+        ? opts.port
+        : await findFreePort();
   const emailSurface = mountBrandEmailSurface(
     opts.getMailsStore ? { getStore: opts.getMailsStore } : undefined,
   );
@@ -136,7 +192,10 @@ export async function listenBrandOsHttp(opts: {
     res.end(ab);
   }
 
-  const server = http.createServer(async (req, res) => {
+  const handleRequest = async (
+    req: http.IncomingMessage,
+    res: http.ServerResponse,
+  ) => {
     try {
       if (req.method === "OPTIONS") {
         send(res, 204, {});
@@ -159,6 +218,17 @@ export async function listenBrandOsHttp(opts: {
         opts.mcpSurfaceHandlesPath?.(pathname)
       ) {
         await proxyHono(req, res, url, opts.mcpSurfaceFetch);
+        return;
+      }
+
+      // Splash serveur — même modèle que le desktop, en JSON (boot terminé).
+      if (pathname === "/api/v1/os/boot-status" && req.method === "GET") {
+        const model = opts.getBootStatus?.() ?? null;
+        if (!model) {
+          send(res, 404, { ok: false, error: "boot_status_unavailable" });
+          return;
+        }
+        send(res, 200, { ok: true, booting: false, ...(model as object) });
         return;
       }
 
@@ -224,9 +294,17 @@ export async function listenBrandOsHttp(opts: {
         const publicMcp = tunnel.publicMcpUrl?.() ?? null;
         const mcpTools = await opts.mcp.listTools();
         const mounts = opts.api.listMounts();
+        // Docker/headless : binaires posés dans l'image (MEILI_BINARY) —
+        // pas de vendors kit sur disque. CREEZIO_SKIP_KIT_BINARIES=1 assouplit
+        // les checks vendors (soft) sans affaiblir le mode desktop.
+        const skipKitBinaries =
+          process.env.CREEZIO_SKIP_KIT_BINARIES === "1";
+        const envMeili = String(process.env.MEILI_BINARY || "").trim();
+        const meiliAvailable =
+          Boolean(bins.meili) || Boolean(envMeili && fs.existsSync(envMeili));
         const checks = {
           osComposed: true,
-          kitMeili: Boolean(bins.meili),
+          kitMeili: meiliAvailable,
           kitCloudflared: Boolean(bins.cloudflared),
           kitN8nVendor: fs.existsSync(n8nVendorManifest),
           kitHermesVendor: fs.existsSync(hermesVendorManifest),
@@ -238,11 +316,12 @@ export async function listenBrandOsHttp(opts: {
         };
         // Ready P&P = composition + vendors/binaires kit + surface MCP + mounts.
         // Entry/binary installés = soft (ensure first-run peut les poser).
+        // En mode Docker (skipKitBinaries), vendors n8n/Hermes = soft.
         const ready =
           checks.osComposed &&
           checks.kitMeili &&
-          checks.kitN8nVendor &&
-          checks.kitHermesVendor &&
+          (skipKitBinaries ||
+            (checks.kitN8nVendor && checks.kitHermesVendor)) &&
           checks.tunnelMcpSurface &&
           checks.mcpTools &&
           checks.apiMounts;
@@ -250,6 +329,7 @@ export async function listenBrandOsHttp(opts: {
           ok: ready,
           ready,
           checks,
+          mode: skipKitBinaries ? "docker" : "desktop",
           publicMcp,
           hermesBinary,
           n8nEntry,
@@ -261,6 +341,12 @@ export async function listenBrandOsHttp(opts: {
             n8nEntry: checks.n8nEntry,
             hermesBinary: checks.hermesBinary,
             kitCloudflared: checks.kitCloudflared,
+            ...(skipKitBinaries
+              ? {
+                  kitN8nVendor: checks.kitN8nVendor,
+                  kitHermesVendor: checks.kitHermesVendor,
+                }
+              : {}),
           },
         });
         return;
@@ -752,6 +838,25 @@ export async function listenBrandOsHttp(opts: {
         return;
       }
 
+      // CRM navigateur : chemins non-API → UI Next standalone (proxy stream).
+      if (
+        opts.uiProxyTarget &&
+        !pathname.startsWith("/api/") &&
+        pathname !== "/mcp"
+      ) {
+        const target = opts.uiProxyTarget();
+        if (!target) {
+          send(res, 503, {
+            ok: false,
+            error: "ui_starting",
+            hint: "UI Next en cours de démarrage — réessayer dans quelques secondes",
+          });
+          return;
+        }
+        proxyRawHttp(req, res, target);
+        return;
+      }
+
       const query = Object.fromEntries(url.searchParams.entries());
       const body = ["POST", "PUT", "PATCH"].includes(req.method || "")
         ? await readBody(req)
@@ -771,12 +876,21 @@ export async function listenBrandOsHttp(opts: {
       const message = err instanceof Error ? err.message : String(err);
       send(res, 500, { error: message });
     }
-  });
+  };
 
-  await new Promise<void>((resolve, reject) => {
-    server.once("error", reject);
-    server.listen(port, host, () => resolve());
-  });
+  let server: http.Server;
+  if (opts.existingServer) {
+    // Handoff early-listen : même socket, nouveau handler.
+    server = opts.existingServer;
+    server.removeAllListeners("request");
+    server.on("request", handleRequest);
+  } else {
+    server = http.createServer(handleRequest);
+    await new Promise<void>((resolve, reject) => {
+      server.once("error", reject);
+      server.listen(port, host, () => resolve());
+    });
+  }
 
   return {
     port,

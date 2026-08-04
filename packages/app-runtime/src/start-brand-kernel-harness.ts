@@ -1,5 +1,11 @@
 /**
  * Harness Node — même façade HTTP + Meili + OS que le desktop, sans Electron.
+ *
+ * Boot serveur observable (parité splash desktop) :
+ *   - early-listen : `GET /api/v1/os/boot-status` répond dès le début du boot
+ *   - une ligne JSONL par transition d'étape (docker logs)
+ *   - journal ops `{dataDir}/ops/*.jsonl` (@creezio/observability)
+ *   - UI Next standalone servie derrière le port unique (CRM navigateur)
  */
 import fs from "node:fs";
 import os from "node:os";
@@ -16,11 +22,21 @@ import {
   type BrandKernelBoot,
 } from "./create-brand-kernel.js";
 import { composeBrandOs } from "./compose-brand-os.js";
+import { createBootProgressReporter } from "./boot-progress.js";
+import {
+  listenBrandBootHttp,
+  type BrandBootHttpHandle,
+} from "./listen-brand-boot-http.js";
 import { listenBrandOsHttp } from "./listen-brand-os-http.js";
 import {
   mcpSurfaceHandlesPath,
   mountBrandMcpSurface,
 } from "./mount-brand-mcp-surface.js";
+import {
+  hasBrandUiPlane,
+  startBrandUiPlane,
+  type BrandUiPlaneHandle,
+} from "./start-brand-ui-plane.js";
 import { warmBrandNativeHosts } from "./warm-brand-native-hosts.js";
 import type {
   BootBrandKernelFn,
@@ -50,6 +66,17 @@ function resolveBootKernel(
   );
 }
 
+function readAppVersion(appRoot: string): string {
+  try {
+    const pkg = JSON.parse(
+      fs.readFileSync(path.join(appRoot, "package.json"), "utf8"),
+    ) as { version?: string };
+    return pkg.version || "0.0.0";
+  } catch {
+    return "0.0.0";
+  }
+}
+
 export async function startBrandKernelHarness(
   config: StartBrandKernelHarnessConfig,
 ): Promise<BrandKernelHarnessHandle> {
@@ -60,6 +87,44 @@ export async function startBrandKernelHarness(
     process.env.METIER_DATA_DIR ||
     fs.mkdtempSync(path.join(os.tmpdir(), `${config.brandId}-kernel-`));
   const desktopProfile = config.desktopProfile || "full";
+  const warmNative =
+    desktopProfile === "full" && process.env.CREEZIO_NATIVE_WARM !== "0";
+
+  const boot = createBootProgressReporter({
+    brandId: config.brandId,
+    dataDir,
+    appVersion: readAppVersion(config.appRoot),
+    warmNative,
+    needIndex:
+      Boolean(config.meiliFeed) &&
+      config.skipIndex !== true &&
+      process.env.MEILI_SKIP_INDEX !== "1",
+  });
+
+  // Early-listen : boot-status disponible dès maintenant sur le port final
+  // (Docker/headless — port fixe requis). Handoff plus bas sans coupure.
+  let early: BrandBootHttpHandle | null = null;
+  if (
+    desktopProfile === "full" &&
+    port &&
+    port > 0 &&
+    process.env.CREEZIO_BOOT_HTTP !== "0"
+  ) {
+    try {
+      early = await listenBrandBootHttp({
+        brandId: config.brandId,
+        port,
+        getBootStatus: () => boot.model(),
+      });
+      console.log(
+        `brand-kernel-harness boot-status early sur :${port}/api/v1/os/boot-status`,
+      );
+    } catch (err) {
+      console.warn(
+        `[creezio-os] early-listen indisponible: ${err instanceof Error ? err.message : String(err)}`,
+      );
+    }
+  }
 
   // P&P : binaires kit (Meili/cloudflared) avant Meili/tunnel — jamais dans la marque.
   if (process.env.CREEZIO_SKIP_KIT_BINARIES !== "1") {
@@ -71,6 +136,28 @@ export async function startBrandKernelHarness(
     }
   }
 
+  // Catalogue marque (opt-in env côté marque) — parité boot desktop.
+  if (config.catalogHost && desktopProfile === "full") {
+    boot.go("catalog", { detail: "Vérification du catalogue…" });
+    try {
+      const state = await config.catalogHost.ensureCatalogPresent((p) => {
+        boot.patch("catalog", {
+          detail: p.detail || p.phase,
+          percent: p.percent,
+        });
+      });
+      boot.done("catalog", `Catalogue ${state}`);
+    } catch (err) {
+      boot.error(
+        "catalog",
+        err instanceof Error ? err.message : String(err),
+      );
+    }
+  } else {
+    boot.skip("catalog");
+  }
+
+  boot.go("migrations", { detail: "Migrations SQLite…" });
   const bootKernel = resolveBootKernel(config);
   const kernelBoot = bootKernel({
     userDataDir: dataDir,
@@ -78,6 +165,7 @@ export async function startBrandKernelHarness(
   const { api, runtime, close: closeKernel, mails } = kernelBoot;
   // Inbox Hono + getKitMailsStore (bindings marque / SMTP) partagent core.db.
   process.env.CREEZIO_CORE_DB_PATH = runtime.paths.core;
+  boot.done("migrations", "Base de données prête");
 
   const resourcesRoot = path.join(config.appRoot, "resources");
   let brandOs = null as ReturnType<typeof composeBrandOs> | null;
@@ -96,6 +184,9 @@ export async function startBrandKernelHarness(
   let meiliStop: (() => void) | null = null;
 
   if (config.meiliFeed) {
+    const doIndex =
+      config.skipIndex !== true && process.env.MEILI_SKIP_INDEX !== "1";
+    boot.go("meili", { detail: "Démarrage Meilisearch…" });
     const kitMeili = kitBinaryPaths().meili;
     const meiliBin =
       config.meiliBinary !== undefined
@@ -103,6 +194,12 @@ export async function startBrandKernelHarness(
         : process.env.MEILI_BINARY ||
           kitMeili ||
           path.join(config.appRoot, "resources", "meili");
+    if (doIndex) {
+      boot.go("index", {
+        detail: "Indexation des données…",
+        parallel: true,
+      });
+    }
     const meiliBoot = await maybeBootBrandMeili({
       binaryPath:
         meiliBin && fs.existsSync(meiliBin) ? meiliBin : null,
@@ -110,12 +207,27 @@ export async function startBrandKernelHarness(
       userDataDir: dataDir,
       dbPath: runtime.getBrand().path,
       feed: config.meiliFeed,
-      index: config.skipIndex !== true && process.env.MEILI_SKIP_INDEX !== "1",
+      index: doIndex,
     });
     searchEngine = meiliBoot.engine;
     if (meiliBoot.meili) {
       meiliStop = () => meiliBoot.meili?.stop();
     }
+    if (meiliBoot.engine === "meili") {
+      boot.done("meili", "Meilisearch prêt");
+      if (doIndex) boot.done("index", "Index prêt");
+    } else {
+      boot.patch("meili", {
+        status: meiliBoot.engine === "sql-fallback" ? "error" : "skip",
+        detail:
+          meiliBoot.engine === "sql-fallback"
+            ? "Binaire Meili indisponible — recherche SQL (dégradée)"
+            : "Recherche désactivée",
+      });
+      if (doIndex) boot.skip("index", "Meili indisponible");
+    }
+  } else {
+    boot.skip("meili", "Pas de feed Meili");
   }
 
   const mcp = createMcpFacade({
@@ -170,7 +282,18 @@ export async function startBrandKernelHarness(
     console.log(`brand-kernel-harness tunnel local mcp=${local.publicMcp}`);
   }
 
+  // UI plane Next standalone : proxy activé si le build existe.
+  let uiPlane: BrandUiPlaneHandle | null = null;
+  const uiAvailable =
+    desktopProfile === "full" && hasBrandUiPlane(config.appRoot);
+
+  boot.go("next", { detail: "Serveur HTTP…" });
   let mcpSurface: ReturnType<typeof mountBrandMcpSurface> | null = null;
+  if (desktopProfile !== "full" && early) {
+    // Profil lite : pas de handoff — libérer le port avant listen kernel.
+    await early.close();
+    early = null;
+  }
   const httpServer =
     desktopProfile === "full"
       ? await listenBrandOsHttp({
@@ -178,7 +301,12 @@ export async function startBrandKernelHarness(
           mcp,
           os: brandOs,
           ...(port && port > 0 ? { port } : {}),
+          ...(early ? { existingServer: early.server } : {}),
           getMailsStore: () => mails ?? null,
+          getBootStatus: () => boot.model(),
+          ...(uiAvailable
+            ? { uiProxyTarget: () => uiPlane?.baseUrl ?? null }
+            : {}),
           mcpSurfaceFetch: async (request) => {
             if (!mcpSurface) {
               return new Response(JSON.stringify({ error: "mcp_surface_pending" }), {
@@ -230,31 +358,72 @@ export async function startBrandKernelHarness(
     });
   }
 
+  // CRM navigateur : UI Next standalone derrière le port unique.
+  if (uiAvailable) {
+    boot.patch("next", { detail: "Démarrage UI Next (CRM)…" });
+    uiPlane = await startBrandUiPlane({
+      appRoot: config.appRoot,
+      metierBaseUrl: httpServer.baseUrl,
+    });
+    if (uiPlane.kind === "next") {
+      boot.done("next", `CRM web prêt (${httpServer.baseUrl}/)`);
+    } else {
+      boot.patch("next", {
+        status: "error",
+        detail: "UI Next standalone indisponible — API seule",
+      });
+    }
+  } else {
+    boot.done("next", `API prête (${httpServer.baseUrl})`);
+  }
+
   console.log(
-    `brand-kernel-harness ${config.brandId} on ${httpServer.baseUrl} data=${dataDir} search=${searchEngine} os=${desktopProfile}`,
+    `brand-kernel-harness ${config.brandId} on ${httpServer.baseUrl} data=${dataDir} search=${searchEngine} os=${desktopProfile} ui=${uiPlane?.kind ?? "none"}`,
   );
 
+  boot.go("login", { detail: "Interface disponible" });
+  boot.done("login", "Interface disponible");
+
   // Fullstack OS ready : ensure/start natifs depuis le kit (pas la marque).
-  // CREEZIO_NATIVE_WARM=0 pour skip (smokes rapides) ; défaut = warm n8n.
-  // Hermes : aligné desktop — on sauf CREEZIO_NATIVE_WARM_HERMES=0.
-  if (
-    brandOs &&
-    desktopProfile === "full" &&
-    process.env.CREEZIO_NATIVE_WARM !== "0"
-  ) {
+  // CREEZIO_NATIVE_WARM=0 pour skip (défaut image Docker) ; =1 → n8n/Hermes
+  // dans le même container, visibles dans boot-status.
+  if (brandOs && warmNative) {
     const warmHermes = process.env.CREEZIO_NATIVE_WARM_HERMES !== "0";
+    boot.go("n8n", { detail: "Warm n8n…", parallel: true });
+    if (warmHermes) {
+      boot.go("hermes", { detail: "Warm Hermes…", parallel: true });
+    }
     const warm = await warmBrandNativeHosts(brandOs, {
       start: process.env.CREEZIO_NATIVE_START !== "0",
       n8n: true,
       hermes: warmHermes,
     });
+    boot.patch("n8n", {
+      status: warm.n8n.started ? "done" : "error",
+      detail:
+        warm.n8n.detail ||
+        (warm.n8n.started ? "n8n démarré" : "n8n indisponible"),
+      percent: 100,
+    });
+    if (warmHermes) {
+      boot.patch("hermes", {
+        status: warm.hermes.started ? "done" : "error",
+        detail:
+          warm.hermes.detail ||
+          (warm.hermes.started ? "Hermes démarré" : "Hermes indisponible"),
+        percent: 100,
+      });
+    }
     console.log(
       `brand-kernel-harness native warm n8n=${JSON.stringify(warm.n8n)} hermes=${JSON.stringify(warm.hermes)}`,
     );
   }
 
+  boot.complete(`Serveur ${config.brandId} prêt`);
+
   const close = async () => {
     meiliStop?.();
+    await uiPlane?.close();
     await httpServer.close();
     brandOs?.close();
     closeKernel();

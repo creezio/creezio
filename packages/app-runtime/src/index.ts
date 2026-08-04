@@ -29,8 +29,18 @@ export {
 } from "./listen-brand-os-http.js";
 export {
   startBrandUiPlane,
+  hasBrandUiPlane,
   type BrandUiPlaneHandle,
 } from "./start-brand-ui-plane.js";
+export {
+  createBootProgressReporter,
+  type BootProgressReporter,
+  type BootStepId,
+} from "./boot-progress.js";
+export {
+  listenBrandBootHttp,
+  type BrandBootHttpHandle,
+} from "./listen-brand-boot-http.js";
 export {
   installBrandOsDesktop,
   brandPreloadPath,

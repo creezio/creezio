@@ -15,24 +15,36 @@ export type BrandUiPlaneHandle = {
   close: () => Promise<void>;
 };
 
+/** Candidats entrée Next standalone (build `next build` output standalone). */
+function uiPlaneEntryCandidates(appRoot: string): string[] {
+  const candidates = [
+    path.join(appRoot, "resources", "server", "server.js"),
+    path.join(appRoot, "ui/.next/standalone/server.js"),
+    path.join(appRoot, "build/server/server.js"),
+    path.join(appRoot, ".next/standalone/server.js"),
+  ];
+  const resourcesPath = (process as NodeJS.Process & { resourcesPath?: string })
+    .resourcesPath;
+  if (typeof resourcesPath === "string" && resourcesPath) {
+    candidates.unshift(path.join(resourcesPath, "server", "server.js"));
+  }
+  return candidates;
+}
+
+/** True si un build UI Next standalone est présent (CRM navigateur possible). */
+export function hasBrandUiPlane(appRoot: string): boolean {
+  return uiPlaneEntryCandidates(appRoot).some((p) => fs.existsSync(p));
+}
+
 export async function startBrandUiPlane(opts: {
   appRoot: string;
   metierBaseUrl: string;
   preferredPort?: number;
 }): Promise<BrandUiPlaneHandle> {
-  const entryCandidates = [
-    path.join(opts.appRoot, "resources", "server", "server.js"),
-    path.join(opts.appRoot, "ui/.next/standalone/server.js"),
-    path.join(opts.appRoot, "build/server/server.js"),
-    path.join(opts.appRoot, ".next/standalone/server.js"),
-  ];
   // Packagé Electron : resourcesPath/server (appRoot peut être asar).
-  const resourcesPath = (process as NodeJS.Process & { resourcesPath?: string })
-    .resourcesPath;
-  if (typeof resourcesPath === "string" && resourcesPath) {
-    entryCandidates.unshift(path.join(resourcesPath, "server", "server.js"));
-  }
-  const entry = entryCandidates.find((p) => fs.existsSync(p));
+  const entry = uiPlaneEntryCandidates(opts.appRoot).find((p) =>
+    fs.existsSync(p),
+  );
   if (!entry) {
     log("ui", "Next standalone absent — SPA renderer");
     return {
