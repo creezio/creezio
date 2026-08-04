@@ -105,20 +105,34 @@ Desktop Creezio.
     "--force",
   ]);
   assert.equal(apply.status, 0, apply.stderr + "\n" + apply.stdout);
-  assert.ok(fs.existsSync(path.join(appDir, "src/electron/main.ts")));
+  // Layout monorepo 3 livrables : métier sous server/, client thin sous client/.
+  const serverDir = path.join(appDir, "server");
+  assert.ok(fs.existsSync(path.join(serverDir, "src/electron/main.ts")));
+  assert.ok(fs.existsSync(path.join(appDir, "client/src/electron/main.ts")));
+  assert.ok(fs.existsSync(path.join(appDir, "admin/server-admin.json")));
   assert.ok(fs.existsSync(path.join(appDir, "brand-spec/brand.yaml")));
 
   const main = fs.readFileSync(
-    path.join(appDir, "src/electron/main.ts"),
+    path.join(serverDir, "src/electron/main.ts"),
     "utf8",
   );
   assert.match(main, /startBrandDesktop/);
   assert.doesNotMatch(main, /listenBrandKernelHttp/);
 
+  const clientMain = fs.readFileSync(
+    path.join(appDir, "client/src/electron/main.ts"),
+    "utf8",
+  );
+  assert.match(clientMain, /startBrandDesktop/);
+  assert.doesNotMatch(
+    clientMain,
+    /from "\.\/(brand-migrations|brand-module-api|vertical-slot)/,
+  );
+
   const firstRun = spawnSync(
     process.execPath,
-    [path.join(appDir, "scripts/test-first-run-auth.mjs")],
-    { encoding: "utf8", cwd: appDir, env: SMOKE_ENV },
+    [path.join(serverDir, "scripts/test-first-run-auth.mjs")],
+    { encoding: "utf8", cwd: serverDir, env: SMOKE_ENV },
   );
   assert.equal(firstRun.status, 0, firstRun.stderr + "\n" + firstRun.stdout);
 });

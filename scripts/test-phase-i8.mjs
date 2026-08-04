@@ -52,11 +52,11 @@ test("I8 factory scaffold boote startBrandDesktop + registerBrandNav", () => {
     force: true,
     sandbox: true,
   });
-  const mainPath = path.join(result.outDir, "src/electron/main.ts");
+  const mainPath = path.join(result.serverDir, "src/electron/main.ts");
   const main = fs.readFileSync(mainPath, "utf8");
   assert.match(main, /startBrandDesktop/);
   assert.ok(!main.includes("mergeNav(coreNavItems"));
-  const slotPath = path.join(result.outDir, "src/electron/vertical-slot.ts");
+  const slotPath = path.join(result.serverDir, "src/electron/vertical-slot.ts");
   const slot = fs.readFileSync(slotPath, "utf8");
   assert.match(slot, /registerBrandNav/);
   assert.ok(!slot.includes("mergeNav(coreNavItems"));

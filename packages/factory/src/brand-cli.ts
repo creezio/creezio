@@ -96,12 +96,19 @@ Notes:
  * Inventaire modules BrandSpec + garde-fous owned-by-brand.
  * Scaffold UI stubs uniquement si page absente (jamais écrase owned-by-brand).
  */
+/** Livrable serveur d'une marque : `<app>/server` (monorepo) ou `<app>` (legacy plat). */
+function resolveAppServerDir(appDir: string): string {
+  const server = path.join(appDir, "server");
+  return fs.existsSync(path.join(server, "package.json")) ? server : appDir;
+}
+
 function applyBrandModules(specDir: string, appDir: string): {
   modules: string[];
   protectedFiles: string[];
   scaffoldedUi: string[];
   notes: string[];
 } {
+  const serverDir = resolveAppServerDir(appDir);
   const modulesDir = path.join(specDir, "modules");
   const modules: string[] = [];
   if (fs.existsSync(modulesDir)) {
@@ -121,7 +128,7 @@ function applyBrandModules(specDir: string, appDir: string): {
   ];
   const protectedFiles: string[] = [];
   for (const rel of candidates) {
-    const abs = path.join(appDir, rel);
+    const abs = path.join(serverDir, rel);
     if (!fs.existsSync(abs)) continue;
     const raw = fs.readFileSync(abs, "utf8");
     if (
@@ -135,7 +142,7 @@ function applyBrandModules(specDir: string, appDir: string): {
   const scaffoldedUi: string[] = [];
   for (const mod of modules) {
     const rel = `ui/app/${mod}/page.tsx`;
-    const abs = path.join(appDir, rel);
+    const abs = path.join(serverDir, rel);
     if (fs.existsSync(abs)) {
       const raw = fs.readFileSync(abs, "utf8");
       if (raw.includes("creezio:owned-by-brand")) {
@@ -389,7 +396,7 @@ export async function runBrandCli(argv: string[]): Promise<void> {
   }
 
   if (args.sub === "smoke") {
-    const appDir = path.resolve(args.app || process.cwd());
+    const appDir = resolveAppServerDir(path.resolve(args.app || process.cwd()));
     const smoke = path.join(appDir, "scripts/test-metier-parcours.mjs");
     if (!fs.existsSync(smoke)) {
       throw new Error(`smoke introuvable: ${smoke}`);

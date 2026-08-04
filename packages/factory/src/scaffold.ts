@@ -1,5 +1,11 @@
 /**
- * Scaffold d'une app marque Client+Serveur consommant @creezio/*.
+ * Scaffold d'une marque = **monorepo 3 livrables** consommant @creezio/*.
+ *
+ * Layout généré (LA norme — plus de layout plat) :
+ *   <out>/server/   livrable serveur (métier, harness, UI, electron-builder.server)
+ *   <out>/client/   livrable desktop thin remote-only (main client-only)
+ *   <out>/admin/    livrable pilotage flotte (server-admin.json versionné sans secret)
+ *   <out>/          package.json orchestrateur + brand-spec/ + vendor/ partagé
  *
  * Mode classique (`--name/--id/--domain`) : OS shell + slot métier vide.
  * Mode `--from-prd` : ProductModel → schéma / API / UI / nav / wiring / smokes.
@@ -22,6 +28,7 @@ import {
   serverDockerNpmScripts,
   renderCreezioCliProxyMjs,
 } from "./generators/server-docker-scripts.js";
+import { renderEnsureLinuxIconsMjs } from "./generators/index.js";
 
 export type NewAppOptions = {
   brandId: string;
@@ -46,10 +53,37 @@ export type NewAppOptions = {
 
 export type ScaffoldResult = {
   outDir: string;
+  /** Livrable serveur : `<outDir>/server`. */
+  serverDir: string;
+  /** Livrable client desktop : `<outDir>/client`. */
+  clientDir: string;
+  /** Livrable admin flotte : `<outDir>/admin`. */
+  adminDir: string;
   manifest: AppManifest;
   writtenFiles: string[];
   productModel?: ProductModel;
 };
+
+/** Deps @creezio/* → file:vendor/creezio/* (vendor partagé racine, symlinks). */
+function creezioVendorDeps(names: string[]): Record<string, string> {
+  const deps: Record<string, string> = {};
+  for (const name of names.sort()) {
+    deps[`@creezio/${name}`] = `file:vendor/creezio/${name}`;
+  }
+  return deps;
+}
+
+/** Symlink relatif idempotent (dangling accepté — cible synchronisée plus tard). */
+function ensureRelativeSymlink(linkPath: string, target: string): void {
+  try {
+    const st = fs.lstatSync(linkPath);
+    if (st.isSymbolicLink() || st.isDirectory() || st.isFile()) return;
+  } catch {
+    /* absent → créer */
+  }
+  fs.mkdirSync(path.dirname(linkPath), { recursive: true });
+  fs.symlinkSync(target, linkPath);
+}
 
 function writeFile(
   filePath: string,
@@ -88,7 +122,7 @@ function renderPackageJson(m: AppManifest): string {
         name: `@creezio/app-${m.brandId}`,
         private: true,
         version: "0.1.0",
-        description: `${m.client.productName} — squelette desktop Client+Serveur (kit Creezio)`,
+        description: `${m.client.productName} — livrable SERVEUR (métier + OS Creezio)`,
         type: "module",
         main: "./build/electron/main.js",
         scripts: {
@@ -98,40 +132,29 @@ function renderPackageJson(m: AppManifest): string {
             "tsc -p tsconfig.electron.json && tsc -p tsconfig.preload.json",
           "build:electron": "npm run build:runtime",
           typecheck: "tsc -p tsconfig.electron.json --noEmit",
-          "electron:config:client":
-            "node scripts/build-builder-config.mjs client",
           "electron:config:server":
             "node scripts/build-builder-config.mjs server",
           "electron:stage-win-bins":
-            "bash node_modules/@creezio/desktop-tooling/scripts/stage-win-bins.sh",
-          "pack:win":
-            "npm run electron:config:client && npm run build:electron && CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --config electron-builder.client.json --win nsis --x64 -c.win.signAndEditExecutable=false",
+            "bash vendor/creezio/desktop-tooling/scripts/stage-win-bins.sh",
           "pack:win:server":
             "npm run electron:stage-win-bins && npm run electron:config:server && npm run build:electron && CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --config electron-builder.server.json --win nsis --x64 -c.win.signAndEditExecutable=false",
-          "pack:linux":
-            "node node_modules/@creezio/desktop-tooling/scripts/ensure-linux-icons.mjs && npm run electron:config:client && npm run build:electron && electron-builder --config electron-builder.client.json --linux AppImage dir --x64",
           "pack:linux:server":
-            "node node_modules/@creezio/desktop-tooling/scripts/ensure-linux-icons.mjs && npm run electron:ensure-linux-native && npm run electron:config:server && npm run build:electron && electron-builder --config electron-builder.server.json --linux AppImage dir --x64",
-          "electron:publish": `CREEZIO_BRAND=${m.brandId} bash node_modules/@creezio/desktop-tooling/scripts/publish-desktop.sh`,
-          "electron:publish:linux": `CREEZIO_BRAND=${m.brandId} bash node_modules/@creezio/desktop-tooling/scripts/publish-desktop.sh --platform=linux`,
-          "electron:publish:dry": `CREEZIO_BRAND=${m.brandId} bash node_modules/@creezio/desktop-tooling/scripts/publish-desktop.sh --dry-run`,
-          "electron:remote-build": `CREEZIO_BRAND=${m.brandId} bash ../../packages/desktop-tooling/scripts/remote-build-win.sh`,
-          "electron:remote-build:dry": `CREEZIO_BRAND=${m.brandId} bash ../../packages/desktop-tooling/scripts/remote-build-win.sh --dry-run`,
-          // Serveur Docker headless — architecture par défaut (kit SoT).
-          ...serverDockerNpmScripts(),
+            "node scripts/ensure-linux-icons.mjs && npm run electron:config:server && npm run build:electron && electron-builder --config electron-builder.server.json --linux AppImage dir --x64",
         },
         dependencies: {
-          "@creezio/app-runtime": "0.1.0",
-          "@creezio/brand-config": "0.1.0",
-          "@creezio/shell": "0.1.0",
-          "@creezio/platform-core": "0.1.0",
-          "@creezio/product-hub": "0.1.0",
-          "@creezio/shell-ui": "0.1.0",
-          "@creezio/api-kernel": "0.1.0",
-          "@creezio/mcp-facade": "0.1.0",
-          "@creezio/auth": "0.1.0",
-          "@creezio/electron-shell": "0.1.0",
-          "@creezio/desktop-tooling": "0.1.0",
+          ...creezioVendorDeps([
+            "app-runtime",
+            "brand-config",
+            "shell",
+            "platform-core",
+            "product-hub",
+            "shell-ui",
+            "api-kernel",
+            "mcp-facade",
+            "auth",
+            "electron-shell",
+            "desktop-tooling",
+          ]),
           "electron-updater": "^6.3.9",
           // Deps npm runtime main (asar FileSets kit) — pas seulement transitifs
           "hono": "^4.12.30",
@@ -151,6 +174,107 @@ function renderPackageJson(m: AppManifest): string {
         },
         peerDependenciesMeta: {
           electron: { optional: true },
+        },
+        creezio: {
+          brandId: m.brandId,
+          kind: "server",
+          kitVendor: "vendor/creezio",
+        },
+        license: "UNLICENSED",
+      },
+      null,
+      2,
+    ) + "\n"
+  );
+}
+
+/** Clôture @creezio requise par le client thin (startBrandDesktop remote-only). */
+const CLIENT_CREEZIO_DEPS = [
+  "api-kernel",
+  "app-runtime",
+  "assistant",
+  "auth",
+  "brand-config",
+  "brand-spec",
+  "browser-host",
+  "cockpit",
+  "database",
+  "desktop-tooling",
+  "electron-shell",
+  "mails",
+  "mcp-facade",
+  "observability",
+  "onboarding",
+  "os-ui",
+  "platform-core",
+  "product-hub",
+  "shell",
+  "shell-ui",
+  "tasks",
+];
+
+function renderClientPackageJson(m: AppManifest): string {
+  return (
+    JSON.stringify(
+      {
+        name: `@creezio/app-${m.brandId}-client`,
+        private: true,
+        version: "0.1.0",
+        description: `${m.client.productName} — livrable CLIENT desktop thin (remote-only, kit Creezio)`,
+        type: "module",
+        main: "./build/electron/main.js",
+        scripts: {
+          build: "npm run build:runtime",
+          "build:runtime":
+            "tsc -p tsconfig.electron.json && tsc -p tsconfig.preload.json",
+          "build:electron": "npm run build:runtime",
+          typecheck: "tsc -p tsconfig.electron.json --noEmit",
+          "electron:config:client":
+            "node scripts/build-builder-config.mjs client",
+          "desktop:dev":
+            "npm run electron:config:client && npm run build:electron && electron .",
+          "pack:linux":
+            "node scripts/ensure-linux-icons.mjs && npm run electron:ensure-linux-native && npm run electron:config:client && npm run build:electron && electron-builder --config electron-builder.client.json --linux AppImage dir --x64",
+          "pack:linux:dir":
+            "node scripts/ensure-linux-icons.mjs && npm run electron:ensure-linux-native && npm run electron:config:client && npm run build:electron && electron-builder --config electron-builder.client.json --linux dir --x64",
+          "pack:win":
+            "npm run electron:ensure-win-native && npm run electron:config:client && npm run build:electron && CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --config electron-builder.client.json --win nsis --x64 -c.win.signAndEditExecutable=false",
+          "pack:win:zip":
+            "npm run electron:config:client && npm run build:electron && CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --config electron-builder.client.json --win zip --x64 -c.win.signAndEditExecutable=false",
+          "electron:publish": `CREEZIO_BRAND=${m.brandId} CREEZIO_APP_ROOT=. bash vendor/creezio/desktop-tooling/scripts/publish-desktop.sh`,
+          "electron:publish:linux": `CREEZIO_BRAND=${m.brandId} CREEZIO_APP_ROOT=. bash vendor/creezio/desktop-tooling/scripts/publish-desktop.sh --platform=linux`,
+          "electron:publish:dry": `CREEZIO_BRAND=${m.brandId} CREEZIO_APP_ROOT=. bash vendor/creezio/desktop-tooling/scripts/publish-desktop.sh --dry-run`,
+          "electron:ensure-win-native":
+            "node vendor/creezio/desktop-tooling/scripts/ensure-win-native-modules.mjs",
+          "electron:ensure-linux-native":
+            "node vendor/creezio/desktop-tooling/scripts/ensure-linux-native-modules.mjs",
+          "electron:verify-pack":
+            "node vendor/creezio/desktop-tooling/scripts/verify-pack-runtime.mjs . --kind=client",
+        },
+        dependencies: {
+          ...creezioVendorDeps(CLIENT_CREEZIO_DEPS),
+          "better-sqlite3": "^12.11.1",
+          "electron-updater": "^6.3.9",
+          "hono": "^4.12.30",
+          "jose": "^6.0.0",
+          "zod": "^4.0.0",
+        },
+        devDependencies: {
+          "@types/node": "^22.15.3",
+          electron: "35.7.5",
+          "electron-builder": "^25.1.8",
+          typescript: "^5.8.3",
+        },
+        peerDependencies: {
+          electron: ">=28",
+        },
+        peerDependenciesMeta: {
+          electron: { optional: true },
+        },
+        creezio: {
+          brandId: m.brandId,
+          kind: "client",
+          kitVendor: "vendor/creezio",
         },
         license: "UNLICENSED",
       },
@@ -383,6 +507,13 @@ console.log("wrote", out);
 const nsh = path.join(root, "installer.nsh");
 fs.writeFileSync(nsh, renderNsisInstallerInclude(manifest));
 console.log("wrote", nsh);
+
+// Marker packagé lu par prepareDesktopBoot (asar build/electron/app-kind.json).
+const kindOutDir = path.join(root, "build", "electron");
+fs.mkdirSync(kindOutDir, { recursive: true });
+const kindOut = path.join(kindOutDir, "app-kind.json");
+fs.writeFileSync(kindOut, JSON.stringify({ kind }, null, 2) + "\\n");
+console.log("wrote", kindOut);
 `;
 }
 
@@ -484,6 +615,317 @@ startBrandDesktop({
   console.error(err);
   app.exit(1);
 });
+`;
+}
+
+/**
+ * Main Electron CLIENT — thin, remote-only (livrable `client/`).
+ * SANS imports métier (brand-migrations / brand-module-api restent en `server/`).
+ */
+function renderClientMainTs(m: AppManifest): string {
+  const name = exportName(m);
+  return `/**
+ * Main Electron CLIENT — thin, remote-only (livrable \`client/\` du monorepo).
+ *
+ * Le kind packagé (\`build/electron/app-kind.json\` → \`client\`, écrit par
+ * \`electron:config:client\`) force \`requireRemoteProfile\` : picker
+ * « Rejoindre un serveur » puis CRM du serveur distant. AUCUNE stack locale.
+ *
+ * PAS d'imports métier ici : \`brand-migrations\` / \`brand-module-api\`
+ * vivent dans le livrable serveur (\`../server\`).
+ */
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+import { app } from "electron";
+import { startBrandDesktop } from "@creezio/app-runtime";
+import { ${name} as manifest } from "./app-manifest.js";
+import { loadLocalEnv } from "./load-local-env.js";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+// Secrets ops éventuels (dev) : \`.env\` gitignoré — jamais embarqué.
+loadLocalEnv(path.resolve(__dirname, "../.."));
+
+startBrandDesktop({
+  manifest,
+  electronDirname: __dirname,
+  // Client thin : toujours le shell runtime (le mode fenêtre seule exigerait
+  // une stack locale que ce livrable n'embarque pas).
+  desktopShell: "runtime",
+}).catch((err) => {
+  console.error(err);
+  app.exit(1);
+});
+`;
+}
+
+function renderLoadLocalEnvTs(): string {
+  return `/**
+ * Charge \`.env\` gitignoré à la racine du livrable (symlink → ../.env racine).
+ * N'écrase pas les variables déjà présentes dans process.env.
+ */
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+export function loadLocalEnv(appRoot?: string): {
+  loaded: boolean;
+  path: string;
+  keys: string[];
+} {
+  const root =
+    appRoot ||
+    path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
+  const envPath = path.join(root, ".env");
+  const keys: string[] = [];
+  if (!fs.existsSync(envPath)) {
+    return { loaded: false, path: envPath, keys };
+  }
+  for (const raw of fs.readFileSync(envPath, "utf8").split(/\\r?\\n/)) {
+    const line = raw.trim();
+    if (!line || line.startsWith("#") || !line.includes("=")) continue;
+    const i = line.indexOf("=");
+    const key = line.slice(0, i).trim();
+    let val = line.slice(i + 1).trim();
+    if (
+      (val.startsWith('"') && val.endsWith('"')) ||
+      (val.startsWith("'") && val.endsWith("'"))
+    ) {
+      val = val.slice(1, -1);
+    }
+    if (!key) continue;
+    if (process.env[key] === undefined) {
+      process.env[key] = val;
+      keys.push(key);
+    }
+  }
+  return { loaded: true, path: envPath, keys };
+}
+`;
+}
+
+/**
+ * package.json racine orchestrateur : délègue aux livrables `server/` /
+ * `client/` et porte les scripts `server-docker:*` (brandRoot = racine repo).
+ */
+function renderRootPackageJson(
+  m: AppManifest,
+  opts: { serverPkgJson: string; model?: ProductModel },
+): string {
+  const serverPkg = JSON.parse(opts.serverPkgJson) as {
+    scripts?: Record<string, string>;
+  };
+  const scripts: Record<string, string> = {};
+  for (const name of Object.keys(serverPkg.scripts || {})) {
+    // Les scripts pack/publish/dev serveur restent invocables via --prefix,
+    // mais on ne délègue à la racine que le flux courant.
+    if (name.startsWith("electron:stage") || name === "desktop:dev") continue;
+    scripts[name] = `npm run ${name} --prefix server`;
+  }
+  // Livrable client — pack + publish + config.
+  for (const name of [
+    "electron:config:client",
+    "pack:linux",
+    "pack:linux:dir",
+    "pack:win",
+    "pack:win:zip",
+    "electron:publish",
+    "electron:publish:linux",
+    "electron:publish:dry",
+    "electron:verify-pack",
+  ]) {
+    scripts[name] = `npm run ${name} --prefix client`;
+  }
+  scripts["client:build"] = "npm run build:runtime --prefix client";
+  scripts.typecheck =
+    "npm run typecheck --prefix server && npm run typecheck --prefix client";
+  // Serveur Docker headless : brandRoot = racine monorepo (scripts kit SoT).
+  Object.assign(scripts, serverDockerNpmScripts());
+
+  const creezio: Record<string, unknown> = {
+    brandId: m.brandId,
+    layout: "monorepo",
+    kitVendor: "vendor/creezio",
+  };
+  if (opts.model) {
+    creezio.fromPrd = true;
+    creezio.nativeKernel = true;
+    creezio.vertical = opts.model.vertical || "generic";
+    creezio.entities = opts.model.entities.map((e) => e.id);
+    creezio.flows = opts.model.flows.map((f) => f.id);
+  }
+
+  return (
+    JSON.stringify(
+      {
+        name: m.brandId,
+        private: true,
+        version: "0.1.0",
+        description: `${m.client.productName} — monorepo marque 3 livrables (server/ client/ admin/) sur OS Creezio`,
+        type: "module",
+        scripts,
+        creezio,
+        engines: { node: ">=20" },
+        license: "UNLICENSED",
+      },
+      null,
+      2,
+    ) + "\n"
+  );
+}
+
+function renderRootGitignore(): string {
+  return `node_modules/
+**/ui/.next/
+build/
+**/build/
+dist-electron/
+dist-electron-server/
+**/dist-electron/
+**/dist-electron-server/
+.data-metier/
+.tmp/
+.creezio/
+.artifacts/
+*.log
+.DS_Store
+*.tsbuildinfo
+.env
+.env.local
+# Surfaces OS matérialisées depuis @creezio/os-ui — jamais versionnées dans la marque
+**/ui/app/(creezio-os)/
+# Binaires OS fat — sync vendor ne les copie pas
+vendor/creezio/electron-shell/resources/bin/*
+!vendor/creezio/electron-shell/resources/bin/.gitkeep
+!vendor/creezio/electron-shell/resources/bin/README.md
+# client/vendor = copie hardlink stagée par sync-creezio-vendor.sh (jamais versionnée)
+/client/vendor/
+
+# Runtime serveurs Docker (registre servers.json, volumes, secrets admin)
+docker-data/
+`;
+}
+
+function renderRootReadme(m: AppManifest): string {
+  return `# ${m.client.productName}
+
+Monorepo marque **3 livrables** sur OS Creezio (\`creezio new-app\` / \`brand apply\`).
+
+## Structure
+
+\`\`\`
+brand-spec/     # SoT marque (brand.yaml, product.md, modules/)
+vendor/creezio/ # kit @creezio/* synchronisé (partagé server + client)
+server/         # livrable serveur : métier, harness, UI Next, Docker
+client/         # livrable desktop thin remote-only (picker serveur)
+admin/          # livrable pilotage flotte (server-admin.json versionné sans secret)
+docker-data/    # runtime gitignoré (registre servers.json, volumes)
+\`\`\`
+
+## Identité
+
+| Champ | Valeur |
+|-------|--------|
+| brandId | \`${m.brandId}\` |
+| client appId | \`${m.client.appId}\` |
+| server appId | \`${m.server.appId}\` |
+| client NSIS GUID | \`${m.client.nsisGuid}\` |
+| feed client | \`${m.client.feedUrl}\` |
+| sandbox | \`${Boolean(m.sandbox)}\` |
+
+## Flux courants (racine)
+
+\`\`\`bash
+npm test                        # gates métier (délègue server/)
+npm run build:runtime           # TS main+preload serveur
+npm run server-docker:create -- demo   # serveur Docker + CRM navigateur
+npm run pack:linux              # client desktop (délègue client/)
+npm run server-docker:admin     # admin web flotte (config admin/)
+\`\`\`
+
+Docs : \`server/README.md\`, \`admin/README.md\`, kit \`docker/server/README.md\`.
+`;
+}
+
+function renderAdminServerAdminJson(): string {
+  return (
+    JSON.stringify(
+      {
+        port: 18800,
+        user: "admin",
+        brandRoots: ["."],
+      },
+      null,
+      2,
+    ) + "\n"
+  );
+}
+
+function renderAdminComposeYml(m: AppManifest): string {
+  return `# Admin web multi-serveurs ${m.client.productName} — image kit \`creezio-server-admin:local\`
+# (fleet-collector étendu, packagée depuis $CREEZIO_KIT_ROOT/docker/server-admin).
+#
+# Chemin nominal (build + run + config runtime docker-data/server-admin.json) :
+#   npm run server-docker:admin        # = creezio server-docker admin up --brand-root .
+#
+# Ce compose est l'alternative déclarative (image déjà buildée par le CLI) :
+#   CREEZIO_ADMIN_PASS=… docker compose -f admin/docker-compose.admin.yml up -d
+#
+# Config versionnée SANS secret : admin/server-admin.json (port, user, brandRoots).
+# Secret runtime (pass) : docker-data/server-admin.json — gitignoré, généré par le CLI.
+
+name: ${m.brandId}-admin
+
+services:
+  server-admin:
+    image: creezio-server-admin:local
+    container_name: creezio-server-admin
+    restart: unless-stopped
+    # host network : sonde les serveurs publiés sur 127.0.0.1:<port> ;
+    # l'admin lui-même bind 127.0.0.1 (jamais exposé par défaut).
+    network_mode: host
+    labels:
+      creezio.server-admin: "1"
+    environment:
+      CREEZIO_ADMIN_PORT: \${CREEZIO_ADMIN_PORT:-18800}
+      CREEZIO_ADMIN_USER: \${CREEZIO_ADMIN_USER:-admin}
+      CREEZIO_ADMIN_PASS: \${CREEZIO_ADMIN_PASS:?secret runtime — voir docker-data/server-admin.json}
+      CREEZIO_ADMIN_BRAND_ROOTS: \${CREEZIO_ADMIN_BRAND_ROOTS:-\${PWD}}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - \${PWD}:\${PWD}
+`;
+}
+
+function renderAdminReadme(m: AppManifest): string {
+  return `# admin/ — pilotage flotte ${m.client.productName}
+
+Livrable **admin** du monorepo : configuration versionnée de l'admin web
+multi-serveurs (image kit \`creezio-server-admin:local\`).
+
+## Fichiers
+
+| Fichier | Rôle |
+|---------|------|
+| \`server-admin.json\` | Config versionnée SANS secret (port, user, brandRoots) |
+| \`docker-compose.admin.yml\` | Alternative déclarative au CLI |
+
+Le secret runtime (\`pass\`) vit exclusivement dans
+\`docker-data/server-admin.json\` (gitignoré, généré par le CLI).
+
+## Démarrage
+
+\`\`\`bash
+npm run server-docker:admin        # depuis la racine du monorepo
+# → http://127.0.0.1:18800/admin (Basic auth, voir docker-data/server-admin.json)
+\`\`\`
+
+## Ajouter une marque au même admin
+
+\`\`\`bash
+creezio server-docker admin add-brand /chemin/autre-marque --brand-root .
+\`\`\`
+
+Doc kit : \`$CREEZIO_KIT_ROOT/docker/server/README.md\`.
 `;
 }
 
@@ -741,11 +1183,11 @@ Ne **jamais** pointer \`dockerDlName\` / feedToken vers \`dl-tempoflow\`, \`dl-f
 /** PNG 1×1 = placeholder factory (à remplacer avant publish). */
 const MINIMAL_PNG = Buffer.from(MINIMAL_PNG_BASE64, "base64");
 
-function resolveIconsDir(outDir: string, iconsDir?: string): string | null {
+function resolveIconsDir(rootDir: string, iconsDir?: string): string | null {
   const candidates = [
     iconsDir,
-    path.join(outDir, "brand-spec", "icons"),
-    path.join(outDir, "resources", "brand-icons"),
+    path.join(rootDir, "brand-spec", "icons"),
+    path.join(rootDir, "resources", "brand-icons"),
   ].filter(Boolean) as string[];
   for (const dir of candidates) {
     const abs = path.resolve(dir);
@@ -776,14 +1218,15 @@ function isSubstantialPng(filePath: string): boolean {
  * déjà substantiels ; sinon placeholder minimal (ne pas publier tel quel).
  */
 function writeBrandIcons(
-  outDir: string,
+  baseDir: string,
+  rootDir: string,
   opts: NewAppOptions,
   force: boolean,
   written: string[],
 ): void {
-  const iconsOut = path.join(outDir, "resources", "icons");
+  const iconsOut = path.join(baseDir, "resources", "icons");
   fs.mkdirSync(iconsOut, { recursive: true });
-  const srcDir = resolveIconsDir(outDir, opts.iconsDir);
+  const srcDir = resolveIconsDir(rootDir, opts.iconsDir);
   const names = ["client.png", "server.png"] as const;
 
   for (const name of names) {
@@ -801,7 +1244,7 @@ function writeBrandIcons(
     writeFile(dest, MINIMAL_PNG, force, written);
   }
 
-  const trayDest = path.join(outDir, "resources", "tray-icon.png");
+  const trayDest = path.join(baseDir, "resources", "tray-icon.png");
   const trayCandidates = srcDir
     ? [
         path.join(srcDir, "tray-icon.png"),
@@ -838,85 +1281,325 @@ export function scaffoldNewApp(opts: NewAppOptions): ScaffoldResult {
   }
 
   const outDir = path.resolve(opts.outDir);
+  const serverDir = path.join(outDir, "server");
+  const clientDir = path.join(outDir, "client");
+  const adminDir = path.join(outDir, "admin");
   const force = Boolean(opts.force);
   const written: string[] = [];
   const name = exportName(manifest);
+  // Mode --from-prd : les fichiers métier (package.json, main, preload,
+  // migrations, harness…) sont rendus par writeFromPrdArtifacts — ne pas
+  // écrire les variantes squelette pour éviter double écriture.
+  const prd = Boolean(opts.productModel);
 
+  /* ── Livrable SERVEUR ─────────────────────────────────────────────── */
+  if (!prd) {
+    writeFile(
+      path.join(serverDir, "package.json"),
+      renderPackageJson(manifest),
+      force,
+      written,
+    );
+  }
   writeFile(
-    path.join(outDir, "package.json"),
-    renderPackageJson(manifest),
-    force,
-    written,
-  );
-  writeFile(
-    path.join(outDir, "tsconfig.base.json"),
+    path.join(serverDir, "tsconfig.base.json"),
     renderTsconfigBase(),
     force,
     written,
   );
   writeFile(
-    path.join(outDir, "tsconfig.electron.json"),
+    path.join(serverDir, "tsconfig.electron.json"),
     renderTsconfigElectron(),
     force,
     written,
   );
   writeFile(
-    path.join(outDir, "tsconfig.preload.json"),
+    path.join(serverDir, "tsconfig.preload.json"),
     renderTsconfigPreload(),
     force,
     written,
   );
   writeFile(
-    path.join(outDir, "electron-builder.base.json"),
+    path.join(serverDir, "electron-builder.base.json"),
     renderElectronBuilderBase(manifest),
     force,
     written,
   );
   writeFile(
-    path.join(outDir, "installer.nsh"),
+    path.join(serverDir, "installer.nsh"),
     renderInstallerNsh(manifest),
     force,
     written,
   );
   writeFile(
-    path.join(outDir, "scripts/build-builder-config.mjs"),
+    path.join(serverDir, "scripts/build-builder-config.mjs"),
     renderBuildBuilderConfigMjs(manifest.brandId),
     force,
     written,
   );
+  if (!prd) {
+    writeFile(
+      path.join(serverDir, "scripts/ensure-linux-icons.mjs"),
+      renderEnsureLinuxIconsMjs(),
+      force,
+      written,
+    );
+  }
   writeFile(
-    path.join(outDir, "src/electron/electron-shim.d.ts"),
+    path.join(serverDir, "src/electron/electron-shim.d.ts"),
     renderElectronShimDts(),
     force,
     written,
   );
   writeFile(
-    path.join(outDir, "src/electron/app-manifest.ts"),
+    path.join(serverDir, "src/electron/app-manifest.ts"),
     renderManifestTs(manifest, name),
     force,
     written,
   );
   writeFile(
-    path.join(outDir, "src/electron/app-manifest.json"),
+    path.join(serverDir, "src/electron/app-manifest.json"),
+    JSON.stringify(manifest, null, 2) + "\n",
+    force,
+    written,
+  );
+  if (!prd) {
+    writeFile(
+      path.join(serverDir, "src/electron/brand-migrations.ts"),
+      renderBareBrandMigrationsTs(),
+      force,
+      written,
+    );
+    writeFile(
+      path.join(serverDir, "src/electron/brand-module-api.ts"),
+      renderBareBrandModuleApiTs(),
+      force,
+      written,
+    );
+    writeFile(
+      path.join(serverDir, "scripts/brand-kernel-harness.mjs"),
+      renderBareBrandHarnessMjs(manifest.brandId),
+      force,
+      written,
+    );
+    writeFile(
+      path.join(serverDir, "scripts/creezio-cli.mjs"),
+      renderCreezioCliProxyMjs(),
+      force,
+      written,
+    );
+    writeFile(
+      path.join(serverDir, "src/electron/main.ts"),
+      renderMainTs(manifest),
+      force,
+      written,
+    );
+    writeFile(
+      path.join(serverDir, "src/electron/preload.ts"),
+      renderPreloadTs(manifest),
+      force,
+      written,
+    );
+    writeFile(
+      path.join(serverDir, "src/electron/nav-core.ts"),
+      renderNavCoreTs(),
+      force,
+      written,
+    );
+    writeFile(
+      path.join(serverDir, "src/electron/product-hub-stub.ts"),
+      renderProductHubStubTs(manifest),
+      force,
+      written,
+    );
+    writeFile(
+      path.join(serverDir, "src/electron/vertical-slot.ts"),
+      renderVerticalSlotTs(manifest),
+      force,
+      written,
+    );
+    writeFile(
+      path.join(serverDir, "resources/renderer/index.html"),
+      renderRendererHtml(manifest),
+      force,
+      written,
+    );
+    writeFile(
+      path.join(serverDir, "README.md"),
+      renderReadme(manifest),
+      force,
+      written,
+    );
+  }
+  writeBrandIcons(serverDir, outDir, opts, force, written);
+
+  /* ── Livrable CLIENT (desktop thin remote-only) ───────────────────── */
+  writeFile(
+    path.join(clientDir, "package.json"),
+    renderClientPackageJson(manifest),
+    force,
+    written,
+  );
+  writeFile(
+    path.join(clientDir, "tsconfig.base.json"),
+    renderTsconfigBase(),
+    force,
+    written,
+  );
+  writeFile(
+    path.join(clientDir, "tsconfig.electron.json"),
+    renderTsconfigElectron(),
+    force,
+    written,
+  );
+  writeFile(
+    path.join(clientDir, "tsconfig.preload.json"),
+    renderTsconfigPreload(),
+    force,
+    written,
+  );
+  writeFile(
+    path.join(clientDir, "electron-builder.base.json"),
+    renderElectronBuilderBase(manifest),
+    force,
+    written,
+  );
+  writeFile(
+    path.join(clientDir, "installer.nsh"),
+    renderInstallerNsh(manifest),
+    force,
+    written,
+  );
+  writeFile(
+    path.join(clientDir, "scripts/build-builder-config.mjs"),
+    renderBuildBuilderConfigMjs(manifest.brandId),
+    force,
+    written,
+  );
+  writeFile(
+    path.join(clientDir, "scripts/ensure-linux-icons.mjs"),
+    renderEnsureLinuxIconsMjs(),
+    force,
+    written,
+  );
+  writeFile(
+    path.join(clientDir, "src/electron/electron-shim.d.ts"),
+    renderElectronShimDts(),
+    force,
+    written,
+  );
+  writeFile(
+    path.join(clientDir, "src/electron/app-manifest.ts"),
+    renderManifestTs(manifest, name),
+    force,
+    written,
+  );
+  writeFile(
+    path.join(clientDir, "src/electron/app-manifest.json"),
     JSON.stringify(manifest, null, 2) + "\n",
     force,
     written,
   );
   writeFile(
-    path.join(outDir, "src/electron/brand-migrations.ts"),
-    renderBareBrandMigrationsTs(),
+    path.join(clientDir, "src/electron/load-local-env.ts"),
+    renderLoadLocalEnvTs(),
     force,
     written,
   );
   writeFile(
-    path.join(outDir, "src/electron/brand-module-api.ts"),
-    renderBareBrandModuleApiTs(),
+    path.join(clientDir, "src/electron/main.ts"),
+    renderClientMainTs(manifest),
     force,
     written,
   );
   writeFile(
-    path.join(outDir, "scripts/brand-kernel-harness.mjs"),
-    renderBareBrandHarnessMjs(manifest.brandId),
+    path.join(clientDir, "src/electron/preload.ts"),
+    renderPreloadTs(manifest),
+    force,
+    written,
+  );
+  writeFile(
+    path.join(clientDir, "resources/renderer/index.html"),
+    renderRendererHtml(manifest),
+    force,
+    written,
+  );
+  writeBrandIcons(clientDir, outDir, opts, force, written);
+
+  /* ── Livrable ADMIN (pilotage flotte) ─────────────────────────────── */
+  writeFile(
+    path.join(adminDir, "server-admin.json"),
+    renderAdminServerAdminJson(),
+    force,
+    written,
+  );
+  writeFile(
+    path.join(adminDir, "docker-compose.admin.yml"),
+    renderAdminComposeYml(manifest),
+    force,
+    written,
+  );
+  writeFile(
+    path.join(adminDir, "README.md"),
+    renderAdminReadme(manifest),
+    force,
+    written,
+  );
+
+  /* ── Configs electron-builder par livrable ────────────────────────── */
+  const base = JSON.parse(
+    fs.readFileSync(path.join(serverDir, "electron-builder.base.json"), "utf8"),
+  );
+  writeFile(
+    path.join(serverDir, "electron-builder.server.json"),
+    JSON.stringify(buildElectronBuilderConfig(manifest, "server", base), null, 2) +
+      "\n",
+    force,
+    written,
+  );
+  writeFile(
+    path.join(clientDir, "electron-builder.client.json"),
+    JSON.stringify(buildElectronBuilderConfig(manifest, "client", base), null, 2) +
+      "\n",
+    force,
+    written,
+  );
+
+  /* ── Métier --from-prd (écrit dans server/, racine pour AGENTS/env) ── */
+  if (opts.productModel) {
+    writeFromPrdArtifacts({
+      outDir: serverDir,
+      rootDir: outDir,
+      manifest,
+      model: opts.productModel,
+      force,
+      written,
+    });
+  }
+
+  /* ── Racine orchestrateur ─────────────────────────────────────────── */
+  const serverPkgJson = fs.readFileSync(
+    path.join(serverDir, "package.json"),
+    "utf8",
+  );
+  writeFile(
+    path.join(outDir, "package.json"),
+    renderRootPackageJson(manifest, {
+      serverPkgJson,
+      model: opts.productModel,
+    }),
+    force,
+    written,
+  );
+  writeFile(
+    path.join(outDir, ".gitignore"),
+    renderRootGitignore(),
+    force,
+    written,
+  );
+  writeFile(
+    path.join(outDir, "README.md"),
+    renderRootReadme(manifest),
     force,
     written,
   );
@@ -926,70 +1609,25 @@ export function scaffoldNewApp(opts: NewAppOptions): ScaffoldResult {
     force,
     written,
   );
-  writeFile(
-    path.join(outDir, "src/electron/main.ts"),
-    renderMainTs(manifest),
-    force,
-    written,
-  );
-  writeFile(
-    path.join(outDir, "src/electron/preload.ts"),
-    renderPreloadTs(manifest),
-    force,
-    written,
-  );
-  writeFile(
-    path.join(outDir, "src/electron/nav-core.ts"),
-    renderNavCoreTs(),
-    force,
-    written,
-  );
-  writeFile(
-    path.join(outDir, "src/electron/product-hub-stub.ts"),
-    renderProductHubStubTs(manifest),
-    force,
-    written,
-  );
-  writeFile(
-    path.join(outDir, "src/electron/vertical-slot.ts"),
-    renderVerticalSlotTs(manifest),
-    force,
-    written,
-  );
-  writeFile(
-    path.join(outDir, "resources/renderer/index.html"),
-    renderRendererHtml(manifest),
-    force,
-    written,
-  );
-  writeBrandIcons(outDir, opts, force, written);
-  writeFile(path.join(outDir, "README.md"), renderReadme(manifest), force, written);
 
-  const base = JSON.parse(
-    fs.readFileSync(path.join(outDir, "electron-builder.base.json"), "utf8"),
-  );
-  for (const kind of ["client", "server"] as const) {
-    const cfg = buildElectronBuilderConfig(manifest, kind, base);
-    writeFile(
-      path.join(outDir, `electron-builder.${kind}.json`),
-      JSON.stringify(cfg, null, 2) + "\n",
-      force,
-      written,
-    );
+  // Vendor partagé racine + .env racine. server/vendor = symlink (runtime suit le
+  // vendor racine) ; client/vendor = dossier réel — copie hardlink stagée par
+  // sync-creezio-vendor.sh, car electron-builder refuse les symlinks hors projet.
+  fs.mkdirSync(path.join(outDir, "vendor"), { recursive: true });
+  ensureRelativeSymlink(path.join(serverDir, "vendor"), "../vendor");
+  const clientVendorLink = path.join(clientDir, "vendor");
+  if (fs.existsSync(clientVendorLink) && fs.lstatSync(clientVendorLink).isSymbolicLink()) {
+    fs.rmSync(clientVendorLink);
   }
-
-  if (opts.productModel) {
-    writeFromPrdArtifacts({
-      outDir,
-      manifest,
-      model: opts.productModel,
-      force,
-      written,
-    });
-  }
+  fs.mkdirSync(path.join(clientVendorLink, "creezio"), { recursive: true });
+  ensureRelativeSymlink(path.join(serverDir, ".env"), "../.env");
+  ensureRelativeSymlink(path.join(clientDir, ".env"), "../.env");
 
   return {
     outDir,
+    serverDir,
+    clientDir,
+    adminDir,
     manifest,
     writtenFiles: written,
     productModel: opts.productModel,

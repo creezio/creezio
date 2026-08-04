@@ -60,12 +60,14 @@ test("owned-by-brand survit à brand apply --force", () => {
     0,
   );
 
-  const modPath = path.join(appDir, "src/electron/brand-module-api.ts");
+  // Layout monorepo : métier sous server/.
+  const serverDir = path.join(appDir, "server");
+  const modPath = path.join(serverDir, "src/electron/brand-module-api.ts");
   const marker = "creezio:owned-by-brand";
   const custom = `/** ${marker} */\nexport const OWNED_PROBE = "keep-me";\nexport function registerBrandModuleApi() {}\n`;
   fs.writeFileSync(modPath, custom, "utf8");
 
-  const bonusPath = path.join(appDir, "src/electron/brand-bonus-api.ts");
+  const bonusPath = path.join(serverDir, "src/electron/brand-bonus-api.ts");
   fs.writeFileSync(
     bonusPath,
     `/** ${marker} */\nexport function registerBrandBonusApi() { return "bonus"; }\n`,
@@ -90,7 +92,7 @@ test("owned-by-brand survit à brand apply --force", () => {
   assert.ok(fs.existsSync(bonusPath));
 
   // package.json ownedByBrand : merge (conserve scripts métier + flag)
-  const pkgPath = path.join(appDir, "package.json");
+  const pkgPath = path.join(serverDir, "package.json");
   const pkg = JSON.parse(fs.readFileSync(pkgPath, "utf8"));
   pkg.creezio = { ...(pkg.creezio || {}), ownedByBrand: true };
   pkg.scripts = { ...(pkg.scripts || {}), "proof:custom": "node -e \"console.log(1)\"" };

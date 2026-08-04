@@ -36,7 +36,6 @@ import {
   renderEnvExample,
   renderEnsureLinuxIconsMjs,
   renderE2eBrowserParcoursMjs,
-  serverDockerNpmScripts,
   renderCreezioCliProxyMjs,
 } from "./generators/index.js";
 
@@ -69,18 +68,11 @@ function renderPackageJsonFromPrd(m: AppManifest, model: ProductModel): string {
     "test:desktop-smoke-profile": "node scripts/test-desktop-smoke-profile.mjs",
     "test:allowlist": "node scripts/test-allowlist.mjs",
     "test:meili-config": "node scripts/test-meili-config.mjs",
-    "electron:config:client": "node scripts/build-builder-config.mjs client",
     "electron:config:server": "node scripts/build-builder-config.mjs server",
     "electron:stage-win-bins":
-      "bash node_modules/@creezio/desktop-tooling/scripts/stage-win-bins.sh",
-    "pack:win":
-      "npm run electron:config:client && npm run build:electron && CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --config electron-builder.client.json --win nsis --x64 -c.win.signAndEditExecutable=false",
+      "bash vendor/creezio/desktop-tooling/scripts/stage-win-bins.sh",
     "pack:win:server":
       "npm run electron:stage-win-bins && npm run electron:config:server && npm run build:electron && CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --config electron-builder.server.json --win nsis --x64 -c.win.signAndEditExecutable=false",
-    "pack:linux":
-      "node scripts/ensure-linux-icons.mjs && npm run electron:config:client && npm run build:electron && electron-builder --config electron-builder.client.json --linux AppImage dir --x64",
-    "pack:linux:dir":
-      "node scripts/ensure-linux-icons.mjs && npm run electron:config:client && npm run build:electron && electron-builder --config electron-builder.client.json --linux dir --x64",
     "pack:linux:server":
       "node scripts/ensure-linux-icons.mjs && npm run electron:ensure-linux-native && npm run electron:config:server && npm run build:electron && electron-builder --config electron-builder.server.json --linux AppImage dir --x64",
     "e2e:browser": "node scripts/e2e-browser-parcours.mjs",
@@ -88,13 +80,9 @@ function renderPackageJsonFromPrd(m: AppManifest, model: ProductModel): string {
     "test:e2e-browser": "node scripts/e2e-browser-parcours.mjs",
     "smoke:tunnel": "node scripts/smoke-tunnel.mjs",
     "smoke:tunnel-catalog": "node scripts/smoke-tunnel-catalog.mjs",
-    // Prefer vendor/ (marque sync) puis node_modules ; CREEZIO_APP_ROOT pour resolveManifest.
-    "electron:publish": `CREEZIO_BRAND=${m.brandId} CREEZIO_APP_ROOT=. bash node_modules/@creezio/desktop-tooling/scripts/publish-desktop.sh`,
-    "electron:publish:linux": `CREEZIO_BRAND=${m.brandId} CREEZIO_APP_ROOT=. bash node_modules/@creezio/desktop-tooling/scripts/publish-desktop.sh --platform=linux`,
-    "electron:publish:dry": `CREEZIO_BRAND=${m.brandId} CREEZIO_APP_ROOT=. bash node_modules/@creezio/desktop-tooling/scripts/publish-desktop.sh --dry-run`,
+    "electron:ensure-linux-native":
+      "node vendor/creezio/desktop-tooling/scripts/ensure-linux-native-modules.mjs",
     "desktop:dev": "npm run build:electron && electron .",
-    // Serveur Docker headless — architecture par défaut (kit SoT).
-    ...serverDockerNpmScripts(),
   };
   if (chr) {
     scripts["test:mini-prd-core"] = "node scripts/test-mini-prd-core.mjs";
@@ -111,24 +99,24 @@ function renderPackageJsonFromPrd(m: AppManifest, model: ProductModel): string {
         name: `@creezio/app-${m.brandId}`,
         private: true,
         version: "0.1.0",
-        description: `${m.client.productName} — marque métier sur OS Creezio (api-kernel + SQLite)`,
+        description: `${m.client.productName} — livrable SERVEUR métier sur OS Creezio (api-kernel + SQLite)`,
         type: "module",
         main: "./build/electron/main.js",
         scripts,
         dependencies: {
-          "@creezio/app-runtime": "0.1.0",
-          "@creezio/brand-config": "0.1.0",
-          "@creezio/shell": "0.1.0",
-          "@creezio/platform-core": "0.1.0",
-          "@creezio/product-hub": "0.1.0",
-          "@creezio/os-ui": "0.1.0",
-          "@creezio/shell-ui": "0.1.0",
-          "@creezio/api-kernel": "0.1.0",
-          "@creezio/mcp-facade": "0.1.0",
-          "@creezio/auth": "0.1.0",
-          "@creezio/onboarding": "0.1.0",
-          "@creezio/electron-shell": "0.1.0",
-          "@creezio/desktop-tooling": "0.1.0",
+          "@creezio/app-runtime": "file:vendor/creezio/app-runtime",
+          "@creezio/brand-config": "file:vendor/creezio/brand-config",
+          "@creezio/shell": "file:vendor/creezio/shell",
+          "@creezio/platform-core": "file:vendor/creezio/platform-core",
+          "@creezio/product-hub": "file:vendor/creezio/product-hub",
+          "@creezio/os-ui": "file:vendor/creezio/os-ui",
+          "@creezio/shell-ui": "file:vendor/creezio/shell-ui",
+          "@creezio/api-kernel": "file:vendor/creezio/api-kernel",
+          "@creezio/mcp-facade": "file:vendor/creezio/mcp-facade",
+          "@creezio/auth": "file:vendor/creezio/auth",
+          "@creezio/onboarding": "file:vendor/creezio/onboarding",
+          "@creezio/electron-shell": "file:vendor/creezio/electron-shell",
+          "@creezio/desktop-tooling": "file:vendor/creezio/desktop-tooling",
           "electron-updater": "^6.3.9",
           // Deps npm runtime main (asar FileSets kit) — pas seulement transitifs
           "hono": "^4.12.30",
@@ -153,6 +141,8 @@ function renderPackageJsonFromPrd(m: AppManifest, model: ProductModel): string {
           fromPrd: true,
           nativeKernel: true,
           brandId: m.brandId,
+          kind: "server",
+          kitVendor: "vendor/creezio",
           vertical: model.vertical || (chr ? "chr" : "generic"),
           entities: model.entities.map((e) => e.id),
           flows: model.flows.map((f) => f.id),
@@ -200,20 +190,6 @@ npm run metier:api   # harness kernel natif
 `;
 }
 
-function renderGitignore(): string {
-  return `node_modules/
-ui/node_modules/
-ui/.next/
-build/
-dist-electron/
-.data-metier/
-*.log
-.DS_Store
-# Surfaces OS matérialisées depuis @creezio/os-ui — jamais versionnées dans la marque
-ui/app/(creezio-os)/
-`;
-}
-
 function renderDesktopSmokeGeneric(model: ProductModel): string {
   return `#!/usr/bin/env node
 import assert from "node:assert/strict";
@@ -247,13 +223,16 @@ console.log("OK test:desktop-smoke-profile (${model.brandId} native)");
 }
 
 export function writeFromPrdArtifacts(opts: {
+  /** Livrable serveur (`<racine>/server`) — reçoit métier, UI, scripts. */
   outDir: string;
+  /** Racine monorepo — reçoit AGENTS.md et .env.example. */
+  rootDir: string;
   manifest: AppManifest;
   model: ProductModel;
   force: boolean;
   written: string[];
 }): void {
-  const { outDir, manifest, model, force, written } = opts;
+  const { outDir, rootDir, manifest, model, force, written } = opts;
   const chr = isChrModel(model);
 
   // Purge glue OS / stubs / sidecar — marque = métier + déclaration.
@@ -294,7 +273,6 @@ export function writeFromPrdArtifacts(opts: {
     force,
     written,
   );
-  writeFile(path.join(outDir, ".gitignore"), renderGitignore(), force, written);
 
   writeFile(
     path.join(outDir, "crm/src/brand/schema.ts"),
@@ -439,7 +417,7 @@ process.exit(r.status ?? 1);
     written,
   );
   writeFile(
-    path.join(outDir, ".env.example"),
+    path.join(rootDir, ".env.example"),
     renderEnvExample(model),
     force,
     written,
@@ -533,12 +511,16 @@ process.exit(r.status ?? 1);
   );
 
   writeFile(
-    path.join(outDir, "AGENTS.md"),
+    path.join(rootDir, "AGENTS.md"),
     `# AGENTS — ${manifest.client.productName}
 
-Marque légère sur **OS Creezio**.
+Marque légère sur **OS Creezio** — monorepo 3 livrables.
 
-- Desktop = \`startBrandDesktop\` (@creezio/app-runtime)
+- \`server/\` = livrable principal : métier (\`src/electron/brand-*\`), UI Next,
+  harness, tests — \`startBrandDesktop\` (@creezio/app-runtime)
+- \`client/\` = desktop thin remote-only (main **sans** imports métier)
+- \`admin/\` = config pilotage flotte versionnée sans secret
+- \`vendor/creezio\` = kit partagé (symlinks \`server/vendor\`, \`client/vendor\`)
 - Déclaration = migrations + \`registerModuleApi\` + feed + nav métier
 - API métier = \`/api/v1/modules/*\`
 - UI OS (\`/mails\`, \`/taches\`, \`/setup\`, \`/login\`, MCP, admin…) =
@@ -548,8 +530,9 @@ Marque légère sur **OS Creezio**.
   fetch maison vers \`/api/v1/os/*\` dans \`ui/app\`
 
 \`\`\`bash
-npm test
+npm test                      # racine — délègue server/
 npm run metier:api
+npm run server-docker:create -- demo
 \`\`\`
 `,
     force,

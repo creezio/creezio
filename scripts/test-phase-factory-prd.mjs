@@ -91,7 +91,7 @@ test("F1.4 CLI accepte --from-prd", () => {
   assert.match(r.stdout, /--from-prd/);
 });
 
-test("F1–F4 scaffold --from-prd génère runtime natif (pas sidecar JSON)", () => {
+test("F1–F4 scaffold --from-prd génère monorepo 3 livrables (runtime natif)", () => {
   const outDir = fs.mkdtempSync(path.join(os.tmpdir(), "creezio-from-prd-"));
   const r = spawnSync(
     process.execPath,
@@ -101,38 +101,73 @@ test("F1–F4 scaffold --from-prd génère runtime natif (pas sidecar JSON)", ()
   assert.equal(r.status, 0, r.stderr + "\n" + r.stdout);
 
   const mustExist = [
-    "product-model.json",
-    "crm/src/brand/schema.sql",
-    "scripts/brand-kernel-harness.mjs",
-    "scripts/test-metier-parcours.mjs",
-    "scripts/test-mini-prd-core.mjs",
-    "scripts/test-meili-config.mjs",
-    "src/electron/main.ts",
-    "src/electron/brand-migrations.ts",
-    "src/electron/brand-module-api.ts",
-    "src/electron/meili-feed.ts",
-    "src/electron/preload.ts",
-    "ui/app/fournisseurs/page.tsx",
+    "package.json",
+    ".gitignore",
+    "AGENTS.md",
+    "scripts/creezio-cli.mjs",
+    "server/product-model.json",
+    "server/crm/src/brand/schema.sql",
+    "server/scripts/brand-kernel-harness.mjs",
+    "server/scripts/test-metier-parcours.mjs",
+    "server/scripts/test-mini-prd-core.mjs",
+    "server/scripts/test-meili-config.mjs",
+    "server/src/electron/main.ts",
+    "server/src/electron/brand-migrations.ts",
+    "server/src/electron/brand-module-api.ts",
+    "server/src/electron/meili-feed.ts",
+    "server/src/electron/preload.ts",
+    "server/ui/app/fournisseurs/page.tsx",
+    "server/electron-builder.server.json",
+    "client/package.json",
+    "client/src/electron/main.ts",
+    "client/electron-builder.client.json",
+    "client/scripts/build-builder-config.mjs",
+    "admin/server-admin.json",
+    "admin/docker-compose.admin.yml",
+    "admin/README.md",
   ];
   for (const rel of mustExist) {
     assert.ok(fs.existsSync(path.join(outDir, rel)), `manquant: ${rel}`);
   }
+  const server = path.join(outDir, "server");
 
-  assert.ok(!fs.existsSync(path.join(outDir, "scripts/metier-api.mjs")));
-  assert.ok(!fs.existsSync(path.join(outDir, "src/lib/brand-module-api.ts")));
+  assert.ok(!fs.existsSync(path.join(server, "scripts/metier-api.mjs")));
+  assert.ok(!fs.existsSync(path.join(server, "src/lib/brand-module-api.ts")));
   assert.ok(!fs.existsSync(path.join(ROOT, "packages/factory/templates/chr")));
 
-  const main = fs.readFileSync(path.join(outDir, "src/electron/main.ts"), "utf8");
+  const main = fs.readFileSync(path.join(server, "src/electron/main.ts"), "utf8");
   assert.match(main, /startBrandDesktop/);
   assert.match(main, /brandMigrations|registerModuleApi/);
   assert.match(main, /@creezio\/app-runtime/);
   assert.doesNotMatch(main, /spawnBrandMetierApi|listenBrandKernelHttp|bootBrandKernel/);
-  assert.ok(!fs.existsSync(path.join(outDir, "src/electron/brand-runtime.ts")));
-  assert.ok(!fs.existsSync(path.join(outDir, "src/lib/host-stack.ts")));
-  assert.ok(!fs.existsSync(path.join(outDir, "src/electron/product-hub-stub.ts")));
+  assert.ok(!fs.existsSync(path.join(server, "src/electron/brand-runtime.ts")));
+  assert.ok(!fs.existsSync(path.join(server, "src/lib/host-stack.ts")));
+  assert.ok(!fs.existsSync(path.join(server, "src/electron/product-hub-stub.ts")));
+
+  // Client thin remote-only : AUCUN import métier dans le main client.
+  const clientMain = fs.readFileSync(
+    path.join(outDir, "client/src/electron/main.ts"),
+    "utf8",
+  );
+  assert.match(clientMain, /startBrandDesktop/);
+  assert.doesNotMatch(clientMain, /brand-migrations|brand-module-api|meili-feed/);
+
+  // Admin versionné SANS secret.
+  const adminCfg = JSON.parse(
+    fs.readFileSync(path.join(outDir, "admin/server-admin.json"), "utf8"),
+  );
+  assert.ok(adminCfg.port && adminCfg.user && Array.isArray(adminCfg.brandRoots));
+  assert.equal(adminCfg.pass, undefined, "pas de secret versionné");
+
+  // Vendor partagé racine : server = symlink, client = dossier réel (copie
+  // hardlink stagée par sync — electron-builder refuse les symlinks hors projet).
+  assert.ok(fs.lstatSync(path.join(server, "vendor")).isSymbolicLink());
+  const clientVendor = path.join(outDir, "client/vendor");
+  assert.ok(!fs.lstatSync(clientVendor).isSymbolicLink(), "client/vendor réel");
+  assert.ok(fs.statSync(clientVendor).isDirectory());
 
   const mounts = fs.readFileSync(
-    path.join(outDir, "src/electron/brand-module-api.ts"),
+    path.join(server, "src/electron/brand-module-api.ts"),
     "utf8",
   );
   assert.match(mounts, /registerModuleApi/);
@@ -140,43 +175,63 @@ test("F1–F4 scaffold --from-prd génère runtime natif (pas sidecar JSON)", ()
   assert.doesNotMatch(mounts, /delegate_to_metier_api/);
 
   const feed = fs.readFileSync(
-    path.join(outDir, "src/electron/meili-feed.ts"),
+    path.join(server, "src/electron/meili-feed.ts"),
     "utf8",
   );
   assert.match(feed, /createChrCatalogMeiliFeed|brandMeiliFeed/);
   assert.doesNotMatch(feed, /tf2_produits|tf2_marketplaces/);
 
-  const pkg = JSON.parse(fs.readFileSync(path.join(outDir, "package.json"), "utf8"));
+  const rootPkg = JSON.parse(
+    fs.readFileSync(path.join(outDir, "package.json"), "utf8"),
+  );
+  assert.equal(rootPkg.creezio?.nativeKernel, true);
+  assert.equal(rootPkg.creezio?.layout, "monorepo");
+  assert.ok(rootPkg.scripts["metier:api"], "délégation metier:api racine");
+  assert.ok(rootPkg.scripts["pack:linux"].includes("--prefix client"));
+  assert.ok(rootPkg.scripts["server-docker:create"], "server-docker racine");
+
+  const pkg = JSON.parse(
+    fs.readFileSync(path.join(server, "package.json"), "utf8"),
+  );
   assert.equal(pkg.creezio?.nativeKernel, true);
+  assert.equal(pkg.creezio?.kind, "server");
   assert.ok(pkg.scripts["metier:api"].includes("brand-kernel-harness"));
   assert.ok(pkg.scripts["test:meili-config"]);
-  assert.ok(pkg.scripts["pack:linux"], "pack:linux générique --from-prd");
   assert.ok(pkg.scripts["pack:linux:server"], "pack:linux:server");
   assert.ok(pkg.scripts["e2e:browser"], "e2e:browser");
   assert.ok(pkg.scripts["smoke:tunnel-catalog"], "smoke:tunnel-catalog");
+
+  const clientPkg = JSON.parse(
+    fs.readFileSync(path.join(outDir, "client/package.json"), "utf8"),
+  );
+  assert.equal(clientPkg.creezio?.kind, "client");
+  assert.ok(clientPkg.scripts["pack:linux"], "pack:linux client");
+  assert.ok(clientPkg.scripts["electron:config:client"]);
+  assert.ok(clientPkg.scripts["electron:verify-pack"]);
+
   assert.ok(
-    fs.existsSync(path.join(outDir, "scripts/ensure-linux-icons.mjs")),
+    fs.existsSync(path.join(server, "scripts/ensure-linux-icons.mjs")),
     "ensure-linux-icons",
   );
   assert.ok(
-    fs.existsSync(path.join(outDir, "scripts/load-local-env.mjs")),
+    fs.existsSync(path.join(server, "scripts/load-local-env.mjs")),
     "load-local-env",
   );
   assert.ok(
-    fs.existsSync(path.join(outDir, "scripts/e2e-browser-parcours.mjs")),
+    fs.existsSync(path.join(server, "scripts/e2e-browser-parcours.mjs")),
     "e2e-browser-parcours",
   );
   assert.ok(
-    fs.existsSync(path.join(outDir, "ui/lib/metier-base.ts")),
+    fs.existsSync(path.join(server, "ui/lib/metier-base.ts")),
     "metier-base same-origin",
   );
   const e2eProxy = fs.readFileSync(
-    path.join(outDir, "scripts/e2e-browser-parcours.mjs"),
+    path.join(server, "scripts/e2e-browser-parcours.mjs"),
     "utf8",
   );
   assert.match(e2eProxy, /desktop-tooling\/scripts\/e2e-browser-parcours/);
   const nextCfg = fs.readFileSync(
-    path.join(outDir, "ui/next.config.mjs"),
+    path.join(server, "ui/next.config.mjs"),
     "utf8",
   );
   assert.match(nextCfg, /rewrites/);
@@ -186,7 +241,7 @@ test("F1–F4 scaffold --from-prd génère runtime natif (pas sidecar JSON)", ()
 test("F3 smoke kernel natif sur app générée", () => {
   const outDir = fs.mkdtempSync(path.join(os.tmpdir(), "creezio-metier-"));
   const model = parseProductPrd(fs.readFileSync(PRD, "utf8"));
-  scaffoldNewApp({
+  const result = scaffoldNewApp({
     brandId: model.brandId,
     productName: model.brandName,
     domain: model.domain,
@@ -195,13 +250,14 @@ test("F3 smoke kernel natif sur app générée", () => {
     force: true,
     productModel: model,
   });
+  const server = result.serverDir;
 
   const smoke = spawnSync(
     process.execPath,
-    [path.join(outDir, "scripts/test-metier-parcours.mjs")],
+    [path.join(server, "scripts/test-metier-parcours.mjs")],
     {
       encoding: "utf8",
-      cwd: outDir,
+      cwd: server,
       timeout: 120000,
       env: SMOKE_ENV,
     },
@@ -211,22 +267,22 @@ test("F3 smoke kernel natif sur app générée", () => {
 
   const firstRun = spawnSync(
     process.execPath,
-    [path.join(outDir, "scripts/test-first-run-auth.mjs")],
-    { encoding: "utf8", cwd: outDir, env: SMOKE_ENV },
+    [path.join(server, "scripts/test-first-run-auth.mjs")],
+    { encoding: "utf8", cwd: server, env: SMOKE_ENV },
   );
   assert.equal(firstRun.status, 0, firstRun.stderr + "\n" + firstRun.stdout);
 
   const setupLogin = spawnSync(
     process.execPath,
-    [path.join(outDir, "scripts/test-setup-login.mjs")],
-    { encoding: "utf8", cwd: outDir, timeout: 30000, env: SMOKE_ENV },
+    [path.join(server, "scripts/test-setup-login.mjs")],
+    { encoding: "utf8", cwd: server, timeout: 30000, env: SMOKE_ENV },
   );
   assert.equal(setupLogin.status, 0, setupLogin.stderr + "\n" + setupLogin.stdout);
 
   const allow = spawnSync(
     process.execPath,
-    [path.join(outDir, "scripts/test-allowlist.mjs")],
-    { encoding: "utf8", cwd: outDir, env: SMOKE_ENV },
+    [path.join(server, "scripts/test-allowlist.mjs")],
+    { encoding: "utf8", cwd: server, env: SMOKE_ENV },
   );
   assert.equal(allow.status, 0, allow.stderr + "\n" + allow.stdout);
 });

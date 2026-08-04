@@ -127,8 +127,10 @@ Desktop Creezio natif.
   ]);
   assert.equal(apply.status, 0, apply.stderr + "\n" + apply.stdout);
 
+  // Layout monorepo 3 livrables : métier sous server/.
+  const serverDir = path.join(appDir, "server");
   const main = fs.readFileSync(
-    path.join(appDir, "src/electron/main.ts"),
+    path.join(serverDir, "src/electron/main.ts"),
     "utf8",
   );
   assert.match(main, /startBrandDesktop/);
@@ -139,25 +141,35 @@ Desktop Creezio natif.
     main,
     /prepareDesktopBoot|listenBrandKernelHttp|bootBrandKernel|brand-runtime/,
   );
+  for (const dir of [appDir, serverDir, path.join(appDir, "client")]) {
+    assert.ok(
+      !fs.existsSync(path.join(dir, "resources/vendor")),
+      `vendor OS interdit dans la marque: ${dir}`,
+    );
+  }
+  assert.ok(!fs.existsSync(path.join(serverDir, "src/lib/host-stack.ts")));
   assert.ok(
-    !fs.existsSync(path.join(appDir, "resources/vendor")),
-    "vendor OS interdit dans la marque",
+    !fs.existsSync(path.join(serverDir, "src/electron/brand-runtime.ts")),
   );
-  assert.ok(!fs.existsSync(path.join(appDir, "src/lib/host-stack.ts")));
-  assert.ok(!fs.existsSync(path.join(appDir, "src/electron/brand-runtime.ts")));
 
   const harness = fs.readFileSync(
-    path.join(appDir, "scripts/brand-kernel-harness.mjs"),
+    path.join(serverDir, "scripts/brand-kernel-harness.mjs"),
     "utf8",
   );
   assert.match(harness, /startBrandKernelHarness/);
 
   // electron-builder : vendor kit toujours ; bins = serveur Win only (pas client).
   const manifest = JSON.parse(
-    fs.readFileSync(path.join(appDir, "src/electron/app-manifest.json"), "utf8"),
+    fs.readFileSync(
+      path.join(serverDir, "src/electron/app-manifest.json"),
+      "utf8",
+    ),
   );
   const base = JSON.parse(
-    fs.readFileSync(path.join(appDir, "electron-builder.base.json"), "utf8"),
+    fs.readFileSync(
+      path.join(serverDir, "electron-builder.base.json"),
+      "utf8",
+    ),
   );
   const clientCfg = buildElectronBuilderConfig(manifest, "client", base);
   const serverCfg = buildElectronBuilderConfig(manifest, "server", base);
@@ -220,8 +232,9 @@ test("PnP3 harness OS ready sur marque apply (non-TF3)", async () => {
       throw new Error("PnP2 doit précéder PnP3");
     })();
 
+  const serverDir = path.join(appDir, "server");
   // App hors workspace : lier node_modules kit pour @types/node + @creezio/*.
-  const nm = path.join(appDir, "node_modules");
+  const nm = path.join(serverDir, "node_modules");
   if (!fs.existsSync(nm)) {
     fs.symlinkSync(path.join(ROOT, "node_modules"), nm, "dir");
   }
@@ -232,13 +245,13 @@ test("PnP3 harness OS ready sur marque apply (non-TF3)", async () => {
     [tscBin, "-p", "tsconfig.electron.json"],
     {
       encoding: "utf8",
-      cwd: appDir,
+      cwd: serverDir,
       env: SMOKE_ENV,
     },
   );
   assert.equal(build.status, 0, build.stderr + "\n" + build.stdout);
 
-  const electron = path.join(appDir, "build/electron");
+  const electron = path.join(serverDir, "build/electron");
   const manifestMod = await import(
     pathToFileURL(path.join(electron, "app-manifest.js")).href
   );
@@ -264,7 +277,7 @@ test("PnP3 harness OS ready sur marque apply (non-TF3)", async () => {
   process.env.CREEZIO_TUNNEL_LOCAL = "1";
   const handle = await startBrandKernelHarness({
     brandId: "pnpprobe",
-    appRoot: appDir,
+    appRoot: serverDir,
     dataDir,
     manifest: manifestMod[manifestKey],
     brandMigrations: migMod.brandMigrations(),

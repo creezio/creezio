@@ -124,66 +124,124 @@ test("scaffoldNewApp génère structure + builder configs", () => {
     force: true,
   });
   assert.equal(result.manifest.brandId, "sandboxapp");
+  // Layout monorepo 3 livrables : server/ client/ admin/ + racine orchestrateur.
   const required = [
     "package.json",
     "README.md",
-    "src/electron/main.ts",
-    "src/electron/preload.ts",
-    "src/electron/nav-core.ts",
-    "src/electron/vertical-slot.ts",
-    "src/electron/product-hub-stub.ts",
-    "src/electron/app-manifest.ts",
-    "electron-builder.base.json",
-    "electron-builder.client.json",
-    "electron-builder.server.json",
-    "scripts/build-builder-config.mjs",
+    ".gitignore",
+    "scripts/creezio-cli.mjs",
+    "server/package.json",
+    "server/README.md",
+    "server/src/electron/main.ts",
+    "server/src/electron/preload.ts",
+    "server/src/electron/nav-core.ts",
+    "server/src/electron/vertical-slot.ts",
+    "server/src/electron/product-hub-stub.ts",
+    "server/src/electron/app-manifest.ts",
+    "server/electron-builder.base.json",
+    "server/electron-builder.server.json",
+    "server/scripts/build-builder-config.mjs",
+    "client/package.json",
+    "client/src/electron/main.ts",
+    "client/src/electron/preload.ts",
+    "client/src/electron/app-manifest.ts",
+    "client/electron-builder.base.json",
+    "client/electron-builder.client.json",
+    "client/scripts/build-builder-config.mjs",
+    "admin/server-admin.json",
+    "admin/docker-compose.admin.yml",
+    "admin/README.md",
   ];
   for (const rel of required) {
     assert.ok(fs.existsSync(path.join(outDir, rel)), rel);
   }
-  const pkg = JSON.parse(
+  assert.equal(result.serverDir, path.join(outDir, "server"));
+  assert.equal(result.clientDir, path.join(outDir, "client"));
+  assert.equal(result.adminDir, path.join(outDir, "admin"));
+
+  const rootPkg = JSON.parse(
     fs.readFileSync(path.join(outDir, "package.json"), "utf8"),
   );
+  assert.equal(rootPkg.creezio?.layout, "monorepo");
+  assert.equal(rootPkg.creezio?.brandId, "sandboxapp");
+  assert.ok(rootPkg.scripts["server-docker:create"]);
+  assert.ok(rootPkg.scripts["pack:linux"].includes("--prefix client"));
+
+  const pkg = JSON.parse(
+    fs.readFileSync(path.join(outDir, "server/package.json"), "utf8"),
+  );
+  assert.equal(pkg.creezio?.kind, "server");
   assert.ok(pkg.dependencies["@creezio/product-hub"]);
   assert.ok(pkg.dependencies["@creezio/shell-ui"]);
   assert.ok(pkg.dependencies["@creezio/api-kernel"]);
   assert.ok(pkg.dependencies["@creezio/auth"]);
   assert.ok(pkg.dependencies["@creezio/app-runtime"]);
+  assert.ok(
+    pkg.dependencies["@creezio/app-runtime"].startsWith("file:vendor/creezio/"),
+  );
+
+  const clientPkg = JSON.parse(
+    fs.readFileSync(path.join(outDir, "client/package.json"), "utf8"),
+  );
+  assert.equal(clientPkg.creezio?.kind, "client");
+  assert.ok(clientPkg.scripts["electron:config:client"]);
+  assert.ok(clientPkg.scripts["pack:linux"]);
+
   const main = fs.readFileSync(
-    path.join(outDir, "src/electron/main.ts"),
+    path.join(outDir, "server/src/electron/main.ts"),
     "utf8",
   );
   assert.match(main, /startBrandDesktop/);
   assert.match(main, /desktopShell/);
   assert.doesNotMatch(main, /prepareDesktopBoot/);
-  assert.ok(fs.existsSync(path.join(outDir, "src/electron/brand-migrations.ts")));
   assert.ok(
-    fs.existsSync(path.join(outDir, "scripts/brand-kernel-harness.mjs")),
+    fs.existsSync(path.join(outDir, "server/src/electron/brand-migrations.ts")),
   );
+  assert.ok(
+    fs.existsSync(path.join(outDir, "server/scripts/brand-kernel-harness.mjs")),
+  );
+
+  // Client thin : main SANS imports métier (remote-only).
+  const clientMain = fs.readFileSync(
+    path.join(outDir, "client/src/electron/main.ts"),
+    "utf8",
+  );
+  assert.match(clientMain, /startBrandDesktop/);
+  assert.doesNotMatch(
+    clientMain,
+    /from "\.\/(brand-migrations|brand-module-api|vertical-slot)/,
+  );
+
   const vertical = fs.readFileSync(
-    path.join(outDir, "src/electron/vertical-slot.ts"),
+    path.join(outDir, "server/src/electron/vertical-slot.ts"),
     "utf8",
   );
   assert.match(vertical, /registerBrandNav\(\[\]\)/);
   assert.match(vertical, /productHub/);
   assert.doesNotMatch(vertical, /catalogue|tempoflow/i);
   const hubStub = fs.readFileSync(
-    path.join(outDir, "src/electron/product-hub-stub.ts"),
+    path.join(outDir, "server/src/electron/product-hub-stub.ts"),
     "utf8",
   );
   assert.match(hubStub, /@creezio\/product-hub/);
   assert.doesNotMatch(hubStub, /TEMPOFLOW_|CERTIVAN_/);
   const nav = fs.readFileSync(
-    path.join(outDir, "src/electron/nav-core.ts"),
+    path.join(outDir, "server/src/electron/nav-core.ts"),
     "utf8",
   );
   assert.match(nav, /PAS de catalogue TempoFlow/);
 
   const clientCfg = JSON.parse(
-    fs.readFileSync(path.join(outDir, "electron-builder.client.json"), "utf8"),
+    fs.readFileSync(
+      path.join(outDir, "client/electron-builder.client.json"),
+      "utf8",
+    ),
   );
   const serverCfg = JSON.parse(
-    fs.readFileSync(path.join(outDir, "electron-builder.server.json"), "utf8"),
+    fs.readFileSync(
+      path.join(outDir, "server/electron-builder.server.json"),
+      "utf8",
+    ),
   );
   assert.equal(clientCfg.appId, result.manifest.client.appId);
   assert.equal(serverCfg.appId, result.manifest.server.appId);
@@ -191,6 +249,13 @@ test("scaffoldNewApp génère structure + builder configs", () => {
   assert.equal(serverCfg.nsis.guid, result.manifest.server.nsisGuid);
   assert.equal(clientCfg.directories.output, "dist-electron");
   assert.equal(serverCfg.directories.output, "dist-electron-server");
+
+  // Admin versionné sans secret.
+  const adminCfg = JSON.parse(
+    fs.readFileSync(path.join(outDir, "admin/server-admin.json"), "utf8"),
+  );
+  assert.equal(adminCfg.pass, undefined);
+  assert.ok(adminCfg.port && adminCfg.user);
 
   fs.rmSync(tmp, { recursive: true, force: true });
 });
