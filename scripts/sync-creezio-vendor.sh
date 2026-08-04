@@ -254,5 +254,19 @@ const out = {
 fs.writeFileSync(path.join(dest, "SYNC.json"), JSON.stringify(out, null, 2) + "\n");
 ' "${DEST}" "${ARCH}" "${KIT_SHA}" "${PACKAGES[@]}"
 
+# Monorepo 3 livrables : client/vendor = copie hardlink du vendor racine.
+# electron-builder refuse tout fichier hors racine projet (symlinks résolus en
+# realpath), donc le livrable client a besoin de chemins réels sous client/.
+# Hardlinks = zéro duplication disque ; re-stagé à chaque sync.
+if [[ -n "${ROOT:-}" && "${DEST}" == "${ROOT}/vendor/creezio" && -f "${ROOT}/client/package.json" ]]; then
+  CLIENT_VENDOR="${ROOT}/client/vendor"
+  [[ -L "${CLIENT_VENDOR}" ]] && rm "${CLIENT_VENDOR}"
+  rm -rf "${CLIENT_VENDOR}"
+  mkdir -p "${CLIENT_VENDOR}"
+  cp -al "${ROOT}/vendor/creezio" "${CLIENT_VENDOR}/" 2>/dev/null \
+    || cp -a "${ROOT}/vendor/creezio" "${CLIENT_VENDOR}/"
+  echo "▸ client/vendor stagé (hardlinks) → ${CLIENT_VENDOR}"
+fi
+
 echo "OK vendor → ${DEST} (kitSha=${KIT_SHA})"
 du -sh "${DEST}"/*

@@ -38,6 +38,27 @@ creezio brand apply --spec apps/acme/brand-spec --out apps/acme --force
 creezio brand smoke --app apps/acme
 ```
 
+## 2b. Layout généré — monorepo 3 livrables (LA norme)
+
+`creezio brand apply` / `new-app` / `demo-app` génèrent :
+
+```text
+<app>/
+├── brand-spec/     # SoT marque
+├── vendor/creezio/ # kit synchronisé — UN SEUL vendor partagé
+├── server/         # livrable principal (métier, ui/, harness, Docker)
+│   └── vendor -> ../vendor (symlink)
+├── client/         # desktop thin remote-only (main client-only, pack, feeds)
+│   └── vendor/     # copie hardlink stagée par sync-creezio-vendor.sh
+├── admin/          # pilotage flotte (server-admin.json versionné SANS secrets)
+├── docker-data/    # runtime gitignoré (registre servers.json, volumes)
+└── package.json    # orchestrateur racine (scripts délégués)
+```
+
+Le `client/src/electron/main.ts` est **client-only** : pas de
+`brand-migrations` / `brand-module-api` (inutiles en `requireRemoteProfile`).
+Plus de layout plat.
+
 ## 3. Contrat runtime marque
 
 `main.ts` doit rester une **déclaration** :

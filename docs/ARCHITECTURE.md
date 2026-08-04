@@ -3,8 +3,30 @@
 Creezio est un OS d'application métier : le kit (`packages/@creezio/*`)
 fournit le socle complet, les marques n'apportent que leur métier (migrations,
 `registerModuleApi`, feed catalogue, nav `brand.*`, BrandSpec). Une marque
-consomme le kit par copie vendored (`crm/vendor/creezio`), jamais par
-dépendance npm publique.
+consomme le kit par copie vendored (`vendor/creezio` à la racine du repo
+marque), jamais par dépendance npm publique.
+
+## Layout marque — monorepo 3 livrables (LA norme)
+
+Chaque marque est un monorepo généré par la factory :
+
+```text
+<marque>/
+├── brand-spec/     # SoT marque
+├── vendor/creezio/ # kit synchronisé, partagé (server/vendor = symlink,
+│                   # client/vendor = copie hardlink stagée par le sync)
+├── server/         # livrable principal : métier src/electron, ui/ Next,
+│                   # harness, scripts, cible du Dockerfile serveur
+├── client/         # desktop thin remote-only : main client-only (sans
+│                   # brand-migrations/brand-module-api), pack, feeds/GUID
+├── admin/          # pilotage flotte : server-admin.json versionné SANS
+│                   # secrets + docker-compose.admin.yml
+├── docker-data/    # runtime gitignoré (registre servers.json, volumes)
+└── package.json    # orchestrateur racine (scripts délégués aux livrables)
+```
+
+Le layout plat historique reste détecté par le tooling (server-docker,
+resolvers de sonde) mais n'est plus généré.
 
 ## Les 4 modes de déploiement
 
@@ -67,8 +89,10 @@ scripts et par l'admin.
 (`docker/server-admin`, servie par
 `packages/observability/fleet-collector/server-admin.mjs`, Node pur) qui
 pilote plusieurs serveurs Docker de plusieurs marques : état, boot-status,
-start/stop, logs. La config vit dans `{brandRoot}/docker-data/server-admin.json`
-(`brandRoots[]`) ; `admin add-brand <racine>` ajoute une marque et recrée le
+start/stop, logs. La config versionnable (SANS secrets : `port`, `user`,
+`brandRoots[]`) vit dans `{brandRoot}/admin/server-admin.json` ; la config
+runtime (avec `pass`) reste dans `{brandRoot}/docker-data/server-admin.json`
+(gitignoré). `admin add-brand <racine>` ajoute une marque et recrée le
 container. Auth Basic (`CREEZIO_ADMIN_PASS`).
 
 ## Surfaces UI de l'OS (`os-ui`)

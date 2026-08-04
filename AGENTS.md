@@ -8,9 +8,17 @@ Le kit est la **source of truth (SoT)** du socle desktop Creezio (CMS stable) :
 auth, shell UI, API, MCP, assistant, tasks, mails, observability, plugins host,
 Electron runtime, tooling publish, factory, propagation.
 
-Les marques (`tempoflow2`, `certivan-app`, `fidu`) consomment le kit via
-`crm/vendor/creezio` (sync) + wiring métier. **Le métier vertical reste dans les
+Les marques (`tempoflow2`, `certivan-app`, `fidu`, `tempoflow3`) consomment le
+kit via leur vendor synchronisé (`vendor/creezio` racine ; legacy TF2 :
+`crm/vendor/creezio`) + wiring métier. **Le métier vertical reste dans les
 repos marque.**
+
+Toute marque générée par la factory est un **monorepo 3 livrables** :
+`server/` (métier + Docker), `client/` (desktop thin remote-only, main
+client-only), `admin/` (pilotage flotte, config sans secrets), avec
+`brand-spec/` + `vendor/creezio/` partagés à la racine et `docker-data/`
+runtime gitignoré. Plus de layout plat (détection legacy conservée côté
+tooling). Voir [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md).
 
 ## Carte de documentation
 
@@ -124,7 +132,8 @@ restart après PUT files efface le process respawné.
 
 1. Changer le kit + build.
 2. PR kit mergée sur `main`.
-3. Côté marque : `CREEZIO_KIT_ROOT=… bash crm/scripts/electron/sync-creezio-vendor.sh`.
+3. Côté marque : `CREEZIO_KIT_ROOT=… bash server/scripts/sync-creezio-vendor.sh`
+   (legacy TF2 : `crm/scripts/electron/sync-creezio-vendor.sh`).
 4. Adapter wiring / tests marque si l’API publique change.
 5. `test:shell` / gates marque.
 

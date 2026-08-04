@@ -68,6 +68,11 @@ npm run kit:impact -- --package=@creezio/platform-core
 npm run kit:version -- --package=@creezio/shell --bump=patch
 ```
 
+Toute app générée est un **monorepo 3 livrables** : `server/` (métier + Docker),
+`client/` (desktop thin remote-only), `admin/` (pilotage flotte), avec
+`brand-spec/` + `vendor/creezio/` partagés à la racine — voir
+[docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md).
+
 ## Les 24 packages
 
 | Package | Rôle |
@@ -120,5 +125,5 @@ produit client).
   les repos marque (pas de domaine marque dans `@creezio/*` —
   [ADR](./docs/adr/ADR-no-brand-domain-in-native-packages.md)).
 - Isolation DB stricte `core` / `brand` / `plugin/<id>`.
-- Les marques consomment le kit via `crm/vendor/creezio`
-  (`scripts/sync-creezio-vendor.sh`).
+- Les marques consomment le kit via leur `vendor/creezio` racine
+  (`scripts/sync-creezio-vendor.sh` ; legacy TF2 : `crm/vendor/creezio`).

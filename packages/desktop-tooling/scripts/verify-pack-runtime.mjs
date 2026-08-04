@@ -258,6 +258,7 @@ function scanModuleIds(rootDir) {
   return ids;
 }
 
+fs.mkdirSync(path.join(appRoot, ".tmp"), { recursive: true });
 const tmp = fs.mkdtempSync(path.join(appRoot, ".tmp", "pack-runtime-"));
 try {
   Asar.extractAll(asarPath, tmp);
