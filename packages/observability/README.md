@@ -144,6 +144,11 @@ trackDecision("service.meili", "ok", { durationMs: 120 });
 
 Le journal écrit dans `<userData>/ops`, garde une rétention bornée et ne doit jamais faire crasher l'app.
 
+Préfixes d'événements ops (`src/ops/types.ts`) : le SoT d'émission reste
+`TF2EVENT ` (préfixe historique conservé pour ne pas casser les collecteurs
+déployés) ; la lecture est dual-read via `OPS_EVENT_PREFIXES` (`TF2EVENT `,
+`CertivanEVENT `, …) — un parseur doit accepter tous les préfixes connus.
+
 ### Fleet agent
 
 ```ts

@@ -180,5 +180,5 @@ Les gates de production restent ordonnees :
 - `AGENTS.md`
 - `docs/FILES.md`
 - `docs/PROPAGATION.md`
-- `docs/PHASE-F.md`
+- `docs/archive/PHASE-F.md`
 - `docs/PLATFORM-VS-VERTICAL.md`

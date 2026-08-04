@@ -18,7 +18,7 @@ Le package doit protéger les frontières DB, empêcher les abus historiques com
 - Ne pas monter une API plateforme avec `registerModuleApi`. Utiliser `registerPlatformApi`.
 - Ne pas contourner `ScopedDbAccess` pour donner un handle `core` à un module brand ou plugin.
 - Ne pas ouvrir SQLite dans l'adaptateur Hono au moment de l'import : préférer un getter lazy.
-- Ne pas transformer les routes flat legacy en second design API. Elles restent une dette de cutover en parallèle.
+- Ne pas transformer les routes Hono propres à une marque en second design API : les espaces kernel sont le contrat ; le fallthrough de `src/hono.ts` n’existe que pour la composition.
 - Ne pas changer les erreurs publiques (`platform_not_mounted`, `module_not_mounted`, `plugin_not_mounted`, `cross_layer_write_denied`, etc.) sans vérifier les tests et clients.
 - Ne pas modifier `docs/FILES.md` manuellement.
 

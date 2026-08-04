@@ -48,7 +48,7 @@ Le package est indépendant du framework HTTP. Il expose un kernel pur (`createA
 - La création du `SqliteRuntime` et l'injection de migrations brand.
 - L'enregistrement des APIs plateforme concrètes (`platform-tasks`, `platform-mails`, `observability`, `automations`, etc.).
 - La policy ACL plugin fournie via `authorizePluginAccess`.
-- Les routes Hono flat legacy encore en cutover (`/tasks`, `/auth`, `/panier`, `/email`, etc.).
+- Les éventuelles routes Hono propres à la marque, servies en parallèle des espaces kernel (contrat de composition — fallthrough).
 
 Le kit interdit explicitement `registerModuleApi("platform-*")`. Les APIs plateforme doivent être montées dans l'espace `/platform/<id>` pour recevoir la couche `core`.
 
@@ -353,7 +353,7 @@ import type {
 - `brandId`: `tempoflow`.
 - Les modules métier historiques (`panier`, `dispatch`, dossiers, etc.) doivent être montés sous `/api/v1/modules/<id>`.
 - Les packages plateforme (`tasks`, `mails`, `observability`, `automations`) doivent être montés sous `/api/v1/platform/<id>`, pas comme modules.
-- Les routes flat Hono existantes peuvent rester en parallèle pendant le cutover.
+- Les routes Hono propres à la marque peuvent rester en parallèle des espaces kernel (fallthrough).
 
 ### Certivan
 

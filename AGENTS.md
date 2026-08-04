@@ -20,7 +20,7 @@ repos marque.**
 | Chaque `packages/*` | `packages/<pkg>/README.md` | `packages/<pkg>/AGENTS.md` | `packages/<pkg>/docs/FILES.md` |
 | Apps | `apps/*/README.md` | `apps/*/AGENTS.md` | `apps/*/docs/FILES.md` |
 | Scripts/gates | [scripts/README.md](./scripts/README.md) | [scripts/AGENTS.md](./scripts/AGENTS.md) | [scripts/docs/FILES.md](./scripts/docs/FILES.md) |
-| Architecture | [docs/ARCHITECTURE-INTENTION.md](./docs/ARCHITECTURE-INTENTION.md) | — | phases / matrice / gates |
+| Architecture | [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) | [docs/ARCHITECTURE-INTENTION.md](./docs/ARCHITECTURE-INTENTION.md) | [docs/archive/](./docs/archive/) (historique) |
 
 **Règle** : ne pas créer un mega-doc unique — mettre à jour le package concerné.
 
@@ -58,10 +58,10 @@ Packagé (`app.isPackaged`) : **toutes** les données runtime vivent sous
 Voir `package.json` script `build:packages`. Ordre typique :
 
 `brand-config` → `shell` → `platform-core` → `product-hub` → `api-kernel` →
-`mcp-facade` → `auth` → `shell-ui` → `onboarding` → `cockpit` → `assistant` →
-`tasks` → `mails` → `observability` → `automations` → `database` →
-`browser-host` → `electron-shell` → `app-runtime` → `brand-spec` →
-`desktop-tooling` → `factory` → `propagation` → `build:cjs`.
+`mcp-facade` → `auth` → `shell-ui` → `os-ui` → `onboarding` → `cockpit` →
+`assistant` → `tasks` → `mails` → `observability` → `automations` →
+`database` → `browser-host` → `electron-shell` → `brand-spec` →
+`app-runtime` → `desktop-tooling` → `factory` → `propagation` → `build:cjs`.
 
 Après changement runtime consommé par les marques : `npm run build:packages` puis
 resync vendor (`scripts/sync-creezio-vendor.sh` côté marque, `CREEZIO_KIT_ROOT`).
@@ -78,6 +78,7 @@ resync vendor (`scripts/sync-creezio-vendor.sh` côté marque, `CREEZIO_KIT_ROOT
 | MCP unifié / OAuth / host tools | `mcp-facade` |
 | Session / login / recovery | `auth` |
 | Nav + chrome CRM UI | `shell-ui` |
+| Pages Next OS (mails/tâches/setup/admin…) matérialisées dans les marques | `os-ui` |
 | First-run setup | `onboarding` |
 | Server cockpit UI | `cockpit` |
 | Chat / Hermes Work / tools | `assistant` |
@@ -98,18 +99,20 @@ resync vendor (`scripts/sync-creezio-vendor.sh` côté marque, `CREEZIO_KIT_ROOT
 ## Tests
 
 ```bash
-npm test                 # gates phases (505+)
-npm run test:fast        # fail-fast lisible — stop 1re rouge, --from/--only
+npm run test:kit         # gates pures kit (~75) — 100 % vertes partout, fail-fast
+npm run test:brands      # gates lisant les repos marque (~55) — skip auto si absents
+npm run test:env         # gates lourdes opt-in (cold-warm, factory-prd)
+npm test                 # les 133 gates en un node --test (CI complet)
 npm run build:packages   # tsc + dual CJS
 ```
 
 Gates liées aux packages : `scripts/test-phase-*.mjs`. Ne pas « fixer » un gate
-en affaiblissant l’assert sans comprendre la dette documentée.
+en affaiblissant l’assert sans comprendre la dette documentée. Matrice
+suite→prérequis : [scripts/README.md](./scripts/README.md).
 
-`test:fast` skippe par défaut les gates environnementales de CE VPS (liste
-documentée dans `scripts/test-fast.mjs`, aucun assert affaibli) ; workflow :
-première rouge → corriger → `npm run test:fast -- --from <gate>`.
-`--no-default-skip` pour tout lancer sur un poste complet.
+Workflow : `npm run test:kit` → première rouge → corriger →
+`npm run test:kit -- --from <gate>`. Les skips sont toujours explicites
+(raison affichée), jamais silencieux.
 
 ## Plugins Electron — piège connu
 
@@ -136,9 +139,8 @@ Compat : `creezio new-app --from-prd` reste supporté.
 
 Happy path **non technique** (expérience TempoFlow3) :
 
-1. Suivre la suite ordonnée
-   [`docs/experiences/tempoflow3/HISTORIQUE-PROMPTS.md`](./docs/experiences/tempoflow3/HISTORIQUE-PROMPTS.md)
-   (cadre → bootstrap → **mini-PRDs par onglet**).
+1. Partir du brief produit ([`docs/experiences/tempoflow3/PRD-PRODUIT.md`](./docs/experiences/tempoflow3/PRD-PRODUIT.md)
+   — fixture factory).
 2. Bootstrap :
 
 ```bash
@@ -148,18 +150,19 @@ creezio new-app \
 cd apps/tempoflow3 && npm run test:metier-parcours
 ```
 
-3. Enrichir **un module à la fois** via `mini-prds/*.md` — jamais en collant
+3. Enrichir **un module à la fois** via des mini-PRDs — jamais en collant
    du code tempoflow2.
 4. Si un générique manque → **corriger creezio**, pas le prompt.
 
-Journal : [`JOURNAL-CREATION.md`](./docs/experiences/tempoflow3/JOURNAL-CREATION.md).  
-ADR : [`docs/ADR-factory-from-prd.md`](./docs/ADR-factory-from-prd.md).
+Historique de l'expérience (prompts, journal) : archivé dans le repo
+`tempoflow3` (`docs/archive/`).  
+ADR : [`docs/adr/ADR-factory-from-prd.md`](./docs/adr/ADR-factory-from-prd.md).
 
 ## Ne pas faire
 
 - Committer des secrets / PAT.
 - Extraire du métier TF/CV/Fidu « pour faire joli » dans le kit.
-- Modifier `docs/PHASE-*.md` historiques pour cacher une régression (ajouter une note / nouvelle phase).
+- Modifier `docs/archive/PHASE-*.md` historiques pour cacher une régression (ajouter une note / nouvelle phase).
 - Toucher `apps/demobrand` comme produit client — c’est une sandbox kit.
 - Réécrire toute la doc dans un seul fichier à la racine.
 - Exiger un plan ingénieur (host-stack, sync-vendor, phases P*) pour un brief
@@ -168,8 +171,9 @@ ADR : [`docs/ADR-factory-from-prd.md`](./docs/ADR-factory-from-prd.md).
 ## Liens rapides
 
 - [docs/PACKAGES.md](./docs/PACKAGES.md) — index de tous les packages
+- [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) — modes de déploiement, boot, admin
 - [docs/MATRICE-NATIVE-METIER-PLUGIN.md](./docs/MATRICE-NATIVE-METIER-PLUGIN.md)
 - [docs/PROPAGATION.md](./docs/PROPAGATION.md)
-- [docs/ETAT-DES-LIEUX-INTENTION.md](./docs/ETAT-DES-LIEUX-INTENTION.md)
+- [docs/BACKLOG.md](./docs/BACKLOG.md) — dettes restantes assumées
 - [docs/experiences/tempoflow3/PROMPT-PRODUIT.md](./docs/experiences/tempoflow3/PROMPT-PRODUIT.md)
-- [docs/ADR-factory-from-prd.md](./docs/ADR-factory-from-prd.md)
+- [docs/adr/ADR-factory-from-prd.md](./docs/adr/ADR-factory-from-prd.md)

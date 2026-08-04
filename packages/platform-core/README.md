@@ -359,7 +359,7 @@ console.log(PLATFORM_STORES_CONTRACT);
 console.log(DEPRECATED_SHADOW_ONLY);
 ```
 
-Ce contrat documente le cutover des domaines plateforme vers `core.db` et évite les dual-writes runtime.
+Ce contrat fige le store SoT de chaque domaine plateforme dans `core.db` et interdit tout dual-write runtime.
 
 ### Embeds Hermes et n8n
 
@@ -491,7 +491,7 @@ Ces helpers restent purs ou Node-only, et ne doivent pas dépendre d'Electron.
 
 1. Le launcher injecte `DB_PATH`, `ASSISTANT_DB_PATH`, `UPLOADS_DIR`, `CREEZIO_CORE_DB_PATH`, etc.
 2. Côté Next, `resolveCoreDbPathFromEnv` permet de retrouver `core.db`.
-3. Les routes plateforme consomment `core.db` ; le métier marque conserve `brand.db` jusqu'au cutover.
+3. Les routes plateforme consomment `core.db` ; le métier marque vit dans `brand.db`.
 
 ## Intégration marques (TempoFlow, Certivan, Fidu, DemoBrand)
 

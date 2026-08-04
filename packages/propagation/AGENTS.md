@@ -76,4 +76,4 @@ Scenarios importants :
 - `README.md`
 - `docs/FILES.md`
 - `docs/PROPAGATION.md`
-- `docs/PHASE-F.md`
+- `docs/archive/PHASE-F.md`

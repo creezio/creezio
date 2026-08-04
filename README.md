@@ -1,207 +1,124 @@
-# Creezio kit (`@creezio/*`)
+# Creezio — OS desktop & serveur pour marques
 
-Monorepo **plateforme** pour les desktops Creezio (TempoFlow, Certivan, Fidu)
-+ factory de nouvelles marques + propagation kit→marques.
+Creezio est un **kit plateforme** (monorepo `@creezio/*`) : un « OS » complet
+d'application métier — auth, shell UI, API, MCP, assistant IA, tâches, mails,
+observabilité, plugins, runtime Electron, serveur Docker headless — que des
+**marques** (TempoFlow, Certivan, Fidu…) consomment en y ajoutant uniquement
+leur métier vertical. Une nouvelle marque se crée depuis un brief produit,
+sans réécrire le socle.
 
-> Chemin canonique sur le VPS : **`/opt/docker/creezio`**  
-> Source d'extraction (lecture seule) : `/opt/docker/creezio-kit-src` = `creezio/tempoflow2` @ **v0.10.26**.  
-> Cadre architecture : **`ARCHITECTURE_VERSION = "H6"`** — H0–H5 + freeze I0–I8.
+## Architecture en bref
 
-## Documentation (dispatchée)
+```
+                      ┌──────────────────────────────┐
+                      │        kit creezio           │
+                      │  packages/@creezio/* (24)    │
+                      └──────────────┬───────────────┘
+                                     │  sync vendor (crm/vendor/creezio)
+        ┌────────────────────────────┼────────────────────────────┐
+        ▼                            ▼                            ▼
+   marque A (tempoflow3)        marque B (certivan)          marque C (fidu)
+   métier + BrandSpec           métier + wiring              métier + wiring
 
-La doc n’est **pas** un seul fichier : chaque package / app a son trio.
+Chaque marque se déploie en 4 modes (même code) :
+ 1. Desktop Electron complet   — startBrandDesktop, embeds locaux (SQLite,
+                                 Hermes, n8n, Meilisearch)
+ 2. Serveur Docker headless    — creezio server-docker, kernel harness sans
+                                 Electron, CRM servi en HTTP
+ 3. Client desktop « thin »    — Electron remote-only pointé sur un serveur
+                                 (defaultServerUrl)
+ 4. Sidecar navigateur IA      — Chromium piloté par CDP (browser-host) pour
+                                 les sessions web des agents
+```
+
+Détails : [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md).
+
+## Quickstart
+
+```bash
+npm install
+npm run build:packages   # tsc tous les packages + dual CJS
+npm run test:kit         # gates pures kit — doivent être 100 % vertes
+```
+
+Suites de tests complémentaires (voir [scripts/README.md](./scripts/README.md)) :
+`npm run test:brands` (nécessite les repos marque synchronisés, skip auto sinon)
+et `npm run test:env` (gates lourdes opt-in).
+
+## Commandes clés
+
+```bash
+# Créer une app depuis un brief produit (PRD)
+npx creezio new-app --from-prd <PRD.md> --out apps/<id> --force
+
+# Créer/mettre à jour une marque depuis un BrandSpec YAML
+npx creezio brand apply --spec brand-spec/
+npx creezio brand doctor --spec brand-spec/
+
+# Démo jetable du kit
+npx creezio demo-app
+
+# Serveur Docker headless multi-instances (+ console admin)
+npx creezio server-docker create --brand-root <racine-marque> --name server-1
+npx creezio server-docker admin up
+npx creezio server-docker admin add-brand <racine-marque>
+
+# Propagation kit → marques
+npm run kit:impact -- --package=@creezio/platform-core
+npm run kit:version -- --package=@creezio/shell --bump=patch
+```
+
+## Les 24 packages
+
+| Package | Rôle |
+|---------|------|
+| `brand-config` | AppManifest : identité desktop, feeds, GUID, publish |
+| `shell` | Preload / IPC contracts / DesktopBridge |
+| `platform-core` | Paths, SQLite multi-fichier (`core`/`brand`/`plugin`), embeds env |
+| `product-hub` | Product Hub, ACL plugins, PRD factory |
+| `api-kernel` | Façade HTTP `/api/v1` (core/platform/modules/plugins) |
+| `mcp-facade` | MCP unifié, OAuth, host tools |
+| `auth` | Session, login, recovery |
+| `shell-ui` | Nav + chrome CRM UI (React) |
+| `os-ui` | Surfaces Next OS natives (mails, tâches, setup, admin…) matérialisées dans les marques |
+| `onboarding` | Setup first-run + moteur d'onboarding |
+| `cockpit` | UI server-cockpit (shell autonome + client CRM) |
+| `assistant` | Chat / Hermes Work / tools IA |
+| `tasks` | Kanban + missions IA |
+| `mails` | Inbox mails |
+| `observability` | Ops, fleet, analytics, request-logs |
+| `automations` | Lifecycle automations plugins/org |
+| `database` | Admin Database CRUD |
+| `electron-shell` | Host Electron : boot, updater, tray, plugins, sidecars, Meili |
+| `browser-host` | Chromium serveur IA (CDP, driver `external_*`, screencast) |
+| `app-runtime` | Façade marque n°1 : `startBrandDesktop` / kernel harness / compose OS |
+| `brand-spec` | BrandSpec YAML (SoT déclaratif marque) + doctor |
+| `desktop-tooling` | Publish desktop, remote-build, after-pack, build-status |
+| `factory` | `creezio new-app` / `brand apply` / `server-docker` |
+| `propagation` | Semver, impact kit→marques, registre org |
+
+Index détaillé : [docs/PACKAGES.md](./docs/PACKAGES.md) — chaque package a son
+trio `README.md` / `AGENTS.md` / `docs/FILES.md`.
+
+`apps/console` = console ops du parc ; `apps/demobrand` = sandbox kit (pas un
+produit client).
+
+## Documentation
 
 | Entrée | Contenu |
 |--------|---------|
-| **[AGENTS.md](./AGENTS.md)** | Guide agents IA (frontières, où modifier, pièges) |
-| **[docs/PACKAGES.md](./docs/PACKAGES.md)** | Index de **tous** les packages + liens |
-| `packages/<pkg>/README.md` | Rôle, config, API, flux, intégration marques |
-| `packages/<pkg>/AGENTS.md` | Règles agents pour ce package |
-| `packages/<pkg>/docs/FILES.md` | Inventaire **fichier par fichier** |
-| `apps/*/README.md` + `AGENTS.md` + `docs/FILES.md` | Console ops + DemoBrand |
-| `scripts/README.md` + `AGENTS.md` | Gates de phases + build CJS |
+| [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) | Modes de déploiement, boot, admin, navigateur IA, propagation |
+| [docs/PACKAGES.md](./docs/PACKAGES.md) | Index de tous les packages |
+| [docs/adr/](./docs/adr/) | Décisions d'architecture (ADR) en vigueur |
+| [docs/BACKLOG.md](./docs/BACKLOG.md) | Dettes restantes assumées |
+| [docs/archive/](./docs/archive/) | Journal historique de construction (ne décrit pas l'état courant) |
+| [AGENTS.md](./AGENTS.md) | Guide agents IA (frontières, où modifier, pièges) |
 
-Exemple : runtime Electron →
-[packages/electron-shell/README.md](./packages/electron-shell/README.md) ·
-[AGENTS](./packages/electron-shell/AGENTS.md) ·
-[FILES](./packages/electron-shell/docs/FILES.md).
+## Frontières
 
-## Architecture (Phases H0 → H5 + I0…)
-
-| Doc | Contenu |
-|-----|---------|
-| [docs/ARCHITECTURE-INTENTION.md](docs/ARCHITECTURE-INTENTION.md) | Intention (non-dev + technique), 3 couches, décisions verrouillées |
-| [docs/MATRICE-NATIVE-METIER-PLUGIN.md](docs/MATRICE-NATIVE-METIER-PLUGIN.md) | Cartographie Natif / Métier / Plugin + statuts ✅/🟡/❌ |
-| [docs/BACKLOG-H1-PACKAGES.md](docs/BACKLOG-H1-PACKAGES.md) | Packages `@creezio/*` H1 |
-| [docs/BACKLOG-H2.md](docs/BACKLOG-H2.md) | Isolation DB/API runtime H2 |
-| [docs/BACKLOG-H3.md](docs/BACKLOG-H3.md) | Modules métier TempoFlow (brand repo) H3 |
-| [docs/BACKLOG-H4.md](docs/BACKLOG-H4.md) | MCP proxy unifié H4 |
-| [docs/BACKLOG-H5.md](docs/BACKLOG-H5.md) | Harden plugins / ACL H5 |
-| [docs/PHASE-H0.md](docs/PHASE-H0.md) … [PHASE-H5.md](docs/PHASE-H5.md) | Sign-offs H0–H5 |
-| [docs/PHASE-I0.md](docs/PHASE-I0.md) … [PHASE-I18.md](docs/PHASE-I18.md) | Sign-offs I0–I8 (kit H6) + I9–I18 conso 3 marques |
-| [docs/PHASE-D0.md](docs/PHASE-D0.md) | Dette post-I18 — D0 docs/matrice → D1…D6 |
-| [docs/PHASE-C0.md](docs/PHASE-C0.md) | Correction post-audit — C0 docs → C1…C8 |
-| [docs/PHASE-R0.md](docs/PHASE-R0.md) | Gel inventions — V1–V3 prototypes ≠ SoT |
-| [docs/PHASE-R1.md](docs/PHASE-R1.md) | Database TF → `@creezio/database` (natif) |
-| [docs/PHASE-R2.md](docs/PHASE-R2.md) | Product Hub SoT unique `core.db` |
-| [docs/FEATURE-PARITY-DEMOBRAND-H6.md](docs/FEATURE-PARITY-DEMOBRAND-H6.md) | Checklist parity demobrand avant I9 |
-| [docs/REPUBLISH-POLICY.md](docs/REPUBLISH-POLICY.md) | Politique republish (I*/D*/C* — republish C* en C8) |
-| [docs/gates/POST-H5.md](docs/gates/POST-H5.md) | Checklist gates post-H5 + backlog C* |
-
-En bref : Creezio = **CMS stable** (SQLite `core`, API/MCP façade, nav + slots) ;
-le **métier** vit dans le repo marque (SQLite `brand`) ; les **plugins** sont
-d’organisation (SQLite `plugin/<id>` à l’install). Phases A→G = extraction +
-gates — **terminées**. H1 = packages natifs. H2 = **isolation runtime**.
-H3 = **modules TempoFlow** montés dans le brand repo (pas dans le kit).
-H4 = **MCP proxy unifié** (aliases anti-doublon, deny cross-layer).
-H5 = **ACL plugins L3** (see/install/execute, deny cross-org).
-I0 = **gouvernance** sync vendor + console `ARCHITECTURE_VERSION` + politique republish.
-
-## Structure
-
-```
-packages/
-  brand-config/      # AppManifest + createAppManifest + buildElectronBuilderConfig
-  shell/             # IPC, DesktopBridge, createDesktopApi (preload)
-  shell-ui/          # Nav Creezio + slots métier (H1.4)
-  platform-core/     # paths, SqliteRuntime H2, migrations, app-kind…
-  product-hub/       # Product Hub + ACL L3 H5 (see/install/execute)
-  api-kernel/        # Façade HTTP /api/v1 + ScopedDbAccess H2 + ACL plugin H5
-  mcp-facade/        # MCP proxy unifié H4 + deny plugin ACL H5
-  auth/              # Session native (H1.3)
-  assistant/         # Chat plateforme (H1.5)
-  tasks/             # Tâches plateforme (H1.6)
-  mails/             # Mails plateforme (H1.7)
-  observability/     # Activité / usages plugins / control-plane (V2)
-  automations/       # Lifecycle-only plugins/org/factory (V3 prototype ≠ Database)
-  database/          # Admin Database + automations row-level (R1, SoT TF)
-  electron-shell/    # runtime Electron (boot, updater, tray, splash, host stack)
-  desktop-tooling/   # publish-desktop, remote-build-win, after-pack, build-status
-  factory/           # creezio new-app (Phase D + wiring H1.9)
-  propagation/       # semver, impacts, canaux PR, registre L3, extension points
-apps/
-  console/           # Console ops parc + versions kit + liens gates G1/G2/G3
-  demobrand/         # Sandbox H2 multi-DB + shell-ui / api-kernel
-docs/
-  ARCHITECTURE-INTENTION.md
-  MATRICE-NATIVE-METIER-PLUGIN.md
-  BACKLOG-H1-PACKAGES.md BACKLOG-H2.md
-  PHASE-H0.md PHASE-H1.md PHASE-H2.md
-  PHASE-A.md … PHASE-F.md
-  DOD-PHASE-A-G.md
-  PROPAGATION.md
-  gates/G1-CERTIVAN.md G2-FIDU.md G3-TEMPOFLOW.md
-  PLATFORM-VS-VERTICAL.md
-```
-
-## Quick start
-
-```bash
-cd /opt/docker/creezio
-npm install
-npm run build
-npm test
-```
-
-### Propagation (Phase F)
-
-```bash
-# Dry-run impact d'un bump
-npm run kit:impact -- --package=@creezio/platform-core
-
-# Prévisualiser bump + release notes
-npm run kit:version -- --package=@creezio/shell --bump=patch
-
-# Appliquer (écrit package.json + CHANGELOG)
-npm run kit:version -- --package=@creezio/shell --bump=patch --apply
-```
-
-Détails : [docs/PROPAGATION.md](docs/PROPAGATION.md), [docs/PHASE-F.md](docs/PHASE-F.md).
-
-### Factory new-app
-
-```bash
-npm run factory:new-app -- \
-  --name DemoBrand \
-  --id demobrand \
-  --domain demobrand.creez.io \
-  --force
-```
-
-### Product Hub (Phase E)
-
-```ts
-import {
-  productHubTokensFromManifest,
-  pluginN8nTag,
-  createMemoryProductHubStore,
-} from "@creezio/product-hub";
-import { startHostPluginControlPlane } from "@creezio/electron-shell";
-```
-
-### Console ops
-
-```bash
-npm run console:dev    # http://127.0.0.1:3080
-# GET /api/kit-versions  — inventaire packages + gates
-# GET /api/feeds
-```
-
-### Tooling publish (générique)
-
-```bash
-npm run desktop:resolve-config -- --brand=demobrand --kind=client --pretty
-npm run desktop:publish -- --brand=certivan --kind=client --dry-run
-npm run desktop:remote-build -- --brand=tempoflow --dry-run
-```
-
-## Modèle standard : Client + Serveur
-
-Chaque `AppManifest` expose **toujours** `client` et `server` + `publish`.
-Les sandboxes factory portent `sandbox: true` (feeds jetables).
-
-## Phases
-
-| Phase | Contenu | Statut |
-|-------|---------|--------|
-| **A** | Contrats + manifests + docs + build vert | ✅ |
-| **B** | Runtime Electron générique (boot/preload/updater/meili) | ✅ |
-| **B.2** | Hermes / n8n / tunnel / local-config / plugins host | ✅ |
-| **C** | Tooling publish + console ops | ✅ |
-| **D** | Factory new-app + sandbox DemoBrand | ✅ |
-| **E** | Plugins / Product Hub généralisés | ✅ |
-| **F** | Propagation kit (semver, canaux, registre L3, console, gates docs) | ✅ |
-| **G** | Branchement runtime — G1 Certivan → G2 Fidu → G3 TempoFlow | ✅ |
-| **H0** | Cadre architecture + matrice + backlog packages H1 | ✅ |
-| **H1** | Packages natifs (`api-kernel`, `mcp-facade`, `auth`, `shell-ui`…) | ✅ |
-| **H2** | Isolation multi-DB / ScopedDb / MCP by space | ✅ |
-| **H3** | Modules métier TF (brand repo) | ✅ |
-| **H4** | MCP proxy unifié (aliases, policies) | ✅ |
-| **H5** | Harden plugins / ACL | ✅ |
-| **I0–I8** | Gouvernance + persistance + freeze H6 | ✅ |
-| **I9–I18** | Conso TempoFlow / Certivan / Fidu + republish | ✅ |
-| **D0** | Alignement docs / matrice post-I18 | ✅ |
-| **D1–D3** | TF MCP / stores / scan + republish **0.10.31** | ✅ |
-| **D4–D5** | Fidu CP HTTP **0.1.56** + ADR clientSlim false | ✅ |
-| **D6** | Certivan polish aliases | ✅ |
-| **V1** | Fabrique plugins conversationnelle (demobrand E2E) | ✅ socle / 🟡 produit → **C3** |
-| **V2** | Observabilité native (activité / usages / control-plane) | ✅ socle / 🟡 persist+vendor → **C4** |
-| **V3** | Automations lifecycle-only (prototype ≠ Database) | ✅ socle / C4 |
-| **C0** | Alignement docs / gates / backlog correction | ✅ |
-| **C1** | Cutover stores TF SoT kit (zéro dual-write) | ✅ |
-| **C2** | Certivan MCP+stores fermés en code | ✅ |
-| **C3–C8** | V1 réel, V2/V3, mounts, CP, republish | ✅ |
-| **R0** | Gel inventions — V1–V3 prototypes ≠ SoT | ✅ |
-| **R1** | Database TF → `@creezio/database` (natif) | ✅ |
-
-Voir [docs/PHASE-R0.md](docs/PHASE-R0.md), [docs/PHASE-R1.md](docs/PHASE-R1.md),
-[docs/PHASE-C0.md](docs/PHASE-C0.md), [docs/PHASE-D0.md](docs/PHASE-D0.md),
-[docs/PHASE-V1.md](docs/PHASE-V1.md), [docs/PHASE-V2.md](docs/PHASE-V2.md),
-[docs/PHASE-V3.md](docs/PHASE-V3.md), [docs/VISION-V1-V3.md](docs/VISION-V1-V3.md),
-[docs/PHASE-H5.md](docs/PHASE-H5.md),
-[docs/DOD-PHASE-A-G.md](docs/DOD-PHASE-A-G.md), [docs/PROPAGATION.md](docs/PROPAGATION.md).
-
-## Hors scope
-
-- Pas d’extraction du métier marque dans `@creezio/*` (décision H0 verrouillée)
-- Auto-promotion plugin→module, univers perso, cloud registry (volontaire)
+- Le kit est la **source of truth plateforme** ; le métier vertical vit dans
+  les repos marque (pas de domaine marque dans `@creezio/*` —
+  [ADR](./docs/adr/ADR-no-brand-domain-in-native-packages.md)).
+- Isolation DB stricte `core` / `brand` / `plugin/<id>`.
+- Les marques consomment le kit via `crm/vendor/creezio`
+  (`scripts/sync-creezio-vendor.sh`).

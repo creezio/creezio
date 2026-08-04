@@ -11,7 +11,7 @@ La mission inclut une clarification de scope : `shell-ui` n'est plus uniquement 
 - Ne pas hardcoder de domaine marque (`panier`, `dispatch`, GED, RTI, fournisseur comme concept utilisateur, etc.).
 - Ne pas importer de code app via `@/`.
 - Ne pas utiliser `window.tempoflowDesktop` ou equivalent hardcode ; passer par `configureShellUiBrand` et `getShellDesktopApi`.
-- Ne pas ajouter de nouvel usage `Supplier*`; preferer `ExternalSite*`. Les alias supplier sont seulement de compat cutover.
+- Ne pas ajouter de nouvel usage `Supplier*`; preferer `ExternalSite*`. Les alias supplier sont seulement de la compat historique (dépréciés).
 - Ne pas remettre login/session dans shell-ui : utiliser `@creezio/auth/ui`.
 - Ne pas remettre setup/onboarding : utiliser `@creezio/onboarding/ui`.
 - Ne pas remettre cockpit serveur : utiliser `@creezio/cockpit/ui`.
@@ -48,7 +48,7 @@ Docs :
 
 - `README.md`
 - `docs/FILES.md`
-- `../../docs/AUDIT-SHELL-UI-SCOPE.md`
+- `../../docs/archive/AUDIT-SHELL-UI-SCOPE.md`
 
 ## Modifier sans casser
 
@@ -113,7 +113,7 @@ node --test scripts/test-phase-p29.mjs
 Gates de scope :
 
 - aucun nouveau terme/metier marque dans le kit ;
-- aucun nouveau doublon sidebar/workspace/search dans les marques apres cutover ;
+- aucun nouveau doublon sidebar/workspace/search dans les marques — le chrome vient du kit ;
 - `ExternalSite*` prefere aux alias `Supplier*` ;
 - auth/onboarding/cockpit/splash restent hors package ;
 - `getShellDesktopApi()` reste la seule lecture desktop global generique.
@@ -144,5 +144,5 @@ Gates fonctionnels :
 
 - [`README.md`](./README.md)
 - [`docs/FILES.md`](./docs/FILES.md)
-- [`../../docs/AUDIT-SHELL-UI-SCOPE.md`](../../docs/AUDIT-SHELL-UI-SCOPE.md)
+- [`../../docs/archive/AUDIT-SHELL-UI-SCOPE.md`](../../docs/archive/AUDIT-SHELL-UI-SCOPE.md)
 - Packages lies : `@creezio/auth`, `@creezio/onboarding`, `@creezio/cockpit`, `@creezio/electron-shell`, `@creezio/tasks`, `@creezio/shell`

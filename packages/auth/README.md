@@ -336,7 +336,7 @@ Checklist :
 8. Brancher `bindAuthIpcHandlers` dans Electron si l'app desktop utilise les canaux auth.
 9. Laisser OAuth MCP dans `@creezio/mcp-facade` et lui injecter les helpers session auth.
 
-Fichiers locaux a reduire apres cutover :
+Fichiers marque remplacés par le kit (ne pas les recréer) :
 
 | Fichier marque | Remplacement |
 |---|---|

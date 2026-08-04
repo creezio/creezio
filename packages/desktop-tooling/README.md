@@ -72,7 +72,7 @@ import {
 const cfg = resolvePublishConfig({
   brandId: "fidu",
   kind: "client",
-  appRoot: "/opt/docker/fidu/crm",
+  appRoot: "<racine-fidu>/crm",
 });
 
 const status = collectDesktopBuildStatus({

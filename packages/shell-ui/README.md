@@ -11,7 +11,7 @@ Le package a deux couches :
 | `@creezio/shell-ui` | noyau bas niveau : registry nav, slots, brand tokens, helpers/lib plateforme |
 | `@creezio/shell-ui/ui` | React UI : primitives, AppShell, sidebar, workspace, search, desktop surfaces, settings |
 
-Point d'arbitrage important : historiquement, `shell-ui` etait "nav + slots" (H1/I7). Le package contient aujourd'hui aussi du chrome CRM extrait des apps (sidebar, workspace, search, settings, libs client). Selon `docs/AUDIT-SHELL-UI-SCOPE.md`, ce n'est pas seulement un mauvais nom : c'est le SoT court terme pour le chrome shell CRM, tandis que onboarding, cockpit, splash et auth restent dans leurs packages dedies.
+Point d'arbitrage important : historiquement, `shell-ui` etait "nav + slots" (H1/I7). Le package contient aujourd'hui aussi du chrome CRM extrait des apps (sidebar, workspace, search, settings, libs client). Selon `docs/archive/AUDIT-SHELL-UI-SCOPE.md`, ce n'est pas seulement un mauvais nom : c'est le SoT court terme pour le chrome shell CRM, tandis que onboarding, cockpit, splash et auth restent dans leurs packages dedies.
 
 ## Périmètre (kit vs marque)
 
@@ -240,7 +240,7 @@ La terminologie kit est neutre :
 | `ExternalSiteSlot`, `ExternalSiteTabMeta`, `createExternalSiteTab` | `SupplierSiteSlot`, `SupplierTabMeta`, `createSupplierTab` |
 | `siteIdFromHref`, `isExternalSiteHref` | `fournisseurIdFromHref`, `isSupplierHref` |
 
-Ne pas ajouter de nouveau libelle utilisateur "fournisseur" dans le kit. Les alias existent pour cutover, mais les nouveaux appels doivent utiliser les noms `ExternalSite`.
+Ne pas ajouter de nouveau libelle utilisateur "fournisseur" dans le kit. Les alias restent supportes pour compat, mais les nouveaux appels doivent utiliser les noms `ExternalSite`. Regle de fond : [ADR-no-brand-domain-in-native-packages](../../docs/adr/ADR-no-brand-domain-in-native-packages.md) (gate `test-phase-p29`).
 
 ## Flux / fonctionnement
 
@@ -278,7 +278,7 @@ Checklist :
 7. Migrer les surfaces "supplier" vers "external site" pour les nouveaux usages.
 8. Ne pas remettre onboarding/cockpit/auth/splash dans ce package.
 
-Jumeaux marques a supprimer apres cutover :
+Doublons historiques côté marque (à ne pas recréer — remplacés par le kit) :
 
 - `src/components/layout/sidebar.tsx`
 - `src/components/workspace/tab-workspace-context.tsx`
@@ -304,4 +304,4 @@ Peer optional / interactions :
 
 - [`AGENTS.md`](./AGENTS.md) : consignes de modification pour agents.
 - [`docs/FILES.md`](./docs/FILES.md) : inventaire fichier par fichier.
-- [`../../docs/AUDIT-SHELL-UI-SCOPE.md`](../../docs/AUDIT-SHELL-UI-SCOPE.md) : arbitrage nav slots vs chrome CRM et frontieres avec onboarding/cockpit/splash/auth.
+- [`../../docs/archive/AUDIT-SHELL-UI-SCOPE.md`](../../docs/archive/AUDIT-SHELL-UI-SCOPE.md) : arbitrage nav slots vs chrome CRM et frontieres avec onboarding/cockpit/splash/auth.

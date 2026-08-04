@@ -97,7 +97,7 @@ node --test scripts/test-phase-m8.mjs
 node --test scripts/test-phase-m12.mjs
 ```
 
-Selon la zone touchee, lancer aussi les tests auth/cutover presents dans `package.json` racine.
+Selon la zone touchee, lancer aussi les gates auth présentes dans le `package.json` racine.
 
 Gates fonctionnels :
 

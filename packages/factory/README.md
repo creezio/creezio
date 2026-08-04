@@ -35,7 +35,7 @@ Squelette OS + slot métier vide (comportement historique Phase D).
 ### Serveur Docker headless
 
 ```bash
-creezio server-docker proof --brand-root /opt/docker/tempoflow3
+creezio server-docker proof --brand-root "$BRAND_ROOT"
 ```
 
 Image générique + Compose multi-instances (`server-1` / `server-2`) —
@@ -85,5 +85,5 @@ npm run typecheck -w @creezio/factory
 ## Voir aussi
 
 - `AGENTS.md`
-- `docs/ADR-factory-from-prd.md`
+- `docs/adr/ADR-factory-from-prd.md`
 - `docs/experiences/tempoflow3/`

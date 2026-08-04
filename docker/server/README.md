@@ -23,7 +23,7 @@ L'image embarque :
 ## Une ligne (recommandé) — registre d'instances
 
 ```bash
-creezio server-docker create demo --brand-root /opt/docker/tempoflow3
+creezio server-docker create demo --brand-root "$BRAND_ROOT"
 # → build image si absente, port auto (18790+n), bind 127.0.0.1,
 #   attend le boot (progression live), CRM sur http://127.0.0.1:18793/
 
@@ -44,7 +44,7 @@ Options `create` : `--port N`, `--expose` (bind 0.0.0.0 — sinon loopback),
 ## Admin web multi-serveurs
 
 ```bash
-creezio server-docker admin up --brand-root /opt/docker/tempoflow3
+creezio server-docker admin up --brand-root "$BRAND_ROOT"
 # → http://127.0.0.1:18800/admin (Basic auth —
 #   credentials dans docker-data/server-admin.json)
 ```
@@ -65,7 +65,7 @@ ops JSONL, disque. Voir `docker/server-admin/README.md`.
 
 - `docker` + `docker compose` (plugin v2+)
 - Marque avec `scripts/brand-kernel-harness.mjs` + `vendor/creezio`
-- `npm run build:electron` côté marque (dossier `build/` requis)
+- `npm run build:runtime` côté marque (dossier `build/` requis)
 - `npm run build:ui` si la marque a `ui/` (CRM web — le CLI `build` le fait)
 
 ## Nommage des instances
@@ -85,7 +85,7 @@ Pas de lettres (`server-a` / `server-b` interdit).
 | Variable | Défaut | Rôle |
 |----------|--------|------|
 | `BRAND_ROOT` | — | Racine marque (build context) |
-| `CREEZIO_KIT_ROOT` | `/opt/docker/creezio` | Kit (Dockerfile / compose) |
+| `CREEZIO_KIT_ROOT` | racine du kit | Kit (Dockerfile / compose) |
 | `BRAND_ID` | `tempoflow3` | Identité (doc / env) |
 | `SERVER_1_PORT` / `SERVER_2_PORT` | `18791` / `18792` | Ports hôte |
 | `METIER_PORT` / `PORT` | `18791` | Port dans le container |
@@ -119,9 +119,9 @@ Flux typique first-run Docker :
 ## 1 serveur
 
 ```bash
-export CREEZIO_KIT_ROOT=/opt/docker/creezio
-export BRAND_ROOT=/opt/docker/tempoflow3
-cd "$BRAND_ROOT" && npm run build:electron
+export CREEZIO_KIT_ROOT=<racine du kit>
+export BRAND_ROOT=<racine de la marque>
+cd "$BRAND_ROOT" && npm run build:runtime
 
 # Image
 creezio server-docker build --brand-root "$BRAND_ROOT"
@@ -138,8 +138,8 @@ curl -sS "http://127.0.0.1:18791/api/v1/core/health"
 ## N serveurs (preuve 2 instances)
 
 ```bash
-creezio server-docker up --brand-root /opt/docker/tempoflow3
-# ou : npm run server-docker:up -- --brand-root /opt/docker/tempoflow3
+creezio server-docker up --brand-root "$BRAND_ROOT"
+# ou : npm run server-docker:up -- --brand-root "$BRAND_ROOT"
 
 curl -sS http://127.0.0.1:18791/api/v1/core/health   # server-1
 curl -sS http://127.0.0.1:18792/api/v1/core/health   # server-2
@@ -149,7 +149,7 @@ curl -sS http://127.0.0.1:18792/api/v1/core/health   # server-2
 #   ~/Bureau/TempoFlow-Server-1.desktop
 #   Exec → ~/bin/open-creezio-server-1 → creezio-open-url → firefox/…
 
-creezio server-docker down --brand-root /opt/docker/tempoflow3
+creezio server-docker down --brand-root "$BRAND_ROOT"
 ```
 
 **Projet Compose** : `creezio-servers` (ne touche pas `tempoflow`, `n8n`, etc.).

@@ -145,8 +145,17 @@ Variables lues par le runtime :
 - `HERMES_API_URL` ou `HERMES_GATEWAY_URL` : base Hermes. Défaut desktop `http://127.0.0.1:18642`, sinon `http://172.21.0.1:8642`.
 - `HERMES_API_SERVER_KEY` ou `API_SERVER_KEY` : Bearer Hermes.
 - `HERMES_MODEL` : modèle demandé à Hermes si non fourni.
-- `CREEZIO_CORE_DB_PATH` ou `DB_PATH` : résolution du store kit/legacy dans `chat-db`.
+- `CREEZIO_CORE_DB_PATH` ou `DB_PATH` : résolution du store kit/legacy dans `chat-db`
+  (`resolveAssistantDbPath` — store kit d'abord, fallback historique `assistant_chats.db`).
 - `DESKTOP_LOCAL=1` : active le défaut Hermes local.
+
+### Tools site externe (desktop)
+
+Les noms de tools UI pour piloter les onglets « site externe » sont figés dans
+`EXTERNAL_SITE_TOOL_NAMES` (`src/runtime/ui-actions.ts`) : SoT `external_*`
+(`external_list_tabs`, `external_click`, `external_screenshot`, …) avec alias
+dépréciés `supplier_*`. `siteIdFromSurfaceHref` (alias déprécié
+`fournisseurIdFromSurfaceHref`) extrait le `siteId` de la surface active.
 
 ## API publique avec exemples
 

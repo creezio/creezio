@@ -59,10 +59,10 @@ CRM web Next) via Docker, multi-instances, sans AppImage/Electron.
 ## Preuve
 
 ```bash
-creezio server-docker create demo --brand-root /opt/docker/tempoflow3
+creezio server-docker create demo --brand-root "$BRAND_ROOT"
 curl -sS http://127.0.0.1:1879X/api/v1/os/boot-status | head -c 300
 curl -sS http://127.0.0.1:1879X/api/v1/core/health
 curl -sSI http://127.0.0.1:1879X/login        # CRM web (200, pas 404)
-creezio server-docker admin up --brand-root /opt/docker/tempoflow3
+creezio server-docker admin up --brand-root "$BRAND_ROOT"
 # brandId cohérent, HTTP 200, boot-status avec étapes, admin liste l'instance
 ```

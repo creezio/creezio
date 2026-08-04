@@ -9,10 +9,10 @@ Maintenir le CLI `creezio` :
 2. **Mode produit** (`new-app --from-prd <prd.md>`) : brief → `ProductModel` →
    artefacts métier + **main mince** (`startBrandDesktop`).
 3. **BrandSpec** (`brand init|doctor|apply|smoke`) : SoT déclarative agent →
-   apply via scaffold (ADR `docs/ADR-brand-spec-app-runtime.md`).
+   apply via scaffold (ADR `docs/adr/ADR-brand-spec-app-runtime.md`).
 
 Les générateurs vivent ici. Le métier généré **n’entre pas** dans
-`@creezio/platform-core` (ADR `docs/ADR-factory-from-prd.md` +
+`@creezio/platform-core` (ADR `docs/adr/ADR-factory-from-prd.md` +
 `ADR-no-brand-domain-in-native-packages.md`).
 L’orchestration OS vit dans `@creezio/app-runtime` — **ne pas** la régénérer
 en jumeau dans `main.ts`.
@@ -78,6 +78,6 @@ cd /tmp/tempoflow3 && npm run test:metier-parcours
 ## Liens
 
 - `README.md`
-- `docs/ADR-factory-from-prd.md`
+- `docs/adr/ADR-factory-from-prd.md`
 - `docs/experiences/tempoflow3/PROMPT-PRODUIT.md`
 - `docs/experiences/tempoflow3/PRD-PRODUIT.md`
