@@ -4,6 +4,7 @@
  */
 // @ts-nocheck — types Electron/marque injectés via deps ; shim kit incomplet volontairement.
 import { spawn } from "node:child_process";
+import os from "node:os";
 import path from "node:path";
 import fs from "node:fs";
 import { closeAdminWindow, openAdminWindow } from "../admin-window.js";
@@ -45,6 +46,7 @@ import {
   unwrapBootProfileResult,
 } from "@creezio/platform-core";
 import { envForNodeScriptSpawn } from "../host/node-runtime.js";
+import { remoteOfflineHtml } from "./remote-offline-html.js";
 
 export type BrandDesktopHosts = {
   catalog: () => any;
@@ -513,6 +515,48 @@ export function installBrandDesktopRuntime(deps: BrandDesktopDeps): void {
     }
   }
 
+  /** Exécuteur bridge partagé local/remote (workspaces IA + onglets fournisseurs). */
+  function bridgeExecutor() {
+    return async (req: any) => {
+      if (deps.vertical.isAiWorkspaceActionType(req.type) && aiWorkspaces) {
+        return deps.vertical.executeAiWorkspaceAction(
+          aiWorkspaces,
+          req,
+          aiScreencaster ?? undefined,
+        );
+      }
+      // Actions supplier « classiques » : si un espace IA est affiché,
+      // cibler son TabManager (sinon owner).
+      const activeAi = aiWorkspaces?.getActiveUserId();
+      const activeTabs =
+        activeAi && aiWorkspaces
+          ? aiWorkspaces.getTabs(activeAi)
+          : null;
+      const targetTabs = activeTabs || tabs!;
+      const targetView =
+        activeAi && aiWorkspaces
+          ? aiWorkspaces.getView(activeAi)
+          : appView;
+      return deps.vertical.executeSupplierAction(targetTabs, req, {
+        onTabOpened: (info: any) => {
+          if (targetView) emitSupplierTabOpened(targetView, info);
+        },
+      });
+    };
+  }
+
+  /** Screencaster IA posté via la session du bridge courant. */
+  function attachAiScreencaster(): void {
+    if (!aiWorkspaces) return;
+    aiScreencaster = deps.vertical.createAiScreencaster({
+      manager: aiWorkspaces,
+      postFrame: async (payload) =>
+        bridge
+          ? bridge.postJson("/api/v1/desktop/screencast/frame", payload)
+          : null,
+    });
+  }
+
   async function startBridgeIfReady(): Promise<void> {
     if (!server) return;
     const auth = deps.store().getLocalAuth();
@@ -525,46 +569,53 @@ export function installBrandDesktopRuntime(deps: BrandDesktopDeps): void {
         authUser: auth.authUser,
         authPassword: auth.authPassword,
         sessionCookieName: deps.sessionCookieName,
-        executor: async (req) => {
-          if (deps.vertical.isAiWorkspaceActionType(req.type) && aiWorkspaces) {
-            return deps.vertical.executeAiWorkspaceAction(
-              aiWorkspaces,
-              req,
-              aiScreencaster ?? undefined,
-            );
-          }
-          // Actions supplier « classiques » : si un espace IA est affiché,
-          // cibler son TabManager (sinon owner).
-          const activeAi = aiWorkspaces?.getActiveUserId();
-          const activeTabs =
-            activeAi && aiWorkspaces
-              ? aiWorkspaces.getTabs(activeAi)
-              : null;
-          const targetTabs = activeTabs || tabs!;
-          const targetView =
-            activeAi && aiWorkspaces
-              ? aiWorkspaces.getView(activeAi)
-              : appView;
-          return deps.vertical.executeSupplierAction(targetTabs, req, {
-            onTabOpened: (info) => {
-              if (targetView) emitSupplierTabOpened(targetView, info);
-            },
-          });
-        },
+        executor: bridgeExecutor(),
         onLog: scoped("bridge"),
       });
       await bridge.start();
       // Vue live : capture CDP des espaces IA, frames POSTées via la session
       // bridge (start/stop pilotés par le serveur au 1er/dernier spectateur).
-      if (aiWorkspaces) {
-        aiScreencaster = deps.vertical.createAiScreencaster({
-          manager: aiWorkspaces,
-          postFrame: async (payload) =>
-            bridge
-              ? bridge.postJson("/api/v1/desktop/screencast/frame", payload)
-              : null,
-        });
-      }
+      attachAiScreencaster();
+    } catch (e) {
+      logError("bridge", e);
+    }
+  }
+
+  /**
+   * Bridge computer-use en mode REMOTE (client thin) : auth « session » —
+   * réutilise le cookie CRM posé par le login UI dans la partition appView.
+   * Tant que l'utilisateur n'est pas connecté, le loop du bridge retente avec
+   * backoff (aucun credential local sur le poste client).
+   */
+  async function startRemoteBridge(baseUrl: string): Promise<void> {
+    try {
+      bridge?.stop();
+      aiScreencaster?.stopAll();
+      const cookieName = deps.sessionCookieName;
+      bridge = deps.vertical.createBridgeClient({
+        baseUrl,
+        sessionCookieName: cookieName,
+        getSessionCookie: async () => {
+          try {
+            const ses = session.fromPartition(deps.sessionPartition);
+            const cookies = await ses.cookies.get({
+              url: baseUrl,
+              name: cookieName,
+            });
+            const c = cookies?.[0];
+            return c ? `${cookieName}=${c.value}` : null;
+          } catch {
+            return null;
+          }
+        },
+        deviceId: `desktop-${os.hostname() || "client"}`,
+        deviceLabel: `${productName} (${os.hostname() || "poste"})`,
+        executor: bridgeExecutor(),
+        onLog: scoped("bridge"),
+      });
+      await bridge.start();
+      attachAiScreencaster();
+      log("bridge", `bridge remote démarré vers ${baseUrl} (auth session)`);
     } catch (e) {
       logError("bridge", e);
     }
@@ -2898,10 +2949,18 @@ export function installBrandDesktopRuntime(deps: BrandDesktopDeps): void {
         (last.mode === "remote" ? ` → ${last.remoteUrl || "?"}` : "") +
         ") — pas de startLocalServer tant que Continuer n'est pas validé",
     );
+    // URL pré-provisionnée (installateur client d'un cabinet) : env prioritaire
+    // puis manifest.defaultServerUrl — ne remplace jamais un dernier choix.
+    const presetServerUrl = String(
+      process.env[`${deps.envPrefix}_DEFAULT_SERVER_URL`] ||
+        (deps.manifest as { defaultServerUrl?: string } | undefined)
+          ?.defaultServerUrl ||
+        "",
+    ).trim();
     await view.webContents.loadURL(
       deps.vertical.profilePickerHtml({
         initialMode: joinOnly || last.mode === "remote" ? "remote" : "local",
-        remoteUrl: last.remoteUrl || "",
+        remoteUrl: last.remoteUrl || presetServerUrl || "",
         localSetupDone,
         recallLine,
         rememberedServers: deps.store().listRememberedServers().map((s) => ({
@@ -2932,6 +2991,49 @@ export function installBrandDesktopRuntime(deps: BrandDesktopDeps): void {
   }
 
   /** Client thin : charge l'UI depuis un serveur distant (pas de Next/Meili locaux). */
+  /**
+   * Garde offline du client thin : perte du serveur en cours de session →
+   * page « Hors ligne » (retry backoff testConnection + rechooseConnection).
+   * Idempotent (un seul listener par vue, retentable via setupAndStart).
+   */
+  let remoteOfflineGuardInstalled = false;
+  function installRemoteOfflineGuard(view: any, crmUrl: string): void {
+    if (remoteOfflineGuardInstalled) return;
+    remoteOfflineGuardInstalled = true;
+    view.webContents.on(
+      "did-fail-load",
+      (
+        _e: unknown,
+        errorCode: number,
+        errorDescription: string,
+        validatedURL: string,
+        isMainFrame: boolean,
+      ) => {
+        if (!isMainFrame) return;
+        if (errorCode === -3) return; // ERR_ABORTED (navigation remplacée)
+        if (activeConnectionProfile.mode !== "remote") return;
+        // Seules les pertes du CRM distant comptent (pas les data:/devtools).
+        if (validatedURL && !validatedURL.startsWith(activeCrmBaseUrl || crmUrl)) {
+          return;
+        }
+        log(
+          "main",
+          `remote offline (${errorCode} ${errorDescription}) → écran reconnexion`,
+        );
+        view.webContents
+          .loadURL(
+            remoteOfflineHtml({
+              productName,
+              bridgeName: deps.manifest.bridgeName,
+              crmUrl: activeCrmBaseUrl || crmUrl,
+              detail: errorDescription || undefined,
+            }),
+          )
+          .catch((err: unknown) => logError("main", err));
+      },
+    );
+  }
+
   async function setupAndStartRemote(view: any): Promise<void> {
     const ready = deps.vertical.assertProfileReady(activeConnectionProfile);
     splashBeginRemote();
@@ -2967,6 +3069,14 @@ export function installBrandDesktopRuntime(deps: BrandDesktopDeps): void {
     // Cookie session = origin distante ; login via /login si pas de session.
     await view.webContents.loadURL(activeCrmBaseUrl);
     splashDone("login", "Interface chargée");
+
+    // UX reconnexion : serveur KO en cours de session → écran offline
+    // (retry auto backoff via testConnection + « Changer de serveur »).
+    installRemoteOfflineGuard(view, activeCrmBaseUrl);
+
+    // Bridge computer-use vers le serveur distant (auth session — le loop
+    // attend le login utilisateur avec backoff si pas encore de cookie).
+    await startRemoteBridge(activeCrmBaseUrl);
 
     deps.vertical.setBootStage("ready");
     setUpdaterRenderer(sendUpdateToWebContents(view.webContents));

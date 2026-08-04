@@ -56,6 +56,9 @@ function loadBrandYaml(rootDir: string): BrandYaml {
     tagline: raw.tagline ? String(raw.tagline) : undefined,
     vertical: raw.vertical === "chr" ? "chr" : raw.vertical === "generic" ? "generic" : undefined,
     sandbox: raw.sandbox !== false,
+    defaultServerUrl: raw.defaultServerUrl
+      ? String(raw.defaultServerUrl).trim()
+      : undefined,
     platform,
     meili: raw.meili,
     mcp: raw.mcp,

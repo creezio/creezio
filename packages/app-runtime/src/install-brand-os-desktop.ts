@@ -24,6 +24,38 @@ import {
   setBootStage,
   type BrandDesktopDeps,
 } from "@creezio/electron-shell";
+import { createRequire } from "node:module";
+import type {
+  SupplierTabManager,
+  SupplierTabManagerOptions,
+} from "@creezio/electron-shell/browser-tabs";
+
+/**
+ * browser-tabs chargé LAZY (jamais au top-level) : le module tire `electron`
+ * (WebContentsView) et casserait les gates kit Node qui importent app-runtime.
+ * Même pattern dual ESM/CJS que `loadElectron` (eval pour rester compilable).
+ */
+type BrowserTabsModule = typeof import("@creezio/electron-shell/browser-tabs");
+let browserTabsModule: BrowserTabsModule | null = null;
+function loadBrowserTabs(): BrowserTabsModule {
+  if (browserTabsModule) return browserTabsModule;
+  try {
+    // eslint-disable-next-line no-eval
+    const req = eval("require") as NodeRequire;
+    browserTabsModule = req(
+      "@creezio/electron-shell/browser-tabs",
+    ) as BrowserTabsModule;
+    return browserTabsModule;
+  } catch {
+    /* ESM */
+  }
+  // eslint-disable-next-line no-eval
+  const metaUrl = eval("import.meta.url") as string;
+  browserTabsModule = createRequire(metaUrl)(
+    "@creezio/electron-shell/browser-tabs",
+  ) as BrowserTabsModule;
+  return browserTabsModule;
+}
 import {
   assertProfileReady,
   buildEmbedEnvPanel,
@@ -37,6 +69,7 @@ import {
   sanitizeN8nEmbedConfig,
   shouldSpawnEmbeddedHermes,
   shouldSpawnEmbeddedN8n,
+  testRemoteHealth,
 } from "@creezio/platform-core";
 import type { AppManifest } from "@creezio/brand-config";
 import type { BrandOsComposition } from "./compose-brand-os.js";
@@ -142,7 +175,9 @@ export function installBrandOsDesktop(
       assertProfileReady,
       resolveBootProfile,
       sanitizeConnectionProfile,
-      testRemoteHealth: async () => ({ ok: false }),
+      // Sonde réelle — le client thin (Rejoindre) doit joindre le serveur.
+      testRemoteHealth: (url: string, timeoutMs?: number) =>
+        testRemoteHealth(url, timeoutMs),
       hermesPublicStatus,
       sanitizeHermesEmbedConfig,
       shouldSpawnEmbeddedHermes,
@@ -158,17 +193,13 @@ export function installBrandOsDesktop(
           return null;
         }
       },
-      // Stub tabs (marques sans onglets fournisseurs) — API complète pour
-      // registerIpc (setOnChanged / list) sinon crash shell runtime.
-      createSupplierTabs: () => ({
-        dispose: () => undefined,
-        open: () => undefined,
-        list: () => [],
-        closeAll: () => undefined,
-        setOnChanged: (_cb: () => void) => undefined,
-        setOnLoadState: (_cb: (ev: unknown) => void) => undefined,
-        setOnAfterBounds: (_cb: () => void) => undefined,
-      }),
+      // Onglets sites externes réels (kit browser-tabs) : partitions
+      // Chromium persistantes par site — owner ET espaces IA (prefix).
+      createSupplierTabs: (
+        win: ConstructorParameters<typeof SupplierTabManager>[0],
+        view: ConstructorParameters<typeof SupplierTabManager>[1],
+        o?: SupplierTabManagerOptions,
+      ) => new (loadBrowserTabs().SupplierTabManager)(win, view, o),
       createAiWorkspaces: (
         win: ConstructorParameters<typeof AiWorkspaceManager>[0],
         view: ConstructorParameters<typeof AiWorkspaceManager>[1],
@@ -184,7 +215,11 @@ export function installBrandOsDesktop(
       createAiScreencaster: (
         o: ConstructorParameters<typeof AiScreencaster>[0],
       ) => new AiScreencaster(o),
-      executeSupplierAction: async () => ({ ok: false }),
+      executeSupplierAction: (
+        manager: SupplierTabManager,
+        req: Parameters<BrowserTabsModule["executeSupplierAction"]>[1],
+        hooks?: Parameters<BrowserTabsModule["executeSupplierAction"]>[2],
+      ) => loadBrowserTabs().executeSupplierAction(manager, req, hooks),
       executeAiWorkspaceAction,
       isAiWorkspaceActionType,
       errorPageDataUrl: (title: string, message: string) =>

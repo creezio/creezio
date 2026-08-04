@@ -40,6 +40,8 @@ export type NewAppOptions = {
   iconsDir?: string;
   /** Présent si `creezio new-app --from-prd` */
   productModel?: ProductModel;
+  /** URL serveur pré-provisionnée dans le picker client join-only. */
+  defaultServerUrl?: string;
 };
 
 export type ScaffoldResult = {
@@ -825,6 +827,7 @@ export function scaffoldNewApp(opts: NewAppOptions): ScaffoldResult {
     feedToken: opts.feedToken,
     sandbox: opts.sandbox !== false,
     defaultAppRoot: opts.outDir,
+    defaultServerUrl: opts.defaultServerUrl,
   });
 
   const errors = validateAppManifest(manifest);

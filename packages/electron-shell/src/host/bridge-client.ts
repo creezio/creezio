@@ -15,12 +15,22 @@ import type { SupplierActionRequest } from "./ai-workspace/types.js";
 
 export type BridgeOptions = {
   baseUrl: string;
-  authUser: string;
-  authPassword: string;
+  /** Auth « credentials » (serveur local) : login POST /api/v1/auth/login. */
+  authUser?: string;
+  authPassword?: string;
+  /**
+   * Auth « session » (client remote) : lit le cookie session déjà posé par le
+   * login UI (partition appView Electron). Prioritaire sur authUser/Password.
+   * `null` = pas encore connecté → le loop retente avec backoff.
+   */
+  getSessionCookie?: () => Promise<string | null>;
   executor: (req: SupplierActionRequest) => Promise<Record<string, unknown>>;
   onLog?: (line: string) => void;
   /** Cookie session CRM (ex. tempoflow2_crm_session). */
   sessionCookieName: string;
+  /** Méta présence device (headers x-device-id / x-device-label du stream). */
+  deviceId?: string;
+  deviceLabel?: string;
 };
 
 export class BridgeClient {
@@ -91,6 +101,16 @@ export class BridgeClient {
   }
 
   private async login(): Promise<void> {
+    // Mode session : réutilise le cookie posé par le login UI (client remote).
+    if (this.opts.getSessionCookie) {
+      const cookie = await this.opts.getSessionCookie();
+      if (!cookie) {
+        throw new Error("session CRM absente — en attente du login utilisateur");
+      }
+      this.cookie = cookie;
+      this.log("session bridge reprise (cookie appView)");
+      return;
+    }
     const res = await fetch(`${this.opts.baseUrl}/api/v1/auth/login`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -112,6 +132,10 @@ export class BridgeClient {
       headers: {
         Accept: "text/event-stream",
         ...(this.cookie ? { Cookie: this.cookie } : {}),
+        ...(this.opts.deviceId ? { "x-device-id": this.opts.deviceId } : {}),
+        ...(this.opts.deviceLabel
+          ? { "x-device-label": this.opts.deviceLabel }
+          : {}),
       },
       signal: this.abort.signal,
     });

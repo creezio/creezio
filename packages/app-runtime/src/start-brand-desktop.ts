@@ -424,6 +424,84 @@ async function startBrandDesktopBody(args: {
     manifest,
   });
 
+  /*
+   * Client thin (kind=client → requireRemoteProfile) : AUCUNE stack locale.
+   * Pas de kernel SQLite, pas de HTTP OS, pas de MCP/Meili/tunnel : le shell
+   * runtime affiche le picker Rejoindre puis setupAndStartRemote() charge le
+   * CRM du serveur distant (cookie session sur l'origin remote) et démarre le
+   * bridge computer-use en auth session. Les hosts composés restent lazy et la
+   * garde allowLocalStack du runtime interdit tout démarrage local.
+   */
+  const bootBehavior = boot.bootBehavior as {
+    requireRemoteProfile?: boolean;
+    allowLocalStack?: boolean;
+  } | null;
+  if (desktopShell === "runtime" && bootBehavior?.requireRemoteProfile) {
+    const resourcesRootThin = resolveResourcesRoot(
+      app,
+      __dirname,
+      config.resourcesRel,
+    );
+    const osThin = composeBrandOs({
+      manifest,
+      userDataDir: boot.userDataDir,
+      isPackaged: app.isPackaged,
+      resourcesRoot: resourcesRootThin,
+      electronDirname: __dirname,
+      ...(config.pluginsFeatureOff !== undefined
+        ? { pluginsFeatureOff: config.pluginsFeatureOff }
+        : {}),
+      ...(config.crashEndpoint ? { crashEndpoint: config.crashEndpoint } : {}),
+    });
+    const closeThin = async () => {
+      osThin.close();
+    };
+    const gotLockThin = app.requestSingleInstanceLock();
+    if (!gotLockThin) {
+      await closeThin();
+      app.quit();
+      return {
+        baseUrl: "",
+        port: 0,
+        searchEngine: "off",
+        desktopProfile,
+        close: closeThin,
+      };
+    }
+    const electronModThin = await import("electron");
+    installBrandOsDesktop({
+      manifest,
+      os: osThin,
+      appKind: boot.appKind,
+      bootBehavior: boot.bootBehavior,
+      bootProfileLaunch: boot.profileLaunch,
+      sessionPartition: boot.sessionPartition,
+      electron: electronModThin as unknown as Parameters<
+        typeof installBrandOsDesktop
+      >[0]["electron"],
+      bootBrandRuntime: async () => {
+        throw new Error(
+          "client thin (requireRemoteProfile) : stack locale interdite",
+        );
+      },
+      shutdownBrandRuntime: closeThin,
+    });
+    log(
+      "boot",
+      "client thin remote-only : kernel/OS-HTTP/MCP/Meili/tunnel locaux SKIPPÉS (requireRemoteProfile)",
+    );
+    app.on("will-quit", () => {
+      void closeThin();
+    });
+    return {
+      baseUrl: "",
+      port: 0,
+      searchEngine: "off",
+      desktopProfile,
+      close: closeThin,
+    };
+  }
+
   // Fenêtre AVANT le travail lourd (parité TF2) : le kernel SQLite, la surface
   // HTTP OS et MCP prennent des dizaines de secondes sur un poste Windows
   // froid. Remplacée par la coquille du shell runtime (installBrandOsDesktop).

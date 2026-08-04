@@ -89,6 +89,12 @@ export type AppManifest = {
   /** Copyright electron-builder. */
   copyright: string;
   /**
+   * URL serveur pré-provisionnée dans le picker du client join-only
+   * (installateur distribué aux collaborateurs — champ pré-rempli, l'humain
+   * confirme). Override runtime : env `${envPrefix}_DEFAULT_SERVER_URL`.
+   */
+  defaultServerUrl?: string;
+  /**
    * Identités Client + Serveur — toujours les deux.
    * `legacy` (tout-en-un) n'est pas un exe packagé du modèle standard.
    */

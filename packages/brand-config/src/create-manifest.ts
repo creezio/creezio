@@ -28,6 +28,11 @@ export type AppManifestSpec = {
   appIdPrefix?: string;
   /** Hôte remote-build (défaut parc Creezio). */
   remoteBuildHost?: string;
+  /**
+   * URL serveur pré-provisionnée dans le picker client join-only
+   * (installateur cabinet). Optionnel — laissé vide sinon.
+   */
+  defaultServerUrl?: string;
 };
 
 function assertBrandId(id: string): string {
@@ -169,6 +174,9 @@ export function createAppManifest(spec: AppManifestSpec): AppManifest {
       feedUrl: `${feedBase}server/`,
     }),
     publish,
+    ...(spec.defaultServerUrl?.trim()
+      ? { defaultServerUrl: spec.defaultServerUrl.trim() }
+      : {}),
     ...(spec.sandbox ? { sandbox: true as const } : {}),
   };
 }

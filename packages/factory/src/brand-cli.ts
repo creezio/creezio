@@ -355,6 +355,7 @@ export async function runBrandCli(argv: string[]): Promise<void> {
       kitRoot: root,
       iconsDir,
       productModel: model,
+      defaultServerUrl: doctor.spec?.brand.defaultServerUrl,
     });
     copyBrandSpecIntoApp(specDir, outDir, Boolean(args.force));
     console.log(`✓ brand apply ${result.manifest.brandId}`);

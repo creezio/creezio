@@ -20,6 +20,16 @@ import { applyOsSandboxEnv, setSandboxEnvVar } from "../sandbox/embed-sandbox.js
 import { resolveSystemBinary } from "../sandbox/os-sandbox.js";
 import { resolveDesktopNodeBinary } from "../node-runtime.js";
 
+/**
+ * Browser tools Hermes (Playwright) opt-in : CREEZIO_HERMES_BROWSER=1 retire
+ * `--skip-browser` de l'installeur (≈ +400 Mo Chromium Playwright + deps —
+ * dimensionner le disque en conséquence). Défaut : skip (desktop léger ; le
+ * pilotage web IA passe par le sidecar browser-host côté serveur).
+ */
+export function hermesBrowserToolsEnabled(): boolean {
+  return process.env.CREEZIO_HERMES_BROWSER === "1";
+}
+
 export type BootstrapPhase =
   | "idle"
   | "checking"
@@ -556,7 +566,9 @@ export async function installHermesAgent(
         setPhase("error");
         return { ok: false, detail: lastBootstrapError };
       }
-      const baseArgs = [...win.args];
+      const baseArgs = [...win.args].filter(
+        (a) => !(hermesBrowserToolsEnabled() && a === "-SkipBrowser"),
+      );
       if (commitPin) baseArgs.push("-Commit", commitPin);
       if (win.stages && win.stages.length > 0) {
         for (const stage of win.stages) {
@@ -613,7 +625,9 @@ export async function installHermesAgent(
         setPhase("error");
         return { ok: false, detail: lastBootstrapError };
       }
-      const posixArgs = [...posix.args];
+      const posixArgs = [...posix.args].filter(
+        (a) => !(hermesBrowserToolsEnabled() && a === "--skip-browser"),
+      );
       if (commitPin) posixArgs.push("--commit", commitPin);
       const result = await runCommand(bash, [sh, ...posixArgs], {
         onLog: opts.onLog,

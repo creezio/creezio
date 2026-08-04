@@ -38,6 +38,8 @@ export type CliArgs = {
   fromPrd?: string;
   /** Dossier icônes marque (client.png / server.png [/ tray-icon.png]). */
   iconsDir?: string;
+  /** URL serveur pré-provisionnée dans le picker client join-only. */
+  defaultServerUrl?: string;
   /** Args restants pour sous-commandes (brand … / server-docker …). */
   rest?: string[];
 };
@@ -79,6 +81,9 @@ export function parseArgs(argv: string[]): CliArgs {
     else if (a.startsWith("--icons-dir="))
       out.iconsDir = a.slice("--icons-dir=".length);
     else if (a === "--icons-dir") out.iconsDir = rest.shift();
+    else if (a.startsWith("--default-server-url="))
+      out.defaultServerUrl = a.slice("--default-server-url=".length);
+    else if (a === "--default-server-url") out.defaultServerUrl = rest.shift();
     else throw new Error(`Argument inconnu: ${a}`);
   }
   return out;
@@ -117,6 +122,8 @@ Overrides optionnels avec --from-prd :
   --name, --id, --domain, --out, --env-prefix, --feed-token, --sandbox/--no-sandbox, --force
   --icons-dir   Dossier marque : client.png + server.png (+ tray-icon.png)
                 (sinon brand-spec/icons/ si présent ; sinon placeholder 1×1)
+  --default-server-url  URL pré-remplie dans le picker du client join-only
+                (installateur cabinet — l'humain confirme au premier lancement)
 
 Mode technique (squelette OS vide) :
   --name, --id, --domain, --out, --env-prefix, --feed-token, --sandbox, --force
@@ -256,6 +263,7 @@ export async function runCli(argv: string[]): Promise<void> {
     kitRoot: root,
     iconsDir: args.iconsDir ? path.resolve(args.iconsDir) : undefined,
     productModel,
+    defaultServerUrl: args.defaultServerUrl,
   };
 
   const result = scaffoldNewApp(opts);

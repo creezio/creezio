@@ -52,6 +52,11 @@ export type BrandYaml = {
   tagline?: string;
   vertical?: "chr" | "generic";
   sandbox?: boolean;
+  /**
+   * URL serveur pré-provisionnée dans le picker du client join-only
+   * (installateur distribué au cabinet). Optionnel.
+   */
+  defaultServerUrl?: string;
   platform?: Partial<BrandPlatformNeeds>;
   meili?: BrandMeiliDecl;
   mcp?: BrandMcpDecl;
