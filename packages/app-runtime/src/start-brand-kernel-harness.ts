@@ -177,18 +177,9 @@ export async function startBrandKernelHarness(
   process.env.CREEZIO_CORE_DB_PATH = runtime.paths.core;
   boot.done("migrations", "Base de données prête");
 
-  // Surface plateforme auth/tasks/assistant (Hono) sur le port unique.
-  // baseUrl résolue paresseusement (le listen arrive plus bas).
-  let advertisedBaseUrl = "";
-  let platformSurface: BrandPlatformSurface | null = null;
-  if (desktopProfile === "full") {
-    platformSurface = mountBrandPlatformSurface({
-      brandId: config.brandId,
-      coreDbPath: runtime.paths.core,
-      baseUrl: () => advertisedBaseUrl || `http://127.0.0.1:${port || 0}`,
-    });
-  }
-
+  // OS marque AVANT la surface plateforme : composeBrandOs garantit un
+  // AUTH_SECRET unique/persistant (process.env) — les routes auth/tasks/
+  // assistant ne doivent jamais signer avec le fallback dev.
   const resourcesRoot = path.join(config.appRoot, "resources");
   let brandOs = null as ReturnType<typeof composeBrandOs> | null;
   if (desktopProfile === "full" && config.manifest) {
@@ -199,6 +190,18 @@ export async function startBrandKernelHarness(
       resourcesRoot,
       electronDirname: path.join(config.appRoot, "build/electron"),
       ...(config.catalogHost ? { catalogHost: config.catalogHost } : {}),
+    });
+  }
+
+  // Surface plateforme auth/tasks/assistant (Hono) sur le port unique.
+  // baseUrl résolue paresseusement (le listen arrive plus bas).
+  let advertisedBaseUrl = "";
+  let platformSurface: BrandPlatformSurface | null = null;
+  if (desktopProfile === "full") {
+    platformSurface = mountBrandPlatformSurface({
+      brandId: config.brandId,
+      coreDbPath: runtime.paths.core,
+      baseUrl: () => advertisedBaseUrl || `http://127.0.0.1:${port || 0}`,
     });
   }
 

@@ -6,6 +6,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { DEV_AUTH_SECRET_FALLBACK } from "@creezio/auth";
 import {
   isFeatureEnabled,
   type AppManifest,
@@ -248,6 +249,20 @@ export function composeBrandOs(
     manifest: m,
     encryption: "plain",
   });
+
+  // Sécurité : sessions JWT (@creezio/auth) et chiffrement BYOK
+  // (@creezio/assistant chat-db) lisent process.env.AUTH_SECRET. Sans
+  // injection (harness Docker headless), tous les serveurs signaient avec le
+  // fallback dev public → secret unique par serveur, persistant dans
+  // `{dataDir}/{brand}-config.json` (même mécanisme que le launcher Electron),
+  // exporté ici AVANT tout mount de routes / spawn UI Next.
+  const envAuthSecret = (process.env.AUTH_SECRET || "").trim();
+  if (!envAuthSecret || envAuthSecret === DEV_AUTH_SECRET_FALLBACK) {
+    process.env.AUTH_SECRET = store.ensureAuthSecret();
+  }
+  if (!(process.env.MCP_JWT_SECRET || "").trim()) {
+    process.env.MCP_JWT_SECRET = store.ensureMcpJwtSecret();
+  }
 
   const prefix = m.envPrefix;
   const product = m.client.productName;

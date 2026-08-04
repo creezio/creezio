@@ -29,9 +29,39 @@ export function isAuthDisabled(): boolean {
   return v === "1" || v === "true" || v === "yes";
 }
 
+/** Fallback dev PUBLIC — ne doit jamais signer une session en production. */
+export const DEV_AUTH_SECRET_FALLBACK = "dev-insecure-secret-change-me";
+
+function devFallbackAllowed(): boolean {
+  const v = (process.env.AUTH_ALLOW_DEV_SECRET || "").toLowerCase();
+  if (v === "1" || v === "true" || v === "yes") return true;
+  return process.env.NODE_ENV !== "production";
+}
+
+let warnedDevFallback = false;
+
 function getSecret(): Uint8Array {
-  const secret = process.env.AUTH_SECRET || "dev-insecure-secret-change-me";
-  return new TextEncoder().encode(secret);
+  const secret = (process.env.AUTH_SECRET || "").trim();
+  if (secret && secret !== DEV_AUTH_SECRET_FALLBACK) {
+    return new TextEncoder().encode(secret);
+  }
+  // Serveur / packagé (NODE_ENV=production) : fail-closed — jamais le
+  // fallback public. Le boot serveur kit persiste un secret par instance
+  // (composeBrandOs → store.ensureAuthSecret()) ; sinon injecter AUTH_SECRET.
+  if (!devFallbackAllowed()) {
+    throw new Error(
+      "AUTH_SECRET absent ou égal au fallback dev en production — sessions refusées. " +
+        "Le boot serveur Creezio persiste un secret unique par instance ; " +
+        "injecter AUTH_SECRET, ou AUTH_ALLOW_DEV_SECRET=1 (dev explicite uniquement).",
+    );
+  }
+  if (!warnedDevFallback) {
+    warnedDevFallback = true;
+    console.error(
+      "[creezio-auth] AUTH_SECRET absent — fallback dev insecure (interdit en production).",
+    );
+  }
+  return new TextEncoder().encode(DEV_AUTH_SECRET_FALLBACK);
 }
 
 export function getAuthCredentials(): { user: string; password: string } {

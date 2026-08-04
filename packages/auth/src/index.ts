@@ -57,6 +57,7 @@ export type {
   SessionUserLookup,
 } from "./session.js";
 export {
+  DEV_AUTH_SECRET_FALLBACK,
   clearSessionCookieOptions,
   createSessionToken,
   createSessionTokenForUsername,

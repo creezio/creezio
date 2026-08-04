@@ -68,6 +68,14 @@ ops JSONL, disque. Voir `docker/server-admin/README.md`.
   Opt-in exposition : `--expose` (create) ou `SERVER_BIND=0.0.0.0` (compose).
 - Accès distant recommandé : reverse proxy (nginx-proxy-manager) + TLS —
   voir [REMOTE-ACCESS.md](./REMOTE-ACCESS.md).
+- **`AUTH_SECRET` (sessions JWT + chiffrement BYOK)** : généré et persisté
+  **par instance** au boot (`composeBrandOs` → `store.ensureAuthSecret()`,
+  fichier `/data/{brand}-config.json`) — deux serveurs n'ont jamais le même
+  secret, et il survit aux restarts (sessions conservées). En
+  `NODE_ENV=production`, `@creezio/auth` **refuse** de signer/vérifier avec
+  le fallback dev (`dev-insecure-secret-change-me`) ; un env `AUTH_SECRET`
+  injecté par l'opérateur reste prioritaire. Gate :
+  `scripts/test-phase-auth-secret.mjs`.
 
 ## Prérequis
 

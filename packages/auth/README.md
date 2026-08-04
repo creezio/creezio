@@ -76,7 +76,7 @@ Variables lues par le kit :
 
 | Variable | Usage |
 |---|---|
-| `AUTH_SECRET` | secret JWT HS256 ; fallback dev insecure si absent |
+| `AUTH_SECRET` | secret JWT HS256. En `NODE_ENV=production`, absent ou egal au fallback dev → signature ET verification refusees (fail-closed). Hors production, fallback dev insecure tolere avec erreur console (`AUTH_ALLOW_DEV_SECRET=1` pour l'assumer). Les boots serveur kit le persistent par instance via `composeBrandOs` |
 | `AUTH_DISABLED` | `1`/`true`/`yes` cree une session owner virtuelle |
 | `AUTH_USER`, `AUTH_PASSWORD` | credentials legacy/env pour compat et migration |
 | `AGENT_API_KEY` | middleware agent key Hono |
