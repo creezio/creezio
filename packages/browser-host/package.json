@@ -1,0 +1,29 @@
+{
+  "name": "@creezio/browser-host",
+  "version": "0.1.0",
+  "description": "Navigateur Chromium sidecar serveur (CDP websocket) — driver external_* partagé avec Electron, sessions IA headless, screencast",
+  "type": "module",
+  "main": "./dist-cjs/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist-cjs/index.js",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "dist-cjs"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.3",
+    "typescript": "^5.8.3"
+  },
+  "module": "./dist/index.js"
+}

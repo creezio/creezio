@@ -10,6 +10,7 @@
   "include": ["src/**/*.ts"],
   "references": [
     { "path": "../brand-config" },
+    { "path": "../browser-host" },
     { "path": "../platform-core" },
     { "path": "../product-hub" },
     { "path": "../shell" }

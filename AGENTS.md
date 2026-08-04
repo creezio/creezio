@@ -60,8 +60,8 @@ Voir `package.json` script `build:packages`. Ordre typique :
 `brand-config` → `shell` → `platform-core` → `product-hub` → `api-kernel` →
 `mcp-facade` → `auth` → `shell-ui` → `onboarding` → `cockpit` → `assistant` →
 `tasks` → `mails` → `observability` → `automations` → `database` →
-`electron-shell` → `app-runtime` → `brand-spec` → `desktop-tooling` →
-`factory` → `propagation` → `build:cjs`.
+`browser-host` → `electron-shell` → `app-runtime` → `brand-spec` →
+`desktop-tooling` → `factory` → `propagation` → `build:cjs`.
 
 Après changement runtime consommé par les marques : `npm run build:packages` puis
 resync vendor (`scripts/sync-creezio-vendor.sh` côté marque, `CREEZIO_KIT_ROOT`).
@@ -87,6 +87,7 @@ resync vendor (`scripts/sync-creezio-vendor.sh` côté marque, `CREEZIO_KIT_ROOT
 | Automations lifecycle plugins/org | `automations` |
 | Admin Database CRUD | `database` |
 | Electron host / plugins / sidecars | `electron-shell` |
+| Chromium serveur IA (CDP, driver, screencast) | `browser-host` |
 | Façade desktop marque (`startBrandDesktop`) | `app-runtime` |
 | BrandSpec YAML / doctor | `brand-spec` |
 | Publish / remote-build | `desktop-tooling` |
@@ -98,11 +99,17 @@ resync vendor (`scripts/sync-creezio-vendor.sh` côté marque, `CREEZIO_KIT_ROOT
 
 ```bash
 npm test                 # gates phases (505+)
+npm run test:fast        # fail-fast lisible — stop 1re rouge, --from/--only
 npm run build:packages   # tsc + dual CJS
 ```
 
 Gates liées aux packages : `scripts/test-phase-*.mjs`. Ne pas « fixer » un gate
 en affaiblissant l’assert sans comprendre la dette documentée.
+
+`test:fast` skippe par défaut les gates environnementales de CE VPS (liste
+documentée dans `scripts/test-fast.mjs`, aucun assert affaibli) ; workflow :
+première rouge → corriger → `npm run test:fast -- --from <gate>`.
+`--no-default-skip` pour tout lancer sur un poste complet.
 
 ## Plugins Electron — piège connu
 

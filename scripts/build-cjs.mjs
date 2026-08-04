@@ -31,6 +31,7 @@ const PACKAGES = [
   "observability",
   "automations",
   "database",
+  "browser-host",
   "electron-shell",
   "desktop-tooling",
   "propagation",

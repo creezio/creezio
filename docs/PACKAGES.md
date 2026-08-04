@@ -16,6 +16,7 @@ Racine : [../README.md](../README.md) · [../AGENTS.md](../AGENTS.md)
 | `@creezio/shell` | [README](../packages/shell/README.md) | [AGENTS](../packages/shell/AGENTS.md) | [FILES](../packages/shell/docs/FILES.md) |
 | `@creezio/platform-core` | [README](../packages/platform-core/README.md) | [AGENTS](../packages/platform-core/AGENTS.md) | [FILES](../packages/platform-core/docs/FILES.md) |
 | `@creezio/electron-shell` | [README](../packages/electron-shell/README.md) | [AGENTS](../packages/electron-shell/AGENTS.md) | [FILES](../packages/electron-shell/docs/FILES.md) |
+| `@creezio/browser-host` | [README](../packages/browser-host/README.md) | [AGENTS](../packages/browser-host/AGENTS.md) | [FILES](../packages/browser-host/docs/FILES.md) |
 | `@creezio/desktop-tooling` | [README](../packages/desktop-tooling/README.md) | [AGENTS](../packages/desktop-tooling/AGENTS.md) | [FILES](../packages/desktop-tooling/docs/FILES.md) |
 
 ## API / MCP / plugins
