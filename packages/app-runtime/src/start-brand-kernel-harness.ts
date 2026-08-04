@@ -38,6 +38,16 @@ import {
   type BrandUiPlaneHandle,
 } from "./start-brand-ui-plane.js";
 import { warmBrandNativeHosts } from "./warm-brand-native-hosts.js";
+import {
+  mountBrandPlatformSurface,
+  platformSurfaceHandlesPath,
+  type BrandPlatformSurface,
+} from "./mount-brand-platform-surface.js";
+import {
+  browserSidecarRequested,
+  startBrandBrowserSidecar,
+  type BrandBrowserSidecarHandle,
+} from "./wire-brand-browser-sidecar.js";
 import type {
   BootBrandKernelFn,
   BrandKernelHarnessHandle,
@@ -166,6 +176,18 @@ export async function startBrandKernelHarness(
   // Inbox Hono + getKitMailsStore (bindings marque / SMTP) partagent core.db.
   process.env.CREEZIO_CORE_DB_PATH = runtime.paths.core;
   boot.done("migrations", "Base de données prête");
+
+  // Surface plateforme auth/tasks/assistant (Hono) sur le port unique.
+  // baseUrl résolue paresseusement (le listen arrive plus bas).
+  let advertisedBaseUrl = "";
+  let platformSurface: BrandPlatformSurface | null = null;
+  if (desktopProfile === "full") {
+    platformSurface = mountBrandPlatformSurface({
+      brandId: config.brandId,
+      coreDbPath: runtime.paths.core,
+      baseUrl: () => advertisedBaseUrl || `http://127.0.0.1:${port || 0}`,
+    });
+  }
 
   const resourcesRoot = path.join(config.appRoot, "resources");
   let brandOs = null as ReturnType<typeof composeBrandOs> | null;
@@ -317,6 +339,13 @@ export async function startBrandKernelHarness(
             return mcpSurface.app.fetch(request);
           },
           mcpSurfaceHandlesPath,
+          ...(platformSurface
+            ? {
+                platformSurfaceFetch: async (request: Request) =>
+                  platformSurface!.app.fetch(request),
+                platformSurfaceHandlesPath,
+              }
+            : {}),
         })
       : await listenBrandKernelHttp({
           api,
@@ -325,6 +354,7 @@ export async function startBrandKernelHarness(
   process.env.METIER_BASE_URL = httpServer.baseUrl;
   process.env.MCP_PUBLIC_URL = httpServer.baseUrl;
   process.env.APP_PUBLIC_URL = httpServer.baseUrl;
+  advertisedBaseUrl = httpServer.baseUrl;
 
   if (brandOs && desktopProfile === "full" && config.manifest) {
     mcpSurface = mountBrandMcpSurface({
@@ -384,6 +414,32 @@ export async function startBrandKernelHarness(
   boot.go("login", { detail: "Interface disponible" });
   boot.done("login", "Interface disponible");
 
+  // Sidecar navigateur IA (variant Docker --browser : CREEZIO_BROWSER_SIDECAR=1).
+  let browserSidecar: BrandBrowserSidecarHandle | null = null;
+  if (platformSurface && browserSidecarRequested()) {
+    boot.register("browser", "Navigateur IA");
+    boot.go("browser", { detail: "Démarrage Chromium sidecar…" });
+    try {
+      browserSidecar = await startBrandBrowserSidecar({
+        dataDir,
+        sessionCookieName: platformSurface.runtime.sessionCookieName,
+        baseUrl: () => httpServer.baseUrl,
+        store: platformSurface.runtime.store,
+        onLog: (line) => console.log(`[browser-sidecar] ${line}`),
+      });
+      platformSurface.attachSidecar(browserSidecar);
+      boot.done(
+        "browser",
+        `Chromium prêt (${browserSidecar.display ? `display ${browserSidecar.display}` : "headless"})`,
+      );
+    } catch (err) {
+      boot.error(
+        "browser",
+        err instanceof Error ? err.message : String(err),
+      );
+    }
+  }
+
   // Fullstack OS ready : ensure/start natifs depuis le kit (pas la marque).
   // CREEZIO_NATIVE_WARM=0 pour skip (défaut image Docker) ; =1 → n8n/Hermes
   // dans le même container, visibles dans boot-status.
@@ -423,6 +479,8 @@ export async function startBrandKernelHarness(
 
   const close = async () => {
     meiliStop?.();
+    await browserSidecar?.close();
+    platformSurface?.close();
     await uiPlane?.close();
     await httpServer.close();
     brandOs?.close();

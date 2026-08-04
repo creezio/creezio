@@ -5,6 +5,7 @@
 import fs from "node:fs";
 import http from "node:http";
 import path from "node:path";
+import { Readable } from "node:stream";
 import {
   kitBinaryPaths,
   kitOsVendorDir,
@@ -130,6 +131,12 @@ export async function listenBrandOsHttp(opts: {
   mcpSurfaceFetch?: (request: Request) => Promise<Response>;
   mcpSurfaceHandlesPath?: (pathname: string) => boolean;
   /**
+   * Surface plateforme (Hono) — auth/tasks/assistant/desktop/users
+   * (mountBrandPlatformSurface). Streamée (SSE screencast/desktop-actions).
+   */
+  platformSurfaceFetch?: (request: Request) => Promise<Response>;
+  platformSurfaceHandlesPath?: (pathname: string) => boolean;
+  /**
    * Store mails kernel (sinon routes email via CREEZIO_CORE_DB_PATH).
    * Expose POST /api/v1/email/inbound (Worker Cloudflare).
    */
@@ -188,8 +195,17 @@ export async function listenBrandOsHttp(opts: {
     });
     const response = await fetchFn(request);
     res.writeHead(response.status, Object.fromEntries(response.headers));
-    const ab = Buffer.from(await response.arrayBuffer());
-    res.end(ab);
+    // Stream (SSE screencast / desktop-actions) — pas de buffering intégral.
+    if (response.body) {
+      const nodeStream = Readable.fromWeb(
+        response.body as import("node:stream/web").ReadableStream,
+      );
+      nodeStream.pipe(res);
+      nodeStream.on("error", () => res.end());
+      res.on("close", () => nodeStream.destroy());
+    } else {
+      res.end();
+    }
   }
 
   const handleRequest = async (
@@ -218,6 +234,21 @@ export async function listenBrandOsHttp(opts: {
         opts.mcpSurfaceHandlesPath?.(pathname)
       ) {
         await proxyHono(req, res, url, opts.mcpSurfaceFetch);
+        return;
+      }
+
+      // Surface plateforme auth/tasks/assistant (avant api-kernel).
+      if (
+        opts.platformSurfaceFetch &&
+        opts.platformSurfaceHandlesPath?.(pathname)
+      ) {
+        await proxyHono(req, res, url, opts.platformSurfaceFetch);
+        return;
+      }
+
+      // Health racine — sonde testRemoteHealth du client thin (Héberger/Rejoindre).
+      if (pathname === "/health" && req.method === "GET") {
+        send(res, 200, { ok: true, service: "creezio-server" });
         return;
       }
 

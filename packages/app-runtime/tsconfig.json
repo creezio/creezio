@@ -16,6 +16,7 @@
     { "path": "../tasks" },
     { "path": "../mails" },
     { "path": "../api-kernel" },
-    { "path": "../platform-core" }
+    { "path": "../platform-core" },
+    { "path": "../browser-host" }
   ]
 }
