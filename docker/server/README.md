@@ -1,16 +1,72 @@
 # Serveurs marque Docker (headless)
 
-Lancer le **kernel OS + métier** d’une marque Creezio en mode serveur HTTP,
-**sans** build Electron / AppImage. Multi-instances via Compose (ports + volumes DB isolés).
+Lancer le **kernel OS + métier + CRM web** d’une marque Creezio en mode
+serveur HTTP, **sans** build Electron / AppImage. Multi-instances par registre
+(`docker-data/servers.json`) ou Compose legacy (ports + volumes DB isolés).
 
 Complémentaire du pack Electron `pack:linux:server` : même harness
 (`startBrandKernelHarness` → `listenBrandOsHttp`), packaging différent.
+
+L'image embarque :
+
+- le kernel + API `/api/v1/*` + MCP (comme le desktop)
+- **Meilisearch Linux** (`/opt/creezio/bin/meilisearch`) — recherche réelle,
+  plus de sql-fallback
+- l'**UI Next standalone** (`ui/.next/standalone`) servie derrière le port
+  unique → `http://127.0.0.1:PORT/` = CRM complet (setup, login, mails,
+  tâches, admin…)
+- le **boot-status** : `GET /api/v1/os/boot-status` répond dès le lancement
+  (early-listen) avec le même modèle que le splash desktop (étapes, %,
+  chronos) ; chaque transition = une ligne JSONL dans `docker logs` ;
+  journal ops JSONL sous `/data/ops/`
+
+## Une ligne (recommandé) — registre d'instances
+
+```bash
+creezio server-docker create demo --brand-root /opt/docker/tempoflow3
+# → build image si absente, port auto (18790+n), bind 127.0.0.1,
+#   attend le boot (progression live), CRM sur http://127.0.0.1:18793/
+
+creezio server-docker ls     --brand-root …   # instances + état docker
+creezio server-docker stop   demo --brand-root …
+creezio server-docker start  demo --brand-root …
+creezio server-docker logs   demo --brand-root … [--tail 500] [--follow]
+creezio server-docker rm     demo --brand-root … [--purge-data]
+```
+
+Registre : `{BRAND_ROOT}/docker-data/servers.json` — nom, port, volume,
+marque. Image par marque : `creezio-server-<brandId>:local`, containers
+`<brandId>-server-<nom>` (multi-marques sans collision).
+
+Options `create` : `--port N`, `--expose` (bind 0.0.0.0 — sinon loopback),
+`--warm` (n8n/Hermes dans le container), `--env K=V` (répétable).
+
+## Admin web multi-serveurs
+
+```bash
+creezio server-docker admin up --brand-root /opt/docker/tempoflow3
+# → http://127.0.0.1:18800/admin (Basic auth —
+#   credentials dans docker-data/server-admin.json)
+```
+
+Container `creezio-server-admin` (fleet-collector étendu, `--network host`,
+`/var/run/docker.sock` monté) : liste des serveurs, create/start/stop/rm,
+barre de boot-status live (rendu splash), health/version, logs docker +
+ops JSONL, disque. Voir `docker/server-admin/README.md`.
+
+## Sécurité
+
+- Ports publiés sur **127.0.0.1** par défaut (CLI registre et Compose).
+  Opt-in exposition : `--expose` (create) ou `SERVER_BIND=0.0.0.0` (compose).
+- Accès distant recommandé : reverse proxy (nginx-proxy-manager) + TLS —
+  voir [REMOTE-ACCESS.md](./REMOTE-ACCESS.md).
 
 ## Prérequis
 
 - `docker` + `docker compose` (plugin v2+)
 - Marque avec `scripts/brand-kernel-harness.mjs` + `vendor/creezio`
 - `npm run build:electron` côté marque (dossier `build/` requis)
+- `npm run build:ui` si la marque a `ui/` (CRM web — le CLI `build` le fait)
 
 ## Nommage des instances
 
@@ -137,8 +193,13 @@ Pas de domaine métier dans l’image kit : le context = sources marque + vendor
 
 Les deux exposent `/api/v1/core/health` + OS HTTP ; Docker n’ouvre pas de `BrowserWindow`.
 
-## Santé
+## Santé / observabilité
 
-- `GET /api/v1/core/health` → `200` + `brandId`
+- `GET /api/v1/os/boot-status` → splash JSON (200 dès le lancement — early-listen)
+- `GET /api/v1/core/health` → `200` + `brandId` (503 pendant le boot)
 - `GET /api/v1/core/version` → versions kit
 - `GET /api/v1/os/status` → hosts (si profile full)
+- `GET /api/v1/os/ready` → agrégat P&P (mode `docker` : vendors n8n/Hermes soft)
+- `docker logs <container>` → une ligne JSONL `{"creezio":"boot-step",…}` par
+  transition d'étape de boot
+- `/data/ops/*.jsonl` → journal ops (mêmes kinds que le desktop)
