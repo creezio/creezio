@@ -204,6 +204,7 @@ export async function listenBrandOsHttp(opts: {
     res: http.ServerResponse,
     url: URL,
     fetchFn: (request: Request) => Promise<Response>,
+    fallbackTarget?: () => string | null,
   ): Promise<void> {
     const chunks: Buffer[] = [];
     for await (const c of req) chunks.push(c as Buffer);
@@ -223,6 +224,26 @@ export async function listenBrandOsHttp(opts: {
           : bodyBuf,
     });
     const response = await fetchFn(request);
+    // Sous-route inconnue d'un préfixe plateforme (marqueur posé par le
+    // notFound de mountBrandPlatformSurface) : la marque peut servir cette
+    // route in-plane (ex. /api/v1/desktop/heartbeat TF2) — rejeu vers le
+    // plane UI, même contrat que le fallthrough kernel → plane.
+    if (response.status === 404 && fallbackTarget) {
+      const target = fallbackTarget();
+      if (target) {
+        const probe = await response
+          .clone()
+          .json()
+          .catch(() => null);
+        if (
+          (probe as { error?: string } | null)?.error ===
+          "platform_route_not_found"
+        ) {
+          proxyRawHttp(req, res, target, bodyBuf);
+          return;
+        }
+      }
+    }
     res.writeHead(response.status, Object.fromEntries(response.headers));
     // Stream (SSE screencast / desktop-actions) — pas de buffering intégral.
     if (response.body) {
@@ -271,7 +292,13 @@ export async function listenBrandOsHttp(opts: {
         opts.platformSurfaceFetch &&
         opts.platformSurfaceHandlesPath?.(pathname)
       ) {
-        await proxyHono(req, res, url, opts.platformSurfaceFetch);
+        await proxyHono(
+          req,
+          res,
+          url,
+          opts.platformSurfaceFetch,
+          opts.uiProxyTarget,
+        );
         return;
       }
 

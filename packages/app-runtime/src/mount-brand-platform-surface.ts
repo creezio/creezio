@@ -503,6 +503,20 @@ export function mountBrandPlatformSurface(opts: {
 
   const app = new Hono();
 
+  /**
+   * Contrat de composition : une sous-route inconnue d'un préfixe plateforme
+   * (ex. POST /api/v1/desktop/heartbeat métier TF) NE doit PAS mourir en
+   * « 404 Not Found » texte Hono — le harness (listen-brand-os-http) rejoue
+   * la requête vers le plane UI marque quand il voit ce marqueur précis.
+   * Les 404 métier de la surface (ex. user_not_found) ne fallthrough pas.
+   */
+  app.notFound((c) =>
+    c.json(
+      { ok: false, error: "platform_route_not_found", path: c.req.path },
+      404,
+    ),
+  );
+
   /* Auth (login/logout/me/impersonate/ai-workspace-session). */
   const toRouteUser = (u: {
     id: string;

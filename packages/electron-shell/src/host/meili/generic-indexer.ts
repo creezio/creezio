@@ -260,6 +260,10 @@ function loadDocs(
   feed: BrandMeiliFeed,
   index: BrandMeiliFeed["indexes"][number],
 ): BrandMeiliDocument[] {
+  // Mode custom : la marque génère ses documents (jointures/provenance) —
+  // aucun SQL marque dans le kit.
+  if (index.loadDocs) return [...index.loadDocs(db)];
+  if (!index.table || !index.columns || !index.docType) return [];
   const table = safeIdent(index.table);
   if (!tableExists(db, table)) return [];
   const cols = ["id", ...index.columns.filter((c) => c !== "id")].filter(

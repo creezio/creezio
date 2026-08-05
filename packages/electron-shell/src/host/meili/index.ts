@@ -33,6 +33,7 @@ export type {
   BrandMeiliFeed,
   BrandMeiliIndexSpec,
   GenericCatalogIndexUid,
+  MeiliFeedSqliteDb,
 } from "./feed.js";
 
 export {

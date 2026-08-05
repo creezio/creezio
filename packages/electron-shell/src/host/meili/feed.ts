@@ -12,6 +12,15 @@ export type BrandMeiliDocument = Record<string, unknown> & {
   id: string | number;
 };
 
+/** Handle SQLite minimal passé aux loaders custom (better-sqlite3 / node:sqlite). */
+export type MeiliFeedSqliteDb = {
+  prepare(sql: string): {
+    get(...args: unknown[]): unknown;
+    all(...args: unknown[]): unknown[];
+    run(...args: unknown[]): unknown;
+  };
+};
+
 export type BrandMeiliIndexSpec = {
   /** UID Meili (ex. catalog_products) — pas de préfixe marque hardcodé kit. */
   uid: string;
@@ -21,12 +30,19 @@ export type BrandMeiliIndexSpec = {
    * `produits` | `sites` (sites → counts.fournisseurs historique) | libre.
    */
   countKey: string;
-  /** Table SQL source. */
-  table: string;
-  /** Colonnes indexées (id toujours forcé). */
-  columns: string[];
-  /** Champ `type` du document Meili. */
-  docType: string;
+  /**
+   * Mode CUSTOM : la marque génère elle-même les documents (jointures,
+   * provenance, taxonomie…) — l'OS n'exécute aucun SQL marque hardcodé,
+   * il itère simplement les documents retournés. Prioritaire sur le mode
+   * déclaratif table/columns quand présent.
+   */
+  loadDocs?: (db: MeiliFeedSqliteDb) => Iterable<BrandMeiliDocument>;
+  /** Table SQL source (mode déclaratif — ignoré si loadDocs). */
+  table?: string;
+  /** Colonnes indexées, id toujours forcé (mode déclaratif). */
+  columns?: string[];
+  /** Champ `type` du document Meili (mode déclaratif). */
+  docType?: string;
   /** Exclure lignes soft-archivées si colonne archived_at. */
   excludeArchived?: boolean;
 };
