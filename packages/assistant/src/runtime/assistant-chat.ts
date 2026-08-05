@@ -15,7 +15,10 @@ import {
   assistantIdentity,
   requireAssistantBrand,
 } from "../brand/registry.js";
-import type { AssistantBrandConfig } from "../brand/types.js";
+import type {
+  AssistantAuthSession,
+  AssistantBrandConfig,
+} from "../brand/types.js";
 import { pageInfoFor } from "../brand/app-map-shim.js";
 import {
   buildSystemPrompt,
@@ -120,6 +123,23 @@ async function requireSession(): Promise<AssistantSession | Response> {
   }
   const session = await getSession();
   if (!session) {
+    return new Response(JSON.stringify({ error: "Non authentifié" }), {
+      status: 401,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+  return session;
+}
+
+/**
+ * Session déjà résolue par la surface HTTP (Hono kit — cookie/Bearer par
+ * requête). Évite d'exiger un `auth.getSession` sans contexte (legacy Next).
+ */
+function sessionFromProvided(
+  session: AssistantAuthSession | null,
+): AssistantSession | Response {
+  requireAssistantBrand();
+  if (!session?.sub) {
     return new Response(JSON.stringify({ error: "Non authentifié" }), {
       status: 401,
       headers: { "Content-Type": "application/json" },
@@ -1106,8 +1126,16 @@ async function handleWorkViaHermes(opts: {
   });
 }
 
-export async function handleAssistantChat(req: Request) {
-  const sessionOrRes = await requireSession();
+export async function handleAssistantChat(
+  req: Request,
+  opts?: { session?: AssistantAuthSession | null },
+) {
+  // Session par requête fournie par la surface Hono kit (harness Docker /
+  // desktop) ; fallback registry auth.getSession (Next legacy, cookies ALS).
+  const sessionOrRes =
+    opts && "session" in opts
+      ? sessionFromProvided(opts.session ?? null)
+      : await requireSession();
   if (sessionOrRes instanceof Response) return sessionOrRes;
   const session = sessionOrRes;
 

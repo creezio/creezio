@@ -173,8 +173,9 @@ Instances nommées (registre docker-data/servers.json — recommandé) :
     --profile prod : serveur flotte — CREEZIO_NATIVE_WARM=1 + CREEZIO_CATALOG=1
                 + forward env hôte CREEZIO_TUNNEL_PROVISION_URL/_TOKEN/_SLUG,
                 CREEZIO_FLEET_ENDPOINT, CREEZIO_CRASH_ENDPOINT, CREEZIO_PLUGINS,
-                EMAIL_INBOUND_SECRET (uniquement s'ils sont posés — aucun
-                DNS/collector activé par défaut)
+                EMAIL_INBOUND_SECRET, OPENAI_API_KEY, ANTHROPIC_API_KEY
+                (uniquement s'ils sont posés — aucun DNS/collector activé
+                par défaut)
   creezio server-docker start  <nom> --brand-root <app>
   creezio server-docker stop   <nom> --brand-root <app>
   creezio server-docker rm     <nom> --brand-root <app> [--purge-data]
@@ -1701,6 +1702,10 @@ async function runRegistrySubcommand(
         "CREEZIO_CRASH_ENDPOINT",
         "CREEZIO_PLUGINS",
         "EMAIL_INBOUND_SECRET",
+        // Clés LLM assistant (chat serveur headless) — clé entreprise de la
+        // marque, jamais inventée : forward uniquement si posée sur l'hôte.
+        "OPENAI_API_KEY",
+        "ANTHROPIC_API_KEY",
       ]) {
         const v = (env[key] || "").trim();
         if (v) extraEnv[key] = v;

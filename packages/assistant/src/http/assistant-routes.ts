@@ -201,6 +201,20 @@ export function createAssistantRoutes(deps: AssistantRoutesDeps = {}): Hono {
         /* ignore */
       }
     }
+    // Session résolue par requête (cookie/Bearer Hono) : ne dépend pas d'un
+    // configureAssistantBrand({ auth }) sans contexte (harness Docker/desktop).
+    if (deps.getSession) {
+      const session = await deps.getSession(c);
+      return handleAssistantChat(c.req.raw, {
+        session: session?.sub
+          ? {
+              sub: session.sub,
+              email: session.email || session.sub,
+              role: session.role || "user",
+            }
+          : null,
+      });
+    }
     return handleAssistantChat(c.req.raw);
   });
 

@@ -239,6 +239,8 @@ export async function startBrandKernelHarness(
     platformSurface = mountBrandPlatformSurface({
       brandId: config.brandId,
       coreDbPath: runtime.paths.core,
+      // DB métier pour les tools SQL de la config assistant kit par défaut.
+      brandDb: () => runtime.getBrand(),
       baseUrl: () => advertisedBaseUrl || `http://127.0.0.1:${port || 0}`,
     });
   }
