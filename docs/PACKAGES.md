@@ -42,6 +42,7 @@ Racine : [../README.md](../README.md) · [../AGENTS.md](../AGENTS.md)
 | `@creezio/tasks` | [README](../packages/tasks/README.md) | [AGENTS](../packages/tasks/AGENTS.md) | [FILES](../packages/tasks/docs/FILES.md) |
 | `@creezio/mails` | [README](../packages/mails/README.md) | [AGENTS](../packages/mails/AGENTS.md) | [FILES](../packages/mails/docs/FILES.md) |
 | `@creezio/observability` | [README](../packages/observability/README.md) | [AGENTS](../packages/observability/AGENTS.md) | [FILES](../packages/observability/docs/FILES.md) |
+| `@creezio/admin` | [README](../packages/admin/README.md) | [AGENTS](../packages/admin/AGENTS.md) | — |
 | `@creezio/database` | [README](../packages/database/README.md) | [AGENTS](../packages/database/AGENTS.md) | [FILES](../packages/database/docs/FILES.md) |
 
 ## Gouvernance kit

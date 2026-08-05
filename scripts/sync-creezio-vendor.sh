@@ -39,6 +39,7 @@ DEFAULT_PACKAGES=(
   tasks
   mails
   observability
+  admin
   browser-host
   automations
   database

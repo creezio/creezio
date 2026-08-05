@@ -29,6 +29,7 @@ const PACKAGES = [
   "tasks",
   "mails",
   "observability",
+  "admin",
   "automations",
   "database",
   "browser-host",

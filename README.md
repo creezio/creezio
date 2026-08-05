@@ -93,6 +93,7 @@ partagés à la racine) **et** un repo admin dédié privé `<brand>-admin`
 | `tasks` | Kanban + missions IA |
 | `mails` | Inbox mails |
 | `observability` | Ops, fleet, analytics, request-logs |
+| `admin` | Modules natifs des apps admin de marque (fleet, support, prospection, roadmap, billing) |
 | `automations` | Lifecycle automations plugins/org |
 | `database` | Admin Database CRUD |
 | `electron-shell` | Host Electron : boot, updater, tray, plugins, sidecars, Meili |
