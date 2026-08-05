@@ -26,6 +26,21 @@ export {
 } from "./product-model.js";
 export { writeFromPrdArtifacts } from "./scaffold-from-prd.js";
 export {
+  scaffoldAdminRepo,
+  type AdminRepoOptions,
+  type AdminRepoResult,
+} from "./admin-repo.js";
+export {
+  resolveGithubToken,
+  createPrivateRepo,
+  deleteRepo,
+  pushInitialCommit,
+  createBrandGithubRepos,
+  maybePushBrandRepos,
+  type GithubRepoSpec,
+  type CreateRepoResult,
+} from "./github-repos.js";
+export {
   loadServerRegistry,
   saveServerRegistry,
   allocateServerPort,

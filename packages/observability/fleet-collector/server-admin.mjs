@@ -2,13 +2,19 @@
 /**
  * @creezio/observability fleet-collector — Creezio Server Admin.
  *
- * Admin web multi-serveurs Docker pour les serveurs marque headless
+ * Admin web multi-serveurs ET multi-VPS pour les serveurs marque headless
  * (docker/server). Point d'entrée SÉPARÉ de server.mjs (fleet collector
  * prod) — aucun endpoint partagé.
  *
- * SoT registre : {brandRoot}/docker-data/servers.json (conventions
- * partagées avec `creezio server-docker` — voir
- * packages/factory/src/server-docker-registry.ts).
+ * Deux plans :
+ *   - local  : serveurs de CE VPS via socket Docker + registres
+ *              {brandRoot}/docker-data/servers.json (mode historique)
+ *   - flotte : hôtes distants enrôlés (VPS restaurants) via leur agent hôte
+ *              tunnelisé `https://agent.{slug}.{zone}` — l'admin INITIE tous
+ *              les appels (Bearer token par hôte, jamais de polling inverse)
+ *
+ * Registre d'hôtes : {adminRoot}/docker-data/fleet-hosts.json (runtime, avec
+ * tokens — gitignoré) + miroir versionnable SANS token.
  *
  * Env :
  *   CREEZIO_ADMIN_PORT        (défaut 18800)
@@ -16,28 +22,43 @@
  *   CREEZIO_ADMIN_USER        (défaut admin)
  *   CREEZIO_ADMIN_PASS        (obligatoire — refus de démarrer sinon)
  *   CREEZIO_ADMIN_BRAND_ROOTS (chemins racines marques séparés par ":")
+ *   CREEZIO_ADMIN_ROOT        (racine admin — défaut 1er brand root ;
+ *                              repo admin dédié : son propre chemin)
  *   CREEZIO_DOCKER_SOCK       (défaut /var/run/docker.sock)
+ *   CREEZIO_REGISTRY          (registre images, ex. 127.0.0.1:5000 — tags)
+ *   CREEZIO_REGISTRY_BASIC    (user:pass API registre si protégé)
  *
  * 0 domaine marque hardcodé — injection env uniquement.
  */
 
 import http from "node:http";
 import fs from "node:fs";
-import net from "node:net";
 import path from "node:path";
 import crypto from "node:crypto";
 import { fileURLToPath } from "node:url";
 import {
-  containerLogs,
-  createContainer,
-  dockerPing,
-  imageExists,
-  inspectContainer,
-  listContainers,
   removeContainer,
   startContainer,
   stopContainer,
+  containerLogs,
+  dockerPing,
 } from "./admin-docker.mjs";
+import {
+  buildDiskReport,
+  collectServers,
+  createServer,
+  fetchJson,
+  findInstance,
+  instanceDataDirAbs,
+  newToken,
+  readJson,
+  readOpsEvents,
+  saveRegistry,
+  sha256Hex,
+  tokenMatchesHash,
+  updateServer,
+  writeJson,
+} from "./server-lib.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIC_DIR = path.join(__dirname, "public");
@@ -51,13 +72,13 @@ const BRAND_ROOTS = String(process.env.CREEZIO_ADMIN_BRAND_ROOTS || "")
   .map((p) => p.trim())
   .filter(Boolean)
   .map((p) => path.resolve(p));
+const ADMIN_ROOT = path.resolve(
+  process.env.CREEZIO_ADMIN_ROOT || BRAND_ROOTS[0] || process.cwd(),
+);
+const REGISTRY = (process.env.CREEZIO_REGISTRY || "").trim();
 const MAX_BODY = 1 * 1024 * 1024;
-
-// Conventions registre (miroir de factory/src/server-docker-registry.ts).
-const SERVER_PORT_BASE = 18790;
-const SERVER_CONTAINER_PORT = 18791;
-const SERVER_LABEL = "creezio.server";
-const NAME_RE = /^[a-z0-9][a-z0-9-]{0,30}$/;
+const AGENT_TIMEOUT = 8000;
+const AGENT_UPDATE_TIMEOUT = 15 * 60 * 1000;
 
 if (!ADMIN_PASS) {
   console.error(
@@ -80,21 +101,6 @@ function safeEqualStr(a, b) {
 
 function audit(line) {
   console.log(`[server-admin] ${new Date().toISOString()} ${line}`);
-}
-
-function readJson(file, fallback) {
-  try {
-    return JSON.parse(fs.readFileSync(file, "utf8"));
-  } catch {
-    return fallback;
-  }
-}
-
-function writeJson(file, data) {
-  fs.mkdirSync(path.dirname(file), { recursive: true });
-  const tmp = `${file}.${process.pid}.tmp`;
-  fs.writeFileSync(tmp, JSON.stringify(data, null, 2) + "\n");
-  fs.renameSync(tmp, file);
 }
 
 function readBody(req) {
@@ -164,404 +170,93 @@ function sendUnauthorized(res) {
   );
 }
 
-async function fetchJson(url, timeoutMs) {
-  const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), timeoutMs);
-  try {
-    const res = await fetch(url, { signal: ctrl.signal });
-    let json = null;
-    try {
-      json = await res.json();
-    } catch {
-      /* corps non JSON */
-    }
-    return { status: res.status, json };
-  } finally {
-    clearTimeout(timer);
+/* ------------------------------------------------------- registre hôtes */
+
+function fleetHostsRuntimePath() {
+  return path.join(ADMIN_ROOT, "docker-data", "fleet-hosts.json");
+}
+
+/** Miroir versionnable SANS tokens : admin/fleet-hosts.json (monorepo) ou racine (repo admin dédié). */
+function fleetHostsMirrorPath() {
+  const adminDir = path.join(ADMIN_ROOT, "admin");
+  if (fs.existsSync(adminDir) && fs.statSync(adminDir).isDirectory()) {
+    return path.join(adminDir, "fleet-hosts.json");
   }
+  return path.join(ADMIN_ROOT, "fleet-hosts.json");
 }
 
-/* ------------------------------------------------------------- registre */
-
-function registryPath(brandRoot) {
-  return path.join(brandRoot, "docker-data", "servers.json");
-}
-
-function inferBrandId(brandRoot) {
-  try {
-    const pkg = JSON.parse(
-      fs.readFileSync(path.join(brandRoot, "package.json"), "utf8"),
-    );
-    if (pkg?.creezio?.brandId) return pkg.creezio.brandId;
-    if (pkg?.name) {
-      const last = String(pkg.name).split("/").pop() || "";
-      const id = last.replace(/^app-/, "").replace(/[^a-z0-9-]/gi, "");
-      if (id) return id;
-    }
-  } catch {
-    /* pas de package.json */
-  }
-  return path.basename(brandRoot);
-}
-
-function loadRegistry(brandRoot) {
-  const brandId = inferBrandId(brandRoot);
-  const raw = readJson(registryPath(brandRoot), null);
-  if (raw && Array.isArray(raw.instances)) {
+function loadFleetHosts() {
+  const raw = readJson(fleetHostsRuntimePath(), null);
+  if (raw && Array.isArray(raw.hosts)) {
     return {
       version: 1,
-      brandId: raw.brandId || brandId,
-      image: raw.image || `creezio-server-${brandId}:local`,
-      instances: raw.instances,
+      hosts: raw.hosts,
+      enrollTokens: Array.isArray(raw.enrollTokens) ? raw.enrollTokens : [],
     };
   }
-  return {
+  return { version: 1, hosts: [], enrollTokens: [] };
+}
+
+function saveFleetHosts(data) {
+  writeJson(fleetHostsRuntimePath(), data);
+  try {
+    fs.chmodSync(fleetHostsRuntimePath(), 0o600);
+  } catch {
+    /* fs sans chmod */
+  }
+  // Miroir sans secrets (agentToken / hashes enrollTokens exclus).
+  const mirror = {
     version: 1,
-    brandId,
-    image: `creezio-server-${brandId}:local`,
-    instances: [],
+    hosts: data.hosts.map((h) => ({
+      hostId: h.hostId,
+      label: h.label,
+      agentUrl: h.agentUrl,
+      enrolledAt: h.enrolledAt,
+    })),
   };
-}
-
-function saveRegistry(brandRoot, registry) {
-  writeJson(registryPath(brandRoot), registry);
-}
-
-function instanceDataDirAbs(brandRoot, inst) {
-  return path.isAbsolute(inst.dataDir)
-    ? inst.dataDir
-    : path.join(brandRoot, inst.dataDir);
-}
-
-/** Trouve {brandRoot, registry, inst} par (brandId, name) sur toutes les marques. */
-function findInstance(brandId, name) {
-  for (const brandRoot of BRAND_ROOTS) {
-    const registry = loadRegistry(brandRoot);
-    if (registry.brandId !== brandId) continue;
-    const inst = registry.instances.find((i) => i.name === name);
-    if (inst) return { brandRoot, registry, inst };
+  try {
+    writeJson(fleetHostsMirrorPath(), mirror);
+  } catch {
+    /* miroir best-effort */
   }
-  return null;
 }
 
-function portBusy(port, host = "127.0.0.1") {
-  return new Promise((resolve) => {
-    const sock = net.connect({ port, host });
-    const done = (busy) => {
-      sock.destroy();
-      resolve(busy);
-    };
-    sock.once("connect", () => done(true));
-    sock.once("error", () => done(false));
-    sock.setTimeout(400, () => done(false));
+function findHost(hostId) {
+  return loadFleetHosts().hosts.find((h) => h.hostId === hostId) || null;
+}
+
+/** Appel agent hôte (Bearer) — retourne {status,json} ou throw. */
+async function agentCall(host, method, subPath, body, timeoutMs = AGENT_TIMEOUT) {
+  const url = `${host.agentUrl.replace(/\/$/, "")}${subPath}`;
+  return fetchJson(url, timeoutMs, {
+    method,
+    headers: {
+      Authorization: `Bearer ${host.agentToken}`,
+      ...(body ? { "Content-Type": "application/json" } : {}),
+    },
+    ...(body ? { body: JSON.stringify(body) } : {}),
   });
 }
 
-/** Premier port libre à partir de 18791 — évite les registres de TOUTES les marques. */
-async function allocatePort() {
-  const used = new Set();
-  for (const brandRoot of BRAND_ROOTS) {
-    for (const inst of loadRegistry(brandRoot).instances) used.add(inst.port);
-  }
-  for (let n = 1; n < 200; n++) {
-    const candidate = SERVER_PORT_BASE + n;
-    if (used.has(candidate)) continue;
-    if (await portBusy(candidate)) continue;
-    return candidate;
-  }
-  throw new Error("aucun port libre entre 18791 et 18990");
-}
-
-/* --------------------------------------------------------------- docker */
-
-/** Inspect léger : {state, health, startedAt, image}. "unknown" si docker KO. */
-async function dockerStateOf(containerName) {
-  try {
-    const info = await inspectContainer(containerName);
-    if (!info) return { state: "absent", health: null, startedAt: null, image: null };
-    return {
-      state: info?.State?.Status || "?",
-      health: info?.State?.Health?.Status || null,
-      startedAt: info?.State?.StartedAt || null,
-      image: info?.Config?.Image || null,
-    };
-  } catch {
-    return { state: "unknown", health: null, startedAt: null, image: null };
+function touchHostSeen(hostId) {
+  const data = loadFleetHosts();
+  const h = data.hosts.find((x) => x.hostId === hostId);
+  if (h) {
+    h.lastSeen = new Date().toISOString();
+    saveFleetHosts(data);
   }
 }
 
-/** Boot-status léger (timeout 1s) — null si injoignable. */
-async function fetchBootStatusLight(port) {
-  try {
-    const r = await fetchJson(
-      `http://127.0.0.1:${port}/api/v1/os/boot-status`,
-      1000,
-    );
-    if (r.status !== 200 || !r.json) return null;
-    return {
-      booting: r.json.booting === true,
-      headline: r.json.headline ?? null,
-      overallPercent: r.json.overallPercent ?? null,
-      bootStartedAt: r.json.bootStartedAt ?? null,
-    };
-  } catch {
-    return null;
-  }
-}
+/* --------------------------------------------------------- routes local */
 
-async function collectServers() {
-  const dockerUp = await dockerPing();
-  const servers = [];
-  const known = new Set();
-  for (const brandRoot of BRAND_ROOTS) {
-    const registry = loadRegistry(brandRoot);
-    for (const inst of registry.instances) {
-      known.add(inst.containerName);
-      const docker = dockerUp
-        ? await dockerStateOf(inst.containerName)
-        : { state: "unknown", health: null, startedAt: null, image: null };
-      const bootStatus =
-        docker.state === "running"
-          ? await fetchBootStatusLight(inst.port)
-          : null;
-      servers.push({
-        brandId: registry.brandId,
-        brandRoot,
-        name: inst.name,
-        containerName: inst.containerName,
-        port: inst.port,
-        bind: inst.bind,
-        dataDir: inst.dataDir,
-        createdAt: inst.createdAt,
-        env: inst.env || {},
-        image: registry.image,
-        orphan: false,
-        docker,
-        bootStatus,
-      });
-    }
-  }
-  // Containers docker labellisés creezio.server=1 absents des registres.
-  if (dockerUp) {
-    try {
-      const list = await listContainers({
-        all: true,
-        filters: { label: [`${SERVER_LABEL}=1`] },
-      });
-      for (const c of list) {
-        const cname = String((c.Names || [])[0] || "").replace(/^\//, "");
-        if (!cname || known.has(cname)) continue;
-        const labels = c.Labels || {};
-        servers.push({
-          brandId: labels["creezio.brand"] || null,
-          brandRoot: labels["creezio.brand-root"] || null,
-          name: labels["creezio.instance"] || cname,
-          containerName: cname,
-          port: labels["creezio.port"] ? Number(labels["creezio.port"]) : null,
-          bind: null,
-          dataDir: null,
-          createdAt: null,
-          env: {},
-          image: c.Image || null,
-          orphan: true,
-          docker: {
-            state: c.State || "?",
-            health: null,
-            startedAt: null,
-            image: c.Image || null,
-          },
-          bootStatus: null,
-        });
-      }
-    } catch {
-      /* best effort */
-    }
-  }
-  return { servers, docker: dockerUp };
-}
-
-/* --------------------------------------------------------------- create */
-
-async function createServer(body) {
-  const brandRoot = path.resolve(String(body.brandRoot || ""));
-  if (!BRAND_ROOTS.includes(brandRoot)) {
-    return { code: 400, out: { ok: false, error: "brandRoot inconnu (CREEZIO_ADMIN_BRAND_ROOTS)" } };
-  }
-  const name = String(body.name || "");
-  if (!NAME_RE.test(name)) {
-    return { code: 400, out: { ok: false, error: "nom invalide (attendu [a-z0-9][a-z0-9-]{0,30})" } };
-  }
-  const registry = loadRegistry(brandRoot);
-  if (registry.instances.some((i) => i.name === name)) {
-    return { code: 409, out: { ok: false, error: `instance déjà enregistrée: ${name}` } };
-  }
-  const containerName = `${registry.brandId}-server-${name}`;
-  const existing = await inspectContainer(containerName);
-  if (existing) {
-    return { code: 409, out: { ok: false, error: `container ${containerName} existe déjà` } };
-  }
-  if (!(await imageExists(registry.image))) {
-    return {
-      code: 409,
-      out: {
-        ok: false,
-        error: `image ${registry.image} absente — lancer creezio server-docker build --brand-root ${brandRoot}`,
-      },
-    };
-  }
-  const requested = Number(body.port || 0);
-  const port =
-    requested > 0 && Number.isInteger(requested)
-      ? requested
-      : await allocatePort();
-  if (requested > 0 && (await portBusy(requested))) {
-    return { code: 409, out: { ok: false, error: `port ${requested} déjà occupé` } };
-  }
-  const extraEnv = {};
-  if (body.env && typeof body.env === "object") {
-    for (const [k, v] of Object.entries(body.env)) {
-      if (/^[A-Za-z_][A-Za-z0-9_]*$/.test(k)) extraEnv[k] = String(v);
-    }
-  }
-  const bind = "127.0.0.1";
-  const inst = {
-    name,
-    containerName,
-    port,
-    bind,
-    dataDir: path.join("docker-data", "servers", name),
-    createdAt: new Date().toISOString(),
-    ...(Object.keys(extraEnv).length ? { env: extraEnv } : {}),
-  };
-  const dataAbs = instanceDataDirAbs(brandRoot, inst);
-  fs.mkdirSync(dataAbs, { recursive: true });
-
-  const envList = [
-    `BRAND_ID=${registry.brandId}`,
-    `INSTANCE_ID=server-${name}`,
-    `PORT=${SERVER_CONTAINER_PORT}`,
-    `METIER_PORT=${SERVER_CONTAINER_PORT}`,
-    "CREEZIO_HTTP_HOST=0.0.0.0",
-    ...Object.entries(extraEnv).map(([k, v]) => `${k}=${v}`),
-  ];
-  const spec = {
-    Image: registry.image,
-    Env: envList,
-    Labels: {
-      [SERVER_LABEL]: "1",
-      "creezio.brand": registry.brandId,
-      "creezio.instance": name,
-      "creezio.port": String(port),
-      "creezio.brand-root": brandRoot,
-    },
-    ExposedPorts: { [`${SERVER_CONTAINER_PORT}/tcp`]: {} },
-    HostConfig: {
-      Binds: [`${dataAbs}:/data`],
-      PortBindings: {
-        [`${SERVER_CONTAINER_PORT}/tcp`]: [
-          { HostIp: bind, HostPort: String(port) },
-        ],
-      },
-      RestartPolicy: { Name: "unless-stopped" },
-    },
-  };
-  const created = await createContainer(containerName, spec);
-  await startContainer(created.Id);
-  registry.instances.push(inst);
-  saveRegistry(brandRoot, registry);
-  audit(`create brand=${registry.brandId} name=${name} port=${port} container=${containerName}`);
-  return { code: 200, out: { ok: true, instance: { ...inst, brandId: registry.brandId, brandRoot } } };
-}
-
-/* --------------------------------------------------------------- ops/disk */
-
-function readOpsEvents(brandRoot, inst, limit) {
-  try {
-    const dir = path.join(instanceDataDirAbs(brandRoot, inst), "ops");
-    const files = fs
-      .readdirSync(dir)
-      .filter((f) => f.endsWith(".jsonl"))
-      .map((f) => {
-        const full = path.join(dir, f);
-        return { full, mtime: fs.statSync(full).mtimeMs };
-      })
-      .sort((a, b) => b.mtime - a.mtime);
-    if (!files.length) return [];
-    const lines = fs
-      .readFileSync(files[0].full, "utf8")
-      .split("\n")
-      .filter((l) => l.trim().length > 0)
-      .slice(-limit);
-    const events = [];
-    for (const l of lines) {
-      try {
-        events.push(JSON.parse(l));
-      } catch {
-        /* ligne partielle */
-      }
-    }
-    return events;
-  } catch {
-    return [];
-  }
-}
-
-/** Taille récursive avec garde-fou (max entrées, pas de symlinks). */
-function dirSizeBytes(dir, budget = { entries: 200_000 }) {
-  let total = 0;
-  let entries;
-  try {
-    entries = fs.readdirSync(dir, { withFileTypes: true });
-  } catch {
-    return 0;
-  }
-  for (const e of entries) {
-    if (budget.entries-- <= 0) return total;
-    const full = path.join(dir, e.name);
-    try {
-      if (e.isSymbolicLink()) continue;
-      if (e.isDirectory()) total += dirSizeBytes(full, budget);
-      else if (e.isFile()) total += fs.statSync(full).size;
-    } catch {
-      /* fichier disparu */
-    }
-  }
-  return total;
-}
-
-function buildDiskReport() {
-  const instances = [];
-  for (const brandRoot of BRAND_ROOTS) {
-    const registry = loadRegistry(brandRoot);
-    for (const inst of registry.instances) {
-      instances.push({
-        brandId: registry.brandId,
-        name: inst.name,
-        dataDir: inst.dataDir,
-        sizeBytes: dirSizeBytes(instanceDataDirAbs(brandRoot, inst)),
-      });
-    }
-  }
-  let fsInfo = null;
-  if (BRAND_ROOTS.length) {
-    try {
-      const s = fs.statfsSync(BRAND_ROOTS[0]);
-      fsInfo = {
-        path: BRAND_ROOTS[0],
-        freeBytes: s.bavail * s.bsize,
-        totalBytes: s.blocks * s.bsize,
-      };
-    } catch {
-      /* statfs indisponible */
-    }
-  }
-  return { ok: true, instances, filesystem: fsInfo };
-}
-
-/* --------------------------------------------------------------- routes */
+/**
+ * Updates locaux par container — mutex + suivi asynchrone (même contrat que
+ * l'agent hôte : POST → 202, suivi via GET /update-status).
+ */
+const localUpdates = new Map();
 
 async function handleInstanceRoute(req, res, url, brandId, name, action) {
-  const found = findInstance(brandId, name);
+  const found = findInstance(BRAND_ROOTS, brandId, name);
 
   if (action === "start" && req.method === "POST") {
     if (!found) return send(res, 404, { ok: false, error: "instance inconnue" });
@@ -575,6 +270,56 @@ async function handleInstanceRoute(req, res, url, brandId, name, action) {
     await stopContainer(found.inst.containerName);
     audit(`stop brand=${brandId} name=${name}`);
     return send(res, 200, { ok: true });
+  }
+
+  if (action === "update" && req.method === "POST") {
+    if (!found) return send(res, 404, { ok: false, error: "instance inconnue" });
+    let body;
+    try {
+      body = JSON.parse(await readBody(req));
+    } catch {
+      return send(res, 400, { ok: false, error: "json" });
+    }
+    const image = String(body.image || "").trim();
+    if (!image) return send(res, 400, { ok: false, error: "image requise" });
+    const cur = localUpdates.get(found.inst.containerName);
+    if (cur?.status === "running") {
+      return send(res, 409, { ok: false, error: "update déjà en cours", update: cur });
+    }
+    const entry = {
+      status: "running",
+      image,
+      startedAt: new Date().toISOString(),
+    };
+    localUpdates.set(found.inst.containerName, entry);
+    updateServer({
+      brandRoot: found.brandRoot,
+      registry: found.registry,
+      inst: found.inst,
+      image,
+      audit,
+      backup: body.backup !== false,
+    })
+      .then((r) => {
+        entry.status = r.ok ? "done" : "error";
+        entry.finishedAt = new Date().toISOString();
+        entry.result = r;
+      })
+      .catch((e) => {
+        entry.status = "error";
+        entry.finishedAt = new Date().toISOString();
+        entry.result = { ok: false, error: String(e?.message || e) };
+        audit(`update KO brand=${brandId} name=${name}: ${e?.message || e}`);
+      });
+    return send(res, 202, { ok: true, started: true, update: entry });
+  }
+
+  if (action === "update-status" && req.method === "GET") {
+    if (!found) return send(res, 404, { ok: false, error: "instance inconnue" });
+    return send(res, 200, {
+      ok: true,
+      update: localUpdates.get(found.inst.containerName) || null,
+    });
   }
 
   if (!action && req.method === "DELETE") {
@@ -611,7 +356,8 @@ async function handleInstanceRoute(req, res, url, brandId, name, action) {
         `http://127.0.0.1:${inst.port}/api/v1/os/boot-status`,
         2000,
       );
-      if (!r.json) return send(res, 504, { ok: false, error: "boot-status injoignable" });
+      if (!r.json)
+        return send(res, 504, { ok: false, error: "boot-status injoignable" });
       return send(res, 200, r.json);
     } catch {
       return send(res, 504, { ok: false, error: "boot-status injoignable" });
@@ -657,19 +403,250 @@ async function handleInstanceRoute(req, res, url, brandId, name, action) {
       Math.max(Number(url.searchParams.get("limit") || 100), 1),
       1000,
     );
-    return send(res, 200, { ok: true, events: readOpsEvents(brandRoot, inst, limit) });
+    return send(res, 200, {
+      ok: true,
+      events: readOpsEvents(brandRoot, inst, limit),
+    });
   }
 
   return send(res, 404, { ok: false });
 }
 
+/* --------------------------------------------------------- routes hôtes */
+
+async function handleHostsRoute(req, res, url) {
+  const p = url.pathname;
+
+  if (req.method === "GET" && p === "/admin/api/hosts") {
+    const data = loadFleetHosts();
+    const hosts = await Promise.all(
+      data.hosts.map(async (h) => {
+        let live = null;
+        try {
+          const r = await agentCall(h, "GET", "/agent/api/health", null, 3500);
+          if (r.status === 200 && r.json?.ok) {
+            live = r.json;
+            touchHostSeen(h.hostId);
+          }
+        } catch {
+          /* hôte injoignable */
+        }
+        return {
+          hostId: h.hostId,
+          label: h.label,
+          agentUrl: h.agentUrl,
+          enrolledAt: h.enrolledAt,
+          lastSeen: h.lastSeen || null,
+          online: Boolean(live),
+          live,
+        };
+      }),
+    );
+    return send(res, 200, {
+      ok: true,
+      hosts,
+      enrollTokens: data.enrollTokens.map((t) => ({
+        id: t.id,
+        label: t.label,
+        createdAt: t.createdAt,
+        usedAt: t.usedAt || null,
+      })),
+    });
+  }
+
+  if (req.method === "POST" && p === "/admin/api/hosts/enroll-token") {
+    let body = {};
+    try {
+      const raw = await readBody(req);
+      body = raw ? JSON.parse(raw) : {};
+    } catch {
+      return send(res, 400, { ok: false, error: "json" });
+    }
+    const data = loadFleetHosts();
+    const token = newToken();
+    const entry = {
+      id: crypto.randomBytes(4).toString("hex"),
+      hash: sha256Hex(token),
+      label: String(body.label || "").slice(0, 80) || null,
+      createdAt: new Date().toISOString(),
+    };
+    data.enrollTokens.push(entry);
+    saveFleetHosts(data);
+    audit(`enroll-token créé id=${entry.id} label=${entry.label || "-"}`);
+    // Le token n'est restitué qu'ICI, une seule fois.
+    return send(res, 200, { ok: true, id: entry.id, enrollToken: token });
+  }
+
+  const mDel = p.match(/^\/admin\/api\/hosts\/([^/]+)$/);
+  if (mDel && req.method === "DELETE") {
+    const hostId = decodeURIComponent(mDel[1]);
+    const data = loadFleetHosts();
+    const before = data.hosts.length;
+    data.hosts = data.hosts.filter((h) => h.hostId !== hostId);
+    if (data.hosts.length === before) {
+      return send(res, 404, { ok: false, error: "hôte inconnu" });
+    }
+    saveFleetHosts(data);
+    audit(`host retiré ${hostId}`);
+    return send(res, 200, { ok: true });
+  }
+
+  // /admin/api/hosts/<hostId>/servers[...] → proxy vers l'agent hôte.
+  const mProxy = p.match(/^\/admin\/api\/hosts\/([^/]+)(\/servers.*)$/);
+  if (mProxy) {
+    const hostId = decodeURIComponent(mProxy[1]);
+    const host = findHost(hostId);
+    if (!host) return send(res, 404, { ok: false, error: "hôte inconnu" });
+    const sub = `/agent/api${mProxy[2]}${url.search || ""}`;
+    const isUpdate = /\/update$/.test(mProxy[2]);
+    let body = null;
+    if (req.method === "POST") {
+      try {
+        const raw = await readBody(req);
+        body = raw ? JSON.parse(raw) : {};
+      } catch {
+        return send(res, 400, { ok: false, error: "json" });
+      }
+    }
+    try {
+      const r = await agentCall(
+        host,
+        req.method,
+        sub,
+        body,
+        isUpdate ? AGENT_UPDATE_TIMEOUT : AGENT_TIMEOUT,
+      );
+      touchHostSeen(hostId);
+      return send(res, r.status || 502, r.json ?? { ok: false });
+    } catch (e) {
+      return send(res, 502, {
+        ok: false,
+        error: `agent injoignable: ${e?.message || e}`,
+      });
+    }
+  }
+
+  return null;
+}
+
+/** Enrôlement d'un hôte — PAS de Basic auth : authentifié par enrollToken. */
+async function handleEnroll(req, res) {
+  let body;
+  try {
+    body = JSON.parse(await readBody(req));
+  } catch {
+    return send(res, 400, { ok: false, error: "json" });
+  }
+  const enrollToken = String(body.enrollToken || "").trim();
+  const hostId = String(body.hostId || "").trim();
+  const agentUrl = String(body.agentUrl || "").trim();
+  const agentToken = String(body.agentToken || "").trim();
+  const label = String(body.label || "").slice(0, 80);
+  if (!enrollToken || !hostId || !agentUrl || !agentToken) {
+    return send(res, 400, {
+      ok: false,
+      error: "enrollToken, hostId, agentUrl, agentToken requis",
+    });
+  }
+  if (!/^https?:\/\//.test(agentUrl)) {
+    return send(res, 400, { ok: false, error: "agentUrl invalide" });
+  }
+  const data = loadFleetHosts();
+  const tok = data.enrollTokens.find(
+    (t) => !t.usedAt && tokenMatchesHash(enrollToken, t.hash),
+  );
+  if (!tok) {
+    audit(`enroll refusé (token invalide/consommé) hostId=${hostId}`);
+    return send(res, 401, { ok: false, error: "enrollToken invalide" });
+  }
+  tok.usedAt = new Date().toISOString();
+  const existing = data.hosts.find((h) => h.hostId === hostId);
+  const record = {
+    hostId,
+    label: label || existing?.label || hostId,
+    agentUrl,
+    agentToken,
+    enrolledAt: existing?.enrolledAt || new Date().toISOString(),
+    lastSeen: null,
+  };
+  data.hosts = data.hosts.filter((h) => h.hostId !== hostId);
+  data.hosts.push(record);
+  saveFleetHosts(data);
+  audit(`host enrôlé ${hostId} (${record.label}) → ${agentUrl}`);
+  // Vérification immédiate best-effort de l'agent.
+  let verified = false;
+  try {
+    const r = await agentCall(record, "GET", "/agent/api/health", null, 5000);
+    verified = r.status === 200 && r.json?.ok === true;
+    if (verified) touchHostSeen(hostId);
+  } catch {
+    /* le tunnel peut mettre quelques secondes */
+  }
+  return send(res, 200, { ok: true, hostId, verified });
+}
+
+/* -------------------------------------------------------------- registry */
+
+async function handleRegistryTags(req, res, url) {
+  const image = String(url.searchParams.get("image") || "").trim();
+  if (!image) return send(res, 400, { ok: false, error: "image requise" });
+  // "127.0.0.1:5000/creezio-server-x" → host=127.0.0.1:5000, repo=creezio-server-x
+  const firstSlash = image.indexOf("/");
+  let host = REGISTRY;
+  let repo = image;
+  if (firstSlash > 0 && /[.:]/.test(image.slice(0, firstSlash))) {
+    host = image.slice(0, firstSlash);
+    repo = image.slice(firstSlash + 1);
+  }
+  if (!host) {
+    return send(res, 400, {
+      ok: false,
+      error: "registre inconnu (CREEZIO_REGISTRY ou image qualifiée)",
+    });
+  }
+  const proto = /^(127\.|localhost|0\.0\.0\.0)/.test(host) ? "http" : "https";
+  const headers = {};
+  const basic = (process.env.CREEZIO_REGISTRY_BASIC || "").trim();
+  if (basic) {
+    headers.Authorization = `Basic ${Buffer.from(basic).toString("base64")}`;
+  }
+  try {
+    const r = await fetchJson(
+      `${proto}://${host}/v2/${repo}/tags/list`,
+      6000,
+      { headers },
+    );
+    if (r.status !== 200 || !r.json) {
+      return send(res, 502, {
+        ok: false,
+        error: `registre → ${r.status}`,
+      });
+    }
+    const tags = Array.isArray(r.json.tags) ? [...r.json.tags].sort() : [];
+    return send(res, 200, { ok: true, host, repo, tags });
+  } catch (e) {
+    return send(res, 502, { ok: false, error: String(e?.message || e) });
+  }
+}
+
+/* ---------------------------------------------------------------- routes */
+
 async function handleAdmin(req, res, url) {
   const p = url.pathname;
+
+  // Enrôlement : auth par enrollToken (les VPS restaurants n'ont pas le Basic).
+  if (req.method === "POST" && p === "/admin/api/enroll") {
+    return handleEnroll(req, res);
+  }
 
   if (!authorized(req)) return sendUnauthorized(res);
 
   if (req.method === "GET" && (p === "/admin" || p === "/admin/")) {
-    return send(res, 200, fs.readFileSync(path.join(PUBLIC_DIR, "admin.html"), "utf8"));
+    return send(
+      res,
+      200,
+      fs.readFileSync(path.join(PUBLIC_DIR, "admin.html"), "utf8"),
+    );
   }
 
   if (req.method === "GET" && p === "/admin/api/health") {
@@ -677,13 +654,48 @@ async function handleAdmin(req, res, url) {
       ok: true,
       service: "creezio-server-admin",
       brandRoots: BRAND_ROOTS,
+      adminRoot: ADMIN_ROOT,
+      registry: REGISTRY || null,
       docker: await dockerPing(),
     });
   }
 
   if (req.method === "GET" && p === "/admin/api/servers") {
-    const { servers, docker } = await collectServers();
-    return send(res, 200, { ok: true, docker, servers });
+    const { servers, docker } = await collectServers(BRAND_ROOTS);
+    const local = servers.map((s) => ({ ...s, hostId: "local", hostLabel: "local" }));
+    // Vue consolidée : serveurs des hôtes distants via leurs agents.
+    const data = loadFleetHosts();
+    const remoteLists = await Promise.all(
+      data.hosts.map(async (h) => {
+        try {
+          const r = await agentCall(h, "GET", "/agent/api/servers");
+          if (r.status === 200 && r.json?.ok) {
+            touchHostSeen(h.hostId);
+            return (r.json.servers || []).map((s) => ({
+              ...s,
+              hostId: h.hostId,
+              hostLabel: h.label,
+            }));
+          }
+        } catch {
+          /* hôte injoignable — signalé via /admin/api/hosts */
+        }
+        return [];
+      }),
+    );
+    // Dédup : un hôte enrôlé peut être CE VPS (self-enroll) — le même
+    // container ne doit apparaître qu'une fois, rattaché à l'hôte enrôlé.
+    const merged = new Map();
+    for (const s of [...local, ...remoteLists.flat()]) {
+      const key = `${s.brandId}/${s.containerName || s.name}`;
+      const prev = merged.get(key);
+      if (!prev || prev.hostId === "local") merged.set(key, s);
+    }
+    return send(res, 200, {
+      ok: true,
+      docker,
+      servers: [...merged.values()],
+    });
   }
 
   if (req.method === "POST" && p === "/admin/api/servers") {
@@ -694,7 +706,7 @@ async function handleAdmin(req, res, url) {
       return send(res, 400, { ok: false, error: "json" });
     }
     try {
-      const r = await createServer(body);
+      const r = await createServer(BRAND_ROOTS, body, audit);
       return send(res, r.code, r.out);
     } catch (e) {
       audit(`create KO: ${e?.message || e}`);
@@ -703,12 +715,23 @@ async function handleAdmin(req, res, url) {
   }
 
   if (req.method === "GET" && p === "/admin/api/disk") {
-    return send(res, 200, buildDiskReport());
+    return send(res, 200, buildDiskReport(BRAND_ROOTS));
   }
 
-  // /admin/api/servers/<brandId>/<name>[/<action>]
+  if (req.method === "GET" && p === "/admin/api/registry/tags") {
+    return handleRegistryTags(req, res, url);
+  }
+
+  // Hôtes distants (registre + enroll-token + proxy agents).
+  if (p.startsWith("/admin/api/hosts")) {
+    const handled = await handleHostsRoute(req, res, url);
+    if (handled !== null) return handled;
+    return send(res, 404, { ok: false });
+  }
+
+  // /admin/api/servers/<brandId>/<name>[/<action>] — serveurs locaux.
   const m = p.match(
-    /^\/admin\/api\/servers\/([^/]+)\/([^/]+)(?:\/(start|stop|boot-status|health|logs|ops))?$/,
+    /^\/admin\/api\/servers\/([^/]+)\/([^/]+)(?:\/(start|stop|update|update-status|boot-status|health|logs|ops))?$/,
   );
   if (m) {
     const [, brandIdEnc, nameEnc, action] = m;
@@ -748,6 +771,6 @@ const server = http.createServer(async (req, res) => {
 
 server.listen(PORT, HOST, () => {
   console.log(
-    `[server-admin] écoute ${HOST}:${PORT} brandRoots=${BRAND_ROOTS.join(",") || "(aucun)"} sock=${process.env.CREEZIO_DOCKER_SOCK || "/var/run/docker.sock"}`,
+    `[server-admin] écoute ${HOST}:${PORT} brandRoots=${BRAND_ROOTS.join(",") || "(aucun)"} adminRoot=${ADMIN_ROOT} sock=${process.env.CREEZIO_DOCKER_SOCK || "/var/run/docker.sock"}`,
   );
 });

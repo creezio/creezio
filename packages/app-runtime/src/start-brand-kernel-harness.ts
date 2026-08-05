@@ -86,6 +86,10 @@ function resolveBootKernel(
 }
 
 function readAppVersion(appRoot: string): string {
+  // Image Docker versionnée (publish --tag X) : la version embarquée prime
+  // sur le package.json — /api/v1/core/version = SoT update de flotte.
+  const fromEnv = (process.env.CREEZIO_APP_VERSION || "").trim();
+  if (fromEnv) return fromEnv;
   try {
     const pkg = JSON.parse(
       fs.readFileSync(path.join(appRoot, "package.json"), "utf8"),

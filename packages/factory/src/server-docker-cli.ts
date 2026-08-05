@@ -53,6 +53,26 @@ export type ServerDockerArgs = {
   tail?: number;
   /** logs : suivre. */
   follow?: boolean;
+  /** publish : tag de version (ex. 0.2.0). */
+  tag?: string;
+  /** publish : registre (défaut env CREEZIO_REGISTRY, ex. 127.0.0.1:5000). */
+  registry?: string;
+  /** publish : build seulement, pas de push. */
+  noPush?: boolean;
+  /** enroll : URL de l'admin flotte (https://admin.{zone}). */
+  admin?: string;
+  /** enroll : token d'enrôlement généré côté admin. */
+  token?: string;
+  /** enroll : slug tunnel du serveur (ingress agent.{slug}). */
+  slug?: string;
+  /** enroll / agent : label lisible (hôte, token). */
+  label?: string;
+  /** enroll : URL agent explicite (sinon dérivée du provisioner tunnel). */
+  agentUrl?: string;
+  /** agent up : hôtes d'écoute (défaut 127.0.0.1,172.17.0.1). */
+  bindHosts?: string;
+  /** admin up : racine admin indépendante du brand-root (repo admin dédié). */
+  adminRoot?: string;
   rest: string[];
 };
 
@@ -96,6 +116,25 @@ export function parseServerDockerArgs(argv: string[]): ServerDockerArgs {
     }
     else if (a === "--purge-data") out.purgeData = true;
     else if (a === "--follow" || a === "-f") out.follow = true;
+    else if (a === "--no-push") out.noPush = true;
+    else if (a.startsWith("--tag=")) out.tag = a.slice(6);
+    else if (a === "--tag") out.tag = rest.shift();
+    else if (a.startsWith("--registry=")) out.registry = a.slice(11);
+    else if (a === "--registry") out.registry = rest.shift();
+    else if (a.startsWith("--admin=")) out.admin = a.slice(8);
+    else if (a === "--admin") out.admin = rest.shift();
+    else if (a.startsWith("--token=")) out.token = a.slice(8);
+    else if (a === "--token") out.token = rest.shift();
+    else if (a.startsWith("--slug=")) out.slug = a.slice(7);
+    else if (a === "--slug") out.slug = rest.shift();
+    else if (a.startsWith("--label=")) out.label = a.slice(8);
+    else if (a === "--label") out.label = rest.shift();
+    else if (a.startsWith("--agent-url=")) out.agentUrl = a.slice(12);
+    else if (a === "--agent-url") out.agentUrl = rest.shift();
+    else if (a.startsWith("--bind-hosts=")) out.bindHosts = a.slice(13);
+    else if (a === "--bind-hosts") out.bindHosts = rest.shift();
+    else if (a.startsWith("--admin-root=")) out.adminRoot = a.slice(13);
+    else if (a === "--admin-root") out.adminRoot = rest.shift();
     else if (a.startsWith("--port=")) out.port = Number(a.slice(7));
     else if (a === "--port") out.port = Number(rest.shift());
     else if (a.startsWith("--bind=")) out.bind = a.slice(7);
@@ -142,10 +181,29 @@ Instances nommées (registre docker-data/servers.json — recommandé) :
   creezio server-docker logs   <nom> --brand-root <app> [--tail 200] [--follow]
   creezio server-docker ls     --brand-root <app>
 
-Admin web multi-serveurs (fleet-collector étendu) :
+Admin web multi-serveurs / multi-VPS (fleet-collector étendu) :
   creezio server-docker admin up|down|status --brand-root <app> [--port 18800]
+  creezio server-docker admin up --admin-root <repo-admin> [--brand-root <app>]
+    (repo admin dédié : config server-admin.json + fleet-hosts.json à la racine)
   creezio server-docker admin add-brand <brandRoot> --brand-root <app>
     (ajoute une marque au server-admin.json + recreate le container admin)
+
+Registry d'images versionnées (update de flotte) :
+  creezio server-docker publish --brand-root <app> --tag <version>
+    [--registry 127.0.0.1:5000] [--browser] [--no-push]
+    (build image versionnée <registry>/creezio-server-<brand>:<tag>
+     + label/env version — /api/v1/core/version affiche <version>)
+
+Agent hôte flotte (VPS restaurant — exposé via agent.{slug}.{zone}) :
+  creezio server-docker agent up --brand-root <app> [--port 18810]
+    [--bind-hosts 127.0.0.1,172.17.0.1]
+  creezio server-docker agent down|status --brand-root <app>
+  creezio server-docker agent token new [--label admin] --brand-root <app>
+  creezio server-docker agent token revoke <id> --brand-root <app>
+  creezio server-docker enroll --brand-root <app> --admin <url-admin>
+    --token <enrollToken> [--slug <slug>] [--label <label>] [--agent-url <url>]
+    (provisionne l'ingress agent.{slug} via le provisioner tunnel
+     + enregistre l'hôte auprès de l'admin — token agent hashé, révocable)
 
 Compose legacy (server-1 / server-2) :
   creezio server-docker build  --brand-root <app> [--kit-root <kit>]
@@ -725,28 +783,37 @@ function ensureUiBuild(brandRoot: string): void {
 function dockerBuildImage(
   paths: ReturnType<typeof resolvePaths>,
   env: NodeJS.ProcessEnv,
-  opts?: { variant?: "base" | "browser"; image?: string },
+  opts?: {
+    variant?: "base" | "browser";
+    image?: string;
+    /** Tags supplémentaires (publish : image versionnée registry). */
+    extraTags?: string[];
+    /** Version embarquée (ENV CREEZIO_APP_VERSION + label OCI). */
+    version?: string;
+  },
 ): void {
   const variant = opts?.variant || "base";
   ensureBrandStandalone(paths.brandRoot, paths.kit);
   ensureElectronBuild(paths.brandRoot);
   ensureUiBuild(paths.brandRoot);
-  run(
-    "docker",
-    [
-      "build",
-      "-f",
-      paths.dockerfile,
-      "--build-arg",
-      `SERVER_VARIANT=${variant}`,
-      "--build-arg",
-      `SERVER_DIR=${paths.serverDirRel}`,
-      "-t",
-      opts?.image || String(env.SERVER_IMAGE),
-      paths.brandRoot,
-    ],
-    env,
-  );
+  const args = [
+    "build",
+    "-f",
+    paths.dockerfile,
+    "--build-arg",
+    `SERVER_VARIANT=${variant}`,
+    "--build-arg",
+    `SERVER_DIR=${paths.serverDirRel}`,
+  ];
+  if (opts?.version) {
+    args.push("--build-arg", `SERVER_VERSION=${opts.version}`);
+  }
+  args.push("-t", opts?.image || String(env.SERVER_IMAGE));
+  for (const t of opts?.extraTags || []) {
+    args.push("-t", t);
+  }
+  args.push(paths.brandRoot);
+  run("docker", args, env);
 }
 
 function dockerImageExists(image: string): boolean {
@@ -819,56 +886,80 @@ type AdminConfig = {
   brandRoots: string[];
 };
 
-/** Config runtime (avec secret) — gitignorée sous docker-data/. */
-function adminConfigPath(brandRoot: string): string {
-  return path.join(brandRoot, "docker-data", "server-admin.json");
-}
-
 /**
- * Config versionnable SANS secret — layout monorepo : `<brandRoot>/admin/`.
- * Sert de SoT pour port / user / brandRoots ; le mot de passe reste
- * exclusivement dans `docker-data/server-admin.json` (runtime, gitignoré).
+ * Racine de configuration admin.
+ *
+ * - Mode historique (mono-VPS marque) : root = brandRoot ; config versionnée
+ *   sous `<brandRoot>/admin/server-admin.json` (layout 3 livrables).
+ * - Repo admin dédié (`--admin-root`) : config versionnée à la RACINE du repo
+ *   (`server-admin.json`, `fleet-hosts.json`) ; runtime sous docker-data/.
  */
-function adminVersionedConfigPath(brandRoot: string): string {
-  return path.join(brandRoot, "admin", "server-admin.json");
+type AdminRootPaths = {
+  root: string;
+  runtimeFile: string;
+  versionedFile: string;
+};
+
+function resolveAdminRoot(
+  args: ServerDockerArgs,
+  brandRoot: string,
+): AdminRootPaths {
+  const root = path.resolve(args.adminRoot || brandRoot);
+  const dedicated = Boolean(args.adminRoot);
+  // Repo admin dédié : config versionnée à la racine. Monorepo historique :
+  // sous admin/ (le miroir n'est écrit que si le dossier existe — les marques
+  // plates legacy ne sont jamais polluées).
+  const versionedFile = dedicated
+    ? path.join(root, "server-admin.json")
+    : path.join(root, "admin", "server-admin.json");
+  return {
+    root,
+    runtimeFile: path.join(root, "docker-data", "server-admin.json"),
+    versionedFile,
+  };
 }
 
-function saveAdminConfig(brandRoot: string, cfg: AdminConfig): void {
-  const runtimeFile = adminConfigPath(brandRoot);
-  fs.mkdirSync(path.dirname(runtimeFile), { recursive: true });
-  fs.writeFileSync(runtimeFile, JSON.stringify(cfg, null, 2) + "\n", {
+function saveAdminConfig(ar: AdminRootPaths, cfg: AdminConfig): void {
+  fs.mkdirSync(path.dirname(ar.runtimeFile), { recursive: true });
+  fs.writeFileSync(ar.runtimeFile, JSON.stringify(cfg, null, 2) + "\n", {
     mode: 0o600,
   });
-  // Miroir versionnable sans secret — seulement si le dossier admin/ existe
-  // (layout 3 livrables) : ne pas polluer les marques plates legacy.
-  const versionedFile = adminVersionedConfigPath(brandRoot);
-  if (fs.existsSync(path.dirname(versionedFile))) {
+  // Miroir versionnable sans secret — seulement si l'emplacement versionné
+  // existe déjà (layout 3 livrables / repo admin dédié) : ne pas polluer
+  // les marques plates legacy.
+  if (fs.existsSync(path.dirname(ar.versionedFile))) {
     const { pass: _pass, ...noSecret } = cfg;
+    // Préserver les champs factory du miroir (brandId, domain…) — le runtime
+    // ne possède que port/user/brandRoots.
+    let existing: Record<string, unknown> = {};
+    try {
+      existing = JSON.parse(fs.readFileSync(ar.versionedFile, "utf8"));
+    } catch {
+      /* premier write */
+    }
     fs.writeFileSync(
-      versionedFile,
-      JSON.stringify(noSecret, null, 2) + "\n",
+      ar.versionedFile,
+      JSON.stringify({ ...existing, ...noSecret }, null, 2) + "\n",
     );
   }
 }
 
 function loadOrInitAdminConfig(
-  brandRoot: string,
-  port?: number,
+  ar: AdminRootPaths,
+  opts?: { port?: number; addBrandRoot?: string },
 ): AdminConfig {
   let cfg: AdminConfig | null = null;
   try {
-    const raw = JSON.parse(
-      fs.readFileSync(adminConfigPath(brandRoot), "utf8"),
-    ) as AdminConfig;
+    const raw = JSON.parse(fs.readFileSync(ar.runtimeFile, "utf8")) as AdminConfig;
     if (raw && raw.user && raw.pass) cfg = raw;
   } catch {
     /* premier up */
   }
-  // Défauts versionnés (admin/server-admin.json, sans pass) : port / user /
+  // Défauts versionnés (server-admin.json, sans pass) : port / user /
   // brandRoots — fusionnés avec le runtime (union brandRoots).
   try {
     const versioned = JSON.parse(
-      fs.readFileSync(adminVersionedConfigPath(brandRoot), "utf8"),
+      fs.readFileSync(ar.versionedFile, "utf8"),
     ) as Partial<AdminConfig>;
     if (versioned && typeof versioned === "object") {
       if (!cfg) {
@@ -889,16 +980,40 @@ function loadOrInitAdminConfig(
   }
   if (!cfg) {
     cfg = {
-      port: port || ADMIN_DEFAULT_PORT,
+      port: opts?.port || ADMIN_DEFAULT_PORT,
       user: "admin",
       pass: crypto.randomBytes(12).toString("base64url"),
-      brandRoots: [brandRoot],
+      brandRoots: opts?.addBrandRoot ? [opts.addBrandRoot] : [],
     };
   }
-  if (port && port > 0) cfg.port = port;
-  if (!cfg.brandRoots.includes(brandRoot)) cfg.brandRoots.push(brandRoot);
-  saveAdminConfig(brandRoot, cfg);
+  if (opts?.port && opts.port > 0) cfg.port = opts.port;
+  if (opts?.addBrandRoot && !cfg.brandRoots.includes(opts.addBrandRoot)) {
+    cfg.brandRoots.push(opts.addBrandRoot);
+  }
+  saveAdminConfig(ar, cfg);
   return cfg;
+}
+
+/** Lecture minimale d'un fichier .env (KEY=VALUE, # commentaires). */
+function readEnvFileValues(file: string): Record<string, string> {
+  const out: Record<string, string> = {};
+  let raw = "";
+  try {
+    raw = fs.readFileSync(file, "utf8");
+  } catch {
+    return out;
+  }
+  for (const line of raw.split("\n")) {
+    const t = line.trim();
+    if (!t || t.startsWith("#")) continue;
+    const i = t.indexOf("=");
+    if (i <= 0) continue;
+    out[t.slice(0, i).trim()] = t
+      .slice(i + 1)
+      .trim()
+      .replace(/^["']|["']$/g, "");
+  }
+  return out;
 }
 
 async function runServerAdminSubcommand(
@@ -907,6 +1022,11 @@ async function runServerAdminSubcommand(
   env: NodeJS.ProcessEnv,
 ): Promise<void> {
   let action = args.rest[0] || "up";
+  // --admin-root : repo admin dédié (multi-VPS) — sinon mode historique
+  // mono-repo (config sous <brandRoot>/admin + docker-data).
+  const dedicated = Boolean(args.adminRoot);
+  const ar = resolveAdminRoot(args, paths.brandRoot);
+  const defaultBrandRoot = dedicated ? undefined : paths.brandRoot;
 
   if (action === "add-brand") {
     const rootArg = args.rest[1];
@@ -919,12 +1039,12 @@ async function runServerAdminSubcommand(
     if (!fs.existsSync(abs)) {
       throw new Error(`brand root introuvable: ${abs}`);
     }
-    const cfg = loadOrInitAdminConfig(paths.brandRoot);
+    const cfg = loadOrInitAdminConfig(ar, { addBrandRoot: defaultBrandRoot });
     if (cfg.brandRoots.includes(abs)) {
       console.log(`= marque déjà enregistrée: ${abs}`);
     } else {
       cfg.brandRoots.push(abs);
-      saveAdminConfig(paths.brandRoot, cfg);
+      saveAdminConfig(ar, cfg);
       console.log(`+ marque ajoutée à l'admin: ${abs}`);
     }
     const st = dockerContainerState(ADMIN_CONTAINER);
@@ -952,9 +1072,11 @@ async function runServerAdminSubcommand(
       `admin ${ADMIN_CONTAINER}: ${st.status}${st.health ? ` (${st.health})` : ""}`,
     );
     if (st.running) {
-      const cfg = loadOrInitAdminConfig(paths.brandRoot);
+      const cfg = loadOrInitAdminConfig(ar, { addBrandRoot: defaultBrandRoot });
       console.log(`  URL  : http://127.0.0.1:${cfg.port}/admin`);
-      console.log(`  user : ${cfg.user} (pass: docker-data/server-admin.json)`);
+      console.log(
+        `  user : ${cfg.user} (pass: ${path.relative(process.cwd(), ar.runtimeFile)})`,
+      );
     }
     return;
   }
@@ -963,7 +1085,10 @@ async function runServerAdminSubcommand(
     throw new Error(`admin ${action} inconnu (up|down|status|add-brand)`);
   }
 
-  const cfg = loadOrInitAdminConfig(paths.brandRoot, args.port);
+  const cfg = loadOrInitAdminConfig(ar, {
+    port: args.port,
+    addBrandRoot: defaultBrandRoot,
+  });
   const adminDockerfile = path.join(paths.kit, "docker/server-admin/Dockerfile");
   const adminContext = path.join(
     paths.kit,
@@ -1003,8 +1128,23 @@ async function runServerAdminSubcommand(
     `CREEZIO_ADMIN_PASS=${cfg.pass}`,
     "-e",
     `CREEZIO_ADMIN_BRAND_ROOTS=${cfg.brandRoots.join(":")}`,
+    "-e",
+    `CREEZIO_ADMIN_ROOT=${ar.root}`,
   ];
-  for (const root of cfg.brandRoots) {
+  // Registre d'images versionnées (comparaison de versions / update flotte).
+  // Priorité : env process > .env du repo admin (secrets locaux gitignorés).
+  const adminDotEnv = readEnvFileValues(path.join(ar.root, ".env"));
+  for (const key of [
+    "CREEZIO_REGISTRY",
+    "CREEZIO_REGISTRY_BASIC",
+    "CREEZIO_REGISTRY_AUTH",
+  ]) {
+    const v = ((env[key] || "").trim() || (adminDotEnv[key] || "").trim());
+    if (v) runArgs.push("-e", `${key}=${v}`);
+  }
+  const mounts = new Set<string>(cfg.brandRoots);
+  mounts.add(ar.root);
+  for (const root of mounts) {
     runArgs.push("-v", `${root}:${root}`);
   }
   runArgs.push(ADMIN_IMAGE);
@@ -1025,7 +1165,428 @@ async function runServerAdminSubcommand(
   }
   console.log(`✓ Creezio Server Admin : http://127.0.0.1:${cfg.port}/admin`);
   console.log(
-    `  login ${cfg.user} — mot de passe dans ${path.relative(paths.brandRoot, adminConfigPath(paths.brandRoot))}`,
+    `  login ${cfg.user} — mot de passe dans ${path.relative(process.cwd(), ar.runtimeFile)}`,
+  );
+}
+
+/* ----------------------------------------------------- publish (registry) */
+
+/** Tag docker valide (version). */
+const TAG_RE = /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/;
+
+function resolveRegistry(args: ServerDockerArgs): string {
+  return (args.registry || process.env.CREEZIO_REGISTRY || "")
+    .trim()
+    .replace(/\/+$/, "");
+}
+
+/** Repo image versionnée d'une marque : creezio-server-<brand>[-browser]. */
+export function publishRepoName(
+  brandId: string,
+  variant: "base" | "browser" = "base",
+): string {
+  return `creezio-server-${brandId}${variant === "browser" ? "-browser" : ""}`;
+}
+
+/** Image complète registry : <registry>/creezio-server-<brand>:<tag>. */
+export function publishImageName(
+  registry: string,
+  brandId: string,
+  tag: string,
+  variant: "base" | "browser" = "base",
+): string {
+  return `${registry.replace(/\/+$/, "")}/${publishRepoName(brandId, variant)}:${tag}`;
+}
+
+function ensureGhcrLogin(paths: ReturnType<typeof resolvePaths>): void {
+  for (const dir of [paths.brandRoot, paths.kit]) {
+    const f = path.join(dir, ".github-token");
+    if (!fs.existsSync(f)) continue;
+    const token = fs.readFileSync(f, "utf8").trim();
+    if (!token) continue;
+    const user = process.env.CREEZIO_GHCR_USER || "creezio";
+    const r = spawnSync(
+      "docker",
+      ["login", "ghcr.io", "-u", user, "--password-stdin"],
+      { input: token, encoding: "utf8" },
+    );
+    if (r.status === 0) {
+      console.log("✓ docker login ghcr.io (token .github-token)");
+    } else {
+      console.log(`⚠ docker login ghcr.io KO: ${(r.stderr || "").trim()}`);
+    }
+    return;
+  }
+  console.log("⚠ pas de .github-token — docker push ghcr.io suppose un login existant");
+}
+
+async function runPublishSubcommand(
+  args: ServerDockerArgs,
+  paths: ReturnType<typeof resolvePaths>,
+  env: NodeJS.ProcessEnv,
+): Promise<void> {
+  const tag = (args.tag || "").trim();
+  if (!tag || !TAG_RE.test(tag)) {
+    throw new Error(
+      "creezio server-docker publish --tag <version> (ex. --tag 0.2.0)",
+    );
+  }
+  const registry = resolveRegistry(args);
+  if (!registry) {
+    throw new Error(
+      "--registry ou env CREEZIO_REGISTRY requis (ex. 127.0.0.1:5000 ou ghcr.io/creezio)",
+    );
+  }
+  const brandId = String(env.BRAND_ID);
+  const variant = args.browser ? ("browser" as const) : ("base" as const);
+  const image = publishImageName(registry, brandId, tag, variant);
+  const localImage = serverImageName(brandId, variant);
+  console.log(`build image versionnée ${image} (variant ${variant})…`);
+  dockerBuildImage(paths, env, {
+    variant,
+    image,
+    extraTags: [localImage],
+    version: tag,
+  });
+  console.log(`✓ image construite : ${image} (alias local ${localImage})`);
+  if (args.noPush) {
+    console.log("--no-push : build seulement (pas de push registry)");
+    return;
+  }
+  if (/^ghcr\.io(\/|$)/.test(registry)) ensureGhcrLogin(paths);
+  run("docker", ["push", image], env);
+  console.log(`✓ push ${image}`);
+  console.log(
+    `  update flotte : POST agent /agent/api/servers/<brand>/<nom>/update {"image":"${image}"}`,
+  );
+}
+
+/* -------------------------------------------------- agent hôte + enroll */
+
+const AGENT_IMAGE = "creezio-host-agent:local";
+const AGENT_CONTAINER = "creezio-host-agent";
+const AGENT_DEFAULT_PORT = 18810;
+const AGENT_DEFAULT_BIND_HOSTS = "127.0.0.1,172.17.0.1";
+
+type AgentTokenEntry = {
+  id: string;
+  hash: string;
+  label: string | null;
+  createdAt: string;
+  revokedAt?: string;
+};
+
+type AgentState = {
+  version: 1;
+  hostId: string;
+  label: string;
+  port: number;
+  bindHosts: string;
+  brandRoots: string[];
+  tokens: AgentTokenEntry[];
+  adminUrl?: string | null;
+  agentUrl?: string | null;
+};
+
+function agentStatePath(brandRoot: string): string {
+  return path.join(brandRoot, "docker-data", "host-agent.json");
+}
+
+function sha256Token(token: string): string {
+  return (
+    "sha256:" + crypto.createHash("sha256").update(token).digest("hex")
+  );
+}
+
+function loadOrInitAgentState(
+  brandRoot: string,
+  args?: ServerDockerArgs,
+): AgentState {
+  const file = agentStatePath(brandRoot);
+  let st: AgentState | null = null;
+  try {
+    const raw = JSON.parse(fs.readFileSync(file, "utf8")) as AgentState;
+    if (raw && raw.hostId && Array.isArray(raw.tokens)) st = raw;
+  } catch {
+    /* premier up */
+  }
+  if (!st) {
+    st = {
+      version: 1,
+      hostId: `host-${crypto.randomBytes(4).toString("hex")}`,
+      label: args?.label || os.hostname(),
+      port: AGENT_DEFAULT_PORT,
+      bindHosts: AGENT_DEFAULT_BIND_HOSTS,
+      brandRoots: [brandRoot],
+      tokens: [],
+      adminUrl: null,
+      agentUrl: null,
+    };
+  }
+  if (args?.port && args.port > 0) st.port = args.port;
+  if (args?.bindHosts) st.bindHosts = args.bindHosts;
+  if (args?.label) st.label = args.label;
+  if (!st.brandRoots.includes(brandRoot)) st.brandRoots.push(brandRoot);
+  saveAgentState(brandRoot, st);
+  return st;
+}
+
+function saveAgentState(brandRoot: string, st: AgentState): void {
+  const file = agentStatePath(brandRoot);
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  fs.writeFileSync(file, JSON.stringify(st, null, 2) + "\n", { mode: 0o600 });
+}
+
+/** Génère un token agent (hash stocké, clair retourné UNE fois). */
+function issueAgentToken(
+  brandRoot: string,
+  st: AgentState,
+  label: string | null,
+): { id: string; token: string } {
+  const token = crypto.randomBytes(24).toString("hex");
+  const entry: AgentTokenEntry = {
+    id: crypto.randomBytes(4).toString("hex"),
+    hash: sha256Token(token),
+    label,
+    createdAt: new Date().toISOString(),
+  };
+  st.tokens.push(entry);
+  saveAgentState(brandRoot, st);
+  return { id: entry.id, token };
+}
+
+async function agentPing(port: number): Promise<boolean> {
+  try {
+    const res = await fetch(`http://127.0.0.1:${port}/agent/ping`);
+    return res.status === 200;
+  } catch {
+    return false;
+  }
+}
+
+async function runAgentSubcommand(
+  args: ServerDockerArgs,
+  paths: ReturnType<typeof resolvePaths>,
+  env: NodeJS.ProcessEnv,
+): Promise<void> {
+  const action = args.rest[0] || "status";
+  const brandRoot = paths.brandRoot;
+
+  if (action === "token") {
+    const st = loadOrInitAgentState(brandRoot);
+    const op = args.rest[1] || "ls";
+    if (op === "new") {
+      const { id, token } = issueAgentToken(brandRoot, st, args.label || null);
+      console.log(`+ token agent id=${id} (affiché UNE fois) :`);
+      console.log(token);
+      return;
+    }
+    if (op === "revoke") {
+      const id = args.rest[2];
+      const entry = st.tokens.find((t) => t.id === id);
+      if (!entry) throw new Error(`token inconnu: ${id}`);
+      entry.revokedAt = new Date().toISOString();
+      saveAgentState(brandRoot, st);
+      console.log(`✓ token ${id} révoqué`);
+      return;
+    }
+    console.log(`${"ID".padEnd(10)}${"LABEL".padEnd(24)}${"CRÉÉ".padEnd(26)}RÉVOQUÉ`);
+    for (const t of st.tokens) {
+      console.log(
+        `${t.id.padEnd(10)}${String(t.label || "-").padEnd(24)}${t.createdAt.padEnd(26)}${t.revokedAt || "-"}`,
+      );
+    }
+    return;
+  }
+
+  if (action === "down") {
+    const st = dockerContainerState(AGENT_CONTAINER);
+    if (st.exists) run("docker", ["rm", "-f", AGENT_CONTAINER], env);
+    console.log("✓ agent hôte arrêté");
+    return;
+  }
+
+  if (action === "status") {
+    const st = dockerContainerState(AGENT_CONTAINER);
+    const state = loadOrInitAgentState(brandRoot);
+    console.log(
+      `agent ${AGENT_CONTAINER}: ${st.status}${st.health ? ` (${st.health})` : ""}`,
+    );
+    console.log(`  hostId : ${state.hostId} (${state.label})`);
+    console.log(`  port   : ${state.port} (bind ${state.bindHosts})`);
+    console.log(`  tokens : ${state.tokens.filter((t) => !t.revokedAt).length} actifs`);
+    if (state.agentUrl) console.log(`  URL    : ${state.agentUrl}`);
+    if (state.adminUrl) console.log(`  admin  : ${state.adminUrl}`);
+    return;
+  }
+
+  if (action !== "up") {
+    throw new Error(`agent ${action} inconnu (up|down|status|token)`);
+  }
+
+  const state = loadOrInitAgentState(brandRoot, args);
+  const agentDockerfile = path.join(paths.kit, "docker/host-agent/Dockerfile");
+  const agentContext = path.join(
+    paths.kit,
+    "packages/observability/fleet-collector",
+  );
+  if (!fs.existsSync(agentDockerfile)) {
+    throw new Error(`Dockerfile agent introuvable: ${agentDockerfile}`);
+  }
+  run(
+    "docker",
+    ["build", "-f", agentDockerfile, "-t", AGENT_IMAGE, agentContext],
+    env,
+  );
+  const st = dockerContainerState(AGENT_CONTAINER);
+  if (st.exists) run("docker", ["rm", "-f", AGENT_CONTAINER], env);
+
+  const runArgs = [
+    "run",
+    "-d",
+    "--name",
+    AGENT_CONTAINER,
+    "--restart",
+    "unless-stopped",
+    // host network : serveurs marques publiés loopback + bind gateway bridge
+    // (172.17.0.1) pour l'ingress tunnel `agent.{slug}` du container serveur.
+    "--network",
+    "host",
+    "-v",
+    "/var/run/docker.sock:/var/run/docker.sock",
+    "--label",
+    "creezio.host-agent=1",
+    "-e",
+    `CREEZIO_AGENT_PORT=${state.port}`,
+    "-e",
+    `CREEZIO_AGENT_HOSTS=${state.bindHosts}`,
+    "-e",
+    `CREEZIO_AGENT_BRAND_ROOTS=${state.brandRoots.join(":")}`,
+    "-e",
+    `CREEZIO_AGENT_STATE_FILE=${agentStatePath(brandRoot)}`,
+  ];
+  for (const key of ["CREEZIO_REGISTRY_AUTH"]) {
+    const v = (env[key] || "").trim();
+    if (v) runArgs.push("-e", `${key}=${v}`);
+  }
+  for (const root of state.brandRoots) {
+    runArgs.push("-v", `${root}:${root}`);
+  }
+  runArgs.push(AGENT_IMAGE);
+  run("docker", runArgs, env);
+
+  for (let i = 0; i < 20; i++) {
+    if (await agentPing(state.port)) break;
+    await new Promise((r) => setTimeout(r, 500));
+  }
+  console.log(
+    `✓ agent hôte flotte : http://127.0.0.1:${state.port}/agent/ping (hostId ${state.hostId})`,
+  );
+  console.log(
+    "  enrôler auprès de l'admin : creezio server-docker enroll --admin <url> --token <enrollToken> --slug <slug>",
+  );
+}
+
+/**
+ * Enrôlement du VPS auprès de l'admin flotte :
+ *   1. token agent dédié à l'admin (hashé localement, révocable)
+ *   2. ingress `agent.{slug}` via le provisioner tunnel (si --slug)
+ *   3. POST {admin}/admin/api/enroll (authentifié par enrollToken)
+ */
+async function runEnrollSubcommand(
+  args: ServerDockerArgs,
+  paths: ReturnType<typeof resolvePaths>,
+): Promise<void> {
+  const adminUrl = (args.admin || "").trim().replace(/\/+$/, "");
+  const enrollToken = (args.token || "").trim();
+  if (!adminUrl || !enrollToken) {
+    throw new Error(
+      "creezio server-docker enroll --admin <url> --token <enrollToken> [--slug <slug>|--agent-url <url>]",
+    );
+  }
+  const brandRoot = paths.brandRoot;
+  const state = loadOrInitAgentState(brandRoot, args);
+  const agentRunning = dockerContainerState(AGENT_CONTAINER).running;
+  if (!agentRunning) {
+    console.log(
+      "⚠ agent hôte non démarré — creezio server-docker agent up (l'enrôlement continue)",
+    );
+  }
+
+  // URL publique de l'agent : explicite, ou ingress agent.{slug} provisionnée.
+  let agentUrl = (args.agentUrl || "").trim().replace(/\/+$/, "");
+  if (!agentUrl) {
+    const slug = (args.slug || "").trim().toLowerCase();
+    if (!slug) {
+      throw new Error(
+        "--slug <slug> (ingress agent.{slug} via provisioner) ou --agent-url <url> requis",
+      );
+    }
+    const provUrl = (process.env.CREEZIO_TUNNEL_PROVISION_URL || "")
+      .trim()
+      .replace(/\/+$/, "");
+    const provToken = (process.env.CREEZIO_TUNNEL_PROVISION_TOKEN || "").trim();
+    if (!provUrl || !provToken) {
+      throw new Error(
+        "CREEZIO_TUNNEL_PROVISION_URL / _TOKEN requis pour provisionner agent.{slug}",
+      );
+    }
+    console.log(`provision ingress agent.${slug} (port ${state.port})…`);
+    const res = await fetch(`${provUrl}/configure`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${provToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ slug, agentPort: state.port }),
+    });
+    const json = (await res.json().catch(() => ({}))) as {
+      ok?: boolean;
+      agentUrl?: string;
+      error?: string;
+    };
+    if (res.status !== 200 || !json.ok || !json.agentUrl) {
+      throw new Error(
+        `provision agent.{slug} KO (${res.status}): ${json.error || "réponse invalide"}`,
+      );
+    }
+    agentUrl = json.agentUrl.replace(/\/+$/, "");
+    console.log(`✓ ingress agent : ${agentUrl}`);
+  }
+
+  const { id, token: agentToken } = issueAgentToken(
+    brandRoot,
+    state,
+    `admin ${adminUrl}`,
+  );
+  console.log(`+ token agent id=${id} émis pour l'admin (hash local, révocable)`);
+
+  const res = await fetch(`${adminUrl}/admin/api/enroll`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      enrollToken,
+      hostId: state.hostId,
+      label: state.label,
+      agentUrl,
+      agentToken,
+    }),
+  });
+  const json = (await res.json().catch(() => ({}))) as {
+    ok?: boolean;
+    verified?: boolean;
+    error?: string;
+  };
+  if (res.status !== 200 || !json.ok) {
+    throw new Error(
+      `enroll KO (${res.status}): ${json.error || "réponse invalide"}`,
+    );
+  }
+  state.adminUrl = adminUrl;
+  state.agentUrl = agentUrl;
+  saveAgentState(brandRoot, state);
+  console.log(
+    `✓ hôte ${state.hostId} enrôlé auprès de ${adminUrl} (agent ${agentUrl}, vérifié=${json.verified ? "oui" : "pas encore"})`,
   );
 }
 
@@ -1127,6 +1688,11 @@ async function runRegistrySubcommand(
       // (jamais de valeur inventée — pas d'effet de bord infra implicite).
       extraEnv.CREEZIO_NATIVE_WARM = "1";
       extraEnv.CREEZIO_CATALOG = "1";
+      if ((env.CREEZIO_TUNNEL_PROVISION_URL || "").trim()) {
+        // Tunnel provisionné → surface publique (MCP/webhooks via {slug}.zone),
+        // pas la surface loopback par défaut de l'image.
+        extraEnv.CREEZIO_TUNNEL_LOCAL = "0";
+      }
       for (const key of [
         "CREEZIO_TUNNEL_PROVISION_URL",
         "CREEZIO_TUNNEL_PROVISION_TOKEN",
@@ -1247,6 +1813,11 @@ export async function runServerDockerCli(argv: string[]): Promise<void> {
     return;
   }
 
+  // Repo admin dédié : --admin-root suffit (pas de brand root obligatoire).
+  if (args.sub === "admin" && args.adminRoot && !args.brandRoot) {
+    args.brandRoot = args.adminRoot;
+  }
+
   const paths = resolvePaths(args);
   const env = composeEnv(paths);
   ensureBrandDockerignore(paths.brandRoot, paths.kit);
@@ -1266,6 +1837,21 @@ export async function runServerDockerCli(argv: string[]): Promise<void> {
 
   if (args.sub === "admin") {
     await runServerAdminSubcommand(args, paths, env);
+    return;
+  }
+
+  if (args.sub === "publish") {
+    await runPublishSubcommand(args, paths, env);
+    return;
+  }
+
+  if (args.sub === "agent") {
+    await runAgentSubcommand(args, paths, env);
+    return;
+  }
+
+  if (args.sub === "enroll") {
+    await runEnrollSubcommand(args, paths);
     return;
   }
 
@@ -1394,6 +1980,6 @@ export async function runServerDockerCli(argv: string[]): Promise<void> {
   }
 
   throw new Error(
-    `Sous-commande inconnue: ${args.sub} (create|start|stop|rm|logs|ls|admin|build|up|down|ps|proof)`,
+    `Sous-commande inconnue: ${args.sub} (create|start|stop|rm|logs|ls|admin|publish|agent|enroll|build|up|down|ps|proof)`,
   );
 }

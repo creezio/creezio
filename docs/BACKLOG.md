@@ -40,6 +40,29 @@ affaibli pour la masquer. (Backlogs d'époque : `docs/archive/BACKLOG-*.md`.)
   pas de `node_modules` (types `electron` introuvables au `tsc`) — piste :
   lien vers le `node_modules` du kit ou install dédiée dans la gate.
 
+## Flotte multi-VPS
+
+- **GHCR non branché** : le flux versionné (`server-docker publish` → pull →
+  update) est prouvé sur un registry local `registry:2` (`127.0.0.1:5000`,
+  image ~3,7 Go impraticable en push GHCR depuis ce VPS). Bascule GHCR =
+  `CREEZIO_REGISTRY=ghcr.io/creezio` + `CREEZIO_REGISTRY_AUTH` (token PAT) —
+  le code est agnostique, seul l'E2E GHCR manque.
+- **Ingress agent porté par le tunnel d'un serveur** : `agent.{slug}` passe
+  par le cloudflared du container serveur `{slug}` — pendant l'update de CE
+  serveur, l'agent est injoignable de l'extérieur (le poll `update-status`
+  de l'admin tolère les trous et se resynchronise). Piste propre : tunnel
+  dédié agent par VPS (slug hôte réservé) au lieu de réutiliser celui d'un
+  serveur applicatif.
+- **Suivi update en mémoire** : la Map `update-status` de l'agent (et de
+  l'admin local) ne survit pas à un restart de l'agent pendant un update —
+  l'update lui-même va au bout (process docker), seul le suivi est perdu.
+- **Registry local sans GC** : la suppression de tags (`0.2.2-broken`…)
+  demande l'API delete + `registry garbage-collect` — documenté, pas
+  automatisé.
+- **admin.tempoflow.fr en cert Origin Cloudflare** (pas Let's Encrypt) via
+  `docker/server-admin/configure-admin-npm.sh` — valide tant que le domaine
+  est proxifié Cloudflare (orange cloud).
+
 ## Documentation
 
 - **`@creezio/brand-spec`** : pas encore de `README.md` / `docs/FILES.md`

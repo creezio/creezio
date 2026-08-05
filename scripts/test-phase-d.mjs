@@ -124,7 +124,8 @@ test("scaffoldNewApp génère structure + builder configs", () => {
     force: true,
   });
   assert.equal(result.manifest.brandId, "sandboxapp");
-  // Layout monorepo 3 livrables : server/ client/ admin/ + racine orchestrateur.
+  // Layout monorepo (server/ client/) + racine orchestrateur ;
+  // admin flotte = repo dédié frère `<out>-admin` (factory 2-repos).
   const required = [
     "package.json",
     "README.md",
@@ -148,16 +149,22 @@ test("scaffoldNewApp génère structure + builder configs", () => {
     "client/electron-builder.base.json",
     "client/electron-builder.client.json",
     "client/scripts/build-builder-config.mjs",
-    "admin/server-admin.json",
-    "admin/docker-compose.admin.yml",
-    "admin/README.md",
   ];
   for (const rel of required) {
     assert.ok(fs.existsSync(path.join(outDir, rel)), rel);
   }
+  for (const rel of [
+    "server-admin.json",
+    "fleet-hosts.json",
+    "docker-compose.admin.yml",
+    "README.md",
+  ]) {
+    assert.ok(fs.existsSync(path.join(`${outDir}-admin`, rel)), `admin: ${rel}`);
+  }
   assert.equal(result.serverDir, path.join(outDir, "server"));
   assert.equal(result.clientDir, path.join(outDir, "client"));
-  assert.equal(result.adminDir, path.join(outDir, "admin"));
+  assert.equal(result.adminDir, `${outDir}-admin`);
+  assert.ok(!fs.existsSync(path.join(outDir, "admin")));
 
   const rootPkg = JSON.parse(
     fs.readFileSync(path.join(outDir, "package.json"), "utf8"),
@@ -250,12 +257,13 @@ test("scaffoldNewApp génère structure + builder configs", () => {
   assert.equal(clientCfg.directories.output, "dist-electron");
   assert.equal(serverCfg.directories.output, "dist-electron-server");
 
-  // Admin versionné sans secret.
+  // Admin versionné sans secret (repo dédié frère).
   const adminCfg = JSON.parse(
-    fs.readFileSync(path.join(outDir, "admin/server-admin.json"), "utf8"),
+    fs.readFileSync(path.join(`${outDir}-admin`, "server-admin.json"), "utf8"),
   );
   assert.equal(adminCfg.pass, undefined);
   assert.ok(adminCfg.port && adminCfg.user);
+  assert.equal(adminCfg.brandId, "sandboxapp");
 
   fs.rmSync(tmp, { recursive: true, force: true });
 });

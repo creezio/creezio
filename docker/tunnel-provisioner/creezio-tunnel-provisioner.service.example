@@ -1,0 +1,22 @@
+# /etc/systemd/system/creezio-tunnel-provisioner.service
+# Adapter les chemins/token puis :
+#   sudo systemctl daemon-reload && sudo systemctl enable --now creezio-tunnel-provisioner
+[Unit]
+Description=Creezio Cloudflare tunnel provisioner (loopback + docker bridge)
+After=network.target
+
+[Service]
+Type=simple
+User=deploy
+Environment=CREEZIO_TUNNEL_PROVISIONER_PORT=8666
+Environment=CREEZIO_TUNNEL_PROVISIONER_HOSTS=127.0.0.1,172.17.0.1
+Environment=CREEZIO_TUNNEL_STATE_DIR=/opt/docker/creezio-fleet/tunnel-state
+Environment=CREEZIO_TUNNEL_CF_ENV_FILE=/opt/docker/wp-provisioner/.cloudflare-tempoflow.env
+# Token : poser dans un EnvironmentFile hors git (mode 600)
+EnvironmentFile=/opt/docker/creezio-fleet/tunnel-provisioner.env
+ExecStart=/usr/bin/node /opt/docker/creezio/docker/tunnel-provisioner/server.mjs
+Restart=on-failure
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target

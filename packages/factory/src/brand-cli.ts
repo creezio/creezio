@@ -34,6 +34,12 @@ export type BrandCliArgs = {
   vertical?: "chr" | "generic";
   /** Dossier icônes marque (sinon `<spec>/icons`). */
   iconsDir?: string;
+  /** Dossier repo admin dédié (défaut <out>-admin). */
+  adminOut?: string;
+  /** Factory 2-repos GitHub : forcer / désactiver. */
+  push?: boolean;
+  noPush?: boolean;
+  githubOrg?: string;
 };
 
 export function parseBrandArgs(argv: string[]): BrandCliArgs {
@@ -66,6 +72,14 @@ export function parseBrandArgs(argv: string[]): BrandCliArgs {
     } else if (a.startsWith("--icons-dir="))
       out.iconsDir = a.slice("--icons-dir=".length);
     else if (a === "--icons-dir") out.iconsDir = rest.shift();
+    else if (a.startsWith("--admin-out="))
+      out.adminOut = a.slice("--admin-out=".length);
+    else if (a === "--admin-out") out.adminOut = rest.shift();
+    else if (a === "--push") out.push = true;
+    else if (a === "--no-push") out.noPush = true;
+    else if (a.startsWith("--github-org="))
+      out.githubOrg = a.slice("--github-org=".length);
+    else if (a === "--github-org") out.githubOrg = rest.shift();
     else {
       throw new Error(`Argument inconnu (brand): ${a}`);
     }
@@ -80,6 +94,7 @@ Usage:
   creezio brand init --id <id> --name <Name> --domain <host> [--out <dir>]
   creezio brand doctor [--spec <brand-spec-dir>]
   creezio brand apply --spec <brand-spec-dir> --out <app-dir> [--force] [--icons-dir <dir>]
+                      [--admin-out <dir>] [--push|--no-push] [--github-org <org>]
   creezio brand apply-modules --spec <brand-spec-dir> --out <app-dir>
   creezio brand smoke --app <app-dir>
 
@@ -363,12 +378,28 @@ export async function runBrandCli(argv: string[]): Promise<void> {
       iconsDir,
       productModel: model,
       defaultServerUrl: doctor.spec?.brand.defaultServerUrl,
+      adminOut: args.adminOut ? path.resolve(args.adminOut) : undefined,
     });
     copyBrandSpecIntoApp(specDir, outDir, Boolean(args.force));
     console.log(`✓ brand apply ${result.manifest.brandId}`);
     console.log(`  out     ${result.outDir}`);
+    console.log(`  admin   ${result.adminDir}`);
     console.log(`  files   ${result.writtenFiles.length}`);
     console.log(`  spec    ${path.join(outDir, "brand-spec")}`);
+    const { maybePushBrandRepos } = await import("./github-repos.js");
+    const pushed = await maybePushBrandRepos({
+      outDir: result.outDir,
+      adminDir: result.adminDir,
+      brandId: result.manifest.brandId,
+      productName: result.manifest.client.productName,
+      push: args.push,
+      noPush: args.noPush,
+      org: args.githubOrg,
+      log: (line) => console.log(`  github  ${line}`),
+    });
+    for (const r of pushed || []) {
+      console.log(`  github  ${r.url}`);
+    }
     console.log("");
     console.log("Suite:");
     console.log(`  cd ${result.outDir}`);

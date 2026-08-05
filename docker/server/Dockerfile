@@ -25,6 +25,8 @@
 
 ARG SERVER_VARIANT=base
 ARG SERVER_DIR=server
+# Version applicative embarquée (publish : creezio server-docker publish --tag X).
+ARG SERVER_VERSION=0.0.0-local
 
 FROM node:22-bookworm-slim AS deps
 ARG SERVER_DIR
@@ -67,10 +69,15 @@ RUN apt-get update \
 
 FROM node:22-bookworm-slim AS runtime-base
 ARG SERVER_DIR
+ARG SERVER_VERSION
 RUN apt-get update \
   && apt-get install -y --no-install-recommends ca-certificates curl \
   && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
+
+# Version image = version applicative (GET /api/v1/core/version — SoT flotte).
+ENV CREEZIO_APP_VERSION=${SERVER_VERSION}
+LABEL org.opencontainers.image.version=${SERVER_VERSION}
 
 COPY --from=meili /usr/local/bin/meilisearch /opt/creezio/bin/meilisearch
 COPY --from=cloudflared /usr/local/bin/cloudflared /opt/creezio/bin/cloudflared

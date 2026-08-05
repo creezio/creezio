@@ -40,6 +40,13 @@ export type CliArgs = {
   iconsDir?: string;
   /** URL serveur pré-provisionnée dans le picker client join-only. */
   defaultServerUrl?: string;
+  /** Dossier du repo admin dédié (défaut <out>-admin). */
+  adminOut?: string;
+  /** Création + push des 2 repos GitHub privés (défaut : si token dispo). */
+  push?: boolean;
+  noPush?: boolean;
+  /** Org/owner GitHub des repos créés (défaut creezio). */
+  githubOrg?: string;
   /** Args restants pour sous-commandes (brand … / server-docker …). */
   rest?: string[];
 };
@@ -84,6 +91,14 @@ export function parseArgs(argv: string[]): CliArgs {
     else if (a.startsWith("--default-server-url="))
       out.defaultServerUrl = a.slice("--default-server-url=".length);
     else if (a === "--default-server-url") out.defaultServerUrl = rest.shift();
+    else if (a.startsWith("--admin-out="))
+      out.adminOut = a.slice("--admin-out=".length);
+    else if (a === "--admin-out") out.adminOut = rest.shift();
+    else if (a === "--push") out.push = true;
+    else if (a === "--no-push") out.noPush = true;
+    else if (a.startsWith("--github-org="))
+      out.githubOrg = a.slice("--github-org=".length);
+    else if (a === "--github-org") out.githubOrg = rest.shift();
     else throw new Error(`Argument inconnu: ${a}`);
   }
   return out;
@@ -129,6 +144,12 @@ Mode technique (squelette OS vide) :
   --name, --id, --domain, --out, --env-prefix, --feed-token, --sandbox, --force
   --icons-dir, -h, --help
 
+Factory 2 repos (marque + admin flotte) :
+  --admin-out <dir>   Dossier du repo admin dédié (défaut <out>-admin)
+  --push / --no-push  Création + push des 2 repos GitHub privés
+                      (défaut : si token GITHUB_TOKEN / .github-token dispo)
+  --github-org <org>  Org GitHub (défaut creezio)
+
 Exemples:
   creezio new-app --from-prd docs/experiences/tempoflow3/PRD-PRODUIT.md --out /tmp/tempoflow3 \\
     --icons-dir /opt/docker/tempoflow2/crm/resources/icons
@@ -171,6 +192,29 @@ function finalizeModel(model: ProductModel, args: CliArgs): ProductModel {
   if (args.domain) model.domain = args.domain.trim();
   assertProductModel(model);
   return model;
+}
+
+/** Factory 2-repos : délègue à maybePushBrandRepos (politique token/--push). */
+async function maybeCreateGithubRepos(
+  args: CliArgs,
+  result: import("./scaffold.js").ScaffoldResult,
+): Promise<void> {
+  const { maybePushBrandRepos } = await import("./github-repos.js");
+  const results = await maybePushBrandRepos({
+    outDir: result.outDir,
+    adminDir: result.adminDir,
+    brandId: result.manifest.brandId,
+    productName: result.manifest.client.productName,
+    push: args.push,
+    noPush: args.noPush,
+    org: args.githubOrg,
+    log: (line) => console.log(`  github       ${line}`),
+  });
+  for (const r of results || []) {
+    console.log(
+      `  github       ${r.url} (${r.created ? "créé" : "existant"}${r.pushed ? ", push main" : ""})`,
+    );
+  }
 }
 
 export async function runCli(argv: string[]): Promise<void> {
@@ -264,6 +308,7 @@ export async function runCli(argv: string[]): Promise<void> {
     iconsDir: args.iconsDir ? path.resolve(args.iconsDir) : undefined,
     productModel,
     defaultServerUrl: args.defaultServerUrl,
+    adminOut: args.adminOut ? path.resolve(args.adminOut) : undefined,
   };
 
   const result = scaffoldNewApp(opts);
@@ -281,10 +326,13 @@ export async function runCli(argv: string[]): Promise<void> {
   console.log(`  server GUID  ${result.manifest.server.nsisGuid}`);
   console.log(`  feed client  ${result.manifest.client.feedUrl}`);
   console.log(`  out          ${result.outDir}`);
+  console.log(`  admin repo   ${result.adminDir}`);
   console.log(`  files        ${result.writtenFiles.length}`);
   for (const f of result.writtenFiles) {
     console.log(`    + ${path.relative(result.outDir, f)}`);
   }
+
+  await maybeCreateGithubRepos(args, result);
   console.log("");
   console.log("Suite:");
   if (result.productModel) {

@@ -209,6 +209,59 @@ export function demuxDockerStream(buffer) {
   return parts.join("");
 }
 
+/**
+ * POST /images/create?fromImage=…&tag=… — pull d'une image registry.
+ * Le flux de progression est bufferisé ; les erreurs Docker apparaissent
+ * DANS le flux (status 200) → on parse les lignes JSON pour les détecter.
+ * `authB64` : base64 de {"username","password","serveraddress"} (registres privés).
+ */
+export async function pullImage(image, { authB64, timeoutMs = 900_000 } = {}) {
+  const slash = image.lastIndexOf("/");
+  const colon = image.lastIndexOf(":");
+  const hasTag = colon > slash;
+  const fromImage = hasTag ? image.slice(0, colon) : image;
+  const tag = hasTag ? image.slice(colon + 1) : "latest";
+  const qs = new URLSearchParams({ fromImage, tag });
+  const r = await new Promise((resolve, reject) => {
+    const req = http.request(
+      {
+        socketPath: dockerSockPath(),
+        path: `/images/create?${qs}`,
+        method: "POST",
+        headers: {
+          Host: "docker",
+          ...(authB64 ? { "X-Registry-Auth": authB64 } : {}),
+        },
+      },
+      (res) => {
+        const chunks = [];
+        res.on("data", (c) => chunks.push(c));
+        res.on("end", () =>
+          resolve({ status: res.statusCode || 0, text: Buffer.concat(chunks).toString("utf8") }),
+        );
+      },
+    );
+    req.setTimeout(timeoutMs, () => {
+      req.destroy(new Error("docker pull timeout"));
+    });
+    req.on("error", reject);
+    req.end();
+  });
+  if (r.status !== 200) {
+    throw new Error(`docker pull ${image} → ${r.status}: ${r.text.slice(0, 300)}`);
+  }
+  for (const line of r.text.split("\n")) {
+    if (!line.trim()) continue;
+    try {
+      const j = JSON.parse(line);
+      if (j.error) throw new Error(`docker pull ${image}: ${j.error}`);
+    } catch (e) {
+      if (e instanceof SyntaxError) continue;
+      throw e;
+    }
+  }
+}
+
 function errMessage(r) {
   if (r.json && typeof r.json.message === "string") return r.json.message;
   return r.buffer ? r.buffer.toString("utf8").slice(0, 300) : "?";

@@ -105,11 +105,13 @@ Desktop Creezio.
     "--force",
   ]);
   assert.equal(apply.status, 0, apply.stderr + "\n" + apply.stdout);
-  // Layout monorepo 3 livrables : métier sous server/, client thin sous client/.
+  // Layout monorepo : métier sous server/, client thin sous client/ ;
+  // admin flotte = repo dédié frère `<app>-admin` (factory 2-repos).
   const serverDir = path.join(appDir, "server");
   assert.ok(fs.existsSync(path.join(serverDir, "src/electron/main.ts")));
   assert.ok(fs.existsSync(path.join(appDir, "client/src/electron/main.ts")));
-  assert.ok(fs.existsSync(path.join(appDir, "admin/server-admin.json")));
+  assert.ok(fs.existsSync(path.join(`${appDir}-admin`, "server-admin.json")));
+  assert.ok(!fs.existsSync(path.join(appDir, "admin")));
   assert.ok(fs.existsSync(path.join(appDir, "brand-spec/brand.yaml")));
 
   const main = fs.readFileSync(

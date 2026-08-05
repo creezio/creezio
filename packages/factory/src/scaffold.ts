@@ -1,11 +1,11 @@
 /**
- * Scaffold d'une marque = **monorepo 3 livrables** consommant @creezio/*.
+ * Scaffold d'une marque = **2 repos** consommant @creezio/*.
  *
  * Layout généré (LA norme — plus de layout plat) :
  *   <out>/server/   livrable serveur (métier, harness, UI, electron-builder.server)
  *   <out>/client/   livrable desktop thin remote-only (main client-only)
- *   <out>/admin/    livrable pilotage flotte (server-admin.json versionné sans secret)
  *   <out>/          package.json orchestrateur + brand-spec/ + vendor/ partagé
+ *   <out>-admin/    repo ADMIN dédié (pilotage flotte multi-VPS, sans secrets)
  *
  * Mode classique (`--name/--id/--domain`) : OS shell + slot métier vide.
  * Mode `--from-prd` : ProductModel → schéma / API / UI / nav / wiring / smokes.
@@ -29,6 +29,7 @@ import {
   renderCreezioCliProxyMjs,
 } from "./generators/server-docker-scripts.js";
 import { renderEnsureLinuxIconsMjs } from "./generators/index.js";
+import { scaffoldAdminRepo } from "./admin-repo.js";
 
 export type NewAppOptions = {
   brandId: string;
@@ -49,6 +50,8 @@ export type NewAppOptions = {
   productModel?: ProductModel;
   /** URL serveur pré-provisionnée dans le picker client join-only. */
   defaultServerUrl?: string;
+  /** Dossier du repo admin dédié (défaut : `<outDir>-admin`). */
+  adminOut?: string;
 };
 
 export type ScaffoldResult = {
@@ -57,8 +60,10 @@ export type ScaffoldResult = {
   serverDir: string;
   /** Livrable client desktop : `<outDir>/client`. */
   clientDir: string;
-  /** Livrable admin flotte : `<outDir>/admin`. */
+  /** Repo ADMIN dédié (hors monorepo) : `<outDir>-admin` par défaut. */
   adminDir: string;
+  /** Fichiers du repo admin dédié (sous-ensemble hors writtenFiles). */
+  adminFiles: string[];
   manifest: AppManifest;
   writtenFiles: string[];
   productModel?: ProductModel;
@@ -761,7 +766,7 @@ function renderRootPackageJson(
   scripts.typecheck =
     "npm run typecheck --prefix server && npm run typecheck --prefix client";
   // Serveur Docker headless : brandRoot = racine monorepo (scripts kit SoT).
-  Object.assign(scripts, serverDockerNpmScripts());
+  Object.assign(scripts, serverDockerNpmScripts(m.brandId));
 
   const creezio: Record<string, unknown> = {
     brandId: m.brandId,
@@ -782,7 +787,7 @@ function renderRootPackageJson(
         name: m.brandId,
         private: true,
         version: "0.1.0",
-        description: `${m.client.productName} — monorepo marque 3 livrables (server/ client/ admin/) sur OS Creezio`,
+        description: `${m.client.productName} — monorepo marque (server/ client/) sur OS Creezio ; admin flotte = repo dédié ${m.brandId}-admin`,
         type: "module",
         scripts,
         creezio,
@@ -830,7 +835,9 @@ docker-data/
 function renderRootReadme(m: AppManifest): string {
   return `# ${m.client.productName}
 
-Monorepo marque **3 livrables** sur OS Creezio (\`creezio new-app\` / \`brand apply\`).
+Monorepo marque sur OS Creezio (\`creezio new-app\` / \`brand apply\`).
+Le pilotage de flotte vit dans le **repo admin dédié** \`${m.brandId}-admin\`
+(généré par la factory à côté de ce monorepo).
 
 ## Structure
 
@@ -839,7 +846,6 @@ brand-spec/     # SoT marque (brand.yaml, product.md, modules/)
 vendor/creezio/ # kit @creezio/* synchronisé (partagé server + client)
 server/         # livrable serveur : métier, harness, UI Next, Docker
 client/         # livrable desktop thin remote-only (picker serveur)
-admin/          # livrable pilotage flotte (server-admin.json versionné sans secret)
 docker-data/    # runtime gitignoré (registre servers.json, volumes)
 \`\`\`
 
@@ -861,93 +867,11 @@ npm test                        # gates métier (délègue server/)
 npm run build:runtime           # TS main+preload serveur
 npm run server-docker:create -- demo   # serveur Docker + CRM navigateur
 npm run pack:linux              # client desktop (délègue client/)
-npm run server-docker:admin     # admin web flotte (config admin/)
+npm run server-docker:admin     # admin web flotte (repo ${m.brandId}-admin)
 \`\`\`
 
-Docs : \`server/README.md\`, \`admin/README.md\`, kit \`docker/server/README.md\`.
-`;
-}
-
-function renderAdminServerAdminJson(): string {
-  return (
-    JSON.stringify(
-      {
-        port: 18800,
-        user: "admin",
-        brandRoots: ["."],
-      },
-      null,
-      2,
-    ) + "\n"
-  );
-}
-
-function renderAdminComposeYml(m: AppManifest): string {
-  return `# Admin web multi-serveurs ${m.client.productName} — image kit \`creezio-server-admin:local\`
-# (fleet-collector étendu, packagée depuis $CREEZIO_KIT_ROOT/docker/server-admin).
-#
-# Chemin nominal (build + run + config runtime docker-data/server-admin.json) :
-#   npm run server-docker:admin        # = creezio server-docker admin up --brand-root .
-#
-# Ce compose est l'alternative déclarative (image déjà buildée par le CLI) :
-#   CREEZIO_ADMIN_PASS=… docker compose -f admin/docker-compose.admin.yml up -d
-#
-# Config versionnée SANS secret : admin/server-admin.json (port, user, brandRoots).
-# Secret runtime (pass) : docker-data/server-admin.json — gitignoré, généré par le CLI.
-
-name: ${m.brandId}-admin
-
-services:
-  server-admin:
-    image: creezio-server-admin:local
-    container_name: creezio-server-admin
-    restart: unless-stopped
-    # host network : sonde les serveurs publiés sur 127.0.0.1:<port> ;
-    # l'admin lui-même bind 127.0.0.1 (jamais exposé par défaut).
-    network_mode: host
-    labels:
-      creezio.server-admin: "1"
-    environment:
-      CREEZIO_ADMIN_PORT: \${CREEZIO_ADMIN_PORT:-18800}
-      CREEZIO_ADMIN_USER: \${CREEZIO_ADMIN_USER:-admin}
-      CREEZIO_ADMIN_PASS: \${CREEZIO_ADMIN_PASS:?secret runtime — voir docker-data/server-admin.json}
-      CREEZIO_ADMIN_BRAND_ROOTS: \${CREEZIO_ADMIN_BRAND_ROOTS:-\${PWD}}
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
-      - \${PWD}:\${PWD}
-`;
-}
-
-function renderAdminReadme(m: AppManifest): string {
-  return `# admin/ — pilotage flotte ${m.client.productName}
-
-Livrable **admin** du monorepo : configuration versionnée de l'admin web
-multi-serveurs (image kit \`creezio-server-admin:local\`).
-
-## Fichiers
-
-| Fichier | Rôle |
-|---------|------|
-| \`server-admin.json\` | Config versionnée SANS secret (port, user, brandRoots) |
-| \`docker-compose.admin.yml\` | Alternative déclarative au CLI |
-
-Le secret runtime (\`pass\`) vit exclusivement dans
-\`docker-data/server-admin.json\` (gitignoré, généré par le CLI).
-
-## Démarrage
-
-\`\`\`bash
-npm run server-docker:admin        # depuis la racine du monorepo
-# → http://127.0.0.1:18800/admin (Basic auth, voir docker-data/server-admin.json)
-\`\`\`
-
-## Ajouter une marque au même admin
-
-\`\`\`bash
-creezio server-docker admin add-brand /chemin/autre-marque --brand-root .
-\`\`\`
-
-Doc kit : \`$CREEZIO_KIT_ROOT/docker/server/README.md\`.
+Docs : \`server/README.md\`, repo admin \`${m.brandId}-admin/README.md\`,
+kit \`docker/server/README.md\`.
 `;
 }
 
@@ -1305,7 +1229,7 @@ export function scaffoldNewApp(opts: NewAppOptions): ScaffoldResult {
   const outDir = path.resolve(opts.outDir);
   const serverDir = path.join(outDir, "server");
   const clientDir = path.join(outDir, "client");
-  const adminDir = path.join(outDir, "admin");
+  const adminDir = path.resolve(opts.adminOut || `${outDir}-admin`);
   const force = Boolean(opts.force);
   const written: string[] = [];
   const name = exportName(manifest);
@@ -1548,25 +1472,15 @@ export function scaffoldNewApp(opts: NewAppOptions): ScaffoldResult {
   );
   writeBrandIcons(clientDir, outDir, opts, force, written);
 
-  /* ── Livrable ADMIN (pilotage flotte) ─────────────────────────────── */
-  writeFile(
-    path.join(adminDir, "server-admin.json"),
-    renderAdminServerAdminJson(),
+  /* ── Repo ADMIN dédié (pilotage flotte multi-VPS, hors monorepo) ──── */
+  const adminRepo = scaffoldAdminRepo({
+    outDir: adminDir,
+    brandId: manifest.brandId,
+    productName: manifest.client.productName,
+    domain: manifest.tunnelRootDomain || manifest.domains.primary,
     force,
-    written,
-  );
-  writeFile(
-    path.join(adminDir, "docker-compose.admin.yml"),
-    renderAdminComposeYml(manifest),
-    force,
-    written,
-  );
-  writeFile(
-    path.join(adminDir, "README.md"),
-    renderAdminReadme(manifest),
-    force,
-    written,
-  );
+  });
+  written.push(...adminRepo.writtenFiles);
 
   /* ── Configs electron-builder par livrable ────────────────────────── */
   const base = JSON.parse(
@@ -1650,6 +1564,7 @@ export function scaffoldNewApp(opts: NewAppOptions): ScaffoldResult {
     serverDir,
     clientDir,
     adminDir,
+    adminFiles: adminRepo.writtenFiles,
     manifest,
     writtenFiles: written,
     productModel: opts.productModel,

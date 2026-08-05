@@ -5,8 +5,10 @@
  */
 
 /** Scripts npm injectés dans le package.json généré. */
-export function serverDockerNpmScripts(): Record<string, string> {
+export function serverDockerNpmScripts(brandId?: string): Record<string, string> {
   const cli = "node scripts/creezio-cli.mjs server-docker";
+  // Admin flotte = repo dédié `<brand>-admin` (frère du monorepo par défaut).
+  const adminRoot = brandId ? `../${brandId}-admin` : ".";
   return {
     "server-docker:build": `${cli} build --brand-root .`,
     "server-docker:create": `${cli} create --brand-root .`,
@@ -15,7 +17,7 @@ export function serverDockerNpmScripts(): Record<string, string> {
     "server-docker:rm": `${cli} rm --brand-root .`,
     "server-docker:logs": `${cli} logs --brand-root .`,
     "server-docker:ls": `${cli} ls --brand-root .`,
-    "server-docker:admin": `${cli} admin up --brand-root .`,
+    "server-docker:admin": `${cli} admin up --admin-root ${adminRoot} --brand-root .`,
     "server-docker:up": `${cli} up --brand-root .`,
     "server-docker:down": `${cli} down --brand-root .`,
     "server-docker:proof": `${cli} proof --brand-root .`,

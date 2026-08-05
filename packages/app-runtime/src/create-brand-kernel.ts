@@ -106,9 +106,13 @@ export function createBrandKernel(
     brandMigrations: opts.brandMigrations,
     touchBrand: true,
   });
+  // Version embarquée par l'image Docker versionnée (publish --tag X) —
+  // /api/v1/core/version est la SoT de comparaison pour l'update de flotte.
+  const appVersion = (process.env.CREEZIO_APP_VERSION || "").trim();
   const api = createApiKernel({
     brandId: opts.manifest.brandId,
     sqliteRuntime: runtime,
+    ...(appVersion ? { appVersion } : {}),
   });
 
   let platform: Pick<BrandKernelBoot, "tasks" | "mails" | "assistant"> = {};
