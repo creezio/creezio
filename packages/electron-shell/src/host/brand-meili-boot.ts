@@ -11,6 +11,13 @@ export type BrandMeiliBootResult = {
   meili: RunningMeili | null;
   engine: "meili" | "sql-fallback";
   indexed?: Record<string, number>;
+  /**
+   * Mode background : résolue à la fin de l'indexation (null si échec).
+   * Le boot ne doit PAS l'attendre — une réindexation complète (bump de
+   * schemaVersion sur un gros catalogue) peut dépasser les timeouts de
+   * health des updates flotte ; /search sert `source:"indexing"` entre-temps.
+   */
+  indexation?: Promise<Record<string, number> | null>;
 };
 
 /**
@@ -25,6 +32,8 @@ export async function maybeBootBrandMeili(opts: {
   log?: (line: string) => void;
   /** Si false, ne lance pas l'indexation (défaut true). */
   index?: boolean;
+  /** Si true, l'indexation part en tâche de fond (résultat via `indexation`). */
+  backgroundIndex?: boolean;
 }): Promise<BrandMeiliBootResult> {
   const log = opts.log ?? ((l: string) => console.log(`[meili-boot] ${l}`));
   const meili = await startMeili({
@@ -43,8 +52,9 @@ export async function maybeBootBrandMeili(opts: {
   process.env.MEILI_HOST = meili.host;
   process.env.MEILI_MASTER_KEY = meili.masterKey;
 
-  let indexed: Record<string, number> | undefined;
-  if (opts.index !== false) {
+  if (opts.index === false) return { meili, engine: "meili" };
+
+  const runOnce = async (): Promise<Record<string, number> | null> => {
     try {
       const result = await runFeedIndexation({
         feed: opts.feed,
@@ -53,13 +63,18 @@ export async function maybeBootBrandMeili(opts: {
         masterKey: meili.masterKey,
         log,
       });
-      indexed = result.indexed;
+      return result.indexed;
     } catch (err) {
       log(
         `indexation échouée — fallback SQL (${err instanceof Error ? err.message : err})`,
       );
+      return null;
     }
-  }
+  };
 
-  return { meili, engine: "meili", indexed };
+  if (opts.backgroundIndex) {
+    return { meili, engine: "meili", indexation: runOnce() };
+  }
+  const indexed = await runOnce();
+  return { meili, engine: "meili", indexed: indexed ?? undefined };
 }

@@ -592,6 +592,9 @@ async function startBrandDesktopBody(args: {
         dbPath: runtime.getBrand().path,
         feed: config.meiliFeed,
         log: (line) => log("meili", line),
+        // Réindexation complète possiblement longue (bump schemaVersion) :
+        // jamais bloquante pour l'ouverture de la fenêtre.
+        backgroundIndex: true,
       });
       searchEngine = meiliBoot.engine;
       if (meiliBoot.meili) {

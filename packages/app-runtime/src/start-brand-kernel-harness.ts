@@ -273,6 +273,11 @@ export async function startBrandKernelHarness(
       dbPath: runtime.getBrand().path,
       feed: config.meiliFeed,
       index: doIndex,
+      // Une réindexation complète (bump schemaVersion, gros catalogue) peut
+      // durer plusieurs minutes : elle ne doit jamais retarder le listen ni
+      // faire expirer les healthchecks d'update flotte. /search répond
+      // `source:"indexing"` tant que l'index n'est pas prêt.
+      backgroundIndex: true,
     });
     searchEngine = meiliBoot.engine;
     if (meiliBoot.meili) {
@@ -280,7 +285,20 @@ export async function startBrandKernelHarness(
     }
     if (meiliBoot.engine === "meili") {
       boot.done("meili", "Meilisearch prêt");
-      if (doIndex) boot.done("index", "Index prêt");
+      if (doIndex) {
+        if (meiliBoot.indexation) {
+          void meiliBoot.indexation.then((indexed) => {
+            if (indexed) boot.done("index", "Index prêt");
+            else
+              boot.patch("index", {
+                status: "error",
+                detail: "Indexation échouée — recherche SQL (dégradée)",
+              });
+          });
+        } else {
+          boot.done("index", "Index prêt");
+        }
+      }
     } else {
       boot.patch("meili", {
         status: meiliBoot.engine === "sql-fallback" ? "error" : "skip",
