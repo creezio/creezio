@@ -42,38 +42,93 @@ test("os-ui scaffold : zéro page OS versionnée, materialize + boot kit", () =>
   );
   assert.equal(r.status, 0, r.stderr || r.stdout);
 
+  // Layout monorepo 3 livrables : le serveur (et son UI) vit sous server/.
+  const srv = path.join(out, "server");
+
   for (const seg of FORBIDDEN_OS_DIRS) {
     assert.ok(
-      !fs.existsSync(path.join(out, "ui/app", seg)),
+      !fs.existsSync(path.join(srv, "ui/app", seg)),
       `ne doit pas versionner ui/app/${seg}`,
     );
   }
   assert.ok(
-    !fs.existsSync(path.join(out, "ui/app/lib/creezio-ui-boot.tsx")),
+    !fs.existsSync(path.join(srv, "ui/app/lib/creezio-ui-boot.tsx")),
     "pas de boot OS versionné",
   );
 
   assert.ok(
-    fs.existsSync(path.join(out, "scripts/materialize-os-ui.mjs")),
+    fs.existsSync(path.join(srv, "scripts/materialize-os-ui.mjs")),
     "script materialize",
   );
   const gitignore = fs.readFileSync(path.join(out, ".gitignore"), "utf8");
   assert.match(gitignore, /\(creezio-os\)/);
 
   const uiPkg = JSON.parse(
-    fs.readFileSync(path.join(out, "ui/package.json"), "utf8"),
+    fs.readFileSync(path.join(srv, "ui/package.json"), "utf8"),
   );
   assert.ok(uiPkg.dependencies["@creezio/os-ui"]);
   assert.ok(uiPkg.scripts.prebuild);
 
-  const layout = fs.readFileSync(path.join(out, "ui/app/layout.tsx"), "utf8");
+  const layout = fs.readFileSync(path.join(srv, "ui/app/layout.tsx"), "utf8");
   assert.match(layout, /@creezio\/os-ui\/boot/);
   assert.match(layout, /CreezioUiBoot/);
   assert.doesNotMatch(layout, /OS_NAV/);
   assert.doesNotMatch(layout, /\/mails/);
 
+  // Chrome CRM kit + Tailwind : sans ça, l'app générée rend du HTML brut
+  // (nav en liens texte, zéro sidebar) — régression vue sur tempoflow3.
+  assert.match(layout, /BrandChrome/, "layout branche le chrome kit");
+  assert.match(layout, /globals\.css/, "layout importe globals.css");
+  assert.doesNotMatch(
+    layout,
+    /style=\{\{/,
+    "plus de styles inline scaffold dans le layout",
+  );
+
+  const chrome = fs.readFileSync(
+    path.join(srv, "ui/components/brand-chrome.tsx"),
+    "utf8",
+  );
+  assert.match(chrome, /@creezio\/shell-ui\/ui/, "chrome vient du kit");
+  assert.match(chrome, /WorkspaceRoot/);
+  assert.match(chrome, /configureSidebar/);
+  assert.match(chrome, /SessionProvider/);
+  assert.match(chrome, /AssistantRoot/);
+
+  const tailwind = fs.readFileSync(
+    path.join(srv, "ui/tailwind.config.ts"),
+    "utf8",
+  );
+  assert.match(
+    tailwind,
+    /vendor\/creezio\/\*\/ui/,
+    "tailwind scanne les sources UI vendor kit (sinon classes purgées)",
+  );
+  const postcss = fs.readFileSync(
+    path.join(srv, "ui/postcss.config.js"),
+    "utf8",
+  );
+  assert.match(postcss, /tailwindcss/);
+  const globals = fs.readFileSync(
+    path.join(srv, "ui/app/globals.css"),
+    "utf8",
+  );
+  assert.match(globals, /@tailwind base/);
+  assert.match(globals, /--background/, "tokens chrome kit présents");
+  assert.ok(
+    uiPkg.devDependencies?.tailwindcss,
+    "tailwindcss en devDependency UI",
+  );
+
+  const home = fs.readFileSync(path.join(srv, "ui/app/page.tsx"), "utf8");
+  assert.match(
+    home,
+    /redirect\(/,
+    "home = redirection workspace (pas de placeholder scaffold)",
+  );
+
   const allow = fs.readFileSync(
-    path.join(out, "scripts/test-allowlist.mjs"),
+    path.join(srv, "scripts/test-allowlist.mjs"),
     "utf8",
   );
   assert.match(allow, /page OS versionnée interdite/);

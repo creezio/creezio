@@ -16,7 +16,7 @@ import { usePathname, useRouter } from "next/navigation";
 import {
   resolveActiveSurface,
   type ActiveSurface,
-} from "@creezio/assistant";
+} from "@creezio/assistant/ui";
 import { reduceExternalSiteSurfaceCommand } from "../desktop/external-site-surface";
 import { invalidateKeepAlive } from "./keep-alive";
 import {
@@ -662,7 +662,7 @@ export function TabWorkspaceProvider({ children }: { children: ReactNode }) {
       closeElectronTab(closing);
       if (isExternalSiteHref(closing.href)) {
         try {
-          void getShellDesktopApi()?.showCrm();
+          void getShellDesktopApi()?.showCrm?.();
         } catch {
           /* ignore */
         }
@@ -1040,7 +1040,8 @@ export function TabWorkspaceProvider({ children }: { children: ReactNode }) {
             electronTabId: externalMeta?.electronTabId,
           });
     if (cmd.type === "show-crm") {
-      void api.showCrm();
+      // Bridge thin (client remote-only) sans surface tabs native : feature-off.
+      void api.showCrm?.();
     } else if (cmd.type === "activate" && api.activateTab) {
       void api.activateTab(cmd.tabId);
     }

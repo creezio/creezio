@@ -24,7 +24,6 @@ import {
   setBootStage,
   type BrandDesktopDeps,
 } from "@creezio/electron-shell";
-import { createRequire } from "node:module";
 import type {
   SupplierTabManager,
   SupplierTabManagerOptions,
@@ -44,17 +43,12 @@ function loadBrowserTabs(): BrowserTabsModule {
     // eslint-disable-next-line no-eval
     req = eval("require") as NodeRequire; // CJS
   } catch {
-    // ESM : import.meta est interdit dans eval (SyntaxError) — on récupère
-    // l'URL du module courant via la stack (frames file://…) pour créer un
-    // require local. Ne surtout pas avaler l'erreur du require lui-même.
-    const stack = new Error("resolve-module-url").stack || "";
-    const m = stack.match(/(file:\/\/[^\s):]+):\d+:\d+/);
-    if (!m || !m[1]) {
-      throw new Error(
-        "loadBrowserTabs: URL module introuvable (stack sans file://)",
-      );
-    }
-    req = createRequire(m[1]);
+    // ESM : import.meta est interdit dans eval (SyntaxError). Ne PAS parser
+    // la stack pour retrouver l'URL du module : les frames Windows
+    // (`file:///C:/…`) contiennent un ':' de lettre de lecteur qui casse tout
+    // regex naïf (crash « stack sans file:// » sur client packagé Windows).
+    // createAppRequire est l'ancrage asar-safe canonique du kit.
+    req = createAppRequire();
   }
   browserTabsModule = req(
     "@creezio/electron-shell/browser-tabs",
@@ -64,6 +58,7 @@ function loadBrowserTabs(): BrowserTabsModule {
 import {
   assertProfileReady,
   buildEmbedEnvPanel,
+  createAppRequire,
   consumeInstallerPrefsFile,
   hermesPublicStatus,
   isEmbedEnvService,

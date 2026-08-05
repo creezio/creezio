@@ -163,7 +163,11 @@ export type DesktopBridge = {
     url?: string;
   }>;
   setContentRect: (rect: DesktopContentRect) => Promise<void>;
-  showCrm: () => Promise<void>;
+  /**
+   * Optionnel : les bridges thin (client remote-only généré par la factory)
+   * ne l'exposent pas — l'UI doit dégrader (feature-off), jamais crasher.
+   */
+  showCrm?: () => Promise<void>;
   listTabs: () => Promise<DesktopTabInfo[]>;
   onTabsChanged: (cb: (tabs: DesktopTabInfo[]) => void) => () => void;
   onTabLoadState?: (cb: (ev: DesktopTabLoadState) => void) => () => void;

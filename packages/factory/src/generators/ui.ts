@@ -31,16 +31,19 @@ ${model.pages.map((p) => `          <a href="${p.path}">${p.title}</a>`).join("\
 }
 
 export function renderNextHomePage(model: ProductModel): string {
-  return `export default function HomePage() {
-  return (
-    <section>
-      <h1 style={{ fontSize: "2rem", margin: "0 0 0.5rem" }}>${model.brandName}</h1>
-      <p style={{ opacity: 0.85, lineHeight: 1.5 }}>${model.tagline}</p>
-      <ol>
-${model.flows[0] ? model.flows[0].steps.map((s) => `        <li key="${s}">${s}</li>`).join("\n") : `        <li>notes</li>`}
-      </ol>
-    </section>
+  const dash = model.pages.find(
+    (p) => p.kind === "dashboard" || p.path === "/dashboard",
   );
+  const home = dash?.path || model.pages[0]?.path || "/dashboard";
+  return `/** creezio:owned-by-brand */
+import { redirect } from "next/navigation";
+
+/**
+ * "/" est une pure redirection : le workspace kit canonise "/" → /dashboard
+ * (normalizeHref) — aucune pane keep-alive ne doit référencer la racine.
+ */
+export default function HomePage() {
+  redirect(${JSON.stringify(home)});
 }
 `;
 }

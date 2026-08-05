@@ -525,6 +525,73 @@ try {
     }
   }
 
+  // Anti-régression Windows : un regex `file:\/\/[^…:…]` (classe excluant ':')
+  // ne matche JAMAIS `file:///C:/…` (deux-points de lettre de lecteur) —
+  // crash « loadBrowserTabs: URL module introuvable » sur client packagé Win.
+  // Interdit dans tout dist @creezio embarqué.
+  const driveUnsafeRe = /file:\\\/\\\/\[\^[^\]]*:[^\]]*\]/;
+  const driveUnsafeHits = [];
+  {
+    const creezioRoot = path.join(tmp, "node_modules", "@creezio");
+    const walkDist = (dir) => {
+      if (!fs.existsSync(dir)) return;
+      for (const ent of fs.readdirSync(dir, { withFileTypes: true })) {
+        const full = path.join(dir, ent.name);
+        if (ent.isDirectory()) {
+          if (ent.name === "node_modules") continue;
+          walkDist(full);
+        } else if (/\.(js|cjs|mjs)$/.test(ent.name)) {
+          // Ne pas se scanner soi-même : ce script embarque le pattern
+          // interdit (en tant que détecteur) dans les tooling scripts packés.
+          if (ent.name === "verify-pack-runtime.mjs") continue;
+          let src;
+          try {
+            src = fs.readFileSync(full, "utf8");
+          } catch {
+            continue;
+          }
+          if (driveUnsafeRe.test(src)) {
+            driveUnsafeHits.push(path.relative(tmp, full));
+          }
+        }
+      }
+    };
+    walkDist(creezioRoot);
+  }
+  if (driveUnsafeHits.length) {
+    console.error(
+      "verify-pack-runtime: regex file:// incompatible chemins Windows (lettre de lecteur) dans:",
+    );
+    for (const f of driveUnsafeHits) console.error("  -", f);
+    console.error("  → utiliser createAppRequire (@creezio/platform-core)");
+    process.exit(1);
+  }
+
+  // Preuve que loadBrowserTabs (app-runtime) passe par createAppRequire.
+  {
+    const candidates = [
+      path.join(
+        tmp,
+        "node_modules/@creezio/app-runtime/dist/install-brand-os-desktop.js",
+      ),
+      path.join(
+        tmp,
+        "node_modules/@creezio/app-runtime/dist-cjs/install-brand-os-desktop.js",
+      ),
+    ];
+    for (const f of candidates) {
+      if (!fs.existsSync(f)) continue;
+      const src = fs.readFileSync(f, "utf8");
+      if (/loadBrowserTabs/.test(src) && !/createAppRequire/.test(src)) {
+        console.error(
+          "verify-pack-runtime: loadBrowserTabs sans createAppRequire dans",
+          path.relative(tmp, f),
+        );
+        process.exit(1);
+      }
+    }
+  }
+
   // Preuve createAppRequire présent dans platform-core packagé
   const appRequireCandidates = [
     path.join(tmp, "node_modules/@creezio/platform-core/dist-cjs/app-require.js"),

@@ -253,6 +253,11 @@ export function renderUiPackageJson(_manifest: AppManifest): string {
           "@types/node": "^22.15.3",
           "@types/react": "^19.1.2",
           "@types/react-dom": "^19.1.2",
+          // Chrome kit (@creezio/shell-ui/ui) = classes Tailwind : sans le
+          // build Tailwind, l'app rend du HTML brut non stylé.
+          autoprefixer: "^10.4.21",
+          postcss: "^8.5.3",
+          tailwindcss: "^3.4.17",
           typescript: "^5.8.3",
         },
       },
@@ -349,84 +354,267 @@ export function renderUiTsconfig(): string {
 }
 
 /**
- * Layout marque : nav métier uniquement.
+ * Layout marque : chrome CRM kit (sidebar/onglets/recherche) + nav métier.
  * Les surfaces OS vivent dans @creezio/os-ui (matérialisées hors git).
  * Boot identity via props marque — pas de dossier OS versionné.
  */
 export function renderNextLayoutWithOsNav(model: ProductModel): string {
-  const brandLinks = model.pages
-    .map((p) => `    [${JSON.stringify(p.path)}, ${JSON.stringify(p.title)}]`)
-    .join(",\n");
   const bridge = `${model.brandId}Desktop`;
   const host = model.domain || `${model.brandId}.local`;
 
   return `import type { ReactNode } from "react";
 import { CreezioUiBoot } from "@creezio/os-ui/boot";
+import { BrandChrome } from "@/components/brand-chrome";
+import "./globals.css";
 
 export const metadata = {
   title: ${JSON.stringify(model.brandName)},
   description: ${JSON.stringify(model.tagline)},
 };
 
-const BRAND_NAV = [
-${brandLinks}
-] as const;
-
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="fr">
-      <body
-        style={{
-          margin: 0,
-          fontFamily:
-            '"Source Serif 4", "Iowan Old Style", Georgia, serif',
-          background:
-            "linear-gradient(165deg,#e7f0ec,#f6f3eb 50%,#e9eef5)",
-          color: "#14201c",
-          minHeight: "100vh",
-        }}
-      >
+      <body className="antialiased">
         <CreezioUiBoot
           desktopApiGlobal={${JSON.stringify(bridge)}}
           productName={${JSON.stringify(model.brandName)}}
           publicHostSuffix={${JSON.stringify(host)}}
         >
-          <header
-            style={{
-              padding: "1.25rem 1.5rem",
-              borderBottom: "1px solid rgba(20,32,28,0.08)",
-            }}
-          >
-            <strong style={{ fontSize: "1.35rem", letterSpacing: "-0.02em" }}>
-              ${model.brandName}
-            </strong>
-            <span style={{ marginLeft: "0.75rem", opacity: 0.7 }}>
-              ${model.tagline}
-            </span>
-          </header>
-          <nav
-            style={{
-              display: "flex",
-              gap: "0.85rem",
-              padding: "0.75rem 1.5rem",
-              flexWrap: "wrap",
-            }}
-          >
-            {BRAND_NAV.map(([href, label]) => (
-              <a key={href} href={href} style={{ color: "#0f3d32" }}>
-                {label}
-              </a>
-            ))}
-          </nav>
-          <main
-            style={{ padding: "1.5rem", maxWidth: "56rem", margin: "0 auto" }}
-          >
-            {children}
-          </main>
+          <BrandChrome>{children}</BrandChrome>
         </CreezioUiBoot>
       </body>
     </html>
   );
+}
+`;
+}
+
+/** Icône lucide générique par kind de page (pas de vocabulaire marque). */
+const PAGE_KIND_ICONS: Record<string, string> = {
+  dashboard: "LayoutDashboard",
+  list: "List",
+  detail: "FileText",
+  form: "SquarePen",
+  flow: "Workflow",
+};
+
+/**
+ * Wiring chrome kit côté marque : nav + recherche + providers.
+ * Fichier marque (personnalisable — ex. icônes par page), généré une fois.
+ */
+export function renderUiBrandChrome(model: ProductModel): string {
+  const icons = new Set<string>(["Settings", "Users"]);
+  const navLines = model.pages.map((p) => {
+    const icon = PAGE_KIND_ICONS[p.kind] || "List";
+    icons.add(icon);
+    return `  { href: ${JSON.stringify(p.path)}, label: ${JSON.stringify(p.title)}, icon: ${icon} },`;
+  });
+  const iconImports = [...icons].sort().join(",\n  ");
+  const storageKey = `${model.brandId}-global-search`;
+  const home = defaultWorkspaceHome(model);
+
+  return `"use client";
+/**
+ * creezio:owned-by-brand — wiring du chrome CRM kit (sidebar, onglets,
+ * recherche). Le chrome lui-même vient de @creezio/shell-ui/ui : la marque
+ * ne déclare que sa nav, ses icônes et une recherche minimale.
+ */
+
+import type { ReactNode } from "react";
+import {
+  ${iconImports},
+} from "lucide-react";
+import { SessionProvider } from "@creezio/auth/ui";
+import { AssistantRoot } from "@creezio/assistant/ui";
+import {
+  configureDefaultNewTabHref,
+  configureGlobalSearch,
+  configureSidebar,
+  WorkspaceRoot,
+} from "@creezio/shell-ui/ui";
+
+const NAV = [
+${navLines.join("\n")}
+];
+
+configureSidebar({
+  getNavItems: () => NAV,
+  getAdminItems: () => [
+    { href: "/parametres", label: "Paramètres", icon: Settings },
+    { href: "/collaborateurs", label: "Collaborateurs", icon: Users },
+  ],
+});
+
+configureGlobalSearch({
+  placeholder: "Rechercher une page…",
+  storageKey: ${JSON.stringify(storageKey)},
+  search: async (query) => {
+    const q = query.trim().toLowerCase();
+    if (!q) return [];
+    return NAV.filter((n) => n.label.toLowerCase().includes(q)).map((n) => ({
+      index: "pages",
+      id: n.href,
+      title: n.label,
+      href: n.href,
+    }));
+  },
+});
+
+configureDefaultNewTabHref(${JSON.stringify(home)});
+
+export function BrandChrome({ children }: { children: ReactNode }) {
+  return (
+    <SessionProvider>
+      <AssistantRoot>
+        <WorkspaceRoot>{children}</WorkspaceRoot>
+      </AssistantRoot>
+    </SessionProvider>
+  );
+}
+`;
+}
+
+/**
+ * Home workspace : le chrome kit canonise "/" → /dashboard (DASHBOARD_PATH).
+ * Si le modèle n'a pas de page dashboard, retomber sur la première page.
+ */
+export function defaultWorkspaceHome(model: ProductModel): string {
+  const dash = model.pages.find(
+    (p) => p.kind === "dashboard" || p.path === "/dashboard",
+  );
+  return dash?.path || model.pages[0]?.path || "/dashboard";
+}
+
+/** Tailwind : scanner app + composants + sources UI vendor kit. */
+export function renderUiTailwindConfig(): string {
+  return `import type { Config } from "tailwindcss";
+
+// Le chrome CRM vient du kit : le scan doit inclure les sources UI vendor
+// (\`vendor/creezio/<pkg>/ui\` + routes OS), sinon les classes du kit sont
+// purgées et l'app rend du HTML brut sans styles.
+const config: Config = {
+  content: [
+    "./app/**/*.{js,ts,jsx,tsx,mdx}",
+    "./components/**/*.{js,ts,jsx,tsx,mdx}",
+    "./lib/**/*.{js,ts,jsx,tsx}",
+    "../vendor/creezio/*/ui/**/*.{js,ts,jsx,tsx}",
+    "../vendor/creezio/*/routes/**/*.{js,ts,jsx,tsx}",
+  ],
+  theme: {
+    extend: {
+      colors: {
+        background: "var(--background)",
+        foreground: "var(--foreground)",
+        card: {
+          DEFAULT: "var(--card)",
+          foreground: "var(--card-foreground)",
+        },
+        popover: {
+          DEFAULT: "var(--popover)",
+          foreground: "var(--popover-foreground)",
+        },
+        primary: {
+          DEFAULT: "var(--primary)",
+          foreground: "var(--primary-foreground)",
+        },
+        secondary: {
+          DEFAULT: "var(--secondary)",
+          foreground: "var(--secondary-foreground)",
+        },
+        muted: {
+          DEFAULT: "var(--muted)",
+          foreground: "var(--muted-foreground)",
+        },
+        accent: {
+          DEFAULT: "var(--accent)",
+          foreground: "var(--accent-foreground)",
+        },
+        destructive: {
+          DEFAULT: "var(--destructive)",
+          foreground: "var(--destructive-foreground)",
+        },
+        border: "var(--border)",
+        input: "var(--input)",
+        ring: "var(--ring)",
+      },
+      borderRadius: {
+        lg: "var(--radius)",
+        md: "calc(var(--radius) - 2px)",
+        sm: "calc(var(--radius) - 4px)",
+      },
+    },
+  },
+  plugins: [],
+};
+
+export default config;
+`;
+}
+
+/** PostCSS CJS — le loader Next le lit tel quel (pas d'ESM ici). */
+export function renderUiPostcssConfig(): string {
+  return `module.exports = {
+  plugins: {
+    tailwindcss: {},
+    autoprefixer: {},
+  },
+};
+`;
+}
+
+/** Tokens chrome kit (CSS vars) — personnalisables par la marque. */
+export function renderUiGlobalsCss(): string {
+  return `@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Tokens chrome kit (@creezio/shell-ui) — palette par défaut, à personnaliser. */
+:root {
+  --background: #faf7f1;
+  --foreground: #14201c;
+  --card: #ffffff;
+  --card-foreground: #14201c;
+  --popover: #ffffff;
+  --popover-foreground: #14201c;
+  --primary: #0f3d32;
+  --primary-foreground: #f8fafc;
+  --secondary: #f1f5f9;
+  --secondary-foreground: #0f172a;
+  --muted: #f1f5f9;
+  --muted-foreground: #64748b;
+  --accent: #f1f5f9;
+  --accent-foreground: #0f172a;
+  --destructive: #dc2626;
+  --destructive-foreground: #f8fafc;
+  --border: #e2e8f0;
+  --input: #e2e8f0;
+  --ring: #0f3d32;
+  --radius: 0.5rem;
+}
+
+body {
+  color: var(--foreground);
+  background: var(--background);
+  font-family:
+    Inter,
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
+}
+
+@layer base {
+  * {
+    @apply border-slate-200;
+  }
+
+  html {
+    /* Évite le jump de largeur quand une scrollbar apparaît / disparaît */
+    scrollbar-gutter: stable;
+  }
 }
 `;
 }

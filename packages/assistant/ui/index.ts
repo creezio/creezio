@@ -18,5 +18,12 @@ export {
   type AssistantToolStep,
 } from "./assistant-tool-steps";
 export { UiDriver, runUiAction, runUiNavigate } from "./ui-driver";
+// Contrat activeSurface (module pur, sans DB) — le chrome client (shell-ui)
+// doit l'importer d'ici, JAMAIS depuis la racine @creezio/assistant qui tire
+// better-sqlite3 (casse le build webpack Next côté marque).
+export {
+  resolveActiveSurface,
+  type ActiveSurface,
+} from "../dist/runtime/active-surface.js";
 export { useVoiceInput } from "./use-voice-input";
 export { getFakeCursor } from "./fake-cursor";

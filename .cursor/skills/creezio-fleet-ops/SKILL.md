@@ -302,6 +302,10 @@ L'admin (§5) montre boot-status live, logs et ops par serveur sans SSH.
 | Slugs réservés | `admin`, `mcp`, `api`, `agent`, `demo`, `test`, `registry`… (`docker/tunnel-provisioner/lib.mjs`) — jamais pour un serveur client. |
 | Cloudflare timeouts | Toute opération longue exposée via tunnel = async (202 + route de statut), jamais une requête bloquante. |
 | Compose vs registre | Instances Compose = `server-1`, `server-2` (chiffres) ; instances registre (`create <nom>`) = libres. Projet Compose `creezio-servers`/`tf3-servers`, jamais `tempoflow`/`n8n`. |
+| Résolution module packagé | Jamais de parsing de stack pour retrouver `file://` (les frames Windows `file:///C:/…` cassent tout regex naïf → crash client). SoT : `createAppRequire` (`@creezio/platform-core`) ; gate `verify-pack-runtime` refuse le pattern. |
+| UI marque = chrome kit + Tailwind | La factory génère `ui/tailwind.config.ts` (scan `../vendor/creezio/*/ui`), `postcss.config.js`, `globals.css` (tokens) et `components/brand-chrome.tsx` (WorkspaceRoot/configureSidebar). App qui rend du HTML brut sans sidebar = Tailwind/chrome manquant, corriger la factory (gate `test-phase-os-ui-scaffold`). |
+| Gros catalogues (85k+ skus) | Jamais une requête SQL par ligne dans un handler liste (N+1 = event loop bloqué, tout le serveur pend, même `/health`). Agréger en SQL (CTE + window), indexer (`produits(sku_id)`, `prix(produit_id)`), capper les listes génériques. |
+| Login API | `POST /api/v1/auth/login` body JSON `{"email": <username>, "password": …}` (champ `email` même pour un username) ; cookie de session, contrôle via `/api/v1/auth/me`. |
 
 ## Ressources
 

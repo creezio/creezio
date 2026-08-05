@@ -16,6 +16,11 @@ export {
   renderUiNextConfig,
   renderUiTsconfig,
   renderNextLayoutWithOsNav,
+  renderUiBrandChrome,
+  renderUiTailwindConfig,
+  renderUiPostcssConfig,
+  renderUiGlobalsCss,
+  defaultWorkspaceHome,
   renderMaterializeOsUiScript,
 } from "./os-ui.js";
 export { renderVerticalSlotFromModel } from "./nav.js";

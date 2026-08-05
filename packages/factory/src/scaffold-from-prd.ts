@@ -13,7 +13,11 @@ import {
   renderNextHomePage,
   renderNextEntityPage,
   renderMetierRendererHtml,
+  renderUiBrandChrome,
+  renderUiGlobalsCss,
   renderUiPackageJson,
+  renderUiPostcssConfig,
+  renderUiTailwindConfig,
   renderUiNextConfig,
   renderUiTsconfig,
   renderNextLayoutWithOsNav,
@@ -425,6 +429,30 @@ process.exit(r.status ?? 1);
   writeOsUiAppFile(
     path.join(outDir, "ui/app/layout.tsx"),
     renderNextLayoutWithOsNav(model),
+    written,
+  );
+  // Chrome kit : Tailwind obligatoire (classes @creezio/shell-ui/ui) —
+  // configs écrasables (infra), tokens + wiring nav = fichiers marque.
+  writeOsUiAppFile(
+    path.join(outDir, "ui/tailwind.config.ts"),
+    renderUiTailwindConfig(),
+    written,
+  );
+  writeOsUiAppFile(
+    path.join(outDir, "ui/postcss.config.js"),
+    renderUiPostcssConfig(),
+    written,
+  );
+  writeFile(
+    path.join(outDir, "ui/app/globals.css"),
+    renderUiGlobalsCss(),
+    force,
+    written,
+  );
+  writeFile(
+    path.join(outDir, "ui/components/brand-chrome.tsx"),
+    renderUiBrandChrome(model),
+    force,
     written,
   );
   writeFile(
