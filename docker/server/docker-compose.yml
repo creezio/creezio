@@ -15,7 +15,7 @@ x-brand-server: &brand-server
     context: ${BRAND_ROOT:?set BRAND_ROOT to brand app root}
     dockerfile: ${CREEZIO_KIT_ROOT:-/opt/docker/creezio}/docker/server/Dockerfile
     args:
-      # Layout monorepo 3 livrables : livrable serveur sous server/ (défaut).
+      # Layout 2 repos (monorepo client+server) : livrable serveur sous server/ (défaut).
       # Layout plat legacy : SERVER_DIR=. (le CLI creezio server-docker le déduit).
       SERVER_DIR: ${SERVER_DIR:-server}
   image: ${SERVER_IMAGE:-creezio-brand-server:local}

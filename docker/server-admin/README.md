@@ -7,15 +7,19 @@ dépendance npm — même esprit que le fleet collector). Point d'entrée
 
 ## Usage
 
-Voie nominale (build image + run container, config auto-générée dans
-`{brandRoot}/docker-data/server-admin.json`) :
+Voie nominale : depuis le **repo admin dédié** de la marque (`<brand>-admin`,
+privé — ex. `creezio/tempoflow-admin`), config auto-générée dans
+`{adminRoot}/docker-data/server-admin.json` :
 
 ```bash
-creezio server-docker admin up --brand-root <brandRoot> [--port 18800]
-creezio server-docker admin status --brand-root <brandRoot>
-creezio server-docker admin down  --brand-root <brandRoot>
+creezio server-docker admin up --admin-root <adminRoot> [--port 18800]
+creezio server-docker admin status --admin-root <adminRoot>
+creezio server-docker admin down  --admin-root <adminRoot>
 # → http://127.0.0.1:18800/admin (Basic auth)
 ```
+
+Legacy (`--brand-root <brandRoot>`) : config sous
+`{brandRoot}/docker-data/server-admin.json` — toujours lu, plus généré.
 
 Ajouter une autre marque à un admin existant (append au `server-admin.json`
 puis recreate du container, nouveau volume monté) :

@@ -43,9 +43,10 @@ Registre : `{BRAND_ROOT}/docker-data/servers.json` — nom, port, volume,
 marque. Image par marque : `creezio-server-<brandId>:local`, containers
 `<brandId>-server-<nom>` (multi-marques sans collision).
 
-`--brand-root` = **racine du monorepo marque** (layout 3 livrables : le
-Dockerfile cible `server/` via l'arg `SERVER_DIR` ; le layout plat legacy
-reste détecté automatiquement).
+`--brand-root` = **racine du monorepo marque** (layout 2 repos : monorepo
+`client/` + `server/` — le Dockerfile cible `server/` via l'arg `SERVER_DIR` ;
+le layout plat legacy reste détecté automatiquement. L'admin flotte vit dans
+le repo dédié `<brand>-admin`, voir `--admin-root`).
 
 Options `create` : `--port N`, `--expose` (bind 0.0.0.0 — sinon loopback),
 `--warm` (n8n/Hermes dans le container), `--env K=V` (répétable),
@@ -93,14 +94,17 @@ d'héritage). Matrice : [PARITE-TF2.md](./PARITE-TF2.md).
 ## Admin web multi-serveurs
 
 ```bash
-creezio server-docker admin up --brand-root "$BRAND_ROOT"
+creezio server-docker admin up --admin-root "$ADMIN_ROOT"   # repo admin dédié
+# (legacy : --brand-root "$BRAND_ROOT")
 # → http://127.0.0.1:18800/admin (Basic auth —
 #   credentials dans docker-data/server-admin.json)
 ```
 
-Config versionnable **sans secrets** (`port`, `user`, `brandRoots[]`) :
-`{BRAND_ROOT}/admin/server-admin.json` — le `pass` runtime reste dans
-`docker-data/server-admin.json` (gitignoré).
+Config versionnable **sans secrets** (`port`, `user`, `brandRoots[]`) : à la
+racine du **repo admin dédié** (`{ADMIN_ROOT}/server-admin.json`, ex.
+`creezio/tempoflow-admin`) — le `pass` runtime reste dans
+`{ADMIN_ROOT}/docker-data/server-admin.json` (gitignoré). Le chemin legacy
+`{BRAND_ROOT}/admin/server-admin.json` reste lu mais n'est plus généré.
 
 Container `creezio-server-admin` (fleet-collector étendu, `--network host`,
 `/var/run/docker.sock` monté) : liste des serveurs, create/start/stop/rm,

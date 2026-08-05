@@ -1,8 +1,9 @@
 /**
  * Résout la marque sonde TempoFlow3 hors monorepo kit.
  *
- * Layout nominal : monorepo 3 livrables (`server/`, `client/`, `admin/`).
- * Le layout plat historique (src/electron à la racine) reste détecté.
+ * Layout nominal : 2 repos — monorepo marque (`server/`, `client/`) + repo
+ * admin dédié `<brand>-admin`. Le layout plat historique (src/electron à la
+ * racine) reste détecté.
  *
  * Ordre candidats :
  * 1. CREEZIO_TEMPOFLOW3_ROOT

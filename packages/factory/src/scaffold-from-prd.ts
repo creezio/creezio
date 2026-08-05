@@ -561,12 +561,13 @@ process.exit(r.status ?? 1);
     path.join(rootDir, "AGENTS.md"),
     `# AGENTS — ${manifest.client.productName}
 
-Marque légère sur **OS Creezio** — monorepo 3 livrables.
+Marque légère sur **OS Creezio** — monorepo client + server (layout 2 repos).
 
 - \`server/\` = livrable principal : métier (\`src/electron/brand-*\`), UI Next,
   harness, tests — \`startBrandDesktop\` (@creezio/app-runtime)
 - \`client/\` = desktop thin remote-only (main **sans** imports métier)
-- \`admin/\` = config pilotage flotte versionnée sans secret
+- Admin flotte = **repo dédié privé** \`<brand>-admin\` (frère du monorepo) —
+  jamais de \`admin/\` ici
 - \`vendor/creezio\` = kit partagé (symlinks \`server/vendor\`, \`client/vendor\`)
 - Déclaration = migrations + \`registerModuleApi\` + feed + nav métier
 - API métier = \`/api/v1/modules/*\`

@@ -91,8 +91,9 @@ test("F1.4 CLI accepte --from-prd", () => {
   assert.match(r.stdout, /--from-prd/);
 });
 
-test("F1–F4 scaffold --from-prd génère monorepo 3 livrables (runtime natif)", () => {
+test("F1–F4 scaffold --from-prd génère 2 repos (monorepo + admin dédié, runtime natif)", () => {
   const outDir = fs.mkdtempSync(path.join(os.tmpdir(), "creezio-from-prd-"));
+  const adminDir = `${outDir}-admin`;
   const r = spawnSync(
     process.execPath,
     [CLI, "new-app", "--from-prd", PRD, "--out", outDir, "--force"],
@@ -122,12 +123,25 @@ test("F1–F4 scaffold --from-prd génère monorepo 3 livrables (runtime natif)"
     "client/src/electron/main.ts",
     "client/electron-builder.client.json",
     "client/scripts/build-builder-config.mjs",
-    "admin/server-admin.json",
-    "admin/docker-compose.admin.yml",
-    "admin/README.md",
   ];
   for (const rel of mustExist) {
     assert.ok(fs.existsSync(path.join(outDir, rel)), `manquant: ${rel}`);
+  }
+
+  // Repo admin dédié FRÈRE (jamais de admin/ dans le monorepo marque).
+  assert.ok(
+    !fs.existsSync(path.join(outDir, "admin")),
+    "admin/ ne doit plus exister dans le monorepo marque",
+  );
+  for (const rel of [
+    "server-admin.json",
+    "docker-compose.admin.yml",
+    "README.md",
+  ]) {
+    assert.ok(
+      fs.existsSync(path.join(adminDir, rel)),
+      `manquant (repo admin dédié): ${rel}`,
+    );
   }
   const server = path.join(outDir, "server");
 
@@ -150,11 +164,15 @@ test("F1–F4 scaffold --from-prd génère monorepo 3 livrables (runtime natif)"
     "utf8",
   );
   assert.match(clientMain, /startBrandDesktop/);
-  assert.doesNotMatch(clientMain, /brand-migrations|brand-module-api|meili-feed/);
+  // Aucun IMPORT métier (le doc-comment du template peut citer les noms).
+  assert.doesNotMatch(
+    clientMain,
+    /from\s+["'][^"']*(brand-migrations|brand-module-api|meili-feed)/,
+  );
 
-  // Admin versionné SANS secret.
+  // Admin versionné SANS secret (repo dédié frère).
   const adminCfg = JSON.parse(
-    fs.readFileSync(path.join(outDir, "admin/server-admin.json"), "utf8"),
+    fs.readFileSync(path.join(adminDir, "server-admin.json"), "utf8"),
   );
   assert.ok(adminCfg.port && adminCfg.user && Array.isArray(adminCfg.brandRoots));
   assert.equal(adminCfg.pass, undefined, "pas de secret versionné");
@@ -238,7 +256,15 @@ test("F1–F4 scaffold --from-prd génère monorepo 3 livrables (runtime natif)"
   assert.match(nextCfg, /\/api\/v1\/:path\*/);
 });
 
-test("F3 smoke kernel natif sur app générée", () => {
+test("F3 smoke kernel natif sur app générée", (t) => {
+  // Le smoke build:runtime de l'app générée compile preload.ts (types
+  // electron). Sur un hôte headless sans devDependency electron installée
+  // (VPS serveur), skip EXPLICITE — le smoke complet tourne sur les postes
+  // dev/CI où electron est présent.
+  if (!fs.existsSync(path.join(ROOT, "node_modules/electron/package.json"))) {
+    t.skip("electron absent de node_modules kit (hôte headless) — smoke build impossible");
+    return;
+  }
   const outDir = fs.mkdtempSync(path.join(os.tmpdir(), "creezio-metier-"));
   const model = parseProductPrd(fs.readFileSync(PRD, "utf8"));
   const result = scaffoldNewApp({

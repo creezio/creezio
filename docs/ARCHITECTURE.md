@@ -6,9 +6,11 @@ fournit le socle complet, les marques n'apportent que leur métier (migrations,
 consomme le kit par copie vendored (`vendor/creezio` à la racine du repo
 marque), jamais par dépendance npm publique.
 
-## Layout marque — monorepo 3 livrables (LA norme)
+## Layout marque — 2 repos (LA norme)
 
-Chaque marque est un monorepo généré par la factory :
+Chaque marque générée par la factory = **2 repos GitHub privés** :
+
+### 1. Monorepo marque (`<brand>`) — client + server
 
 ```text
 <marque>/
@@ -19,14 +21,23 @@ Chaque marque est un monorepo généré par la factory :
 │                   # harness, scripts, cible du Dockerfile serveur
 ├── client/         # desktop thin remote-only : main client-only (sans
 │                   # brand-migrations/brand-module-api), pack, feeds/GUID
-├── admin/          # pilotage flotte : server-admin.json versionné SANS
-│                   # secrets + docker-compose.admin.yml
 ├── docker-data/    # runtime gitignoré (registre servers.json, volumes)
 └── package.json    # orchestrateur racine (scripts délégués aux livrables)
 ```
 
-Le layout plat historique reste détecté par le tooling (server-docker,
-resolvers de sonde) mais n'est plus généré.
+**Pas de `admin/` dans le monorepo marque.**
+
+### 2. Repo admin dédié (`<brand>-admin`) — privé, jamais public
+
+L'app admin de la marque (l'OS qui gère l'entreprise de la marque : flotte,
+support, prospection, billing… — voir
+[adr/ADR-admin-app-os.md](./adr/ADR-admin-app-os.md)) + la config flotte
+versionnée SANS secrets (`server-admin.json`, `fleet-hosts.json`,
+`docker-compose.admin.yml`) ; runtime avec secrets sous `docker-data/`
+(gitignoré). Exemple prod : `creezio/tempoflow-admin`.
+
+Le layout plat historique et le `admin/` embarqué restent détectés par le
+tooling (server-docker, resolvers de sonde) mais ne sont plus générés.
 
 ## Les 4 modes de déploiement
 
@@ -90,10 +101,14 @@ scripts et par l'admin.
 `packages/observability/fleet-collector/server-admin.mjs`, Node pur) qui
 pilote plusieurs serveurs Docker de plusieurs marques : état, boot-status,
 start/stop, logs. La config versionnable (SANS secrets : `port`, `user`,
-`brandRoots[]`) vit dans `{brandRoot}/admin/server-admin.json` ; la config
-runtime (avec `pass`) reste dans `{brandRoot}/docker-data/server-admin.json`
+`brandRoots[]`) vit à la racine du **repo admin dédié** (`--admin-root`,
+ex. `/opt/docker/tempoflow-admin/server-admin.json`) ; la config runtime
+(avec `pass`) reste dans `{adminRoot}/docker-data/server-admin.json`
 (gitignoré). `admin add-brand <racine>` ajoute une marque et recrée le
-container. Auth Basic (`CREEZIO_ADMIN_PASS`).
+container. Auth Basic (`CREEZIO_ADMIN_PASS`). Le chemin legacy
+`{brandRoot}/admin/server-admin.json` reste lu (dual-read) mais n'est plus
+généré. Cible v2 : cette console devient le module « Flotte » de l'app admin
+(voir [adr/ADR-admin-app-os.md](./adr/ADR-admin-app-os.md)).
 
 ## Surfaces UI de l'OS (`os-ui`)
 

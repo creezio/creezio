@@ -42,7 +42,7 @@ test("os-ui scaffold : zéro page OS versionnée, materialize + boot kit", () =>
   );
   assert.equal(r.status, 0, r.stderr || r.stdout);
 
-  // Layout monorepo 3 livrables : le serveur (et son UI) vit sous server/.
+  // Layout 2 repos (monorepo client+server) : le serveur (et son UI) vit sous server/.
   const srv = path.join(out, "server");
 
   for (const seg of FORBIDDEN_OS_DIRS) {

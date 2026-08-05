@@ -38,22 +38,31 @@ creezio brand apply --spec apps/acme/brand-spec --out apps/acme --force
 creezio brand smoke --app apps/acme
 ```
 
-## 2b. Layout généré — monorepo 3 livrables (LA norme)
+## 2b. Layout généré — 2 repos (LA norme)
 
-`creezio brand apply` / `new-app` / `demo-app` génèrent :
+`creezio brand apply` / `new-app` / `demo-app` génèrent **2 repos** :
 
 ```text
-<app>/
+<app>/                  # monorepo marque (client + server)
 ├── brand-spec/     # SoT marque
 ├── vendor/creezio/ # kit synchronisé — UN SEUL vendor partagé
 ├── server/         # livrable principal (métier, ui/, harness, Docker)
 │   └── vendor -> ../vendor (symlink)
 ├── client/         # desktop thin remote-only (main client-only, pack, feeds)
 │   └── vendor/     # copie hardlink stagée par sync-creezio-vendor.sh
-├── admin/          # pilotage flotte (server-admin.json versionné SANS secrets)
 ├── docker-data/    # runtime gitignoré (registre servers.json, volumes)
 └── package.json    # orchestrateur racine (scripts délégués)
+
+<app>-admin/            # repo ADMIN dédié (privé, jamais public)
+├── server-admin.json        # config flotte versionnée SANS secrets
+├── fleet-hosts.json         # miroir hôtes enrôlés SANS tokens
+├── docker-compose.admin.yml
+└── docker-data/             # runtime gitignoré (secrets, tokens)
 ```
+
+**Pas de `admin/` dans le monorepo marque.** L'app admin complète (OS en mode
+admin : flotte, support, billing…) vit dans le repo `<app>-admin` — voir
+[../adr/ADR-admin-app-os.md](../adr/ADR-admin-app-os.md).
 
 Le `client/src/electron/main.ts` est **client-only** : pas de
 `brand-migrations` / `brand-module-api` (inutiles en `requireRemoteProfile`).

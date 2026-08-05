@@ -68,9 +68,10 @@ npm run kit:impact -- --package=@creezio/platform-core
 npm run kit:version -- --package=@creezio/shell --bump=patch
 ```
 
-Toute app générée est un **monorepo 3 livrables** : `server/` (métier + Docker),
-`client/` (desktop thin remote-only), `admin/` (pilotage flotte), avec
-`brand-spec/` + `vendor/creezio/` partagés à la racine — voir
+Toute app générée = **2 repos** : le monorepo marque (`server/` métier +
+Docker, `client/` desktop thin remote-only, `brand-spec/` + `vendor/creezio/`
+partagés à la racine) **et** un repo admin dédié privé `<brand>-admin`
+(app admin de la marque : flotte, support, billing…) — voir
 [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md).
 
 ## Les 24 packages

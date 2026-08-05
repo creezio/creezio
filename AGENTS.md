@@ -13,12 +13,19 @@ kit via leur vendor synchronisé (`vendor/creezio` racine ; legacy TF2 :
 `crm/vendor/creezio`) + wiring métier. **Le métier vertical reste dans les
 repos marque.**
 
-Toute marque générée par la factory est un **monorepo 3 livrables** :
-`server/` (métier + Docker), `client/` (desktop thin remote-only, main
-client-only), `admin/` (pilotage flotte, config sans secrets), avec
-`brand-spec/` + `vendor/creezio/` partagés à la racine et `docker-data/`
-runtime gitignoré. Plus de layout plat (détection legacy conservée côté
-tooling). Voir [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md).
+Toute marque générée par la factory = **2 repos** :
+
+1. **Monorepo marque** (`server/` métier + Docker, `client/` desktop thin
+   remote-only, avec `brand-spec/` + `vendor/creezio/` partagés à la racine et
+   `docker-data/` runtime gitignoré). **Pas de `admin/` dans le monorepo.**
+2. **Repo admin dédié** `<brand>-admin` (privé, jamais public) : l'app admin
+   de la marque (pilotage flotte, support, billing… — voir
+   [docs/adr/ADR-admin-app-os.md](./docs/adr/ADR-admin-app-os.md)), config
+   sans secrets, `docker-data/` runtime gitignoré.
+
+La factory crée les 2 repos (`creezio brand apply` / `new-app`, push GitHub
+via `github-repos.ts`). Plus de layout plat ni de `admin/` embarqué (détection
+legacy conservée côté tooling). Voir [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md).
 
 ## Carte de documentation
 

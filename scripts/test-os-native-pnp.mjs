@@ -127,7 +127,7 @@ Desktop Creezio natif.
   ]);
   assert.equal(apply.status, 0, apply.stderr + "\n" + apply.stdout);
 
-  // Layout monorepo 3 livrables : métier sous server/.
+  // Layout 2 repos (monorepo client+server) : métier sous server/.
   const serverDir = path.join(appDir, "server");
   const main = fs.readFileSync(
     path.join(serverDir, "src/electron/main.ts"),
