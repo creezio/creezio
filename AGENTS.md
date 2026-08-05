@@ -29,6 +29,7 @@ tooling). Voir [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md).
 | Apps | `apps/*/README.md` | `apps/*/AGENTS.md` | `apps/*/docs/FILES.md` |
 | Scripts/gates | [scripts/README.md](./scripts/README.md) | [scripts/AGENTS.md](./scripts/AGENTS.md) | [scripts/docs/FILES.md](./scripts/docs/FILES.md) |
 | Architecture | [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) | [docs/ARCHITECTURE-INTENTION.md](./docs/ARCHITECTURE-INTENTION.md) | [docs/archive/](./docs/archive/) (historique) |
+| Ops flotte | [docs/RUNBOOK-FLOTTE.md](./docs/RUNBOOK-FLOTTE.md) | **skill** [.cursor/skills/creezio-fleet-ops/SKILL.md](./.cursor/skills/creezio-fleet-ops/SKILL.md) | — |
 
 **Règle** : ne pas créer un mega-doc unique — mettre à jour le package concerné.
 
@@ -101,7 +102,7 @@ resync vendor (`scripts/sync-creezio-vendor.sh` côté marque, `CREEZIO_KIT_ROOT
 | BrandSpec YAML / doctor | `brand-spec` |
 | Publish / remote-build | `desktop-tooling` |
 | `creezio new-app` / `creezio brand` | `factory` |
-| Serveur Docker headless multi-instances | `docker/server` + `creezio server-docker` |
+| Serveur Docker headless multi-instances | `docker/server` + `creezio server-docker` — gestes ops : skill [creezio-fleet-ops](./.cursor/skills/creezio-fleet-ops/SKILL.md) |
 | Semver / impact / registre org | `propagation` |
 
 ## Tests
@@ -181,6 +182,7 @@ ADR : [`docs/adr/ADR-factory-from-prd.md`](./docs/adr/ADR-factory-from-prd.md).
 
 - [docs/PACKAGES.md](./docs/PACKAGES.md) — index de tous les packages
 - [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) — modes de déploiement, boot, admin
+- [.cursor/skills/creezio-fleet-ops/SKILL.md](./.cursor/skills/creezio-fleet-ops/SKILL.md) — runbook flotte (créer serveur/compte, login, publish/update, admin, enroll, client, diagnostics)
 - [docs/MATRICE-NATIVE-METIER-PLUGIN.md](./docs/MATRICE-NATIVE-METIER-PLUGIN.md)
 - [docs/PROPAGATION.md](./docs/PROPAGATION.md)
 - [docs/BACKLOG.md](./docs/BACKLOG.md) — dettes restantes assumées

@@ -1,5 +1,10 @@
 # Serveurs marque Docker (headless)
 
+> **Gestes opérationnels vérifiés** (créer un serveur, compte owner headless,
+> login, publish/update/rollback, admin, enrôlement VPS, diagnostics) :
+> skill [`creezio-fleet-ops`](../../.cursor/skills/creezio-fleet-ops/SKILL.md)
+> (index humain : [`docs/RUNBOOK-FLOTTE.md`](../../docs/RUNBOOK-FLOTTE.md)).
+
 Lancer le **kernel OS + métier + CRM web** d’une marque Creezio en mode
 serveur HTTP, **sans** build Electron / AppImage. Multi-instances par registre
 (`docker-data/servers.json`) ou Compose legacy (ports + volumes DB isolés).
