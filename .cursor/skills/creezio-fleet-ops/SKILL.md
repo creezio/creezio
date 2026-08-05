@@ -181,6 +181,10 @@ creezio server-docker publish --brand-root "$BRAND_ROOT" \
   --tag 0.2.2 --registry 127.0.0.1:5000
 # → 127.0.0.1:5000/creezio-server-tempoflow3:0.2.2
 #   /api/v1/core/version affichera 0.2.2 (CREEZIO_APP_VERSION)
+# Rétention auto après push : garde les 5 derniers tags (daemon + registre
+# privé) et prune le build cache (--keep-storage 12GB). Régler :
+# --keep-tags N / CREEZIO_PUBLISH_KEEP_TAGS, CREEZIO_PUBLISH_KEEP_STORAGE ;
+# désactiver ponctuellement : --no-retention. Voir §10.
 
 # Tags dispo (auth Basic admin, voir §5) :
 curl -sS -u "admin:$ADMPASS" \
@@ -335,6 +339,70 @@ L'admin (§5) montre boot-status live, logs et ops par serveur sans SSH.
 | Enregistrement des gates | La SoT des gates est le script `npm test` du `package.json` racine (test-fast la parse) — un fichier `scripts/test-*.mjs` NON listé n'est **jamais** exécuté par `test:kit`/CI. Toute nouvelle gate doit y être ajoutée (piège réel : `test-phase-os-ui-scaffold` a existé non branchée). |
 | Design system généré | La factory ne DOIT générer que des pages avec composants kit (`@/components/ui/*` = re-exports `@creezio/shell-ui/ui/primitives/*`, tables via `EntityTable`/DataTable kit). `renderNextLayoutTsx` (layout HTML brut) est supprimé — gate `test-phase-os-ui-scaffold` verrouille. |
 | Page métier vs wrapper os-ui | `materialize.mjs` (os-ui) skippe toute route que la marque possède (`ui/app/<route>/page.*`) — la page métier verbatim (ex. `/onboarding`, `/parametres` TF) prime sur le wrapper kit. Ne jamais supprimer une page métier pour « résoudre » un conflit parallel pages : c'est le wrapper qui cède. Gate : `test-phase-os-ui-scaffold`. |
+
+## 10. Entretien disque Docker (VPS hôte)
+
+**Objectif** : ne plus jamais saturer le disque du VPS avec les builds
+répétés du kit (build cache BuildKit + vieilles images versionnées dans le
+daemon et le registre `registry:2`). Trois mécanismes standard, en couches :
+
+1. **GC BuildKit native** (`/etc/docker/daemon.json`, appliquée au restart
+   du daemon) :
+
+```json
+{
+  "builder": {
+    "gc": {
+      "enabled": true,
+      "defaultReservedSpace": "10GB",
+      "defaultMaxUsedSpace": "15GB",
+      "defaultMinFreeSpace": "25GB"
+    }
+  }
+}
+```
+
+   (Docker ≥ 25 : `defaultReservedSpace`/`defaultMaxUsedSpace`/`defaultMinFreeSpace` ;
+   l'ancien `defaultKeepStorage` reste accepté = `defaultReservedSpace`.)
+   Valider avant restart : `sudo dockerd --validate --config-file /etc/docker/daemon.json`.
+
+2. **Timer systemd quotidien** (VPS TempoFlow : `docker-disk-maintenance.timer`,
+   04h30 UTC, script `/usr/local/sbin/docker-disk-maintenance.sh`) :
+   - alerte journal (`logger`, prio warning) si usage disque `/` ≥ 85 % ;
+   - **garde-fou** : purge sautée si un `docker build|push` ou
+     `server-docker publish` est en cours ;
+   - `docker system prune -f` (**sans `-a`** : ne supprime jamais une image
+     taguée, donc les images des serveurs à l'arrêt restent rollbackables) ;
+   - `docker builder prune --keep-storage 12GB -f` ;
+   - rétention registre : garde les 5 derniers tags par repo (tri version),
+     DELETE des manifests plus vieux (digests partagés avec un tag conservé
+     protégés) puis `registry garbage-collect` dans le container
+     `creezio-registry` (blobs). Pré-requis : `REGISTRY_STORAGE_DELETE_ENABLED=true`.
+   - Réglages : `/etc/default/docker-disk-maintenance`
+     (`DOCKER_MAINT_KEEP_TAGS`, `_KEEP_STORAGE`, `_ALERT_PCT`, `_REGISTRY_URL`).
+   - Suivi : `systemctl list-timers docker-disk-maintenance.timer` ;
+     `sudo journalctl -u docker-disk-maintenance.service -n 50`.
+
+3. **Rétention dans le flux publish** (§4) : après chaque push réussi,
+   `server-docker publish` supprime du daemon les vieilles images du même
+   repo au-delà des 5 derniers tags, prune le build cache et supprime les
+   vieux tags du registre privé (manifests ; blobs balayés par le timer).
+   Best-effort : ne fait jamais échouer le publish.
+
+**Vérification** : `docker system df` (Build Cache sous le keep-storage),
+`df -h /` < 85 %, `curl -s http://127.0.0.1:5000/v2/<repo>/tags/list` ≤ 5 tags.
+
+**Vérité** : `packages/factory/src/server-docker-cli.ts`
+(`runPublishRetention`, `selectTagsToPrune`) ; hôte : `/etc/docker/daemon.json`,
+`/usr/local/sbin/docker-disk-maintenance.sh`,
+`/etc/systemd/system/docker-disk-maintenance.{service,timer}`.
+
+**Pièges** : `daemon.json` exige un **restart** de `docker.service` (pas un
+reload) → jamais pendant un build/publish ; re-vérifier ensuite la santé des
+containers prod (restos, TF2 `crm.tempoflow.fr`, collector :8665). Ne jamais
+lancer `registry garbage-collect` pendant un push (risque de blobs
+manquants) — le timer s'en garde via son garde-fou. `docker system prune -a`
+interdit en cron : il supprimerait les images des serveurs arrêtés.
 
 ## Ressources
 

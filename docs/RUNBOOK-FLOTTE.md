@@ -35,6 +35,10 @@ vérifiées sur le VPS TempoFlow.
    setup ≠ login, vendor browser-host, symlinks electron-builder, publish
    local pas SSH, feed TF2, collector :8665, slugs réservés, timeouts
    Cloudflare, nommage Compose
+10. **Entretien disque Docker (VPS)** — GC BuildKit native (`daemon.json`
+    `builder.gc`), timer `docker-disk-maintenance` quotidien (prune sans
+    `-a` + `--keep-storage` + rétention registre 5 tags + alerte ≥ 85 %),
+    rétention auto post-publish (`--keep-tags` / `--no-retention`)
 
 ## Docs liées
 

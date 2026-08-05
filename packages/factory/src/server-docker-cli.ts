@@ -59,6 +59,10 @@ export type ServerDockerArgs = {
   registry?: string;
   /** publish : build seulement, pas de push. */
   noPush?: boolean;
+  /** publish : nombre de tags conservés après rétention (défaut 5). */
+  keepTags?: number;
+  /** publish : désactiver la rétention post-push (images/tags/cache). */
+  noRetention?: boolean;
   /** enroll : URL de l'admin flotte (https://admin.{zone}). */
   admin?: string;
   /** enroll : token d'enrôlement généré côté admin. */
@@ -117,6 +121,9 @@ export function parseServerDockerArgs(argv: string[]): ServerDockerArgs {
     else if (a === "--purge-data") out.purgeData = true;
     else if (a === "--follow" || a === "-f") out.follow = true;
     else if (a === "--no-push") out.noPush = true;
+    else if (a === "--no-retention") out.noRetention = true;
+    else if (a.startsWith("--keep-tags=")) out.keepTags = Number(a.slice(12));
+    else if (a === "--keep-tags") out.keepTags = Number(rest.shift());
     else if (a.startsWith("--tag=")) out.tag = a.slice(6);
     else if (a === "--tag") out.tag = rest.shift();
     else if (a.startsWith("--registry=")) out.registry = a.slice(11);
@@ -192,8 +199,13 @@ Admin web multi-serveurs / multi-VPS (fleet-collector étendu) :
 Registry d'images versionnées (update de flotte) :
   creezio server-docker publish --brand-root <app> --tag <version>
     [--registry 127.0.0.1:5000] [--browser] [--no-push]
+    [--keep-tags 5] [--no-retention]
     (build image versionnée <registry>/creezio-server-<brand>:<tag>
      + label/env version — /api/v1/core/version affiche <version>)
+    Rétention après push réussi : garde les N derniers tags (défaut 5,
+    env CREEZIO_PUBLISH_KEEP_TAGS) côté daemon local ET registre privé,
+    + docker builder prune --keep-storage (env CREEZIO_PUBLISH_KEEP_STORAGE,
+    défaut 12GB). Les blobs registre sont balayés par la GC planifiée hôte.
 
 Agent hôte flotte (VPS restaurant — exposé via agent.{slug}.{zone}) :
   creezio server-docker agent up --brand-root <app> [--port 18810]
@@ -1259,6 +1271,213 @@ async function runPublishSubcommand(
   console.log(`✓ push ${image}`);
   console.log(
     `  update flotte : POST agent /agent/api/servers/<brand>/<nom>/update {"image":"${image}"}`,
+  );
+  if (args.noRetention) {
+    console.log("--no-retention : pas de nettoyage post-publish");
+    return;
+  }
+  await runPublishRetention({
+    registry,
+    repo: publishRepoName(brandId, variant),
+    justPushedTag: tag,
+    keepTags: resolvePublishKeepTags(args, env),
+    env,
+  });
+}
+
+/* ------------------------------------------------ rétention post-publish */
+
+const PUBLISH_KEEP_TAGS_DEFAULT = 5;
+const PUBLISH_KEEP_STORAGE_DEFAULT = "12GB";
+
+/**
+ * Compare deux tags version segment par segment (0.3.10 > 0.3.9 > 0.3.9-rc1).
+ * Segments numériques comparés en nombre, sinon lexicographique.
+ */
+export function compareVersionTags(a: string, b: string): number {
+  const pa = a.split(/[.\-_]/);
+  const pb = b.split(/[.\-_]/);
+  const len = Math.max(pa.length, pb.length);
+  for (let i = 0; i < len; i++) {
+    const sa = pa[i] ?? "";
+    const sb = pb[i] ?? "";
+    const na = /^\d+$/.test(sa) ? Number(sa) : NaN;
+    const nb = /^\d+$/.test(sb) ? Number(sb) : NaN;
+    if (!Number.isNaN(na) && !Number.isNaN(nb)) {
+      if (na !== nb) return na - nb;
+    } else if (sa !== sb) {
+      return sa < sb ? -1 : 1;
+    }
+  }
+  return 0;
+}
+
+/** Tags à supprimer : tout sauf les `keep` plus récents (tri version). */
+export function selectTagsToPrune(tags: string[], keep: number): string[] {
+  const sorted = [...tags].sort(compareVersionTags);
+  return keep >= sorted.length ? [] : sorted.slice(0, sorted.length - keep);
+}
+
+function resolvePublishKeepTags(
+  args: ServerDockerArgs,
+  env: NodeJS.ProcessEnv,
+): number {
+  const raw =
+    args.keepTags ?? Number((env.CREEZIO_PUBLISH_KEEP_TAGS || "").trim());
+  if (Number.isFinite(raw) && raw >= 1) return Math.floor(raw);
+  return PUBLISH_KEEP_TAGS_DEFAULT;
+}
+
+function dockerCapture(argv: string[]): string {
+  const r = spawnSync("docker", argv, { encoding: "utf8" });
+  return r.status === 0 ? (r.stdout || "").trim() : "";
+}
+
+/** Base(s) URL de l'API v2 d'un registre privé (jamais ghcr.io). */
+function privateRegistryBases(registry: string): string[] {
+  if (/^ghcr\.io(\/|$)/.test(registry)) return [];
+  const host = registry.replace(/^https?:\/\//, "").split("/")[0];
+  if (!host) return [];
+  return /^(127\.|localhost)/.test(host)
+    ? [`http://${host}`]
+    : [`https://${host}`, `http://${host}`];
+}
+
+async function registryFetch(
+  bases: string[],
+  pathname: string,
+  init?: RequestInit,
+): Promise<Response | null> {
+  for (const base of bases) {
+    try {
+      return await fetch(`${base}${pathname}`, init);
+    } catch {
+      /* base suivante */
+    }
+  }
+  return null;
+}
+
+const MANIFEST_ACCEPT =
+  "application/vnd.docker.distribution.manifest.v2+json, " +
+  "application/vnd.oci.image.manifest.v1+json, " +
+  "application/vnd.oci.image.index.v1+json, " +
+  "application/vnd.docker.distribution.manifest.list.v2+json";
+
+/**
+ * Nettoyage best-effort après un push réussi — ne fait JAMAIS échouer le
+ * publish. Trois volets :
+ * 1. daemon local : `docker rmi` des vieux tags <registry>/<repo> au-delà de
+ *    keepTags (les images utilisées par un container résistent — normal) ;
+ * 2. build cache : `docker builder prune --keep-storage` (même politique que
+ *    la GC BuildKit du daemon) ;
+ * 3. registre privé : DELETE des manifests des vieux tags (blobs balayés par
+ *    la GC registre planifiée côté hôte — `registry garbage-collect`).
+ */
+async function runPublishRetention(opts: {
+  registry: string;
+  repo: string;
+  justPushedTag: string;
+  keepTags: number;
+  env: NodeJS.ProcessEnv;
+}): Promise<void> {
+  const { registry, repo, justPushedTag, keepTags } = opts;
+  const imageRef = `${registry.replace(/\/+$/, "")}/${repo}`;
+
+  // 1. Vieilles images du daemon local.
+  const localTags = dockerCapture([
+    "image",
+    "ls",
+    "--format",
+    "{{.Tag}}",
+    imageRef,
+  ])
+    .split("\n")
+    .map((t) => t.trim())
+    .filter((t) => t && t !== "<none>" && TAG_RE.test(t));
+  for (const t of selectTagsToPrune(localTags, keepTags)) {
+    if (t === justPushedTag) continue;
+    const r = spawnSync("docker", ["rmi", `${imageRef}:${t}`], {
+      encoding: "utf8",
+    });
+    if (r.status === 0) {
+      console.log(`✓ rétention daemon : image supprimée ${imageRef}:${t}`);
+    } else {
+      console.log(
+        `⚠ rétention daemon : ${imageRef}:${t} conservée (${(r.stderr || "").trim().split("\n")[0] || "docker rmi KO"})`,
+      );
+    }
+  }
+
+  // 2. Build cache au-delà du keep-storage.
+  const keepStorage =
+    (opts.env.CREEZIO_PUBLISH_KEEP_STORAGE || "").trim() ||
+    PUBLISH_KEEP_STORAGE_DEFAULT;
+  const pr = spawnSync(
+    "docker",
+    ["builder", "prune", "--keep-storage", keepStorage, "-f"],
+    { encoding: "utf8" },
+  );
+  if (pr.status === 0) {
+    const total = (pr.stdout || "").trim().split("\n").pop() || "";
+    console.log(`✓ rétention build cache (--keep-storage ${keepStorage}) : ${total}`);
+  } else {
+    console.log("⚠ docker builder prune KO — cache non purgé");
+  }
+
+  // 3. Vieux tags du registre privé (manifests seulement).
+  const bases = privateRegistryBases(registry);
+  if (!bases.length) return;
+  const tagsRes = await registryFetch(bases, `/v2/${repo}/tags/list`);
+  if (!tagsRes || !tagsRes.ok) {
+    console.log("⚠ rétention registre : API v2 injoignable — sautée");
+    return;
+  }
+  const remoteTags = (
+    ((await tagsRes.json()) as { tags?: string[] }).tags || []
+  ).filter((t) => TAG_RE.test(t));
+  const prune = selectTagsToPrune(remoteTags, keepTags).filter(
+    (t) => t !== justPushedTag,
+  );
+  if (!prune.length) return;
+
+  const digestOf = async (t: string): Promise<string> => {
+    const res = await registryFetch(bases, `/v2/${repo}/manifests/${t}`, {
+      method: "HEAD",
+      headers: { accept: MANIFEST_ACCEPT },
+    });
+    return res?.ok ? res.headers.get("docker-content-digest") || "" : "";
+  };
+  const keptDigests = new Set<string>();
+  for (const t of remoteTags.filter((x) => !prune.includes(x))) {
+    const d = await digestOf(t);
+    if (d) keptDigests.add(d);
+  }
+  for (const t of prune) {
+    const d = await digestOf(t);
+    if (!d) {
+      console.log(`⚠ rétention registre : digest introuvable pour ${repo}:${t}`);
+      continue;
+    }
+    if (keptDigests.has(d)) {
+      console.log(
+        `  rétention registre : ${repo}:${t} partage le digest d'un tag conservé — ignoré`,
+      );
+      continue;
+    }
+    const del = await registryFetch(bases, `/v2/${repo}/manifests/${d}`, {
+      method: "DELETE",
+    });
+    if (del && (del.ok || del.status === 202)) {
+      console.log(`✓ rétention registre : tag supprimé ${repo}:${t}`);
+    } else {
+      console.log(
+        `⚠ rétention registre : échec suppression ${repo}:${t} (HTTP ${del?.status ?? "?"} — delete.enabled ?)`,
+      );
+    }
+  }
+  console.log(
+    "  blobs registre : balayés par la GC planifiée hôte (registry garbage-collect)",
   );
 }
 
