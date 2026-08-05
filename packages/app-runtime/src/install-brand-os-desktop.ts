@@ -39,19 +39,24 @@ type BrowserTabsModule = typeof import("@creezio/electron-shell/browser-tabs");
 let browserTabsModule: BrowserTabsModule | null = null;
 function loadBrowserTabs(): BrowserTabsModule {
   if (browserTabsModule) return browserTabsModule;
+  let req: NodeRequire | null = null;
   try {
     // eslint-disable-next-line no-eval
-    const req = eval("require") as NodeRequire;
-    browserTabsModule = req(
-      "@creezio/electron-shell/browser-tabs",
-    ) as BrowserTabsModule;
-    return browserTabsModule;
+    req = eval("require") as NodeRequire; // CJS
   } catch {
-    /* ESM */
+    // ESM : import.meta est interdit dans eval (SyntaxError) — on récupère
+    // l'URL du module courant via la stack (frames file://…) pour créer un
+    // require local. Ne surtout pas avaler l'erreur du require lui-même.
+    const stack = new Error("resolve-module-url").stack || "";
+    const m = stack.match(/(file:\/\/[^\s):]+):\d+:\d+/);
+    if (!m || !m[1]) {
+      throw new Error(
+        "loadBrowserTabs: URL module introuvable (stack sans file://)",
+      );
+    }
+    req = createRequire(m[1]);
   }
-  // eslint-disable-next-line no-eval
-  const metaUrl = eval("import.meta.url") as string;
-  browserTabsModule = createRequire(metaUrl)(
+  browserTabsModule = req(
     "@creezio/electron-shell/browser-tabs",
   ) as BrowserTabsModule;
   return browserTabsModule;

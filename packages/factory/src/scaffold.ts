@@ -891,8 +891,11 @@ const api = {
   isDesktop: true as const,
   getInfo: () => ipcRenderer.invoke("desktop:info"),
   getConnectionProfile: () => ipcRenderer.invoke("connection:get"),
+  testConnection: (url: string) => ipcRenderer.invoke("connection:test", url),
   chooseConnection: (profile: unknown) =>
     ipcRenderer.invoke("connection:choose", profile),
+  forgetRememberedServer: (id: string) =>
+    ipcRenderer.invoke("profiles:forget-server", id),
   getSetupStatus: () => ipcRenderer.invoke("setup:status"),
   completeSetup: (payload: unknown) =>
     ipcRenderer.invoke("setup:complete", payload),

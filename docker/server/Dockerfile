@@ -70,8 +70,9 @@ RUN apt-get update \
 FROM node:22-bookworm-slim AS runtime-base
 ARG SERVER_DIR
 ARG SERVER_VERSION
+# xz-utils : l'install Hermes (warm natif) extrait un node runtime .tar.xz.
 RUN apt-get update \
-  && apt-get install -y --no-install-recommends ca-certificates curl \
+  && apt-get install -y --no-install-recommends ca-certificates curl xz-utils \
   && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 
