@@ -31,7 +31,9 @@
       "types": "./ui/settings/*.tsx",
       "import": "./ui/settings/*.tsx",
       "default": "./ui/settings/*.tsx"
-    }
+    },
+    "./theme.css": "./ui/theme/theme.css",
+    "./tailwind-preset": "./ui/theme/tailwind-preset.cjs"
   },
   "files": [
     "dist",

@@ -79,6 +79,11 @@ test("os-ui scaffold : zéro page OS versionnée, materialize + boot kit", () =>
   // (nav en liens texte, zéro sidebar) — régression vue sur tempoflow3.
   assert.match(layout, /BrandChrome/, "layout branche le chrome kit");
   assert.match(layout, /globals\.css/, "layout importe globals.css");
+  assert.match(
+    layout,
+    /@creezio\/shell-ui\/theme\.css/,
+    "layout importe le thème Creezio canonique (design system kit)",
+  );
   assert.doesNotMatch(
     layout,
     /style=\{\{/,
@@ -104,6 +109,11 @@ test("os-ui scaffold : zéro page OS versionnée, materialize + boot kit", () =>
     /vendor\/creezio\/\*\/ui/,
     "tailwind scanne les sources UI vendor kit (sinon classes purgées)",
   );
+  assert.match(
+    tailwind,
+    /@creezio\/shell-ui\/tailwind-preset/,
+    "tailwind consomme le preset thème kit (design system par défaut)",
+  );
   const postcss = fs.readFileSync(
     path.join(srv, "ui/postcss.config.js"),
     "utf8",
@@ -114,7 +124,36 @@ test("os-ui scaffold : zéro page OS versionnée, materialize + boot kit", () =>
     "utf8",
   );
   assert.match(globals, /@tailwind base/);
-  assert.match(globals, /--background/, "tokens chrome kit présents");
+  // Les tokens vivent dans le kit (theme.css, SoT — le vendor de l'app est
+  // synchronisé plus tard par sync-creezio-vendor.sh qui copie ui/ entier).
+  const kitTheme = fs.readFileSync(
+    path.join(ROOT, "packages/shell-ui/ui/theme/theme.css"),
+    "utf8",
+  );
+  assert.match(kitTheme, /--background: #faf7f1/, "tokens thème gold TF");
+  assert.match(kitTheme, /\.tf-tab-bg/, "chrome onglets kit présent");
+  assert.match(kitTheme, /\.sidebar-scroll/, "scrollbar sidebar sombre");
+  const kitPreset = fs.readFileSync(
+    path.join(ROOT, "packages/shell-ui/ui/theme/tailwind-preset.cjs"),
+    "utf8",
+  );
+  assert.match(kitPreset, /#f0701d/, "accent orange gold TF dans le preset");
+  const shellUiPkg = JSON.parse(
+    fs.readFileSync(
+      path.join(ROOT, "packages/shell-ui/package.json"),
+      "utf8",
+    ),
+  );
+  assert.equal(
+    shellUiPkg.exports?.["./theme.css"],
+    "./ui/theme/theme.css",
+    "export ./theme.css",
+  );
+  assert.equal(
+    shellUiPkg.exports?.["./tailwind-preset"],
+    "./ui/theme/tailwind-preset.cjs",
+    "export ./tailwind-preset",
+  );
   assert.ok(
     uiPkg.devDependencies?.tailwindcss,
     "tailwindcss en devDependency UI",

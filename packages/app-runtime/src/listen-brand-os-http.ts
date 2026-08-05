@@ -33,21 +33,44 @@ export type BrandOsHttpHandle = {
   close: () => Promise<void>;
 };
 
-function readBody(req: http.IncomingMessage): Promise<unknown> {
+function readRawBody(req: http.IncomingMessage): Promise<Buffer> {
   return new Promise((resolve, reject) => {
     const chunks: Buffer[] = [];
     req.on("data", (c) => chunks.push(c));
-    req.on("end", () => {
-      const raw = Buffer.concat(chunks).toString("utf8");
-      if (!raw) return resolve(undefined);
-      try {
-        resolve(JSON.parse(raw));
-      } catch (err) {
-        reject(err);
-      }
-    });
+    req.on("end", () => resolve(Buffer.concat(chunks)));
     req.on("error", reject);
   });
+}
+
+function parseJsonBody(raw: Buffer): unknown {
+  const text = raw.toString("utf8");
+  if (!text) return undefined;
+  return JSON.parse(text);
+}
+
+async function readBody(req: http.IncomingMessage): Promise<unknown> {
+  return parseJsonBody(await readRawBody(req));
+}
+
+/**
+ * Contrat de composition api-kernel (voir @creezio/api-kernel src/hono.ts) :
+ * un 404 kernel « not mounted / not found » laisse la main aux routes API
+ * propres à la marque — ici servies par le plane UI Next (ex. app Hono
+ * marque montée sous /api/v1 dans l'app Next, architecture TempoFlow).
+ */
+function isKernelFallthrough404(res: {
+  status?: number;
+  body?: unknown;
+}): boolean {
+  if (res.status !== 404) return false;
+  const err = (res.body as { error?: string } | undefined)?.error;
+  return (
+    err === "not_found" ||
+    err === "platform_not_mounted" ||
+    err === "module_not_mounted" ||
+    err === "plugin_not_mounted" ||
+    err === "core_route_not_found"
+  );
 }
 
 function send(
@@ -90,6 +113,7 @@ function proxyRawHttp(
   req: http.IncomingMessage,
   res: http.ServerResponse,
   targetBase: string,
+  bufferedBody?: Buffer,
 ): void {
   const target = new URL(targetBase);
   const upstream = http.request(
@@ -116,7 +140,12 @@ function proxyRawHttp(
       JSON.stringify({ ok: false, error: "ui_proxy_error", detail: err.message }),
     );
   });
-  req.pipe(upstream);
+  if (bufferedBody !== undefined) {
+    // Rejeu après lecture du body (fallthrough kernel → plane UI).
+    upstream.end(bufferedBody);
+  } else {
+    req.pipe(upstream);
+  }
 }
 
 export async function listenBrandOsHttp(opts: {
@@ -889,9 +918,18 @@ export async function listenBrandOsHttp(opts: {
       }
 
       const query = Object.fromEntries(url.searchParams.entries());
-      const body = ["POST", "PUT", "PATCH"].includes(req.method || "")
-        ? await readBody(req)
-        : undefined;
+      const hasBody = ["POST", "PUT", "PATCH", "DELETE"].includes(
+        req.method || "",
+      );
+      const rawBody = hasBody ? await readRawBody(req) : Buffer.alloc(0);
+      let body: unknown;
+      try {
+        body = hasBody ? parseJsonBody(rawBody) : undefined;
+      } catch {
+        // Body non-JSON (multipart / texte) : le kernel n'en veut pas, mais
+        // le plane UI marque (fallthrough) peut le consommer tel quel.
+        body = undefined;
+      }
       const result = await opts.api.handle({
         method: req.method || "GET",
         path: pathname,
@@ -902,6 +940,15 @@ export async function listenBrandOsHttp(opts: {
           string | string[] | undefined
         >,
       });
+      // Routes API propres à la marque servies par le plane UI Next
+      // (contrat de composition kernel — voir isKernelFallthrough404).
+      if (isKernelFallthrough404(result) && opts.uiProxyTarget) {
+        const target = opts.uiProxyTarget();
+        if (target) {
+          proxyRawHttp(req, res, target, rawBody);
+          return;
+        }
+      }
       send(res, result.status || 200, result.body, result.headers);
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);

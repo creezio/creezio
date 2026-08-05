@@ -365,6 +365,7 @@ export function renderNextLayoutWithOsNav(model: ProductModel): string {
   return `import type { ReactNode } from "react";
 import { CreezioUiBoot } from "@creezio/os-ui/boot";
 import { BrandChrome } from "@/components/brand-chrome";
+import "@creezio/shell-ui/theme.css";
 import "./globals.css";
 
 export const metadata = {
@@ -486,14 +487,22 @@ export function defaultWorkspaceHome(model: ProductModel): string {
   return dash?.path || model.pages[0]?.path || "/dashboard";
 }
 
-/** Tailwind : scanner app + composants + sources UI vendor kit. */
+/**
+ * Tailwind : preset kit (thème Creezio canonique, extrait du gold TF) +
+ * scan app + composants + sources UI vendor kit.
+ */
 export function renderUiTailwindConfig(): string {
   return `import type { Config } from "tailwindcss";
+import { createRequire } from "node:module";
 
-// Le chrome CRM vient du kit : le scan doit inclure les sources UI vendor
-// (\`vendor/creezio/<pkg>/ui\` + routes OS), sinon les classes du kit sont
-// purgées et l'app rend du HTML brut sans styles.
+const require = createRequire(import.meta.url);
+
+// Le design system vient du kit (preset + theme.css @creezio/shell-ui) :
+// une app générée ne DOIT PAS repartir d'un thème vide / HTML brut.
+// Le scan doit inclure les sources UI vendor (\`vendor/creezio/<pkg>/ui\`
+// + routes OS), sinon les classes du kit sont purgées.
 const config: Config = {
+  presets: [require("@creezio/shell-ui/tailwind-preset")],
   content: [
     "./app/**/*.{js,ts,jsx,tsx,mdx}",
     "./components/**/*.{js,ts,jsx,tsx,mdx}",
@@ -502,48 +511,7 @@ const config: Config = {
     "../vendor/creezio/*/routes/**/*.{js,ts,jsx,tsx}",
   ],
   theme: {
-    extend: {
-      colors: {
-        background: "var(--background)",
-        foreground: "var(--foreground)",
-        card: {
-          DEFAULT: "var(--card)",
-          foreground: "var(--card-foreground)",
-        },
-        popover: {
-          DEFAULT: "var(--popover)",
-          foreground: "var(--popover-foreground)",
-        },
-        primary: {
-          DEFAULT: "var(--primary)",
-          foreground: "var(--primary-foreground)",
-        },
-        secondary: {
-          DEFAULT: "var(--secondary)",
-          foreground: "var(--secondary-foreground)",
-        },
-        muted: {
-          DEFAULT: "var(--muted)",
-          foreground: "var(--muted-foreground)",
-        },
-        accent: {
-          DEFAULT: "var(--accent)",
-          foreground: "var(--accent-foreground)",
-        },
-        destructive: {
-          DEFAULT: "var(--destructive)",
-          foreground: "var(--destructive-foreground)",
-        },
-        border: "var(--border)",
-        input: "var(--input)",
-        ring: "var(--ring)",
-      },
-      borderRadius: {
-        lg: "var(--radius)",
-        md: "calc(var(--radius) - 2px)",
-        sm: "calc(var(--radius) - 4px)",
-      },
-    },
+    extend: {},
   },
   plugins: [],
 };
@@ -563,59 +531,22 @@ export function renderUiPostcssConfig(): string {
 `;
 }
 
-/** Tokens chrome kit (CSS vars) — personnalisables par la marque. */
+/**
+ * Globals marque : directives Tailwind + overrides éventuels.
+ * Le thème lui-même (tokens crème/encre, chrome onglets, sidebar sombre,
+ * animations) vient du kit : `@creezio/shell-ui/theme.css`, importé par le
+ * layout racine AVANT ce fichier.
+ */
 export function renderUiGlobalsCss(): string {
   return `@tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* Tokens chrome kit (@creezio/shell-ui) — palette par défaut, à personnaliser. */
-:root {
-  --background: #faf7f1;
-  --foreground: #14201c;
-  --card: #ffffff;
-  --card-foreground: #14201c;
-  --popover: #ffffff;
-  --popover-foreground: #14201c;
-  --primary: #0f3d32;
-  --primary-foreground: #f8fafc;
-  --secondary: #f1f5f9;
-  --secondary-foreground: #0f172a;
-  --muted: #f1f5f9;
-  --muted-foreground: #64748b;
-  --accent: #f1f5f9;
-  --accent-foreground: #0f172a;
-  --destructive: #dc2626;
-  --destructive-foreground: #f8fafc;
-  --border: #e2e8f0;
-  --input: #e2e8f0;
-  --ring: #0f3d32;
-  --radius: 0.5rem;
-}
-
-body {
-  color: var(--foreground);
-  background: var(--background);
-  font-family:
-    Inter,
-    ui-sans-serif,
-    system-ui,
-    -apple-system,
-    BlinkMacSystemFont,
-    "Segoe UI",
-    sans-serif;
-}
-
-@layer base {
-  * {
-    @apply border-slate-200;
-  }
-
-  html {
-    /* Évite le jump de largeur quand une scrollbar apparaît / disparaît */
-    scrollbar-gutter: stable;
-  }
-}
+/*
+ * Le design system par défaut est le thème Creezio (@creezio/shell-ui/theme.css,
+ * importé dans app/layout.tsx). Ce fichier ne contient que les directives
+ * Tailwind + les overrides propres à la marque.
+ */
 `;
 }
 
