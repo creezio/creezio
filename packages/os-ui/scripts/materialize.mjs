@@ -51,6 +51,32 @@ function walkFiles(dir, base = dir, out = []) {
   return out;
 }
 
+/**
+ * Routes OS que la marque possède déjà en dehors du groupe (creezio-os) :
+ * `ui/app/<route>/page.tsx` métier → le wrapper kit est SKIPPÉ, sinon Next
+ * refuse le build (« two parallel pages that resolve to the same path »).
+ * C'est le contrat « l'architecture accueille l'app » : une page métier
+ * verbatim (ex. /onboarding, /parametres TF) prime toujours sur le wrapper.
+ */
+function brandOwnedRouteDirs(appDir, files) {
+  const owned = new Set();
+  const routeDirs = new Set(
+    files
+      .filter((rel) => /(^|\/)page\.(tsx|ts|jsx|js)$/.test(rel))
+      .map((rel) => path.dirname(rel)),
+  );
+  for (const dir of routeDirs) {
+    if (dir === ".") continue;
+    for (const ext of ["tsx", "ts", "jsx", "js"]) {
+      if (fs.existsSync(path.join(appDir, dir, `page.${ext}`))) {
+        owned.add(dir);
+        break;
+      }
+    }
+  }
+  return owned;
+}
+
 function main() {
   const { appRoot } = parseArgs(process.argv);
   const destApp = path.join(appRoot, "ui", "app", ROUTE_GROUP);
@@ -67,11 +93,26 @@ function main() {
   fs.mkdirSync(destApp, { recursive: true });
 
   const files = walkFiles(ROUTES_SRC);
+  const appDir = path.join(appRoot, "ui", "app");
+  const owned = brandOwnedRouteDirs(appDir, files);
+  const skipped = new Set();
+  let copied = 0;
   for (const rel of files) {
+    const ownedDir = [...owned].find(
+      (d) => rel === d || rel.startsWith(`${d}${path.sep}`) || rel.startsWith(`${d}/`),
+    );
+    if (ownedDir) {
+      skipped.add(ownedDir);
+      continue;
+    }
     const from = path.join(ROUTES_SRC, rel);
     const to = path.join(destApp, rel);
     fs.mkdirSync(path.dirname(to), { recursive: true });
     fs.copyFileSync(from, to);
+    copied++;
+  }
+  for (const dir of [...skipped].sort()) {
+    console.log(`  skip /${dir} — page métier marque (ui/app/${dir}/page.*)`);
   }
 
   // Marker pour diagnostics / allowlist locale
@@ -81,7 +122,7 @@ function main() {
   );
 
   console.log(
-    `OK os-ui materialize → ${path.relative(appRoot, destApp) || destApp} (${files.length} files)`,
+    `OK os-ui materialize → ${path.relative(appRoot, destApp) || destApp} (${copied} files, ${skipped.size} routes marque)`,
   );
 }
 

@@ -174,3 +174,42 @@ test("os-ui scaffold : zéro page OS versionnée, materialize + boot kit", () =>
 
   fs.rmSync(out, { recursive: true, force: true });
 });
+
+test("os-ui materialize : une page métier marque prime sur le wrapper OS", () => {
+  const materialize = path.join(ROOT, "packages/os-ui/scripts/materialize.mjs");
+  assert.ok(fs.existsSync(materialize), "script materialize kit");
+  assert.ok(
+    fs.existsSync(path.join(ROOT, "packages/os-ui/routes/onboarding/page.tsx")),
+    "route OS onboarding (témoin du test)",
+  );
+
+  const brandRoot = fs.mkdtempSync(path.join(os.tmpdir(), "creezio-os-own-"));
+  const appDir = path.join(brandRoot, "ui", "app");
+  // Page métier verbatim (ex. onboarding TF) : le wrapper kit DOIT être
+  // skippé, sinon Next refuse le build (parallel pages, même chemin).
+  fs.mkdirSync(path.join(appDir, "onboarding"), { recursive: true });
+  fs.writeFileSync(
+    path.join(appDir, "onboarding", "page.tsx"),
+    "export default function OnboardingMetier() { return null; }\n",
+  );
+
+  const r = spawnSync(process.execPath, [materialize, "--app-root", brandRoot], {
+    encoding: "utf8",
+    cwd: ROOT,
+    timeout: 60_000,
+  });
+  assert.equal(r.status, 0, r.stderr || r.stdout);
+
+  const group = path.join(appDir, "(creezio-os)");
+  assert.ok(
+    !fs.existsSync(path.join(group, "onboarding")),
+    "wrapper onboarding skippé (page métier marque présente)",
+  );
+  assert.ok(
+    fs.existsSync(path.join(group, "mails", "page.tsx")),
+    "les autres routes OS restent matérialisées",
+  );
+  assert.match(r.stdout, /skip \/onboarding/, "skip loggé explicitement");
+
+  fs.rmSync(brandRoot, { recursive: true, force: true });
+});
