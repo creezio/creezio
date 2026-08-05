@@ -4,10 +4,12 @@ export {
 } from "./schema.js";
 export { renderMetierQueriesTs } from "./api.js";
 export {
-  renderNextLayoutTsx,
   renderNextHomePage,
   renderNextEntityPage,
   renderMetierRendererHtml,
+  renderUiEntityTable,
+  renderUiPrimitiveReexport,
+  UI_PRIMITIVE_NAMES,
 } from "./ui.js";
 export {
   listOsUiPages,

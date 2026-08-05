@@ -3,32 +3,13 @@
  */
 import type { ProductModel } from "../product-model.js";
 
-export function renderNextLayoutTsx(model: ProductModel): string {
-  return `import type { ReactNode } from "react";
-
-export const metadata = {
-  title: ${JSON.stringify(model.brandName)},
-  description: ${JSON.stringify(model.tagline)},
-};
-
-export default function RootLayout({ children }: { children: ReactNode }) {
-  return (
-    <html lang="fr">
-      <body style={{ margin: 0, fontFamily: '"Source Serif 4", "Iowan Old Style", Georgia, serif', background: "linear-gradient(165deg,#e7f0ec,#f6f3eb 50%,#e9eef5)", color: "#14201c", minHeight: "100vh" }}>
-        <header style={{ padding: "1.25rem 1.5rem", borderBottom: "1px solid rgba(20,32,28,0.08)" }}>
-          <strong style={{ fontSize: "1.35rem", letterSpacing: "-0.02em" }}>${model.brandName}</strong>
-          <span style={{ marginLeft: "0.75rem", opacity: 0.7 }}>${model.tagline}</span>
-        </header>
-        <nav style={{ display: "flex", gap: "1rem", padding: "0.75rem 1.5rem", flexWrap: "wrap" }}>
-${model.pages.map((p) => `          <a href="${p.path}">${p.title}</a>`).join("\n")}
-        </nav>
-        <main style={{ padding: "1.5rem", maxWidth: "56rem", margin: "0 auto" }}>{children}</main>
-      </body>
-    </html>
-  );
-}
-`;
-}
+/*
+ * PAS de générateur de layout HTML brut ici : le layout canonique vient de
+ * renderNextLayoutWithOsNav (os-ui.ts) — chrome kit + thème Creezio. Un
+ * ancien renderNextLayoutTsx (styles inline, nav en liens texte) a été
+ * supprimé : il ne doit plus être POSSIBLE de générer une app sans le
+ * design system kit (gate test-phase-os-ui-scaffold).
+ */
 
 export function renderNextHomePage(model: ProductModel): string {
   const dash = model.pages.find(
@@ -54,7 +35,14 @@ export function renderNextEntityPage(model: ProductModel, pageId: string): strin
   const entityId = page?.entityId;
 
   if (page?.kind === "dashboard" || pageId === "dashboard") {
-    return `async function loadDashboard() {
+    return `import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+
+async function loadDashboard() {
   const base = process.env.METIER_BASE_URL || "http://127.0.0.1:18791";
   try {
     const res = await fetch(\`\${base}/api/v1/modules/dashboard\`, { cache: "no-store" });
@@ -70,14 +58,31 @@ export default async function Page() {
     panier_lignes?: number;
     commandes?: number;
   } | null;
+  const stats: Array<[string, number | undefined]> = [
+    ["Fournisseurs", d?.fournisseurs],
+    ["Produits", d?.produits],
+    ["Panier", d?.panier_lignes],
+    ["Commandes", d?.commandes],
+  ];
   return (
-    <section>
-      <h1>${title}</h1>
-      <p>
-        Fournisseurs : {d?.fournisseurs ?? "—"} · Produits : {d?.produits ?? "—"} ·
-        Panier : {d?.panier_lignes ?? "—"} · Commandes : {d?.commandes ?? "—"}
-      </p>
-      <p>UI interactive : <code>resources/renderer/index.html#dashboard</code></p>
+    <section className="space-y-6 p-6">
+      <h1 className="text-2xl font-semibold tracking-tight">${title}</h1>
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {stats.map(([label, value]) => (
+          <Card key={label}>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                {label}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-semibold tabular-nums">
+                {value ?? "—"}
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
     </section>
   );
 }
@@ -85,12 +90,20 @@ export default async function Page() {
   }
 
   if (!entityId || pageId === "optimiser") {
-    return `export default function Page() {
+    return `import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+
+export default function Page() {
   return (
-    <section>
-      <h1>${title}</h1>
-      <p>Surface métier ${model.brandName} — utiliser le renderer SPA pour les actions.</p>
-      <p><code>resources/renderer/index.html#${pageId}</code></p>
+    <section className="space-y-4 p-6">
+      <h1 className="text-2xl font-semibold tracking-tight">${title}</h1>
+      <Card>
+        <CardHeader>
+          <CardTitle>Surface métier ${model.brandName}</CardTitle>
+        </CardHeader>
+        <CardContent className="text-sm text-slate-500">
+          Brancher ici le module métier (module APIs kernel).
+        </CardContent>
+      </Card>
     </section>
   );
 }
@@ -99,8 +112,11 @@ export default async function Page() {
 
   return `/**
  * Page métier ${title} — générée --from-prd.
- * Liste réelle via api-kernel /api/v1/modules/* (même kernel que desktop).
+ * Liste réelle via api-kernel /api/v1/modules/* (même kernel que desktop),
+ * rendue avec la table kit (tri / filtre / pagination @creezio/shell-ui).
  */
+import { EntityTable } from "@/components/entity-table";
+
 async function loadItems() {
   const base = process.env.METIER_BASE_URL || "http://127.0.0.1:18791";
   try {
@@ -116,21 +132,83 @@ async function loadItems() {
 export default async function Page() {
   const items = await loadItems();
   return (
-    <section>
-      <h1>${title}</h1>
-      <p>Entité <code>${entityId}</code> — {items.length} élément(s).</p>
-      <ul>
-        {items.map((item) => (
-          <li key={String(item.id)}>
-            <code>{String(item.id).slice(0, 8)}</code>{" "}
-            {String(item.nom || item.titre || item.statut || item.montant || item.libelle_fournisseur || "")}
-          </li>
-        ))}
-      </ul>
-      <p>UI interactive : <code>resources/renderer/index.html#${pageId}</code></p>
+    <section className="space-y-4 p-6">
+      <h1 className="text-2xl font-semibold tracking-tight">${title}</h1>
+      <EntityTable rows={items} />
     </section>
   );
 }
+`;
+}
+
+/**
+ * Table métier générique (client) — colonnes dérivées des lignes, rendu via
+ * la DataTable kit (tri, recherche, pagination). AUCUN HTML <table> nu dans
+ * les pages générées.
+ */
+export function renderUiEntityTable(): string {
+  return `"use client";
+
+import { useMemo } from "react";
+import type { ColumnDef } from "@tanstack/react-table";
+import { DataTable } from "@creezio/shell-ui/ui";
+
+type Row = Record<string, unknown>;
+
+function label(key: string): string {
+  return key.replace(/_/g, " ").replace(/^./, (c) => c.toUpperCase());
+}
+
+function renderCell(value: unknown): string {
+  if (value == null || value === "") return "—";
+  if (typeof value === "object") return JSON.stringify(value);
+  return String(value);
+}
+
+export function EntityTable({ rows }: { rows: Row[] }) {
+  const columns = useMemo<ColumnDef<Row, unknown>[]>(() => {
+    const keys = rows.length ? Object.keys(rows[0]!).slice(0, 8) : ["id"];
+    return keys.map((key) => ({
+      accessorKey: key,
+      header: label(key),
+      cell: ({ getValue }) => renderCell(getValue()),
+    }));
+  }, [rows]);
+  return <DataTable columns={columns} data={rows} />;
+}
+`;
+}
+
+/**
+ * Convention marque \`@/components/ui/<primitive>\` (gold TF) : chaque
+ * fichier est un pur re-export du design system kit — SoT
+ * @creezio/shell-ui/ui/primitives. Une page métier copiée depuis une app
+ * gold (imports \`@/components/ui/…\`) compile telle quelle.
+ */
+export const UI_PRIMITIVE_NAMES = [
+  "avatar",
+  "badge",
+  "breadcrumb",
+  "button",
+  "card",
+  "chart",
+  "command",
+  "dialog",
+  "dropdown-menu",
+  "input",
+  "label",
+  "scroll-area",
+  "select",
+  "separator",
+  "sheet",
+  "skeleton",
+  "sonner",
+  "tabs",
+] as const;
+
+export function renderUiPrimitiveReexport(name: string): string {
+  return `/** Re-export design system kit — SoT @creezio/shell-ui (ne pas forker). */
+export * from "@creezio/shell-ui/ui/primitives/${name}";
 `;
 }
 

@@ -100,19 +100,31 @@ docker exec -w /app -e CREEZIO_CORE_DB_PATH=/data/sqlite/core.db $CT node -e \
 # → {"ok":true,"action":"registered",…}
 ```
 
-Collaborateur (human/ai) ensuite, avec le cookie owner (voir §3) :
+Collaborateur (human/ai) ensuite, avec le cookie owner (voir §3) — API
+plateforme = **référentiel unique** (alias `/api/v1/users` ≡
+`/api/v1/platform/users`, cycle de vie complet) :
 
 ```bash
-curl -sS -X POST http://127.0.0.1:$PORT/api/v1/platform/users \
+# Création human : password OBLIGATOIRE (≥6) → login immédiat, permissions
+# par défaut marque (configureAuth collaboratorDefaultPermissions) si omises.
+curl -sS -X POST http://127.0.0.1:$PORT/api/v1/users \
   -H "cookie: $COOKIE" -H 'content-type: application/json' \
-  -d '{"username":"vendeur1","kind":"human","permissions":[]}'
+  -d '{"username":"vendeur1","kind":"human","password":"S3cret-…"}'
+# IA : {"username":"Jarvis","kind":"ai"} (pas de credentials).
+# Reset mot de passe / permissions / désactivation :
+curl -sS -X PATCH http://127.0.0.1:$PORT/api/v1/users/<id> \
+  -H "cookie: $COOKIE" -H 'content-type: application/json' \
+  -d '{"password":"Nouveau-…","permissions":["nav.dashboard"],"active":true}'
+# Meta ACL marque (assignables / owner-only / défauts) :
+curl -sS http://127.0.0.1:$PORT/api/v1/users/meta -H "cookie: $COOKIE"
 ```
 
-Les collaborateurs vivent dans `creezio_platform_users` (core.db) et n'ont
-**pas** de mot de passe propre — leur accès passe par l'owner (impersonation)
-ou une session IA. Un deuxième couple login/pass = un autre
-`migrateBrandCredentialsToKit` (mais le 1er inscrit reste « owner » :
-`ownerRow` = plus ancien `creezio_users`).
+Les collaborateurs vivent dans `creezio_platform_users` (core.db) ; leurs
+credentials dans `creezio_users` (créés par le POST). Le 1er inscrit
+`creezio_users` reste « owner » (`ownerRow` = plus ancien). La page
+Collaborateurs d'une marque (UI TF verbatim) parle directement à
+`/api/v1/users` — le kernel intercepte ce préfixe AVANT le plane : ne
+jamais créer une table `users` métier parallèle (comptes non logables).
 
 **Vérité** : `packages/app-runtime/src/listen-brand-os-http.ts` (route setup),
 `packages/electron-shell/src/host/local-config.ts` (`applyFirstRunSetup`),
@@ -123,7 +135,9 @@ ou une session IA. Un deuxième couple login/pass = un autre
 **Pièges** : `POST /api/v1/os/setup` seul ne suffit PAS pour le login CRM
 (il n'écrit pas `creezio_users`) — sans l'étape (b), `/api/v1/auth/login`
 répond 401. Password ≥ 6 car., username ≥ 2. Ne PAS re-POSTer setup sur un
-serveur déjà configuré (écrase compte + recovery key).
+serveur déjà configuré (écrase compte + recovery key). Gate de référence :
+`scripts/test-phase-platform-users.mjs` (création → login, meta, reset,
+désactivation).
 
 ## 3. Login / vérifier un compte
 
@@ -306,7 +320,10 @@ L'admin (§5) montre boot-status live, logs et ops par serveur sans SSH.
 | UI marque = chrome kit + Tailwind | La factory génère `ui/tailwind.config.ts` (scan `../vendor/creezio/*/ui`), `postcss.config.js`, `globals.css` (tokens) et `components/brand-chrome.tsx` (WorkspaceRoot/configureSidebar). App qui rend du HTML brut sans sidebar = Tailwind/chrome manquant, corriger la factory (gate `test-phase-os-ui-scaffold`). |
 | Gros catalogues (85k+ skus) | Jamais une requête SQL par ligne dans un handler liste (N+1 = event loop bloqué, tout le serveur pend, même `/health`). Agréger en SQL (CTE + window), indexer (`produits(sku_id)`, `prix(produit_id)`), capper les listes génériques. |
 | Login API | `POST /api/v1/auth/login` body JSON `{"email": <username>, "password": …}` (champ `email` même pour un username) ; cookie de session, contrôle via `/api/v1/auth/me`. |
-| Permissions owner | La marque DOIT déclarer `configureAuth({ cookieName, ownerPermissions })` au beforeBoot (bindings plateforme) — sinon les sessions owner sont signées avec `permissions: []`, `/api/v1/auth/me` renvoie une liste vide et la sidebar métier est amputée (seules les entrées non gardées restent). Collaborateurs : permissions stockées par user (`creezio_platform_users.permissions`), passer `permissions` au `POST /api/v1/platform/users`. |
+| Permissions owner | La marque DOIT déclarer `configureAuth({ cookieName, ownerPermissions })` au beforeBoot (bindings plateforme) — sinon les sessions owner sont signées avec `permissions: []`, `/api/v1/auth/me` renvoie une liste vide et la sidebar métier est amputée (seules les entrées non gardées restent). Collaborateurs : permissions stockées par user (`creezio_platform_users.permissions`) ; défauts/assignables/owner-only déclarés via `configureAuth({ collaboratorDefaultPermissions, collaboratorAssignablePermissions, ownerOnlyPermissions })`. |
+| Référentiel users unique | `/api/v1/users` est une route PLATEFORME (alias de `/api/v1/platform/users`, interceptée par le kernel avant le plane). Un `POST` human exige `password` et crée les credentials kit → login immédiat. Jamais de table `users` métier in-plane pour les comptes (l'ancienne route TF2 in-plane est shadowée, code mort inoffensif). |
+| Enregistrement des gates | La SoT des gates est le script `npm test` du `package.json` racine (test-fast la parse) — un fichier `scripts/test-*.mjs` NON listé n'est **jamais** exécuté par `test:kit`/CI. Toute nouvelle gate doit y être ajoutée (piège réel : `test-phase-os-ui-scaffold` a existé non branchée). |
+| Design system généré | La factory ne DOIT générer que des pages avec composants kit (`@/components/ui/*` = re-exports `@creezio/shell-ui/ui/primitives/*`, tables via `EntityTable`/DataTable kit). `renderNextLayoutTsx` (layout HTML brut) est supprimé — gate `test-phase-os-ui-scaffold` verrouille. |
 | Page métier vs wrapper os-ui | `materialize.mjs` (os-ui) skippe toute route que la marque possède (`ui/app/<route>/page.*`) — la page métier verbatim (ex. `/onboarding`, `/parametres` TF) prime sur le wrapper kit. Ne jamais supprimer une page métier pour « résoudre » un conflit parallel pages : c'est le wrapper qui cède. Gate : `test-phase-os-ui-scaffold`. |
 
 ## Ressources

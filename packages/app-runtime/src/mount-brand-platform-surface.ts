@@ -21,13 +21,20 @@ import {
   createAuthRoutes,
   createSessionToken,
   getAuthConfig,
+  migrateBrandCredentialsToKit,
   sessionActorIsOwner,
   sessionIsImpersonating,
   verifySessionToken,
   type AuthRouteUser,
   type SessionPayload,
 } from "@creezio/auth";
-import { createAssistantRoutes, dispatchSupplierAction } from "@creezio/assistant";
+import {
+  configureAssistantBrand,
+  createAssistantRoutes,
+  dispatchSupplierAction,
+  getAssistantBrandConfig,
+  type AssistantDbAccess,
+} from "@creezio/assistant";
 import {
   createTasksHonoRoutes,
   type TasksBrandConfig,
@@ -373,6 +380,10 @@ const PLATFORM_PREFIXES = [
   "/api/v1/tasks",
   "/api/v1/assistant",
   "/api/v1/desktop",
+  // Référentiel utilisateurs unique : /api/v1/users est une route PLATEFORME
+  // (les pages marque type Collaborateurs y parlent directement) — jamais une
+  // table users métier parallèle dans le plane, sinon comptes non logables.
+  "/api/v1/users",
   "/api/v1/platform/users",
   "/api/v1/platform/workspace",
   "/api/v1/platform/presence",
@@ -393,6 +404,18 @@ export function mountBrandPlatformSurface(opts: {
   /** Défaut : `${brandId}_session` (aligné cookie desktop marque). */
   sessionCookieName?: string;
   ownerPermissions?: readonly string[];
+  /**
+   * DB métier (SqliteHandle kernel) pour les tools SQL assistant par défaut
+   * (run_sql / explore, lecture seule côté runtime assistant).
+   */
+  brandDb?: () => {
+    path: string;
+    prepare: (sql: string) => {
+      all: (...params: unknown[]) => unknown[];
+      get: (...params: unknown[]) => unknown;
+      run: (...params: unknown[]) => unknown;
+    };
+  } | null;
   onLog?: (line: string) => void;
 }): BrandPlatformSurface {
   const log =
@@ -430,6 +453,53 @@ export function mountBrandPlatformSurface(opts: {
     presence,
   };
   runtimeSlot().current = runtime;
+
+  // Assistant : config kit par défaut si la marque n'a rien déclaré au
+  // beforeBoot (idempotent — une config marque existante prime toujours).
+  // Sans elle, POST /api/v1/assistant/chat crashe (`requireAssistantBrand`).
+  // La session vient de la surface (cookie/Bearer par requête) — pas besoin
+  // d'`auth.getSession` sans contexte ici.
+  if (!getAssistantBrandConfig()) {
+    const brandDb = opts.brandDb;
+    let db: AssistantDbAccess | undefined;
+    if (brandDb) {
+      const handle = () => {
+        const h = brandDb();
+        if (!h) throw new Error("brand_db_unavailable");
+        return h;
+      };
+      db = {
+        queryAll: <T = Record<string, unknown>>(
+          sql: string,
+          params: unknown[] = [],
+        ) => handle().prepare(sql).all(...params) as T[],
+        queryOne: <T = Record<string, unknown>>(
+          sql: string,
+          params: unknown[] = [],
+        ) => handle().prepare(sql).get(...params) as T | undefined,
+        getDbPath: () => handle().path,
+        getDb: () => handle(),
+      };
+    }
+    configureAssistantBrand({
+      identity: {
+        productName: opts.brandId,
+        uiStorageKey: `${opts.brandId}-assistant-ui`,
+        modeStorageKey: `${opts.brandId}-assistant-preferred-mode`,
+        desktopApiGlobal: "creezioDesktop",
+        globalStorePrefix: "__creezio",
+      },
+      ...(db ? { db } : {}),
+      desktopPresence: {
+        isDesktopOnline: (userId) => presence.isDesktopOnline(userId),
+        desktopOfflineError: (userId) => ({
+          error: "Poste desktop hors ligne — action impossible",
+          userId,
+        }),
+      },
+    });
+    log("assistant: config kit par défaut (marque sans configureAssistantBrand)");
+  }
 
   const app = new Hono();
 
@@ -518,30 +588,95 @@ export function mountBrandPlatformSurface(opts: {
   });
 
   /* Collaborateurs plateforme (owner) — création IA / liste. */
-  app.get("/api/v1/platform/users", async (c) => {
+  /* ── Référentiel utilisateurs UNIQUE (core.db) ─────────────────────────
+   * Cycle de vie complet des comptes : liste, création (credentials kit si
+   * password), mise à jour (permissions / actif / reset mot de passe), meta
+   * ACL déclarées par la marque (configureAuth). Monté sur
+   * /api/v1/platform/users ET /api/v1/users : les UIs marque (ex. page
+   * Collaborateurs verbatim) parlent à CE référentiel — un compte créé ici
+   * peut se loguer (authenticateViaKit), pas de table users métier parallèle.
+   */
+  const ownerSession = async (c: Context): Promise<SessionPayload | null> => {
+    const session = await sessionFromContext(c);
+    if (
+      !session ||
+      !sessionActorIsOwner(session) ||
+      sessionIsImpersonating(session)
+    ) {
+      return null;
+    }
+    return session;
+  };
+
+  const normalizePerms = (raw: unknown): string[] | undefined =>
+    Array.isArray(raw)
+      ? raw.filter((p): p is string => typeof p === "string")
+      : undefined;
+
+  const usersApi = new Hono();
+
+  usersApi.get("/meta", async (c) => {
+    if (!(await ownerSession(c))) {
+      return c.json({ error: "Réservé au compte principal" }, 403);
+    }
+    const cfg = getAuthConfig();
+    return c.json({
+      ok: true,
+      permission_keys: cfg.collaboratorAssignablePermissions,
+      owner_only: cfg.ownerOnlyPermissions,
+      defaults: cfg.collaboratorDefaultPermissions,
+      kinds: ["human", "ai"],
+    });
+  });
+
+  usersApi.get("/", async (c) => {
     const session = await sessionFromContext(c);
     if (!session) return c.json({ error: "Non authentifié" }, 401);
     return c.json({ ok: true, users: store.listUsers() });
   });
 
-  app.post("/api/v1/platform/users", async (c) => {
-    const session = await sessionFromContext(c);
-    if (!session || !sessionActorIsOwner(session)) {
+  usersApi.post("/", async (c) => {
+    if (!(await ownerSession(c))) {
       return c.json({ error: "Réservé au compte principal" }, 403);
     }
     const body = (await c.req.json().catch(() => ({}))) as {
       username?: string;
       kind?: string;
-      permissions?: string[];
+      permissions?: unknown;
+      password?: string;
     };
+    const username = String(body.username || "").trim();
+    const kind = body.kind === "ai" ? "ai" : "human";
+    const password = typeof body.password === "string" ? body.password : "";
+    // Un humain doit pouvoir se loguer immédiatement — credentials kit
+    // obligatoires à la création (les agents IA n'ont pas de login).
+    if (kind === "human" && password.length < 6) {
+      return c.json({ error: "Mot de passe trop court (6 min)" }, 400);
+    }
     try {
+      const permissions =
+        normalizePerms(body.permissions) ??
+        [...getAuthConfig().collaboratorDefaultPermissions];
       const user = store.createCollaborator({
-        username: String(body.username || ""),
-        kind: body.kind === "ai" ? "ai" : "human",
-        ...(Array.isArray(body.permissions)
-          ? { permissions: body.permissions.filter((p) => typeof p === "string") }
-          : {}),
+        username,
+        kind,
+        permissions,
       });
+      if (kind === "human") {
+        const cred = await migrateBrandCredentialsToKit({
+          username,
+          password,
+          displayName: username,
+        });
+        if (!cred.ok) {
+          // Pas de compte fantôme sans login possible.
+          store.setCollaboratorActive(user.id, false);
+          return c.json(
+            { error: `credentials kit indisponibles (${cred.error})` },
+            500,
+          );
+        }
+      }
       sidecar?.syncAiExecutors();
       return c.json({ ok: true, user }, 201);
     } catch (e) {
@@ -551,6 +686,59 @@ export function mountBrandPlatformSurface(opts: {
       );
     }
   });
+
+  usersApi.patch("/:id", async (c) => {
+    if (!(await ownerSession(c))) {
+      return c.json({ error: "Réservé au compte principal" }, 403);
+    }
+    const body = (await c.req.json().catch(() => ({}))) as {
+      username?: string;
+      kind?: string;
+      permissions?: unknown;
+      active?: boolean;
+      password?: string;
+    };
+    try {
+      const user = store.updateCollaborator(c.req.param("id"), {
+        ...(typeof body.username === "string"
+          ? { username: body.username }
+          : {}),
+        ...(body.kind === "ai" || body.kind === "human"
+          ? { kind: body.kind }
+          : {}),
+        ...(normalizePerms(body.permissions)
+          ? { permissions: normalizePerms(body.permissions)! }
+          : {}),
+        ...(typeof body.active === "boolean" ? { active: body.active } : {}),
+      });
+      if (typeof body.password === "string" && body.password) {
+        if (body.password.length < 6) {
+          return c.json({ error: "Mot de passe trop court (6 min)" }, 400);
+        }
+        const cred = await migrateBrandCredentialsToKit({
+          username: user.username,
+          password: body.password,
+          displayName: user.username,
+        });
+        if (!cred.ok) {
+          return c.json(
+            { error: `reset mot de passe impossible (${cred.error})` },
+            500,
+          );
+        }
+      }
+      sidecar?.syncAiExecutors();
+      return c.json({ ok: true, user });
+    } catch (e) {
+      return c.json(
+        { error: e instanceof Error ? e.message : String(e) },
+        400,
+      );
+    }
+  });
+
+  app.route("/api/v1/platform/users", usersApi);
+  app.route("/api/v1/users", usersApi);
 
   /* Workspace IA (owner) — mêmes adapters que tasks : sidecar serveur
    * prioritaire, sinon dispatch bridge desktop (client thin / TF2). Sert

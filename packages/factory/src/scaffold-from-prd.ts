@@ -12,6 +12,9 @@ import {
   renderMetierQueriesTs,
   renderNextHomePage,
   renderNextEntityPage,
+  renderUiEntityTable,
+  renderUiPrimitiveReexport,
+  UI_PRIMITIVE_NAMES,
   renderMetierRendererHtml,
   renderUiBrandChrome,
   renderUiGlobalsCss,
@@ -455,6 +458,22 @@ process.exit(r.status ?? 1);
     force,
     written,
   );
+  // Design system kit obligatoire : table métier générique + convention
+  // `@/components/ui/*` (re-exports @creezio/shell-ui) — plus de HTML brut.
+  writeFile(
+    path.join(outDir, "ui/components/entity-table.tsx"),
+    renderUiEntityTable(),
+    force,
+    written,
+  );
+  for (const primitive of UI_PRIMITIVE_NAMES) {
+    writeFile(
+      path.join(outDir, `ui/components/ui/${primitive}.tsx`),
+      renderUiPrimitiveReexport(primitive),
+      force,
+      written,
+    );
+  }
   writeFile(
     path.join(outDir, "ui/app/page.tsx"),
     renderNextHomePage(model),

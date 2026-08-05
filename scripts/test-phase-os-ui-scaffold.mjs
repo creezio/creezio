@@ -166,6 +166,60 @@ test("os-ui scaffold : zéro page OS versionnée, materialize + boot kit", () =>
     "home = redirection workspace (pas de placeholder scaffold)",
   );
 
+  // Pages métier générées = composants kit, JAMAIS de HTML brut.
+  assert.equal(
+    shellUiPkg.exports?.["./ui/primitives/*"]?.import,
+    "./ui/primitives/*.tsx",
+    "export ./ui/primitives/* (re-exports marque)",
+  );
+  const btnReexport = fs.readFileSync(
+    path.join(srv, "ui/components/ui/button.tsx"),
+    "utf8",
+  );
+  assert.match(
+    btnReexport,
+    /@creezio\/shell-ui\/ui\/primitives\/button/,
+    "convention @/components/ui/* = re-export design system kit",
+  );
+  const entityTable = fs.readFileSync(
+    path.join(srv, "ui/components/entity-table.tsx"),
+    "utf8",
+  );
+  assert.match(
+    entityTable,
+    /DataTable.*@creezio\/shell-ui\/ui|@creezio\/shell-ui\/ui[\s\S]*DataTable/,
+    "table métier = DataTable kit (tri/filtre/pagination)",
+  );
+  const dashboard = fs.readFileSync(
+    path.join(srv, "ui/app/dashboard/page.tsx"),
+    "utf8",
+  );
+  assert.match(dashboard, /@\/components\/ui\/card/, "dashboard = cartes kit");
+  assert.doesNotMatch(dashboard, /<ul>/, "pas de liste HTML brute");
+  const entityPages = fs
+    .readdirSync(path.join(srv, "ui/app"), { withFileTypes: true })
+    .filter((e) => e.isDirectory() && e.name !== "dashboard")
+    .map((e) => path.join(srv, "ui/app", e.name, "page.tsx"))
+    .filter((p) => fs.existsSync(p));
+  assert.ok(entityPages.length >= 1, "au moins une page entité générée");
+  for (const p of entityPages) {
+    const src = fs.readFileSync(p, "utf8");
+    assert.ok(
+      /@\/components\/(entity-table|ui\/card)/.test(src),
+      `page générée sans composant kit : ${p}`,
+    );
+    assert.ok(!/<ul>/.test(src), `HTML brut (<ul>) dans ${p}`);
+  }
+  // Le générateur de layout HTML brut legacy ne doit plus exister.
+  const factoryUiSrc = fs.readFileSync(
+    path.join(ROOT, "packages/factory/src/generators/ui.ts"),
+    "utf8",
+  );
+  assert.ok(
+    !/export function renderNextLayoutTsx/.test(factoryUiSrc),
+    "renderNextLayoutTsx (layout HTML brut) supprimé de la factory",
+  );
+
   const allow = fs.readFileSync(
     path.join(srv, "scripts/test-allowlist.mjs"),
     "utf8",

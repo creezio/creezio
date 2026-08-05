@@ -32,6 +32,11 @@
       "import": "./ui/settings/*.tsx",
       "default": "./ui/settings/*.tsx"
     },
+    "./ui/primitives/*": {
+      "types": "./ui/primitives/*.tsx",
+      "import": "./ui/primitives/*.tsx",
+      "default": "./ui/primitives/*.tsx"
+    },
     "./theme.css": "./ui/theme/theme.css",
     "./tailwind-preset": "./ui/theme/tailwind-preset.cjs"
   },

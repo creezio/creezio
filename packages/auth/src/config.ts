@@ -16,6 +16,15 @@ export type AuthConfig = {
    * Injectées par la marque (ALL_NAV_PERMISSIONS).
    */
   ownerPermissions?: readonly string[];
+  /**
+   * ACL collaborateurs déclarées par la marque — consommées par l'API
+   * plateforme users (référentiel unique kit) : permissions par défaut à la
+   * création, permissions assignables (checkboxes UI), permissions réservées
+   * au owner. Le kit n'embarque aucune liste métier.
+   */
+  collaboratorDefaultPermissions?: readonly string[];
+  collaboratorAssignablePermissions?: readonly string[];
+  ownerOnlyPermissions?: readonly string[];
 };
 
 const DEFAULT_MAX_AGE = 60 * 60 * 24 * 7;
@@ -24,12 +33,18 @@ type ResolvedAuthConfig = {
   cookieName: string;
   cookieMaxAge: number;
   ownerPermissions: readonly string[];
+  collaboratorDefaultPermissions: readonly string[];
+  collaboratorAssignablePermissions: readonly string[];
+  ownerOnlyPermissions: readonly string[];
 };
 
 const DEFAULT: ResolvedAuthConfig = {
   cookieName: "",
   cookieMaxAge: DEFAULT_MAX_AGE,
   ownerPermissions: [],
+  collaboratorDefaultPermissions: [],
+  collaboratorAssignablePermissions: [],
+  ownerOnlyPermissions: [],
 };
 
 let config: ResolvedAuthConfig = { ...DEFAULT };
@@ -48,6 +63,15 @@ export function configureAuth(next: AuthConfig): void {
     ownerPermissions: next.ownerPermissions
       ? [...next.ownerPermissions]
       : config.ownerPermissions,
+    collaboratorDefaultPermissions: next.collaboratorDefaultPermissions
+      ? [...next.collaboratorDefaultPermissions]
+      : config.collaboratorDefaultPermissions,
+    collaboratorAssignablePermissions: next.collaboratorAssignablePermissions
+      ? [...next.collaboratorAssignablePermissions]
+      : config.collaboratorAssignablePermissions,
+    ownerOnlyPermissions: next.ownerOnlyPermissions
+      ? [...next.ownerOnlyPermissions]
+      : config.ownerOnlyPermissions,
   };
 }
 
@@ -55,6 +79,11 @@ export function getAuthConfig(): ResolvedAuthConfig {
   return {
     ...config,
     ownerPermissions: [...config.ownerPermissions],
+    collaboratorDefaultPermissions: [...config.collaboratorDefaultPermissions],
+    collaboratorAssignablePermissions: [
+      ...config.collaboratorAssignablePermissions,
+    ],
+    ownerOnlyPermissions: [...config.ownerOnlyPermissions],
   };
 }
 

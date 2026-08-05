@@ -104,6 +104,15 @@ export type BrandPlatformStore = {
     kind?: "human" | "ai";
     permissions?: string[];
   }) => TasksUser;
+  updateCollaborator: (
+    id: string,
+    patch: {
+      username?: string;
+      kind?: "human" | "ai";
+      permissions?: string[];
+      active?: boolean;
+    },
+  ) => TasksUser;
   setCollaboratorActive: (id: string, active: boolean) => boolean;
   close: () => void;
 };
@@ -208,6 +217,40 @@ export function openBrandPlatformStore(opts: {
     return user;
   }
 
+  function updateCollaborator(
+    id: string,
+    patch: {
+      username?: string;
+      kind?: "human" | "ai";
+      permissions?: string[];
+      active?: boolean;
+    },
+  ): TasksUser {
+    const current = collaboratorById(id);
+    if (!current || current.role === "owner") {
+      throw new Error("Collaborateur introuvable");
+    }
+    const username = (patch.username ?? current.username).trim();
+    if (!username) throw new Error("username requis");
+    db.prepare(
+      `UPDATE creezio_platform_users
+       SET username = ?, kind = ?, permissions = ?, active = ?,
+           updated_at = datetime('now')
+       WHERE id = ?`,
+    ).run(
+      username,
+      patch.kind === "ai" || (patch.kind === undefined && current.kind === "ai")
+        ? "ai"
+        : "human",
+      JSON.stringify(patch.permissions ?? current.permissions),
+      (patch.active ?? current.active) ? 1 : 0,
+      id,
+    );
+    const user = collaboratorById(id);
+    if (!user) throw new Error("mise à jour collaborateur échouée");
+    return user;
+  }
+
   function setCollaboratorActive(id: string, active: boolean): boolean {
     const res = db
       .prepare(
@@ -261,6 +304,7 @@ export function openBrandPlatformStore(opts: {
     getUserById,
     listUsers,
     createCollaborator,
+    updateCollaborator,
     setCollaboratorActive,
     close: () => db.close?.(),
   };
