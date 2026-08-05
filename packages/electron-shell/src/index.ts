@@ -225,7 +225,13 @@ export {
   clearGeneratedWebuiPassword,
   clearTempoflowGeneratedWebuiPassword,
   createHermesHost,
+  serverWebuiPassword,
 } from "./host/hermes/launcher.js";
+export {
+  brandHermesSkillsDirCandidates,
+  kitHermesSkillsDir,
+  seedHermesSkillsFromDirs,
+} from "./host/hermes/skills-seed.js";
 export {
   WEBUI_DEPS_MARKER,
   WEBUI_DEPS_MARKER_LEGACY,

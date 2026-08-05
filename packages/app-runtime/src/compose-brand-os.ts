@@ -12,14 +12,17 @@ import {
   type AppManifest,
 } from "@creezio/brand-config";
 import {
+  brandHermesSkillsDirCandidates,
   configureCrashReporter,
   createBrandHostRuntime,
   createBrandHostStack,
   createLocalConfigStoreSync,
   createLocalSplashSteps,
   createPluginsHost,
+  kitHermesSkillsDir,
   log,
   logFileTail,
+  seedHermesSkillsFromDirs,
   type BrandHostSingletons,
   type BrandHostStack,
   type LocalConfigStore,
@@ -216,8 +219,12 @@ function buildBrandPaths(opts: ComposeBrandOsOptions) {
       }
       return candidates[0]!;
     },
-    n8nHomeDir: () => path.join(opts.userDataDir, "n8n"),
-    hermesHomeDir: () => path.join(opts.userDataDir, "hermes"),
+    // SoT segments = launchers electron-shell / platform-core
+    // (resolveN8nHomeDir / resolveHermesHomeDir). Un mauvais segment ici casse
+    // silencieusement le bridge Hermes→n8n : getN8nBridgeEnv ne trouve pas
+    // `.{brand}-n8n-api-key.json` → N8N_API_KEY absent de l'env Hermes.
+    n8nHomeDir: () => path.join(opts.userDataDir, "n8n-home"),
+    hermesHomeDir: () => path.join(opts.userDataDir, "hermes-home"),
     nodeModulesPathForScripts: () => {
       const cand = path.join(opts.electronDirname, "../../../node_modules");
       return fs.existsSync(cand) ? cand : null;
@@ -357,6 +364,19 @@ export function composeBrandOs(
     hermesBridge: "full",
     nodeEnsure: "desktop",
     ensureDbScriptPath: () => ensureCrmKeyDbScript(),
+    // Skills Hermes par défaut (parité TF2) : génériques kit (creezio-n8n,
+    // creezio-plugins) + skills marque (`vendor/hermes-skills` de l'app).
+    // Toute app composée par le kit les reçoit sans wiring marque.
+    seedHermesSkills: (hermesHome: string) => {
+      seedHermesSkillsFromDirs({
+        hermesHome,
+        dirs: [
+          kitHermesSkillsDir(),
+          ...brandHermesSkillsDirCandidates(paths.resourcesRoot()),
+        ],
+        log: (line) => log("hermes", line),
+      });
+    },
     log: (scope, line) => log(scope, line),
   });
 

@@ -295,9 +295,18 @@ function buildStore(
 
   function getLlmKeys(): { openai: string | null; anthropic: string | null } {
     const cfg = readFile();
+    // BYOK store prioritaire (clé posée par l'utilisateur via l'UI) ; sinon
+    // clé opérateur au niveau hôte (serveurs Docker headless : server-docker
+    // forward OPENAI_API_KEY / ANTHROPIC_API_KEY dans l'env du container).
     return {
-      openai: open(cfg.openaiApiKey),
-      anthropic: open(cfg.anthropicApiKey),
+      openai:
+        open(cfg.openaiApiKey) ||
+        (process.env.OPENAI_API_KEY || "").trim() ||
+        null,
+      anthropic:
+        open(cfg.anthropicApiKey) ||
+        (process.env.ANTHROPIC_API_KEY || "").trim() ||
+        null,
     };
   }
 

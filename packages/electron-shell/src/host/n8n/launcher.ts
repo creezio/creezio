@@ -43,6 +43,7 @@ import {
   n8nRuntimeCacheDir,
   type N8nBootstrapPhase,
 } from "./runtime-bootstrap.js";
+import { cookieHeaderFromSetCookie } from "./api-key.js";
 
 export type RunningN8n = {
   uiUrl: string;
@@ -259,11 +260,36 @@ function ensureEncryptionKey(home: string): string {
   fs.writeFileSync(keyFile, key, { mode: 0o600 });
   return key;
 }
-function ensureOwnerCreds(home: string): OwnerCreds {
-  const prefix = secretPrefix();
-  const keyFile = path.join(home, `.${prefix}-n8n-owner.json`);
+/**
+ * Superadmin uniforme flotte : posé par l'opérateur au niveau du VPS/serveur
+ * (env `CREEZIO_SUPERADMIN_EMAIL` / `CREEZIO_SUPERADMIN_PASSWORD`, jamais
+ * commité). Prioritaire sur les creds owner générés — permet de se loguer sur
+ * le n8n de TOUTES les instances avec le même compte.
+ */
+function superadminEnvCreds(): OwnerCreds | null {
+  const email = (process.env.CREEZIO_SUPERADMIN_EMAIL || "").trim();
+  const password = (process.env.CREEZIO_SUPERADMIN_PASSWORD || "").trim();
+  if (!email || !email.includes("@") || password.length < 12) return null;
+  return { email, password, firstName: "Creezio", lastName: "Superadmin" };
+}
+
+function ownerCredsFile(home: string): string {
+  return path.join(home, `.${secretPrefix()}-n8n-owner.json`);
+}
+
+function writeOwnerCreds(home: string, creds: OwnerCreds): void {
+  fs.writeFileSync(
+    ownerCredsFile(home),
+    JSON.stringify(creds, null, 2) + "\n",
+    { mode: 0o600 },
+  );
+}
+
+/** Creds owner persistés (fichier home) — sans l'override env superadmin. */
+function readFileOwnerCreds(home: string): OwnerCreds | null {
+  const keyFile = ownerCredsFile(home);
   /** Legacy marques : `.${prefix}-owner.json` (Certivan `.certivan-owner.json`). */
-  const brandLegacy = path.join(home, `.${prefix}-owner.json`);
+  const brandLegacy = path.join(home, `.${secretPrefix()}-owner.json`);
   const legacy = path.join(home, ".tempoflow-owner.json");
   for (const f of [keyFile, brandLegacy, legacy]) {
     try {
@@ -279,13 +305,24 @@ function ensureOwnerCreds(home: string): OwnerCreds {
       }
     } catch { /* */ }
   }
+  return null;
+}
+
+function ensureOwnerCreds(home: string): OwnerCreds {
+  // Superadmin flotte prioritaire — le fichier n'est mis à jour qu'après un
+  // login/setup RÉUSSI (ensureOwnerSilent), pour garder les anciens creds en
+  // fallback si l'instance a déjà été initialisée avec eux.
+  const env = superadminEnvCreds();
+  if (env) return env;
+  const stored = readFileOwnerCreds(home);
+  if (stored) return stored;
   const creds: OwnerCreds = {
     email: secretPrefix() + "-desktop@localhost.local",
     password: crypto.randomBytes(24).toString("base64url"),
     firstName: product(),
     lastName: "Desktop",
   };
-  fs.writeFileSync(keyFile, JSON.stringify(creds, null, 2) + "\n", { mode: 0o600 });
+  writeOwnerCreds(home, creds);
   return creds;
 }
 function httpJson(
@@ -551,47 +588,135 @@ function waitForN8nHealth(
 }
 
 /**
+ * Attend que le routeur REST n8n soit monté. Sur n8n ≥ 2.x, healthz répond
+ * AVANT le montage des routes `/rest/*` : un login/setup lancé trop tôt part
+ * en 404 et l'owner n'est jamais provisionné (vécu 2.31.5 — setup vierge
+ * derrière le tunnel). Tout status ≠ 404 sur /rest/settings = routeur prêt.
+ */
+async function waitForN8nRestReady(
+  base: string,
+  timeoutMs: number,
+  log: (l: string) => void,
+): Promise<boolean> {
+  const deadline = Date.now() + timeoutMs;
+  let waited = false;
+  for (;;) {
+    try {
+      const res = await httpJson("GET", `${base}/rest/settings`);
+      if (res.status !== 404 && res.status < 500) {
+        if (waited) log("owner: routeur REST n8n prêt");
+        return true;
+      }
+    } catch {
+      /* n8n pas encore joignable */
+    }
+    if (Date.now() > deadline) {
+      log("owner: routeur REST n8n toujours indisponible (timeout)");
+      return false;
+    }
+    if (!waited) {
+      waited = true;
+      log("owner: attente du routeur REST n8n (healthz OK mais routes 404)…");
+    }
+    await new Promise((r) => setTimeout(r, 800));
+  }
+}
+
+/**
  * Provisionne l’owner si besoin + vérifie login (sans UI password).
+ * Retourne les creds RÉELLEMENT valides (env superadmin, ou fallback fichier
+ * si l'instance a été initialisée avec d'anciens creds), null si échec.
  */
 async function ensureOwnerSilent(
   uiUrl: string,
   creds: OwnerCreds,
   log: (l: string) => void,
-): Promise<boolean> {
+  fallback?: OwnerCreds | null,
+): Promise<OwnerCreds | null> {
   const base = uiUrl.replace(/\/$/, "");
-  try {
-    const login = await httpJson("POST", `${base}/rest/login`, {
-      emailOrLdapLoginId: creds.email,
-      password: creds.password,
+  const home = state.running?.homeDir || n8nHomeDir();
+  const tryLogin = async (c: OwnerCreds): Promise<boolean> => {
+    const res = await httpJson("POST", `${base}/rest/login`, {
+      emailOrLdapLoginId: c.email,
+      password: c.password,
     });
-    if (login.status >= 200 && login.status < 300) {
+    return res.status >= 200 && res.status < 300;
+  };
+  try {
+    await waitForN8nRestReady(base, 90_000, log);
+
+    if (await tryLogin(creds)) {
       state.ownerReady = true;
       log("owner: login OK (session silencieuse)");
-      return true;
+      writeOwnerCreds(home, creds);
+      return creds;
     }
 
-    const setup = await httpJson("POST", `${base}/rest/owner/setup`, {
+    let setup = await httpJson("POST", `${base}/rest/owner/setup`, {
       email: creds.email,
       password: creds.password,
       firstName: creds.firstName,
       lastName: creds.lastName,
     });
+    if (setup.status === 404) {
+      // Fenêtre résiduelle de montage du routeur — une seconde chance.
+      await new Promise((r) => setTimeout(r, 3000));
+      setup = await httpJson("POST", `${base}/rest/owner/setup`, {
+        email: creds.email,
+        password: creds.password,
+        firstName: creds.firstName,
+        lastName: creds.lastName,
+      });
+    }
     if (setup.status >= 200 && setup.status < 300) {
       state.ownerReady = true;
       log("owner: setup silencieux OK (pas de prompt UI)");
-      return true;
+      writeOwnerCreds(home, creds);
+      return creds;
+    }
+
+    // Instance déjà initialisée avec les creds fichier (ex. avant l'arrivée
+    // du superadmin flotte) : login fallback, puis rotation best-effort du
+    // mot de passe vers le superadmin pour converger.
+    if (fallback && fallback.password !== creds.password) {
+      const loginRes = await httpJson("POST", `${base}/rest/login`, {
+        emailOrLdapLoginId: fallback.email,
+        password: fallback.password,
+      });
+      if (loginRes.status >= 200 && loginRes.status < 300) {
+        state.ownerReady = true;
+        log("owner: login OK via creds locaux (instance pré-superadmin)");
+        const cookie = cookieHeaderFromSetCookie(loginRes.headers["set-cookie"]);
+        if (cookie && superadminEnvCreds()) {
+          for (const method of ["PATCH", "POST"]) {
+            const rot = await httpJson(
+              method,
+              `${base}/rest/me/password`,
+              { currentPassword: fallback.password, newPassword: creds.password },
+              { Cookie: cookie },
+            );
+            if (rot.status >= 200 && rot.status < 300) {
+              log("owner: mot de passe aligné sur le superadmin flotte");
+              writeOwnerCreds(home, { ...fallback, password: creds.password });
+              return { ...fallback, password: creds.password };
+            }
+          }
+          log("owner: rotation superadmin refusée — creds locaux conservés");
+        }
+        return fallback;
+      }
     }
 
     // Instance déjà initialisée avec d’autres creds — on log sans bloquer.
     log(
-      `owner: setup/login non conclusif (login=${login.status} setup=${setup.status}) — UI pourra demander un login`,
+      `owner: setup/login non conclusif (setup=${setup.status}) — UI pourra demander un login`,
     );
     state.ownerReady = false;
-    return false;
+    return null;
   } catch (e) {
     log(`owner: ${e instanceof Error ? e.message : String(e)}`);
     state.ownerReady = false;
-    return false;
+    return null;
   }
 }
 
@@ -639,10 +764,16 @@ async function prepareN8nUiSession(): Promise<{
       password: creds.password,
     });
     if (!(res.status >= 200 && res.status < 300)) {
-      await ensureOwnerSilent(uiUrl, creds, pushLog);
+      const working =
+        (await ensureOwnerSilent(
+          uiUrl,
+          creds,
+          pushLog,
+          readFileOwnerCreds(home),
+        )) || creds;
       res = await httpJson("POST", `${base}/rest/login`, {
-        emailOrLdapLoginId: creds.email,
-        password: creds.password,
+        emailOrLdapLoginId: working.email,
+        password: working.password,
       });
     }
     if (!(res.status >= 200 && res.status < 300)) {
@@ -825,21 +956,24 @@ async function startN8n(
     if (existing.ok && !desiredPublic && !opts.forceRestart) {
       log(`réutilise n8n déjà prêt sur ${existingUrl} (pas de re-spawn)`);
       state.lastError = null;
-      await ensureOwnerSilent(existingUrl, creds, log);
-      if (state.ownerReady) {
-        if (ctx.onN8nReady) {
+      const working = await ensureOwnerSilent(
+        existingUrl,
+        creds,
+        log,
+        readFileOwnerCreds(home),
+      );
+      if (working && ctx.onN8nReady) {
         try {
           await ctx.onN8nReady({
             uiUrl: existingUrl,
             homeDir: home,
-            email: creds.email,
-            password: creds.password,
+            email: working.email,
+            password: working.password,
             log,
           });
         } catch (e) {
           log("api-key: " + (e instanceof Error ? e.message : e));
         }
-      }
       }
       const publicBase = `${existingUrl.replace(/\/$/, "")}/`;
       const running: RunningN8n = {
@@ -1018,14 +1152,19 @@ async function startN8n(
       }
     }
 
-    await ensureOwnerSilent(uiUrl, creds, log);
-    if (state.ownerReady && ctx.onN8nReady) {
+    const workingCreds = await ensureOwnerSilent(
+      uiUrl,
+      creds,
+      log,
+      readFileOwnerCreds(home),
+    );
+    if (workingCreds && ctx.onN8nReady) {
       try {
         await ctx.onN8nReady({
           uiUrl,
           homeDir: home,
-          email: creds.email,
-          password: creds.password,
+          email: workingCreds.email,
+          password: workingCreds.password,
           log,
         });
       } catch (e) {

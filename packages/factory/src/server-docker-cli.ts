@@ -1913,6 +1913,11 @@ async function runRegistrySubcommand(
         // pas la surface loopback par défaut de l'image.
         extraEnv.CREEZIO_TUNNEL_LOCAL = "0";
       }
+      // Priorité : env process > .env racine marque (secrets locaux gitignorés)
+      // — permet de poser le superadmin flotte une fois au niveau du VPS.
+      const brandDotEnv = readEnvFileValues(
+        path.join(paths.brandRoot, ".env"),
+      );
       for (const key of [
         "CREEZIO_TUNNEL_PROVISION_URL",
         "CREEZIO_TUNNEL_PROVISION_TOKEN",
@@ -1921,12 +1926,16 @@ async function runRegistrySubcommand(
         "CREEZIO_CRASH_ENDPOINT",
         "CREEZIO_PLUGINS",
         "EMAIL_INBOUND_SECRET",
+        // Superadmin flotte uniforme : owner n8n auto + protection WebUI
+        // Hermes sur chaque serveur (jamais de valeur inventée — env hôte).
+        "CREEZIO_SUPERADMIN_EMAIL",
+        "CREEZIO_SUPERADMIN_PASSWORD",
         // Clés LLM assistant (chat serveur headless) — clé entreprise de la
         // marque, jamais inventée : forward uniquement si posée sur l'hôte.
         "OPENAI_API_KEY",
         "ANTHROPIC_API_KEY",
       ]) {
-        const v = (env[key] || "").trim();
+        const v = (env[key] || "").trim() || (brandDotEnv[key] || "").trim();
         if (v) extraEnv[key] = v;
       }
     } else if (args.profile) {

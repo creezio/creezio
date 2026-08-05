@@ -119,6 +119,18 @@ export type HermesHost = {
   __resetForTests: () => void;
 };
 
+/**
+ * Password WebUI en mode serveur : `HERMES_WEBUI_PASSWORD` explicite, sinon
+ * superadmin flotte (`CREEZIO_SUPERADMIN_PASSWORD`). null = desktop loopback
+ * (auth off, contrat gold sans prompt).
+ */
+export function serverWebuiPassword(): string | null {
+  const explicit = (process.env.HERMES_WEBUI_PASSWORD || "").trim();
+  if (explicit) return explicit;
+  const superadmin = (process.env.CREEZIO_SUPERADMIN_PASSWORD || "").trim();
+  return superadmin.length >= 12 ? superadmin : null;
+}
+
 /** Clear legacy generated WebUI password (gold: no login prompt on loopback). */
 export function clearGeneratedWebuiPassword(
   home: string,
@@ -485,13 +497,22 @@ async function spawnWebui(opts: {
   const webuiUrl = `http://127.0.0.1:${webuiPort}`;
   const stateDir = path.join(ctx.userDataDir, "hermes-webui-state");
   fs.mkdirSync(stateDir, { recursive: true });
-  clearGeneratedWebuiPassword(
-    opts.home,
-    stateDir,
-    ctx.secretFilePrefix || ctx.manifest.brandId,
-  ); // clearTempoflowGeneratedWebuiPassword gold
+  // Mode serveur/flotte : le WebUI est exposé publiquement via le tunnel
+  // (hermes.{slug}.{domaine}) → protection par le mécanisme natif Hermes
+  // (HERMES_WEBUI_PASSWORD = superadmin flotte). Desktop loopback : auth off
+  // (gold — pas de prompt).
+  const webuiPassword = serverWebuiPassword();
+  if (!webuiPassword) {
+    clearGeneratedWebuiPassword(
+      opts.home,
+      stateDir,
+      ctx.secretFilePrefix || ctx.manifest.brandId,
+    ); // clearTempoflowGeneratedWebuiPassword gold
+  }
 
-  opts.log(`spawn WebUI ${serverPy} → ${webuiUrl} (auth loopback désactivée)`);
+  opts.log(
+    `spawn WebUI ${serverPy} → ${webuiUrl} (${webuiPassword ? "auth superadmin flotte ACTIVE" : "auth loopback désactivée"})`,
+  );
   const sand = hermesSandboxPaths(opts.home);
   // Chat WebUI = runtime in-process (pas la gateway) → BYOK obligatoire ici aussi.
   const llm = store.getLlmKeys();
@@ -514,8 +535,10 @@ async function spawnWebui(opts: {
     // PATH confiné : venv Python Hermes + System32 — pas le PATH utilisateur.
     toolDirs: hermesToolPathDirs(path.dirname(python)),
   });
-  // Ne jamais propager un password hérité du process parent / anciens builds.
+  // Ne jamais propager un password hérité du process parent / anciens builds —
+  // sauf protection serveur explicite (superadmin flotte).
   delete childEnv.HERMES_WEBUI_PASSWORD;
+  if (webuiPassword) childEnv.HERMES_WEBUI_PASSWORD = webuiPassword;
   delete childEnv.OPENAI_API_KEY;
   delete childEnv.ANTHROPIC_API_KEY;
   if (llm.openai) childEnv.OPENAI_API_KEY = llm.openai;

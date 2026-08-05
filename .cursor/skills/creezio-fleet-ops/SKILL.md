@@ -33,6 +33,7 @@ Ports : auto 18790+n, bind `127.0.0.1` (exposition = `--expose`).
 | Builder / publier le client desktop | 7 |
 | Diagnostiquer un boot qui échoue | 8 |
 | Ne pas refaire un piège connu | 9 |
+| n8n / Hermes : superadmin, clé API, webhooks, MCP | 11 |
 
 ---
 
@@ -219,10 +220,20 @@ longues, d'où le contrat 202 + polling `update-status`. Registre requis
 
 ## 5. Admin flotte
 
+Deux plans (ADR `docs/adr/ADR-admin-app-os.md`) :
+
+1. **Backend flotte** (`creezio-server-admin`, Node pur, port 18800 loopback,
+   Basic) — SoT des gestes flotte, API `/admin/api/*`, ancienne UI `/admin`.
+2. **App admin** (repo dédié `{ADMIN_ROOT}`, ex. `creezio/tempoflow-admin`) —
+   app Creezio complète (mode admin) : login OS, sidebar, assistant, modules
+   Flotte (`/flotte`, proxy `/api/v1/modules/fleet/*` → backend), Tickets,
+   Prospects, Clients, Roadmap. Env : `CREEZIO_FLEET_BACKEND_URL` +
+   `CREEZIO_FLEET_BACKEND_BASIC` (container `--network host`).
+
 ```bash
 creezio server-docker admin up --admin-root "$ADMIN_ROOT" --brand-root "$BRAND_ROOT"
 # (raccourci marque : npm run server-docker:admin)
-# → http://127.0.0.1:18800/admin — et https://admin.tempoflow.fr (tunnel)
+# → http://127.0.0.1:18800/admin — backend flotte
 ADMPASS=$(python3 -c "import json;print(json.load(open('$ADMIN_ROOT/docker-data/server-admin.json'))['pass'])")
 curl -sS -u "admin:$ADMPASS" http://127.0.0.1:18800/admin/api/health
 # → {"ok":true,"service":"creezio-server-admin",…}
@@ -408,6 +419,51 @@ containers prod (restos, TF2 `crm.tempoflow.fr`, collector :8665). Ne jamais
 lancer `registry garbage-collect` pendant un push (risque de blobs
 manquants) — le timer s'en garde via son garde-fou. `docker system prune -a`
 interdit en cron : il supprimerait les images des serveurs arrêtés.
+
+## 11. n8n & Hermes embarqués (superadmin, clé API, webhooks, MCP, skills)
+
+**Objectif** : chaque serveur Docker embarque n8n + Hermes provisionnés
+automatiquement, avec un superadmin flotte uniforme.
+
+**Superadmin flotte** : env `CREEZIO_SUPERADMIN_EMAIL` /
+`CREEZIO_SUPERADMIN_PASSWORD` (≥ 12 chars) posés dans le `.env` racine de la
+marque (gitignoré) — `server-docker create --profile prod` les forward dans
+chaque container (avec `OPENAI_API_KEY`/`ANTHROPIC_API_KEY`). Valeurs de la
+flotte TF3 : `/home/deploy/.tf3-demo-credentials`.
+
+- **n8n owner** : créé au premier boot par `ensureOwnerSilent`
+  (`electron-shell/src/host/n8n/launcher.ts`) — attend `waitForN8nRestReady`
+  (`/rest/settings` ≠ 404 : sur n8n ≥ 2.x healthz répond AVANT le montage des
+  routes REST, un setup trop tôt part en 404 silencieux → page /setup vierge).
+  Login = superadmin env ; fallback creds fichier
+  (`/data/n8n-home/.{brand}-n8n-owner.json`) si l'instance a été initialisée
+  avant, avec rotation best-effort du password vers le superadmin.
+- **Clé API n8n** : provisionnée après l'owner (`ensureN8nApiKey`, scopes
+  workflow/credential/tag), stockée `/data/n8n-home/.{brand}-n8n-api-key.json`,
+  injectée dans l'env Hermes (`N8N_API_KEY` + `N8N_API_URL` + `N8N_BASE_URL`)
+  via `getHermesBridgeEnv` → skill `creezio-n8n` : Hermes crée des workflows
+  n8n directement (POST `{N8N_API_URL}/workflows`, header `X-N8N-API-KEY`).
+- **Webhooks publics** : `WEBHOOK_URL`/`N8N_EDITOR_BASE_URL` =
+  `https://n8n.{slug}.{domaine}` dès que le tunnel est up (log
+  `[n8n] WEBHOOK_URL / N8N_EDITOR_BASE_URL = …`). Test :
+  workflow webhook activé → `curl https://n8n.{slug}.{domaine}/webhook/<path>`.
+- **MCP n8n** : `N8N_MCP_ACCESS_ENABLED` posé par le launcher (parité TF2).
+- **Hermes WebUI protégé (mode serveur)** : `serverWebuiPassword()` —
+  `HERMES_WEBUI_PASSWORD` explicite sinon superadmin flotte ; sans auth :
+  302 `/login` + API 401. Desktop loopback reste sans prompt (contrat gold).
+- **Skills seedés au boot** (`seedHermesSkillsFromDirs`) : génériques kit
+  (`electron-shell/resources/vendor/hermes-skills/` : `creezio-n8n`,
+  `creezio-plugins` = workflow de création de plugins) + skills marque
+  (`{brandRoot}/server/vendor/hermes-skills/`, ex. `tempoflow3-context/crm`)
+  → `/data/hermes-home/skills/`.
+
+**Pièges** :
+
+| Piège | Règle |
+|---|---|
+| Segments home embeds | Les launchers utilisent `{userData}/n8n-home` et `{userData}/hermes-home` (SoT `platform-core/paths.ts`). `compose-brand-os` doit passer LES MÊMES segments — un `n8n`/`hermes` recomposé à la main casse silencieusement le bridge (clé API introuvable → `N8N_API_KEY` absent de l'env Hermes, vécu 0.3.6). |
+| Clé LLM serveur headless | `store.getLlmKeys()` = BYOK prioritaire, fallback env `OPENAI_API_KEY`/`ANTHROPIC_API_KEY` du container. Une clé placeholder posée au setup MASQUE la clé opérateur → supprimer `openaiApiKey` du `/data/{brand}-config.json` de l'instance. |
+| Env superadmin instances existantes | `servers.json` est root-owned : patcher le bloc `env` en sudo puis re-POST update admin (le recreate réinjecte l'env). |
 
 ## Ressources
 

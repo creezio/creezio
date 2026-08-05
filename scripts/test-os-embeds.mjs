@@ -106,3 +106,82 @@ test("embeds.vendors — runtime-manifest hermes + n8n", () => {
     assert.ok(m.decision || m.version || m.sha256 || m.webui);
   }
 });
+
+test("embeds.skills — skills génériques kit présents (creezio-n8n/plugins)", async () => {
+  const { kitHermesSkillsDir } = await import(
+    "../packages/electron-shell/dist/index.js"
+  );
+  for (const name of ["creezio-n8n", "creezio-plugins"]) {
+    const skill = path.join(kitHermesSkillsDir(), name, "SKILL.md");
+    assert.ok(fs.existsSync(skill), skill);
+    const body = fs.readFileSync(skill, "utf8");
+    assert.match(body, new RegExp(`name: ${name}`));
+    // Frontière : aucun métier marque dans les skills kit.
+    assert.ok(!/produits\?limit|releves|fournisseurs/.test(body), name);
+  }
+});
+
+test("embeds.skills — seedHermesSkillsFromDirs kit + marque idempotent", async () => {
+  const { kitHermesSkillsDir, seedHermesSkillsFromDirs } = await import(
+    "../packages/electron-shell/dist/index.js"
+  );
+  const tmp = fs.mkdtempSync(path.join(ROOT, ".tmp-skills-seed-"));
+  try {
+    const brandDir = path.join(tmp, "brand-skills");
+    fs.mkdirSync(path.join(brandDir, "demo-brand-crm"), { recursive: true });
+    fs.writeFileSync(
+      path.join(brandDir, "demo-brand-crm", "SKILL.md"),
+      "---\nname: demo-brand-crm\n---\n",
+    );
+    // Skill sans SKILL.md → skip explicite.
+    fs.mkdirSync(path.join(brandDir, "broken"), { recursive: true });
+    const home = path.join(tmp, "hermes-home");
+    const seeded = seedHermesSkillsFromDirs({
+      hermesHome: home,
+      dirs: [kitHermesSkillsDir(), brandDir],
+    });
+    assert.ok(seeded.includes("creezio-n8n"));
+    assert.ok(seeded.includes("creezio-plugins"));
+    assert.ok(seeded.includes("demo-brand-crm"));
+    assert.ok(!seeded.includes("broken"));
+    // Skill tiers préservé + re-seed idempotent.
+    fs.mkdirSync(path.join(home, "skills", "user-custom"), { recursive: true });
+    fs.writeFileSync(path.join(home, "skills", "user-custom", "SKILL.md"), "x");
+    seedHermesSkillsFromDirs({
+      hermesHome: home,
+      dirs: [kitHermesSkillsDir(), brandDir],
+    });
+    assert.ok(
+      fs.existsSync(path.join(home, "skills", "user-custom", "SKILL.md")),
+    );
+    assert.ok(
+      fs.existsSync(path.join(home, "skills", "creezio-plugins", "SKILL.md")),
+    );
+  } finally {
+    fs.rmSync(tmp, { recursive: true, force: true });
+  }
+});
+
+test("embeds.hermes — serverWebuiPassword (superadmin flotte)", async () => {
+  const { serverWebuiPassword } = await import(
+    "../packages/electron-shell/dist/index.js"
+  );
+  const prevPw = process.env.HERMES_WEBUI_PASSWORD;
+  const prevSa = process.env.CREEZIO_SUPERADMIN_PASSWORD;
+  try {
+    delete process.env.HERMES_WEBUI_PASSWORD;
+    delete process.env.CREEZIO_SUPERADMIN_PASSWORD;
+    assert.equal(serverWebuiPassword(), null);
+    process.env.CREEZIO_SUPERADMIN_PASSWORD = "short"; // < 12 → refusé
+    assert.equal(serverWebuiPassword(), null);
+    process.env.CREEZIO_SUPERADMIN_PASSWORD = "SuperAdmin-Flotte-123456";
+    assert.equal(serverWebuiPassword(), "SuperAdmin-Flotte-123456");
+    process.env.HERMES_WEBUI_PASSWORD = "explicit-override";
+    assert.equal(serverWebuiPassword(), "explicit-override");
+  } finally {
+    if (prevPw === undefined) delete process.env.HERMES_WEBUI_PASSWORD;
+    else process.env.HERMES_WEBUI_PASSWORD = prevPw;
+    if (prevSa === undefined) delete process.env.CREEZIO_SUPERADMIN_PASSWORD;
+    else process.env.CREEZIO_SUPERADMIN_PASSWORD = prevSa;
+  }
+});
