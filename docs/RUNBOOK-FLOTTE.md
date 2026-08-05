@@ -12,7 +12,9 @@ vérifiées sur le VPS TempoFlow.
 ## Table des matières (sections du skill)
 
 1. **Créer un serveur** — `creezio server-docker create` (+ `--profile prod`,
-   `--browser`), registre `docker-data/servers.json`, tunnel `{slug}.tempoflow.fr`
+   `--browser`), registre `docker-data/servers.json`, tunnel `{slug}.tempoflow.fr` ;
+   clé assistant : `OPENAI_API_KEY` hôte forwardée par `--profile prod`
+   (vérif `GET /api/v1/assistant/llm-status`)
 2. **Créer un compte owner / user en headless** — `POST /api/v1/os/setup`
    (local-config) **et** `migrateBrandCredentialsToKit` (`creezio_users`,
    core.db) ; collaborateurs via `POST /api/v1/platform/users`

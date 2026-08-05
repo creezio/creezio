@@ -160,6 +160,21 @@ function logLine(event: string, payload: Record<string, unknown>) {
   }
 }
 
+/**
+ * FK trace : les conversations peuvent vivre dans le store kit (core.db —
+ * C1) alors que les tables de trace restent dans la DB legacy. Miroir stub
+ * idempotent pour satisfaire `REFERENCES conversations(id)` dans les deux
+ * layouts (en legacy pur, la ligne existe déjà → IGNORE).
+ */
+function ensureTraceConversationRow(conversationId: string) {
+  const db = getAssistantDb();
+  const now = nowIso();
+  db.prepare(
+    `INSERT OR IGNORE INTO conversations (id, title, created_at, updated_at)
+     VALUES (?, 'Nouvelle conversation', ?, ?)`,
+  ).run(conversationId, now, now);
+}
+
 export function startAssistantRun(opts: {
   conversationId: string;
   userMessage: string;
@@ -168,6 +183,7 @@ export function startAssistantRun(opts: {
   meta?: Record<string, unknown>;
 }): string {
   ensureToolTraceTables();
+  ensureTraceConversationRow(opts.conversationId);
   const db = getAssistantDb();
   const id = randomUUID();
   const started = nowIso();

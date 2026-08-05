@@ -48,9 +48,19 @@ creezio server-docker create demo --brand-root "$BRAND_ROOT"
 CREEZIO_TUNNEL_PROVISION_URL=http://172.17.0.1:8666 \
 CREEZIO_TUNNEL_PROVISION_TOKEN=<token du service creezio-tunnel-provisioner> \
 CREEZIO_TUNNEL_SLUG=<slug> \
+OPENAI_API_KEY=<clé LLM entreprise de la marque> \
 creezio server-docker create <slug> --brand-root "$BRAND_ROOT" --profile prod
 
 # Variantes : --browser (Chromium sidecar IA), --warm, --port N, --expose, --env K=V
+
+# Assistant chat (serveur headless) : --profile prod forwarde OPENAI_API_KEY /
+# ANTHROPIC_API_KEY depuis l'env hôte s'ils sont posés (clé TF3 : dans
+# {BRAND_ROOT}/.env, gitignoré). Sans clé, POST /api/v1/assistant/chat répond
+# 503 LLM_KEYS_MISSING. Vérif :
+#   curl http://127.0.0.1:<port>/api/v1/assistant/llm-status  # assistantReady:true
+# Serveur existant sans clé : ajouter "OPENAI_API_KEY" dans env de l'instance
+# (docker-data/servers.json) puis re-POST update admin avec la même image —
+# le recreate réapplique l'env du registre (§4).
 ```
 
 **Vérification** :
