@@ -592,10 +592,15 @@ function waitForN8nHealth(
 }
 
 /**
- * Attend que le routeur REST n8n soit monté. Sur n8n ≥ 2.x, healthz répond
- * AVANT le montage des routes `/rest/*` : un login/setup lancé trop tôt part
- * en 404 et l'owner n'est jamais provisionné (vécu 2.31.5 — setup vierge
- * derrière le tunnel). Tout status ≠ 404 sur /rest/settings = routeur prêt.
+ * Attend que le routeur REST n8n soit RÉELLEMENT prêt : `/rest/settings`
+ * doit répondre 2xx avec `data.userManagement.showSetupOnFirstLoad` présent.
+ * Deux pièges vécus (2.31.5) :
+ * - healthz répond AVANT le montage des routes `/rest/*` (setup part en 404) ;
+ * - les routes répondent AVANT la fin de l'init DB : un POST /rest/owner/setup
+ *   dans cette fenêtre renvoie 200 mais l'écriture est PERDUE (le shell user
+ *   n'existe pas encore — vécu : setup « OK » à +7 s du spawn, owner absent,
+ *   login 401 ensuite). Le flag userManagement n'apparaît qu'une fois la DB
+ *   initialisée — c'est le signal fiable.
  */
 async function waitForN8nRestReady(
   base: string,
@@ -607,8 +612,12 @@ async function waitForN8nRestReady(
   for (;;) {
     try {
       const res = await httpJson("GET", `${base}/rest/settings`);
-      if (res.status !== 404 && res.status < 500) {
-        if (waited) log("owner: routeur REST n8n prêt");
+      if (
+        res.status >= 200 &&
+        res.status < 300 &&
+        n8nNeedsOwnerSetup(res.json) !== null
+      ) {
+        if (waited) log("owner: routeur REST n8n prêt (settings complets)");
         return true;
       }
     } catch {
@@ -620,7 +629,7 @@ async function waitForN8nRestReady(
     }
     if (!waited) {
       waited = true;
-      log("owner: attente du routeur REST n8n (healthz OK mais routes 404)…");
+      log("owner: attente du routeur REST n8n (init DB / settings incomplets)…");
     }
     await new Promise((r) => setTimeout(r, 800));
   }
@@ -668,25 +677,38 @@ async function ensureOwnerSilent(
       return creds;
     }
 
-    let setup = await httpJson("POST", `${base}/rest/owner/setup`, {
-      email: creds.email,
-      password: creds.password,
-      firstName: creds.firstName,
-      lastName: creds.lastName,
-    });
-    if (setup.status === 404) {
-      // Fenêtre résiduelle de montage du routeur — une seconde chance.
-      await new Promise((r) => setTimeout(r, 3000));
-      setup = await httpJson("POST", `${base}/rest/owner/setup`, {
+    // Setup avec VÉRIFICATION : un 2xx sur /rest/owner/setup pendant l'init
+    // DB peut être perdu (vécu : owner « créé » mais DB vierge, login 401).
+    // Seul un login réel (cookie n8n-auth) prouve que l'owner existe.
+    const doSetup = () =>
+      httpJson("POST", `${base}/rest/owner/setup`, {
         email: creds.email,
         password: creds.password,
         firstName: creds.firstName,
         lastName: creds.lastName,
       });
+    let setup = await doSetup();
+    for (let attempt = 0; attempt < 4; attempt++) {
+      if (setup.status >= 200 && setup.status < 300) {
+        if (await tryLogin(creds)) {
+          state.ownerReady = true;
+          log("owner: setup silencieux OK (login vérifié)");
+          writeOwnerCreds(home, creds);
+          return creds;
+        }
+        log(
+          "owner: setup 2xx mais login non vérifié (init DB en cours ?) — retry…",
+        );
+      } else if (setup.status !== 404) {
+        // 400 « already set up » ou autre erreur définitive — sortir du retry.
+        break;
+      }
+      await new Promise((r) => setTimeout(r, 3000));
+      setup = await doSetup();
     }
-    if (setup.status >= 200 && setup.status < 300) {
+    if (setup.status >= 200 && setup.status < 300 && (await tryLogin(creds))) {
       state.ownerReady = true;
-      log("owner: setup silencieux OK (pas de prompt UI)");
+      log("owner: setup silencieux OK (login vérifié)");
       writeOwnerCreds(home, creds);
       return creds;
     }
