@@ -202,10 +202,10 @@ Registry d'images versionnées (update de flotte) :
     [--keep-tags 5] [--no-retention]
     (build image versionnée <registry>/creezio-server-<brand>:<tag>
      + label/env version — /api/v1/core/version affiche <version>)
-    Rétention après push réussi : garde les N derniers tags (défaut 5,
+    Rétention après push réussi : garde les N derniers tags (défaut 2,
     env CREEZIO_PUBLISH_KEEP_TAGS) côté daemon local ET registre privé,
-    + docker builder prune --keep-storage (env CREEZIO_PUBLISH_KEEP_STORAGE,
-    défaut 12GB). Les blobs registre sont balayés par la GC planifiée hôte.
+    + docker builder prune --max-used-space (env CREEZIO_PUBLISH_KEEP_STORAGE,
+    défaut 5GB). Les blobs registre sont balayés par la GC planifiée hôte.
 
 Agent hôte flotte (VPS restaurant — exposé via agent.{slug}.{zone}) :
   creezio server-docker agent up --brand-root <app> [--port 18810]
@@ -1294,8 +1294,10 @@ async function runPublishSubcommand(
 
 /* ------------------------------------------------ rétention post-publish */
 
-const PUBLISH_KEEP_TAGS_DEFAULT = 5;
-const PUBLISH_KEEP_STORAGE_DEFAULT = "12GB";
+// Rétention agressive (décision 2026-08-06, disque VPS saturé à 91 %) :
+// 2 tags = version courante + rollback 1 cran ; cache builder plafonné 5GB.
+const PUBLISH_KEEP_TAGS_DEFAULT = 2;
+const PUBLISH_KEEP_STORAGE_DEFAULT = "5GB";
 
 /**
  * Compare deux tags version segment par segment (0.3.10 > 0.3.9 > 0.3.9-rc1).
@@ -1416,18 +1418,32 @@ async function runPublishRetention(opts: {
     }
   }
 
-  // 2. Build cache au-delà du keep-storage.
+  // 2. Build cache au-delà du budget. Attention sémantique BuildKit :
+  // `--keep-storage` (alias de --reserved-space) est un plancher « toujours
+  // autorisé » et ne purge donc JAMAIS tant que le cache prunable tient sous
+  // ce budget (vécu VPS TempoFlow : cache 23,5 Go, prune --keep-storage 12GB
+  // → « Total: 0B »). C'est `--max-used-space` qui plafonne réellement
+  // l'usage total ; fallback --keep-storage pour les daemons plus anciens.
   const keepStorage =
     (opts.env.CREEZIO_PUBLISH_KEEP_STORAGE || "").trim() ||
     PUBLISH_KEEP_STORAGE_DEFAULT;
-  const pr = spawnSync(
+  let pr = spawnSync(
     "docker",
-    ["builder", "prune", "--keep-storage", keepStorage, "-f"],
+    ["builder", "prune", "--max-used-space", keepStorage, "-f"],
     { encoding: "utf8" },
   );
+  let pruneFlag = "--max-used-space";
+  if (pr.status !== 0 && /unknown flag|unknown option/i.test(pr.stderr || "")) {
+    pruneFlag = "--keep-storage";
+    pr = spawnSync(
+      "docker",
+      ["builder", "prune", "--keep-storage", keepStorage, "-f"],
+      { encoding: "utf8" },
+    );
+  }
   if (pr.status === 0) {
     const total = (pr.stdout || "").trim().split("\n").pop() || "";
-    console.log(`✓ rétention build cache (--keep-storage ${keepStorage}) : ${total}`);
+    console.log(`✓ rétention build cache (${pruneFlag} ${keepStorage}) : ${total}`);
   } else {
     console.log("⚠ docker builder prune KO — cache non purgé");
   }

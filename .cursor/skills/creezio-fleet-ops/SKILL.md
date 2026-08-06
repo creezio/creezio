@@ -185,8 +185,8 @@ creezio server-docker publish --brand-root "$BRAND_ROOT" \
   --tag 0.2.2 --registry 127.0.0.1:5000
 # → 127.0.0.1:5000/creezio-server-tempoflow3:0.2.2
 #   /api/v1/core/version affichera 0.2.2 (CREEZIO_APP_VERSION)
-# Rétention auto après push : garde les 5 derniers tags (daemon + registre
-# privé) et prune le build cache (--keep-storage 12GB). Régler :
+# Rétention auto après push : garde les 2 derniers tags (daemon + registre
+# privé) et prune le build cache (--max-used-space 5GB). Régler :
 # --keep-tags N / CREEZIO_PUBLISH_KEEP_TAGS, CREEZIO_PUBLISH_KEEP_STORAGE ;
 # désactiver ponctuellement : --no-retention. Voir §10.
 
@@ -438,7 +438,7 @@ L'admin (§5) montre boot-status live, logs et ops par serveur sans SSH.
 
 **Objectif** : ne plus jamais saturer le disque du VPS avec les builds
 répétés du kit (build cache BuildKit + vieilles images versionnées dans le
-daemon et le registre `registry:2`). Trois mécanismes standard, en couches :
+daemon et le registre `registry:2`). Quatre mécanismes standard, en couches :
 
 1. **GC BuildKit native** (`/etc/docker/daemon.json`, appliquée au restart
    du daemon) :
@@ -460,6 +460,12 @@ daemon et le registre `registry:2`). Trois mécanismes standard, en couches :
    l'ancien `defaultKeepStorage` reste accepté = `defaultReservedSpace`.)
    Valider avant restart : `sudo dockerd --validate --config-file /etc/docker/daemon.json`.
 
+**Politique (décision 2026-08-06, disque saturé 91 %)** : après chaque
+publish/update on ne garde que **N=2 images** par app (version courante +
+rollback 1 cran, daemon ET registre) et **1 backup d'update** par serveur
+(`CREEZIO_UPDATE_BACKUP_KEEP`, prune dans le flux update `server-lib.mjs`
++ ceinture-bretelles au timer). Build cache plafonné à **5GB**.
+
 2. **Timer systemd quotidien** (VPS TempoFlow : `docker-disk-maintenance.timer`,
    04h30 UTC, script `/usr/local/sbin/docker-disk-maintenance.sh`) :
    - alerte journal (`logger`, prio warning) si usage disque `/` ≥ 85 % ;
@@ -467,24 +473,43 @@ daemon et le registre `registry:2`). Trois mécanismes standard, en couches :
      `server-docker publish` est en cours ;
    - `docker system prune -f` (**sans `-a`** : ne supprime jamais une image
      taguée, donc les images des serveurs à l'arrêt restent rollbackables) ;
-   - `docker builder prune --keep-storage 12GB -f` ;
-   - rétention registre : garde les 5 derniers tags par repo (tri version),
+   - `docker builder prune --max-used-space 5GB -f` (**pas** `--keep-storage`
+     = reserved-space : plancher qui ne purge JAMAIS sous le budget — vécu
+     cache 23,5 Go et « Total: 0B ») ;
+   - rétention registre : garde les 2 derniers tags par repo (tri version),
      DELETE des manifests plus vieux (digests partagés avec un tag conservé
-     protégés) puis `registry garbage-collect` dans le container
-     `creezio-registry` (blobs). Pré-requis : `REGISTRY_STORAGE_DELETE_ENABLED=true`.
-   - Réglages : `/etc/default/docker-disk-maintenance`
-     (`DOCKER_MAINT_KEEP_TAGS`, `_KEEP_STORAGE`, `_ALERT_PCT`, `_REGISTRY_URL`).
+     protégés), **purge des révisions orphelines** (les publish buildx
+     poussent un index OCI + attestation : supprimer le seul index laisse
+     des révisions enfants qui retiennent tous les blobs — vécu 17 Go pour
+     3 tags ; `--delete-untagged` est bugué avec ces index, ne pas l'utiliser)
+     puis `registry garbage-collect` dans le container `creezio-registry`
+     (blobs). Pré-requis : `REGISTRY_STORAGE_DELETE_ENABLED=true`.
+   - rétention backups d'update : 1 par instance dans
+     `/opt/docker/*/docker-data/backups` (`DOCKER_MAINT_BACKUP_KEEP`) ;
+   - rétention daemon : 2 tags par repo du registre local
+     (`DOCKER_MAINT_KEEP_DAEMON_TAGS`, images utilisées épargnées par rmi).
+   - Réglages : `/etc/default/docker-disk-maintenance` — sourcé AVANT les
+     défauts (`DOCKER_MAINT_KEEP_TAGS=2`, `_KEEP_DAEMON_TAGS=2`,
+     `_BACKUP_KEEP=1`, `_KEEP_STORAGE=5GB`, `_ALERT_PCT`, `_REGISTRY_URL`).
    - Suivi : `systemctl list-timers docker-disk-maintenance.timer` ;
      `sudo journalctl -u docker-disk-maintenance.service -n 50`.
 
 3. **Rétention dans le flux publish** (§4) : après chaque push réussi,
    `server-docker publish` supprime du daemon les vieilles images du même
-   repo au-delà des 5 derniers tags, prune le build cache et supprime les
-   vieux tags du registre privé (manifests ; blobs balayés par le timer).
-   Best-effort : ne fait jamais échouer le publish.
+   repo au-delà des 2 derniers tags, prune le build cache
+   (`--max-used-space 5GB`, fallback `--keep-storage` daemons anciens) et
+   supprime les vieux tags du registre privé (manifests ; blobs et révisions
+   orphelines balayés par le timer). Best-effort : ne fait jamais échouer le
+   publish.
 
-**Vérification** : `docker system df` (Build Cache sous le keep-storage),
-`df -h /` < 85 %, `curl -s http://127.0.0.1:5000/v2/<repo>/tags/list` ≤ 5 tags.
+4. **Rétention dans le flux update** : `backupInstanceData` puis
+   `pruneBackups` (garde `CREEZIO_UPDATE_BACKUP_KEEP` backups, défaut 1) —
+   embarqué dans `creezio-server-admin:local`/`creezio-host-agent:local`
+   (re-runner `admin up` + `agent up` après un pull kit).
+
+**Vérification** : `docker system df` (Build Cache ≤ 5GB),
+`df -h /` < 85 %, `curl -s http://127.0.0.1:5000/v2/<repo>/tags/list` ≤ 2 tags,
+1 seul `.tar.gz` par instance dans `docker-data/backups`.
 
 **Vérité** : `packages/factory/src/server-docker-cli.ts`
 (`runPublishRetention`, `selectTagsToPrune`) ; hôte : `/etc/docker/daemon.json`,

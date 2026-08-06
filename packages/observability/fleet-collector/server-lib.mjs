@@ -528,8 +528,19 @@ export function backupInstanceData(brandRoot, inst) {
   })();
 }
 
+/**
+ * Rétention backups d'update (défaut 1, env CREEZIO_UPDATE_BACKUP_KEEP ≥ 1).
+ * Chaque backup pèse ~la taille du volume /data compressé (vécu : 2,4 Go par
+ * resto) — sans borne le disque du VPS regonfle à chaque update de flotte.
+ * On ne garde que le DERNIER backup par serveur (décision 2026-08-06).
+ */
+export function updateBackupKeep() {
+  const n = Number.parseInt(process.env.CREEZIO_UPDATE_BACKUP_KEEP || "", 10);
+  return Number.isFinite(n) && n >= 1 ? n : 1;
+}
+
 /** Rétention simple : garder les N derniers backups d'une instance. */
-export function pruneBackups(brandRoot, instName, keep = 3) {
+export function pruneBackups(brandRoot, instName, keep = updateBackupKeep()) {
   try {
     const dir = backupsDir(brandRoot);
     const files = fs
