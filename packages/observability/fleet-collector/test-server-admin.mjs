@@ -208,6 +208,37 @@ try {
   const second = servers.json.servers.find((s) => s.name === "second");
   assert.equal(second.docker.state, "unknown");
 
+  // Snapshot flotte (F1) : refreshedAt présent, snapshot servi tel quel
+  // (2e appel immédiat = même refreshedAt), ?fresh=1 = collecte immédiate.
+  assert.ok(servers.json.refreshedAt, "refreshedAt attendu sur /servers");
+  const serversAgain = await req("GET", "/admin/api/servers", null, {
+    Authorization: BASIC,
+  });
+  assert.equal(
+    serversAgain.json.refreshedAt,
+    servers.json.refreshedAt,
+    "sans fresh=1 le snapshot est servi tel quel (pas de recollecte)",
+  );
+  await new Promise((r) => setTimeout(r, 15));
+  const serversFresh = await req("GET", "/admin/api/servers?fresh=1", null, {
+    Authorization: BASIC,
+  });
+  assert.equal(serversFresh.status, 200);
+  assert.equal(serversFresh.json.servers.length, 2);
+  assert.ok(
+    serversFresh.json.refreshedAt > servers.json.refreshedAt,
+    "?fresh=1 force une collecte immédiate (refreshedAt avance)",
+  );
+
+  // Hosts : snapshot + refreshedAt (aucun hôte enrôlé dans la fixture).
+  const hosts = await req("GET", "/admin/api/hosts", null, {
+    Authorization: BASIC,
+  });
+  assert.equal(hosts.status, 200);
+  assert.equal(hosts.json.ok, true);
+  assert.deepEqual(hosts.json.hosts, []);
+  assert.ok(hosts.json.refreshedAt, "refreshedAt attendu sur /hosts");
+
   // Ops JSONL : événements parsés, lignes invalides ignorées.
   const ops = await req(
     "GET",
@@ -241,6 +272,16 @@ try {
     "taille data demo > 0 (fixtures ops)",
   );
   assert.ok(disk.json.filesystem.freeBytes > 0);
+  assert.ok(disk.json.refreshedAt, "refreshedAt attendu sur /disk");
+  await new Promise((r) => setTimeout(r, 15));
+  const diskFresh = await req("GET", "/admin/api/disk?fresh=1", null, {
+    Authorization: BASIC,
+  });
+  assert.equal(diskFresh.status, 200);
+  assert.ok(
+    diskFresh.json.refreshedAt > disk.json.refreshedAt,
+    "?fresh=1 force un scan disque immédiat",
+  );
 
   // Instance inconnue → 404.
   const notFound = await req(
@@ -337,4 +378,69 @@ try {
   } finally {
     fs.rmSync(tmp, { recursive: true, force: true });
   }
+}
+
+// ── dirSizeBytes / buildDiskReport asynchrones (F1) : fs.promises, plus de
+// readdirSync/statSync récursifs qui gèlent l'event loop mono-thread.
+{
+  const { dirSizeBytes, buildDiskReport } = await import("./server-lib.mjs");
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "creezio-disk-"));
+  try {
+    fs.mkdirSync(path.join(tmp, "sub"), { recursive: true });
+    fs.writeFileSync(path.join(tmp, "a.bin"), "12345");
+    fs.writeFileSync(path.join(tmp, "sub", "b.bin"), "1234567890");
+    const p = dirSizeBytes(tmp);
+    assert.ok(p instanceof Promise, "dirSizeBytes doit être asynchrone");
+    assert.equal(await p, 15);
+    const report = buildDiskReport([]);
+    assert.ok(report instanceof Promise, "buildDiskReport doit être asynchrone");
+    assert.equal((await report).ok, true);
+    console.log("OK — dirSizeBytes/buildDiskReport async");
+  } finally {
+    fs.rmSync(tmp, { recursive: true, force: true });
+  }
+}
+
+// ── createFleetSnapshotPoller (F1) : jamais réentrant (cycle en cours
+// réutilisé), refresh forcé après cycle, scan disque séparé.
+{
+  const { createFleetSnapshotPoller } = await import("./server-lib.mjs");
+  let coreCalls = 0;
+  let diskCalls = 0;
+  let release;
+  const gate = new Promise((r) => (release = r));
+  const poller = createFleetSnapshotPoller({
+    collectServersView: async () => {
+      coreCalls += 1;
+      await gate;
+      return { docker: true, servers: [{ name: "x" }] };
+    },
+    collectHostsView: async () => [{ hostId: "h1" }],
+    collectDiskView: async () => {
+      diskCalls += 1;
+      return { ok: true, instances: [], filesystem: null };
+    },
+    intervalMs: 3_600_000,
+  });
+  // 3 refresh concurrents pendant qu'un cycle est en cours → 1 seule collecte.
+  const p1 = poller.refreshCore();
+  const p2 = poller.refreshCore();
+  const p3 = poller.refreshCore();
+  assert.equal(coreCalls, 1, "cycle en cours réutilisé (jamais réentrant)");
+  release();
+  await Promise.all([p1, p2, p3]);
+  assert.equal(coreCalls, 1);
+  assert.equal(poller.snapshot.servers.docker, true);
+  assert.deepEqual(poller.snapshot.hosts, [{ hostId: "h1" }]);
+  assert.ok(poller.snapshot.refreshedAt);
+  // Cycle terminé : un nouveau refresh relance bien une collecte.
+  await poller.refreshCore();
+  assert.equal(coreCalls, 2);
+  // Scan disque indépendant du cycle core (cadence 1/N côté poller).
+  assert.equal(diskCalls, 0);
+  await poller.refreshDisk();
+  assert.equal(diskCalls, 1);
+  assert.ok(poller.snapshot.diskRefreshedAt);
+  poller.stop();
+  console.log("OK — createFleetSnapshotPoller (non réentrant, snapshot)");
 }

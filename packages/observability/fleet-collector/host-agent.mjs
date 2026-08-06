@@ -332,7 +332,7 @@ async function handle(req, res) {
   }
 
   if (req.method === "GET" && p === "/agent/api/disk") {
-    return send(res, 200, buildDiskReport(BRAND_ROOTS));
+    return send(res, 200, await buildDiskReport(BRAND_ROOTS));
   }
 
   // /agent/api/servers/<brandId>/<name>/support[/*] → relais vers le mount

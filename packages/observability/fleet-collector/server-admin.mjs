@@ -46,6 +46,7 @@ import {
 import {
   buildDiskReport,
   collectServers,
+  createFleetSnapshotPoller,
   createServer,
   fetchJson,
   findInstance,
@@ -248,6 +249,90 @@ function touchHostSeen(hostId) {
   }
 }
 
+/* ------------------------------------------------- snapshot flotte (F1) */
+
+/** Vue consolidée serveurs : locaux (socket Docker) + hôtes distants (agents). */
+async function collectServersView() {
+  const { servers, docker } = await collectServers(BRAND_ROOTS);
+  const local = servers.map((s) => ({ ...s, hostId: "local", hostLabel: "local" }));
+  const data = loadFleetHosts();
+  const remoteLists = await Promise.all(
+    data.hosts.map(async (h) => {
+      try {
+        const r = await agentCall(h, "GET", "/agent/api/servers");
+        if (r.status === 200 && r.json?.ok) {
+          touchHostSeen(h.hostId);
+          return (r.json.servers || []).map((s) => ({
+            ...s,
+            hostId: h.hostId,
+            hostLabel: h.label,
+          }));
+        }
+      } catch {
+        /* hôte injoignable — signalé via /admin/api/hosts */
+      }
+      return [];
+    }),
+  );
+  // Dédup : un hôte enrôlé peut être CE VPS (self-enroll) — le même
+  // container ne doit apparaître qu'une fois, rattaché à l'hôte enrôlé.
+  const merged = new Map();
+  for (const s of [...local, ...remoteLists.flat()]) {
+    const key = `${s.brandId}/${s.containerName || s.name}`;
+    const prev = merged.get(key);
+    if (!prev || prev.hostId === "local") merged.set(key, s);
+  }
+  return { docker, servers: [...merged.values()] };
+}
+
+/** Vue hôtes enrôlés : probe /agent/api/health de chaque agent. */
+async function collectHostsView() {
+  const data = loadFleetHosts();
+  return Promise.all(
+    data.hosts.map(async (h) => {
+      let live = null;
+      try {
+        const r = await agentCall(h, "GET", "/agent/api/health", null, 3500);
+        if (r.status === 200 && r.json?.ok) {
+          live = r.json;
+          touchHostSeen(h.hostId);
+        }
+      } catch {
+        /* hôte injoignable */
+      }
+      return {
+        hostId: h.hostId,
+        label: h.label,
+        agentUrl: h.agentUrl,
+        enrolledAt: h.enrolledAt,
+        lastSeen: h.lastSeen || null,
+        online: Boolean(live),
+        live,
+      };
+    }),
+  );
+}
+
+/**
+ * Snapshot en mémoire {servers, hosts, disk, refreshedAt} — les routes GET
+ * servers/hosts/disk répondent instantanément depuis ce snapshot ; `?fresh=1`
+ * force une collecte immédiate. Poller ~30 s, jamais réentrant, scan disque
+ * 1 cycle sur 4 (voir createFleetSnapshotPoller, server-lib.mjs).
+ */
+const fleetSnapshot = createFleetSnapshotPoller({
+  collectServersView,
+  collectHostsView,
+  collectDiskView: () => buildDiskReport(BRAND_ROOTS),
+  intervalMs: Number(process.env.CREEZIO_ADMIN_SNAPSHOT_INTERVAL_MS || 30_000),
+  diskEveryNCycles: 4,
+  onError: (e) => console.error("[server-admin] snapshot", e?.message || e),
+});
+
+/** Après un geste mutateur (create/rm/start/stop/update) : resync best-effort. */
+function requestSnapshotRefresh() {
+  fleetSnapshot.refreshCore();
+}
+
 /* --------------------------------------------------------- routes local */
 
 /**
@@ -263,6 +348,7 @@ async function handleInstanceRoute(req, res, url, brandId, name, action) {
     if (!found) return send(res, 404, { ok: false, error: "instance inconnue" });
     await startContainer(found.inst.containerName);
     audit(`start brand=${brandId} name=${name}`);
+    requestSnapshotRefresh();
     return send(res, 200, { ok: true });
   }
 
@@ -270,6 +356,7 @@ async function handleInstanceRoute(req, res, url, brandId, name, action) {
     if (!found) return send(res, 404, { ok: false, error: "instance inconnue" });
     await stopContainer(found.inst.containerName);
     audit(`stop brand=${brandId} name=${name}`);
+    requestSnapshotRefresh();
     return send(res, 200, { ok: true });
   }
 
@@ -305,6 +392,7 @@ async function handleInstanceRoute(req, res, url, brandId, name, action) {
         entry.status = r.ok ? "done" : "error";
         entry.finishedAt = new Date().toISOString();
         entry.result = r;
+        requestSnapshotRefresh();
       })
       .catch((e) => {
         entry.status = "error";
@@ -344,6 +432,7 @@ async function handleInstanceRoute(req, res, url, brandId, name, action) {
       }
     }
     audit(`rm brand=${brandId} name=${name} purgeData=${purge}`);
+    requestSnapshotRefresh();
     return send(res, 200, { ok: true, purgedData: purge });
   }
 
@@ -419,33 +508,16 @@ async function handleHostsRoute(req, res, url) {
   const p = url.pathname;
 
   if (req.method === "GET" && p === "/admin/api/hosts") {
+    // Snapshot poller (F1) : probes agents servies depuis le snapshot ;
+    // enrollTokens lus à chaque appel (pas de latence, doit être frais).
+    if (url.searchParams.get("fresh") === "1" || !fleetSnapshot.snapshot.hosts) {
+      await fleetSnapshot.refreshCore();
+    }
     const data = loadFleetHosts();
-    const hosts = await Promise.all(
-      data.hosts.map(async (h) => {
-        let live = null;
-        try {
-          const r = await agentCall(h, "GET", "/agent/api/health", null, 3500);
-          if (r.status === 200 && r.json?.ok) {
-            live = r.json;
-            touchHostSeen(h.hostId);
-          }
-        } catch {
-          /* hôte injoignable */
-        }
-        return {
-          hostId: h.hostId,
-          label: h.label,
-          agentUrl: h.agentUrl,
-          enrolledAt: h.enrolledAt,
-          lastSeen: h.lastSeen || null,
-          online: Boolean(live),
-          live,
-        };
-      }),
-    );
     return send(res, 200, {
       ok: true,
-      hosts,
+      hosts: fleetSnapshot.snapshot.hosts || [],
+      refreshedAt: fleetSnapshot.snapshot.refreshedAt,
       enrollTokens: data.enrollTokens.map((t) => ({
         id: t.id,
         label: t.label,
@@ -662,40 +734,16 @@ async function handleAdmin(req, res, url) {
   }
 
   if (req.method === "GET" && p === "/admin/api/servers") {
-    const { servers, docker } = await collectServers(BRAND_ROOTS);
-    const local = servers.map((s) => ({ ...s, hostId: "local", hostLabel: "local" }));
-    // Vue consolidée : serveurs des hôtes distants via leurs agents.
-    const data = loadFleetHosts();
-    const remoteLists = await Promise.all(
-      data.hosts.map(async (h) => {
-        try {
-          const r = await agentCall(h, "GET", "/agent/api/servers");
-          if (r.status === 200 && r.json?.ok) {
-            touchHostSeen(h.hostId);
-            return (r.json.servers || []).map((s) => ({
-              ...s,
-              hostId: h.hostId,
-              hostLabel: h.label,
-            }));
-          }
-        } catch {
-          /* hôte injoignable — signalé via /admin/api/hosts */
-        }
-        return [];
-      }),
-    );
-    // Dédup : un hôte enrôlé peut être CE VPS (self-enroll) — le même
-    // container ne doit apparaître qu'une fois, rattaché à l'hôte enrôlé.
-    const merged = new Map();
-    for (const s of [...local, ...remoteLists.flat()]) {
-      const key = `${s.brandId}/${s.containerName || s.name}`;
-      const prev = merged.get(key);
-      if (!prev || prev.hostId === "local") merged.set(key, s);
+    // Snapshot poller (F1) : réponse instantanée ; ?fresh=1 = collecte immédiate.
+    if (url.searchParams.get("fresh") === "1" || !fleetSnapshot.snapshot.servers) {
+      await fleetSnapshot.refreshCore();
     }
+    const view = fleetSnapshot.snapshot.servers || { docker: false, servers: [] };
     return send(res, 200, {
       ok: true,
-      docker,
-      servers: [...merged.values()],
+      docker: view.docker,
+      servers: view.servers,
+      refreshedAt: fleetSnapshot.snapshot.refreshedAt,
     });
   }
 
@@ -708,6 +756,7 @@ async function handleAdmin(req, res, url) {
     }
     try {
       const r = await createServer(BRAND_ROOTS, body, audit);
+      if (r.out?.ok) requestSnapshotRefresh();
       return send(res, r.code, r.out);
     } catch (e) {
       audit(`create KO: ${e?.message || e}`);
@@ -716,7 +765,15 @@ async function handleAdmin(req, res, url) {
   }
 
   if (req.method === "GET" && p === "/admin/api/disk") {
-    return send(res, 200, buildDiskReport(BRAND_ROOTS));
+    // Snapshot poller (F1) : scan disque async 1 cycle sur 4 ; ?fresh=1 force.
+    if (url.searchParams.get("fresh") === "1" || !fleetSnapshot.snapshot.disk) {
+      await fleetSnapshot.refreshDisk();
+    }
+    const disk = fleetSnapshot.snapshot.disk || { ok: true, instances: [], filesystem: null };
+    return send(res, 200, {
+      ...disk,
+      refreshedAt: fleetSnapshot.snapshot.diskRefreshedAt,
+    });
   }
 
   if (req.method === "GET" && p === "/admin/api/registry/tags") {
@@ -808,4 +865,6 @@ server.listen(PORT, HOST, () => {
   console.log(
     `[server-admin] écoute ${HOST}:${PORT} brandRoots=${BRAND_ROOTS.join(",") || "(aucun)"} adminRoot=${ADMIN_ROOT} sock=${process.env.CREEZIO_DOCKER_SOCK || "/var/run/docker.sock"}`,
   );
+  // Snapshot flotte (F1) : premier cycle immédiat, puis poller ~30 s.
+  fleetSnapshot.start();
 });

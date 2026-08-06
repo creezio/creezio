@@ -718,22 +718,30 @@ export function readOpsEvents(brandRoot, inst, limit) {
   }
 }
 
-/** Taille récursive avec garde-fou (max entrées, pas de symlinks). */
-export function dirSizeBytes(dir, budget = { entries: 200_000 }) {
+/**
+ * Taille récursive ASYNCHRONE avec garde-fou (max entrées, pas de symlinks).
+ * fs.promises + yield périodique (setImmediate ~toutes les 500 entrées) :
+ * un gros /data ne doit JAMAIS geler l'event loop mono-thread de l'admin.
+ */
+export async function dirSizeBytes(dir, budget = { entries: 200_000 }) {
   let total = 0;
   let entries;
   try {
-    entries = fs.readdirSync(dir, { withFileTypes: true });
+    entries = await fs.promises.readdir(dir, { withFileTypes: true });
   } catch {
     return 0;
   }
   for (const e of entries) {
-    if (budget.entries-- <= 0) return total;
+    budget.entries -= 1;
+    if (budget.entries <= 0) return total;
+    if (budget.entries % 500 === 0) {
+      await new Promise((r) => setImmediate(r));
+    }
     const full = path.join(dir, e.name);
     try {
       if (e.isSymbolicLink()) continue;
-      if (e.isDirectory()) total += dirSizeBytes(full, budget);
-      else if (e.isFile()) total += fs.statSync(full).size;
+      if (e.isDirectory()) total += await dirSizeBytes(full, budget);
+      else if (e.isFile()) total += (await fs.promises.stat(full)).size;
     } catch {
       /* fichier disparu */
     }
@@ -741,7 +749,7 @@ export function dirSizeBytes(dir, budget = { entries: 200_000 }) {
   return total;
 }
 
-export function buildDiskReport(brandRoots) {
+export async function buildDiskReport(brandRoots) {
   const instances = [];
   for (const brandRoot of brandRoots) {
     const registry = loadRegistry(brandRoot);
@@ -750,7 +758,7 @@ export function buildDiskReport(brandRoots) {
         brandId: registry.brandId,
         name: inst.name,
         dataDir: inst.dataDir,
-        sizeBytes: dirSizeBytes(instanceDataDirAbs(brandRoot, inst)),
+        sizeBytes: await dirSizeBytes(instanceDataDirAbs(brandRoot, inst)),
       });
     }
   }
@@ -768,6 +776,96 @@ export function buildDiskReport(brandRoots) {
     }
   }
   return { ok: true, instances, filesystem: fsInfo };
+}
+
+/* ------------------------------------------------- snapshot flotte (F1) */
+
+/**
+ * Poller interne : matérialise en mémoire un snapshot {servers, hosts, disk,
+ * refreshedAt} en appelant les collecteurs injectés. Les routes GET de
+ * l'admin répondent depuis ce snapshot (instantané) au lieu de refaire des
+ * healthchecks synchrones à chaque appel (UI = refresh toutes les 5 s).
+ *
+ * Contrat :
+ *  - premier cycle immédiat au `start()` (disque compris) ;
+ *  - jamais réentrant : un cycle (ou scan disque) en cours est réutilisé,
+ *    pas relancé (flag « cycle en cours » = promesse in-flight) ;
+ *  - le scan disque tourne 1 cycle sur `diskEveryNCycles` (plus lourd) ;
+ *  - `refreshCore()` / `refreshDisk()` forcent une collecte immédiate
+ *    (param `?fresh=1` côté routes).
+ */
+export function createFleetSnapshotPoller({
+  collectServersView,
+  collectHostsView,
+  collectDiskView,
+  intervalMs = 30_000,
+  diskEveryNCycles = 4,
+  onError = () => {},
+}) {
+  const snapshot = {
+    servers: null, // { docker, servers }
+    hosts: null, // [ { hostId, … } ]
+    disk: null, // { ok, instances, filesystem }
+    refreshedAt: null,
+    diskRefreshedAt: null,
+  };
+  let coreInFlight = null;
+  let diskInFlight = null;
+  let cycleCount = 0;
+  let timer = null;
+
+  function refreshCore() {
+    if (coreInFlight) return coreInFlight;
+    coreInFlight = (async () => {
+      try {
+        const [serversView, hosts] = await Promise.all([
+          collectServersView(),
+          collectHostsView ? collectHostsView() : null,
+        ]);
+        snapshot.servers = serversView;
+        if (collectHostsView) snapshot.hosts = hosts;
+        snapshot.refreshedAt = new Date().toISOString();
+      } catch (e) {
+        onError(e);
+      } finally {
+        coreInFlight = null;
+      }
+    })();
+    return coreInFlight;
+  }
+
+  function refreshDisk() {
+    if (diskInFlight) return diskInFlight;
+    diskInFlight = (async () => {
+      try {
+        snapshot.disk = await collectDiskView();
+        snapshot.diskRefreshedAt = new Date().toISOString();
+      } catch (e) {
+        onError(e);
+      } finally {
+        diskInFlight = null;
+      }
+    })();
+    return diskInFlight;
+  }
+
+  function start() {
+    refreshCore();
+    refreshDisk();
+    timer = setInterval(() => {
+      cycleCount += 1;
+      refreshCore();
+      if (cycleCount % diskEveryNCycles === 0) refreshDisk();
+    }, intervalMs);
+    timer.unref?.();
+  }
+
+  function stop() {
+    if (timer) clearInterval(timer);
+    timer = null;
+  }
+
+  return { snapshot, refreshCore, refreshDisk, start, stop };
 }
 
 /* ------------------------------------------------------- tokens (Bearer) */
