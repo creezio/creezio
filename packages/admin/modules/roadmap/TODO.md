@@ -17,18 +17,18 @@
   - [ ] client générique (liste par statut/jalon, création, édition) sur primitives kit, labels marque en props
   - [ ] adopté par au moins une app admin sans style ad hoc
 
-### [todo] ROAD-3 — Validation serveur `titre` requis
-- scope: BUG — dysfonctionnement réel, correctif autorisé (aucun changement de comportement au-delà du fix)
+### [done] ROAD-3 — Validation serveur `titre` requis
+- done: 2026-08-06
 - priorite: P3
 - depends: aucune
 - fichiers: packages/admin/src/index.ts
 - criteres:
-  - [ ] POST sans `titre` non vide → 400 normalisé (pas d'erreur SQLite brute)
+  - [x] POST sans `titre` non vide → 400 `titre_required`
 
-### [todo] ROAD-4 — Gate kit dédiée au CRUD roadmap
-- scope: HORS-SCOPE — évolution/refactor/UI/décision : NE PAS réaliser sans demande explicite du propriétaire (l'app est considérée fonctionnelle telle quelle)
+### [done] ROAD-4 — Gate kit dédiée au CRUD roadmap
+- done: 2026-08-06
 - priorite: P3
 - depends: aucune
-- fichiers: scripts/ (gate à créer)
+- fichiers: scripts/test-phase-admin-roadmap.mjs
 - criteres:
-  - [ ] gate node --test : CRUD + tri position sur DB better-sqlite3 avec adminMigrations()
+  - [x] gate node --test : CRUD + tri position + validation titre

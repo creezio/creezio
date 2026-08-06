@@ -370,6 +370,19 @@ export function createAdminCrudMount(kind: keyof typeof CRUD_SQL_TABLE): ApiMoun
 
       if (!parts.length && method === "POST") {
         const body = (req.body || {}) as Record<string, unknown>;
+        // PROSP-3 / ROAD-3 — validations métier avant INSERT (éviter 500 SQLite).
+        if (kind === "prospects" && !String(body.nom || "").trim()) {
+          return {
+            status: 400,
+            body: { ok: false, error: "nom_required" },
+          };
+        }
+        if (kind === "roadmap" && !String(body.titre || "").trim()) {
+          return {
+            status: 400,
+            body: { ok: false, error: "titre_required" },
+          };
+        }
         const id = String(body.id || newId());
         const ts = nowIso();
         const values: Record<string, unknown> = {
