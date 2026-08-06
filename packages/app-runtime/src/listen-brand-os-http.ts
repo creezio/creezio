@@ -29,6 +29,7 @@ import {
   emailSurfaceHandlesPath,
   mountBrandEmailSurface,
 } from "./mount-brand-email-surface.js";
+import { assertModuleMountSession } from "./module-mount-auth.js";
 
 export type BrandOsHttpHandle = {
   port: number;
@@ -992,6 +993,17 @@ export async function listenBrandOsHttp(opts: {
         // Body non-JSON (multipart / texte) : le kernel n'en veut pas, mais
         // le plane UI marque (fallthrough) peut le consommer tel quel.
         body = undefined;
+      }
+      // F3 / DASH-5 — mounts `/api/v1/modules/*` : session obligatoire sauf
+      // allowlist (webhooks, register/heartbeat, agent releases, LP public).
+      const moduleAuth = await assertModuleMountSession({
+        method: req.method || "GET",
+        pathname,
+        headers: req.headers,
+      });
+      if (!moduleAuth.ok) {
+        send(res, moduleAuth.status, moduleAuth.body);
+        return;
       }
       const result = await opts.api.handle({
         method: req.method || "GET",

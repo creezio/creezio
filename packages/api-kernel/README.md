@@ -352,18 +352,15 @@ validées avant le check d'existence » en PATCH) est verrouillée par la gate.
 
 ### Modèle d'auth des mounts (à connaître)
 
-Le kernel ne porte **aucune primitive session/actor** pour les mounts :
-`/api/v1/modules/*` et `/api/v1/platform/*` répondent à quiconque atteint la
-surface HTTP (posture historique loopback-first — le desktop et le harness
-écoutent en loopback, l'auth session vit dans les surfaces plateforme
-`@creezio/auth` / `mount-brand-platform-surface`). Sur un serveur exposé par
-tunnel public, les mounts modules sont donc atteignables sans session :
-c'est une dette documentée (constat F3, posture préexistante) — voir
-[docs/BACKLOG.md](../../docs/BACKLOG.md) « Mounts modules sans session
-HTTP ». Un mount qui traite des données sensibles doit porter sa propre
-garde (Bearer, secret signé), comme `fleet-registry`
-(`register`/`heartbeat`) et `fleet-releases` (`@creezio/admin`), ou les
-webhooks signés billing.
+Le kernel ne porte **aucune primitive session/actor** (framework-agnostique).
+La bordure HTTP `listenBrandOsHttp` (`@creezio/app-runtime`) impose une
+**session cookie / Bearer JWT** sur `/api/v1/modules/*`, avec allowlist des
+chemins machine/public (webhooks signés, `fleet-registry`
+register/heartbeat, agent `fleet-releases`, `landing/public`) — gate
+`test-phase-module-mount-session.mjs`. Les appels in-process
+(`api.handle` direct) ne passent pas par cette garde. `/api/v1/platform/*`
+reste hors périmètre F3 (surfaces Hono dédiées). Un mount peut toujours
+ajouter sa propre garde machine en plus.
 
 ### Adaptateur Hono
 

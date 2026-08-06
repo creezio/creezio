@@ -54,6 +54,15 @@ export {
   type BrandOsHttpHandle,
 } from "./listen-brand-os-http.js";
 export {
+  PUBLIC_MODULE_PATHS,
+  assertModuleMountSession,
+  isModuleApiPath,
+  isPublicModulePath,
+  sessionFromNodeHeaders,
+  type ModuleMountAuthDecision,
+  type PublicModulePathRule,
+} from "./module-mount-auth.js";
+export {
   startBrandUiPlane,
   hasBrandUiPlane,
   type BrandUiPlaneHandle,
