@@ -42,17 +42,17 @@ Racine : [../README.md](../README.md) · [../AGENTS.md](../AGENTS.md)
 | `@creezio/assistant` | [README](../packages/assistant/README.md) | [AGENTS](../packages/assistant/AGENTS.md) | [FILES](../packages/assistant/docs/FILES.md) |
 | `@creezio/tasks` | [README](../packages/tasks/README.md) | [AGENTS](../packages/tasks/AGENTS.md) | [FILES](../packages/tasks/docs/FILES.md) |
 | `@creezio/mails` | [README](../packages/mails/README.md) | [AGENTS](../packages/mails/AGENTS.md) | [FILES](../packages/mails/docs/FILES.md) |
-| `@creezio/support` | [README](../packages/support/README.md) | [AGENTS](../packages/support/AGENTS.md) | — |
+| `@creezio/support` | [README](../packages/support/README.md) | [AGENTS](../packages/support/AGENTS.md) | [FILES](../packages/support/docs/FILES.md) |
 | `@creezio/integrations` | [README](../packages/integrations/README.md) | [AGENTS](../packages/integrations/AGENTS.md) | [FILES](../packages/integrations/docs/FILES.md) |
 | `@creezio/observability` | [README](../packages/observability/README.md) | [AGENTS](../packages/observability/AGENTS.md) | [FILES](../packages/observability/docs/FILES.md) |
-| `@creezio/admin` | [README](../packages/admin/README.md) | [AGENTS](../packages/admin/AGENTS.md) | — |
+| `@creezio/admin` | [README](../packages/admin/README.md) | [AGENTS](../packages/admin/AGENTS.md) | [FILES](../packages/admin/docs/FILES.md) |
 | `@creezio/database` | [README](../packages/database/README.md) | [AGENTS](../packages/database/AGENTS.md) | [FILES](../packages/database/docs/FILES.md) |
 
 ## Gouvernance kit
 
 | Package | README | AGENTS | Fichiers |
 |---------|--------|--------|----------|
-| `@creezio/brand-spec` | — (voir AGENTS) | [AGENTS](../packages/brand-spec/AGENTS.md) | — |
+| `@creezio/brand-spec` | [README](../packages/brand-spec/README.md) | [AGENTS](../packages/brand-spec/AGENTS.md) | [FILES](../packages/brand-spec/docs/FILES.md) |
 | `@creezio/factory` | [README](../packages/factory/README.md) | [AGENTS](../packages/factory/AGENTS.md) | [FILES](../packages/factory/docs/FILES.md) |
 | `@creezio/propagation` | [README](../packages/propagation/README.md) | [AGENTS](../packages/propagation/AGENTS.md) | [FILES](../packages/propagation/docs/FILES.md) |
 
@@ -63,11 +63,28 @@ Racine : [../README.md](../README.md) · [../AGENTS.md](../AGENTS.md)
 | `@creezio/console` | [README](../apps/console/README.md) | [AGENTS](../apps/console/AGENTS.md) | [FILES](../apps/console/docs/FILES.md) |
 | `@creezio/app-demobrand` | [README](../apps/demobrand/README.md) | [AGENTS](../apps/demobrand/AGENTS.md) | [FILES](../apps/demobrand/docs/FILES.md) |
 
+## Zones Docker (`docker/*`)
+
+| Zone | README | AGENTS | Fichiers |
+|------|--------|--------|----------|
+| `docker/server` — serveurs marque headless | [README](../docker/server/README.md) | [AGENTS](../docker/server/AGENTS.md) | [FILES](../docker/server/docs/FILES.md) |
+| `docker/server-admin` — backend flotte web | [README](../docker/server-admin/README.md) | [AGENTS](../docker/server-admin/AGENTS.md) | [FILES](../docker/server-admin/docs/FILES.md) |
+| `docker/host-agent` — agent hôte VPS (updates pull) | [README](../docker/host-agent/README.md) | [AGENTS](../docker/host-agent/AGENTS.md) | [FILES](../docker/host-agent/docs/FILES.md) |
+| `docker/tunnel-provisioner` — tunnels Cloudflare | [README](../docker/tunnel-provisioner/README.md) | [AGENTS](../docker/tunnel-provisioner/AGENTS.md) | [FILES](../docker/tunnel-provisioner/docs/FILES.md) |
+
 ## Scripts & gates
 
 | Zone | README | AGENTS | Fichiers |
 |------|--------|--------|----------|
 | `scripts/` | [README](../scripts/README.md) | [AGENTS](../scripts/AGENTS.md) | [FILES](../scripts/docs/FILES.md) |
+
+## Guides de création (`docs/agents/`)
+
+[CREATE-BRAND](./agents/CREATE-BRAND.md) ·
+[CREATE-PACKAGE](./agents/CREATE-PACKAGE.md) ·
+[CREATE-PLUGIN](./agents/CREATE-PLUGIN.md) ·
+[CREATE-MODULE](./agents/CREATE-MODULE.md) ·
+[CREATE-ADMIN-MODULE](./agents/CREATE-ADMIN-MODULE.md)
 
 ## Graphe de dépendances (simplifié)
 

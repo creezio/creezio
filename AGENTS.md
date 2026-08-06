@@ -161,6 +161,19 @@ Workflow : `npm run test:kit` → première rouge → corriger →
 4. Adapter wiring / tests marque si l’API publique change.
 5. `test:shell` / gates marque.
 
+## Guides de création (`docs/agents/`)
+
+Guides pas-à-pas exploitables sans contexte préalable (commandes copiables
++ checklist) :
+
+| Je veux créer… | Guide |
+|---|---|
+| une marque | [CREATE-BRAND.md](./docs/agents/CREATE-BRAND.md) |
+| un package kit `@creezio/*` | [CREATE-PACKAGE.md](./docs/agents/CREATE-PACKAGE.md) |
+| un plugin (template kit ou marque) | [CREATE-PLUGIN.md](./docs/agents/CREATE-PLUGIN.md) |
+| un module métier de marque | [CREATE-MODULE.md](./docs/agents/CREATE-MODULE.md) |
+| un module d'app admin | [CREATE-ADMIN-MODULE.md](./docs/agents/CREATE-ADMIN-MODULE.md) |
+
 ## Créer une marque (BrandSpec + brief produit)
 
 Chemin nominal agent : interview → `brand-spec/` → `creezio brand apply`
