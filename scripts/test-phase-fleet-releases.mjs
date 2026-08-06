@@ -21,7 +21,8 @@
  *     report done ; échec avec rollback → report rolled_back ; mutex
  *     update manuel respecté ;
  *  7. publish --release : declareFleetRelease poste la release (draft,
- *     digest, référence publique) — idempotent.
+ *     digest, référence publique) — idempotent ;
+ *  8. FREL-3 : plafond GLOBAL de slots (toutes releases) optionnel.
  */
 import http from "node:http";
 import assert from "node:assert/strict";
@@ -492,4 +493,95 @@ test("publish --release : declareFleetRelease poste la release draft (idempotent
   const rows2 = db.prepare(`SELECT * FROM admin_fleet_releases`).all();
   assert.equal(rows2.length, 1, "idempotent par (brand, tag, variant)");
   assert.equal(rows2[0].digest, `sha256:${"d".repeat(64)}`);
+});
+
+test("fleet-releases : FREL-3 plafond global de slots", async () => {
+  const db = makeDb();
+  let fakeNow = Date.parse("2026-08-06T10:00:00Z");
+  const mount = createFleetReleasesMount({
+    verifyFleetCredential: verifier,
+    maxDownloadSlots: 5,
+    maxGlobalDownloadSlots: 2,
+    nowMs: () => fakeNow,
+  });
+  const call = (method, subPath, opts) =>
+    mount.handle({
+      req: {
+        method,
+        body: opts?.body,
+        query: opts?.query || {},
+        headers: opts?.bearer
+          ? { authorization: `Bearer ${opts.bearer}` }
+          : {},
+      },
+      subPath,
+      db,
+    });
+  const bearer = `host-a:${GOOD_KEY}`;
+
+  for (const id of ["rel-a", "rel-b"]) {
+    db.prepare(
+      `INSERT INTO admin_fleet_releases
+       (id, created_at, updated_at, brand_id, tag, image, variant, channel, status, wave_pct)
+       VALUES (?, '2026-01-01','2026-01-01','tf3', ?, 'img:' || ?, 'base','stable','rolling',100)`,
+    ).run(id, id, id);
+  }
+
+  const s1 = await call("POST", "slots", {
+    body: { releaseId: "rel-a", serverId: "srv1" },
+    bearer,
+  });
+  assert.equal(s1.body.granted, true);
+  const s2 = await call("POST", "slots", {
+    body: { releaseId: "rel-b", serverId: "srv2" },
+    bearer,
+  });
+  assert.equal(s2.body.granted, true, "2e slot sur autre release OK");
+  const s3 = await call("POST", "slots", {
+    body: { releaseId: "rel-a", serverId: "srv3" },
+    bearer,
+  });
+  assert.equal(s3.body.granted, false, "plafond global 2 → refusé");
+  assert.equal(s3.body.reason, "global_full");
+  assert.ok(s3.body.position >= 1);
+
+  // Sans plafond global : la 3e passe (par-release max=5).
+  const mount2 = createFleetReleasesMount({
+    verifyFleetCredential: verifier,
+    maxDownloadSlots: 5,
+    maxGlobalDownloadSlots: 0,
+    nowMs: () => fakeNow,
+  });
+  db.prepare(`DELETE FROM admin_fleet_download_slots`).run();
+  await mount2.handle({
+    req: {
+      method: "POST",
+      body: { releaseId: "rel-a", serverId: "srv1" },
+      query: {},
+      headers: { authorization: `Bearer ${bearer}` },
+    },
+    subPath: "slots",
+    db,
+  });
+  await mount2.handle({
+    req: {
+      method: "POST",
+      body: { releaseId: "rel-b", serverId: "srv2" },
+      query: {},
+      headers: { authorization: `Bearer ${bearer}` },
+    },
+    subPath: "slots",
+    db,
+  });
+  const free = await mount2.handle({
+    req: {
+      method: "POST",
+      body: { releaseId: "rel-a", serverId: "srv3" },
+      query: {},
+      headers: { authorization: `Bearer ${bearer}` },
+    },
+    subPath: "slots",
+    db,
+  });
+  assert.equal(free.body.granted, true, "global off → pas de plafond croisé");
 });

@@ -36,9 +36,12 @@
 - Options `FleetRegistryMountOptions` : `fleet` (config backend, mêmes env
   que le module fleet), `registerSecret` (défaut env
   `CREEZIO_FLEET_REGISTER_SECRET`), `heartbeatIntervalSeconds` (90),
-  `pollIntervalSeconds` (90), `registerRatePerMinute` (10).
-- Endpoints : `GET servers`, `GET events`, `POST sync`, `POST register`,
-  `POST heartbeat`, `DELETE servers/<id…>` — spec exhaustive dans prd.md.
+  `pollIntervalSeconds` (90), `registerRatePerMinute` (10),
+  `eventsRetainDays` (30, env `CREEZIO_FLEET_EVENTS_RETAIN_DAYS`),
+  `eventsMaxRows` (10_000, env `CREEZIO_FLEET_EVENTS_MAX_ROWS`).
+- Endpoints : `GET servers`, `GET events`, `POST sync` (émet
+  `heartbeat_lost` + purge journal), `POST register`, `POST heartbeat`,
+  `DELETE servers/<id…>` — spec exhaustive dans prd.md.
 - Poller de fond : `startFleetRegistryPoller` fourni par le module,
   démarré par l'app admin (wiring marque) — passe par `api.handle()`
   (kernel), source `poller`, et déclenche le janitor fleet-releases.
@@ -80,6 +83,17 @@ Trois postures d'auth distinctes — décision structurante du module :
 - L'API ne restitue **jamais** `access_token_enc` / `server_key_hash`
   (assert de gate).
 
+### Rate-limit register multi-process (FREG-2) — décision
+
+`createRateLimiter` est un compteur **mémoire par process** (fenêtre glissante
+par IP). Conséquence : N workers Node = quota × N.
+
+**Décision** : conserver le limiteur in-process. Motifs : (1) register est
+déjà fail-closed sans secret + Bearer timing-safe ; (2) volume d'inscription
+faible (boot serveur) ; (3) l'app admin tourne typiquement mono-process.
+Revisit si scale horizontal (alors store partagé SQLite/Redis). Documenté
+aussi dans le JSDoc de `createRateLimiter`.
+
 ## 7. Meili / n8n / plugins
 
 Aucun.
@@ -95,8 +109,8 @@ Aucun — alimentation par sync (backfill), poller (fond) et register
 - `scripts/test-phase-admin-fleet-registry.mjs` : migration admin_004,
   POST sync (mock backend Basic, upsert idempotent), dédup self-enroll
   (migration local → hôte enrôlé, événements re-pointés), statut online
-  dérivé (4 cas), poller via kernel (source=poller), non-fuite des
-  colonnes sensibles.
+  dérivé (4 cas), `heartbeat_lost` (FREG-1), purge journal (FREG-3),
+  poller via kernel (source=poller), non-fuite des colonnes sensibles.
 - `scripts/test-phase-fleet-heartbeat.mjs` : register 401/OK, tokens
   chiffrés/hashés, rotation (ancienne clé refusée), heartbeat OK/401,
   rate-limit 429, client kit `startFleetHeartbeat` (no-op sans env, état

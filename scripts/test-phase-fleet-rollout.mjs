@@ -19,7 +19,8 @@
  *     (releasesMaintenance:false) ;
  *  6. UI /flotte : section releases (Démarrer/Promouvoir/Pause/STOP
  *     kill-switch) + pilotage par serveur (hold/pin/canal) présents dans
- *     fleet-admin-client.tsx.
+ *     fleet-admin-client.tsx ;
+ *  7. FREL-2 : clôture auto rolling→done à 100 % servie.
  */
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
@@ -38,6 +39,9 @@ const {
   startFleetRegistryPoller,
   upsertFleetServerStatus,
 } = await import("../packages/admin/dist/index.js");
+const { autoCloseFleetReleases } = await import(
+  "../packages/admin/dist/fleet-releases.js"
+);
 const { default: Database } = await import("better-sqlite3");
 
 function makeDb() {
@@ -277,6 +281,85 @@ test("fleet-rollout : le poller de fond appelle sync puis maintenance", async ()
   await p3.tick();
   p3.stop();
   assert.equal(errors.length, 0, "maintenance 404 (module absent) silencieuse");
+});
+
+test("fleet-rollout : FREL-2 clôture auto rolling→done à 100 %", async () => {
+  const db = makeDb();
+  let fakeNow = Date.parse("2026-08-06T10:00:00Z");
+  const mount = createFleetReleasesMount({
+    verifyFleetCredential: verifier,
+    nowMs: () => fakeNow,
+  });
+  const call = (method, subPath, opts) =>
+    mount.handle({ req: req(method, opts), subPath, db });
+  const bearer = `host-a:${GOOD_KEY}`;
+
+  const sMain = seedServer(db, {
+    hostId: "host-a",
+    brandId: "tf3",
+    name: "main",
+    image: "reg/creezio-server-tf3:0.1.0",
+  });
+  const sSide = seedServer(db, {
+    hostId: "host-a",
+    brandId: "tf3",
+    name: "side",
+    image: "reg/creezio-server-tf3:0.2.0-rel-done",
+  });
+  // Image cible déjà atteinte sur side → compte comme servi sans report.
+  insertRelease(db, "rel-done", { status: "rolling", wavePct: 100 });
+  db.prepare(
+    `UPDATE admin_fleet_releases SET image = ? WHERE id = 'rel-done'`,
+  ).run("reg/creezio-server-tf3:0.2.0-rel-done");
+
+  // Un seul report manquant → pas encore done.
+  assert.deepEqual(autoCloseFleetReleases(db, { nowMs: fakeNow }), []);
+  await call("POST", "report", {
+    body: { releaseId: "rel-done", serverId: sMain, status: "done" },
+    bearer,
+  });
+  assert.equal(
+    db.prepare(`SELECT status FROM admin_fleet_releases WHERE id='rel-done'`).get()
+      .status,
+    "done",
+    "tous éligibles servis → auto-done (via report)",
+  );
+  assert.ok(
+    db
+      .prepare(
+        `SELECT COUNT(*) AS n FROM admin_fleet_events WHERE kind='release_auto_done'`,
+      )
+      .get().n >= 1,
+  );
+  // Idempotent.
+  assert.deepEqual(autoCloseFleetReleases(db, { nowMs: fakeNow }), []);
+  // wave < 100 % : pas de clôture même si reports done.
+  insertRelease(db, "rel-wave", { status: "rolling", wavePct: 50 });
+  const s3 = seedServer(db, {
+    hostId: "host-a",
+    brandId: "tf3",
+    name: "canary",
+    image: "reg/creezio-server-tf3:0.1.0",
+  });
+  await call("POST", "report", {
+    body: { releaseId: "rel-wave", serverId: s3, status: "done" },
+    bearer,
+  });
+  assert.equal(
+    db.prepare(`SELECT status FROM admin_fleet_releases WHERE id='rel-wave'`).get()
+      .status,
+    "rolling",
+    "vague < 100 % → pas de clôture auto",
+  );
+  // hold exclu de l'éligibilité : release 100 % avec seul serveur hold → skip.
+  insertRelease(db, "rel-hold", { status: "rolling", wavePct: 100 });
+  db.prepare(`UPDATE admin_fleet_servers SET hold = 1`).run();
+  assert.deepEqual(
+    autoCloseFleetReleases(db, { nowMs: fakeNow }),
+    [],
+    "aucun éligible (tous hold) → pas de clôture",
+  );
+  void sSide;
 });
 
 test("fleet-rollout : UI /flotte — releases + kill-switch + pilotage par serveur", () => {

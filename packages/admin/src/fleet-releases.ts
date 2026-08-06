@@ -353,6 +353,81 @@ export function autoPauseFleetReleases(
   return paused;
 }
 
+/**
+ * Clôture auto rolling → done (FREL-2) quand la vague est à 100 % et que
+ * tous les serveurs éligibles sont servis : report `done` OU image déjà
+ * égale à la cible (digest-aware). Éligible = même marque/canal/variante,
+ * ¬orphan, ¬hold, ¬pin (le pin court-circuite la release). Idempotent.
+ * Décision : interview.md §6 — acceptée (geste « Terminer » reste dispo).
+ */
+export function autoCloseFleetReleases(
+  db: ScopedDbAccess,
+  opts?: { nowMs?: number },
+): string[] {
+  const releases = db
+    .prepare(
+      `SELECT * FROM admin_fleet_releases
+       WHERE status = 'rolling' AND wave_pct >= 100`,
+    )
+    .all() as ReleaseRow[];
+  const closed: string[] = [];
+  const ts = nowIso(opts?.nowMs);
+  for (const rel of releases) {
+    const servers = db
+      .prepare(
+        `SELECT id, image, variant, pinned_image, hold, channel, orphan
+         FROM admin_fleet_servers WHERE brand_id = ?`,
+      )
+      .all(rel.brand_id) as Array<{
+      id: string;
+      image: string | null;
+      variant: string | null;
+      pinned_image: string | null;
+      hold: number;
+      channel: string;
+      orphan: number;
+    }>;
+    const eligible = servers.filter(
+      (s) =>
+        !s.orphan &&
+        !s.hold &&
+        !s.pinned_image &&
+        (s.channel || "stable") === rel.channel &&
+        ((s.variant || "base").trim() || "base") === (rel.variant || "base"),
+    );
+    if (!eligible.length) continue;
+    const allServed = eligible.every((s) => {
+      if (fleetImageMatchesTarget(s.image, rel.image, rel.digest)) return true;
+      const report = db
+        .prepare(
+          `SELECT status FROM admin_fleet_update_reports
+           WHERE release_id = ? AND server_id = ?`,
+        )
+        .get(rel.id, s.id) as { status: string } | undefined;
+      return report?.status === "done";
+    });
+    if (!allServed) continue;
+    const r = db
+      .prepare(
+        `UPDATE admin_fleet_releases SET status = 'done', updated_at = ?
+         WHERE id = ? AND status = 'rolling'`,
+      )
+      .run(ts, rel.id) as { changes: number };
+    if (!r.changes) continue;
+    db.prepare(
+      `DELETE FROM admin_fleet_download_slots WHERE release_id = ?`,
+    ).run(rel.id);
+    recordFleetEvent(
+      db,
+      null,
+      "release_auto_done",
+      `${rel.id} — ${eligible.length} serveur(s) servi(s)`,
+    );
+    closed.push(rel.id);
+  }
+  return closed;
+}
+
 /* ------------------------------------------------------------------ mount */
 
 export type FleetReleasesMountOptions = {
@@ -362,6 +437,12 @@ export type FleetReleasesMountOptions = {
   verifyFleetCredential?: FleetCredentialVerifier;
   /** Slots de téléchargement simultanés par release. Défaut 5 (env CREEZIO_FLEET_DOWNLOAD_SLOTS). */
   maxDownloadSlots?: number;
+  /**
+   * Plafond GLOBAL de slots (toutes releases). Défaut 0 = désactivé
+   * (env `CREEZIO_FLEET_DOWNLOAD_SLOTS_GLOBAL`). FREL-3 : évite la saturation
+   * du registre quand plusieurs releases rolling coexistent.
+   */
+  maxGlobalDownloadSlots?: number;
   /** TTL d'une lease de téléchargement (s). Défaut 900 (15 min). */
   slotTtlSeconds?: number;
   /** Intervalle de poll annoncé aux agents (s). Défaut 300 (5 min). */
@@ -375,6 +456,12 @@ export type FleetReleasesMountOptions = {
 function maxSlotsOf(opts?: FleetReleasesMountOptions): number {
   const env = Number(process.env.CREEZIO_FLEET_DOWNLOAD_SLOTS || 0);
   return opts?.maxDownloadSlots ?? (env > 0 ? env : 5);
+}
+
+/** 0 = pas de plafond global (compat). */
+function maxGlobalSlotsOf(opts?: FleetReleasesMountOptions): number {
+  const env = Number(process.env.CREEZIO_FLEET_DOWNLOAD_SLOTS_GLOBAL || 0);
+  return opts?.maxGlobalDownloadSlots ?? (env > 0 ? env : 0);
 }
 
 const RELEASE_STATUSES = new Set([
@@ -516,9 +603,34 @@ export function createFleetReleasesMount(
               ok: true,
               granted: false,
               position,
+              reason: "release_full",
               retryAfterSeconds: Math.min(30 * position, 300),
             },
           };
+        }
+        // FREL-3 : plafond global optionnel (toutes releases confondues).
+        const maxGlobal = maxGlobalSlotsOf(opts);
+        if (maxGlobal > 0) {
+          const globalActive = (
+            db
+              .prepare(
+                `SELECT COUNT(*) AS n FROM admin_fleet_download_slots`,
+              )
+              .get() as { n: number }
+          ).n;
+          if (globalActive >= maxGlobal) {
+            const position = globalActive - maxGlobal + 1;
+            return {
+              status: 200,
+              body: {
+                ok: true,
+                granted: false,
+                position,
+                reason: "global_full",
+                retryAfterSeconds: Math.min(30 * position, 300),
+              },
+            };
+          }
         }
         const leaseId = newId();
         const expiresAt = nowIso(nowMs + ttlSeconds * 1000);
@@ -592,14 +704,18 @@ export function createFleetReleasesMount(
           status === "done" ? "update_done" : "update_failed",
           `release=${releaseId} status=${status}${detail ? ` ${detail.slice(0, 200)}` : ""}`,
         );
-        return { status: 200, body: { ok: true } };
+        // FREL-2 : clôture opportuniste (la maintenance du poller rattrape).
+        const autoClosed =
+          status === "done" ? autoCloseFleetReleases(db, { nowMs: now() }) : [];
+        return { status: 200, body: { ok: true, autoClosed } };
       }
 
         /* ---------------------------------------------- maintenance (F6) */
 
         // Janitor idempotent : purge des leases expirées + auto-pause des
-        // releases en échec. Appelé par le poller de fond de l'app admin
-        // (startFleetRegistryPoller) — inoffensif si appelé plus souvent.
+        // releases en échec + clôture auto rolling→done (FREL-2). Appelé
+        // par le poller de fond (startFleetRegistryPoller) — inoffensif si
+        // appelé plus souvent.
         if (subPath === "maintenance" && method === "POST") {
           const nowMs = now();
           const purgedSlots = purgeExpiredFleetSlots(db, nowMs);
@@ -607,7 +723,11 @@ export function createFleetReleasesMount(
             maxFailures: opts?.autoPauseFailures,
             nowMs,
           });
-          return { status: 200, body: { ok: true, purgedSlots, autoPaused } };
+          const autoClosed = autoCloseFleetReleases(db, { nowMs });
+          return {
+            status: 200,
+            body: { ok: true, purgedSlots, autoPaused, autoClosed },
+          };
         }
 
         /* -------------------------------------------- session admin (UI) */

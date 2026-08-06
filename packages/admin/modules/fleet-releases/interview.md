@@ -38,6 +38,8 @@
 - Options `FleetReleasesMountOptions` : `fleet` (backend pour la vérif
   credentials), `verifyFleetCredential` (injectable, tests),
   `maxDownloadSlots` (défaut 5, env `CREEZIO_FLEET_DOWNLOAD_SLOTS`),
+  `maxGlobalDownloadSlots` (défaut 0 = off, env
+  `CREEZIO_FLEET_DOWNLOAD_SLOTS_GLOBAL` — FREL-3),
   `slotTtlSeconds` (défaut 900), `pollIntervalSeconds` annoncé aux agents
   (défaut 300), `autoPauseFailures` (défaut 2, env
   `CREEZIO_FLEET_AUTO_PAUSE_FAILURES`), `nowMs` (horloge injectable).
@@ -46,7 +48,8 @@
 - Exports purs testables : `fleetWaveBucket`, `fleetWaveIncludes`,
   `fleetImageRefWithDigest`, `fleetImageMatchesTarget`,
   `computeFleetUpdateDirectives`, `purgeExpiredFleetSlots`,
-  `autoPauseFleetReleases`, `createBackendFleetCredentialVerifier`.
+  `autoPauseFleetReleases`, `autoCloseFleetReleases`,
+  `createBackendFleetCredentialVerifier`.
 
 ## 4. UI, nav & permissions — kit graphique imposé
 
@@ -78,6 +81,16 @@ Aucun.
   hint hostId incohérent → 401.
 - `POST maintenance` : volontairement sans auth (idempotent, aucune
   donnée exposée, appelé par le poller interne via `api.handle`).
+
+### Clôture auto rolling → done (FREL-2) — décision
+
+**Acceptée.** Quand `wave_pct ≥ 100` et que tous les serveurs éligibles
+(marque + canal + variante, ¬orphan ¬hold ¬pin) sont servis — report
+`done` **ou** image déjà égale à la cible (digest-aware) — la release
+passe automatiquement en `done` (`autoCloseFleetReleases`, événement
+`release_auto_done`, leases révoquées). Déclenchée au `POST report`
+(status done) et au janitor `POST maintenance`. Le geste manuel
+« Terminer » reste disponible (UI) pour clôturer avant 100 % ou forcer.
 
 ## 7. Meili / n8n / plugins
 

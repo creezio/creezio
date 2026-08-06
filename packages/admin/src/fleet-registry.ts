@@ -311,9 +311,134 @@ export function deriveFleetOnline(
   );
 }
 
+/**
+ * Ids de serveurs passés online → offline entre deux instantanés (FREG-1).
+ * Pure : l'appelant journalise via `recordFleetEvent(..., "heartbeat_lost")`.
+ */
+export function detectFleetHeartbeatLost(
+  before: Array<{ id: string; online: boolean }>,
+  after: Array<{ id: string; online: boolean }>,
+): string[] {
+  const prev = new Map(before.map((s) => [s.id, s.online]));
+  const lost: string[] = [];
+  for (const s of after) {
+    if (prev.get(s.id) === true && !s.online) lost.push(s.id);
+  }
+  return lost;
+}
+
+/**
+ * Snapshot online dérivé de toutes les rows du registre (même horloge).
+ */
+export function snapshotFleetOnline(
+  db: ScopedDbAccess,
+  opts?: {
+    nowMs?: number;
+    heartbeatIntervalSeconds?: number;
+    pollIntervalSeconds?: number;
+  },
+): Array<{ id: string; online: boolean }> {
+  const rows = db
+    .prepare(
+      `SELECT id, last_heartbeat_at, last_polled_at, docker_state
+       FROM admin_fleet_servers`,
+    )
+    .all() as Array<{
+    id: string;
+    last_heartbeat_at?: string | null;
+    last_polled_at?: string | null;
+    docker_state?: string | null;
+  }>;
+  return rows.map((r) => ({
+    id: r.id,
+    online: deriveFleetOnline(r, opts),
+  }));
+}
+
+/**
+ * Émet `heartbeat_lost` pour chaque transition online→offline depuis
+ * `before` (typiquement snapshot pré-sync). Idempotent inter-cycles : une
+ * fois offline, le cycle suivant a before=false → plus d'événement.
+ */
+export function emitFleetHeartbeatLost(
+  db: ScopedDbAccess,
+  before: Array<{ id: string; online: boolean }>,
+  opts?: {
+    nowMs?: number;
+    heartbeatIntervalSeconds?: number;
+    pollIntervalSeconds?: number;
+  },
+): string[] {
+  const after = snapshotFleetOnline(db, opts);
+  const lost = detectFleetHeartbeatLost(before, after);
+  for (const id of lost) {
+    recordFleetEvent(db, id, "heartbeat_lost");
+  }
+  return lost;
+}
+
+/* ----------------------------------------------------- rétention events */
+
+/**
+ * Purge du journal `admin_fleet_events` (FREG-3) : rétention par âge et/ou
+ * plafond de rows (les plus récentes sont conservées). Défauts : 30 jours,
+ * 10_000 rows — surchargeables via opts / env
+ * `CREEZIO_FLEET_EVENTS_RETAIN_DAYS` / `CREEZIO_FLEET_EVENTS_MAX_ROWS`.
+ * `0` = désactive ce critère.
+ */
+export function purgeFleetEvents(
+  db: ScopedDbAccess,
+  opts?: { retainDays?: number; maxRows?: number; nowMs?: number },
+): number {
+  const envDays = Number(process.env.CREEZIO_FLEET_EVENTS_RETAIN_DAYS ?? "");
+  const envMax = Number(process.env.CREEZIO_FLEET_EVENTS_MAX_ROWS ?? "");
+  const retainDays =
+    opts?.retainDays ?? (Number.isFinite(envDays) && envDays >= 0 ? envDays : 30);
+  const maxRows =
+    opts?.maxRows ?? (Number.isFinite(envMax) && envMax >= 0 ? envMax : 10_000);
+  let deleted = 0;
+  if (retainDays > 0) {
+    const cutoff = new Date(
+      (opts?.nowMs ?? Date.now()) - retainDays * 86_400_000,
+    ).toISOString();
+    const r = db
+      .prepare(`DELETE FROM admin_fleet_events WHERE created_at < ?`)
+      .run(cutoff) as { changes: number };
+    deleted += r.changes;
+  }
+  if (maxRows > 0) {
+    const total = (
+      db.prepare(`SELECT COUNT(*) AS n FROM admin_fleet_events`).get() as {
+        n: number;
+      }
+    ).n;
+    if (total > maxRows) {
+      const excess = total - maxRows;
+      // SQLite : supprimer les plus anciennes au-delà du plafond.
+      const r = db
+        .prepare(
+          `DELETE FROM admin_fleet_events WHERE id IN (
+             SELECT id FROM admin_fleet_events
+             ORDER BY created_at ASC, id ASC LIMIT ?
+           )`,
+        )
+        .run(excess) as { changes: number };
+      deleted += r.changes;
+    }
+  }
+  return deleted;
+}
+
 /* ------------------------------------------------------------ rate limit */
 
-/** Rate-limit mémoire basique par clé (register : par IP). */
+/**
+ * Rate-limit mémoire basique par clé (register : par IP).
+ *
+ * Posture multi-process (FREG-2) : le compteur est **par process** — N
+ * workers Node = quota × N. Accepté : register est déjà protégé par Bearer
+ * secret + volume faible ; un store partagé (SQLite/Redis) n'est justifié
+ * que si l'app admin scale horizontalement. Voir interview.md §6.
+ */
 export function createRateLimiter(max = 10, windowMs = 60_000) {
   const hits = new Map<string, number[]>();
   return (key: string, nowMs = Date.now()): boolean => {
@@ -351,6 +476,16 @@ export type FleetRegistryMountOptions = {
   pollIntervalSeconds?: number;
   /** Rate-limit register (essais / minute / IP). Défaut 10. */
   registerRatePerMinute?: number;
+  /**
+   * Rétention du journal `admin_fleet_events` (jours). Défaut 30 ;
+   * env `CREEZIO_FLEET_EVENTS_RETAIN_DAYS` ; `0` = pas de purge par âge.
+   */
+  eventsRetainDays?: number;
+  /**
+   * Plafond de rows du journal. Défaut 10_000 ;
+   * env `CREEZIO_FLEET_EVENTS_MAX_ROWS` ; `0` = pas de plafond.
+   */
+  eventsMaxRows?: number;
 };
 
 function registerSecretOf(opts?: FleetRegistryMountOptions): string {
@@ -501,13 +636,42 @@ export function createFleetRegistryMount(
       if (subPath === "sync" && method === "POST") {
         const body = (req.body || {}) as { source?: string };
         const source = body.source === "poller" ? "poller" : "sync";
+        // FREG-1 : snapshot online AVANT upsert (last_polled_at va bouger).
+        const nowMs = Date.now();
+        const onlineOpts = {
+          nowMs,
+          heartbeatIntervalSeconds: opts?.heartbeatIntervalSeconds ?? 90,
+          pollIntervalSeconds: opts?.pollIntervalSeconds ?? 90,
+        };
+        const beforeOnline = snapshotFleetOnline(db, onlineOpts);
         const r = await syncFleetRegistryFromBackend(db, opts, source);
+        const heartbeatLost = emitFleetHeartbeatLost(db, beforeOnline, onlineOpts);
+        // FREG-3 : rétention journal à chaque sync (poller + manuel).
+        const purgedEvents = purgeFleetEvents(db, {
+          retainDays: opts?.eventsRetainDays,
+          maxRows: opts?.eventsMaxRows,
+          nowMs,
+        });
         if (!r.ok) {
-          return { status: 502, body: { ok: false, error: r.error } };
+          return {
+            status: 502,
+            body: {
+              ok: false,
+              error: r.error,
+              heartbeatLost,
+              purgedEvents,
+            },
+          };
         }
         return {
           status: 200,
-          body: { ok: true, upserted: r.upserted, source },
+          body: {
+            ok: true,
+            upserted: r.upserted,
+            source,
+            heartbeatLost,
+            purgedEvents,
+          },
         };
       }
 
@@ -684,8 +848,8 @@ export type FleetRegistryPollerOptions = {
   intervalMs?: number;
   /**
    * Maintenance fleet-releases à chaque cycle (purge leases expirées +
-   * auto-pause des releases en échec, F6). Défaut true — no-op silencieux si
-   * le module fleet-releases n'est pas monté.
+   * auto-pause / auto-clôture des releases, F6). Défaut true — no-op
+   * silencieux si le module fleet-releases n'est pas monté.
    */
   releasesMaintenance?: boolean;
   onError?: (e: unknown) => void;
@@ -696,6 +860,9 @@ export type FleetRegistryPollerOptions = {
  * backend flotte (source `poller`) via le kernel (pas de HTTP local, pas de
  * session). Best-effort : un backend flotte down ne casse rien. `unref()` —
  * ne retient jamais le process.
+ *
+ * Chaque cycle : sync (`heartbeat_lost` FREG-1 + purge journal FREG-3 dans
+ * le mount) → maintenance fleet-releases (F6).
  */
 export function startFleetRegistryPoller(opts: FleetRegistryPollerOptions): {
   stop: () => void;

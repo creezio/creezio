@@ -69,9 +69,13 @@ que le sync, champs FR/EN tolérés).
 
 ## 9. Gates de validation
 
-- Pas de gate kit dédiée (dette SUPP-1). Couverture indirecte :
-  `scripts/test-phase-factory-two-repos.mjs` vérifie le wiring
-  `createSupportAdminMount` du scaffold admin.
+- `scripts/test-phase-admin-support.mjs` (SUPP-1) : sync flotte (mock
+  backend servers + export), upsert idempotent, `corps` = premier message
+  client, `derniere_reponse` = dernier message admin, messages dédupliqués
+  par `remote_id`, reply relayé avant copie locale, 502 si origine
+  introuvable.
+- Couverture scaffold : `scripts/test-phase-factory-two-repos.mjs`
+  vérifie le wiring `createSupportAdminMount`.
 
 ## 10. i18n
 

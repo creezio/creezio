@@ -15,7 +15,9 @@
  *     tout périmé → offline ;
  *  5. poller de fond : startFleetRegistryPoller passe par le kernel
  *     (POST /api/v1/modules/fleet-registry/sync, source=poller) ;
- *  6. l'API ne restitue JAMAIS access_token_enc / server_key_hash.
+ *  6. l'API ne restitue JAMAIS access_token_enc / server_key_hash ;
+ *  7. FREG-1 : transition online→offline → événement heartbeat_lost ;
+ *  8. FREG-3 : purge/rétention admin_fleet_events (âge + plafond).
  */
 import http from "node:http";
 import assert from "node:assert/strict";
@@ -28,6 +30,12 @@ const {
   startFleetRegistryPoller,
   upsertFleetServerStatus,
 } = await import("../packages/admin/dist/index.js");
+const {
+  detectFleetHeartbeatLost,
+  emitFleetHeartbeatLost,
+  purgeFleetEvents,
+  snapshotFleetOnline,
+} = await import("../packages/admin/dist/fleet-registry.js");
 const { default: Database } = await import("better-sqlite3");
 
 function makeDb() {
@@ -181,8 +189,8 @@ test("fleet-registry : migration + sync + dédup + online dérivé + poller", as
   //    enrôlé (le backend le rattache à l'hôte) → row MIGRÉE, pas dupliquée.
   db.prepare(
     `INSERT INTO admin_fleet_events (id, created_at, server_id, kind)
-     VALUES ('ev1', 'x', 'local/tempoflow3/demo', 'registered')`,
-  ).run();
+     VALUES ('ev1', ?, 'local/tempoflow3/demo', 'registered')`,
+  ).run(new Date().toISOString());
   serversRef.list = [{ ...SRV_DEMO, hostId: "vps-resto" }, SRV_LEGACY];
   const sync3 = await mount.handle({
     req: { method: "POST", body: {}, query: {}, headers: {} },
@@ -297,4 +305,100 @@ test("fleet-registry : migration + sync + dédup + online dérivé + poller", as
   );
   assert.ok(syncCall, "le poller poste sur fleet-registry/sync");
   assert.equal(syncCall.body.source, "poller");
+});
+
+test("fleet-registry : FREG-1 heartbeat_lost + FREG-3 purge events", () => {
+  const db = makeDb();
+  const now = Date.parse("2026-08-06T12:00:00Z");
+  const onlineOpts = {
+    nowMs: now,
+    heartbeatIntervalSeconds: 90,
+    pollIntervalSeconds: 90,
+  };
+
+  // Serveur online via heartbeat frais.
+  const sid = upsertFleetServerStatus(db, {
+    hostId: "local",
+    brandId: "tf3",
+    name: "main",
+    dockerState: "exited",
+    source: "register",
+  });
+  db.prepare(
+    `UPDATE admin_fleet_servers SET last_heartbeat_at = ?, last_polled_at = ? WHERE id = ?`,
+  ).run(
+    new Date(now - 30_000).toISOString(),
+    new Date(now - 10 * 60_000).toISOString(),
+    sid,
+  );
+  assert.equal(
+    deriveFleetOnline(
+      db.prepare(`SELECT * FROM admin_fleet_servers WHERE id = ?`).get(sid),
+      onlineOpts,
+    ),
+    true,
+    "précondition : online via heartbeat",
+  );
+
+  // Transition : heartbeat périmé + poll périmé + exited → offline.
+  const before = snapshotFleetOnline(db, onlineOpts);
+  db.prepare(
+    `UPDATE admin_fleet_servers SET last_heartbeat_at = ? WHERE id = ?`,
+  ).run(new Date(now - 10 * 60_000).toISOString(), sid);
+  const lost = emitFleetHeartbeatLost(db, before, onlineOpts);
+  assert.deepEqual(lost, [sid], "online→offline → heartbeat_lost");
+  assert.equal(
+    db
+      .prepare(
+        `SELECT COUNT(*) AS n FROM admin_fleet_events
+         WHERE server_id = ? AND kind = 'heartbeat_lost'`,
+      )
+      .get(sid).n,
+    1,
+  );
+  // Idempotent inter-cycles : déjà offline → plus d'émission.
+  const before2 = snapshotFleetOnline(db, onlineOpts);
+  assert.deepEqual(emitFleetHeartbeatLost(db, before2, onlineOpts), []);
+  assert.deepEqual(
+    detectFleetHeartbeatLost(
+      [{ id: "a", online: true }],
+      [{ id: "a", online: false }],
+    ),
+    ["a"],
+  );
+
+  // FREG-3 : purge par âge + plafond.
+  db.prepare(`DELETE FROM admin_fleet_events`).run();
+  const oldIso = new Date(now - 40 * 86_400_000).toISOString();
+  const freshIso = new Date(now - 1000).toISOString();
+  for (let i = 0; i < 5; i++) {
+    db.prepare(
+      `INSERT INTO admin_fleet_events (id, created_at, server_id, kind)
+       VALUES (?, ?, NULL, 'noise')`,
+    ).run(`old-${i}`, oldIso);
+  }
+  for (let i = 0; i < 3; i++) {
+    db.prepare(
+      `INSERT INTO admin_fleet_events (id, created_at, server_id, kind)
+       VALUES (?, ?, NULL, 'fresh')`,
+    ).run(`fresh-${i}`, freshIso);
+  }
+  const byAge = purgeFleetEvents(db, { retainDays: 30, maxRows: 0, nowMs: now });
+  assert.equal(byAge, 5, "événements > 30 j purgés");
+  assert.equal(
+    db.prepare(`SELECT COUNT(*) AS n FROM admin_fleet_events`).get().n,
+    3,
+  );
+  for (let i = 0; i < 10; i++) {
+    db.prepare(
+      `INSERT INTO admin_fleet_events (id, created_at, server_id, kind)
+       VALUES (?, ?, NULL, 'cap')`,
+    ).run(`cap-${i}`, new Date(now - i * 1000).toISOString());
+  }
+  const byCap = purgeFleetEvents(db, { retainDays: 0, maxRows: 5, nowMs: now });
+  assert.ok(byCap >= 8, `plafond 5 rows (purgé ${byCap})`);
+  assert.equal(
+    db.prepare(`SELECT COUNT(*) AS n FROM admin_fleet_events`).get().n,
+    5,
+  );
 });

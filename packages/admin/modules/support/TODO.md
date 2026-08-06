@@ -1,13 +1,13 @@
 # TODO — support
 
-### [todo] SUPP-1 — Gate kit dédiée (sync + reply + idempotence messages)
+### [done] SUPP-1 — Gate kit dédiée (sync + reply + idempotence messages)
 - priorite: P2
 - depends: aucune
-- fichiers: scripts/ (gate à créer), packages/admin/src/index.ts
+- fichiers: scripts/test-phase-admin-support.mjs
 - criteres:
-  - [ ] mock backend flotte (servers + export + reply + statut) : sync upsert idempotent, corps = premier message client, derniere_reponse = dernier message admin
-  - [ ] reply : relais obligatoire avant copie locale, 502 si origine introuvable
-  - [ ] messages jamais dupliqués par remote_id
+  - [x] mock backend flotte (servers + export + reply + statut) : sync upsert idempotent, corps = premier message client, derniere_reponse = dernier message admin
+  - [x] reply : relais obligatoire avant copie locale, 502 si origine introuvable
+  - [x] messages jamais dupliqués par remote_id
 
 ### [todo] SUPP-2 — Doublon d'affichage de la réponse admin après re-sync
 - priorite: P2
