@@ -1,12 +1,12 @@
 # TODO — fleet-releases
 
-### [todo] FREL-1 — `POST maintenance` sans auth : documenter/durcir la posture
+### [done] FREL-1 — `POST maintenance` sans auth : documenter/durcir la posture
 - priorite: P2
 - depends: aucune
 - fichiers: packages/admin/src/fleet-releases.ts
 - criteres:
-  - [ ] décision explicite : soit exiger un Bearer agent/une origine kernel, soit documenter dans le code pourquoi l'endpoint reste ouvert (idempotent, aucune donnée)
-  - [ ] gate test-phase-fleet-rollout adaptée si durcissement
+  - [x] décision : rester ouvert (idempotent, pas de PII) ; chemin nominal = poller in-process ; allowlist F3 sur HTTP — documenté au-dessus du handler
+  - [x] pas de durcissement auth → gate fleet-rollout inchangée
 
 ### [todo] FREL-2 — Transition automatique `rolling` → `done` à 100 % servie
 - priorite: P3

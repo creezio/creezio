@@ -599,7 +599,17 @@ export function createFleetReleasesMount(
 
         // Janitor idempotent : purge des leases expirées + auto-pause des
         // releases en échec. Appelé par le poller de fond de l'app admin
-        // (startFleetRegistryPoller) — inoffensif si appelé plus souvent.
+        // (startFleetRegistryPoller → api.handle in-process) — inoffensif
+        // si appelé plus souvent.
+        //
+        // Posture auth (FREL-1) : volontairement SANS Bearer agent / session
+        // au niveau mount. Raisons :
+        //  1. idempotent, ne lit/écrit aucune PII — seulement leases expirées
+        //     + transitions `rolling→paused` déjà bornées par le garde-fou ;
+        //  2. le chemin nominal est in-process (poller), hors surface HTTP ;
+        //  3. sur HTTP public, `listenBrandOsHttp` allowliste ce path (F3)
+        //     pour ne pas casser un janitor externe éventuel — ne pas y
+        //     brancher de secret sans mise à jour de l'allowlist + poller.
         if (subPath === "maintenance" && method === "POST") {
           const nowMs = now();
           const purgedSlots = purgeExpiredFleetSlots(db, nowMs);

@@ -1,13 +1,13 @@
 # TODO — fleet
 
-### [todo] FLEET-1 — Gate kit dédiée au proxy fleet
+### [done] FLEET-1 — Gate kit dédiée au proxy fleet
 - priorite: P2
 - depends: aucune
-- fichiers: scripts/test-phase-admin-fleet-proxy.mjs (à créer), packages/admin/src/index.ts
+- fichiers: scripts/test-phase-admin-fleet-proxy.mjs, packages/admin/src/index.ts
 - criteres:
-  - [ ] mock backend Basic : proxy relaie méthode + query (multi-valeurs) + body JSON
-  - [ ] 503 sans CREEZIO_FLEET_BACKEND_BASIC, 502 backend down, statut backend conservé sur réponse non JSON
-  - [ ] gate référencée dans scripts/README.md et verte dans npm run test:kit
+  - [x] mock backend Basic : proxy relaie méthode + query (multi-valeurs) + body JSON
+  - [x] 503 sans CREEZIO_FLEET_BACKEND_BASIC, 502 backend down, statut backend conservé sur réponse non JSON
+  - [x] gate dans `package.json` `test` (suite kit auto) — `node --test scripts/test-phase-admin-fleet-proxy.mjs`
 
 ### [todo] FLEET-2 — Remplacer prompt/confirm/alert par les primitives dialog du kit
 - priorite: P3

@@ -36,6 +36,7 @@ Gates ciblées :
 node --test scripts/test-phase-p29.mjs
 node --test scripts/test-phase-c2.mjs
 node --test scripts/test-phase-o11.mjs
+node --test scripts/test-phase-admin-fleet-proxy.mjs
 ```
 
 ## Suites de gates (`test-fast.mjs`)
