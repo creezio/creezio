@@ -62,17 +62,12 @@ affaibli pour la masquer. (Backlogs d'époque : `docs/archive/BACKLOG-*.md`.)
 - **admin.tempoflow.fr en cert Origin Cloudflare** (pas Let's Encrypt) via
   `docker/server-admin/configure-admin-npm.sh` — valide tant que le domaine
   est proxifié Cloudflare (orange cloud).
-- **Mounts modules sans session HTTP (plateforme-wide)** : le kernel n'a pas
-  de primitive session/actor pour les mounts — `/api/v1/modules/*` (métier
-  marque, gestes fleet de l'app admin, registre fleet-registry hors
-  register/heartbeat déjà Bearer) répond sans authentification à quiconque
-  atteint la surface HTTP, y compris via les tunnels publics
-  (`resto-*.tempoflow.fr`, `admin.tempoflow.fr`). Constat F3 (posture
-  PRÉEXISTANTE, pas introduite par le chantier flotte). Piste : garde session
-  au niveau `listenBrandOsHttp` (cookie plateforme) avec allowlist des mounts
-  volontairement publics (webhooks signés, register/heartbeat Bearer, /lp).
-  Tracé côté TF3 : tâche DASH-5 (`tempoflow3/brand-spec/modules/dashboard/TODO.md`,
-  portée transverse).
+- ~~**Mounts modules sans session HTTP (plateforme-wide)**~~ **fait** (garde
+  `assertModuleMountSession` dans `listenBrandOsHttp`, allowlist
+  webhook/register/heartbeat/releases/landing public ; gate
+  `test-phase-module-mount-session.mjs`). Adoption / preuve côté marques :
+  tâche TF3 DASH-5 (`tempoflow3/brand-spec/modules/dashboard/TODO.md`) —
+  resync vendor après merge `main` kit.
 
 ## Admin app OS (ADR-admin-app-os) — suites
 
