@@ -63,7 +63,10 @@ export function ProspectsKanbanClient({
     try {
       const r = await fetch(API, { cache: "no-store" });
       const j = await r.json();
-      if (j?.ok) setItems((j.items || []).filter((p: Prospect) => !p.archived_at));
+      // Deux dialectes : mount kit ({ok:true, items}) et mount métier généré
+      // --from-prd ({items} nu) — le client générique accepte les deux.
+      if (j && Array.isArray(j.items))
+        setItems((j.items as Prospect[]).filter((p) => !p.archived_at));
     } finally {
       setLoading(false);
     }
@@ -140,7 +143,15 @@ export function ProspectsKanbanClient({
 
   const archive = useCallback(
     async (id: string) => {
-      await fetch(`${API}/${encodeURIComponent(id)}`, { method: "DELETE" });
+      // Mount kit : DELETE ; mount métier généré (archivable) : POST /:id/archive.
+      const r = await fetch(`${API}/${encodeURIComponent(id)}`, {
+        method: "DELETE",
+      });
+      if (!r.ok) {
+        await fetch(`${API}/${encodeURIComponent(id)}/archive`, {
+          method: "POST",
+        });
+      }
       setOpenId(null);
       await refresh();
     },

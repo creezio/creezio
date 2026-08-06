@@ -305,10 +305,12 @@ export function createAdminCrudMount(kind: keyof typeof CRUD_SQL_TABLE): ApiMoun
       const parts = subPath.split("/").filter(Boolean);
 
       if (!parts.length && method === "GET") {
+        // `position` n'existe que sur les tables kanban-ordonnables.
+        const orderBy = cols.includes("position")
+          ? "position ASC, created_at DESC"
+          : "created_at DESC";
         const items = db
-          .prepare(
-            `SELECT * FROM ${table} ORDER BY position ASC, created_at DESC`,
-          )
+          .prepare(`SELECT * FROM ${table} ORDER BY ${orderBy}`)
           .all();
         return { status: 200, body: { ok: true, items } };
       }
@@ -984,8 +986,10 @@ export function createBillingWebhookMount(
               `SELECT id FROM admin_billing_subscriptions WHERE stripe_subscription_id = ?`,
             )
             .get(String(obj.subscription || "")) as { id: string } | undefined;
+          const amountCents =
+            obj.amount_paid != null ? obj.amount_paid : obj.amount_due;
           const montant =
-            obj.amount_due != null ? Number(obj.amount_due) / 100 : null;
+            amountCents != null ? Number(amountCents) / 100 : null;
           const statut =
             type === "invoice.paid" || obj.paid === true
               ? "paid"

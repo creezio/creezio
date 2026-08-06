@@ -272,6 +272,15 @@ curl -sS -X POST http://127.0.0.1:18801/api/v1/modules/support/<id>/reply \
   -H 'content-type: application/json' -d '{"corps":"…"}'
 ```
 
+Prouvé E2E (2026-08-06, prod TF3) : ticket UI `/support` resto-marseille →
+sync app admin `/tickets` → réponse admin → visible côté restaurateur
+(« Équipe support », statut `repondu`). **Piège** : les containers
+`creezio-host-agent` et `creezio-server-admin` embarquent le code
+fleet-collector au build — après toute modif kit de `host-agent.mjs` /
+`server-admin.mjs` / `server-lib.mjs`, re-builder via
+`creezio server-docker agent up` + `admin up` (sinon nouvelles routes → 404
+et sync `tickets:0` sans erreur).
+
 ### 5c. Billing Stripe (app admin)
 
 Endpoint signé : `POST /api/v1/modules/billing-webhook/stripe` — configurer
