@@ -98,6 +98,7 @@ Si un besoin OS manque → **gap kit** (`@creezio/app-runtime` /
 | Sidecar `metier-api.mjs` / `store.json` | Hors contrat SQLite |
 | Jumeau `listenBrandKernelHttp` dans main | Contourne la façade |
 | UIDs Meili `tf2_*` | Réservés — seuls les UIDs `catalog_*` du kit sont admis |
+| Deuxième base métier lue par l'UI/API | Un seul plan de données : `brand.db` ([ADR-single-data-plane](../adr/ADR-single-data-plane.md)) — les flux externes sont projetés à l'import, gate `single-data-plane` |
 
 ## 4b. Fichiers métier protégés (`owned-by-brand`)
 

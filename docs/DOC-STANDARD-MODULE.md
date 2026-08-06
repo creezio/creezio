@@ -69,6 +69,12 @@ Questionnaire **rempli** (pas un formulaire vide). Sections :
    Migrations cross-module interdites : une migration ne touche que les
    tables du module ; une colonne sur la table d'un autre module = tâche
    dans le module propriétaire.
+   **Provenance des données (ADR-single-data-plane)** : chaque table déclare
+   d'où viennent ses lignes — natives (écrites par le module) ou alimentées
+   par projection d'un flux externe (et par quel module d'import). Le métier
+   vit dans `brand.db` UNIQUEMENT : écrans, API et tools MCP ne lisent
+   jamais un snapshot/flux source directement (gate
+   `single-data-plane`).
 
 ## 3. API
    EntitySpec `createEntityApiMount` (défaut pour tout CRUD) vs mount

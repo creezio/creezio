@@ -58,6 +58,14 @@ module = tâche dans le module propriétaire). Colonnes implicites attendues
 par le moteur CRUD : `id`, `created_at`, `updated_at` (+ `archived_at` si
 archivable).
 
+**Un seul plan de données** ([ADR-single-data-plane](../adr/ADR-single-data-plane.md)) :
+les tables du module vivent dans `brand.db`. Si le module consomme une
+source externe (snapshot, import fichier, API tierce), c'est un **flux
+d'alimentation** : un module d'import la projette dans `brand.db`
+(idempotent) et lui seul ouvre le fichier source. Écrans, API et tools MCP
+ne lisent que `brand.db` — jamais le flux directement (gate
+`single-data-plane`, fail-closed).
+
 ## 2. API — CRUD générique d'abord
 
 Pour une entité CRUD standard, **ne pas écrire de handler** : déclarer un
