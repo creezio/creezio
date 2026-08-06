@@ -5,6 +5,11 @@ par des petits modèles LLM — conventions écrites, zéro doc périmée, comma
 copiables. Vérifié par la gate `scripts/test-phase-docs-freshness.mjs`
 (dans `npm test` / `npm run test:kit`).
 
+Compléments : [DOC-STANDARD-MODULE.md](./DOC-STANDARD-MODULE.md) (contrat
+« module = unité de travail autonome », 4 fichiers spec par module, gate
+`test-phase-module-docs`) et [DOC-STANDARD-UI.md](./DOC-STANDARD-UI.md)
+(kit graphique imposé).
+
 ## Le trio obligatoire
 
 Chaque **package** (`packages/*`), chaque **zone Docker** (`docker/*`), chaque
