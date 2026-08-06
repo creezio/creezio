@@ -242,6 +242,8 @@ export {
   getBootstrapError,
   getBootstrapPhase,
   hermesAgentDirCandidates,
+  hermesFhsFallbackDirs,
+  hermesInstallLayoutEnv,
   hermesInstallOsProfileDir,
   hermesRuntimeCacheDir,
   hermesSpaceSafeUserDataRoot,
@@ -304,6 +306,8 @@ export {
   getN8nBridgeEnv,
   n8nApiKeyPath,
   n8nHttpJson,
+  n8nLoginSucceeded,
+  n8nNeedsOwnerSetup,
   readStoredN8nApiKey,
   writeStoredN8nApiKey,
 } from "./host/n8n/api-key.js";

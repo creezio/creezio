@@ -83,6 +83,36 @@ export function writeStoredN8nApiKey(
   );
 }
 
+/**
+ * Instance n8n vierge ? Lit `/rest/settings` :
+ * `data.userManagement.showSetupOnFirstLoad` (true = owner à créer).
+ * null = signal indisponible (vieux n8n / réponse inattendue).
+ */
+export function n8nNeedsOwnerSetup(settingsJson: unknown): boolean | null {
+  if (!settingsJson || typeof settingsJson !== "object") return null;
+  const data = (settingsJson as { data?: unknown }).data;
+  if (!data || typeof data !== "object") return null;
+  const um = (data as { userManagement?: unknown }).userManagement;
+  if (!um || typeof um !== "object") return null;
+  const flag = (um as { showSetupOnFirstLoad?: unknown }).showSetupOnFirstLoad;
+  return typeof flag === "boolean" ? flag : null;
+}
+
+/**
+ * Login n8n réellement authentifié = 2xx ET cookie de session `n8n-auth`.
+ * Une instance vierge (pré-owner-setup) répond 200 à `/rest/login` avec le
+ * shell user SANS cookie — un simple test de status crée un faux positif
+ * (vécu : « owner: login OK » sur instance non initialisée, owner jamais
+ * provisionné).
+ */
+export function n8nLoginSucceeded(
+  status: number,
+  setCookie: string[] | string | undefined,
+): boolean {
+  if (status < 200 || status >= 300) return false;
+  return cookieHeaderFromSetCookie(setCookie).includes("n8n-auth=");
+}
+
 export function cookieHeaderFromSetCookie(
   setCookie: string[] | string | undefined,
 ): string {

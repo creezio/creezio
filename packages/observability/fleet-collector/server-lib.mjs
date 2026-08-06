@@ -450,23 +450,82 @@ export function backupsDir(brandRoot) {
   return path.join(brandRoot, "docker-data", "backups");
 }
 
-/** tar.gz du volume /data d'une instance — best effort, jamais bloquant si tar absent. */
+/**
+ * tar.gz du volume /data d'une instance, puis vérification d'intégrité
+ * (gzip -t). Sémantique GNU tar sur volume VIVANT : exit 1 = « file changed
+ * as we read it » — l'archive est écrite et valide (vécu resto-lyon : backup
+ * 2,4 Go complet signalé « indisponible »). Seuls exit ≥ 2, spawn error ou
+ * archive invalide sont des échecs (fichier partiel supprimé).
+ * Retourne { ok, file, detail }.
+ */
 export function backupInstanceData(brandRoot, inst) {
-  return new Promise((resolve) => {
+  const run = (cmd, args) =>
+    new Promise((resolve) => {
+      const child = spawn(cmd, args, { stdio: ["ignore", "ignore", "pipe"] });
+      let stderr = "";
+      child.stderr?.on("data", (c) => {
+        if (stderr.length < 4096) stderr += String(c);
+      });
+      child.on("error", (e) => resolve({ code: -1, stderr: String(e?.message || e) }));
+      child.on("exit", (code) => resolve({ code: code ?? -1, stderr }));
+    });
+  return (async () => {
     const dataAbs = instanceDataDirAbs(brandRoot, inst);
-    if (!fs.existsSync(dataAbs)) return resolve(null);
+    if (!fs.existsSync(dataAbs)) {
+      return { ok: false, file: null, detail: `volume introuvable: ${dataAbs}` };
+    }
     const dir = backupsDir(brandRoot);
     fs.mkdirSync(dir, { recursive: true });
     const stamp = new Date().toISOString().replace(/[:.]/g, "-");
     const file = path.join(dir, `${inst.name}-${stamp}.tar.gz`);
-    const child = spawn(
-      "tar",
-      ["-czf", file, "-C", path.dirname(dataAbs), path.basename(dataAbs)],
-      { stdio: "ignore" },
-    );
-    child.on("error", () => resolve(null));
-    child.on("exit", (code) => resolve(code === 0 ? file : null));
-  });
+    const tar = await run("tar", [
+      "-czf",
+      file,
+      "--warning=no-file-changed",
+      "-C",
+      path.dirname(dataAbs),
+      path.basename(dataAbs),
+    ]);
+    // GNU tar : 0 = OK, 1 = fichiers modifiés pendant la lecture (archive
+    // complète — normal sur un container up), ≥ 2 / -1 = erreur réelle.
+    if (tar.code !== 0 && tar.code !== 1) {
+      try {
+        fs.rmSync(file, { force: true });
+      } catch {
+        /* partiel absent */
+      }
+      return {
+        ok: false,
+        file: null,
+        detail: `tar exit ${tar.code}${tar.stderr ? ` — ${tar.stderr.trim().slice(0, 300)}` : ""}`,
+      };
+    }
+    let size = 0;
+    try {
+      size = fs.statSync(file).size;
+    } catch {
+      /* stat KO → vérif gzip échouera */
+    }
+    // Vérification : gzip -t relit l'archive de bout en bout.
+    const check = await run("gzip", ["-t", file]);
+    if (check.code !== 0 || size <= 0) {
+      try {
+        fs.rmSync(file, { force: true });
+      } catch {
+        /* déjà absent */
+      }
+      return {
+        ok: false,
+        file: null,
+        detail: `archive invalide (gzip -t exit ${check.code}, ${size} octets)`,
+      };
+    }
+    return {
+      ok: true,
+      file,
+      detail: `${path.basename(file)} (${Math.round(size / 1e6)} Mo, gzip vérifié${tar.code === 1 ? ", fichiers vivants" : ""})`,
+    };
+  })();
 }
 
 /** Rétention simple : garder les N derniers backups d'une instance. */
@@ -541,8 +600,23 @@ export async function updateServer({
 
   let backupFile = null;
   if (backup) {
-    backupFile = await backupInstanceData(brandRoot, inst);
-    log(backupFile ? `backup ${path.basename(backupFile)}` : "backup indisponible (tar)");
+    const b = await backupInstanceData(brandRoot, inst);
+    if (!b.ok) {
+      // Backup demandé mais impossible : échec PROPRE avant tout recreate
+      // (rien n'a été touché) — jamais un warning silencieux.
+      log(`backup impossible: ${b.detail} — update annulé`);
+      return {
+        ok: false,
+        error: `backup impossible: ${b.detail}`,
+        image,
+        previousImage,
+        rolledBack: false,
+        backup: null,
+        steps,
+      };
+    }
+    backupFile = b.file;
+    log(`backup ${b.detail}`);
     pruneBackups(brandRoot, inst.name);
   }
 

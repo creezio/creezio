@@ -164,6 +164,44 @@ export function hermesRuntimeCacheDir(ctx: HostRuntimeContext): string {
   return dir;
 }
 
+/**
+ * Verrou layout d'install Hermes : l'install.sh amont récent bascule en
+ * layout FHS quand il tourne en root Linux (containers server-docker) —
+ * code sous `/usr/local/lib/hermes-agent`, commande `/usr/local/bin/hermes`
+ * — hors du sandbox où le launcher cherche le binaire (« CLI toujours
+ * introuvable après install », vécu instance demo). `HERMES_INSTALL_DIR`
+ * est honoré par l'installeur et force le layout sandbox historique.
+ */
+export function hermesInstallLayoutEnv(
+  profile: string,
+  platform: NodeJS.Platform,
+): { HERMES_HOME: string; HERMES_INSTALL_DIR?: string } {
+  if (platform === "win32") {
+    return {
+      HERMES_HOME: path.join(profile, "AppData", "Local", "hermes"),
+    };
+  }
+  const home = path.join(profile, ".hermes");
+  return {
+    HERMES_HOME: home,
+    HERMES_INSTALL_DIR: path.join(home, "hermes-agent"),
+  };
+}
+
+/**
+ * Dossiers fallback FHS pour retrouver un CLI Hermes installé AVANT le
+ * verrou `HERMES_INSTALL_DIR` (install root Linux → /usr/local). Réservé
+ * aux processus root Linux (containers) — jamais sur un desktop utilisateur
+ * (sandbox only).
+ */
+export function hermesFhsFallbackDirs(
+  platform: NodeJS.Platform,
+  uid: number | null,
+): string[] {
+  if (platform !== "linux" || uid !== 0) return [];
+  return ["/usr/local/bin", "/usr/local/lib/hermes-agent"];
+}
+
 /** Corrige les invocations non quotées de $UV_CMD dans install.sh (espaces). */
 export function patchHermesInstallShForSpaces(scriptPath: string): void {
   if (!fs.existsSync(scriptPath)) return;
@@ -209,6 +247,14 @@ export function hermesAgentDirCandidates(ctx: HostRuntimeContext): string[] {
     path.join(profile, ".hermes", "hermes-agent"),
     path.join(local, "hermes", "hermes-agent"),
     path.join(ctx.userDataDir, "hermes-home", "hermes-agent"),
+    // Install FHS root Linux antérieure au verrou HERMES_INSTALL_DIR
+    // (containers uniquement — voir hermesFhsFallbackDirs).
+    ...(hermesFhsFallbackDirs(
+      process.platform,
+      typeof process.getuid === "function" ? process.getuid() : null,
+    ).includes("/usr/local/lib/hermes-agent")
+      ? ["/usr/local/lib/hermes-agent"]
+      : []),
   ].filter(Boolean);
 }
 
@@ -516,16 +562,16 @@ export async function installHermesAgent(
       path.join(profile, "AppData", "Roaming"),
     );
     // Verrou définitif : install.ps1/install.sh donnent à HERMES_HOME la
-    // priorité sur %LOCALAPPDATA% / $HOME pour choisir HermesHome/InstallDir.
-    setSandboxEnvVar(
-      installEnv,
-      "HERMES_HOME",
-      process.platform === "win32"
-        ? path.join(profile, "AppData", "Local", "hermes")
-        : path.join(profile, ".hermes"),
-    );
+    // priorité sur %LOCALAPPDATA% / $HOME pour choisir HermesHome, et
+    // HERMES_INSTALL_DIR neutralise le layout FHS root Linux (/usr/local)
+    // de l'installeur récent — le launcher ne cherche que le sandbox.
+    const layout = hermesInstallLayoutEnv(profile, process.platform);
+    setSandboxEnvVar(installEnv, "HERMES_HOME", layout.HERMES_HOME);
+    if (layout.HERMES_INSTALL_DIR) {
+      setSandboxEnvVar(installEnv, "HERMES_INSTALL_DIR", layout.HERMES_INSTALL_DIR);
+    }
     opts.onLog(
-      `install Hermes dans sandbox ${product} (USERPROFILE=${profile}, HERMES_HOME=${installEnv.HERMES_HOME})`,
+      `install Hermes dans sandbox ${product} (USERPROFILE=${profile}, HERMES_HOME=${installEnv.HERMES_HOME}${layout.HERMES_INSTALL_DIR ? `, HERMES_INSTALL_DIR=${layout.HERMES_INSTALL_DIR}` : ""})`,
     );
 
     // Purge des checkouts mis de côté par install.ps1 après un échec

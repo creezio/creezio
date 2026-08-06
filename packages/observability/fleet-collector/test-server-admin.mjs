@@ -301,3 +301,40 @@ try {
     /* ignore */
   }
 }
+
+// ── backupInstanceData : archive vérifiée (gzip -t), jamais de warning
+// silencieux. Piège vécu : GNU tar exit 1 (« file changed as we read it »)
+// sur volume vivant = archive VALIDE, l'ancien code la jetait en
+// « backup indisponible (tar) » alors que le .tar.gz complet existait.
+{
+  const { backupInstanceData, backupsDir } = await import("./server-lib.mjs");
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "creezio-backup-"));
+  try {
+    const brandRoot = path.join(tmp, "brand");
+    const dataDir = path.join("docker-data", "servers", "demo");
+    fs.mkdirSync(path.join(brandRoot, dataDir, "sub"), { recursive: true });
+    fs.writeFileSync(
+      path.join(brandRoot, dataDir, "sub", "core.db"),
+      "contenu-test",
+    );
+    const inst = { name: "demo", dataDir };
+
+    const ok = await backupInstanceData(brandRoot, inst);
+    assert.equal(ok.ok, true, `backup attendu OK: ${ok.detail}`);
+    assert.ok(fs.existsSync(ok.file), "archive .tar.gz absente");
+    assert.ok(fs.statSync(ok.file).size > 0, "archive vide");
+    assert.match(ok.detail, /gzip vérifié/);
+    assert.ok(ok.file.startsWith(backupsDir(brandRoot)));
+
+    // Volume introuvable → échec PROPRE avec détail (pas de null muet).
+    const ko = await backupInstanceData(brandRoot, {
+      name: "fantome",
+      dataDir: path.join("docker-data", "servers", "fantome"),
+    });
+    assert.equal(ko.ok, false);
+    assert.match(ko.detail, /introuvable/);
+    console.log("OK — backupInstanceData (archive gzip vérifiée)");
+  } finally {
+    fs.rmSync(tmp, { recursive: true, force: true });
+  }
+}

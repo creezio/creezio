@@ -43,6 +43,7 @@ import {
   resolveHermesAgentDir,
   resolveHermesPython,
   type BootstrapPhase,
+  hermesFhsFallbackDirs,
 } from "./runtime-bootstrap.js";
 
 
@@ -308,6 +309,12 @@ function findHermesBinary(): string | null {
       path.join(legacyRuntime, "bin"),
       path.join(legacyProfile, ".hermes", "bin"),
       path.join(legacyProfile, ".hermes", "hermes-agent", "venv", "bin"),
+      // Containers root Linux : installs FHS antérieures au verrou
+      // HERMES_INSTALL_DIR (/usr/local) — jamais consulté sur desktop.
+      ...hermesFhsFallbackDirs(
+        process.platform,
+        typeof process.getuid === "function" ? process.getuid() : null,
+      ),
     ].filter(Boolean),
     // OS TempoFlow : jamais de `which`/`where` — sandbox uniquement.
     // Overrides env autorisés seulement hors build packagé (dev/tests).

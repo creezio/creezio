@@ -43,7 +43,11 @@ import {
   n8nRuntimeCacheDir,
   type N8nBootstrapPhase,
 } from "./runtime-bootstrap.js";
-import { cookieHeaderFromSetCookie } from "./api-key.js";
+import {
+  cookieHeaderFromSetCookie,
+  n8nLoginSucceeded,
+  n8nNeedsOwnerSetup,
+} from "./api-key.js";
 
 export type RunningN8n = {
   uiUrl: string;
@@ -635,17 +639,29 @@ async function ensureOwnerSilent(
 ): Promise<OwnerCreds | null> {
   const base = uiUrl.replace(/\/$/, "");
   const home = state.running?.homeDir || n8nHomeDir();
+  // Faux positif connu : n8n vierge répond 200 à /rest/login (shell user)
+  // SANS cookie de session → n8nLoginSucceeded exige le cookie n8n-auth.
   const tryLogin = async (c: OwnerCreds): Promise<boolean> => {
     const res = await httpJson("POST", `${base}/rest/login`, {
       emailOrLdapLoginId: c.email,
       password: c.password,
     });
-    return res.status >= 200 && res.status < 300;
+    return n8nLoginSucceeded(res.status, res.headers["set-cookie"]);
   };
   try {
     await waitForN8nRestReady(base, 90_000, log);
 
-    if (await tryLogin(creds)) {
+    // État réel de l'instance : /rest/settings → showSetupOnFirstLoad.
+    let needsSetup: boolean | null = null;
+    try {
+      const settings = await httpJson("GET", `${base}/rest/settings`);
+      needsSetup = n8nNeedsOwnerSetup(settings.json);
+    } catch {
+      /* signal indisponible — on retombe sur login puis setup */
+    }
+    if (needsSetup === true) {
+      log("owner: instance vierge détectée (showSetupOnFirstLoad) — setup…");
+    } else if (await tryLogin(creds)) {
       state.ownerReady = true;
       log("owner: login OK (session silencieuse)");
       writeOwnerCreds(home, creds);
@@ -683,7 +699,7 @@ async function ensureOwnerSilent(
         emailOrLdapLoginId: fallback.email,
         password: fallback.password,
       });
-      if (loginRes.status >= 200 && loginRes.status < 300) {
+      if (n8nLoginSucceeded(loginRes.status, loginRes.headers["set-cookie"])) {
         state.ownerReady = true;
         log("owner: login OK via creds locaux (instance pré-superadmin)");
         const cookie = cookieHeaderFromSetCookie(loginRes.headers["set-cookie"]);
@@ -763,7 +779,8 @@ async function prepareN8nUiSession(): Promise<{
       emailOrLdapLoginId: creds.email,
       password: creds.password,
     });
-    if (!(res.status >= 200 && res.status < 300)) {
+    if (!n8nLoginSucceeded(res.status, res.headers["set-cookie"])) {
+      // 200-sans-cookie inclus (instance vierge) : provisionner puis re-login.
       const working =
         (await ensureOwnerSilent(
           uiUrl,

@@ -162,6 +162,68 @@ test("embeds.skills — seedHermesSkillsFromDirs kit + marque idempotent", async
   }
 });
 
+test("embeds.n8n — owner: pas de faux positif sur instance vierge", async () => {
+  const { n8nLoginSucceeded, n8nNeedsOwnerSetup } = await import(
+    "../packages/electron-shell/dist/index.js"
+  );
+  // n8n vierge : /rest/login répond 200 (shell user) SANS cookie de session
+  // → JAMAIS un login (vécu : « owner: login OK » sur instance demo vierge,
+  // owner jamais provisionné, page /setup blanche).
+  assert.equal(n8nLoginSucceeded(200, undefined), false);
+  assert.equal(n8nLoginSucceeded(200, []), false);
+  assert.equal(n8nLoginSucceeded(200, ["other=1; Path=/"]), false);
+  // Login réel : 2xx + cookie n8n-auth.
+  assert.equal(
+    n8nLoginSucceeded(200, ["n8n-auth=abc.def; Path=/; HttpOnly"]),
+    true,
+  );
+  assert.equal(n8nLoginSucceeded(401, ["n8n-auth=abc; Path=/"]), false);
+  // /rest/settings → showSetupOnFirstLoad = signal d'instance vierge.
+  assert.equal(
+    n8nNeedsOwnerSetup({
+      data: { userManagement: { showSetupOnFirstLoad: true } },
+    }),
+    true,
+  );
+  assert.equal(
+    n8nNeedsOwnerSetup({
+      data: { userManagement: { showSetupOnFirstLoad: false } },
+    }),
+    false,
+  );
+  assert.equal(n8nNeedsOwnerSetup({ data: {} }), null);
+  assert.equal(n8nNeedsOwnerSetup(null), null);
+});
+
+test("embeds.hermes — install layout verrouillé sandbox (jamais /usr/local)", async () => {
+  const { hermesFhsFallbackDirs, hermesInstallLayoutEnv } = await import(
+    "../packages/electron-shell/dist/index.js"
+  );
+  // Posix : HERMES_INSTALL_DIR force le layout sandbox — l'install.sh amont
+  // récent bascule sinon en FHS /usr/local quand il tourne root Linux
+  // (containers server-docker) et le launcher ne retrouve jamais le CLI
+  // (« CLI toujours introuvable après install », vécu instance demo).
+  const posix = hermesInstallLayoutEnv("/data/hermes-runtime/os-profile", "linux");
+  assert.equal(posix.HERMES_HOME, "/data/hermes-runtime/os-profile/.hermes");
+  assert.equal(
+    posix.HERMES_INSTALL_DIR,
+    "/data/hermes-runtime/os-profile/.hermes/hermes-agent",
+  );
+  assert.ok(!posix.HERMES_INSTALL_DIR.startsWith("/usr/local"));
+  // Windows : layout LOCALAPPDATA inchangé, pas d'install dir forcé.
+  const win = hermesInstallLayoutEnv("C:\\profile", "win32");
+  assert.ok(win.HERMES_HOME.includes("hermes"));
+  assert.equal(win.HERMES_INSTALL_DIR, undefined);
+  // Fallback FHS : uniquement root Linux (containers) — jamais desktop.
+  assert.deepEqual(hermesFhsFallbackDirs("linux", 0), [
+    "/usr/local/bin",
+    "/usr/local/lib/hermes-agent",
+  ]);
+  assert.deepEqual(hermesFhsFallbackDirs("linux", 1000), []);
+  assert.deepEqual(hermesFhsFallbackDirs("darwin", 0), []);
+  assert.deepEqual(hermesFhsFallbackDirs("win32", null), []);
+});
+
 test("embeds.hermes — serverWebuiPassword (superadmin flotte)", async () => {
   const { serverWebuiPassword } = await import(
     "../packages/electron-shell/dist/index.js"
