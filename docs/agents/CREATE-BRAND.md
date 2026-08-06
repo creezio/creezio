@@ -117,18 +117,17 @@ Reset clean-room TF3 : `node scripts/reset-tempoflow3.mjs` (backup + apply + bui
 
 ## 5. Premier serveur Docker (marque neuve)
 
-Après `brand apply` + push GitHub (vendor + **package-lock** générés) :
+`brand apply` / `new-app` préparent **automatiquement** vendor +
+`package-lock` (même sans `--push`). Ensuite :
 
 ```bash
 cd <app>
 npm run server-docker:create -- demo
-# équivalent : creezio server-docker create demo --brand-root "$PWD"
 ```
 
-Si `npm ci` / lock incohérent apparaît : **ne pas** lancer `npm install`
-dans `server/` ni manipuler le symlink `server/node_modules`. Relancer via
-le CLI ci-dessus (il régénère le lock). `npm run docker:build` (clone sans
-kit) a un fallback Dockerfile `npm ci || npm install --omit=dev`.
+**Interdit** : `npm install` dans `server/` + remonter/relinker
+`node_modules` — le flux factory/Docker le fait déjà (`prepareBrandDistribution`,
+`ensure-server-lock.mjs` avant `docker:build`, fallback Dockerfile).
 
 ## 6. Sonde TempoFlow3
 

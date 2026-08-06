@@ -39,8 +39,8 @@ en jumeau dans `main.ts`.
 - `bin/creezio.js` : binaire npm.
 - `src/cli.ts` : `new-app` + dispatch `brand` / `server-docker`.
 - `src/server-docker-cli.ts` : serveurs marque headless (`docker/server`).
-- `src/package-lock.ts` : cohérence `package-lock` marque (push GitHub +
-  `server-docker build` — évite le piège npm ci Docker / symlink nm).
+- `src/package-lock.ts` / `src/prepare-brand-distribution.ts` : vendor +
+  locks dès `new-app`/`brand apply` (Docker prêt out-of-the-box).
 - `src/brand-cli.ts` : BrandSpec init/doctor/apply/smoke.
 - `src/product-model.ts` : `ProductModel`, `parseProductPrd`, `safeBrandId`.
 - `src/scaffold.ts` / `scaffold-from-prd.ts` : artefacts.

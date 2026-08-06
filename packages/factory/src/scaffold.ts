@@ -106,6 +106,7 @@ function materializeStandaloneDistribution(
   const dockerServer = path.join(kit, "docker/server");
   const copies: Array<[src: string, dest: string]> = [
     ["stage-client-vendor.mjs", "scripts/stage-client-vendor.mjs"],
+    ["ensure-server-lock.mjs", "scripts/ensure-server-lock.mjs"],
     ["Dockerfile", "docker/server.Dockerfile"],
   ];
   for (const [src, dest] of copies) {
@@ -818,8 +819,10 @@ function renderRootPackageJson(
   // Clone autonome (repo GitHub sans kit) : stage client/vendor depuis le
   // vendor racine commité + build image serveur via Dockerfile matérialisé.
   scripts.bootstrap = "node scripts/stage-client-vendor.mjs";
+  // ensure-server-lock AVANT docker build : empêche npm ci rouge sur lock
+  // stale/absent (clone autonome sans kit CLI).
   scripts["docker:build"] =
-    `docker build -f docker/server.Dockerfile --build-arg SERVER_DIR=server -t ${m.brandId}-server:local .`;
+    `node scripts/ensure-server-lock.mjs && docker build -f docker/server.Dockerfile --build-arg SERVER_DIR=server -t ${m.brandId}-server:local .`;
   // Serveur Docker headless : brandRoot = racine monorepo (scripts kit SoT).
   Object.assign(scripts, serverDockerNpmScripts(m.brandId));
 
@@ -936,7 +939,7 @@ Le repo embarque le kit pré-buildé (\`vendor/creezio/\`, commité). Post-clone
 npm run bootstrap               # stage client/vendor depuis le vendor racine
 npm ci --prefix server && npm ci --prefix server/ui && npm ci --prefix client
 npm run build:runtime && npm run build:ui
-npm run docker:build            # image serveur via docker/server.Dockerfile
+npm run docker:build            # ensure-server-lock + image via docker/server.Dockerfile
 \`\`\`
 
 Les binaires fat (Meili, cloudflared — \`vendor/creezio/electron-shell/resources/bin/\`)

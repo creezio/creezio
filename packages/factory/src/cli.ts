@@ -332,20 +332,24 @@ export async function runCli(argv: string[]): Promise<void> {
     console.log(`    + ${path.relative(result.outDir, f)}`);
   }
 
+  // Vendor + package-lock AVANT tout (push ou pas) — Docker prêt out-of-the-box.
+  const { prepareBrandDistribution } = await import(
+    "./prepare-brand-distribution.js"
+  );
+  prepareBrandDistribution(result.outDir, {
+    kitRoot: root,
+    log: (line) => console.log(`  dist         ${line}`),
+  });
+
   await maybeCreateGithubRepos(args, result);
   console.log("");
   console.log("Suite:");
+  console.log(`  cd ${result.outDir}`);
   if (result.productModel) {
-    console.log(`  cd ${result.outDir}`);
     console.log(`  npm run test:metier-parcours`);
     console.log(`  npm run test:first-run-auth`);
-    console.log(
-      `  npm run server-docker:create -- demo   # serveur Docker + CRM navigateur`,
-    );
-  } else {
-    console.log(`  cd ${result.outDir} && npm install && npm run build`);
-    console.log(
-      `  npm run desktop:publish -- --brand=${result.manifest.brandId} --dry-run`,
-    );
   }
+  console.log(
+    `  npm run server-docker:create -- demo   # serveur Docker + CRM (NE PAS npm install dans server/)`,
+  );
 }

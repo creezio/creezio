@@ -5,6 +5,7 @@
  * agents cassent server/node_modules symlink ».
  */
 import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -116,8 +117,7 @@ test("push GitHub + ensureBrandStandalone régénèrent le lock", () => {
     path.join(ROOT, "packages/factory/src/github-repos.ts"),
     "utf8",
   );
-  assert.match(gh, /ensureBrandPackageLocks/);
-  assert.match(gh, /lock-only/);
+  assert.match(gh, /prepareBrandDistribution/);
 
   const cli = fs.readFileSync(
     path.join(ROOT, "packages/factory/src/server-docker-cli.ts"),
@@ -126,4 +126,79 @@ test("push GitHub + ensureBrandStandalone régénèrent le lock", () => {
   assert.match(cli, /ensureBrandPackageLocks/);
   assert.match(cli, /isPackageLockInSync/);
   assert.match(cli, /mode: "install"/);
+});
+
+test("new-app / brand apply appellent prepareBrandDistribution", () => {
+  const mainCli = fs.readFileSync(
+    path.join(ROOT, "packages/factory/src/cli.ts"),
+    "utf8",
+  );
+  assert.match(mainCli, /prepareBrandDistribution/);
+  const brandCli = fs.readFileSync(
+    path.join(ROOT, "packages/factory/src/brand-cli.ts"),
+    "utf8",
+  );
+  assert.match(brandCli, /prepareBrandDistribution/);
+});
+
+test("ensure-server-lock.mjs autonome (syntaxe + contrat)", () => {
+  const script = path.join(ROOT, "docker/server/ensure-server-lock.mjs");
+  assert.ok(fs.existsSync(script));
+  const check = spawnSync(process.execPath, ["--check", script], {
+    encoding: "utf8",
+  });
+  assert.equal(check.status, 0, check.stderr);
+  const src = fs.readFileSync(script, "utf8");
+  assert.match(src, /package-lock-only/);
+  assert.doesNotMatch(src, /ln -sfn.*node_modules|renameSync.*node_modules/);
+});
+
+test("prepareBrandDistribution produit un lock server/ sur marque minimale", async () => {
+  const { isPackageLockInSync } = await loadLockHelpers();
+  const prepMod = await import(
+    pathToFileURL(
+      path.join(ROOT, "packages/factory/dist/prepare-brand-distribution.js"),
+    ).href,
+  );
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "creezio-prep-"));
+  try {
+    const server = path.join(dir, "server");
+    fs.mkdirSync(server, { recursive: true });
+    fs.mkdirSync(path.join(dir, "vendor/creezio/probe"), { recursive: true });
+    fs.writeFileSync(
+      path.join(dir, "vendor/creezio/probe/package.json"),
+      JSON.stringify({ name: "@creezio/probe", version: "0.0.1", type: "module" }),
+    );
+    fs.writeFileSync(
+      path.join(dir, "vendor/creezio/SYNC.json"),
+      JSON.stringify({ packages: ["probe"] }),
+    );
+    fs.symlinkSync("../vendor", path.join(server, "vendor"));
+    fs.writeFileSync(
+      path.join(server, "package.json"),
+      JSON.stringify({
+        name: "@creezio/app-prep",
+        private: true,
+        type: "module",
+        dependencies: {
+          "@creezio/probe": "file:vendor/creezio/probe",
+          ms: "^2.1.3",
+        },
+      }),
+    );
+    const r = prepMod.prepareBrandDistribution(dir, {
+      log: () => {},
+    });
+    assert.ok(
+      isPackageLockInSync(path.join(server, "package.json")),
+      "lock server absent/incohérent après prepare",
+    );
+    assert.ok(
+      r.locksRefreshed.includes("server") ||
+        fs.existsSync(path.join(server, "package-lock.json")),
+      "prepare n'a pas produit server/package-lock.json",
+    );
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
 });

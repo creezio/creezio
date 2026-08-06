@@ -45,6 +45,7 @@ export {
   ensureBrandPackageLocks,
   type PkgJson,
 } from "./package-lock.js";
+export { prepareBrandDistribution } from "./prepare-brand-distribution.js";
 export {
   loadServerRegistry,
   saveServerRegistry,
