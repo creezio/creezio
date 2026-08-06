@@ -6,6 +6,8 @@
  * - PD2 : manifest `features.plugins = false` (Fidu) ⇒ feature-off.
  * - PD3 : kill-switch `CREEZIO_PLUGINS=0` ⇒ feature-off.
  * - PD4 : `CREEZIO_PLUGINS=1` legacy ⇒ toujours enabled (no-op).
+ * - PD5 : plugins livrés par la marque (`<appRoot>/plugins/<id>/`) installés
+ *         au boot (seed idempotent, jamais d'écrasement).
  *
  * Hermétique : marque synthétique via createAppManifest + harness kit,
  * zéro repo marque requis.
@@ -32,12 +34,13 @@ const restoreEnv = (saved) => {
   }
 };
 
-async function bootProbe({ pluginsEnv, featureOff } = {}) {
+async function bootProbe({ pluginsEnv, featureOff, beforeBoot } = {}) {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "plugins-default-"));
   process.env.CREEZIO_SKIP_KIT_BINARIES = "1";
   process.env.CREEZIO_NATIVE_WARM = "0";
   if (pluginsEnv === undefined) delete process.env.CREEZIO_PLUGINS;
   else process.env.CREEZIO_PLUGINS = pluginsEnv;
+  beforeBoot?.(tmp);
 
   const base = createAppManifest({
     brandId: "pluginsprobe",
@@ -60,6 +63,7 @@ async function bootProbe({ pluginsEnv, featureOff } = {}) {
   });
   return {
     handle,
+    tmp,
     close: async () => {
       await handle.close();
       fs.rmSync(tmp, { recursive: true, force: true });
@@ -130,6 +134,63 @@ test("PD4 legacy CREEZIO_PLUGINS=1 : no-op, toujours enabled", async () => {
     probe = await bootProbe({ pluginsEnv: "1" });
     const { status } = await pluginsMode(probe.handle);
     assert.equal(status, "enabled", "opt-in historique accepté (no-op)");
+  } finally {
+    await probe?.close();
+    restoreEnv(saved);
+  }
+});
+
+test("PD5 seed <appRoot>/plugins : install au boot, idempotent", async () => {
+  const saved = saveEnv();
+  let probe = null;
+  try {
+    probe = await bootProbe({
+      pluginsEnv: undefined,
+      beforeBoot: (tmp) => {
+        // Plugin livré par la marque dans son repo (source de seed).
+        const src = path.join(tmp, "plugins", "brandseed");
+        fs.mkdirSync(src, { recursive: true });
+        fs.writeFileSync(
+          path.join(src, "manifest.json"),
+          JSON.stringify({
+            id: "brandseed",
+            name: "Brand Seed",
+            version: "1.0.0",
+            main: "index.js",
+            permissions: ["net:loopback"],
+          }),
+        );
+        fs.writeFileSync(
+          path.join(src, "index.js"),
+          `const http=require("node:http");
+const s=http.createServer((req,res)=>{res.writeHead(200,{"content-type":"application/json"});res.end(JSON.stringify({ok:true}))});
+s.listen(Number(process.env.PORT||0),"127.0.0.1",()=>console.log(JSON.stringify({event:"ready",port:s.address().port})));`,
+        );
+      },
+    });
+    const { endpoint } = await pluginsMode(probe.handle);
+    const seeded = (endpoint.plugins || []).find(
+      (p) => p.manifest?.id === "brandseed",
+    );
+    assert.ok(seeded, `plugin marque installé au boot: ${JSON.stringify(endpoint)}`);
+    assert.equal(seeded.enabled, true, "activé à la première install");
+    // Copié dans le répertoire runtime (pas exécuté depuis la source).
+    assert.ok(
+      String(seeded.dir).includes(path.join("data", "plugins")),
+      `installé sous data/plugins: ${seeded.dir}`,
+    );
+    // Idempotent : la source n'écrase pas une install existante.
+    fs.writeFileSync(path.join(seeded.dir, "marker.txt"), "keep\n");
+    const { seedPluginsFromDirs } = await import(
+      "../packages/app-runtime/dist/index.js"
+    );
+    const second = seedPluginsFromDirs({
+      seedDirs: [path.join(probe.tmp, "plugins")],
+      pluginsRoot: path.dirname(seeded.dir),
+    });
+    assert.deepEqual(second.seeded, [], "pas de ré-install");
+    assert.deepEqual(second.skipped, ["brandseed"]);
+    assert.ok(fs.existsSync(path.join(seeded.dir, "marker.txt")));
   } finally {
     await probe?.close();
     restoreEnv(saved);

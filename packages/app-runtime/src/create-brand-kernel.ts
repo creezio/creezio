@@ -12,8 +12,21 @@ import {
   type SqliteMigration,
   type SqliteRuntime,
 } from "@creezio/platform-core";
-import { createApiKernel, type ApiKernel } from "@creezio/api-kernel";
+import {
+  createApiKernel,
+  type ApiKernel,
+  type ApiRequest,
+} from "@creezio/api-kernel";
 import type { AppManifest } from "@creezio/brand-config";
+import {
+  PLUGIN_ACL_ORG_HEADER,
+  PLUGIN_ACL_OWNER_HEADER,
+  PLUGIN_ACL_USER_HEADER,
+  createSqliteProductHubStore,
+  decidePluginAccess,
+  resolvePluginAclActorFromHeaders,
+  type SqliteProductHubStore,
+} from "@creezio/product-hub";
 import {
   ASSISTANT_CORE_SQL,
   createSqliteAssistantStore,
@@ -118,9 +131,51 @@ export function createBrandKernel(
   // Version embarquée par l'image Docker versionnée (publish --tag X) —
   // /api/v1/core/version est la SoT de comparaison pour l'update de flotte.
   const appVersion = (process.env.CREEZIO_APP_VERSION || "").trim();
+
+  // ACL plugins Product Hub (P3 plugins natifs) — store lazy sur core.db
+  // (tables déjà posées par platformCoreMigrations h3/i10).
+  let productHub: SqliteProductHubStore | null = null;
+  const getProductHub = (): SqliteProductHubStore => {
+    if (!productHub) {
+      productHub = createSqliteProductHubStore({
+        coreDbPath: runtime.paths.core,
+      });
+    }
+    return productHub;
+  };
+
+  // Même décision que MCP / control-plane (decidePluginAccess H5).
+  // Compat H2 : appel local sans headers actor = service (owner-level).
+  function authorizePluginAccess(accessCtx: {
+    pluginId: string;
+    method: string;
+    subPath: string;
+    req: ApiRequest;
+  }) {
+    const headers = accessCtx.req.headers || {};
+    const hasActorHint = Boolean(
+      headers[PLUGIN_ACL_ORG_HEADER] ||
+        headers[PLUGIN_ACL_USER_HEADER] ||
+        headers[PLUGIN_ACL_OWNER_HEADER],
+    );
+    if (!hasActorHint) return { allow: true as const };
+    const actor = resolvePluginAclActorFromHeaders(headers);
+    const method = accessCtx.method.toUpperCase();
+    const action =
+      method === "GET" || method === "HEAD"
+        ? ("see" as const)
+        : ("execute" as const);
+    return decidePluginAccess(
+      getProductHub().getAclPolicy(accessCtx.pluginId),
+      actor,
+      action,
+    );
+  }
+
   const api = createApiKernel({
     brandId: opts.manifest.brandId,
     sqliteRuntime: runtime,
+    authorizePluginAccess,
     ...(appVersion ? { appVersion } : {}),
   });
 
@@ -136,10 +191,14 @@ export function createBrandKernel(
     runtime,
     paths,
     ...platform,
+    // ACL plugins (façade MCP harness/desktop) — lazy, même core.db.
+    getPluginAclPolicy: (pluginId: string) =>
+      getProductHub().getAclPolicy(pluginId),
     close: () => {
       platform.tasks?.close();
       platform.mails?.close();
       platform.assistant?.close();
+      productHub?.close();
       runtime.close();
     },
   };

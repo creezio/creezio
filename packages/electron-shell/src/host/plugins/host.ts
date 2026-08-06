@@ -11,11 +11,13 @@
  */
 
 import { spawn, type ChildProcess } from "node:child_process";
+import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import {
   discoverPlugins,
   findFreePort,
+  hasPluginPermission,
   pluginsRootDir,
   setPluginEnabled,
   writePluginRuntimeState,
@@ -56,8 +58,61 @@ export type PluginsHost = {
   getPluginLogs: () => string[];
 };
 
+/** Clé API générique kit persistée par plugin (host minimal). */
+const PLUGIN_API_KEY_FILE = ".creezio-plugin-api-key.json";
+
+function pluginApiScopes(plugin: DiscoveredPlugin): string | null {
+  if (hasPluginPermission(plugin.manifest, "crm:write")) {
+    return "crm:read,crm:write";
+  }
+  if (hasPluginPermission(plugin.manifest, "crm:read")) return "crm:read";
+  return null;
+}
+
+/**
+ * Clé API scopée par plugin — persistée dans le dossier plugin (0600).
+ * Générique kit : l'upsert DB côté marque reste le vertical du launcher
+ * complet (`ensurePluginCrmApiKey` + bindings).
+ */
+function ensurePluginApiKeyFile(
+  plugin: DiscoveredPlugin,
+  scopes: string,
+): { apiKey: string; scopes: string } {
+  const file = path.join(plugin.dir, PLUGIN_API_KEY_FILE);
+  try {
+    const raw = JSON.parse(fs.readFileSync(file, "utf8")) as {
+      apiKey?: string;
+      scopes?: string;
+    };
+    if (raw && typeof raw.apiKey === "string" && raw.scopes === scopes) {
+      return { apiKey: raw.apiKey, scopes };
+    }
+  } catch {
+    /* absent / invalide → régénérer */
+  }
+  const apiKey = `czp_${crypto.randomBytes(24).toString("base64url")}`;
+  fs.writeFileSync(
+    file,
+    `${JSON.stringify({ apiKey, scopes, createdAt: new Date().toISOString() }, null, 2)}\n`,
+    { mode: 0o600 },
+  );
+  return { apiKey, scopes };
+}
+
 export function createPluginsHost(opts: {
   ctx: HostRuntimeContext;
+  /**
+   * Hooks lifecycle — registerPluginApi / unregisterPluginApi côté
+   * app-runtime (P3). `onPluginStopped` couvre exit ET stopAllPlugins.
+   */
+  onPluginStarted?: (plugin: {
+    id: string;
+    dir: string;
+    port: number | null;
+  }) => void;
+  onPluginStopped?: (id: string) => void;
+  /** Clés LLM à injecter si permission `llm:use` (défaut process.env). */
+  getLlmKeys?: () => { openai?: string | null; anthropic?: string | null };
 }): PluginsHost {
   const { ctx } = opts;
   const root = () => pluginsRootDir(ctx.userDataDir);
@@ -74,6 +129,7 @@ export function createPluginsHost(opts: {
   }
 
   function stopAllPlugins(): void {
+    const ids = [...running.keys()];
     for (const p of running.values()) {
       try {
         p.stop();
@@ -83,6 +139,13 @@ export function createPluginsHost(opts: {
     }
     running.clear();
     writePluginRuntimeState(root(), []);
+    for (const id of ids) {
+      try {
+        opts.onPluginStopped?.(id);
+      } catch {
+        /* hook marque non bloquant */
+      }
+    }
   }
 
   function enablePlugin(
@@ -120,20 +183,60 @@ export function createPluginsHost(opts: {
         continue;
       }
       let port: number | null = plugin.manifest.port ?? null;
-      if (port == null && plugin.manifest.panel) {
+      if (port == null) {
+        // Port loopback systématique : panel, tools MCP proxy et mount API
+        // kernel en dépendent (le sidecar peut aussi annoncer {event:"ready"}).
         port = await findFreePort();
       }
+
+      const baseEnv: NodeJS.ProcessEnv = {
+        ...process.env,
+        PLUGIN_ID: plugin.manifest.id,
+        PLUGIN_DIR: plugin.dir,
+        ...(port ? { PORT: String(port) } : {}),
+        ...(startOpts?.crmPort
+          ? { CRM_PORT: String(startOpts.crmPort) }
+          : {}),
+      };
+
+      // API loopback + clé scopée — uniquement avec permission crm:*.
+      const scopes = pluginApiScopes(plugin);
+      if (scopes && startOpts?.crmPort) {
+        baseEnv.API_URL = `http://127.0.0.1:${startOpts.crmPort}`;
+        try {
+          const key = ensurePluginApiKeyFile(plugin, scopes);
+          baseEnv.API_KEY = key.apiKey;
+          baseEnv.API_SCOPES = key.scopes;
+        } catch (e) {
+          push(
+            `${plugin.manifest.id}: clé API plugin non générée (${e instanceof Error ? e.message : e})`,
+          );
+        }
+      } else {
+        delete baseEnv.API_KEY;
+        delete baseEnv.API_SCOPES;
+      }
+
+      // Sécurité : JAMAIS de clé LLM sans permission llm:use (parité
+      // launcher complet — le delete est volontaire, ne pas régresser).
+      if (hasPluginPermission(plugin.manifest, "llm:use")) {
+        const llm = opts.getLlmKeys?.() ?? {
+          openai: process.env.OPENAI_API_KEY || null,
+          anthropic: process.env.ANTHROPIC_API_KEY || null,
+        };
+        if (llm.openai) baseEnv.OPENAI_API_KEY = llm.openai;
+        else delete baseEnv.OPENAI_API_KEY;
+        if (llm.anthropic) baseEnv.ANTHROPIC_API_KEY = llm.anthropic;
+        else delete baseEnv.ANTHROPIC_API_KEY;
+      } else {
+        delete baseEnv.OPENAI_API_KEY;
+        delete baseEnv.ANTHROPIC_API_KEY;
+        delete baseEnv.OPENAI_API_BASE;
+      }
+
       const env = buildIsolatedNodeEnv({
         nodeBin: node,
-        baseEnv: {
-          ...process.env,
-          PLUGIN_ID: plugin.manifest.id,
-          PLUGIN_DIR: plugin.dir,
-          ...(port ? { PORT: String(port) } : {}),
-          ...(startOpts?.crmPort
-            ? { CRM_PORT: String(startOpts.crmPort) }
-            : {}),
-        },
+        baseEnv,
         sandbox: {
           profileHome: path.join(plugin.dir, "home"),
           userData: ctx.userDataDir,
@@ -151,7 +254,22 @@ export function createPluginsHost(opts: {
           .toString()
           .split("\n")
           .filter(Boolean)
-          .forEach((l) => push(`[${plugin.manifest.id}] ${l}`)),
+          .forEach((l) => {
+            push(`[${plugin.manifest.id}] ${l}`);
+            // Annonce de port sidecar `{event:"ready",port}` (parité launcher).
+            try {
+              const j = JSON.parse(l) as { event?: string; port?: number };
+              if (j.event === "ready" && typeof j.port === "number") {
+                const cur = running.get(plugin.manifest.id);
+                // Ne maj que si c'est encore CE process (course au restart).
+                if (cur?.child === child) {
+                  cur.port = j.port;
+                }
+              }
+            } catch {
+              /* log brut */
+            }
+          }),
       );
       const handle: RunningPlugin = {
         id: plugin.manifest.id,
@@ -175,10 +293,24 @@ export function createPluginsHost(opts: {
         permissions: plugin.manifest.permissions || [],
         panel: Boolean(plugin.manifest.panel),
       });
+      try {
+        opts.onPluginStarted?.({
+          id: plugin.manifest.id,
+          dir: plugin.dir,
+          port,
+        });
+      } catch {
+        /* hook non bloquant */
+      }
       child.on("exit", () => {
         const cur = running.get(plugin.manifest.id);
         if (cur?.child === child) {
           running.delete(plugin.manifest.id);
+          try {
+            opts.onPluginStopped?.(plugin.manifest.id);
+          } catch {
+            /* hook non bloquant */
+          }
         }
       });
     }

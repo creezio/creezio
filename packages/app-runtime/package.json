@@ -31,6 +31,7 @@
     "@creezio/mcp-facade": "0.1.0",
     "@creezio/observability": "0.1.0",
     "@creezio/platform-core": "0.1.0",
+    "@creezio/product-hub": "0.1.0",
     "@creezio/shell-ui": "0.1.0",
     "@creezio/support": "0.1.0",
     "@creezio/tasks": "0.1.0",

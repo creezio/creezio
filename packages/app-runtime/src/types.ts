@@ -1,5 +1,6 @@
 import type { AppManifest } from "@creezio/brand-config";
 import type { ApiKernel } from "@creezio/api-kernel";
+import type { PluginAclPolicy } from "@creezio/product-hub";
 import type {
   SqliteMigration,
   SqliteRuntime,
@@ -12,6 +13,12 @@ import type { McpRegisteredTool } from "@creezio/mcp-facade";
 export type BrandKernelHandle = {
   api: ApiKernel;
   runtime: SqliteRuntime;
+  /**
+   * ACL plugins Product Hub (H5) — policy pour `decidePluginAccess`.
+   * Fourni par createBrandKernel ; bootKernel custom peut l'omettre
+   * (fail-closed : sans policy, seuls owner / clé service passent).
+   */
+  getPluginAclPolicy?: (pluginId: string) => PluginAclPolicy | undefined;
   close: () => void;
 };
 
@@ -149,5 +156,7 @@ export type BrandKernelHarnessHandle = {
   desktopProfile: "full" | "lite";
   api: ApiKernel;
   runtime: SqliteRuntime;
+  /** Composition OS (null en profil lite / sans manifest). */
+  os: import("./compose-brand-os.js").BrandOsComposition | null;
   close: () => Promise<void>;
 };

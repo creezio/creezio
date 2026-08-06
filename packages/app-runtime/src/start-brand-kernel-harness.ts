@@ -53,6 +53,12 @@ import {
   platformSurfaceHandlesPath,
   type BrandPlatformSurface,
 } from "./mount-brand-platform-surface.js";
+import { createPluginAclMcpWiring } from "./plugin-acl-wiring.js";
+import { createPluginProxyMount } from "./plugin-proxy-mount.js";
+import {
+  createPluginToolsDiscovery,
+  type PluginToolsHostLike,
+} from "./plugin-tools-discovery.js";
 import {
   browserSidecarRequested,
   startBrandBrowserSidecar,
@@ -216,6 +222,16 @@ export async function startBrandKernelHarness(
   let brandOs = null as ReturnType<typeof composeBrandOs> | null;
   const warmHermes =
     warmNative && process.env.CREEZIO_NATIVE_WARM_HERMES !== "0";
+  // Host plugins actif (compose) — utilisé par la découverte MCP + mounts.
+  const pluginsHostGetter = (): PluginToolsHostLike | null => {
+    if (!pluginsOn || !brandOs) return null;
+    try {
+      if (brandOs.status().hosts.plugins !== "enabled") return null;
+      return brandOs.hostStack.hostPlugins() as PluginToolsHostLike;
+    } catch {
+      return null;
+    }
+  };
   if (desktopProfile === "full" && config.manifest) {
     brandOs = composeBrandOs({
       manifest: config.manifest,
@@ -224,6 +240,38 @@ export async function startBrandKernelHarness(
       resourcesRoot,
       electronDirname: path.join(config.appRoot, "build/electron"),
       ...(config.catalogHost ? { catalogHost: config.catalogHost } : {}),
+      // P5 : plugins livrés par la marque (`<appRoot>/plugins/<id>/`)
+      // installés au boot (idempotent, jamais d'écrasement).
+      pluginSeedDirs: [path.join(config.appRoot, "plugins")],
+      // P3 : mount proxy /api/v1/plugins/<id> pendant la vie du sidecar.
+      pluginHostHooks: {
+        onPluginStarted: (p) => {
+          // DB plugin/<id> ouverte (isolation H2 — ctx.db scopé du mount).
+          try {
+            runtime.openPlugin(p.id);
+          } catch {
+            /* DB plugin optionnelle */
+          }
+          api.registerPluginApi(
+            p.id,
+            createPluginProxyMount({
+              pluginId: p.id,
+              getPort: () =>
+                pluginsHostGetter()
+                  ?.getRunningPlugins()
+                  .find((r) => r.id === p.id)?.port ?? null,
+            }),
+          );
+        },
+        onPluginStopped: (id) => {
+          api.unregisterPluginApi(id);
+          try {
+            runtime.closePlugin(id);
+          } catch {
+            /* déjà fermée */
+          }
+        },
+      },
     });
     // Secret inbound mails / domaine (provisioner tunnel) → env in-process
     // pour POST /api/v1/email/inbound. Jamais d'écrasement d'un env explicite.
@@ -334,15 +382,28 @@ export async function startBrandKernelHarness(
     boot.skip("meili", "Pas de feed Meili");
   }
 
+  // P2 : tools plugins découverts par défaut + ACL Product Hub fail-closed
+  // (deny cross-layer composé, filtre `see` sur listTools).
+  const discoverPluginTools = createPluginToolsDiscovery({
+    pluginsHost: pluginsHostGetter,
+  });
+  const aclWiring = createPluginAclMcpWiring({
+    getPolicy: kernelBoot.getPluginAclPolicy,
+  });
   const mcp = createMcpFacade({
     brandId: config.brandId,
     allowUnauthenticated: true,
+    // Secret posé par composeBrandOs (ensureMcpJwtSecret) — permet des
+    // acteurs JWT réels (sub/orgId/isOwner) sur listTools/callTool.
+    jwtSecret: process.env.MCP_JWT_SECRET || null,
     listApiMounts: () => api.listMounts(),
+    authorizeToolCall: aclWiring.authorizeToolCall,
+    filterPluginToolsForActor: aclWiring.filterPluginToolsForActor,
     discoverToolsBySpace: async () => {
       const brandTools = config.discoverModuleTools
         ? await config.discoverModuleTools(api)
         : [];
-      return { module: brandTools, plugin: [] };
+      return { module: brandTools, plugin: discoverPluginTools() };
     },
   });
   mcp.registerTool({
@@ -678,6 +739,7 @@ export async function startBrandKernelHarness(
     desktopProfile,
     api,
     runtime,
+    os: brandOs,
     close,
   };
 }

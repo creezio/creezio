@@ -28,12 +28,14 @@ import {
   type LocalConfigStore,
 } from "@creezio/electron-shell";
 import {
+  pluginsRootDir,
   resolveBrandDbPath,
   resolveCoreDbPath,
   resolveLocalConfigPath,
   type PathsContext,
   createAppRequire,
 } from "@creezio/platform-core";
+import { seedPluginsFromDirs } from "./plugin-seed.js";
 
 export type ComposeBrandOsOptions = {
   manifest: AppManifest;
@@ -54,6 +56,24 @@ export type ComposeBrandOsOptions = {
    * (no-op — c'est déjà le défaut).
    */
   pluginsFeatureOff?: boolean;
+  /**
+   * Hooks lifecycle sidecars (P3) — registerPluginApi/unregisterPluginApi
+   * côté harness/desktop. Ignorés si feature-off.
+   */
+  pluginHostHooks?: {
+    onPluginStarted?: (plugin: {
+      id: string;
+      dir: string;
+      port: number | null;
+    }) => void;
+    onPluginStopped?: (id: string) => void;
+  };
+  /**
+   * Plugins embarqués marque (P5) — répertoires source copiés dans
+   * `pluginsRootDir(userDataDir)` au premier accès au host (idempotent,
+   * jamais d'écrasement). Convention : `<appRoot>/plugins/<id>/manifest.json`.
+   */
+  pluginSeedDirs?: readonly string[];
   /**
    * Host catalogue distant (marque CHR). Sans = seed local (DB déjà présente).
    */
@@ -482,10 +502,25 @@ export function composeBrandOs(
       ? {
           getPlugins: (() => {
             let host: ReturnType<typeof createPluginsHost> | null = null;
-            return () =>
-              (host ??= createPluginsHost({
+            return () => {
+              if (!host && opts.pluginSeedDirs?.length) {
+                // Install au boot des plugins livrés par la marque (P5).
+                seedPluginsFromDirs({
+                  seedDirs: opts.pluginSeedDirs,
+                  pluginsRoot: pluginsRootDir(opts.userDataDir),
+                  log: (line) => log("plugins", line),
+                });
+              }
+              return (host ??= createPluginsHost({
                 ctx: hostRuntime.hostRuntimeContext(),
+                ...(opts.pluginHostHooks?.onPluginStarted
+                  ? { onPluginStarted: opts.pluginHostHooks.onPluginStarted }
+                  : {}),
+                ...(opts.pluginHostHooks?.onPluginStopped
+                  ? { onPluginStopped: opts.pluginHostHooks.onPluginStopped }
+                  : {}),
               }));
+            };
           })(),
         }
       : {}),

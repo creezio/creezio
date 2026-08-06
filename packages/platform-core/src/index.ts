@@ -399,6 +399,7 @@ export type {
   PluginAcceptance,
   PluginAcceptanceSmoke,
   PluginManifest,
+  PluginMcpToolSpec,
   PluginPanelConfig,
   PluginPermission,
 } from "./plugins/plugin-manifest.js";

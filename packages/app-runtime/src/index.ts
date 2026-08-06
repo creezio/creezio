@@ -23,6 +23,22 @@ export {
   type BrandOsStatus,
 } from "./compose-brand-os.js";
 export {
+  createPluginToolsDiscovery,
+  type CreatePluginToolsDiscoveryOptions,
+  type PluginToolsHostLike,
+} from "./plugin-tools-discovery.js";
+export {
+  createPluginProxyMount,
+} from "./plugin-proxy-mount.js";
+export {
+  seedPluginsFromDirs,
+  type SeedPluginsResult,
+} from "./plugin-seed.js";
+export {
+  createPluginAclMcpWiring,
+  type PluginAclMcpWiring,
+} from "./plugin-acl-wiring.js";
+export {
   listenBrandOsHttp,
   resolveBrandOsHttpHost,
   type BrandOsHttpHandle,

@@ -47,6 +47,12 @@ import {
 import { startBrandUiPlane } from "./start-brand-ui-plane.js";
 import { installBrandOsDesktop } from "./install-brand-os-desktop.js";
 import { warmBrandNativeHosts } from "./warm-brand-native-hosts.js";
+import { createPluginAclMcpWiring } from "./plugin-acl-wiring.js";
+import { createPluginProxyMount } from "./plugin-proxy-mount.js";
+import {
+  createPluginToolsDiscovery,
+  type PluginToolsHostLike,
+} from "./plugin-tools-discovery.js";
 import type {
   BrandDesktopHandle,
   BootBrandKernelFn,
@@ -544,6 +550,16 @@ async function startBrandDesktopBody(args: {
   );
 
   let os = null as ReturnType<typeof composeBrandOs> | null;
+  // Host plugins actif (compose) — découverte tools MCP + mounts proxy.
+  const pluginsHostGetter = (): PluginToolsHostLike | null => {
+    if (!os) return null;
+    try {
+      if (os.status().hosts.plugins !== "enabled") return null;
+      return os.hostStack.hostPlugins() as PluginToolsHostLike;
+    } catch {
+      return null;
+    }
+  };
   if (desktopProfile === "full") {
     os = composeBrandOs({
       manifest,
@@ -554,6 +570,38 @@ async function startBrandDesktopBody(args: {
       ...(config.pluginsFeatureOff !== undefined
         ? { pluginsFeatureOff: config.pluginsFeatureOff }
         : {}),
+      // P5 : plugins livrés par la marque (`<appRoot>/plugins/<id>/`,
+      // électron compilé sous <appRoot>/build/electron) — install au boot.
+      pluginSeedDirs: [path.resolve(__dirname, "..", "..", "plugins")],
+      // P3 : mount proxy /api/v1/plugins/<id> pendant la vie du sidecar.
+      pluginHostHooks: {
+        onPluginStarted: (p) => {
+          // DB plugin/<id> ouverte (isolation H2 — ctx.db scopé du mount).
+          try {
+            runtime.openPlugin(p.id);
+          } catch {
+            /* DB plugin optionnelle */
+          }
+          api.registerPluginApi(
+            p.id,
+            createPluginProxyMount({
+              pluginId: p.id,
+              getPort: () =>
+                pluginsHostGetter()
+                  ?.getRunningPlugins()
+                  .find((r) => r.id === p.id)?.port ?? null,
+            }),
+          );
+        },
+        onPluginStopped: (id) => {
+          api.unregisterPluginApi(id);
+          try {
+            runtime.closePlugin(id);
+          } catch {
+            /* déjà fermée */
+          }
+        },
+      },
       ...(config.catalogHost ? { catalogHost: config.catalogHost } : {}),
       ...(config.crashEndpoint ? { crashEndpoint: config.crashEndpoint } : {}),
     });
@@ -609,10 +657,21 @@ async function startBrandDesktopBody(args: {
     }
   }
 
+  // P2 : tools plugins découverts par défaut + ACL Product Hub fail-closed.
+  const discoverPluginTools = createPluginToolsDiscovery({
+    pluginsHost: pluginsHostGetter,
+  });
+  const aclWiring = createPluginAclMcpWiring({
+    getPolicy: kernelBoot.getPluginAclPolicy,
+  });
   const mcp = createMcpFacade({
     brandId: manifest.brandId,
     allowUnauthenticated: true,
+    // Secret posé par composeBrandOs (ensureMcpJwtSecret) — acteurs JWT réels.
+    jwtSecret: process.env.MCP_JWT_SECRET || null,
     listApiMounts: () => api.listMounts(),
+    authorizeToolCall: aclWiring.authorizeToolCall,
+    filterPluginToolsForActor: aclWiring.filterPluginToolsForActor,
     discoverToolsBySpace: async () => {
       const health = api
         .listMounts()
@@ -630,7 +689,10 @@ async function startBrandDesktopBody(args: {
       const brandTools = config.discoverModuleTools
         ? await config.discoverModuleTools(api)
         : [];
-      return { module: [...health, ...brandTools], plugin: [] };
+      return {
+        module: [...health, ...brandTools],
+        plugin: discoverPluginTools(),
+      };
     },
   });
   mcp.registerTool({

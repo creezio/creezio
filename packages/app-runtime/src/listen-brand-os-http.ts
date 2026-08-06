@@ -902,8 +902,14 @@ export async function listenBrandOsHttp(opts: {
         (pathname === "/mcp" || pathname === "/api/v1/mcp") &&
         (req.method === "GET" || req.method === "POST")
       ) {
+        // ACL plugins (H5) : le Bearer est transmis à la façade — un JWT
+        // signé MCP_JWT_SECRET porte sub/orgId/isOwner pour decidePluginAccess.
+        const bearerToken =
+          (Array.isArray(req.headers.authorization)
+            ? req.headers.authorization[0]
+            : req.headers.authorization) || null;
         if (req.method === "GET") {
-          const listed = await opts.mcp.listTools();
+          const listed = await opts.mcp.listTools({ bearerToken });
           send(res, 200, {
             ok: true,
             transport: "json",
@@ -919,7 +925,7 @@ export async function listenBrandOsHttp(opts: {
         };
         const method = body?.method || "tools/call";
         if (method === "tools/list") {
-          const listed = await opts.mcp.listTools();
+          const listed = await opts.mcp.listTools({ bearerToken });
           send(res, 200, { ok: true, tools: listed.tools });
           return;
         }
@@ -929,7 +935,7 @@ export async function listenBrandOsHttp(opts: {
           send(res, 400, { ok: false, error: "tool_name_required" });
           return;
         }
-        const result = await opts.mcp.callTool(name, args);
+        const result = await opts.mcp.callTool(name, args, { bearerToken });
         send(res, result.ok ? 200 : 400, result);
         return;
       }

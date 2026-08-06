@@ -35,6 +35,22 @@ export type PluginAcceptance = {
   smoke?: PluginAcceptanceSmoke[];
 };
 
+/**
+ * Tool MCP déclaré par le plugin (exposé `plugin.<id>.<name>` par la
+ * façade MCP via un proxy HTTP loopback vers le sidecar).
+ */
+export type PluginMcpToolSpec = {
+  /** Segment de nom (namespace final : `plugin.<id>.<name>`). */
+  name: string;
+  description?: string;
+  /** Méthode HTTP du endpoint sidecar. */
+  method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
+  /** Path loopback du sidecar (doit commencer par `/`). */
+  path: string;
+  /** JSON Schema des arguments (objet libre, transmis tel quel). */
+  inputSchema?: Record<string, unknown>;
+};
+
 export type PluginManifest = {
   id: string;
   name: string;
@@ -46,6 +62,8 @@ export type PluginManifest = {
   hooks?: string[];
   panel?: PluginPanelConfig;
   acceptance?: PluginAcceptance;
+  /** Tools MCP déclarés (optionnel — validation stricte si présent). */
+  mcpTools?: PluginMcpToolSpec[];
   source?: "hermes" | "import" | "user" | string;
 };
 
@@ -55,6 +73,82 @@ export type DiscoveredPlugin = {
   enabled: boolean;
   error?: string;
 };
+
+const MCP_TOOL_METHODS = new Set<string>([
+  "GET",
+  "POST",
+  "PUT",
+  "PATCH",
+  "DELETE",
+]);
+/** Segment de tool MCP — même contrat que le namespace mcp-facade. */
+const MCP_TOOL_NAME_RE = /^[a-z][a-z0-9_-]{0,62}$/;
+/** Noms réservés par la découverte kit (status/call générés). */
+const MCP_TOOL_RESERVED = new Set<string>(["status", "call"]);
+
+/**
+ * Valide strictement `manifest.mcpTools` (rétro-compatible : absent = OK).
+ * Toute entrée invalide ⇒ throw (plugin marqué en erreur à la découverte).
+ */
+function parseMcpTools(raw: unknown): PluginMcpToolSpec[] | undefined {
+  if (raw === undefined || raw === null) return undefined;
+  if (!Array.isArray(raw)) {
+    throw new Error("manifest.mcpTools doit être un tableau");
+  }
+  const seen = new Set<string>();
+  const out: PluginMcpToolSpec[] = [];
+  for (const entry of raw) {
+    if (!entry || typeof entry !== "object" || Array.isArray(entry)) {
+      throw new Error("mcpTools: entrée invalide (objet requis)");
+    }
+    const t = entry as Record<string, unknown>;
+    const name = String(t.name || "").trim();
+    if (!MCP_TOOL_NAME_RE.test(name)) {
+      throw new Error(`mcpTools: name invalide « ${name} »`);
+    }
+    if (MCP_TOOL_RESERVED.has(name)) {
+      throw new Error(`mcpTools: name réservé « ${name} » (status/call)`);
+    }
+    if (seen.has(name)) {
+      throw new Error(`mcpTools: name dupliqué « ${name} »`);
+    }
+    seen.add(name);
+    const method = String(t.method || "").trim().toUpperCase();
+    if (!MCP_TOOL_METHODS.has(method)) {
+      throw new Error(`mcpTools: method invalide « ${t.method} » (${name})`);
+    }
+    const p = String(t.path || "").trim();
+    if (!p.startsWith("/") || p.includes("..") || /\s/.test(p)) {
+      throw new Error(`mcpTools: path invalide « ${p} » (${name})`);
+    }
+    if (
+      t.description !== undefined &&
+      typeof t.description !== "string"
+    ) {
+      throw new Error(`mcpTools: description invalide (${name})`);
+    }
+    if (
+      t.inputSchema !== undefined &&
+      (typeof t.inputSchema !== "object" ||
+        t.inputSchema === null ||
+        Array.isArray(t.inputSchema))
+    ) {
+      throw new Error(`mcpTools: inputSchema invalide (${name})`);
+    }
+    out.push({
+      name,
+      method: method as PluginMcpToolSpec["method"],
+      path: p,
+      ...(typeof t.description === "string"
+        ? { description: t.description }
+        : {}),
+      ...(t.inputSchema
+        ? { inputSchema: t.inputSchema as Record<string, unknown> }
+        : {}),
+    });
+  }
+  return out;
+}
 
 const ALLOWED_PERMS = new Set<string>([
   "crm:read",
@@ -146,6 +240,7 @@ export function parsePluginManifest(raw: unknown): PluginManifest {
     typeof o.port === "number" && o.port > 0 && o.port < 65536
       ? o.port
       : undefined;
+  const mcpTools = parseMcpTools(o.mcpTools);
   return {
     id,
     name,
@@ -158,6 +253,7 @@ export function parsePluginManifest(raw: unknown): PluginManifest {
     hooks,
     panel,
     acceptance,
+    mcpTools,
     source: typeof o.source === "string" ? o.source : undefined,
   };
 }
