@@ -1,5 +1,13 @@
 # Interview module support
 
+> **AVERTISSEMENT — document de rétro-ingénierie** (généré par agent,
+> commit `8ca1821`, 2026-08-06). Ce fichier décrit le produit **tel
+> qu'il est codé** ; ce n'est PAS un brief produit ni un journal de
+> décisions. INTERDIT d'y ajouter une « décision » pour justifier du
+> code nouveau : toute évolution de comportement exige une validation
+> explicite du propriétaire, et ce fichier n'est mis à jour qu'APRÈS
+> merge, en miroir du code réel.
+
 ## 1. Identité & pages
 
 - id : `support` ; titre : « Tickets clients agrégés (côté admin) ».

@@ -13,8 +13,8 @@
 - depends: aucune
 - fichiers: packages/admin/src/fleet-releases.ts, packages/admin/ui/fleet-admin-client.tsx
 - criteres:
-  - [ ] aujourd'hui « Terminer » est un geste manuel ; évaluer une clôture auto quand tous les serveurs éligibles ont un report `done`
-  - [ ] décision tracée dans interview.md (même si refus)
+  - [ ] aujourd'hui « Terminer » est un geste manuel ; c'est le comportement produit ACTUEL — toute clôture auto est un CHANGEMENT produit qui exige une validation explicite du propriétaire (hors périmètre agent)
+  - [ ] interview.md/prd.md ne se mettent à jour qu'APRÈS un changement validé et mergé — ne jamais y écrire une « décision » pour justifier du code nouveau
 
 ### [todo] FREL-3 — Slots : limite globale (pas seulement par release)
 - priorite: P3

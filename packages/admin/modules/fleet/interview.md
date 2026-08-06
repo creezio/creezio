@@ -1,5 +1,13 @@
 # Interview module fleet
 
+> **AVERTISSEMENT — document de rétro-ingénierie** (généré par agent,
+> commit `8ca1821`, 2026-08-06). Ce fichier décrit le produit **tel
+> qu'il est codé** ; ce n'est PAS un brief produit ni un journal de
+> décisions. INTERDIT d'y ajouter une « décision » pour justifier du
+> code nouveau : toute évolution de comportement exige une validation
+> explicite du propriétaire, et ce fichier n'est mis à jour qu'APRÈS
+> merge, en miroir du code réel.
+
 ## 1. Identité & pages
 
 - id : `fleet` ; titre : « Flotte (proxy backend) ».
@@ -7,8 +15,11 @@
   marque sous `/api/v1/modules/fleet`.
 - Pas de route UI propre : le client `FleetAdminClient` (exporté par
   `@creezio/admin/ui`) est matérialisé par l'app admin (TempoFlow :
-  `/flotte`, nav `brand.flotte`). Permission = session OS admin (le kernel
-  protège tous les `/api/v1/modules/*`).
+  `/flotte`, nav `brand.flotte`). Permission = session OS admin (garde F3 :
+  le kernel protège les `/api/v1/modules/*` par défaut, sauf allowlist
+  explicite — webhook Stripe signé, register/heartbeat Bearer, plan agents
+  releases, `POST maintenance`, landing ; SoT
+  `packages/app-runtime/src/module-mount-auth.ts`).
 
 ## 2. Données & migrations
 

@@ -5,7 +5,7 @@
 - depends: aucune
 - fichiers: packages/admin/src/index.ts
 - criteres:
-  - [ ] un événement sans `id` est aujourd'hui projeté mais absent du journal (pas de dédup possible) : décider journalisation sans dédup ou rejet 400, tracer dans interview.md
+  - [ ] un événement sans `id` est aujourd'hui projeté mais absent du journal (pas de dédup possible) — comportement produit ACTUEL ; changer (journalisation sans dédup ou rejet 400) = décision produit du propriétaire, pas d'un agent ; interview.md/prd.md mis à jour seulement APRÈS merge
 
 ### [todo] BILL-2 — MRR : normaliser les abonnements non mensuels
 - priorite: P3

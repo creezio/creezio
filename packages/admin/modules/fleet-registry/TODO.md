@@ -13,8 +13,8 @@
 - depends: aucune
 - fichiers: packages/admin/src/fleet-registry.ts
 - criteres:
-  - [ ] documenter (ou corriger) le fait que `createRateLimiter` est en mémoire par process : plusieurs workers = quota multiplié
-  - [ ] décision tracée dans interview.md §6
+  - [ ] documenter (ou corriger) le fait que `createRateLimiter` est en mémoire par process : plusieurs workers = quota multiplié — doc = JSDoc dans le code, PAS dans interview.md
+  - [ ] si correction (store partagé) : validation propriétaire requise avant implémentation
 
 ### [todo] FREG-3 — Purge/rétention du journal admin_fleet_events
 - priorite: P3
