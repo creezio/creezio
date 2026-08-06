@@ -430,8 +430,8 @@ export function scaffoldAdminApp(o: AdminRepoOptions): AdminRepoResult {
   );
   patchFile(
     path.join(serverDir, "src/electron/brand-module-api.ts"),
-    `import type { ApiKernel, ApiMount, ApiRequest } from "@creezio/api-kernel";`,
-    `import type { ApiKernel, ApiMount, ApiRequest } from "@creezio/api-kernel";
+    `import { registerEntityMounts } from "@creezio/api-kernel";`,
+    `import { registerEntityMounts } from "@creezio/api-kernel";
 import {
   createAdminCrudMount,
   createBillingWebhookMount,
