@@ -31,6 +31,7 @@ const PACKAGES = [
   "observability",
   "admin",
   "support",
+  "integrations",
   "automations",
   "database",
   "browser-host",

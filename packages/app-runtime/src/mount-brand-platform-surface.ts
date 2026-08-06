@@ -14,6 +14,7 @@
  * - /api/v1/platform/users            collaborateurs plateforme (owner)
  */
 
+import { createHash } from "node:crypto";
 import { Hono, type Context } from "hono";
 import { getCookie } from "hono/cookie";
 import {
@@ -46,6 +47,12 @@ import {
   screencastViewerCount,
   subscribeScreencast,
 } from "@creezio/browser-host";
+import {
+  createIntegrationsRoutes,
+  createN8nIntegrationsSync,
+  createSqliteIntegrationsStore,
+  type N8nBridge,
+} from "@creezio/integrations";
 import {
   openBrandPlatformStore,
   type BrandPlatformStore,
@@ -388,6 +395,8 @@ const PLATFORM_PREFIXES = [
   "/api/v1/platform/workspace",
   "/api/v1/platform/presence",
   "/api/v1/platform/desktop",
+  // Intégrations / clés API tierces (ADR-integrations-store).
+  "/api/v1/platform/integrations",
 ];
 
 /** Chemins proxifiés Node http → surface plateforme (streaming SSE). */
@@ -416,6 +425,11 @@ export function mountBrandPlatformSurface(opts: {
       run: (...params: unknown[]) => unknown;
     };
   } | null;
+  /**
+   * Bridge API n8n embarqué (lazy — la clé apparaît après le warm n8n).
+   * Alimente la sync des intégrations vers les credentials n8n.
+   */
+  n8nBridge?: () => N8nBridge | null;
   onLog?: (line: string) => void;
 }): BrandPlatformSurface {
   const log =
@@ -880,6 +894,64 @@ export function mountBrandPlatformSurface(opts: {
     return c.json(r, r?.ok === true ? 200 : 502);
   });
 
+  /* ── Intégrations / clés API tierces (ADR-integrations-store) ──────────
+   * Store natif core.db (secrets AES-256-GCM/AUTH_SECRET), sync n8n push,
+   * résolution par référence pour Hermes/plugins via la clé API service
+   * (table api_keys, brand.db — la clé CRM injectée dans l'env Hermes). */
+  const integrationsStore = createSqliteIntegrationsStore({
+    coreDbPath: opts.coreDbPath,
+  });
+
+  const verifyServiceKey = (
+    c: Context,
+  ): { id: string | number; name: string } | null => {
+    const brandDb = opts.brandDb?.();
+    if (!brandDb) return null;
+    const authz = c.req.header("authorization") || "";
+    const raw =
+      c.req.header("x-api-key") ||
+      (authz.toLowerCase().startsWith("bearer ") ? authz.slice(7).trim() : "");
+    if (!raw || raw.split(".").length === 3) return null; // JWT = session, pas clé
+    try {
+      const hash = createHash("sha256").update(raw, "utf8").digest("hex");
+      const row = brandDb
+        .prepare(
+          `SELECT id, name, scopes FROM api_keys
+            WHERE key_hash = ? AND revoked_at IS NULL`,
+        )
+        .get(hash) as
+        | { id: string | number; name: string; scopes: string }
+        | undefined;
+      if (!row) return null;
+      const scopes = String(row.scopes || "");
+      if (scopes !== "full" && !scopes.split(",").includes("crm:read")) {
+        return null;
+      }
+      return { id: row.id, name: row.name };
+    } catch {
+      return null; // table api_keys absente (marque sans clés publiques)
+    }
+  };
+
+  app.route(
+    "/api/v1/platform/integrations",
+    createIntegrationsRoutes({
+      store: integrationsStore,
+      getSession: (c) => sessionFromContext(c),
+      getOwnerSession: (c) => ownerSession(c),
+      verifyServiceKey,
+      ...(opts.n8nBridge
+        ? {
+            n8nSync: createN8nIntegrationsSync({
+              getBridge: opts.n8nBridge,
+              log: (line) => log(`integrations: ${line}`),
+            }),
+          }
+        : {}),
+      onLog: (line) => log(`integrations: ${line}`),
+    }),
+  );
+
   log(
     `surface plateforme montée (cookie=${effectiveCookieName}, core=${opts.coreDbPath})`,
   );
@@ -893,6 +965,7 @@ export function mountBrandPlatformSurface(opts: {
     },
     close: () => {
       if (runtimeSlot().current === runtime) runtimeSlot().current = null;
+      integrationsStore.close();
       store.close();
     },
   };

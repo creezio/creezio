@@ -41,6 +41,7 @@ DEFAULT_PACKAGES=(
   observability
   admin
   support
+  integrations
   browser-host
   automations
   database

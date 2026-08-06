@@ -26,6 +26,7 @@
     "@creezio/brand-config": "0.1.0",
     "@creezio/browser-host": "0.1.0",
     "@creezio/electron-shell": "0.1.0",
+    "@creezio/integrations": "0.1.0",
     "@creezio/mails": "0.1.0",
     "@creezio/mcp-facade": "0.1.0",
     "@creezio/observability": "0.1.0",

@@ -37,6 +37,7 @@ import {
   SUPPORT_CORE_SQL,
   createSupportServerMount,
 } from "@creezio/support";
+import { INTEGRATIONS_CORE_SQL } from "@creezio/integrations";
 import type { BrandKernelHandle } from "./types.js";
 
 export type CreateBrandKernelOptions = {
@@ -67,6 +68,7 @@ function platformExtras(): SqliteMigration[] {
     { id: "app_runtime_002_tasks", sql: PLATFORM_TASKS_CORE_SQL },
     { id: "app_runtime_003_mails", sql: PLATFORM_MAILS_CORE_SQL },
     { id: "app_runtime_004_support", sql: SUPPORT_CORE_SQL },
+    { id: "app_runtime_005_integrations", sql: INTEGRATIONS_CORE_SQL },
   ];
 }
 

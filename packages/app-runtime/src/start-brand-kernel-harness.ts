@@ -242,6 +242,22 @@ export async function startBrandKernelHarness(
       // DB métier pour les tools SQL de la config assistant kit par défaut.
       brandDb: () => runtime.getBrand(),
       baseUrl: () => advertisedBaseUrl || `http://127.0.0.1:${port || 0}`,
+      // Sync intégrations → n8n : réutilise le bridge Hermes (N8N_API_URL +
+      // N8N_API_KEY, clé provisionnée par ensureN8nApiKey). Lazy : la clé
+      // n'existe qu'après le warm n8n.
+      n8nBridge: () => {
+        try {
+          const env =
+            brandOs?.hostRuntime
+              .hostRuntimeContext()
+              .getHermesBridgeEnv?.() || {};
+          const apiUrl = env.N8N_API_URL || "";
+          const apiKey = env.N8N_API_KEY || "";
+          return apiUrl && apiKey ? { apiUrl, apiKey } : null;
+        } catch {
+          return null;
+        }
+      },
     });
   }
 
