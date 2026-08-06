@@ -49,7 +49,7 @@
 | [`ui/global-search-host.ts`](../ui/global-search-host.ts) | Host marque pour GlobalSearch (dépend tab-workspace). |
 | [`ui/global-search.tsx`](../ui/global-search.tsx) | _(pas de cartouche JSDoc en tête — voir le code)_ |
 | [`ui/index.ts`](../ui/index.ts) | @creezio/shell-ui/ui — primitives + shell CRM UI (O9, gold TF). Consommer via `@creezio/shell-ui/ui`. |
-| [`ui/kit.ts`](../ui/kit.ts) | (à documenter) |
+| [`ui/kit.ts`](../ui/kit.ts) | Entrée légère client-safe (primitives + helpers desktop, sans workspace/assistant) — à préférer dans les packages kit UI. |
 | [`ui/list-toolbar.tsx`](../ui/list-toolbar.tsx) | _(pas de cartouche JSDoc en tête — voir le code)_ |
 | [`ui/pagination.tsx`](../ui/pagination.tsx) | _(pas de cartouche JSDoc en tête — voir le code)_ |
 | [`ui/range-filters.tsx`](../ui/range-filters.tsx) | _(pas de cartouche JSDoc en tête — voir le code)_ |
@@ -95,8 +95,8 @@
 
 | Fichier | Rôle |
 |---|---|
-| [`ui/os-pages/desktop-settings-page.tsx`](../ui/os-pages/desktop-settings-page.tsx) | (à documenter) |
-| [`ui/os-pages/index.ts`](../ui/os-pages/index.ts) | (à documenter) |
+| [`ui/os-pages/desktop-settings-page.tsx`](../ui/os-pages/desktop-settings-page.tsx) | Page OS réglages desktop (composition kit) — les marques ne font que la ré-exporter. |
+| [`ui/os-pages/index.ts`](../ui/os-pages/index.ts) | Exports ciblés des surfaces UI OS (évite le barrel `/ui` qui tire workspace+assistant Node). |
 
 ## `ui/page-loading/`
 
@@ -169,7 +169,7 @@
 
 | Fichier | Rôle |
 |---|---|
-| [`ui/theme/tailwind-preset.cjs`](../ui/theme/tailwind-preset.cjs) | (à documenter) |
+| [`ui/theme/tailwind-preset.cjs`](../ui/theme/tailwind-preset.cjs) | Preset Tailwind Creezio (thème gold TF générique : accent orange, neutres réchauffés, variables CSS) — CJS volontaire (chargé par tailwind.config Node/jiti). |
 
 ## `ui/workspace/`
 

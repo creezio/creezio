@@ -29,7 +29,7 @@
 | [`src/admin/http-routes.ts`](../src/admin/http-routes.ts) | Routes Hono Admin MCP (port TempoFlow — N6). Auth owner reste côté marque (montage sous /admin). |
 | [`src/admin/index.ts`](../src/admin/index.ts) | MCP admin — policies, clients OAuth, diagnostics, routes Hono (N6). |
 | [`src/admin/mcp-admin.ts`](../src/admin/mcp-admin.ts) | _(pas de cartouche JSDoc en tête — voir le code)_ |
-| [`src/admin/tool-policy-guard.ts`](../src/admin/tool-policy-guard.ts) | (à documenter) |
+| [`src/admin/tool-policy-guard.ts`](../src/admin/tool-policy-guard.ts) | Garde d'enforcement des policies MCP admin (table `mcp_tool_policies`) : `checkToolPolicy` (décision brute), `createToolPolicyAuthorize` (façade, opt-in non cassant), `registerGuardedMcpTool` (wrapper serveur MCP SDK : annotations + policy + audit + scopes marque). Câblé prod TF3 — gate `test-phase-mcp-tool-policy-guard`. |
 | [`src/admin/types.ts`](../src/admin/types.ts) | Types admin MCP (port TempoFlow — N6). Le registre métier des tools reste injecté par la marque. |
 
 ## `src/oauth/`

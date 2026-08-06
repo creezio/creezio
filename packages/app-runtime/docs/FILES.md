@@ -8,7 +8,7 @@
 
 | Fichier | Rôle |
 |---|---|
-| [`scripts/smoke-platform-surface.mjs`](../scripts/smoke-platform-surface.mjs) | (à documenter) |
+| [`scripts/smoke-platform-surface.mjs`](../scripts/smoke-platform-surface.mjs) | Smoke live hors Docker : surface plateforme (login owner kit-first, collab IA) + sidecar navigateur IA. |
 
 ## `src/`
 
@@ -18,21 +18,21 @@
 | [`src/brand-platform-store.ts`](../src/brand-platform-store.ts) | Store plateforme marque |
 | [`src/compose-brand-os.ts`](../src/compose-brand-os.ts) | Composition OS natif : kernel, stores, auth, fleet (sentinelle `ingest-disabled` par défaut), surfaces |
 | [`src/create-brand-kernel.ts`](../src/create-brand-kernel.ts) | Création du kernel API (espaces core/platform/modules/plugins) |
-| [`src/fleet-heartbeat.ts`](../src/fleet-heartbeat.ts) | (à documenter) |
-| [`src/harness-server-phases.ts`](../src/harness-server-phases.ts) | (à documenter) |
-| [`src/hermes-mcp-host-tools.ts`](../src/hermes-mcp-host-tools.ts) | (à documenter) |
+| [`src/fleet-heartbeat.ts`](../src/fleet-heartbeat.ts) | Auto-inscription flotte + heartbeat (~90 s) d'un serveur marque vers le module `fleet-registry` de l'app admin (F3) — Bearer secret partagé au register, serverKey ensuite. Câblé harness + desktop serveur. |
+| [`src/harness-server-phases.ts`](../src/harness-server-phases.ts) | Phases serveur post-boot du harness Docker (parité TF2 desktop) : catalogue, clé CRM Hermes + bridge n8n, plugins, tunnel, fleet — flags/env explicites, étape boot-status par phase, no-op propre si non configuré. |
+| [`src/hermes-mcp-host-tools.ts`](../src/hermes-mcp-host-tools.ts) | Branche les tools host tasks (`create_ai_task`…) + workspace (`workspace.*`, `platform.ask_human`) sur la façade MCP (H1/H4) ; résolution Bearer clé service Hermes (`user_id NULL`+`full` → owner, fail-closed sinon). Câblé desktop + harness. |
 | [`src/index.ts`](../src/index.ts) | Surface publique du package |
 | [`src/install-brand-os-desktop.ts`](../src/install-brand-os-desktop.ts) | Installation des services OS dans le main Electron |
 | [`src/listen-brand-boot-http.ts`](../src/listen-brand-boot-http.ts) | Early-listen : `boot-status`/healthz répondent pendant le boot |
 | [`src/listen-brand-os-http.ts`](../src/listen-brand-os-http.ts) | Serveur HTTP OS (`/api/v1`, CRM web) |
-| [`src/mcp-jsonrpc.ts`](../src/mcp-jsonrpc.ts) | (à documenter) |
+| [`src/mcp-jsonrpc.ts`](../src/mcp-jsonrpc.ts) | Pont JSON-RPC 2.0 stateless du endpoint `/mcp` du plane OS (H1) — seuls les corps `jsonrpc:"2.0"` y passent, le transport JSON simple historique est conservé. Consommé par le client MCP natif de Hermes. |
 | [`src/mount-brand-email-surface.ts`](../src/mount-brand-email-surface.ts) | Surface mails optionnelle |
 | [`src/mount-brand-mcp-surface.ts`](../src/mount-brand-mcp-surface.ts) | Surface MCP optionnelle |
 | [`src/mount-brand-platform-surface.ts`](../src/mount-brand-platform-surface.ts) | Surface plateforme optionnelle |
-| [`src/plugin-acl-wiring.ts`](../src/plugin-acl-wiring.ts) | (à documenter) |
-| [`src/plugin-proxy-mount.ts`](../src/plugin-proxy-mount.ts) | (à documenter) |
-| [`src/plugin-seed.ts`](../src/plugin-seed.ts) | (à documenter) |
-| [`src/plugin-tools-discovery.ts`](../src/plugin-tools-discovery.ts) | (à documenter) |
+| [`src/plugin-acl-wiring.ts`](../src/plugin-acl-wiring.ts) | Câblage ACL Product Hub → façade MCP pour les plugins (fail-closed : sans grant, ni visible ni appelable, sauf owner/clé service). |
+| [`src/plugin-proxy-mount.ts`](../src/plugin-proxy-mount.ts) | Mount api-kernel proxy `/api/v1/plugins/<id>/*` → sidecar loopback (enregistré au start, retiré au stop → `plugin_not_mounted`). |
+| [`src/plugin-seed.ts`](../src/plugin-seed.ts) | Seed des plugins embarqués marque (`<appRoot>/plugins/` → `<userData>/plugins/`) au boot — idempotent, jamais d'écrasement ni de réactivation d'un plugin désactivé. |
+| [`src/plugin-tools-discovery.ts`](../src/plugin-tools-discovery.ts) | Découverte des tools MCP plugins : `plugin.<id>.status`/`.call` + tools déclarés `manifest.mcpTools` (proxy méthode/path). |
 | [`src/start-brand-desktop.ts`](../src/start-brand-desktop.ts) | Boot desktop Electron complet — early crash writer, data layout packagé, splash, updater, host stack |
 | [`src/start-brand-kernel-harness.ts`](../src/start-brand-kernel-harness.ts) | Boot OS sans Electron (serveur Docker headless, smokes) |
 | [`src/start-brand-ui-plane.ts`](../src/start-brand-ui-plane.ts) | Plan UI (Next standalone / dev) |

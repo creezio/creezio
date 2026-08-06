@@ -20,7 +20,7 @@
 
 | Fichier | Rôle |
 |---|---|
-| [`routes/admin/integrations/page.tsx`](../routes/admin/integrations/page.tsx) | (à documenter) |
+| [`routes/admin/integrations/page.tsx`](../routes/admin/integrations/page.tsx) | Wrapper page OS `/admin/integrations` → `IntegrationsClient` (`@creezio/integrations/ui`). |
 
 ## `routes/admin/mcp/`
 
@@ -116,7 +116,7 @@
 
 | Fichier | Rôle |
 |---|---|
-| [`routes/support/page.tsx`](../routes/support/page.tsx) | (à documenter) |
+| [`routes/support/page.tsx`](../routes/support/page.tsx) | Wrapper page OS `/support` → `SupportClient` (`@creezio/support/ui`). |
 
 ## `routes/taches/`
 

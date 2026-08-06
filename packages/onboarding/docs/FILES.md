@@ -10,7 +10,7 @@
 |---|---|
 | [`src/content.ts`](../src/content.ts) | Contenu onboarding hybride (ADR-module-natif-hybride) : tables brand.db `onboarding_content` (override marque) + `onboarding_preferences` (réponses utilisateur), merge pur défauts/override, mount `/api/v1/modules/onboarding/*`. La marque déclare ses défauts dans `server/src/electron/brand-onboarding-content.ts`. |
 | [`src/engine.ts`](../src/engine.ts) | _(pas de cartouche JSDoc en tête — voir le code)_ |
-| [`src/from-brand-spec.ts`](../src/from-brand-spec.ts) | (à documenter) |
+| [`src/from-brand-spec.ts`](../src/from-brand-spec.ts) | Bridge BrandSpec → `SetupWizardConfig` (sans dépendance runtime à @creezio/brand-spec côté UI). |
 | [`src/index.ts`](../src/index.ts) | @creezio/onboarding — setup first-run + moteur onboarding (Phase P). UI React : `@creezio/onboarding/ui`. |
 | [`src/setup-types.ts`](../src/setup-types.ts) | Config optionnelle SetupWizard — le reste vient de getShellUiBrand(). export type SetupWizardConfig = { Override labels étapes (défaut: Compte / Récupération / Tunnel / OpenAI). |
 

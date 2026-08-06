@@ -33,7 +33,7 @@
 | Fichier | Rôle |
 |---|---|
 | [`src/providers/file-sink.ts`](../src/providers/file-sink.ts) | Provider mails **non-stub** : écrit chaque envoi dans un fichier JSON sous `outDir` (sink local / tests / CI). Pas de templates marque. Pour SMTP réel, enregistrer un autre `MailProvider` via `registerProvider` et passer `defaultProviderId`. |
-| [`src/providers/smtp-env.ts`](../src/providers/smtp-env.ts) | (à documenter) |
+| [`src/providers/smtp-env.ts`](../src/providers/smtp-env.ts) | Provider SMTP minimal via env (nodemailer optionnel — refus propre s'il est absent). |
 
 ## `ui/`
 

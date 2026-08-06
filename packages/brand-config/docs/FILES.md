@@ -12,7 +12,7 @@
 | [`src/create-manifest.ts`](../src/create-manifest.ts) | Fabrique un AppManifest Client+Serveur à partir d'un spec minimal. Utilisé par `@creezio/factory` (Phase D) — jamais pour écraser les manifests prod TempoFlow / Certivan / Fidu. |
 | [`src/index.ts`](../src/index.ts) | _(pas de cartouche JSDoc en tête — voir le code)_ |
 | [`src/nsis-guid.ts`](../src/nsis-guid.ts) | GUID NSIS déterministe — même algorithme qu'electron-builder (`UUID.v5(appId, NAMESPACE_OID)`). NAMESPACE_OID = `6ba7b812-9dad-11d1-80b4-00c04fd430c8` (vérifié contre les GUID Fidu kit). |
-| [`src/render-nsis-installer.ts`](../src/render-nsis-installer.ts) | (à documenter) |
+| [`src/render-nsis-installer.ts`](../src/render-nsis-installer.ts) | Include NSIS commun client + serveur (parité TF2) — segments userData dérivés de l'AppManifest. |
 | [`src/types.ts`](../src/types.ts) | Schéma AppManifest — identité d'une marque desktop Creezio. Le modèle standard est **toujours** multi-exe Client + Serveur (deux appId, deux feeds, deux GUID NSIS, deux segments userData). Ce n'est pas une option : brand-config l'exige pour chaque marque. |
 
 ## `src/manifests/`
@@ -23,4 +23,4 @@
 | [`src/manifests/demobrand.ts`](../src/manifests/demobrand.ts) | _(pas de cartouche JSDoc en tête — voir le code)_ |
 | [`src/manifests/fidu.ts`](../src/manifests/fidu.ts) | _(pas de cartouche JSDoc en tête — voir le code)_ |
 | [`src/manifests/tempoflow.ts`](../src/manifests/tempoflow.ts) | _(pas de cartouche JSDoc en tête — voir le code)_ |
-| [`src/manifests/tempoflow3.ts`](../src/manifests/tempoflow3.ts) | (à documenter) |
+| [`src/manifests/tempoflow3.ts`](../src/manifests/tempoflow3.ts) | Manifest sandbox TempoFlow3 (sonde) — SoT identité = repo marque `src/electron/app-manifest.ts`, recopie kit pour les gates. |

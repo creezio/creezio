@@ -8,23 +8,23 @@
 
 | Fichier | Rôle |
 |---|---|
-| [`scripts/after-pack.cjs`](../scripts/after-pack.cjs) | (à documenter) |
-| [`scripts/build-server.mjs`](../scripts/build-server.mjs) | (à documenter) |
+| [`scripts/after-pack.cjs`](../scripts/after-pack.cjs) | Hook electron-builder afterPack — générique multi-marque. Port de `crm/scripts/electron/after-pack.cjs` (TF2 0.10.26). |
+| [`scripts/build-server.mjs`](../scripts/build-server.mjs) | Assemble le serveur Next standalone dans build/server/ pour afterPack. |
 | [`scripts/desktop-build-status.mjs`](../scripts/desktop-build-status.mjs) | _(pas de cartouche JSDoc en tête — voir le code)_ |
-| [`scripts/e2e-browser-parcours.mjs`](../scripts/e2e-browser-parcours.mjs) | (à documenter) |
-| [`scripts/ensure-linux-icons.mjs`](../scripts/ensure-linux-icons.mjs) | (à documenter) |
-| [`scripts/ensure-linux-native-modules.mjs`](../scripts/ensure-linux-native-modules.mjs) | (à documenter) |
-| [`scripts/ensure-win-native-modules.mjs`](../scripts/ensure-win-native-modules.mjs) | (à documenter) |
-| [`scripts/load-local-env.mjs`](../scripts/load-local-env.mjs) | (à documenter) |
-| [`scripts/publish-desktop.sh`](../scripts/publish-desktop.sh) | (à documenter) |
-| [`scripts/remote-build-win.sh`](../scripts/remote-build-win.sh) | (à documenter) |
+| [`scripts/e2e-browser-parcours.mjs`](../scripts/e2e-browser-parcours.mjs) | E2E navigateur générique (marque from-prd / sandbox) — sans hôte Windows. |
+| [`scripts/ensure-linux-icons.mjs`](../scripts/ensure-linux-icons.mjs) | electron-builder Linux CollectIcons exige `resources/icons/{N}x{N}.png`. |
+| [`scripts/ensure-linux-native-modules.mjs`](../scripts/ensure-linux-native-modules.mjs) | Rebuild better-sqlite3 ELF pour Electron courant (après ensure-win-native MZ). |
+| [`scripts/ensure-win-native-modules.mjs`](../scripts/ensure-win-native-modules.mjs) | Prépare better-sqlite3 win32 (PE) avant pack:win cross-compilé depuis Linux. |
+| [`scripts/load-local-env.mjs`](../scripts/load-local-env.mjs) | Charge `<appRoot>/.env` (gitignoré) dans process.env. N’écrase pas une variable déjà définie dans le shell. |
+| [`scripts/publish-desktop.sh`](../scripts/publish-desktop.sh) | Publie l'installeur (NSIS win / AppImage linux) + latest*.yml vers le feed. |
+| [`scripts/remote-build-win.sh`](../scripts/remote-build-win.sh) | Build Windows (NSIS) distant — générique multi-marque (AppManifest). |
 | [`scripts/resolve-config.mjs`](../scripts/resolve-config.mjs) | _(pas de cartouche JSDoc en tête — voir le code)_ |
-| [`scripts/smoke-packaged-server.mjs`](../scripts/smoke-packaged-server.mjs) | (à documenter) |
-| [`scripts/smoke-tunnel-catalog.mjs`](../scripts/smoke-tunnel-catalog.mjs) | (à documenter) |
-| [`scripts/smoke-tunnel.mjs`](../scripts/smoke-tunnel.mjs) | (à documenter) |
-| [`scripts/stage-win-bins.sh`](../scripts/stage-win-bins.sh) | (à documenter) |
-| [`scripts/verify-pack-runtime.mjs`](../scripts/verify-pack-runtime.mjs) | (à documenter) |
-| [`scripts/write-app-kind.mjs`](../scripts/write-app-kind.mjs) | (à documenter) |
+| [`scripts/smoke-packaged-server.mjs`](../scripts/smoke-packaged-server.mjs) | Smoke headless du serveur Electron packagé (linux-unpacked) : boot + health HTTP sans GUI. |
+| [`scripts/smoke-tunnel-catalog.mjs`](../scripts/smoke-tunnel-catalog.mjs) | Smoke ops générique : provisioner tunnel + HEAD catalogue distant (optionnel). |
+| [`scripts/smoke-tunnel.mjs`](../scripts/smoke-tunnel.mjs) | Smoke générique tunnel Cloudflare provisioner (toutes marques). |
+| [`scripts/stage-win-bins.sh`](../scripts/stage-win-bins.sh) | Stage les binaires Windows (Meili + cloudflared) pour le packaging serveur. |
+| [`scripts/verify-pack-runtime.mjs`](../scripts/verify-pack-runtime.mjs) | Gate pré-publish — clôture runtime asar : chaque `@creezio/*` requis + seeds npm (hono, better-sqlite3…) présents dans app.asar, sans require cassé. |
+| [`scripts/write-app-kind.mjs`](../scripts/write-app-kind.mjs) | Pose `build/electron/app-kind.json` ({"kind":"server"\|"client"}) avant le packaging electron-builder. |
 
 ## `src/`
 

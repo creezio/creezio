@@ -8,19 +8,19 @@
 
 | Fichier | Rôle |
 |---|---|
-| [`resources/scripts/meili-coherence-query.cjs`](../resources/scripts/meili-coherence-query.cjs) | (à documenter) |
+| [`resources/scripts/meili-coherence-query.cjs`](../resources/scripts/meili-coherence-query.cjs) | Lecteur SQLite autonome pour le contrôle de cohérence Meili — copié hors app.asar, exécutable par le Node embarqué, zéro dépendance marque. |
 
 ## `resources/vendor/hermes-agent/`
 
 | Fichier | Rôle |
 |---|---|
-| [`resources/vendor/hermes-agent/install.sh`](../resources/vendor/hermes-agent/install.sh) | (à documenter) |
+| [`resources/vendor/hermes-agent/install.sh`](../resources/vendor/hermes-agent/install.sh) | Installeur amont Hermes Agent (Linux/macOS/Termux) vendorisé — piloté par le launcher avec `HERMES_INSTALL_DIR` (verrou anti-layout FHS root). |
 
 ## `scripts/`
 
 | Fichier | Rôle |
 |---|---|
-| [`scripts/ensure-kit-binaries.mjs`](../scripts/ensure-kit-binaries.mjs) | (à documenter) |
+| [`scripts/ensure-kit-binaries.mjs`](../scripts/ensure-kit-binaries.mjs) | Téléchargement des binaires OS kit (Meili, cloudflared) sous `resources/bin` — preuves/packaging, jamais côté marque. |
 
 ## `src/`
 
@@ -43,11 +43,11 @@
 |---|---|
 | [`src/desktop/assistant-chrome.ts`](../src/desktop/assistant-chrome.ts) | // @ts-nocheck — Electron BaseWindow / WebContentsView (shim kit mince) Chrome assistant Electron (FAB) — gold TempoFlow paramétré (deepLink / title). Electron chargé via loadElectron (pas d'import top-level — tests kit Node). |
 | [`src/desktop/brand-desktop-runtime.ts`](../src/desktop/brand-desktop-runtime.ts) | Runtime desktop plateforme — extrait mécanique de tempoflow2/crm/electron/main.ts (M12). Comportement préservé ; la marque injecte deps (store, hosts, paths, vertical). |
-| [`src/desktop/desktop-session.ts`](../src/desktop/desktop-session.ts) | (à documenter) |
+| [`src/desktop/desktop-session.ts`](../src/desktop/desktop-session.ts) | Session desktop légère (first-run / login / connexion) pour les apps from-prd — store local-config + handlers IPC stables, pas de store custom marque. |
 | [`src/desktop/error-page-html.ts`](../src/desktop/error-page-html.ts) | Écran d’erreur boot / crash (hors React) — gold TempoFlow paramétré. |
 | [`src/desktop/oauth-loopback.ts`](../src/desktop/oauth-loopback.ts) | // @ts-nocheck — Electron shell.openExternal (shim kit mince) OAuth 2.0 RFC 8252 (native apps) Google — gold TempoFlow paramétré. Store tokens injecté ; Electron via loadElectron (pas d'import top-level). |
 | [`src/desktop/profile-picker-html.ts`](../src/desktop/profile-picker-html.ts) | Écran de profils au boot — gold TempoFlow paramétré (brand / bridge / tunnel). |
-| [`src/desktop/remote-offline-html.ts`](../src/desktop/remote-offline-html.ts) | (à documenter) |
+| [`src/desktop/remote-offline-html.ts`](../src/desktop/remote-offline-html.ts) | Écran offline du client thin : retry backoff via `testConnection`, rechargement CRM, bouton « Changer de serveur » (repasse par le picker). |
 
 ## `src/host/`
 
@@ -55,16 +55,16 @@
 |---|---|
 | [`src/host/brand-host-runtime.ts`](../src/host/brand-host-runtime.ts) | Factories host-runtime-ctx marque (O7) — singletons, fleet, CRM key surface, contexte HostRuntimeContext. Les brand opts restent dans la marque. |
 | [`src/host/brand-host-stack.ts`](../src/host/brand-host-stack.ts) | Lazy host-stack marque — composition mince du kit (O7). Remplace ~220 LOC dupliqués TF/CV/Fidu par une factory + table de config. |
-| [`src/host/brand-kernel-http.ts`](../src/host/brand-kernel-http.ts) | (à documenter) |
-| [`src/host/brand-meili-boot.ts`](../src/host/brand-meili-boot.ts) | (à documenter) |
+| [`src/host/brand-kernel-http.ts`](../src/host/brand-kernel-http.ts) | Listener HTTP mince sur api-kernel (même façade que le harness Node) — Electron main SPA et smokes sans GUI. |
+| [`src/host/brand-meili-boot.ts`](../src/host/brand-meili-boot.ts) | Boot Meili optionnel from-prd : sans binaire → null (recherche SQL `/search`), avec binaire → startMeili + indexation du feed. |
 | [`src/host/bridge-client.ts`](../src/host/bridge-client.ts) | Pont serveur local ↔ Electron pour le pilotage bot des onglets fournisseurs. - S'authentifie auprès du serveur Next local (POST /api/v1/auth/login avec les credentials bootstrappés) et conserve le cookie de session. - S'abonne au flux SSE GET /api/v1/assistant/supplier-actions/stream (nouvelle route — voir src/server/routes/assistant.ts dans le fork). - Pour chaque événement `supplier_action`, exécute l'action via supplier-driver puis POST le résultat sur la route EXISTANTE /api/v1/assistant/ui-actions/:id/result (résout la promesse serveur). - Reconnexion automatique avec backoff. |
 | [`src/host/context.ts`](../src/host/context.ts) | Contexte runtime hôte injecté dans tous les launchers B.2. Remplace les singletons TF2 (userDataDir(), paths.ts, logger). |
 | [`src/host/contracts.ts`](../src/host/contracts.ts) | Contrats des launchers hôte (Hermes / n8n / tunnel) — Phase B / B.2. Les implémentations complètes sont dans host/hermes, host/n8n, host/tunnel. |
 | [`src/host/crash-reporter.ts`](../src/host/crash-reporter.ts) | Rapport de crash : fichier local (userData/logs/) + envoi automatique au collecteur de l'éditeur (télémétrie de crash — service autonome sur le VPS, voir scripts/crash-collector/). Règles : - best-effort intégral : timeout court, try/catch partout, JAMAIS de throw ; - l'envoi ne bloque rien (fire-and-forget) ; - identifiant d'installation anonyme (uuid v4 généré au 1er lancement, persisté dans userData) pour regrouper les rapports d'une même machine. |
-| [`src/host/ensure-kit-binaries.ts`](../src/host/ensure-kit-binaries.ts) | (à documenter) |
+| [`src/host/ensure-kit-binaries.ts`](../src/host/ensure-kit-binaries.ts) | Assure les binaires OS kit (Meili, cloudflared) sous `resources/bin` au boot desktop/harness — plug-and-play, jamais dans la marque. |
 | [`src/host/feature-off-host.ts`](../src/host/feature-off-host.ts) | Feature-off host — contrat kit pour marques sans runtime plugins / flotte (Phase N5, extraits des signatures Fidu `host-na-stubs.ts`). Ne pas inventer de produit : réponses `ok: false` / listes vides honnêtes. Les marques à plugins réels (TF/CV) utilisent `createPluginsHost` / fleet. |
 | [`src/host/host-stack.ts`](../src/host/host-stack.ts) | Accès PARESSEUX aux modules host-only — port du pattern TF2 host-stack.ts. Les apps marques construisent un HostStack via `createHostStack(deps)` et n'importent les launchers que sur les chemins allowLocalStack. |
-| [`src/host/kit-os-resources.ts`](../src/host/kit-os-resources.ts) | (à documenter) |
+| [`src/host/kit-os-resources.ts`](../src/host/kit-os-resources.ts) | Résolution des ressources OS natives shippées par le kit (Hermes/n8n vendors) quand la marque n'en embarque pas. |
 | [`src/host/load-electron.ts`](../src/host/load-electron.ts) | Charge electron en sync pour le main CJS des marques. Évite `import "electron"` au top-level (casse les tests kit Node sans peer). |
 | [`src/host/local-config.ts`](../src/host/local-config.ts) | Config locale + safeStorage — factory brand-agnostic (TF2 local-config.ts). Usage |
 | [`src/host/meili-launcher.ts`](../src/host/meili-launcher.ts) | Meilisearch local OPTIONNEL — launcher générique (injecte chemins). Port de electron/meili-launcher.ts sans dépendances marque. |
@@ -109,7 +109,7 @@
 | [`src/host/hermes/ensure-crm-key-db.ts`](../src/host/hermes/ensure-crm-key-db.ts) | Sous-process Node vanilla — upsert clé service dans api_keys. Usage : node ensure-crm-key-db.js <dbPath> <apiKey> <name> [scopes] Ne jamais importer depuis electron/main (ABI better-sqlite3). |
 | [`src/host/hermes/launcher.ts`](../src/host/hermes/launcher.ts) | Sidecar Hermes Agent + WebUI — factory brand-agnostic. SoT extrait de TempoFlow hermes-launcher.ts (R3.3) — chemins gold intacts. |
 | [`src/host/hermes/runtime-bootstrap.ts`](../src/host/hermes/runtime-bootstrap.ts) | Bootstrap runtime Hermes (agent CLI + WebUI) — download-on-first-run. Le full Python/venv n’est PAS dans l’exe (taille / remote-build). Au premier Héberger sans CLI, on lance l’installeur officiel NousResearch, puis on récupère l’archive WebUI pinée (checksum SHA-256) sous userData. Chemins injectés via HostRuntimeContext (SoT kit — jumeau marque interdit). |
-| [`src/host/hermes/skills-seed.ts`](../src/host/hermes/skills-seed.ts) | (à documenter) |
+| [`src/host/hermes/skills-seed.ts`](../src/host/hermes/skills-seed.ts) | Seed des skills Hermes vers `{HERMES_HOME}/skills/` (kit + marque) — le namespace `site-*` est RÉSERVÉ aux skills appris par Hermes, jamais seedé. |
 
 ## `src/host/meili/`
 
@@ -118,8 +118,8 @@
 | [`src/host/meili/coherence-db.ts`](../src/host/meili/coherence-db.ts) | Accès SQLite pour la cohérence Meili — process Node vanilla uniquement (better-sqlite3 ABI Node). Ne jamais importer depuis electron/main.ts. Compteurs alignés sur l'indexeur catalogue (tables via `configureMeiliCatalogSqlTables` — défaut TF produits + fournisseurs). |
 | [`src/host/meili/coherence-query.ts`](../src/host/meili/coherence-query.ts) | CLI Node vanilla : lit counts SQL + fingerprint (JSON sur stdout). Spawn depuis electron/main via nodeBinary() + NODE_PATH (better-sqlite3). DB_PATH=... node …/meili/coherence-query.js Dual-build safe : pas d'`import.meta` (CJS Electron). |
 | [`src/host/meili/coherence.ts`](../src/host/meili/coherence.ts) | Cohérence SQLite ↔ Meili au boot Electron. IMPORTANT : pas de better-sqlite3 ici (ABI Node ≠ Electron). Les lectures SQLite passent par un spawn Node vanilla (meili-coherence-query.js). |
-| [`src/host/meili/feed.ts`](../src/host/meili/feed.ts) | (à documenter) |
-| [`src/host/meili/generic-indexer.ts`](../src/host/meili/generic-indexer.ts) | (à documenter) |
+| [`src/host/meili/feed.ts`](../src/host/meili/feed.ts) | Contrat d'alimentation Meili générique (`BrandMeiliFeed`) : la marque déclare tables/indexes/mapping, l'OS exécute start/indexation/swap. |
+| [`src/host/meili/generic-indexer.ts`](../src/host/meili/generic-indexer.ts) | Indexeur Meili générique piloté par le feed marque — aucun SQL TF hardcodé. |
 | [`src/host/meili/index-schema.ts`](../src/host/meili/index-schema.ts) | Schéma logique des index Meili catalogue (TF gold — N2). Bumper INDEX_SCHEMA_VERSION à chaque changement d'indexes / settings / docs pour forcer une réindexation au boot. Index réels (voir electron/meili-indexer.ts) : - tf2_produits - tf2_marketplaces - tf2_all (unifié keyword = marketplaces uniquement) Les marques injectent leur propre schema via `configureMeiliCatalogSqlTables` (tables SQL comptées). |
 | [`src/host/meili/index.ts`](../src/host/meili/index.ts) | _(pas de cartouche JSDoc en tête — voir le code)_ |
 | [`src/host/meili/indexer.ts`](../src/host/meili/indexer.ts) | // @ts-nocheck — better-sqlite3 runtime (cwd marque) Indexeur Meilisearch catalogue (TF gold N2) — portage TypeScript de scripts/index_meilisearch.py (v2 « agrégateurs », ~464k produits). Exécuté comme script Node autonome (PAS dans Electron) : DB_PATH=… MEILI_HOST=… node build/electron/meili-indexer.js |

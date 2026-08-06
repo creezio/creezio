@@ -9,7 +9,7 @@
 | Fichier | Rôle |
 |---|---|
 | [`src/app-kind.ts`](../src/app-kind.ts) | Split Serveur / Client — logique PURE, testable depuis Node. Port brand-agnostic de electron/app-kind.ts (TF2 0.10.26). |
-| [`src/app-require.ts`](../src/app-require.ts) | (à documenter) |
+| [`src/app-require.ts`](../src/app-require.ts) | `createAppRequire` — résolution de modules en contexte packagé sans parsing de stack (les frames Windows `file:///C:/…` cassent les regex naïves) ; SoT anti-crash client, verrouillé par la gate `verify-pack-runtime`. |
 | [`src/architecture-version.ts`](../src/architecture-version.ts) | Cadre architecture Creezio (Phase H0+). Bump uniquement au sign-off de phase (H0 → H1 → … → H5 ACL → H6 freeze I*). |
 | [`src/connection-profile.ts`](../src/connection-profile.ts) | Profils de connexion desktop : serveur local embarqué vs API distante. Logique pure (pas d'import Electron) — port de electron/connection-profile.ts. |
 | [`src/core-db-env.ts`](../src/core-db-env.ts) | Résolution chemin `core.db` côté process Next/CRM (sans PathsContext Electron). Ordre : 1. `CREEZIO_CORE_DB_PATH` (injecté par Electron server-launcher) 2. voisin de `DB_PATH` → `{userData}/sqlite/core.db` 3. `/data/sqlite/core.db` (cloud/docker) |
@@ -33,7 +33,7 @@
 | [`src/sqlite-runtime.ts`](../src/sqlite-runtime.ts) | Runtime multi-DB SQLite (H2.0) — handles core / brand / plugin/<id>. Jour 0 serveur : ouvre **core + brand** uniquement. Plugin : `openPlugin(id)` à l'install (ensurePluginDb + migrations). |
 | [`src/tunnel-urls.ts`](../src/tunnel-urls.ts) | URLs publiques multi-niveau pour embeds via tunnel Cloudflare. Port brand-agnostic de electron/tunnel-service-urls.ts (TF2 0.10.26). CRM : https://{slug}.{tunnelRootDomain} n8n : https://n8n.{slug}.{tunnelRootDomain} Hermes : https://hermes.{slug}.{tunnelRootDomain} |
 | [`src/updater-state.ts`](../src/updater-state.ts) | État auto-update — logique PURE (reduce), sans Electron. Extrait de electron/updater.ts (TF2 0.10.26). |
-| [`src/web-allowlist.ts`](../src/web-allowlist.ts) | (à documenter) |
+| [`src/web-allowlist.ts`](../src/web-allowlist.ts) | Allowlist web des agents IA au niveau exécution (union des env `*_WEB_ALLOWED_HOSTS`, refus `web_host_not_allowed`, fail-closed sur URL non http(s)) — câblée prod dans browser-host et electron-shell ; défense en profondeur derrière la garde UX du runner tasks. |
 
 ## `src/embeds/`
 
