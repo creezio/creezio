@@ -691,6 +691,9 @@ function ensureBrandStandalone(brandRoot: string, kit: string): void {
     }
     // Union deps app + socle : les packages vendorés se référencent en
     // file:../<name> — tout le graphe doit être présent.
+    // ALIGNER sur DEFAULT_PACKAGES de scripts/sync-creezio-vendor.sh (une
+    // dérive ici = vendor incomplet → clone marque cassé, cf. gate
+    // test-phase-clone-autonomy).
     const base = [
       "brand-config",
       "shell",
@@ -709,6 +712,10 @@ function ensureBrandStandalone(brandRoot: string, kit: string): void {
       "tasks",
       "mails",
       "observability",
+      "landing",
+      "admin",
+      "support",
+      "integrations",
       "browser-host",
       "automations",
       "database",

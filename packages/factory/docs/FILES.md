@@ -17,6 +17,7 @@
 | [`src/generators/tests.ts`](../src/generators/tests.ts) | Smokes générés |
 | [`src/generators/index.ts`](../src/generators/index.ts) | Re-exports |
 | [`src/minimal-png.ts`](../src/minimal-png.ts) | Icône placeholder |
+| [`src/vendor-sync.ts`](../src/vendor-sync.ts) | Sync vendor kit → marque avant push GitHub (clone autonome) |
 | [`src/index.ts`](../src/index.ts) | Exports publics |
 | [`fixtures/prd-tempoflow-produit.md`](../fixtures/prd-tempoflow-produit.md) | Gold PRD CHR |
 | [`fixtures/prd-tempoflow-produit.expected.json`](../fixtures/prd-tempoflow-produit.expected.json) | Expected model |

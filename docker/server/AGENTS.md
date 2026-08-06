@@ -27,6 +27,7 @@ CRM web Next) via Docker, multi-instances, sans AppImage/Electron.
 | `Dockerfile` | Image générique (context = racine marque, Meili + UI Next embarqués) |
 | `docker-compose.yml` | Legacy `server-1` + `server-2` (bind 127.0.0.1) |
 | `brand.dockerignore` | Template ignore v2 (posé/rafraîchi en `.dockerignore` marque) |
+| `stage-client-vendor.mjs` | SoT stage `client/vendor` sans kit — matérialisé en marque `scripts/stage-client-vendor.mjs` (sync + scaffold), avec `Dockerfile` → `docker/server.Dockerfile` marque (clone GitHub autonome ; gate `test-phase-clone-autonomy`) |
 | `creezio-open-url.sh` | Opener navigateur (firefox/gio/xdg-open…) → `~/bin/` |
 | `README.md` | Doc humaine (registre, admin, sécurité, boot-status) |
 | `REMOTE-ACCESS.md` | Reverse proxy nginx-proxy-manager |

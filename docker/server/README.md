@@ -133,6 +133,25 @@ ops JSONL, disque. Voir `docker/server-admin/README.md`.
 - `npm run build:runtime` côté marque (dossier `build/` requis)
 - `npm run build:ui` si la marque a `ui/` (CRM web — le CLI `build` le fait)
 
+## Distribution autonome (clone marque sans kit)
+
+Chaque monorepo marque poussé sur GitHub doit être **autonome au clone** :
+le vendor pré-buildé est commité et trois artefacts sont **matérialisés**
+dans la marque (SoT ici, rafraîchis à chaque `sync-creezio-vendor.sh` et
+posés d'office par le scaffold factory) :
+
+| Artefact marque | SoT kit | Rôle |
+|-----------------|---------|------|
+| `scripts/stage-client-vendor.mjs` | `docker/server/stage-client-vendor.mjs` | `npm run bootstrap` — re-stage `client/vendor` (hardlinks) depuis le vendor racine, sans `CREEZIO_KIT_ROOT` |
+| `docker/server.Dockerfile` | `docker/server/Dockerfile` | `npm run docker:build` — image serveur sans kit checké out |
+| `.dockerignore` | `docker/server/brand.dockerignore` | contexte de build (posé si absent/stale) |
+
+Le push GitHub factory (`maybePushBrandRepos`) synchronise le vendor **avant**
+le push initial (sinon repo distant cassé). Les binaires fat (Meili,
+cloudflared) restent hors git : l'image les télécharge au build, le desktop au
+premier run. Gates : `scripts/test-phase-clone-autonomy.mjs` (kit) +
+`server/scripts/test-clone-autonomy.mjs` (marque, dans son `npm test`).
+
 ## Nommage des instances
 
 Les services Compose s’appellent **`server-1`**, **`server-2`**, … (chiffres uniquement).

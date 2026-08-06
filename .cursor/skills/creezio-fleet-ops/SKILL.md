@@ -36,6 +36,7 @@ Ports : auto 18790+n, bind `127.0.0.1` (exposition = `--expose`).
 | n8n / Hermes : superadmin, clé API, webhooks, MCP | 11 |
 | Intégrations / clés API tierces (OpenAI, Notion…) | 12 |
 | Publier la landing page marque (lp.{zone}) | 13 |
+| Cloner/booter un repo marque SANS le kit | 14 |
 
 ---
 
@@ -290,6 +291,38 @@ container) et pointer le webhook Stripe sur
 `admin_billing_customers|subscriptions|invoices` (+ journal
 `admin_billing_events`, dédup id). Test sans clé : payload signé à la main
 (HMAC-SHA256 `t=…` — voir `verifyStripeSignature` dans `@creezio/admin`).
+
+**Section Facturation** (page `/billing`, `BillingAdminClient` de
+`@creezio/admin/ui`) : stats (MRR, actifs, impayées), clients + abonnement
+(montant, statut, prochaine échéance `periode_fin`), factures, événements
+Stripe reçus. API : `GET /api/v1/modules/billing/overview`. Rapprochement
+client ↔ serveur : `PATCH /api/v1/modules/billing-customers/<id>`
+`{"host_id":"local","server_name":"resto-…"}` (ou page Clients).
+
+**Réconciliation ACTIVE** (webhook manqué, démarrage) :
+`POST /api/v1/modules/billing/reconcile` (bouton « Resynchroniser Stripe »)
+relit `customers`/`subscriptions?status=all`/`invoices` de l'API Stripe et
+resynchronise les projections (idempotent, pagination `starting_after`).
+
+```bash
+# Brancher la vraie clé : dashboard Stripe → Développeurs → Clés API →
+# « Clé secrète » (sk_live_… / sk_test_…) → .env gitignoré de l'app admin,
+# puis recréer le container avec -e STRIPE_API_KEY=…  (jamais commitée).
+# Sans clé : reconcile → 503 explicite avec ce mode d'emploi en hint.
+# Test sans vraie clé : mock HTTP local + STRIPE_API_BASE=http://127.0.0.1:18999
+# (gate kit : scripts/test-phase-admin-billing.mjs — webhook signé, overview,
+#  reconcile mock : statut resynchronisé + facture manquée rattrapée).
+```
+
+**Piège** : l'image serveur admin embarque `server/ui/.next` PRÉ-buildé de
+l'hôte — après toute modif UI (pages, `@creezio/admin/ui` via vendor), faire
+`npm run build --prefix server` (ou `build:ui`) AVANT
+`npm run server-docker:build`, sinon la nouvelle page → 404.
+
+Prouvé E2E (2026-08-06, admin TF) : webhooks signés simulés (« Le Petit
+Marseillais », 49 €/mois active, factures payées) → `/billing` rendu complet ;
+reconcile exécuté contre mock API Stripe (nom client corrigé, `periode_fin`
+2026-09-01 remplie, facture `open` manquée rattrapée → impayées=1).
 
 ## 6. Agent hôte + enrôlement d'un VPS
 
@@ -602,6 +635,33 @@ immédiatement visible sur `https://lp.{zone}`.
 `docker/tunnel-provisioner/` (`BRAND_WEB_SLUGS`, mode sans embeds),
 factory `packages/factory/src/admin-repo.ts` (câblage généré), gate
 `scripts/test-phase-landing.mjs`.
+
+## 14. Clone autonome d'un repo marque (sans kit)
+
+Les monorepos marque GitHub embarquent le kit **pré-buildé commité**
+(`vendor/creezio/`) + artefacts matérialisés (`scripts/stage-client-vendor.mjs`,
+`docker/server.Dockerfile`, `.dockerignore`). Sur une machine SANS
+`/opt/docker/creezio` :
+
+```bash
+git clone https://github.com/creezio/<brand>.git && cd <brand>
+npm run bootstrap        # stage client/vendor (hardlinks, sans kit)
+npm ci --prefix server && npm ci --prefix server/ui && npm ci --prefix client
+npm run build:runtime && npm run build:ui
+npm run docker:build     # image <brand>-server:local via docker/server.Dockerfile
+docker run -d --name <brand>-proof -p 127.0.0.1:18791:18791 \
+  -v "$PWD/docker-data/proof:/data" <brand>-server:local
+curl -sS http://127.0.0.1:18791/api/v1/os/boot-status | head -c 200
+```
+
+- Binaires fat (Meili/cloudflared) hors git : téléchargés au build de l'image
+  / au premier run desktop (`ensure-kit-binaries`) ; pack Win :
+  `electron:stage-win-bins`.
+- Les gestes riches `server-docker:*` (registre, admin, enroll) exigent le kit.
+- Si une dep `@creezio/*` manque au clone : sync-list marque incomplète →
+  aligner sur `DEFAULT_PACKAGES` du sync kit, resync, commit. Gates :
+  `test-phase-clone-autonomy` (kit) / `test:clone-autonomy` (marque).
+- Le push GitHub factory sync le vendor avant push (`maybePushBrandRepos`).
 
 ## Ressources
 

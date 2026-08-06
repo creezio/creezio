@@ -275,5 +275,24 @@ if [[ -n "${ROOT:-}" && "${DEST}" == "${ROOT}/vendor/creezio" && -f "${ROOT}/cli
   echo "▸ client/vendor stagé (hardlinks) → ${CLIENT_VENDOR}"
 fi
 
+# Distribution autonome (clone GitHub sans kit) — matérialiser dans la marque :
+# - scripts/stage-client-vendor.mjs : re-stage client/vendor depuis le vendor
+#   racine commité, sans CREEZIO_KIT_ROOT (post-clone / bootstrap) ;
+# - docker/server.Dockerfile : copie byte-identique du Dockerfile serveur kit
+#   (`docker build` marche sans le kit checké out à côté) ;
+# - .dockerignore : posé/rafraîchi depuis le template kit (marqueur versionné).
+# SoT = kit docker/server/ — les copies marque sont rafraîchies à chaque sync.
+if [[ -n "${ROOT:-}" && "${DEST}" == "${ROOT}/vendor/creezio" && -f "${ROOT}/client/package.json" ]]; then
+  mkdir -p "${ROOT}/scripts" "${ROOT}/docker"
+  cp -a "${KIT}/docker/server/stage-client-vendor.mjs" "${ROOT}/scripts/stage-client-vendor.mjs"
+  cp -a "${KIT}/docker/server/Dockerfile" "${ROOT}/docker/server.Dockerfile"
+  if [[ -f "${KIT}/docker/server/brand.dockerignore" ]]; then
+    if [[ ! -f "${ROOT}/.dockerignore" ]] || ! grep -q "creezio-dockerignore" "${ROOT}/.dockerignore"; then
+      cp -a "${KIT}/docker/server/brand.dockerignore" "${ROOT}/.dockerignore"
+    fi
+  fi
+  echo "▸ distribution autonome : scripts/stage-client-vendor.mjs + docker/server.Dockerfile matérialisés"
+fi
+
 echo "OK vendor → ${DEST} (kitSha=${KIT_SHA})"
 du -sh "${DEST}"/*

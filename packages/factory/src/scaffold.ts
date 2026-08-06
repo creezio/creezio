@@ -13,6 +13,7 @@
 
 import fs from "node:fs";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import {
   type AppManifest,
   buildElectronBuilderConfig,
@@ -81,6 +82,50 @@ function creezioVendorDeps(names: string[]): Record<string, string> {
     deps[`@creezio/${name}`] = `file:vendor/creezio/${name}`;
   }
   return deps;
+}
+
+/** Racine kit par défaut : packages/factory/{src,dist} → ../../.. */
+function scaffoldKitRootDefault(): string {
+  const here = path.dirname(fileURLToPath(import.meta.url));
+  return path.resolve(here, "../../..");
+}
+
+/**
+ * Matérialise dans la marque les artefacts « clone autonome » (SoT kit
+ * docker/server/) : stage client/vendor sans kit, Dockerfile serveur,
+ * .dockerignore. Rafraîchis ensuite à chaque sync-creezio-vendor.sh.
+ */
+function materializeStandaloneDistribution(
+  outDir: string,
+  kitRoot: string | undefined,
+  written: string[],
+): void {
+  const kit = path.resolve(
+    kitRoot || process.env.CREEZIO_KIT_ROOT || scaffoldKitRootDefault(),
+  );
+  const dockerServer = path.join(kit, "docker/server");
+  const copies: Array<[src: string, dest: string]> = [
+    ["stage-client-vendor.mjs", "scripts/stage-client-vendor.mjs"],
+    ["Dockerfile", "docker/server.Dockerfile"],
+  ];
+  for (const [src, dest] of copies) {
+    const from = path.join(dockerServer, src);
+    if (!fs.existsSync(from)) continue; // kit incomplet (tests partiels) — non bloquant
+    const to = path.join(outDir, dest);
+    fs.mkdirSync(path.dirname(to), { recursive: true });
+    fs.copyFileSync(from, to);
+    written.push(to);
+  }
+  const dockerignoreSrc = path.join(dockerServer, "brand.dockerignore");
+  const dockerignoreDest = path.join(outDir, ".dockerignore");
+  if (
+    fs.existsSync(dockerignoreSrc) &&
+    (!fs.existsSync(dockerignoreDest) ||
+      !fs.readFileSync(dockerignoreDest, "utf8").includes("creezio-dockerignore"))
+  ) {
+    fs.copyFileSync(dockerignoreSrc, dockerignoreDest);
+    written.push(dockerignoreDest);
+  }
 }
 
 /** Symlink relatif idempotent (dangling accepté — cible synchronisée plus tard). */
@@ -770,6 +815,11 @@ function renderRootPackageJson(
   scripts["client:build"] = "npm run build:runtime --prefix client";
   scripts.typecheck =
     "npm run typecheck --prefix server && npm run typecheck --prefix client";
+  // Clone autonome (repo GitHub sans kit) : stage client/vendor depuis le
+  // vendor racine commité + build image serveur via Dockerfile matérialisé.
+  scripts.bootstrap = "node scripts/stage-client-vendor.mjs";
+  scripts["docker:build"] =
+    `docker build -f docker/server.Dockerfile --build-arg SERVER_DIR=server -t ${m.brandId}-server:local .`;
   // Serveur Docker headless : brandRoot = racine monorepo (scripts kit SoT).
   Object.assign(scripts, serverDockerNpmScripts(m.brandId));
 
@@ -877,6 +927,23 @@ npm run server-docker:admin     # admin web flotte (repo ${m.brandId}-admin)
 
 Docs : \`server/README.md\`, repo admin \`${m.brandId}-admin/README.md\`,
 kit \`docker/server/README.md\`.
+
+## Clone autonome (sans le kit creezio)
+
+Le repo embarque le kit pré-buildé (\`vendor/creezio/\`, commité). Post-clone :
+
+\`\`\`bash
+npm run bootstrap               # stage client/vendor depuis le vendor racine
+npm ci --prefix server && npm ci --prefix server/ui && npm ci --prefix client
+npm run build:runtime && npm run build:ui
+npm run docker:build            # image serveur via docker/server.Dockerfile
+\`\`\`
+
+Les binaires fat (Meili, cloudflared — \`vendor/creezio/electron-shell/resources/bin/\`)
+sont volontairement hors git : l'image Docker les télécharge au build, le
+desktop les retélécharge au premier run (\`ensure-kit-binaries\`). Les gestes
+\`server-docker:*\` (registre d'instances, admin flotte, enroll) restent
+outillés par le CLI kit (\`CREEZIO_KIT_ROOT\`).
 `;
 }
 
@@ -1570,6 +1637,11 @@ export function scaffoldNewApp(opts: NewAppOptions): ScaffoldResult {
   fs.mkdirSync(path.join(clientVendorLink, "creezio"), { recursive: true });
   ensureRelativeSymlink(path.join(serverDir, ".env"), "../.env");
   ensureRelativeSymlink(path.join(clientDir, ".env"), "../.env");
+
+  // Distribution autonome (clone GitHub sans kit) : matérialiser le stage
+  // client/vendor + le Dockerfile serveur + .dockerignore (SoT kit docker/server/,
+  // rafraîchis ensuite à chaque sync-creezio-vendor.sh).
+  materializeStandaloneDistribution(outDir, opts.kitRoot, written);
 
   return {
     outDir,
