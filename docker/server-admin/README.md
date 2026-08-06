@@ -68,6 +68,24 @@ node packages/observability/fleet-collector/server-admin.mjs
 - L'image serveur marque n'est **pas** buildée depuis l'admin : si elle est
   absente → 409 avec l'invite `creezio server-docker build`.
 
+## Registre pull-only `/v2/*` (F4)
+
+L'admin expose un **proxy pull-only** du registre d'images privé
+(`CREEZIO_REGISTRY`, ex. `127.0.0.1:5000`) sous `/v2/*`, pensé pour être
+publié via l'ingress `registry.{zone}` (tunnel-provisioner `kind=registry`) :
+
+- **GET/HEAD uniquement** — toute méthode push (PUT/POST/PATCH/DELETE) → 405.
+  Le `publish` reste loopback-only sur le VPS atelier.
+- **Auth Basic obligatoire** : `hostId:agentToken` d'un hôte enrôlé
+  (`fleet-hosts.json`) ou `CREEZIO_ADMIN_USER:CREEZIO_ADMIN_PASS` (debug).
+  Anonyme → 401 + `WWW-Authenticate` (compatible `docker login`).
+- Pull distant : `docker login registry.{zone} -u <hostId> -p <agentToken>`
+  puis `docker pull registry.{zone}/creezio-server-<brand>:<tag>`.
+- Côté publish, `creezio server-docker publish --public-host registry.{zone}`
+  (ou env `CREEZIO_REGISTRY_PUBLIC_HOST`) tague en plus la référence publique.
+- Module : `packages/observability/fleet-collector/registry-pull-proxy.mjs`
+  (gate `scripts/test-phase-registry-pull-proxy.mjs`).
+
 ## Sécurité
 
 - Bind `127.0.0.1` par défaut : accessible uniquement en loopback (session

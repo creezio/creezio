@@ -63,6 +63,12 @@ export type ServerDockerArgs = {
   keepTags?: number;
   /** publish : désactiver la rétention post-push (images/tags/cache). */
   noRetention?: boolean;
+  /**
+   * publish : hôte public du registre (ex. registry.{zone}) — tague en plus
+   * l'image avec la référence publique pull-only (F4). Défaut env
+   * CREEZIO_REGISTRY_PUBLIC_HOST.
+   */
+  publicHost?: string;
   /** enroll : URL de l'admin flotte (https://admin.{zone}). */
   admin?: string;
   /** enroll : token d'enrôlement généré côté admin. */
@@ -128,6 +134,8 @@ export function parseServerDockerArgs(argv: string[]): ServerDockerArgs {
     else if (a === "--tag") out.tag = rest.shift();
     else if (a.startsWith("--registry=")) out.registry = a.slice(11);
     else if (a === "--registry") out.registry = rest.shift();
+    else if (a.startsWith("--public-host=")) out.publicHost = a.slice(14);
+    else if (a === "--public-host") out.publicHost = rest.shift();
     else if (a.startsWith("--admin=")) out.admin = a.slice(8);
     else if (a === "--admin") out.admin = rest.shift();
     else if (a.startsWith("--token=")) out.token = a.slice(8);
@@ -200,9 +208,12 @@ Admin web multi-serveurs / multi-VPS (fleet-collector étendu) :
 Registry d'images versionnées (update de flotte) :
   creezio server-docker publish --brand-root <app> --tag <version>
     [--registry 127.0.0.1:5000] [--browser] [--no-push]
-    [--keep-tags 5] [--no-retention]
+    [--keep-tags 5] [--no-retention] [--public-host registry.<zone>]
     (build image versionnée <registry>/creezio-server-<brand>:<tag>
      + label/env version — /api/v1/core/version affiche <version>)
+    --public-host (ou env CREEZIO_REGISTRY_PUBLIC_HOST) : tague en plus la
+    référence publique pull-only registry.<zone>/… (F4) — le push reste
+    loopback-only, les VPS distants pullent via l'ingress authentifié.
     Rétention après push réussi : garde les N derniers tags (défaut 2,
     env CREEZIO_PUBLISH_KEEP_TAGS) côté daemon local ET registre privé,
     + docker builder prune --max-used-space (env CREEZIO_PUBLISH_KEEP_STORAGE,
@@ -1280,6 +1291,25 @@ async function runPublishSubcommand(
   console.log(
     `  update flotte : POST agent /agent/api/servers/<brand>/<nom>/update {"image":"${image}"}`,
   );
+  // Référence publique pull-only (F4) : le MÊME repo/tag vu à travers
+  // l'ingress registry.{zone} → proxy /v2/* du Creezio Server Admin. Pas de
+  // second push (même registre) — on tague localement + on affiche la
+  // référence que les VPS distants doivent puller (Basic hostId:agentToken).
+  const publicHost = (
+    args.publicHost ||
+    env.CREEZIO_REGISTRY_PUBLIC_HOST ||
+    ""
+  )
+    .trim()
+    .replace(/\/+$/, "");
+  if (publicHost) {
+    const publicImage = publishImageName(publicHost, brandId, tag, variant);
+    run("docker", ["tag", image, publicImage], env);
+    console.log(`✓ référence publique : ${publicImage}`);
+    console.log(
+      `  pull distant : docker login ${publicHost} -u <hostId> -p <agentToken> && docker pull ${publicImage}`,
+    );
+  }
   if (args.noRetention) {
     console.log("--no-retention : pas de nettoyage post-publish");
     return;

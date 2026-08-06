@@ -61,6 +61,7 @@ import {
   updateServer,
   writeJson,
 } from "./server-lib.mjs";
+import { createRegistryPullProxy } from "./registry-pull-proxy.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIC_DIR = path.join(__dirname, "public");
@@ -845,9 +846,21 @@ async function handleAdmin(req, res, url) {
   return send(res, 404, { ok: false });
 }
 
+// Proxy PULL-ONLY du registre d'images (F4) — /v2/* pour l'ingress public
+// registry.{zone}. Auth Basic hostId:agentToken (hôtes enrôlés) ou admin ;
+// GET/HEAD seulement, push refusé (405) — publish reste loopback-only.
+const registryPullProxy = createRegistryPullProxy({
+  upstream: REGISTRY,
+  loadHosts: () => loadFleetHosts().hosts,
+  adminUser: ADMIN_USER,
+  adminPass: ADMIN_PASS,
+  audit,
+});
+
 const server = http.createServer(async (req, res) => {
   try {
     const url = new URL(req.url || "/", `http://${HOST}:${PORT}`);
+    if (registryPullProxy(req, res, url)) return;
     if (url.pathname === "/") {
       return send(res, 302, "", { Location: "/admin" });
     }

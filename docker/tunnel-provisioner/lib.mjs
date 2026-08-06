@@ -15,6 +15,13 @@
  */
 export const BRAND_WEB_SLUGS = new Set(["lp"]);
 
+/**
+ * Slug "registry" : ingress `registry.{zone}` → proxy pull-only du registre
+ * d'images de la flotte (Creezio Server Admin `/v2/*`, F4). Réservable
+ * uniquement via `kind: "registry"` — jamais par un serveur client.
+ */
+export const REGISTRY_SLUGS = new Set(["registry"]);
+
 /** Slugs réservés — jamais attribuables à un serveur restaurant. */
 export const RESERVED_SLUGS = new Set([
   "lp",
@@ -71,14 +78,28 @@ export function slugCheckLocal(slug, opts) {
       reason: "Slug invalide (a-z, 0-9, tirets, 2–48 car.)",
     };
   }
+  // kind=registry : UNIQUEMENT le slug registry (ingress pull-only F4) —
+  // une réservation registry ne peut pas capturer un slug arbitraire.
+  if (opts?.kind === "registry" && !REGISTRY_SLUGS.has(slug)) {
+    return { available: false, reason: "kind registry limité au slug registry" };
+  }
   if (RESERVED_SLUGS.has(slug)) {
     // Les slugs brand-web (lp…) sont réservables explicitement par la marque.
     if (opts?.kind === "brand-web" && BRAND_WEB_SLUGS.has(slug)) {
       return { available: true };
     }
+    // registry.{zone} : réservable uniquement en kind=registry (F4).
+    if (opts?.kind === "registry" && REGISTRY_SLUGS.has(slug)) {
+      return { available: true };
+    }
     return { available: false, reason: "Slug réservé" };
   }
   return { available: true };
+}
+
+/** Kinds « zone-level » : un seul ingress HTTP, pas d'embeds/wildcard/e-mail. */
+export function isZoneLevelKind(kind) {
+  return kind === "brand-web" || kind === "registry";
 }
 
 /** `n8n.{slug}.{zone}` etc. — préfixe simple sur le hostname CRM. */
