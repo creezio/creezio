@@ -29,7 +29,10 @@ import {
   emailSurfaceHandlesPath,
   mountBrandEmailSurface,
 } from "./mount-brand-email-surface.js";
-import { assertModuleMountSession } from "./module-mount-auth.js";
+import {
+  assertModuleMountSession,
+  type ModuleMachineKeyVerifier,
+} from "./module-mount-auth.js";
 
 export type BrandOsHttpHandle = {
   port: number;
@@ -200,6 +203,12 @@ export async function listenBrandOsHttp(opts: {
    * `null` tant que l'UI n'est pas prête → 503 ui_starting.
    */
   uiProxyTarget?: () => string | null;
+  /**
+   * Auth machine sur `/api/v1/modules/*` (clé API brand — Hermes, plugins,
+   * n8n) en complément de la session plateforme. Voir
+   * createBrandApiKeyModuleVerifier.
+   */
+  moduleMountMachineKey?: ModuleMachineKeyVerifier;
 }): Promise<BrandOsHttpHandle> {
   const host = resolveBrandOsHttpHost(opts.host);
   const existingAddr = opts.existingServer?.address();
@@ -1000,6 +1009,9 @@ export async function listenBrandOsHttp(opts: {
         method: req.method || "GET",
         pathname,
         headers: req.headers,
+        ...(opts.moduleMountMachineKey
+          ? { verifyMachineKey: opts.moduleMountMachineKey }
+          : {}),
       });
       if (!moduleAuth.ok) {
         send(res, moduleAuth.status, moduleAuth.body);

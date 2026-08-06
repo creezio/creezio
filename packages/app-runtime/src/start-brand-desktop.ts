@@ -7,6 +7,7 @@ import fs from "node:fs";
 import path from "node:path";
 import {
   guessPackagedDataDir,
+  pluginsRootDir,
   resolvePackagedDataDir,
 } from "@creezio/platform-core";
 import {
@@ -40,6 +41,11 @@ import {
 } from "./create-brand-kernel.js";
 import { composeBrandOs } from "./compose-brand-os.js";
 import { listenBrandOsHttp } from "./listen-brand-os-http.js";
+import {
+  anyModuleMachineKeyVerifier,
+  createBrandApiKeyModuleVerifier,
+  createPluginDiskKeyModuleVerifier,
+} from "./module-mount-auth.js";
 import {
   mcpSurfaceHandlesPath,
   mountBrandMcpSurface,
@@ -745,6 +751,14 @@ async function startBrandDesktopBody(args: {
           mcp,
           os,
           getMailsStore: () => mails ?? null,
+          // Clé machine acceptée sur /api/v1/modules/* : clé API brand
+          // (table api_keys) ou clé service plugin sur disque.
+          moduleMountMachineKey: anyModuleMachineKeyVerifier(
+            createBrandApiKeyModuleVerifier(() => runtime.getBrand()),
+            createPluginDiskKeyModuleVerifier(() =>
+              pluginsRootDir(boot.userDataDir),
+            ),
+          ),
           mcpSurfaceFetch: async (request) => {
             if (!mcpSurface) {
               return new Response(

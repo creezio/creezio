@@ -57,11 +57,14 @@ function resolvePreloadPath(): string {
   return resolvePreloadPathImpl!();
 }
 
+/** Id de site externe opaque (UUID marque ou entier historique). */
+export type SiteId = number | string;
+
 export type TabInfo = {
   tabId: string;
-  siteId: number;
+  siteId: SiteId;
   /** @deprecated → siteId */
-  fournisseurId: number;
+  fournisseurId: SiteId;
   url: string;
   title: string;
   active: boolean;
@@ -69,9 +72,9 @@ export type TabInfo = {
 
 export type TabLoadState = {
   tabId: string;
-  siteId: number;
+  siteId: SiteId;
   /** @deprecated → siteId */
-  fournisseurId: number;
+  fournisseurId: SiteId;
   state: "loading" | "ready" | "error";
   error?: string;
   url?: string;
@@ -87,13 +90,15 @@ export type ContentRect = {
 /** Onglet site externe (WebContentsView). Alias historique : SupplierTab. */
 export type BrowserTab = {
   tabId: string;
-  /** Id de partition persistante (`/site/<id>`). */
-  siteId: number;
+  /** Id opaque du site (identité renderer : UUID marque ou entier). */
+  siteId: SiteId;
+  /** Partition persistante numérique dérivée (session Electron). */
+  partitionKey: number;
   /**
    * @deprecated → siteId (miroir pour marques TF non migrées).
    * Toujours égal à `siteId`.
    */
-  fournisseurId: number;
+  fournisseurId: SiteId;
   view: WebContentsView;
   debuggerAttached: boolean;
   /** Chargement document principal — vue masquée tant que loading (spinner React). */
@@ -130,21 +135,29 @@ function tabErrorHtml(url: string, description: string): string {
 </div></body></html>`)}`;
 }
 
+function stableHash(input: string): number {
+  let h = 0;
+  for (let i = 0; i < input.length; i++) {
+    h = (Math.imul(h, 31) + input.charCodeAt(i)) >>> 0;
+  }
+  return 1_000_000_000 + (h % 1_000_000_000);
+}
+
 /**
- * Id de partition : id outil (annuaire), ou hash stable du hostname si
- * siteId ≤ 0 (évite une partition globale partagée `extsite-0`).
+ * Id de partition : id outil numérique (annuaire), hash stable de l'id opaque
+ * (UUID marque), ou hash du hostname si siteId absent/≤ 0 (évite une
+ * partition globale partagée `extsite-0`).
  */
-export function resolvePartitionId(siteId: number, url: string): number {
-  if (Number.isFinite(siteId) && siteId > 0) {
+export function resolvePartitionId(siteId: SiteId, url: string): number {
+  if (typeof siteId === "number" && Number.isFinite(siteId) && siteId > 0) {
     return Math.floor(siteId);
+  }
+  if (typeof siteId === "string" && siteId.trim()) {
+    return stableHash(siteId.trim());
   }
   try {
     const host = new URL(url).hostname || "unknown";
-    let h = 0;
-    for (let i = 0; i < host.length; i++) {
-      h = (Math.imul(h, 31) + host.charCodeAt(i)) >>> 0;
-    }
-    return 1_000_000_000 + (h % 1_000_000_000);
+    return stableHash(host);
   } catch {
     return 0;
   }
@@ -371,12 +384,10 @@ export class SupplierTabManager {
    * session). Pour les sites anonymes (`siteId = 0`), l'URL retrouve la
    * partition hachée créée par openTab.
    */
-  private findLiveTabForSite(siteId: number, url: string): SupplierTab | undefined {
+  private findLiveTabForSite(siteId: SiteId, url: string): SupplierTab | undefined {
     const partitionKey = resolvePartitionId(siteId, url);
     return Array.from(this.tabs.values()).find(
-      (t) =>
-        t.fournisseurId === partitionKey &&
-        !t.view.webContents.isDestroyed(),
+      (t) => t.partitionKey === partitionKey && !t.view.webContents.isDestroyed(),
     );
   }
 
@@ -386,16 +397,16 @@ export class SupplierTabManager {
    * son tabId Electron.
    */
   activateSite(
-    siteId: number,
+    siteId: SiteId,
     url: string,
     rect?: ContentRect,
   ):
     | {
         ok: true;
         tabId: string;
-        siteId: number;
+        siteId: SiteId;
         /** @deprecated → siteId */
-        fournisseurId: number;
+        fournisseurId: SiteId;
         loadState: TabLoadPhase;
         url?: string;
       }
@@ -428,7 +439,7 @@ export class SupplierTabManager {
    * Si un onglet de la même partition (`siteId`) existe déjà, il est réutilisé.
    * @param siteId Id de partition (ex. entité métier marque, ou 0 = hash host).
    */
-  async openTab(siteId: number, url: string): Promise<BrowserTab> {
+  async openTab(siteId: SiteId, url: string): Promise<BrowserTab> {
     try {
       new URL(url); // validation précoce : erreur claire plutôt qu'onglet blanc
     } catch {
@@ -478,10 +489,18 @@ export class SupplierTabManager {
     view.setVisible(false);
 
     const tabId = `tab-${crypto.randomBytes(4).toString("hex")}`;
+    // L'identité renvoyée au renderer reste l'id opaque d'origine (UUID
+    // marque…) ; la partition numérique ne sert qu'à la session persistante.
+    const echoSiteId: SiteId =
+      (typeof siteId === "string" && siteId.trim()) ||
+      (typeof siteId === "number" && Number.isFinite(siteId) && siteId > 0)
+        ? siteId
+        : partitionKey;
     const tab: BrowserTab = {
       tabId,
-      siteId: partitionKey,
-      fournisseurId: partitionKey, // miroir déprécié
+      siteId: echoSiteId,
+      partitionKey,
+      fournisseurId: echoSiteId, // miroir déprécié
       view,
       debuggerAttached: false,
       loadState: "loading",

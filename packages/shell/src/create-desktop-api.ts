@@ -104,11 +104,11 @@ export function createDesktopApi(
     onWindowMaximizedChanged: (cb) =>
       onChannel<boolean>(ipc, C.window.maximizedChanged, cb),
 
-    openTab: (siteId: number, url: string) =>
+    openTab: (siteId: number | string, url: string) =>
       ipc.invoke(C.tabs.open, siteId, url) as Promise<{
         tabId: string;
-        siteId: number;
-        fournisseurId: number;
+        siteId: number | string;
+        fournisseurId: number | string;
         loadState?: "loading" | "ready" | "error";
         url?: string;
       }>,
@@ -118,13 +118,13 @@ export function createDesktopApi(
       ipc.invoke(C.tabs.activate, tabId, rect) as Promise<
         { ok: boolean; error?: string } | void
       >,
-    activateSite: (siteId: number, url: string, rect?: DesktopContentRect) =>
+    activateSite: (siteId: number | string, url: string, rect?: DesktopContentRect) =>
       ipc.invoke(C.tabs.activateSite, siteId, url, rect) as Promise<{
         ok: boolean;
         error?: string;
         tabId?: string;
-        siteId?: number;
-        fournisseurId?: number;
+        siteId?: number | string;
+        fournisseurId?: number | string;
         loadState?: "loading" | "ready" | "error";
         url?: string;
       }>,

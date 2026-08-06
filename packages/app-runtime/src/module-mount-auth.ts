@@ -5,6 +5,9 @@
  * framework-agnostique. Allowlist explicite des chemins machine/public
  * (webhooks signés, register/heartbeat Bearer, agent releases, LP public).
  */
+import { createHash, timingSafeEqual } from "node:crypto";
+import fs from "node:fs";
+import path from "node:path";
 import type { IncomingHttpHeaders } from "node:http";
 import {
   getAuthConfig,
@@ -131,8 +134,133 @@ export async function sessionFromNodeHeaders(
 }
 
 export type ModuleMountAuthDecision =
-  | { ok: true; public?: boolean; session?: SessionPayload }
+  | { ok: true; public?: boolean; session?: SessionPayload; machine?: boolean }
   | { ok: false; status: 401; body: Record<string, unknown> };
+
+/** Handle brand.db minimal (SqliteHandle kernel) pour vérifier `api_keys`. */
+export type ModuleMountBrandDb = {
+  prepare: (sql: string) => {
+    get: (...params: unknown[]) => unknown;
+  };
+};
+
+/**
+ * Vérifie une clé machine (Bearer opaque / `x-api-key`) contre la table
+ * `api_keys` de brand.db — même contrat que la clé service Hermes/plugins
+ * (`crm:read` requis en lecture, `crm:write` en mutation, `full` = tout).
+ */
+export type ModuleMachineKeyVerifier = (input: {
+  method: string;
+  headers: IncomingHttpHeaders;
+}) => boolean | Promise<boolean>;
+
+function opaqueMachineKey(headers: IncomingHttpHeaders): string {
+  const xKeyRaw = headers["x-api-key"];
+  const xKey = Array.isArray(xKeyRaw) ? xKeyRaw[0] || "" : xKeyRaw || "";
+  const raw = xKey.trim() || bearerToken(headers.authorization);
+  if (!raw || looksLikeJwt(raw)) return "";
+  return raw;
+}
+
+export function createBrandApiKeyModuleVerifier(
+  getBrandDb: () => ModuleMountBrandDb | null,
+): ModuleMachineKeyVerifier {
+  return ({ method, headers }) => {
+    const raw = opaqueMachineKey(headers);
+    if (!raw) return false;
+    const db = getBrandDb();
+    if (!db) return false;
+    try {
+      const hash = createHash("sha256").update(raw, "utf8").digest("hex");
+      const row = db
+        .prepare(
+          `SELECT scopes FROM api_keys
+            WHERE key_hash = ? AND revoked_at IS NULL`,
+        )
+        .get(hash) as { scopes?: string } | undefined;
+      if (!row) return false;
+      return scopeAllows(String(row.scopes || ""), method);
+    } catch {
+      return false; // table api_keys absente (marque sans clés machine)
+    }
+  };
+}
+
+function scopeAllows(scopes: string, method: string): boolean {
+  if (scopes === "full") return true;
+  const list = scopes.split(",").map((s) => s.trim());
+  const m = (method || "GET").toUpperCase();
+  const needed = m === "GET" || m === "HEAD" ? "crm:read" : "crm:write";
+  return list.includes(needed);
+}
+
+function sameKey(a: string, b: string): boolean {
+  const ha = createHash("sha256").update(a, "utf8").digest();
+  const hb = createHash("sha256").update(b, "utf8").digest();
+  return timingSafeEqual(ha, hb);
+}
+
+/**
+ * Vérifie une clé machine contre les clés service des plugins installés
+ * (fichiers `.*plugin-api-key.json` écrits par le host plugins du kit) —
+ * couvre les marques sans table `api_keys` (sandbox / factory nues).
+ */
+export function createPluginDiskKeyModuleVerifier(
+  getPluginsRoot: () => string | null,
+): ModuleMachineKeyVerifier {
+  return ({ method, headers }) => {
+    const raw = opaqueMachineKey(headers);
+    if (!raw) return false;
+    const root = getPluginsRoot();
+    if (!root || !fs.existsSync(root)) return false;
+    let entries: string[] = [];
+    try {
+      entries = fs.readdirSync(root);
+    } catch {
+      return false;
+    }
+    for (const entry of entries) {
+      const dir = path.join(root, entry);
+      let files: string[] = [];
+      try {
+        if (!fs.statSync(dir).isDirectory()) continue;
+        files = fs.readdirSync(dir);
+      } catch {
+        continue;
+      }
+      for (const f of files) {
+        if (!/plugin-api-key\.json$/.test(f)) continue;
+        try {
+          const stored = JSON.parse(
+            fs.readFileSync(path.join(dir, f), "utf8"),
+          ) as { apiKey?: string; scopes?: string };
+          if (
+            stored.apiKey &&
+            sameKey(raw, stored.apiKey) &&
+            scopeAllows(String(stored.scopes || ""), method)
+          ) {
+            return true;
+          }
+        } catch {
+          // fichier clé illisible — on continue (fail-closed)
+        }
+      }
+    }
+    return false;
+  };
+}
+
+/** Combine des vérificateurs machine — premier qui accepte gagne. */
+export function anyModuleMachineKeyVerifier(
+  ...verifiers: ModuleMachineKeyVerifier[]
+): ModuleMachineKeyVerifier {
+  return async (input) => {
+    for (const v of verifiers) {
+      if (await v(input)) return true;
+    }
+    return false;
+  };
+}
 
 /**
  * Décision garde mounts modules — à appeler avant `api.handle` sur la
@@ -142,12 +270,21 @@ export async function assertModuleMountSession(input: {
   method: string;
   pathname: string;
   headers: IncomingHttpHeaders;
+  /** Auth machine (clé API brand) en plus de la session plateforme. */
+  verifyMachineKey?: ModuleMachineKeyVerifier;
 }): Promise<ModuleMountAuthDecision> {
   if (!isModuleApiPath(input.pathname)) return { ok: true };
   if (isPublicModulePath(input.method, input.pathname)) {
     return { ok: true, public: true };
   }
   const session = await sessionFromNodeHeaders(input.headers);
+  if (!session && input.verifyMachineKey) {
+    const machine = await input.verifyMachineKey({
+      method: input.method,
+      headers: input.headers,
+    });
+    if (machine) return { ok: true, machine: true };
+  }
   if (!session) {
     return {
       ok: false,

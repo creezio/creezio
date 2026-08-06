@@ -11,6 +11,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { isFeatureEnabled } from "@creezio/brand-config";
+import { pluginsRootDir } from "@creezio/platform-core";
 import {
   ensureKitOsBinaries,
   kitBinaryPaths,
@@ -29,6 +30,11 @@ import {
   type BrandBootHttpHandle,
 } from "./listen-brand-boot-http.js";
 import { listenBrandOsHttp } from "./listen-brand-os-http.js";
+import {
+  anyModuleMachineKeyVerifier,
+  createBrandApiKeyModuleVerifier,
+  createPluginDiskKeyModuleVerifier,
+} from "./module-mount-auth.js";
 import {
   mcpSurfaceHandlesPath,
   mountBrandMcpSurface,
@@ -507,6 +513,12 @@ export async function startBrandKernelHarness(
           ...(early ? { existingServer: early.server } : {}),
           getMailsStore: () => mails ?? null,
           getBootStatus: () => boot.model(),
+          // Clé machine acceptée sur /api/v1/modules/* : clé API brand
+          // (table api_keys) ou clé service plugin sur disque.
+          moduleMountMachineKey: anyModuleMachineKeyVerifier(
+            createBrandApiKeyModuleVerifier(() => runtime.getBrand()),
+            createPluginDiskKeyModuleVerifier(() => pluginsRootDir(dataDir)),
+          ),
           ...(uiAvailable
             ? { uiProxyTarget: () => uiPlane?.baseUrl ?? null }
             : {}),

@@ -1102,13 +1102,23 @@ export function installBrandDesktopRuntime(deps: BrandDesktopDeps): void {
 
   /* ─────────────────────── Liens externes → onglets ──────────────────────── */
 
+  /** Id de site opaque : entier historique ou UUID marque — jamais NaN. */
+  function normalizeSiteId(raw: unknown): number | string {
+    if (typeof raw === "string" && raw.trim()) {
+      const asNum = Number(raw);
+      return Number.isFinite(asNum) && String(asNum) === raw.trim() ? asNum : raw.trim();
+    }
+    const n = Number(raw);
+    return Number.isFinite(n) ? n : 0;
+  }
+
   /**
    * Routage des liens EXTERNES : onglet site intégré + event renderer.
    * SoT = site externe (pas « fournisseur »). Dual-emit wire legacy TF.
    */
   function emitExternalTabOpened(
     view: any,
-    info: { tabId: string; siteId: number; url: string; title: string },
+    info: { tabId: string; siteId: number | string; url: string; title: string },
   ): void {
     const payload = {
       ...info,
@@ -1129,7 +1139,7 @@ export function installBrandDesktopRuntime(deps: BrandDesktopDeps): void {
   /** @deprecated → emitExternalTabOpened */
   function emitSupplierTabOpened(
     view: any,
-    info: { tabId: string; fournisseurId: number; url: string; title: string },
+    info: { tabId: string; fournisseurId: number | string; url: string; title: string },
   ): void {
     emitExternalTabOpened(view, {
       tabId: info.tabId,
@@ -1161,7 +1171,7 @@ export function installBrandDesktopRuntime(deps: BrandDesktopDeps): void {
   }
 
   function routeExternalLinksToTabs(view: any, baseUrl: string): void {
-    const openInTab = (url: string, fournisseurId: number) => {
+    const openInTab = (url: string, fournisseurId: number | string) => {
       const manager = tabsManagerForView(view);
       if (!manager) return;
       void manager
@@ -1546,14 +1556,19 @@ export function installBrandDesktopRuntime(deps: BrandDesktopDeps): void {
     safeHandle("tabs:open", async (e, a, b) => {
       const manager = tabsManagerForEvent(e);
       // Compat : (siteId, url) OU { siteId|fournisseurId, url }
-      let siteId: number;
+      // siteId opaque : UUID marque (string) ou entier historique.
+      let siteId: number | string;
       let openUrl: string;
       if (a && typeof a === "object") {
-        const o = a as { siteId?: number; fournisseurId?: number; url?: string };
-        siteId = Number(o.siteId ?? o.fournisseurId);
+        const o = a as {
+          siteId?: number | string;
+          fournisseurId?: number | string;
+          url?: string;
+        };
+        siteId = normalizeSiteId(o.siteId ?? o.fournisseurId);
         openUrl = String(o.url ?? "");
       } else {
-        siteId = Number(a);
+        siteId = normalizeSiteId(a);
         openUrl = String(b ?? "");
       }
       const tab = await manager.openTab(siteId, openUrl);
@@ -1606,20 +1621,20 @@ export function installBrandDesktopRuntime(deps: BrandDesktopDeps): void {
     safeHandle("tabs:activate-site", (e, a, b, c) => {
       const manager = tabsManagerForEvent(e);
       // Compat : (siteId, url, rect?) OU { siteId, url, rect? }
-      let siteId: number;
+      let siteId: number | string;
       let url: string;
       let rect: { x: number; y: number; width: number; height: number } | undefined;
       if (a && typeof a === "object" && !Array.isArray(a) && ("siteId" in a || "url" in a)) {
         const o = a as {
-          siteId?: number;
+          siteId?: number | string;
           url?: string;
           rect?: { x: number; y: number; width: number; height: number };
         };
-        siteId = Number(o.siteId);
+        siteId = normalizeSiteId(o.siteId);
         url = String(o.url || "");
         rect = o.rect;
       } else {
-        siteId = Number(a);
+        siteId = normalizeSiteId(a);
         url = String(b ?? "");
         rect = c as typeof rect;
       }

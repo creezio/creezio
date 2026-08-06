@@ -145,11 +145,17 @@ export async function executeSupplierAction(
       actionType === "external_open_tab" ||
       req.type === "supplier_open_tab"
     ) {
-      const siteId = Number(
-        req.params.site_id ?? req.params.fournisseur_id ?? 0,
-      );
+      // site_id opaque : entier historique ou UUID marque (string).
+      const rawSiteId = req.params.site_id ?? req.params.fournisseur_id ?? 0;
+      const siteId: number | string =
+        typeof rawSiteId === "string" && rawSiteId.trim() && !Number.isFinite(Number(rawSiteId))
+          ? rawSiteId.trim()
+          : Number(rawSiteId);
       const url = typeof req.params.url === "string" ? req.params.url : "";
-      if (!Number.isFinite(siteId) || siteId <= 0) {
+      if (
+        typeof siteId === "number" &&
+        (!Number.isFinite(siteId) || siteId <= 0)
+      ) {
         return { ok: false, error: "site_id invalide" };
       }
       if (!/^https?:\/\//i.test(url)) {

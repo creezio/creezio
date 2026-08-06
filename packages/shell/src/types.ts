@@ -5,12 +5,18 @@
  * Les extensions verticales restent dans chaque app jusqu'à Phase B/G.
  */
 
+/**
+ * Id de site externe : id opaque de l'entité marque (UUID string ou entier
+ * historique). Le main résout la partition persistante par hash si besoin.
+ */
+export type DesktopSiteId = number | string;
+
 export type DesktopTabInfo = {
   tabId: string;
   /** Id de partition site externe. */
-  siteId: number;
+  siteId: DesktopSiteId;
   /** @deprecated → siteId */
-  fournisseurId: number;
+  fournisseurId: DesktopSiteId;
   url: string;
   title: string;
   active: boolean;
@@ -26,9 +32,9 @@ export type DesktopContentRect = {
 /** Ouverture d’un onglet site externe (Electron → renderer). */
 export type DesktopExternalTabOpened = {
   tabId: string;
-  siteId: number;
+  siteId: DesktopSiteId;
   /** @deprecated → siteId */
-  fournisseurId?: number;
+  fournisseurId?: DesktopSiteId;
   url: string;
   title: string;
 };
@@ -38,9 +44,9 @@ export type DesktopSupplierTabOpened = DesktopExternalTabOpened;
 
 export type DesktopTabLoadState = {
   tabId: string;
-  siteId: number;
+  siteId: DesktopSiteId;
   /** @deprecated → siteId */
-  fournisseurId?: number;
+  fournisseurId?: DesktopSiteId;
   state: "loading" | "ready" | "error";
   error?: string;
   url?: string;
@@ -133,13 +139,13 @@ export type DesktopBridge = {
 
   /** Ouvre un onglet site externe. 1er arg = siteId (alias historique: fournisseurId). */
   openTab: (
-    siteId: number,
+    siteId: DesktopSiteId,
     url: string,
   ) => Promise<{
     tabId: string;
-    siteId: number;
+    siteId: DesktopSiteId;
     /** @deprecated → siteId */
-    fournisseurId: number;
+    fournisseurId: DesktopSiteId;
     loadState?: "loading" | "ready" | "error";
     url?: string;
   }>;
@@ -149,16 +155,16 @@ export type DesktopBridge = {
     rect?: DesktopContentRect,
   ) => Promise<{ ok: boolean; error?: string } | void>;
   activateSite?: (
-    siteId: number,
+    siteId: DesktopSiteId,
     url: string,
     rect?: DesktopContentRect,
   ) => Promise<{
     ok: boolean;
     error?: string;
     tabId?: string;
-    siteId?: number;
+    siteId?: DesktopSiteId;
     /** @deprecated → siteId */
-    fournisseurId?: number;
+    fournisseurId?: DesktopSiteId;
     loadState?: "loading" | "ready" | "error";
     url?: string;
   }>;

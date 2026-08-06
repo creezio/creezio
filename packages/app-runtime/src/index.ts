@@ -55,11 +55,16 @@ export {
 } from "./listen-brand-os-http.js";
 export {
   PUBLIC_MODULE_PATHS,
+  anyModuleMachineKeyVerifier,
   assertModuleMountSession,
+  createBrandApiKeyModuleVerifier,
+  createPluginDiskKeyModuleVerifier,
   isModuleApiPath,
   isPublicModulePath,
   sessionFromNodeHeaders,
+  type ModuleMachineKeyVerifier,
   type ModuleMountAuthDecision,
+  type ModuleMountBrandDb,
   type PublicModulePathRule,
 } from "./module-mount-auth.js";
 export {

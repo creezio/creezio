@@ -6,9 +6,12 @@
  *  1. GET module anonyme → 401 ;
  *  2. GET module avec Bearer JWT session → 200 ;
  *  3. chemin allowlisté (landing/public) sans session → pas bloqué par la garde ;
- *  4. `api.handle` in-process reste libre (pollers / gates unitaires).
+ *  4. `api.handle` in-process reste libre (pollers / gates unitaires) ;
+ *  5. clé API machine brand (Bearer opaque, table api_keys) → 200 en lecture,
+ *     clé inconnue → 401 (auth machine Hermes/plugins/n8n).
  */
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import { test } from "node:test";
 import {
   configureAuth,
@@ -18,6 +21,7 @@ import {
 import { createApiKernel } from "../packages/api-kernel/dist/index.js";
 import {
   assertModuleMountSession,
+  createBrandApiKeyModuleVerifier,
   isPublicModulePath,
   listenBrandOsHttp,
 } from "../packages/app-runtime/dist/index.js";
@@ -102,11 +106,25 @@ test("module-mount-session : listenBrandOsHttp exige une session", async () => {
     callTool: async () => ({ ok: false, error: "unused" }),
   };
 
+  // Table api_keys brand.db simulée (SqliteHandle minimal) : une clé
+  // machine valide scopée crm:read — contrat clé service Hermes/plugins.
+  const machineKey = "svc-key-gate-module-mount";
+  const machineHash = createHash("sha256")
+    .update(machineKey, "utf8")
+    .digest("hex");
+  const fakeBrandDb = {
+    prepare: () => ({
+      get: (hash) =>
+        hash === machineHash ? { scopes: "crm:read" } : undefined,
+    }),
+  };
+
   const http = await listenBrandOsHttp({
     api,
     mcp,
     host: "127.0.0.1",
     port: 0,
+    moduleMountMachineKey: createBrandApiKeyModuleVerifier(() => fakeBrandDb),
   });
 
   try {
@@ -114,6 +132,32 @@ test("module-mount-session : listenBrandOsHttp exige une session", async () => {
     assert.equal(anon.status, 401);
     const anonBody = await anon.json();
     assert.equal(anonBody.error, "unauthorized");
+
+    // Clé machine valide (Bearer opaque) → passe la garde en lecture.
+    const machine = await fetch(`${http.baseUrl}/api/v1/modules/widgets`, {
+      headers: { Authorization: `Bearer ${machineKey}` },
+    });
+    assert.equal(machine.status, 200);
+
+    // Clé machine valide mais scope lecture seule → mutation refusée.
+    const machineWrite = await fetch(
+      `${http.baseUrl}/api/v1/modules/widgets`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${machineKey}`,
+          "content-type": "application/json",
+        },
+        body: "{}",
+      },
+    );
+    assert.equal(machineWrite.status, 401);
+
+    // Clé opaque inconnue → 401.
+    const badKey = await fetch(`${http.baseUrl}/api/v1/modules/widgets`, {
+      headers: { Authorization: "Bearer svc-key-unknown" },
+    });
+    assert.equal(badKey.status, 401);
 
     const token = await createSessionToken({
       user: {
