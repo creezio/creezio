@@ -71,9 +71,17 @@ affaibli pour la masquer. (Backlogs d'époque : `docs/archive/BACKLOG-*.md`.)
   réponse admin dans `@creezio/admin`).
 - ~~Billing Stripe (webhook)~~ **fait** : endpoint signé
   `/api/v1/modules/billing-webhook/stripe` → projections `admin_billing_*`
-  (journal `admin_billing_events`). Reste : UI billing dédiée (au-delà de la
-  page Clients générée) + réconciliation active via `STRIPE_API_KEY`
-  (aujourd'hui : projection passive par webhooks).
+  (journal `admin_billing_events`).
+- ~~UI billing dédiée~~ **fait** : `BillingAdminClient` (`@creezio/admin/ui`),
+  page `/billing` — stats MRR/actifs/impayées, clients + abonnement (montant,
+  statut, prochaine échéance `periode_fin`), factures, événements Stripe,
+  rapprochement client ↔ serveur. API `GET /api/v1/modules/billing/overview`.
+- ~~Réconciliation active `STRIPE_API_KEY`~~ **fait** :
+  `POST /api/v1/modules/billing/reconcile` (bouton « Resynchroniser Stripe »)
+  relit l'API Stripe (customers/subscriptions/invoices, pagination) et
+  resynchronise les projections — gate `test-phase-admin-billing.mjs`
+  (webhook signé, overview, reconcile contre mock : facture manquée
+  rattrapée). Clé par marque en `.env` gitignoré (skill §5c).
 - ~~Factory : repo admin en app OS complète~~ **fait** : `scaffoldAdminApp`
   (modules natifs flotte/support/prospects kanban/roadmap/billing) — gate
   `test-phase-factory-two-repos.mjs`.

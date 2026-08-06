@@ -18,7 +18,12 @@
  */
 
 import crypto from "node:crypto";
-import type { ApiKernel, ApiMount, ApiRequest } from "@creezio/api-kernel";
+import type {
+  ApiKernel,
+  ApiMount,
+  ApiRequest,
+  ScopedDbAccess,
+} from "@creezio/api-kernel";
 import type { SqliteMigration } from "@creezio/platform-core";
 
 /* ------------------------------------------------------------ migrations */
@@ -129,10 +134,15 @@ CREATE TABLE IF NOT EXISTS admin_billing_events (
 );
 `;
 
+export const ADMIN_SCHEMA_003_SQL = `-- Billing : prochaine échéance d'abonnement
+ALTER TABLE admin_billing_subscriptions ADD COLUMN periode_fin TEXT;
+`;
+
 export function adminMigrations(): SqliteMigration[] {
   return [
     { id: "admin_001_native_modules", sql: ADMIN_SCHEMA_SQL },
     { id: "admin_002_support_messages_billing_events", sql: ADMIN_SCHEMA_002_SQL },
+    { id: "admin_003_billing_periode_fin", sql: ADMIN_SCHEMA_003_SQL },
   ];
 }
 
@@ -818,6 +828,166 @@ type StripeEvent = {
   data?: { object?: Record<string, unknown> };
 };
 
+/* ---- projections partagées webhook (passif) / réconciliation (active) ---- */
+
+function projectStripeCustomer(
+  db: ScopedDbAccess,
+  obj: Record<string, unknown>,
+  ts: string,
+): boolean {
+  const stripeCustomerId = String(obj.id || "");
+  if (!stripeCustomerId) return false;
+  const nom = String(obj.name || obj.email || stripeCustomerId);
+  const email = obj.email == null ? null : String(obj.email);
+  const existing = db
+    .prepare(
+      `SELECT id FROM admin_billing_customers WHERE stripe_customer_id = ?`,
+    )
+    .get(stripeCustomerId) as { id: string } | undefined;
+  if (existing) {
+    db.prepare(
+      `UPDATE admin_billing_customers SET nom = ?, email = ?, updated_at = ? WHERE id = ?`,
+    ).run(nom, email, ts, existing.id);
+  } else {
+    db.prepare(
+      `INSERT INTO admin_billing_customers
+       (id, created_at, updated_at, nom, email, stripe_customer_id)
+       VALUES (?,?,?,?,?,?)`,
+    ).run(newId(), ts, ts, nom, email, stripeCustomerId);
+  }
+  return true;
+}
+
+function projectStripeSubscription(
+  db: ScopedDbAccess,
+  obj: Record<string, unknown>,
+  ts: string,
+  o?: { forceCanceled?: boolean },
+): boolean {
+  const stripeSubId = String(obj.id || "");
+  const stripeCustomerId = String(obj.customer || "");
+  if (!stripeSubId) return false;
+  let customer = db
+    .prepare(
+      `SELECT id FROM admin_billing_customers WHERE stripe_customer_id = ?`,
+    )
+    .get(stripeCustomerId) as { id: string } | undefined;
+  if (!customer && stripeCustomerId) {
+    const cid = newId();
+    db.prepare(
+      `INSERT INTO admin_billing_customers
+       (id, created_at, updated_at, nom, stripe_customer_id)
+       VALUES (?,?,?,?,?)`,
+    ).run(cid, ts, ts, stripeCustomerId, stripeCustomerId);
+    customer = { id: cid };
+  }
+  const items = (obj.items as { data?: Array<Record<string, unknown>> })?.data;
+  const price = (items?.[0]?.price || {}) as Record<string, unknown>;
+  const plan = String(price.nickname || price.id || "");
+  const montant =
+    price.unit_amount != null ? Number(price.unit_amount) / 100 : null;
+  const devise = String(price.currency || "eur").toUpperCase();
+  const statut = o?.forceCanceled ? "canceled" : String(obj.status || "active");
+  // prochaine échéance : current_period_end (epoch s) — au niveau
+  // subscription (API historique) ou du premier item (API 2025+).
+  const periodEndEpoch =
+    obj.current_period_end ?? items?.[0]?.current_period_end;
+  const periodeFin = periodEndEpoch
+    ? new Date(Number(periodEndEpoch) * 1000).toISOString()
+    : null;
+  const existing = db
+    .prepare(
+      `SELECT id FROM admin_billing_subscriptions WHERE stripe_subscription_id = ?`,
+    )
+    .get(stripeSubId) as { id: string } | undefined;
+  if (existing) {
+    db.prepare(
+      `UPDATE admin_billing_subscriptions
+       SET plan = ?, montant_mensuel = ?, devise = ?, statut = ?,
+           periode_fin = COALESCE(?, periode_fin), updated_at = ?
+       WHERE id = ?`,
+    ).run(plan, montant, devise, statut, periodeFin, ts, existing.id);
+  } else {
+    db.prepare(
+      `INSERT INTO admin_billing_subscriptions
+       (id, created_at, updated_at, customer_id, plan, montant_mensuel,
+        devise, statut, periode_fin, stripe_subscription_id)
+       VALUES (?,?,?,?,?,?,?,?,?,?)`,
+    ).run(
+      newId(),
+      ts,
+      ts,
+      customer?.id || "",
+      plan,
+      montant,
+      devise,
+      statut,
+      periodeFin,
+      stripeSubId,
+    );
+  }
+  return true;
+}
+
+function projectStripeInvoice(
+  db: ScopedDbAccess,
+  obj: Record<string, unknown>,
+  ts: string,
+  statutHint?: string,
+): boolean {
+  const stripeInvoiceId = String(obj.id || "");
+  const stripeCustomerId = String(obj.customer || "");
+  if (!stripeInvoiceId) return false;
+  const customer = db
+    .prepare(
+      `SELECT id FROM admin_billing_customers WHERE stripe_customer_id = ?`,
+    )
+    .get(stripeCustomerId) as { id: string } | undefined;
+  const sub = db
+    .prepare(
+      `SELECT id FROM admin_billing_subscriptions WHERE stripe_subscription_id = ?`,
+    )
+    .get(String(obj.subscription || "")) as { id: string } | undefined;
+  const amountCents =
+    obj.amount_paid != null && Number(obj.amount_paid) > 0
+      ? obj.amount_paid
+      : obj.amount_due;
+  const montant = amountCents != null ? Number(amountCents) / 100 : null;
+  const statut =
+    statutHint ||
+    (obj.paid === true ? "paid" : String(obj.status || "open"));
+  const periode = obj.period_start
+    ? new Date(Number(obj.period_start) * 1000).toISOString().slice(0, 7)
+    : null;
+  const existing = db
+    .prepare(`SELECT id FROM admin_billing_invoices WHERE stripe_invoice_id = ?`)
+    .get(stripeInvoiceId) as { id: string } | undefined;
+  if (existing) {
+    db.prepare(
+      `UPDATE admin_billing_invoices
+       SET montant = ?, statut = ?, periode = ? WHERE id = ?`,
+    ).run(montant, statut, periode, existing.id);
+  } else {
+    db.prepare(
+      `INSERT INTO admin_billing_invoices
+       (id, created_at, customer_id, subscription_id, periode, montant,
+        devise, statut, stripe_invoice_id)
+       VALUES (?,?,?,?,?,?,?,?,?)`,
+    ).run(
+      newId(),
+      ts,
+      customer?.id || "",
+      sub?.id || null,
+      periode,
+      montant,
+      String(obj.currency || "eur").toUpperCase(),
+      statut,
+      stripeInvoiceId,
+    );
+  }
+  return true;
+}
+
 /**
  * Module `billing-webhook` — POST `/api/v1/modules/billing-webhook/stripe`.
  *
@@ -882,157 +1052,227 @@ export function createBillingWebhookMount(
       }
 
       if (type === "customer.created" || type === "customer.updated") {
-        const stripeCustomerId = String(obj.id || "");
-        if (stripeCustomerId) {
-          const existing = db
-            .prepare(
-              `SELECT id FROM admin_billing_customers WHERE stripe_customer_id = ?`,
-            )
-            .get(stripeCustomerId) as { id: string } | undefined;
-          if (existing) {
-            db.prepare(
-              `UPDATE admin_billing_customers SET nom = ?, email = ?, updated_at = ? WHERE id = ?`,
-            ).run(
-              String(obj.name || obj.email || stripeCustomerId),
-              obj.email == null ? null : String(obj.email),
-              ts,
-              existing.id,
-            );
-          } else {
-            db.prepare(
-              `INSERT INTO admin_billing_customers
-               (id, created_at, updated_at, nom, email, stripe_customer_id)
-               VALUES (?,?,?,?,?,?)`,
-            ).run(
-              newId(),
-              ts,
-              ts,
-              String(obj.name || obj.email || stripeCustomerId),
-              obj.email == null ? null : String(obj.email),
-              stripeCustomerId,
-            );
-          }
-        }
+        projectStripeCustomer(db, obj, ts);
       } else if (type.startsWith("customer.subscription.")) {
-        const stripeSubId = String(obj.id || "");
-        const stripeCustomerId = String(obj.customer || "");
-        if (stripeSubId) {
-          let customer = db
-            .prepare(
-              `SELECT id FROM admin_billing_customers WHERE stripe_customer_id = ?`,
-            )
-            .get(stripeCustomerId) as { id: string } | undefined;
-          if (!customer && stripeCustomerId) {
-            const cid = newId();
-            db.prepare(
-              `INSERT INTO admin_billing_customers
-               (id, created_at, updated_at, nom, stripe_customer_id)
-               VALUES (?,?,?,?,?)`,
-            ).run(cid, ts, ts, stripeCustomerId, stripeCustomerId);
-            customer = { id: cid };
-          }
-          const items = (obj.items as { data?: Array<Record<string, unknown>> })
-            ?.data;
-          const price = (items?.[0]?.price || {}) as Record<string, unknown>;
-          const plan = String(price.nickname || price.id || "");
-          const montant =
-            price.unit_amount != null ? Number(price.unit_amount) / 100 : null;
-          const devise = String(price.currency || "eur").toUpperCase();
-          const statut =
-            type === "customer.subscription.deleted"
-              ? "canceled"
-              : String(obj.status || "active");
-          const existing = db
-            .prepare(
-              `SELECT id FROM admin_billing_subscriptions WHERE stripe_subscription_id = ?`,
-            )
-            .get(stripeSubId) as { id: string } | undefined;
-          if (existing) {
-            db.prepare(
-              `UPDATE admin_billing_subscriptions
-               SET plan = ?, montant_mensuel = ?, devise = ?, statut = ?, updated_at = ?
-               WHERE id = ?`,
-            ).run(plan, montant, devise, statut, ts, existing.id);
-          } else {
-            db.prepare(
-              `INSERT INTO admin_billing_subscriptions
-               (id, created_at, updated_at, customer_id, plan, montant_mensuel,
-                devise, statut, stripe_subscription_id)
-               VALUES (?,?,?,?,?,?,?,?,?)`,
-            ).run(
-              newId(),
-              ts,
-              ts,
-              customer?.id || "",
-              plan,
-              montant,
-              devise,
-              statut,
-              stripeSubId,
-            );
-          }
-        }
+        projectStripeSubscription(db, obj, ts, {
+          forceCanceled: type === "customer.subscription.deleted",
+        });
       } else if (type.startsWith("invoice.")) {
-        const stripeInvoiceId = String(obj.id || "");
-        const stripeCustomerId = String(obj.customer || "");
-        if (stripeInvoiceId) {
-          const customer = db
-            .prepare(
-              `SELECT id FROM admin_billing_customers WHERE stripe_customer_id = ?`,
-            )
-            .get(stripeCustomerId) as { id: string } | undefined;
-          const sub = db
-            .prepare(
-              `SELECT id FROM admin_billing_subscriptions WHERE stripe_subscription_id = ?`,
-            )
-            .get(String(obj.subscription || "")) as { id: string } | undefined;
-          const amountCents =
-            obj.amount_paid != null ? obj.amount_paid : obj.amount_due;
-          const montant =
-            amountCents != null ? Number(amountCents) / 100 : null;
-          const statut =
-            type === "invoice.paid" || obj.paid === true
-              ? "paid"
-              : type === "invoice.payment_failed"
-                ? "payment_failed"
-                : String(obj.status || "open");
-          const periode = obj.period_start
-            ? new Date(Number(obj.period_start) * 1000)
-                .toISOString()
-                .slice(0, 7)
-            : null;
-          const existing = db
-            .prepare(
-              `SELECT id FROM admin_billing_invoices WHERE stripe_invoice_id = ?`,
-            )
-            .get(stripeInvoiceId) as { id: string } | undefined;
-          if (existing) {
-            db.prepare(
-              `UPDATE admin_billing_invoices
-               SET montant = ?, statut = ?, periode = ? WHERE id = ?`,
-            ).run(montant, statut, periode, existing.id);
-          } else {
-            db.prepare(
-              `INSERT INTO admin_billing_invoices
-               (id, created_at, customer_id, subscription_id, periode, montant,
-                devise, statut, stripe_invoice_id)
-               VALUES (?,?,?,?,?,?,?,?,?)`,
-            ).run(
-              newId(),
-              ts,
-              customer?.id || "",
-              sub?.id || null,
-              periode,
-              montant,
-              String(obj.currency || "eur").toUpperCase(),
-              statut,
-              stripeInvoiceId,
-            );
-          }
-        }
+        const statut =
+          type === "invoice.paid" || obj.paid === true
+            ? "paid"
+            : type === "invoice.payment_failed"
+              ? "payment_failed"
+              : String(obj.status || "open");
+        projectStripeInvoice(db, obj, ts, statut);
       }
 
       return { status: 200, body: { ok: true, received: type } };
+    },
+  };
+}
+
+/* --------------------------------------- module billing (UI + reconcile) */
+
+export type BillingAdminMountOptions = {
+  /**
+   * Clé secrète API Stripe (`sk_live_…` / `sk_test_…`). Défaut env
+   * STRIPE_API_KEY (fichier .env gitignoré de l'app admin — jamais commitée).
+   * Dashboard Stripe → Développeurs → Clés API → « Clé secrète ».
+   */
+  stripeApiKey?: string;
+  /**
+   * Base de l'API Stripe. Défaut env STRIPE_API_BASE puis
+   * https://api.stripe.com — l'override sert aux tests (mock local).
+   */
+  apiBase?: string;
+  /** Timeout par appel Stripe (ms). Défaut 20000. */
+  timeoutMs?: number;
+};
+
+type StripeList = { data?: Array<Record<string, unknown>>; has_more?: boolean };
+
+/**
+ * Liste paginée d'une collection Stripe (`starting_after`), cap 10 pages.
+ */
+async function stripeListAll(
+  base: string,
+  path: string,
+  key: string,
+  timeoutMs: number,
+): Promise<Array<Record<string, unknown>>> {
+  const out: Array<Record<string, unknown>> = [];
+  let startingAfter: string | undefined;
+  for (let page = 0; page < 10; page++) {
+    const url = new URL(`${base}${path}`);
+    url.searchParams.set("limit", "100");
+    if (startingAfter) url.searchParams.set("starting_after", startingAfter);
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+    try {
+      const res = await fetch(url, {
+        signal: ctrl.signal,
+        headers: { Authorization: `Bearer ${key}` },
+      });
+      if (!res.ok) {
+        const text = await res.text().catch(() => "");
+        throw new Error(
+          `Stripe ${path} → HTTP ${res.status}${text ? ` ${text.slice(0, 200)}` : ""}`,
+        );
+      }
+      const body = (await res.json()) as StripeList;
+      const data = Array.isArray(body.data) ? body.data : [];
+      out.push(...data);
+      if (!body.has_more || !data.length) return out;
+      startingAfter = String(data[data.length - 1]?.id || "");
+      if (!startingAfter) return out;
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+  return out;
+}
+
+/**
+ * Module `billing` — API de la section Facturation de l'app admin.
+ *
+ *   GET  /api/v1/modules/billing/overview  → clients + abonnement (montant,
+ *        statut, prochaine échéance), factures, événements Stripe, stats
+ *        (MRR, abonnements actifs, impayés). Rapprochement client ↔ serveur
+ *        via host_id/server_name des customers.
+ *   POST /api/v1/modules/billing/reconcile → réconciliation ACTIVE : relit
+ *        customers/subscriptions/invoices via l'API Stripe (STRIPE_API_KEY)
+ *        et resynchronise les projections admin_billing_* — complète les
+ *        webhooks (passifs) au démarrage ou si un webhook a été manqué.
+ */
+export function createBillingAdminMount(
+  opts?: BillingAdminMountOptions,
+): ApiMount {
+  const timeoutMs = opts?.timeoutMs ?? 20_000;
+  return {
+    dbLayer: "brand",
+    handle: async ({ req, subPath, db }) => {
+      if (!db) return { status: 503, body: { ok: false, error: "db_unavailable" } };
+      const method = req.method.toUpperCase();
+
+      if (subPath === "overview" && method === "GET") {
+        const customers = db
+          .prepare(
+            `SELECT c.id, c.nom, c.email, c.host_id, c.server_name,
+                    c.stripe_customer_id, c.updated_at,
+                    s.plan, s.montant_mensuel, s.devise AS sub_devise,
+                    s.statut AS sub_statut, s.periode_fin
+             FROM admin_billing_customers c
+             LEFT JOIN admin_billing_subscriptions s
+               ON s.id = (SELECT id FROM admin_billing_subscriptions
+                          WHERE customer_id = c.id
+                          ORDER BY updated_at DESC LIMIT 1)
+             ORDER BY c.nom COLLATE NOCASE`,
+          )
+          .all();
+        const invoices = db
+          .prepare(
+            `SELECT i.id, i.created_at, i.periode, i.montant, i.devise,
+                    i.statut, i.stripe_invoice_id, c.nom AS client_nom
+             FROM admin_billing_invoices i
+             LEFT JOIN admin_billing_customers c ON c.id = i.customer_id
+             ORDER BY i.created_at DESC LIMIT 200`,
+          )
+          .all();
+        const events = db
+          .prepare(
+            `SELECT id, created_at, stripe_event_id, type
+             FROM admin_billing_events ORDER BY created_at DESC LIMIT 100`,
+          )
+          .all();
+        const stats = db
+          .prepare(
+            `SELECT
+               (SELECT COALESCE(SUM(montant_mensuel), 0)
+                FROM admin_billing_subscriptions
+                WHERE statut IN ('active','trialing')) AS mrr,
+               (SELECT COUNT(*) FROM admin_billing_subscriptions
+                WHERE statut IN ('active','trialing')) AS abonnements_actifs,
+               (SELECT COUNT(*) FROM admin_billing_invoices
+                WHERE statut IN ('open','payment_failed','uncollectible'))
+                 AS factures_impayees`,
+          )
+          .get();
+        return {
+          status: 200,
+          body: { ok: true, customers, invoices, events, stats },
+        };
+      }
+
+      if (subPath === "reconcile" && method === "POST") {
+        const key =
+          opts?.stripeApiKey || (process.env.STRIPE_API_KEY || "").trim();
+        if (!key) {
+          return {
+            status: 503,
+            body: {
+              ok: false,
+              error: "STRIPE_API_KEY non configuré",
+              hint:
+                "Dashboard Stripe → Développeurs → Clés API → clé secrète " +
+                "(sk_…), à poser dans le .env gitignoré de l'app admin " +
+                "(voir skill creezio-fleet-ops §5).",
+            },
+          };
+        }
+        const base = (
+          opts?.apiBase ||
+          (process.env.STRIPE_API_BASE || "").trim() ||
+          "https://api.stripe.com"
+        ).replace(/\/$/, "");
+        const ts = nowIso();
+        try {
+          const [customers, subscriptions, invoices] = await Promise.all([
+            stripeListAll(base, "/v1/customers", key, timeoutMs),
+            stripeListAll(base, "/v1/subscriptions?status=all", key, timeoutMs),
+            stripeListAll(base, "/v1/invoices", key, timeoutMs),
+          ]);
+          let nCustomers = 0;
+          let nSubs = 0;
+          let nInvoices = 0;
+          for (const c of customers) {
+            if (projectStripeCustomer(db, c, ts)) nCustomers++;
+          }
+          for (const s of subscriptions) {
+            if (
+              projectStripeSubscription(db, s, ts, {
+                forceCanceled: String(s.status || "") === "canceled",
+              })
+            ) {
+              nSubs++;
+            }
+          }
+          for (const i of invoices) {
+            if (projectStripeInvoice(db, i, ts)) nInvoices++;
+          }
+          return {
+            status: 200,
+            body: {
+              ok: true,
+              source: base,
+              customers: nCustomers,
+              subscriptions: nSubs,
+              invoices: nInvoices,
+              at: ts,
+            },
+          };
+        } catch (e) {
+          return {
+            status: 502,
+            body: {
+              ok: false,
+              error: `réconciliation Stripe échouée: ${(e as Error)?.message || e}`,
+            },
+          };
+        }
+      }
+
+      return { status: 404, body: { ok: false } };
     },
   };
 }
@@ -1042,6 +1282,7 @@ export function createBillingWebhookMount(
 export type RegisterAdminModulesOptions = {
   fleet?: FleetAdminMountOptions;
   billing?: BillingWebhookMountOptions;
+  billingAdmin?: BillingAdminMountOptions;
 };
 
 /**
@@ -1071,4 +1312,5 @@ export function registerAdminModules(
     "billing-webhook",
     createBillingWebhookMount(opts?.billing),
   );
+  api.registerModuleApi("billing", createBillingAdminMount(opts?.billingAdmin));
 }

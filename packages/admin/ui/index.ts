@@ -7,3 +7,7 @@ export {
   ProspectsKanbanClient,
   type ProspectsKanbanLabels,
 } from "./prospects-kanban-client";
+export {
+  BillingAdminClient,
+  type BillingAdminLabels,
+} from "./billing-admin-client";
