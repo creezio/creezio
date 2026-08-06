@@ -14,6 +14,7 @@
  */
 
 import path from "node:path";
+import { checkWebHostAllowed } from "@creezio/platform-core";
 import { BrowserHost, type CdpPage } from "./browser-host.js";
 import { BrowserScreencaster } from "./browser-screencaster.js";
 import {
@@ -243,14 +244,6 @@ export class AiSessionHost {
     aiUserId: string;
     params: Record<string, unknown>;
   }): Promise<DriverResult> {
-    const session = this.sessions.get(opts.aiUserId);
-    if (!session) {
-      return {
-        ok: false,
-        error: "Espace IA absent — ensure d’abord",
-        code: "ai_workspace_missing",
-      };
-    }
     const siteId = Number(
       opts.params.site_id ?? opts.params.siteId ?? opts.params.fournisseur_id ?? opts.params.fournisseurId ?? 0,
     );
@@ -260,6 +253,22 @@ export class AiSessionHost {
     }
     if (!/^https?:\/\//i.test(url)) {
       return { ok: false, error: "url invalide (http(s):// requis)" };
+    }
+    // H0 — allowlist `*_WEB_ALLOWED_HOSTS` appliquée AU NIVEAU HOST, AVANT
+    // toute session/spawn : même un appel qui contourne le runner de tâches
+    // est refusé ici (fail-closed).
+    const hostCheck = checkWebHostAllowed(url);
+    if (!hostCheck.ok) {
+      this.log(`open_tab refusé (${hostCheck.code}) : ${url}`);
+      return { ok: false, error: hostCheck.error, code: hostCheck.code };
+    }
+    const session = this.sessions.get(opts.aiUserId);
+    if (!session) {
+      return {
+        ok: false,
+        error: "Espace IA absent — ensure d’abord",
+        code: "ai_workspace_missing",
+      };
     }
     // Un onglet par site (parité SupplierTabManager) : réutiliser si présent.
     for (const tab of session.tabs.values()) {

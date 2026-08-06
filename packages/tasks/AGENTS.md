@@ -24,7 +24,8 @@ Maintenir les tâches plateforme : kanban human/ai/hermes, runs IA, API Hono, ad
 - `src/hono-routes.ts` : API `/api/v1/tasks`.
 - `src/api-mount.ts` : surface `ApiMount` plateforme.
 - `src/assistant-adapter.ts` : bridge assistant.
-- `src/mcp-host-tools.ts` : tools MCP host-only.
+- `src/mcp-host-tools.ts` : tools MCP host-only (+ helpers `aiTaskToolJsonSchema` / `parseAiTaskToolInput` pour les intégrateurs).
+- `src/mcp-workspace-tools.ts` : verbes navigateur `workspace.*` + HITL async `platform.ask_human`/`get_human_answer` (H4 Hermes cerveau unique — `ai_user_id` obligatoire, gate acteur owner/service, allowlist runner + H0 host).
 - `ui/tasks-kanban-client.tsx` : board React.
 - `ui/task-detail-sheet.tsx` : détail/logs/runs.
 - `ui/ai-activity-panel.tsx` : activité IA live.
@@ -68,7 +69,8 @@ Vérifications hôte utiles :
 - création `human`, `ai`, `hermes` applique les invariants.
 - `POST /:id/launch` enfile un run IA.
 - `GET /runs/:runId/stream` émet logs et updates.
-- MCP `create_ai_task` refuse un actor non owner.
+- MCP `create_ai_task` refuse un actor non owner (la clé CRM service Hermes est mappée owner par la façade — voir `registerHermesHostMcpTools`, @creezio/app-runtime).
+- Gates : `scripts/test-phase-hermes-mcp.mjs`, `scripts/test-phase-hermes-computer-use.mjs`.
 - le board UI poll et synchronise Hermes sans boucle d'erreurs.
 
 ## Fichiers sensibles

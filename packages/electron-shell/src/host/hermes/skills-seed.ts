@@ -22,6 +22,22 @@ export function kitHermesSkillsDir(): string {
 }
 
 /**
+ * H3 « Hermes cerveau unique » — namespace RÉSERVÉ aux skills APPRIS par
+ * Hermes (skills de sites fournisseurs auto-entretenus, format
+ * `creezio-site-skills`). Jamais shippés par un vendor : le seed les
+ * REFUSE, garantissant qu'un `site-*` installé par Hermes survit aux boots
+ * (le seed écrase les skills vendored, préserve le reste).
+ */
+export const LEARNED_SITE_SKILL_PREFIX = "site-";
+
+/** True si le nom appartient au namespace réservé des skills appris. */
+export function isLearnedSiteSkillName(name: string): boolean {
+  return String(name || "")
+    .toLowerCase()
+    .startsWith(LEARNED_SITE_SKILL_PREFIX);
+}
+
+/**
  * Dossiers skills marque candidats pour un resourcesRoot donné (packagé ou
  * layout dev `{appRoot}/resources`).
  */
@@ -65,6 +81,14 @@ export function seedHermesSkillsFromDirs(opts: {
     }
     for (const ent of entries) {
       if (!ent.isDirectory()) continue;
+      if (isLearnedSiteSkillName(ent.name)) {
+        // Namespace réservé aux skills appris — un vendor ne doit jamais
+        // écraser un skill site entretenu par Hermes.
+        log(
+          `skills: refus seed ${ent.name} (namespace ${LEARNED_SITE_SKILL_PREFIX}* réservé aux skills appris)`,
+        );
+        continue;
+      }
       const src = path.join(dir, ent.name);
       if (!fs.existsSync(path.join(src, "SKILL.md"))) {
         log(`skills: skip ${ent.name} (SKILL.md manquant)`);

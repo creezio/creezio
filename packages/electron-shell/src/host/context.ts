@@ -40,6 +40,17 @@ export type HostRuntimeContext = {
   getHermesBridgeEnv?: (opts?: {
     crmPort?: number | null;
   }) => Record<string, string>;
+  /**
+   * H1 « Hermes cerveau unique » — config `mcp_servers.<brandId>` à écrire
+   * dans le config.yaml Hermes (URL /mcp loopback + Bearer clé CRM Hermes).
+   * null = pas encore disponible (clé absente / serveur pas démarré) → le
+   * launcher n'écrit pas de bloc (retiré s'il existait).
+   */
+  getHermesMcpServerConfig?: (opts?: { crmPort?: number | null }) => {
+    serverName: string;
+    url: string;
+    bearerToken: string;
+  } | null;
   /** Env bridge plugins control plane. */
   getPluginControlBridgeEnv?: () => Record<string, string>;
   /** Binaire git emballé (MinGit) pour PATH confiné Hermes/outils. */

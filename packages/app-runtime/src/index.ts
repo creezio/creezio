@@ -98,6 +98,18 @@ export {
   type BrandBrowserSidecarHandle,
 } from "./wire-brand-browser-sidecar.js";
 export {
+  createApiKeyBearerActorResolver,
+  registerHermesHostMcpTools,
+  type ApiKeyRow,
+  type CreateApiKeyBearerActorResolverOptions,
+  type RegisterHermesHostMcpToolsOptions,
+} from "./hermes-mcp-host-tools.js";
+export {
+  handleMcpJsonRpcRequest,
+  isJsonRpcBody,
+  type McpJsonRpcResponse,
+} from "./mcp-jsonrpc.js";
+export {
   applyBrandCatalogEnvDefaults,
   applyStoredEmailEnv,
   harnessTunnelProvisionRequested,

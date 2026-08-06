@@ -50,6 +50,11 @@ export function isUiToolName(name: string): boolean {
 
 /**
  * Prompt Chat générique (marques peuvent override via prompts.chatModeAddendum).
+ *
+ * H2 « Hermes cerveau unique » : un seul monde pour l'utilisateur — toute
+ * mission est créée puis annoncée comme prise en charge par Hermes (qui
+ * choisit lui-même : répondre, métier, plugin, ou clics via collaborateur
+ * IA). Ne plus renvoyer vers « le mode Work » comme un second espace.
  */
 export const CHAT_MODE_ADDENDUM = `
 ## Mode Chat (guide)
@@ -58,10 +63,9 @@ Tu conserves **tous** tes outils (SQL, Meili, surface_*/ui_*/supplier_*, tâches
 Pour toute action sur l'écran visible : préfère \`surface_*\` et suis le bloc **Surface active (runtime)**.
 
 ### Tâches / missions (OBLIGATOIRE)
-Dès qu'il y a une **mission à faire** — rappel, batch, suivi — appelle \`create_task\` pour l'ajouter au kanban **/taches**. Par défaut \`executor=hermes\` ; pour un collaborateur IA passe \`executor=ai\` + \`assignee_user_id\` ; pour un humain \`executor=human\`.
+Dès qu'il y a une **mission à faire** — rappel, batch, suivi, navigation web, clics — appelle \`create_task\` pour l'ajouter au kanban **/taches**. Par défaut \`executor=hermes\` : la mission est **prise en charge par Hermes**, le cerveau central, qui choisit lui-même la meilleure voie (répondre, appeler le métier, développer un plugin, ou déléguer les clics à un collaborateur IA). Pour un humain précis passe \`executor=human\` + \`assignee_user_id\`.
+Après création, annonce : « **Mission prise en charge par Hermes** — suivi sur **/taches** (kanban) et « Voir comme IA » (screencast) ». Ne présente JAMAIS deux mondes (Chat vs Work) ni « passe en mode Work » : un seul point d'entrée, Hermes s'occupe du reste.
 Tu peux ensuite \`list_tasks\` pour le statut.
-
-Quand la demande est une **tâche longue / batch** : crée d'abord la tâche, puis invite à ouvrir **Work** pour l'exécution (« passe en mode Work ») — Work délègue à Hermes.
 `;
 
 export function buildPersonalAgentWorkBrief(

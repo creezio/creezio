@@ -298,6 +298,36 @@ export function enqueueTaskRun(input: {
 }
 
 /**
+ * H4 « Hermes cerveau unique » — run HITL DÉTACHÉ : question posée par un
+ * service (tool MCP `platform.ask_human`) sans boucle agent derrière.
+ *
+ * Réutilise l'infra `task_runs.hitl_prompt` (choix documenté : même canal de
+ * réponse humain que le runner — kanban « en attente humain » +
+ * `answer_ai_question`/`resumeHitlRun` — zéro table ni UI parallèle). Le run
+ * est inséré directement en `running` + `hitl_prompt` (jamais `queued`, pour
+ * que la boucle runner ne le claim pas). La réponse est relue par
+ * `platform.get_human_answer`, qui clôt le run.
+ */
+export function openDetachedHitlRun(input: {
+  taskId: string;
+  assigneeUserId: string;
+  prompt: string;
+}): TaskRunRow | null {
+  if (!taskRunsReady() || !taskRunsHitlReady()) return null;
+  const id = randomUUID();
+  getWriteDb()
+    .prepare(
+      `INSERT INTO task_runs
+         (id, task_id, assignee_user_id, status, started_at, hitl_prompt)
+       VALUES (?, ?, ?, 'running', datetime('now'), ?)`,
+    )
+    .run(id, input.taskId, input.assigneeUserId, input.prompt.slice(0, 4000));
+  const run = getTaskRun(id);
+  if (run) notifyRun(run);
+  return run;
+}
+
+/**
  * Claim atomique d'un run queued si le nombre de runs running < maxConcurrent.
  */
 export function claimNextQueuedRun(

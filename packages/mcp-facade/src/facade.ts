@@ -188,6 +188,27 @@ export function createMcpFacade(options: McpFacadeOptions = {}): McpFacade {
   }
 
   async function auth(bearer?: string | null) {
+    // Bearer opaque (clé API service) : résolution app AVANT le JWT.
+    if (options.resolveBearerActor) {
+      const token = String(bearer || "")
+        .replace(/^Bearer\s+/i, "")
+        .trim();
+      if (token) {
+        try {
+          const actor = await options.resolveBearerActor(token);
+          if (actor?.subject) {
+            return {
+              ok: true as const,
+              subject: actor.subject,
+              ...(actor.orgId ? { orgId: actor.orgId } : {}),
+              ...(actor.claims ? { claims: actor.claims } : {}),
+            };
+          }
+        } catch {
+          // Token inconnu / DB indisponible → fallback JWT inchangé.
+        }
+      }
+    }
     return verifyMcpBearer(bearer, options.jwtSecret, {
       allowUnauthenticated: options.allowUnauthenticated,
     });
@@ -339,7 +360,12 @@ export function createMcpFacade(options: McpFacadeOptions = {}): McpFacade {
         return { ok: false, error: decision.reason };
       }
 
-      return tool.handler(args);
+      // Acteur transmis aux handlers (2ᵉ argument optionnel, rétro-compat).
+      return tool.handler(args, {
+        ...(a.subject ? { subject: a.subject } : {}),
+        ...(a.orgId ? { orgId: a.orgId } : {}),
+        ...(a.claims ? { claims: a.claims } : {}),
+      });
     },
   };
 }

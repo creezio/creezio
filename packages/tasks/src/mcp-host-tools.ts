@@ -54,6 +54,45 @@ export type AiTaskHostMcpRegisterFn = (
   handler: (input: any) => Promise<unknown> | unknown,
 ) => void;
 
+/**
+ * JSON Schema d'un `inputSchema` de tool host (zod v4 `toJSONSchema`).
+ * Exposé ici pour que les intégrateurs (façade MCP kit, marques) n'aient pas
+ * besoin d'importer la même instance zod que @creezio/tasks.
+ */
+export function aiTaskToolJsonSchema(
+  shape: Record<string, z.ZodType>,
+): Record<string, unknown> {
+  try {
+    const schema = z.toJSONSchema(z.object(shape));
+    delete (schema as Record<string, unknown>)["$schema"];
+    return schema as Record<string, unknown>;
+  } catch {
+    return { type: "object" };
+  }
+}
+
+export type AiTaskToolParseResult =
+  | { ok: true; input: Record<string, unknown> }
+  | { ok: false; error: string };
+
+/** Valide/normalise des arguments contre un `inputSchema` de tool host. */
+export function parseAiTaskToolInput(
+  shape: Record<string, z.ZodType>,
+  args: Record<string, unknown>,
+): AiTaskToolParseResult {
+  if (!Object.keys(shape).length) return { ok: true, input: args || {} };
+  const parsed = z.object(shape).safeParse(args || {});
+  if (!parsed.success) {
+    return {
+      ok: false,
+      error: `invalid_arguments: ${parsed.error.issues
+        .map((i) => `${i.path.join(".") || "(racine)"} ${i.message}`)
+        .join(" ; ")}`,
+    };
+  }
+  return { ok: true, input: parsed.data as Record<string, unknown> };
+}
+
 export type CreateAiTaskHostMcpToolsOptions = {
   /** Enregistrement marque (`registerMcpTool` ou `server.registerTool`). */
   registerTool: AiTaskHostMcpRegisterFn;
@@ -83,7 +122,19 @@ function errorResult(message: string) {
   };
 }
 
-function actorIsOwner(actorId: string | null | undefined): boolean {
+/**
+ * Gate acteur des tools host « qui agissent » : l'acteur doit être l'owner.
+ *
+ * Décision H1 (« Hermes cerveau unique ») : la clé CRM service Hermes
+ * (provisionnée par `ensure-crm-key-db`, `user_id NULL` + scopes `full`) est
+ * MAPPÉE SUR L'OWNER par le résolveur Bearer de la façade MCP
+ * (`createApiKeyBearerActorResolver`, @creezio/app-runtime) — même niveau de
+ * confiance que l'API REST CRM complète qu'elle ouvre déjà (parité TF2 gold).
+ * Pas de scope `tasks:run` dédié : `normalizeScopes` côté auth ne conserve
+ * que `full`/`crm:*`, et une clé restreinte (`crm:read`/`crm:write`) n'est
+ * PAS mappée owner → refusée ici (fail-closed).
+ */
+export function actorIsOwner(actorId: string | null | undefined): boolean {
   if (!actorId) return false;
   const { users } = requireTasksBrand();
   const actor = users.getById(actorId);

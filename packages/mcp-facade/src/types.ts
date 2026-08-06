@@ -28,9 +28,34 @@ export type McpToolCallResult = {
   error?: string;
 };
 
+/**
+ * Acteur du call courant, transmis aux handlers (2ᵉ argument optionnel —
+ * rétro-compatible : les handlers existants à un argument restent valides).
+ */
+export type McpToolCallActor = {
+  subject?: string;
+  orgId?: string;
+  claims?: Record<string, unknown>;
+};
+
 export type McpToolHandler = (
   args: Record<string, unknown>,
+  actor?: McpToolCallActor,
 ) => McpToolCallResult | Promise<McpToolCallResult>;
+
+/**
+ * Acteur résolu depuis un Bearer opaque (ex. clé API service vérifiée par
+ * l'app contre sa table `api_keys`). `null` = token inconnu → fallback JWT.
+ */
+export type McpBearerActor = {
+  subject: string;
+  orgId?: string;
+  claims?: Record<string, unknown>;
+};
+
+export type McpResolveBearerActorFn = (
+  token: string,
+) => McpBearerActor | null | Promise<McpBearerActor | null>;
 
 export type McpRegisteredTool = McpToolDefinition & {
   handler: McpToolHandler;
@@ -72,6 +97,12 @@ export type McpFacadeOptions = {
   jwtSecret?: string | null;
   /** Si true, auth JWT optionnelle (dev/sandbox). Défaut false en prod. */
   allowUnauthenticated?: boolean;
+  /**
+   * Résolution d'acteur pour Bearer OPAQUE (non-JWT) — consultée AVANT la
+   * vérification JWT (ex. clé API service Hermes → owner). `null`/throw =
+   * fallback JWT inchangé. Ne jamais y mettre de métier marque.
+   */
+  resolveBearerActor?: McpResolveBearerActorFn;
   /** Discoverer plat (H1 compat). */
   discoverTools?: DiscoverToolsFn;
   /**

@@ -11,6 +11,14 @@ Toute évolution Meili / HTTP kernel / session IPC se fait **ici** (ou dans
 - `startBrandDesktop(config)` — Electron main mince
 - `startBrandKernelHarness(config)` — smokes sans GUI
 - `composeBrandOs` / `listenBrandOsHttp` / `warmBrandNativeHosts` — OS natif
+- `registerHermesHostMcpTools` / `createApiKeyBearerActorResolver` — H1/H4
+  « Hermes cerveau unique » : tools host tasks (`create_ai_task`…) + workspace
+  (`workspace.*`, `platform.ask_human`) sur la façade MCP ; Bearer opaque
+  (clé CRM service Hermes, `user_id NULL` + scopes `full`) résolu contre
+  `api_keys` et mappé owner. Gate : `test-phase-hermes-mcp.mjs`.
+- `handleMcpJsonRpcRequest` / `isJsonRpcBody` — pont JSON-RPC 2.0 stateless
+  sur `/mcp` (client MCP natif Hermes, `mcp_servers` + `skip_preflight`) ;
+  le transport JSON legacy est conservé pour les corps sans `jsonrpc`.
 
 ## Défauts plug-and-play (kit)
 

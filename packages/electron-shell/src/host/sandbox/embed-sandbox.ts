@@ -383,5 +383,104 @@ export function upsertHermesSandboxConfig(
   return `${body}\n\n${block}\n`;
 }
 
+/* ── H1 « Hermes cerveau unique » — bloc mcp_servers (façade MCP CRM) ── */
+
+export const DESKTOP_MCP_MARKER_BEGIN = "# BEGIN CREEZIO-MCP";
+export const DESKTOP_MCP_MARKER_END = "# END CREEZIO-MCP";
+/** Marqueurs d'une ENTRÉE injectée dans un bloc `mcp_servers:` utilisateur. */
+export const DESKTOP_MCP_ENTRY_MARKER_BEGIN = "# BEGIN CREEZIO-MCP-ENTRY";
+export const DESKTOP_MCP_ENTRY_MARKER_END = "# END CREEZIO-MCP-ENTRY";
+
+export type HermesMcpServerConfig = {
+  /** Nom du serveur MCP côté Hermes (ex. brandId — normalisé yaml-safe). */
+  serverName: string;
+  /** URL `/mcp` loopback du serveur OS kit. */
+  url: string;
+  /** Clé CRM service Hermes (Bearer). */
+  bearerToken: string;
+};
+
+/** Nom de serveur MCP sûr pour une clé YAML / le registre Hermes. */
+export function sanitizeHermesMcpServerName(name: string): string {
+  const safe = String(name || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9_]/g, "_")
+    .replace(/^_+|_+$/g, "");
+  return safe || "crm";
+}
+
+function hermesMcpEntryLines(cfg: HermesMcpServerConfig): string[] {
+  return [
+    `  ${DESKTOP_MCP_ENTRY_MARKER_BEGIN}`,
+    `  ${sanitizeHermesMcpServerName(cfg.serverName)}:`,
+    `    url: "${cfg.url}"`,
+    "    headers:",
+    `      Authorization: "Bearer ${cfg.bearerToken}"`,
+    // Le endpoint kit répond application/json (mode réponse JSON du spec
+    // Streamable HTTP) — le probe content-type Hermes doit être bypassé.
+    "    skip_preflight: true",
+    "    timeout: 120",
+    `  ${DESKTOP_MCP_ENTRY_MARKER_END}`,
+  ];
+}
+
+/** Bloc YAML complet (quand config.yaml n'a pas de `mcp_servers:` user). */
+export function buildHermesMcpYamlBlock(cfg: HermesMcpServerConfig): string {
+  return [
+    DESKTOP_MCP_MARKER_BEGIN,
+    "# Desktop OS — façade MCP CRM (régénéré à chaque boot)",
+    "mcp_servers:",
+    ...hermesMcpEntryLines(cfg),
+    DESKTOP_MCP_MARKER_END,
+  ].join("\n");
+}
+
+/**
+ * Remplace/insère le bloc CREEZIO-MCP dans config.yaml (idempotent).
+ *
+ * - Si l'utilisateur a déjà un bloc `mcp_servers:` de premier niveau, notre
+ *   entrée est injectée DEDANS (entre marqueurs ENTRY) sans toucher aux
+ *   siennes — YAML n'accepte pas deux clés `mcp_servers` racine.
+ * - Sinon, bloc complet ajouté en fin de fichier (entre marqueurs).
+ * - `cfg: null` retire proprement toute trace (bloc + entrée).
+ */
+export function upsertHermesMcpConfig(
+  existingYaml: string,
+  cfg: HermesMcpServerConfig | null,
+): string {
+  let body = String(existingYaml || "");
+  // Marqueurs ancrés fin de ligne : `# END CREEZIO-MCP` est un préfixe de
+  // `# END CREEZIO-MCP-ENTRY` — sans ancre le retrait lazy s'arrêterait au
+  // milieu du marqueur d'entrée.
+  // Retire le bloc complet précédent.
+  body = body.replace(
+    new RegExp(
+      `^${DESKTOP_MCP_MARKER_BEGIN}$[\\s\\S]*?^${DESKTOP_MCP_MARKER_END}$\\n?`,
+      "gm",
+    ),
+    "",
+  );
+  // Retire une entrée précédemment injectée dans un bloc user.
+  body = body.replace(
+    new RegExp(
+      `^[ \\t]*${DESKTOP_MCP_ENTRY_MARKER_BEGIN}$[\\s\\S]*?^[ \\t]*${DESKTOP_MCP_ENTRY_MARKER_END}$\\n?`,
+      "gm",
+    ),
+    "",
+  );
+  body = body.replace(/\n{3,}/g, "\n\n").trimEnd();
+  if (!cfg) return body ? `${body}\n` : "";
+
+  const userBlock = /^mcp_servers:[ \t]*$/m.exec(body);
+  if (userBlock) {
+    const insertAt = userBlock.index + userBlock[0].length;
+    const entry = hermesMcpEntryLines(cfg).join("\n");
+    body = `${body.slice(0, insertAt)}\n${entry}${body.slice(insertAt)}`;
+    return `${body.trimEnd()}\n`;
+  }
+  const block = buildHermesMcpYamlBlock(cfg);
+  return body ? `${body}\n\n${block}\n` : `${block}\n`;
+}
+
 /** @deprecated alias */
 export const tempoflowSandboxPaths = desktopSandboxPaths;

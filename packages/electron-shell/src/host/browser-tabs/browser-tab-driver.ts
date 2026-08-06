@@ -28,6 +28,7 @@ import {
   runDriverVerb,
   type CdpTransport,
 } from "@creezio/browser-host";
+import { checkWebHostAllowed } from "@creezio/platform-core";
 
 /** Monde isolé dédié (≠ 0 main world, ≠ mondes des extensions). */
 const ISOLATED_WORLD_ID = 1999;
@@ -153,6 +154,12 @@ export async function executeSupplierAction(
       }
       if (!/^https?:\/\//i.test(url)) {
         return { ok: false, error: "url invalide (http(s):// requis)" };
+      }
+      // H0 — allowlist `*_WEB_ALLOWED_HOSTS` appliquée AU NIVEAU HOST (défense
+      // en profondeur : couvre aussi les appels hors runner de tâches).
+      const hostCheck = checkWebHostAllowed(url);
+      if (!hostCheck.ok) {
+        return { ok: false, error: hostCheck.error, code: hostCheck.code };
       }
       const tab = await manager.openTab(siteId, url);
       const page = await pageOf(tab);

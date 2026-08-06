@@ -1679,8 +1679,8 @@ export function AssistantWidget() {
                 <div className="space-y-3">
                   <p className="text-xs text-slate-600">
                     {displayMode === "work"
-                      ? "Mode Work : Hermes exécute des tâches longues (API, SQL, automations). Pas de souris — actions API/SQL directes."
-                      : "Mode Chat : questions, guide dans l'app (souris virtuelle). Pour une liste de courses entière, passez en Work."}
+                      ? "Hermes en direct : il exécute vos missions (API, SQL, automations, délégation des clics). Suivi sur /taches."
+                      : "Posez vos questions ou confiez une mission : Hermes la prend en charge (kanban /taches + « Voir comme IA »)."}
                   </p>
                   <div className="flex flex-wrap gap-1.5">
                     {suggestions.map((s) => (

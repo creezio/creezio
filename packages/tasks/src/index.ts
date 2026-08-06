@@ -108,6 +108,7 @@ export {
   listRunningRuns,
   listTaskRunsForTask,
   maxConcurrentAiRuns,
+  openDetachedHitlRun,
   purgeAgentLogsOlderThan,
   resumeHitlRun,
   RUN_STATUSES,
@@ -160,11 +161,24 @@ export { createAssistantTasksAdapter } from "./assistant-adapter.js";
 export type {
   AiTaskHostMcpRegisterFn,
   AiTaskHostMcpToolConfig,
+  AiTaskToolParseResult,
   CreateAiTaskHostMcpToolsOptions,
   CreezioAiTaskHostMcpToolName,
 } from "./mcp-host-tools.js";
 export {
   CREEZIO_AI_TASK_HOST_MCP_TOOL_NAMES,
   CREEZIO_LIST_TASKS_MCP_TOOL_NAME,
+  aiTaskToolJsonSchema,
   createAiTaskHostMcpTools,
+  parseAiTaskToolInput,
 } from "./mcp-host-tools.js";
+
+/* --- MCP workspace + HITL async (H4 Hermes cerveau unique) --- */
+export type {
+  CreateAiWorkspaceMcpToolsOptions,
+  CreezioAiWorkspaceMcpToolName,
+} from "./mcp-workspace-tools.js";
+export {
+  CREEZIO_AI_WORKSPACE_MCP_TOOL_NAMES,
+  createAiWorkspaceMcpTools,
+} from "./mcp-workspace-tools.js";

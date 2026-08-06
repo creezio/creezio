@@ -199,16 +199,24 @@ export type { EnsureNpmCliResult } from "./host/npm-cli.js";
 
 export {
   applyOsSandboxEnv,
+  buildHermesMcpYamlBlock,
   buildHermesSandboxYamlBlock,
   desktopSandboxPaths,
   ensureSandboxGitConfig,
   hermesSandboxPaths,
+  sanitizeHermesMcpServerName,
   setSandboxEnvVar,
   tempoflowSandboxPaths,
+  upsertHermesMcpConfig,
   upsertHermesSandboxConfig,
+  DESKTOP_MCP_ENTRY_MARKER_BEGIN,
+  DESKTOP_MCP_ENTRY_MARKER_END,
+  DESKTOP_MCP_MARKER_BEGIN,
+  DESKTOP_MCP_MARKER_END,
   DESKTOP_SANDBOX_MARKER_BEGIN,
   DESKTOP_SANDBOX_MARKER_END,
 } from "./host/sandbox/embed-sandbox.js";
+export type { HermesMcpServerConfig } from "./host/sandbox/embed-sandbox.js";
 export {
   buildConfinedPath,
   overridesAllowed,
@@ -228,7 +236,9 @@ export {
   serverWebuiPassword,
 } from "./host/hermes/launcher.js";
 export {
+  LEARNED_SITE_SKILL_PREFIX,
   brandHermesSkillsDirCandidates,
+  isLearnedSiteSkillName,
   kitHermesSkillsDir,
   seedHermesSkillsFromDirs,
 } from "./host/hermes/skills-seed.js";

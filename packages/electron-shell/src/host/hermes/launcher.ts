@@ -28,6 +28,7 @@ import type { LocalConfigStore } from "../local-config.js";
 import {
   applyOsSandboxEnv,
   hermesSandboxPaths,
+  upsertHermesMcpConfig,
   upsertHermesSandboxConfig,
 } from "../sandbox/embed-sandbox.js";
 import { findFreePort } from "../server-env.js";
@@ -414,11 +415,23 @@ async function writeHermesHome(opts: {
   } catch {
     existing = "";
   }
+  // H1 — bloc mcp_servers (façade MCP CRM, Bearer clé Hermes) upserté après
+  // le bloc sandbox, idempotent, sans toucher la config utilisateur.
+  const mcpConfig =
+    ctx.getHermesMcpServerConfig?.(
+      opts.crmPort != null ? { crmPort: opts.crmPort } : undefined,
+    ) || null;
   fs.writeFileSync(
     cfgPath,
-    upsertHermesSandboxConfig(existing, paths.workspace),
+    upsertHermesMcpConfig(
+      upsertHermesSandboxConfig(existing, paths.workspace),
+      mcpConfig,
+    ),
     "utf8",
   );
+  if (mcpConfig) {
+    pushLog(`config: mcp_servers.${mcpConfig.serverName} → ${mcpConfig.url}`);
+  }
   return { profileHome: paths.profileHome, workspace: paths.workspace };
 }
 
@@ -1011,6 +1024,27 @@ async function reapplyHermesBridge(opts: {
     !envBody.includes(`TEMPOFLOW_PLUGINS_DIR=${bridge.TEMPOFLOW_PLUGINS_DIR}`)
   ) {
     missing.push("TEMPOFLOW_PLUGINS_DIR");
+  }
+  // H1 — bloc mcp_servers attendu dans config.yaml (façade MCP CRM) : s'il
+  // manque ou pointe ailleurs, un restart réécrit le home (writeHermesHome).
+  const mcpCfg =
+    ctx.getHermesMcpServerConfig?.(
+      opts.crmPort != null ? { crmPort: opts.crmPort } : undefined,
+    ) || null;
+  if (mcpCfg) {
+    let cfgBody = "";
+    try {
+      cfgBody = fs.readFileSync(path.join(homeDir(), "config.yaml"), "utf8");
+    } catch {
+      cfgBody = "";
+    }
+    if (
+      !cfgBody.includes("mcp_servers") ||
+      !cfgBody.includes(mcpCfg.url) ||
+      !cfgBody.includes(mcpCfg.bearerToken)
+    ) {
+      missing.push("MCP_SERVERS");
+    }
   }
   if (!missing.length && !opts.forceRestart) {
     return { restarted: false, detail: "bridge déjà injecté" };

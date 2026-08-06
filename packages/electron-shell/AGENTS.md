@@ -25,6 +25,8 @@ Maintenir le runtime Electron plateforme Creezio : host stack, desktop runtime, 
 - `src/host/plugins/launcher.ts` : start/stop/restart/scaffold/git plugins.
 - `src/host/plugins/control-plane.ts` et `control-extras.ts` : API loopback plugins.
 - `src/host/hermes/launcher.ts`, `src/host/n8n/launcher.ts`, `src/host/meili-launcher.ts`, `src/host/tunnel/tunnel.ts` : embeds.
+- `src/host/sandbox/embed-sandbox.ts` : blocs `config.yaml` Hermes upsertés au boot — sandbox (`CREEZIO-SANDBOX`) et `mcp_servers` (`CREEZIO-MCP`, H1 Hermes cerveau unique : URL `/mcp` loopback + Bearer clé CRM via `ctx.getHermesMcpServerConfig`) ; `reapplyHermesBridge` redémarre si le bloc manque/pointe ailleurs.
+- `src/host/hermes/skills-seed.ts` : seed skills vendor — le namespace `site-*` est RÉSERVÉ aux skills appris par Hermes (jamais seedé depuis un vendor, H3). Skills kit : `resources/vendor/hermes-skills/` (`creezio-computer-use`, `creezio-site-skills`, …).
 - `src/host/browser-tabs/index.ts` : sous-export browser-tabs.
 - `src/host/ai-workspace/index.ts` : workspaces IA.
 

@@ -21,6 +21,9 @@
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
+  "dependencies": {
+    "@creezio/platform-core": "0.1.0"
+  },
   "devDependencies": {
     "@types/node": "^22.15.3",
     "typescript": "^5.8.3"

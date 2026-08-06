@@ -17,6 +17,11 @@ Chromium serveur pour IA (sidecar Docker). **Zéro dépendance Electron.**
 4. **Screencast in-process** : publier via `screencast-hub.ts` (même clé
    `globalThis` que `shell-ui/ui/lib/ai-screencast-hub.ts`) — pas de POST
    HTTP interne.
+5. **Allowlist web host-level (H0)** : `openTab` applique
+   `checkWebHostAllowed` (@creezio/platform-core, env `*_WEB_ALLOWED_HOSTS`)
+   AVANT toute session — refus `web_host_not_allowed`. Ne pas retirer : c'est
+   la défense en profondeur derrière la garde UX du runner de tâches. Gate :
+   `scripts/test-phase-hermes-web-allowlist.mjs`.
 
 ## Points d'entrée
 

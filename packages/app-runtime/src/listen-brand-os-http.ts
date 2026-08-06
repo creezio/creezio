@@ -22,6 +22,10 @@ import type { McpFacade } from "@creezio/mcp-facade";
 import type { SqliteMailsStore } from "@creezio/mails";
 import type { BrandOsComposition } from "./compose-brand-os.js";
 import {
+  handleMcpJsonRpcRequest,
+  isJsonRpcBody,
+} from "./mcp-jsonrpc.js";
+import {
   emailSurfaceHandlesPath,
   mountBrandEmailSurface,
 } from "./mount-brand-email-surface.js";
@@ -917,12 +921,29 @@ export async function listenBrandOsHttp(opts: {
           });
           return;
         }
-        const body = (await readBody(req)) as {
+        const rawBody = (await readBody(req)) as unknown;
+        // H1 — client MCP natif (Hermes, SDK officiels) : JSON-RPC 2.0
+        // stateless. Les corps sans `jsonrpc` gardent le transport historique.
+        if (isJsonRpcBody(rawBody)) {
+          const rpc = await handleMcpJsonRpcRequest({
+            mcp: opts.mcp,
+            body: rawBody,
+            bearerToken,
+          });
+          if (rpc.body === null) {
+            res.writeHead(rpc.status, { "content-length": "0" });
+            res.end();
+            return;
+          }
+          send(res, rpc.status, rpc.body);
+          return;
+        }
+        const body = rawBody as {
           method?: string;
           params?: { name?: string; arguments?: Record<string, unknown> };
           name?: string;
           arguments?: Record<string, unknown>;
-        };
+        } | null;
         const method = body?.method || "tools/call";
         if (method === "tools/list") {
           const listed = await opts.mcp.listTools({ bearerToken });

@@ -28,7 +28,7 @@ La mission technique est de separer clairement :
 Façade et contrats :
 
 - `src/index.ts` : surface publique.
-- `src/types.ts` : types `McpTool*`, `McpFacadeOptions`, policies.
+- `src/types.ts` : types `McpTool*`, `McpFacadeOptions`, policies. `resolveBearerActor` (H1 Hermes) : résolution d'un Bearer OPAQUE (clé API service) consultée AVANT le JWT — l'app fournit le résolveur (ex. `createApiKeyBearerActorResolver`, @creezio/app-runtime), jamais de métier ici. Les handlers reçoivent l'acteur en 2ᵉ argument optionnel (`McpToolCallActor`, rétro-compatible).
 - `src/facade.ts` : implementation `createMcpFacade`.
 - `src/namespace.ts` : parser/assertions namespaces.
 - `src/policy.ts` : deny cross-layer et composition de policies.

@@ -234,6 +234,32 @@ export function createBrandHostRuntimeContext(
     });
   };
 
+  // H1 « Hermes cerveau unique » — bloc mcp_servers du config.yaml Hermes :
+  // URL /mcp du serveur OS kit (loopback via METIER_BASE_URL/MCP_PUBLIC_URL,
+  // posés par listenBrandOsHttp AVANT le start Hermes) + Bearer clé CRM
+  // Hermes. null tant que la clé ou l'URL n'existent pas (aucun bloc écrit).
+  const getHermesMcpServerConfig = (_opts?: { crmPort?: number | null }) => {
+    try {
+      const crm = readHermesCrmApiKey(cfg.hermesCrm, {
+        userDataDir: cfg.paths.userDataDir(),
+      });
+      if (!crm?.apiKey) return null;
+      const base = String(
+        process.env.METIER_BASE_URL || process.env.MCP_PUBLIC_URL || "",
+      )
+        .trim()
+        .replace(/\/+$/, "");
+      if (!/^https?:\/\//i.test(base)) return null;
+      return {
+        serverName: cfg.manifest.brandId,
+        url: `${base}/mcp`,
+        bearerToken: crm.apiKey,
+      };
+    } catch {
+      return null;
+    }
+  };
+
   const ctx: HostRuntimeContext = {
     manifest: cfg.manifest,
     userDataDir: cfg.paths.userDataDir(),
@@ -243,6 +269,7 @@ export function createBrandHostRuntimeContext(
     tunnelProvision,
     getInstallId: () => getInstallId(),
     getHermesBridgeEnv,
+    getHermesMcpServerConfig,
     npmUserDataSegment: cfg.npmUserDataSegment,
     secretFilePrefix: cfg.secretFilePrefix,
     ...overrides,

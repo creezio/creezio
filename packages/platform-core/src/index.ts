@@ -3,6 +3,13 @@ export {
 } from "./architecture-version.js";
 export type { ArchitectureVersion } from "./architecture-version.js";
 
+export type { WebHostCheck } from "./web-allowlist.js";
+export {
+  WEB_HOST_NOT_ALLOWED_CODE,
+  checkWebHostAllowed,
+  readWebAllowedHosts,
+} from "./web-allowlist.js";
+
 export type { PathsContext, InstallDataResolveOpts } from "./paths.js";
 export {
   INSTALL_DATA_DIRNAME,

@@ -48,6 +48,10 @@ import { startBrandUiPlane } from "./start-brand-ui-plane.js";
 import { installBrandOsDesktop } from "./install-brand-os-desktop.js";
 import { warmBrandNativeHosts } from "./warm-brand-native-hosts.js";
 import { createPluginAclMcpWiring } from "./plugin-acl-wiring.js";
+import {
+  createApiKeyBearerActorResolver,
+  registerHermesHostMcpTools,
+} from "./hermes-mcp-host-tools.js";
 import { createPluginProxyMount } from "./plugin-proxy-mount.js";
 import {
   createPluginToolsDiscovery,
@@ -664,11 +668,26 @@ async function startBrandDesktopBody(args: {
   const aclWiring = createPluginAclMcpWiring({
     getPolicy: kernelBoot.getPluginAclPolicy,
   });
+  // H1 « Hermes cerveau unique » — Bearer opaque (clé CRM service Hermes)
+  // vérifié contre `api_keys` et mappé owner (voir hermes-mcp-host-tools.ts).
+  // Owner résolu via getTasksBrandConfig (applyBrandPlatformBindings marque).
+  const resolveBearerActor = createApiKeyBearerActorResolver({
+    getBrandDb: () => {
+      try {
+        return runtime.getBrand() as unknown as {
+          prepare(sql: string): { get(...args: unknown[]): unknown };
+        };
+      } catch {
+        return null;
+      }
+    },
+  });
   const mcp = createMcpFacade({
     brandId: manifest.brandId,
     allowUnauthenticated: true,
     // Secret posé par composeBrandOs (ensureMcpJwtSecret) — acteurs JWT réels.
     jwtSecret: process.env.MCP_JWT_SECRET || null,
+    resolveBearerActor,
     listApiMounts: () => api.listMounts(),
     authorizeToolCall: aclWiring.authorizeToolCall,
     filterPluginToolsForActor: aclWiring.filterPluginToolsForActor,
@@ -705,6 +724,8 @@ async function startBrandDesktopBody(args: {
       content: { mounts: api.listMounts() },
     }),
   });
+  // H1/H4 — tools host tasks + workspace pour Hermes (gate acteur interne).
+  registerHermesHostMcpTools({ mcp, log: (line) => log("mcp", line) });
   if (os) {
     mcp.registerTool({
       name: "module.os.status",
