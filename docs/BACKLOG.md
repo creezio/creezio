@@ -71,6 +71,8 @@ affaibli pour la masquer. (Backlogs d'époque : `docs/archive/BACKLOG-*.md`.)
   PRÉEXISTANTE, pas introduite par le chantier flotte). Piste : garde session
   au niveau `listenBrandOsHttp` (cookie plateforme) avec allowlist des mounts
   volontairement publics (webhooks signés, register/heartbeat Bearer, /lp).
+  Tracé côté TF3 : tâche DASH-5 (`tempoflow3/brand-spec/modules/dashboard/TODO.md`,
+  portée transverse).
 
 ## Admin app OS (ADR-admin-app-os) — suites
 
