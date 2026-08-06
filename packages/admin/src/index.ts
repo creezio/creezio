@@ -25,6 +25,26 @@ import type {
   ScopedDbAccess,
 } from "@creezio/api-kernel";
 import type { SqliteMigration } from "@creezio/platform-core";
+import {
+  ADMIN_SCHEMA_004_SQL,
+  createFleetRegistryMount,
+  type FleetRegistryMountOptions,
+} from "./fleet-registry.js";
+
+export {
+  ADMIN_SCHEMA_004_SQL,
+  createFleetRegistryMount,
+  createRateLimiter,
+  deriveFleetOnline,
+  fleetServerId,
+  recordFleetEvent,
+  startFleetRegistryPoller,
+  syncFleetRegistryFromBackend,
+  upsertFleetServerStatus,
+  type FleetRegistryMountOptions,
+  type FleetRegistryPollerOptions,
+  type FleetServerStatusInput,
+} from "./fleet-registry.js";
 
 /* ------------------------------------------------------------ migrations */
 
@@ -143,6 +163,7 @@ export function adminMigrations(): SqliteMigration[] {
     { id: "admin_001_native_modules", sql: ADMIN_SCHEMA_SQL },
     { id: "admin_002_support_messages_billing_events", sql: ADMIN_SCHEMA_002_SQL },
     { id: "admin_003_billing_periode_fin", sql: ADMIN_SCHEMA_003_SQL },
+    { id: "admin_004_fleet_registry", sql: ADMIN_SCHEMA_004_SQL },
   ];
 }
 
@@ -388,7 +409,7 @@ export function createAdminCrudMount(kind: keyof typeof CRUD_SQL_TABLE): ApiMoun
 /* -------------------------------------------------------- module support */
 
 /** Appel authentifié (Basic) vers le backend flotte. */
-async function fleetFetch(
+export async function fleetFetch(
   opts: FleetAdminMountOptions | undefined,
   method: string,
   subPath: string,
@@ -1281,19 +1302,27 @@ export function createBillingAdminMount(
 
 export type RegisterAdminModulesOptions = {
   fleet?: FleetAdminMountOptions;
+  fleetRegistry?: FleetRegistryMountOptions;
   billing?: BillingWebhookMountOptions;
   billingAdmin?: BillingAdminMountOptions;
 };
 
 /**
  * Enregistre les modules admin natifs sur le kernel de l'app admin.
- * `/api/v1/modules/fleet|prospects|roadmap|support|billing-*`.
+ * `/api/v1/modules/fleet|fleet-registry|prospects|roadmap|support|billing-*`.
  */
 export function registerAdminModules(
   api: ApiKernel,
   opts?: RegisterAdminModulesOptions,
 ): void {
   api.registerModuleApi("fleet", createFleetAdminMount(opts?.fleet));
+  api.registerModuleApi(
+    "fleet-registry",
+    createFleetRegistryMount({
+      fleet: opts?.fleet,
+      ...(opts?.fleetRegistry || {}),
+    }),
+  );
   api.registerModuleApi("prospects", createAdminCrudMount("prospects"));
   api.registerModuleApi("roadmap", createAdminCrudMount("roadmap"));
   api.registerModuleApi(

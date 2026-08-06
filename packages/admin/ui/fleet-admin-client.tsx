@@ -8,14 +8,17 @@
  * serveur, start/stop/update (async 202 + poll), update en masse, logs
  * docker, ops JSONL, boot-status live, disque, suppression (+purge).
  *
- * API : /api/v1/modules/fleet/* (proxy kernel → backend flotte, Basic
- * interne au serveur — la session OS protège la route).
+ * Depuis F2 (DB flotte) : la LISTE des serveurs lit le registre matérialisé
+ * `/api/v1/modules/fleet-registry/servers` (lecture DB instantanée, statut
+ * online dérivé heartbeat/poller) ; les GESTES restent inchangés via le
+ * proxy `/api/v1/modules/fleet/*` (backend flotte = SoT des gestes).
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Badge, Button, Card, Input } from "@creezio/shell-ui/ui/kit";
 
 const API = "/api/v1/modules/fleet";
+const REGISTRY_API = "/api/v1/modules/fleet-registry";
 
 type DockerState = {
   state: string;
@@ -41,20 +44,77 @@ type BootModel = {
 
 type Server = {
   brandId: string;
-  brandRoot: string | null;
   name: string;
   containerName: string | null;
   port: number | null;
-  dataDir: string | null;
   env: Record<string, string>;
   image: string | null;
   version: string | null;
   orphan: boolean;
   docker: DockerState;
-  bootStatus: { booting?: boolean; overallPercent?: number } | null;
   hostId?: string;
   hostLabel?: string;
+  /** Champs registre flotte (fleet-registry, F2). */
+  registryId?: string;
+  online?: boolean;
+  registered?: boolean;
+  source?: string | null;
+  lastHeartbeatAt?: string | null;
+  lastPolledAt?: string | null;
+  bootHeadline?: string | null;
 };
+
+/** Row brute du registre matérialisé (fleet-registry/servers). */
+type RegistryRow = {
+  id: string;
+  host_id: string;
+  brand_id: string;
+  name: string;
+  container_name: string | null;
+  port: number | null;
+  tunnel_slug: string | null;
+  server_url: string | null;
+  image: string | null;
+  version: string | null;
+  orphan: number;
+  docker_state: string | null;
+  health: string | null;
+  boot_headline: string | null;
+  last_heartbeat_at: string | null;
+  last_polled_at: string | null;
+  source: string | null;
+  online: boolean;
+  registered: boolean;
+};
+
+function rowToServer(r: RegistryRow, hosts: FleetHost[]): Server {
+  const host = hosts.find((h) => h.hostId === r.host_id);
+  return {
+    brandId: r.brand_id,
+    name: r.name,
+    containerName: r.container_name,
+    port: r.port,
+    env: r.tunnel_slug ? { CREEZIO_TUNNEL_SLUG: r.tunnel_slug } : {},
+    image: r.image,
+    version: r.version,
+    orphan: Boolean(r.orphan),
+    docker: {
+      state: r.docker_state || "unknown",
+      health: r.health,
+      startedAt: null,
+      image: r.image,
+    },
+    hostId: r.host_id,
+    hostLabel: host?.label || r.host_id,
+    registryId: r.id,
+    online: r.online,
+    registered: r.registered,
+    source: r.source,
+    lastHeartbeatAt: r.last_heartbeat_at,
+    lastPolledAt: r.last_polled_at,
+    bootHeadline: r.boot_headline,
+  };
+}
 
 type FleetHost = {
   hostId: string;
@@ -80,6 +140,20 @@ async function api(
   init?: RequestInit,
 ): Promise<{ status: number; json: any }> {
   const res = await fetch(`${API}/${path}`, init);
+  let json: any = null;
+  try {
+    json = await res.json();
+  } catch {
+    /* vide */
+  }
+  return { status: res.status, json };
+}
+
+async function registryApi(
+  path: string,
+  init?: RequestInit,
+): Promise<{ status: number; json: any }> {
+  const res = await fetch(`${REGISTRY_API}/${path}`, init);
   let json: any = null;
   try {
     json = await res.json();
@@ -182,33 +256,61 @@ export function FleetAdminClient() {
     void tick();
   }, []);
 
+  const syncedOnce = useRef(false);
+
   const refresh = useCallback(async () => {
-    const [srv, dsk, hst] = await Promise.all([
-      api("servers").catch(() => null),
+    // Liste = registre matérialisé (DB, instantané) ; hôtes/disque/ping
+    // docker = backend flotte (proxy fleet) comme avant.
+    const [reg, dsk, hst, hlt] = await Promise.all([
+      registryApi("servers").catch(() => null),
       api("disk").catch(() => null),
       api("hosts").catch(() => null),
+      api("health").catch(() => null),
     ]);
-    if (hst?.json?.ok) setHosts(hst.json.hosts || []);
-    if (srv?.json?.ok) {
-      setServers(srv.json.servers || []);
+    const hostList: FleetHost[] = hst?.json?.ok ? hst.json.hosts || [] : [];
+    if (hst?.json?.ok) setHosts(hostList);
+    if (hlt?.json) {
       // Badge docker durci : « indisponible » seulement après 2 échecs
       // consécutifs (un timeout ponctuel du ping daemon ne doit pas alarmer).
-      if (srv.json.docker) {
+      if (hlt.json.docker) {
         dockerFails.current = 0;
         setDockerOk(true);
       } else {
         dockerFails.current += 1;
         if (dockerFails.current >= 2) setDockerOk(false);
       }
-      for (const s of srv.json.servers || []) {
-        const bs = s.bootStatus;
-        if (bs && (bs.booting || (bs.overallPercent ?? 100) < 100)) {
+    }
+    if (reg?.json?.ok) {
+      let rows: RegistryRow[] = reg.json.servers || [];
+      // Premier passage sur un registre vide : backfill immédiat depuis le
+      // backend flotte (POST sync), puis relecture.
+      if (!rows.length && !syncedOnce.current) {
+        syncedOnce.current = true;
+        await registryApi("sync", { method: "POST" }).catch(() => null);
+        const again = await registryApi("servers").catch(() => null);
+        if (again?.json?.ok) rows = again.json.servers || [];
+      }
+      const list = rows.map((r) => rowToServer(r, hostList));
+      setServers(list);
+      for (const s of list) {
+        if (s.docker.state === "running" && s.docker.health === "starting") {
           startBootPoll(s);
         }
       }
     }
     if (dsk?.json?.ok) setDisk(dsk.json);
   }, [startBootPoll]);
+
+  const syncNow = useCallback(async () => {
+    setBusyMsg("Synchronisation du registre flotte…");
+    const r = await registryApi("sync", { method: "POST" }).catch(() => null);
+    setBusyMsg(
+      r?.json?.ok
+        ? `Registre synchronisé (${r.json.upserted} serveurs)`
+        : `Sync KO : ${r?.json?.error || "backend flotte injoignable"}`,
+    );
+    await refresh();
+  }, [refresh]);
 
   useEffect(() => {
     let stop = false;
@@ -650,6 +752,9 @@ export function FleetAdminClient() {
           Serveurs
         </div>
         <div className="flex-1" />
+        <Button variant="outline" size="sm" onClick={() => void syncNow()}>
+          Synchroniser
+        </Button>
         <Button variant="outline" size="sm" onClick={() => void updateAll()}>
           Tout mettre à jour…
         </Button>
@@ -685,6 +790,32 @@ export function FleetAdminClient() {
                 <Badge variant="outline" className={stateBadgeVariant(st)}>
                   {st}
                 </Badge>
+                <Badge
+                  variant="outline"
+                  className={
+                    s.online
+                      ? "border-emerald-500/40 text-emerald-400"
+                      : "border-zinc-500/30 text-zinc-400"
+                  }
+                  title={
+                    s.lastHeartbeatAt
+                      ? `heartbeat ${new Date(s.lastHeartbeatAt).toLocaleString()}`
+                      : s.lastPolledAt
+                        ? `poll ${new Date(s.lastPolledAt).toLocaleString()}`
+                        : "jamais vu"
+                  }
+                >
+                  {s.online ? "online" : "offline"}
+                </Badge>
+                {s.registered ? (
+                  <Badge
+                    variant="outline"
+                    className="border-sky-500/40 text-sky-400"
+                    title="auto-inscrit (heartbeat)"
+                  >
+                    inscrit
+                  </Badge>
+                ) : null}
                 {health ? (
                   <span
                     className={`text-xs ${health === "healthy" ? "text-emerald-400" : "text-amber-400"}`}
