@@ -296,7 +296,7 @@ export function computeFleetUpdateDirectives(
 
 /* ------------------------------------------------------------------ slots */
 
-/** Purge les leases expirées (appelée à chaque geste slot + job F6). */
+/** Purge les leases expirées (appelée à chaque geste slot + maintenance F6). */
 export function purgeExpiredFleetSlots(
   db: ScopedDbAccess,
   nowMs = Date.now(),
@@ -305,6 +305,52 @@ export function purgeExpiredFleetSlots(
     .prepare(`DELETE FROM admin_fleet_download_slots WHERE expires_at <= ?`)
     .run(nowIso(nowMs)) as { changes: number };
   return r.changes;
+}
+
+/* ------------------------------------------------------- garde-fous (F6) */
+
+/**
+ * Garde-fou rollout : toute release `rolling` qui accumule trop d'échecs
+ * (`failed` + `rolled_back` ≥ seuil) passe automatiquement en `paused` —
+ * les agents cessent immédiatement de recevoir la directive au poll suivant.
+ * Seuil : option, sinon env CREEZIO_FLEET_AUTO_PAUSE_FAILURES, sinon 2.
+ * Idempotent : une release déjà paused n'est pas retouchée.
+ */
+export function autoPauseFleetReleases(
+  db: ScopedDbAccess,
+  opts?: { maxFailures?: number; nowMs?: number },
+): string[] {
+  const env = Number(process.env.CREEZIO_FLEET_AUTO_PAUSE_FAILURES || 0);
+  const max = opts?.maxFailures ?? (env > 0 ? env : 2);
+  const rows = db
+    .prepare(
+      `SELECT r.id,
+         (SELECT COUNT(*) FROM admin_fleet_update_reports p
+          WHERE p.release_id = r.id AND p.status IN ('failed','rolled_back'))
+           AS failures
+       FROM admin_fleet_releases r WHERE r.status = 'rolling'`,
+    )
+    .all() as Array<{ id: string; failures: number }>;
+  const paused: string[] = [];
+  const ts = nowIso(opts?.nowMs);
+  for (const r of rows) {
+    if (r.failures < max) continue;
+    db.prepare(
+      `UPDATE admin_fleet_releases SET status = 'paused', updated_at = ?
+       WHERE id = ? AND status = 'rolling'`,
+    ).run(ts, r.id);
+    db.prepare(
+      `DELETE FROM admin_fleet_download_slots WHERE release_id = ?`,
+    ).run(r.id);
+    recordFleetEvent(
+      db,
+      null,
+      "release_auto_paused",
+      `${r.id} — ${r.failures} échec(s) ≥ seuil ${max}`,
+    );
+    paused.push(r.id);
+  }
+  return paused;
 }
 
 /* ------------------------------------------------------------------ mount */
@@ -320,6 +366,8 @@ export type FleetReleasesMountOptions = {
   slotTtlSeconds?: number;
   /** Intervalle de poll annoncé aux agents (s). Défaut 300 (5 min). */
   pollIntervalSeconds?: number;
+  /** Seuil d'auto-pause d'une release rolling (échecs). Défaut 2 (env CREEZIO_FLEET_AUTO_PAUSE_FAILURES). */
+  autoPauseFailures?: number;
   /** Horloge injectable (gates : lease expirée). */
   nowMs?: () => number;
 };
@@ -547,9 +595,24 @@ export function createFleetReleasesMount(
         return { status: 200, body: { ok: true } };
       }
 
-      /* -------------------------------------------- session admin (UI) */
+        /* ---------------------------------------------- maintenance (F6) */
 
-      if (subPath === "releases" && method === "GET") {
+        // Janitor idempotent : purge des leases expirées + auto-pause des
+        // releases en échec. Appelé par le poller de fond de l'app admin
+        // (startFleetRegistryPoller) — inoffensif si appelé plus souvent.
+        if (subPath === "maintenance" && method === "POST") {
+          const nowMs = now();
+          const purgedSlots = purgeExpiredFleetSlots(db, nowMs);
+          const autoPaused = autoPauseFleetReleases(db, {
+            maxFailures: opts?.autoPauseFailures,
+            nowMs,
+          });
+          return { status: 200, body: { ok: true, purgedSlots, autoPaused } };
+        }
+
+        /* -------------------------------------------- session admin (UI) */
+
+        if (subPath === "releases" && method === "GET") {
         const releases = db
           .prepare(
             `SELECT r.*,
@@ -667,6 +730,13 @@ export function createFleetReleasesMount(
         if (!r.changes) return { status: 404, body: { ok: false } };
         if (body.status !== undefined) {
           recordFleetEvent(db, null, "release_status", `${id} → ${body.status}`);
+          // Kill-switch / pause / fin : les leases de téléchargement en cours
+          // sont révoquées immédiatement (les agents cessent au poll suivant).
+          if (String(body.status) !== "rolling") {
+            db.prepare(
+              `DELETE FROM admin_fleet_download_slots WHERE release_id = ?`,
+            ).run(id);
+          }
         }
         const release = db
           .prepare(`SELECT * FROM admin_fleet_releases WHERE id = ?`)

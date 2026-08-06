@@ -683,6 +683,12 @@ export type FleetRegistryPollerOptions = {
   api: Pick<ApiKernel, "handle">;
   /** Intervalle du poller (ms). Défaut 90 s (spec : 60-120 s). */
   intervalMs?: number;
+  /**
+   * Maintenance fleet-releases à chaque cycle (purge leases expirées +
+   * auto-pause des releases en échec, F6). Défaut true — no-op silencieux si
+   * le module fleet-releases n'est pas monté.
+   */
+  releasesMaintenance?: boolean;
   onError?: (e: unknown) => void;
 };
 
@@ -715,6 +721,21 @@ export function startFleetRegistryPoller(opts: FleetRegistryPollerOptions): {
       }
     } catch (e) {
       opts.onError?.(e);
+    }
+    // Janitor fleet-releases (F6) : best-effort, un 404 (module absent) est
+    // silencieux — seule une exception remonte à onError.
+    if (opts.releasesMaintenance !== false) {
+      try {
+        await opts.api.handle({
+          method: "POST",
+          path: "/api/v1/modules/fleet-releases/maintenance",
+          body: {},
+          query: {},
+          headers: {},
+        });
+      } catch (e) {
+        opts.onError?.(e);
+      }
     }
   };
   const timer = setInterval(() => void tick(), intervalMs);

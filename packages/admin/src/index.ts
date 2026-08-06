@@ -53,6 +53,7 @@ export {
 
 export {
   ADMIN_SCHEMA_005_SQL,
+  autoPauseFleetReleases,
   computeFleetUpdateDirectives,
   createBackendFleetCredentialVerifier,
   createFleetReleasesMount,

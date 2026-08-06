@@ -12,6 +12,12 @@
  * `/api/v1/modules/fleet-registry/servers` (lecture DB instantanée, statut
  * online dérivé heartbeat/poller) ; les GESTES restent inchangés via le
  * proxy `/api/v1/modules/fleet/*` (backend flotte = SoT des gestes).
+ *
+ * Depuis F5/F6 (updates en pull) : section « Releases » — rollout piloté
+ * (canary → vagues → 100 %), pause / reprise / kill-switch (abort), et
+ * pilotage par serveur (pin / hold / channel) via
+ * `/api/v1/modules/fleet-releases/*`. Les agents hôtes POLLENT — aucun
+ * update n'est poussé par l'admin.
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -19,6 +25,7 @@ import { Badge, Button, Card, Input } from "@creezio/shell-ui/ui/kit";
 
 const API = "/api/v1/modules/fleet";
 const REGISTRY_API = "/api/v1/modules/fleet-registry";
+const RELEASES_API = "/api/v1/modules/fleet-releases";
 
 type DockerState = {
   state: string;
@@ -62,6 +69,10 @@ type Server = {
   lastHeartbeatAt?: string | null;
   lastPolledAt?: string | null;
   bootHeadline?: string | null;
+  /** Pilotage rollout (F6). */
+  pinnedImage?: string | null;
+  hold?: boolean;
+  channel?: string;
 };
 
 /** Row brute du registre matérialisé (fleet-registry/servers). */
@@ -85,6 +96,28 @@ type RegistryRow = {
   source: string | null;
   online: boolean;
   registered: boolean;
+  /** Pilotage rollout (F6). */
+  pinned_image: string | null;
+  hold: number;
+  channel: string;
+};
+
+/** Release flotte (updates en pull, F5/F6). */
+type FleetRelease = {
+  id: string;
+  created_at: string;
+  brand_id: string;
+  tag: string;
+  image: string;
+  digest: string | null;
+  variant: string;
+  channel: string;
+  status: "draft" | "rolling" | "paused" | "done" | "aborted";
+  wave_pct: number;
+  reports_done: number;
+  reports_failed: number;
+  reports_rolled_back: number;
+  active_slots: number;
 };
 
 function rowToServer(r: RegistryRow, hosts: FleetHost[]): Server {
@@ -113,6 +146,9 @@ function rowToServer(r: RegistryRow, hosts: FleetHost[]): Server {
     lastHeartbeatAt: r.last_heartbeat_at,
     lastPolledAt: r.last_polled_at,
     bootHeadline: r.boot_headline,
+    pinnedImage: r.pinned_image,
+    hold: Boolean(r.hold),
+    channel: r.channel || "stable",
   };
 }
 
@@ -161,6 +197,28 @@ async function registryApi(
     /* vide */
   }
   return { status: res.status, json };
+}
+
+async function releasesApi(
+  path: string,
+  init?: RequestInit,
+): Promise<{ status: number; json: any }> {
+  const res = await fetch(`${RELEASES_API}/${path}`, init);
+  let json: any = null;
+  try {
+    json = await res.json();
+  } catch {
+    /* vide */
+  }
+  return { status: res.status, json };
+}
+
+function releaseStatusBadge(status: FleetRelease["status"]): string {
+  if (status === "rolling") return "border-emerald-500/40 text-emerald-400";
+  if (status === "paused") return "border-amber-500/40 text-amber-400";
+  if (status === "aborted") return "border-red-500/40 text-red-400";
+  if (status === "done") return "border-sky-500/40 text-sky-400";
+  return "border-zinc-500/30 text-zinc-400";
 }
 
 function keyOf(s: Server): string {
@@ -213,6 +271,7 @@ function stateBadgeVariant(state: string): string {
 
 export function FleetAdminClient() {
   const [servers, setServers] = useState<Server[]>([]);
+  const [releases, setReleases] = useState<FleetRelease[]>([]);
   const [hosts, setHosts] = useState<FleetHost[]>([]);
   const [disk, setDisk] = useState<DiskReport | null>(null);
   const [brandRoots, setBrandRoots] = useState<string[]>([]);
@@ -261,12 +320,14 @@ export function FleetAdminClient() {
   const refresh = useCallback(async () => {
     // Liste = registre matérialisé (DB, instantané) ; hôtes/disque/ping
     // docker = backend flotte (proxy fleet) comme avant.
-    const [reg, dsk, hst, hlt] = await Promise.all([
+    const [reg, dsk, hst, hlt, rel] = await Promise.all([
       registryApi("servers").catch(() => null),
       api("disk").catch(() => null),
       api("hosts").catch(() => null),
       api("health").catch(() => null),
+      releasesApi("releases").catch(() => null),
     ]);
+    if (rel?.json?.ok) setReleases(rel.json.releases || []);
     const hostList: FleetHost[] = hst?.json?.ok ? hst.json.hosts || [] : [];
     if (hst?.json?.ok) setHosts(hostList);
     if (hlt?.json) {
@@ -544,6 +605,101 @@ export function FleetAdminClient() {
     [refresh],
   );
 
+  /* ------------------------------------------ rollout piloté (F5/F6) */
+
+  const patchRelease = useCallback(
+    async (id: string, patch: Record<string, unknown>) => {
+      const r = await releasesApi(`releases/${encodeURIComponent(id)}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(patch),
+      });
+      if (!r.json?.ok) window.alert(`Release : ${r.json?.error || r.status}`);
+      await refresh();
+    },
+    [refresh],
+  );
+
+  const startRollout = useCallback(
+    async (rel: FleetRelease) => {
+      const input = window.prompt(
+        `Démarrer le rollout de ${rel.brand_id}:${rel.tag} (${rel.variant}, canal ${rel.channel})\n\n% de la flotte ciblé (canary — promouvoir ensuite) :`,
+        String(rel.wave_pct || 10),
+      );
+      if (input === null) return;
+      const pct = Math.max(0, Math.min(100, Number(input) || 0));
+      await patchRelease(rel.id, { status: "rolling", wavePct: pct });
+    },
+    [patchRelease],
+  );
+
+  const promoteRelease = useCallback(
+    async (rel: FleetRelease) => {
+      const input = window.prompt(
+        `Promouvoir ${rel.brand_id}:${rel.tag} — vague actuelle ${rel.wave_pct}%\n\nNouveau % de la flotte (les serveurs déjà servis le restent) :`,
+        "100",
+      );
+      if (input === null) return;
+      const pct = Math.max(0, Math.min(100, Number(input) || 0));
+      await patchRelease(rel.id, { wavePct: pct });
+    },
+    [patchRelease],
+  );
+
+  const abortRelease = useCallback(
+    async (rel: FleetRelease) => {
+      if (
+        !window.confirm(
+          `KILL-SWITCH — arrêter définitivement le rollout ${rel.brand_id}:${rel.tag} ?\n\nLes agents cessent au prochain poll, les téléchargements en cours ne sont pas relancés. Les serveurs déjà mis à jour restent tels quels (pin/rollback manuels si besoin).`,
+        )
+      )
+        return;
+      await patchRelease(rel.id, { status: "aborted" });
+    },
+    [patchRelease],
+  );
+
+  const deleteRelease = useCallback(
+    async (rel: FleetRelease) => {
+      if (!window.confirm(`Supprimer la release ${rel.brand_id}:${rel.tag} ?`)) return;
+      const r = await releasesApi(`releases/${encodeURIComponent(rel.id)}`, {
+        method: "DELETE",
+      });
+      if (!r.json?.ok) window.alert(`Suppression : ${r.json?.error || r.status}`);
+      await refresh();
+    },
+    [refresh],
+  );
+
+  const serverRollout = useCallback(
+    async (s: Server, patch: Record<string, unknown>) => {
+      if (!s.registryId) return;
+      const r = await releasesApi(
+        `servers/${encodeURIComponent(s.registryId)}/rollout`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(patch),
+        },
+      );
+      if (!r.json?.ok) window.alert(`Rollout : ${r.json?.error || r.status}`);
+      await refresh();
+    },
+    [refresh],
+  );
+
+  const pinServer = useCallback(
+    async (s: Server) => {
+      const input = window.prompt(
+        `Épingler ${keyOf(s)} sur une image (prioritaire sur toute release).\n\nImage actuelle : ${s.image || "?"}\nVide = retirer le pin :`,
+        s.pinnedImage || "",
+      );
+      if (input === null) return;
+      await serverRollout(s, { pinnedImage: input.trim() || null });
+    },
+    [serverRollout],
+  );
+
   const createServer = useCallback(async () => {
     setCreateMsg(null);
     const { brandRoot, name, port } = createForm;
@@ -683,6 +839,109 @@ export function FleetAdminClient() {
             {enrollMsg.text}
           </pre>
         ) : null}
+      </Card>
+
+      {/* Releases — updates en pull (F5/F6) */}
+      <Card className="p-4">
+        <div className="mb-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+          Releases (updates en pull)
+        </div>
+        {releases.length === 0 ? (
+          <p className="text-sm text-muted-foreground">
+            Aucune release — publier avec{" "}
+            <code className="text-xs">
+              creezio server-docker publish --brand-root . --tag &lt;tag&gt;
+              --public-host registry.&lt;zone&gt; --release
+            </code>{" "}
+            puis démarrer le rollout ici. Les agents hôtes tirent les updates
+            (poll ~5 min), rien n'est poussé.
+          </p>
+        ) : (
+          <div className="flex flex-col gap-2">
+            {releases.map((rel) => (
+              <div key={rel.id} className="flex flex-wrap items-center gap-2">
+                <span className="font-medium">
+                  {rel.brand_id}:{rel.tag}
+                </span>
+                <span className="text-xs text-muted-foreground">
+                  {rel.variant} · canal {rel.channel}
+                  {rel.digest ? " · digest" : ""}
+                </span>
+                <Badge variant="outline" className={releaseStatusBadge(rel.status)}>
+                  {rel.status}
+                </Badge>
+                {rel.status === "rolling" || rel.status === "paused" ? (
+                  <Badge variant="outline" className="text-muted-foreground">
+                    vague {rel.wave_pct}%
+                  </Badge>
+                ) : null}
+                <span className="text-xs text-muted-foreground">
+                  ✓{rel.reports_done} ✗{rel.reports_failed + rel.reports_rolled_back}
+                  {rel.active_slots ? ` · ${rel.active_slots} téléchargement(s)` : ""}
+                </span>
+                <div className="flex-1" />
+                {rel.status === "draft" ? (
+                  <Button size="sm" onClick={() => void startRollout(rel)}>
+                    Démarrer…
+                  </Button>
+                ) : null}
+                {rel.status === "rolling" ? (
+                  <>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => void promoteRelease(rel)}
+                    >
+                      Promouvoir…
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => void patchRelease(rel.id, { status: "paused" })}
+                    >
+                      Pause
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => void patchRelease(rel.id, { status: "done" })}
+                    >
+                      Terminer
+                    </Button>
+                  </>
+                ) : null}
+                {rel.status === "paused" ? (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => void patchRelease(rel.id, { status: "rolling" })}
+                  >
+                    Reprendre
+                  </Button>
+                ) : null}
+                {rel.status === "rolling" || rel.status === "paused" ? (
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    title="kill-switch : les agents cessent au prochain poll"
+                    onClick={() => void abortRelease(rel)}
+                  >
+                    STOP
+                  </Button>
+                ) : null}
+                {rel.status === "draft" || rel.status === "aborted" ? (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => void deleteRelease(rel)}
+                  >
+                    Supprimer
+                  </Button>
+                ) : null}
+              </div>
+            ))}
+          </div>
+        )}
       </Card>
 
       {/* Nouveau serveur */}
@@ -836,6 +1095,29 @@ export function FleetAdminClient() {
                     orphelin
                   </Badge>
                 ) : null}
+                {s.hold ? (
+                  <Badge
+                    variant="outline"
+                    className="border-red-500/40 text-red-400"
+                    title="exclu des updates en pull"
+                  >
+                    hold
+                  </Badge>
+                ) : null}
+                {s.pinnedImage ? (
+                  <Badge
+                    variant="outline"
+                    className="border-purple-500/40 text-purple-400"
+                    title={`épinglé sur ${s.pinnedImage}`}
+                  >
+                    pin
+                  </Badge>
+                ) : null}
+                {s.channel && s.channel !== "stable" ? (
+                  <Badge variant="outline" className="border-sky-500/40 text-sky-400">
+                    {s.channel}
+                  </Badge>
+                ) : null}
                 {crmUrl ? (
                   <a
                     className="text-sm font-medium text-orange-400 hover:underline"
@@ -886,6 +1168,42 @@ export function FleetAdminClient() {
                   >
                     Ops
                   </Button>
+                  {s.registryId ? (
+                    <>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        title={
+                          s.hold
+                            ? "réintégrer dans les updates en pull"
+                            : "exclure des updates en pull"
+                        }
+                        onClick={() => void serverRollout(s, { hold: !s.hold })}
+                      >
+                        {s.hold ? "Unhold" : "Hold"}
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        title="épingler sur une image (prioritaire sur les releases)"
+                        onClick={() => void pinServer(s)}
+                      >
+                        Pin…
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        title="basculer le canal de release stable/canary"
+                        onClick={() =>
+                          void serverRollout(s, {
+                            channel: s.channel === "canary" ? "stable" : "canary",
+                          })
+                        }
+                      >
+                        {s.channel === "canary" ? "→ stable" : "→ canary"}
+                      </Button>
+                    </>
+                  ) : null}
                   <Button
                     variant="destructive"
                     size="sm"

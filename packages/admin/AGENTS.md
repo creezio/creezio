@@ -35,6 +35,17 @@ Modules natifs des **apps admin de marque** (mode admin — ADR
   (`fleetImageMatchesTarget`). CRUD releases + `PUT servers/<id>/rollout`
   (pin/hold/channel) côté session admin. `publish --release` déclare la
   release (draft). Gate : `scripts/test-phase-fleet-releases.mjs`.
+- Rollout piloté (F6) : cycle draft → `rolling` (canary `wave_pct`) →
+  promotion (vagues MONOTONES : un serveur servi le reste) → `done` ;
+  `paused` (kill-switch doux) / `aborted` (kill-switch définitif) — toute
+  sortie de `rolling` RÉVOQUE les leases de téléchargement, les agents
+  cessent au poll suivant. Garde-fou `autoPauseFleetReleases` : ≥ N échecs
+  (`failed`+`rolled_back`, défaut 2, env `CREEZIO_FLEET_AUTO_PAUSE_FAILURES`)
+  → auto-pause + événement `release_auto_paused`. Janitor
+  `POST maintenance` (purge leases expirées + auto-pause) appelé par
+  `startFleetRegistryPoller` à chaque cycle (opt-out
+  `releasesMaintenance:false`). UI `/flotte` : section « Releases » +
+  hold/pin/canal par serveur. Gate : `scripts/test-phase-fleet-rollout.mjs`.
 - Zéro domaine marque ici : naming (« restaurants »…) = config app admin.
 - UI : `@creezio/admin/ui` (TS brut compilé par l'app Next consommatrice).
 - Migrations : `adminMigrations()` à passer en `brandMigrations` de l'app admin.
