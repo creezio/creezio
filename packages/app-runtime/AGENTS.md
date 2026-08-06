@@ -19,6 +19,15 @@ Toute évolution Meili / HTTP kernel / session IPC se fait **ici** (ou dans
 - `handleMcpJsonRpcRequest` / `isJsonRpcBody` — pont JSON-RPC 2.0 stateless
   sur `/mcp` (client MCP natif Hermes, `mcp_servers` + `skip_preflight`) ;
   le transport JSON legacy est conservé pour les corps sans `jsonrpc`.
+- `startFleetHeartbeat` / `createFleetAccessMount` — auto-inscription flotte
+  (F3) : register + heartbeat vers la DB centrale admin (module
+  `fleet-registry` @creezio/admin) si `CREEZIO_FLEET_ADMIN_URL` +
+  `CREEZIO_FLEET_REGISTER_SECRET` posés (no-op sinon, best-effort absolu) ;
+  état local `{dataDir}/{brand}-fleet.json` 0600 (serverKey + hash de
+  l'accessToken, jamais de clair) ; consultation admin → instance sur
+  `/api/v1/platform/fleet-access/status|logs|ops` (Bearer accessToken).
+  Branché dans le harness serveur (profil full). Gate :
+  `test-phase-fleet-heartbeat.mjs`.
 
 ## Défauts plug-and-play (kit)
 

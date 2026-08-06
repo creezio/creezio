@@ -49,6 +49,11 @@ import {
   runHarnessTunnelPhase,
 } from "./harness-server-phases.js";
 import {
+  createFleetAccessMount,
+  startFleetHeartbeat,
+  type FleetHeartbeatHandle,
+} from "./fleet-heartbeat.js";
+import {
   mountBrandPlatformSurface,
   platformSurfaceHandlesPath,
   type BrandPlatformSurface,
@@ -734,9 +739,73 @@ export async function startBrandKernelHarness(
     });
   }
 
+  // Auto-inscription flotte + heartbeat (F3) — no-op sans
+  // CREEZIO_FLEET_ADMIN_URL / CREEZIO_FLEET_REGISTER_SECRET ; best-effort
+  // absolu (un admin down ne touche jamais le boot). Routes de consultation
+  // admin → instance : /api/v1/platform/fleet-access/* (Bearer accessToken).
+  let fleetHeartbeat: FleetHeartbeatHandle | null = null;
+  if (desktopProfile === "full") {
+    try {
+      api.registerPlatformApi(
+        "fleet-access",
+        createFleetAccessMount({
+          brandId: config.brandId,
+          dataDir,
+          getVersion: () => readAppVersion(config.appRoot),
+          getBootStatus: () => boot.model(),
+        }),
+      );
+      fleetHeartbeat = startFleetHeartbeat({
+        brandId: config.brandId,
+        dataDir,
+        getVersion: () => readAppVersion(config.appRoot),
+        getBootStatus: () => {
+          const m = boot.model() as {
+            booting?: boolean;
+            headline?: string | null;
+          };
+          return { booting: m.booting, headline: m.headline ?? null };
+        },
+        getHealth: () => {
+          const m = boot.model() as {
+            booting?: boolean;
+            steps?: Array<{ status?: string }>;
+          };
+          if (m.booting) return "booting";
+          return (m.steps || []).some((s) => s.status === "error")
+            ? "degraded"
+            : "ok";
+        },
+        getServerUrl: () => {
+          try {
+            const pub = brandOs?.hostRuntime
+              .tunnelService()
+              .publicUrlForServer();
+            if (pub && /^https:\/\//.test(pub)) return pub;
+          } catch {
+            /* tunnel non composé */
+          }
+          return httpServer.baseUrl;
+        },
+        log: phaseLog("fleet-heartbeat"),
+      });
+      if (fleetHeartbeat) {
+        console.log(
+          `brand-kernel-harness heartbeat flotte actif (état ${fleetHeartbeat.stateFile})`,
+        );
+      }
+    } catch (err) {
+      // Jamais bloquant pour le boot.
+      console.warn(
+        `[fleet-heartbeat] init: ${err instanceof Error ? err.message : String(err)}`,
+      );
+    }
+  }
+
   boot.complete(`Serveur ${config.brandId} prêt`);
 
   const close = async () => {
+    fleetHeartbeat?.stop();
     fleetPhase?.stop();
     await pluginsPhase?.close();
     if (brandOs) {

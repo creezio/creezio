@@ -11,6 +11,16 @@ export type {
 export { startBrandDesktop } from "./start-brand-desktop.js";
 export { startBrandKernelHarness } from "./start-brand-kernel-harness.js";
 export {
+  createFleetAccessMount,
+  fleetStateFilePath,
+  readFleetState,
+  startFleetHeartbeat,
+  type FleetAccessMountOptions,
+  type FleetHeartbeatHandle,
+  type FleetHeartbeatState,
+  type StartFleetHeartbeatConfig,
+} from "./fleet-heartbeat.js";
+export {
   createBrandKernel,
   brandKernelBooter,
   type CreateBrandKernelOptions,

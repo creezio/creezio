@@ -180,9 +180,10 @@ Instances nommées (registre docker-data/servers.json — recommandé) :
     --profile prod : serveur flotte — CREEZIO_NATIVE_WARM=1 + CREEZIO_CATALOG=1
                 + forward env hôte CREEZIO_TUNNEL_PROVISION_URL/_TOKEN/_SLUG,
                 CREEZIO_FLEET_ENDPOINT, CREEZIO_CRASH_ENDPOINT, CREEZIO_PLUGINS,
-                EMAIL_INBOUND_SECRET, OPENAI_API_KEY, ANTHROPIC_API_KEY
-                (uniquement s'ils sont posés — aucun DNS/collector activé
-                par défaut)
+                EMAIL_INBOUND_SECRET, OPENAI_API_KEY, ANTHROPIC_API_KEY,
+                CREEZIO_FLEET_ADMIN_URL/_REGISTER_SECRET/_HOST_ID
+                (auto-inscription flotte ; uniquement s'ils sont posés —
+                aucun DNS/collector activé par défaut)
   creezio server-docker start  <nom> --brand-root <app>
   creezio server-docker stop   <nom> --brand-root <app>
   creezio server-docker rm     <nom> --brand-root <app> [--purge-data]
@@ -1957,6 +1958,11 @@ async function runRegistrySubcommand(
         // marque, jamais inventée : forward uniquement si posée sur l'hôte.
         "OPENAI_API_KEY",
         "ANTHROPIC_API_KEY",
+        // Auto-inscription flotte (F3) : le serveur se déclare tout seul
+        // dans la DB centrale de l'app admin (register + heartbeat).
+        "CREEZIO_FLEET_ADMIN_URL",
+        "CREEZIO_FLEET_REGISTER_SECRET",
+        "CREEZIO_FLEET_HOST_ID",
       ]) {
         const v = (env[key] || "").trim() || (brandDotEnv[key] || "").trim();
         if (v) extraEnv[key] = v;
