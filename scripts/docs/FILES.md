@@ -173,6 +173,7 @@
 | [`test-phase-registry-pull-proxy.mjs`](../test-phase-registry-pull-proxy.mjs) | Gate — exposition du registre Docker en pull authentifié (F4). |
 | [`test-phase-resolve-manifest.mjs`](../test-phase-resolve-manifest.mjs) | Gate resolveManifest — registre + fallback app-manifest.json (from-prd). |
 | [`test-phase-server-docker.mjs`](../test-phase-server-docker.mjs) | Gate — artefacts docker/server + CLI creezio server-docker. |
+| [`test-phase-single-data-plane.mjs`](../test-phase-single-data-plane.mjs) | (à documenter) |
 | [`test-phase-v1.mjs`](../test-phase-v1.mjs) | Phase V1 — fabrique plugins conversationnelle (demobrand E2E). |
 | [`test-phase-v2.mjs`](../test-phase-v2.mjs) | Phase V2 — observabilité native (activité, usages plugins, control-plane). |
 | [`test-phase-v3.mjs`](../test-phase-v3.mjs) | Phase V3 — automations data-driven (triggers lifecycle / données). |

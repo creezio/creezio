@@ -222,6 +222,9 @@ export async function startBrandKernelHarness(
   const { api, runtime, close: closeKernel, mails } = kernelBoot;
   // Inbox Hono + getKitMailsStore (bindings marque / SMTP) partagent core.db.
   process.env.CREEZIO_CORE_DB_PATH = runtime.paths.core;
+  // Plan de données unique (ADR-single-data-plane) : le plane UI Next lit
+  // brand.db via cet env — parité startBrandDesktop.
+  process.env.CREEZIO_BRAND_DB_PATH = runtime.paths.brand;
   boot.done("migrations", "Base de données prête");
 
   // OS marque AVANT la surface plateforme : composeBrandOs garantit un
