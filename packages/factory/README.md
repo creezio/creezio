@@ -41,6 +41,24 @@ creezio server-docker proof --brand-root "$BRAND_ROOT"
 Image générique + Compose multi-instances (`server-1` / `server-2`) —
 SoT dans `docker/server/` (sans Electron/AppImage). Voir `docker/server/README.md`.
 
+`server-docker publish` pousse une image versionnée au registre privé
+(rétention auto) ; `publish --release` déclare en plus la release (status
+`draft`) dans l'app admin de la marque (`--admin-app <url>` ou env
+`CREEZIO_FLEET_ADMIN_URL`, `--channel stable` par défaut) pour le
+déploiement flotte en pull — voir la skill
+[creezio-fleet-ops §4b](../../.cursor/skills/creezio-fleet-ops/SKILL.md).
+
+### Templates plugins (`templates/plugins/`)
+
+Plugins **génériques kit** prêts à installer dans toute marque (seed
+`<appRoot>/plugins/` ou install control plane). Exemple vivant :
+`insights-assistant` (synthèse IA des modules découverts via
+`/api/v1/core/architecture` — zéro métier marque, permissions
+`crm:read`+`llm:use`, DB cache `data/plugin.sqlite`). La factory les copie
+via `src/plugin-templates.ts`. Gate E2E :
+`scripts/test-phase-plugin-insights.mjs`. Guide auteur :
+[CREATE-PLUGIN](../../docs/agents/CREATE-PLUGIN.md).
+
 ## Options
 
 | Option | Description |

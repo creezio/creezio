@@ -23,6 +23,11 @@ vérifiées sur le VPS TempoFlow.
 4. **Publier une image, updater, rollback** — `server-docker publish --tag`,
    registre `127.0.0.1:5000`, update admin async (202 + `update-status`),
    backup + rollback auto
+4b. **Déployer sur toute la flotte (releases pull)** — `publish --release`
+   (draft), registre pull-only `registry.{zone}`, cycle
+   draft → rolling (canary `wave_pct`) → done, kill-switch
+   `paused`/`aborted`, hold/pin/canal par serveur, auto-pause sur échecs —
+   ADR [adr/ADR-fleet-updates-docker-images.md](./adr/ADR-fleet-updates-docker-images.md)
 5. **Admin flotte** — `admin up --admin-root …`, `server-admin.json` /
    `fleet-hosts.json`, Basic auth, `admin.tempoflow.fr`
 6. **Agent hôte + enrôlement VPS** — `agent up`, enrollToken one-shot,

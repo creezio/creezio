@@ -92,6 +92,32 @@ Gates : `scripts/test-phase-harness-parity.mjs` (kit, hermétique) et
 d'héritage). Matrice historique du chantier :
 [docs/archive/PARITE-TF2.md](../../docs/archive/PARITE-TF2.md).
 
+## Updates de flotte (essentiel — détail dans la skill)
+
+Deux gestes, tous deux avec backup `/data` + healthcheck + rollback auto :
+
+```bash
+# Unitaire (push manuel via le backend admin — 202 + polling update-status) :
+creezio server-docker publish --brand-root "$BRAND_ROOT" --tag 0.3.0 --registry 127.0.0.1:5000
+curl -sS -u "admin:$ADMPASS" -X POST \
+  http://127.0.0.1:18800/admin/api/servers/<brandId>/<nom>/update \
+  -H 'content-type: application/json' \
+  -d '{"image":"127.0.0.1:5000/creezio-server-<brandId>:0.3.0"}'
+
+# Toute la flotte (releases en PULL — les agents hôtes pollent l'app admin) :
+CREEZIO_FLEET_ADMIN_URL=http://127.0.0.1:18801 \
+creezio server-docker publish --brand-root "$BRAND_ROOT" \
+  --tag 0.3.0 --registry 127.0.0.1:5000 --release
+# puis rollout draft → rolling (canary wave_pct) → done ; kill-switch
+# paused/aborted ; hold/pin/canal par serveur — module fleet-releases de
+# l'app admin, images pullées via registry.{zone} (proxy pull-only).
+```
+
+Pourquoi des images et jamais git-pull chez les clients :
+[ADR-fleet-updates-docker-images](../../docs/adr/ADR-fleet-updates-docker-images.md).
+Pas-à-pas complet (commandes vérifiées) : skill
+[creezio-fleet-ops](../../.cursor/skills/creezio-fleet-ops/SKILL.md) §4 et §4b.
+
 ## Admin web multi-serveurs
 
 ```bash

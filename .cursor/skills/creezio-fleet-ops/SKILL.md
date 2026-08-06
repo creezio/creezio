@@ -28,6 +28,7 @@ Ports : auto 18790+n, bind `127.0.0.1` (exposition = `--expose`).
 | Créer un compte owner/user sans UI | 2 |
 | Me connecter / vérifier un compte | 3 |
 | Publier une image, updater, rollback | 4 |
+| Déployer sur toute la flotte (releases pull, canary, kill-switch) | 4b |
 | Lancer l'admin flotte | 5 |
 | Enrôler un VPS (agent hôte) | 6 |
 | Builder / publier le client desktop | 7 |
@@ -220,6 +221,80 @@ KO. Rollback manuel = re-POST update avec le tag précédent.
 **Pièges** : update synchrone interdit — Cloudflare coupe les requêtes
 longues, d'où le contrat 202 + polling `update-status`. Registre requis
 (`--registry` ou env), sinon erreur explicite.
+
+## 4b. Déployer sur toute la flotte — releases en PULL (F4-F6)
+
+**Objectif** : déployer une version sur N serveurs répartis sur plusieurs
+VPS, sans geste par serveur ni push admin → agent : les agents hôtes
+**pollent** l'app admin (~5 min + jitter) et appliquent eux-mêmes
+(`updateServer` local : backup/recreate/rollback intacts).
+
+```bash
+# 1. Publier ET déclarer la release (status draft) dans l'app admin :
+CREEZIO_FLEET_ADMIN_URL=http://127.0.0.1:18801 \
+creezio server-docker publish --brand-root "$BRAND_ROOT" \
+  --tag 0.3.0 --registry 127.0.0.1:5000 \
+  --release [--channel stable] [--admin-app <url>]
+# → image pullable via registry.{zone} (proxy pull-only F4)
+
+# 2. Démarrer le rollout (canary 10 %) — session admin app (cookie §3
+#    sur :18801) ou UI /flotte section « Releases » :
+curl -sS http://127.0.0.1:18801/api/v1/modules/fleet-releases/releases \
+  -H "cookie: $ADMIN_COOKIE"                          # lister → id
+curl -sS -X PUT http://127.0.0.1:18801/api/v1/modules/fleet-releases/releases/<id> \
+  -H "cookie: $ADMIN_COOKIE" -H 'content-type: application/json' \
+  -d '{"status":"rolling","wave_pct":10}'
+# 3. Promouvoir par vagues (monotones : un serveur servi le reste servi) :
+#    wave_pct 25 → 50 → 100, puis {"status":"done"}.
+
+# Kill-switch :
+#   {"status":"paused"}   # doux — reprise possible (re-rolling)
+#   {"status":"aborted"}  # définitif — toute sortie de rolling RÉVOQUE les
+#                         # leases de téléchargement, les agents cessent au
+#                         # poll suivant
+
+# Par serveur (hold / pin / canal) :
+curl -sS -X PUT http://127.0.0.1:18801/api/v1/modules/fleet-releases/servers/<serverId>/rollout \
+  -H "cookie: $ADMIN_COOKIE" -H 'content-type: application/json' \
+  -d '{"hold":true}'          # ou {"pinned_image":"…"} / {"channel":"beta"}
+```
+
+**Vérification** : `GET /api/v1/modules/fleet-releases` (releases + états),
+rapports `admin_fleet_update_reports` (done|failed|rolled_back par
+serveur) ; côté serveur : `curl http://127.0.0.1:<port>/api/v1/core/version`.
+
+**Directives** (`GET next?hostId=` calculé par serveur) : `hold` → jamais
+d'update ; `pinned_image` → cible prioritaire ; sinon release `rolling` ∧
+channel du serveur ∧ vague (`hash(server_id) mod 100 < wave_pct`, bucket
+stable). Slots de téléchargement = sémaphore (lease TTL 15 min) pour ne pas
+saturer le registre. Garde-fou : ≥ 2 échecs (`failed`+`rolled_back`,
+`CREEZIO_FLEET_AUTO_PAUSE_FAILURES`) → **auto-pause** + événement
+`release_auto_paused` (janitor appelé par le poller du registre).
+
+**Registre d'images pull-only (F4)** : l'ingress `registry.{zone}`
+(tunnel-provisioner `kind=registry`) pointe sur le proxy `/v2/*` du backend
+admin — GET/HEAD uniquement (push → 405, le push reste loopback
+`127.0.0.1:5000`), auth Basic `hostId:agentToken` (credential d'enrôlement,
+aucun nouveau cycle de vie). Les VPS distants pullent
+`registry.{zone}/creezio-server-<brand>:<tag>`.
+
+**Opt-in agent** : posé par `enroll` (`CREEZIO_AGENT_ADMIN_URL` +
+`CREEZIO_AGENT_FLEET_KEY`) — sans ces env, l'agent ne polle pas et le push
+manuel (§4) reste le seul geste.
+
+**Vérité** : `packages/admin/src/fleet-releases.ts` (module, tables
+`admin_005`), `packages/observability/fleet-collector/agent-updates.mjs`
+(boucle agent), `registry-pull-proxy.mjs` (F4),
+`packages/factory/src/server-docker-cli.ts` (`publish --release`). Gates :
+`test-phase-fleet-releases.mjs`, `test-phase-fleet-rollout.mjs`,
+`test-phase-registry-pull-proxy.mjs`.
+
+**Pièges** : le geste manuel §4 et la boucle pull partagent le mutex
+`updates` par container (pas de conflit, mais pas de parallélisme non
+plus) ; une release sans digest est pullée par tag (préférer le digest —
+posé automatiquement par `publish --release`) ; ADR du choix « images
+Docker, jamais git-pull sur les VPS clients » :
+`docs/adr/ADR-fleet-updates-docker-images.md`.
 
 ## 5. Admin flotte
 
@@ -693,6 +768,6 @@ curl -sS http://127.0.0.1:18791/api/v1/os/boot-status | head -c 200
 
 ## Ressources
 
-- Doc serveur Docker : `docker/server/README.md` (+ `REMOTE-ACCESS.md`, `PARITE-TF2.md`)
+- Doc serveur Docker : `docker/server/README.md` (+ `REMOTE-ACCESS.md` ; historique parité : `docs/archive/PARITE-TF2.md`)
 - Admin : `docker/server-admin/README.md` · Provisioner : `docker/tunnel-provisioner/README.md`
 - Miroir doc : `docs/RUNBOOK-FLOTTE.md`

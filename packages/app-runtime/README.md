@@ -50,6 +50,36 @@ await startBrandDesktop({
 - **Env utiles** : `CREEZIO_HTTP_HOST=0.0.0.0` (Docker), `CREEZIO_NATIVE_WARM=0`,
   `CREEZIO_DESKTOP_SHELL=window`, `CREEZIO_BROWSER_PROXY`.
 
+## Hermes « cerveau unique » — endpoint `/mcp` (câblé prod)
+
+Le endpoint `/mcp` servi par `listen-brand-os-http.ts` accepte **deux
+transports** sur la même URL (desktop ET harness Docker) :
+
+- transport JSON simple historique (`{ok, tools}` / `{name, arguments}`)
+  — conservé pour les clients existants ;
+- **JSON-RPC 2.0 stateless** (`mcp-jsonrpc.ts`) : seuls les corps portant
+  `jsonrpc:"2.0"` passent par ce pont (`initialize`, `tools/list`,
+  `tools/call`, `ping`) — c'est ce que parle le client MCP natif de Hermes
+  (Streamable HTTP, `skip_preflight: true`).
+
+`hermes-mcp-host-tools.ts` branche sur la façade MCP les tools host tasks
+(`create_ai_task`, `get_ai_run_logs`…) + workspace (`workspace.*`,
+`platform.ask_human` — `@creezio/tasks`). Décision d'acteur : façade
+`allowUnauthenticated`, les tools qui agissent portent leur gate ; la clé
+CRM service Hermes (`user_id NULL` + scopes `full`) est vérifiée contre la
+table `api_keys` et **mappée owner** — une clé restreinte n'est PAS mappée
+(fail-closed). Gate : `scripts/test-phase-hermes-mcp.mjs`.
+
+## Plugins (câblé prod — desktop et harness)
+
+- `plugin-seed.ts` : seed des plugins embarqués marque
+  (`<appRoot>/plugins/` → `<userData>/plugins/`, idempotent) ;
+- `plugin-proxy-mount.ts` : `/api/v1/plugins/<id>/*` → sidecar loopback ;
+- `plugin-tools-discovery.ts` : tools MCP `plugin.<id>.*` ;
+- `plugin-acl-wiring.ts` : ACL Product Hub fail-closed sur la façade.
+
+Guide auteur : [CREATE-PLUGIN](../../docs/agents/CREATE-PLUGIN.md).
+
 ## Liens
 
 - [AGENTS.md](./AGENTS.md)

@@ -342,6 +342,29 @@ repli des majuscules accentuées latines. `dbLayer: "brand"` par défaut.
 
 Gate : `scripts/test-phase-api-entity-mount.mjs`.
 
+**Câblé en prod** : TF3 déclare ses entités CRUD via `registerEntityMounts`
+(`server/src/electron/brand-module-api.ts`). Différences avec le
+`createEntityMount` historique TF3 (remplacé) : le moteur kit valide les
+identifiants SQL à la création du mount, passe toutes les valeurs en
+paramètres liés, ajoute `enum`/`filterable`/`defaultLimit`/`orderBy`
+déclaratifs et les hooks async — la parité de comportement (dont « enums
+validées avant le check d'existence » en PATCH) est verrouillée par la gate.
+
+### Modèle d'auth des mounts (à connaître)
+
+Le kernel ne porte **aucune primitive session/actor** pour les mounts :
+`/api/v1/modules/*` et `/api/v1/platform/*` répondent à quiconque atteint la
+surface HTTP (posture historique loopback-first — le desktop et le harness
+écoutent en loopback, l'auth session vit dans les surfaces plateforme
+`@creezio/auth` / `mount-brand-platform-surface`). Sur un serveur exposé par
+tunnel public, les mounts modules sont donc atteignables sans session :
+c'est une dette documentée (constat F3, posture préexistante) — voir
+[docs/BACKLOG.md](../../docs/BACKLOG.md) « Mounts modules sans session
+HTTP ». Un mount qui traite des données sensibles doit porter sa propre
+garde (Bearer, secret signé), comme `fleet-registry`
+(`register`/`heartbeat`) et `fleet-releases` (`@creezio/admin`), ou les
+webhooks signés billing.
+
 ### Adaptateur Hono
 
 ```ts

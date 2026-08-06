@@ -7,10 +7,13 @@ en service.
 
 ## Principe
 
-| Service | Port local | Auth intégrée |
-|---------|-----------|----------------|
-| Serveur marque (CRM + API) | `127.0.0.1:1879x` (registre `docker-data/servers.json`) | Login CRM (session OS) |
-| Creezio Server Admin | `127.0.0.1:18800` | Basic auth (`docker-data/server-admin.json`) |
+| Service | Port local | Auth intégrée | Exposition nominale |
+|---------|-----------|----------------|---------------------|
+| Serveur marque (CRM + API) | `127.0.0.1:1879x` (registre `docker-data/servers.json`) | Login CRM (session OS) | Tunnel `{slug}.{zone}` (provisioner) ou NPM |
+| Backend flotte (`creezio-server-admin`) | `127.0.0.1:18800` | Basic auth (`docker-data/server-admin.json`) | Loopback (l'app admin proxifie par-dessus) |
+| App admin de marque | `127.0.0.1:18801` | Login CRM (session OS) | Tunnel `admin.{zone}` |
+| Agent hôte (`creezio-host-agent`) | `127.0.0.1:18810` (+ `172.17.0.1`) | Bearer agentToken | Tunnel `agent.{slug}.{zone}` (enroll) |
+| Registre d'images (pull-only) | proxy `/v2/*` du backend admin | Basic `hostId:agentToken` | Tunnel `registry.{zone}` — push loopback `127.0.0.1:5000` uniquement |
 
 Vérifier le mode réseau de NPM :
 

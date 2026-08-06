@@ -107,8 +107,35 @@ ex. `/opt/docker/tempoflow-admin/server-admin.json`) ; la config runtime
 (gitignoré). `admin add-brand <racine>` ajoute une marque et recrée le
 container. Auth Basic (`CREEZIO_ADMIN_PASS`). Le chemin legacy
 `{brandRoot}/admin/server-admin.json` reste lu (dual-read) mais n'est plus
-généré. Cible v2 : cette console devient le module « Flotte » de l'app admin
-(voir [adr/ADR-admin-app-os.md](./adr/ADR-admin-app-os.md)).
+généré. Ce backend reste la **SoT des gestes Docker** ; l'app admin de
+marque (repo `<brand>-admin`) le consomme via son module « Flotte »
+(`@creezio/admin`, proxy `/api/v1/modules/fleet/*`) — voir
+[adr/ADR-admin-app-os.md](./adr/ADR-admin-app-os.md).
+
+## Flotte : registre central + updates en pull
+
+Trois briques, toutes câblées en prod TF3 :
+
+1. **Registre central** (`fleet-registry`, `@creezio/admin`) : la table
+   `admin_fleet_servers` (brand.db de l'app admin) est une vue matérialisée
+   de la flotte — alimentée par l'**auto-inscription** des serveurs au boot
+   (`POST register` + heartbeat ~90 s, `@creezio/app-runtime
+   fleet-heartbeat`), un poller de fond et le sync manuel. Les JSON
+   (`servers.json`, `fleet-hosts.json`) restent la SoT des gestes.
+2. **Registre d'images pull-only** : ingress `registry.{zone}` → proxy
+   `/v2/*` du backend admin (GET/HEAD seulement, auth `hostId:agentToken`) ;
+   le push reste loopback (`creezio server-docker publish`).
+3. **Releases en pull** (`fleet-releases`) : `publish --release` déclare la
+   release ; les agents hôtes (`docker/host-agent`) pollent, prennent un
+   slot, appliquent via leur `updateServer` local (backup/rollback) et
+   rapportent. Rollout draft → rolling (canary/vagues) → done,
+   kill-switch `paused`/`aborted`, hold/pin/canal par serveur, auto-pause
+   sur échecs. Décision « images Docker, jamais git-pull client » :
+   [adr/ADR-fleet-updates-docker-images.md](./adr/ADR-fleet-updates-docker-images.md).
+
+Gestes opérateur : skill
+[creezio-fleet-ops](../.cursor/skills/creezio-fleet-ops/SKILL.md)
+(index humain : [RUNBOOK-FLOTTE.md](./RUNBOOK-FLOTTE.md)).
 
 ## Surfaces UI de l'OS (`os-ui`)
 
@@ -117,6 +144,22 @@ admin, MCP…) que la factory **matérialise** dans l'app Next de chaque marque
 sous forme de wrappers minces (hors périmètre git marque ou en wrappers
 committés selon la marque). La marque ne réécrit jamais ces pages ; elle
 n'ajoute que ses pages métier.
+
+## Plugins & assistant (Hermes)
+
+- **Plugins** : sidecars Node isolés (manifest + permissions + DB propre),
+  proxifiés sous `/api/v1/plugins/<id>/*` et exposés en MCP
+  `plugin.<id>.*` avec ACL Product Hub fail-closed. Seed des plugins
+  embarqués marque au boot ; kill-switch `CREEZIO_PLUGINS=0`. Guide :
+  [agents/CREATE-PLUGIN.md](./agents/CREATE-PLUGIN.md).
+- **Hermes cerveau unique** : l'agent Hermes embarqué parle au CRM via le
+  endpoint `/mcp` du plane OS (pont JSON-RPC 2.0 stateless) avec une clé
+  service mappée owner ; il délègue les « mains » au task runner
+  (`create_ai_task`) et aux verbes workspace (`workspace.*`,
+  `platform.ask_human`) — allowlist `*_WEB_ALLOWED_HOSTS` appliquée en UX
+  (runner) et au niveau exécution (hosts). SoT :
+  `@creezio/app-runtime` (`hermes-mcp-host-tools`), `@creezio/tasks`,
+  `@creezio/platform-core` (`web-allowlist`).
 
 ## Propagation kit → marques
 

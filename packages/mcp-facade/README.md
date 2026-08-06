@@ -363,6 +363,24 @@ import { McpAdminClient } from "@creezio/mcp-facade/ui";
 3. `listTools` applique `publicSurface` pour eviter alias + canonique en double.
 4. `callTool` resout l'alias vers le canonique, verifie le Bearer si necessaire, applique les policies, puis appelle le handler.
 5. Hono `/mcp` construit un serveur SDK, bind la façade, ajoute les host tools et traite le transport Streamable HTTP.
+
+### Les deux transports `/mcp` (câblés prod)
+
+Deux surfaces distinctes servent le MCP d'une app, avec la même façade
+comme SoT des tools :
+
+1. **`/mcp` OAuth Hono** (`src/oauth/hono-app.ts`) — serveur MCP SDK
+   complet : OAuth 2.1/PKCE, clés API, transport Streamable HTTP avec
+   session. C'est la surface publique (clients MCP externes, tunnels).
+2. **`/mcp` du plane OS** (`listen-brand-os-http.ts` +
+   `mcp-jsonrpc.ts`, `@creezio/app-runtime`) — transport JSON simple
+   historique `{ok, tools}` / `{name, arguments}` **et** pont JSON-RPC 2.0
+   stateless sur la même URL (seuls les corps `jsonrpc:"2.0"` passent par
+   le pont) : c'est ce que consomme le client MCP natif de Hermes embarqué
+   (`skip_preflight: true`, sans session).
+
+Ne pas « unifier » ces transports en en supprimant un : les clients
+existants dépendent des deux formes.
 6. OAuth 2.1 gere en amont l'enregistrement client, l'autorisation utilisateur, le token exchange et les refresh tokens.
 7. Les tools host (`open_external_tab`, AI tasks ailleurs) restent dans le host runtime, pas dans la factory metier.
 

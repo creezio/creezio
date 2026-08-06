@@ -56,7 +56,14 @@ Missions principales :
 - `src/env-brand.ts`
   - env marque et env Next.
 - Modules transverses :
-  - `fleet-telemetry.ts`, `recovery-key.ts`, `installer-prefs.ts`, `licensing.ts`, `disk-space.ts`, `ports.ts`, `updater-state.ts`, `factory-reset.ts`, `tunnel-urls.ts`.
+  - `fleet-telemetry.ts`, `recovery-key.ts`, `installer-prefs.ts`, `licensing.ts`, `disk-space.ts`, `ports.ts`, `updater-state.ts`, `factory-reset.ts`, `tunnel-urls.ts` ;
+  - `web-allowlist.ts` : allowlist web des agents IA au niveau **exécution**
+    (union des env `*_WEB_ALLOWED_HOSTS`, refus `web_host_not_allowed`) —
+    câblée prod dans `browser-host` (openTab Chromium serveur) et
+    `electron-shell` (`executeSupplierAction` desktop) ; la garde UX du
+    runner (`aiWebHostAllowed`, `@creezio/tasks`) reste en amont. Aucune
+    variable définie = pas de filtrage. Gate :
+    `scripts/test-phase-hermes-web-allowlist.mjs`.
 
 ## Comment modifier sans casser les marques
 

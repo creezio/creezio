@@ -22,6 +22,15 @@ Ce package est distinct des `PluginTaskRecord` du Product Hub.
 - Gère les runs IA, logs agent, SSE, relance, annulation et human-in-the-loop.
 - Fournit `createTasksHonoRoutes()` et `createTasksApiMount()`.
 - Fournit les tools MCP host `list_ai_collaborators`, `create_ai_task`, `get_ai_task`, `get_ai_run_logs`, `answer_ai_question`.
+- Fournit les tools MCP **workspace** (`mcp-workspace-tools.ts`, câblés prod
+  via `@creezio/app-runtime` — architecture « Hermes cerveau / task runner
+  mains ») : `workspace.open_tab`, `workspace.list_tabs`,
+  `workspace.web_list_targets|click|type|scroll|read|screenshot`
+  (`ai_user_id` obligatoire — l'action s'exécute dans le workspace du
+  collaborateur IA, garde allowlist `*_WEB_ALLOWED_HOSTS` en UX + défense
+  en profondeur host `web_host_not_allowed`), et le HITL asynchrone
+  `platform.ask_human` / `platform.get_human_answer` (tâche kanban + run
+  HITL détaché).
 - Fournit l'adapter assistant `createAssistantTasksAdapter()`.
 
 **Marque**
