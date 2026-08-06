@@ -73,6 +73,15 @@ que le sync, champs FR/EN tolérés).
   `scripts/test-phase-factory-two-repos.mjs` vérifie le wiring
   `createSupportAdminMount` du scaffold admin.
 
+### SUPP-2 — dédoublonnage réponses admin (stratégie)
+
+Après `POST <id>/reply`, une copie locale est écrite (`origine=admin`).
+Si le relais renvoie un `message.id` / `message_id`, il est stocké en
+`remote_id` immédiatement. Sinon `remote_id` reste NULL et le sync
+suivant **rattache** le message exporté marque (même `corps` +
+`origine`) à la copie locale au lieu d'insérer un doublon
+(rapprochement corps+origine, pas de fenêtre temporelle).
+
 ## 10. i18n
 
 Statuts persistés en identifiants FR historiques (`ouvert`, `repondu`,

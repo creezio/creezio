@@ -7,13 +7,13 @@
 - criteres:
   - [ ] un événement sans `id` est aujourd'hui projeté mais absent du journal (pas de dédup possible) : décider journalisation sans dédup ou rejet 400, tracer dans interview.md
 
-### [todo] BILL-2 — MRR : normaliser les abonnements non mensuels
+### [done] BILL-2 — MRR : normaliser les abonnements non mensuels
 - priorite: P3
 - depends: aucune
-- fichiers: packages/admin/src/index.ts
+- fichiers: packages/admin/src/index.ts (`monthlyAmountFromStripePrice`)
 - criteres:
-  - [ ] `montant_mensuel` est pris tel quel depuis `unit_amount` (un plan annuel gonfle le MRR ×12) : lire `price.recurring.interval` et normaliser
-  - [ ] gate admin-billing étendue (cas plan annuel)
+  - [x] `montant_mensuel` normalisé via `price.recurring.interval` (+ `interval_count`)
+  - [x] gate admin-billing étendue (cas plan annuel + trimestre)
 
 ### [todo] BILL-3 — Tableaux `<table>` bruts → data-table kit
 - priorite: P3

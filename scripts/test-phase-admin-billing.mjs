@@ -229,3 +229,85 @@ test("billing admin : webhook signé → projections + overview + réconciliatio
   });
   assert.equal(ov2.body.stats.factures_impayees, 1);
 });
+
+test("billing admin : plan annuel normalisé en MRR mensuel (BILL-2)", async () => {
+  const { monthlyAmountFromStripePrice } = await import(
+    "../packages/admin/dist/index.js"
+  );
+  assert.equal(
+    monthlyAmountFromStripePrice({
+      unit_amount: 4900,
+      recurring: { interval: "month" },
+    }),
+    49,
+  );
+  assert.equal(
+    monthlyAmountFromStripePrice({
+      unit_amount: 58800,
+      recurring: { interval: "year" },
+    }),
+    49,
+    "588 €/an → 49 €/mois",
+  );
+  assert.equal(
+    monthlyAmountFromStripePrice({
+      unit_amount: 14700,
+      recurring: { interval: "month", interval_count: 3 },
+    }),
+    49,
+    "147 € / trimestre → 49 €/mois",
+  );
+
+  const db = makeDb();
+  const webhook = createBillingWebhookMount({ webhookSecret: WHSEC });
+  const evAnnual = {
+    id: "evt_gate_sub_annual",
+    type: "customer.subscription.created",
+    data: {
+      object: {
+        id: "sub_gate_annual",
+        customer: "cus_gate_1",
+        status: "active",
+        current_period_end: EPOCH_NEXT,
+        items: {
+          data: [
+            {
+              price: {
+                nickname: "Pro annuel",
+                unit_amount: 58800,
+                currency: "eur",
+                recurring: { interval: "year", interval_count: 1 },
+              },
+            },
+          ],
+        },
+      },
+    },
+  };
+  // Customer d'abord (FK logique).
+  assert.equal(
+    (await webhook.handle({ req: signedReq(EV_CUSTOMER), subPath: "stripe", db }))
+      .status,
+    200,
+  );
+  assert.equal(
+    (await webhook.handle({ req: signedReq(evAnnual), subPath: "stripe", db }))
+      .status,
+    200,
+  );
+  const sub = db
+    .prepare(
+      `SELECT montant_mensuel FROM admin_billing_subscriptions
+       WHERE stripe_subscription_id = 'sub_gate_annual'`,
+    )
+    .get();
+  assert.equal(sub.montant_mensuel, 49);
+
+  const billing = createBillingAdminMount({});
+  const ov = await billing.handle({
+    req: { method: "GET", query: {}, headers: {} },
+    subPath: "overview",
+    db,
+  });
+  assert.equal(ov.body.stats.mrr, 49);
+});

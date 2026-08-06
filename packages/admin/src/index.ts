@@ -616,6 +616,24 @@ export function createSupportAdminMount(
                 )
                 .get(localId, mRemoteId) as { id: string } | undefined;
               if (mExists) continue;
+              // SUPP-2 — rapprochement copie locale (reply, remote_id NULL)
+              // ↔ message revenu de l'export marque (même corps + origine).
+              const origine = String(m.origine || "client");
+              const corpsMsg = String(m.corps || "");
+              const localTwin = db
+                .prepare(
+                  `SELECT id FROM admin_support_messages
+                   WHERE ticket_id = ? AND remote_id IS NULL
+                     AND origine = ? AND corps = ?
+                   ORDER BY created_at DESC LIMIT 1`,
+                )
+                .get(localId, origine, corpsMsg) as { id: string } | undefined;
+              if (localTwin) {
+                db.prepare(
+                  `UPDATE admin_support_messages SET remote_id = ? WHERE id = ?`,
+                ).run(mRemoteId, localTwin.id);
+                continue;
+              }
               db.prepare(
                 `INSERT INTO admin_support_messages
                  (id, ticket_id, remote_id, created_at, origine, auteur, corps)
@@ -625,9 +643,9 @@ export function createSupportAdminMount(
                 localId,
                 mRemoteId,
                 String(m.created_at || nowIso()),
-                String(m.origine || "client"),
+                origine,
                 m.auteur == null ? null : String(m.auteur),
-                String(m.corps || ""),
+                corpsMsg,
               );
               messages++;
             }
@@ -750,16 +768,35 @@ export function createSupportAdminMount(
           };
         }
         const ts = nowIso();
+        // Preferer le remote_id renvoyé par le relais (évite SUPP-2 au re-sync).
+        const relayMsg = (r.json?.message || r.json?.item || {}) as Record<
+          string,
+          unknown
+        >;
+        const remoteMsgId =
+          relayMsg.id != null
+            ? String(relayMsg.id)
+            : r.json?.message_id != null
+              ? String(r.json.message_id)
+              : null;
         db.prepare(
           `INSERT INTO admin_support_messages
            (id, ticket_id, remote_id, created_at, origine, auteur, corps)
            VALUES (?,?,?,?,?,?,?)`,
-        ).run(newId(), ticket.id, null, ts, "admin", String(body.auteur || "support"), corps);
+        ).run(
+          newId(),
+          ticket.id,
+          remoteMsgId,
+          ts,
+          "admin",
+          String(body.auteur || "support"),
+          corps,
+        );
         db.prepare(
           `UPDATE admin_support_tickets
            SET statut = 'repondu', derniere_reponse = ?, updated_at = ? WHERE id = ?`,
         ).run(ts, ts, ticket.id);
-        return { status: 200, body: { ok: true } };
+        return { status: 200, body: { ok: true, remote_id: remoteMsgId } };
       }
 
       if (parts.length === 2 && parts[1] === "statut" && method === "POST") {
@@ -901,6 +938,39 @@ function projectStripeCustomer(
   return true;
 }
 
+/**
+ * Équivalent mensuel d'un prix Stripe (BILL-2).
+ * `unit_amount` est en centimes ; `recurring.interval` ∈ day|week|month|year.
+ */
+export function monthlyAmountFromStripePrice(
+  price: Record<string, unknown>,
+): number | null {
+  if (price.unit_amount == null) return null;
+  const amount = Number(price.unit_amount) / 100;
+  if (!Number.isFinite(amount)) return null;
+  const recurring = (price.recurring || {}) as Record<string, unknown>;
+  const interval = String(recurring.interval || "month").toLowerCase();
+  const count = Math.max(1, Number(recurring.interval_count) || 1);
+  let perIntervalUnit: number;
+  switch (interval) {
+    case "year":
+      perIntervalUnit = amount / 12;
+      break;
+    case "week":
+      perIntervalUnit = (amount * 52) / 12;
+      break;
+    case "day":
+      perIntervalUnit = (amount * 365.25) / 12;
+      break;
+    case "month":
+    default:
+      perIntervalUnit = amount;
+      break;
+  }
+  const monthly = perIntervalUnit / count;
+  return Math.round(monthly * 100) / 100;
+}
+
 function projectStripeSubscription(
   db: ScopedDbAccess,
   obj: Record<string, unknown>,
@@ -927,8 +997,9 @@ function projectStripeSubscription(
   const items = (obj.items as { data?: Array<Record<string, unknown>> })?.data;
   const price = (items?.[0]?.price || {}) as Record<string, unknown>;
   const plan = String(price.nickname || price.id || "");
-  const montant =
-    price.unit_amount != null ? Number(price.unit_amount) / 100 : null;
+  // BILL-2 — normaliser en équivalent mensuel (un plan annuel ne doit
+  // pas gonfler le MRR ×12).
+  const montant = monthlyAmountFromStripePrice(price);
   const devise = String(price.currency || "eur").toUpperCase();
   const statut = o?.forceCanceled ? "canceled" : String(obj.status || "active");
   // prochaine échéance : current_period_end (epoch s) — au niveau
