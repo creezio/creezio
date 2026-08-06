@@ -57,3 +57,9 @@ export {
   isOwnedByBrand,
   OWNED_BY_BRAND_MARKER,
 } from "./write-app-file.js";
+export {
+  kitPluginTemplatesDir,
+  listKitPluginTemplates,
+  installKitPluginTemplate,
+  type InstallKitPluginTemplateResult,
+} from "./plugin-templates.js";

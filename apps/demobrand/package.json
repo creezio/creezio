@@ -33,7 +33,8 @@
     "@creezio/observability": "0.1.0",
     "@creezio/automations": "0.1.0",
     "@creezio/electron-shell": "0.1.0",
-    "@creezio/desktop-tooling": "0.1.0"
+    "@creezio/desktop-tooling": "0.1.0",
+    "@creezio/factory": "0.1.0"
   },
   "devDependencies": {
     "@types/node": "^22.15.3",

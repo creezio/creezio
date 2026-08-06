@@ -101,6 +101,7 @@ import {
   type McpRegisteredTool,
 } from "@creezio/mcp-facade";
 import { pluginsRootDir } from "@creezio/platform-core";
+import { installKitPluginTemplate } from "@creezio/factory";
 import { demobrandManifest as manifest } from "./app-manifest.js";
 import { createAdminPluginsApiMount } from "./admin-plugins-api.js";
 import { createPluginFactoryApiMount } from "./plugin-factory-api.js";
@@ -472,6 +473,16 @@ export function createDemobrandSandbox(opts?: {
 
   const pluginsDir = pluginsRootDir(userDataRoot);
   fs.mkdirSync(pluginsDir, { recursive: true });
+  // P4 — plugin démo kit « insights-assistant » (template @creezio/factory)
+  // installé automatiquement dans la sandbox (idempotent, non bloquant).
+  try {
+    installKitPluginTemplate({
+      templateId: "insights-assistant",
+      pluginsDir,
+    });
+  } catch {
+    /* template absent (install partielle) — sandbox utilisable sans */
+  }
   const fsAdapters = createFsPluginScaffoldAdapters(pluginsDir);
 
   const sandboxRef: { install?: DemobrandSandbox["installPlugin"] } = {};
