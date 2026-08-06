@@ -15,6 +15,7 @@
 
 import fs from "node:fs";
 import path from "node:path";
+import { moduleTemplateFiles } from "@creezio/brand-spec";
 import type { ProductModel } from "./product-model.js";
 import { scaffoldNewApp } from "./scaffold.js";
 
@@ -594,6 +595,32 @@ export const config = {
 `,
       written,
     );
+  }
+
+  // 4ter. admin-spec/ : specs des modules PROPRES au repo admin (standard
+  // kit DOC-STANDARD-MODULE.md — les modules natifs @creezio/admin ont leurs
+  // specs dans le kit, packages/admin/modules/<id>/).
+  const adminSpecReadme = path.join(outDir, "admin-spec", "README.md");
+  if (!fs.existsSync(adminSpecReadme)) {
+    forceWrite(
+      adminSpecReadme,
+      `# admin-spec — modules propres au repo admin
+
+Specs des modules développés DANS ce repo admin (standard kit
+\`docs/DOC-STANDARD-MODULE.md\`) : un dossier \`modules/<id>/\` par module,
+4 fichiers (\`prd.md\`, \`interview.md\`, \`TODO.md\`, \`CHANGELOG.md\`).
+
+Les modules admin NATIFS (flotte, tickets, prospects, roadmap, billing…)
+sont documentés côté kit dans \`packages/admin/modules/<id>/\` — ne pas les
+dupliquer ici. Scaffold d'un nouveau module :
+\`creezio brand module init <id> --app .\` (détecte \`admin-spec/\`).
+`,
+      written,
+    );
+  }
+  for (const [name, body] of Object.entries(moduleTemplateFiles())) {
+    const dest = path.join(outDir, "admin-spec", "modules", "_template", name);
+    if (!fs.existsSync(dest)) forceWrite(dest, body, written);
   }
 
   // 5. Marqueur mode admin (root package.json).

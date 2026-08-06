@@ -21,10 +21,19 @@ Questions minimales (voir `interview.schema.json`) :
 3. Entités cœur + champs
 4. Flux métier principal (étapes)
 5. Besoins plateforme : Meili / MCP / chat / onboarding
-6. Modules bonus (mini-PRDs sous `modules/<id>/prd.md`)
+6. Modules métier — chaque module = dossier `modules/<id>/` **4 fichiers**
+   (`prd.md`, `interview.md`, `TODO.md`, `CHANGELOG.md`) au standard
+   [DOC-STANDARD-MODULE.md](../DOC-STANDARD-MODULE.md). Scaffold :
+   `creezio brand module init <id> --app <app>`. L'interview de module
+   déclare notamment, pour chaque page UI, les composants du **kit graphique
+   imposé** ([DOC-STANDARD-UI.md](../DOC-STANDARD-UI.md)).
 
 Ne **jamais** demander à l'agent d'implémenter des launchers Meili/n8n/Hermes
 dans la marque.
+
+Travail multi-agents sur les modules : périmètre de fichiers par agent,
+claim des tâches TODO et branches `module/<id>/<tache>` — voir
+[DOC-STANDARD-MODULE.md](../DOC-STANDARD-MODULE.md).
 
 ## 2. Commandes
 

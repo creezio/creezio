@@ -16,6 +16,7 @@
 |---|---|
 | [`src/admin-repo.ts`](../src/admin-repo.ts) | Scaffold du repo ADMIN dédié `<brand>-admin` (app OS complète en mode admin : modules @creezio/admin, landing, compose) — layout 2 repos. |
 | [`src/brand-cli.ts`](../src/brand-cli.ts) | CLI `creezio brand` — init / doctor / apply / smoke sur un `brand-spec/`. |
+| [`src/brand-module-init.ts`](../src/brand-module-init.ts) | (à documenter) |
 | [`src/cli.ts`](../src/cli.ts) | CLI `new-app`, `--from-prd` |
 | [`src/github-repos.ts`](../src/github-repos.ts) | Création + push des 2 repos GitHub privés d'une marque (monorepo + `<brand>-admin`) ; token env `GITHUB_TOKEN`/`CREEZIO_GITHUB_TOKEN` ou `.github-token`, vendor synchronisé AVANT push. |
 | [`src/index.ts`](../src/index.ts) | Exports publics |

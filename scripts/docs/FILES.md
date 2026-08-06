@@ -114,6 +114,7 @@
 | [`test-phase-m9.mjs`](../test-phase-m9.mjs) | !usrbinenv node |
 | [`test-phase-mcp-tool-policy-guard.mjs`](../test-phase-mcp-tool-policy-guard.mjs) | Gate M1-M2 — garde d'enforcement réutilisable des policies MCP admin (`packages/mcp-facade/src/admin/tool-policy-guard.ts`). |
 | [`test-phase-meili-feed.mjs`](../test-phase-meili-feed.mjs) | Gate Phase C — BrandMeiliFeed générique (pas de tf2_* dans le chemin feed). |
+| [`test-phase-module-docs.mjs`](../test-phase-module-docs.mjs) | (à documenter) |
 | [`test-phase-n0.mjs`](../test-phase-n0.mjs) | !usrbinenv node |
 | [`test-phase-n1.mjs`](../test-phase-n1.mjs) | !usrbinenv node |
 | [`test-phase-n1p.mjs`](../test-phase-n1p.mjs) | !usrbinenv node |

@@ -40,12 +40,20 @@ export type BrandCliArgs = {
   push?: boolean;
   noPush?: boolean;
   githubOrg?: string;
+  /** `brand module <action> <id>` — action (init) + id du module. */
+  moduleAction?: string;
+  moduleId?: string;
 };
 
 export function parseBrandArgs(argv: string[]): BrandCliArgs {
   const out: BrandCliArgs = { command: "brand" };
   const rest = [...argv];
   out.sub = rest.shift() || "";
+  if (out.sub === "module") {
+    // Positionnels : `brand module init <id>`.
+    if (rest[0] && !rest[0].startsWith("--")) out.moduleAction = rest.shift();
+    if (rest[0] && !rest[0].startsWith("--")) out.moduleId = rest.shift();
+  }
 
   while (rest.length) {
     const a = rest.shift()!;
@@ -96,6 +104,7 @@ Usage:
   creezio brand apply --spec <brand-spec-dir> --out <app-dir> [--force] [--icons-dir <dir>]
                       [--admin-out <dir>] [--push|--no-push] [--github-org <org>]
   creezio brand apply-modules --spec <brand-spec-dir> --out <app-dir>
+  creezio brand module init <id> [--app <app-dir>] [--force]
   creezio brand smoke --app <app-dir>
 
 Notes:
@@ -103,6 +112,10 @@ Notes:
   - apply réutilise le scaffold --from-prd (ProductModel) + pose brand-spec/
   - Icônes : --icons-dir ou <spec>/icons/{client,server}.png (pas le PNG 1×1)
   - apply-modules inventorie modules/*/prd.md et refuse d'écraser owned-by-brand
+  - module init scaffolde l'unité de travail module (standard
+    DOC-STANDARD-MODULE.md) : spec 4 fichiers (prd/interview/TODO/CHANGELOG),
+    wiring src/electron/modules/<id>.ts, gate scripts/test-module-<id>.mjs,
+    ligne d'import dans le registre modules/index.ts
   - Runtime desktop = @creezio/app-runtime (startBrandDesktop)
 `);
 }
@@ -426,6 +439,28 @@ export async function runBrandCli(argv: string[]): Promise<void> {
     return;
   }
 
+  if (args.sub === "module") {
+    if (args.moduleAction !== "init" || !args.moduleId) {
+      printBrandHelp();
+      throw new Error("usage: creezio brand module init <id> [--app <dir>]");
+    }
+    const { runBrandModuleInit } = await import("./brand-module-init.js");
+    const appDir = path.resolve(args.app || process.cwd());
+    const result = runBrandModuleInit(appDir, args.moduleId, Boolean(args.force));
+    console.log(`✓ brand module init ${args.moduleId}`);
+    console.log(`  spec    ${result.specDir}`);
+    for (const f of result.written) {
+      console.log(`    + ${path.relative(appDir, f)}`);
+    }
+    for (const f of result.skipped) {
+      console.log(`    = ${path.relative(appDir, f)} (existant, non écrasé)`);
+    }
+    console.log("");
+    console.log("Suite: remplir prd.md + interview.md, puis implémenter");
+    console.log("modules/<id>.ts et enrichir la gate test-module-<id>.mjs.");
+    return;
+  }
+
   if (args.sub === "smoke") {
     const appDir = resolveAppServerDir(path.resolve(args.app || process.cwd()));
     const smoke = path.join(appDir, "scripts/test-metier-parcours.mjs");
@@ -453,6 +488,6 @@ export async function runBrandCli(argv: string[]): Promise<void> {
   }
 
   throw new Error(
-    `Sous-commande brand inconnue: ${args.sub} (init|doctor|apply|apply-modules|smoke)`,
+    `Sous-commande brand inconnue: ${args.sub} (init|doctor|apply|apply-modules|module|smoke)`,
   );
 }

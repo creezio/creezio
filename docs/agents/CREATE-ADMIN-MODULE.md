@@ -9,6 +9,17 @@ gère l'entreprise de la marque — ADR
 Un module admin = **kit** (package `@creezio/admin`, zéro domaine marque)
 consommé par l'app admin de chaque marque (repo `<brand>-admin`).
 
+## 0. Spec 4 fichiers (standard module)
+
+Chaque module admin natif a son dossier spec `packages/admin/modules/<id>/`
+(`prd.md`, `interview.md`, `TODO.md`, `CHANGELOG.md`) — contrat
+[DOC-STANDARD-MODULE.md](../DOC-STANDARD-MODULE.md), vérifié par la gate
+`test-phase-module-docs`. Un module **propre à un repo admin** (pas kit) vit
+dans `<brand>-admin/admin-spec/modules/<id>/` — scaffold :
+`creezio brand module init <id> --app <brand>-admin` (détecte `admin-spec/`).
+Remplir prd + interview AVANT d'implémenter ; claim des tâches TODO dans le
+même commit que la première modif.
+
 ## Patron en 4 pièces
 
 ### 1. Migration `admin_00X`
@@ -81,6 +92,10 @@ repo `tempoflow-admin`.
 
 ## Checklist finale
 
+- [ ] Spec 4 fichiers `packages/admin/modules/<id>/` remplie (gate
+      `test-phase-module-docs` verte)
+- [ ] UI composée des composants du kit graphique
+      ([DOC-STANDARD-UI.md](../DOC-STANDARD-UI.md))
 - [ ] Migration `admin_00X` ajoutée à `adminMigrations()` (id stable)
 - [ ] Mount enregistré dans `registerAdminModules` + posture d'auth choisie
 - [ ] UI dans `packages/admin/ui/` + export `ui/index.ts`

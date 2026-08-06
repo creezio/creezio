@@ -18,7 +18,13 @@ export {
   doctorAppBrandSpec,
   formatDoctorReport,
 } from "./doctor.js";
-export { initBrandSpec, type InitBrandSpecOptions } from "./init.js";
+export {
+  initBrandSpec,
+  moduleTemplateFiles,
+  renderModuleSpecFiles,
+  MODULE_SPEC_FILES,
+  type InitBrandSpecOptions,
+} from "./init.js";
 export {
   resolveOnboardingDecl,
   toSetupWizardConfig,

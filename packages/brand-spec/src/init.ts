@@ -192,25 +192,192 @@ spaces:
   - module
   - plugin
 `,
-  "modules/_template/prd.md": `# Module {{moduleId}}
+  // Standard module (4 fichiers) — contrat kit docs/DOC-STANDARD-MODULE.md.
+  "modules/_template/prd.md": `# Module {{moduleId}} — <titre>
 
-## Intention
+## Vision
+
+(à remplir — pourquoi ce module existe, pour qui)
+
+## Utilisateurs & parcours
 
 (à remplir)
 
-## Entités
+## Capacités (fonctionnel)
 
-(à remplir)
+(à remplir — liste des capacités observables)
+
+## Modèle de données
+
+(schémas complets : colonnes, types, contraintes, défauts — copie du SQL des
+migrations)
 
 ## API
 
-CRUD sous \`/api/v1/modules/{{moduleId}}\`
+(endpoints exhaustifs : méthode, chemin, params query/body, comportement des
+hooks, codes d'erreur — routes CRUD générées par EntitySpec incluses)
 
 ## UI
 
-Page liste + détail
+(pages + composants du kit graphique utilisés — voir DOC-STANDARD-UI.md)
+
+## Tools MCP
+
+(noms, schémas d'entrée, scopes, policies — « Aucun » sinon)
+
+## Logique métier non triviale
+
+(formules, scores, algorithmes décrits en clair — « Aucune » sinon)
+
+## Seeds & données initiales
+
+Aucun
+
+## Cas limites & règles de gestion
+
+(à remplir)
+
+## Hors périmètre
+
+(à remplir)
+`,
+  "modules/_template/interview.md": `# Interview module {{moduleId}}
+
+Questionnaire d'architecture REMPLI — SoT des décisions du module
+(standard kit docs/DOC-STANDARD-MODULE.md).
+
+## 1. Identité & pages
+
+- id : \`{{moduleId}}\`
+- titre :
+- routes UI :
+- entrée(s) de nav (id, label, href, order) :
+- permission nav :
+
+## 2. Données & migrations
+
+- tables (schéma complet) :
+- index :
+- IDs de migration : \`mod_{{moduleId}}_00N_<slug>\` — jamais renuméroter une
+  migration appliquée ; migrations cross-module interdites.
+
+## 3. API
+
+- EntitySpec \`createEntityApiMount\` (défaut CRUD) ou mount manuscrit
+  (justifier) :
+- hooks / extraRoutes / mounts additionnels :
+- wiring : \`server/src/electron/modules/{{moduleId}}.ts\` (BrandModuleDef)
+
+## 4. UI, nav & permissions — kit graphique imposé
+
+Pour CHAQUE page : composants du kit utilisés (voir DOC-STANDARD-UI.md).
+Pas de style ad hoc, pas de lib UI tierce, pas de fork des primitives.
+
+### Page /{{moduleId}}
+
+- gabarit :
+- liste :
+- formulaires :
+
+## 5. Tools MCP & policies
+
+- tools \`module.<owner>.*\` (readOnly/destructive hints, requiredScope,
+  rôles par défaut) :
+
+## 6. Rôles & permissions
+
+## 7. Meili / n8n / plugins
+
+Aucun
+
+## 8. Seeds & onboarding
+
+Aucun
+
+## 9. Gates de validation
+
+- gate : \`scripts/test-module-{{moduleId}}.mjs\` — prouve : migration
+  appliquée, CRUD HTTP, cas métier des hooks, tools MCP répondants.
+
+## 10. i18n
+
+- libellés UI en français (convention marque)
+`,
+  "modules/_template/TODO.md": `# TODO — {{moduleId}}
+
+Format normé (parsé par la gate module-docs) :
+\`### [todo|in-progress|blocked|done] <ID> — titre\`.
+Claim : passage \`[todo]\` → \`[in-progress]\` + ligne
+\`- claim: <agent> <YYYY-MM-DD>\` dans le même commit que la première modif.
+
+## Milestone M1 — squelette
+
+### [todo] {{moduleTodoPrefix}}-1 — Implémenter le module
+- priorite: P1
+- depends: aucune
+- fichiers: server/src/electron/modules/{{moduleId}}.ts
+- criteres:
+  - [ ] migration appliquée
+  - [ ] gate test-module-{{moduleId}} verte
+`,
+  "modules/_template/CHANGELOG.md": `# CHANGELOG — {{moduleId}}
+
+Une entrée datée par livraison (merge sur main), la plus récente en haut.
+Format : \`## YYYY-MM-DD — <ID> — titre\` + ligne \`- gate: <preuve>\`.
 `,
 };
+
+/** Noms des 4 fichiers du standard module (docs/DOC-STANDARD-MODULE.md). */
+export const MODULE_SPEC_FILES = [
+  "prd.md",
+  "interview.md",
+  "TODO.md",
+  "CHANGELOG.md",
+] as const;
+
+/**
+ * Templates bruts des 4 fichiers (placeholders `{{moduleId}}` intacts) —
+ * pour poser `modules/_template/` dans un spec (brand-spec ou admin-spec).
+ */
+export function moduleTemplateFiles(): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const name of MODULE_SPEC_FILES) {
+    const tplName = `modules/_template/${name}`;
+    const src = path.join(kitTemplatesDir(), tplName);
+    out[name] = fs.existsSync(src)
+      ? fs.readFileSync(src, "utf8")
+      : FALLBACK_TEMPLATES[tplName] || "";
+  }
+  return out;
+}
+
+/**
+ * Rend les 4 fichiers spec d'un module concret (templates `modules/_template`
+ * avec variables substituées) — utilisé par `creezio brand module init`.
+ */
+export function renderModuleSpecFiles(
+  moduleId: string,
+): Record<string, string> {
+  const prefix =
+    moduleId.replace(/[^a-z0-9]/gi, "").slice(0, 6).toUpperCase() || "MOD";
+  const vars: Record<string, string> = {
+    moduleId,
+    moduleTodoPrefix: prefix,
+  };
+  const out: Record<string, string> = {};
+  for (const name of MODULE_SPEC_FILES) {
+    const tplName = `modules/_template/${name}`;
+    const src = path.join(kitTemplatesDir(), tplName);
+    let body = fs.existsSync(src)
+      ? fs.readFileSync(src, "utf8")
+      : FALLBACK_TEMPLATES[tplName] || "";
+    for (const [k, v] of Object.entries(vars)) {
+      body = body.split(`{{${k}}}`).join(v);
+    }
+    out[name] = body;
+  }
+  return out;
+}
 
 /**
  * Initialise un dossier brand-spec/ pour une nouvelle marque.
@@ -230,7 +397,8 @@ export function initBrandSpec(opts: InitBrandSpecOptions): {
     tagline: opts.tagline || `${opts.brandName} — métier sur OS Creezio`,
     vertical,
     meiliPreset: vertical === "chr" ? "chr-catalog" : "none",
-    moduleId: "exemple",
+    // NB: pas de moduleId ici — les placeholders {{moduleId}} des fichiers
+    // modules/_template/* restent intacts (substitués par `brand module init`).
   };
 
   const written: string[] = [];
@@ -243,6 +411,9 @@ export function initBrandSpec(opts: InitBrandSpecOptions): {
     ["platform/meili.yaml", "platform/meili.yaml"],
     ["platform/mcp.yaml", "platform/mcp.yaml"],
     ["modules/_template/prd.md", "modules/_template/prd.md"],
+    ["modules/_template/interview.md", "modules/_template/interview.md"],
+    ["modules/_template/TODO.md", "modules/_template/TODO.md"],
+    ["modules/_template/CHANGELOG.md", "modules/_template/CHANGELOG.md"],
   ];
 
   for (const [tpl, rel] of files) {
