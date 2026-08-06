@@ -217,6 +217,7 @@ export function renderUiPackageJson(_manifest: AppManifest): string {
         dependencies: {
           "@creezio/os-ui": "file:../vendor/creezio/os-ui",
           "@creezio/shell-ui": "file:../vendor/creezio/shell-ui",
+          "@creezio/support": "file:../vendor/creezio/support",
           "@creezio/assistant": "file:../vendor/creezio/assistant",
           "@creezio/mails": "file:../vendor/creezio/mails",
           "@creezio/tasks": "file:../vendor/creezio/tasks",

@@ -29,7 +29,7 @@ import {
   renderCreezioCliProxyMjs,
 } from "./generators/server-docker-scripts.js";
 import { renderEnsureLinuxIconsMjs } from "./generators/index.js";
-import { scaffoldAdminRepo } from "./admin-repo.js";
+import { scaffoldAdminApp } from "./admin-repo.js";
 
 export type NewAppOptions = {
   brandId: string;
@@ -52,6 +52,11 @@ export type NewAppOptions = {
   defaultServerUrl?: string;
   /** Dossier du repo admin dédié (défaut : `<outDir>-admin`). */
   adminOut?: string;
+  /**
+   * Interne : ce scaffold EST l'app admin d'une marque (appel depuis
+   * scaffoldAdminApp) — ne pas générer récursivement un repo admin.
+   */
+  adminApp?: boolean;
 };
 
 export type ScaffoldResult = {
@@ -1475,15 +1480,19 @@ export function scaffoldNewApp(opts: NewAppOptions): ScaffoldResult {
   );
   writeBrandIcons(clientDir, outDir, opts, force, written);
 
-  /* ── Repo ADMIN dédié (pilotage flotte multi-VPS, hors monorepo) ──── */
-  const adminRepo = scaffoldAdminRepo({
-    outDir: adminDir,
-    brandId: manifest.brandId,
-    productName: manifest.client.productName,
-    domain: manifest.tunnelRootDomain || manifest.domains.primary,
-    force,
-  });
-  written.push(...adminRepo.writtenFiles);
+  /* ── Repo ADMIN dédié (app OS mode admin + config flotte, hors monorepo) ── */
+  let adminFiles: string[] = [];
+  if (!opts.adminApp) {
+    const adminRepo = scaffoldAdminApp({
+      outDir: adminDir,
+      brandId: manifest.brandId,
+      productName: manifest.client.productName,
+      domain: manifest.tunnelRootDomain || manifest.domains.primary,
+      force,
+    });
+    adminFiles = adminRepo.writtenFiles;
+    written.push(...adminRepo.writtenFiles);
+  }
 
   /* ── Configs electron-builder par livrable ────────────────────────── */
   const base = JSON.parse(
@@ -1567,7 +1576,7 @@ export function scaffoldNewApp(opts: NewAppOptions): ScaffoldResult {
     serverDir,
     clientDir,
     adminDir,
-    adminFiles: adminRepo.writtenFiles,
+    adminFiles,
     manifest,
     writtenFiles: written,
     productModel: opts.productModel,

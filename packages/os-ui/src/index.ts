@@ -15,6 +15,7 @@ export const OS_UI_ROUTE_SEGMENTS = [
   "server-cockpit",
   "settings",
   "setup",
+  "support",
   "taches",
 ] as const;
 

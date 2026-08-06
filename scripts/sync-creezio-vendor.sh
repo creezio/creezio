@@ -40,6 +40,7 @@ DEFAULT_PACKAGES=(
   mails
   observability
   admin
+  support
   browser-host
   automations
   database

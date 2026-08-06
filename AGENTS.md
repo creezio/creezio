@@ -75,7 +75,7 @@ Voir `package.json` script `build:packages`. Ordre typique :
 
 `brand-config` → `shell` → `platform-core` → `product-hub` → `api-kernel` →
 `mcp-facade` → `auth` → `shell-ui` → `os-ui` → `onboarding` → `cockpit` →
-`assistant` → `tasks` → `mails` → `observability` → `admin` → `automations` →
+`assistant` → `tasks` → `mails` → `support` → `observability` → `admin` → `automations` →
 `database` → `browser-host` → `electron-shell` → `brand-spec` →
 `app-runtime` → `desktop-tooling` → `factory` → `propagation` → `build:cjs`.
 
@@ -100,6 +100,7 @@ resync vendor (`scripts/sync-creezio-vendor.sh` côté marque, `CREEZIO_KIT_ROOT
 | Chat / Hermes Work / tools | `assistant` |
 | Kanban / AI missions | `tasks` |
 | Inbox mails | `mails` |
+| Tickets support serveur marque (page `/support`) | `support` |
 | Ops / fleet / analytics / request-logs | `observability` |
 | Modules apps admin de marque (fleet/support/prospection/roadmap/billing) | `admin` |
 | Automations lifecycle plugins/org | `automations` |

@@ -15,6 +15,7 @@
     { "path": "../assistant" },
     { "path": "../tasks" },
     { "path": "../mails" },
+    { "path": "../support" },
     { "path": "../api-kernel" },
     { "path": "../platform-core" },
     { "path": "../browser-host" }

@@ -77,13 +77,32 @@ Package natif kit, présent sur **tous les serveurs marque** :
   les platform services (comme tasks/mails).
 - Page OS `/support` (wrapper os-ui) : l'admin d'un serveur (ex. le
   restaurateur) ouvre un ticket, suit les réponses.
-- **Transport** : l'admin de marque **initie tous les appels** (modèle flotte
-  existant — jamais de push serveur → admin). Le host-agent (déjà présent sur
-  chaque VPS, Bearer token) expose `GET/POST /agent/api/support/*` qui
-  proxifie vers l'instance locale (`127.0.0.1:<port>`) ; le module `support`
-  de l'app admin agrège en pollant les hôtes enrôlés via le backend flotte.
+- **Transport** (implémenté) : l'admin de marque **initie tous les appels**
+  (modèle flotte existant — jamais de push serveur → admin). Chemins :
+  - Instance : mount natif `platform-support`
+    (`/api/v1/platform/platform-support/*`, `create-brand-kernel.ts`).
+  - Host-agent (Bearer) : `/agent/api/servers/:brand/:name/support[/*]` →
+    relais loopback `127.0.0.1:<port>` (`proxyInstanceSupport`).
+  - Backend flotte (Basic) : `/admin/api/servers/:b/:n/support[/*]` (local)
+    et `/admin/api/hosts/:h/servers/:b/:n/support[/*]` (proxy agent générique).
+  - App admin : module `support` (`@creezio/admin`) — `POST sync` (pull toute
+    la flotte, upsert `admin_support_tickets` + `admin_support_messages`),
+    `POST <id>/reply` (relais réponse : le client la voit sur `/support`),
+    propagation statut best-effort.
   Pas de nouveau service, pas de nouveau canal réseau : tunnels + tokens
   agents existants.
+
+### 5bis. Billing Stripe (implémenté — webhook)
+
+- Endpoint `POST /api/v1/modules/billing-webhook/stripe` (app admin) — auth
+  par **signature Stripe** (`stripe-signature`, HMAC-SHA256 sur corps brut,
+  `verifyStripeSignature` sans dépendance SDK ; `rawBody` ajouté au contrat
+  `ApiRequest` de l'api-kernel).
+- Secrets : `STRIPE_WEBHOOK_SECRET` / `STRIPE_API_KEY` via env `.env`
+  gitignoré de l'app admin.
+- Projections idempotentes (journal `admin_billing_events`, dédup id Stripe) :
+  customers / subscriptions / invoices → tables `admin_billing_*`,
+  rapprochées flotte via `host_id`/`server_name` des customers.
 
 ### 6. Migration sans régression (TempoFlow)
 

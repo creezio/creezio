@@ -20,6 +20,12 @@ export type ApiRequest = {
   path: string;
   headers?: Record<string, string | string[] | undefined>;
   body?: unknown;
+  /**
+   * Corps brut (UTF-8) tel que reçu sur le fil — requis pour vérifier les
+   * signatures HMAC de webhooks (ex. Stripe) où le JSON re-sérialisé ne
+   * correspond pas à l'octet près. Renseigné par l'adaptateur HTTP.
+   */
+  rawBody?: string;
   query?: Record<string, string | string[] | undefined>;
 };
 

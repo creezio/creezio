@@ -961,6 +961,9 @@ export async function listenBrandOsHttp(opts: {
         method: req.method || "GET",
         path: pathname,
         body,
+        ...(hasBody && rawBody.length
+          ? { rawBody: rawBody.toString("utf8") }
+          : {}),
         query,
         headers: req.headers as Record<
           string,

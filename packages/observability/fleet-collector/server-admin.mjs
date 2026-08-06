@@ -51,6 +51,7 @@ import {
   findInstance,
   instanceDataDirAbs,
   newToken,
+  proxyInstanceSupport,
   readJson,
   readOpsEvents,
   saveRegistry,
@@ -727,6 +728,40 @@ async function handleAdmin(req, res, url) {
     const handled = await handleHostsRoute(req, res, url);
     if (handled !== null) return handled;
     return send(res, 404, { ok: false });
+  }
+
+  // /admin/api/servers/<brandId>/<name>/support[/*] — relais vers le mount
+  // support natif d'une instance LOCALE (les hôtes distants passent par le
+  // proxy /admin/api/hosts/<id>/servers/…/support → agent).
+  const mSupport = p.match(
+    /^\/admin\/api\/servers\/([^/]+)\/([^/]+)\/support(\/.*)?$/,
+  );
+  if (mSupport) {
+    const brandId = decodeURIComponent(mSupport[1]);
+    const name = decodeURIComponent(mSupport[2]);
+    const found = findInstance(BRAND_ROOTS, brandId, name);
+    if (!found) return send(res, 404, { ok: false, error: "instance inconnue" });
+    let body = null;
+    if (req.method === "POST") {
+      try {
+        const raw = await readBody(req);
+        body = raw ? JSON.parse(raw) : {};
+      } catch {
+        return send(res, 400, { ok: false, error: "json" });
+      }
+    }
+    try {
+      const r = await proxyInstanceSupport(
+        found.inst,
+        req.method,
+        mSupport[3] || "",
+        url.search || "",
+        body,
+      );
+      return send(res, r.status || 502, r.json ?? { ok: false });
+    } catch (e) {
+      return send(res, 502, { ok: false, error: String(e?.message || e) });
+    }
   }
 
   // /admin/api/servers/<brandId>/<name>[/<action>] — serveurs locaux.

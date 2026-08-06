@@ -30,6 +30,7 @@ const PACKAGES = [
   "mails",
   "observability",
   "admin",
+  "support",
   "automations",
   "database",
   "browser-host",

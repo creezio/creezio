@@ -33,6 +33,10 @@ import {
   createSqliteMailsStore,
   type SqliteMailsStore,
 } from "@creezio/mails";
+import {
+  SUPPORT_CORE_SQL,
+  createSupportServerMount,
+} from "@creezio/support";
 import type { BrandKernelHandle } from "./types.js";
 
 export type CreateBrandKernelOptions = {
@@ -62,6 +66,7 @@ function platformExtras(): SqliteMigration[] {
     { id: "app_runtime_001_assistant", sql: ASSISTANT_CORE_SQL },
     { id: "app_runtime_002_tasks", sql: PLATFORM_TASKS_CORE_SQL },
     { id: "app_runtime_003_mails", sql: PLATFORM_MAILS_CORE_SQL },
+    { id: "app_runtime_004_support", sql: SUPPORT_CORE_SQL },
   ];
 }
 
@@ -83,6 +88,8 @@ function mountPlatformServices(
 
   api.registerPlatformApi("platform-tasks", createTasksApiMount(tasks));
   api.registerPlatformApi("platform-mails", createMailsApiMount(mails));
+  // Support natif : tickets du détenteur du serveur, pull par l'admin marque.
+  api.registerPlatformApi("platform-support", createSupportServerMount());
 
   return { tasks, mails, assistant };
 }

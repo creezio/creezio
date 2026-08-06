@@ -1,7 +1,7 @@
 {
   "name": "@creezio/app-runtime",
   "version": "0.1.0",
-  "description": "Façade runtime marque — startBrandDesktop / startBrandKernelHarness (orchestration OS)",
+  "description": "Fa\u00e7ade runtime marque \u2014 startBrandDesktop / startBrandKernelHarness (orchestration OS)",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -31,6 +31,7 @@
     "@creezio/observability": "0.1.0",
     "@creezio/platform-core": "0.1.0",
     "@creezio/shell-ui": "0.1.0",
+    "@creezio/support": "0.1.0",
     "@creezio/tasks": "0.1.0",
     "hono": "^4.12.33"
   },

@@ -35,6 +35,7 @@ import {
   createServer,
   fetchJson,
   findInstance,
+  proxyInstanceSupport,
   instanceDataDirAbs,
   loadRegistry,
   readJson,
@@ -332,6 +333,39 @@ async function handle(req, res) {
 
   if (req.method === "GET" && p === "/agent/api/disk") {
     return send(res, 200, buildDiskReport(BRAND_ROOTS));
+  }
+
+  // /agent/api/servers/<brandId>/<name>/support[/*] → relais vers le mount
+  // support natif de l'instance (GET liste/export, POST reply/statut…).
+  const mSupport = p.match(
+    /^\/agent\/api\/servers\/([^/]+)\/([^/]+)\/support(\/.*)?$/,
+  );
+  if (mSupport) {
+    const brandId = decodeURIComponent(mSupport[1]);
+    const name = decodeURIComponent(mSupport[2]);
+    const found = findInstance(BRAND_ROOTS, brandId, name);
+    if (!found) return send(res, 404, { ok: false, error: "instance inconnue" });
+    let body = null;
+    if (req.method === "POST") {
+      try {
+        const raw = await readBody(req);
+        body = raw ? JSON.parse(raw) : {};
+      } catch {
+        return send(res, 400, { ok: false, error: "json" });
+      }
+    }
+    try {
+      const r = await proxyInstanceSupport(
+        found.inst,
+        req.method,
+        mSupport[3] || "",
+        url.search || "",
+        body,
+      );
+      return send(res, r.status || 502, r.json ?? { ok: false });
+    } catch (e) {
+      return send(res, 502, { ok: false, error: String(e?.message || e) });
+    }
   }
 
   // /agent/api/servers/<brandId>/<name>[/<action>]

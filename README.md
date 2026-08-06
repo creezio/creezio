@@ -92,6 +92,7 @@ partagés à la racine) **et** un repo admin dédié privé `<brand>-admin`
 | `assistant` | Chat / Hermes Work / tools IA |
 | `tasks` | Kanban + missions IA |
 | `mails` | Inbox mails |
+| `support` | Tickets support serveur marque (page `/support` + export admin) |
 | `observability` | Ops, fleet, analytics, request-logs |
 | `admin` | Modules natifs des apps admin de marque (fleet, support, prospection, roadmap, billing) |
 | `automations` | Lifecycle automations plugins/org |

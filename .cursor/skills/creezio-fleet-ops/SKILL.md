@@ -249,6 +249,37 @@ marque).
 **Vérité** : `packages/observability/fleet-collector/server-admin.mjs`,
 `docker/server-admin/README.md`, repo `creezio/tempoflow-admin`.
 
+### 5b. Support E2E (serveur marque → admin → réponse)
+
+Chaîne : page OS `/support` du serveur marque (mount natif
+`platform-support`, `@creezio/support`) → host-agent
+`/agent/api/servers/:b/:n/support[/*]` → backend flotte
+`/admin/api/(hosts/:h/)servers/:b/:n/support[/*]` → app admin module
+`support` (`/tickets`, sync pull + réponse).
+
+```bash
+# Ticket côté serveur marque (ou via l'UI /support du client) :
+curl -sS -X POST http://127.0.0.1:<port>/api/v1/platform/platform-support \
+  -H 'content-type: application/json' -d '{"sujet":"…","corps":"…"}'
+
+# Sync + lecture côté app admin (module support) :
+curl -sS -X POST http://127.0.0.1:18801/api/v1/modules/support/sync
+curl -sS http://127.0.0.1:18801/api/v1/modules/support
+# Réponse admin (relayée au serveur marque — visible sur /support client) :
+curl -sS -X POST http://127.0.0.1:18801/api/v1/modules/support/<id>/reply \
+  -H 'content-type: application/json' -d '{"corps":"…"}'
+```
+
+### 5c. Billing Stripe (app admin)
+
+Endpoint signé : `POST /api/v1/modules/billing-webhook/stripe` — configurer
+`STRIPE_WEBHOOK_SECRET` (env `.env` gitignoré de l'app admin, injecté au
+container) et pointer le webhook Stripe sur
+`https://admin.{zone}/api/v1/modules/billing-webhook/stripe`. Projections :
+`admin_billing_customers|subscriptions|invoices` (+ journal
+`admin_billing_events`, dédup id). Test sans clé : payload signé à la main
+(HMAC-SHA256 `t=…` — voir `verifyStripeSignature` dans `@creezio/admin`).
+
 ## 6. Agent hôte + enrôlement d'un VPS
 
 **Objectif** : un VPS distant piloté par l'admin (create/update/logs à

@@ -90,11 +90,55 @@ test("factory 2-repos : monorepo + repo admin dédié (sans réseau)", () => {
       /--admin-root \.\.\/proofbrand-admin/,
     );
 
-    // README admin : commandes exploitation (enroll, publish, update).
+    // README admin : app OS + exploitation flotte.
     const readme = fs.readFileSync(path.join(adminDir, "README.md"), "utf8");
-    assert.match(readme, /server-docker enroll/);
-    assert.match(readme, /server-docker publish/);
     assert.match(readme, /admin\.proofbrand\.example/);
+    assert.match(readme, /ADR-admin-app-os/);
+    assert.match(readme, /billing-webhook\/stripe/);
+
+    // Repo admin = app OS Creezio COMPLÈTE en mode admin (ADR-admin-app-os).
+    for (const f of [
+      "server/package.json",
+      "server/src/electron/main.ts",
+      "server/src/electron/brand-module-api.ts",
+      "server/src/electron/brand-migrations.ts",
+      "server/scripts/brand-kernel-harness.mjs",
+      "server/ui/app/flotte/page.tsx",
+      "server/ui/app/tickets/page.tsx",
+      "server/ui/app/prospects/page.tsx",
+      "client/package.json",
+    ]) {
+      assert.ok(
+        fs.existsSync(path.join(adminDir, f)),
+        `app OS admin: ${f}`,
+      );
+    }
+    const adminApi = fs.readFileSync(
+      path.join(adminDir, "server/src/electron/brand-module-api.ts"),
+      "utf8",
+    );
+    assert.match(adminApi, /createFleetAdminMount/);
+    assert.match(adminApi, /createSupportAdminMount/);
+    assert.match(adminApi, /createBillingWebhookMount/);
+    const adminMig = fs.readFileSync(
+      path.join(adminDir, "server/src/electron/brand-migrations.ts"),
+      "utf8",
+    );
+    assert.match(adminMig, /adminMigrations\(\)/);
+    const adminRootPkg = JSON.parse(
+      fs.readFileSync(path.join(adminDir, "package.json"), "utf8"),
+    );
+    assert.equal(adminRootPkg.creezio?.appMode, "admin");
+    const flottePage = fs.readFileSync(
+      path.join(adminDir, "server/ui/app/flotte/page.tsx"),
+      "utf8",
+    );
+    assert.match(flottePage, /FleetAdminClient/);
+    const prospectsPage = fs.readFileSync(
+      path.join(adminDir, "server/ui/app/prospects/page.tsx"),
+      "utf8",
+    );
+    assert.match(prospectsPage, /ProspectsKanbanClient/);
   } finally {
     fs.rmSync(tmp, { recursive: true, force: true });
     fs.rmSync(`${appDir}-admin`, { recursive: true, force: true });

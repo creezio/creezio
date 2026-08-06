@@ -126,6 +126,26 @@ export function instanceImage(registry, inst) {
   return inst.image || registry.image;
 }
 
+/**
+ * Proxy vers le mount support natif d'une instance (loopback uniquement).
+ * Utilisé par host-agent et server-admin — l'admin de marque pull les
+ * tickets / pousse les réponses via ce relais (jamais de push instance→admin).
+ */
+export async function proxyInstanceSupport(inst, method, restPath, search, body) {
+  const target =
+    `http://127.0.0.1:${inst.port}/api/v1/platform/platform-support` +
+    `${restPath || ""}${search || ""}`;
+  return fetchJson(target, 5000, {
+    method,
+    ...(body != null
+      ? {
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify(body),
+        }
+      : {}),
+  });
+}
+
 export function findInstance(brandRoots, brandId, name) {
   for (const brandRoot of brandRoots) {
     const registry = loadRegistry(brandRoot);

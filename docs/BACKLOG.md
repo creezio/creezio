@@ -65,25 +65,26 @@ affaibli pour la masquer. (Backlogs d'époque : `docs/archive/BACKLOG-*.md`.)
 
 ## Admin app OS (ADR-admin-app-os) — suites
 
-- **`@creezio/support` côté serveur marque** : table `support_tickets` +
-  page OS `/support` (restaurateur) + route host-agent
-  `/agent/api/support/*` + sync pull du module admin `support` (aujourd'hui :
-  admin-side prêt — mount `support` + ingest + UI `/tickets` dans l'app
-  admin ; le flux E2E serveur marque → admin reste à câbler).
-- **Billing Stripe** : modèle posé (`admin_billing_*`, rapprochement
-  client ↔ serveur ↔ abonnement, mounts `billing-*`) — brancher Stripe
-  (webhooks → projection locale) derrière la config marque + UI dédiée
-  (aujourd'hui : page Clients générée = fiche client/plan/rattachement).
-- **Factory : générer le repo admin en app OS complète** : `scaffoldAdminRepo`
-  génère aujourd'hui le repo config flotte (server-admin.json…) ; cible =
-  scaffolder aussi l'app admin (server/ + modules @creezio/admin + pages),
-  sur le modèle appliqué à `creezio/tempoflow-admin`.
+- ~~`@creezio/support` côté serveur marque~~ **fait** : package
+  `@creezio/support` (mount natif `platform-support` via app-runtime, page OS
+  `/support`, routes agent/backend `…/servers/:b/:n/support[/*]`, sync pull +
+  réponse admin dans `@creezio/admin`).
+- ~~Billing Stripe (webhook)~~ **fait** : endpoint signé
+  `/api/v1/modules/billing-webhook/stripe` → projections `admin_billing_*`
+  (journal `admin_billing_events`). Reste : UI billing dédiée (au-delà de la
+  page Clients générée) + réconciliation active via `STRIPE_API_KEY`
+  (aujourd'hui : projection passive par webhooks).
+- ~~Factory : repo admin en app OS complète~~ **fait** : `scaffoldAdminApp`
+  (modules natifs flotte/support/prospects kanban/roadmap/billing) — gate
+  `test-phase-factory-two-repos.mjs`.
+- ~~Prospection kanban drag & drop~~ **fait** : `ProspectsKanbanClient`
+  (`@creezio/admin/ui`, DnD HTML5 natif, PATCH colonne/position).
 - **Fleet natif TS** : porter la logique `server-lib.mjs`/`admin-docker.mjs`
   dans `@creezio/admin` pour supprimer le hop HTTP interne (le backend
   flotte HTTP reste pour les host-agents).
-- **Prospection kanban drag & drop** : la page Prospects générée est une
-  table CRUD ; le kanban colonne (`colonne`/`position`) est prévu dans le
-  schéma — UI kanban à écrire dans `@creezio/admin/ui`.
+- **Rôles/permissions mode admin** : rôles dédiés (community manager,
+  comptable…) sur le système de comptes kit — aujourd'hui multi-comptes
+  standard sans permissions par module.
 
 ## Documentation
 
