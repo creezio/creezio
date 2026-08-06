@@ -10,6 +10,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
+import { ensureBrandPackageLocks } from "./package-lock.js";
 import { ensureBrandVendorSynced } from "./vendor-sync.js";
 
 export type GithubRepoSpec = {
@@ -215,6 +216,17 @@ export async function maybePushBrandRepos(
   // (pré-buildé, commité). À la génération le vendor est vide (rempli lazy
   // par server-docker build) — sync canonique AVANT le push initial.
   ensureBrandVendorSynced(o.outDir, { log });
+  // Lockfiles cohérents AVANT push : sans ça, `npm ci` / `docker:build`
+  // échouent sur une marque neuve (agents qui régénèrent à la main + cassent
+  // le symlink server/node_modules). Mode lock-only = pas de node_modules
+  // commité (gitignore).
+  const locks = ensureBrandPackageLocks(o.outDir, {
+    mode: "lock-only",
+    log,
+  });
+  if (locks.refreshed.length) {
+    log(`✓ package-lock régénéré : ${locks.refreshed.join(", ")}`);
+  }
   return createBrandGithubRepos({
     org,
     token,

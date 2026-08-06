@@ -41,6 +41,11 @@ export {
   type CreateRepoResult,
 } from "./github-repos.js";
 export {
+  isPackageLockInSync,
+  ensureBrandPackageLocks,
+  type PkgJson,
+} from "./package-lock.js";
+export {
   loadServerRegistry,
   saveServerRegistry,
   allocateServerPort,

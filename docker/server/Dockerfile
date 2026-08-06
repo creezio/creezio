@@ -38,10 +38,17 @@ WORKDIR /app
 # Deps du livrable serveur (file:vendor/creezio/* → symlink vers /app/vendor)
 COPY ${SERVER_DIR}/package.json ${SERVER_DIR}/package-lock.json ./server-deps/
 COPY vendor ./vendor
-# electron est en devDependencies — omit=dev = image serveur sans GUI
+# electron est en devDependencies — omit=dev = image serveur sans GUI.
+# Fallback npm install si lock stale (marque neuve / sync vendor sans
+# relock) : évite la boucle agents « régénère lock → casse symlink nm ».
+# Le CLI `creezio server-docker build` régénère le lock en amont ; ce
+# fallback couvre `npm run docker:build` (clone autonome sans kit).
 RUN ln -sfn ../vendor ./server-deps/vendor \
   && cd server-deps \
-  && npm ci --omit=dev \
+  && if ! npm ci --omit=dev; then \
+       echo "⚠ package-lock incohérent avec package.json — fallback npm install --omit=dev" >&2; \
+       npm install --omit=dev --no-audit --no-fund; \
+     fi \
   && npm rebuild better-sqlite3
 
 # Meilisearch Linux embarqué — recherche réelle (plus de sql-fallback).

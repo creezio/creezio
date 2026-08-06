@@ -182,6 +182,12 @@ test("kit : artefacts distribution autonome (SoT docker/server/)", () => {
     "utf8",
   );
   assert.match(gh, /ensureBrandVendorSynced/, "push GitHub sans sync vendor préalable");
+  // + package-lock cohérents (sinon npm ci / docker:build rouge sur marque neuve).
+  assert.match(
+    gh,
+    /ensureBrandPackageLocks/,
+    "push GitHub sans génération package-lock (Docker npm ci cassé)",
+  );
 });
 
 test("factory : new-app génère une app avec artefacts clone autonome", () => {

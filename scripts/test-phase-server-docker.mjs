@@ -50,6 +50,11 @@ test("docker/server artefacts présents", () => {
   assert.match(df, /CREEZIO_BROWSER_SIDECAR=1/);
   assert.match(df, /CREEZIO_CHROMIUM_BIN=\/usr\/bin\/chromium/);
   assert.match(df, /CREEZIO_BROWSER_DATA_DIR=\/data\/browser/);
+  // Lock stale marque neuve : npm ci puis fallback install (clone autonome
+  // via docker:build sans passer par ensureBrandStandalone).
+  assert.match(df, /npm ci --omit=dev/);
+  assert.match(df, /npm install --omit=dev/);
+  assert.match(df, /package-lock incohérent/);
   // Pas de domaine marque dans l'image générique.
   assert.doesNotMatch(df, /TF3_|TEMPOFLOW|CERTIVAN|FIDU/);
   const compose = fs.readFileSync(

@@ -23,6 +23,10 @@ import {
   validInstanceName,
   type ServerRegistryInstance,
 } from "./server-docker-registry.js";
+import {
+  ensureBrandPackageLocks,
+  isPackageLockInSync,
+} from "./package-lock.js";
 
 export type ServerDockerArgs = {
   sub: string;
@@ -679,8 +683,12 @@ export function writeServerDesktopShortcuts(opts: {
 /**
  * App standalone dockerisable — répare automatiquement une app factory
  * fraîche (hors workspace kit) : deps `@creezio/*` → `file:vendor/creezio/*`,
- * sync vendor depuis le kit, `npm install` (node_modules + package-lock,
- * requis par le `npm ci` de l'image).
+ * sync vendor depuis le kit, `npm install` (node_modules + package-lock
+ * cohérent, requis par le `npm ci` de l'image).
+ *
+ * Ne PAS « corriger » un lock Docker à la main dans server/ : ça casse le
+ * symlink monorepo `server/node_modules` → `../node_modules`. Passer par
+ * cette fonction (via `creezio server-docker build|create`).
  */
 function ensureBrandStandalone(brandRoot: string, kit: string): void {
   const serverDir = resolveBrandServerDir(brandRoot);
@@ -770,12 +778,15 @@ function ensureBrandStandalone(brandRoot: string, kit: string): void {
     fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + "\n");
     console.log("package.json : deps @creezio/* → file:vendor/creezio/*");
   }
-  if (
-    !fs.existsSync(path.join(serverDir, "node_modules")) ||
-    !fs.existsSync(path.join(serverDir, "package-lock.json")) ||
-    rewrote
-  ) {
-    console.log("npm install (node_modules + package-lock)…");
+  const lockOk = isPackageLockInSync(pkgPath);
+  if (rewrote || !lockOk) {
+    console.log(
+      "package-lock incohérent/absent — régénération (évite l'échec npm ci Docker)…",
+    );
+    // Régénère server (+ ui/client si besoin) ; mode install = node_modules host.
+    ensureBrandPackageLocks(brandRoot, { mode: "install" });
+  } else if (!fs.existsSync(path.join(serverDir, "node_modules"))) {
+    console.log("npm install (node_modules, lock déjà cohérent)…");
     run("npm", ["install", "--no-audit", "--no-fund"], process.env, {
       cwd: serverDir,
     });

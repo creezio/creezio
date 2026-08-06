@@ -19,6 +19,11 @@ CRM web Next) via Docker, multi-instances, sans AppImage/Electron.
 - Committer secrets tunnel/catalog dans compose ou `.env` versionné.
 - Dupliquer l'orchestration OS : le CMD doit rester le harness marque →
   `startBrandKernelHarness`.
+- Régénérer un `package-lock` Docker à la main dans `server/` puis
+  « remonter » `node_modules` à la racine : casse le symlink monorepo et
+  relance la boucle `npm ci` rouge. Utiliser `creezio server-docker build`
+  / `create` (`ensureBrandPackageLocks`) ; le Dockerfile retombe sur
+  `npm install --omit=dev` si le lock est stale.
 
 ## Points d'entrée
 
