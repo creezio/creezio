@@ -1,6 +1,7 @@
 # TODO — fleet
 
 ### [todo] FLEET-1 — Gate kit dédiée au proxy fleet
+- scope: HORS-SCOPE — évolution/refactor/UI/décision : NE PAS réaliser sans demande explicite du propriétaire (l'app est considérée fonctionnelle telle quelle)
 - priorite: P2
 - depends: aucune
 - fichiers: scripts/test-phase-admin-fleet-proxy.mjs (à créer), packages/admin/src/index.ts
@@ -10,6 +11,7 @@
   - [ ] gate référencée dans scripts/README.md et verte dans npm run test:kit
 
 ### [todo] FLEET-2 — Remplacer prompt/confirm/alert par les primitives dialog du kit
+- scope: HORS-SCOPE — évolution/refactor/UI/décision : NE PAS réaliser sans demande explicite du propriétaire (l'app est considérée fonctionnelle telle quelle)
 - priorite: P3
 - depends: aucune
 - fichiers: packages/admin/ui/fleet-admin-client.tsx
@@ -19,6 +21,7 @@
   - [ ] gate test-phase-fleet-rollout (assertions UI) toujours verte
 
 ### [todo] FLEET-3 — `<select>` marque du formulaire création → primitive `select` kit
+- scope: HORS-SCOPE — évolution/refactor/UI/décision : NE PAS réaliser sans demande explicite du propriétaire (l'app est considérée fonctionnelle telle quelle)
 - priorite: P3
 - depends: aucune
 - fichiers: packages/admin/ui/fleet-admin-client.tsx

@@ -1,6 +1,7 @@
 # TODO — fleet-registry
 
 ### [todo] FREG-1 — Événement `heartbeat_lost` jamais émis
+- scope: HORS-SCOPE — évolution/refactor/UI/décision : NE PAS réaliser sans demande explicite du propriétaire (l'app est considérée fonctionnelle telle quelle)
 - priorite: P3
 - depends: aucune
 - fichiers: packages/admin/src/fleet-registry.ts
@@ -9,6 +10,7 @@
   - [ ] gate test-phase-admin-fleet-registry verte
 
 ### [todo] FREG-2 — Rate-limit register partagé multi-process
+- scope: HORS-SCOPE — évolution/refactor/UI/décision : NE PAS réaliser sans demande explicite du propriétaire (l'app est considérée fonctionnelle telle quelle)
 - priorite: P3
 - depends: aucune
 - fichiers: packages/admin/src/fleet-registry.ts
@@ -17,6 +19,7 @@
   - [ ] si correction (store partagé) : validation propriétaire requise avant implémentation
 
 ### [todo] FREG-3 — Purge/rétention du journal admin_fleet_events
+- scope: HORS-SCOPE — évolution/refactor/UI/décision : NE PAS réaliser sans demande explicite du propriétaire (l'app est considérée fonctionnelle telle quelle)
 - priorite: P3
 - depends: aucune
 - fichiers: packages/admin/src/fleet-registry.ts

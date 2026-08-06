@@ -1,6 +1,7 @@
 # TODO — prospects
 
 ### [todo] PROSP-1 — Migrer le mount vers un EntitySpec `createEntityApiMount`
+- scope: HORS-SCOPE — évolution/refactor/UI/décision : NE PAS réaliser sans demande explicite du propriétaire (l'app est considérée fonctionnelle telle quelle)
 - priorite: P3
 - depends: aucune
 - fichiers: packages/admin/src/index.ts
@@ -9,6 +10,7 @@
   - [ ] dialecte `{ ok, items }` conservé (compat client)
 
 ### [todo] PROSP-2 — Archivage réel (archived_at) au lieu du DELETE
+- scope: HORS-SCOPE — évolution/refactor/UI/décision : NE PAS réaliser sans demande explicite du propriétaire (l'app est considérée fonctionnelle telle quelle)
 - priorite: P3
 - depends: PROSP-1
 - fichiers: packages/admin/src/index.ts, packages/admin/ui/prospects-kanban-client.tsx
@@ -17,6 +19,7 @@
   - [ ] le client n'utilise plus DELETE comme archivage (le chemin DELETE-archive est supprimé)
 
 ### [todo] PROSP-3 — Validation serveur `nom` requis à la création
+- scope: BUG — dysfonctionnement réel, correctif autorisé (aucun changement de comportement au-delà du fix)
 - priorite: P3
 - depends: aucune
 - fichiers: packages/admin/src/index.ts
@@ -24,6 +27,7 @@
   - [ ] POST sans `nom` non vide → 400 (aujourd'hui la contrainte NOT NULL SQLite produit une 500 non normalisée)
 
 ### [todo] PROSP-4 — `<textarea>` notes → primitive kit
+- scope: HORS-SCOPE — évolution/refactor/UI/décision : NE PAS réaliser sans demande explicite du propriétaire (l'app est considérée fonctionnelle telle quelle)
 - priorite: P3
 - depends: aucune
 - fichiers: packages/admin/ui/prospects-kanban-client.tsx
@@ -31,6 +35,7 @@
   - [ ] le champ notes utilise une primitive du design system (textarea kit quand disponible dans @creezio/shell-ui)
 
 ### [todo] PROSP-5 — Gate kit dédiée au CRUD prospects
+- scope: HORS-SCOPE — évolution/refactor/UI/décision : NE PAS réaliser sans demande explicite du propriétaire (l'app est considérée fonctionnelle telle quelle)
 - priorite: P3
 - depends: aucune
 - fichiers: scripts/ (gate à créer)
