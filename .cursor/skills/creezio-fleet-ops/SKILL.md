@@ -34,6 +34,7 @@ Ports : auto 18790+n, bind `127.0.0.1` (exposition = `--expose`).
 | Diagnostiquer un boot qui échoue | 8 |
 | Ne pas refaire un piège connu | 9 |
 | n8n / Hermes : superadmin, clé API, webhooks, MCP | 11 |
+| Intégrations / clés API tierces (OpenAI, Notion…) | 12 |
 
 ---
 
@@ -495,6 +496,53 @@ flotte TF3 : `/home/deploy/.tf3-demo-credentials`.
 | Segments home embeds | Les launchers utilisent `{userData}/n8n-home` et `{userData}/hermes-home` (SoT `platform-core/paths.ts`). `compose-brand-os` doit passer LES MÊMES segments — un `n8n`/`hermes` recomposé à la main casse silencieusement le bridge (clé API introuvable → `N8N_API_KEY` absent de l'env Hermes, vécu 0.3.6). |
 | Clé LLM serveur headless | `store.getLlmKeys()` = BYOK prioritaire, fallback env `OPENAI_API_KEY`/`ANTHROPIC_API_KEY` du container. Une clé placeholder posée au setup MASQUE la clé opérateur → supprimer `openaiApiKey` du `/data/{brand}-config.json` de l'instance. |
 | Env superadmin instances existantes | `servers.json` est root-owned : patcher le bloc `env` en sudo puis re-POST update admin (le recreate réinjecte l'env). |
+
+## 12. Intégrations / clés API tierces (OpenAI, Notion…)
+
+**Objectif** : enregistrer les clés d'outils externes d'un serveur et les
+consommer **par référence** (`integration://<slug>`) depuis Hermes/plugins,
+avec push automatique vers le n8n embarqué (ADR
+`docs/adr/ADR-integrations-store.md`, package `@creezio/integrations`).
+
+UI : page CRM `/admin/integrations` (owner). API (mêmes gestes) :
+
+```bash
+# CRUD (session owner — voir §3 pour le cookie) :
+curl -sS http://127.0.0.1:$PORT/api/v1/platform/integrations -H "cookie: $COOKIE"
+curl -sS -X POST http://127.0.0.1:$PORT/api/v1/platform/integrations \
+  -H "cookie: $COOKIE" -H 'content-type: application/json' \
+  -d '{"provider":"openai","label":"OpenAI (compte client)","secret":"sk-…"}'
+# → {"integration":{"reference":"integration://openai","secretHint":"sk-…",
+#    "n8nCredentialId":"…"}} — credential n8n `creezio:openai` créée si n8n up.
+# PATCH /:id {label|secret|meta} (re-push n8n si secret/meta) ; DELETE /:id
+# (supprime aussi la credential n8n) ; POST /:id/sync-n8n (re-push manuel).
+
+# Résolution par référence — canal service (ce que fait un plugin Hermes,
+# clé CRM de l'env Hermes = /data/.{brand}-hermes-crm-api-key.json) :
+curl -sS -X POST http://127.0.0.1:$PORT/api/v1/platform/integrations/resolve \
+  -H "authorization: Bearer $CRMKEY" -H 'content-type: application/json' \
+  -d '{"reference":"integration://openai"}'
+# → {"integration":{"secret":"sk-…"}} — seul endpoint qui rend la valeur.
+```
+
+**Vérification** : liste = `secretHint` seulement (jamais de secret) ;
+`n8nAvailable:true` quand la clé API n8n est provisionnée ; credentials
+visibles côté n8n : `GET {N8N_API_URL}/credentials` (header `X-N8N-API-KEY`)
+— métadonnées seulement, n8n **ne réexpose jamais** la valeur (raison d'être
+du store natif).
+
+**Vérité** : `packages/integrations/` (store chiffré AES-256-GCM/AUTH_SECRET
+dans `core.db`, routes, sync n8n), montage
+`app-runtime/src/mount-brand-platform-surface.ts`, page kit
+`os-ui/routes/admin/integrations/`, skill Hermes `creezio-integrations`.
+
+**Pièges** :
+
+| Piège | Règle |
+|---|---|
+| Table `api_keys` requise | Le canal service (resolve Hermes/plugins) lit `api_keys` dans la **brand db** — migration marque `fromprd_brand_012_api_keys` (TF3) / `fromprd_brand_api_keys` (factory). Sans elle : resolve 401 et `crm-key Hermes: table api_keys absente` au boot. |
+| n8n down ≠ erreur | La sync n8n est best-effort : l'intégration est créée même si n8n est indisponible (`n8nCredentialId` null) — re-push via `POST /:id/sync-n8n`. |
+| Secrets | Jamais de secret réel dans un commit/gate — valeurs de test uniquement ; les vraies clés vivent dans le store chiffré de l'instance. |
 
 ## Ressources
 

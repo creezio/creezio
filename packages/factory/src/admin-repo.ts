@@ -405,21 +405,26 @@ export function scaffoldAdminApp(o: AdminRepoOptions): AdminRepoResult {
   patchFile(
     path.join(serverDir, "src/electron/brand-migrations.ts"),
     `import { composeMigrations, type SqliteMigration } from "@creezio/platform-core";`,
-    `import { composeMigrations, type SqliteMigration } from "@creezio/platform-core";\nimport { adminMigrations } from "@creezio/admin";`,
+    `import { composeMigrations, type SqliteMigration } from "@creezio/platform-core";\nimport { adminMigrations } from "@creezio/admin";\nimport { defaultLandingSeed, landingMigrations } from "@creezio/landing";`,
   );
   patchFile(
     path.join(serverDir, "src/electron/brand-migrations.ts"),
-    `  return composeMigrations({
-    id: "fromprd_brand_001_schema",
-    sql: BRAND_SCHEMA_SQL,
-  });`,
-    `  return composeMigrations(
-    {
-      id: "fromprd_brand_001_schema",
-      sql: BRAND_SCHEMA_SQL,
+    `    {
+      id: "fromprd_brand_api_keys",
+      sql: BRAND_API_KEYS_SQL,
+    },
+  );`,
+    `    {
+      id: "fromprd_brand_api_keys",
+      sql: BRAND_API_KEYS_SQL,
     },
     // Tables des modules admin natifs (@creezio/admin — ADR-admin-app-os).
     adminMigrations(),
+    // Landing page hybride (@creezio/landing — ADR-module-natif-hybride) :
+    // seed par défaut éditable dans l'admin, publiée sur lp.${o.domain}.
+    landingMigrations(
+      defaultLandingSeed({ brandName: ${JSON.stringify(o.productName)} }),
+    ),
   );`,
   );
   patchFile(

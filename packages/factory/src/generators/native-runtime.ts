@@ -18,11 +18,39 @@ import { composeMigrations, type SqliteMigration } from "@creezio/platform-core"
 
 export const BRAND_SCHEMA_SQL = \`${sql}\`;
 
+/**
+ * Clés API service (portable TF2 020+025) — requis par le kit : clé CRM
+ * Hermes (ensure-crm-key-db) et résolution d'intégrations plateforme
+ * (@creezio/integrations, canal clé service).
+ */
+export const BRAND_API_KEYS_SQL = \`
+CREATE TABLE IF NOT EXISTS api_keys (
+  id           INTEGER PRIMARY KEY AUTOINCREMENT,
+  name         TEXT NOT NULL,
+  key_hash     TEXT NOT NULL UNIQUE,
+  prefix       TEXT NOT NULL,
+  scopes       TEXT NOT NULL DEFAULT 'full',
+  user_id      TEXT,
+  created_at   TEXT NOT NULL DEFAULT (datetime('now')),
+  last_used_at TEXT,
+  revoked_at   TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_api_keys_active
+  ON api_keys (key_hash)
+  WHERE revoked_at IS NULL;
+\`;
+
 export function brandMigrations(): SqliteMigration[] {
-  return composeMigrations({
-    id: "fromprd_brand_001_schema",
-    sql: BRAND_SCHEMA_SQL,
-  });
+  return composeMigrations(
+    {
+      id: "fromprd_brand_001_schema",
+      sql: BRAND_SCHEMA_SQL,
+    },
+    {
+      id: "fromprd_brand_api_keys",
+      sql: BRAND_API_KEYS_SQL,
+    },
+  );
 }
 `;
 }

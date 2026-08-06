@@ -104,6 +104,7 @@ resync vendor (`scripts/sync-creezio-vendor.sh` côté marque, `CREEZIO_KIT_ROOT
 | Ops / fleet / analytics / request-logs | `observability` |
 | Modules apps admin de marque (fleet/support/prospection/roadmap/billing) | `admin` |
 | Automations lifecycle plugins/org | `automations` |
+| Intégrations / clés API tierces (`integration://<slug>`, sync n8n) | `integrations` |
 | Admin Database CRUD | `database` |
 | Electron host / plugins / sidecars | `electron-shell` |
 | Chromium serveur IA (CDP, driver, screencast) | `browser-host` |
