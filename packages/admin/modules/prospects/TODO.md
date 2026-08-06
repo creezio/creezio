@@ -23,12 +23,12 @@
 - criteres:
   - [ ] POST sans `nom` non vide → 400 (aujourd'hui la contrainte NOT NULL SQLite produit une 500 non normalisée)
 
-### [todo] PROSP-4 — `<textarea>` notes → primitive kit
+### [done] PROSP-4 — `<textarea>` notes → primitive kit
 - priorite: P3
 - depends: aucune
 - fichiers: packages/admin/ui/prospects-kanban-client.tsx
 - criteres:
-  - [ ] le champ notes utilise une primitive du design system (textarea kit quand disponible dans @creezio/shell-ui)
+  - [x] le champ notes utilise une primitive du design system (textarea kit quand disponible dans @creezio/shell-ui)
 
 ### [todo] PROSP-5 — Gate kit dédiée au CRUD prospects
 - priorite: P3

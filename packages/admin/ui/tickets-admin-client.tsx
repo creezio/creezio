@@ -11,6 +11,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { Badge, Button, Card } from "@creezio/shell-ui/ui/kit";
+import { Textarea } from "./textarea";
 
 const API = "/api/v1/modules/support";
 
@@ -269,8 +270,8 @@ export function TicketsAdminClient() {
               </div>
 
               <div className="flex flex-col gap-2">
-                <textarea
-                  className="min-h-16 w-full rounded-md border bg-transparent p-2 text-sm outline-none"
+                <Textarea
+                  className="min-h-16"
                   placeholder="Répondre au client…"
                   value={reponse}
                   onChange={(e) => setReponse(e.target.value)}

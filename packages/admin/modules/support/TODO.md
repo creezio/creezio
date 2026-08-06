@@ -17,12 +17,12 @@
   - [ ] la copie locale (`remote_id = NULL`) et le même message revenu de l'export marque (remote_id distant) ne s'affichent plus en double
   - [ ] stratégie tracée en interview (rapprochement corps+auteur+fenêtre temporelle, ou remote_id retourné par le relais)
 
-### [todo] SUPP-3 — `<textarea>` réponse → primitive kit
+### [done] SUPP-3 — `<textarea>` réponse → primitive kit
 - priorite: P3
 - depends: aucune
 - fichiers: packages/admin/ui/tickets-admin-client.tsx
 - criteres:
-  - [ ] champ réponse sur primitive du design system quand disponible
+  - [x] champ réponse sur primitive du design system quand disponible
 
 ### [todo] SUPP-4 — Sync planifié côté serveur
 - priorite: P3

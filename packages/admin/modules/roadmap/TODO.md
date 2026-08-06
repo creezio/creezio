@@ -7,13 +7,13 @@
 - criteres:
   - [ ] CRUD identique via EntitySpec déclaratif, dialecte `{ ok, items }` conservé
 
-### [todo] ROAD-2 — Client UI kit `RoadmapAdminClient`
+### [done] ROAD-2 — Client UI kit `RoadmapAdminClient`
 - priorite: P3
 - depends: aucune
 - fichiers: packages/admin/ui/ (nouveau fichier), packages/admin/ui/index.ts
 - criteres:
-  - [ ] client générique (liste par statut/jalon, création, édition) sur primitives kit, labels marque en props
-  - [ ] adopté par au moins une app admin sans style ad hoc
+  - [x] client générique (liste par statut/jalon, création, édition) sur primitives kit, labels marque en props
+  - [x] adopté par au moins une app admin sans style ad hoc
 
 ### [todo] ROAD-3 — Validation serveur `titre` requis
 - priorite: P3

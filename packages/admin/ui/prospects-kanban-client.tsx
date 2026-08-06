@@ -12,6 +12,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Badge, Button, Card, Input } from "@creezio/shell-ui/ui/kit";
+import { Textarea } from "./textarea";
 
 const API = "/api/v1/modules/prospects";
 
@@ -277,8 +278,8 @@ export function ProspectsKanbanClient({
               </Button>
             </div>
           </div>
-          <textarea
-            className="min-h-20 w-full rounded-md border bg-transparent p-2 text-sm outline-none"
+          <Textarea
+            className="min-h-20"
             placeholder="Notes (contact, contexte, prochaine action…)"
             value={notes}
             onChange={(e) => setNotes(e.target.value)}

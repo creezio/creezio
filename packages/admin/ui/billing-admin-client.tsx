@@ -12,8 +12,10 @@
  * Générique : le naming (« restaurant », « client »…) vient des labels marque.
  */
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import type { ColumnDef } from "@tanstack/react-table";
 import { Badge, Button, Card } from "@creezio/shell-ui/ui/kit";
+import { DataTable } from "@creezio/shell-ui/ui";
 
 const API = "/api/v1/modules/billing";
 
@@ -189,6 +191,128 @@ export function BillingAdminClient({
     }
   }, [refresh]);
 
+  const customerColumns = useMemo<ColumnDef<CustomerRow, unknown>[]>(
+    () => [
+      {
+        accessorKey: "nom",
+        header: "Client",
+        cell: ({ row }) => (
+          <div>
+            <div className="font-medium">{row.original.nom}</div>
+            <div className="text-xs text-muted-foreground">
+              {row.original.email ||
+                row.original.stripe_customer_id ||
+                "—"}
+            </div>
+          </div>
+        ),
+      },
+      {
+        id: "server",
+        accessorFn: (c) => c.server_name || "",
+        header: serverLabel,
+        cell: ({ row }) => {
+          const c = row.original;
+          if (!c.server_name) {
+            return (
+              <span className="text-xs text-muted-foreground">
+                non rapproché
+              </span>
+            );
+          }
+          return (
+            <Badge variant="outline">
+              {c.server_name}
+              {c.host_id && c.host_id !== "local" ? ` @ ${c.host_id}` : ""}
+            </Badge>
+          );
+        },
+      },
+      {
+        accessorKey: "plan",
+        header: "Plan",
+        cell: ({ getValue }) => (getValue() as string | null) || "—",
+      },
+      {
+        id: "montant",
+        accessorFn: (c) => c.montant_mensuel ?? -1,
+        header: "Montant",
+        cell: ({ row }) => {
+          const c = row.original;
+          return c.montant_mensuel != null
+            ? `${fmtMontant(c.montant_mensuel, c.sub_devise)}/mois`
+            : "—";
+        },
+      },
+      {
+        id: "statut",
+        accessorFn: (c) => c.sub_statut || "",
+        header: "Statut",
+        cell: ({ row }) => {
+          const c = row.original;
+          return (
+            <Badge variant={subVariant(c.sub_statut)}>
+              {c.sub_statut
+                ? SUB_STATUT_LABEL[c.sub_statut] || c.sub_statut
+                : "Sans abonnement"}
+            </Badge>
+          );
+        },
+      },
+      {
+        accessorKey: "periode_fin",
+        header: "Prochaine échéance",
+        cell: ({ getValue }) => fmtDate(getValue() as string | null),
+      },
+    ],
+    [serverLabel],
+  );
+
+  const invoiceColumns = useMemo<ColumnDef<InvoiceRow, unknown>[]>(
+    () => [
+      {
+        accessorKey: "client_nom",
+        header: "Client",
+        cell: ({ getValue }) => (
+          <span className="font-medium">
+            {(getValue() as string | null) || "—"}
+          </span>
+        ),
+      },
+      {
+        accessorKey: "periode",
+        header: "Période",
+        cell: ({ getValue }) => (getValue() as string | null) || "—",
+      },
+      {
+        id: "montant",
+        accessorFn: (i) => i.montant ?? -1,
+        header: "Montant",
+        cell: ({ row }) =>
+          fmtMontant(row.original.montant, row.original.devise),
+      },
+      {
+        accessorKey: "statut",
+        header: "Statut",
+        cell: ({ row }) => (
+          <Badge variant={invoiceVariant(row.original.statut)}>
+            {INVOICE_STATUT_LABEL[row.original.statut] || row.original.statut}
+          </Badge>
+        ),
+      },
+      {
+        accessorKey: "stripe_invoice_id",
+        header: "Facture Stripe",
+        cell: ({ getValue }) => (
+          <span className="text-xs text-muted-foreground">
+            {(getValue() as string | null) || "—"}
+          </span>
+        ),
+      },
+    ],
+    [],
+  );
+
   return (
     <div className="mx-auto flex w-full max-w-6xl flex-col gap-4 p-6">
       <div className="flex items-center justify-between gap-2">
@@ -257,60 +381,11 @@ export function BillingAdminClient({
             Stripe ou la resynchronisation.
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b text-left text-xs uppercase text-muted-foreground">
-                  <th className="py-2 pr-3">Client</th>
-                  <th className="py-2 pr-3">{serverLabel}</th>
-                  <th className="py-2 pr-3">Plan</th>
-                  <th className="py-2 pr-3">Montant</th>
-                  <th className="py-2 pr-3">Statut</th>
-                  <th className="py-2">Prochaine échéance</th>
-                </tr>
-              </thead>
-              <tbody>
-                {customers.map((c) => (
-                  <tr key={c.id} className="border-b last:border-0">
-                    <td className="py-2 pr-3">
-                      <div className="font-medium">{c.nom}</div>
-                      <div className="text-xs text-muted-foreground">
-                        {c.email || c.stripe_customer_id || "—"}
-                      </div>
-                    </td>
-                    <td className="py-2 pr-3">
-                      {c.server_name ? (
-                        <Badge variant="outline">
-                          {c.server_name}
-                          {c.host_id && c.host_id !== "local"
-                            ? ` @ ${c.host_id}`
-                            : ""}
-                        </Badge>
-                      ) : (
-                        <span className="text-xs text-muted-foreground">
-                          non rapproché
-                        </span>
-                      )}
-                    </td>
-                    <td className="py-2 pr-3">{c.plan || "—"}</td>
-                    <td className="py-2 pr-3">
-                      {c.montant_mensuel != null
-                        ? `${fmtMontant(c.montant_mensuel, c.sub_devise)}/mois`
-                        : "—"}
-                    </td>
-                    <td className="py-2 pr-3">
-                      <Badge variant={subVariant(c.sub_statut)}>
-                        {c.sub_statut
-                          ? SUB_STATUT_LABEL[c.sub_statut] || c.sub_statut
-                          : "Sans abonnement"}
-                      </Badge>
-                    </td>
-                    <td className="py-2">{fmtDate(c.periode_fin)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <DataTable
+            columns={customerColumns}
+            data={customers}
+            searchPlaceholder="Rechercher un client…"
+          />
         )}
       </Card>
 
@@ -321,40 +396,11 @@ export function BillingAdminClient({
             Aucune facture projetée.
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b text-left text-xs uppercase text-muted-foreground">
-                  <th className="py-2 pr-3">Client</th>
-                  <th className="py-2 pr-3">Période</th>
-                  <th className="py-2 pr-3">Montant</th>
-                  <th className="py-2 pr-3">Statut</th>
-                  <th className="py-2">Facture Stripe</th>
-                </tr>
-              </thead>
-              <tbody>
-                {invoices.map((i) => (
-                  <tr key={i.id} className="border-b last:border-0">
-                    <td className="py-2 pr-3 font-medium">
-                      {i.client_nom || "—"}
-                    </td>
-                    <td className="py-2 pr-3">{i.periode || "—"}</td>
-                    <td className="py-2 pr-3">
-                      {fmtMontant(i.montant, i.devise)}
-                    </td>
-                    <td className="py-2 pr-3">
-                      <Badge variant={invoiceVariant(i.statut)}>
-                        {INVOICE_STATUT_LABEL[i.statut] || i.statut}
-                      </Badge>
-                    </td>
-                    <td className="py-2 text-xs text-muted-foreground">
-                      {i.stripe_invoice_id || "—"}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <DataTable
+            columns={invoiceColumns}
+            data={invoices}
+            searchPlaceholder="Rechercher une facture…"
+          />
         )}
       </Card>
 

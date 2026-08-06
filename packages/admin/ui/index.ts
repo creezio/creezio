@@ -11,3 +11,7 @@ export {
   BillingAdminClient,
   type BillingAdminLabels,
 } from "./billing-admin-client";
+export {
+  RoadmapAdminClient,
+  type RoadmapAdminLabels,
+} from "./roadmap-admin-client";

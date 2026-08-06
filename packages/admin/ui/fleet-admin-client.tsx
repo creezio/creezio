@@ -21,7 +21,24 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Badge, Button, Card, Input } from "@creezio/shell-ui/ui/kit";
+import {
+  Badge,
+  Button,
+  Card,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  Input,
+  Label,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@creezio/shell-ui/ui/kit";
 
 const API = "/api/v1/modules/fleet";
 const REGISTRY_API = "/api/v1/modules/fleet-registry";
@@ -269,6 +286,49 @@ function stateBadgeVariant(state: string): string {
   return "bg-amber-500/15 text-amber-400 border-amber-500/30";
 }
 
+
+/* ------------------------------------------------------------------ dialogs
+ * FLEET-2 : confirmations / saisies / alertes via primitives Dialog du kit
+ * (plus de boîtes natives navigateur). Pont Promise pour le flux async.
+ */
+
+type FleetDialog =
+  | {
+      kind: "alert";
+      title: string;
+      message: string;
+      resolve: () => void;
+    }
+  | {
+      kind: "confirm";
+      title: string;
+      message: string;
+      confirmLabel?: string;
+      destructive?: boolean;
+      resolve: (ok: boolean) => void;
+    }
+  | {
+      kind: "prompt";
+      title: string;
+      message: string;
+      defaultValue: string;
+      confirmLabel?: string;
+      resolve: (value: string | null) => void;
+    }
+  | {
+      kind: "delete-server";
+      title: string;
+      message: string;
+      resolve: (result: false | { purgeData: boolean }) => void;
+    }
+  | {
+      kind: "pick-brand";
+      title: string;
+      message: string;
+      brands: string[];
+      resolve: (brand: string | null) => void;
+    };
+
 export function FleetAdminClient() {
   const [servers, setServers] = useState<Server[]>([]);
   const [releases, setReleases] = useState<FleetRelease[]>([]);
@@ -286,6 +346,72 @@ export function FleetAdminClient() {
   const [createForm, setCreateForm] = useState({ brandRoot: "", name: "", port: "" });
   const [createMsg, setCreateMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [busyMsg, setBusyMsg] = useState<string>("");
+  const [dialog, setDialog] = useState<FleetDialog | null>(null);
+  const [promptDraft, setPromptDraft] = useState("");
+  const [purgeDraft, setPurgeDraft] = useState(false);
+  const [brandPick, setBrandPick] = useState("");
+
+  const showAlert = useCallback((title: string, message: string) => {
+    return new Promise<void>((resolve) => {
+      setDialog({ kind: "alert", title, message, resolve });
+    });
+  }, []);
+
+  const showConfirm = useCallback(
+    (
+      title: string,
+      message: string,
+      opts?: { confirmLabel?: string; destructive?: boolean },
+    ) => {
+      return new Promise<boolean>((resolve) => {
+        setDialog({
+          kind: "confirm",
+          title,
+          message,
+          confirmLabel: opts?.confirmLabel,
+          destructive: opts?.destructive,
+          resolve,
+        });
+      });
+    },
+    [],
+  );
+
+  const showPrompt = useCallback(
+    (
+      title: string,
+      message: string,
+      defaultValue = "",
+      opts?: { confirmLabel?: string },
+    ) => {
+      setPromptDraft(defaultValue);
+      return new Promise<string | null>((resolve) => {
+        setDialog({
+          kind: "prompt",
+          title,
+          message,
+          defaultValue,
+          confirmLabel: opts?.confirmLabel,
+          resolve,
+        });
+      });
+    },
+    [],
+  );
+
+  const showDeleteServer = useCallback((title: string, message: string) => {
+    setPurgeDraft(false);
+    return new Promise<false | { purgeData: boolean }>((resolve) => {
+      setDialog({ kind: "delete-server", title, message, resolve });
+    });
+  }, []);
+
+  const showPickBrand = useCallback((title: string, message: string, brands: string[]) => {
+    setBrandPick(brands[0] || "");
+    return new Promise<string | null>((resolve) => {
+      setDialog({ kind: "pick-brand", title, message, brands, resolve });
+    });
+  }, []);
 
   const startBootPoll = useCallback((s: Server) => {
     const key = keyOf(s);
@@ -437,20 +563,23 @@ export function FleetAdminClient() {
     async (s: Server) => {
       const key = keyOf(s);
       const current = s.image || "";
-      const input = window.prompt(
-        `Mettre à jour ${key}\n\nImage actuelle : ${current}\nVersion actuelle : ${s.version || "?"}\n\nEntrer un TAG (ex. 0.2.0) ou une image complète :`,
+      const input = await showPrompt(
+        `Mettre à jour ${key}`,
+        `Image actuelle : ${current}\nVersion actuelle : ${s.version || "?"}\n\nEntrer un TAG (ex. 0.2.0) ou une image complète :`,
+        "",
+        { confirmLabel: "Continuer" },
       );
       if (!input) return;
       let image = input.trim();
       if (!image.includes("/") && !image.includes(":") && current.includes(":")) {
         image = `${current.slice(0, current.lastIndexOf(":"))}:${image}`;
       }
-      if (
-        !window.confirm(
-          `Recréer ${key} avec :\n${image}\n\n(backup /data automatique, rollback si santé KO)`,
-        )
-      )
-        return;
+      const ok = await showConfirm(
+        `Recréer ${key}`,
+        `Recréer avec :\n${image}\n\n(backup /data automatique, rollback si santé KO)`,
+        { confirmLabel: "Mettre à jour" },
+      );
+      if (!ok) return;
       const base = apiBase(s);
       const r = await api(`${base}/update`, {
         method: "POST",
@@ -458,36 +587,47 @@ export function FleetAdminClient() {
         body: JSON.stringify({ image }),
       });
       if (!r.json?.ok) {
-        window.alert(`Update refusé : ${r.json?.error || r.status}`);
+        await showAlert("Update refusé", String(r.json?.error || r.status));
         return;
       }
       startBootPoll(s);
       const final = await pollUpdateStatus(base);
       const out = final?.result || {};
-      window.alert(
+      await showAlert(
+        final?.status === "done" ? "Update OK" : "Update KO",
         final?.status === "done"
-          ? `Update OK → ${out.image || image} (version ${out.version || "?"})`
-          : `Update KO : ${out.error || final?.status || "?"}${out.rolledBack ? "\nRollback effectué → " + out.previousImage : ""}`,
+          ? `→ ${out.image || image} (version ${out.version || "?"})`
+          : `${out.error || final?.status || "?"}${out.rolledBack ? "\nRollback effectué → " + out.previousImage : ""}`,
       );
       startBootPoll(s);
       await refresh();
     },
-    [pollUpdateStatus, refresh, startBootPoll],
+    [pollUpdateStatus, refresh, showAlert, showConfirm, showPrompt, startBootPoll],
   );
 
   const updateAll = useCallback(async () => {
     const candidates = servers.filter((s) => !s.orphan);
-    if (!candidates.length) return window.alert("Aucun serveur à mettre à jour.");
+    if (!candidates.length) {
+      await showAlert("Update en masse", "Aucun serveur à mettre à jour.");
+      return;
+    }
     const brands = [...new Set(candidates.map((s) => s.brandId))];
     const brand =
       brands.length === 1
         ? brands[0]!
-        : window.prompt(`Marque à mettre à jour (${brands.join(", ")}) :`, brands[0]);
+        : await showPickBrand(
+            "Marque à mettre à jour",
+            "Choisir la marque ciblée par l'update en masse :",
+            brands,
+          );
     if (!brand) return;
     const targets = candidates.filter((s) => s.brandId === brand);
     const sample = targets.find((s) => (s.image || "").includes(":"));
-    const input = window.prompt(
-      `Mettre à jour ${targets.length} serveur(s) « ${brand} »\n\nImage actuelle (exemple) : ${sample?.image || "?"}\n\nEntrer un TAG (ex. 0.2.1) ou une image complète :`,
+    const input = await showPrompt(
+      `Mettre à jour ${targets.length} serveur(s) « ${brand} »`,
+      `Image actuelle (exemple) : ${sample?.image || "?"}\n\nEntrer un TAG (ex. 0.2.1) ou une image complète :`,
+      "",
+      { confirmLabel: "Continuer" },
     );
     if (!input) return;
     let image = input.trim();
@@ -495,14 +635,19 @@ export function FleetAdminClient() {
       image = `${sample.image.slice(0, sample.image.lastIndexOf(":"))}:${image}`;
     }
     const todo = targets.filter((s) => s.image !== image);
-    if (!todo.length)
-      return window.alert(`Tous les serveurs « ${brand} » sont déjà sur :\n${image}`);
-    if (
-      !window.confirm(
-        `Mettre à jour ${todo.length}/${targets.length} serveur(s) vers :\n${image}\n\n(séquentiel — backup /data + rollback automatique par serveur)`,
-      )
-    )
+    if (!todo.length) {
+      await showAlert(
+        "Déjà à jour",
+        `Tous les serveurs « ${brand} » sont déjà sur :\n${image}`,
+      );
       return;
+    }
+    const ok = await showConfirm(
+      "Confirmer l'update en masse",
+      `Mettre à jour ${todo.length}/${targets.length} serveur(s) vers :\n${image}\n\n(séquentiel — backup /data + rollback automatique par serveur)`,
+      { confirmLabel: "Lancer" },
+    );
+    if (!ok) return;
     const results: string[] = [];
     for (const s of todo) {
       const key = keyOf(s);
@@ -529,9 +674,18 @@ export function FleetAdminClient() {
     }
     const failed = results.filter((l) => l.startsWith("✗")).length;
     setBusyMsg(`Update en masse terminé — ${todo.length - failed}/${todo.length} OK`);
-    window.alert(`Update en masse terminé :\n\n${results.join("\n")}`);
+    await showAlert("Update en masse terminé", results.join("\n"));
     await refresh();
-  }, [pollUpdateStatus, refresh, servers, startBootPoll]);
+  }, [
+    pollUpdateStatus,
+    refresh,
+    servers,
+    showAlert,
+    showConfirm,
+    showPickBrand,
+    showPrompt,
+    startBootPoll,
+  ]);
 
   const doAction = useCallback(
     async (s: Server, act: string) => {
@@ -551,14 +705,14 @@ export function FleetAdminClient() {
         await doUpdate(s);
         return;
       } else if (act === "rm") {
-        const go = window.confirm(
-          `Supprimer le serveur ${key} ?\n\nOK = container supprimé, données conservées.\n(Une seconde confirmation propose la purge des données.)`,
+        const decision = await showDeleteServer(
+          `Supprimer ${key}`,
+          "Le container sera supprimé. Cochez l'option ci-dessous pour purger aussi le dossier de données (irréversible).",
         );
-        if (!go) return;
-        const purgeData = window.confirm(
-          "Supprimer AUSSI le dossier de données ? (irréversible)",
-        );
-        await api(`${base}?purgeData=${purgeData ? 1 : 0}`, { method: "DELETE" });
+        if (!decision) return;
+        await api(`${base}?purgeData=${decision.purgeData ? 1 : 0}`, {
+          method: "DELETE",
+        });
         setPanels((prev) => {
           const next = { ...prev };
           delete next[key];
@@ -576,7 +730,7 @@ export function FleetAdminClient() {
       }
       await refresh();
     },
-    [doUpdate, loadPanel, panels, refresh, startBootPoll],
+    [doUpdate, loadPanel, panels, refresh, showDeleteServer, startBootPoll],
   );
 
   const generateEnrollToken = useCallback(async () => {
@@ -598,11 +752,16 @@ export function FleetAdminClient() {
 
   const removeHost = useCallback(
     async (hostId: string) => {
-      if (!window.confirm(`Retirer l'hôte ${hostId} du registre flotte ?`)) return;
+      const ok = await showConfirm(
+        "Retirer l'hôte",
+        `Retirer l'hôte ${hostId} du registre flotte ?`,
+        { confirmLabel: "Retirer", destructive: true },
+      );
+      if (!ok) return;
       await api(`hosts/${encodeURIComponent(hostId)}`, { method: "DELETE" });
       await refresh();
     },
-    [refresh],
+    [refresh, showConfirm],
   );
 
   /* ------------------------------------------ rollout piloté (F5/F6) */
@@ -614,61 +773,74 @@ export function FleetAdminClient() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(patch),
       });
-      if (!r.json?.ok) window.alert(`Release : ${r.json?.error || r.status}`);
+      if (!r.json?.ok) {
+        await showAlert("Release", String(r.json?.error || r.status));
+      }
       await refresh();
     },
-    [refresh],
+    [refresh, showAlert],
   );
 
   const startRollout = useCallback(
     async (rel: FleetRelease) => {
-      const input = window.prompt(
-        `Démarrer le rollout de ${rel.brand_id}:${rel.tag} (${rel.variant}, canal ${rel.channel})\n\n% de la flotte ciblé (canary — promouvoir ensuite) :`,
+      const input = await showPrompt(
+        `Démarrer ${rel.brand_id}:${rel.tag}`,
+        `Variant ${rel.variant}, canal ${rel.channel}.\n\n% de la flotte ciblé (canary — promouvoir ensuite) :`,
         String(rel.wave_pct || 10),
+        { confirmLabel: "Démarrer" },
       );
       if (input === null) return;
       const pct = Math.max(0, Math.min(100, Number(input) || 0));
       await patchRelease(rel.id, { status: "rolling", wavePct: pct });
     },
-    [patchRelease],
+    [patchRelease, showPrompt],
   );
 
   const promoteRelease = useCallback(
     async (rel: FleetRelease) => {
-      const input = window.prompt(
-        `Promouvoir ${rel.brand_id}:${rel.tag} — vague actuelle ${rel.wave_pct}%\n\nNouveau % de la flotte (les serveurs déjà servis le restent) :`,
+      const input = await showPrompt(
+        `Promouvoir ${rel.brand_id}:${rel.tag}`,
+        `Vague actuelle ${rel.wave_pct}%\n\nNouveau % de la flotte (les serveurs déjà servis le restent) :`,
         "100",
+        { confirmLabel: "Promouvoir" },
       );
       if (input === null) return;
       const pct = Math.max(0, Math.min(100, Number(input) || 0));
       await patchRelease(rel.id, { wavePct: pct });
     },
-    [patchRelease],
+    [patchRelease, showPrompt],
   );
 
   const abortRelease = useCallback(
     async (rel: FleetRelease) => {
-      if (
-        !window.confirm(
-          `KILL-SWITCH — arrêter définitivement le rollout ${rel.brand_id}:${rel.tag} ?\n\nLes agents cessent au prochain poll, les téléchargements en cours ne sont pas relancés. Les serveurs déjà mis à jour restent tels quels (pin/rollback manuels si besoin).`,
-        )
-      )
-        return;
+      const ok = await showConfirm(
+        "KILL-SWITCH",
+        `Arrêter définitivement le rollout ${rel.brand_id}:${rel.tag} ?\n\nLes agents cessent au prochain poll, les téléchargements en cours ne sont pas relancés. Les serveurs déjà mis à jour restent tels quels (pin/rollback manuels si besoin).`,
+        { confirmLabel: "STOP", destructive: true },
+      );
+      if (!ok) return;
       await patchRelease(rel.id, { status: "aborted" });
     },
-    [patchRelease],
+    [patchRelease, showConfirm],
   );
 
   const deleteRelease = useCallback(
     async (rel: FleetRelease) => {
-      if (!window.confirm(`Supprimer la release ${rel.brand_id}:${rel.tag} ?`)) return;
+      const ok = await showConfirm(
+        "Supprimer la release",
+        `Supprimer la release ${rel.brand_id}:${rel.tag} ?`,
+        { confirmLabel: "Supprimer", destructive: true },
+      );
+      if (!ok) return;
       const r = await releasesApi(`releases/${encodeURIComponent(rel.id)}`, {
         method: "DELETE",
       });
-      if (!r.json?.ok) window.alert(`Suppression : ${r.json?.error || r.status}`);
+      if (!r.json?.ok) {
+        await showAlert("Suppression", String(r.json?.error || r.status));
+      }
       await refresh();
     },
-    [refresh],
+    [refresh, showAlert, showConfirm],
   );
 
   const serverRollout = useCallback(
@@ -682,22 +854,26 @@ export function FleetAdminClient() {
           body: JSON.stringify(patch),
         },
       );
-      if (!r.json?.ok) window.alert(`Rollout : ${r.json?.error || r.status}`);
+      if (!r.json?.ok) {
+        await showAlert("Rollout", String(r.json?.error || r.status));
+      }
       await refresh();
     },
-    [refresh],
+    [refresh, showAlert],
   );
 
   const pinServer = useCallback(
     async (s: Server) => {
-      const input = window.prompt(
-        `Épingler ${keyOf(s)} sur une image (prioritaire sur toute release).\n\nImage actuelle : ${s.image || "?"}\nVide = retirer le pin :`,
+      const input = await showPrompt(
+        `Épingler ${keyOf(s)}`,
+        `Image prioritaire sur toute release.\nImage actuelle : ${s.image || "?"}\nVide = retirer le pin.`,
         s.pinnedImage || "",
+        { confirmLabel: "Épingler" },
       );
       if (input === null) return;
       await serverRollout(s, { pinnedImage: input.trim() || null });
     },
-    [serverRollout],
+    [serverRollout, showPrompt],
   );
 
   const createServer = useCallback(async () => {
@@ -954,23 +1130,28 @@ export function FleetAdminClient() {
             <label className="text-[11px] uppercase tracking-wide text-muted-foreground">
               Marque
             </label>
-            <select
-              className="h-9 rounded-md border border-input bg-transparent px-3 text-sm"
-              value={createForm.brandRoot}
-              onChange={(e) =>
-                setCreateForm((f) => ({ ...f, brandRoot: e.target.value }))
+            <Select
+              value={createForm.brandRoot || undefined}
+              onValueChange={(v) =>
+                setCreateForm((f) => ({ ...f, brandRoot: v }))
               }
+              disabled={!brandRoots.length}
             >
-              {brandRoots.length ? (
-                brandRoots.map((r) => (
-                  <option key={r} value={r}>
+              <SelectTrigger className="w-72">
+                <SelectValue
+                  placeholder={
+                    brandRoots.length ? "Choisir une marque" : "(aucune marque)"
+                  }
+                />
+              </SelectTrigger>
+              <SelectContent>
+                {brandRoots.map((r) => (
+                  <SelectItem key={r} value={r}>
                     {r.split("/").pop() || r} — {r}
-                  </option>
-                ))
-              ) : (
-                <option value="">(aucune marque)</option>
-              )}
-            </select>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           <div className="flex flex-col gap-1">
             <label className="text-[11px] uppercase tracking-wide text-muted-foreground">
@@ -1303,6 +1484,172 @@ export function FleetAdminClient() {
           );
         })
       )}
+
+      <Dialog
+        open={dialog != null}
+        onOpenChange={(open) => {
+          if (!open && dialog) {
+            if (dialog.kind === "alert") dialog.resolve();
+            else if (dialog.kind === "confirm") dialog.resolve(false);
+            else if (dialog.kind === "prompt") dialog.resolve(null);
+            else if (dialog.kind === "delete-server") dialog.resolve(false);
+            else if (dialog.kind === "pick-brand") dialog.resolve(null);
+            setDialog(null);
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-lg">
+          {dialog ? (
+            <>
+              <DialogHeader>
+                <DialogTitle>{dialog.title}</DialogTitle>
+                <DialogDescription className="whitespace-pre-wrap">
+                  {dialog.message}
+                </DialogDescription>
+              </DialogHeader>
+              {dialog.kind === "prompt" ? (
+                <div className="space-y-1.5">
+                  <Label htmlFor="fleet-dialog-prompt">Valeur</Label>
+                  <Input
+                    id="fleet-dialog-prompt"
+                    value={promptDraft}
+                    onChange={(e) => setPromptDraft(e.target.value)}
+                    autoFocus
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        dialog.resolve(promptDraft);
+                        setDialog(null);
+                      }
+                    }}
+                  />
+                </div>
+              ) : null}
+              {dialog.kind === "pick-brand" ? (
+                <Select value={brandPick} onValueChange={setBrandPick}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {dialog.brands.map((b) => (
+                      <SelectItem key={b} value={b}>
+                        {b}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : null}
+              {dialog.kind === "delete-server" ? (
+                <label className="flex items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={purgeDraft}
+                    onChange={(e) => setPurgeDraft(e.target.checked)}
+                  />
+                  Purger aussi le dossier de données (irréversible)
+                </label>
+              ) : null}
+              <DialogFooter>
+                {dialog.kind === "alert" ? (
+                  <Button
+                    onClick={() => {
+                      dialog.resolve();
+                      setDialog(null);
+                    }}
+                  >
+                    OK
+                  </Button>
+                ) : null}
+                {dialog.kind === "confirm" ? (
+                  <>
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        dialog.resolve(false);
+                        setDialog(null);
+                      }}
+                    >
+                      Annuler
+                    </Button>
+                    <Button
+                      variant={dialog.destructive ? "destructive" : "default"}
+                      onClick={() => {
+                        dialog.resolve(true);
+                        setDialog(null);
+                      }}
+                    >
+                      {dialog.confirmLabel || "Confirmer"}
+                    </Button>
+                  </>
+                ) : null}
+                {dialog.kind === "prompt" ? (
+                  <>
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        dialog.resolve(null);
+                        setDialog(null);
+                      }}
+                    >
+                      Annuler
+                    </Button>
+                    <Button
+                      onClick={() => {
+                        dialog.resolve(promptDraft);
+                        setDialog(null);
+                      }}
+                    >
+                      {dialog.confirmLabel || "Valider"}
+                    </Button>
+                  </>
+                ) : null}
+                {dialog.kind === "pick-brand" ? (
+                  <>
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        dialog.resolve(null);
+                        setDialog(null);
+                      }}
+                    >
+                      Annuler
+                    </Button>
+                    <Button
+                      onClick={() => {
+                        dialog.resolve(brandPick || null);
+                        setDialog(null);
+                      }}
+                    >
+                      Continuer
+                    </Button>
+                  </>
+                ) : null}
+                {dialog.kind === "delete-server" ? (
+                  <>
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        dialog.resolve(false);
+                        setDialog(null);
+                      }}
+                    >
+                      Annuler
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      onClick={() => {
+                        dialog.resolve({ purgeData: purgeDraft });
+                        setDialog(null);
+                      }}
+                    >
+                      Supprimer
+                    </Button>
+                  </>
+                ) : null}
+              </DialogFooter>
+            </>
+          ) : null}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
