@@ -36,15 +36,25 @@
   événement, projections multi-tables.
 - `billing` : mount **manuscrit** — justification : agrégats SQL
   (jointures, stats) + orchestration API Stripe paginée.
-- `billing-customers` / `billing-subscriptions` : CRUD générique
-  `createAdminCrudMount` (bascule EntitySpec = dette BILL-5).
+- `billing-customers` / `billing-subscriptions` : EntitySpec via
+  `createAdminEntityMount(ADMIN_ENTITY_SPECS[…])` — dialecte
+  `{ ok, items }` / `{ ok, item }` conservé (BILL-5).
 - Options : `BillingWebhookMountOptions { webhookSecret?
   (STRIPE_WEBHOOK_SECRET), toleranceSeconds? (300) }` ;
   `BillingAdminMountOptions { stripeApiKey? (STRIPE_API_KEY), apiBase?
   (STRIPE_API_BASE, mock de test), timeoutMs? (20000) }`.
 - Décision structurante : **aucune dépendance au SDK stripe** —
   `verifyStripeSignature` implémentée localement, `stripeListAll` en
-  fetch nu (pagination `starting_after`, cap 10 pages).
+  fetch nu (pagination `starting_after`, cap 50 pages / 5000 objets ;
+  `truncated:true` si `has_more` après le cap — BILL-4).
+
+### BILL-1 — événements Stripe sans `id`
+
+Décision : **rejet 400** `event_id_required`. Sans `id`, la dédup
+(`admin_billing_events.stripe_event_id` UNIQUE) est impossible ;
+journaliser sans dédup risquerait des double-projections sur retry.
+Stripe contractuellement fournit toujours `id` — un payload sans id
+est malformé ; on ne projette ni n'écrit le journal.
 
 ## 4. UI, nav & permissions — kit graphique imposé
 
@@ -86,7 +96,9 @@ attendre les webhooks).
   overview (jointures + stats MRR/actifs/impayées) ; réconciliation
   active contre un mock HTTP (`STRIPE_API_BASE`) — y compris facture
   jamais reçue par webhook et changement de statut d'abonnement ; 503 +
-  hint sans `STRIPE_API_KEY`.
+  hint sans `STRIPE_API_KEY` ; événement sans `id` → 400 (BILL-1) ;
+  reconcile `truncated` si cap pages atteint (BILL-4) ; CRUD EntitySpec
+  customers/subscriptions (BILL-5).
 
 ## 10. i18n
 

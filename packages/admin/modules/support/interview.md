@@ -73,6 +73,16 @@ que le sync, champs FR/EN tolérés).
   `scripts/test-phase-factory-two-repos.mjs` vérifie le wiring
   `createSupportAdminMount` du scaffold admin.
 
+### SUPP-4 — sync planifié côté serveur
+
+Décision : **oui**. Exporter `startSupportTicketsPoller({ api,
+intervalMs?, onError? })` — même pattern que
+`startFleetRegistryPoller` : tick `POST /api/v1/modules/support/sync`
+via le kernel (pas de HTTP local), intervalle défaut 90 s, premier
+cycle à 5 s, `unref()`. Best-effort si le backend flotte est down.
+L'app admin câble le poller au boot (comme le registre flotte) ;
+sans câblage, le sync reste déclenché à l'ouverture de `/tickets`.
+
 ## 10. i18n
 
 Statuts persistés en identifiants FR historiques (`ouvert`, `repondu`,

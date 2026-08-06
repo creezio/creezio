@@ -228,4 +228,113 @@ test("billing admin : webhook signé → projections + overview + réconciliatio
     db,
   });
   assert.equal(ov2.body.stats.factures_impayees, 1);
+  assert.equal(rec.body.truncated, false);
+});
+
+test("billing admin : événement sans id → 400 (BILL-1)", async () => {
+  const db = makeDb();
+  const webhook = createBillingWebhookMount({ webhookSecret: WHSEC });
+  const ev = {
+    type: "customer.created",
+    data: { object: { id: "cus_no_evt", name: "Sans id" } },
+  };
+  const res = await webhook.handle({
+    req: signedReq(ev),
+    subPath: "stripe",
+    db,
+  });
+  assert.equal(res.status, 400);
+  assert.equal(res.body.error, "event_id_required");
+  assert.equal(
+    db.prepare(`SELECT COUNT(*) AS n FROM admin_billing_events`).get().n,
+    0,
+  );
+  assert.equal(
+    db.prepare(`SELECT COUNT(*) AS n FROM admin_billing_customers`).get().n,
+    0,
+  );
+});
+
+test("billing admin : reconcile truncated au cap pages (BILL-4)", async () => {
+  const db = makeDb();
+  let page = 0;
+  const mock = http.createServer((req, res) => {
+    const url = new URL(req.url, "http://127.0.0.1");
+    page++;
+    const id = `cus_page_${page}`;
+    res.setHeader("content-type", "application/json");
+    // Toujours has_more : le cap doit remonter truncated.
+    res.end(
+      JSON.stringify({
+        data:
+          url.pathname === "/v1/customers"
+            ? [{ id, name: id, email: null }]
+            : [],
+        has_more: url.pathname === "/v1/customers",
+      }),
+    );
+  });
+  await new Promise((r) => mock.listen(0, "127.0.0.1", r));
+  const port = mock.address().port;
+  const billing = createBillingAdminMount({
+    stripeApiKey: "sk_test_trunc",
+    apiBase: `http://127.0.0.1:${port}`,
+    reconcileMaxPages: 2,
+  });
+  const rec = await billing.handle({
+    req: { method: "POST", query: {}, headers: {} },
+    subPath: "reconcile",
+    db,
+  });
+  mock.close();
+  assert.equal(rec.status, 200, JSON.stringify(rec.body));
+  assert.equal(rec.body.ok, true);
+  assert.equal(rec.body.truncated, true);
+  assert.equal(rec.body.truncatedCollections.customers, true);
+  assert.equal(rec.body.customers, 2);
+});
+
+test("billing admin : CRUD EntitySpec customers/subscriptions (BILL-5)", async () => {
+  const { createAdminCrudMount } = await import(
+    "../packages/admin/dist/index.js"
+  );
+  const db = makeDb();
+  const customers = createAdminCrudMount("billing-customers");
+  const subs = createAdminCrudMount("billing-subscriptions");
+  const call = (mount, method, subPath, body) =>
+    mount.handle({
+      req: { method, body, query: {}, headers: {} },
+      subPath,
+      db,
+    });
+
+  const c = await call(customers, "POST", "", {
+    nom: "Client Spec",
+    email: "spec@example.com",
+    stripe_customer_id: "cus_spec_1",
+  });
+  assert.equal(c.status, 201);
+  assert.equal(c.body.ok, true);
+  assert.equal(c.body.item.nom, "Client Spec");
+
+  const s = await call(subs, "POST", "", {
+    customer_id: c.body.item.id,
+    plan: "Pro",
+    montant_mensuel: 49,
+    devise: "EUR",
+    statut: "active",
+    stripe_subscription_id: "sub_spec_1",
+  });
+  assert.equal(s.status, 201);
+  assert.equal(s.body.ok, true);
+
+  const listC = await call(customers, "GET", "");
+  assert.equal(listC.body.ok, true);
+  assert.ok(listC.body.items.some((i) => i.stripe_customer_id === "cus_spec_1"));
+
+  const patched = await call(customers, "PATCH", c.body.item.id, {
+    host_id: "local",
+    server_name: "server-1",
+  });
+  assert.equal(patched.body.item.host_id, "local");
 });

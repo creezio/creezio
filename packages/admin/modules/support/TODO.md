@@ -24,10 +24,10 @@
 - criteres:
   - [ ] champ réponse sur primitive du design system quand disponible
 
-### [todo] SUPP-4 — Sync planifié côté serveur
+### [done] SUPP-4 — Sync planifié côté serveur
 - priorite: P3
 - depends: aucune
-- fichiers: packages/admin/src/index.ts
+- fichiers: packages/admin/src/index.ts, packages/admin/modules/support/interview.md
 - criteres:
-  - [ ] aujourd'hui le sync n'a lieu qu'à l'ouverture de la page (client) ; évaluer un tick serveur (à la manière de startFleetRegistryPoller) pour que les tickets arrivent sans visite
-  - [ ] décision tracée dans interview.md
+  - [x] décision : oui — `startSupportTicketsPoller` (tick `POST …/support/sync`, défaut 90 s, unref) — tracée dans interview.md
+  - [x] exporté depuis `@creezio/admin` (même pattern que `startFleetRegistryPoller`)

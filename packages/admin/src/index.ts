@@ -18,11 +18,14 @@
  */
 
 import crypto from "node:crypto";
-import type {
-  ApiKernel,
-  ApiMount,
-  ApiRequest,
-  ScopedDbAccess,
+import {
+  createEntityApiMount,
+  type ApiKernel,
+  type ApiMount,
+  type ApiRequest,
+  type ApiResponse,
+  type EntitySpec,
+  type ScopedDbAccess,
 } from "@creezio/api-kernel";
 import type { SqliteMigration } from "@creezio/platform-core";
 import {
@@ -294,44 +297,7 @@ function buildQueryString(req: ApiRequest): string {
   return s ? `?${s}` : "";
 }
 
-/* --------------------------------------------- CRUD générique (SQLite) */
-
-const CRUD_TABLES: Record<string, readonly string[]> = {
-  prospects: [
-    "nom",
-    "contact",
-    "email",
-    "telephone",
-    "ville",
-    "site_web",
-    "notes",
-    "colonne",
-    "position",
-  ],
-  roadmap: ["titre", "description", "statut", "jalon", "position"],
-  "billing-customers": [
-    "nom",
-    "email",
-    "host_id",
-    "server_name",
-    "stripe_customer_id",
-  ],
-  "billing-subscriptions": [
-    "customer_id",
-    "plan",
-    "montant_mensuel",
-    "devise",
-    "statut",
-    "stripe_subscription_id",
-  ],
-};
-
-const CRUD_SQL_TABLE: Record<string, string> = {
-  prospects: "admin_prospects",
-  roadmap: "admin_roadmap_items",
-  "billing-customers": "admin_billing_customers",
-  "billing-subscriptions": "admin_billing_subscriptions",
-};
+/* --------------------------------------------- CRUD EntitySpec (SQLite) */
 
 function nowIso(): string {
   return new Date().toISOString();
@@ -344,88 +310,157 @@ function newId(): string {
 }
 
 /**
- * Mount CRUD générique sur brand.db de l'app admin.
- * GET '' → liste ; POST '' → create ; GET/PUT/DELETE '<id>'.
+ * Dialecte admin historique `{ ok, items }` / `{ ok, item }` autour du
+ * moteur EntitySpec (qui parle `{ items, total }` / row nue).
  */
-export function createAdminCrudMount(kind: keyof typeof CRUD_SQL_TABLE): ApiMount {
-  const table = CRUD_SQL_TABLE[kind];
-  const cols = CRUD_TABLES[kind] || [];
+function wrapAdminEntityResponse(res: ApiResponse): ApiResponse {
+  const body = res.body;
+  if (!body || typeof body !== "object" || Array.isArray(body)) return res;
+  const b = body as Record<string, unknown>;
+  if ("ok" in b) return res;
+  if ("error" in b) {
+    return { status: res.status, body: { ok: false, ...b } };
+  }
+  if ("id" in b && (res.status === 200 || res.status === 201)) {
+    return { status: res.status, body: { ok: true, item: b } };
+  }
+  return res;
+}
+
+/**
+ * Mount EntitySpec + dialecte admin + PUT→PATCH (compat clients historiques).
+ */
+export function createAdminEntityMount(spec: EntitySpec): ApiMount {
+  const userAfterList = spec.hooks?.afterList;
+  const userAfterRead = spec.hooks?.afterRead;
+  const inner = createEntityApiMount({
+    ...spec,
+    hooks: {
+      ...spec.hooks,
+      afterList: async (rows, ctx) => {
+        if (userAfterList) {
+          const custom = await userAfterList(rows, ctx);
+          if (custom !== undefined) return custom;
+        }
+        return { ok: true, items: rows };
+      },
+      afterRead: async (row, ctx) => {
+        if (userAfterRead) {
+          const custom = await userAfterRead(row, ctx);
+          if (custom !== undefined) {
+            if (
+              custom &&
+              typeof custom === "object" &&
+              !Array.isArray(custom) &&
+              "ok" in custom
+            ) {
+              return custom;
+            }
+            return { ok: true, item: custom };
+          }
+        }
+        return { ok: true, item: row };
+      },
+    },
+  });
   return {
     dbLayer: "brand",
-    handle: async ({ req, subPath, db }) => {
-      if (!db) return { status: 503, body: { ok: false, error: "db_unavailable" } };
-      const method = req.method.toUpperCase();
-      const parts = subPath.split("/").filter(Boolean);
-
-      if (!parts.length && method === "GET") {
-        // `position` n'existe que sur les tables kanban-ordonnables.
-        const orderBy = cols.includes("position")
-          ? "position ASC, created_at DESC"
-          : "created_at DESC";
-        const items = db
-          .prepare(`SELECT * FROM ${table} ORDER BY ${orderBy}`)
-          .all();
-        return { status: 200, body: { ok: true, items } };
-      }
-
-      if (!parts.length && method === "POST") {
-        const body = (req.body || {}) as Record<string, unknown>;
-        const id = String(body.id || newId());
-        const ts = nowIso();
-        const values: Record<string, unknown> = {
-          id,
-          created_at: ts,
-          updated_at: ts,
-        };
-        for (const c of cols) {
-          if (body[c] !== undefined) values[c] = body[c];
-        }
-        const keys = Object.keys(values);
-        db.prepare(
-          `INSERT INTO ${table} (${keys.join(",")}) VALUES (${keys
-            .map(() => "?")
-            .join(",")})`,
-        ).run(...keys.map((k) => values[k]));
-        const item = db.prepare(`SELECT * FROM ${table} WHERE id = ?`).get(id);
-        return { status: 201, body: { ok: true, item } };
-      }
-
-      if (parts.length === 1) {
-        const id = parts[0]!;
-        if (method === "GET") {
-          const item = db.prepare(`SELECT * FROM ${table} WHERE id = ?`).get(id);
-          if (!item) return { status: 404, body: { ok: false } };
-          return { status: 200, body: { ok: true, item } };
-        }
-        if (method === "PUT" || method === "PATCH") {
-          const body = (req.body || {}) as Record<string, unknown>;
-          const sets: string[] = ["updated_at = ?"];
-          const args: unknown[] = [nowIso()];
-          for (const c of cols) {
-            if (body[c] !== undefined) {
-              sets.push(`${c} = ?`);
-              args.push(body[c]);
-            }
-          }
-          args.push(id);
-          const r = db
-            .prepare(`UPDATE ${table} SET ${sets.join(", ")} WHERE id = ?`)
-            .run(...args) as { changes: number };
-          if (!r.changes) return { status: 404, body: { ok: false } };
-          const item = db.prepare(`SELECT * FROM ${table} WHERE id = ?`).get(id);
-          return { status: 200, body: { ok: true, item } };
-        }
-        if (method === "DELETE") {
-          const r = db
-            .prepare(`DELETE FROM ${table} WHERE id = ?`)
-            .run(id) as { changes: number };
-          return { status: r.changes ? 200 : 404, body: { ok: Boolean(r.changes) } };
-        }
-      }
-
-      return { status: 404, body: { ok: false } };
+    handle: async (ctx) => {
+      const method = ctx.req.method.toUpperCase();
+      const req =
+        method === "PUT" ? { ...ctx.req, method: "PATCH" } : ctx.req;
+      const res = await inner.handle({ ...ctx, req });
+      return wrapAdminEntityResponse(res);
     },
   };
+}
+
+/** Tri kanban / roadmap : position ASC puis created_at DESC (tie-break). */
+function sortByPositionThenCreatedDesc(
+  rows: Array<Record<string, unknown>>,
+): Array<Record<string, unknown>> {
+  return [...rows].sort((a, b) => {
+    const pa = Number(a.position || 0);
+    const pb = Number(b.position || 0);
+    if (pa !== pb) return pa - pb;
+    return String(b.created_at || "").localeCompare(String(a.created_at || ""));
+  });
+}
+
+/** EntitySpecs CRUD admin (BILL-5 / PROSP-1 / ROAD-1). */
+export const ADMIN_ENTITY_SPECS = {
+  prospects: {
+    table: "admin_prospects",
+    archivable: true,
+    softDeleteOnly: true,
+    orderBy: "position ASC",
+    columns: [
+      { name: "nom", required: true, searchable: true },
+      { name: "contact", searchable: true },
+      { name: "email", searchable: true },
+      { name: "telephone" },
+      { name: "ville", searchable: true },
+      { name: "site_web" },
+      { name: "notes" },
+      { name: "colonne", filterable: true },
+      { name: "position", type: "number" as const },
+    ],
+    hooks: {
+      afterList(rows: Array<Record<string, unknown>>) {
+        return { ok: true, items: sortByPositionThenCreatedDesc(rows) };
+      },
+    },
+  } satisfies EntitySpec,
+  roadmap: {
+    table: "admin_roadmap_items",
+    orderBy: "position ASC",
+    columns: [
+      { name: "titre", required: true, searchable: true },
+      { name: "description" },
+      { name: "statut", filterable: true },
+      { name: "jalon", filterable: true },
+      { name: "position", type: "number" as const },
+    ],
+    hooks: {
+      afterList(rows: Array<Record<string, unknown>>) {
+        return { ok: true, items: sortByPositionThenCreatedDesc(rows) };
+      },
+    },
+  } satisfies EntitySpec,
+  "billing-customers": {
+    table: "admin_billing_customers",
+    orderBy: "created_at DESC",
+    columns: [
+      { name: "nom", searchable: true },
+      { name: "email", searchable: true },
+      { name: "host_id", filterable: true },
+      { name: "server_name", filterable: true },
+      { name: "stripe_customer_id", filterable: true },
+    ],
+  } satisfies EntitySpec,
+  "billing-subscriptions": {
+    table: "admin_billing_subscriptions",
+    orderBy: "created_at DESC",
+    columns: [
+      { name: "customer_id", filterable: true },
+      { name: "plan" },
+      { name: "montant_mensuel", type: "number" as const },
+      { name: "devise" },
+      { name: "statut", filterable: true },
+      { name: "stripe_subscription_id", filterable: true },
+    ],
+  } satisfies EntitySpec,
+} as const;
+
+export type AdminCrudKind = keyof typeof ADMIN_ENTITY_SPECS;
+
+/**
+ * Mount CRUD admin via EntitySpec (dialecte `{ ok, items }` conservé).
+ * @deprecated préférer `createAdminEntityMount(ADMIN_ENTITY_SPECS.<kind>)`
+ *   — conservé pour les callers / gates existants.
+ */
+export function createAdminCrudMount(kind: AdminCrudKind): ApiMount {
+  return createAdminEntityMount(ADMIN_ENTITY_SPECS[kind]);
 }
 
 /* -------------------------------------------------------- module support */
@@ -479,6 +514,55 @@ function supportPathFor(
 export type SupportAdminMountOptions = {
   fleet?: FleetAdminMountOptions;
 };
+
+export type SupportTicketsPollerOptions = {
+  api: Pick<ApiKernel, "handle">;
+  /** Intervalle du poller (ms). Défaut 90 s (même bande que fleet-registry). */
+  intervalMs?: number;
+  onError?: (e: unknown) => void;
+};
+
+/**
+ * Poller de fond (SUPP-4) : `POST /api/v1/modules/support/sync` périodique
+ * pour que les tickets arrivent sans ouvrir la page. Best-effort + `unref()`.
+ */
+export function startSupportTicketsPoller(opts: SupportTicketsPollerOptions): {
+  stop: () => void;
+  tick: () => Promise<void>;
+} {
+  const intervalMs = opts.intervalMs ?? 90_000;
+  const tick = async () => {
+    try {
+      const res = await opts.api.handle({
+        method: "POST",
+        path: "/api/v1/modules/support/sync",
+        body: {},
+        query: {},
+        headers: {},
+      });
+      if (res.status !== 200) {
+        opts.onError?.(
+          new Error(
+            `support tickets poller → ${res.status} ${JSON.stringify(res.body).slice(0, 200)}`,
+          ),
+        );
+      }
+    } catch (e) {
+      opts.onError?.(e);
+    }
+  };
+  const timer = setInterval(() => void tick(), intervalMs);
+  (timer as { unref?: () => void }).unref?.();
+  const first = setTimeout(() => void tick(), 5_000);
+  (first as { unref?: () => void }).unref?.();
+  return {
+    stop: () => {
+      clearInterval(timer);
+      clearTimeout(first);
+    },
+    tick,
+  };
+}
 
 /**
  * Module `support` (côté admin) — tickets agrégés depuis les serveurs
@@ -1080,19 +1164,26 @@ export function createBillingWebhookMount(
       const obj = (event.data?.object || {}) as Record<string, unknown>;
       const ts = nowIso();
 
-      // Journal (idempotence : Stripe retente les webhooks).
-      if (eventId) {
-        const seen = db
-          .prepare(
-            `SELECT id FROM admin_billing_events WHERE stripe_event_id = ?`,
-          )
-          .get(eventId);
-        if (seen) return { status: 200, body: { ok: true, duplicate: true } };
-        db.prepare(
-          `INSERT INTO admin_billing_events (id, created_at, stripe_event_id, type, payload)
-           VALUES (?,?,?,?,?)`,
-        ).run(newId(), ts, eventId, type, raw.slice(0, 100_000));
+      // BILL-1 — sans id Stripe : pas de dédup possible → rejet 400
+      // (ne pas projeter ni journaliser ; Stripe fournit toujours `id`).
+      if (!eventId) {
+        return {
+          status: 400,
+          body: { ok: false, error: "event_id_required" },
+        };
       }
+
+      // Journal (idempotence : Stripe retente les webhooks).
+      const seen = db
+        .prepare(
+          `SELECT id FROM admin_billing_events WHERE stripe_event_id = ?`,
+        )
+        .get(eventId);
+      if (seen) return { status: 200, body: { ok: true, duplicate: true } };
+      db.prepare(
+        `INSERT INTO admin_billing_events (id, created_at, stripe_event_id, type, payload)
+         VALUES (?,?,?,?,?)`,
+      ).run(newId(), ts, eventId, type, raw.slice(0, 100_000));
 
       if (type === "customer.created" || type === "customer.updated") {
         projectStripeCustomer(db, obj, ts);
@@ -1131,22 +1222,32 @@ export type BillingAdminMountOptions = {
   apiBase?: string;
   /** Timeout par appel Stripe (ms). Défaut 20000. */
   timeoutMs?: number;
-};
+  /**
+   * Cap de pages Stripe par collection (BILL-4, défaut 50). Exposé pour
+   * les gates (mock `has_more` infini) — ne pas baisser en prod.
+   */
+  reconcileMaxPages?: number;
+}
 
 type StripeList = { data?: Array<Record<string, unknown>>; has_more?: boolean };
 
+/** Cap pages Stripe (100 objets/page). Défaut 50 (= 5000) — BILL-4. */
+const STRIPE_LIST_MAX_PAGES = 50;
+
 /**
- * Liste paginée d'une collection Stripe (`starting_after`), cap 10 pages.
+ * Liste paginée d'une collection Stripe (`starting_after`).
+ * Au-delà du cap : `truncated: true` (resync partielle signalée).
  */
 async function stripeListAll(
   base: string,
   path: string,
   key: string,
   timeoutMs: number,
-): Promise<Array<Record<string, unknown>>> {
+  maxPages = STRIPE_LIST_MAX_PAGES,
+): Promise<{ items: Array<Record<string, unknown>>; truncated: boolean }> {
   const out: Array<Record<string, unknown>> = [];
   let startingAfter: string | undefined;
-  for (let page = 0; page < 10; page++) {
+  for (let page = 0; page < maxPages; page++) {
     const url = new URL(`${base}${path}`);
     url.searchParams.set("limit", "100");
     if (startingAfter) url.searchParams.set("starting_after", startingAfter);
@@ -1166,14 +1267,16 @@ async function stripeListAll(
       const body = (await res.json()) as StripeList;
       const data = Array.isArray(body.data) ? body.data : [];
       out.push(...data);
-      if (!body.has_more || !data.length) return out;
+      if (!body.has_more || !data.length) {
+        return { items: out, truncated: false };
+      }
       startingAfter = String(data[data.length - 1]?.id || "");
-      if (!startingAfter) return out;
+      if (!startingAfter) return { items: out, truncated: false };
     } finally {
       clearTimeout(timer);
     }
   }
-  return out;
+  return { items: out, truncated: true };
 }
 
 /**
@@ -1192,6 +1295,7 @@ export function createBillingAdminMount(
   opts?: BillingAdminMountOptions,
 ): ApiMount {
   const timeoutMs = opts?.timeoutMs ?? 20_000;
+  const maxPages = opts?.reconcileMaxPages ?? STRIPE_LIST_MAX_PAGES;
   return {
     dbLayer: "brand",
     handle: async ({ req, subPath, db }) => {
@@ -1271,17 +1375,23 @@ export function createBillingAdminMount(
         const ts = nowIso();
         try {
           const [customers, subscriptions, invoices] = await Promise.all([
-            stripeListAll(base, "/v1/customers", key, timeoutMs),
-            stripeListAll(base, "/v1/subscriptions?status=all", key, timeoutMs),
-            stripeListAll(base, "/v1/invoices", key, timeoutMs),
+            stripeListAll(base, "/v1/customers", key, timeoutMs, maxPages),
+            stripeListAll(
+              base,
+              "/v1/subscriptions?status=all",
+              key,
+              timeoutMs,
+              maxPages,
+            ),
+            stripeListAll(base, "/v1/invoices", key, timeoutMs, maxPages),
           ]);
           let nCustomers = 0;
           let nSubs = 0;
           let nInvoices = 0;
-          for (const c of customers) {
+          for (const c of customers.items) {
             if (projectStripeCustomer(db, c, ts)) nCustomers++;
           }
-          for (const s of subscriptions) {
+          for (const s of subscriptions.items) {
             if (
               projectStripeSubscription(db, s, ts, {
                 forceCanceled: String(s.status || "") === "canceled",
@@ -1290,9 +1400,13 @@ export function createBillingAdminMount(
               nSubs++;
             }
           }
-          for (const i of invoices) {
+          for (const i of invoices.items) {
             if (projectStripeInvoice(db, i, ts)) nInvoices++;
           }
+          const truncated =
+            customers.truncated ||
+            subscriptions.truncated ||
+            invoices.truncated;
           return {
             status: 200,
             body: {
@@ -1301,6 +1415,12 @@ export function createBillingAdminMount(
               customers: nCustomers,
               subscriptions: nSubs,
               invoices: nInvoices,
+              truncated,
+              truncatedCollections: {
+                customers: customers.truncated,
+                subscriptions: subscriptions.truncated,
+                invoices: invoices.truncated,
+              },
               at: ts,
             },
           };
@@ -1353,19 +1473,25 @@ export function registerAdminModules(
       ...(opts?.fleetReleases || {}),
     }),
   );
-  api.registerModuleApi("prospects", createAdminCrudMount("prospects"));
-  api.registerModuleApi("roadmap", createAdminCrudMount("roadmap"));
+  api.registerModuleApi(
+    "prospects",
+    createAdminEntityMount(ADMIN_ENTITY_SPECS.prospects),
+  );
+  api.registerModuleApi(
+    "roadmap",
+    createAdminEntityMount(ADMIN_ENTITY_SPECS.roadmap),
+  );
   api.registerModuleApi(
     "support",
     createSupportAdminMount({ fleet: opts?.fleet }),
   );
   api.registerModuleApi(
     "billing-customers",
-    createAdminCrudMount("billing-customers"),
+    createAdminEntityMount(ADMIN_ENTITY_SPECS["billing-customers"]),
   );
   api.registerModuleApi(
     "billing-subscriptions",
-    createAdminCrudMount("billing-subscriptions"),
+    createAdminEntityMount(ADMIN_ENTITY_SPECS["billing-subscriptions"]),
   );
   api.registerModuleApi(
     "billing-webhook",

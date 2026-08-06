@@ -1,11 +1,11 @@
 # TODO — roadmap
 
-### [todo] ROAD-1 — Migrer le mount vers un EntitySpec `createEntityApiMount`
+### [done] ROAD-1 — Migrer le mount vers un EntitySpec `createEntityApiMount`
 - priorite: P3
 - depends: aucune
 - fichiers: packages/admin/src/index.ts
 - criteres:
-  - [ ] CRUD identique via EntitySpec déclaratif, dialecte `{ ok, items }` conservé
+  - [x] CRUD via EntitySpec déclaratif (`ADMIN_ENTITY_SPECS.roadmap`), dialecte `{ ok, items }` conservé
 
 ### [todo] ROAD-2 — Client UI kit `RoadmapAdminClient`
 - priorite: P3

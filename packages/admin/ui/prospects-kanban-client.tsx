@@ -143,15 +143,10 @@ export function ProspectsKanbanClient({
 
   const archive = useCallback(
     async (id: string) => {
-      // Mount kit : DELETE ; mount métier généré (archivable) : POST /:id/archive.
-      const r = await fetch(`${API}/${encodeURIComponent(id)}`, {
-        method: "DELETE",
+      // PROSP-2 — archivage réel via POST /:id/archive (plus de DELETE-as-archive).
+      await fetch(`${API}/${encodeURIComponent(id)}/archive`, {
+        method: "POST",
       });
-      if (!r.ok) {
-        await fetch(`${API}/${encodeURIComponent(id)}/archive`, {
-          method: "POST",
-        });
-      }
       setOpenId(null);
       await refresh();
     },

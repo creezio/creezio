@@ -20,13 +20,16 @@
 
 ## 3. API
 
-- Mount **générique du package** `createAdminCrudMount("prospects")` —
-  antérieur au moteur `createEntityApiMount` (`@creezio/api-kernel`) ;
-  la bascule vers un EntitySpec déclaratif est une dette tracée (PROSP-1).
-- Pas de hooks ni d'extraRoutes : CRUD pur (liste triée
-  `position ASC, created_at DESC`, POST, GET/PUT/PATCH/DELETE par id).
+- Mount EntitySpec `ADMIN_ENTITY_SPECS.prospects` via
+  `createAdminEntityMount` (PROSP-1) — moteur kit
+  `@creezio/api-kernel` + wrapper dialecte admin.
+- `archivable: true` + `softDeleteOnly: true` (PROSP-2) :
+  `POST /:id/archive` écrit `archived_at` ; `DELETE` → 400 `use_archive`.
+- Liste : filtre `archived_at` NULL par défaut ; tri
+  `position ASC, created_at DESC` (hook `afterList`).
 - Dialecte de réponse : `{ ok, items }` / `{ ok, item }` (le client UI
   accepte aussi le dialecte nu des mounts métier générés).
+- `nom` requis à la création (`required: true` → 400 `nom_required`).
 
 ## 4. UI, nav & permissions — kit graphique imposé
 
@@ -37,7 +40,8 @@
 - colonnes kanban : `card` (cartes prospect) + `badge` (compteurs)
 - toolbar création : `input` ×2 + `button`
 - détail : `card` + `button` (ghost/destructive) + `<textarea>` brut
-  (écart au kit : pas de primitive textarea — dette PROSP-4)
+  (écart au kit : pas de primitive textarea — dette PROSP-4) ;
+  archivage = `POST /:id/archive` uniquement (plus de DELETE)
 - DnD : HTML5 natif, aucune lib tierce (conforme aux interdits du
   standard UI)
 
@@ -60,11 +64,9 @@ Aucun.
 
 ## 9. Gates de validation
 
-- Pas de gate kit dédiée (dette PROSP-5). Couverture indirecte :
-  `scripts/test-phase-factory-two-repos.mjs` vérifie que la page
-  `/prospects` du scaffold admin rend `ProspectsKanbanClient` ;
-  la gate `test:metier-parcours` du repo admin marque exerce le mount
-  effectivement monté chez elle.
+- `scripts/test-phase-admin-prospects.mjs` : CRUD EntitySpec + tri
+  kanban + `POST /:id/archive` (PROSP-1/2). Couverture scaffold :
+  `scripts/test-phase-factory-two-repos.mjs` (page `/prospects`).
 
 ## 10. i18n
 

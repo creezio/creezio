@@ -18,10 +18,11 @@
 
 ## 3. API
 
-- Mount générique du package `createAdminCrudMount("roadmap")` — même
-  moteur que prospects/billing-customers/billing-subscriptions ; bascule
-  EntitySpec = dette (ROAD-1). Pas de hooks/extraRoutes.
-- Tri liste : `position ASC, created_at DESC` (la table a `position`).
+- Mount EntitySpec `ADMIN_ENTITY_SPECS.roadmap` via
+  `createAdminEntityMount` (ROAD-1) — dialecte `{ ok, items }` /
+  `{ ok, item }` ; PUT mappé vers PATCH.
+- Tri liste : `position ASC, created_at DESC` (hook `afterList`).
+- `titre` requis à la création (`required: true` → 400 `titre_required`).
 
 ## 4. UI, nav & permissions — kit graphique imposé
 
@@ -48,10 +49,9 @@ Aucun.
 
 ## 9. Gates de validation
 
-- Pas de gate kit dédiée (dette ROAD-4) ; le wiring `roadmap` du scaffold
-  admin est couvert par `scripts/test-phase-factory-two-repos.mjs`
-  (présence des fichiers d'app), le mount marque par la gate
-  `test:metier-parcours` du repo admin.
+- `scripts/test-phase-admin-roadmap.mjs` : CRUD EntitySpec + tri
+  position (ROAD-1). Wiring scaffold :
+  `scripts/test-phase-factory-two-repos.mjs`.
 
 ## 10. i18n
 

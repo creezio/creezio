@@ -1,11 +1,12 @@
 # TODO — billing
 
-### [todo] BILL-1 — Événements sans id Stripe : journaliser quand même
+### [done] BILL-1 — Événements sans id Stripe : rejet 400
 - priorite: P3
 - depends: aucune
-- fichiers: packages/admin/src/index.ts
+- fichiers: packages/admin/src/index.ts, packages/admin/modules/billing/interview.md
 - criteres:
-  - [ ] un événement sans `id` est aujourd'hui projeté mais absent du journal (pas de dédup possible) : décider journalisation sans dédup ou rejet 400, tracer dans interview.md
+  - [x] décision : rejet 400 `event_id_required` (pas de journal ni projection sans dédup) — tracée dans interview.md
+  - [x] gate admin-billing : événement signé sans `id` → 400
 
 ### [todo] BILL-2 — MRR : normaliser les abonnements non mensuels
 - priorite: P3
@@ -22,16 +23,17 @@
 - criteres:
   - [ ] « Clients & abonnements » et « Factures » rendus avec le composant table du design system (tri/pagination)
 
-### [todo] BILL-4 — Réconciliation : dépasser le cap 10 pages × 100 objets
+### [done] BILL-4 — Réconciliation : dépasser le cap 10 pages × 100 objets
 - priorite: P3
 - depends: aucune
 - fichiers: packages/admin/src/index.ts
 - criteres:
-  - [ ] au-delà de 1000 customers/subscriptions/invoices la resync est silencieusement partielle : lever le cap ou remonter `truncated:true` dans la réponse
+  - [x] cap relevé à 50 pages (5000 objets) ; si `has_more` après le cap → `truncated:true` + `truncatedCollections` dans la réponse reconcile
 
-### [todo] BILL-5 — CRUD billing-customers/subscriptions → EntitySpec
+### [done] BILL-5 — CRUD billing-customers/subscriptions → EntitySpec
 - priorite: P3
 - depends: aucune
 - fichiers: packages/admin/src/index.ts
 - criteres:
-  - [ ] bascule `createEntityApiMount` sans changement de contrat HTTP
+  - [x] bascule `createEntityApiMount` via `createAdminEntityMount` + dialecte `{ ok, items }`
+  - [x] gate admin-billing : CRUD EntitySpec customers/subscriptions

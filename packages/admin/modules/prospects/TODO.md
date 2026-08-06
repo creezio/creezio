@@ -1,20 +1,20 @@
 # TODO — prospects
 
-### [todo] PROSP-1 — Migrer le mount vers un EntitySpec `createEntityApiMount`
+### [done] PROSP-1 — Migrer le mount vers un EntitySpec `createEntityApiMount`
 - priorite: P3
 - depends: aucune
 - fichiers: packages/admin/src/index.ts
 - criteres:
-  - [ ] `createAdminCrudMount("prospects")` remplacé par un EntitySpec déclaratif (moteur kit @creezio/api-kernel) sans changement de contrat HTTP
-  - [ ] dialecte `{ ok, items }` conservé (compat client)
+  - [x] `createAdminCrudMount("prospects")` = EntitySpec déclaratif (`ADMIN_ENTITY_SPECS.prospects`)
+  - [x] dialecte `{ ok, items }` conservé (compat client)
 
-### [todo] PROSP-2 — Archivage réel (archived_at) au lieu du DELETE
+### [done] PROSP-2 — Archivage réel (archived_at) au lieu du DELETE
 - priorite: P3
 - depends: PROSP-1
 - fichiers: packages/admin/src/index.ts, packages/admin/ui/prospects-kanban-client.tsx
 - criteres:
-  - [ ] la colonne `archived_at` (déjà en schéma) devient écrivable via `POST /<id>/archive` sur le mount kit
-  - [ ] le client n'utilise plus DELETE comme archivage (le chemin DELETE-archive est supprimé)
+  - [x] `POST /:id/archive` écrit `archived_at` (`archivable` + `softDeleteOnly`)
+  - [x] client n'utilise plus DELETE comme archivage
 
 ### [todo] PROSP-3 — Validation serveur `nom` requis à la création
 - priorite: P3
