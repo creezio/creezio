@@ -29,6 +29,23 @@ function listRequestLogs(opts: { source: string; limit: number }) {
 
 let schemaEnsured = false;
 
+/** Rôles acceptés dans les policies (adapters, défaut historique). */
+function policyRoleNames(): string[] {
+  return getMcpAdminAdapters().policyRoleNames || ["owner", "collaborator"];
+}
+
+/** Scopes acceptés dans les policies (adapters, défaut historique). */
+function policyScopeNames(): string[] {
+  return (
+    getMcpAdminAdapters().policyScopeNames || [
+      "crm",
+      "crm:read",
+      "crm:write",
+      "full",
+    ]
+  );
+}
+
 function hasColumn(table: string, column: string): boolean {
   if (!tableExists(table)) return false;
   return (
@@ -79,7 +96,7 @@ export function ensureMcpAdminSchema(): void {
   );
   const seedFn = () => {
     for (const tool of MCP_TOOL_REGISTRY()) {
-      const roles = (tool.defaultRoles || ["owner", "collaborator"]).join(",");
+      const roles = (tool.defaultRoles || policyRoleNames()).join(",");
       insert.run(tool.name, roles, tool.requiredScope);
     }
   };
@@ -87,6 +104,35 @@ export function ensureMcpAdminSchema(): void {
   else seedFn();
   pruneMcpAuditLogs();
   schemaEnsured = true;
+}
+
+/**
+ * Seed permissif (INSERT OR IGNORE) de policies pour des tools hors registre
+ * adapters — ex. tools de `facade.listTools()` quand la garde M2 est activée
+ * sur une façade marque. Ne modifie JAMAIS une policy existante.
+ */
+export function seedMcpToolPolicies(
+  tools: Array<
+    Pick<McpToolDefinition, "name"> &
+      Partial<Pick<McpToolDefinition, "requiredScope" | "defaultRoles">>
+  >,
+): void {
+  ensureMcpAdminSchema();
+  const db = getWriteDb();
+  const insert = db.prepare(
+    `INSERT OR IGNORE INTO mcp_tool_policies
+       (tool_name, enabled, allowed_roles, allowed_scopes)
+     VALUES (?, 1, ?, ?)`,
+  );
+  const run = () => {
+    for (const tool of tools) {
+      if (!tool?.name) continue;
+      const roles = (tool.defaultRoles || policyRoleNames()).join(",");
+      insert.run(tool.name, roles, tool.requiredScope || "");
+    }
+  };
+  if (db.transaction) db.transaction(run)();
+  else run();
 }
 
 export type McpToolPolicy = McpToolDefinition & {
@@ -116,7 +162,9 @@ export function listMcpToolPolicies(): McpToolPolicy[] {
     return {
       ...tool,
       enabled: row?.enabled !== 0,
-      allowedRoles: (row?.allowed_roles || "owner,collaborator").split(",").filter(Boolean),
+      allowedRoles: (row?.allowed_roles || policyRoleNames().join(","))
+        .split(",")
+        .filter(Boolean),
       allowedScopes: (row?.allowed_scopes || tool.requiredScope).split(/[\s,]+/).filter(Boolean),
       updatedAt: row?.updated_at || null,
     };
@@ -134,11 +182,13 @@ export function updateMcpToolPolicy(
   ensureMcpAdminSchema();
   if (!MCP_TOOL_REGISTRY().some((tool) => tool.name === name)) return null;
   const current = getMcpToolPolicy(name)!;
+  // Rôles/scopes acceptés : injectés par la marque via les adapters
+  // (défauts = comportement historique TempoFlow, zéro breaking change).
   const roles = (input.allowedRoles || current.allowedRoles).filter((role) =>
-    ["owner", "collaborator"].includes(role),
+    policyRoleNames().includes(role),
   );
   const scopes = (input.allowedScopes || current.allowedScopes).filter((scope) =>
-    ["crm", "crm:read", "crm:write", "full"].includes(scope),
+    policyScopeNames().includes(scope),
   );
   getWriteDb()
     .prepare(

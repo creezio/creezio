@@ -336,6 +336,19 @@ Exports admin :
 - `listMcpClients`, `setMcpClientEnabled`, `revokeMcpClient`, `rotateMcpClientSecret`
 - `mcpAdminStatus`, `mcpDiagnostics`, `mcpMetrics`, `auditMcpAdmin`, `listMcpAuditLogs`, `exportMcpDiagnostics`
 - `createMcpAdminRoutes`
+- `seedMcpToolPolicies`, `isMcpAdminConfigured`
+
+Garde d'enforcement des policies (M1) — `admin/tool-policy-guard` :
+
+- `checkToolPolicy(name, actor, opts)` → `"tool_disabled" | "role_forbidden" | "policy_scope_forbidden" | null` (décision brute, réutilisable par l'enforcement marque) ;
+- `createToolPolicyAuthorize(opts)` → `McpAuthorizeToolCallFn` composable via `composeToolPolicies` avec `denyCrossLayerToolCall` (opt-in non cassant : sans `configureMcpAdmin`, autorise tout) ;
+- `registerGuardedMcpTool(server, ctx, def, config, handler, opts)` — wrapper serveur MCP SDK : annotations + policy + audit + vérif scopes marque injectée (`scopeAllows`).
+
+Options injectables : `getPolicy` (défaut table `mcp_tool_policies`), `resolveRole` (rôle marque de l'acteur), `defaultRole` (défaut `collaborator`), `fullAccessScopes` (défaut `["crm","full"]`), `audit` (défaut `auditMcpAdmin`).
+
+Côté façade marque, `createBrandMcpFacade({ toolPolicyGuard: true })` active l'enforcement (M2) et seed des policies permissives pour les tools listés. Rôles/scopes acceptés par `updateMcpToolPolicy` sont dé-hardcodés via les adapters (`policyRoleNames`, `policyScopeNames` — défauts historiques).
+
+Gate : `scripts/test-phase-mcp-tool-policy-guard.mjs`.
 
 UI :
 

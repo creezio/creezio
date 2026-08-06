@@ -13,6 +13,7 @@ export type {
 export {
   configureMcpAdmin,
   getMcpAdminAdapters,
+  isMcpAdminConfigured,
   resetMcpAdminAdaptersForTests,
 } from "./adapters.js";
 
@@ -23,6 +24,7 @@ export type {
 
 export {
   ensureMcpAdminSchema,
+  seedMcpToolPolicies,
   listMcpToolPolicies,
   getMcpToolPolicy,
   updateMcpToolPolicy,
@@ -43,3 +45,23 @@ export {
 
 export type { CreateMcpAdminRoutesOptions } from "./http-routes.js";
 export { createMcpAdminRoutes } from "./http-routes.js";
+
+/* ── M1 : garde d'enforcement réutilisable des policies ── */
+
+export type {
+  CreateToolPolicyAuthorizeOptions,
+  GuardedMcpServerLike,
+  GuardedMcpToolContext,
+  GuardedMcpToolDefinition,
+  RegisterGuardedMcpToolOptions,
+  ToolPolicyActor,
+  ToolPolicyDenialReason,
+  ToolPolicyGuardOptions,
+  ToolPolicyView,
+} from "./tool-policy-guard.js";
+export {
+  checkToolPolicy,
+  createToolPolicyAuthorize,
+  getStoredMcpToolPolicy,
+  registerGuardedMcpTool,
+} from "./tool-policy-guard.js";

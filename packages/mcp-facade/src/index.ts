@@ -172,8 +172,10 @@ export {
 export {
   configureMcpAdmin,
   getMcpAdminAdapters,
+  isMcpAdminConfigured,
   resetMcpAdminAdaptersForTests,
   ensureMcpAdminSchema,
+  seedMcpToolPolicies,
   listMcpToolPolicies,
   getMcpToolPolicy,
   updateMcpToolPolicy,
@@ -191,6 +193,10 @@ export {
   pruneMcpAuditLogs,
   exportMcpDiagnostics,
   createMcpAdminRoutes,
+  checkToolPolicy,
+  createToolPolicyAuthorize,
+  getStoredMcpToolPolicy,
+  registerGuardedMcpTool,
 } from "./admin/index.js";
 
 export type {
@@ -202,4 +208,13 @@ export type {
   McpToolPolicy,
   McpAdminClient,
   CreateMcpAdminRoutesOptions,
+  CreateToolPolicyAuthorizeOptions,
+  GuardedMcpServerLike,
+  GuardedMcpToolContext,
+  GuardedMcpToolDefinition,
+  RegisterGuardedMcpToolOptions,
+  ToolPolicyActor,
+  ToolPolicyDenialReason,
+  ToolPolicyGuardOptions,
+  ToolPolicyView,
 } from "./admin/index.js";

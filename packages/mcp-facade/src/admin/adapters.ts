@@ -19,6 +19,11 @@ export function getMcpAdminAdapters(): McpAdminAdapters {
   return adapters;
 }
 
+/** True si `configureMcpAdmin` a été câblé (garde opt-in non cassante). */
+export function isMcpAdminConfigured(): boolean {
+  return adapters !== null;
+}
+
 export function resetMcpAdminAdaptersForTests(): void {
   adapters = null;
 }
