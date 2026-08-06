@@ -69,6 +69,18 @@ export type ServerDockerArgs = {
    * CREEZIO_REGISTRY_PUBLIC_HOST.
    */
   publicHost?: string;
+  /**
+   * publish : déclarer la release dans l'app admin après le push (F5) —
+   * POST /api/v1/modules/fleet-releases/releases (status draft).
+   */
+  release?: boolean;
+  /** publish --release / enroll : canal de release (défaut stable). */
+  channel?: string;
+  /**
+   * URL de l'APP admin de marque (module fleet-releases) — publish --release
+   * et enroll (state agent). Défaut env CREEZIO_FLEET_ADMIN_URL.
+   */
+  adminApp?: string;
   /** enroll : URL de l'admin flotte (https://admin.{zone}). */
   admin?: string;
   /** enroll : token d'enrôlement généré côté admin. */
@@ -136,6 +148,11 @@ export function parseServerDockerArgs(argv: string[]): ServerDockerArgs {
     else if (a === "--registry") out.registry = rest.shift();
     else if (a.startsWith("--public-host=")) out.publicHost = a.slice(14);
     else if (a === "--public-host") out.publicHost = rest.shift();
+    else if (a === "--release") out.release = true;
+    else if (a.startsWith("--channel=")) out.channel = a.slice(10);
+    else if (a === "--channel") out.channel = rest.shift();
+    else if (a.startsWith("--admin-app=")) out.adminApp = a.slice(12);
+    else if (a === "--admin-app") out.adminApp = rest.shift();
     else if (a.startsWith("--admin=")) out.admin = a.slice(8);
     else if (a === "--admin") out.admin = rest.shift();
     else if (a.startsWith("--token=")) out.token = a.slice(8);
@@ -209,11 +226,15 @@ Registry d'images versionnées (update de flotte) :
   creezio server-docker publish --brand-root <app> --tag <version>
     [--registry 127.0.0.1:5000] [--browser] [--no-push]
     [--keep-tags 5] [--no-retention] [--public-host registry.<zone>]
+    [--release [--admin-app <url>] [--channel stable]]
     (build image versionnée <registry>/creezio-server-<brand>:<tag>
      + label/env version — /api/v1/core/version affiche <version>)
     --public-host (ou env CREEZIO_REGISTRY_PUBLIC_HOST) : tague en plus la
     référence publique pull-only registry.<zone>/… (F4) — le push reste
     loopback-only, les VPS distants pullent via l'ingress authentifié.
+    --release (F5) : déclare la release (status draft) dans l'app admin
+    (--admin-app ou env CREEZIO_FLEET_ADMIN_URL) — les agents en pull
+    l'appliquent quand elle passe rolling (pilotage /flotte).
     Rétention après push réussi : garde les N derniers tags (défaut 2,
     env CREEZIO_PUBLISH_KEEP_TAGS) côté daemon local ET registre privé,
     + docker builder prune --max-used-space (env CREEZIO_PUBLISH_KEEP_STORAGE,
@@ -227,6 +248,8 @@ Agent hôte flotte (VPS restaurant — exposé via agent.{slug}.{zone}) :
   creezio server-docker agent token revoke <id> --brand-root <app>
   creezio server-docker enroll --brand-root <app> --admin <url-admin>
     --token <enrollToken> [--slug <slug>] [--label <label>] [--agent-url <url>]
+    [--admin-app <url app admin>]  (F5 : updates en pull — pose
+    adminAppUrl + fleetKey dans le state agent ; recréer via agent up)
     (provisionne l'ingress agent.{slug} via le provisioner tunnel
      + enregistre l'hôte auprès de l'admin — token agent hashé, révocable)
 
@@ -1252,6 +1275,69 @@ function ensureGhcrLogin(paths: ReturnType<typeof resolvePaths>): void {
   console.log("⚠ pas de .github-token — docker push ghcr.io suppose un login existant");
 }
 
+/** Digest (sha256:…) d'une image locale après push — RepoDigests. */
+function imageDigestOf(image: string): string | null {
+  const r = spawnSync(
+    "docker",
+    ["image", "inspect", "--format", "{{range .RepoDigests}}{{.}}\n{{end}}", image],
+    { encoding: "utf8" },
+  );
+  if (r.status !== 0) return null;
+  for (const line of String(r.stdout || "").split("\n")) {
+    const m = line.trim().match(/@(sha256:[0-9a-f]{64})$/);
+    if (m) return m[1]!;
+  }
+  return null;
+}
+
+/**
+ * Déclare une release dans l'app admin de marque (F5) —
+ * POST /api/v1/modules/fleet-releases/releases (status draft ; le rollout se
+ * pilote ensuite depuis /flotte). Idempotent : re-publish même tag → update.
+ */
+export async function declareFleetRelease(opts: {
+  adminAppUrl: string;
+  brandId: string;
+  tag: string;
+  image: string;
+  digest?: string | null;
+  variant?: "base" | "browser";
+  channel?: string;
+  fetchImpl?: typeof fetch;
+}): Promise<{ ok: boolean; status: number; error?: string }> {
+  const base = opts.adminAppUrl.trim().replace(/\/+$/, "");
+  const doFetch = opts.fetchImpl || fetch;
+  try {
+    const res = await doFetch(`${base}/api/v1/modules/fleet-releases/releases`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        brandId: opts.brandId,
+        tag: opts.tag,
+        image: opts.image,
+        digest: opts.digest || undefined,
+        variant: opts.variant || "base",
+        channel: opts.channel || "stable",
+        status: "draft",
+      }),
+    });
+    const json = (await res.json().catch(() => ({}))) as {
+      ok?: boolean;
+      error?: string;
+    };
+    if ((res.status !== 200 && res.status !== 201) || !json.ok) {
+      return {
+        ok: false,
+        status: res.status,
+        error: json.error || "réponse invalide",
+      };
+    }
+    return { ok: true, status: res.status };
+  } catch (e) {
+    return { ok: false, status: 0, error: String((e as Error)?.message || e) };
+  }
+}
+
 async function runPublishSubcommand(
   args: ServerDockerArgs,
   paths: ReturnType<typeof resolvePaths>,
@@ -1309,6 +1395,47 @@ async function runPublishSubcommand(
     console.log(
       `  pull distant : docker login ${publicHost} -u <hostId> -p <agentToken> && docker pull ${publicImage}`,
     );
+  }
+  // Déclaration de release dans l'app admin (F5) : les agents en pull la
+  // verront dès qu'elle passera `rolling` (pilotage /flotte). L'image
+  // annoncée est la référence PUBLIQUE si dispo (résoluble des VPS distants).
+  if (args.release) {
+    const adminApp = (
+      args.adminApp ||
+      env.CREEZIO_FLEET_ADMIN_URL ||
+      ""
+    )
+      .trim()
+      .replace(/\/+$/, "");
+    if (!adminApp) {
+      console.log(
+        "⚠ --release ignoré : --admin-app <url> ou CREEZIO_FLEET_ADMIN_URL requis",
+      );
+    } else {
+      const releaseImage = publicHost
+        ? publishImageName(publicHost, brandId, tag, variant)
+        : image;
+      const digest = imageDigestOf(image);
+      const r = await declareFleetRelease({
+        adminAppUrl: adminApp,
+        brandId,
+        tag,
+        image: releaseImage,
+        digest,
+        variant,
+        channel: args.channel,
+      });
+      if (r.ok) {
+        console.log(
+          `✓ release déclarée (draft) : ${brandId}:${tag}${digest ? ` @${digest.slice(0, 19)}…` : ""} → ${adminApp}`,
+        );
+        console.log("  passer en rolling : UI /flotte (ou PUT fleet-releases/releases/<id>)");
+      } else {
+        console.log(
+          `⚠ déclaration release KO (${r.status}): ${r.error} — publish réussi, déclarer manuellement`,
+        );
+      }
+    }
   }
   if (args.noRetention) {
     console.log("--no-retention : pas de nettoyage post-publish");
@@ -1560,6 +1687,10 @@ type AgentState = {
   tokens: AgentTokenEntry[];
   adminUrl?: string | null;
   agentUrl?: string | null;
+  /** App admin de marque (module fleet-releases) — updates en pull (F5). */
+  adminAppUrl?: string | null;
+  /** Credential flotte sortant (= agentToken émis à l'enroll) — F4 pull registre + F5 poll. */
+  fleetKey?: string | null;
 };
 
 function agentStatePath(brandRoot: string): string {
@@ -1743,6 +1874,14 @@ async function runAgentSubcommand(
     const v = (env[key] || "").trim();
     if (v) runArgs.push("-e", `${key}=${v}`);
   }
+  // Updates en pull (F5) : env process prioritaire, sinon state posé par
+  // `enroll` (adminAppUrl/fleetKey) — l'agent relit aussi le state à chaud.
+  const pullAdminUrl =
+    (env.CREEZIO_AGENT_ADMIN_URL || "").trim() || (state.adminAppUrl || "").trim();
+  const pullFleetKey =
+    (env.CREEZIO_AGENT_FLEET_KEY || "").trim() || (state.fleetKey || "").trim();
+  if (pullAdminUrl) runArgs.push("-e", `CREEZIO_AGENT_ADMIN_URL=${pullAdminUrl}`);
+  if (pullFleetKey) runArgs.push("-e", `CREEZIO_AGENT_FLEET_KEY=${pullFleetKey}`);
   for (const root of state.brandRoots) {
     runArgs.push("-v", `${root}:${root}`);
   }
@@ -1858,10 +1997,31 @@ async function runEnrollSubcommand(
   }
   state.adminUrl = adminUrl;
   state.agentUrl = agentUrl;
+  // Updates en pull (F5) : le credential sortant de l'hôte est le MÊME
+  // agentToken (state 0600) ; l'app admin (module fleet-releases) se pose
+  // via --admin-app ou env CREEZIO_FLEET_ADMIN_URL.
+  state.fleetKey = agentToken;
+  const adminApp = (
+    args.adminApp ||
+    process.env.CREEZIO_FLEET_ADMIN_URL ||
+    ""
+  )
+    .trim()
+    .replace(/\/+$/, "");
+  if (adminApp) state.adminAppUrl = adminApp;
   saveAgentState(brandRoot, state);
   console.log(
     `✓ hôte ${state.hostId} enrôlé auprès de ${adminUrl} (agent ${agentUrl}, vérifié=${json.verified ? "oui" : "pas encore"})`,
   );
+  if (adminApp) {
+    console.log(
+      `  updates en pull : app admin ${adminApp} (recréer l'agent : creezio server-docker agent up)`,
+    );
+  } else {
+    console.log(
+      "  updates en pull : poser --admin-app <url app admin> (ou CREEZIO_FLEET_ADMIN_URL) puis agent up",
+    );
+  }
 }
 
 async function waitBootReady(port: number, timeoutMs = 180000): Promise<void> {

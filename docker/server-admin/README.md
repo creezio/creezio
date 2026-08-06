@@ -86,6 +86,16 @@ publié via l'ingress `registry.{zone}` (tunnel-provisioner `kind=registry`) :
 - Module : `packages/observability/fleet-collector/registry-pull-proxy.mjs`
   (gate `scripts/test-phase-registry-pull-proxy.mjs`).
 
+## Updates en pull (F5)
+
+Le backend expose aussi `POST /admin/api/hosts/verify` (Basic) : vérification
+d'un credential `hostId:agentToken` pour le module `fleet-releases` de l'app
+admin (`@creezio/admin`). La boucle de pull vit dans l'agent hôte
+(`host-agent.mjs` + `agent-updates.mjs`) : opt-in via
+`CREEZIO_AGENT_ADMIN_URL` / `CREEZIO_AGENT_FLEET_KEY` (posés par
+`creezio server-docker enroll [--admin-app <url>]` puis `agent up`).
+Gate : `scripts/test-phase-fleet-releases.mjs`.
+
 ## Sécurité
 
 - Bind `127.0.0.1` par défaut : accessible uniquement en loopback (session

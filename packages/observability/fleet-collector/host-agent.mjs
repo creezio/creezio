@@ -21,6 +21,10 @@
  *   CREEZIO_AGENT_STATE_FILE  (défaut {brandRoot0}/docker-data/host-agent.json)
  *   CREEZIO_DOCKER_SOCK       (défaut /var/run/docker.sock)
  *   CREEZIO_REGISTRY_AUTH     (base64 auth registre privé — pulls update)
+ *   CREEZIO_AGENT_ADMIN_URL   (opt-in F5 : app admin — updates en pull ;
+ *                              défaut state.adminAppUrl posé par enroll)
+ *   CREEZIO_AGENT_FLEET_KEY   (opt-in F5 : credential flotte = agentToken ;
+ *                              défaut state.fleetKey posé par enroll)
  *
  * 0 domaine marque hardcodé — injection env uniquement.
  */
@@ -29,6 +33,7 @@ import http from "node:http";
 import fs from "node:fs";
 import path from "node:path";
 import { dockerPing, containerLogs, removeContainer, startContainer, stopContainer } from "./admin-docker.mjs";
+import { startAgentUpdateLoop } from "./agent-updates.mjs";
 import {
   buildDiskReport,
   collectServers,
@@ -404,4 +409,38 @@ for (const host of HOSTS) {
       `[host-agent] écoute ${host}:${PORT} brandRoots=${BRAND_ROOTS.join(",")} state=${STATE_FILE}`,
     );
   });
+}
+
+// Updates en PULL (F5) — opt-in : env prioritaire, sinon state posé par
+// `creezio server-docker enroll`. Best-effort absolu : ne touche jamais le
+// service HTTP de l'agent.
+{
+  const state = loadState();
+  const adminUrl = (
+    process.env.CREEZIO_AGENT_ADMIN_URL ||
+    state.adminAppUrl ||
+    ""
+  ).trim();
+  const fleetKey = (
+    process.env.CREEZIO_AGENT_FLEET_KEY ||
+    state.fleetKey ||
+    ""
+  ).trim();
+  if (adminUrl && fleetKey && state.hostId) {
+    startAgentUpdateLoop({
+      adminUrl,
+      fleetKey,
+      hostId: state.hostId,
+      brandRoots: BRAND_ROOTS,
+      findInstance,
+      updateServer,
+      updates,
+      audit,
+    });
+    audit(`pull-updates activés (admin ${adminUrl}, hostId ${state.hostId})`);
+  } else {
+    audit(
+      "pull-updates inactifs (CREEZIO_AGENT_ADMIN_URL / CREEZIO_AGENT_FLEET_KEY absents)",
+    );
+  }
 }

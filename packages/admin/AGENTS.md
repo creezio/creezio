@@ -5,8 +5,9 @@ Modules natifs des **apps admin de marque** (mode admin — ADR
 
 - L'app admin est une app Creezio complète (même OS, `startBrandKernelHarness`)
   — ce package n'est PAS un runtime alternatif.
-- `registerAdminModules(api)` monte `fleet`, `fleet-registry`, `prospects`,
-  `roadmap`, `support`, `billing-*` sous `/api/v1/modules/*`.
+- `registerAdminModules(api)` monte `fleet`, `fleet-registry`,
+  `fleet-releases`, `prospects`, `roadmap`, `support`, `billing-*` sous
+  `/api/v1/modules/*`.
 - `fleet` = proxy vers le backend flotte (`server-admin.mjs`, Basic interne
   via `CREEZIO_FLEET_BACKEND_URL` / `CREEZIO_FLEET_BACKEND_BASIC`) — la
   logique flotte reste dans `packages/observability/fleet-collector`.
@@ -20,6 +21,20 @@ Modules natifs des **apps admin de marque** (mode admin — ADR
   `@creezio/integrations`). Statut `online` DÉRIVÉ de
   `last_heartbeat_at`/`last_polled_at` (< 3× intervalle), jamais stocké.
   Gate : `scripts/test-phase-admin-fleet-registry.mjs`.
+- `fleet-releases` = updates en PULL (F5, migration `admin_005` :
+  `admin_fleet_releases` / `admin_fleet_update_reports` /
+  `admin_fleet_download_slots`). Les agents hôtes POLLENT
+  (`GET next?hostId=` Bearer `hostId:agentToken`, vérifié via le backend
+  `POST /admin/api/hosts/verify` + cache), prennent un slot de téléchargement
+  (sémaphore, lease TTL 15 min), appliquent l'update via leur `updateServer`
+  local (backup/recreate/rollback) puis POSTent un `report`
+  (done|failed|rolled_back, upsert par release+serveur). Directives :
+  release `rolling` ∧ channel ∧ ¬hold ∧ pin prioritaire ∧ vague
+  (`hash(server_id) mod 100 < wave_pct` — bucket STABLE par serveur).
+  Pull par digest si la release en a un ; comparaison « à jour » digest-aware
+  (`fleetImageMatchesTarget`). CRUD releases + `PUT servers/<id>/rollout`
+  (pin/hold/channel) côté session admin. `publish --release` déclare la
+  release (draft). Gate : `scripts/test-phase-fleet-releases.mjs`.
 - Zéro domaine marque ici : naming (« restaurants »…) = config app admin.
 - UI : `@creezio/admin/ui` (TS brut compilé par l'app Next consommatrice).
 - Migrations : `adminMigrations()` à passer en `brandMigrations` de l'app admin.

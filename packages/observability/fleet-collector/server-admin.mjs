@@ -551,6 +551,30 @@ async function handleHostsRoute(req, res, url) {
     return send(res, 200, { ok: true, id: entry.id, enrollToken: token });
   }
 
+  // Vérification d'un credential flotte hostId:agentToken (F5) — utilisée
+  // par le module fleet-releases de l'app admin (Bearer des agents en pull).
+  // fleet-hosts.json reste la SoT des credentials ; comparaison temps
+  // constant, jamais de token restitué.
+  if (req.method === "POST" && p === "/admin/api/hosts/verify") {
+    let body = {};
+    try {
+      const raw = await readBody(req);
+      body = raw ? JSON.parse(raw) : {};
+    } catch {
+      return send(res, 400, { ok: false, error: "json" });
+    }
+    const hostId = String(body.hostId || "").trim();
+    const token = String(body.token || "").trim();
+    const host = hostId ? findHost(hostId) : null;
+    let valid = false;
+    if (host && token && host.agentToken) {
+      const a = Buffer.from(token);
+      const b = Buffer.from(String(host.agentToken));
+      valid = a.length === b.length && crypto.timingSafeEqual(a, b);
+    }
+    return send(res, 200, { ok: true, valid, label: valid ? host.label : undefined });
+  }
+
   const mDel = p.match(/^\/admin\/api\/hosts\/([^/]+)$/);
   if (mDel && req.method === "DELETE") {
     const hostId = decodeURIComponent(mDel[1]);

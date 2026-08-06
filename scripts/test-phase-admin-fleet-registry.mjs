@@ -96,7 +96,15 @@ test("fleet-registry : migration + sync + dédup + online dérivé + poller", as
     )
     .all()
     .map((r) => r.name);
-  assert.deepEqual(tables, ["admin_fleet_events", "admin_fleet_servers"]);
+  assert.deepEqual(tables, [
+    // admin_005 (F5 — gate dédiée test-phase-fleet-releases.mjs)
+    "admin_fleet_download_slots",
+    // admin_004 (F2)
+    "admin_fleet_events",
+    "admin_fleet_releases",
+    "admin_fleet_servers",
+    "admin_fleet_update_reports",
+  ]);
   upsertFleetServerStatus(db, {
     hostId: "local",
     brandId: "b",

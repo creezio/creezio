@@ -30,6 +30,11 @@ import {
   createFleetRegistryMount,
   type FleetRegistryMountOptions,
 } from "./fleet-registry.js";
+import {
+  ADMIN_SCHEMA_005_SQL,
+  createFleetReleasesMount,
+  type FleetReleasesMountOptions,
+} from "./fleet-releases.js";
 
 export {
   ADMIN_SCHEMA_004_SQL,
@@ -45,6 +50,21 @@ export {
   type FleetRegistryPollerOptions,
   type FleetServerStatusInput,
 } from "./fleet-registry.js";
+
+export {
+  ADMIN_SCHEMA_005_SQL,
+  computeFleetUpdateDirectives,
+  createBackendFleetCredentialVerifier,
+  createFleetReleasesMount,
+  fleetImageMatchesTarget,
+  fleetImageRefWithDigest,
+  fleetWaveBucket,
+  fleetWaveIncludes,
+  purgeExpiredFleetSlots,
+  type FleetCredentialVerifier,
+  type FleetReleasesMountOptions,
+  type FleetUpdateDirective,
+} from "./fleet-releases.js";
 
 /* ------------------------------------------------------------ migrations */
 
@@ -164,6 +184,7 @@ export function adminMigrations(): SqliteMigration[] {
     { id: "admin_002_support_messages_billing_events", sql: ADMIN_SCHEMA_002_SQL },
     { id: "admin_003_billing_periode_fin", sql: ADMIN_SCHEMA_003_SQL },
     { id: "admin_004_fleet_registry", sql: ADMIN_SCHEMA_004_SQL },
+    { id: "admin_005_fleet_releases", sql: ADMIN_SCHEMA_005_SQL },
   ];
 }
 
@@ -1303,6 +1324,7 @@ export function createBillingAdminMount(
 export type RegisterAdminModulesOptions = {
   fleet?: FleetAdminMountOptions;
   fleetRegistry?: FleetRegistryMountOptions;
+  fleetReleases?: FleetReleasesMountOptions;
   billing?: BillingWebhookMountOptions;
   billingAdmin?: BillingAdminMountOptions;
 };
@@ -1321,6 +1343,13 @@ export function registerAdminModules(
     createFleetRegistryMount({
       fleet: opts?.fleet,
       ...(opts?.fleetRegistry || {}),
+    }),
+  );
+  api.registerModuleApi(
+    "fleet-releases",
+    createFleetReleasesMount({
+      fleet: opts?.fleet,
+      ...(opts?.fleetReleases || {}),
     }),
   );
   api.registerModuleApi("prospects", createAdminCrudMount("prospects"));
