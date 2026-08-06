@@ -63,6 +63,28 @@ affaibli pour la masquer. (Backlogs d'époque : `docs/archive/BACKLOG-*.md`.)
   `docker/server-admin/configure-admin-npm.sh` — valide tant que le domaine
   est proxifié Cloudflare (orange cloud).
 
+## Admin app OS (ADR-admin-app-os) — suites
+
+- **`@creezio/support` côté serveur marque** : table `support_tickets` +
+  page OS `/support` (restaurateur) + route host-agent
+  `/agent/api/support/*` + sync pull du module admin `support` (aujourd'hui :
+  admin-side prêt — mount `support` + ingest + UI `/tickets` dans l'app
+  admin ; le flux E2E serveur marque → admin reste à câbler).
+- **Billing Stripe** : modèle posé (`admin_billing_*`, rapprochement
+  client ↔ serveur ↔ abonnement, mounts `billing-*`) — brancher Stripe
+  (webhooks → projection locale) derrière la config marque + UI dédiée
+  (aujourd'hui : page Clients générée = fiche client/plan/rattachement).
+- **Factory : générer le repo admin en app OS complète** : `scaffoldAdminRepo`
+  génère aujourd'hui le repo config flotte (server-admin.json…) ; cible =
+  scaffolder aussi l'app admin (server/ + modules @creezio/admin + pages),
+  sur le modèle appliqué à `creezio/tempoflow-admin`.
+- **Fleet natif TS** : porter la logique `server-lib.mjs`/`admin-docker.mjs`
+  dans `@creezio/admin` pour supprimer le hop HTTP interne (le backend
+  flotte HTTP reste pour les host-agents).
+- **Prospection kanban drag & drop** : la page Prospects générée est une
+  table CRUD ; le kanban colonne (`colonne`/`position`) est prévu dans le
+  schéma — UI kanban à écrire dans `@creezio/admin/ui`.
+
 ## Documentation
 
 - **`@creezio/brand-spec`** : pas encore de `README.md` / `docs/FILES.md`
