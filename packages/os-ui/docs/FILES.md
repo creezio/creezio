@@ -1,25 +1,138 @@
-# FILES — @creezio/os-ui
+# packages/os-ui — inventaire des fichiers
+
+> Standard : [DOC-STANDARD.md](../../../docs/DOC-STANDARD.md) — maintenu via
+> `node scripts/generate-files-md.mjs os-ui` (gate `test-phase-docs-freshness`).
+> Colonne « Rôle » éditable à la main : la régénération la préserve.
+
+## `routes/admin/analytics/`
 
 | Fichier | Rôle |
-|---------|------|
-| [`src/index.ts`](../src/index.ts) | Exports : `CreezioUiBoot`, `OS_UI_ROUTE_SEGMENTS` (segments OS interdits dans le `ui/app` versionné marque), `OS_UI_ROUTE_GROUP` (`(creezio-os)`) |
-| [`src/boot.tsx`](../src/boot.tsx) | `CreezioUiBoot` — boot client OS : identité desktop (`desktopApiGlobal`, `productName`, `publicHostSuffix`) + `configureShellUiBrand` |
+|---|---|
+| [`routes/admin/analytics/page.tsx`](../routes/admin/analytics/page.tsx) | Admin analytics (wrapper `@creezio/observability/ui`) |
+
+## `routes/admin/database/`
+
+| Fichier | Rôle |
+|---|---|
+| [`routes/admin/database/page.tsx`](../routes/admin/database/page.tsx) | Admin Database (wrapper `@creezio/database/ui`) |
+
+## `routes/admin/integrations/`
+
+| Fichier | Rôle |
+|---|---|
+| [`routes/admin/integrations/page.tsx`](../routes/admin/integrations/page.tsx) | (à documenter) |
+
+## `routes/admin/mcp/`
+
+| Fichier | Rôle |
+|---|---|
+| [`routes/admin/mcp/page.tsx`](../routes/admin/mcp/page.tsx) | Admin MCP |
+
+## `routes/admin/plugins/`
+
+| Fichier | Rôle |
+|---|---|
+| [`routes/admin/plugins/page.tsx`](../routes/admin/plugins/page.tsx) | Admin plugins (Product Hub) |
+
+## `routes/admin/request-logs/`
+
+| Fichier | Rôle |
+|---|---|
+| [`routes/admin/request-logs/page.tsx`](../routes/admin/request-logs/page.tsx) | Admin request-logs (wrapper `@creezio/observability/ui`) |
+
+## `routes/cockpit/`
+
+| Fichier | Rôle |
+|---|---|
+| [`routes/cockpit/page.tsx`](../routes/cockpit/page.tsx) | Cockpit (wrapper `@creezio/cockpit/ui`) |
+
+## `routes/collaborateurs/`
+
+| Fichier | Rôle |
+|---|---|
+| [`routes/collaborateurs/page.tsx`](../routes/collaborateurs/page.tsx) | Gestion collaborateurs (OS) |
+
+## `routes/configuration/`
+
+| Fichier | Rôle |
+|---|---|
+| [`routes/configuration/page.tsx`](../routes/configuration/page.tsx) | Configuration OS |
+
+## `routes/developers/`
+
+| Fichier | Rôle |
+|---|---|
+| [`routes/developers/page.tsx`](../routes/developers/page.tsx) | Espace développeurs (API keys…) |
+
+## `routes/login/`
+
+| Fichier | Rôle |
+|---|---|
+| [`routes/login/page.tsx`](../routes/login/page.tsx) | Page login OS (wrapper `@creezio/auth/ui`) |
+
+## `routes/mails/`
+
+| Fichier | Rôle |
+|---|---|
+| [`routes/mails/page.tsx`](../routes/mails/page.tsx) | Inbox mails (wrapper `@creezio/mails/ui`) |
+
+## `routes/mcp/`
+
+| Fichier | Rôle |
+|---|---|
+| [`routes/mcp/page.tsx`](../routes/mcp/page.tsx) | Console MCP (wrapper `@creezio/mcp-facade/ui`) |
+
+## `routes/onboarding/`
+
+| Fichier | Rôle |
+|---|---|
+| [`routes/onboarding/page.tsx`](../routes/onboarding/page.tsx) | Onboarding (wrapper `@creezio/onboarding/ui`) |
+
+## `routes/parametres/`
+
+| Fichier | Rôle |
+|---|---|
+| [`routes/parametres/page.tsx`](../routes/parametres/page.tsx) | Paramètres |
+
+## `routes/server-cockpit/`
+
+| Fichier | Rôle |
+|---|---|
+| [`routes/server-cockpit/page.tsx`](../routes/server-cockpit/page.tsx) | Cockpit serveur (wrapper `@creezio/cockpit/ui`) |
+
+## `routes/settings/`
+
+| Fichier | Rôle |
+|---|---|
+| [`routes/settings/page.tsx`](../routes/settings/page.tsx) | Settings desktop |
+
+## `routes/setup/`
+
+| Fichier | Rôle |
+|---|---|
+| [`routes/setup/page.tsx`](../routes/setup/page.tsx) | Setup first-run (wrapper `@creezio/onboarding/ui`) |
+
+## `routes/support/`
+
+| Fichier | Rôle |
+|---|---|
+| [`routes/support/page.tsx`](../routes/support/page.tsx) | (à documenter) |
+
+## `routes/taches/`
+
+| Fichier | Rôle |
+|---|---|
+| [`routes/taches/page.tsx`](../routes/taches/page.tsx) | Kanban tâches (wrapper `@creezio/tasks/ui`) |
+
+## `scripts/`
+
+| Fichier | Rôle |
+|---|---|
 | [`scripts/materialize.mjs`](../scripts/materialize.mjs) | CLI `creezio-materialize-os-ui` — copie `routes/` vers `ui/app/(creezio-os)/` d'une marque (dossier gitignoré côté marque) |
-| `routes/login/page.tsx` | Page login OS (wrapper `@creezio/auth/ui`) |
-| `routes/setup/page.tsx` | Setup first-run (wrapper `@creezio/onboarding/ui`) |
-| `routes/onboarding/page.tsx` | Onboarding (wrapper `@creezio/onboarding/ui`) |
-| `routes/mails/page.tsx` | Inbox mails (wrapper `@creezio/mails/ui`) |
-| `routes/taches/page.tsx` | Kanban tâches (wrapper `@creezio/tasks/ui`) |
-| `routes/mcp/page.tsx` | Console MCP (wrapper `@creezio/mcp-facade/ui`) |
-| `routes/cockpit/page.tsx` | Cockpit (wrapper `@creezio/cockpit/ui`) |
-| `routes/server-cockpit/page.tsx` | Cockpit serveur (wrapper `@creezio/cockpit/ui`) |
-| `routes/collaborateurs/page.tsx` | Gestion collaborateurs (OS) |
-| `routes/configuration/page.tsx` | Configuration OS |
-| `routes/parametres/page.tsx` | Paramètres |
-| `routes/settings/page.tsx` | Settings desktop |
-| `routes/developers/page.tsx` | Espace développeurs (API keys…) |
-| `routes/admin/analytics/page.tsx` | Admin analytics (wrapper `@creezio/observability/ui`) |
-| `routes/admin/database/page.tsx` | Admin Database (wrapper `@creezio/database/ui`) |
-| `routes/admin/mcp/page.tsx` | Admin MCP |
-| `routes/admin/plugins/page.tsx` | Admin plugins (Product Hub) |
-| `routes/admin/request-logs/page.tsx` | Admin request-logs (wrapper `@creezio/observability/ui`) |
+
+## `src/`
+
+| Fichier | Rôle |
+|---|---|
+| [`src/boot.tsx`](../src/boot.tsx) | `CreezioUiBoot` — boot client OS : identité desktop (`desktopApiGlobal`, `productName`, `publicHostSuffix`) + `configureShellUiBrand` |
+| [`src/index.ts`](../src/index.ts) | Exports : `CreezioUiBoot`, `OS_UI_ROUTE_SEGMENTS` (segments OS interdits dans le `ui/app` versionné marque), `OS_UI_ROUTE_GROUP` (`(creezio-os)`) |

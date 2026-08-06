@@ -15,7 +15,7 @@ Le but est de supprimer les jumeaux auth locaux dans les marques tout en preserv
 - Ne pas remplacer `@creezio/platform-core` pour la recovery key ; ce package reexporte seulement.
 - Ne pas imposer `better-sqlite3`; le driver est injectable.
 - Ne pas supposer que `next/headers` existe hors Next ; `getSession()` doit rester tolerant.
-- Ne pas modifier `docs/FILES.md` sauf demande explicite.
+- `docs/FILES.md` est maintenu via `node scripts/generate-files-md.mjs auth` (gate `test-phase-docs-freshness`) — la colonne Rôle s'édite à la main, ne pas inventer d'autre format.
 
 ## Points d'entrée
 

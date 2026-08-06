@@ -89,7 +89,8 @@ instance dans la config store (parité `ensureInboundEmailSecret` desktop).
 Gates : `scripts/test-phase-harness-parity.mjs` (kit, hermétique) et
 `scripts/test-phase-factory-docker-parity.mjs` (opt-in `CREEZIO_FACTORY_DOCKER=1`
 — app neuve factory → image Docker → mêmes étapes boot-status, preuve
-d'héritage). Matrice : [PARITE-TF2.md](./PARITE-TF2.md).
+d'héritage). Matrice historique du chantier :
+[docs/archive/PARITE-TF2.md](../../docs/archive/PARITE-TF2.md).
 
 ## Admin web multi-serveurs
 
@@ -293,3 +294,13 @@ Les deux exposent `/api/v1/core/health` + OS HTTP ; Docker n’ouvre pas de `Bro
 - `docker logs <container>` → une ligne JSONL `{"creezio":"boot-step",…}` par
   transition d'étape de boot
 - `/data/ops/*.jsonl` → journal ops (mêmes kinds que le desktop)
+
+Les **apps admin de marque** (ADR-admin-app-os) sont des apps Creezio
+complètes : mêmes endpoints. Exemple TempoFlow admin (container
+`tempoflowadmin-server-main`, port 18801) :
+
+```bash
+curl -sS http://127.0.0.1:18801/api/v1/os/boot-status | head -c 300
+curl -sS http://127.0.0.1:18801/api/v1/core/health
+# → {"ok":true,"space":"core","brandId":"tempoflowadmin",…}
+```

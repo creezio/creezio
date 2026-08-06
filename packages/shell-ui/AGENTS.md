@@ -17,7 +17,7 @@ La mission inclut une clarification de scope : `shell-ui` n'est plus uniquement 
 - Ne pas remettre cockpit serveur : utiliser `@creezio/cockpit/ui`.
 - Ne pas remettre splash : utiliser `@creezio/electron-shell`.
 - Ne pas deplacer les settings vers un nouveau package sans demande explicite ; documenter d'abord.
-- Ne pas modifier `docs/FILES.md` ou l'audit de scope sans demande explicite.
+- `docs/FILES.md` est maintenu via `node scripts/generate-files-md.mjs shell-ui` (gate `test-phase-docs-freshness`) — la colonne Rôle s'édite à la main, ne pas inventer d'autre format.
 
 ## Points d'entrée
 

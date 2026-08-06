@@ -4,11 +4,17 @@ Outils du monorepo **creezio** (hors packages npm).
 
 ## Rôle
 
-- **Gates de phases** : `test-phase-*.mjs` — assertions architecture / cutovers / docs
+- **Gates de phases** : `test-phase-*.mjs` — assertions architecture / contrats / docs
 - **Build dual CJS** : `build-cjs.mjs` — génère `packages/*/dist-cjs` pour Electron `require`
 - **Propagation** : `kit-version.mjs`, `propagation-impact.mjs`
 - **Sync vendor** : `sync-creezio-vendor.sh` (canonique consommé par les marques)
+- **Docs** : `generate-files-md.mjs` — génère/rafraîchit les `docs/FILES.md`
+  (standard [../docs/DOC-STANDARD.md](../docs/DOC-STANDARD.md), gate
+  `test-phase-docs-freshness.mjs`)
 - **Lib** : `scripts/lib/*` (brand roots, twins intention, etc.)
+
+Les journaux d'époque des phases (`PHASE-*.md`) sont archivés dans
+[../docs/archive/](../docs/archive/).
 
 ## Commandes usuelles
 
@@ -49,7 +55,24 @@ aucune liste figée de noms, aucun assert affaibli.
 
 Workflow quotidien : `npm run test:kit` → première rouge → corriger →
 `npm run test:kit -- --from <gate>`. Sur un poste avec les repos marque à
-jour, `npm run test:brands` lance les 55 gates M/N/O/P + intention.
+jour, `npm run test:brands` lance les ~55 gates M/N/O/P + intention.
+
+### Ajouter une gate
+
+1. Créer `scripts/test-phase-<nom>.mjs` (`node:test`).
+2. L'ajouter dans la ligne `test` du `package.json` racine — SoT unique :
+   les suites `test:kit` / `test:brands` / `test:env` en dérivent
+   automatiquement (classification auto décrite dans l'en-tête de
+   `test-fast.mjs` et le tableau ci-dessus).
+
+### Environnement d'exécution (ce VPS)
+
+- Les gates écrivent sous `/tmp` (tmpfs) : nettoyer `/tmp/creezio-*` et
+  `/tmp/tempoflow3-*` après un chantier ; `TMPDIR=/opt/docker/tmp` pour les
+  runs lourds.
+- Durées indicatives : `build:packages` ~10-15 min, `test:kit` ~15 min,
+  `npm test` côté TF3 ~20 min.
+- État connu : voir « État connu des suites » dans [AGENTS.md](./AGENTS.md).
 
 ## Organisation
 

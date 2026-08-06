@@ -429,8 +429,8 @@ DDL assistant — tables dans sqlite **core** (Phase I2 + C1 rich fields).
 Décision figée : persistance cible = `resolveCoreDbPath` / SqliteRuntime core.
 `resolveAssistantDbPath` (`assistant_chats.db`) reste un chemin **historique**
 pour marques non migrées ; ne pas l’utiliser pour les nouveaux stores kit.
-C1 : colonnes `model` / `mode` / `user_id` / `sources_json` pour cutover
-TempoFlow sans perte (voir ensureAssistantRichColumns).
+Colonnes riches `model` / `mode` / `user_id` / `sources_json`
+(voir ensureAssistantRichColumns) — présentes sur toutes les installations.
 
 ### `src/sqlite-driver.ts`
 

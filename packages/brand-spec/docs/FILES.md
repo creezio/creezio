@@ -1,0 +1,16 @@
+# packages/brand-spec — inventaire des fichiers
+
+> Standard : [DOC-STANDARD.md](../../../docs/DOC-STANDARD.md) — maintenu via
+> `node scripts/generate-files-md.mjs brand-spec` (gate `test-phase-docs-freshness`).
+> Colonne « Rôle » éditable à la main : la régénération la préserve.
+
+## `src/`
+
+| Fichier | Rôle |
+|---|---|
+| [`src/doctor.ts`](../src/doctor.ts) | `doctorBrandSpec` / `formatDoctorReport` — validation d'un dossier brand-spec (brandId, modules, platform needs) avec rapport lisible. |
+| [`src/index.ts`](../src/index.ts) | Export public @creezio/brand-spec (types + load + doctor + init + onboarding-from-spec). |
+| [`src/init.ts`](../src/init.ts) | `initBrandSpec` — scaffold d'un dossier brand-spec/ (brand.yaml, modules/, platform/). |
+| [`src/load.ts`](../src/load.ts) | `loadBrandSpec` / `resolveBrandSpecDir` — parse YAML + défauts platform needs. |
+| [`src/onboarding-from-spec.ts`](../src/onboarding-from-spec.ts) | `resolveOnboardingDecl` / `toSetupWizardConfig` — fusion onboarding depuis brand.yaml + platform/onboarding.yaml. |
+| [`src/types.ts`](../src/types.ts) | Types du contrat BrandSpec (identité + modules + platform needs) — SoT agent créateur, le runtime reste dans @creezio/*. |

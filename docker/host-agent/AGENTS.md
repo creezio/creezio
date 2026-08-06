@@ -1,0 +1,36 @@
+# AGENTS — `docker/host-agent`
+
+## Mission
+
+Image de l'agent hôte flotte (VPS restaurant). Le code vit dans
+`packages/observability/fleet-collector/` (`host-agent.mjs`,
+`agent-updates.mjs`) — ce dossier ne contient que le `Dockerfile`.
+
+## Ne pas faire
+
+- Ajouter des dépendances npm : le fleet-collector est du Node pur.
+- Exposer l'agent hors loopback/bridge sans l'ingress tunnel
+  (`agent.{slug}.{zone}`) — le token d'agent est le seul rempart.
+- Implémenter un push admin → agent : les updates sont en **pull**
+  (gate `scripts/test-phase-fleet-releases.mjs`).
+
+## Piège connu
+
+Le code de l'agent est **embarqué au build de l'image** : après toute modif
+de `fleet-collector/*.mjs`, re-runner `creezio server-docker agent up`
+(rebuild + recreate), sinon le container continue de servir l'ancien code.
+
+## Tests / gates
+
+```bash
+cd /opt/docker/creezio
+node --test scripts/test-phase-fleet-agent.mjs
+node --test scripts/test-phase-fleet-releases.mjs
+node --test scripts/test-phase-fleet-heartbeat.mjs
+```
+
+## Liens
+
+- [README.md](./README.md)
+- [docs/FILES.md](./docs/FILES.md)
+- [../../packages/observability/AGENTS.md](../../packages/observability/AGENTS.md)

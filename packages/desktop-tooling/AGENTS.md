@@ -10,7 +10,7 @@ Maintenir les outils desktop generiques de publication, build distant Windows, r
 - Ne pas publier sans verifier `latest.yml`, version et path.
 - Ne pas synchroniser secrets, `.env.local`, `.git`, node_modules ou artefacts inutiles vers le remote build.
 - Ne pas transformer un dry-run en action destructive.
-- Ne pas toucher `docs/FILES.md` sans demande dediee.
+- `docs/FILES.md` est maintenu via `node scripts/generate-files-md.mjs desktop-tooling` (gate `test-phase-docs-freshness`) — la colonne Rôle s'édite à la main, ne pas inventer d'autre format.
 
 ## Points d'entrée
 

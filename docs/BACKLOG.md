@@ -105,14 +105,23 @@ affaibli pour la masquer. (Backlogs d'époque : `docs/archive/BACKLOG-*.md`.)
 
 ## Documentation
 
-- **`@creezio/brand-spec`** : pas encore de `README.md` / `docs/FILES.md`
-  (AGENTS.md existe) — voir `docs/PACKAGES.md`.
+- ~~`@creezio/brand-spec` sans `README.md` / `docs/FILES.md`~~ **fait** :
+  trio complet, couvert par la gate `test-phase-docs-freshness`
+  (standard : `docs/DOC-STANDARD.md`).
+- **Rôles `(à documenter)` dans les FILES.md** : la gate de fraîcheur garantit
+  l'exhaustivité des inventaires, pas la qualité des rôles — les entrées
+  marquées `(à documenter)` (surtout `scripts/`, `factory`, `desktop-tooling`)
+  se remplissent au fil des chantiers (régénération = colonne préservée).
 - **Liens internes des docs archivées** : les documents de
   `docs/archive/` gardent leurs liens d'époque (certains pointent vers des
   emplacements déplacés) — assumé, l'archive est un journal.
 
 ## Divers
 
+- **`appliedLimit` dans `RunSqlResult`** (`packages/assistant/src/runtime/run-sql.ts`) :
+  champ dupliqué de `limit`, conservé pour compat des clients existants
+  (payloads run-sql déjà consommés par les marques) — à retirer lors d'un
+  prochain bump majeur de l'API assistant.
 - **`packages/observability/fleet-collector/configure-fleet-npm.sh`** et les
   manifests `brand-config` contiennent l'IP du collector fleet historique
   (`104.168.10.36`) — c'est de la config fonctionnelle (tf2-fleet-collector

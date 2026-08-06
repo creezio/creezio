@@ -1,44 +1,96 @@
-# scripts/ — inventaire
+# scripts — inventaire des fichiers
 
-Gates de phases + outils kit.
+> Standard : [DOC-STANDARD.md](../../docs/DOC-STANDARD.md) — maintenu via
+> `node scripts/generate-files-md.mjs scripts` (gate `test-phase-docs-freshness`).
+> Colonne « Rôle » éditable à la main : la régénération la préserve.
 
-| Fichier | Rôle approximatif |
+## Racine
+
+| Fichier | Rôle |
 |---|---|
 | [`build-cjs.mjs`](../build-cjs.mjs) | !usrbinenv node |
+| [`generate-files-md.mjs`](../generate-files-md.mjs) | (à documenter) |
 | [`kit-version.mjs`](../kit-version.mjs) | !usrbinenv node |
 | [`propagation-impact.mjs`](../propagation-impact.mjs) | !usrbinenv node |
+| [`reset-tempoflow3.mjs`](../reset-tempoflow3.mjs) | (à documenter) |
 | [`sync-creezio-vendor.sh`](../sync-creezio-vendor.sh) | !usrbinenv bash |
 | [`test-fast.mjs`](../test-fast.mjs) | Runner gates fail-fast lisible (`npm run test:kit`/`test:brands`/`test:env`) — suites auto-détectées (matrice dans README), séquentiel, stop 1re rouge, `--from`/`--only`/`--skip`, JSONL /tmp/creezio-test-fast.log |
-| [`test-mails-inbox.mjs`](../test-mails-inbox.mjs) |  |
+| [`test-mails-inbox.mjs`](../test-mails-inbox.mjs) | (à documenter) |
+| [`test-meili-no-brand-legacy.mjs`](../test-meili-no-brand-legacy.mjs) | (à documenter) |
+| [`test-os-ai-missions.mjs`](../test-os-ai-missions.mjs) | (à documenter) |
+| [`test-os-app-kind.mjs`](../test-os-app-kind.mjs) | (à documenter) |
+| [`test-os-cold-warm.mjs`](../test-os-cold-warm.mjs) | (à documenter) |
+| [`test-os-connection-profile.mjs`](../test-os-connection-profile.mjs) | (à documenter) |
+| [`test-os-electron-runtime-smoke.mjs`](../test-os-electron-runtime-smoke.mjs) | (à documenter) |
+| [`test-os-email-surface.mjs`](../test-os-email-surface.mjs) | (à documenter) |
+| [`test-os-embeds.mjs`](../test-os-embeds.mjs) | (à documenter) |
+| [`test-os-fleet-compose.mjs`](../test-os-fleet-compose.mjs) | (à documenter) |
+| [`test-os-mails-config.mjs`](../test-os-mails-config.mjs) | (à documenter) |
+| [`test-os-mcp-oauth.mjs`](../test-os-mcp-oauth.mjs) | (à documenter) |
+| [`test-os-native-pnp.mjs`](../test-os-native-pnp.mjs) | (à documenter) |
+| [`test-os-open-external-tab.mjs`](../test-os-open-external-tab.mjs) | (à documenter) |
+| [`test-os-owned-by-brand.mjs`](../test-os-owned-by-brand.mjs) | (à documenter) |
+| [`test-os-plugins.mjs`](../test-os-plugins.mjs) | (à documenter) |
+| [`test-os-public-origin.mjs`](../test-os-public-origin.mjs) | (à documenter) |
+| [`test-os-shell-contracts.mjs`](../test-os-shell-contracts.mjs) | (à documenter) |
+| [`test-os-shell-more.mjs`](../test-os-shell-more.mjs) | (à documenter) |
+| [`test-os-shell.mjs`](../test-os-shell.mjs) | (à documenter) |
+| [`test-os-tunnel-provision.mjs`](../test-os-tunnel-provision.mjs) | (à documenter) |
+| [`test-os-updater.mjs`](../test-os-updater.mjs) | (à documenter) |
+| [`test-phase-admin-billing.mjs`](../test-phase-admin-billing.mjs) | (à documenter) |
+| [`test-phase-admin-fleet-registry.mjs`](../test-phase-admin-fleet-registry.mjs) | (à documenter) |
+| [`test-phase-api-entity-mount.mjs`](../test-phase-api-entity-mount.mjs) | (à documenter) |
+| [`test-phase-app-runtime.mjs`](../test-phase-app-runtime.mjs) | (à documenter) |
+| [`test-phase-auth-secret.mjs`](../test-phase-auth-secret.mjs) | (à documenter) |
 | [`test-phase-b.mjs`](../test-phase-b.mjs) | !usrbinenv node |
 | [`test-phase-b2.mjs`](../test-phase-b2.mjs) | !usrbinenv node |
+| [`test-phase-brand-spec.mjs`](../test-phase-brand-spec.mjs) | (à documenter) |
 | [`test-phase-c.mjs`](../test-phase-c.mjs) | !usrbinenv node |
-| [`test-phase-c0.mjs`](../test-phase-c0.mjs) |  |
-| [`test-phase-c1.mjs`](../test-phase-c1.mjs) |  |
-| [`test-phase-c2.mjs`](../test-phase-c2.mjs) |  |
-| [`test-phase-c3.mjs`](../test-phase-c3.mjs) |  |
-| [`test-phase-c4.mjs`](../test-phase-c4.mjs) |  |
-| [`test-phase-c7.mjs`](../test-phase-c7.mjs) |  |
+| [`test-phase-c0.mjs`](../test-phase-c0.mjs) | (à documenter) |
+| [`test-phase-c1.mjs`](../test-phase-c1.mjs) | (à documenter) |
+| [`test-phase-c2.mjs`](../test-phase-c2.mjs) | (à documenter) |
+| [`test-phase-c3.mjs`](../test-phase-c3.mjs) | (à documenter) |
+| [`test-phase-c4.mjs`](../test-phase-c4.mjs) | (à documenter) |
+| [`test-phase-c7.mjs`](../test-phase-c7.mjs) | (à documenter) |
+| [`test-phase-clone-autonomy.mjs`](../test-phase-clone-autonomy.mjs) | (à documenter) |
+| [`test-phase-crash-reporter.mjs`](../test-phase-crash-reporter.mjs) | (à documenter) |
+| [`test-phase-create-brand.mjs`](../test-phase-create-brand.mjs) | (à documenter) |
 | [`test-phase-d.mjs`](../test-phase-d.mjs) | !usrbinenv node |
+| [`test-phase-desktop-server-parity.mjs`](../test-phase-desktop-server-parity.mjs) | (à documenter) |
+| [`test-phase-docs-freshness.mjs`](../test-phase-docs-freshness.mjs) | (à documenter) |
 | [`test-phase-e.mjs`](../test-phase-e.mjs) | !usrbinenv node |
 | [`test-phase-f.mjs`](../test-phase-f.mjs) | !usrbinenv node |
+| [`test-phase-factory-docker-parity.mjs`](../test-phase-factory-docker-parity.mjs) | (à documenter) |
+| [`test-phase-factory-prd-experience.mjs`](../test-phase-factory-prd-experience.mjs) | (à documenter) |
+| [`test-phase-factory-prd.mjs`](../test-phase-factory-prd.mjs) | (à documenter) |
+| [`test-phase-factory-two-repos.mjs`](../test-phase-factory-two-repos.mjs) | (à documenter) |
+| [`test-phase-fleet-agent.mjs`](../test-phase-fleet-agent.mjs) | (à documenter) |
+| [`test-phase-fleet-heartbeat.mjs`](../test-phase-fleet-heartbeat.mjs) | (à documenter) |
+| [`test-phase-fleet-releases.mjs`](../test-phase-fleet-releases.mjs) | (à documenter) |
+| [`test-phase-fleet-rollout.mjs`](../test-phase-fleet-rollout.mjs) | (à documenter) |
 | [`test-phase-h1.mjs`](../test-phase-h1.mjs) | !usrbinenv node |
 | [`test-phase-h2.mjs`](../test-phase-h2.mjs) | !usrbinenv node |
-| [`test-phase-h3.mjs`](../test-phase-h3.mjs) |  |
-| [`test-phase-h4.mjs`](../test-phase-h4.mjs) |  |
+| [`test-phase-h3.mjs`](../test-phase-h3.mjs) | (à documenter) |
+| [`test-phase-h4.mjs`](../test-phase-h4.mjs) | (à documenter) |
 | [`test-phase-h5.mjs`](../test-phase-h5.mjs) | !usrbinenv node |
+| [`test-phase-harness-parity.mjs`](../test-phase-harness-parity.mjs) | (à documenter) |
+| [`test-phase-hermes-computer-use.mjs`](../test-phase-hermes-computer-use.mjs) | (à documenter) |
+| [`test-phase-hermes-mcp.mjs`](../test-phase-hermes-mcp.mjs) | (à documenter) |
+| [`test-phase-hermes-web-allowlist.mjs`](../test-phase-hermes-web-allowlist.mjs) | (à documenter) |
 | [`test-phase-hybrid.mjs`](../test-phase-hybrid.mjs) | Gate architecture hybride : browser-host (driver partagé, sans electron), surface plateforme + sidecar IA, client thin `requireRemoteProfile`, bridge session, `defaultServerUrl`, onglets réels install-brand-os-desktop, Hermes `--skip-browser` conditionnel |
-| [`test-phase-i0.mjs`](../test-phase-i0.mjs) |  |
-| [`test-phase-i1.mjs`](../test-phase-i1.mjs) |  |
-| [`test-phase-i2.mjs`](../test-phase-i2.mjs) |  |
-| [`test-phase-i3.mjs`](../test-phase-i3.mjs) |  |
-| [`test-phase-i4.mjs`](../test-phase-i4.mjs) |  |
-| [`test-phase-i5.mjs`](../test-phase-i5.mjs) |  |
-| [`test-phase-i6.mjs`](../test-phase-i6.mjs) |  |
-| [`test-phase-i7.mjs`](../test-phase-i7.mjs) |  |
-| [`test-phase-i8.mjs`](../test-phase-i8.mjs) |  |
-| [`test-phase-m0.mjs`](../test-phase-m0.mjs) |  |
-| [`test-phase-m1.mjs`](../test-phase-m1.mjs) |  |
+| [`test-phase-i0.mjs`](../test-phase-i0.mjs) | (à documenter) |
+| [`test-phase-i1.mjs`](../test-phase-i1.mjs) | (à documenter) |
+| [`test-phase-i2.mjs`](../test-phase-i2.mjs) | (à documenter) |
+| [`test-phase-i3.mjs`](../test-phase-i3.mjs) | (à documenter) |
+| [`test-phase-i4.mjs`](../test-phase-i4.mjs) | (à documenter) |
+| [`test-phase-i5.mjs`](../test-phase-i5.mjs) | (à documenter) |
+| [`test-phase-i6.mjs`](../test-phase-i6.mjs) | (à documenter) |
+| [`test-phase-i7.mjs`](../test-phase-i7.mjs) | (à documenter) |
+| [`test-phase-i8.mjs`](../test-phase-i8.mjs) | (à documenter) |
+| [`test-phase-integrations.mjs`](../test-phase-integrations.mjs) | (à documenter) |
+| [`test-phase-landing.mjs`](../test-phase-landing.mjs) | (à documenter) |
+| [`test-phase-m0.mjs`](../test-phase-m0.mjs) | (à documenter) |
+| [`test-phase-m1.mjs`](../test-phase-m1.mjs) | (à documenter) |
 | [`test-phase-m10.mjs`](../test-phase-m10.mjs) | !usrbinenv node |
 | [`test-phase-m11.mjs`](../test-phase-m11.mjs) | !usrbinenv node |
 | [`test-phase-m12.mjs`](../test-phase-m12.mjs) | !usrbinenv node |
@@ -47,19 +99,21 @@ Gates de phases + outils kit.
 | [`test-phase-m14.mjs`](../test-phase-m14.mjs) | !usrbinenv node |
 | [`test-phase-m15.mjs`](../test-phase-m15.mjs) | !usrbinenv node |
 | [`test-phase-m16.mjs`](../test-phase-m16.mjs) | !usrbinenv node |
-| [`test-phase-m1p.mjs`](../test-phase-m1p.mjs) |  |
-| [`test-phase-m2.mjs`](../test-phase-m2.mjs) |  |
-| [`test-phase-m2p.mjs`](../test-phase-m2p.mjs) |  |
-| [`test-phase-m3.mjs`](../test-phase-m3.mjs) |  |
-| [`test-phase-m3p.mjs`](../test-phase-m3p.mjs) |  |
-| [`test-phase-m4.mjs`](../test-phase-m4.mjs) |  |
-| [`test-phase-m5.mjs`](../test-phase-m5.mjs) |  |
+| [`test-phase-m1p.mjs`](../test-phase-m1p.mjs) | (à documenter) |
+| [`test-phase-m2.mjs`](../test-phase-m2.mjs) | (à documenter) |
+| [`test-phase-m2p.mjs`](../test-phase-m2p.mjs) | (à documenter) |
+| [`test-phase-m3.mjs`](../test-phase-m3.mjs) | (à documenter) |
+| [`test-phase-m3p.mjs`](../test-phase-m3p.mjs) | (à documenter) |
+| [`test-phase-m4.mjs`](../test-phase-m4.mjs) | (à documenter) |
+| [`test-phase-m5.mjs`](../test-phase-m5.mjs) | (à documenter) |
 | [`test-phase-m6p.mjs`](../test-phase-m6p.mjs) | !usrbinenv node |
 | [`test-phase-m7.mjs`](../test-phase-m7.mjs) | !usrbinenv node |
 | [`test-phase-m7p.mjs`](../test-phase-m7p.mjs) | !usrbinenv node |
 | [`test-phase-m8.mjs`](../test-phase-m8.mjs) | !usrbinenv node |
 | [`test-phase-m8p.mjs`](../test-phase-m8p.mjs) | !usrbinenv node |
 | [`test-phase-m9.mjs`](../test-phase-m9.mjs) | !usrbinenv node |
+| [`test-phase-mcp-tool-policy-guard.mjs`](../test-phase-mcp-tool-policy-guard.mjs) | (à documenter) |
+| [`test-phase-meili-feed.mjs`](../test-phase-meili-feed.mjs) | (à documenter) |
 | [`test-phase-n0.mjs`](../test-phase-n0.mjs) | !usrbinenv node |
 | [`test-phase-n1.mjs`](../test-phase-n1.mjs) | !usrbinenv node |
 | [`test-phase-n1p.mjs`](../test-phase-n1p.mjs) | !usrbinenv node |
@@ -95,6 +149,8 @@ Gates de phases + outils kit.
 | [`test-phase-o8.mjs`](../test-phase-o8.mjs) | !usrbinenv node |
 | [`test-phase-o9.mjs`](../test-phase-o9.mjs) | !usrbinenv node |
 | [`test-phase-o9p.mjs`](../test-phase-o9p.mjs) | !usrbinenv node |
+| [`test-phase-onboarding-hybride.mjs`](../test-phase-onboarding-hybride.mjs) | (à documenter) |
+| [`test-phase-os-ui-scaffold.mjs`](../test-phase-os-ui-scaffold.mjs) | (à documenter) |
 | [`test-phase-p-cockpit.mjs`](../test-phase-p-cockpit.mjs) | !usrbinenv node |
 | [`test-phase-p-onboarding.mjs`](../test-phase-p-onboarding.mjs) | !usrbinenv node |
 | [`test-phase-p-shell-ui.mjs`](../test-phase-p-shell-ui.mjs) | !usrbinenv node |
@@ -103,11 +159,27 @@ Gates de phases + outils kit.
 | [`test-phase-p18-open-external-tab.mjs`](../test-phase-p18-open-external-tab.mjs) | !usrbinenv node |
 | [`test-phase-p25.mjs`](../test-phase-p25.mjs) | !usrbinenv node |
 | [`test-phase-p29.mjs`](../test-phase-p29.mjs) | !usrbinenv node |
-| [`test-phase-r0.mjs`](../test-phase-r0.mjs) |  |
-| [`test-phase-r1.mjs`](../test-phase-r1.mjs) |  |
-| [`test-phase-r2.mjs`](../test-phase-r2.mjs) |  |
+| [`test-phase-pack-runtime-deps.mjs`](../test-phase-pack-runtime-deps.mjs) | (à documenter) |
+| [`test-phase-platform-users.mjs`](../test-phase-platform-users.mjs) | (à documenter) |
+| [`test-phase-plugin-insights.mjs`](../test-phase-plugin-insights.mjs) | (à documenter) |
+| [`test-phase-plugin-tools.mjs`](../test-phase-plugin-tools.mjs) | (à documenter) |
+| [`test-phase-plugins-default.mjs`](../test-phase-plugins-default.mjs) | (à documenter) |
+| [`test-phase-r0.mjs`](../test-phase-r0.mjs) | (à documenter) |
+| [`test-phase-r1.mjs`](../test-phase-r1.mjs) | (à documenter) |
+| [`test-phase-r2.mjs`](../test-phase-r2.mjs) | (à documenter) |
 | [`test-phase-r3.mjs`](../test-phase-r3.mjs) | !usrbinenv node |
 | [`test-phase-r4.mjs`](../test-phase-r4.mjs) | !usrbinenv node |
-| [`test-phase-v1.mjs`](../test-phase-v1.mjs) |  |
-| [`test-phase-v2.mjs`](../test-phase-v2.mjs) |  |
-| [`test-phase-v3.mjs`](../test-phase-v3.mjs) |  |
+| [`test-phase-registry-pull-proxy.mjs`](../test-phase-registry-pull-proxy.mjs) | (à documenter) |
+| [`test-phase-resolve-manifest.mjs`](../test-phase-resolve-manifest.mjs) | (à documenter) |
+| [`test-phase-server-docker.mjs`](../test-phase-server-docker.mjs) | (à documenter) |
+| [`test-phase-v1.mjs`](../test-phase-v1.mjs) | (à documenter) |
+| [`test-phase-v2.mjs`](../test-phase-v2.mjs) | (à documenter) |
+| [`test-phase-v3.mjs`](../test-phase-v3.mjs) | (à documenter) |
+
+## `lib/`
+
+| Fichier | Rôle |
+|---|---|
+| [`lib/brand-roots.mjs`](../lib/brand-roots.mjs) | (à documenter) |
+| [`lib/intention-twins.mjs`](../lib/intention-twins.mjs) | (à documenter) |
+| [`lib/resolve-probe-brand.mjs`](../lib/resolve-probe-brand.mjs) | (à documenter) |

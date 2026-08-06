@@ -10,7 +10,7 @@ Maintenir le kit d'onboarding générique : moteur d'étapes, UI React, first-ru
 - Ne pas importer de chemins d'application (`@/lib/*`, routes Next marque, assets marque).
 - Ne pas persister directement en base depuis les composants UI ; passer par `OnboardingTransport`.
 - Ne pas faire dépendre le moteur `src/engine.ts` de React, du DOM ou de `process.env`.
-- Ne pas toucher à `docs/FILES.md` sauf demande explicite.
+- `docs/FILES.md` est maintenu via `node scripts/generate-files-md.mjs onboarding` (gate `test-phase-docs-freshness`) — la colonne Rôle s'édite à la main, ne pas inventer d'autre format.
 
 ## Points d'entrée
 

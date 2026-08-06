@@ -1,8 +1,7 @@
 /**
  * Module `fleet-registry` — DB centrale de la flotte (app admin de marque).
  *
- * Chantier « flotte : DB centrale + auto-inscription + updates en pull » :
- * la table `admin_fleet_servers` (brand.db de l'app admin) est une VUE
+ * La table `admin_fleet_servers` (brand.db de l'app admin) est une VUE
  * matérialisée de la flotte — les JSON (`servers.json`, `fleet-hosts.json`)
  * restent la SoT des gestes Docker (create/start/stop/update).
  *

@@ -11,7 +11,7 @@ Maintenir les tâches plateforme : kanban human/ai/hermes, runs IA, API Hono, ad
 - Ne pas exécuter une tâche IA avec les droits owner si l'assigné est un collaborateur IA.
 - Ne pas marquer un run réussi si desktop, LLM ou `finish_task(success=true)` manquent.
 - Ne pas exposer les tools MCP host sans contrôle actor owner.
-- Ne pas toucher à `docs/FILES.md` sauf demande explicite.
+- `docs/FILES.md` est maintenu via `node scripts/generate-files-md.mjs tasks` (gate `test-phase-docs-freshness`) — la colonne Rôle s'édite à la main, ne pas inventer d'autre format.
 
 ## Points d'entrée
 

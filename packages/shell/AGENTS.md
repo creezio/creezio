@@ -58,7 +58,7 @@ Le package doit rester un package de contrats et de wiring preload :
    - rester best-effort ;
    - ne jamais throw depuis les listeners `window` / `document` ;
    - respecter `titlebarNoDragClass`.
-6. Ne pas modifier `docs/FILES.md` manuellement.
+6. `docs/FILES.md` est maintenu via `node scripts/generate-files-md.mjs shell` (gate `test-phase-docs-freshness`) — la colonne Rôle s'édite à la main, ne pas inventer d'autre format.
 
 ## Config attendue côté brand
 

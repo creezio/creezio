@@ -11,7 +11,7 @@ Maintenir les briques d'observabilité génériques : events store, ops journal,
 - Ne pas écrire de secrets en clair dans les logs, JSONL, bundles ou heartbeats.
 - Ne pas monter les routes admin sans auth côté marque.
 - Ne pas ajouter de dépendance UI obligatoire côté runtime serveur.
-- Ne pas toucher à `docs/FILES.md` sauf demande explicite.
+- `docs/FILES.md` est maintenu via `node scripts/generate-files-md.mjs observability` (gate `test-phase-docs-freshness`) — la colonne Rôle s'édite à la main, ne pas inventer d'autre format.
 
 ## Points d'entrée
 
@@ -34,6 +34,11 @@ Maintenir les briques d'observabilité génériques : events store, ops journal,
 
 ## Modifier sans casser
 
+- **fleet-collector embarqué au build des images** : `fleet-collector/*.mjs`
+  est copié dans les images Docker `docker/server-admin` (backend flotte) et
+  `docker/host-agent` (agent VPS). Après toute modif de ces `.mjs`, re-runner
+  `creezio server-docker admin up …` / `creezio server-docker agent up …`
+  (rebuild + recreate), sinon les containers servent l'ancien code.
 - Garder tous les chemins de collecte best-effort (`try/catch`) sauf raison explicite.
 - Toute donnée user/env/API doit passer par `redactSecrets` ou un équivalent.
 - Les scopes fleet doivent rester opt-in via `isScopeActive`.

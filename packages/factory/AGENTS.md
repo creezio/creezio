@@ -32,7 +32,7 @@ en jumeau dans `main.ts`.
   (`@creezio/app-runtime`) — pas le monolithe `installBrandDesktopRuntime`.
 - Ne pas écraser des fichiers existants sans `--force`.
 - Ne pas exiger des flags techniques si `--from-prd` suffit.
-- Ne pas toucher `docs/FILES.md` sans demande dédiée.
+- `docs/FILES.md` est maintenu via `node scripts/generate-files-md.mjs factory` (gate `test-phase-docs-freshness`) — la colonne Rôle s'édite à la main, ne pas inventer d'autre format.
 
 ## Points d'entrée
 

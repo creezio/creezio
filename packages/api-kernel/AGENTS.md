@@ -20,7 +20,7 @@ Le package doit protéger les frontières DB, empêcher les abus historiques com
 - Ne pas ouvrir SQLite dans l'adaptateur Hono au moment de l'import : préférer un getter lazy.
 - Ne pas transformer les routes Hono propres à une marque en second design API : les espaces kernel sont le contrat ; le fallthrough de `src/hono.ts` n’existe que pour la composition.
 - Ne pas changer les erreurs publiques (`platform_not_mounted`, `module_not_mounted`, `plugin_not_mounted`, `cross_layer_write_denied`, etc.) sans vérifier les tests et clients.
-- Ne pas modifier `docs/FILES.md` manuellement.
+- `docs/FILES.md` est maintenu via `node scripts/generate-files-md.mjs api-kernel` (gate `test-phase-docs-freshness`) — la colonne Rôle s'édite à la main, ne pas inventer d'autre format.
 
 ## Points d'entrée
 

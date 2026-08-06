@@ -21,7 +21,7 @@ La mission technique est de separer clairement :
 - Ne pas mettre les host tools dans `createBrandMcpFacade`; ils se branchent apres la façade.
 - Ne pas importer de modules app via `@/`.
 - Ne pas stocker de DB concrete dans le kit ; passer par adapters OAuth/admin.
-- Ne pas modifier `docs/FILES.md` sauf demande explicite.
+- `docs/FILES.md` est maintenu via `node scripts/generate-files-md.mjs mcp-facade` (gate `test-phase-docs-freshness`) — la colonne Rôle s'édite à la main, ne pas inventer d'autre format.
 
 ## Points d'entrée
 

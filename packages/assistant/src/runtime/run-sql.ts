@@ -245,7 +245,8 @@ export function runSql(sqlRaw: string): RunSqlResult {
       rows: slimRows,
       rowCount: rawRows.length,
       limit: appliedLimit ?? requestedLimit ?? null,
-      // appliedLimit est conservé temporairement pour les clients existants.
+      // appliedLimit : conservé pour compat clients existants (champ dupliqué
+      // de `limit`) — retrait tracké au BACKLOG (docs/BACKLOG.md, « Divers »).
       ...(appliedLimit !== undefined ? { appliedLimit } : {}),
       ...(totalMatching !== undefined ? { totalMatching } : {}),
       truncated: rawRows.length > MAX_ROWS_PAYLOAD || mayBeTruncated,

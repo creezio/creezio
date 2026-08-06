@@ -1,4 +1,8 @@
-# Matrice de parité TF2 desktop → serveur Docker headless
+# [ARCHIVE] Matrice de parité TF2 desktop → serveur Docker headless
+
+> **Archivé** (anciennement `docker/server/PARITE-TF2.md`). Le contrat vivant
+> est la gate `scripts/test-phase-harness-parity.mjs` (dans `test:kit`) —
+> cette matrice est le snapshot du chantier de parité, conservé pour contexte.
 
 Fonctionnalités du runtime desktop TF2 (`brand-desktop-runtime.ts`, phases
 post-démarrage Next) et leur statut dans le harness Docker

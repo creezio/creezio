@@ -10,7 +10,7 @@ Maintenir le moteur d'automations lifecycle-only du kit : evenements plugins/org
 - Ne pas creer de triggers SQLite metier ni de CRUD de tables applicatives.
 - Ne pas hardcoder une marque, un domaine ou un prefixe n8n vertical.
 - Ne pas transformer les webhooks lifecycle en worker durable avec retry sans cadrage explicite.
-- Ne pas toucher `docs/FILES.md` sans demande dediee.
+- `docs/FILES.md` est maintenu via `node scripts/generate-files-md.mjs automations` (gate `test-phase-docs-freshness`) — la colonne Rôle s'édite à la main, ne pas inventer d'autre format.
 
 ## Points d'entrée
 

@@ -25,7 +25,7 @@ Missions principales :
 - Ne pas écrire dans `core.db` depuis du code brand/plugin hors garde. L'isolation est portée côté `@creezio/api-kernel`, mais les couches doivent rester conceptuellement séparées ici.
 - Ne pas faire tourner `runHistoricalMigrations` dans le main Electron si le driver natif est compilé pour Node vanilla.
 - Ne pas écraser une config locale persistée avec des defaults, surtout pour `fleetTelemetry` et les secrets.
-- Ne pas modifier `docs/FILES.md` manuellement.
+- `docs/FILES.md` est maintenu via `node scripts/generate-files-md.mjs platform-core` (gate `test-phase-docs-freshness`) — la colonne Rôle s'édite à la main, ne pas inventer d'autre format.
 
 ## Points d'entrée
 

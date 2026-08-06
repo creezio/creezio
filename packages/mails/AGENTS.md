@@ -11,7 +11,7 @@ Maintenir la capacité mails générique : store, inbox, providers, routes Hono,
 - Ne pas ajouter de template email métier dans le kit.
 - Ne pas imposer un provider SMTP unique ; garder `MailProvider` extensible.
 - Ne pas rendre `/inbound` dépendant d'une session UI : il doit utiliser le secret partagé.
-- Ne pas toucher à `docs/FILES.md` sauf demande explicite.
+- `docs/FILES.md` est maintenu via `node scripts/generate-files-md.mjs mails` (gate `test-phase-docs-freshness`) — la colonne Rôle s'édite à la main, ne pas inventer d'autre format.
 
 ## Points d'entrée
 

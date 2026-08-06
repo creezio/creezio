@@ -2,8 +2,10 @@
 
 ## Mission
 
-Garantir que le kit reste cohérent : packages présents, cutovers documentés,
-pas de régression de frontières kit/marque, sync vendor possible.
+Garantir que le kit reste cohérent : packages présents, frontières kit/marque
+sans régression, docs fraîches, sync vendor possible. Les journaux d'époque
+des phases (`PHASE-*.md`) vivent dans [`../docs/archive/`](../docs/archive/) —
+ils décrivent le chantier, pas l'état courant.
 
 ## Ne pas faire
 
@@ -20,15 +22,55 @@ pas de régression de frontières kit/marque, sync vendor possible.
 | `kit-version.mjs` | Bump semver package + CHANGELOG |
 | `propagation-impact.mjs` | Impact d’un bump sur marques |
 | `sync-creezio-vendor.sh` | Canon sync → `vendor/creezio` marques |
+| `generate-files-md.mjs` | Génère/rafraîchit les `docs/FILES.md` (standard `docs/DOC-STANDARD.md`) |
 | `lib/brand-roots.mjs` | Résolution chemins brands + kit |
 | `lib/intention-twins.mjs` | Scanner jumeaux intention (P0) |
 | `test-phase-*.mjs` | Gates — une phase / un contrat |
 
+## Ajouter une gate
+
+1. Créer `scripts/test-phase-<nom>.mjs` (`node:test`, asserts stricts).
+2. L'insérer dans la ligne `test` du `package.json` racine (SoT unique de la
+   liste des gates).
+3. C'est tout : `test:kit` / `test:brands` / `test:env` **dérivent
+   automatiquement** de cette ligne. Classification (en-tête de
+   `test-fast.mjs`) : une gate listée dans `ENV_GATES` → suite `env` (opt-in
+   par variable) ; une gate qui importe `lib/brand-roots.mjs` /
+   `lib/intention-twins.mjs` ou mentionne `dockerRoot` → suite `brands`
+   (skip auto par marque absente) ; sinon → suite `kit` (doit être 100 %
+   verte partout).
+4. Vérifier : `node --test scripts/test-phase-<nom>.mjs` puis
+   `npm run test:kit`.
+
 ## Modifier une gate
 
-1. Lire la `PHASE-*.md` / doc associée.
+1. Lire le journal de la phase associée (`PHASE-*.md` dans
+   [`../docs/archive/`](../docs/archive/)) et la doc SoT du package.
 2. Adapter l’assert **et** le code/doc SoT, pas seulement l’assert.
-3. Lancer `node --test scripts/test-phase-<x>.mjs` puis `npm test`.
+3. Lancer `node --test scripts/test-phase-<x>.mjs` puis `npm run test:kit`.
+
+## État connu des suites sur ce VPS (135.125.79.113)
+
+- `test:kit` : référence — 100 % verte attendue.
+- `test:brands` : skip auto (repos `certivan-app`/`fidu` absents,
+  `tempoflow2` sans `crm/vendor/creezio`). Corollaire : un `npm test` brut
+  (sans la logique de skip du runner) est **rouge sur C7.2** — préexistant,
+  le repo `tempoflow2` local est resté en état pré-cutover ; ne pas
+  « corriger » cette gate en l'affaiblissant.
+- `test:env` : exige un binaire Electron dans les `node_modules` du kit —
+  absent sur ce VPS. Contournement utilisé : smokes de l'app générée avec les
+  `node_modules` de TF3 (`/opt/docker/tempoflow3`).
+
+## Gates et `/tmp` (tmpfs)
+
+Les gates écrivent leurs data dirs sous `/tmp` (tmpfs = RAM). Après un
+chantier : nettoyer `/tmp/creezio-*`, `/tmp/tempoflow3-*`, `tf3-*.db`. Pour
+les runs lourds (cold-warm ~4 Go), pointer un disque :
+`TMPDIR=/opt/docker/tmp npm run test:env`.
+
+Ordres de grandeur sur ce VPS : `build:packages` ~10-15 min, `test:kit`
+~15 min, `npm test` TF3 ~20 min, `build:ui` TF3 ~5 min — dimensionner les
+timeouts en conséquence.
 
 ## Config / chemins
 
@@ -40,4 +82,5 @@ Les gates marques peuvent pointer vers `/opt/docker/<brand>` ou
 
 - [README.md](./README.md)
 - [docs/FILES.md](./docs/FILES.md)
+- [../docs/DOC-STANDARD.md](../docs/DOC-STANDARD.md)
 - [../AGENTS.md](../AGENTS.md)

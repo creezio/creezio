@@ -10,7 +10,7 @@ Maintenir le cockpit serveur/CRM générique : config marque, shell autonome, pa
 - Ne pas hardcoder de protocole deep-link, domaine, URL de téléchargement ou nom produit.
 - Ne pas importer de fichiers d'application (`@/lib/*`, routes Next marque).
 - Ne pas remplacer `@creezio/tasks/ui` par une copie locale pour l'activité IA.
-- Ne pas toucher à `docs/FILES.md` sauf demande explicite.
+- `docs/FILES.md` est maintenu via `node scripts/generate-files-md.mjs cockpit` (gate `test-phase-docs-freshness`) — la colonne Rôle s'édite à la main, ne pas inventer d'autre format.
 
 ## Points d'entrée
 

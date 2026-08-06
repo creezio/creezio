@@ -11,7 +11,7 @@ Maintenir l'Admin Database natif Creezio : catalogue, browse, CRUD fail-closed, 
 - Ne pas confondre avec `@creezio/automations` lifecycle-only.
 - Ne pas exposer les tables systeme en ecriture.
 - Ne pas retirer les protections SSRF webhook sans alternative explicite.
-- Ne pas toucher `docs/FILES.md` sans demande dediee.
+- `docs/FILES.md` est maintenu via `node scripts/generate-files-md.mjs database` (gate `test-phase-docs-freshness`) — la colonne Rôle s'édite à la main, ne pas inventer d'autre format.
 
 ## Points d'entrée
 

@@ -11,7 +11,7 @@ Maintenir les contrats de propagation kit -> marques et terrain -> kit : semver,
 - Ne pas promouvoir automatiquement un plugin en vertical ou kit.
 - Ne pas changer l'ordre des gates production sans decision explicite.
 - Ne pas traiter les hints npm comme publication reelle tant que le registry prive est hors scope.
-- Ne pas toucher `docs/FILES.md` sans demande dediee.
+- `docs/FILES.md` est maintenu via `node scripts/generate-files-md.mjs propagation` (gate `test-phase-docs-freshness`) — la colonne Rôle s'édite à la main, ne pas inventer d'autre format.
 
 ## Points d'entrée
 

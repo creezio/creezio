@@ -11,7 +11,7 @@ Maintenir le runtime assistant générique : registry brand, stockage chat, mode
 - Ne pas exposer deux surfaces publiques pour le même tool MCP sans raison.
 - Ne pas logger de secrets OpenAI/Hermes/API dans les traces ou tool results.
 - Ne pas rendre `chat-db` dépendant uniquement du legacy `assistant_chats.db`; préserver le store kit.
-- Ne pas toucher à `docs/FILES.md` sauf demande explicite.
+- `docs/FILES.md` est maintenu via `node scripts/generate-files-md.mjs assistant` (gate `test-phase-docs-freshness`) — la colonne Rôle s'édite à la main, ne pas inventer d'autre format.
 
 ## Points d'entrée
 

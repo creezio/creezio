@@ -75,7 +75,7 @@ Voir `package.json` script `build:packages`. Ordre typique :
 
 `brand-config` → `shell` → `platform-core` → `product-hub` → `api-kernel` →
 `mcp-facade` → `auth` → `shell-ui` → `os-ui` → `onboarding` → `cockpit` →
-`assistant` → `tasks` → `mails` → `support` → `observability` → `landing` → `admin` → `automations` →
+`assistant` → `tasks` → `mails` → `support` → `integrations` → `observability` → `landing` → `admin` → `automations` →
 `database` → `browser-host` → `electron-shell` → `brand-spec` →
 `app-runtime` → `desktop-tooling` → `factory` → `propagation` → `build:cjs`.
 
@@ -119,10 +119,10 @@ resync vendor (`scripts/sync-creezio-vendor.sh` côté marque, `CREEZIO_KIT_ROOT
 ## Tests
 
 ```bash
-npm run test:kit         # gates pures kit (~75) — 100 % vertes partout, fail-fast
+npm run test:kit         # gates pures kit (~100) — 100 % vertes partout, fail-fast
 npm run test:brands      # gates lisant les repos marque (~55) — skip auto si absents
-npm run test:env         # gates lourdes opt-in (cold-warm, factory-prd)
-npm test                 # les 133 gates en un node --test (CI complet)
+npm run test:env         # gates lourdes opt-in (4 : cold-warm, factory-prd, docker-parity)
+npm test                 # les ~159 gates en un node --test (CI complet)
 npm run build:packages   # tsc + dual CJS
 ```
 
@@ -134,11 +134,23 @@ Workflow : `npm run test:kit` → première rouge → corriger →
 `npm run test:kit -- --from <gate>`. Les skips sont toujours explicites
 (raison affichée), jamais silencieux.
 
-## Plugins Electron — piège connu
+## Pièges connus
 
-Dans `electron-shell` `host/plugins/launcher.ts`, le handler `child.on("exit")`
-doit comparer `cur?.child === child` avant `running.delete(id)`, sinon un
-restart après PUT files efface le process respawné.
+- **Plugins Electron** : dans `electron-shell` `host/plugins/launcher.ts`, le
+  handler `child.on("exit")` doit comparer `cur?.child === child` avant
+  `running.delete(id)`, sinon un restart après PUT files efface le process
+  respawné.
+- **zod v3/v4** : ne pas ajouter `zod` aux dependencies d'un nouveau package —
+  le hoisting npm résout la v3 attendue par le reste du kit (une v4 locale
+  casse les types croisés). Utiliser les helpers de `@creezio/tasks` qui
+  encapsulent déjà zod.
+- **Identité git** : ne jamais toucher `git config` — committer avec
+  `git -c user.name=Creezio -c user.email=creezio@users.noreply.github.com commit …`.
+- **Resync vendor après push** : tout changement kit consommé par les marques
+  n'existe pour elles qu'après **push sur `main`** puis resync
+  (`CREEZIO_KIT_ROOT=/opt/docker/creezio bash server/scripts/sync-creezio-vendor.sh`
+  côté marque) — `SYNC.json` pinne le HEAD du kit, donc resync toujours APRÈS
+  le push, jamais avant.
 
 ## Propagation vers marques
 

@@ -15,7 +15,7 @@ Objectif principal : fournir un SoT commun pour les flux plugins natifs tout en 
 - Ne pas rendre l'auth interne aux routes `/plugin-products` : la marque protege le prefixe et injecte `getActor` / `getSession`.
 - Ne pas ouvrir l'ACL fail-open par confort. Le modele par defaut est fail-closed.
 - Ne pas confondre plugin natif Product Hub avec feature metier d'une marque ; `features.plugins=false` est un choix d'integration, pas une suppression de capacite kit.
-- Ne pas modifier `docs/FILES.md` sauf demande explicite : c'est l'inventaire de reference genere/documentaire.
+- `docs/FILES.md` est maintenu via `node scripts/generate-files-md.mjs product-hub` (gate `test-phase-docs-freshness`) — la colonne Rôle s'édite à la main, ne pas inventer d'autre format.
 
 ## Points d'entrée
 

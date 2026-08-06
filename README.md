@@ -12,9 +12,9 @@ sans réécrire le socle.
 ```
                       ┌──────────────────────────────┐
                       │        kit creezio           │
-                      │  packages/@creezio/* (24)    │
+                      │  packages/@creezio/* (28)    │
                       └──────────────┬───────────────┘
-                                     │  sync vendor (crm/vendor/creezio)
+                                     │  sync vendor (vendor/creezio)
         ┌────────────────────────────┼────────────────────────────┐
         ▼                            ▼                            ▼
    marque A (tempoflow3)        marque B (certivan)          marque C (fidu)
@@ -74,7 +74,7 @@ partagés à la racine) **et** un repo admin dédié privé `<brand>-admin`
 (app admin de la marque : flotte, support, billing…) — voir
 [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md).
 
-## Les 24 packages
+## Les 28 packages
 
 | Package | Rôle |
 |---------|------|
@@ -93,7 +93,9 @@ partagés à la racine) **et** un repo admin dédié privé `<brand>-admin`
 | `tasks` | Kanban + missions IA |
 | `mails` | Inbox mails |
 | `support` | Tickets support serveur marque (page `/support` + export admin) |
+| `integrations` | Clés API tierces (`integration://<slug>`, secret-box, sync n8n) |
 | `observability` | Ops, fleet, analytics, request-logs |
+| `landing` | Landing page publique de marque (`lp.{zone}`, contenu DB éditable admin) |
 | `admin` | Modules natifs des apps admin de marque (fleet, support, prospection, roadmap, billing) |
 | `automations` | Lifecycle automations plugins/org |
 | `database` | Admin Database CRUD |
@@ -105,8 +107,10 @@ partagés à la racine) **et** un repo admin dédié privé `<brand>-admin`
 | `factory` | `creezio new-app` / `brand apply` / `server-docker` |
 | `propagation` | Semver, impact kit→marques, registre org |
 
-Index détaillé : [docs/PACKAGES.md](./docs/PACKAGES.md) — chaque package a son
-trio `README.md` / `AGENTS.md` / `docs/FILES.md`.
+Index détaillé : [docs/PACKAGES.md](./docs/PACKAGES.md) — chaque package (et
+chaque zone `docker/*`) a son trio `README.md` / `AGENTS.md` / `docs/FILES.md`,
+vérifié par la gate `test-phase-docs-freshness`
+(standard : [docs/DOC-STANDARD.md](./docs/DOC-STANDARD.md)).
 
 `apps/console` = console ops du parc ; `apps/demobrand` = sandbox kit (pas un
 produit client).
@@ -117,6 +121,7 @@ produit client).
 |--------|---------|
 | [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) | Modes de déploiement, boot, admin, navigateur IA, propagation |
 | [docs/PACKAGES.md](./docs/PACKAGES.md) | Index de tous les packages |
+| [docs/DOC-STANDARD.md](./docs/DOC-STANDARD.md) | Standard documentaire (trio, format FILES.md, règles éditoriales) |
 | [docs/adr/](./docs/adr/) | Décisions d'architecture (ADR) en vigueur |
 | [docs/BACKLOG.md](./docs/BACKLOG.md) | Dettes restantes assumées |
 | [docs/archive/](./docs/archive/) | Journal historique de construction (ne décrit pas l'état courant) |

@@ -12,7 +12,7 @@ Maintenir le runtime Electron plateforme Creezio : host stack, desktop runtime, 
 - Ne pas lancer un sidecar sans chemin, store, contexte et logs injectes.
 - Ne pas exposer secrets BYOK, tokens control plane, cles CRM/n8n dans les logs.
 - Ne pas casser les alias legacy existants sans migration explicite.
-- Ne pas toucher `docs/FILES.md` sans demande dediee.
+- `docs/FILES.md` est maintenu via `node scripts/generate-files-md.mjs electron-shell` (gate `test-phase-docs-freshness`) — la colonne Rôle s'édite à la main, ne pas inventer d'autre format.
 
 ## Points d'entrée
 
