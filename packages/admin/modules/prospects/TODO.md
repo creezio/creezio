@@ -14,7 +14,7 @@
 - fichiers: packages/admin/src/index.ts, packages/admin/ui/prospects-kanban-client.tsx
 - criteres:
   - [ ] la colonne `archived_at` (déjà en schéma) devient écrivable via `POST /<id>/archive` sur le mount kit
-  - [ ] le client n'utilise plus DELETE comme archivage (fallback conservé pour compat)
+  - [ ] le client n'utilise plus DELETE comme archivage (le chemin DELETE-archive est supprimé)
 
 ### [todo] PROSP-3 — Validation serveur `nom` requis à la création
 - priorite: P3

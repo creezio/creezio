@@ -42,7 +42,7 @@ Tout le wiring d'un module vit dans **son** fichier
 | Tools MCP métier | `mcpTools(api)` |
 | Index Meili | `meiliIndexes` |
 
-Les fichiers historiques (`brand-module-api.ts`, `brand-migrations.ts`,
+Les fichiers d'assemblage (`brand-module-api.ts`, `brand-migrations.ts`,
 `vertical-slot.ts`, `brand-mcp-tools.ts`, `meili-feed.ts`) sont de simples
 **consommateurs du registre** `modules/index.ts` — ne pas y remettre du
 wiring de module. Le registre est partagé : un agent module n'y touche que
@@ -52,7 +52,7 @@ wiring de module. Le registre est partagé : un agent module n'y touche que
 
 Dans `migrations()` du module — IDs stables `mod_<id>_00N_<slug>`
 (`[a-z0-9][a-z0-9_.-]*`), **jamais renuméroter/renommer une migration
-appliquée** ; les IDs historiques `fromprd_brand_0XX` restent intouchés.
+appliquée**, quel que soit son préfixe (`fromprd_brand_0XX` compris).
 Migrations cross-module interdites (une colonne sur la table d'un autre
 module = tâche dans le module propriétaire). Colonnes implicites attendues
 par le moteur CRUD : `id`, `created_at`, `updated_at` (+ `archived_at` si
@@ -78,7 +78,7 @@ const ENTITY_SPECS: Record<string, EntitySpec> = {
       { name: "statut", enum: ["actif", "inactif"], filterable: true },
     ],
     hooks: { beforeCreate(row, ctx) { /* métier */ } },
-    extraRoutes: async (ctx) => monSousCheminMetier(ctx), // fallback
+    extraRoutes: async (ctx) => monSousCheminMetier(ctx), // routes hors CRUD
   },
 };
 
@@ -137,7 +137,7 @@ dans l'interview (§5 : readOnly/destructive, requiredScope, rôles).
 - Nav : `navItems` du module (permissions `nav.*` déclarées via
   `configureAuth` — sans quoi la sidebar owner est amputée).
 - Meili : `meiliIndexes` du module (UIDs `catalog_*` imposés par le kit,
-  jamais d'UIDs legacy `tf2_*`).
+  jamais d'UIDs `tf2_*`, réservés).
 
 ## 5. Gates métier
 

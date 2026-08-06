@@ -71,6 +71,29 @@ node /opt/docker/creezio/scripts/generate-files-md.mjs --all --check   # vérif 
    en cours — commit + push + rapport — jamais en laissant un état
    intermédiaire non documenté.
 
+## Commentaires de code
+
+1. **Un commentaire décrit l'état courant, jamais l'histoire.** Interdits
+   dans le code de marque : « TF2 », « verbatim », « cutover », « legacy »,
+   « avant/après la migration », « conservé pour compat »… Si un mécanisme
+   vient d'ailleurs, on le nomme par sa fonction actuelle (ex. « catalogue
+   distant »), pas par son origine. Les identifiants techniques réels (noms
+   de tables, de fichiers, d'env) ne changent pas — seule la prose.
+2. **Un fallback réel se décrit comme un état runtime, pas comme une
+   dégradation.** Exemple : « Le catalogue distant peut ne pas encore être
+   chargé (premier boot) : la base n'a alors que le schéma des migrations
+   marque. On détecte le schéma effectif et on indexe en documents simples
+   tant que le catalogue complet n'est pas disponible. »
+3. **Un fallback de pure compatibilité (préserver un ancien comportement
+   dont personne ne dépend) se supprime**, il ne se commente pas — après
+   vérification par grep/gates qu'aucun appelant n'existe. On ne transporte
+   pas ces chemins morts dans de nouveaux fichiers.
+
+Ces règles valent aussi pour les specs de module (PRD/interview) : elles
+décrivent le module comme s'il avait toujours été conçu ainsi — zéro
+narration historique (seule la ligne factuelle du CHANGELOG date une
+livraison).
+
 ## Gate de fraîcheur
 
 `scripts/test-phase-docs-freshness.mjs` échoue si :

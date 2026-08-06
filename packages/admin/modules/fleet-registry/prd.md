@@ -19,8 +19,8 @@ instance apparaître.
   `@creezio/app-runtime`) fait `POST register` avec le secret partagé puis
   `POST heartbeat` toutes les ~90 s avec sa `serverKey`.
 - **Poller de fond de l'app admin** : toutes les 90 s, upsert du registre
-  depuis le backend flotte (couvre serveurs arrêtés et instances legacy
-  sans heartbeat) + janitor du module fleet-releases.
+  depuis le backend flotte (couvre serveurs arrêtés et instances sans
+  heartbeat) + janitor du module fleet-releases.
 
 ## Capacités (fonctionnel)
 

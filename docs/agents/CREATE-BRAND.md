@@ -97,7 +97,7 @@ Si un besoin OS manque → **gap kit** (`@creezio/app-runtime` /
 | Templates CHR riches dans factory | Contourne la sonde |
 | Sidecar `metier-api.mjs` / `store.json` | Hors contrat SQLite |
 | Jumeau `listenBrandKernelHttp` dans main | Contourne la façade |
-| UIDs Meili `tf2_*` | Legacy marque prod |
+| UIDs Meili `tf2_*` | Réservés — seuls les UIDs `catalog_*` du kit sont admis |
 
 ## 4b. Fichiers métier protégés (`owned-by-brand`)
 

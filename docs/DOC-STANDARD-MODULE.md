@@ -64,7 +64,8 @@ Questionnaire **rempli** (pas un formulaire vide). Sections :
 ## 2. Données & migrations
    Tables (schéma complet), index, FK logiques.
    IDs de migration : `mod_<module>_00N_<slug>` — JAMAIS renuméroter/renommer
-   une migration appliquée. (IDs historiques `fromprd_brand_0XX` : intouchés.)
+   une migration appliquée, quel que soit son préfixe (`fromprd_brand_0XX`
+   compris).
    Migrations cross-module interdites : une migration ne touche que les
    tables du module ; une colonne sur la table d'un autre module = tâche
    dans le module propriétaire.
@@ -143,7 +144,7 @@ Un agent travaillant sur le module `<id>` ne modifie que :
 2. son fichier de wiring `server/src/electron/modules/<id>.ts` ;
 3. ses pages UI (`server/ui/app/<routes du module>/`) et ses composants
    dédiés (`server/ui/components/<id>/`) ;
-4. sa gate (`scripts/test-module-<id>.mjs` ou la gate historique du module) ;
+4. sa gate (`scripts/test-module-<id>.mjs` ou la gate existante du module) ;
 5. **une seule ligne** dans le registre `modules/index.ts` (son import).
 
 Tout fichier partagé (registre au-delà de sa ligne, `brand-migrations.ts`,
