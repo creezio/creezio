@@ -39,6 +39,18 @@ export type {
 export { registerApiMounts } from "./register.js";
 
 export type {
+  EntityColumnSpec,
+  EntityColumnType,
+  EntityHookContext,
+  EntityHooks,
+  EntitySpec,
+} from "./entity-mount.js";
+export {
+  createEntityApiMount,
+  registerEntityMounts,
+} from "./entity-mount.js";
+
+export type {
   ApiKernelHonoSpace,
   ApiKernelLike,
   ApiKernelResolver,

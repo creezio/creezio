@@ -34,6 +34,11 @@ Le package doit protéger les frontières DB, empêcher les abus historiques com
   - `CrossLayerWriteDeniedError`, `createScopedDbAccess`, `mountLayerRef`.
 - `src/register.ts`
   - `registerApiMounts`, types batch.
+- `src/entity-mount.ts`
+  - moteur CRUD déclaratif : `EntitySpec`, `createEntityApiMount`,
+    `registerEntityMounts` (routes list/get/create/patch/delete/archive,
+    SQL paramétré, identifiants validés `[a-z_][a-z0-9_]*`, hooks métier).
+    Gate : `scripts/test-phase-api-entity-mount.mjs`.
 - `src/hono.ts`
   - `apiKernelToHonoHandler`, `applyApiResponse`, `mountApiKernelOnHono`.
 

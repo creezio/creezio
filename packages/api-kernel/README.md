@@ -291,6 +291,57 @@ try {
 }
 ```
 
+### Entity mounts — CRUD déclaratif
+
+`createEntityApiMount(spec)` génère un `ApiMount` CRUD complet depuis un
+`EntitySpec` (le kit fournit le moteur, la marque fournit le schéma) :
+
+```ts
+import {
+  createEntityApiMount,
+  registerEntityMounts,
+  type EntitySpec,
+} from "@creezio/api-kernel";
+
+const clientsSpec: EntitySpec = {
+  table: "clients", // identifiant validé [a-z_][a-z0-9_]*
+  archivable: true, // POST :id/archive + filtre ?archived=0|1 (défaut 0)
+  defaultLimit: 1000, // pagination SQL limit/offset, total via COUNT(*)
+  columns: [
+    { name: "nom", required: true, searchable: true },
+    { name: "email", searchable: true },
+    { name: "segment_id", filterable: true },
+    { name: "statut", enum: ["actif", "inactif"] },
+  ],
+  hooks: {
+    beforeCreate(row, ctx) {
+      // mutation (colonnes dérivées, écritures annexes via ctx.db)
+      // ou rejet : return { status: 400, body: { error: "..." } };
+    },
+    afterRead: (row, ctx) => ({ ...row /* enrichissements */ }),
+    afterList: (rows) => undefined, // undefined ⇒ { items, total }
+  },
+  extraRoutes: async (ctx) => ({
+    // fallback pour les subPaths métier non couverts par le moteur
+    status: 404,
+    body: { error: "not_found", subPath: ctx.subPath },
+  }),
+};
+
+registerEntityMounts(api, { clients: clientsSpec });
+```
+
+Routes générées : `GET /` (liste avec `q`, `archived`, filtres égalité,
+`limit`/`offset` en SQL + `total` par `COUNT(*)`), `POST /` (création,
+colonnes déclarées uniquement), `GET /:id` (hook `afterRead`), `PATCH /:id`
+(merge partiel), `DELETE /:id` (400 `use_archive` si `softDeleteOnly`,
+défaut = `archivable`), `POST /:id/archive`. Erreurs : `not_found`,
+`<col>_required`, `<col>_invalide`, `use_archive`, `not_archivable`,
+`db_unavailable`. Filtre `q` : LIKE échappé, insensible à la casse avec
+repli des majuscules accentuées latines. `dbLayer: "brand"` par défaut.
+
+Gate : `scripts/test-phase-api-entity-mount.mjs`.
+
 ### Adaptateur Hono
 
 ```ts
