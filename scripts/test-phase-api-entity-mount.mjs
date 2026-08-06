@@ -163,6 +163,59 @@ test("entity-mount CRUD complet + colonnes non déclarées ignorées", async () 
   }
 });
 
+test("entity-mount PATCH ignore les colonnes GENERATED/VIRTUAL (SELECT *)", async () => {
+  const userDataRoot = fs.mkdtempSync(
+    path.join(os.tmpdir(), "creezio-entity-gen-"),
+  );
+  const ctx = { manifest: demobrandManifest, userDataRoot, isPackaged: true };
+  const runtime = createSqliteRuntime({
+    ctx,
+    coreMigrations: composeMigrations(),
+    brandMigrations: composeMigrations({
+      id: "entity_mount_generated_001",
+      sql: `
+CREATE TABLE IF NOT EXISTS alias_rows (
+  id TEXT PRIMARY KEY,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  statut TEXT,
+  cree_le TEXT GENERATED ALWAYS AS (created_at) VIRTUAL,
+  modifie_le TEXT GENERATED ALWAYS AS (updated_at) VIRTUAL
+);
+`,
+    }),
+  });
+  const api = createApiKernel({ brandId: "demobrand", sqliteRuntime: runtime });
+  registerEntityMounts(api, {
+    alias_rows: {
+      table: "alias_rows",
+      columns: [{ name: "statut", enum: ["brouillon", "envoyee"] }],
+    },
+  });
+  try {
+    const created = await api.handle({
+      method: "POST",
+      path: "/api/v1/modules/alias_rows",
+      body: { statut: "brouillon" },
+    });
+    assert.equal(created.status, 201);
+    assert.ok(created.body.cree_le);
+    assert.equal(created.body.cree_le, created.body.created_at);
+
+    const patched = await api.handle({
+      method: "PATCH",
+      path: `/api/v1/modules/alias_rows/${created.body.id}`,
+      body: { statut: "envoyee" },
+    });
+    assert.equal(patched.status, 200, JSON.stringify(patched.body));
+    assert.equal(patched.body.statut, "envoyee");
+    assert.equal(patched.body.cree_le, created.body.created_at);
+    assert.equal(patched.body.modifie_le, patched.body.updated_at);
+  } finally {
+    runtime.close();
+  }
+});
+
 test("entity-mount DELETE dur quand pas soft-delete only", async () => {
   const h = makeHarness({
     specs: {

@@ -387,7 +387,9 @@ export function createEntityApiMount(spec: EntitySpec): ApiMount {
       id,
       updated_at: now(),
     };
-    const cols = Object.keys(next).filter((k) => k !== "id");
+    // Uniquement les colonnes déclarées (+ timestamps) — SELECT * peut
+    // exposer des VIRTUAL/GENERATED (alias brand) qu'il ne faut pas UPDATE.
+    const cols = Object.keys(next).filter((k) => k !== "id" && allowed.has(k));
     db.prepare(
       `UPDATE ${table} SET ${cols.map((c) => `${c} = ?`).join(", ")} WHERE id = ?`,
     ).run(...cols.map((c) => next[c]), id);
