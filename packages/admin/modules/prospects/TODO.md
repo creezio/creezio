@@ -18,13 +18,13 @@
   - [ ] la colonne `archived_at` (déjà en schéma) devient écrivable via `POST /<id>/archive` sur le mount kit
   - [ ] le client n'utilise plus DELETE comme archivage (le chemin DELETE-archive est supprimé)
 
-### [todo] PROSP-3 — Validation serveur `nom` requis à la création
-- scope: BUG — dysfonctionnement réel, correctif autorisé (aucun changement de comportement au-delà du fix)
+### [done] PROSP-3 — Validation serveur `nom` requis à la création
+- done: 2026-08-06
 - priorite: P3
 - depends: aucune
 - fichiers: packages/admin/src/index.ts
 - criteres:
-  - [ ] POST sans `nom` non vide → 400 (aujourd'hui la contrainte NOT NULL SQLite produit une 500 non normalisée)
+  - [x] POST sans `nom` non vide → 400 `nom_required`
 
 ### [todo] PROSP-4 — `<textarea>` notes → primitive kit
 - scope: HORS-SCOPE — évolution/refactor/UI/décision : NE PAS réaliser sans demande explicite du propriétaire (l'app est considérée fonctionnelle telle quelle)
@@ -34,10 +34,10 @@
 - criteres:
   - [ ] le champ notes utilise une primitive du design system (textarea kit quand disponible dans @creezio/shell-ui)
 
-### [todo] PROSP-5 — Gate kit dédiée au CRUD prospects
-- scope: HORS-SCOPE — évolution/refactor/UI/décision : NE PAS réaliser sans demande explicite du propriétaire (l'app est considérée fonctionnelle telle quelle)
+### [done] PROSP-5 — Gate kit dédiée au CRUD prospects
+- done: 2026-08-06
 - priorite: P3
 - depends: aucune
-- fichiers: scripts/ (gate à créer)
+- fichiers: scripts/test-phase-admin-prospects.mjs
 - criteres:
-  - [ ] gate node --test : CRUD complet + tri kanban `position ASC, created_at DESC` sur DB better-sqlite3 avec adminMigrations()
+  - [x] gate node --test : CRUD + tri kanban + validation nom
