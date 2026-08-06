@@ -21,7 +21,7 @@ Preuves : `scripts/test-phase-harness-parity.mjs` (hermétique, dans
 | 9 | MCP public via URL tunnel (`resolvePublicUrl`) | ✅ `publicBaseUrl` MCP suit le tunnel | `start-brand-kernel-harness.ts` |
 | 10 | Secret mails entrants (`ensureInboundEmailSecret`) | ✅ env `EMAIL_INBOUND_SECRET` prime, sinon store persisté | `applyStoredEmailEnv` |
 | 11 | Fleet agent + crash endpoint | ✅ phase `fleet` (`CREEZIO_FLEET_ENDPOINT` / `CREEZIO_CRASH_ENDPOINT`, fallback manifest, no-op sinon) | `runHarnessFleetPhase` |
-| 12 | Plugins (`startEnabledPlugins` + control API) | ✅ phase `plugins` (`CREEZIO_PLUGINS=1`) | `runHarnessPluginsPhase` |
+| 12 | Plugins (`startEnabledPlugins` + control API) | ✅ phase `plugins` (défaut ON, kill-switch `CREEZIO_PLUGINS=0`) | `runHarnessPluginsPhase` |
 
 ## Hors périmètre Docker (assumé)
 

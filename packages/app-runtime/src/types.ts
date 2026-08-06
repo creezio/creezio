@@ -75,7 +75,8 @@ export type StartBrandDesktopConfig = {
    */
   desktopShell?: "window" | "runtime";
   /**
-   * Host plugins kit (défaut feature-off). `false` ou `CREEZIO_PLUGINS=1` = on.
+   * Host plugins kit — activé par défaut. OFF si `features.plugins=false`
+   * (Fidu) ou kill-switch `CREEZIO_PLUGINS=0`.
    */
   pluginsFeatureOff?: boolean;
   /** Feed Meili marque (optionnel — sans feed = pas de boot Meili). */

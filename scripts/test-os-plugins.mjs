@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 /**
- * Plugins control plane via compose OS — opt-in CREEZIO_PLUGINS=1.
+ * Plugins control plane via compose OS — actifs par défaut,
+ * kill-switch CREEZIO_PLUGINS=0 (l'ancien opt-in =1 reste un no-op).
  * Harness si probe brand résolu hors monorepo kit.
  */
 import assert from "node:assert/strict";
@@ -76,7 +77,7 @@ function ensureBuilt() {
   return true;
 }
 
-test("plugins feature-off par défaut + endpoint", async () => {
+test("plugins feature-off via kill-switch CREEZIO_PLUGINS=0 + endpoint", async () => {
   if (!ensureBuilt()) {
     console.log(
       "skip: probe brand absent (CREEZIO_TEMPOFLOW3_ROOT / ../tempoflow3)",
@@ -86,7 +87,7 @@ test("plugins feature-off par défaut + endpoint", async () => {
   const prevWarm = process.env.CREEZIO_NATIVE_WARM;
   const prevPlugins = process.env.CREEZIO_PLUGINS;
   process.env.CREEZIO_NATIVE_WARM = "0";
-  delete process.env.CREEZIO_PLUGINS;
+  process.env.CREEZIO_PLUGINS = "0";
 
   const handle = await bootProbe();
   try {
@@ -108,7 +109,7 @@ test("plugins feature-off par défaut + endpoint", async () => {
   }
 });
 
-test("plugins enabled avec CREEZIO_PLUGINS=1 + listPlugins HTTP", async () => {
+test("plugins enabled avec CREEZIO_PLUGINS=1 (no-op, déjà défaut) + listPlugins HTTP", async () => {
   if (!TF3 || !fs.existsSync(path.join(TF3, "src/electron/brand-migrations.ts"))) {
     console.log(
       "skip: probe brand absent (CREEZIO_TEMPOFLOW3_ROOT / ../tempoflow3)",

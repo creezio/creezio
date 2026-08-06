@@ -31,8 +31,8 @@ startBrandDesktop({
   navItems: verticalSlot.items,
   desktopShell:
     process.env.CREEZIO_DESKTOP_SHELL === "window" ? "window" : "runtime",
-  // Sandbox H2 gère déjà plugins/product-hub ; host-stack plugins reste feature-off
-  // sauf CREEZIO_PLUGINS=1.
+  // Sandbox H2 gère déjà plugins/product-hub ; host-stack plugins suit le
+  // défaut kit (ON — kill-switch CREEZIO_PLUGINS=0).
 }).catch((err) => {
   console.error(err);
   app.exit(1);

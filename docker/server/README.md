@@ -79,7 +79,7 @@ runtime desktop — chacune a son étape boot-status :
 | `catalog` | `CREEZIO_CATALOG=1` | `ensureCatalogPresent` (téléchargement snapshot) |
 | `catalog-import` | idem + host `ensureCatalogImported` | projection snapshot → brand.db via `/api/v1/modules/catalog/import` |
 | `tunnel` | `CREEZIO_TUNNEL_PROVISION_URL` + `_TOKEN` | reserve + ingress + `cloudflared` (binaire embarqué dans l'image, `CREEZIO_CLOUDFLARED_BINARY`) ; `APP_PUBLIC_URL`/`MCP_PUBLIC_URL` suivent |
-| `plugins` | `CREEZIO_PLUGINS=1` | `startEnabledPlugins` + control API |
+| `plugins` | défaut ON (kill-switch `CREEZIO_PLUGINS=0` / `features.plugins=false`) | `startEnabledPlugins` + control API |
 | `hermes-bridge` | warm actif | clé CRM Hermes, seed contexte, pont n8n↔Hermes, webhook public n8n |
 | `fleet` | `CREEZIO_FLEET_ENDPOINT` (ou manifest) | fleet agent + crash endpoint (`CREEZIO_CRASH_ENDPOINT`) |
 
@@ -177,7 +177,7 @@ Pas de lettres (`server-a` / `server-b` interdit).
 | `CREEZIO_HTTP_HOST` | `0.0.0.0` | Bind Docker (obligatoire) |
 | `CREEZIO_NATIVE_WARM` | `0` | Skip n8n/Hermes au boot |
 | `CREEZIO_CATALOG` | `0` | Catalogue : présence + import post-listen |
-| `CREEZIO_PLUGINS` | `0` | Plugins host + control API |
+| `CREEZIO_PLUGINS` | `1` (défaut ON — `0` = kill-switch) | Plugins host + control API |
 | `CREEZIO_TUNNEL_PROVISION_URL` / `_TOKEN` / `CREEZIO_TUNNEL_SLUG` | — | Tunnel Cloudflare (reserve/ingress/cloudflared) |
 | `CREEZIO_FLEET_ENDPOINT` / `CREEZIO_CRASH_ENDPOINT` | manifest | Fleet agent / crash reports |
 | `EMAIL_INBOUND_SECRET` | store | Secret webhooks mails entrants |

@@ -310,8 +310,9 @@ export async function runHarnessHermesBridgePhase(opts: {
 }
 
 /**
- * Étape plugins (CREEZIO_PLUGINS=1) : sidecars user + control plane loopback.
- * Défaut OFF — cohérent avec le desktop kit (composeBrandOs pluginsFeatureOff).
+ * Étape plugins : sidecars user + control plane loopback.
+ * Actifs par défaut — OFF si features.plugins=false ou CREEZIO_PLUGINS=0
+ * (cohérent avec composeBrandOs pluginsFeatureOff).
  */
 export async function runHarnessPluginsPhase(opts: {
   boot: BootProgressReporter;

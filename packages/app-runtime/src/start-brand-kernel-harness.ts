@@ -10,6 +10,7 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { isFeatureEnabled } from "@creezio/brand-config";
 import {
   ensureKitOsBinaries,
   kitBinaryPaths,
@@ -112,8 +113,12 @@ export async function startBrandKernelHarness(
   const desktopProfile = config.desktopProfile || "full";
   const warmNative =
     desktopProfile === "full" && process.env.CREEZIO_NATIVE_WARM !== "0";
+  // Plugins ON par défaut (parité composeBrandOs) — OFF si
+  // features.plugins=false (Fidu) ou kill-switch CREEZIO_PLUGINS=0.
   const pluginsOn =
-    desktopProfile === "full" && process.env.CREEZIO_PLUGINS === "1";
+    desktopProfile === "full" &&
+    process.env.CREEZIO_PLUGINS !== "0" &&
+    (!config.manifest || isFeatureEnabled(config.manifest, "plugins"));
   const tunnelRequested =
     desktopProfile === "full" &&
     Boolean(config.manifest) &&
@@ -613,7 +618,7 @@ export async function startBrandKernelHarness(
     }
   }
 
-  // Plugins user (sidecars + control plane loopback) — CREEZIO_PLUGINS=1.
+  // Plugins user (sidecars + control plane loopback) — actifs par défaut.
   let pluginsPhase: Awaited<ReturnType<typeof runHarnessPluginsPhase>> | null =
     null;
   if (brandOs && pluginsOn) {

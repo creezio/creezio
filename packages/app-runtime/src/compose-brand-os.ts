@@ -48,8 +48,10 @@ export type ComposeBrandOsOptions = {
     token?: string;
   };
   /**
-   * Host plugins réel (défaut feature-off).
-   * Opt-in : `pluginsFeatureOff: false` ou `CREEZIO_PLUGINS=1`.
+   * Host plugins réel — **activé par défaut** (P&P).
+   * Feature-off si `manifest.features.plugins === false` (Fidu) ou
+   * kill-switch `CREEZIO_PLUGINS=0`. `CREEZIO_PLUGINS=1` reste accepté
+   * (no-op — c'est déjà le défaut).
    */
   pluginsFeatureOff?: boolean;
   /**
@@ -274,10 +276,13 @@ export function composeBrandOs(
   const prefix = m.envPrefix;
   const product = m.client.productName;
   const domain = m.tunnelRootDomain || m.domains?.primary || "localhost";
+  // Plugins ON par défaut — OFF si features.plugins=false (Fidu) ou
+  // kill-switch CREEZIO_PLUGINS=0 (l'ancien opt-in =1 reste un no-op).
   const pluginsFeatureOff =
     opts.pluginsFeatureOff !== undefined
       ? opts.pluginsFeatureOff
-      : process.env.CREEZIO_PLUGINS !== "1";
+      : !isFeatureEnabled(m, "plugins") ||
+        process.env.CREEZIO_PLUGINS === "0";
   /** Fleet = manifest.features.fleet (Fidu false ; TF/CV/TF3 true). */
   const fleetEnabled = isFeatureEnabled(m, "fleet");
   const tunnelBaseUrl =
@@ -469,8 +474,8 @@ export function composeBrandOs(
           fs.existsSync(paths.dbPath()) ? "present" : "present",
       },
     catalogPresentIfDbExists: !opts.catalogHost,
-    // P&P : plugins feature-off par défaut (pas de sidecars marque).
-    // Opt-in : composeBrandOs({ pluginsFeatureOff: false }) ou CREEZIO_PLUGINS=1.
+    // P&P : plugins activés par défaut. Feature-off si
+    // manifest.features.plugins=false (Fidu) ou CREEZIO_PLUGINS=0.
     pluginsFeatureOff,
     featureOffBrandLabel: product,
     ...(!pluginsFeatureOff

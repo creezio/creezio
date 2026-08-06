@@ -803,7 +803,7 @@ export async function listenBrandOsHttp(opts: {
             ok: true,
             mode: "feature-off",
             plugins: [],
-            hint: "CREEZIO_PLUGINS=1 pour activer le control plane kit",
+            hint: "plugins désactivés (features.plugins=false ou kill-switch CREEZIO_PLUGINS=0) — actifs par défaut sinon",
           });
           return;
         }
