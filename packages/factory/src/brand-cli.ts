@@ -399,6 +399,14 @@ export async function runBrandCli(argv: string[]): Promise<void> {
     console.log(`  admin   ${result.adminDir}`);
     console.log(`  files   ${result.writtenFiles.length}`);
     console.log(`  spec    ${path.join(outDir, "brand-spec")}`);
+    // Vendor + locks dès apply (Docker prêt, même sans token/--push).
+    const { prepareBrandDistribution } = await import(
+      "./prepare-brand-distribution.js"
+    );
+    prepareBrandDistribution(result.outDir, {
+      kitRoot: root,
+      log: (line) => console.log(`  dist    ${line}`),
+    });
     const { maybePushBrandRepos } = await import("./github-repos.js");
     const pushed = await maybePushBrandRepos({
       outDir: result.outDir,
@@ -417,6 +425,9 @@ export async function runBrandCli(argv: string[]): Promise<void> {
     console.log("Suite:");
     console.log(`  cd ${result.outDir}`);
     console.log(`  npm run test:metier-parcours`);
+    console.log(
+      `  npm run server-docker:create -- demo   # NE PAS npm install dans server/`,
+    );
     return;
   }
 

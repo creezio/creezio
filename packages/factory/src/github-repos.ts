@@ -10,7 +10,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
-import { ensureBrandVendorSynced } from "./vendor-sync.js";
+import { prepareBrandDistribution } from "./prepare-brand-distribution.js";
 
 export type GithubRepoSpec = {
   /** Dossier local à pousser (doit exister). */
@@ -194,6 +194,10 @@ export async function maybePushBrandRepos(
   o: MaybePushOptions,
 ): Promise<CreateRepoResult[] | null> {
   const log = o.log || ((l: string) => console.log(l));
+  // Toujours préparer vendor + locks (même sans push) : une marque locale
+  // doit pouvoir `docker:build` immédiatement.
+  prepareBrandDistribution(o.outDir, { log });
+
   if (o.noPush) {
     log("--no-push : repos GitHub non créés");
     return null;
@@ -211,10 +215,6 @@ export async function maybePushBrandRepos(
     return null;
   }
   const org = o.org || process.env.CREEZIO_GITHUB_ORG || "creezio";
-  // Autonomie au clone : le monorepo poussé doit embarquer son vendor kit
-  // (pré-buildé, commité). À la génération le vendor est vide (rempli lazy
-  // par server-docker build) — sync canonique AVANT le push initial.
-  ensureBrandVendorSynced(o.outDir, { log });
   return createBrandGithubRepos({
     org,
     token,

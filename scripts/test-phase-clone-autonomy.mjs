@@ -158,7 +158,12 @@ test("kit : artefacts distribution autonome (SoT docker/server/)", () => {
     "utf8",
   );
   assert.match(sync, /stage-client-vendor\.mjs/, "sync ne matérialise pas le stage client");
+  assert.match(sync, /ensure-server-lock\.mjs/, "sync ne matérialise pas ensure-server-lock");
   assert.match(sync, /docker\/server\.Dockerfile/, "sync ne matérialise pas le Dockerfile");
+  assert.ok(
+    fs.existsSync(path.join(DOCKER_SERVER, "ensure-server-lock.mjs")),
+    "docker/server/ensure-server-lock.mjs manquant",
+  );
 
   // La baseline CLI server-docker doit rester alignée sur la sync-list
   // canonique (dérive = vendor incomplet → clone cassé, bug « support »).
@@ -181,7 +186,11 @@ test("kit : artefacts distribution autonome (SoT docker/server/)", () => {
     path.join(ROOT, "packages/factory/src/github-repos.ts"),
     "utf8",
   );
-  assert.match(gh, /ensureBrandVendorSynced/, "push GitHub sans sync vendor préalable");
+  assert.match(
+    gh,
+    /prepareBrandDistribution/,
+    "push GitHub sans prepareBrandDistribution (vendor+locks)",
+  );
 });
 
 test("factory : new-app génère une app avec artefacts clone autonome", () => {
@@ -204,13 +213,21 @@ test("factory : new-app génère une app avec artefacts clone autonome", () => {
         "--force",
         "--no-push",
       ],
-      { encoding: "utf8", env: { ...process.env, CREEZIO_KIT_ROOT: ROOT } },
+      {
+        encoding: "utf8",
+        // Skip sync+lock lourds ici : on vérifie les artefacts scaffold.
+        // La prep réelle (vendor+lock) est gateée dans test-phase-factory-lockfile.
+        env: {
+          ...process.env,
+          CREEZIO_KIT_ROOT: ROOT,
+          CREEZIO_SKIP_BRAND_DIST: "1",
+        },
+      },
     );
     assert.equal(r.status, 0, `new-app a échoué:\n${r.stdout}\n${r.stderr}`);
-    // Vendor vide à la génération (rempli par sync/push) : on vérifie la
-    // présence des artefacts + scripts, pas la résolution des deps.
     for (const f of [
       "scripts/stage-client-vendor.mjs",
+      "scripts/ensure-server-lock.mjs",
       "docker/server.Dockerfile",
       ".dockerignore",
     ]) {
@@ -223,6 +240,11 @@ test("factory : new-app génère une app avec artefacts clone autonome", () => {
       rootPkg.scripts?.bootstrap,
       "node scripts/stage-client-vendor.mjs",
       "app générée: script bootstrap manquant",
+    );
+    assert.match(
+      rootPkg.scripts?.["docker:build"] || "",
+      /ensure-server-lock\.mjs/,
+      "app générée: docker:build sans ensure-server-lock",
     );
     assert.match(
       rootPkg.scripts?.["docker:build"] || "",

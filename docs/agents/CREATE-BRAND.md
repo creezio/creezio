@@ -115,7 +115,21 @@ Gate : `node --test scripts/test-os-owned-by-brand.mjs`.
 
 Reset clean-room TF3 : `node scripts/reset-tempoflow3.mjs` (backup + apply + build).
 
-## 5. Sonde TempoFlow3
+## 5. Premier serveur Docker (marque neuve)
+
+`brand apply` / `new-app` préparent **automatiquement** vendor +
+`package-lock` (même sans `--push`). Ensuite :
+
+```bash
+cd <app>
+npm run server-docker:create -- demo
+```
+
+**Interdit** : `npm install` dans `server/` + remonter/relinker
+`node_modules` — le flux factory/Docker le fait déjà (`prepareBrandDistribution`,
+`ensure-server-lock.mjs` avant `docker:build`, fallback Dockerfile).
+
+## 6. Sonde TempoFlow3
 
 Référence vivante : le repo marque `tempoflow3` (frère du kit —
 `brand-spec/` à sa racine) + gates kit

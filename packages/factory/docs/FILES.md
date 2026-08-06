@@ -18,10 +18,12 @@
 | [`src/brand-cli.ts`](../src/brand-cli.ts) | CLI `creezio brand` — init / doctor / apply / smoke sur un `brand-spec/`. |
 | [`src/brand-module-init.ts`](../src/brand-module-init.ts) | (à documenter) |
 | [`src/cli.ts`](../src/cli.ts) | CLI `new-app`, `--from-prd` |
-| [`src/github-repos.ts`](../src/github-repos.ts) | Création + push des 2 repos GitHub privés d'une marque (monorepo + `<brand>-admin`) ; token env `GITHUB_TOKEN`/`CREEZIO_GITHUB_TOKEN` ou `.github-token`, vendor synchronisé AVANT push. |
+| [`src/github-repos.ts`](../src/github-repos.ts) | Création + push des 2 repos GitHub privés d'une marque (monorepo + `<brand>-admin`) ; token env `GITHUB_TOKEN`/`CREEZIO_GITHUB_TOKEN` ou `.github-token`, vendor + package-lock synchronisés AVANT push. |
 | [`src/index.ts`](../src/index.ts) | Exports publics |
 | [`src/minimal-png.ts`](../src/minimal-png.ts) | Icône placeholder |
+| [`src/package-lock.ts`](../src/package-lock.ts) | Cohérence package.json ↔ package-lock (npm ci Docker) — régénération lock-only / install. |
 | [`src/plugin-templates.ts`](../src/plugin-templates.ts) | Installation des templates de plugins kit (`templates/plugins/<id>/`) dans le répertoire plugins d'une app (`<userData>/plugins/<id>/` + `.enabled`). |
+| [`src/prepare-brand-distribution.ts`](../src/prepare-brand-distribution.ts) | Vendor sync + locks après chaque scaffold (new-app / brand apply / push). |
 | [`src/product-model.ts`](../src/product-model.ts) | `ProductModel`, parse PRD |
 | [`src/scaffold-from-prd.ts`](../src/scaffold-from-prd.ts) | Artefacts métier / wiring |
 | [`src/scaffold.ts`](../src/scaffold.ts) | Scaffold OS + branche PRD |
