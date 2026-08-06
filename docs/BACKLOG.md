@@ -62,6 +62,15 @@ affaibli pour la masquer. (Backlogs d'époque : `docs/archive/BACKLOG-*.md`.)
 - **admin.tempoflow.fr en cert Origin Cloudflare** (pas Let's Encrypt) via
   `docker/server-admin/configure-admin-npm.sh` — valide tant que le domaine
   est proxifié Cloudflare (orange cloud).
+- **Mounts modules sans session HTTP (plateforme-wide)** : le kernel n'a pas
+  de primitive session/actor pour les mounts — `/api/v1/modules/*` (métier
+  marque, gestes fleet de l'app admin, registre fleet-registry hors
+  register/heartbeat déjà Bearer) répond sans authentification à quiconque
+  atteint la surface HTTP, y compris via les tunnels publics
+  (`resto-*.tempoflow.fr`, `admin.tempoflow.fr`). Constat F3 (posture
+  PRÉEXISTANTE, pas introduite par le chantier flotte). Piste : garde session
+  au niveau `listenBrandOsHttp` (cookie plateforme) avec allowlist des mounts
+  volontairement publics (webhooks signés, register/heartbeat Bearer, /lp).
 
 ## Admin app OS (ADR-admin-app-os) — suites
 
