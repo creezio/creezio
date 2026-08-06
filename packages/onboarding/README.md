@@ -7,7 +7,8 @@
 - moteur pur de navigation entre étapes (`computeInitialStep`, `clampStep`, `nextStepIndex`, `prevStepIndex`) ;
 - `SetupWizard` desktop pour compte local, clé de récupération, tunnel et clé OpenAI ;
 - `OnboardingWizard` React, `Stepper`, interstitiels et composants "micro" ;
-- helpers type-safe pour que la marque injecte ses propres étapes (`defineOnboardingSteps`, `createOnboardingHostProps`).
+- helpers type-safe pour que la marque injecte ses propres étapes (`defineOnboardingSteps`, `createOnboardingHostProps`) ;
+- contenu hybride en DB + preferences (`src/content.ts`, ADR-module-natif-hybride) : mount `/api/v1/modules/onboarding/*`, migrations `onboarding_content` / `onboarding_preferences`, merge pur défauts marque / override DB.
 
 Le package ne contient pas de parcours métier marque. Il assemble une expérience générique et laisse la marque fournir les contenus, le transport et les bindings desktop.
 
@@ -119,6 +120,44 @@ import { SetupWizard } from "@creezio/onboarding/ui";
   }}
 />;
 ```
+
+### Contenu hybride en DB + preferences (ADR-module-natif-hybride)
+
+Les textes d'étapes, interstitiels et poses mascotte sont éditables **sans
+toucher au code** : la marque déclare ses défauts dans UN fichier explicite
+(`server/src/electron/brand-onboarding-content.ts`), les overrides vivent en
+`brand.db` et le mount sert toujours `merge(défauts, override)`.
+
+```ts
+// server/src/electron/brand-onboarding-content.ts (marque)
+import type { OnboardingContent } from "@creezio/onboarding";
+export const myBrandOnboardingContent: OnboardingContent = {
+  steps: [{ id: "bienvenue", label: "Bienvenue" } /* … */],
+  mascot: { poses: { pointing: "/brand/mascot-pointing.png" } },
+};
+
+// server/src/electron/brand-migrations.ts (marque)
+composeMigrations(/* … */, ...onboardingContentMigrations());
+
+// server/src/electron/brand-module-api.ts (marque)
+api.registerModuleApi(
+  "onboarding",
+  createOnboardingContentMount({ defaults: myBrandOnboardingContent }),
+);
+```
+
+Routes (`/api/v1/modules/onboarding/*`, dbLayer brand, JSON uniquement) :
+
+- `GET content` → `{ ok, content, hasOverride }` (contenu mergé) ;
+- `PUT content` (override partiel, même shape que `OnboardingContent`) →
+  stocké en DB, réponse = contenu mergé ; `DELETE content` → retour défauts ;
+- `GET preferences?user=<k>` → `{ ok, user, answers }` ;
+- `PUT preferences` `{ user, answers }` → upsert une row par clé
+  (`onboarding_preferences`, UNIQUE user_key+key).
+
+`mergeOnboardingContent(defaults, override)` est pur et exporté : merge par
+`id` d'étape (label/interstitiel/texts partiels), `mascot.poses` et `texts`
+fusionnés clé par clé, étapes non listées conservées.
 
 ### Brand bindings
 

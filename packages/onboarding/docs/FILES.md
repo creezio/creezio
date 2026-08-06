@@ -6,6 +6,7 @@ Généré pour documentation agents. Chaque entrée : rôle, exports principaux,
 
 | Fichier | Lignes | Exports (extrait) |
 |---|---:|---|
+| [`src/content.ts`](../src/content.ts) | 330 | `OnboardingStepContent`, `OnboardingMascot`, `OnboardingContent`, `OnboardingContentOverride`, `ONBOARDING_CONTENT_SCHEMA_SQL`, `onboardingContentMigrations`, `mergeOnboardingContent`, `createOnboardingContentMount` |
 | [`src/engine.ts`](../src/engine.ts) | 43 | `OnboardingStepId`, `ComputeInitialStepInput`, `clampStep`, `computeInitialStep`, `nextStepIndex`, `prevStepIndex`, `shouldShowInterstitial` |
 | [`src/index.ts`](../src/index.ts) | 39 | `ONBOARDING_PACKAGE`, `INTERSTITIAL_MS_DEFAULT`, `AUTO_ADVANCE_MS_DEFAULT`, `DEFAULT_SETUP_STEP_LABELS`, `DEFAULT_SLUG_PLACEHOLDER`, `DEFAULT_SETUP_ACCENT`, `DEFAULT_SETUP_BACKGROUND`, `SLUG_RE` |
 | [`src/setup-types.ts`](../src/setup-types.ts) | 107 | `SetupWizardConfig`, `CompleteSetupPayload`, `DEFAULT_SETUP_STEP_LABELS`, `DEFAULT_SLUG_PLACEHOLDER`, `DEFAULT_SETUP_ACCENT`, `DEFAULT_SETUP_BACKGROUND`, `SLUG_RE`, `validateAccountStep` |
@@ -24,6 +25,16 @@ Généré pour documentation agents. Chaque entrée : rôle, exports principaux,
 ---
 
 ## Détail par fichier
+
+### `src/content.ts`
+
+- **Lignes** : ~330
+- **Exports** : `OnboardingStepContent`, `OnboardingMascot`, `OnboardingContent`, `OnboardingContentOverride`, `OnboardingContentMountOptions`, `ONBOARDING_CONTENT_SCHEMA_SQL`, `onboardingContentMigrations`, `mergeOnboardingContent`, `createOnboardingContentMount`
+
+Contenu onboarding hybride (ADR-module-natif-hybride) : tables brand.db
+`onboarding_content` (override marque) + `onboarding_preferences` (réponses
+utilisateur), merge pur défauts/override, mount `/api/v1/modules/onboarding/*`.
+La marque déclare ses défauts dans `server/src/electron/brand-onboarding-content.ts`.
 
 ### `src/engine.ts`
 

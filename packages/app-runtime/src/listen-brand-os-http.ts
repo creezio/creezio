@@ -125,6 +125,15 @@ function proxyRawHttp(
       headers: {
         ...req.headers,
         host: `${target.hostname}:${target.port}`,
+        // Host public d'origine (tunnel/reverse proxy) — permet le routage
+        // par hostname côté Next (ex. lp.{zone} → /lp, ADR-module-natif-hybride).
+        ...(req.headers["x-forwarded-host"] || req.headers.host
+          ? {
+              "x-forwarded-host": String(
+                req.headers["x-forwarded-host"] || req.headers.host,
+              ),
+            }
+          : {}),
       },
     },
     (upRes) => {

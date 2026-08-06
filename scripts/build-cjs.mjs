@@ -29,6 +29,7 @@ const PACKAGES = [
   "tasks",
   "mails",
   "observability",
+  "landing",
   "admin",
   "support",
   "integrations",

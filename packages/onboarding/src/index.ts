@@ -39,3 +39,17 @@ export {
 
 export type { OnboardingSpecInput } from "./from-brand-spec.js";
 export { setupWizardConfigFromSpec } from "./from-brand-spec.js";
+
+export type {
+  OnboardingStepContent,
+  OnboardingMascot,
+  OnboardingContent,
+  OnboardingContentOverride,
+  OnboardingContentMountOptions,
+} from "./content.js";
+export {
+  ONBOARDING_CONTENT_SCHEMA_SQL,
+  onboardingContentMigrations,
+  mergeOnboardingContent,
+  createOnboardingContentMount,
+} from "./content.js";

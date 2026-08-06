@@ -250,6 +250,7 @@ export function adminProductModel(o: {
     pages: [
       { id: "flotte", path: "/flotte", title: "Flotte", kind: "list" },
       { id: "tickets", path: "/tickets", title: "Tickets support", kind: "list" },
+      { id: "landing", path: "/landing", title: "Landing page", kind: "list" },
       {
         id: "prospects",
         path: "/prospects",
@@ -436,7 +437,8 @@ import {
   createBillingWebhookMount,
   createFleetAdminMount,
   createSupportAdminMount,
-} from "@creezio/admin";`,
+} from "@creezio/admin";
+import { createLandingMount } from "@creezio/landing";`,
   );
   patchFile(
     path.join(serverDir, "src/electron/brand-module-api.ts"),
@@ -455,7 +457,10 @@ import {
   api.registerModuleApi(
     "billing-subscriptions",
     createAdminCrudMount("billing-subscriptions"),
-  );`,
+  );
+  // Landing page hybride (@creezio/landing — ADR-module-natif-hybride) :
+  // contenu en DB brand, édition /landing (admin), rendu public /lp.
+  api.registerModuleApi("landing", createLandingMount());`,
   );
 
   // 3. Dépendances @creezio/admin (mounts serveur + UI React des modules).
@@ -463,13 +468,15 @@ import {
     path.join(serverDir, "package.json"),
     `"@creezio/api-kernel": "file:vendor/creezio/api-kernel",`,
     `"@creezio/api-kernel": "file:vendor/creezio/api-kernel",
-    "@creezio/admin": "file:vendor/creezio/admin",`,
+    "@creezio/admin": "file:vendor/creezio/admin",
+    "@creezio/landing": "file:vendor/creezio/landing",`,
   );
   patchFile(
     path.join(serverDir, "ui/package.json"),
     `"@creezio/shell-ui": "file:../vendor/creezio/shell-ui",`,
     `"@creezio/shell-ui": "file:../vendor/creezio/shell-ui",
-    "@creezio/admin": "file:../vendor/creezio/admin",`,
+    "@creezio/admin": "file:../vendor/creezio/admin",
+    "@creezio/landing": "file:../vendor/creezio/landing",`,
   );
 
   // 4. Pages des modules natifs (remplacent les stubs générés).
@@ -509,6 +516,85 @@ export default function Page() {
 `,
     written,
   );
+
+  // 4bis. Module landing hybride (@creezio/landing — ADR-module-natif-hybride) :
+  // /landing (édition, auth OS) + /lp (rendu public) + /lp-media (binaire) +
+  // middleware host lp.{zone} → /lp.
+  forceWrite(
+    path.join(serverDir, "ui/app/landing/page.tsx"),
+    `"use client";
+
+import { LandingAdminClient } from "@creezio/landing/ui";
+
+export default function Page() {
+  return <LandingAdminClient />;
+}
+`,
+    written,
+  );
+  forceWrite(
+    path.join(serverDir, "ui/app/lp/page.tsx"),
+    `"use client";
+
+// Rendu public de la landing (aucune session requise) — contenu 100 % DB,
+// éditable sur /landing. Surcharge marque : passer components={{ kind: Comp }}.
+import { LandingPublicPage } from "@creezio/landing/ui";
+
+export default function Page() {
+  return <LandingPublicPage />;
+}
+`,
+    written,
+  );
+  forceWrite(
+    path.join(serverDir, "ui/app/lp-media/[file]/route.ts"),
+    `// Service binaire des médias de la landing (le kernel API ne stream pas).
+import { createLandingMediaGET } from "@creezio/landing";
+
+export const dynamic = "force-dynamic";
+export const GET = createLandingMediaGET();
+`,
+    written,
+  );
+  const middlewarePath = path.join(serverDir, "ui/middleware.ts");
+  if (!fs.existsSync(middlewarePath)) {
+    forceWrite(
+      middlewarePath,
+      `import { NextResponse, type NextRequest } from "next/server";
+
+/**
+ * Routage par hostname public : lp.{zone} → landing publique /lp
+ * (tunnel brand-web du provisioner — ADR-module-natif-hybride).
+ * Le host public arrive via x-forwarded-host (proxy OS) ou host (dev direct).
+ * Sur le host lp., tous les chemins pages servent la landing — seuls les
+ * assets (_next), les médias (/lp-media) et l'API restent accessibles.
+ */
+export function middleware(request: NextRequest) {
+  const host = (
+    request.headers.get("x-forwarded-host") ||
+    request.headers.get("host") ||
+    ""
+  ).toLowerCase();
+  const { pathname } = request.nextUrl;
+  if (host.startsWith("lp.") && pathname !== "/lp") {
+    const url = request.nextUrl.clone();
+    url.pathname = "/lp";
+    // Rewrite interne au plane Next (TLS terminé au tunnel) : sans ça,
+    // nextUrl hérite du x-forwarded-proto https et Next se re-proxifie en TLS
+    // sur son port interne → EPROTO. Le plane sert toujours en http clair.
+    url.protocol = "http:";
+    return NextResponse.rewrite(url);
+  }
+  return NextResponse.next();
+}
+
+export const config = {
+  matcher: ["/((?!_next/|lp-media/|api/|favicon\\\\.ico).*)"],
+};
+`,
+      written,
+    );
+  }
 
   // 5. Marqueur mode admin (root package.json).
   const rootPkgPath = path.join(outDir, "package.json");

@@ -35,6 +35,7 @@ Ports : auto 18790+n, bind `127.0.0.1` (exposition = `--expose`).
 | Ne pas refaire un piège connu | 9 |
 | n8n / Hermes : superadmin, clé API, webhooks, MCP | 11 |
 | Intégrations / clés API tierces (OpenAI, Notion…) | 12 |
+| Publier la landing page marque (lp.{zone}) | 13 |
 
 ---
 
@@ -543,6 +544,55 @@ dans `core.db`, routes, sync n8n), montage
 | Table `api_keys` requise | Le canal service (resolve Hermes/plugins) lit `api_keys` dans la **brand db** — migration marque `fromprd_brand_012_api_keys` (TF3) / `fromprd_brand_api_keys` (factory). Sans elle : resolve 401 et `crm-key Hermes: table api_keys absente` au boot. |
 | n8n down ≠ erreur | La sync n8n est best-effort : l'intégration est créée même si n8n est indisponible (`n8nCredentialId` null) — re-push via `POST /:id/sync-n8n`. |
 | Secrets | Jamais de secret réel dans un commit/gate — valeurs de test uniquement ; les vraies clés vivent dans le store chiffré de l'instance. |
+
+## 13. Landing page publique de marque (`lp.{zone}` — @creezio/landing)
+
+**Objectif** : exposer la landing page de la marque (module natif hybride,
+ADR `docs/adr/ADR-module-natif-hybride.md`) sur `lp.{zone}` — contenu 100 %
+en DB brand, édité sur la page `/landing` de l'app **admin** de la marque,
+rendu public `/lp` (sans session) sur le même plane Next.
+
+```bash
+# 1. Le serveur admin de la marque doit embarquer le module (factory : natif ;
+#    marque existante : landingMigrations + createLandingMount + pages
+#    /landing, /lp, /lp-media + middleware — voir packages/landing/README.md).
+curl -s http://127.0.0.1:$ADMIN_PORT/api/v1/modules/landing/public | head -c 200
+
+# 2. Réserver le hostname zone-level (kind=brand-web : UN ingress, pas
+#    d'embeds n8n/hermes, pas de wildcard DNS, pas d'e-mail) :
+curl -s -X POST -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
+  -d '{"slug":"lp","kind":"brand-web","crmPort":'$ADMIN_PORT'}' \
+  http://127.0.0.1:8666/reserve
+# → tunnelToken (240 chars). Slugs autorisés : BRAND_WEB_SLUGS (lib.mjs).
+
+# 3. cloudflared sur l'hôte — unit systemd dédiée, token dans un env file
+#    root-only (TUNNEL_TOKEN=…), et **--protocol http2** (QUIC/UDP instable
+#    sur les VPS OVH → 500 intermittents sinon) :
+#    ExecStart=…/cloudflared tunnel --no-autoupdate --protocol http2 run
+sudo systemctl enable --now creezio-lp-tunnel
+
+# 4. Vérifier :
+curl -s -o /dev/null -w "%{http_code}\n" https://lp.$ZONE/        # 200
+curl -s https://lp.$ZONE/api/v1/modules/landing/public | head -c 120
+```
+
+**Édition** : admin OS → nav « Landing page » (`/landing`) — textes, images
+(upload → `/lp-media/<file>`), ordre/activation des sections. Chaque PUT est
+immédiatement visible sur `https://lp.{zone}`.
+
+**Pièges** :
+
+| Piège | Règle |
+|---|---|
+| 500 + `EPROTO wrong version number` dans les logs Next | Le middleware doit forcer `url.protocol = "http:"` sur le rewrite `/lp` (le plane Next sert en http clair derrière le tunnel TLS). |
+| Chrome OS (sidebar/onglets) visible sur la page publique | `WorkspaceRoot` (shell-ui) rend « bare » `/lp` et tout host `lp.*` — vendor à resynchroniser si la marque a un shell-ui antérieur. |
+| QUIC flap (`timeout: no recent network activity`) | Toujours `--protocol http2` pour les tunnels hôte. |
+| Slug `lp` volé par un serveur client | `lp` est dans `RESERVED_SLUGS` — seuls les reserves `kind=brand-web` peuvent le prendre. |
+
+**Vérité** : `packages/landing/` (moteur + prefabs + admin client),
+`docker/tunnel-provisioner/` (`BRAND_WEB_SLUGS`, mode sans embeds),
+factory `packages/factory/src/admin-repo.ts` (câblage généré), gate
+`scripts/test-phase-landing.mjs`.
 
 ## Ressources
 

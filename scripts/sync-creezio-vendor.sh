@@ -39,6 +39,7 @@ DEFAULT_PACKAGES=(
   tasks
   mails
   observability
+  landing
   admin
   support
   integrations

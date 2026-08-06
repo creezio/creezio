@@ -53,6 +53,23 @@ creezio server-docker create resto1 --brand-root <marque> --profile prod \
 L'agent hôte est ensuite exposé par
 `creezio server-docker enroll … --slug resto1` (ingress `agent.resto1.{zone}`).
 
+## Réservations brand-web (`lp.{zone}` — landing page de marque)
+
+Hostnames zone-level de la marque elle-même (pas d'un serveur client) :
+un seul ingress HTTP, pas d'embeds n8n/hermes, pas de wildcard, pas d'e-mail.
+Slugs autorisés : `BRAND_WEB_SLUGS` (`lib.mjs`, aujourd'hui `lp`) — aussi
+présents dans `RESERVED_SLUGS` pour qu'un serveur client ne les vole jamais.
+
+```bash
+# lp.{zone} → plane Next de l'app admin de marque (rendu /lp public —
+# module @creezio/landing, ADR-module-natif-hybride) :
+curl -s -X POST -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
+  -d '{"slug":"lp","kind":"brand-web","crmPort":18801}' \
+  http://127.0.0.1:8666/reserve
+# → tunnelToken : lancer cloudflared sur l'hôte (unit systemd dédiée) :
+#   cloudflared tunnel --no-autoupdate run --token <tunnelToken>
+```
+
 ## Nettoyage d'un slug de test
 
 ```bash

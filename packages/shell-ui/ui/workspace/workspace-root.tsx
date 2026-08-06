@@ -31,8 +31,29 @@ function isServerCockpitSurface(pathname: string | null): boolean {
   );
 }
 
+/**
+ * Surfaces publiques « bare » (ADR-module-natif-hybride) : rendu sans aucun
+ * chrome OS (sidebar, onglets, assistant). Cas actuel : la landing page
+ * @creezio/landing servie sur /lp, ou via le host public lp.{zone} (le
+ * middleware marque réécrit / → /lp mais usePathname garde l'URL navigateur).
+ */
+function isPublicBareSurface(pathname: string | null): boolean {
+  if (pathname === "/lp" || pathname?.startsWith("/lp/")) return true;
+  if (
+    typeof window !== "undefined" &&
+    window.location.hostname.toLowerCase().startsWith("lp.")
+  ) {
+    return true;
+  }
+  return false;
+}
+
 function defaultHideAssistantOn(pathname: string | null): boolean {
-  return isAuthSurface(pathname) || isServerCockpitSurface(pathname);
+  return (
+    isAuthSurface(pathname) ||
+    isServerCockpitSurface(pathname) ||
+    isPublicBareSurface(pathname)
+  );
 }
 
 export function WorkspaceRoot({
@@ -62,6 +83,11 @@ export function WorkspaceRoot({
     if (!hideAssistant) return;
     void getShellDesktopApi()?.setAssistantChrome?.("hidden");
   }, [hideAssistant]);
+
+  // Surface publique (ex. landing /lp) : contenu nu, aucun shell ni assistant.
+  if (isPublicBareSurface(pathname)) {
+    return <>{children}</>;
+  }
 
   const content = authSurface ? (
     <AuthWindowChrome>{children}</AuthWindowChrome>

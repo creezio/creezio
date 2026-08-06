@@ -37,6 +37,7 @@ Racine : [../README.md](../README.md) · [../AGENTS.md](../AGENTS.md)
 | `@creezio/shell-ui` | [README](../packages/shell-ui/README.md) | [AGENTS](../packages/shell-ui/AGENTS.md) | [FILES](../packages/shell-ui/docs/FILES.md) |
 | `@creezio/os-ui` | [README](../packages/os-ui/README.md) | [AGENTS](../packages/os-ui/AGENTS.md) | [FILES](../packages/os-ui/docs/FILES.md) |
 | `@creezio/onboarding` | [README](../packages/onboarding/README.md) | [AGENTS](../packages/onboarding/AGENTS.md) | [FILES](../packages/onboarding/docs/FILES.md) |
+| `@creezio/landing` | [README](../packages/landing/README.md) | [AGENTS](../packages/landing/AGENTS.md) | [FILES](../packages/landing/docs/FILES.md) |
 | `@creezio/cockpit` | [README](../packages/cockpit/README.md) | [AGENTS](../packages/cockpit/AGENTS.md) | [FILES](../packages/cockpit/docs/FILES.md) |
 | `@creezio/assistant` | [README](../packages/assistant/README.md) | [AGENTS](../packages/assistant/AGENTS.md) | [FILES](../packages/assistant/docs/FILES.md) |
 | `@creezio/tasks` | [README](../packages/tasks/README.md) | [AGENTS](../packages/tasks/AGENTS.md) | [FILES](../packages/tasks/docs/FILES.md) |

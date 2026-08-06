@@ -12,9 +12,13 @@
  *
  * Endpoints (Bearer CREEZIO_TUNNEL_PROVISION_TOKEN) :
  *   GET  /health
- *   GET  /check?slug=
+ *   GET  /check?slug=&kind=
  *   GET  /state?slug=
- *   POST /reserve     { slug, installId?, crmPort?, n8nPort?, hermesPort? }
+ *   POST /reserve     { slug, installId?, crmPort?, n8nPort?, hermesPort?,
+ *                       kind? } — kind "brand-web" : hostname zone-level de la
+ *                       marque (ex. lp.{zone} → landing publique) ; slugs
+ *                       autorisés : BRAND_WEB_SLUGS (lib.mjs) ; un seul
+ *                       ingress (crmPort), pas d'embeds/wildcard/e-mail.
  *   POST /configure   { slug|tunnelId+hostname, crmPort?, n8nPort?, hermesPort?,
  *                       agentPort?, agentHost? }
  *   POST /deprovision { slug }
@@ -220,8 +224,8 @@ function emailInboundSecret(env) {
   ).trim();
 }
 
-async function checkSlug(slug, env) {
-  const local = slugCheckLocal(slug);
+async function checkSlug(slug, env, kind) {
+  const local = slugCheckLocal(slug, { kind });
   if (!local.available) return local;
   if (readState(slug)) {
     return { available: false, reason: "Déjà réservé" };
@@ -245,24 +249,27 @@ function agentFromBody(body, st) {
   return st?.agent || null;
 }
 
-async function putIngress(env, tunnelId, hostname, ports, agent) {
+async function putIngress(env, tunnelId, hostname, ports, agent, opts) {
   const acc = await accountId(env);
   const p = normalizePorts(ports, DEFAULT_PORTS);
   await cf(
     "PUT",
     `/accounts/${acc}/cfd_tunnel/${tunnelId}/configurations`,
-    { config: { ingress: buildIngressRules(hostname, p, agent) } },
+    { config: { ingress: buildIngressRules(hostname, p, agent, opts) } },
     env,
   );
   return p;
 }
 
 /** CNAME slug + wildcard *.{slug} (couvre n8n/hermes/agent.{slug}). */
-async function ensureTunnelDns(env, slug, hostname, tunnelId) {
+async function ensureTunnelDns(env, slug, hostname, tunnelId, opts) {
   const target = `${tunnelId}.cfargotunnel.com`;
   const records = [
     { name: hostname, qName: hostname },
-    { name: `*.${slug}`, qName: `*.${slug}.${env.CF_ZONE_NAME}` },
+    // brand-web : pas d'embeds → pas de wildcard *.{slug}.
+    ...(opts?.wildcard === false
+      ? []
+      : [{ name: `*.${slug}`, qName: `*.${slug}.${env.CF_ZONE_NAME}` }]),
   ];
   for (const rec of records) {
     const found = await dnsRecords(env, rec.qName);
@@ -282,8 +289,9 @@ async function ensureTunnelDns(env, slug, hostname, tunnelId) {
   }
 }
 
-async function reserveSlug(slug, installId, portsIn, env) {
-  const check = await checkSlug(slug, env);
+async function reserveSlug(slug, installId, portsIn, env, kind) {
+  const brandWeb = kind === "brand-web";
+  const check = await checkSlug(slug, env, kind);
   if (!check.available) {
     return { ok: false, error: check.reason || "Indisponible" };
   }
@@ -302,19 +310,26 @@ async function reserveSlug(slug, installId, portsIn, env) {
   if (!tunnelId || !tunnelToken) {
     return { ok: false, error: "Réponse tunnel incomplète (id/token)" };
   }
-  await putIngress(env, tunnelId, hostname, ports, null);
-  await ensureTunnelDns(env, slug, hostname, tunnelId);
-  let emailDomain = `${slug}.mail.${env.CF_ZONE_NAME}`;
-  try {
-    const email = await ensureEmailDns(env, slug);
-    emailDomain = email.emailDomain;
-  } catch (e) {
-    console.warn("[creezio-tunnel-provisioner] ensureEmailDns:", e);
+  await putIngress(env, tunnelId, hostname, ports, null, {
+    embeds: !brandWeb,
+  });
+  await ensureTunnelDns(env, slug, hostname, tunnelId, {
+    wildcard: !brandWeb,
+  });
+  let emailDomain = brandWeb ? null : `${slug}.mail.${env.CF_ZONE_NAME}`;
+  if (!brandWeb) {
+    try {
+      const email = await ensureEmailDns(env, slug);
+      emailDomain = email.emailDomain;
+    } catch (e) {
+      console.warn("[creezio-tunnel-provisioner] ensureEmailDns:", e);
+    }
   }
-  const publicUrls = buildPublicUrls(hostname);
-  const inboundSecret = emailInboundSecret(env);
+  const publicUrls = buildPublicUrls(hostname, { embeds: !brandWeb });
+  const inboundSecret = brandWeb ? "" : emailInboundSecret(env);
   const state = {
     slug,
+    kind: brandWeb ? "brand-web" : "server",
     hostname,
     tunnelId,
     tunnelName,
@@ -330,6 +345,7 @@ async function reserveSlug(slug, installId, portsIn, env) {
   return {
     ok: true,
     slug,
+    kind: state.kind,
     hostname,
     publicUrl: publicUrls.crm,
     publicUrls,
@@ -442,7 +458,8 @@ async function handle(req, res) {
 
   if (req.method === "GET" && url.pathname === "/check") {
     const slug = normalizeSlug(url.searchParams.get("slug"));
-    const r = await checkSlug(slug, env);
+    const kind = url.searchParams.get("kind") || undefined;
+    const r = await checkSlug(slug, env, kind);
     return send(res, 200, { ok: true, slug, ...r });
   }
 
@@ -457,7 +474,13 @@ async function handle(req, res) {
   if (req.method === "POST" && url.pathname === "/reserve") {
     const body = await readJson(req);
     const slug = normalizeSlug(body.slug);
-    const r = await reserveSlug(slug, body.installId || null, body, env);
+    const r = await reserveSlug(
+      slug,
+      body.installId || null,
+      body,
+      env,
+      body.kind || undefined,
+    );
     return send(res, r.ok ? 200 : 409, r);
   }
 
@@ -476,17 +499,22 @@ async function handle(req, res) {
       n8nPort: body.n8nPort ?? st?.ports?.n8nPort,
       hermesPort: body.hermesPort ?? st?.ports?.hermesPort,
     };
-    const agent = agentFromBody(body, st);
-    const ports = await putIngress(env, tunnelId, hostname, portsIn, agent);
+    const brandWeb = (body.kind || st?.kind) === "brand-web";
+    const agent = brandWeb ? null : agentFromBody(body, st);
+    const ports = await putIngress(env, tunnelId, hostname, portsIn, agent, {
+      embeds: !brandWeb,
+    });
     if (slug) {
       try {
-        await ensureTunnelDns(env, slug, hostname, tunnelId);
+        await ensureTunnelDns(env, slug, hostname, tunnelId, {
+          wildcard: !brandWeb,
+        });
       } catch (e) {
         console.warn("[creezio-tunnel-provisioner] ensureTunnelDns:", e);
       }
     }
-    let emailDomain = slug ? `${slug}.mail.${env.CF_ZONE_NAME}` : null;
-    if (slug) {
+    let emailDomain = slug && !brandWeb ? `${slug}.mail.${env.CF_ZONE_NAME}` : null;
+    if (slug && !brandWeb) {
       try {
         const email = await ensureEmailDns(env, slug);
         emailDomain = email.emailDomain;
@@ -494,7 +522,7 @@ async function handle(req, res) {
         console.warn("[creezio-tunnel-provisioner] ensureEmailDns:", e);
       }
     }
-    const publicUrls = buildPublicUrls(hostname);
+    const publicUrls = buildPublicUrls(hostname, { embeds: !brandWeb });
     const inboundSecret = emailInboundSecret(env);
     if (st && slug) {
       st.localPort = ports.crmPort;

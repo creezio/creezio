@@ -7,8 +7,17 @@
  *   agent  : agent.{slug}.{zone}  → agent hôte flotte (VPS restaurant)
  */
 
+/**
+ * Slugs "brand-web" : plans web publics de la marque (zone-level), réservables
+ * uniquement via `kind: "brand-web"` (jamais par un serveur client).
+ *   lp.{zone} → landing page publique (rendue par le plane de l'app admin —
+ *   ADR-module-natif-hybride).
+ */
+export const BRAND_WEB_SLUGS = new Set(["lp"]);
+
 /** Slugs réservés — jamais attribuables à un serveur restaurant. */
 export const RESERVED_SLUGS = new Set([
+  "lp",
   "www",
   "crm",
   "api",
@@ -55,7 +64,7 @@ export function normalizeSlug(raw) {
     .replace(/[^a-z0-9-]/g, "");
 }
 
-export function slugCheckLocal(slug) {
+export function slugCheckLocal(slug, opts) {
   if (!SLUG_RE.test(slug)) {
     return {
       available: false,
@@ -63,6 +72,10 @@ export function slugCheckLocal(slug) {
     };
   }
   if (RESERVED_SLUGS.has(slug)) {
+    // Les slugs brand-web (lp…) sont réservables explicitement par la marque.
+    if (opts?.kind === "brand-web" && BRAND_WEB_SLUGS.has(slug)) {
+      return { available: true };
+    }
     return { available: false, reason: "Slug réservé" };
   }
   return { available: true };
@@ -73,7 +86,11 @@ export function serviceHostname(hostname, service) {
   return `${service}.${hostname}`;
 }
 
-export function buildPublicUrls(hostname) {
+export function buildPublicUrls(hostname, opts) {
+  if (opts?.embeds === false) {
+    // Réservation brand-web : un seul hostname public, pas d'embeds.
+    return { crm: `https://${hostname}` };
+  }
   return {
     crm: `https://${hostname}`,
     n8n: `https://${serviceHostname(hostname, "n8n")}`,
@@ -104,12 +121,19 @@ export function normalizePorts(raw, defaults) {
  * serveur). L'entrée `agent` pointe l'agent hôte flotte — hors container —
  * joignable depuis le container via la gateway bridge Docker (172.17.0.1).
  */
-export function buildIngressRules(hostname, ports, agent) {
+export function buildIngressRules(hostname, ports, agent, opts) {
   const svcRule = (svcHostname, service) => ({
     hostname: svcHostname,
     service,
     originRequest: { noTLSVerify: false, httpHostHeader: svcHostname },
   });
+  if (opts?.embeds === false) {
+    // Réservation brand-web (ex. lp.{zone}) : un seul service HTTP local.
+    return [
+      svcRule(hostname, `http://127.0.0.1:${ports.crmPort}`),
+      { service: "http_status:404" },
+    ];
+  }
   const rules = [
     svcRule(hostname, `http://127.0.0.1:${ports.crmPort}`),
     svcRule(
