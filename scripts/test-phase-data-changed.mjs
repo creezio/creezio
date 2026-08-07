@@ -30,11 +30,33 @@ test("data-changed: parse header CSV + infer tool names", () => {
     "panier",
     "commandes",
   ]);
+  // Legacy plats
   assert.equal(inferResourceFromToolName("add_to_panier"), "panier");
   assert.equal(inferResourceFromToolName("update_panier_ligne"), "panier");
+  assert.equal(inferResourceFromToolName("close_panier"), "panier");
   assert.equal(inferResourceFromToolName("get_panier"), null);
   assert.equal(inferResourceFromToolName("list_clients"), null);
-  assert.equal(inferResourceFromToolName("create_widget"), "widget");
+  assert.equal(inferResourceFromToolName("create_widget"), "widgets");
+  assert.equal(inferResourceFromToolName("create_ai_task"), "tasks");
+  assert.equal(inferResourceFromToolName("add_to_stack"), "stack");
+  // Convention module.<owner>.<action>
+  assert.equal(inferResourceFromToolName("module.panier.add"), "panier");
+  assert.equal(inferResourceFromToolName("module.panier.get"), null);
+  assert.equal(inferResourceFromToolName("module.promotions.list"), null);
+  assert.equal(inferResourceFromToolName("module.catalog.search_products"), null);
+  assert.equal(inferResourceFromToolName("module.catalog.get_sku"), null);
+  assert.equal(inferResourceFromToolName("module.fournisseurs.list"), null);
+  assert.equal(inferResourceFromToolName("module.conditions.rfa"), null);
+  assert.equal(inferResourceFromToolName("module.optimiser.suggest"), null);
+  // Mutation module hors lecture → resource = owner (aliasés)
+  assert.equal(
+    inferResourceFromToolName("module.commandes.create"),
+    "commandes",
+  );
+  assert.equal(
+    inferResourceFromToolName("module.promotions.create"),
+    "promotions",
+  );
 });
 
 test("data-changed: emit + subscribe (jsdom-less via EventTarget polyfill)", () => {
@@ -98,7 +120,9 @@ test("data-changed: assistant liens → onNavigate + attrs creezio", () => {
     "utf8",
   );
   assert.match(widget, /data-creezio-assistant-ui/);
-  assert.match(widget, /creezio:data-changed/);
+  assert.match(widget, /inferResourceFromToolName/);
+  assert.match(widget, /emitDataChanged/);
+  assert.match(widget, /from \"@creezio\/shell-ui\"/);
   assert.match(widget, /onNavigate=\{/);
 });
 
@@ -113,6 +137,14 @@ test("data-changed: WorkspaceRoot branche assistant tab workspace", () => {
   assert.match(ctx, /configureAssistantTabWorkspace/);
   assert.match(ctx, /getShellDesktopApi/);
   assert.doesNotMatch(ctx, /window\.tempoflowDesktop/);
+  // Contrat openOrNotify : focus (pas pastille-only)
+  assert.match(ctx, /openOrNotify/);
+  assert.match(ctx, /\"focused\"/);
+  assert.match(ctx, /activateTab\(existing\.id\)/);
+  assert.doesNotMatch(
+    ctx,
+    /pastille de notification dessus|pose une pastille/,
+  );
 });
 
 test("data-changed: docs CREATE-MODULE + DOC-STANDARD-UI", () => {

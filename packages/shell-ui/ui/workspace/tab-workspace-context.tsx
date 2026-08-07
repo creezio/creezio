@@ -101,11 +101,18 @@ type TabWorkspaceContextValue = {
   goForward: () => void;
   setTabMeta: (href: string, meta: TabMeta) => void;
   /**
-   * Si un onglet affiche déjà `pathname` : pastille +1 dessus (sans y aller)
-   * et retourne "notified". Sinon ouvre le chemin dans un nouvel onglet actif
-   * et retourne "opened". Si l'onglet correspondant est déjà actif : "active".
+   * Ouvre ou **focus** un chemin workspace (contrat moderne, pas pastille-only).
+   *
+   * - Onglet déjà actif sur ce pathname → `"active"` (data-changed suffit
+   *   pour rafraîchir via `useCreezioResource`).
+   * - Onglet existant inactif → active l'onglet (`activateTab` / route) →
+   *   `"focused"`.
+   * - Aucun onglet → `navigate(href, { newTab: true })` → `"opened"`.
+   *
+   * Usage typique : ajout panier / mutation qui doit **montrer** la cible
+   * (ex. `openOrNotify("/panier")` depuis un bouton catalogue).
    */
-  openOrNotify: (href: string) => "opened" | "notified" | "active";
+  openOrNotify: (href: string) => "opened" | "focused" | "active";
   /**
    * Ouvre / réactive un onglet workspace pour un site externe Electron
    * (même barre que Dashboard/Produits). Ne crée pas la WebContentsView —
@@ -889,11 +896,11 @@ export function TabWorkspaceProvider({ children }: { children: ReactNode }) {
   }, []);
 
   /**
-   * Ouvre `href` dans un nouvel onglet SEULEMENT si aucun onglet n'affiche
-   * déjà ce pathname ; sinon pose une pastille de notification dessus.
+   * Focus l'onglet du pathname s'il existe ; sinon l'ouvre en nouvel onglet.
+   * Ne pose plus de pastille seule — l'utilisateur doit **voir** la cible.
    */
   const openOrNotify = useCallback(
-    (href: string): "opened" | "notified" | "active" => {
+    (href: string): "opened" | "focused" | "active" => {
       const h = normalizeHref(href);
       const path = h.split("?")[0] || h;
       // Un seul onglet par pathname — on prend le plus ancien, on ferme les doublons.
@@ -926,16 +933,14 @@ export function TabWorkspaceProvider({ children }: { children: ReactNode }) {
       }
       if (existing) {
         if (existing.id === activeTabIdRef.current) return "active";
-        setTabBadges((prev) => ({
-          ...prev,
-          [existing.id]: (prev[existing.id] || 0) + 1,
-        }));
-        return "notified";
+        // Focus (pas pastille) : activateTab efface aussi une éventuelle badge.
+        activateTab(existing.id);
+        return "focused";
       }
       navigate(h, { newTab: true });
       return "opened";
     },
-    [navigate],
+    [activateTab, navigate],
   );
 
   /** ← agit uniquement sur l'historique de l'onglet actif — ne change jamais l'ordre. */

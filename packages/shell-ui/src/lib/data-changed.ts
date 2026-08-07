@@ -10,6 +10,10 @@
  * Header HTTP homonyme (EntitySpec / mounts) : `x-creezio-data-changed`
  * (valeur = resource, CSV si plusieurs). Le fetch interceptor kit le
  * transforme en événement navigateur.
+ *
+ * Tools MCP / assistant : `inferResourceFromToolName(toolName)` → resource
+ * (ou null si lecture). Convention `module.<owner>.<action>` + table d'alias
+ * + préfixes d'écriture legacy (`add_to_*`, `create_*`, …).
  */
 
 export const CREEZIO_DATA_CHANGED_EVENT = "creezio:data-changed";
@@ -75,38 +79,139 @@ export function parseDataChangedHeader(
 }
 
 /**
+ * Alias owner / stem outil → resource UI (`useCreezioResource`).
+ * Les clés sont en minuscules ; valeurs = id resource bus.
+ */
+const TOOL_OWNER_TO_RESOURCE: Record<string, string> = {
+  panier: "panier",
+  cart: "panier",
+  commande: "commandes",
+  commandes: "commandes",
+  sku: "skus",
+  skus: "skus",
+  produit: "produits",
+  product: "produits",
+  products: "produits",
+  produits: "produits",
+  catalog: "produits",
+  catalogue: "produits",
+  fournisseur: "fournisseurs",
+  fournisseurs: "fournisseurs",
+  supplier: "fournisseurs",
+  vendor: "fournisseurs",
+  client: "clients",
+  customers: "clients",
+  customer: "clients",
+  clients: "clients",
+  task: "tasks",
+  tasks: "tasks",
+  tache: "tasks",
+  taches: "tasks",
+  todo: "tasks",
+  todos: "tasks",
+  ai_task: "tasks",
+  ai_collaborator: "tasks",
+  mail: "mails",
+  mails: "mails",
+  email: "mails",
+  emails: "mails",
+  promo: "promotions",
+  promotion: "promotions",
+  promotions: "promotions",
+  stack: "stack",
+  prix: "prix",
+  releve: "prix",
+  releves: "prix",
+  releves_prix: "prix",
+  optimiser: "optimiser",
+  conditions: "conditions",
+  data_mapping: "data_mapping",
+  widget: "widgets",
+  widgets: "widgets",
+};
+
+/** Verbes / préfixes d'action clairement lecture seule. */
+const READ_ACTION_RE =
+  /^(get|list|search|find|read|count|describe|schema|status|suggest|scenario|graph|stats|rfa)(_|$)/;
+
+/** Préfixes d'écriture legacy (`add_to_panier`, `create_ai_task`, …). */
+const WRITE_PREFIX_RE =
+  /^(?:add_to_|add_|create_|update_|delete_|close_|set_|remove_|archive_|upsert_|patch_|answer_)/;
+
+function normalizeOwnerStem(raw: string): string {
+  return raw
+    .replace(/_ligne$/, "")
+    .replace(/_item$/, "")
+    .replace(/_line$/, "")
+    .replace(/_entry$/, "");
+}
+
+function resourceFromOwner(owner: string): string | null {
+  const key = normalizeOwnerStem(owner.trim().toLowerCase());
+  if (!key) return null;
+  return TOOL_OWNER_TO_RESOURCE[key] ?? key;
+}
+
+/**
  * Heuristique tool MCP / assistant → resource (écriture).
  * Retourne null si tool probablement lecture seule.
+ *
+ * Conventions supportées :
+ * 1. `module.<owner>.<action>` — action lecture → null ; sinon resource(owner)
+ * 2. Contient panier/cart / promotions… (mots-clés métier)
+ * 3. Préfixes d'écriture legacy → stem → resource
  */
 export function inferResourceFromToolName(toolName: string): string | null {
   const n = String(toolName || "").trim().toLowerCase();
   if (!n) return null;
+
+  // 1) Convention module.<owner>.<action>[_…]
+  const mod = /^module\.([a-z0-9_-]+)\.([a-z0-9_.-]+)$/.exec(n);
+  if (mod) {
+    const owner = mod[1]!;
+    const action = mod[2]!;
+    if (READ_ACTION_RE.test(action)) return null;
+    return resourceFromOwner(owner);
+  }
+
+  // Lecture seule legacy (préfixe ou suffixe)
   if (
     /^(get_|list_|search_|find_|read_|count_|describe_|schema_)/.test(n) ||
     n.endsWith("_get") ||
-    n.endsWith("_list")
+    n.endsWith("_list") ||
+    n.endsWith("_search")
   ) {
     return null;
   }
+
+  // 2) Mots-clés métier (outil plat ou composé)
   if (/panier|cart/.test(n)) return "panier";
+  if (/promotions?|promo\b/.test(n)) return "promotions";
+  if (/\bstack\b|add_to_stack|remove_from_stack/.test(n)) return "stack";
   if (/commande/.test(n)) return "commandes";
-  if (/sku/.test(n)) return "skus";
-  if (/produit|product/.test(n)) return "produits";
+  if (/\bskus?\b/.test(n)) return "skus";
+  if (/produit|product|catalog/.test(n)) return "produits";
   if (/fournisseur|supplier|vendor/.test(n)) return "fournisseurs";
   if (/client|customer/.test(n)) return "clients";
-  if (/task|tache|todo/.test(n)) return "tasks";
+  if (/task|tache|todo|ai_task|ai_collaborator|ai_question/.test(n)) {
+    return "tasks";
+  }
   if (/mail|email/.test(n)) return "mails";
-  // create_widget → widgets ; update_panier_ligne déjà couvert
-  const m = /^(?:add_to_|add_|create_|update_|delete_|close_|set_|remove_|archive_)([a-z0-9_-]+)/.exec(
-    n,
-  );
-  if (m?.[1]) {
-    const stem = m[1].replace(/_ligne$/, "").replace(/_item$/, "");
-    return stem || null;
+  if (/optimiser/.test(n)) return "optimiser";
+  if (/conditions?|rfa/.test(n)) return "conditions";
+  if (/releve|prix/.test(n)) return "prix";
+
+  // 3) Préfixes d'écriture → stem
+  if (WRITE_PREFIX_RE.test(n)) {
+    const stem = n
+      .replace(WRITE_PREFIX_RE, "")
+      .replace(/_ligne$/, "")
+      .replace(/_item$/, "");
+    if (!stem) return null;
+    // create_ai_task → ai_task ; add_to_panier déjà couvert plus haut
+    return resourceFromOwner(stem);
   }
-  if (/^(add_|create_|update_|delete_|close_|set_|remove_|archive_)/.test(n)) {
-    return n.replace(/^(add_to_|add_|create_|update_|delete_|close_|set_|remove_|archive_)/, "") || null;
-  }
+
   return null;
 }
 

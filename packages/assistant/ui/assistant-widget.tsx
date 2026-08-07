@@ -69,6 +69,10 @@ import {
 } from "../dist/runtime/active-surface.js";
 import type { AssistantMode } from "../dist/runtime/modes.js";
 import { useTabWorkspaceOptional } from "./tab-workspace-shim";
+import {
+  emitDataChanged,
+  inferResourceFromToolName,
+} from "@creezio/shell-ui";
 
 type Source = AssistantSource;
 type Msg = {
@@ -1295,35 +1299,11 @@ export function AssistantWidget() {
                 return { ...m, steps };
               }),
             );
-            // Mutation MCP/chat → bus UI natif (même contrat qu'EntitySpec header).
+            // Mutation MCP/chat → bus UI natif (SoT : inferResourceFromToolName).
             if (step.status !== "error" && step.toolName) {
-              const name = String(step.toolName);
-              const lower = name.toLowerCase();
-              const resource =
-                /panier|cart/.test(lower)
-                  ? "panier"
-                  : /^(?:add_to_|add_|create_|update_|delete_|close_|set_|remove_|archive_)/.test(
-                        lower,
-                      ) &&
-                      !/^(get_|list_|search_|find_|read_)/.test(lower)
-                    ? lower
-                        .replace(
-                          /^(?:add_to_|add_|create_|update_|delete_|close_|set_|remove_|archive_)/,
-                          "",
-                        )
-                        .replace(/_ligne$/, "")
-                        .replace(/_item$/, "") || null
-                    : null;
+              const resource = inferResourceFromToolName(String(step.toolName));
               if (resource) {
-                window.dispatchEvent(
-                  new CustomEvent("creezio:data-changed", {
-                    detail: {
-                      resource,
-                      source: "assistant",
-                      at: Date.now(),
-                    },
-                  }),
-                );
+                emitDataChanged({ resource, source: "assistant" });
               }
             }
           },

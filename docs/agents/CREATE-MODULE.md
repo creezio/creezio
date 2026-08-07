@@ -149,6 +149,10 @@ dans l'interview (§5 : readOnly/destructive, requiredScope, rôles).
   (`resource` ou défaut = `table`) → header `x-creezio-data-changed` → bus
   client `creezio:data-changed`. Les mounts hors EntitySpec ajoutent le
   header (`CREEZIO_DATA_CHANGED_HEADER`) ou appellent `emitDataChanged`.
+  Tools MCP : préférer `module.<id>.<action>` — l'assistant infère la
+  resource via `inferResourceFromToolName` (écriture uniquement). Pour
+  montrer une page après mutation UX (panier…) : `openOrNotify("/…")`
+  (focus si onglet ouvert, nouvel onglet sinon — pas pastille-only).
 - Nav : `navItems` du module (permissions `nav.*` déclarées via
   `configureAuth` — sans quoi la sidebar owner est amputée).
 - Meili : `meiliIndexes` du module (UIDs `catalog_*` imposés par le kit,

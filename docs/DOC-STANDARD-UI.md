@@ -108,6 +108,28 @@ Contrat : mutations → header `x-creezio-data-changed` ou `emitDataChanged` →
 événement `creezio:data-changed` → `router.refresh()` si la pane est active.
 Voir [CREATE-MODULE.md](./agents/CREATE-MODULE.md).
 
+### `openOrNotify(href)` — montrer la cible (pas pastille-only)
+
+Après une mutation UX qui doit **être vue** (ex. ajout panier) :
+
+| État onglet `pathname` | Comportement | Retour |
+|---|---|---|
+| Actif | rien (le bus data rafraîchit) | `"active"` |
+| Ouvert, inactif | **focus** l'onglet (`activateTab`) | `"focused"` |
+| Absent | `navigate(href, { newTab: true })` | `"opened"` |
+
+Ne plus se contenter d'une pastille : l'utilisateur doit voir la page cible.
+Coupler avec `useCreezioResource("<id>")` sur cette page pour le refresh RSC.
+
+### Tools MCP → resource
+
+`inferResourceFromToolName(toolName)` (`@creezio/shell-ui`) mappe les
+écritures vers la resource bus : convention `module.<owner>.<action>`
+(lecture → `null`), alias métier (`panier`, `promotions`, `tasks`…),
+préfixes legacy (`add_to_*`, `create_*`…). L'assistant émet
+`emitDataChanged({ resource, source: "assistant" })` sur chaque
+`tool_result` d'écriture.
+
 ## Déclaration dans l'interview de module
 
 La section « 4. UI, nav & permissions » de chaque `interview.md`
