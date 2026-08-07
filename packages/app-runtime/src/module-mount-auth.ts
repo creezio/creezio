@@ -65,6 +65,38 @@ export const PUBLIC_MODULE_PATHS: readonly PublicModulePathRule[] = [
   },
 ];
 
+/**
+ * Header boot catalogue marque (`x-creezio-catalog-internal: 1`).
+ * Posé uniquement par le host de boot / harness — jamais un client UI.
+ */
+export const CATALOG_INTERNAL_HEADER = "x-creezio-catalog-internal";
+
+/**
+ * Chemins ensure/import catalogue joignables sans JWT **si** le header
+ * interne est présent. Le mount marque refuse toujours les mutations sans
+ * ce header (403) — la garde ne fait que laisser passer le boot headless.
+ */
+export function isCatalogInternalBootPath(
+  method: string,
+  pathname: string,
+  headers: IncomingHttpHeaders,
+): boolean {
+  const raw = headers[CATALOG_INTERNAL_HEADER];
+  const value = Array.isArray(raw) ? raw[0] || "" : raw || "";
+  if (String(value).trim() !== "1") return false;
+  const m = (method || "GET").toUpperCase();
+  if (pathname === "/api/v1/modules/catalog/ensure" && m === "POST") {
+    return true;
+  }
+  if (
+    pathname === "/api/v1/modules/catalog/import" &&
+    (m === "POST" || m === "GET")
+  ) {
+    return true;
+  }
+  return false;
+}
+
 export function isModuleApiPath(pathname: string): boolean {
   return (
     pathname === "/api/v1/modules" || pathname.startsWith("/api/v1/modules/")
@@ -275,6 +307,11 @@ export async function assertModuleMountSession(input: {
 }): Promise<ModuleMountAuthDecision> {
   if (!isModuleApiPath(input.pathname)) return { ok: true };
   if (isPublicModulePath(input.method, input.pathname)) {
+    return { ok: true, public: true };
+  }
+  if (
+    isCatalogInternalBootPath(input.method, input.pathname, input.headers)
+  ) {
     return { ok: true, public: true };
   }
   const session = await sessionFromNodeHeaders(input.headers);

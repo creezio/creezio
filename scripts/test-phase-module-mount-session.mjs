@@ -21,7 +21,9 @@ import {
 import { createApiKernel } from "../packages/api-kernel/dist/index.js";
 import {
   assertModuleMountSession,
+  CATALOG_INTERNAL_HEADER,
   createBrandApiKeyModuleVerifier,
+  isCatalogInternalBootPath,
   isPublicModulePath,
   listenBrandOsHttp,
 } from "../packages/app-runtime/dist/index.js";
@@ -70,6 +72,44 @@ test("module-mount-session : allowlist + décision pure", async () => {
   });
   assert.equal(pub.ok, true);
   assert.equal(pub.public, true);
+
+  // Boot catalogue : header interne + path ensure/import seulement.
+  assert.equal(
+    isCatalogInternalBootPath("POST", "/api/v1/modules/catalog/import", {
+      [CATALOG_INTERNAL_HEADER]: "1",
+    }),
+    true,
+  );
+  assert.equal(
+    isCatalogInternalBootPath("POST", "/api/v1/modules/catalog/import", {}),
+    false,
+  );
+  assert.equal(
+    isCatalogInternalBootPath("GET", "/api/v1/modules/catalog/status", {
+      [CATALOG_INTERNAL_HEADER]: "1",
+    }),
+    false,
+  );
+  const catalogDenied = await assertModuleMountSession({
+    method: "POST",
+    pathname: "/api/v1/modules/catalog/import",
+    headers: { "content-type": "application/json" },
+  });
+  assert.equal(catalogDenied.ok, false);
+  if (!catalogDenied.ok) assert.equal(catalogDenied.status, 401);
+  const catalogBoot = await assertModuleMountSession({
+    method: "POST",
+    pathname: "/api/v1/modules/catalog/import",
+    headers: { [CATALOG_INTERNAL_HEADER]: "1" },
+  });
+  assert.equal(catalogBoot.ok, true);
+  assert.equal(catalogBoot.public, true);
+  const catalogEnsure = await assertModuleMountSession({
+    method: "POST",
+    pathname: "/api/v1/modules/catalog/ensure",
+    headers: { [CATALOG_INTERNAL_HEADER]: "1" },
+  });
+  assert.equal(catalogEnsure.ok, true);
   restoreEnv();
 });
 
@@ -178,6 +218,48 @@ test("module-mount-session : listenBrandOsHttp exige une session", async () => {
     );
     assert.equal(landing.status, 200);
     assert.equal((await landing.json()).public, true);
+
+    // Mount catalogue minimal — prouve le header interne traverse la garde
+    // HTTP (repro du 401 boot headless) sans AUTH_DISABLED.
+    api.registerModuleApi("catalog", {
+      dbLayer: "brand",
+      handle: async ({ req, subPath }) => {
+        const parts = String(subPath || "")
+          .split("/")
+          .filter(Boolean);
+        const internal =
+          String(req.headers?.[CATALOG_INTERNAL_HEADER] || "").trim() === "1";
+        if (parts[0] === "import" && req.method === "POST") {
+          if (!internal) {
+            return { status: 403, body: { error: "catalog_mutate_forbidden" } };
+          }
+          return { status: 200, body: { ok: true, boot: true } };
+        }
+        return { status: 404, body: { error: "not_found" } };
+      },
+    });
+    const catalogAnon = await fetch(
+      `${http.baseUrl}/api/v1/modules/catalog/import`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: "{}",
+      },
+    );
+    assert.equal(catalogAnon.status, 401);
+    const catalogInternal = await fetch(
+      `${http.baseUrl}/api/v1/modules/catalog/import`,
+      {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          [CATALOG_INTERNAL_HEADER]: "1",
+        },
+        body: "{}",
+      },
+    );
+    assert.equal(catalogInternal.status, 200);
+    assert.equal((await catalogInternal.json()).boot, true);
   } finally {
     await http.close();
     restoreEnv();

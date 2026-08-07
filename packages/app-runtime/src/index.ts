@@ -54,11 +54,13 @@ export {
   type BrandOsHttpHandle,
 } from "./listen-brand-os-http.js";
 export {
+  CATALOG_INTERNAL_HEADER,
   PUBLIC_MODULE_PATHS,
   anyModuleMachineKeyVerifier,
   assertModuleMountSession,
   createBrandApiKeyModuleVerifier,
   createPluginDiskKeyModuleVerifier,
+  isCatalogInternalBootPath,
   isModuleApiPath,
   isPublicModulePath,
   sessionFromNodeHeaders,
