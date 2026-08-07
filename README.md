@@ -74,7 +74,7 @@ partagés à la racine) **et** un repo admin dédié privé `<brand>-admin`
 (app admin de la marque : flotte, support, billing…) — voir
 [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md).
 
-## Les 28 packages
+## Les 29 packages
 
 | Package | Rôle |
 |---------|------|
@@ -88,6 +88,7 @@ partagés à la racine) **et** un repo admin dédié privé `<brand>-admin`
 | `shell-ui` | Nav + chrome CRM UI (React) |
 | `os-ui` | Surfaces Next OS natives (mails, tâches, setup, admin…) matérialisées dans les marques |
 | `onboarding` | Setup first-run + moteur d'onboarding |
+| `interactive-demo` | Démo interactive native (product tour live joué par un faux curseur, scénarios éditables en DB) |
 | `cockpit` | UI server-cockpit (shell autonome + client CRM) |
 | `assistant` | Chat / Hermes Work / tools IA |
 | `tasks` | Kanban + missions IA |

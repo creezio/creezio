@@ -94,6 +94,7 @@
 | [`test-phase-i7.mjs`](../test-phase-i7.mjs) | Phase I7 — createNavShellAdapter + demobrand conso. |
 | [`test-phase-i8.mjs`](../test-phase-i8.mjs) | Phase I8 — freeze H6 : ARCHITECTURE_VERSION + factory scaffold + parity doc. |
 | [`test-phase-integrations.mjs`](../test-phase-integrations.mjs) | Gate — intégrations / clés API tierces (ADR-integrations-store). |
+| [`test-phase-interactive-demo.mjs`](../test-phase-interactive-demo.mjs) | Gate @creezio/interactive-demo : patron hybride (migrations, merge défauts/overrides, mount scenarios/preferences), validation de scénario, scénario générique OS, surface UI |
 | [`test-phase-landing.mjs`](../test-phase-landing.mjs) | Gate — module natif hybride « landing page » (ADR-module-natif-hybride). |
 | [`test-phase-m0.mjs`](../test-phase-m0.mjs) | Phase M0 — baseline vision stricte : inventaire + freeze anti-stub. |
 | [`test-phase-m1.mjs`](../test-phase-m1.mjs) | Phase M1 — cutover Database TF sans shims (vision stricte). |

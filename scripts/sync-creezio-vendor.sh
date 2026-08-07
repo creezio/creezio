@@ -38,6 +38,7 @@ DEFAULT_PACKAGES=(
   os-ui
   shell-ui
   onboarding
+  interactive-demo
   cockpit
   auth
   assistant

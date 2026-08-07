@@ -74,7 +74,8 @@ Packagé (`app.isPackaged`) : **toutes** les données runtime vivent sous
 Voir `package.json` script `build:packages`. Ordre typique :
 
 `brand-config` → `shell` → `platform-core` → `product-hub` → `api-kernel` →
-`mcp-facade` → `auth` → `shell-ui` → `os-ui` → `onboarding` → `cockpit` →
+`mcp-facade` → `auth` → `shell-ui` → `os-ui` → `onboarding` →
+`interactive-demo` → `cockpit` →
 `assistant` → `tasks` → `mails` → `support` → `integrations` → `observability` → `landing` → `admin` → `automations` →
 `database` → `browser-host` → `electron-shell` → `brand-spec` →
 `app-runtime` → `desktop-tooling` → `factory` → `propagation` → `build:cjs`.
@@ -100,6 +101,7 @@ par `sync-creezio-vendor.sh`, et par `creezio server-docker publish|build`
 | Nav + chrome CRM UI | `shell-ui` |
 | Pages Next OS (mails/tâches/setup/admin…) matérialisées dans les marques | `os-ui` |
 | First-run setup + onboarding produit hybride (contenu DB + preferences) | `onboarding` |
+| Démo interactive native (product tour live, faux curseur, scénarios DB) | `interactive-demo` |
 | Landing page publique de marque (`lp.{zone}`, contenu DB éditable admin) | `landing` |
 | Server cockpit UI | `cockpit` |
 | Chat / Hermes Work / tools | `assistant` |
