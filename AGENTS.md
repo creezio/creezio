@@ -136,6 +136,16 @@ Workflow : `npm run test:kit` → première rouge → corriger →
 
 ## Pièges connus
 
+- **Meili = recherche ET browse filtré** : dès qu'un index Meili existe
+  (`catalog_products`, …) et que les filtres/tris sont exprimables
+  (filterable/sortable), les listes catalogue **doivent** passer par Meili —
+  y compris **sans `q` texte** (ex. `/secteurs?categorie=`, liste par
+  agrégateur/fournisseur/famille, page `/produits` paginée). SQL direct =
+  fallback (Meili down / filtre hors index) ou cas hors index (agrégats
+  lourds, écritures, joins non indexés, bornes prix sur relevés…). **Interdit**
+  de re-limiter Meili au cas `q` non vide. Détail :
+  [`packages/electron-shell/AGENTS.md`](./packages/electron-shell/AGENTS.md)
+  (section Meili) + `app-runtime` (feed/boot).
 - **Bug générique marque → fix kit/factory d'abord** : si le défaut touche
   toute marque générée (layout, smokes, scaffold, Docker, auth harness…),
   corriger dans `@creezio/*` / `packages/factory` puis resync — **interdit**

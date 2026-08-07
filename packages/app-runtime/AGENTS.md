@@ -40,6 +40,14 @@ Toute évolution Meili / HTTP kernel / session IPC se fait **ici** (ou dans
 - Bind Docker/headless : `CREEZIO_HTTP_HOST=0.0.0.0` (ou `METIER_HOST`)
   — voir `docker/server/` + `creezio server-docker`
 
+## Meili (feed + usage UI)
+
+`meiliFeed` (marque) + indexer kit (`electron-shell/host/meili`) alimentent
+les index. **Règle plateforme** (voir aussi `creezio/AGENTS.md` Pièges +
+`electron-shell/AGENTS.md` section Meili) : l’UI marque doit utiliser Meili
+pour **recherche et browse filtré** dès que les attributs sont indexés —
+ne pas limiter Meili au cas `q` non vide. SQL = fallback / hors index.
+
 ## Ne pas faire
 
 - Pas de domaine métier (CHR, GED…) dans ce package.

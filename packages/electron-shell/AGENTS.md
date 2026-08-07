@@ -4,6 +4,24 @@
 
 Maintenir le runtime Electron plateforme Creezio : host stack, desktop runtime, launchers locaux, plugins, browser-tabs, ai-workspace, crash/updater/tray/splash et bindings marque. Garder le package generique, testable et sans dependance metier verticale.
 
+## Meili — recherche et browse (contrat marques)
+
+Quand un feed `catalog_*` est indexé :
+
+1. **Toujours préférer Meili** pour lister/filtrer des produits (et
+   équivalents catalogue) dès que les filtres/tris sont dans
+   `filterableAttributes` / `sortableAttributes` — **même avec `q` vide**.
+2. Exemples : `/secteurs?categorie=` → Meili ; `/produits?source=europages`
+   → Meili ; recherche texte → Meili ; pagination globale → Meili.
+3. **SQL** = fallback (Meili down, index vide, filtre rejeté) **ou** cas hors
+   index (agrégats `AVG(v_variation)`, bornes prix sur `releves_prix`,
+   écritures, joins métier non projetés dans le document).
+4. **Piège interdit** : `if (q) { meili } else { sql }` — le browse filtré
+   sans texte doit aussi passer Meili (audit perf secteurs 3668bbbd).
+
+Le launcher/indexer vivent ici ; la requête UI (`listProduits` etc.) reste
+dans la marque mais **doit** respecter ce contrat.
+
 ## Ne pas faire
 
 - Ne pas hardcoder `TF2`, `TEMPOFLOW`, `CERTIVAN` ou `FIDU` dans une nouvelle logique ; utiliser `envPrefix`, `AppManifest` ou bindings.
@@ -25,6 +43,10 @@ Maintenir le runtime Electron plateforme Creezio : host stack, desktop runtime, 
 - `src/host/plugins/launcher.ts` : start/stop/restart/scaffold/git plugins.
 - `src/host/plugins/control-plane.ts` et `control-extras.ts` : API loopback plugins.
 - `src/host/hermes/launcher.ts`, `src/host/n8n/launcher.ts`, `src/host/meili-launcher.ts`, `src/host/tunnel/tunnel.ts` : embeds.
+- `src/host/meili/*` : indexer générique + schéma d'index — le **contrat
+  catalogue** (filterable `categorie_id` / `famille_id` / `agregateur` /
+  `fournisseur_id`, sortable `prix_min`) sert la recherche **et** le browse
+  filtré sans `q` côté UI marque.
 - `src/host/sandbox/embed-sandbox.ts` : blocs `config.yaml` Hermes upsertés au boot — sandbox (`CREEZIO-SANDBOX`) et `mcp_servers` (`CREEZIO-MCP`, H1 Hermes cerveau unique : URL `/mcp` loopback + Bearer clé CRM via `ctx.getHermesMcpServerConfig`) ; `reapplyHermesBridge` redémarre si le bloc manque/pointe ailleurs.
 - `src/host/hermes/skills-seed.ts` : seed skills vendor — le namespace `site-*` est RÉSERVÉ aux skills appris par Hermes (jamais seedé depuis un vendor, H3). Skills kit : `resources/vendor/hermes-skills/` (`creezio-computer-use`, `creezio-site-skills`, …).
 - `src/host/browser-tabs/index.ts` : sous-export browser-tabs.
