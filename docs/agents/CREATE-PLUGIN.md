@@ -84,7 +84,12 @@ Contrats côté sidecar :
   `manifest.mcpTools` (`plugin-tools-discovery.ts`). ACL **fail-closed** :
   sans grant Product Hub, un plugin n'est ni visible ni appelable, sauf
   acteur owner/clé service (`plugin-acl-wiring.ts`).
-- **Panel UI** : permission `ui:panel` + `panel.path` — servi via le proxy.
+- **Panel UI** : permission `ui:panel` + `panel.path` — servi via le proxy
+  `/api/v1/plugins/<id>/<path>` (même origine, y compris tunnel public).
+  L'admin web (`/admin/plugins`) liste les runtimes via
+  `GET /api/v1/os/plugins` et ouvre le panel dans un onglet navigateur —
+  Electron n'est **pas** requis pour voir/ouvrir. Les gestes Git /
+  enable-disable / accept-check restent Desktop (IPC) pour l'instant.
 
 ## 5. Installation & cycle de vie
 

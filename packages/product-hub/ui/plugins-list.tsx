@@ -115,10 +115,38 @@ const PROCESS_GATES = [
   ["G7", "Accept", "POST accept-check OK avant « done »"],
 ] as const;
 
+/** Fallback navigateur/Docker — `GET /api/v1/os/plugins` (pas d'IPC Electron). */
+async function fetchOsPluginsStatus(): Promise<Status | null> {
+  try {
+    const r = await fetch("/api/v1/os/plugins");
+    if (!r.ok) return null;
+    const data = (await r.json()) as {
+      root?: string;
+      plugins?: Status["plugins"];
+      status?: Status | null;
+    };
+    if (data.status && Array.isArray(data.status.plugins)) {
+      return data.status;
+    }
+    if (Array.isArray(data.plugins)) {
+      return {
+        root: data.root || "…/plugins",
+        plugins: data.plugins,
+        running: data.status?.running || [],
+        logs: data.status?.logs || [],
+      };
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 export function AdminPluginsList() {
   const router = useRouter();
   const workspace = useTabWorkspaceOptional();
   const [desktop, setDesktop] = useState(false);
+  const [webStatusApi, setWebStatusApi] = useState(false);
   const [loading, setLoading] = useState(true);
   const [status, setStatus] = useState<Status | null>(null);
   const [newId, setNewId] = useState("");
@@ -143,10 +171,16 @@ export function AdminPluginsList() {
     setLoading(true);
     try {
       const [runtime, hub] = await Promise.all([
-        api?.getPluginsStatus ? api.getPluginsStatus() : Promise.resolve(null),
+        api?.getPluginsStatus
+          ? api.getPluginsStatus()
+          : fetchOsPluginsStatus(),
         fetch("/api/v1/plugin-products").then((r) => (r.ok ? r.json() : null)),
       ]);
+      if (!api?.getPluginsStatus) {
+        setWebStatusApi(runtime != null);
+      }
       if (runtime) setStatus(runtime as Status);
+      else if (!api?.getPluginsStatus) setStatus(null);
       if (hub?.products) setProducts(hub.products as PluginProduct[]);
     } finally {
       setLoading(false);
@@ -157,6 +191,8 @@ export function AdminPluginsList() {
     setDesktop(Boolean(getDesktopApi()?.getPluginsStatus));
     void refresh();
   }, [refresh]);
+
+  const canManageRuntime = desktop;
 
   async function onToggle(id: string, enabled: boolean) {
     const api = getDesktopApi();
@@ -439,9 +475,11 @@ export function AdminPluginsList() {
 
           {!status?.plugins.length ? (
             <p className="text-sm text-slate-500">
-              {desktop
+              {desktop || webStatusApi
                 ? "Aucun runtime installé. Crée d’abord une demande Product Hub."
-                : `Les runtimes sont visibles uniquement dans ${getProductHubUiBrand().productName} Desktop.`}
+                : loading
+                  ? "Chargement des runtimes…"
+                  : `Impossible de lister les runtimes (API /api/v1/os/plugins).`}
             </p>
           ) : (
             <ul className="space-y-2">
@@ -451,7 +489,9 @@ export function AdminPluginsList() {
                 );
                 const canPanel =
                   p.manifest.permissions?.includes("ui:panel") &&
-                  Boolean(run?.panelUrl);
+                  (Boolean(run?.panelUrl) ||
+                    (runningIds.has(p.manifest.id) &&
+                      Boolean(p.manifest.panel)));
                 const acc = acceptById[p.manifest.id];
                 const versions = versionsById[p.manifest.id] || [];
                 const showVersions = Boolean(versionsOpen[p.manifest.id]);
@@ -551,7 +591,9 @@ export function AdminPluginsList() {
                                     variant="ghost"
                                     className="h-7 text-[11px]"
                                     disabled={
-                                      busy || c.sha === p.git?.head
+                                      busy ||
+                                      !canManageRuntime ||
+                                      c.sha === p.git?.head
                                     }
                                     onClick={() =>
                                       void onRestore(
@@ -570,24 +612,28 @@ export function AdminPluginsList() {
                         ) : null}
                       </div>
                       <div className="flex flex-wrap gap-1">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          disabled={busy || Boolean(p.error)}
-                          onClick={() => void onAcceptCheck(p.manifest.id)}
-                        >
-                          <ShieldCheck className="mr-1 h-3.5 w-3.5" />
-                          Vérifier
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          disabled={busy || Boolean(p.error)}
-                          onClick={() => void onToggleVersions(p.manifest.id)}
-                        >
-                          <History className="mr-1 h-3.5 w-3.5" />
-                          Versions
-                        </Button>
+                        {canManageRuntime ? (
+                          <>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              disabled={busy || Boolean(p.error)}
+                              onClick={() => void onAcceptCheck(p.manifest.id)}
+                            >
+                              <ShieldCheck className="mr-1 h-3.5 w-3.5" />
+                              Vérifier
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              disabled={busy || Boolean(p.error)}
+                              onClick={() => void onToggleVersions(p.manifest.id)}
+                            >
+                              <History className="mr-1 h-3.5 w-3.5" />
+                              Versions
+                            </Button>
+                          </>
+                        ) : null}
                         {canPanel ? (
                           <Button
                             size="sm"
@@ -599,25 +645,29 @@ export function AdminPluginsList() {
                             Ouvrir
                           </Button>
                         ) : null}
-                        <Button
-                          size="sm"
-                          variant={p.enabled ? "outline" : "secondary"}
-                          disabled={busy || Boolean(p.error)}
-                          onClick={() =>
-                            void onToggle(p.manifest.id, !p.enabled)
-                          }
-                        >
-                          {p.enabled ? "Désactiver" : "Activer"}
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="destructive"
-                          disabled={busy}
-                          onClick={() => void onDelete(p.manifest.id)}
-                        >
-                          <Trash2 className="mr-1 h-3.5 w-3.5" />
-                          Supprimer
-                        </Button>
+                        {canManageRuntime ? (
+                          <>
+                            <Button
+                              size="sm"
+                              variant={p.enabled ? "outline" : "secondary"}
+                              disabled={busy || Boolean(p.error)}
+                              onClick={() =>
+                                void onToggle(p.manifest.id, !p.enabled)
+                              }
+                            >
+                              {p.enabled ? "Désactiver" : "Activer"}
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              disabled={busy}
+                              onClick={() => void onDelete(p.manifest.id)}
+                            >
+                              <Trash2 className="mr-1 h-3.5 w-3.5" />
+                              Supprimer
+                            </Button>
+                          </>
+                        ) : null}
                       </div>
                     </div>
                   </li>
@@ -625,6 +675,13 @@ export function AdminPluginsList() {
               })}
             </ul>
           )}
+          {!canManageRuntime && status?.plugins.length ? (
+            <p className="text-xs text-slate-500">
+              Liste et ouverture des panels via le navigateur. Activation,
+              versions Git et accept-check restent dans{" "}
+              {getProductHubUiBrand().productName} Desktop.
+            </p>
+          ) : null}
 
           {status?.logs?.length ? (
             <pre className="max-h-40 overflow-auto rounded-md border bg-slate-950 p-2 font-mono text-[11px] text-slate-100">

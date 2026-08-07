@@ -120,16 +120,111 @@ function send(
   body: unknown,
   headers?: Record<string, string>,
 ) {
-  const payload = JSON.stringify(body ?? {});
-  res.writeHead(status, {
-    "content-type": "application/json; charset=utf-8",
+  const cors: Record<string, string> = {
     "access-control-allow-origin": "*",
     "access-control-allow-headers":
       "content-type, authorization, x-creezio-user-id",
     "access-control-allow-methods": "GET,POST,PATCH,DELETE,OPTIONS",
+  };
+  // Panels plugins (HTML) et autres corps déjà sérialisés : ne pas
+  // re-JSON.stringifier — sinon le navigateur reçoit `"<!doctype…"` littéral.
+  if (typeof body === "string" || Buffer.isBuffer(body)) {
+    const contentType =
+      headers?.["content-type"] ||
+      headers?.["Content-Type"] ||
+      (typeof body === "string"
+        ? "text/plain; charset=utf-8"
+        : "application/octet-stream");
+    res.writeHead(status, {
+      ...cors,
+      ...(headers || {}),
+      "content-type": contentType,
+    });
+    res.end(body);
+    return;
+  }
+  const payload = JSON.stringify(body ?? {});
+  res.writeHead(status, {
+    "content-type": "application/json; charset=utf-8",
+    ...cors,
     ...(headers || {}),
   });
   res.end(payload);
+}
+
+/** Payload admin web — panelUrl = proxy même origine (tunnel OK), pas 127.0.0.1. */
+function buildOsPluginsWebStatus(host: {
+  listPlugins: () => Array<{
+    dir: string;
+    manifest: {
+      id: string;
+      name: string;
+      version: string;
+      permissions?: string[];
+      panel?: { title?: string; path?: string };
+    };
+    enabled: boolean;
+    error?: string;
+  }>;
+  pluginsStatusPayload?: () => {
+    plugins: Array<{
+      dir: string;
+      manifest: {
+        id: string;
+        name: string;
+        version: string;
+        permissions?: string[];
+        panel?: { title?: string; path?: string };
+      };
+      enabled: boolean;
+      error?: string;
+    }>;
+    running: Array<{ id: string; port: number | null }>;
+  };
+  getPluginLogs?: () => string[];
+}): {
+  root: string;
+  plugins: ReturnType<typeof host.listPlugins>;
+  running: Array<{
+    id: string;
+    port: number | null;
+    version: string;
+    siteId: number;
+    panelUrl: string | null;
+    n8nWebhookUrl: string | null;
+  }>;
+  logs: string[];
+} {
+  const payload = host.pluginsStatusPayload?.();
+  const plugins = payload?.plugins ?? host.listPlugins();
+  const runningRaw = payload?.running ?? [];
+  const root =
+    plugins[0]?.dir != null ? path.dirname(plugins[0].dir) : "…/plugins";
+  const running = runningRaw.map((r) => {
+    const plug = plugins.find((p) => p.manifest.id === r.id);
+    const panelPath = plug?.manifest.panel?.path || "/";
+    const pathPart = panelPath.startsWith("/") ? panelPath : `/${panelPath}`;
+    const canPanel =
+      Boolean(plug?.manifest.permissions?.includes("ui:panel")) &&
+      Boolean(plug?.manifest.panel) &&
+      r.port != null;
+    return {
+      id: r.id,
+      port: r.port,
+      version: plug?.manifest.version || "",
+      siteId: 0,
+      panelUrl: canPanel
+        ? `/api/v1/plugins/${encodeURIComponent(r.id)}${pathPart}`
+        : null,
+      n8nWebhookUrl: null,
+    };
+  });
+  return {
+    root,
+    plugins,
+    running,
+    logs: host.getPluginLogs?.() ?? [],
+  };
 }
 
 /** Bind HTTP — Docker/headless : `CREEZIO_HTTP_HOST=0.0.0.0` (ou METIER_HOST). */
@@ -894,17 +989,17 @@ export async function listenBrandOsHttp(opts: {
           return;
         }
         try {
-          const host = opts.os.hostStack.hostPlugins() as {
-            listPlugins: () => unknown[];
-            getStatus?: () => unknown;
-          };
-          const plugins = host.listPlugins();
+          const host = opts.os.hostStack.hostPlugins() as Parameters<
+            typeof buildOsPluginsWebStatus
+          >[0];
+          const status = buildOsPluginsWebStatus(host);
           send(res, 200, {
             ok: true,
             mode: "enabled",
-            plugins,
-            count: plugins.length,
-            status: host.getStatus?.() ?? null,
+            root: status.root,
+            plugins: status.plugins,
+            count: status.plugins.length,
+            status,
           });
         } catch (err) {
           send(res, 500, {

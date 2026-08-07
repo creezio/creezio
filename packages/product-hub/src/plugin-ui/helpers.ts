@@ -67,25 +67,74 @@ export function notifyPluginsChanged(): void {
   }
 }
 
-/** Résout l’URL panel d’un plugin running. */
+function panelPathFromManifest(panel?: { path?: string }): string {
+  const raw = panel?.path || "/";
+  return raw.startsWith("/") ? raw : `/${raw}`;
+}
+
+/** Résout l’URL panel d’un plugin running (Desktop IPC ou proxy web). */
 export async function resolvePluginPanelOpenTarget(
   pluginId: string,
 ): Promise<PluginPanelOpenTarget | PluginPanelOpenFail> {
   const api = getDesktopApi();
-  const product = getProductHubUiBrand().productName;
-  if (!api?.resolvePluginPanel) {
-    return {
-      ok: false,
-      error: `Panels plugins disponibles uniquement dans ${product} Desktop.`,
-    };
+  if (api?.resolvePluginPanel) {
+    try {
+      const r = await api.resolvePluginPanel(pluginId);
+      if (!r.ok) return r;
+      return {
+        url: r.url,
+        siteId: r.siteId,
+        title: r.title,
+        pluginId,
+      };
+    } catch (e) {
+      return {
+        ok: false,
+        error: e instanceof Error ? e.message : "Panel introuvable",
+      };
+    }
   }
+
+  // Navigateur / Docker : même origine via `/api/v1/plugins/<id>/*`
+  // (tunnel Cloudflare inclus — pas besoin d'Electron ni de 127.0.0.1).
   try {
-    const r = await api.resolvePluginPanel(pluginId);
-    if (!r.ok) return r;
+    const res = await fetch("/api/v1/os/plugins");
+    if (!res.ok) {
+      return {
+        ok: false,
+        error: `Liste plugins indisponible (HTTP ${res.status})`,
+      };
+    }
+    const data = (await res.json()) as {
+      plugins?: PluginStatusSnapshot["plugins"];
+      status?: {
+        plugins?: PluginStatusSnapshot["plugins"];
+        running?: Array<{
+          id: string;
+          panelUrl?: string | null;
+          siteId?: number;
+        }>;
+      };
+    };
+    const plugins = data.status?.plugins || data.plugins || [];
+    const running = data.status?.running || [];
+    const plug = plugins.find((p) => p.manifest.id === pluginId);
+    if (!plug) return { ok: false, error: `plugin inconnu: ${pluginId}` };
+    if (!plug.manifest.permissions?.includes("ui:panel")) {
+      return { ok: false, error: "permission ui:panel absente" };
+    }
+    const run = running.find((r) => r.id === pluginId);
+    const pathPart = panelPathFromManifest(plug.manifest.panel);
+    const url =
+      run?.panelUrl ||
+      `/api/v1/plugins/${encodeURIComponent(pluginId)}${pathPart}`;
+    if (!run && !plug.enabled) {
+      return { ok: false, error: "plugin non démarré (désactivé)" };
+    }
     return {
-      url: r.url,
-      siteId: r.siteId,
-      title: r.title,
+      url,
+      siteId: typeof run?.siteId === "number" ? run.siteId : 0,
+      title: plug.manifest.panel?.title?.trim() || plug.manifest.name,
       pluginId,
     };
   } catch (e) {

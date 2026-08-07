@@ -192,6 +192,28 @@ test("PT1..PT4 tools MCP plugins + ACL + mounts API kernel", async () => {
     assert.ok(healthy, "PT4 mount /api/v1/plugins/echoprobe/health répond 200");
     assert.equal(healthy.plugin, "echoprobe");
 
+    // PT4b — panel HTML via proxy : corps brut (pas JSON-stringifié), URL web.
+    const panelRes = await fetch(`${baseUrl}/api/v1/plugins/echoprobe/`);
+    assert.equal(panelRes.status, 200, "panel proxy 200");
+    const panelCt = panelRes.headers.get("content-type") || "";
+    assert.match(panelCt, /text\/html/i, `content-type HTML: ${panelCt}`);
+    const panelText = await panelRes.text();
+    assert.ok(
+      panelText.startsWith("<html") || panelText.startsWith("<!"),
+      `panel HTML brut attendu, reçu: ${panelText.slice(0, 80)}`,
+    );
+    const osListed = await (await fetch(`${baseUrl}/api/v1/os/plugins`)).json();
+    assert.ok(osListed.status?.running?.length >= 1, "status.running peuplé");
+    const echoRun = (osListed.status.running || []).find(
+      (r) => r.id === "echoprobe",
+    );
+    assert.ok(echoRun?.panelUrl, "panelUrl web proxy");
+    assert.match(
+      String(echoRun.panelUrl),
+      /^\/api\/v1\/plugins\/echoprobe\//,
+      `panelUrl même origine: ${echoRun.panelUrl}`,
+    );
+
     // PT1 — listing service (sans bearer = clé service locale) : tools présents.
     const listed = await mcpList(baseUrl);
     const names = (listed.tools || []).map((t) => t.name);
