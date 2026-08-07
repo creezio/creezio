@@ -111,6 +111,46 @@ export function buildApiEndpointsRegistry(opts: {
   };
 }
 
+/** Document OpenAPI 3 minimal dérivé du registre runtime (lien Admin API). */
+export function buildOpenApiDocumentFromRegistry(
+  registry: ApiEndpointsRegistry,
+  opts?: { title?: string; version?: string },
+): {
+  openapi: "3.0.3";
+  info: { title: string; version: string; description: string };
+  paths: Record<string, Record<string, OpenApiOperation & { responses: Record<string, { description: string }> }>>;
+} {
+  const paths: Record<
+    string,
+    Record<
+      string,
+      OpenApiOperation & { responses: Record<string, { description: string }> }
+    >
+  > = {};
+
+  for (const ep of registry.endpoints) {
+    const method = ep.method.toLowerCase();
+    const pathKey = ep.path.replace(/:([A-Za-z0-9_]+)/g, "{$1}");
+    if (!paths[pathKey]) paths[pathKey] = {};
+    paths[pathKey]![method] = {
+      summary: ep.summary || `${ep.method} ${ep.path}`,
+      ...(ep.description ? { description: ep.description } : {}),
+      tags: ep.tags.length ? ep.tags : ["runtime"],
+      responses: { "200": { description: "OK" } },
+    };
+  }
+
+  return {
+    openapi: "3.0.3",
+    info: {
+      title: opts?.title || "Creezio API",
+      version: opts?.version || "0.1.0",
+      description: `Generated from ${registry.source} at ${registry.generatedAt}`,
+    },
+    paths,
+  };
+}
+
 /** Collecte les routes d'une app Hono (y compris sous-apps montées). */
 export function collectHonoRoutes(
   app: { routes: Array<{ method: string; path: string }> },

@@ -206,6 +206,7 @@ export type {
 } from "./api-endpoints/index.js";
 export {
   buildApiEndpointsRegistry,
+  buildOpenApiDocumentFromRegistry,
   collectHonoRoutes,
   createApiEndpointsRoutes,
 } from "./api-endpoints/index.js";

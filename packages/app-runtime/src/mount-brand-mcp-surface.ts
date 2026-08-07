@@ -3,8 +3,14 @@
  * Sans credentials externes : issuer = baseUrl harness/loopback.
  */
 import { Hono } from "hono";
+import { getCookie } from "hono/cookie";
 import type { AppManifest } from "@creezio/brand-config";
 import type { SqliteRuntime } from "@creezio/platform-core";
+import {
+  getAuthConfig,
+  verifySessionToken,
+  type SessionPayload,
+} from "@creezio/auth";
 import {
   configureMcpOAuth,
   configureMcpAdmin,
@@ -18,9 +24,14 @@ import {
 } from "@creezio/mcp-facade";
 import {
   buildApiEndpointsRegistry,
+  buildOpenApiDocumentFromRegistry,
   collectHonoRoutes,
+  configureUsageAnalytics,
   createApiEndpointsRoutes,
   createRequestLogsRoutes,
+  createUsageAnalyticsAdminRoutes,
+  createUsageAnalyticsIngestRoutes,
+  ensureUsageAnalyticsSchema,
 } from "@creezio/observability";
 import type { BrandOsComposition } from "./compose-brand-os.js";
 import {
@@ -186,26 +197,89 @@ export function mountBrandMcpSurface(opts: {
     runtime: opts.runtime,
     brandId: opts.manifest.brandId,
   });
+
+  // Usage analytics (Admin → Analytics) : store brand.db + schema lazy.
+  configureUsageAnalytics({
+    getWriteDb: () => opts.runtime.getBrand() as never,
+    getDb: () => opts.runtime.getBrand() as never,
+    tableExists: (n) => tableExists(opts.runtime.getBrand(), n),
+  });
+  try {
+    ensureUsageAnalyticsSchema();
+  } catch {
+    /* brand.db peut être en lecture seule pendant un smoke court */
+  }
+
   const adminSurface = new Hono();
   adminSurface.route("/", adminRoutes);
   adminSurface.route("/", requestLogsRoutes);
   adminSurface.route("/", databaseRoutes);
+  adminSurface.route("/", createUsageAnalyticsAdminRoutes());
+
+  const buildAdminRegistry = () =>
+    buildApiEndpointsRegistry({
+      routes: collectHonoRoutes(adminSurface, "/api/v1/admin"),
+      source:
+        "brand admin surface (MCP + database + analytics + request-logs + endpoints)",
+      openapiUrl: "/api/v1/openapi.json",
+    });
+
   adminSurface.route(
     "/",
     createApiEndpointsRoutes({
-      getRegistry: () =>
-        buildApiEndpointsRegistry({
-          routes: collectHonoRoutes(adminSurface, "/api/v1/admin"),
-          source:
-            "brand admin surface (MCP + database + request-logs + endpoints)",
-          openapiUrl: "/api/v1/openapi.json",
-        }),
+      getRegistry: buildAdminRegistry,
     }),
   );
 
   const app = new Hono();
   app.route("/", oauthRoutes);
   app.route("/api/v1/admin", adminSurface);
+
+  // Ingest tracker UI (POST /api/v1/analytics/events) — session cookie/Bearer.
+  const sessionFromContext = async (c: {
+    req: { header: (n: string) => string | undefined };
+  }): Promise<SessionPayload | null> => {
+    let token = "";
+    try {
+      token = getCookie(c as never, getAuthConfig().cookieName) || "";
+    } catch {
+      token = "";
+    }
+    if (!token) {
+      const authz = c.req.header("authorization") || "";
+      if (authz.toLowerCase().startsWith("bearer ")) {
+        token = authz.slice(7).trim();
+      }
+    }
+    if (!token) return null;
+    return verifySessionToken(token);
+  };
+
+  app.route(
+    "/api/v1/analytics",
+    createUsageAnalyticsIngestRoutes({
+      getSession: async (c) => {
+        const session = await sessionFromContext(c);
+        if (!session) return null;
+        return {
+          sub: session.sub,
+          email: session.email,
+          role: session.role,
+        };
+      },
+      getUserKind: () => "human",
+    }),
+  );
+
+  // Stub OpenAPI utile (lien Admin API) — dérivé du registre endpoints montés.
+  app.get("/api/v1/openapi.json", (c) =>
+    c.json(
+      buildOpenApiDocumentFromRegistry(buildAdminRegistry(), {
+        title: `${productName} Admin API`,
+        version: "0.1.0",
+      }),
+    ),
+  );
 
   // Sonde légère hors Hono OAuth (preuves)
   app.get("/api/v1/os/mcp-oauth/status", (c) =>
@@ -239,9 +313,13 @@ export function mcpSurfaceHandlesPath(pathname: string): boolean {
     pathname.startsWith("/oauth/") ||
     pathname.startsWith("/api/v1/admin/mcp") ||
     adminDatabaseHandlesPath(pathname) ||
+    pathname.startsWith("/api/v1/admin/analytics") ||
     pathname === "/api/v1/admin/endpoints" ||
     pathname === "/api/v1/admin/request-logs" ||
     pathname.startsWith("/api/v1/admin/request-logs/") ||
+    pathname === "/api/v1/openapi.json" ||
+    pathname === "/api/v1/analytics" ||
+    pathname.startsWith("/api/v1/analytics/") ||
     pathname === "/api/v1/os/mcp-oauth/status"
   );
 }

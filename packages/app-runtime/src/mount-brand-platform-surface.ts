@@ -37,7 +37,9 @@ import {
   type AssistantDbAccess,
 } from "@creezio/assistant";
 import {
+  configureTasksBrand,
   createTasksHonoRoutes,
+  getTasksBrandConfig,
   type TasksBrandConfig,
   type TasksSession,
   type TasksWorkspaceAdapter,
@@ -204,9 +206,9 @@ async function sessionFromContext(
 /* ── Adapters tasks plateforme (configureTasksBrand côté marque) ── */
 
 /**
- * Adapters plateforme LAZY (globalThis) : la marque les branche dans
- * `configureTasksBrand` au beforeBoot, la surface les alimente au boot.
- * Sans surface montée → erreurs propres (jamais de throw sauvage).
+ * Adapters plateforme LAZY (globalThis) : `mountBrandPlatformSurface` les
+ * branche via `configureTasksBrand` (autoconfig kit) ; une marque peut
+ * toujours surcharger au beforeBoot. Sans surface montée → erreurs propres.
  */
 export function createPlatformTasksBrandAdapters(): Pick<
   TasksBrandConfig,
@@ -513,6 +515,49 @@ export function mountBrandPlatformSurface(opts: {
       },
     });
     log("assistant: config kit par défaut (marque sans configureAssistantBrand)");
+  }
+
+  // Tasks : même contrat que l'assistant — sans configureTasksBrand au
+  // beforeBoot, GET /api/v1/tasks crashe (requireTasksBrand → 500). Les
+  // adapters plateforme lazy (createPlatformTasksBrandAdapters) branchent
+  // db/users/presence/workspace sur le runtime qui vient d'être posé.
+  if (!getTasksBrandConfig()) {
+    const brandKey = opts.brandId.replace(/[^a-z0-9]/gi, "") || "creezio";
+    const envPrefix = `${brandKey.toUpperCase()}_AI`;
+    configureTasksBrand({
+      productName: opts.brandId,
+      productDomain: opts.brandId,
+      hermesSourceLabel: opts.brandId,
+      hermesSkill: brandKey,
+      envPrefix,
+      idempotencyPrefix: brandKey.slice(0, 12) || "tasks",
+      assistantIdempotencyPrefix: `${brandKey.slice(0, 8) || "asst"}-asst`,
+      taskHref: "/taches",
+      examplePaths: ["/taches"],
+      navigation: {
+        permissionForPath: () => null,
+        hasPermission: () => true,
+      },
+      externalTabs: {
+        resolve: (input) => ({
+          ok: true,
+          url: String(input.url || ""),
+          title: String(input.title || input.url || ""),
+          ...(typeof input.site_id === "number" ? { siteId: input.site_id } : {}),
+          ...(typeof input.fournisseur_id === "number"
+            ? { fournisseurId: input.fournisseur_id }
+            : {}),
+        }),
+        toWorkspaceParams: (r) => ({
+          url: r.url,
+          title: r.title,
+          ...(r.siteId != null ? { site_id: r.siteId } : {}),
+          ...(r.fournisseurId != null ? { fournisseur_id: r.fournisseurId } : {}),
+        }),
+      },
+      ...createPlatformTasksBrandAdapters(),
+    });
+    log("tasks: config kit par défaut (marque sans configureTasksBrand)");
   }
 
   const app = new Hono();

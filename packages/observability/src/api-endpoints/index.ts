@@ -5,6 +5,7 @@ export type {
 } from "./registry.js";
 export {
   buildApiEndpointsRegistry,
+  buildOpenApiDocumentFromRegistry,
   collectHonoRoutes,
 } from "./registry.js";
 export {

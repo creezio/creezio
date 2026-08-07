@@ -39,6 +39,7 @@
 | [`test-os-updater.mjs`](../test-os-updater.mjs) | Gate OS — reduceur updater (port TF2 test:updater), sans Electron. |
 | [`test-phase-admin-billing.mjs`](../test-phase-admin-billing.mjs) | Gate — module billing admin (@creezio/admin) : webhook + réconciliation. |
 | [`test-phase-admin-database-runtime.mjs`](../test-phase-admin-database-runtime.mjs) | Gate Admin Database runtime : stores `core`+`brand` auto-enregistrés + `GET /database/dbs` |
+| [`test-phase-platform-native-mounts.mjs`](../test-phase-platform-native-mounts.mjs) | Gate montages natifs kit : Tasks autoconfig, Analytics admin, stub OpenAPI `/api/v1/openapi.json` |
 | [`test-phase-admin-fleet-registry.mjs`](../test-phase-admin-fleet-registry.mjs) | Gate — module fleet-registry (@creezio/admin) : DB flotte centrale (F2). |
 | [`test-phase-admin-prospects.mjs`](../test-phase-admin-prospects.mjs) | (à documenter) |
 | [`test-phase-admin-roadmap.mjs`](../test-phase-admin-roadmap.mjs) | (à documenter) |

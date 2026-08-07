@@ -29,8 +29,8 @@
 | [`src/module-mount-auth.ts`](../src/module-mount-auth.ts) | Garde session HTTP default-deny sur `/api/v1/modules/*` (BACKLOG F3) : cookie session / Bearer JWT, allowlist webhook/register/heartbeat/releases/landing public ; boot catalogue (`x-creezio-catalog-internal` + ensure/import) ; `AUTH_DISABLED` → session virtuelle harness. |
 | [`src/mount-brand-admin-database.ts`](../src/mount-brand-admin-database.ts) | Enregistrement auto stores SQLite runtime (`core`/`brand`/plugins) + routes Admin Database montées sur `/api/v1/admin` |
 | [`src/mount-brand-email-surface.ts`](../src/mount-brand-email-surface.ts) | Surface mails optionnelle |
-| [`src/mount-brand-mcp-surface.ts`](../src/mount-brand-mcp-surface.ts) | Surface MCP optionnelle (+ Database via `mount-brand-admin-database`) |
-| [`src/mount-brand-platform-surface.ts`](../src/mount-brand-platform-surface.ts) | Surface plateforme optionnelle |
+| [`src/mount-brand-mcp-surface.ts`](../src/mount-brand-mcp-surface.ts) | Surface MCP/admin : OAuth, MCP admin, Database, Analytics usage, registre endpoints + stub OpenAPI `/api/v1/openapi.json` |
+| [`src/mount-brand-platform-surface.ts`](../src/mount-brand-platform-surface.ts) | Surface plateforme (auth/tasks/assistant/users) — autoconfig assistant + tasks kit si marque silencieuse |
 | [`src/plugin-acl-wiring.ts`](../src/plugin-acl-wiring.ts) | Câblage ACL Product Hub → façade MCP pour les plugins (fail-closed : sans grant, ni visible ni appelable, sauf owner/clé service). |
 | [`src/plugin-proxy-mount.ts`](../src/plugin-proxy-mount.ts) | Mount api-kernel proxy `/api/v1/plugins/<id>/*` → sidecar loopback (enregistré au start, retiré au stop → `plugin_not_mounted`). |
 | [`src/plugin-seed.ts`](../src/plugin-seed.ts) | Seed des plugins embarqués marque (`<appRoot>/plugins/` → `<userData>/plugins/`) au boot — idempotent, jamais d'écrasement ni de réactivation d'un plugin désactivé. |
