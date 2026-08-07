@@ -363,12 +363,14 @@ function buildStore(
     const hostMode = envFlat
       ? resolveTunnelHostMode()
       : resolveTunnelHostMode(cfg?.hostMode ?? manifest.tunnelHostMode);
-    const publicUrls =
-      cfg?.publicUrls?.n8n && cfg?.publicUrls?.hermes
-        ? cfg.publicUrls
-        : cfg?.hostname
-          ? buildTunnelPublicUrls(cfg.hostname, hostMode)
-          : null;
+    const storedOk =
+      Boolean(cfg?.publicUrls?.n8n && cfg?.publicUrls?.hermes) &&
+      cfg?.hostMode === hostMode;
+    const publicUrls = storedOk
+      ? cfg!.publicUrls!
+      : cfg?.hostname
+        ? buildTunnelPublicUrls(cfg.hostname, hostMode)
+        : null;
     return {
       configured: Boolean(cfg),
       slug: cfg?.slug ?? null,

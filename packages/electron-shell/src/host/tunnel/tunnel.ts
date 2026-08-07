@@ -198,14 +198,19 @@ export function createTunnelService(opts: {
       Boolean(cfg?.publicUrl?.startsWith("http://127.0.0.1")) ||
       cfg?.tunnelToken === "local" ||
       String(cfg?.tunnelId || "").startsWith("local-");
+    const mode = brandHostMode();
+    // Exiger hostMode aligné — sinon rebuild (migration nested↔flat).
+    const storedOk =
+      Boolean(cfg?.publicUrls?.n8n && cfg?.publicUrls?.hermes) &&
+      cfg?.hostMode === mode;
     const publicUrls = isLocalSurface
       ? cfg?.publicUrls || {
           crm: cfg!.publicUrl,
           n8n: `http://127.0.0.1:${N8N_DESKTOP_PORT}`,
           hermes: `http://127.0.0.1:${HERMES_DESKTOP_WEBUI_PORT}`,
         }
-      : cfg?.publicUrls?.n8n && cfg?.publicUrls?.hermes
-        ? cfg.publicUrls
+      : storedOk
+        ? cfg!.publicUrls!
         : cfg?.hostname
           ? urlsForHostname(cfg.hostname)
           : null;
@@ -373,7 +378,10 @@ export function createTunnelService(opts: {
         return `http://127.0.0.1:${HERMES_DESKTOP_WEBUI_PORT}`;
       }
     }
-    if (cfg.publicUrls?.[service]) return cfg.publicUrls[service];
+    const mode = brandHostMode();
+    if (cfg.publicUrls?.[service] && cfg.hostMode === mode) {
+      return cfg.publicUrls[service];
+    }
     return urlsForHostname(cfg.hostname)[service] || null;
   }
 
