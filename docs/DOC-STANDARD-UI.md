@@ -70,6 +70,25 @@ partagé, tâche sérialisée).
   `<div onClick>` stylé au lieu de `button`, une bordure arrondie au lieu de
   `card`).
 
+## Desktop API (bridge Electron)
+
+Toute lecture de l’API preload passe par **`getShellDesktopApi()`**
+(`@creezio/shell-ui`), après `configureShellUiBrand({ desktopApiGlobal })`.
+Interdit : `window.tempoflowDesktop`, `window.tempoflow3Desktop`,
+`window.certivanDesktop`, etc. en dur dans le code UI.
+
+**Piège agents (anti-régression)** : ne **jamais** faire un
+`sed` / `StrReplace replace_all` sur un identifiant global
+(`window.tempoflowDesktop` → `getShellDesktopApi()`) sans, **dans le même
+changement**, ajouter :
+
+```ts
+import { getShellDesktopApi } from "@creezio/shell-ui";
+```
+
+Un replace massif sans import casse tous les fichiers d’un coup — gate
+`scripts/test-phase-shell-desktop-api.mjs`.
+
 ## Réactivité data (pages listes)
 
 Toute page dont le contenu doit suivre les mutations (chat MCP, API,

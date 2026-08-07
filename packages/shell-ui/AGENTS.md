@@ -11,6 +11,9 @@ La mission inclut une clarification de scope : `shell-ui` n'est plus uniquement 
 - Ne pas hardcoder de domaine marque (`panier`, `dispatch`, GED, RTI, fournisseur comme concept utilisateur, etc.).
 - Ne pas importer de code app via `@/`.
 - Ne pas utiliser `window.tempoflowDesktop` ou equivalent hardcode ; passer par `configureShellUiBrand` et `getShellDesktopApi`.
+- **Jamais** `sed` / `replace_all` sur `window.<brand>Desktop` sans ajouter
+  `import { getShellDesktopApi } from "@creezio/shell-ui"` dans chaque fichier
+  touché (gate `scripts/test-phase-shell-desktop-api.mjs`).
 - Ne pas ajouter de nouvel usage `Supplier*`; preferer `ExternalSite*`. Les alias supplier sont seulement de la compat historique (dépréciés).
 - Ne pas remettre login/session dans shell-ui : utiliser `@creezio/auth/ui`.
 - Ne pas remettre setup/onboarding : utiliser `@creezio/onboarding/ui`.
@@ -107,6 +110,7 @@ npm run typecheck -w @creezio/shell-ui
 node --test scripts/test-phase-o9.mjs
 node --test scripts/test-phase-o9p.mjs
 node --test scripts/test-phase-p-shell-ui.mjs
+node --test scripts/test-phase-shell-desktop-api.mjs
 node --test scripts/test-phase-p29.mjs
 ```
 
