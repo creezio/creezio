@@ -792,6 +792,30 @@ export function mountBrandPlatformSurface(opts: {
     return session;
   };
 
+  /* E1 — garde gestion utilisateurs : owner, OU (si la marque a déclaré
+   * configureAuth({ userAdminPermission }) ) une session collaborateur non
+   * impersonée portant cette permission. Option absente = owner-only,
+   * comportement historique octet pour octet. */
+  const ownerOrUserAdminSession = async (
+    c: Context,
+  ): Promise<{ session: SessionPayload; isOwner: boolean } | null> => {
+    const asOwner = await ownerSession(c);
+    if (asOwner) return { session: asOwner, isOwner: true };
+    const permission = getAuthConfig().userAdminPermission;
+    if (!permission) return null;
+    const session = await sessionFromContext(c);
+    if (!session || sessionIsImpersonating(session)) return null;
+    if (!session.permissions?.includes(permission)) return null;
+    return { session, isOwner: false };
+  };
+
+  /* Un userAdmin non-owner ne peut jamais accorder une permission réservée
+   * au owner (anti-escalade). */
+  const stripOwnerOnlyPerms = (perms: string[]): string[] => {
+    const ownerOnly = new Set(getAuthConfig().ownerOnlyPermissions);
+    return perms.filter((p) => !ownerOnly.has(p));
+  };
+
   const normalizePerms = (raw: unknown): string[] | undefined =>
     Array.isArray(raw)
       ? raw.filter((p): p is string => typeof p === "string")
@@ -800,7 +824,7 @@ export function mountBrandPlatformSurface(opts: {
   const usersApi = new Hono();
 
   usersApi.get("/meta", async (c) => {
-    if (!(await ownerSession(c))) {
+    if (!(await ownerOrUserAdminSession(c))) {
       return c.json({ error: "Réservé au compte principal" }, 403);
     }
     const cfg = getAuthConfig();
@@ -820,7 +844,8 @@ export function mountBrandPlatformSurface(opts: {
   });
 
   usersApi.post("/", async (c) => {
-    if (!(await ownerSession(c))) {
+    const admin = await ownerOrUserAdminSession(c);
+    if (!admin) {
       return c.json({ error: "Réservé au compte principal" }, 403);
     }
     const body = (await c.req.json().catch(() => ({}))) as {
@@ -838,9 +863,10 @@ export function mountBrandPlatformSurface(opts: {
       return c.json({ error: "Mot de passe trop court (6 min)" }, 400);
     }
     try {
-      const permissions =
+      let permissions =
         normalizePerms(body.permissions) ??
         [...getAuthConfig().collaboratorDefaultPermissions];
+      if (!admin.isOwner) permissions = stripOwnerOnlyPerms(permissions);
       const user = store.createCollaborator({
         username,
         kind,
@@ -872,7 +898,8 @@ export function mountBrandPlatformSurface(opts: {
   });
 
   usersApi.patch("/:id", async (c) => {
-    if (!(await ownerSession(c))) {
+    const admin = await ownerOrUserAdminSession(c);
+    if (!admin) {
       return c.json({ error: "Réservé au compte principal" }, 403);
     }
     const body = (await c.req.json().catch(() => ({}))) as {
@@ -882,6 +909,11 @@ export function mountBrandPlatformSurface(opts: {
       active?: boolean;
       password?: string;
     };
+    const requestedPerms = normalizePerms(body.permissions);
+    const nextPerms =
+      requestedPerms && !admin.isOwner
+        ? stripOwnerOnlyPerms(requestedPerms)
+        : requestedPerms;
     try {
       const user = store.updateCollaborator(c.req.param("id"), {
         ...(typeof body.username === "string"
@@ -890,9 +922,7 @@ export function mountBrandPlatformSurface(opts: {
         ...(body.kind === "ai" || body.kind === "human"
           ? { kind: body.kind }
           : {}),
-        ...(normalizePerms(body.permissions)
-          ? { permissions: normalizePerms(body.permissions)! }
-          : {}),
+        ...(nextPerms ? { permissions: nextPerms } : {}),
         ...(typeof body.active === "boolean" ? { active: body.active } : {}),
       });
       if (typeof body.password === "string" && body.password) {

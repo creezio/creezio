@@ -25,6 +25,13 @@ export type AuthConfig = {
   collaboratorDefaultPermissions?: readonly string[];
   collaboratorAssignablePermissions?: readonly string[];
   ownerOnlyPermissions?: readonly string[];
+  /**
+   * E1 — gestion des collaborateurs gardée par permission : si déclarée, les
+   * écritures de l'API plateforme users (POST/PATCH /api/v1/platform/users)
+   * acceptent le owner OU une session collaborateur portant cette permission.
+   * Option absente (défaut) = garde owner-only historique, octet pour octet.
+   */
+  userAdminPermission?: string;
 };
 
 const DEFAULT_MAX_AGE = 60 * 60 * 24 * 7;
@@ -36,6 +43,8 @@ type ResolvedAuthConfig = {
   collaboratorDefaultPermissions: readonly string[];
   collaboratorAssignablePermissions: readonly string[];
   ownerOnlyPermissions: readonly string[];
+  /** E1 — vide = non déclarée (garde users owner-only inchangée). */
+  userAdminPermission: string;
 };
 
 const DEFAULT: ResolvedAuthConfig = {
@@ -45,6 +54,7 @@ const DEFAULT: ResolvedAuthConfig = {
   collaboratorDefaultPermissions: [],
   collaboratorAssignablePermissions: [],
   ownerOnlyPermissions: [],
+  userAdminPermission: "",
 };
 
 let config: ResolvedAuthConfig = { ...DEFAULT };
@@ -72,6 +82,10 @@ export function configureAuth(next: AuthConfig): void {
     ownerOnlyPermissions: next.ownerOnlyPermissions
       ? [...next.ownerOnlyPermissions]
       : config.ownerOnlyPermissions,
+    userAdminPermission:
+      typeof next.userAdminPermission === "string"
+        ? next.userAdminPermission.trim()
+        : config.userAdminPermission,
   };
 }
 
