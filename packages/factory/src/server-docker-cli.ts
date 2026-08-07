@@ -767,6 +767,7 @@ function ensureBrandStandalone(brandRoot: string, kit: string): void {
       "os-ui",
       "shell-ui",
       "onboarding",
+      "interactive-demo",
       "cockpit",
       "auth",
       "assistant",

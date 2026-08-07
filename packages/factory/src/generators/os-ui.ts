@@ -433,6 +433,7 @@ const nextConfig = {
     "@creezio/cockpit",
     "@creezio/database",
     "@creezio/observability",
+    "@creezio/interactive-demo",
   ],
   async rewrites() {
     return [

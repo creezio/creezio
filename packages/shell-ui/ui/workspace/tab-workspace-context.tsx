@@ -141,6 +141,24 @@ type TabWorkspaceContextValue = {
 
 const TabWorkspaceContext = createContext<TabWorkspaceContextValue | null>(null);
 
+/**
+ * Pont module-scope vers le `navigate` du provider monté. Nécessaire pour les
+ * surfaces montées HORS du TabWorkspaceProvider (ex. @creezio/interactive-demo
+ * dans le chrome marque) : un `router.push` direct sur l'onglet épinglé
+ * (Dashboard) est réaligné par le provider — seule la navigation workspace
+ * ouvre/active correctement un onglet.
+ */
+let workspaceNavigateBridge:
+  | ((href: string, opts?: NavigateOptions) => void)
+  | null = null;
+
+/** `navigate` workspace courant, ou null hors provider / avant hydratation. */
+export function getWorkspaceTabNavigate():
+  | ((href: string, opts?: NavigateOptions) => void)
+  | null {
+  return workspaceNavigateBridge;
+}
+
 function loadPersisted(): WorkspacePersistedState | null {
   if (typeof window === "undefined") return null;
   try {
@@ -1107,6 +1125,15 @@ export function TabWorkspaceProvider({ children }: { children: ReactNode }) {
       activeSurface,
     ],
   );
+
+  // Publie le navigate courant pour les consommateurs hors provider
+  // (getWorkspaceTabNavigate) — ex. démo interactive montée dans le chrome.
+  useEffect(() => {
+    workspaceNavigateBridge = navigate;
+    return () => {
+      if (workspaceNavigateBridge === navigate) workspaceNavigateBridge = null;
+    };
+  }, [navigate]);
 
   return (
     <TabWorkspaceContext.Provider value={value}>

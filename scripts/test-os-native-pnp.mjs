@@ -234,7 +234,14 @@ test("PnP3 harness OS ready sur marque apply (non-TF3)", async () => {
 
   const serverDir = path.join(appDir, "server");
   // App hors workspace : lier node_modules kit pour @types/node + @creezio/*.
+  // Le scaffold pose server/node_modules → ../node_modules (layout
+  // install-server-deps) — lien pendouillant ici (pas d'install racine) :
+  // existsSync suit le lien (false) mais symlinkSync verrait EEXIST.
   const nm = path.join(serverDir, "node_modules");
+  const nmStat = fs.lstatSync(nm, { throwIfNoEntry: false });
+  if (nmStat?.isSymbolicLink() && !fs.existsSync(nm)) {
+    fs.unlinkSync(nm);
+  }
   if (!fs.existsSync(nm)) {
     fs.symlinkSync(path.join(ROOT, "node_modules"), nm, "dir");
   }

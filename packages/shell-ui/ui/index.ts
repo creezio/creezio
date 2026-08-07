@@ -80,6 +80,7 @@ export * from "./workspace/types";
 export * from "./workspace/workspace-config";
 export {
   TabWorkspaceProvider,
+  getWorkspaceTabNavigate,
   useTabWorkspace as useTabWorkspaceImpl,
   useTabWorkspaceOptional as useTabWorkspaceOptionalImpl,
   useOpenTab as useOpenTabImpl,

@@ -10,6 +10,7 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { getWorkspaceTabNavigate } from "@creezio/shell-ui/ui";
 import type {
   DemoScenario,
   DemoStep,
@@ -33,9 +34,12 @@ export type DemoPlayerProps = {
   /** Sortie anticipée (bouton « Quitter »). */
   onExit?: () => void;
   /**
-   * Navigation SPA (ex. `router.push` Next). Défaut :
-   * `window.location.assign` (rechargement complet — fournir `navigate`
-   * dans une app App Router).
+   * Navigation SPA (ex. `router.push` Next). Le player préfère toujours le
+   * `navigate` du workspace onglets kit s'il est monté
+   * (`getWorkspaceTabNavigate`) : un `router.push` direct sur l'onglet
+   * épinglé Dashboard serait réaligné par le provider. Cette prop est le
+   * fallback hors workspace ; défaut final : `window.location.assign`
+   * (rechargement complet).
    */
   navigate?: (href: string) => void;
   /** Libellé du badge du curseur (défaut « Démo »). */
@@ -253,7 +257,10 @@ export function DemoPlayer({
 
         case "navigate": {
           clearStage();
-          const go = navigate ?? ((href: string) => window.location.assign(href));
+          const go =
+            getWorkspaceTabNavigate() ??
+            navigate ??
+            ((href: string) => window.location.assign(href));
           const before = window.location.pathname;
           go(step.href);
           // Laisser la navigation App Router se poser.
