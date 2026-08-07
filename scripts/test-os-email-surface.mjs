@@ -21,13 +21,30 @@ test("email.surface — mount + handlesPath", async () => {
   assert.equal(mod.emailSurfaceHandlesPath("/api/v1/email/meta"), true);
   assert.equal(mod.emailSurfaceHandlesPath("/api/v1/platform/platform-mails"), false);
 
-  const { app } = mod.mountBrandEmailSurface({
-    getStore: () => null,
-  });
-  const meta = await app.request("http://local/api/v1/email/meta");
-  assert.equal(meta.status, 200);
-  const json = await meta.json();
-  assert.equal(json.ready, false);
+  const prevDisabled = process.env.AUTH_DISABLED;
+  process.env.AUTH_DISABLED = "1";
+  try {
+    const { app } = mod.mountBrandEmailSurface({
+      getStore: () => null,
+    });
+    const meta = await app.request("http://local/api/v1/email/meta");
+    assert.equal(meta.status, 200);
+    const json = await meta.json();
+    assert.equal(json.ready, false);
+  } finally {
+    if (prevDisabled === undefined) delete process.env.AUTH_DISABLED;
+    else process.env.AUTH_DISABLED = prevDisabled;
+  }
+
+  // Sans session ni AUTH_DISABLED : inbox refusée (inbound reste hors garde session).
+  {
+    delete process.env.AUTH_DISABLED;
+    const { app } = mod.mountBrandEmailSurface({ getStore: () => null });
+    const denied = await app.request("http://local/api/v1/email/meta");
+    assert.equal(denied.status, 401);
+    const body = await denied.json();
+    assert.equal(body.error, "Non authentifié");
+  }
 
   const listenSrc = fs.readFileSync(
     path.join(root, "packages/app-runtime/src/listen-brand-os-http.ts"),
@@ -35,4 +52,10 @@ test("email.surface — mount + handlesPath", async () => {
   );
   assert.match(listenSrc, /emailSurfaceHandlesPath/);
   assert.match(listenSrc, /mountBrandEmailSurface/);
+  const emailSrc = fs.readFileSync(
+    path.join(root, "packages/app-runtime/src/mount-brand-email-surface.ts"),
+    "utf8",
+  );
+  assert.match(emailSrc, /Non authentifié/);
+  assert.match(emailSrc, /inbound/);
 });

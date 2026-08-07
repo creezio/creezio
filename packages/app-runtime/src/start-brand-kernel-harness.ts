@@ -51,6 +51,7 @@ import {
   harnessTunnelProvisionRequested,
   runHarnessCatalogImportPhase,
   runHarnessFleetPhase,
+  applyNativeEmbedNextEnv,
   runHarnessHermesBridgePhase,
   runHarnessPluginsPhase,
   runHarnessTunnelPhase,
@@ -720,6 +721,10 @@ export async function startBrandKernelHarness(
     console.log(
       `brand-kernel-harness native warm n8n=${JSON.stringify(warm.n8n)} hermes=${JSON.stringify(warm.hermes)}`,
     );
+
+    // Env embeds → process (Work chat / cockpit) avant le bridge ; le bridge
+    // réapplique après restart Hermes (clé/port peuvent changer).
+    applyNativeEmbedNextEnv(brandOs, { log: phaseLog("native-env") });
 
     // Pont Hermes ↔ CRM/n8n (parité TF2 5a/5a3) : clé CRM + seed contexte
     // + reapplyHermesBridge — derrière le warm Hermes uniquement.

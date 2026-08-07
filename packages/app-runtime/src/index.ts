@@ -142,6 +142,7 @@ export {
 } from "./mcp-jsonrpc.js";
 export {
   applyBrandCatalogEnvDefaults,
+  applyNativeEmbedNextEnv,
   applyStoredEmailEnv,
   applyStoredLlmEnv,
   harnessTunnelProvisionRequested,
@@ -152,3 +153,8 @@ export {
   runHarnessTunnelPhase,
   type HarnessTunnelPhaseResult,
 } from "./harness-server-phases.js";
+export {
+  buildCockpitHealth,
+  type CockpitHealthPayload,
+  type CockpitServiceHealth,
+} from "./cockpit-health.js";

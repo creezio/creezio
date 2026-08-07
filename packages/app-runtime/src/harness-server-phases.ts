@@ -260,6 +260,61 @@ export async function runHarnessTunnelPhase(opts: {
 }
 
 /**
+ * Fusionne getHermesNextEnv / getN8nNextEnv dans process.env (harness
+ * same-process). Sur Electron desktop, ces envs vont dans le child Next ;
+ * en Docker le chat Work / cockpit health lisent process.env du kernel —
+ * sans ça : « Hermes non configuré » / HERMES_API_SERVER_KEY manquante
+ * alors que les services sont up.
+ */
+export function applyNativeEmbedNextEnv(
+  os: BrandOsComposition,
+  opts?: { log?: Log },
+): { hermesKeys: string[]; n8nKeys: string[] } {
+  const log = opts?.log || (() => {});
+  const hermesKeys: string[] = [];
+  const n8nKeys: string[] = [];
+  const apply = (
+    label: string,
+    env: Record<string, string>,
+    bucket: string[],
+  ) => {
+    for (const [k, v] of Object.entries(env)) {
+      if (v == null || v === "") continue;
+      process.env[k] = v;
+      bucket.push(k);
+    }
+    if (bucket.length) {
+      log(
+        `${label} env in-process: ${bucket
+          .map((k) =>
+            /KEY|PASSWORD|TOKEN|SECRET/i.test(k) ? `${k}=set` : `${k}=${env[k]}`,
+          )
+          .join(" ")}`,
+      );
+    }
+  };
+  try {
+    const hermes = os.hostRuntime.hermesHost() as unknown as {
+      getHermesNextEnv?: (mode: "local" | "remote") => Record<string, string>;
+    };
+    apply("hermes", hermes.getHermesNextEnv?.("local") || {}, hermesKeys);
+  } catch (err) {
+    log(
+      `hermes next-env: ${err instanceof Error ? err.message : String(err)}`,
+    );
+  }
+  try {
+    const n8n = os.hostRuntime.n8nHost() as unknown as {
+      getN8nNextEnv?: (mode: "local" | "remote") => Record<string, string>;
+    };
+    apply("n8n", n8n.getN8nNextEnv?.("local") || {}, n8nKeys);
+  } catch (err) {
+    log(`n8n next-env: ${err instanceof Error ? err.message : String(err)}`);
+  }
+  return { hermesKeys, n8nKeys };
+}
+
+/**
  * Étape hermes-bridge : clé CRM Hermes → seed contexte (si la marque en
  * fournit un) → reapplyHermesBridge. Parité TF2 phase 5a/5a3 desktop.
  */
@@ -338,9 +393,12 @@ export async function runHarnessHermesBridgePhase(opts: {
       onLog: log,
     });
     log(`bridge CRM→Hermes: ${bridge.detail}`);
+    // Après restart bridge, apiKey/ports Hermes peuvent changer — réinjecter
+    // HERMES_API_* pour le chat Work + cockpit (même process que l'API).
+    const nextEnv = applyNativeEmbedNextEnv(os, { log });
     boot.done(
       "hermes-bridge",
-      `clé=${apiKey ? "ok" : "absente"} bridge ${bridge.restarted ? "réappliqué (restart)" : "à jour"}`,
+      `clé=${apiKey ? "ok" : "absente"} bridge ${bridge.restarted ? "réappliqué (restart)" : "à jour"} hermesEnv=${nextEnv.hermesKeys.includes("HERMES_API_SERVER_KEY") ? "ok" : "absent"}`,
     );
   } catch (err) {
     boot.error(

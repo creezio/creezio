@@ -11,6 +11,8 @@
  * - /api/v1/tasks/*                   kanban + runs + activity + screencast SSE
  * - /api/v1/assistant/*               chat + ui-actions + desktop-actions SSE
  * - /api/v1/desktop/screencast/frame  frames POSTées par le bridge Electron
+ * - /api/v1/desktop/sessions          bridges / users online (cockpit)
+ * - /api/v1/cockpit/health            santé agrégée services (cockpit)
  * - /api/v1/platform/users            collaborateurs plateforme (owner)
  */
 
@@ -59,6 +61,7 @@ import {
   openBrandPlatformStore,
   type BrandPlatformStore,
 } from "./brand-platform-store.js";
+import { buildCockpitHealth } from "./cockpit-health.js";
 import type { BrandBrowserSidecarHandle } from "./wire-brand-browser-sidecar.js";
 
 export type BrandPlatformRuntime = {
@@ -389,6 +392,7 @@ const PLATFORM_PREFIXES = [
   "/api/v1/tasks",
   "/api/v1/assistant",
   "/api/v1/desktop",
+  "/api/v1/cockpit",
   // Référentiel utilisateurs unique : /api/v1/users est une route PLATEFORME
   // (les pages marque type Collaborateurs y parlent directement) — jamais une
   // table users métier parallèle dans le plane, sinon comptes non logables.
@@ -658,6 +662,102 @@ export function mountBrandPlatformSurface(opts: {
     }
     const { viewers, seq } = publishScreencastFrame(aiUserId, data);
     return c.json({ ok: true, viewers, seq });
+  });
+
+  /* Sessions desktop (cockpit) — bridges SSE + users online. */
+  app.get("/api/v1/desktop/sessions", async (c) => {
+    const session = await sessionFromContext(c);
+    if (!session) return c.json({ error: "Non authentifié" }, 401);
+    const bridges = presence.listOnlineBridges();
+    const onlineIds = new Set(bridges.map((b) => b.userId));
+    return c.json({
+      bridges,
+      users: store
+        .listUsers()
+        .filter((u) => u.active)
+        .map((u) => ({ userId: u.id, online: onlineIds.has(u.id) })),
+    });
+  });
+
+  /* Cockpit santé (owner) — Meili / Hermes / n8n / tunnel via envs warm. */
+  app.get("/api/v1/cockpit/health", async (c) => {
+    const session = await sessionFromContext(c);
+    if (
+      !session ||
+      !sessionActorIsOwner(session) ||
+      sessionIsImpersonating(session)
+    ) {
+      return c.json({ error: "Réservé au compte principal" }, 403);
+    }
+    let dbPath: string | null = null;
+    try {
+      dbPath = opts.brandDb?.()?.path ?? null;
+    } catch {
+      dbPath = null;
+    }
+    const health = await buildCockpitHealth({ dbPath });
+    const aiCollaborators = store
+      .listUsers()
+      .filter((u) => u.kind === "ai" && u.active).length;
+    return c.json({ ...health, ai_collaborators: aiCollaborators });
+  });
+
+  /* ACL plugins cockpit — liste vide tant que Product Hub n'est pas branché
+   * ici (évite le fallthrough UI qui timeoute sur /cockpit/plugin-acl). */
+  app.get("/api/v1/cockpit/plugin-acl", async (c) => {
+    const session = await sessionFromContext(c);
+    if (
+      !session ||
+      !sessionActorIsOwner(session) ||
+      sessionIsImpersonating(session)
+    ) {
+      return c.json({ error: "Réservé au compte principal" }, 403);
+    }
+    return c.json({ plugins: [] as Array<{ plugin_id: string; name: string; user_ids: string[] }> });
+  });
+
+  app.post("/api/v1/cockpit/ai-workspace/:aiUserId/close", async (c) => {
+    const session = await sessionFromContext(c);
+    if (
+      !session ||
+      !sessionActorIsOwner(session) ||
+      sessionIsImpersonating(session)
+    ) {
+      return c.json({ error: "Réservé au compte principal" }, 403);
+    }
+    const aiUserId = c.req.param("aiUserId");
+    const user = store.getUserById(aiUserId);
+    if (!user || user.kind !== "ai") {
+      return c.json({ error: "Collaborateur IA introuvable" }, 404);
+    }
+    const sidecar = getSidecar();
+    if (sidecar) {
+      try {
+        const r = await dispatchSupplierAction(
+          "ai_workspace_close",
+          { ai_user_id: aiUserId },
+          undefined,
+          { requireTargetOnline: false },
+        );
+        return c.json(r ?? { ok: true }, 200);
+      } catch (e) {
+        return c.json(
+          { ok: false, error: e instanceof Error ? e.message : String(e) },
+          502,
+        );
+      }
+    }
+    const host = presence.listOnlineBridges()[0]?.userId;
+    if (!host) {
+      return c.json({ ok: true, detail: "aucun hôte — rien à fermer" });
+    }
+    const r = await dispatchSupplierAction(
+      "ai_workspace_close",
+      { ai_user_id: aiUserId },
+      undefined,
+      { targetUserId: host },
+    );
+    return c.json(r ?? { ok: true }, (r as { ok?: boolean })?.ok === false ? 502 : 200);
   });
 
   /* Collaborateurs plateforme (owner) — création IA / liste. */
