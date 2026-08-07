@@ -115,7 +115,7 @@ Gate : `node --test scripts/test-os-owned-by-brand.mjs`.
 
 Reset clean-room TF3 : `node scripts/reset-tempoflow3.mjs` (backup + apply + build).
 
-## 5. Premier serveur Docker (marque neuve)
+## 5. Premier serveur Docker (marque neuve) vs clone hôte
 
 `brand apply` / `new-app` préparent **automatiquement** vendor +
 `package-lock` (même sans `--push`). Ensuite :
@@ -125,9 +125,17 @@ cd <app>
 npm run server-docker:create -- demo
 ```
 
-**Interdit** : `npm install` dans `server/` + remonter/relinker
-`node_modules` — le flux factory/Docker le fait déjà (`prepareBrandDistribution`,
-`ensure-server-lock.mjs` avant `docker:build`, fallback Dockerfile).
+**Deux chemins distincts — ne pas les confondre :**
+
+| Chemin | Layout `node_modules` | Action |
+|--------|----------------------|--------|
+| **Docker** (`server-docker:*`, `docker:build`) | Dockerfile COPY vers `/app/node_modules` | Locks via `prepareBrandDistribution` / `ensure-server-lock.mjs` — **ne pas** bricoler à la main dans l'image |
+| **Clone hôte** (harness, `metier:api`, smokes) | `{marque}/node_modules` + symlink `server/node_modules` → `../node_modules` | **Obligatoire** : `npm run install:server-deps` (script factory `scripts/install-server-deps.mjs`) après clone / avant harness |
+
+Le scaffold pose déjà le symlink git `server/node_modules` → `../node_modules`
+(dangling jusqu'au premier `install:server-deps`). Un `npm ci --prefix server`
+seul sans rebascule casse la résolution `@creezio/*` (walk-up realpath depuis
+`vendor/`).
 
 ## 6. Sonde TempoFlow3
 

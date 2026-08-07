@@ -19,11 +19,11 @@ CRM web Next) via Docker, multi-instances, sans AppImage/Electron.
 - Committer secrets tunnel/catalog dans compose ou `.env` versionné.
 - Dupliquer l'orchestration OS : le CMD doit rester le harness marque →
   `startBrandKernelHarness`.
-- Régénérer un `package-lock` Docker à la main dans `server/` puis
-  « remonter » `node_modules` à la racine : casse le symlink monorepo et
-  relance la boucle `npm ci` rouge. Utiliser `creezio server-docker build`
-  / `create` (`ensureBrandPackageLocks`) ; le Dockerfile retombe sur
-  `npm install --omit=dev` si le lock est stale.
+- Régénérer un `package-lock` Docker à la main dans `server/` sans passer
+  par `ensureBrandPackageLocks` / `ensure-server-lock.mjs` : relance la
+  boucle `npm ci` rouge. Pour le **clone hôte** (harness), utiliser
+  `scripts/install-server-deps.mjs` (SoT ici) — pas un `mv` improvisé hors
+  script. Docker image : le Dockerfile pose déjà `/app/node_modules`.
 
 ## Points d'entrée
 
@@ -33,6 +33,7 @@ CRM web Next) via Docker, multi-instances, sans AppImage/Electron.
 | `docker-compose.yml` | Legacy `server-1` + `server-2` (bind 127.0.0.1) |
 | `brand.dockerignore` | Template ignore v2 (posé/rafraîchi en `.dockerignore` marque) |
 | `stage-client-vendor.mjs` | SoT stage `client/vendor` sans kit — matérialisé en marque `scripts/stage-client-vendor.mjs` (sync + scaffold), avec `Dockerfile` → `docker/server.Dockerfile` marque (clone GitHub autonome ; gate `test-phase-clone-autonomy`) |
+| `install-server-deps.mjs` | SoT layout hôte `node_modules` racine + symlink `server/node_modules` — matérialisé en `scripts/install-server-deps.mjs` (obligatoire hors Docker) |
 | `creezio-open-url.sh` | Opener navigateur (firefox/gio/xdg-open…) → `~/bin/` |
 | `README.md` | Doc humaine (registre, admin, sécurité, boot-status) |
 | `REMOTE-ACCESS.md` | Reverse proxy nginx-proxy-manager |

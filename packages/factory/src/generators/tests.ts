@@ -51,6 +51,8 @@ const child = spawn(
       ...toolEnv,
       METIER_DATA_DIR: dataDir,
       METIER_PORT: String(port),
+      // Harness métier : session virtuelle (garde mounts F3). Surface prod-like = gate module-mount-session.
+      AUTH_DISABLED: "1",
     },
     stdio: ["ignore", "pipe", "pipe"],
   },

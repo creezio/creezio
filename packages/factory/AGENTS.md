@@ -33,6 +33,15 @@ en jumeau dans `main.ts`.
 - Ne pas écraser des fichiers existants sans `--force`.
 - Ne pas exiger des flags techniques si `--from-prd` suffit.
 - `docs/FILES.md` est maintenu via `node scripts/generate-files-md.mjs factory` (gate `test-phase-docs-freshness`) — la colonne Rôle s'édite à la main, ne pas inventer d'autre format.
+- **Ne pas** documenter un workaround marque-only pour un trou scaffold
+  (layout `node_modules`, `AUTH_DISABLED` smokes…) — fix ici d'abord.
+
+## Layout hôte + smokes
+
+- Scaffold pose `server/node_modules` → `../node_modules` + matérialise
+  `scripts/install-server-deps.mjs` (SoT `docker/server/`).
+- Smokes `test:metier-parcours` : `AUTH_DISABLED=1` dans `harnessPrelude`
+  (garde mounts F3 — sinon 401 notes).
 
 ## Points d'entrée
 

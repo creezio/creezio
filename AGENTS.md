@@ -136,6 +136,11 @@ Workflow : `npm run test:kit` → première rouge → corriger →
 
 ## Pièges connus
 
+- **Bug générique marque → fix kit/factory d'abord** : si le défaut touche
+  toute marque générée (layout, smokes, scaffold, Docker, auth harness…),
+  corriger dans `@creezio/*` / `packages/factory` puis resync — **interdit**
+  de « documenter seulement » une marque (workaround docs TF3-only) pour un
+  trou factory. Descente marque = resync + alignement docs, pas le SoT.
 - **Plugins Electron** : dans `electron-shell` `host/plugins/launcher.ts`, le
   handler `child.on("exit")` doit comparer `cur?.child === child` avant
   `running.delete(id)`, sinon un restart après PUT files efface le process
@@ -151,6 +156,8 @@ Workflow : `npm run test:kit` → première rouge → corriger →
   (`CREEZIO_KIT_ROOT=/opt/docker/creezio bash server/scripts/sync-creezio-vendor.sh`
   côté marque) — `SYNC.json` pinne le HEAD du kit, donc resync toujours APRÈS
   le push, jamais avant.
+- **Layout `node_modules` hôte** : clone marque → `npm run install:server-deps`
+  (pas `npm ci --prefix server` seul). Docker pose `/app/node_modules` tout seul.
 
 ## Propagation vers marques
 

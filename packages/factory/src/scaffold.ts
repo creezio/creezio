@@ -107,6 +107,7 @@ function materializeStandaloneDistribution(
   const copies: Array<[src: string, dest: string]> = [
     ["stage-client-vendor.mjs", "scripts/stage-client-vendor.mjs"],
     ["ensure-server-lock.mjs", "scripts/ensure-server-lock.mjs"],
+    ["install-server-deps.mjs", "scripts/install-server-deps.mjs"],
     ["Dockerfile", "docker/server.Dockerfile"],
   ];
   for (const [src, dest] of copies) {
@@ -819,6 +820,9 @@ function renderRootPackageJson(
   // Clone autonome (repo GitHub sans kit) : stage client/vendor depuis le
   // vendor racine commité + build image serveur via Dockerfile matérialisé.
   scripts.bootstrap = "node scripts/stage-client-vendor.mjs";
+  // Layout hôte = Docker : npm ci server + node_modules racine + symlink
+  // server/node_modules → ../node_modules (walk-up realpath vendor).
+  scripts["install:server-deps"] = "node scripts/install-server-deps.mjs";
   // ensure-server-lock AVANT docker build : empêche npm ci rouge sur lock
   // stale/absent (clone autonome sans kit CLI).
   scripts["docker:build"] =
@@ -860,6 +864,8 @@ function renderRootPackageJson(
 
 function renderRootGitignore(): string {
   return `node_modules/
+# Symlink git server/node_modules → ../node_modules (layout hôte = Docker)
+!server/node_modules
 **/ui/.next/
 build/
 **/build/
@@ -937,10 +943,20 @@ Le repo embarque le kit pré-buildé (\`vendor/creezio/\`, commité). Post-clone
 
 \`\`\`bash
 npm run bootstrap               # stage client/vendor depuis le vendor racine
-npm ci --prefix server && npm ci --prefix server/ui && npm ci --prefix client
+npm run install:server-deps     # npm ci server + layout hôte (= Docker /app/node_modules)
+npm ci --prefix server/ui && npm ci --prefix client
 npm run build:runtime && npm run build:ui
 npm run docker:build            # ensure-server-lock + image via docker/server.Dockerfile
 \`\`\`
+
+### Layout \`node_modules\` (hôte vs Docker)
+
+- **Docker** : le Dockerfile COPY les deps vers \`/app/node_modules\` (walk-up
+  realpath depuis \`vendor/\`). Pas besoin de \`install:server-deps\` dans l'image.
+- **Clone hôte** (harness, smokes, desktop) : \`npm ci --prefix server\` seul
+  laisse \`server/node_modules\` → résolution \`@creezio/*\` cassée. Le script
+  \`install:server-deps\` rebascule vers \`node_modules/\` racine et recrée le
+  symlink git \`server/node_modules\` → \`../node_modules\`.
 
 Les binaires fat (Meili, cloudflared — \`vendor/creezio/electron-shell/resources/bin/\`)
 sont volontairement hors git : l'image Docker les télécharge au build, le
@@ -1631,8 +1647,11 @@ export function scaffoldNewApp(opts: NewAppOptions): ScaffoldResult {
   // Vendor partagé racine + .env racine. server/vendor = symlink (runtime suit le
   // vendor racine) ; client/vendor = dossier réel — copie hardlink stagée par
   // sync-creezio-vendor.sh, car electron-builder refuse les symlinks hors projet.
+  // server/node_modules → ../node_modules : layout hôte = Docker (dangling OK
+  // jusqu'à `npm run install:server-deps` qui pose le vrai dossier racine).
   fs.mkdirSync(path.join(outDir, "vendor"), { recursive: true });
   ensureRelativeSymlink(path.join(serverDir, "vendor"), "../vendor");
+  ensureRelativeSymlink(path.join(serverDir, "node_modules"), "../node_modules");
   const clientVendorLink = path.join(clientDir, "vendor");
   if (fs.existsSync(clientVendorLink) && fs.lstatSync(clientVendorLink).isSymbolicLink()) {
     fs.rmSync(clientVendorLink);

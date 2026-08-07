@@ -12,4 +12,6 @@
 | [`brand.dockerignore`](../brand.dockerignore) | Template ignore v2, posé/rafraîchi en `.dockerignore` côté marque. |
 | [`creezio-open-url.sh`](../creezio-open-url.sh) | Opener navigateur robuste (firefox/gio/xdg-open…) installé dans `~/bin/` — utilisé par les raccourcis `{Product}-Server-{N}.desktop`. |
 | [`docker-compose.yml`](../docker-compose.yml) | Legacy compose `server-1` + `server-2` (bind 127.0.0.1) — la voie nominale est le registre `creezio server-docker create`. |
+| [`ensure-server-lock.mjs`](../ensure-server-lock.mjs) | (à documenter) |
+| [`install-server-deps.mjs`](../install-server-deps.mjs) | SoT layout hôte : `npm ci --prefix server` + rebascule `node_modules/` racine + symlink `server/node_modules` → `../node_modules` (matérialisé en marque `scripts/install-server-deps.mjs`). |
 | [`stage-client-vendor.mjs`](../stage-client-vendor.mjs) | SoT stage `client/vendor` sans kit — matérialisé en marque `scripts/stage-client-vendor.mjs` (clone GitHub autonome ; gate `test-phase-clone-autonomy`). |

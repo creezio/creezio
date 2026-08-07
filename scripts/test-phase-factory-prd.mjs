@@ -256,11 +256,48 @@ test("F1–F4 scaffold --from-prd génère 2 repos (monorepo + admin dédié, ru
   assert.match(nextCfg, /\/api\/v1\/:path\*/);
 });
 
+test("F3.0 harness généré pose AUTH_DISABLED (anti-401 notes, sans electron)", () => {
+  // Ne skip jamais : régression post-F3 (garde mounts) si le template oublie
+  // AUTH_DISABLED=1 — visible même sur VPS headless sans electron.
+  const outDir = fs.mkdtempSync(path.join(os.tmpdir(), "creezio-auth-disabled-"));
+  try {
+    const model = parseProductPrd(fs.readFileSync(PRD, "utf8"));
+    const result = scaffoldNewApp({
+      brandId: model.brandId,
+      productName: model.brandName,
+      domain: model.domain,
+      outDir,
+      sandbox: true,
+      force: true,
+      productModel: model,
+    });
+    const smokePath = path.join(
+      result.serverDir,
+      "scripts/test-metier-parcours.mjs",
+    );
+    assert.ok(fs.existsSync(smokePath), "test-metier-parcours.mjs manquant");
+    const body = fs.readFileSync(smokePath, "utf8");
+    assert.match(
+      body,
+      /AUTH_DISABLED:\s*["']1["']/,
+      "harnessPrelude doit poser AUTH_DISABLED=1 (sinon API notes → 401)",
+    );
+    // Source générateur (filet si scaffold lit un cache obsolète).
+    const gen = fs.readFileSync(
+      path.join(ROOT, "packages/factory/src/generators/tests.ts"),
+      "utf8",
+    );
+    assert.match(gen, /AUTH_DISABLED:\s*["']1["']/);
+  } finally {
+    fs.rmSync(outDir, { recursive: true, force: true });
+  }
+});
+
 test("F3 smoke kernel natif sur app générée", (t) => {
   // Le smoke build:runtime de l'app générée compile preload.ts (types
   // electron). Sur un hôte headless sans devDependency electron installée
   // (VPS serveur), skip EXPLICITE — le smoke complet tourne sur les postes
-  // dev/CI où electron est présent.
+  // dev/CI où electron est présent. F3.0 ci-dessus reste obligatoire.
   if (!fs.existsSync(path.join(ROOT, "node_modules/electron/package.json"))) {
     t.skip("electron absent de node_modules kit (hôte headless) — smoke build impossible");
     return;

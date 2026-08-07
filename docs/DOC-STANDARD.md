@@ -55,19 +55,23 @@ node /opt/docker/creezio/scripts/generate-files-md.mjs --all --check   # vérif 
    livré : desktop, harness Docker, admin) ou seulement **disponible**
    (exportée mais non branchée). Ne jamais laisser croire qu'un export est
    actif s'il ne l'est pas.
-2. **Pièges écrits le jour même** : tout piège découvert en chantier
+2. **Bug générique → kit/factory d'abord** : un défaut qui touche toute marque
+   générée (scaffold, layout, smokes, Docker, auth harness…) se corrige dans
+   le kit/`packages/factory`, puis descend par resync. **Interdit** de
+   « documenter seulement » une marque pour masquer un trou factory.
+3. **Pièges écrits le jour même** : tout piège découvert en chantier
    (comportement surprenant, ordre d'appel obligatoire, env requise…) est
    consigné le jour même dans l'`AGENTS.md` du package concerné.
-3. **Docs d'étape → archive** : handoffs, matrices de suivi, snapshots de
+4. **Docs d'étape → archive** : handoffs, matrices de suivi, snapshots de
    gates et autres documents liés à une étape partent dans `docs/archive/`
    (du repo concerné) dès que l'étape est close, avec une note de renvoi si
    un contrat vivant les remplace. Les docs actives ne décrivent que l'état
    courant.
-4. **Commandes copiables** : chaque commande documentée doit être exécutable
+5. **Commandes copiables** : chaque commande documentée doit être exécutable
    telle quelle — chemins absolus (ou répertoire de départ explicite),
    variables d'env explicites avec valeur d'exemple, pas de `<...>` sans
    explication immédiate.
-5. **Fin de chantier propre** : un chantier se termine en finissant la phase
+6. **Fin de chantier propre** : un chantier se termine en finissant la phase
    en cours — commit + push + rapport — jamais en laissant un état
    intermédiaire non documenté.
 
