@@ -72,6 +72,58 @@ test("I0 sync refuse mauvaise version attendue", () => {
   assert.match(String(r.stderr) + String(r.stdout), /mismatch/i);
 });
 
+test("I0 sync refuse troncature partielle d'un vendor existant", () => {
+  const script = path.join(ROOT, "scripts/sync-creezio-vendor.sh");
+  const dest = path.join(ROOT, ".tmp-vendor-i0-partial");
+  fs.rmSync(dest, { recursive: true, force: true });
+  fs.mkdirSync(path.join(dest, "os-ui"), { recursive: true });
+  fs.mkdirSync(path.join(dest, "auth"), { recursive: true });
+  fs.writeFileSync(
+    path.join(dest, "SYNC.json"),
+    JSON.stringify(
+      {
+        syncedAt: new Date().toISOString(),
+        architectureVersion: "H6",
+        kitSha: "test",
+        packages: ["os-ui", "auth", "assistant"],
+      },
+      null,
+      2,
+    ) + "\n",
+  );
+  const refused = spawnSync("bash", [script], {
+    env: {
+      ...process.env,
+      CREEZIO_KIT_ROOT: ROOT,
+      DEST: dest,
+      CREEZIO_SYNC_DRY_RUN: "1",
+      CREEZIO_EXPECT_ARCH_VERSION: "",
+      CREEZIO_VENDOR_PACKAGES: "os-ui",
+    },
+    encoding: "utf8",
+  });
+  assert.notEqual(refused.status, 0, refused.stdout);
+  assert.match(
+    String(refused.stderr) + String(refused.stdout),
+    /sync partiel refusé/i,
+  );
+  const allowed = spawnSync("bash", [script], {
+    env: {
+      ...process.env,
+      CREEZIO_KIT_ROOT: ROOT,
+      DEST: dest,
+      CREEZIO_SYNC_DRY_RUN: "1",
+      CREEZIO_EXPECT_ARCH_VERSION: "",
+      CREEZIO_VENDOR_PACKAGES: "os-ui",
+      CREEZIO_VENDOR_ALLOW_PARTIAL: "1",
+    },
+    encoding: "utf8",
+  });
+  assert.equal(allowed.status, 0, allowed.stderr || allowed.stdout);
+  assert.match(allowed.stdout, /OK dry-run/);
+  fs.rmSync(dest, { recursive: true, force: true });
+});
+
 test("I0 console expose architectureVersion", () => {
   const kitTs = fs.readFileSync(
     path.join(ROOT, "apps/console/src/lib/kit.ts"),

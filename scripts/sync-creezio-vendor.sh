@@ -11,8 +11,13 @@
 #   DEST               — dossier vendor cible (obligatoire sauf si ROOT fourni)
 #   ROOT               — racine crm marque ; DEST défaut = $ROOT/vendor/creezio
 #   CREEZIO_EXPECT_ARCH_VERSION — assert (défaut H5) ; vide = skip assert
-#   CREEZIO_VENDOR_PACKAGES — liste espace-séparée (sinon baseline H5)
+#   CREEZIO_VENDOR_PACKAGES — liste espace-séparée (sinon DEFAULT_PACKAGES)
+#   CREEZIO_VENDOR_ALLOW_PARTIAL=1 — autorise un sous-ensemble (DÉCONSEILLÉ :
+#     le script fait rm -rf DEST puis réécrit SYNC.json = liste fournie)
 #   CREEZIO_SYNC_DRY_RUN=1 — liste + assert seulement, pas de copie
+#
+# INTERDIT (agents) : CREEZIO_VENDOR_PACKAGES=unOuDeuxPkgs — ça VIDE le vendor.
+# Toujours sync baseline complète (sans override, ou liste ≥ SYNC.json existant).
 #
 # Baseline I3 (socle conso marques) — H5 + auth/assistant/tasks/mails.
 set -euo pipefail
@@ -96,6 +101,46 @@ fi
 
 echo "▸ packages: ${PACKAGES[*]}"
 echo "▸ dest: ${DEST}"
+
+# Garde anti-troncature : sync = `rm -rf DEST` + copie PACKAGES + SYNC.json = PACKAGES.
+# Un CREEZIO_VENDOR_PACKAGES=sous-ensemble (ex. os-ui seul) vide le vendor et
+# tronque SYNC.json.packages. Refuser si DEST a déjà des pkgs absents de la
+# nouvelle liste, sauf opt-in explicite.
+if [[ "${CREEZIO_VENDOR_ALLOW_PARTIAL:-0}" != "1" && -d "${DEST}" ]]; then
+  node -e '
+const fs = require("fs");
+const path = require("path");
+const dest = process.argv[1];
+const next = new Set(process.argv.slice(2));
+let prev = [];
+const syncPath = path.join(dest, "SYNC.json");
+if (fs.existsSync(syncPath)) {
+  try {
+    const j = JSON.parse(fs.readFileSync(syncPath, "utf8"));
+    if (Array.isArray(j.packages)) prev = j.packages;
+  } catch (_) { /* ignore */ }
+}
+if (!prev.length) {
+  prev = fs.readdirSync(dest).filter((name) => {
+    if (name === "SYNC.json") return false;
+    try {
+      return fs.statSync(path.join(dest, name)).isDirectory();
+    } catch {
+      return false;
+    }
+  });
+}
+const missing = prev.filter((p) => !next.has(p));
+if (missing.length) {
+  console.error("ERROR: sync partiel refusé — packages déjà présents absents de la liste:");
+  console.error("       " + missing.join(" "));
+  console.error("       Cause: ce script fait rm -rf du vendor puis réécrit SYNC.json = liste fournie.");
+  console.error("       Fix: relancer SANS CREEZIO_VENDOR_PACKAGES (DEFAULT_PACKAGES complète),");
+  console.error("       ou avec la liste complète, ou (déconseillé) CREEZIO_VENDOR_ALLOW_PARTIAL=1.");
+  process.exit(1);
+}
+' "${DEST}" "${PACKAGES[@]}"
+fi
 
 if [[ "${DRY_RUN}" == "1" ]]; then
   echo "OK dry-run (pas de copie)"

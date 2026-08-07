@@ -166,6 +166,11 @@ Workflow : `npm run test:kit` → première rouge → corriger →
   (`CREEZIO_KIT_ROOT=/opt/docker/creezio bash server/scripts/sync-creezio-vendor.sh`
   côté marque) — `SYNC.json` pinne le HEAD du kit, donc resync toujours APRÈS
   le push, jamais avant.
+- **INTERDIT sync partiel** : ne jamais lancer le sync avec
+  `CREEZIO_VENDOR_PACKAGES=unSeul` (ou un sous-ensemble) — le script fait
+  `rm -rf` du vendor puis réécrit `SYNC.json.packages` = cette liste (vendor
+  vidé / tronqué). Toujours baseline complète ; opt-out uniquement via
+  `CREEZIO_VENDOR_ALLOW_PARTIAL=1` (déconseillé).
 - **Layout `node_modules` hôte** : clone marque → `npm run install:server-deps`
   (pas `npm ci --prefix server` seul). Docker pose `/app/node_modules` tout seul.
 

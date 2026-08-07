@@ -121,6 +121,7 @@ cd /opt/docker/tempoflow3 && npm run electron:sync-vendor
 
 | Piège | Règle |
 |---|---|
+| Sync partiel | **INTERDIT** `CREEZIO_VENDOR_PACKAGES=unPkg` — `rm -rf` vendor + `SYNC.json` tronqué. Toujours `npm run electron:sync-vendor` / liste complète. |
 | zod v3/v4 | Ne **pas** ajouter `zod` aux dependencies — le hoisting npm résout la v3 attendue par le kit (une v4 locale casse les types croisés). Utiliser les helpers de `@creezio/tasks` qui encapsulent déjà zod. |
 | Domaine marque | Aucun métier TF/CV/Fidu dans un package natif — ADR [ADR-no-brand-domain-in-native-packages](../adr/ADR-no-brand-domain-in-native-packages.md). |
 | Electron dans un package pur | Seuls `electron-shell` / `app-runtime` touchent Electron ; les autres reçoivent leurs side effects par injection. |
