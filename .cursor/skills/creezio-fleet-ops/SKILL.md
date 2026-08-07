@@ -749,10 +749,11 @@ Les monorepos marque GitHub embarquent le kit **pré-buildé commité**
 
 ```bash
 git clone https://github.com/creezio/<brand>.git && cd <brand>
-npm run bootstrap        # stage client/vendor (hardlinks, sans kit)
-npm ci --prefix server && npm ci --prefix server/ui && npm ci --prefix client
+npm run bootstrap               # stage client/vendor (hardlinks, sans kit)
+npm run install:server-deps     # npm ci server + layout hôte (= Docker /app/node_modules)
+npm ci --prefix server/ui && npm ci --prefix client
 npm run build:runtime && npm run build:ui
-npm run docker:build     # image <brand>-server:local via docker/server.Dockerfile
+npm run docker:build            # ensure-server-lock + image via docker/server.Dockerfile
 docker run -d --name <brand>-proof -p 127.0.0.1:18791:18791 \
   -v "$PWD/docker-data/proof:/data" <brand>-server:local
 curl -sS http://127.0.0.1:18791/api/v1/os/boot-status | head -c 200
