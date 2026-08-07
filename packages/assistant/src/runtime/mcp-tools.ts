@@ -9,14 +9,37 @@ import type {
   AssistantToolDefinition,
 } from "../brand/types.js";
 
-let cache: { at: number; tools: AssistantMcpToolDef[]; names: Set<string> } = {
+/**
+ * OpenAI Chat Completions n'accepte que `^[a-zA-Z0-9_-]+$` pour
+ * `tools[].function.name`. Les tools MCP canoniques utilisent des points
+ * (`module.panier.add`) — on expose une forme safe au LLM et on reverse
+ * mappe à l'appel.
+ */
+export function openaiSafeToolName(name: string): string {
+  return name.replace(/[^a-zA-Z0-9_-]/g, "_");
+}
+
+let cache: {
+  at: number;
+  tools: AssistantMcpToolDef[];
+  /** Noms exposés au LLM (safe) + canoniques MCP. */
+  names: Set<string>;
+  /** safe OpenAI → nom MCP canonique. */
+  safeToCanonical: Map<string, string>;
+} = {
   at: 0,
   tools: [],
   names: new Set(),
+  safeToCanonical: new Map(),
 };
 
 function ttlMs(): number {
   return assistantMcp()?.listCacheTtlMs ?? 30_000;
+}
+
+/** Résout un nom LLM (safe ou canonique) → nom MCP à appeler. */
+export function resolveMcpToolName(name: string): string {
+  return cache.safeToCanonical.get(name) || name;
 }
 
 export function mcpToolDefToAssistant(
@@ -30,11 +53,15 @@ export function mcpToolDefToAssistant(
     "type" in schema || "properties" in schema
       ? schema
       : { type: "object", properties: schema as Record<string, unknown> };
+  const safe = openaiSafeToolName(t.name);
   return {
     type: "function",
     function: {
-      name: t.name,
-      description: t.description || t.name,
+      name: safe,
+      description:
+        safe === t.name
+          ? t.description || t.name
+          : `${t.description || t.name} [${t.name}]`,
       parameters: parameters as Record<string, unknown>,
     },
   };
@@ -43,16 +70,32 @@ export function mcpToolDefToAssistant(
 export async function refreshMcpToolCache(): Promise<void> {
   const mcp = assistantMcp();
   if (!mcp?.listTools) {
-    cache = { at: Date.now(), tools: [], names: new Set() };
+    cache = {
+      at: Date.now(),
+      tools: [],
+      names: new Set(),
+      safeToCanonical: new Map(),
+    };
     return;
   }
   const bearer = mcp.bearerToken ? await mcp.bearerToken() : null;
   const tools = await mcp.listTools({ bearerToken: bearer });
   const list = Array.isArray(tools) ? tools : [];
+  const safeToCanonical = new Map<string, string>();
+  const names = new Set<string>();
+  for (const t of list) {
+    names.add(t.name);
+    const safe = openaiSafeToolName(t.name);
+    names.add(safe);
+    safeToCanonical.set(safe, t.name);
+    // Identité si déjà safe
+    if (safe === t.name) safeToCanonical.set(t.name, t.name);
+  }
   cache = {
     at: Date.now(),
     tools: list,
-    names: new Set(list.map((t) => t.name)),
+    names,
+    safeToCanonical,
   };
 }
 
@@ -74,7 +117,11 @@ export function looksLikeMcpToolName(name: string): boolean {
     name.startsWith("module.") ||
     name.startsWith("plugin.") ||
     name.startsWith("creezio.") ||
-    name.startsWith("core.")
+    name.startsWith("core.") ||
+    name.startsWith("module_") ||
+    name.startsWith("plugin_") ||
+    name.startsWith("creezio_") ||
+    name.startsWith("core_")
   );
 }
 
@@ -94,9 +141,10 @@ export async function callAssistantMcpTool(
   if (!mcp?.callTool) return null;
   await ensureMcpToolCache();
   if (!mcpOwnsToolName(name)) return null;
+  const canonical = resolveMcpToolName(name);
   const bearer = mcp.bearerToken ? await mcp.bearerToken() : null;
   try {
-    const result = await mcp.callTool(name, args, {
+    const result = await mcp.callTool(canonical, args, {
       bearerToken: bearer,
       ctx,
     });
@@ -105,7 +153,8 @@ export async function callAssistantMcpTool(
       result &&
       result.ok === false &&
       result.error === "tool_not_found" &&
-      !cache.names.has(name)
+      !cache.names.has(name) &&
+      !cache.names.has(canonical)
     ) {
       return null;
     }

@@ -203,7 +203,9 @@ export {
   callAssistantMcpTool,
   ensureMcpToolCache,
   mcpFacadeToAssistantConfig,
+  openaiSafeToolName,
   refreshMcpToolCache,
+  resolveMcpToolName,
 } from "./runtime/mcp-tools.js";
 export { executeTaskTool, taskToolDefinitions } from "./runtime/tasks-tools.js";
 export {
