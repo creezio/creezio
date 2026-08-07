@@ -91,6 +91,76 @@ if (!fs.existsSync(path.join(serverDir, "package.json"))) {
 
 ensureVendorLink(serverDir);
 
+const FILE_VENDOR_RE = /^file:((?:\.\.\/)*vendor\/creezio)\/([^/]+)$/;
+
+/**
+ * Miroir de packages/factory/src/package-lock.ts `expandFileVendorClosure`.
+ * npm 9.2 résout mal les file:../ transitifs vendor → ENOENT sous
+ * node_modules/@creezio/* ; on déclare toute la clôture en deps directes.
+ */
+function expandFileVendorClosure(packageJsonPath) {
+  if (!fs.existsSync(packageJsonPath)) return { added: [] };
+  let pkg;
+  try {
+    pkg = JSON.parse(fs.readFileSync(packageJsonPath, "utf8"));
+  } catch {
+    return { added: [] };
+  }
+  const deps = { ...(pkg.dependencies || {}) };
+  const declared = new Map();
+  let vendorPrefix = null;
+  for (const [name, spec] of Object.entries(deps)) {
+    if (!name.startsWith("@creezio/") || typeof spec !== "string") continue;
+    const m = FILE_VENDOR_RE.exec(spec);
+    if (!m) continue;
+    vendorPrefix = m[1];
+    declared.set(name.slice("@creezio/".length), spec);
+  }
+  if (!vendorPrefix || declared.size === 0) return { added: [] };
+
+  const pkgDir = path.dirname(packageJsonPath);
+  const vendorRoot = path.resolve(pkgDir, vendorPrefix);
+  if (!fs.existsSync(vendorRoot)) return { added: [] };
+
+  const queue = [...declared.keys()];
+  const seen = new Set(queue);
+  while (queue.length) {
+    const id = queue.shift();
+    const nestedPkg = path.join(vendorRoot, id, "package.json");
+    if (!fs.existsSync(nestedPkg)) continue;
+    let nested;
+    try {
+      nested = JSON.parse(fs.readFileSync(nestedPkg, "utf8"));
+    } catch {
+      continue;
+    }
+    const nestedDeps = {
+      ...(nested.dependencies || {}),
+      ...(nested.optionalDependencies || {}),
+    };
+    for (const [name, spec] of Object.entries(nestedDeps)) {
+      if (!name.startsWith("@creezio/") || typeof spec !== "string") continue;
+      if (!spec.startsWith("file:")) continue;
+      const child = name.slice("@creezio/".length);
+      if (seen.has(child)) continue;
+      seen.add(child);
+      queue.push(child);
+    }
+  }
+
+  const added = [];
+  for (const id of [...seen].sort()) {
+    if (declared.has(id)) continue;
+    if (!fs.existsSync(path.join(vendorRoot, id, "package.json"))) continue;
+    deps[`@creezio/${id}`] = `file:${vendorPrefix}/${id}`;
+    added.push(`@creezio/${id}`);
+  }
+  if (!added.length) return { added: [] };
+  pkg.dependencies = deps;
+  fs.writeFileSync(packageJsonPath, `${JSON.stringify(pkg, null, 2)}\n`);
+  return { added };
+}
+
 const dirs = [serverDir];
 const uiDir = path.join(serverDir, "ui");
 if (fs.existsSync(path.join(uiDir, "package.json"))) dirs.push(uiDir);
@@ -98,6 +168,13 @@ if (fs.existsSync(path.join(uiDir, "package.json"))) dirs.push(uiDir);
 let refreshed = 0;
 for (const dir of dirs) {
   const pkgPath = path.join(dir, "package.json");
+  const expanded = expandFileVendorClosure(pkgPath);
+  if (expanded.added.length) {
+    const relPkg = path.relative(brandRoot, dir) || ".";
+    console.log(
+      `ensure-server-lock: deps @creezio/* complétées (${relPkg}) : ${expanded.added.join(", ")}`,
+    );
+  }
   if (isInSync(pkgPath)) continue;
   const rel = path.relative(brandRoot, dir) || ".";
   console.log(

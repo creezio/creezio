@@ -207,19 +207,9 @@ function renderPackageJson(m: AppManifest): string {
             "node scripts/ensure-linux-icons.mjs && npm run electron:config:server && npm run build:electron && electron-builder --config electron-builder.server.json --linux AppImage dir --x64",
         },
         dependencies: {
-          ...creezioVendorDeps([
-            "app-runtime",
-            "brand-config",
-            "shell",
-            "platform-core",
-            "product-hub",
-            "shell-ui",
-            "api-kernel",
-            "mcp-facade",
-            "auth",
-            "electron-shell",
-            "desktop-tooling",
-          ]),
+          // Clôture file: vendor complète (npm 9.2 résout mal les file:../
+          // transitives → ENOENT node_modules/@creezio/<pkg>). Aligné winhub.
+          ...creezioVendorDeps(SERVER_CREEZIO_DEPS),
           "electron-updater": "^6.3.9",
           // Deps npm runtime main (asar FileSets kit) — pas seulement transitifs
           "hono": "^4.12.30",
@@ -253,6 +243,37 @@ function renderPackageJson(m: AppManifest): string {
   );
 }
 
+/**
+ * Clôture @creezio serveur (deps directes file:vendor) — doit couvrir le
+ * graphe `file:../` des packages vendor, sinon `npm install --package-lock-only`
+ * échoue (ENOENT sous node_modules/@creezio/*).
+ */
+const SERVER_CREEZIO_DEPS = [
+  "api-kernel",
+  "app-runtime",
+  "assistant",
+  "auth",
+  "brand-config",
+  "brand-spec",
+  "browser-host",
+  "cockpit",
+  "database",
+  "desktop-tooling",
+  "electron-shell",
+  "integrations",
+  "mails",
+  "mcp-facade",
+  "observability",
+  "onboarding",
+  "os-ui",
+  "platform-core",
+  "product-hub",
+  "shell",
+  "shell-ui",
+  "support",
+  "tasks",
+];
+
 /** Clôture @creezio requise par le client thin (startBrandDesktop remote-only). */
 const CLIENT_CREEZIO_DEPS = [
   "api-kernel",
@@ -266,6 +287,7 @@ const CLIENT_CREEZIO_DEPS = [
   "database",
   "desktop-tooling",
   "electron-shell",
+  "integrations",
   "mails",
   "mcp-facade",
   "observability",
@@ -275,6 +297,7 @@ const CLIENT_CREEZIO_DEPS = [
   "product-hub",
   "shell",
   "shell-ui",
+  "support",
   "tasks",
 ];
 

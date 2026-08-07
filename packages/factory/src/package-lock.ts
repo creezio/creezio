@@ -98,6 +98,86 @@ function ensureVendorSymlink(brandRoot: string, serverDir: string): void {
   fs.symlinkSync("../vendor", link);
 }
 
+const FILE_VENDOR_RE = /^file:((?:\.\.\/)*vendor\/creezio)\/([^/]+)$/;
+
+/**
+ * npm (Debian 9.2 / lock-only) résout les deps transitives `file:../pkg`
+ * des packages vendor **relativement à node_modules/@creezio/<parent>**,
+ * pas au dossier vendor — → ENOENT sur
+ * `node_modules/@creezio/<pkg>/package.json`. Contre-mesure : déclarer
+ * toute la clôture `file:` en deps directes `file:…/vendor/creezio/<pkg>`
+ * (hoist ROOT, chemins valides). Miroir : docker/server/ensure-server-lock.mjs.
+ */
+export function expandFileVendorClosure(
+  packageJsonPath: string,
+): { added: string[] } {
+  if (!fs.existsSync(packageJsonPath)) return { added: [] };
+  let pkg: PkgJson & { name?: string };
+  try {
+    pkg = JSON.parse(fs.readFileSync(packageJsonPath, "utf8")) as PkgJson & {
+      name?: string;
+    };
+  } catch {
+    return { added: [] };
+  }
+  const deps = { ...(pkg.dependencies || {}) };
+  /** @type {Map<string, string>} name → file: spec relative to package.json dir */
+  const declared = new Map<string, string>();
+  let vendorPrefix: string | null = null;
+  for (const [name, spec] of Object.entries(deps)) {
+    if (!name.startsWith("@creezio/") || typeof spec !== "string") continue;
+    const m = FILE_VENDOR_RE.exec(spec);
+    if (!m?.[1]) continue;
+    vendorPrefix = m[1];
+    declared.set(name.slice("@creezio/".length), spec);
+  }
+  if (!vendorPrefix || declared.size === 0) return { added: [] };
+
+  const pkgDir = path.dirname(packageJsonPath);
+  const vendorRoot = path.resolve(pkgDir, vendorPrefix);
+  if (!fs.existsSync(vendorRoot)) return { added: [] };
+
+  const queue = [...declared.keys()];
+  const seen = new Set(queue);
+  while (queue.length) {
+    const id = queue.shift()!;
+    const nestedPkg = path.join(vendorRoot, id, "package.json");
+    if (!fs.existsSync(nestedPkg)) continue;
+    let nested: PkgJson;
+    try {
+      nested = JSON.parse(fs.readFileSync(nestedPkg, "utf8")) as PkgJson;
+    } catch {
+      continue;
+    }
+    const nestedDeps = {
+      ...(nested.dependencies || {}),
+      ...(nested.optionalDependencies || {}),
+    };
+    for (const [name, spec] of Object.entries(nestedDeps)) {
+      if (!name.startsWith("@creezio/") || typeof spec !== "string") continue;
+      if (!spec.startsWith("file:")) continue;
+      const child = name.slice("@creezio/".length);
+      if (seen.has(child)) continue;
+      seen.add(child);
+      queue.push(child);
+    }
+  }
+
+  const added: string[] = [];
+  for (const id of [...seen].sort()) {
+    if (declared.has(id)) continue;
+    const childPath = path.join(vendorRoot, id, "package.json");
+    if (!fs.existsSync(childPath)) continue;
+    const spec = `file:${vendorPrefix}/${id}`;
+    deps[`@creezio/${id}`] = spec;
+    added.push(`@creezio/${id}`);
+  }
+  if (!added.length) return { added: [] };
+  pkg.dependencies = deps;
+  fs.writeFileSync(packageJsonPath, `${JSON.stringify(pkg, null, 2)}\n`);
+  return { added };
+}
+
 /**
  * Régénère les package-lock manquants / incohérents d'une marque.
  * @param mode `lock-only` = push GitHub (pas de node_modules) ;
@@ -131,6 +211,13 @@ export function ensureBrandPackageLocks(
   const refreshed: string[] = [];
   for (const dir of dirs) {
     const pkgPath = path.join(dir, "package.json");
+    const expanded = expandFileVendorClosure(pkgPath);
+    if (expanded.added.length) {
+      const relPkg = path.relative(brandRoot, dir) || ".";
+      log(
+        `deps @creezio/* complétées (${relPkg}) : ${expanded.added.join(", ")} (clôture file: vendor — npm ENOENT)`,
+      );
+    }
     if (isPackageLockInSync(pkgPath)) continue;
     const rel = path.relative(brandRoot, dir) || ".";
     log(
