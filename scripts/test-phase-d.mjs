@@ -142,6 +142,7 @@ test("scaffoldNewApp génère structure + builder configs", () => {
     "server/electron-builder.base.json",
     "server/electron-builder.server.json",
     "server/scripts/build-builder-config.mjs",
+    "server/plugins/insights-assistant/manifest.json",
     "client/package.json",
     "client/src/electron/main.ts",
     "client/src/electron/preload.ts",

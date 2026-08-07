@@ -340,6 +340,15 @@ test("F3.0 harness généré pose AUTH_DISABLED (anti-401 notes, sans electron)"
       "utf8",
     );
     assert.match(gen, /AUTH_DISABLED:\s*["']1["']/);
+    assert.ok(
+      fs.existsSync(
+        path.join(
+          result.serverDir,
+          "plugins/insights-assistant/manifest.json",
+        ),
+      ),
+      "scaffold --from-prd doit installer le template kit insights-assistant",
+    );
   } finally {
     fs.rmSync(outDir, { recursive: true, force: true });
   }

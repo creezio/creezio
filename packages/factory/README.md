@@ -51,11 +51,13 @@ déploiement flotte en pull — voir la skill
 ### Templates plugins (`templates/plugins/`)
 
 Plugins **génériques kit** prêts à installer dans toute marque (seed
-`<appRoot>/plugins/` ou install control plane). Exemple vivant :
+`<server>/plugins/` → runtime au boot). Exemple vivant :
 `insights-assistant` (synthèse IA des modules découverts via
 `/api/v1/core/architecture` — zéro métier marque, permissions
-`crm:read`+`llm:use`, DB cache `data/plugin.sqlite`). La factory les copie
-via `src/plugin-templates.ts`. Gate E2E :
+`crm:read`+`llm:use`, DB cache `data/plugin.sqlite`). Le scaffold
+(`new-app` / `demo-app` / `brand apply`) appelle
+`installKitPluginTemplate({ templateId: "insights-assistant", … })` —
+sans cet appel le repo marque part à 0 plugins. Gate E2E :
 `scripts/test-phase-plugin-insights.mjs`. Guide auteur :
 [CREATE-PLUGIN](../../docs/agents/CREATE-PLUGIN.md).
 

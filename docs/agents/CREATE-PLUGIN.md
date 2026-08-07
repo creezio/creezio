@@ -89,10 +89,12 @@ Contrats côté sidecar :
 ## 5. Installation & cycle de vie
 
 - **Plugin embarqué marque** : livrer sous `<appRoot>/server/plugins/<id>/`
-  — au boot, `seedBrandPlugins` (`plugin-seed.ts`) copie vers le répertoire
+  — au boot, `seedPluginsFromDirs` (`plugin-seed.ts`) copie vers le répertoire
   runtime `<userData>/plugins/<id>/` et pose `.enabled`. Idempotent et non
   destructif : un plugin déjà installé n'est jamais écrasé, un plugin
-  désactivé n'est pas réactivé.
+  désactivé n'est pas réactivé. Le scaffold factory installe déjà le template
+  kit `insights-assistant` via `installKitPluginTemplate` ; un plugin métier
+  (ex. `recettes-cuisine`) reste manuel / hors factory.
 - **Kill-switch** : `CREEZIO_PLUGINS=0` (ou `features.plugins=false`).
 - Enable/disable/restart : control plane plugins (UI admin + API), état
   listé par `GET /api/v1/os/plugins`.

@@ -38,6 +38,7 @@ import {
   renderBrandAgentsMd,
 } from "./generators/index.js";
 import { scaffoldAdminApp } from "./admin-repo.js";
+import { installKitPluginTemplate } from "./plugin-templates.js";
 
 export type NewAppOptions = {
   brandId: string;
@@ -1518,6 +1519,20 @@ export function scaffoldNewApp(opts: NewAppOptions): ScaffoldResult {
     );
   }
   writeBrandIcons(serverDir, outDir, opts, force, written);
+
+  // Plugin kit générique embarqué — seedé au boot via seedPluginsFromDirs
+  // (`<serverDir>/plugins/<id>/` → runtime). Sans cet appel, une marque
+  // scaffoldée part avec 0 plugins (WinHub / audit 4a42617d).
+  const kitPlugin = installKitPluginTemplate({
+    templateId: "insights-assistant",
+    pluginsDir: path.join(serverDir, "plugins"),
+    enable: true,
+    force,
+  });
+  written.push(
+    path.join(kitPlugin.dir, "manifest.json"),
+    ...kitPlugin.files.map((f) => path.join(kitPlugin.dir, f)),
+  );
 
   /* ── Livrable CLIENT (desktop thin remote-only) ───────────────────── */
   writeFile(

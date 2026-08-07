@@ -115,6 +115,12 @@ Desktop Creezio.
   assert.ok(fs.existsSync(path.join(`${appDir}-admin`, "server-admin.json")));
   assert.ok(!fs.existsSync(path.join(appDir, "admin")));
   assert.ok(fs.existsSync(path.join(appDir, "brand-spec/brand.yaml")));
+  assert.ok(
+    fs.existsSync(
+      path.join(serverDir, "plugins/insights-assistant/manifest.json"),
+    ),
+    "brand apply doit installer server/plugins/insights-assistant",
+  );
 
   const main = fs.readFileSync(
     path.join(serverDir, "src/electron/main.ts"),
