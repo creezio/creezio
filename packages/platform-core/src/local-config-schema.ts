@@ -40,6 +40,8 @@ export type TunnelMetaStored = {
   servicePorts?: TunnelServicePorts;
   publicUrls?: TunnelPublicUrlsStored;
   emailDomain?: string;
+  /** nested | flat — aligné provisioner / CREEZIO_TUNNEL_FLAT_HOSTS. */
+  hostMode?: "nested" | "flat";
 };
 
 export type EmbedMode = "embedded" | "remote" | "off";

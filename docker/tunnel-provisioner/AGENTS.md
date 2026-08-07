@@ -3,9 +3,10 @@
 ## Mission
 
 Provisioner Cloudflare Tunnel du kit (brand-agnostic) : réservation
-slug + tunnel + DNS (`{slug}.{zone}`, `n8n.{slug}`, `hermes.{slug}`,
-`agent.{slug}`), ingress, déprovision. Tourne sur le VPS qui détient les
-credentials Cloudflare de la zone marque.
+slug + tunnel + DNS, ingress, déprovision. Hostnames nested
+(`n8n.{slug}`) ou flat (`n8n-{slug}`, `CREEZIO_TUNNEL_FLAT_HOSTS=1` /
+Universal SSL) — SoT `packages/platform-core/src/tunnel-urls.ts`.
+Tourne sur le VPS qui détient les credentials Cloudflare de la zone marque.
 
 ## Ne pas faire
 

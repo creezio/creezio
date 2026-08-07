@@ -12,6 +12,7 @@ Environment=CREEZIO_TUNNEL_PROVISIONER_PORT=8666
 Environment=CREEZIO_TUNNEL_PROVISIONER_HOSTS=127.0.0.1,172.17.0.1
 Environment=CREEZIO_TUNNEL_STATE_DIR=/opt/docker/creezio-fleet/tunnel-state
 Environment=CREEZIO_TUNNEL_CF_ENV_FILE=/opt/docker/wp-provisioner/.cloudflare-tempoflow.env
+# Universal SSL (1 niveau) : Environment=CREEZIO_TUNNEL_FLAT_HOSTS=1
 # Token : poser dans un EnvironmentFile hors git (mode 600)
 EnvironmentFile=/opt/docker/creezio-fleet/tunnel-provisioner.env
 ExecStart=/usr/bin/node /opt/docker/creezio/docker/tunnel-provisioner/server.mjs

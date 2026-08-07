@@ -13,7 +13,10 @@ import {
   deriveTunnelServiceUrl,
   HERMES_DESKTOP_WEBUI_PORT,
   N8N_DESKTOP_PORT,
+  resolveTunnelHostMode,
   type TunnelEmbedService,
+  type TunnelHostMode,
+  type TunnelPublicUrls,
 } from "@creezio/platform-core";
 import type { HostRuntimeContext } from "../context.js";
 import { hostLog, hostProductName } from "../context.js";
@@ -26,7 +29,7 @@ export type TunnelRuntimeStatus = {
   slug: string | null;
   hostname: string | null;
   publicUrl: string | null;
-  publicUrls: ReturnType<typeof buildTunnelPublicUrls> | null;
+  publicUrls: TunnelPublicUrls | null;
   online: boolean;
   error: string | null;
   pcMustBeOn: true;
@@ -162,6 +165,33 @@ export function createTunnelService(opts: {
     return p;
   }
 
+  /** Env CREEZIO_TUNNEL_FLAT_HOSTS > manifest.tunnelHostMode > nested. */
+  function brandHostMode(): TunnelHostMode {
+    const env = String(process.env.CREEZIO_TUNNEL_FLAT_HOSTS || "").trim();
+    if (env) return resolveTunnelHostMode();
+    return resolveTunnelHostMode(ctx.manifest.tunnelHostMode);
+  }
+
+  function urlsForHostname(hostname: string): TunnelPublicUrls {
+    return buildTunnelPublicUrls(hostname, brandHostMode());
+  }
+
+  function parseProvisionerPublicUrls(
+    raw: unknown,
+    hostname: string,
+  ): TunnelPublicUrls {
+    if (raw && typeof raw === "object") {
+      const o = raw as Record<string, unknown>;
+      const crm = typeof o.crm === "string" ? o.crm : "";
+      const n8n = typeof o.n8n === "string" ? o.n8n : "";
+      const hermes = typeof o.hermes === "string" ? o.hermes : "";
+      if (crm && n8n && hermes) {
+        return { crm, n8n, hermes };
+      }
+    }
+    return urlsForHostname(hostname);
+  }
+
   function getTunnelStatus(): TunnelRuntimeStatus {
     const cfg = store.getTunnelConfig();
     const isLocalSurface =
@@ -174,9 +204,11 @@ export function createTunnelService(opts: {
           n8n: `http://127.0.0.1:${N8N_DESKTOP_PORT}`,
           hermes: `http://127.0.0.1:${HERMES_DESKTOP_WEBUI_PORT}`,
         }
-      : cfg?.hostname
-        ? buildTunnelPublicUrls(cfg.hostname)
-        : null;
+      : cfg?.publicUrls?.n8n && cfg?.publicUrls?.hermes
+        ? cfg.publicUrls
+        : cfg?.hostname
+          ? urlsForHostname(cfg.hostname)
+          : null;
     return {
       configured: Boolean(cfg),
       slug: cfg?.slug ?? null,
@@ -233,7 +265,11 @@ export function createTunnelService(opts: {
     if (!tunnelToken || !hostname || !tunnelId) {
       return { ok: false as const, error: "Réponse provisioner incomplete" };
     }
-    const publicUrls = buildTunnelPublicUrls(hostname);
+    const publicUrls = parseProvisionerPublicUrls(json.publicUrls, hostname);
+    const hostMode =
+      json.hostMode === "flat" || json.hostMode === "nested"
+        ? (json.hostMode as TunnelHostMode)
+        : brandHostMode();
     const mailRoot =
       p.mailRootDomain || `mail.${ctx.manifest.tunnelRootDomain}`;
     const emailDomain =
@@ -253,6 +289,7 @@ export function createTunnelService(opts: {
       tunnelToken,
       localPort,
       publicUrls,
+      hostMode,
       emailDomain,
       servicePorts: {
         n8n: N8N_DESKTOP_PORT,
@@ -288,7 +325,14 @@ export function createTunnelService(opts: {
     if (status !== 200 || !json.ok) {
       throw new Error(String(json.error || `configure tunnel HTTP ${status}`));
     }
-    const publicUrls = buildTunnelPublicUrls(cfg.hostname);
+    const publicUrls = parseProvisionerPublicUrls(
+      json.publicUrls,
+      cfg.hostname,
+    );
+    const hostMode =
+      json.hostMode === "flat" || json.hostMode === "nested"
+        ? (json.hostMode as TunnelHostMode)
+        : brandHostMode();
     const mailRoot =
       p.mailRootDomain || `mail.${ctx.manifest.tunnelRootDomain}`;
     const emailDomain =
@@ -305,6 +349,7 @@ export function createTunnelService(opts: {
       localPort: ports.crmPort,
       servicePorts: { n8n: n8nPort, hermes: hermesPort },
       publicUrls,
+      hostMode,
       emailDomain,
     });
     hostLog(
@@ -328,7 +373,8 @@ export function createTunnelService(opts: {
         return `http://127.0.0.1:${HERMES_DESKTOP_WEBUI_PORT}`;
       }
     }
-    return buildTunnelPublicUrls(cfg.hostname)[service] || null;
+    if (cfg.publicUrls?.[service]) return cfg.publicUrls[service];
+    return urlsForHostname(cfg.hostname)[service] || null;
   }
 
   function publicMcpUrl(): string | null {

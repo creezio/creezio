@@ -46,6 +46,7 @@ import {
   type TunnelConfigPublic,
   type TunnelMetaStored,
   buildTunnelPublicUrls,
+  resolveTunnelHostMode,
 } from "@creezio/platform-core";
 import {
   canEncrypt,
@@ -358,9 +359,16 @@ function buildStore(
 
   function getTunnelPublic(): TunnelConfigPublic {
     const cfg = getTunnelConfig();
-    const publicUrls = cfg?.hostname
-      ? buildTunnelPublicUrls(cfg.hostname)
-      : null;
+    const envFlat = String(process.env.CREEZIO_TUNNEL_FLAT_HOSTS || "").trim();
+    const hostMode = envFlat
+      ? resolveTunnelHostMode()
+      : resolveTunnelHostMode(cfg?.hostMode ?? manifest.tunnelHostMode);
+    const publicUrls =
+      cfg?.publicUrls?.n8n && cfg?.publicUrls?.hermes
+        ? cfg.publicUrls
+        : cfg?.hostname
+          ? buildTunnelPublicUrls(cfg.hostname, hostMode)
+          : null;
     return {
       configured: Boolean(cfg),
       slug: cfg?.slug ?? null,

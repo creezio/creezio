@@ -219,12 +219,23 @@ export {
   sanitizeProfileSegment,
 } from "./profile-launch.js";
 
-export type { TunnelEmbedService, TunnelPublicUrls } from "./tunnel-urls.js";
+export type {
+  TunnelEmbedService,
+  TunnelHostMode,
+  TunnelHostService,
+  TunnelPublicUrls,
+  TunnelUrlOpts,
+} from "./tunnel-urls.js";
 export {
   TUNNEL_EMBED_SERVICES,
+  TUNNEL_FLAT_HOSTS_ENV,
+  TUNNEL_HOST_SERVICES,
   buildTunnelPublicUrls,
   deriveTunnelServiceUrl,
   portFromLocalUrl,
+  resolveTunnelHostMode,
+  splitCrmHostname,
+  stripTunnelServicePrefix,
   tunnelServiceHostname,
 } from "./tunnel-urls.js";
 

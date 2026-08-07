@@ -1130,6 +1130,12 @@ function getHermesStatusPayload(
     version: state.version,
     remoteCrmOrigin: opts?.remoteCrmOrigin,
     tunnelRootDomain: ctx.manifest.tunnelRootDomain,
+    tunnelHostMode: (() => {
+      const env = String(process.env.CREEZIO_TUNNEL_FLAT_HOSTS || "").trim();
+      if (env === "1" || /^true$/i.test(env)) return "flat" as const;
+      if (env === "0" || /^false$/i.test(env)) return "nested" as const;
+      return ctx.manifest.tunnelHostMode;
+    })(),
     productName: product(),
   });
   if (state.installing && pub.status === "missing") {

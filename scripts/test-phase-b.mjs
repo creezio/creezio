@@ -116,6 +116,24 @@ test("connection + profile + tunnel", () => {
     deriveTunnelServiceUrl("https://other.example", "n8n", "tempoflow.fr"),
     null,
   );
+
+  // Mode flat (Universal SSL) — CRM inchangé, embeds aplatis.
+  const flat = buildTunnelPublicUrls("server-1.winhub.fr", "flat");
+  assert.equal(flat.crm, "https://server-1.winhub.fr");
+  assert.equal(flat.n8n, "https://n8n-server-1.winhub.fr");
+  assert.equal(flat.hermes, "https://hermes-server-1.winhub.fr");
+  assert.equal(
+    deriveTunnelServiceUrl(
+      "https://server-1.winhub.fr",
+      "n8n",
+      "winhub.fr",
+      "flat",
+    ),
+    "https://n8n-server-1.winhub.fr",
+  );
+  // Nested reste le défaut (pas de régression TempoFlow).
+  const nestedDefault = buildTunnelPublicUrls("resto1.tempoflow.fr");
+  assert.equal(nestedDefault.n8n, "https://n8n.resto1.tempoflow.fr");
 });
 
 test("updater reduce + builder config", () => {

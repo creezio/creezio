@@ -1,20 +1,46 @@
 /**
- * URLs publiques multi-niveau pour embeds via tunnel Cloudflare.
- * Port brand-agnostic de electron/tunnel-service-urls.ts (TF2 0.10.26).
+ * URLs publiques des embeds via tunnel Cloudflare.
  *
- * CRM     : https://{slug}.{tunnelRootDomain}
- * n8n     : https://n8n.{slug}.{tunnelRootDomain}
- * Hermes  : https://hermes.{slug}.{tunnelRootDomain}
+ * Deux modes d'hôtes (SoT partagé avec docker/tunnel-provisioner) :
+ *
+ *   nested (défaut, rétrocompat) — certificats Advanced Certificate Manager
+ *     CRM     : https://{slug}.{zone}
+ *     n8n     : https://n8n.{slug}.{zone}
+ *     Hermes  : https://hermes.{slug}.{zone}
+ *     agent   : https://agent.{slug}.{zone}  (flotte — hors embeds)
+ *
+ *   flat — Universal SSL (1 niveau de sous-domaine seulement)
+ *     CRM     : https://{slug}.{zone}          (inchangé)
+ *     n8n     : https://n8n-{slug}.{zone}
+ *     Hermes  : https://hermes-{slug}.{zone}
+ *     agent   : https://agent-{slug}.{zone}
+ *
+ * Activation : `CREEZIO_TUNNEL_FLAT_HOSTS=1` (env) ou opts/manifest
+ * `hostMode: "flat"` / `tunnelHostMode: "flat"`. Défaut = nested.
  */
 
 export const TUNNEL_EMBED_SERVICES = ["n8n", "hermes"] as const;
 export type TunnelEmbedService = (typeof TUNNEL_EMBED_SERVICES)[number];
+
+/** Services d'ingress tunnel (embeds + agent flotte). */
+export const TUNNEL_HOST_SERVICES = ["n8n", "hermes", "agent"] as const;
+export type TunnelHostService = (typeof TUNNEL_HOST_SERVICES)[number];
+
+export type TunnelHostMode = "nested" | "flat";
 
 export type TunnelPublicUrls = {
   crm: string;
   n8n: string;
   hermes: string;
 };
+
+export type TunnelUrlOpts = {
+  /** Force le mode ; sinon `resolveTunnelHostMode()` (env / défaut nested). */
+  hostMode?: TunnelHostMode;
+};
+
+/** Nom de l'env qui active les hostnames aplatis (Universal SSL). */
+export const TUNNEL_FLAT_HOSTS_ENV = "CREEZIO_TUNNEL_FLAT_HOSTS";
 
 function cleanHost(raw: string): string {
   return String(raw || "")
@@ -28,37 +54,120 @@ function escapeRegex(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
-/** Hostnames services pour un slug CRM. */
-export function tunnelServiceHostname(
-  crmHostname: string,
-  service: TunnelEmbedService,
-): string {
+/**
+ * Résout nested | flat.
+ * - explicit "flat" | true | "1" → flat
+ * - explicit "nested" | false | "0" → nested
+ * - sinon env CREEZIO_TUNNEL_FLAT_HOSTS=1|true → flat
+ * - défaut → nested (rétrocompat TempoFlow / zones ACM)
+ */
+export function resolveTunnelHostMode(
+  explicit?: TunnelHostMode | boolean | string | null,
+): TunnelHostMode {
+  if (explicit === "flat" || explicit === true || explicit === "1") {
+    return "flat";
+  }
+  if (explicit === "nested" || explicit === false || explicit === "0") {
+    return "nested";
+  }
+  const env = String(process.env[TUNNEL_FLAT_HOSTS_ENV] || "")
+    .trim()
+    .toLowerCase();
+  if (env === "1" || env === "true" || env === "yes" || env === "on") {
+    return "flat";
+  }
+  return "nested";
+}
+
+function modeFromOpts(opts?: TunnelUrlOpts | TunnelHostMode): TunnelHostMode {
+  if (typeof opts === "string") return resolveTunnelHostMode(opts);
+  return resolveTunnelHostMode(opts?.hostMode);
+}
+
+/** Première label DNS = slug CRM ; le reste = zone. */
+export function splitCrmHostname(crmHostname: string): {
+  slug: string;
+  zone: string;
+} {
   const host = cleanHost(crmHostname);
-  if (!host) throw new Error("hostname CRM requis");
-  if (host.startsWith(`${service}.`)) return host;
-  for (const svc of TUNNEL_EMBED_SERVICES) {
+  const i = host.indexOf(".");
+  if (i <= 0 || i === host.length - 1) {
+    throw new Error(`hostname CRM invalide: ${crmHostname}`);
+  }
+  return { slug: host.slice(0, i), zone: host.slice(i + 1) };
+}
+
+/**
+ * Retire un préfixe service (nested `svc.` ou flat `svc-` sur la 1ʳᵉ label)
+ * pour retrouver le hostname CRM.
+ */
+export function stripTunnelServicePrefix(hostname: string): string {
+  const host = cleanHost(hostname);
+  if (!host) return host;
+  for (const svc of TUNNEL_HOST_SERVICES) {
     if (host.startsWith(`${svc}.`)) {
-      return `${service}.${host.slice(svc.length + 1)}`;
+      return host.slice(svc.length + 1);
     }
   }
-  return `${service}.${host}`;
+  const dot = host.indexOf(".");
+  if (dot > 0) {
+    const label = host.slice(0, dot);
+    const zone = host.slice(dot + 1);
+    for (const svc of TUNNEL_HOST_SERVICES) {
+      const prefix = `${svc}-`;
+      if (label.startsWith(prefix) && label.length > prefix.length) {
+        return `${label.slice(prefix.length)}.${zone}`;
+      }
+    }
+  }
+  return host;
+}
+
+/** Hostnames services pour un slug CRM (nested ou flat). */
+export function tunnelServiceHostname(
+  crmHostname: string,
+  service: TunnelHostService | TunnelEmbedService,
+  opts?: TunnelUrlOpts | TunnelHostMode,
+): string {
+  const mode = modeFromOpts(opts);
+  const host = cleanHost(crmHostname);
+  if (!host) throw new Error("hostname CRM requis");
+
+  // Déjà le bon hostname service → no-op.
+  if (mode === "nested" && host.startsWith(`${service}.`)) return host;
+  if (mode === "flat") {
+    const { slug, zone } = (() => {
+      try {
+        return splitCrmHostname(stripTunnelServicePrefix(host));
+      } catch {
+        return splitCrmHostname(host);
+      }
+    })();
+    const flat = `${service}-${slug}.${zone}`;
+    if (host === flat) return host;
+  }
+
+  const crmHost = stripTunnelServicePrefix(host);
+  if (mode === "flat") {
+    const { slug, zone } = splitCrmHostname(crmHost);
+    return `${service}-${slug}.${zone}`;
+  }
+  return `${service}.${crmHost}`;
 }
 
 /** Construit le map d'URLs publiques pour un hostname CRM. */
-export function buildTunnelPublicUrls(crmHostname: string): TunnelPublicUrls {
+export function buildTunnelPublicUrls(
+  crmHostname: string,
+  opts?: TunnelUrlOpts | TunnelHostMode,
+): TunnelPublicUrls {
+  const mode = modeFromOpts(opts);
   const host = cleanHost(crmHostname);
   if (!host) throw new Error("hostname CRM requis");
-  let crmHost = host;
-  for (const svc of TUNNEL_EMBED_SERVICES) {
-    if (host.startsWith(`${svc}.`)) {
-      crmHost = host.slice(svc.length + 1);
-      break;
-    }
-  }
+  const crmHost = stripTunnelServicePrefix(host);
   return {
     crm: `https://${crmHost}`,
-    n8n: `https://${tunnelServiceHostname(crmHost, "n8n")}`,
-    hermes: `https://${tunnelServiceHostname(crmHost, "hermes")}`,
+    n8n: `https://${tunnelServiceHostname(crmHost, "n8n", mode)}`,
+    hermes: `https://${tunnelServiceHostname(crmHost, "hermes", mode)}`,
   };
 }
 
@@ -70,6 +179,7 @@ export function deriveTunnelServiceUrl(
   crmOrigin: string,
   service: TunnelEmbedService,
   tunnelRootDomain: string,
+  opts?: TunnelUrlOpts | TunnelHostMode,
 ): string | null {
   try {
     let s = String(crmOrigin || "").trim();
@@ -79,7 +189,7 @@ export function deriveTunnelServiceUrl(
     const root = cleanHost(tunnelRootDomain);
     const re = new RegExp(`(^|\\.)${escapeRegex(root)}$`, "i");
     if (!re.test(u.hostname)) return null;
-    return `https://${tunnelServiceHostname(u.hostname, service)}`;
+    return `https://${tunnelServiceHostname(u.hostname, service, opts)}`;
   } catch {
     return null;
   }

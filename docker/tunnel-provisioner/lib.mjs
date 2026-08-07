@@ -3,8 +3,13 @@
  *
  * SoT format hostnames : packages/platform-core/src/tunnel-urls.ts
  *   CRM    : {slug}.{zone}
- *   embeds : n8n.{slug}.{zone} / hermes.{slug}.{zone}
- *   agent  : agent.{slug}.{zone}  → agent hôte flotte (VPS restaurant)
+ *   embeds nested : n8n.{slug}.{zone} / hermes.{slug}.{zone}
+ *   embeds flat   : n8n-{slug}.{zone} / hermes-{slug}.{zone}
+ *   agent nested  : agent.{slug}.{zone}
+ *   agent flat    : agent-{slug}.{zone}
+ *
+ * Mode flat : CREEZIO_TUNNEL_FLAT_HOSTS=1 (Universal SSL, 1 niveau).
+ * Défaut nested (rétrocompat ACM / TempoFlow).
  */
 
 /**
@@ -61,6 +66,9 @@ export const RESERVED_SLUGS = new Set([
   "ns2",
 ]);
 
+/** Préfixes plats qui entreraient en collision avec `n8n-{slug}.{zone}` etc. */
+export const FLAT_SERVICE_PREFIXES = ["n8n-", "hermes-", "agent-"];
+
 // 2–48 caractères : commence et finit par alphanum, tirets au milieu.
 export const SLUG_RE = /^[a-z0-9]([a-z0-9-]{0,46}[a-z0-9])$/;
 
@@ -69,6 +77,38 @@ export function normalizeSlug(raw) {
     .trim()
     .toLowerCase()
     .replace(/[^a-z0-9-]/g, "");
+}
+
+/**
+ * nested | flat — même sémantique que platform-core `resolveTunnelHostMode`.
+ * Env : CREEZIO_TUNNEL_FLAT_HOSTS=1|true|yes|on
+ */
+export function resolveTunnelHostMode(explicit) {
+  if (explicit === "flat" || explicit === true || explicit === 1 || explicit === "1") {
+    return "flat";
+  }
+  if (
+    explicit === "nested" ||
+    explicit === false ||
+    explicit === 0 ||
+    explicit === "0"
+  ) {
+    return "nested";
+  }
+  const env = String(process.env.CREEZIO_TUNNEL_FLAT_HOSTS || "")
+    .trim()
+    .toLowerCase();
+  if (env === "1" || env === "true" || env === "yes" || env === "on") {
+    return "flat";
+  }
+  return "nested";
+}
+
+function hostModeFromOpts(opts) {
+  if (opts && opts.hostMode != null) {
+    return resolveTunnelHostMode(opts.hostMode);
+  }
+  return resolveTunnelHostMode();
 }
 
 export function slugCheckLocal(slug, opts) {
@@ -94,6 +134,19 @@ export function slugCheckLocal(slug, opts) {
     }
     return { available: false, reason: "Slug réservé" };
   }
+  // En mode flat, `n8n-resto.{zone}` est l'embed du slug `resto` — un CRM
+  // slug `n8n-resto` entrerait en collision DNS.
+  const mode = hostModeFromOpts(opts);
+  if (mode === "flat") {
+    for (const p of FLAT_SERVICE_PREFIXES) {
+      if (slug.startsWith(p)) {
+        return {
+          available: false,
+          reason: `Slug réservé (préfixe flat ${p.slice(0, -1)})`,
+        };
+      }
+    }
+  }
   return { available: true };
 }
 
@@ -102,9 +155,24 @@ export function isZoneLevelKind(kind) {
   return kind === "brand-web" || kind === "registry";
 }
 
-/** `n8n.{slug}.{zone}` etc. — préfixe simple sur le hostname CRM. */
-export function serviceHostname(hostname, service) {
-  return `${service}.${hostname}`;
+/**
+ * Hostname service (nested `svc.{crm}` ou flat `svc-{slug}.{zone}`).
+ * `hostname` = CRM `{slug}.{zone}`.
+ */
+export function serviceHostname(hostname, service, opts) {
+  const mode = hostModeFromOpts(opts);
+  const host = String(hostname || "")
+    .trim()
+    .toLowerCase();
+  if (!host) throw new Error("hostname CRM requis");
+  if (mode === "flat") {
+    const i = host.indexOf(".");
+    if (i <= 0) throw new Error(`hostname CRM invalide: ${hostname}`);
+    const slug = host.slice(0, i);
+    const zone = host.slice(i + 1);
+    return `${service}-${slug}.${zone}`;
+  }
+  return `${service}.${host}`;
 }
 
 export function buildPublicUrls(hostname, opts) {
@@ -112,10 +180,11 @@ export function buildPublicUrls(hostname, opts) {
     // Réservation brand-web : un seul hostname public, pas d'embeds.
     return { crm: `https://${hostname}` };
   }
+  const hostOpts = { hostMode: hostModeFromOpts(opts) };
   return {
     crm: `https://${hostname}`,
-    n8n: `https://${serviceHostname(hostname, "n8n")}`,
-    hermes: `https://${serviceHostname(hostname, "hermes")}`,
+    n8n: `https://${serviceHostname(hostname, "n8n", hostOpts)}`,
+    hermes: `https://${serviceHostname(hostname, "hermes", hostOpts)}`,
   };
 }
 
@@ -143,6 +212,7 @@ export function normalizePorts(raw, defaults) {
  * joignable depuis le container via la gateway bridge Docker (172.17.0.1).
  */
 export function buildIngressRules(hostname, ports, agent, opts) {
+  const hostOpts = { hostMode: hostModeFromOpts(opts) };
   const svcRule = (svcHostname, service) => ({
     hostname: svcHostname,
     service,
@@ -158,24 +228,62 @@ export function buildIngressRules(hostname, ports, agent, opts) {
   const rules = [
     svcRule(hostname, `http://127.0.0.1:${ports.crmPort}`),
     svcRule(
-      serviceHostname(hostname, "n8n"),
+      serviceHostname(hostname, "n8n", hostOpts),
       `http://127.0.0.1:${ports.n8nPort}`,
     ),
     svcRule(
-      serviceHostname(hostname, "hermes"),
+      serviceHostname(hostname, "hermes", hostOpts),
       `http://127.0.0.1:${ports.hermesPort}`,
     ),
   ];
   if (agent && agent.port) {
     rules.push(
       svcRule(
-        serviceHostname(hostname, "agent"),
+        serviceHostname(hostname, "agent", hostOpts),
         `http://${agent.host || "172.17.0.1"}:${agent.port}`,
       ),
     );
   }
   rules.push({ service: "http_status:404" });
   return rules;
+}
+
+/**
+ * Liste des records DNS CNAME à assurer pour un slug serveur.
+ * nested → `{slug}` + `*.{slug}` ; flat → `{slug}` + `n8n|hermes|agent-{slug}`.
+ */
+export function dnsRecordSpecs(slug, hostname, zone, opts) {
+  const mode = hostModeFromOpts(opts);
+  const records = [{ name: hostname, qName: hostname }];
+  if (opts?.wildcard === false) {
+    return { hostMode: mode, records };
+  }
+  if (mode === "flat") {
+    const services = ["n8n", "hermes"];
+    if (opts?.agent) services.push("agent");
+    for (const svc of services) {
+      const h = serviceHostname(hostname, svc, { hostMode: "flat" });
+      records.push({ name: h, qName: h });
+    }
+    return { hostMode: mode, records };
+  }
+  records.push({
+    name: `*.${slug}`,
+    qName: `*.${slug}.${zone}`,
+  });
+  return { hostMode: mode, records };
+}
+
+/** Hosts à nettoyer au deprovision (nested + flat + mail). */
+export function deprovisionDnsHosts(slug, hostname, zone) {
+  return [
+    hostname,
+    `*.${slug}.${zone}`,
+    `${slug}.mail.${zone}`,
+    `n8n-${slug}.${zone}`,
+    `hermes-${slug}.${zone}`,
+    `agent-${slug}.${zone}`,
+  ];
 }
 
 /** Parse un fichier env `K=V` (secrets Cloudflare — jamais commité). */

@@ -24,11 +24,12 @@
  *   POST /deprovision { slug }
  *
  * Hostnames (SoT packages/platform-core/src/tunnel-urls.ts) :
- *   {slug}.{zone}         → CRM Next        (dans le container serveur)
- *   n8n.{slug}.{zone}     → n8n             (dans le container serveur)
- *   hermes.{slug}.{zone}  → Hermes WebUI    (dans le container serveur)
- *   agent.{slug}.{zone}   → agent hôte      (hors container, via bridge)
- * DNS : CNAME slug + wildcard *.{slug} → {tunnelId}.cfargotunnel.com
+ *   nested (défaut) :
+ *     {slug}.{zone} / n8n.{slug} / hermes.{slug} / agent.{slug}
+ *     DNS : CNAME slug + wildcard *.{slug}
+ *   flat (CREEZIO_TUNNEL_FLAT_HOSTS=1 — Universal SSL) :
+ *     {slug}.{zone} / n8n-{slug} / hermes-{slug} / agent-{slug}
+ *     DNS : CNAME plats (pas de *.{slug})
  * Email : MX + SPF sur {slug}.mail.{zone} (Email Routing → Worker inbound)
  *
  * Env :
@@ -41,6 +42,7 @@
  *   CREEZIO_TUNNEL_NAME_PREFIX       (défaut creezio-server-)
  *   CREEZIO_TUNNEL_DEFAULT_CRM_PORT / _N8N_PORT / _HERMES_PORT
  *   CREEZIO_TUNNEL_AGENT_DEFAULT_HOST (défaut 172.17.0.1) / _PORT (18810)
+ *   CREEZIO_TUNNEL_FLAT_HOSTS        (1|true → hostnames aplatis Universal SSL)
  */
 
 import http from "node:http";
@@ -50,10 +52,13 @@ import crypto from "node:crypto";
 import {
   buildIngressRules,
   buildPublicUrls,
+  deprovisionDnsHosts,
+  dnsRecordSpecs,
   isZoneLevelKind,
   normalizePorts,
   normalizeSlug,
   parseEnvFile,
+  resolveTunnelHostMode,
   serviceHostname,
   slugCheckLocal,
 } from "./lib.mjs";
@@ -226,7 +231,10 @@ function emailInboundSecret(env) {
 }
 
 async function checkSlug(slug, env, kind) {
-  const local = slugCheckLocal(slug, { kind });
+  const local = slugCheckLocal(slug, {
+    kind,
+    hostMode: resolveTunnelHostMode(),
+  });
   if (!local.available) return local;
   if (readState(slug)) {
     return { available: false, reason: "Déjà réservé" };
@@ -253,25 +261,34 @@ function agentFromBody(body, st) {
 async function putIngress(env, tunnelId, hostname, ports, agent, opts) {
   const acc = await accountId(env);
   const p = normalizePorts(ports, DEFAULT_PORTS);
+  const hostMode = opts?.hostMode || resolveTunnelHostMode();
   await cf(
     "PUT",
     `/accounts/${acc}/cfd_tunnel/${tunnelId}/configurations`,
-    { config: { ingress: buildIngressRules(hostname, p, agent, opts) } },
+    {
+      config: {
+        ingress: buildIngressRules(hostname, p, agent, {
+          ...opts,
+          hostMode,
+        }),
+      },
+    },
     env,
   );
   return p;
 }
 
-/** CNAME slug + wildcard *.{slug} (couvre n8n/hermes/agent.{slug}). */
+/**
+ * CNAME slug + (nested : wildcard *.{slug} | flat : n8n-/hermes-/agent-{slug}).
+ */
 async function ensureTunnelDns(env, slug, hostname, tunnelId, opts) {
   const target = `${tunnelId}.cfargotunnel.com`;
-  const records = [
-    { name: hostname, qName: hostname },
-    // brand-web : pas d'embeds → pas de wildcard *.{slug}.
-    ...(opts?.wildcard === false
-      ? []
-      : [{ name: `*.${slug}`, qName: `*.${slug}.${env.CF_ZONE_NAME}` }]),
-  ];
+  const hostMode = opts?.hostMode || resolveTunnelHostMode();
+  const { records } = dnsRecordSpecs(slug, hostname, env.CF_ZONE_NAME, {
+    wildcard: opts?.wildcard,
+    agent: opts?.agent,
+    hostMode,
+  });
   for (const rec of records) {
     const found = await dnsRecords(env, rec.qName);
     if (found.length) continue;
@@ -289,11 +306,11 @@ async function ensureTunnelDns(env, slug, hostname, tunnelId, opts) {
     );
   }
 }
-
 async function reserveSlug(slug, installId, portsIn, env, kind) {
   // Zone-level (brand-web lp.{zone}, registry.{zone}) : un seul ingress
   // HTTP, pas d'embeds/wildcard/e-mail.
   const zoneLevel = isZoneLevelKind(kind);
+  const hostMode = resolveTunnelHostMode();
   const check = await checkSlug(slug, env, kind);
   if (!check.available) {
     return { ok: false, error: check.reason || "Indisponible" };
@@ -315,9 +332,11 @@ async function reserveSlug(slug, installId, portsIn, env, kind) {
   }
   await putIngress(env, tunnelId, hostname, ports, null, {
     embeds: !zoneLevel,
+    hostMode,
   });
   await ensureTunnelDns(env, slug, hostname, tunnelId, {
     wildcard: !zoneLevel,
+    hostMode,
   });
   let emailDomain = zoneLevel ? null : `${slug}.mail.${env.CF_ZONE_NAME}`;
   if (!zoneLevel) {
@@ -328,12 +347,16 @@ async function reserveSlug(slug, installId, portsIn, env, kind) {
       console.warn("[creezio-tunnel-provisioner] ensureEmailDns:", e);
     }
   }
-  const publicUrls = buildPublicUrls(hostname, { embeds: !zoneLevel });
+  const publicUrls = buildPublicUrls(hostname, {
+    embeds: !zoneLevel,
+    hostMode,
+  });
   const inboundSecret = zoneLevel ? "" : emailInboundSecret(env);
   const state = {
     slug,
     kind: zoneLevel ? kind : "server",
     hostname,
+    hostMode: zoneLevel ? "nested" : hostMode,
     tunnelId,
     tunnelName,
     installId: installId || null,
@@ -350,6 +373,7 @@ async function reserveSlug(slug, installId, portsIn, env, kind) {
     slug,
     kind: state.kind,
     hostname,
+    hostMode: state.hostMode,
     publicUrl: publicUrls.crm,
     publicUrls,
     tunnelId,
@@ -360,17 +384,16 @@ async function reserveSlug(slug, installId, portsIn, env, kind) {
     ...(inboundSecret ? { emailInboundSecret: inboundSecret } : {}),
   };
 }
-
-/** Nettoyage complet d'un slug : DNS (slug, *.slug, mail) + tunnel CF + state. */
+/** Nettoyage complet d'un slug : DNS (nested + flat + mail) + tunnel CF + state. */
 async function deprovisionSlug(slug, env) {
   const st = readState(slug);
   const hostname = st?.hostname || `${slug}.${env.CF_ZONE_NAME}`;
   const removed = { dns: [], tunnel: null };
-  const hostsToClean = [
+  const hostsToClean = deprovisionDnsHosts(
+    slug,
     hostname,
-    `*.${slug}.${env.CF_ZONE_NAME}`,
-    `${slug}.mail.${env.CF_ZONE_NAME}`,
-  ];
+    env.CF_ZONE_NAME,
+  );
   for (const h of hostsToClean) {
     try {
       const records = await dnsRecords(env, h);
@@ -452,7 +475,11 @@ async function readJson(req) {
 async function handle(req, res) {
   const url = new URL(req.url || "/", `http://127.0.0.1:${PORT}`);
   if (url.pathname === "/health") {
-    return send(res, 200, { ok: true, service: "creezio-tunnel-provisioner" });
+    return send(res, 200, {
+      ok: true,
+      service: "creezio-tunnel-provisioner",
+      hostMode: resolveTunnelHostMode(),
+    });
   }
   if (!authOk(req)) {
     return send(res, 401, { ok: false, error: "Non autorisé" });
@@ -503,14 +530,22 @@ async function handle(req, res) {
       hermesPort: body.hermesPort ?? st?.ports?.hermesPort,
     };
     const zoneLevel = isZoneLevelKind(body.kind || st?.kind);
+    // Env / body explicite prime sur un hostMode stale (migration nested→flat).
+    const hostMode =
+      body.hostMode != null
+        ? resolveTunnelHostMode(body.hostMode)
+        : resolveTunnelHostMode();
     const agent = zoneLevel ? null : agentFromBody(body, st);
     const ports = await putIngress(env, tunnelId, hostname, portsIn, agent, {
       embeds: !zoneLevel,
+      hostMode,
     });
     if (slug) {
       try {
         await ensureTunnelDns(env, slug, hostname, tunnelId, {
           wildcard: !zoneLevel,
+          hostMode,
+          agent: Boolean(agent && agent.port),
         });
       } catch (e) {
         console.warn("[creezio-tunnel-provisioner] ensureTunnelDns:", e);
@@ -525,12 +560,16 @@ async function handle(req, res) {
         console.warn("[creezio-tunnel-provisioner] ensureEmailDns:", e);
       }
     }
-    const publicUrls = buildPublicUrls(hostname, { embeds: !zoneLevel });
+    const publicUrls = buildPublicUrls(hostname, {
+      embeds: !zoneLevel,
+      hostMode,
+    });
     const inboundSecret = emailInboundSecret(env);
     if (st && slug) {
       st.localPort = ports.crmPort;
       st.ports = ports;
       st.agent = agent;
+      st.hostMode = zoneLevel ? "nested" : hostMode;
       st.publicUrls = publicUrls;
       if (emailDomain) st.emailDomain = emailDomain;
       writeState(slug, st);
@@ -538,12 +577,17 @@ async function handle(req, res) {
     return send(res, 200, {
       ok: true,
       hostname,
+      hostMode: zoneLevel ? "nested" : hostMode,
       localPort: ports.crmPort,
       ports,
       agent,
       publicUrls,
       ...(agent
-        ? { agentUrl: `https://${serviceHostname(hostname, "agent")}` }
+        ? {
+            agentUrl: `https://${serviceHostname(hostname, "agent", {
+              hostMode,
+            })}`,
+          }
         : {}),
       emailDomain,
       ...(inboundSecret ? { emailInboundSecret: inboundSecret } : {}),

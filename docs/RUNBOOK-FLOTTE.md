@@ -58,4 +58,5 @@ vérifiées sur le VPS TempoFlow.
 - [`docker/server/README.md`](../docker/server/README.md) — serveurs headless
 - [`docker/server-admin/README.md`](../docker/server-admin/README.md) — admin web
 - [`docker/tunnel-provisioner/README.md`](../docker/tunnel-provisioner/README.md) — tunnels
+- [`docs/adr/ADR-tunnel-flat-hosts.md`](./adr/ADR-tunnel-flat-hosts.md) — nested vs flat (Universal SSL)
 - [`docs/ARCHITECTURE.md`](./ARCHITECTURE.md) — vue d'ensemble

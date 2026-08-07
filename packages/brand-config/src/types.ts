@@ -81,10 +81,18 @@ export type AppManifest = {
   /** Préfixe des fichiers log main (ex. `tempoflow-main` → `tempoflow-main.log`). */
   logBasename: string;
   /**
-   * Domaine racine pour tunnels Cloudflare multi-niveau
-   * (`{slug}.{tunnelRootDomain}`, `n8n.{slug}.{tunnelRootDomain}`…).
+   * Domaine racine pour tunnels Cloudflare
+   * (`{slug}.{tunnelRootDomain}`, embeds nested `n8n.{slug}.…` ou flat
+   * `n8n-{slug}.…` selon `tunnelHostMode` / `CREEZIO_TUNNEL_FLAT_HOSTS`).
    */
   tunnelRootDomain: string;
+  /**
+   * Mode hostnames tunnel embeds/agent.
+   * - `nested` (défaut) : `n8n.{slug}.{zone}` — ACM / rétrocompat
+   * - `flat` : `n8n-{slug}.{zone}` — Universal SSL (1 niveau)
+   * Override runtime : `CREEZIO_TUNNEL_FLAT_HOSTS=1` (force flat).
+   */
+  tunnelHostMode?: "nested" | "flat";
   /** Domaines / hosts publics (docs, feeds, tunnels). */
   domains: {
     /** Domaine produit principal (marketing / CRM). */

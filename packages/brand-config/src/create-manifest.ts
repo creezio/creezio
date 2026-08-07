@@ -39,6 +39,11 @@ export type AppManifestSpec = {
    */
   defaultServerUrl?: string;
   /**
+   * Mode hostnames tunnel : `flat` pour zones Universal SSL
+   * (`n8n-{slug}.{zone}`). Défaut nested. Override : CREEZIO_TUNNEL_FLAT_HOSTS.
+   */
+  tunnelHostMode?: "nested" | "flat";
+  /**
    * Capacités optionnelles. `onboarding: false` pour demo-app / apps sans
    * étapes produit (post-setup → home).
    */
@@ -160,6 +165,9 @@ export function createAppManifest(spec: AppManifestSpec): AppManifest {
     sessionPartition: `${brandId}-app`,
     logBasename: `${brandId}-main`,
     tunnelRootDomain: domain,
+    ...(spec.tunnelHostMode === "flat" || spec.tunnelHostMode === "nested"
+      ? { tunnelHostMode: spec.tunnelHostMode }
+      : {}),
     domains: {
       primary: domain,
       feedHost: domain,

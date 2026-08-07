@@ -276,6 +276,60 @@ test("landing.tunnel — ingress brand-web = un seul service + 404", () => {
   assert.deepEqual(Object.keys(urls), ["crm"]);
 });
 
+test("landing.tunnel — mode flat aplatit embeds + DNS sans wildcard", async () => {
+  const {
+    buildIngressRules: buildRules,
+    buildPublicUrls: buildUrls,
+    dnsRecordSpecs,
+    deprovisionDnsHosts,
+    resolveTunnelHostMode,
+    serviceHostname,
+    slugCheckLocal: checkSlug,
+  } = await import("../docker/tunnel-provisioner/lib.mjs");
+  assert.equal(resolveTunnelHostMode("flat"), "flat");
+  assert.equal(resolveTunnelHostMode("nested"), "nested");
+  assert.equal(
+    serviceHostname("resto.winhub.fr", "n8n", { hostMode: "flat" }),
+    "n8n-resto.winhub.fr",
+  );
+  assert.equal(
+    serviceHostname("resto.winhub.fr", "agent", { hostMode: "flat" }),
+    "agent-resto.winhub.fr",
+  );
+  const ports = { crmPort: 18791, n8nPort: 15678, hermesPort: 18797 };
+  const rules = buildRules(
+    "resto.winhub.fr",
+    ports,
+    { host: "172.17.0.1", port: 18810 },
+    { hostMode: "flat" },
+  );
+  assert.equal(rules[1].hostname, "n8n-resto.winhub.fr");
+  assert.equal(rules[2].hostname, "hermes-resto.winhub.fr");
+  assert.equal(rules[3].hostname, "agent-resto.winhub.fr");
+  const pub = buildUrls("resto.winhub.fr", { hostMode: "flat" });
+  assert.equal(pub.n8n, "https://n8n-resto.winhub.fr");
+  const dns = dnsRecordSpecs("resto", "resto.winhub.fr", "winhub.fr", {
+    hostMode: "flat",
+  });
+  assert.equal(dns.hostMode, "flat");
+  assert.ok(dns.records.every((r) => !String(r.name).startsWith("*.")));
+  assert.ok(dns.records.some((r) => r.qName === "n8n-resto.winhub.fr"));
+  const nestedDns = dnsRecordSpecs(
+    "resto",
+    "resto.tempoflow.fr",
+    "tempoflow.fr",
+    { hostMode: "nested" },
+  );
+  assert.ok(nestedDns.records.some((r) => r.name === "*.resto"));
+  assert.ok(
+    deprovisionDnsHosts("resto", "resto.winhub.fr", "winhub.fr").includes(
+      "n8n-resto.winhub.fr",
+    ),
+  );
+  assert.equal(checkSlug("n8n-resto", { hostMode: "flat" }).available, false);
+  assert.equal(checkSlug("n8n-resto", { hostMode: "nested" }).available, true);
+});
+
 // ---------------------------------------------------------------------------
 // 3. Factory — toute app admin neuve naît avec le module
 // ---------------------------------------------------------------------------

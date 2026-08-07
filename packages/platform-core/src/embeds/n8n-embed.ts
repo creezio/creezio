@@ -266,6 +266,8 @@ export function n8nPublicStatus(opts: {
   installing?: boolean;
   remoteCrmOrigin?: string | null;
   tunnelRootDomain: string;
+  /** nested | flat — défaut via env / nested. */
+  tunnelHostMode?: "nested" | "flat";
   productName?: string;
 }): {
   status: N8nRuntimeStatus;
@@ -283,6 +285,7 @@ export function n8nPublicStatus(opts: {
           opts.remoteCrmOrigin,
           "n8n",
           opts.tunnelRootDomain,
+          opts.tunnelHostMode,
         )
       : null;
     const uiUrl = (config.remoteUiUrl || derived || "").trim() || null;

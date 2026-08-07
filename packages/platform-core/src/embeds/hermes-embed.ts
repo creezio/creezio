@@ -195,6 +195,8 @@ export function hermesPublicStatus(opts: {
   version: string | null;
   remoteCrmOrigin?: string | null;
   tunnelRootDomain: string;
+  /** nested | flat — défaut via env / nested. */
+  tunnelHostMode?: "nested" | "flat";
   productName?: string;
 }): {
   status: HermesRuntimeStatus;
@@ -213,6 +215,7 @@ export function hermesPublicStatus(opts: {
           opts.remoteCrmOrigin,
           "hermes",
           opts.tunnelRootDomain,
+          opts.tunnelHostMode,
         )
       : null;
     const webuiUrl =

@@ -16,11 +16,24 @@ Cloudflare de la zone marque (ex. `tempoflow.fr`).
 | `POST /deprovision` | Supprime DNS (slug, wildcard, mail) + tunnel CF + state |
 
 Hostnames (SoT `packages/platform-core/src/tunnel-urls.ts`) :
-`{slug}.{zone}` (CRM), `n8n.{slug}`, `hermes.{slug}`, `agent.{slug}` (agent
-hôte flotte — service `http://172.17.0.1:18810` par défaut, joignable depuis
-le cloudflared qui tourne DANS le container serveur).
+
+| Mode | Activation | CRM | embeds / agent | DNS |
+|------|------------|-----|----------------|-----|
+| **nested** (défaut) | — | `{slug}.{zone}` | `n8n.{slug}`, `hermes.{slug}`, `agent.{slug}` | CNAME `{slug}` + wildcard `*.{slug}` |
+| **flat** | `CREEZIO_TUNNEL_FLAT_HOSTS=1` | `{slug}.{zone}` | `n8n-{slug}`, `hermes-{slug}`, `agent-{slug}` | CNAME plats (pas de `*.{slug}`) |
+
+Le mode **flat** est requis sur les zones en **Universal SSL** Cloudflare
+(certificats limités à 1 niveau de sous-domaine — ex. `winhub.fr`). Les zones
+avec Advanced Certificate Manager (ex. TempoFlow) restent en nested.
+
+Agent hôte flotte : service `http://172.17.0.1:18810` par défaut, joignable
+depuis le cloudflared qui tourne DANS le container serveur.
 
 Slugs réservés : `admin`, `mcp`, `api`, `agent`, `registry`, … (`lib.mjs`).
+En mode flat, les slugs préfixés `n8n-` / `hermes-` / `agent-` sont aussi
+refusés (collision avec les embeds aplatis).
+
+Voir [ADR-tunnel-flat-hosts](../../docs/adr/ADR-tunnel-flat-hosts.md).
 
 ## Lancer (VPS admin/infra)
 
@@ -29,8 +42,11 @@ CREEZIO_TUNNEL_PROVISION_TOKEN="$(openssl rand -hex 24)" \
 CREEZIO_TUNNEL_CF_ENV_FILE=/opt/docker/wp-provisioner/.cloudflare-tempoflow.env \
 CREEZIO_TUNNEL_STATE_DIR=/opt/docker/creezio-fleet/tunnel-state \
 CREEZIO_TUNNEL_PROVISIONER_HOSTS=127.0.0.1,172.17.0.1 \
+# CREEZIO_TUNNEL_FLAT_HOSTS=1 \   # Universal SSL uniquement
 node docker/tunnel-provisioner/server.mjs
 ```
+
+`GET /health` renvoie `hostMode: "nested"|"flat"` pour vérifier le flag.
 
 - `CF_ENV_FILE` : `CF_API_TOKEN`, `CF_ZONE_ID`, `CF_ZONE_NAME`,
   `CREEZIO_EMAIL_INBOUND_SECRET` (fallback `TF2_EMAIL_INBOUND_SECRET`) —
