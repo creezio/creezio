@@ -1,25 +1,22 @@
 /**
  * Générateur nav métier (shell-ui registerBrandNav).
+ * Consommateur du registre modules — les entrées viennent de
+ * \`modules/<id>.ts\` via \`collectNavItems\`.
  */
 import type { ProductModel } from "../product-model.js";
 
 export function renderVerticalSlotFromModel(model: ProductModel): string {
-  const navItems = model.pages.map((p) => ({
-    id: `brand.${p.id}`,
-    label: p.title,
-    href: p.path,
-    group: "brand",
-  }));
-
   return `/**
  * Slot métier vertical — ${model.brandName} (généré --from-prd).
- * Nav brand uniquement via @creezio/shell-ui. Pas de stubs OS.
+ * Consommateur du registre de modules : chaque module déclare ses entrées
+ * (\`navItems\` avec \`order\`) dans \`modules/<id>.ts\`.
  */
 import {
   createNavRegistry,
   type CoreNavItem,
   type NavRegistry,
 } from "@creezio/shell-ui";
+import { collectNavItems } from "./modules/index.js";
 
 export type VerticalSlot = {
   brandId: string;
@@ -27,7 +24,9 @@ export type VerticalSlot = {
   nav: NavRegistry;
 };
 
-const BRAND_NAV: CoreNavItem[] = ${JSON.stringify(navItems, null, 2)};
+const BRAND_NAV: CoreNavItem[] = collectNavItems().map(
+  ({ order: _order, ...item }) => item,
+);
 
 const nav = createNavRegistry();
 nav.registerBrandNav(BRAND_NAV);

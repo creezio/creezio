@@ -415,6 +415,7 @@ export function scaffoldAdminApp(o: AdminRepoOptions): AdminRepoResult {
       id: "fromprd_brand_api_keys",
       sql: BRAND_API_KEYS_SQL,
     },
+    collectModuleMigrations(),
   );`,
     `    {
       id: "fromprd_brand_api_keys",
@@ -427,6 +428,7 @@ export function scaffoldAdminApp(o: AdminRepoOptions): AdminRepoResult {
     landingMigrations(
       defaultLandingSeed({ brandName: ${JSON.stringify(o.productName)} }),
     ),
+    collectModuleMigrations(),
   );`,
   );
   patchFile(

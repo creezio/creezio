@@ -15,6 +15,8 @@ const CLI = path.join(ROOT, "packages/factory/bin/creezio.js");
 const SMOKE_ENV = {
   ...process.env,
   CREEZIO_ROOT: ROOT,
+  // Gates structurelles : pas de vendor/lock Docker (layout node_modules tmp).
+  CREEZIO_SKIP_BRAND_DIST: "1",
   NODE_PATH: path.join(ROOT, "node_modules"),
   PATH: [
     path.join(ROOT, "node_modules", ".bin"),
@@ -130,6 +132,57 @@ Desktop Creezio.
     clientMain,
     /from "\.\/(brand-migrations|brand-module-api|vertical-slot)/,
   );
+
+  // Socle registre modules (même standard que TempoFlow3).
+  assert.ok(
+    fs.existsSync(path.join(serverDir, "src/electron/modules/index.ts")),
+  );
+  assert.match(
+    fs.readFileSync(
+      path.join(serverDir, "src/electron/brand-module-api.ts"),
+      "utf8",
+    ),
+    /collectEntitySpecs/,
+  );
+  assert.match(
+    fs.readFileSync(
+      path.join(serverDir, "src/electron/brand-migrations.ts"),
+      "utf8",
+    ),
+    /collectModuleMigrations/,
+  );
+  assert.match(
+    fs.readFileSync(path.join(appDir, "AGENTS.md"), "utf8"),
+    /BrandModuleDef/,
+  );
+
+  // brand module init branche sans refactor des consommateurs.
+  const modInit = runCli([
+    "brand",
+    "module",
+    "init",
+    "clients",
+    "--app",
+    appDir,
+    "--force",
+  ]);
+  assert.equal(modInit.status, 0, modInit.stderr + "\n" + modInit.stdout);
+  assert.ok(
+    fs.existsSync(path.join(serverDir, "src/electron/modules/clients.ts")),
+  );
+  assert.match(
+    fs.readFileSync(
+      path.join(serverDir, "src/electron/modules/index.ts"),
+      "utf8",
+    ),
+    /clientsModule/,
+  );
+  const gate = spawnSync(
+    process.execPath,
+    [path.join(serverDir, "scripts/test-module-clients.mjs")],
+    { encoding: "utf8", cwd: serverDir, env: SMOKE_ENV },
+  );
+  assert.equal(gate.status, 0, gate.stderr + "\n" + gate.stdout);
 
   const firstRun = spawnSync(
     process.execPath,

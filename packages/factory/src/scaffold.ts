@@ -30,7 +30,13 @@ import {
   serverDockerNpmScripts,
   renderCreezioCliProxyMjs,
 } from "./generators/server-docker-scripts.js";
-import { renderEnsureLinuxIconsMjs } from "./generators/index.js";
+import {
+  renderEnsureLinuxIconsMjs,
+  ensureModulesRegistry,
+  MODULES_INDEX_TS,
+  MODULES_TYPES_TS,
+  renderBrandAgentsMd,
+} from "./generators/index.js";
 import { scaffoldAdminApp } from "./admin-repo.js";
 
 export type NewAppOptions = {
@@ -581,25 +587,34 @@ function renderInstallerNsh(m: AppManifest): string {
 
 function renderBareBrandMigrationsTs(): string {
   return `/**
- * Migrations brand vides — squelette sans --from-prd.
- * Remplacées par le schéma métier lors d'un apply / --from-prd.
+ * Migrations brand — squelette sans --from-prd.
+ * Consommateur du registre : migrations \`mod_<module>_*\` via
+ * \`collectModuleMigrations\` (\`creezio brand module init\`).
  */
 import type { SqliteMigration } from "@creezio/platform-core";
+import { collectModuleMigrations } from "./modules/index.js";
 
 export function brandMigrations(): SqliteMigration[] {
-  return [];
+  return [...collectModuleMigrations()];
 }
 `;
 }
 
 function renderBareBrandModuleApiTs(): string {
   return `/**
- * Mounts métier vides — squelette. OS natif via startBrandDesktop.
+ * Mounts métier — squelette. Consommateur du registre \`modules/\`.
+ * \`creezio brand module init <id>\` branche EntitySpecs / mounts sans
+ * refactor ici.
  */
 import type { ApiKernel } from "@creezio/api-kernel";
+import { registerEntityMounts } from "@creezio/api-kernel";
+import { collectApiMounts, collectEntitySpecs } from "./modules/index.js";
 
-export function registerBrandModuleApi(_api: ApiKernel): void {
-  /* marque : monter /api/v1/modules/* ici */
+export function registerBrandModuleApi(api: ApiKernel): void {
+  registerEntityMounts(api, collectEntitySpecs());
+  for (const [id, mount] of collectApiMounts()) {
+    api.registerModuleApi(id, mount);
+  }
 }
 `;
 }
@@ -1066,7 +1081,7 @@ function renderVerticalSlotTs(m: AppManifest): string {
   const tokensName = `${m.brandId.replace(/-/g, "")}ProductHubTokens`;
   return `/**
  * Slot métier vertical — ${m.client.productName}.
- * Nav brand via \`@creezio/shell-ui\` ; Product Hub stub ; domaine métier vide.
+ * Consommateur du registre modules (\`collectNavItems\`) + Product Hub stub.
  */
 import {
   createNavRegistry,
@@ -1078,6 +1093,7 @@ import {
   ${tokensName},
   get${pascal}ProductHubStore,
 } from "./product-hub-stub.js";
+import { collectNavItems } from "./modules/index.js";
 
 export type VerticalSlot = {
   /** Identifiant marque. */
@@ -1094,8 +1110,12 @@ export type VerticalSlot = {
   };
 };
 
+const BRAND_NAV: CoreNavItem[] = collectNavItems().map(
+  ({ order: _order, ...item }) => item,
+);
+
 const nav = createNavRegistry();
-nav.registerBrandNav([]);
+nav.registerBrandNav(BRAND_NAV);
 
 export const verticalSlot: VerticalSlot = {
   brandId: "${m.brandId}",
@@ -1412,6 +1432,24 @@ export function scaffoldNewApp(opts: NewAppOptions): ScaffoldResult {
     written,
   );
   if (!prd) {
+    // Registre modules vide (marqueurs) — \`brand module init\` branche sans refactor.
+    ensureModulesRegistry(
+      path.join(serverDir, "src/electron/modules"),
+      force,
+      (filePath, body) => writeFile(filePath, body, force, written),
+    );
+    writeFile(
+      path.join(serverDir, "src/electron/modules/types.ts"),
+      MODULES_TYPES_TS,
+      force,
+      written,
+    );
+    writeFile(
+      path.join(serverDir, "src/electron/modules/index.ts"),
+      MODULES_INDEX_TS,
+      force,
+      written,
+    );
     writeFile(
       path.join(serverDir, "src/electron/brand-migrations.ts"),
       renderBareBrandMigrationsTs(),
@@ -1630,6 +1668,25 @@ export function scaffoldNewApp(opts: NewAppOptions): ScaffoldResult {
       onboardingEnabled: opts.productModel.platformNeeds?.onboarding !== false,
     });
     written.push(...specResult.written);
+  } else {
+    // Squelette technique : brand-spec (_template modules) + AGENTS standard.
+    const specResult = initBrandSpec({
+      outDir: path.join(outDir, "brand-spec"),
+      brandId: opts.brandId,
+      brandName: opts.productName,
+      domain: opts.domain,
+      tagline: `${opts.productName} — métier sur OS Creezio`,
+      vertical: "generic",
+      force,
+      onboardingEnabled: true,
+    });
+    written.push(...specResult.written);
+    writeFile(
+      path.join(outDir, "AGENTS.md"),
+      renderBrandAgentsMd(opts.productName),
+      force,
+      written,
+    );
   }
 
   /* ── Racine orchestrateur ─────────────────────────────────────────── */

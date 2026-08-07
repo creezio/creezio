@@ -43,6 +43,17 @@ export {
   renderMeiliFeedTs,
 } from "./native-runtime.js";
 export {
+  MODULES_INDEX_TS,
+  MODULES_TYPES_TS,
+  ensureModulesRegistry,
+  writeProductModelModules,
+  renderBrandAgentsMd,
+  renderModuleGateStub,
+  wireModuleGateInPackageJson,
+  entityToModuleId,
+  registerModuleInIndex,
+} from "./modules-registry.js";
+export {
   renderMetierParcoursSmoke,
   renderFirstRunAuthSmoke,
   renderSetupLoginSmoke,

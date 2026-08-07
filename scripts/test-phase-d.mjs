@@ -223,9 +223,44 @@ test("scaffoldNewApp génère structure + builder configs", () => {
     path.join(outDir, "server/src/electron/vertical-slot.ts"),
     "utf8",
   );
-  assert.match(vertical, /registerBrandNav\(\[\]\)/);
+  assert.match(vertical, /collectNavItems/);
+  assert.match(vertical, /registerBrandNav\(BRAND_NAV\)/);
   assert.match(vertical, /productHub/);
   assert.doesNotMatch(vertical, /catalogue|tempoflow/i);
+
+  // Socle registre modules (standard TF3) — prêt pour brand module init.
+  assert.ok(
+    fs.existsSync(path.join(outDir, "server/src/electron/modules/index.ts")),
+    "registre modules/index.ts",
+  );
+  assert.ok(
+    fs.existsSync(path.join(outDir, "server/src/electron/modules/types.ts")),
+    "modules/types.ts BrandModuleDef",
+  );
+  const modIndex = fs.readFileSync(
+    path.join(outDir, "server/src/electron/modules/index.ts"),
+    "utf8",
+  );
+  assert.match(modIndex, /collectEntitySpecs/);
+  assert.match(modIndex, /<creezio:module-imports>/);
+  const bareApi = fs.readFileSync(
+    path.join(outDir, "server/src/electron/brand-module-api.ts"),
+    "utf8",
+  );
+  assert.match(bareApi, /collectEntitySpecs/);
+  const bareMig = fs.readFileSync(
+    path.join(outDir, "server/src/electron/brand-migrations.ts"),
+    "utf8",
+  );
+  assert.match(bareMig, /collectModuleMigrations/);
+  assert.ok(
+    fs.existsSync(path.join(outDir, "brand-spec/modules/_template/prd.md")),
+    "brand-spec modules/_template",
+  );
+  const agentsBare = fs.readFileSync(path.join(outDir, "AGENTS.md"), "utf8");
+  assert.match(agentsBare, /BrandModuleDef/);
+  assert.match(agentsBare, /brand module init/);
+  assert.match(agentsBare, /CREATE-MODULE/);
   const hubStub = fs.readFileSync(
     path.join(outDir, "server/src/electron/product-hub-stub.ts"),
     "utf8",
@@ -286,11 +321,21 @@ test("CLI creezio new-app", () => {
       outDir,
       "--force",
     ],
-    { encoding: "utf8" },
+    {
+      encoding: "utf8",
+      env: { ...process.env, CREEZIO_SKIP_BRAND_DIST: "1" },
+    },
   );
   assert.equal(res.status, 0, res.stderr + res.stdout);
   assert.match(res.stdout, /AppManifest clipapp/);
   assert.ok(fs.existsSync(path.join(outDir, "package.json")));
+  assert.ok(
+    fs.existsSync(path.join(outDir, "server/src/electron/modules/index.ts")),
+  );
+  assert.match(
+    fs.readFileSync(path.join(outDir, "AGENTS.md"), "utf8"),
+    /BrandModuleDef/,
+  );
   fs.rmSync(tmp, { recursive: true, force: true });
 });
 

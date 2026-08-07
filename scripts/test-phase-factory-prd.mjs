@@ -37,6 +37,8 @@ const CLI = path.join(ROOT, "packages/factory/bin/creezio.js");
 const SMOKE_ENV = {
   ...process.env,
   CREEZIO_ROOT: ROOT,
+  // Gates structurelles : pas de vendor/lock Docker (layout node_modules tmp).
+  CREEZIO_SKIP_BRAND_DIST: "1",
   NODE_PATH: path.join(ROOT, "node_modules"),
   PATH: [
     path.join(ROOT, "node_modules", ".bin"),
@@ -97,7 +99,7 @@ test("F1–F4 scaffold --from-prd génère 2 repos (monorepo + admin dédié, ru
   const r = spawnSync(
     process.execPath,
     [CLI, "new-app", "--from-prd", PRD, "--out", outDir, "--force"],
-    { encoding: "utf8", cwd: ROOT },
+    { encoding: "utf8", cwd: ROOT, env: SMOKE_ENV },
   );
   assert.equal(r.status, 0, r.stderr + "\n" + r.stdout);
 
@@ -190,7 +192,57 @@ test("F1–F4 scaffold --from-prd génère 2 repos (monorepo + admin dédié, ru
   );
   assert.match(mounts, /registerModuleApi/);
   assert.match(mounts, /createSearchMount|"search"/);
+  assert.match(mounts, /collectEntitySpecs/);
+  assert.match(mounts, /collectApiMounts/);
   assert.doesNotMatch(mounts, /delegate_to_metier_api/);
+
+  // Registre modules (standard TF3) — entités dans modules/<id>.ts
+  assert.ok(
+    fs.existsSync(path.join(server, "src/electron/modules/index.ts")),
+    "modules/index.ts",
+  );
+  assert.ok(
+    fs.existsSync(path.join(server, "src/electron/modules/types.ts")),
+    "modules/types.ts",
+  );
+  assert.ok(
+    fs.existsSync(path.join(server, "src/electron/modules/fournisseurs.ts")),
+    "module fournisseurs dans le registre",
+  );
+  const modIndex = fs.readFileSync(
+    path.join(server, "src/electron/modules/index.ts"),
+    "utf8",
+  );
+  assert.match(modIndex, /fournisseursModule/);
+  assert.match(modIndex, /collectEntitySpecs/);
+  const mig = fs.readFileSync(
+    path.join(server, "src/electron/brand-migrations.ts"),
+    "utf8",
+  );
+  assert.match(mig, /collectModuleMigrations/);
+  const vertical = fs.readFileSync(
+    path.join(server, "src/electron/vertical-slot.ts"),
+    "utf8",
+  );
+  assert.match(vertical, /collectNavItems/);
+  const agents = fs.readFileSync(path.join(outDir, "AGENTS.md"), "utf8");
+  assert.match(agents, /BrandModuleDef/);
+  assert.match(agents, /brand module init/);
+  assert.match(agents, /CREATE-MODULE|DOC-STANDARD-MODULE/);
+  assert.ok(
+    fs.existsSync(path.join(outDir, "brand-spec/modules/_template/prd.md")),
+  );
+  assert.ok(
+    fs.existsSync(path.join(outDir, "brand-spec/modules/fournisseurs/prd.md")),
+  );
+  const serverPkg = JSON.parse(
+    fs.readFileSync(path.join(server, "package.json"), "utf8"),
+  );
+  assert.ok(
+    serverPkg.scripts["test:module-fournisseurs"],
+    "gate module branchée npm",
+  );
+  assert.match(serverPkg.scripts.test, /test:module-fournisseurs/);
 
   const feed = fs.readFileSync(
     path.join(server, "src/electron/meili-feed.ts"),

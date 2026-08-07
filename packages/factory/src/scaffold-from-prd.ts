@@ -5,6 +5,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import type { AppManifest } from "@creezio/brand-config";
+import { renderModuleSpecFiles } from "@creezio/brand-spec";
 import { isChrModel, type ProductModel } from "./product-model.js";
 import {
   renderBrandSchemaSql,
@@ -44,6 +45,11 @@ import {
   renderEnsureLinuxIconsMjs,
   renderE2eBrowserParcoursMjs,
   renderCreezioCliProxyMjs,
+  writeProductModelModules,
+  renderBrandAgentsMd,
+  renderModuleGateStub,
+  wireModuleGateInPackageJson,
+  entityToModuleId,
 } from "./generators/index.js";
 
 import { writeAppFile, writeOsUiAppFile } from "./write-app-file.js";
@@ -507,6 +513,14 @@ process.exit(r.status ?? 1);
     written,
   );
 
+  // Registre modules + un BrandModuleDef par entité (notes / CHR…).
+  const moduleIds = writeProductModelModules(
+    outDir,
+    model,
+    force,
+    (filePath, body) => writeFile(filePath, body, force, written),
+  );
+
   writeFile(
     path.join(outDir, "src/electron/vertical-slot.ts"),
     renderVerticalSlotFromModel(model),
@@ -525,6 +539,26 @@ process.exit(r.status ?? 1);
     force,
     written,
   );
+
+  // Specs 4 fichiers + gate structurelle branchée dans npm test.
+  for (const moduleId of moduleIds) {
+    const specFiles = renderModuleSpecFiles(moduleId);
+    for (const [name, body] of Object.entries(specFiles)) {
+      writeFile(
+        path.join(rootDir, "brand-spec", "modules", moduleId, name),
+        body,
+        force,
+        written,
+      );
+    }
+    writeFile(
+      path.join(outDir, "scripts", `test-module-${moduleId}.mjs`),
+      renderModuleGateStub(moduleId, "brand-spec"),
+      force,
+      written,
+    );
+    wireModuleGateInPackageJson(outDir, moduleId);
+  }
   writeFile(
     path.join(outDir, "src/electron/meili-feed.ts"),
     renderMeiliFeedTs(model),
@@ -559,30 +593,7 @@ process.exit(r.status ?? 1);
 
   writeFile(
     path.join(rootDir, "AGENTS.md"),
-    `# AGENTS — ${manifest.client.productName}
-
-Marque légère sur **OS Creezio** — monorepo client + server (layout 2 repos).
-
-- \`server/\` = livrable principal : métier (\`src/electron/brand-*\`), UI Next,
-  harness, tests — \`startBrandDesktop\` (@creezio/app-runtime)
-- \`client/\` = desktop thin remote-only (main **sans** imports métier)
-- Admin flotte = **repo dédié privé** \`<brand>-admin\` (frère du monorepo) —
-  jamais de \`admin/\` ici
-- \`vendor/creezio\` = kit partagé (symlinks \`server/vendor\`, \`client/vendor\`)
-- Déclaration = migrations + \`registerModuleApi\` + feed + nav métier
-- API métier = \`/api/v1/modules/*\`
-- UI OS (\`/mails\`, \`/taches\`, \`/setup\`, \`/login\`, MCP, admin…) =
-  **wrappers** \`@creezio/*/ui\` générés factory — **ne pas** réécrire ni marquer
-  \`owned-by-brand\`
-- **Interdit** : glue OS (\`src/lib/*\`, \`brand-runtime\`), sidecar JSON,
-  fetch maison vers \`/api/v1/os/*\` dans \`ui/app\`
-
-\`\`\`bash
-npm test                      # racine — délègue server/
-npm run metier:api
-npm run server-docker:create -- demo
-\`\`\`
-`,
+    renderBrandAgentsMd(manifest.client.productName),
     force,
     written,
   );

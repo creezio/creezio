@@ -2,11 +2,7 @@
  * Générateurs runtime natif OS — SQLite + api-kernel (pas de sidecar JSON).
  */
 import type { AppManifest } from "@creezio/brand-config";
-import {
-  isChrModel,
-  type ProductField,
-  type ProductModel,
-} from "../product-model.js";
+import { isChrModel, type ProductModel } from "../product-model.js";
 import { renderBrandSchemaSql } from "./schema.js";
 
 export function renderBrandMigrationsTs(model: ProductModel): string {
@@ -17,8 +13,11 @@ export function renderBrandMigrationsTs(model: ProductModel): string {
   return `/**
  * Migrations brand ${model.brandId} — généré --from-prd (SQL métier marque).
  * Appliquées via createSqliteRuntime (OS @creezio/platform-core).
+ * Consommateur du registre : \`...collectModuleMigrations()\` pour les
+ * migrations \`mod_<module>_*\` (brand module init / modules/<id>.ts).
  */
 import { composeMigrations, type SqliteMigration } from "@creezio/platform-core";
+import { collectModuleMigrations } from "./modules/index.js";
 
 export const BRAND_SCHEMA_SQL = \`${sql}\`;
 
@@ -54,249 +53,45 @@ export function brandMigrations(): SqliteMigration[] {
       id: "fromprd_brand_api_keys",
       sql: BRAND_API_KEYS_SQL,
     },
+    collectModuleMigrations(),
   );
 }
 `;
 }
 
-function renderEntityColumnSpec(
-  f: ProductField,
-  opts: { enumRef?: string },
-): string {
-  const parts = [`name: ${JSON.stringify(f.name)}`];
-  if (f.required) parts.push("required: true");
-  if (f.type === "number") parts.push(`type: "number"`);
-  else if (f.type === "boolean") parts.push(`type: "boolean"`);
-  else if (f.type === "date") parts.push(`type: "date"`);
-  if (opts.enumRef) parts.push(`enum: ${opts.enumRef}`);
-  if (f.type === "text") parts.push("searchable: true");
-  if (f.type === "ref" || f.type === "boolean") parts.push("filterable: true");
-  return `      { ${parts.join(", ")} },`;
-}
-
+/**
+ * Mounts métier — consommateur du registre \`modules/\`.
+ * EntitySpecs + mounts manuscrits vivent dans \`modules/<id>.ts\` ;
+ * schema / dashboard / search restent des mounts partagés d'assemblage.
+ */
 export function renderBrandModuleApiTs(model: ProductModel): string {
-  const entityIds = model.entities.map((e) => e.id);
-  const chr = isChrModel(model);
   const pagesJson = JSON.stringify(
     model.pages.map((p) => ({ id: p.id, path: p.path, title: p.title })),
   );
   const flowsJson = JSON.stringify(model.flows);
 
-  const hasEntity = (id: string) => model.entities.some((e) => e.id === id);
-  const hasField = (id: string, name: string) =>
-    model.entities
-      .find((e) => e.id === id)
-      ?.fields.some((f) => f.name === name) ?? false;
-  const prixHook = hasEntity("prix") && hasField("prix", "montant");
-  const panierHook =
-    hasEntity("panier_lignes") &&
-    hasField("panier_lignes", "quantite") &&
-    hasEntity("prix");
-  const panierList = hasEntity("panier_lignes");
-  const commandesEnum = chr && hasField("commandes", "statut");
-  const commandesExtra = chr && hasEntity("commandes");
-
-  const specEntries = model.entities
-    .map((e) => {
-      const lines: string[] = [`  ${JSON.stringify(e.id)}: {`];
-      lines.push(`    table: ${JSON.stringify(e.id)},`);
-      if (e.archivable) lines.push(`    archivable: true,`);
-      lines.push(`    columns: [`);
-      for (const f of e.fields) {
-        lines.push(
-          renderEntityColumnSpec(f, {
-            enumRef:
-              commandesEnum && e.id === "commandes" && f.name === "statut"
-                ? "COMMANDE_STATUTS"
-                : undefined,
-          }),
-        );
-      }
-      lines.push(`    ],`);
-      const hooks: string[] = [];
-      if (e.id === "prix" && prixHook) hooks.push("beforeCreate: prixBeforeCreate");
-      if (e.id === "panier_lignes" && panierHook) {
-        hooks.push("beforeCreate: panierLigneBeforeCreate");
-      }
-      if (e.id === "panier_lignes" && panierList) {
-        hooks.push("afterList: panierAfterList");
-      }
-      if (hooks.length) lines.push(`    hooks: { ${hooks.join(", ")} },`);
-      if (e.id === "commandes" && commandesExtra) {
-        lines.push(`    extraRoutes: commandesExtraRoutes,`);
-      }
-      lines.push(`  },`);
-      return lines.join("\n");
-    })
-    .join("\n");
-
   return `/**
  * Mounts métier ${model.brandId} — api-kernel /api/v1/modules/* + brand.db.
- * Généré --from-prd : entités = EntitySpec déclaratifs (moteur CRUD kit
- * \`createEntityApiMount\`, filtres/pagination SQL, identifiants validés).
- * Règles riches = hooks métier + extraRoutes (enrichissement marque).
+ * Consommateur du registre de modules (\`modules/index.ts\`) : les EntitySpec
+ * et mounts manuscrits vivent dans \`modules/<id>.ts\` (standard kit
+ * DOC-STANDARD-MODULE.md). Ne pas ré-inliner de métier ici.
  */
-${commandesExtra ? `import { randomUUID } from "node:crypto";\n` : ""}import { createRequire } from "node:module";
+import { createRequire } from "node:module";
 import type {
   ApiKernel,
   ApiMount,
   ApiRequest,
-${panierHook || commandesExtra ? "  EntityHookContext,\n" : ""}  EntitySpec,
 } from "@creezio/api-kernel";
 import { registerEntityMounts } from "@creezio/api-kernel";
+import { collectApiMounts, collectEntitySpecs } from "./modules/index.js";
 
 const require = createRequire(import.meta.url);
 
-const ENTITY_IDS: readonly string[] = ${JSON.stringify(entityIds)};
-const ARCHIVABLE = new Set<string>(${JSON.stringify(
-    model.entities.filter((e) => e.archivable).map((e) => e.id),
-  )});
-${commandesEnum ? `const COMMANDE_STATUTS = ["brouillon", "envoyee", "recue"] as const;\n` : ""}
-${commandesExtra ? `function now() {
-  return new Date().toISOString();
-}
-` : ""}
 function qstr(req: ApiRequest, key: string): string {
   const v = req.query?.[key];
   if (Array.isArray(v)) return String(v[0] ?? "");
   return v == null ? "" : String(v);
 }
-${
-  prixHook
-    ? `
-/** POST prix — coercions montant/promo/devise. */
-function prixBeforeCreate(row: Record<string, unknown>): void {
-  row.montant = Number(row.montant);
-  row.promo = row.promo ? 1 : 0;
-  row.devise = row.devise || "EUR";
-}
-`
-    : ""
-}${
-  panierHook
-    ? `
-/** POST panier — quantité numérique + dernier prix connu par défaut. */
-function panierLigneBeforeCreate(
-  row: Record<string, unknown>,
-  { db }: EntityHookContext,
-): void {
-  row.quantite = Number(row.quantite);
-  if (row.prix_unitaire == null) {
-    const prices = db
-      .prepare(
-        \`SELECT montant FROM prix WHERE produit_id = ? AND fournisseur_id = ? ORDER BY created_at DESC LIMIT 1\`,
-      )
-      .get(row.produit_id, row.fournisseur_id) as
-      | { montant: number }
-      | undefined;
-    if (prices) row.prix_unitaire = Number(prices.montant);
-  } else {
-    row.prix_unitaire = Number(row.prix_unitaire);
-  }
-}
-`
-    : ""
-}${
-  panierList
-    ? `
-/** GET panier — items + total HT + ventilation par fournisseur. */
-function panierAfterList(rows: Array<Record<string, unknown>>): unknown {
-  let total = 0;
-  const by = new Map<
-    string,
-    { fournisseur_id: string; lignes: number; total_ht: number }
-  >();
-  for (const l of rows) {
-    const line = Number(l.quantite || 0) * Number(l.prix_unitaire || 0);
-    total += line;
-    const fid = String(l.fournisseur_id || "unknown");
-    const cur = by.get(fid) || {
-      fournisseur_id: fid,
-      lignes: 0,
-      total_ht: 0,
-    };
-    cur.lignes += 1;
-    cur.total_ht += line;
-    by.set(fid, cur);
-  }
-  return {
-    items: rows,
-    total_ht: total,
-    by_fournisseur: [...by.values()],
-  };
-}
-`
-    : ""
-}${
-  commandesExtra
-    ? `
-/** Routes métier commandes hors CRUD : from-panier. */
-const commandesExtraRoutes: ApiMount["handle"] = async ({
-  req,
-  subPath,
-  db,
-}) => {
-  if (!db) return { status: 503, body: { error: "db_unavailable" } };
-  const method = req.method.toUpperCase();
-  const parts = subPath.split("/").filter(Boolean);
-
-  if (parts[0] === "from-panier" && method === "POST") {
-    const body = (req.body || {}) as { fournisseur_id?: string; notes?: string };
-    const lignes = db
-      .prepare(\`SELECT * FROM panier_lignes\`)
-      .all() as Array<Record<string, unknown>>;
-    if (!lignes.length) return { status: 400, body: { error: "panier_vide" } };
-    const fournisseurId =
-      body.fournisseur_id || String(lignes[0]!.fournisseur_id);
-    const related = lignes.filter((l) => l.fournisseur_id === fournisseurId);
-    if (!related.length) {
-      return { status: 400, body: { error: "aucune_ligne_fournisseur" } };
-    }
-    const total = related.reduce(
-      (s, l) => s + Number(l.quantite || 0) * Number(l.prix_unitaire || 0),
-      0,
-    );
-    const id = randomUUID();
-    const created = now();
-    db.prepare(
-      \`INSERT INTO commandes (id, created_at, updated_at, fournisseur_id, statut, total_ht, notes)
-       VALUES (?, ?, ?, ?, ?, ?, ?)\`,
-    ).run(
-      id,
-      created,
-      created,
-      fournisseurId,
-      "brouillon",
-      total,
-      body.notes || "",
-    );
-    db.prepare(\`DELETE FROM panier_lignes WHERE fournisseur_id = ?\`).run(
-      fournisseurId,
-    );
-    return {
-      status: 201,
-      body: {
-        id,
-        created_at: created,
-        updated_at: created,
-        fournisseur_id: fournisseurId,
-        statut: "brouillon",
-        total_ht: total,
-        notes: body.notes || "",
-        lignes: related,
-      },
-    };
-  }
-
-  return { status: 404, body: { error: "not_found", subPath } };
-};
-`
-    : ""
-}
-/** Schéma des entités — le kit fournit le moteur, la marque le schéma. */
-const ENTITY_SPECS: Record<string, EntitySpec> = {
-${specEntries}
-};
 
 function createSchemaMount(): ApiMount {
   return {
@@ -309,7 +104,7 @@ function createSchemaMount(): ApiMount {
         status: 200,
         body: {
           brandId: ${JSON.stringify(model.brandId)},
-          entities: ENTITY_IDS,
+          entities: Object.keys(collectEntitySpecs()),
           pages: ${pagesJson},
           flows: ${flowsJson},
         },
@@ -326,6 +121,11 @@ function createDashboardMount(): ApiMount {
       if (req.method.toUpperCase() !== "GET") {
         return { status: 405, body: { error: "method_not_allowed" } };
       }
+      const specs = collectEntitySpecs();
+      const entityIds = Object.keys(specs);
+      const archivable = new Set(
+        entityIds.filter((id) => specs[id]!.archivable),
+      );
       const count = (table: string, where = "") =>
         (
           db.prepare(\`SELECT COUNT(*) AS c FROM \${table} \${where}\`).get() as {
@@ -333,26 +133,26 @@ function createDashboardMount(): ApiMount {
           }
         ).c;
       const entityCount = (table: string, where = "") =>
-        ENTITY_IDS.includes(table) ? count(table, where) : 0;
+        entityIds.includes(table) ? count(table, where) : 0;
       return {
         status: 200,
         body: {
-          fournisseurs: ARCHIVABLE.has("fournisseurs")
+          fournisseurs: archivable.has("fournisseurs")
             ? entityCount("fournisseurs", "WHERE archived_at IS NULL")
             : entityCount("fournisseurs"),
-          produits: ARCHIVABLE.has("produits")
+          produits: archivable.has("produits")
             ? entityCount("produits", "WHERE archived_at IS NULL")
             : entityCount("produits"),
           prix: entityCount("prix"),
           panier_lignes: entityCount("panier_lignes"),
           commandes: entityCount("commandes"),
-          promos: ENTITY_IDS.includes("prix")
+          promos: entityIds.includes("prix")
             ? count("prix", "WHERE promo = 1")
             : 0,
           entities: Object.fromEntries(
-            ENTITY_IDS.map((id) => [
+            entityIds.map((id) => [
               id,
-              ARCHIVABLE.has(id)
+              archivable.has(id)
                 ? count(id, "WHERE archived_at IS NULL")
                 : count(id),
             ]),
@@ -393,10 +193,10 @@ function createSearchMount(): ApiMount {
         }
       }
 
+      const specs = collectEntitySpecs();
       const needle = q.toLowerCase();
       const items: Array<Record<string, unknown>> = [];
-      for (const table of ENTITY_IDS) {
-        if (!ENTITY_SPECS[table]) continue;
+      for (const table of Object.keys(specs)) {
         const rows = db.prepare(\`SELECT * FROM \${table}\`).all() as Array<
           Record<string, unknown>
         >;
@@ -417,7 +217,10 @@ function createSearchMount(): ApiMount {
 }
 
 export function registerBrandModuleApi(api: ApiKernel): void {
-  registerEntityMounts(api, ENTITY_SPECS);
+  registerEntityMounts(api, collectEntitySpecs());
+  for (const [id, mount] of collectApiMounts()) {
+    api.registerModuleApi(id, mount);
+  }
   api.registerModuleApi("schema", createSchemaMount());
   api.registerModuleApi("dashboard", createDashboardMount());
   api.registerModuleApi("search", createSearchMount());
