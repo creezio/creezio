@@ -39,6 +39,46 @@ test("ADR.1 mount-brand-admin-database + proxy path database", () => {
   assert.equal(pkg.dependencies["@creezio/database"], "0.1.0");
 });
 
+test("ADR.1b dist app-runtime câble database (anti dist stale)", () => {
+  // Régression prod 0.3.15 : src montait Database mais dist gitignoré
+  // n'avait pas été rebuild → mcpSurfaceHandlesPath n'interceptait pas
+  // /api/v1/admin/database → fallthrough Next twin → « Route inconnue ».
+  const mcpDist = path.join(
+    root,
+    "packages/app-runtime/dist/mount-brand-mcp-surface.js",
+  );
+  const adminDbDist = path.join(
+    root,
+    "packages/app-runtime/dist/mount-brand-admin-database.js",
+  );
+  assert.ok(
+    fs.existsSync(mcpDist),
+    "build @creezio/app-runtime manquant (mount-brand-mcp-surface.js)",
+  );
+  assert.ok(
+    fs.existsSync(adminDbDist),
+    "build @creezio/app-runtime manquant (mount-brand-admin-database.js)",
+  );
+  const mcp = fs.readFileSync(mcpDist, "utf8");
+  assert.match(
+    mcp,
+    /createBrandAdminDatabaseRoutes/,
+    "dist mcp-surface doit monter createBrandAdminDatabaseRoutes",
+  );
+  assert.match(
+    mcp,
+    /adminDatabaseHandlesPath/,
+    "dist mcpSurfaceHandlesPath doit déléguer à adminDatabaseHandlesPath",
+  );
+  assert.match(
+    mcp,
+    /MCP \+ database \+ analytics \+ request-logs/,
+    "registre admin dist doit lister database dans la source",
+  );
+  const handles = fs.readFileSync(adminDbDist, "utf8");
+  assert.match(handles, /\/api\/v1\/admin\/database/);
+});
+
 test("ADR.2 registre + GET /database/dbs liste core+brand", async () => {
   // Build dist requis (gate après npm run build -w @creezio/database|app-runtime).
   const dbDist = path.join(root, "packages/database/dist/index.js");
