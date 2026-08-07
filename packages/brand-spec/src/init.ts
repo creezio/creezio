@@ -10,6 +10,11 @@ export type InitBrandSpecOptions = {
   tagline?: string;
   vertical?: "chr" | "generic";
   force?: boolean;
+  /**
+   * Parcours produit `/onboarding`. Défaut `true` (marques réelles).
+   * `false` pour demo-app / apps sans étapes (post-setup → home).
+   */
+  onboardingEnabled?: boolean;
 };
 
 function kitTemplatesDir(): string {
@@ -60,7 +65,7 @@ platform:
   sync: false
   meili: true
   mcp: true
-  onboarding: true
+  onboarding: {{onboardingEnabled}}
 
 meili:
   enabled: true
@@ -74,10 +79,10 @@ mcp:
     - plugin
 
 onboarding:
-  enabled: true
+  enabled: {{onboardingEnabled}}
   slugPlaceholder: mon-espace
   requireOpenaiKey: false
-  afterCompleteHref: /onboarding
+  afterCompleteHref: {{afterCompleteHref}}
 `,
   "product.md": `# {{brandName}}
 
@@ -173,10 +178,10 @@ Voir \`docs/agents/CREATE-BRAND.md\` à la racine du kit.
   }
 }
 `,
-  "platform/onboarding.yaml": `enabled: true
+  "platform/onboarding.yaml": `enabled: {{onboardingEnabled}}
 slugPlaceholder: mon-espace
 requireOpenaiKey: false
-afterCompleteHref: /onboarding
+afterCompleteHref: {{afterCompleteHref}}
 stepLabels:
   - Compte
   - Récupération
@@ -390,6 +395,7 @@ export function initBrandSpec(opts: InitBrandSpecOptions): {
   fs.mkdirSync(outDir, { recursive: true });
   const force = Boolean(opts.force);
   const vertical = opts.vertical || "generic";
+  const onboardingEnabled = opts.onboardingEnabled !== false;
   const vars = {
     brandId: opts.brandId,
     brandName: opts.brandName,
@@ -397,6 +403,8 @@ export function initBrandSpec(opts: InitBrandSpecOptions): {
     tagline: opts.tagline || `${opts.brandName} — métier sur OS Creezio`,
     vertical,
     meiliPreset: vertical === "chr" ? "chr-catalog" : "none",
+    onboardingEnabled: onboardingEnabled ? "true" : "false",
+    afterCompleteHref: onboardingEnabled ? "/onboarding" : "/",
     // NB: pas de moduleId ici — les placeholders {{moduleId}} des fichiers
     // modules/_template/* restent intacts (substitués par `brand module init`).
   };

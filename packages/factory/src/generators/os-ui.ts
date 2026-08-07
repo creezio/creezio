@@ -82,23 +82,14 @@ import { LoginForm } from "@creezio/auth/ui";`,
     },
     {
       rel: "onboarding/page.tsx",
-      source: `"use client";
+      source: `import { redirect } from "next/navigation";
 
 /**
- * Point d'entrée onboarding — les étapes métier sont injectées par la marque
- * via OnboardingWizard + defineOnboardingSteps. Sans steps : lien setup OS.
+ * Fallback OS /onboarding — sans page métier marque, jamais d'écran mort.
+ * Marque avec parcours : ui/app/onboarding/ (prime sur ce wrapper).
  */
 export default function Page() {
-  return (
-    <section>
-      <h1>Onboarding</h1>
-      <p>
-        Les étapes produit se déclarent côté marque (
-        <code>@creezio/onboarding/ui</code>). First-run technique :{" "}
-        <a href="/setup">/setup</a>.
-      </p>
-    </section>
-  );
+  redirect("/");
 }
 `,
     },
@@ -142,6 +133,13 @@ export default function Page() {
       source: pageClient(
         `import { McpAdminClient } from "@creezio/mcp-facade/ui";`,
         `    <McpAdminClient />`,
+      ),
+    },
+    {
+      rel: "admin/api/page.tsx",
+      source: pageClient(
+        `import { ApiEndpointsClient } from "@creezio/observability/ui";`,
+        `    <ApiEndpointsClient />`,
       ),
     },
     {
@@ -249,6 +247,13 @@ export function renderUiPackageJson(_manifest: AppManifest): string {
           "class-variance-authority": "^0.7.1",
           clsx: "^2.1.1",
           "tailwind-merge": "^3.3.0",
+          // Peers file: hoistés — sinon npm install UI échoue sur
+          // node_modules/@creezio/platform-core (deps transitives vendor).
+          "@creezio/platform-core": "file:../vendor/creezio/platform-core",
+          "@creezio/brand-config": "file:../vendor/creezio/brand-config",
+          "@creezio/shell": "file:../vendor/creezio/shell",
+          "@creezio/api-kernel": "file:../vendor/creezio/api-kernel",
+          "@creezio/integrations": "file:../vendor/creezio/integrations",
         },
         devDependencies: {
           "@types/node": "^22.15.3",
@@ -402,11 +407,33 @@ const PAGE_KIND_ICONS: Record<string, string> = {
 };
 
 /**
- * Wiring chrome kit côté marque : nav + recherche + providers.
+ * Wiring chrome kit côté marque : nav métier + nav OS native + recherche.
  * Fichier marque (personnalisable — ex. icônes par page), généré une fois.
+ *
+ * Les pages OS (mails, tâches, admin…) sont matérialisées via @creezio/os-ui ;
+ * sans les lister ici, la sidebar n'afficherait que le métier (régression
+ * demo-app = Notes seul). Feature-off plugins (Fidu) : retirer la ligne
+ * `/admin/plugins` dans le chrome owned-by-brand — ne pas toucher au kit.
+ *
+ * Les listes OS sont inlinées (pas d'import barrel shell-ui) pour rester
+ * robustes sous Next transpilePackages ; miroir logique de
+ * `@creezio/shell-ui/ui` → `defaultOsPrimaryNavItems` / `defaultOsAdminNavItems`.
  */
 export function renderUiBrandChrome(model: ProductModel): string {
-  const icons = new Set<string>(["Settings", "Users"]);
+  const icons = new Set<string>([
+    "Activity",
+    "Braces",
+    "Cable",
+    "Database",
+    "KeyRound",
+    "ListTodo",
+    "Mail",
+    "Package",
+    "ScrollText",
+    "Settings",
+    "Shield",
+    "SlidersHorizontal",
+  ]);
   const navLines = model.pages.map((p) => {
     const icon = PAGE_KIND_ICONS[p.kind] || "List";
     icons.add(icon);
@@ -415,12 +442,17 @@ export function renderUiBrandChrome(model: ProductModel): string {
   const iconImports = [...icons].sort().join(",\n  ");
   const storageKey = `${model.brandId}-global-search`;
   const home = defaultWorkspaceHome(model);
+  const includePlugins = model.platformNeeds.pluginApi !== false;
+  const pluginsAdminLine = includePlugins
+    ? `    { href: "/admin/plugins", label: "Plugins", icon: Package },\n`
+    : "";
 
   return `"use client";
 /**
  * creezio:owned-by-brand — wiring du chrome CRM kit (sidebar, onglets,
  * recherche). Le chrome lui-même vient de @creezio/shell-ui/ui : la marque
- * ne déclare que sa nav, ses icônes et une recherche minimale.
+ * déclare sa nav métier et compose la nav OS native (mails, tâches, admin…).
+ * Hermes / n8n = Admin → Outils (injectés par la sidebar kit).
  */
 
 import type { ReactNode } from "react";
@@ -436,15 +468,30 @@ import {
   WorkspaceRoot,
 } from "@creezio/shell-ui/ui";
 
-const NAV = [
+const BRAND_NAV = [
 ${navLines.join("\n")}
 ];
+
+/** Nav OS native — miroir defaultOsPrimaryNavItems (@creezio/shell-ui). */
+const OS_NAV = [
+  { href: "/taches", label: "Tâches", icon: ListTodo },
+  { href: "/mails", label: "Mails", icon: Mail },
+  { href: "/parametres", label: "Préférences", icon: SlidersHorizontal },
+  { href: "/collaborateurs", label: "Collaborateurs", icon: Shield },
+];
+
+const NAV = [...BRAND_NAV, ...OS_NAV];
 
 configureSidebar({
   getNavItems: () => NAV,
   getAdminItems: () => [
-    { href: "/parametres", label: "Paramètres", icon: Settings },
-    { href: "/collaborateurs", label: "Collaborateurs", icon: Users },
+    { href: "/configuration", label: "Configuration", icon: Settings },
+    { href: "/admin/analytics", label: "Analytics", icon: Activity },
+${pluginsAdminLine}    { href: "/admin/database", label: "Database", icon: Database },
+    { href: "/admin/integrations", label: "Intégrations", icon: KeyRound },
+    { href: "/admin/api", label: "API", icon: Braces },
+    { href: "/admin/mcp", label: "MCP", icon: Cable },
+    { href: "/admin/request-logs", label: "Logs API / MCP", icon: ScrollText },
   ],
 });
 

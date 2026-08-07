@@ -10,6 +10,12 @@
 |---|---|
 | [`routes/admin/analytics/page.tsx`](../routes/admin/analytics/page.tsx) | Admin analytics (wrapper `@creezio/observability/ui`) |
 
+## `routes/admin/api/`
+
+| Fichier | Rôle |
+|---|---|
+| [`routes/admin/api/page.tsx`](../routes/admin/api/page.tsx) | Admin API endpoints (wrapper `@creezio/observability/ui`) |
+
 ## `routes/admin/database/`
 
 | Fichier | Rôle |
@@ -86,7 +92,7 @@
 
 | Fichier | Rôle |
 |---|---|
-| [`routes/onboarding/page.tsx`](../routes/onboarding/page.tsx) | Onboarding (wrapper `@creezio/onboarding/ui`) |
+| [`routes/onboarding/page.tsx`](../routes/onboarding/page.tsx) | Fallback OS : `redirect("/")` si pas de page métier marque (jamais de placeholder mort) |
 
 ## `routes/parametres/`
 

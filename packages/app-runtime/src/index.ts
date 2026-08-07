@@ -136,6 +136,7 @@ export {
 export {
   applyBrandCatalogEnvDefaults,
   applyStoredEmailEnv,
+  applyStoredLlmEnv,
   harnessTunnelProvisionRequested,
   runHarnessCatalogImportPhase,
   runHarnessFleetPhase,

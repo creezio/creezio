@@ -99,6 +99,11 @@ test("os-ui scaffold : zéro page OS versionnée, materialize + boot kit", () =>
   assert.match(chrome, /configureSidebar/);
   assert.match(chrome, /SessionProvider/);
   assert.match(chrome, /AssistantRoot/);
+  assert.match(chrome, /OS_NAV/, "chrome déclare la nav OS native");
+  assert.match(chrome, /\/taches/, "chrome lie /taches");
+  assert.match(chrome, /\/mails/, "chrome lie /mails");
+  assert.match(chrome, /\/admin\/mcp/, "chrome lie admin MCP");
+  assert.match(chrome, /\/admin\/plugins/, "chrome lie admin plugins (défaut ON)");
 
   const tailwind = fs.readFileSync(
     path.join(srv, "ui/tailwind.config.ts"),
@@ -232,9 +237,14 @@ test("os-ui scaffold : zéro page OS versionnée, materialize + boot kit", () =>
 test("os-ui materialize : une page métier marque prime sur le wrapper OS", () => {
   const materialize = path.join(ROOT, "packages/os-ui/scripts/materialize.mjs");
   assert.ok(fs.existsSync(materialize), "script materialize kit");
-  assert.ok(
-    fs.existsSync(path.join(ROOT, "packages/os-ui/routes/onboarding/page.tsx")),
-    "route OS onboarding (témoin du test)",
+  const onbPage = path.join(ROOT, "packages/os-ui/routes/onboarding/page.tsx");
+  assert.ok(fs.existsSync(onbPage), "route OS onboarding (témoin du test)");
+  const onbSrc = fs.readFileSync(onbPage, "utf8");
+  assert.match(onbSrc, /redirect\(["']\/["']\)/, "onboarding OS = redirect home");
+  assert.doesNotMatch(
+    onbSrc,
+    /Les étapes produit se déclarent/,
+    "plus de placeholder mort /onboarding",
   );
 
   const brandRoot = fs.mkdtempSync(path.join(os.tmpdir(), "creezio-os-own-"));

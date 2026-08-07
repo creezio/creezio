@@ -22,6 +22,7 @@ import {
   validateOpenaiStep,
   validateRecoveryStep,
   validateSlugStep,
+  setupWizardConfigFromSpec,
 } from "../packages/onboarding/dist/index.js";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -143,6 +144,19 @@ test("P.3 zéro hardcode desktop marque + zéro métier dans package", () => {
   );
   assert.match(setup, /getShellDesktopApi/);
   assert.match(setup, /getShellUiBrand/);
+  assert.match(setup, /createHttpSetupDesktopApi|\/api\/v1\/os\/setup/);
+  assert.match(setup, /DEFAULT_AFTER_SETUP_HREF/);
+  assert.doesNotMatch(
+    setup,
+    /afterCompleteHref = config\.afterCompleteHref \?\? ["']\/onboarding["']/,
+    "SetupWizard ne doit plus sortir sur /onboarding par défaut",
+  );
+  const httpSetup = fs.readFileSync(
+    path.join(root, "packages/onboarding/ui/setup/http-setup-api.ts"),
+    "utf8",
+  );
+  assert.match(httpSetup, /\/api\/v1\/os\/setup/);
+  assert.match(httpSetup, /probeHttpSetupAvailable/);
 
   // TempoPose : alias deprecated uniquement — aucun usage runtime interne
   const uiFiles = walk(path.join(root, "packages/onboarding/ui")).filter((f) =>
@@ -206,6 +220,21 @@ test("P.4 setup validation + completeSetup payload", () => {
     recoveryKey: "rk-1",
     stayLoggedIn: true,
   });
+});
+
+test("P.4b setupWizardConfigFromSpec — off → home, on → /onboarding", () => {
+  assert.deepEqual(setupWizardConfigFromSpec(null), {
+    afterCompleteHref: "/",
+  });
+  assert.deepEqual(setupWizardConfigFromSpec({ enabled: false }), {
+    afterCompleteHref: "/",
+  });
+  const on = setupWizardConfigFromSpec({
+    enabled: true,
+    slugPlaceholder: "mon-espace",
+  });
+  assert.equal(on.afterCompleteHref, "/onboarding");
+  assert.equal(on.slugPlaceholder, "mon-espace");
 });
 
 test("P.5 moteur: initial / advance / interstitial (3 et 8 steps)", () => {

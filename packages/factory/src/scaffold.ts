@@ -21,6 +21,7 @@ import {
   renderNsisInstallerInclude,
   validateAppManifest,
 } from "@creezio/brand-config";
+import { initBrandSpec } from "@creezio/brand-spec";
 import { MINIMAL_PNG_BASE64 } from "./minimal-png.js";
 import type { ProductModel } from "./product-model.js";
 import { writeFromPrdArtifacts } from "./scaffold-from-prd.js";
@@ -1304,6 +1305,7 @@ function writeBrandIcons(
  * Génère l'arborescence app + configs Client/Serveur.
  */
 export function scaffoldNewApp(opts: NewAppOptions): ScaffoldResult {
+  const onboardingNeed = opts.productModel?.platformNeeds?.onboarding;
   const manifest = createAppManifest({
     brandId: opts.brandId,
     productName: opts.productName,
@@ -1313,6 +1315,12 @@ export function scaffoldNewApp(opts: NewAppOptions): ScaffoldResult {
     sandbox: opts.sandbox !== false,
     defaultAppRoot: opts.outDir,
     defaultServerUrl: opts.defaultServerUrl,
+    // demo-app / blankAppModel : onboarding off → post-setup home.
+    ...(onboardingNeed === false
+      ? { features: { onboarding: false } }
+      : onboardingNeed === true
+        ? { features: { onboarding: true } }
+        : {}),
   });
 
   const errors = validateAppManifest(manifest);
@@ -1609,6 +1617,19 @@ export function scaffoldNewApp(opts: NewAppOptions): ScaffoldResult {
       force,
       written,
     });
+    // BrandSpec SoT : demo-app (onboarding off) / from-prd (onboarding on par défaut).
+    const specDir = path.join(outDir, "brand-spec");
+    const specResult = initBrandSpec({
+      outDir: specDir,
+      brandId: opts.brandId,
+      brandName: opts.productName,
+      domain: opts.domain,
+      tagline: opts.productModel.tagline,
+      vertical: opts.productModel.vertical || "generic",
+      force,
+      onboardingEnabled: opts.productModel.platformNeeds?.onboarding !== false,
+    });
+    written.push(...specResult.written);
   }
 
   /* ── Racine orchestrateur ─────────────────────────────────────────── */

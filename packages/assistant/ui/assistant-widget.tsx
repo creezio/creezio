@@ -446,7 +446,9 @@ export function AssistantWidget() {
   const deletingConversationIdsRef = useRef(new Set<string>());
   const abortRef = useRef<AbortController | null>(null);
   const sendRef = useRef<(text: string) => Promise<void>>(async () => {});
-  const chatBlocked = llmGate.byokRequired && !llmGate.ready && !llmGate.loading;
+  // Desktop BYOK et serveur headless : sans LLM prêt, bloquer l'envoi
+  // (évite un optimistic update suivi d'un 503/401 puis wipe du fil).
+  const chatBlocked = !llmGate.loading && !llmGate.ready;
 
   useEffect(() => {
     try {
@@ -755,6 +757,12 @@ export function AssistantWidget() {
 
   useEffect(() => {
     if (!hydrated || !open || busy) return;
+    // Nouvelle conversation (id null) : ne pas appeler loadConversation(null)
+    // ici. Ce chemin faisait setMessages([]) au moment où busy passe à false
+    // après un envoi en échec (401/503 sans conversationId), effaçant le
+    // message utilisateur et l'erreur explicite. Les clears volontaires
+    // (createNew / removeConversation / loadConversation 404) restent explicites.
+    if (!activeConversationId) return;
     void loadConversation(activeConversationId);
   }, [hydrated, open, activeConversationId, loadConversation, busy]);
 
@@ -2030,13 +2038,25 @@ export function AssistantWidget() {
           <div className="shrink-0 border-t border-slate-100 p-2.5">
             {chatBlocked ? (
               <div className="mb-2 rounded-md border border-amber-200 bg-amber-50 px-2.5 py-2 text-[11px] text-amber-950">
-                <p className="font-medium">Assistant bloqué — clé OpenAI manquante</p>
+                <p className="font-medium">Assistant bloqué — clé LLM manquante</p>
                 <p className="mt-0.5 text-amber-900/90">
-                  Configurez votre clé dans{" "}
-                  <Link href="/configuration" className="underline underline-offset-2">
-                    Configuration → Clés IA
-                  </Link>
-                  . Sans clé locale (BYOK), aucun appel LLM n&apos;est possible.
+                  {llmGate.byokRequired ? (
+                    <>
+                      Configurez votre clé dans{" "}
+                      <Link href="/configuration" className="underline underline-offset-2">
+                        Configuration → Clés IA
+                      </Link>
+                      . Sans clé locale (BYOK), aucun appel LLM n&apos;est possible.
+                    </>
+                  ) : (
+                    <>
+                      Aucune clé LLM côté serveur (
+                      <code className="text-[10px]">OPENAI_API_KEY</code> /{" "}
+                      <code className="text-[10px]">ANTHROPIC_API_KEY</code>
+                      ). Le message ne peut pas être envoyé tant que l&apos;assistant
+                      n&apos;est pas prêt.
+                    </>
+                  )}
                 </p>
               </div>
             ) : null}

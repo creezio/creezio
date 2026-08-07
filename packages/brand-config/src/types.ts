@@ -44,6 +44,12 @@ export type BrandFeatures = {
   plugins?: boolean;
   /** Agent flotte / samples diagnostics. */
   fleet?: boolean;
+  /**
+   * Parcours produit `/onboarding` après `/setup`.
+   * Absent/`true` = activé (marques avec étapes métier, ex. TempoFlow).
+   * `false` = désactivé : post-setup → home (`/`), page `/onboarding` OS redirige.
+   */
+  onboarding?: boolean;
 };
 
 /**
@@ -113,6 +119,7 @@ export type AppManifest = {
   /**
    * Capacités optionnelles. Fidu : `plugins: false`, `fleet: false` (N5).
    * TF/CV : `true` explicite (runtime réel).
+   * Demo-app : `onboarding: false` (post-setup → home).
    */
   features?: BrandFeatures;
 };

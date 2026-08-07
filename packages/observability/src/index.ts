@@ -195,3 +195,17 @@ export type {
   RequestLogEntry,
   ListRequestLogsOpts,
 } from "./request-logs/index.js";
+
+/* ── O5 : registre Admin /admin/endpoints ── */
+
+export type {
+  ApiEndpointRecord,
+  ApiEndpointRouteInput,
+  ApiEndpointsRegistry,
+  CreateApiEndpointsRoutesOptions,
+} from "./api-endpoints/index.js";
+export {
+  buildApiEndpointsRegistry,
+  collectHonoRoutes,
+  createApiEndpointsRoutes,
+} from "./api-endpoints/index.js";

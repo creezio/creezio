@@ -45,6 +45,7 @@ import {
   defaultProfileForAppKind,
   unwrapBootProfileResult,
 } from "@creezio/platform-core";
+import { isFeatureEnabled } from "@creezio/brand-config";
 import { envForNodeScriptSpawn } from "../host/node-runtime.js";
 import { remoteOfflineHtml } from "./remote-offline-html.js";
 
@@ -2447,9 +2448,13 @@ export function installBrandDesktopRuntime(deps: BrandDesktopDeps): void {
           stayLoggedIn: args.stayLoggedIn !== false,
         });
 
+        // features.onboarding=false (demo-app) → home ; absent/true → /onboarding.
+        const postSetupHref = isFeatureEnabled(deps.manifest, "onboarding")
+          ? "/onboarding"
+          : "/";
         const restarted = await restartNextServer({
           forceAutoLogin: true,
-          navigateTo: "/onboarding",
+          navigateTo: postSetupHref,
           reload: true,
         });
         if (!restarted.ok) {

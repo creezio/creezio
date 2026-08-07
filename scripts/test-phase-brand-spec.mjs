@@ -61,6 +61,29 @@ test("BS3 onboarding decl depuis brand-spec", () => {
   assert.equal(decl.enabled, true);
   const cfg = toSetupWizardConfig(decl);
   assert.equal(cfg.slugPlaceholder, "mon-espace");
+  assert.equal(cfg.afterCompleteHref, "/onboarding");
+});
+
+test("BS3b demo-app : onboardingEnabled=false → home", () => {
+  const out = fs.mkdtempSync(path.join(os.tmpdir(), "brand-spec-bs3b-"));
+  const result = initBrandSpec({
+    outDir: out,
+    brandId: "acmedemo",
+    brandName: "Acme Demo",
+    domain: "acmedemo.local",
+    vertical: "generic",
+    force: true,
+    onboardingEnabled: false,
+  });
+  const spec = loadBrandSpec(result.outDir);
+  assert.equal(spec.brand.platform?.onboarding, false);
+  const decl = resolveOnboardingDecl(spec);
+  assert.ok(decl);
+  assert.equal(decl.enabled, false);
+  assert.equal(toSetupWizardConfig(decl).afterCompleteHref, "/");
+  const yaml = fs.readFileSync(path.join(result.outDir, "brand.yaml"), "utf8");
+  assert.match(yaml, /onboarding:\s*false/);
+  assert.match(yaml, /afterCompleteHref:\s*\//);
 });
 
 test("BS4 initBrandSpec écrit squelette", () => {

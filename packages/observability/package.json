@@ -30,12 +30,13 @@
     "fleet-collector"
   ],
   "scripts": {
-    "build": "tsc -p tsconfig.json",
+    "build": "tsc -p tsconfig.json && tsc -p tsconfig.cjs.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "fleet-collector": "node fleet-collector/server.mjs",
     "server-admin": "node fleet-collector/server-admin.mjs",
     "test:fleet-collector": "node fleet-collector/test-fleet-collector.mjs",
-    "test:server-admin": "node fleet-collector/test-server-admin.mjs"
+    "test:server-admin": "node fleet-collector/test-server-admin.mjs",
+    "test:api-endpoints": "node scripts/test-api-endpoints-registry.mjs"
   },
   "dependencies": {
     "@creezio/api-kernel": "0.1.0",

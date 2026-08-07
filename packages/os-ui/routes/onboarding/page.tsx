@@ -1,18 +1,11 @@
-"use client";
+import { redirect } from "next/navigation";
 
 /**
- * Point d'entrée onboarding — les étapes métier sont injectées par la marque
- * via OnboardingWizard + defineOnboardingSteps. Sans steps : lien setup OS.
+ * Fallback OS `/onboarding` — sans page métier marque, jamais d'écran mort.
+ * Les marques avec parcours produit déclarent `ui/app/onboarding/` (prime sur
+ * ce wrapper via materialize). Flag `features.onboarding: false` / brand-spec
+ * `platform.onboarding: false` : post-setup → home ; cette route redirige aussi.
  */
 export default function Page() {
-  return (
-    <section>
-      <h1>Onboarding</h1>
-      <p>
-        Les étapes produit se déclarent côté marque (
-        <code>@creezio/onboarding/ui</code>). First-run technique :{" "}
-        <a href="/setup">/setup</a>.
-      </p>
-    </section>
-  );
+  redirect("/");
 }

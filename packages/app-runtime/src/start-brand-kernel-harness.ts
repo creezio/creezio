@@ -47,6 +47,7 @@ import {
 import { warmBrandNativeHosts } from "./warm-brand-native-hosts.js";
 import {
   applyStoredEmailEnv,
+  applyStoredLlmEnv,
   harnessTunnelProvisionRequested,
   runHarnessCatalogImportPhase,
   runHarnessFleetPhase,
@@ -294,6 +295,10 @@ export async function startBrandKernelHarness(
     // Secret inbound mails / domaine (provisioner tunnel) → env in-process
     // pour POST /api/v1/email/inbound. Jamais d'écrasement d'un env explicite.
     applyStoredEmailEnv(brandOs, {
+      log: (line) => console.log(`[creezio-os] ${line}`),
+    });
+    // BYOK setup HTTP → process.env pour assistant (même process que le chat).
+    applyStoredLlmEnv(brandOs, {
       log: (line) => console.log(`[creezio-os] ${line}`),
     });
     if (warmHermes) boot.register("hermes-bridge", "Pont Hermes ↔ CRM");

@@ -2,7 +2,7 @@
  * @creezio/onboarding/ui — SetupWizard + moteur onboarding + micro.
  */
 
-export { SetupWizard } from "./setup/setup-wizard";
+export { SetupWizard, DEFAULT_AFTER_SETUP_HREF } from "./setup/setup-wizard";
 export type { SetupWizardConfig, CompleteSetupPayload } from "./setup/setup-types";
 export {
   DEFAULT_SETUP_STEP_LABELS,

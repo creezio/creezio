@@ -5,7 +5,12 @@
  */
 
 import { nsisGuidFromAppId } from "./nsis-guid.js";
-import type { AppManifest, BrandPublishInfra, ExeIdentity } from "./types.js";
+import type {
+  AppManifest,
+  BrandFeatures,
+  BrandPublishInfra,
+  ExeIdentity,
+} from "./types.js";
 
 export type AppManifestSpec = {
   /** Identifiant court (`demobrand`). */
@@ -33,6 +38,11 @@ export type AppManifestSpec = {
    * (installateur cabinet). Optionnel — laissé vide sinon.
    */
   defaultServerUrl?: string;
+  /**
+   * Capacités optionnelles. `onboarding: false` pour demo-app / apps sans
+   * étapes produit (post-setup → home).
+   */
+  features?: BrandFeatures;
 };
 
 function assertBrandId(id: string): string {
@@ -178,6 +188,7 @@ export function createAppManifest(spec: AppManifestSpec): AppManifest {
       ? { defaultServerUrl: spec.defaultServerUrl.trim() }
       : {}),
     ...(spec.sandbox ? { sandbox: true as const } : {}),
+    ...(spec.features ? { features: { ...spec.features } } : {}),
   };
 }
 

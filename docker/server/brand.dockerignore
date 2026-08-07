@@ -14,6 +14,8 @@
 **/dist-electron
 **/dist-electron-server
 **/ui
+# Exports UI des packages kit (@creezio/*/ui) — requis pour npm ci file:vendor
+!vendor/creezio/**/ui/**
 **/dumps
 **/crm
 **/src

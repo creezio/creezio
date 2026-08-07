@@ -14,20 +14,27 @@ Le package ne contient pas de parcours métier marque. Il assemble une expérien
 
 ## Périmètre kit vs marque
 
-**Kit**
+### Ce que le kit FOURNIT
 
 - Calcule l'étape initiale, les bornes et les transitions.
 - Affiche le shell d'onboarding, les interstitiels, les aides visuelles et les composants de saisie.
 - Expose `SetupWizard` pour le first-run desktop basé sur `@creezio/shell-ui`.
 - Lit les bindings shell génériques (`getShellUiBrand`, `getShellDesktopApi`, `resolveDesktopHomePath`).
+- Flag natif onboarding on/off (`features.onboarding`, brand-spec) — défaut post-setup = `/` (jamais de placeholder mort).
 
-**Marque**
+### Ce que la marque DOIT fournir
 
 - Définit la liste des étapes métier (`OnboardingStepDef[]`) et leur rendu.
 - Implémente `OnboardingTransport` (`persistStep`, `skip`, `complete`).
 - Configure éventuellement la mascotte via `configureOnboardingUi`.
 - Fournit les handlers desktop (`completeSetup`, `checkTunnelSlug`, `generateRecoveryKey`, etc.) via `@creezio/shell-ui`.
 - Décide des routes de sortie (`resolveExitHref`, `afterCompleteHref`) et des textes/skins propres.
+- Page métier `ui/app/onboarding/` si parcours produit (sinon le wrapper OS redirige vers `/`).
+
+### Ce que le package ne doit JAMAIS contenir
+
+- Étapes métier hardcodées (restaurant, CHR, vertical spécifique).
+- Écran placeholder inutilisable sur `/onboarding`.
 
 ## Installation/build
 
@@ -112,7 +119,7 @@ import { SetupWizard } from "@creezio/onboarding/ui";
 <SetupWizard
   config={{
     requireOpenaiKey: true,
-    afterCompleteHref: "/onboarding",
+    afterCompleteHref: "/onboarding", // défaut kit = "/" (jamais un placeholder mort)
     slugPlaceholder: "mon-espace",
     tunnelHelp: "Choisissez l'adresse publique de votre instance :",
     accentColor: "#f0701d",
@@ -120,6 +127,18 @@ import { SetupWizard } from "@creezio/onboarding/ui";
   }}
 />;
 ```
+
+### Activer / désactiver l'onboarding produit
+
+| Levier | Off (demo) | On (parcours métier) |
+|--------|------------|----------------------|
+| `AppManifest.features.onboarding` | `false` | absent ou `true` |
+| `brand-spec` `platform.onboarding` / `onboarding.enabled` | `false` | `true` |
+| `afterCompleteHref` | `/` | `/onboarding` |
+| Page OS `/onboarding` | redirige vers `/` | page marque `ui/app/onboarding/` |
+
+`creezio demo-app` / `blankAppModel` : onboarding **off** par défaut.
+TempoFlow (étapes réelles) : inchangé.
 
 ### Contenu hybride en DB + preferences (ADR-module-natif-hybride)
 

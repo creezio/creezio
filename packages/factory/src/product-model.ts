@@ -47,6 +47,12 @@ export interface PlatformNeeds {
   pluginApi: boolean;
   chat: boolean;
   sync: boolean;
+  /**
+   * Parcours produit `/onboarding` après setup.
+   * `false` = demo / app sans étapes (post-setup → home).
+   * Absent = laisser le défaut kit (activé côté brand-spec / features).
+   */
+  onboarding?: boolean;
 }
 
 export interface ProductModel {
@@ -127,7 +133,8 @@ export function blankAppModel(opts: {
       { id: "notes", path: "/notes", title: "Notes", entityId: "notes", kind: "list" },
     ],
     flows: [],
-    platformNeeds: defaultPlatformNeeds(),
+    // Demo / app vierge : pas d'étapes produit → pas d'écran /onboarding mort.
+    platformNeeds: { ...defaultPlatformNeeds(), onboarding: false },
   };
 }
 

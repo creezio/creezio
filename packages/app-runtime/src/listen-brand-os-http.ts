@@ -18,9 +18,11 @@ import {
   type ConnectionProfile,
 } from "@creezio/platform-core";
 import type { ApiKernel } from "@creezio/api-kernel";
+import { migrateBrandCredentialsToKit } from "@creezio/auth";
 import type { McpFacade } from "@creezio/mcp-facade";
 import type { SqliteMailsStore } from "@creezio/mails";
 import type { BrandOsComposition } from "./compose-brand-os.js";
+import { applyStoredLlmEnv } from "./harness-server-phases.js";
 import {
   handleMcpJsonRpcRequest,
   isJsonRpcBody,
@@ -33,6 +35,20 @@ import {
   assertModuleMountSession,
   type ModuleMachineKeyVerifier,
 } from "./module-mount-auth.js";
+
+/** Placeholder headless (fleet ops) — jamais exposé comme « clé réelle ». */
+const SETUP_OPENAI_PLACEHOLDER = "sk-setup-placeholder";
+
+function resolveSetupOpenaiKey(bodyKey: unknown): string {
+  // Corps présent (y compris "") : priorité wizard HTTP — pas de placeholder silencieux.
+  if (bodyKey !== undefined && bodyKey !== null) {
+    return String(bodyKey).trim();
+  }
+  // Omis (curl fleet) : env opérateur, sinon placeholder pour ne pas bloquer le first-run.
+  return (
+    (process.env.OPENAI_API_KEY || "").trim() || SETUP_OPENAI_PLACEHOLDER
+  );
+}
 
 export type BrandOsHttpHandle = {
   port: number;
@@ -65,7 +81,13 @@ async function readBody(req: http.IncomingMessage): Promise<unknown> {
  * un 404 kernel « not mounted / not found » laisse la main aux routes API
  * propres à la marque — ici servies par le plane UI Next (ex. app Hono
  * marque montée sous /api/v1 dans l'app Next, architecture TempoFlow).
+ *
+ * Attention : le next.config marque rewrite `/api/v1/*` → kernel. Sans garde,
+ * un fallthrough kernel→Next→kernel boucle (CPU, ECONNRESET, pages Admin
+ * MCP/API « crashées »). On marque le hop avec KERNEL_API_FALLTHROUGH_HEADER.
  */
+const KERNEL_API_FALLTHROUGH_HEADER = "x-creezio-kernel-fallthrough";
+
 function isKernelFallthrough404(res: {
   status?: number;
   body?: unknown;
@@ -80,6 +102,17 @@ function isKernelFallthrough404(res: {
     err === "core_route_not_found"
   );
 }
+
+function hasKernelFallthroughHop(
+  headers: http.IncomingHttpHeaders,
+): boolean {
+  const raw = headers[KERNEL_API_FALLTHROUGH_HEADER];
+  const value = Array.isArray(raw) ? raw[0] : raw;
+  return value === "1";
+}
+
+/** Garde process-local si Next ne renvoie pas le header de hop. */
+const inflightApiFallthrough = new Set<string>();
 
 function send(
   res: http.ServerResponse,
@@ -122,8 +155,16 @@ function proxyRawHttp(
   res: http.ServerResponse,
   targetBase: string,
   bufferedBody?: Buffer,
+  extraHeaders?: Record<string, string>,
+  onDone?: () => void,
 ): void {
   const target = new URL(targetBase);
+  let settled = false;
+  const done = () => {
+    if (settled) return;
+    settled = true;
+    onDone?.();
+  };
   const upstream = http.request(
     {
       hostname: target.hostname,
@@ -142,11 +183,14 @@ function proxyRawHttp(
               ),
             }
           : {}),
+        ...(extraHeaders || {}),
       },
     },
     (upRes) => {
       res.writeHead(upRes.statusCode || 502, upRes.headers);
       upRes.pipe(res);
+      upRes.on("end", done);
+      upRes.on("close", done);
     },
   );
   upstream.on("error", (err) => {
@@ -156,7 +200,9 @@ function proxyRawHttp(
     res.end(
       JSON.stringify({ ok: false, error: "ui_proxy_error", detail: err.message }),
     );
+    done();
   });
+  res.on("close", done);
   if (bufferedBody !== undefined) {
     // Rejeu après lecture du body (fallthrough kernel → plane UI).
     upstream.end(bufferedBody);
@@ -757,10 +803,11 @@ export async function listenBrandOsHttp(opts: {
         const store = opts.os.store;
         const keys = store.getLlmKeys?.() ?? {};
         const auth = store.getLocalAuth?.();
+        const openai = String(keys.openai || "").trim();
         send(res, 200, {
           ok: true,
           setupComplete: store.isSetupComplete(),
-          hasOpenai: Boolean(keys.openai),
+          hasOpenai: Boolean(openai && openai !== SETUP_OPENAI_PLACEHOLDER),
           username: auth?.authUser ?? null,
           recoveryHint: store.isSetupComplete()
             ? "recovery key déjà enregistrée"
@@ -784,18 +831,43 @@ export async function listenBrandOsHttp(opts: {
         try {
           const recoveryKey =
             String(body.recoveryKey || "").trim() || generateRecoveryKey();
+          const openaiKey = resolveSetupOpenaiKey(body.openaiKey);
+          // Parité Electron setup:complete — clé vide refusée (applyFirstRunSetup aussi).
+          if (!openaiKey) {
+            send(res, 400, { ok: false, error: "Clé OpenAI requise" });
+            return;
+          }
+          const username = String(body.username || "").trim();
+          const password = String(body.password || "");
           opts.os.store.applyFirstRunSetup({
-            username: String(body.username || ""),
-            password: String(body.password || ""),
-            openaiKey: String(body.openaiKey || "sk-setup-placeholder"),
+            username,
+            password,
+            openaiKey,
             recoveryKey,
             stayLoggedIn: body.stayLoggedIn !== false,
           });
+          // Assistant Hono lit process.env — injecter tout de suite (Docker/HTTP).
+          applyStoredLlmEnv(opts.os, {
+            force: true,
+            log: (line) => console.log(`[os-setup] ${line}`),
+          });
+          // Login CRM kit-first : sans creezio_users, /auth/login → 401 et le
+          // chat « mange » le message. Parité geste fleet-ops (étape b).
+          const cred = await migrateBrandCredentialsToKit({
+            username,
+            password,
+            displayName: username,
+          });
+          if (!cred.ok && !cred.skipped) {
+            console.warn(
+              `[os-setup] migrateBrandCredentialsToKit: ${cred.error}`,
+            );
+          }
           send(res, 200, {
             ok: true,
             setupComplete: true,
             recoveryKey,
-            username: String(body.username || "").trim(),
+            username,
           });
         } catch (err) {
           send(res, 400, {
@@ -1032,10 +1104,29 @@ export async function listenBrandOsHttp(opts: {
       });
       // Routes API propres à la marque servies par le plane UI Next
       // (contrat de composition kernel — voir isKernelFallthrough404).
+      // Coupe-circuit boucle kernel→Next→kernel (rewrite next.config).
       if (isKernelFallthrough404(result) && opts.uiProxyTarget) {
+        const fallthroughKey = `${req.method || "GET"} ${pathname}`;
+        if (
+          hasKernelFallthroughHop(req.headers) ||
+          inflightApiFallthrough.has(fallthroughKey)
+        ) {
+          send(res, result.status || 404, result.body, result.headers);
+          return;
+        }
         const target = opts.uiProxyTarget();
         if (target) {
-          proxyRawHttp(req, res, target, rawBody);
+          inflightApiFallthrough.add(fallthroughKey);
+          proxyRawHttp(
+            req,
+            res,
+            target,
+            rawBody,
+            { [KERNEL_API_FALLTHROUGH_HEADER]: "1" },
+            () => {
+              inflightApiFallthrough.delete(fallthroughKey);
+            },
+          );
           return;
         }
       }

@@ -13,7 +13,7 @@ platform:
   sync: false
   meili: true
   mcp: true
-  onboarding: true
+  onboarding: {{onboardingEnabled}}
 
 meili:
   enabled: true
@@ -27,7 +27,7 @@ mcp:
     - plugin
 
 onboarding:
-  enabled: true
+  enabled: {{onboardingEnabled}}
   slugPlaceholder: mon-espace
   requireOpenaiKey: false
-  afterCompleteHref: /onboarding
+  afterCompleteHref: {{afterCompleteHref}}

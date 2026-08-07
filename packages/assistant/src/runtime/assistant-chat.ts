@@ -1188,6 +1188,43 @@ export async function handleAssistantChat(
       ? (body.model || "").trim()
       : resolveModel(body.model);
 
+  const providerPref = (process.env.ASSISTANT_LLM_PROVIDER || "auto").trim().toLowerCase();
+  const hasOpenAi = Boolean(openaiKey());
+  const hasAnthropic = Boolean(anthropicKey());
+  const desktopLocal = (process.env.DESKTOP_LOCAL || "").trim() === "1";
+  // Clés LLM avant persistence : évite une conv/message orphelin puis 503
+  // sans conversationId (l'UI ne peut pas rattacher le fil).
+  if (desktopLocal && !hasOpenAi) {
+    console.error(
+      "[assistant] BYOK bloqué : OPENAI_API_KEY absente du process serveur (DESKTOP_LOCAL=1)",
+    );
+    return new Response(
+      JSON.stringify({
+        error:
+          "Assistant désactivé — clé OpenAI requise (BYOK). Configurez-la dans Configuration → Clés IA.",
+        code: "OPENAI_KEY_MISSING",
+        byokRequired: true,
+      }),
+      {
+        status: 503,
+        headers: { "Content-Type": "application/json" },
+      },
+    );
+  }
+  if (!desktopLocal && !hasOpenAi && !hasAnthropic) {
+    return new Response(
+      JSON.stringify({
+        error: "Aucune clé LLM configurée (OPENAI_API_KEY / ANTHROPIC_API_KEY)",
+        code: "LLM_KEYS_MISSING",
+        byokRequired: false,
+      }),
+      {
+        status: 503,
+        headers: { "Content-Type": "application/json" },
+      },
+    );
+  }
+
   try {
     const conv = ensureConversation(
       body.conversationId,
@@ -1243,42 +1280,6 @@ export async function handleAssistantChat(
       mode === "work"
         ? (stored.model || model || "").trim()
         : resolveModel(stored.model);
-  }
-
-  const providerPref = (process.env.ASSISTANT_LLM_PROVIDER || "auto").trim().toLowerCase();
-  const hasOpenAi = Boolean(openaiKey());
-  const hasAnthropic = Boolean(anthropicKey());
-  const desktopLocal = (process.env.DESKTOP_LOCAL || "").trim() === "1";
-  // Offre locale : OpenAI obligatoire avant tout mode (chat / work).
-  if (desktopLocal && !hasOpenAi) {
-    console.error(
-      "[assistant] BYOK bloqué : OPENAI_API_KEY absente du process serveur (DESKTOP_LOCAL=1)",
-    );
-    return new Response(
-      JSON.stringify({
-        error:
-          "Assistant désactivé — clé OpenAI requise (BYOK). Configurez-la dans Configuration → Clés IA.",
-        code: "OPENAI_KEY_MISSING",
-        byokRequired: true,
-      }),
-      {
-        status: 503,
-        headers: { "Content-Type": "application/json" },
-      },
-    );
-  }
-  if (!desktopLocal && !hasOpenAi && !hasAnthropic) {
-    return new Response(
-      JSON.stringify({
-        error: "Aucune clé LLM configurée (OPENAI_API_KEY / ANTHROPIC_API_KEY)",
-        code: "LLM_KEYS_MISSING",
-        byokRequired: false,
-      }),
-      {
-        status: 503,
-        headers: { "Content-Type": "application/json" },
-      },
-    );
   }
 
   // ── Work : délégation agentique à Hermes (skills marque) ──

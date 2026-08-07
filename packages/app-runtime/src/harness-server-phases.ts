@@ -62,6 +62,47 @@ export function applyStoredEmailEnv(
   return applied;
 }
 
+/**
+ * Expose OPENAI_API_KEY / ANTHROPIC_API_KEY depuis le store BYOK
+ * (`applyFirstRunSetup` / Configuration → Clés IA) pour le process courant.
+ *
+ * L'assistant (platform surface) ne lit que `process.env` — sans cette
+ * hydration, un setup HTTP Docker persiste la clé dans `{brand}-config.json`
+ * mais le chat reste muet jusqu'à un restart avec env Docker opérateur.
+ * Ne jamais écraser un env explicite opérateur sauf `force` (post-setup).
+ */
+export function applyStoredLlmEnv(
+  os: BrandOsComposition,
+  opts?: { force?: boolean; log?: Log },
+): Record<string, string> {
+  const store = os.store as unknown as {
+    getLlmKeys?: () => {
+      openai?: string | null;
+      anthropic?: string | null;
+    };
+  };
+  if (typeof store.getLlmKeys !== "function") return {};
+  const keys = store.getLlmKeys() ?? {};
+  const mapping: Record<string, string | null | undefined> = {
+    OPENAI_API_KEY: keys.openai,
+    ANTHROPIC_API_KEY: keys.anthropic,
+  };
+  const applied: Record<string, string> = {};
+  for (const [envKey, raw] of Object.entries(mapping)) {
+    const v = String(raw || "").trim();
+    if (!v || v === "sk-setup-placeholder") continue;
+    if (!opts?.force && (process.env[envKey] || "").trim()) continue;
+    process.env[envKey] = v;
+    applied[envKey] = v;
+  }
+  if (Object.keys(applied).length) {
+    opts?.log?.(
+      `llm env appliqué depuis la config locale: ${Object.keys(applied).join(", ")}`,
+    );
+  }
+  return applied;
+}
+
 /** Étape catalog-import : projection snapshot → brand.db via l'API kernel. */
 export async function runHarnessCatalogImportPhase(opts: {
   boot: BootProgressReporter;

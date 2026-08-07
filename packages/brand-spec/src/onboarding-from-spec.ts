@@ -60,6 +60,7 @@ export function resolveOnboardingDecl(
 
 /**
  * Convertit une déclaration BrandSpec → config compatible SetupWizard.
+ * `enabled: false` → sortie home (`/`) ; sinon `afterCompleteHref` ou `/onboarding`.
  */
 export function toSetupWizardConfig(decl: BrandOnboardingDecl): {
   stepLabels?: [string, string, string, string];
@@ -70,6 +71,9 @@ export function toSetupWizardConfig(decl: BrandOnboardingDecl): {
   accentColor?: string;
   backgroundColor?: string;
 } {
+  if (decl.enabled === false) {
+    return { afterCompleteHref: "/" };
+  }
   const out: ReturnType<typeof toSetupWizardConfig> = {};
   if (decl.stepLabels && decl.stepLabels.length >= 4) {
     out.stepLabels = [
@@ -82,7 +86,7 @@ export function toSetupWizardConfig(decl: BrandOnboardingDecl): {
   if (decl.slugPlaceholder) out.slugPlaceholder = decl.slugPlaceholder;
   if (decl.tunnelHelp) out.tunnelHelp = decl.tunnelHelp;
   if (decl.requireOpenaiKey != null) out.requireOpenaiKey = decl.requireOpenaiKey;
-  if (decl.afterCompleteHref) out.afterCompleteHref = decl.afterCompleteHref;
+  out.afterCompleteHref = decl.afterCompleteHref || "/onboarding";
   if (decl.accentColor) out.accentColor = decl.accentColor;
   if (decl.backgroundColor) out.backgroundColor = decl.backgroundColor;
   return out;

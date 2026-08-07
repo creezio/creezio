@@ -67,6 +67,7 @@ export * from "./layout/app-shell";
 export * from "./layout/desktop-update-banner";
 export * from "./layout/sidebar";
 export * from "./layout/sidebar-host";
+export * from "./layout/native-os-nav";
 
 /* ── Workspace ── */
 export * from "./workspace/types";

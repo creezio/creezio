@@ -28,7 +28,7 @@ type Tool = {
   requiredScope: string;
   enabled: boolean;
   allowedRoles: string[];
-  annotations: Record<string, boolean>;
+  annotations?: Record<string, boolean>;
 };
 
 type Client = {
@@ -224,7 +224,7 @@ export function McpAdminClient({ logsSlot }: { logsSlot?: ReactNode } = {}) {
                 <td className="p-3 font-mono text-xs">{tool.name}</td>
                 <td className="p-3">{tool.category}</td>
                 <td className="p-3"><Badge variant={tool.access === "read" ? "secondary" : "warning"}>{tool.requiredScope}</Badge></td>
-                <td className="p-3 text-xs text-slate-500">{tool.annotations.readOnlyHint ? "lecture" : "mutation"}{tool.annotations.destructiveHint ? " · destructif" : ""}</td>
+                <td className="p-3 text-xs text-slate-500">{tool.annotations?.readOnlyHint ? "lecture" : "mutation"}{tool.annotations?.destructiveHint ? " · destructif" : ""}</td>
                 <td className="p-3"><Button size="sm" variant={tool.enabled ? "outline" : "destructive"} onClick={() => void toggleTool(tool)}>{tool.enabled ? "Actif" : "Désactivé"}</Button></td>
               </tr>)}</tbody>
             </table>

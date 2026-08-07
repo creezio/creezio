@@ -168,6 +168,9 @@ test("connection + setup HTTP sur harness probe brand", async () => {
     ).json();
     assert.equal(setup1.setupComplete, true);
     assert.equal(setup1.username, "ops");
+    assert.equal(setup1.hasOpenai, true);
+    // applyStoredLlmEnv post-setup : l'assistant lit process.env, pas le store.
+    assert.equal(process.env.OPENAI_API_KEY, "sk-test-conn-profile");
   } finally {
     await handle.close();
   }

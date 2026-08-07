@@ -16,6 +16,12 @@ import {
   mcpAdminStatus,
   type McpFacade,
 } from "@creezio/mcp-facade";
+import {
+  buildApiEndpointsRegistry,
+  collectHonoRoutes,
+  createApiEndpointsRoutes,
+  createRequestLogsRoutes,
+} from "@creezio/observability";
 import type { BrandOsComposition } from "./compose-brand-os.js";
 
 export type BrandMcpSurface = {
@@ -171,10 +177,25 @@ export function mountBrandMcpSurface(opts: {
   const adminRoutes = createMcpAdminRoutes({
     diagnosticFilenamePrefix: opts.manifest.brandId,
   });
+  const requestLogsRoutes = createRequestLogsRoutes();
+  const adminSurface = new Hono();
+  adminSurface.route("/", adminRoutes);
+  adminSurface.route("/", requestLogsRoutes);
+  adminSurface.route(
+    "/",
+    createApiEndpointsRoutes({
+      getRegistry: () =>
+        buildApiEndpointsRegistry({
+          routes: collectHonoRoutes(adminSurface, "/api/v1/admin"),
+          source: "brand admin surface (MCP + request-logs + endpoints)",
+          openapiUrl: "/api/v1/openapi.json",
+        }),
+    }),
+  );
 
   const app = new Hono();
   app.route("/", oauthRoutes);
-  app.route("/api/v1/admin", adminRoutes);
+  app.route("/api/v1/admin", adminSurface);
 
   // Sonde légère hors Hono OAuth (preuves)
   app.get("/api/v1/os/mcp-oauth/status", (c) =>
@@ -201,12 +222,15 @@ export function mountBrandMcpSurface(opts: {
   };
 }
 
-/** Proxy Node http → Hono pour chemins OAuth/admin. */
+/** Proxy Node http → Hono pour chemins OAuth/admin (+ registre endpoints O5). */
 export function mcpSurfaceHandlesPath(pathname: string): boolean {
   return (
     pathname.startsWith("/.well-known/") ||
     pathname.startsWith("/oauth/") ||
     pathname.startsWith("/api/v1/admin/mcp") ||
+    pathname === "/api/v1/admin/endpoints" ||
+    pathname === "/api/v1/admin/request-logs" ||
+    pathname.startsWith("/api/v1/admin/request-logs/") ||
     pathname === "/api/v1/os/mcp-oauth/status"
   );
 }

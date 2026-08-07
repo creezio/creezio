@@ -6,6 +6,16 @@ export type OnboardingUiConfig = {
    * Si absent / renvoie undefined → pas de mascotte (bulle seule si hint).
    */
   companionSrc?: (pose: CompanionPose) => string | undefined;
+  /**
+   * Redirection post-`/setup` (SetupWizard). Si absent → `/` (home CRM).
+   * Activer un parcours produit : `"/onboarding"` + page marque réelle.
+   */
+  afterCompleteHref?: string;
+  /**
+   * `false` = onboarding produit désactivé (redirige `/onboarding` → home).
+   * Défaut : non renseigné (SetupWizard sort sur `afterCompleteHref` ou `/`).
+   */
+  productOnboardingEnabled?: boolean;
 };
 
 let uiConfig: OnboardingUiConfig = {};

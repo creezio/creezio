@@ -1,14 +1,21 @@
 "use client";
 
 /**
- * Wizard first-run desktop : compte local + recovery key + slug tunnel + OpenAI.
- * IPC via getShellDesktopApi() ; branding via getShellUiBrand().
+ * Wizard first-run : compte local + recovery key + slug tunnel + OpenAI.
+ * Electron : IPC via getShellDesktopApi() ; Docker / navigateur : HTTP
+ * `/api/v1/os/setup` (createHttpSetupDesktopApi). Branding via getShellUiBrand().
  */
 
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useEffect, useRef, useState } from "react";
 import { Check, Copy, Loader2 } from "lucide-react";
 import { Button, Input } from "@creezio/shell-ui/ui/kit";
 import { getShellDesktopApi, getShellUiBrand } from "@creezio/shell-ui";
+import { getOnboardingUiConfig } from "../onboarding/configure";
+import {
+  createHttpSetupDesktopApi,
+  probeHttpSetupAvailable,
+  type SetupDesktopApiSubset,
+} from "./http-setup-api";
 import {
   DEFAULT_SETUP_ACCENT,
   DEFAULT_SETUP_BACKGROUND,
@@ -18,7 +25,24 @@ import {
   type SetupWizardConfig,
 } from "./setup-types";
 
+/** Home CRM — jamais `/onboarding` par défaut (placeholder mort interdit). */
+export const DEFAULT_AFTER_SETUP_HREF = "/";
+
 type Step = 1 | 2 | 3 | 4;
+
+type SetupApi = SetupDesktopApiSubset;
+
+function resolveAfterCompleteHref(config: SetupWizardConfig): string {
+  const ui = getOnboardingUiConfig();
+  if (ui.productOnboardingEnabled === false) {
+    return config.afterCompleteHref ?? ui.afterCompleteHref ?? DEFAULT_AFTER_SETUP_HREF;
+  }
+  return (
+    config.afterCompleteHref ??
+    ui.afterCompleteHref ??
+    DEFAULT_AFTER_SETUP_HREF
+  );
+}
 
 export function SetupWizard(props?: { config?: SetupWizardConfig }) {
   const config = props?.config ?? {};
@@ -30,11 +54,12 @@ export function SetupWizard(props?: { config?: SetupWizardConfig }) {
   const stepLabels = config.stepLabels ?? [...DEFAULT_SETUP_STEP_LABELS];
   const slugPlaceholder = config.slugPlaceholder ?? DEFAULT_SLUG_PLACEHOLDER;
   const requireOpenaiKey = config.requireOpenaiKey !== false;
-  const afterCompleteHref = config.afterCompleteHref ?? "/onboarding";
+  const afterCompleteHref = resolveAfterCompleteHref(config);
   const tunnelHelp =
     config.tunnelHelp ??
     "Choisissez l'adresse d'accès de votre CRM :";
 
+  const apiRef = useRef<SetupApi | null>(null);
   const [ready, setReady] = useState(false);
   const [desktop, setDesktop] = useState(false);
   const [step, setStep] = useState<Step>(1);
@@ -54,9 +79,13 @@ export function SetupWizard(props?: { config?: SetupWizardConfig }) {
   const [error, setError] = useState<string | null>(null);
   const [statusLine, setStatusLine] = useState<string | null>(null);
 
+  function resolveApi(): SetupApi | null {
+    return apiRef.current;
+  }
+
   useEffect(() => {
-    void getShellDesktopApi()?.setAssistantChrome?.("hidden");
-  }, []);
+    void resolveApi()?.setAssistantChrome?.("hidden");
+  }, [ready]);
 
   useEffect(() => {
     if (step !== 2 || recoveryKey) return;
@@ -65,35 +94,52 @@ export function SetupWizard(props?: { config?: SetupWizardConfig }) {
   }, [step]);
 
   useEffect(() => {
-    const api = getShellDesktopApi();
-    if (!api?.getSetupStatus) {
-      setDesktop(false);
-      setReady(true);
-      return;
-    }
-    setDesktop(true);
-    void api.getSetupStatus().then((s: {
-      setupComplete?: boolean;
-      username?: string;
-      tunnelSlug?: string;
-      hasTunnel?: boolean;
-      hasOpenai?: boolean;
-    }) => {
-      if (s.setupComplete) {
-        window.location.href = "/login";
+    let cancelled = false;
+    async function boot() {
+      const electron = getShellDesktopApi() as SetupApi | undefined;
+      let api: SetupApi | null = null;
+      if (electron?.getSetupStatus) {
+        api = electron;
+      } else if (await probeHttpSetupAvailable()) {
+        api = createHttpSetupDesktopApi();
+      }
+      if (cancelled) return;
+      if (!api?.getSetupStatus) {
+        setDesktop(false);
+        setReady(true);
         return;
       }
-      if (s.username) setUsername(s.username);
-      if (s.tunnelSlug) setSlug(s.tunnelSlug);
-      if (s.hasTunnel && !s.hasOpenai) setStep(3);
-      else if (s.tunnelSlug && !s.hasTunnel) setStep(3);
+      apiRef.current = api;
+      setDesktop(true);
+      void api.setAssistantChrome?.("hidden");
+      try {
+        const s = await api.getSetupStatus();
+        if (cancelled) return;
+        if (s.setupComplete) {
+          window.location.href = "/login";
+          return;
+        }
+        if (s.username) setUsername(s.username);
+        if (s.tunnelSlug) setSlug(s.tunnelSlug);
+        if (s.hasTunnel && !s.hasOpenai) setStep(3);
+        else if (s.tunnelSlug && !s.hasTunnel) setStep(3);
+      } catch {
+        if (cancelled) return;
+        // API HTTP indisponible après probe — fallback message desktop-only.
+        apiRef.current = null;
+        setDesktop(false);
+      }
       setReady(true);
-    });
+    }
+    void boot();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   async function ensureRecoveryKey(): Promise<string | null> {
     if (recoveryKey) return recoveryKey;
-    const api = getShellDesktopApi();
+    const api = resolveApi();
     if (!api?.generateRecoveryKey) {
       setError("Génération de clé indisponible.");
       return null;
@@ -104,7 +150,7 @@ export function SetupWizard(props?: { config?: SetupWizardConfig }) {
   }
 
   async function checkSlug() {
-    const api = getShellDesktopApi();
+    const api = resolveApi();
     if (!api?.checkTunnelSlug) return;
     const s = slug.trim().toLowerCase();
     if (!SLUG_RE.test(s)) {
@@ -191,7 +237,7 @@ export function SetupWizard(props?: { config?: SetupWizardConfig }) {
   async function finish(e: FormEvent) {
     e.preventDefault();
     setError(null);
-    const api = getShellDesktopApi();
+    const api = resolveApi();
     if (!api?.completeSetup) {
       setError(`Cette étape nécessite l'application desktop ${productName}.`);
       return;
@@ -223,7 +269,11 @@ export function SetupWizard(props?: { config?: SetupWizardConfig }) {
         setStatusLine(null);
         return;
       }
-      setStatusLine(`Prêt — ${r.hostname}. Ouverture de l'onboarding…`);
+      setStatusLine(
+        afterCompleteHref === "/" || afterCompleteHref === "/dashboard"
+          ? `Prêt — ${r.hostname}. Ouverture de l'espace…`
+          : `Prêt — ${r.hostname}. Suite de la configuration…`,
+      );
       window.setTimeout(() => {
         window.location.href = afterCompleteHref;
       }, 1500);
@@ -252,7 +302,9 @@ export function SetupWizard(props?: { config?: SetupWizardConfig }) {
           <h1 className="text-lg font-semibold">Configuration initiale</h1>
           <p className="mt-2 text-sm text-slate-600">
             Le premier lancement (compte, clé de récupération, tunnel{" "}
-            <code className="text-xs">*.{hostSuffix}</code>, clé OpenAI) se fait dans
+            <code className="text-xs">*.{hostSuffix}</code>, clé OpenAI) est
+            indisponible ici. Ouvrez{" "}
+            <code className="text-xs">/setup</code> sur le serveur Docker, ou
             l&apos;application desktop {productName}.
           </p>
         </div>
@@ -277,7 +329,7 @@ export function SetupWizard(props?: { config?: SetupWizardConfig }) {
             type="button"
             className="mt-2 text-sm text-white/70 underline decoration-white/30 hover:text-white"
             onClick={() => {
-              void getShellDesktopApi()?.rechooseConnection?.();
+              void resolveApi()?.rechooseConnection?.();
             }}
           >
             Changer de serveur…
