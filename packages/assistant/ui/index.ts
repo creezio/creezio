@@ -27,3 +27,8 @@ export {
 } from "../dist/runtime/active-surface.js";
 export { useVoiceInput } from "./use-voice-input";
 export { getFakeCursor } from "./fake-cursor";
+export {
+  configureAssistantTabWorkspace,
+  useTabWorkspaceOptional as useAssistantTabWorkspaceOptional,
+  type AssistantTabWorkspace,
+} from "./tab-workspace-shim";

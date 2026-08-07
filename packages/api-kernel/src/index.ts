@@ -46,6 +46,7 @@ export type {
   EntitySpec,
 } from "./entity-mount.js";
 export {
+  CREEZIO_DATA_CHANGED_HEADER,
   createEntityApiMount,
   registerEntityMounts,
 } from "./entity-mount.js";

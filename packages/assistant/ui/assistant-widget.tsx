@@ -1295,6 +1295,37 @@ export function AssistantWidget() {
                 return { ...m, steps };
               }),
             );
+            // Mutation MCP/chat → bus UI natif (même contrat qu'EntitySpec header).
+            if (step.status !== "error" && step.toolName) {
+              const name = String(step.toolName);
+              const lower = name.toLowerCase();
+              const resource =
+                /panier|cart/.test(lower)
+                  ? "panier"
+                  : /^(?:add_to_|add_|create_|update_|delete_|close_|set_|remove_|archive_)/.test(
+                        lower,
+                      ) &&
+                      !/^(get_|list_|search_|find_|read_)/.test(lower)
+                    ? lower
+                        .replace(
+                          /^(?:add_to_|add_|create_|update_|delete_|close_|set_|remove_|archive_)/,
+                          "",
+                        )
+                        .replace(/_ligne$/, "")
+                        .replace(/_item$/, "") || null
+                    : null;
+              if (resource) {
+                window.dispatchEvent(
+                  new CustomEvent("creezio:data-changed", {
+                    detail: {
+                      resource,
+                      source: "assistant",
+                      at: Date.now(),
+                    },
+                  }),
+                );
+              }
+            }
           },
           onCancelled: () => {
             patchAssistant({
@@ -1386,6 +1417,7 @@ export function AssistantWidget() {
     return (
       <button
         type="button"
+        data-creezio-assistant-ui
         data-tf2-assistant-ui
         onClick={() => setOpen(true)}
         className={cn(
@@ -1409,6 +1441,7 @@ export function AssistantWidget() {
       {/* Mobile : fond sombre (overlay plein écran) */}
       <button
         type="button"
+        data-creezio-assistant-ui
         data-tf2-assistant-ui
         className="fixed inset-0 z-40 bg-slate-900/40 md:hidden"
         aria-label="Fermer l'assistant"
@@ -1416,6 +1449,7 @@ export function AssistantWidget() {
       />
 
       <aside
+        data-creezio-assistant-ui
         data-tf2-assistant-ui
         className={cn(
           "fixed inset-y-0 right-0 z-50 flex h-[100dvh] flex-col border-l border-slate-200 bg-white shadow-xl shadow-slate-900/10",
@@ -1723,6 +1757,11 @@ export function AssistantWidget() {
                         <AssistantMessageContent
                           content={m.content || ""}
                           sources={m.sources}
+                          onNavigate={
+                            workspace?.navigate
+                              ? (href) => workspace.navigate(href)
+                              : undefined
+                          }
                         />
                       ) : (
                         <p className="text-[11px] text-slate-500">

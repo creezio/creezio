@@ -104,10 +104,14 @@ export function KeepAliveOutlet({
     routeEntry.lastActiveAt = Date.now();
   }
 
-  // Affichage optimiste : si l'onglet cible a déjà une pane, la montrer tout de suite
-  // (sans attendre la fin du router.replace). Sinon rester sur routeKey.
-  const displayKey =
-    activeHref !== routeKey && cacheRef.current.has(activeHref)
+  // Affichage optimiste : si l'onglet cible a déjà une pane, la montrer tout
+  // de suite (sans attendre router.replace). Si la cible est froide (pas en
+  // cache) → placeholder, JAMAIS l'ancienne pane (bug « contenu page précédente »).
+  const coldTarget =
+    activeHref !== routeKey && !cacheRef.current.has(activeHref);
+  const displayKey: string | null = coldTarget
+    ? null
+    : activeHref !== routeKey && cacheRef.current.has(activeHref)
       ? activeHref
       : routeKey;
 
@@ -121,7 +125,7 @@ export function KeepAliveOutlet({
     const ranked = rankKeepAliveEvictionKeys(
       Array.from(cacheRef.current.keys()),
       lastActiveAt,
-      { displayKey, routeKey },
+      { displayKey: displayKey ?? routeKey, routeKey },
     );
     while (cacheRef.current.size > max && ranked.length) {
       const evictKey = ranked.shift()!;
@@ -149,7 +153,7 @@ export function KeepAliveOutlet({
   return (
     <div className="workspace-pane-stack relative h-full min-h-0 w-full">
       {Array.from(cacheRef.current.entries()).map(([key, entry]) => {
-        const active = key === displayKey;
+        const active = displayKey != null && key === displayKey;
         const fullscreen = isFullscreenHref(key);
         return (
           <div
@@ -186,6 +190,17 @@ export function KeepAliveOutlet({
           </div>
         );
       })}
+      {coldTarget ? (
+        <div
+          data-workspace-pane-placeholder={activeHref}
+          data-active="true"
+          className="workspace-pane absolute inset-0 z-[2] flex items-center justify-center bg-white"
+          aria-busy="true"
+          aria-live="polite"
+        >
+          <div className="h-8 w-8 animate-pulse rounded-full bg-slate-200" />
+        </div>
+      ) : null}
     </div>
   );
 }

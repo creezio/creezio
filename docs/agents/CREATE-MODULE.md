@@ -142,6 +142,13 @@ dans l'interview (§5 : readOnly/destructive, requiredScope, rôles).
   ([DOC-STANDARD-UI.md](../DOC-STANDARD-UI.md)) — pas de lib UI tierce, pas
   de CSS module sauvage, pas de fork des primitives. Chaque page liste ses
   composants dans l'interview (§4).
+- **Resource data (réactivité)** : toute page liste / détail qui doit se
+  mettre à jour quand le chat, une API ou un tool MCP mute les données
+  déclare sa resource via `useCreezioResource("<id>")`
+  (`@creezio/shell-ui/ui`). L'`EntitySpec` porte le même id
+  (`resource` ou défaut = `table`) → header `x-creezio-data-changed` → bus
+  client `creezio:data-changed`. Les mounts hors EntitySpec ajoutent le
+  header (`CREEZIO_DATA_CHANGED_HEADER`) ou appellent `emitDataChanged`.
 - Nav : `navItems` du module (permissions `nav.*` déclarées via
   `configureAuth` — sans quoi la sidebar owner est amputée).
 - Meili : `meiliIndexes` du module (UIDs `catalog_*` imposés par le kit,

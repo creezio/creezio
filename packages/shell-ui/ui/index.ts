@@ -56,6 +56,11 @@ export * from "./lib/hermes-ui";
 export * from "./lib/fleet-tracker-client";
 export * from "./lib/ai-workspace-client";
 export * from "./lib/ai-screencast-hub";
+export {
+  useCreezioResource,
+  useCreezioResources,
+  type UseCreezioResourceOptions,
+} from "./lib/use-creezio-resource";
 
 /* ── Layout / chrome ── */
 export * from "./layout/page-chrome";

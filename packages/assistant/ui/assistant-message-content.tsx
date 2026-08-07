@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Fragment, type ReactNode } from "react";
+import { Fragment, type MouseEvent, type ReactNode } from "react";
 import { entityLinkClass } from "./entity-links";
 import {
   sourceLinkMatchers,
@@ -13,6 +13,11 @@ type Props = {
   content: string;
   sources?: AssistantSource[];
   className?: string;
+  /**
+   * Navigation workspace explicite (focus onglet déjà ouvert).
+   * Fourni par AssistantWidget via `useTabWorkspaceOptional().navigate`.
+   */
+  onNavigate?: (href: string) => void;
 };
 
 /** Lien CRM relatif uniquement (anti-XSS / pas d'URL externes). */
@@ -35,6 +40,35 @@ function linkClass(type?: string) {
     type === "marketplace" && "text-emerald-700",
     type === "produit" && "text-sky-700",
     type === "releve" && "text-violet-700",
+  );
+}
+
+/**
+ * Lien CRM : `onNavigate` explicite si fourni (workspace.navigate), sinon
+ * Next Link seul (capture WorkspaceShell en secours).
+ */
+function CrmNavLink({
+  href,
+  className,
+  onNavigate,
+  children,
+}: {
+  href: string;
+  className?: string;
+  onNavigate?: (href: string) => void;
+  children: ReactNode;
+}) {
+  const onClick = (e: MouseEvent<HTMLAnchorElement>) => {
+    if (!onNavigate) return;
+    if (e.defaultPrevented || e.button !== 0) return;
+    if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+    e.preventDefault();
+    onNavigate(href);
+  };
+  return (
+    <Link href={href} className={className} onClick={onClick}>
+      {children}
+    </Link>
   );
 }
 
@@ -65,14 +99,11 @@ function renderBold(text: string, keyPrefix: string): ReactNode[] {
   return parts.length ? parts : [<Fragment key={`${keyPrefix}-empty`}>{text}</Fragment>];
 }
 
-/**
- * Linkify guidé par sources : remplace les titres / plaques connus
- * par des Next Link, sans toucher au HTML brut.
- */
 function linkifyGuided(
   text: string,
   matchers: { text: string; url: string; type?: string }[],
   keyPrefix: string,
+  onNavigate?: (href: string) => void,
 ): ReactNode[] {
   if (!text) return [];
   if (!matchers.length) return renderBold(text, keyPrefix);
@@ -84,7 +115,6 @@ function linkifyGuided(
   for (const m of matchers) {
     const needle = m.text;
     if (!needle) continue;
-    // Variante gras markdown autour du jeton : **GA434EQ**
     const variants = [needle, `**${needle}**`];
     for (const variant of variants) {
       const nLower = variant.toLowerCase();
@@ -116,7 +146,6 @@ function linkifyGuided(
 
   segs.sort((a, b) => a.start - b.start || b.end - a.end);
 
-  // Filtrer overlaps résiduels (garder le plus long / premier)
   const kept: Seg[] = [];
   for (const s of segs) {
     if (kept.some((k) => s.start < k.end && s.end > k.start)) continue;
@@ -137,13 +166,14 @@ function linkifyGuided(
     const href = safeCrmHref(s.url);
     if (href) {
       nodes.push(
-        <Link
+        <CrmNavLink
           key={`${keyPrefix}-l-${i}`}
           href={href}
           className={cn(linkClass(s.type), "font-semibold")}
+          onNavigate={onNavigate}
         >
           {s.label}
-        </Link>,
+        </CrmNavLink>,
       );
     } else {
       nodes.push(...renderBold(s.label, `${keyPrefix}-fb-${i}`));
@@ -160,15 +190,19 @@ function linkifyGuided(
 /**
  * Rendu sûr du message assistant :
  * - gras `**x**`
- * - liens markdown `[label](/path)` → Next Link (paths relatifs `/` uniquement)
- * - linkify guidé par sources (plaques / titres)
+ * - liens markdown `[label](/path)` → CrmNavLink (+ onNavigate workspace)
+ * - linkify guidé par sources
  * - pas de HTML brut
  */
-export function AssistantMessageContent({ content, sources, className }: Props) {
+export function AssistantMessageContent({
+  content,
+  sources,
+  className,
+  onNavigate,
+}: Props) {
   const matchers = sourceLinkMatchers(sources);
   const text = content || "";
 
-  // Découpe liens markdown (relatifs /… ou absolus justrent.*) pour ne pas re-linkify dedans
   const mdLinkRe = /\[([^\]]+)\]\((https?:\/\/[^)\s]+|\/[^)\s]+)\)/g;
   const chunks: ReactNode[] = [];
   let last = 0;
@@ -178,25 +212,37 @@ export function AssistantMessageContent({ content, sources, className }: Props) 
   while ((m = mdLinkRe.exec(text)) !== null) {
     if (m.index > last) {
       chunks.push(
-        ...linkifyGuided(text.slice(last, m.index), matchers, `g-${i}`),
+        ...linkifyGuided(
+          text.slice(last, m.index),
+          matchers,
+          `g-${i}`,
+          onNavigate,
+        ),
       );
     }
     const label = m[1];
     const href = safeCrmHref(m[2]);
     if (href) {
       chunks.push(
-        <Link key={`md-${i}`} href={href} className={linkClass()}>
+        <CrmNavLink
+          key={`md-${i}`}
+          href={href}
+          className={linkClass()}
+          onNavigate={onNavigate}
+        >
           {label}
-        </Link>,
+        </CrmNavLink>,
       );
     } else {
-      chunks.push(...linkifyGuided(m[0], matchers, `mdfb-${i}`));
+      chunks.push(...linkifyGuided(m[0], matchers, `mdfb-${i}`, onNavigate));
     }
     last = m.index + m[0].length;
     i += 1;
   }
   if (last < text.length) {
-    chunks.push(...linkifyGuided(text.slice(last), matchers, `g-end`));
+    chunks.push(
+      ...linkifyGuided(text.slice(last), matchers, `g-end`, onNavigate),
+    );
   }
 
   return (

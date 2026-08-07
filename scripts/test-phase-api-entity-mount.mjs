@@ -130,6 +130,11 @@ test("entity-mount CRUD complet + colonnes non déclarées ignorées", async () 
     assert.ok(created.body.id);
     assert.ok(created.body.created_at);
     assert.equal("hack_col" in created.body, false);
+    assert.equal(
+      created.headers?.["x-creezio-data-changed"],
+      "widgets",
+      "POST émet le header data-changed (resource=table)",
+    );
 
     const id = created.body.id;
     const read = await h.call("GET", `widgets/${id}`);

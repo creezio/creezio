@@ -49,6 +49,9 @@ export type EntityColumnSpec = {
 /** Contexte handler avec DB garantie (le moteur répond 503 sinon). */
 export type EntityHookContext = ApiHandlerContext & { db: ScopedDbAccess };
 
+/** Header HTTP → bus client `creezio:data-changed` (voir @creezio/shell-ui). */
+export const CREEZIO_DATA_CHANGED_HEADER = "x-creezio-data-changed";
+
 export type EntityHooks = {
   /**
    * Avant INSERT — `row` est mutable (coercions, colonnes dérivées,
@@ -83,11 +86,37 @@ export type EntityHooks = {
     rows: Array<Record<string, unknown>>,
     ctx: EntityHookContext,
   ): unknown | Promise<unknown>;
+  /** Après INSERT réussi (side-effects métier ; le header data-changed est déjà posé). */
+  afterCreate?(
+    row: Record<string, unknown>,
+    ctx: EntityHookContext,
+  ): void | Promise<void>;
+  /** Après UPDATE réussi. */
+  afterUpdate?(
+    row: Record<string, unknown>,
+    ctx: EntityHookContext,
+  ): void | Promise<void>;
+  /** Après DELETE réussi. */
+  afterDelete?(
+    row: Record<string, unknown>,
+    ctx: EntityHookContext,
+  ): void | Promise<void>;
+  /** Après archive réussi. */
+  afterArchive?(
+    row: Record<string, unknown>,
+    ctx: EntityHookContext,
+  ): void | Promise<void>;
 };
 
 export type EntitySpec = {
   /** Table SQL (couche brand) — validée `[a-z_][a-z0-9_]*`. */
   table: string;
+  /**
+   * Resource pour le bus UI `creezio:data-changed` (header HTTP).
+   * Défaut = `table`. Les pages liste déclarent la même resource via
+   * `useCreezioResource(resource)`.
+   */
+  resource?: string;
   /**
    * Colonnes métier. `id`, `created_at`, `updated_at` (+ `archived_at` si
    * `archivable`) sont implicites — inutile de les déclarer.
@@ -176,10 +205,22 @@ export function createEntityApiMount(spec: EntitySpec): ApiMount {
   }
 
   const table = spec.table;
+  const resource = (spec.resource || spec.table).trim() || spec.table;
   const archivable = spec.archivable === true;
   const softDeleteOnly = spec.softDeleteOnly ?? archivable;
   const orderBy = spec.orderBy?.trim();
   const hooks = spec.hooks ?? {};
+
+  function withDataChanged(res: ApiResponse): ApiResponse {
+    if (res.status < 200 || res.status >= 300) return res;
+    return {
+      ...res,
+      headers: {
+        ...(res.headers || {}),
+        [CREEZIO_DATA_CHANGED_HEADER]: resource,
+      },
+    };
+  }
 
   const baseColumns = ["id", "created_at", "updated_at"];
   if (archivable) baseColumns.push("archived_at");
@@ -341,7 +382,9 @@ export function createEntityApiMount(spec: EntitySpec): ApiMount {
         .map(() => "?")
         .join(",")})`,
     ).run(...cols.map((c) => row[c]));
-    return { status: 201, body: selectById(db, String(row.id ?? id)) };
+    const created = selectById(db, String(row.id ?? id)) || row;
+    if (hooks.afterCreate) await hooks.afterCreate(created, ctx);
+    return withDataChanged({ status: 201, body: created });
   }
 
   async function handleRead(
@@ -393,20 +436,29 @@ export function createEntityApiMount(spec: EntitySpec): ApiMount {
     db.prepare(
       `UPDATE ${table} SET ${cols.map((c) => `${c} = ?`).join(", ")} WHERE id = ?`,
     ).run(...cols.map((c) => next[c]), id);
-    return { status: 200, body: selectById(db, id) };
+    const updated = selectById(db, id) || next;
+    if (hooks.afterUpdate) await hooks.afterUpdate(updated, ctx);
+    return withDataChanged({ status: 200, body: updated });
   }
 
-  function handleDelete(ctx: EntityHookContext, id: string): ApiResponse {
+  async function handleDelete(
+    ctx: EntityHookContext,
+    id: string,
+  ): Promise<ApiResponse> {
     if (softDeleteOnly) {
       return { status: 400, body: { error: "use_archive" } };
     }
     const existing = selectById(ctx.db, id);
     if (!existing) return { status: 404, body: { error: "not_found" } };
     ctx.db.prepare(`DELETE FROM ${table} WHERE id = ?`).run(id);
-    return { status: 200, body: existing };
+    if (hooks.afterDelete) await hooks.afterDelete(existing, ctx);
+    return withDataChanged({ status: 200, body: existing });
   }
 
-  function handleArchive(ctx: EntityHookContext, id: string): ApiResponse {
+  async function handleArchive(
+    ctx: EntityHookContext,
+    id: string,
+  ): Promise<ApiResponse> {
     if (!archivable) {
       return { status: 400, body: { error: "not_archivable" } };
     }
@@ -416,7 +468,9 @@ export function createEntityApiMount(spec: EntitySpec): ApiMount {
     ctx.db
       .prepare(`UPDATE ${table} SET archived_at = ?, updated_at = ? WHERE id = ?`)
       .run(ts, ts, id);
-    return { status: 200, body: selectById(ctx.db, id) };
+    const archived = selectById(ctx.db, id) || { ...row, archived_at: ts };
+    if (hooks.afterArchive) await hooks.afterArchive(archived, ctx);
+    return withDataChanged({ status: 200, body: archived });
   }
 
   return {

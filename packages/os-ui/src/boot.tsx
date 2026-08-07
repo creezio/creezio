@@ -1,7 +1,10 @@
 "use client";
 
 import { useEffect, type ReactNode } from "react";
-import { configureShellUiBrand } from "@creezio/shell-ui";
+import {
+  configureShellUiBrand,
+  installCreezioDataChangedFetch,
+} from "@creezio/shell-ui";
 
 export type CreezioUiBootProps = {
   children: ReactNode;
@@ -12,7 +15,7 @@ export type CreezioUiBootProps = {
 };
 
 /**
- * Boot client OS — identity desktop + tokens shell-ui.
+ * Boot client OS — identity desktop + tokens shell-ui + fetch → bus data.
  * Vit dans @creezio/os-ui ; la marque ne stocke pas de page OS.
  */
 export function CreezioUiBoot({
@@ -27,6 +30,7 @@ export function CreezioUiBoot({
       productName,
       publicHostSuffix,
     });
+    installCreezioDataChangedFetch();
   }, [desktopApiGlobal, productName, publicHostSuffix]);
   return <>{children}</>;
 }

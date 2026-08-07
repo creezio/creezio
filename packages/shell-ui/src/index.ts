@@ -90,3 +90,15 @@ export {
   rankKeepAliveEvictionKeys,
   configureKeepAliveFullscreenMatchers,
 } from "./lib/keepalive-eviction.js";
+
+export {
+  CREEZIO_DATA_CHANGED_EVENT,
+  CREEZIO_DATA_CHANGED_HEADER,
+  emitDataChanged,
+  subscribeDataChanged,
+  parseDataChangedHeader,
+  inferResourceFromToolName,
+  installCreezioDataChangedFetch,
+  resetDataChangedFetchForTests,
+  type CreezioDataChangedDetail,
+} from "./lib/data-changed.js";

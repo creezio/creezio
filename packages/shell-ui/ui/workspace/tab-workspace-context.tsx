@@ -14,6 +14,7 @@ import {
 } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import {
+  configureAssistantTabWorkspace,
   resolveActiveSurface,
   type ActiveSurface,
 } from "@creezio/assistant/ui";
@@ -1134,3 +1135,6 @@ configureTabWorkspaceHost({
   useTabWorkspace,
   useOpenTab,
 });
+
+/** Branche l'assistant kit sur le même TabWorkspaceProvider (liens chat → navigate). */
+configureAssistantTabWorkspace(useTabWorkspaceOptional);

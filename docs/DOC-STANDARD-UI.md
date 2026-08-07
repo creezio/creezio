@@ -70,6 +70,25 @@ partagé, tâche sérialisée).
   `<div onClick>` stylé au lieu de `button`, une bordure arrondie au lieu de
   `card`).
 
+## Réactivité data (pages listes)
+
+Toute page dont le contenu doit suivre les mutations (chat MCP, API,
+formulaires) déclare sa resource :
+
+```tsx
+"use client";
+import { useCreezioResource } from "@creezio/shell-ui/ui";
+
+export function ClientsLiveRefresh() {
+  useCreezioResource("clients"); // même id que EntitySpec.resource / table
+  return null;
+}
+```
+
+Contrat : mutations → header `x-creezio-data-changed` ou `emitDataChanged` →
+événement `creezio:data-changed` → `router.refresh()` si la pane est active.
+Voir [CREATE-MODULE.md](./agents/CREATE-MODULE.md).
+
 ## Déclaration dans l'interview de module
 
 La section « 4. UI, nav & permissions » de chaque `interview.md`

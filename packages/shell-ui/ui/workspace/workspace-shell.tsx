@@ -1,11 +1,14 @@
 "use client";
 
 import {
+  cloneElement,
+  isValidElement,
   useCallback,
   useEffect,
   useRef,
   useState,
   type CSSProperties,
+  type ReactElement,
   type ReactNode,
 } from "react";
 import { usePathname } from "next/navigation";
@@ -28,6 +31,30 @@ import {
   getPreferCatalogueSelector,
   getSidebarCollapsedKey,
 } from "./workspace-config";
+
+type SidebarChromeProps = {
+  collapsed: boolean;
+  onToggleCollapse: () => void;
+  mobileOpen: boolean;
+  onMobileClose: () => void;
+};
+
+/** Sidebar marque (élément) reçoit les props chrome ; sinon Sidebar kit. */
+function renderSidebarSlot(
+  sidebar: ReactNode | undefined,
+  props: SidebarChromeProps,
+): ReactNode {
+  if (sidebar == null) {
+    return <Sidebar {...props} />;
+  }
+  if (isValidElement(sidebar)) {
+    return cloneElement(
+      sidebar as ReactElement<Partial<SidebarChromeProps>>,
+      props,
+    );
+  }
+  return sidebar;
+}
 
 function resolveInternalHref(anchor: HTMLAnchorElement): string | null {
   const raw = anchor.getAttribute("href");
@@ -215,14 +242,12 @@ export function WorkspaceShell({
         }
         data-creezio-assistant-chrome={hydrated && open ? "panel" : "fab-overlay"}
       >
-        {sidebar ?? (
-          <Sidebar
-            collapsed={sidebarCollapsed}
-            onToggleCollapse={toggleSidebarCollapsed}
-            mobileOpen={navOpen}
-            onMobileClose={closeNav}
-          />
-        )}
+        {renderSidebarSlot(sidebar, {
+          collapsed: sidebarCollapsed,
+          onToggleCollapse: toggleSidebarCollapsed,
+          mobileOpen: navOpen,
+          onMobileClose: closeNav,
+        })}
         <div
           className={cn(
             "flex min-h-0 min-w-0 flex-1 flex-col transition-[margin] duration-200 ease-out",
