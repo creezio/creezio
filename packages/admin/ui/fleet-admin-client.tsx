@@ -447,7 +447,7 @@ export function FleetAdminClient() {
       }
       if (
         !window.confirm(
-          `Recréer ${key} avec :\n${image}\n\n(backup /data automatique, rollback si santé KO)`,
+          `Recréer ${key} avec :\n${image}\n\n(sans nouveau backup — volume /data + archives docker-data/backups/ conservés ; rollback image auto si santé KO)`,
         )
       )
         return;
@@ -455,6 +455,7 @@ export function FleetAdminClient() {
       const r = await api(`${base}/update`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        // Défaut API = pas de nouveau tar.gz ; backup:true seulement si opt-in CLI/API.
         body: JSON.stringify({ image }),
       });
       if (!r.json?.ok) {
@@ -499,7 +500,7 @@ export function FleetAdminClient() {
       return window.alert(`Tous les serveurs « ${brand} » sont déjà sur :\n${image}`);
     if (
       !window.confirm(
-        `Mettre à jour ${todo.length}/${targets.length} serveur(s) vers :\n${image}\n\n(séquentiel — backup /data + rollback automatique par serveur)`,
+        `Mettre à jour ${todo.length}/${targets.length} serveur(s) vers :\n${image}\n\n(séquentiel — sans nouveau backup ; rollback image auto par serveur)`,
       )
     )
       return;

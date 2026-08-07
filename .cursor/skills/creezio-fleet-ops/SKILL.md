@@ -195,31 +195,69 @@ creezio server-docker publish --brand-root "$BRAND_ROOT" \
 curl -sS -u "admin:$ADMPASS" \
   'http://127.0.0.1:18800/admin/api/registry/tags?image=creezio-server-tempoflow3'
 
-# Update d'une instance (ASYNC : 202 immédiat, jamais bloquant) :
+# Update (défaut = PAS de nouveau backup — data stables / itération) :
+creezio server-docker update <nom> --brand-root "$BRAND_ROOT" \
+  --image 127.0.0.1:5000/creezio-server-tempoflow3:0.2.2
+# ou : --tag 0.2.2 [--registry 127.0.0.1:5000]
+# Opt-in snapshot frais (prod critique) : ajouter --backup
+
+# Update via admin API (ASYNC : 202 immédiat) — backup opt-in seulement :
 curl -sS -u "admin:$ADMPASS" -X POST \
   http://127.0.0.1:18800/admin/api/servers/tempoflow3/<nom>/update \
   -H 'content-type: application/json' \
   -d '{"image":"127.0.0.1:5000/creezio-server-tempoflow3:0.2.2"}'
+# snapshot frais : … -d '{"image":"…","backup":true}'
 # Suivi :
 curl -sS -u "admin:$ADMPASS" \
   http://127.0.0.1:18800/admin/api/servers/tempoflow3/<nom>/update-status
 # Hôte distant enrôlé : mêmes chemins sous /admin/api/hosts/<hostId>/servers/…
 ```
 
-Update = pull → backup `/data` (`docker-data/backups/`) → recreate même
-volume/env → attente health → **rollback auto** vers l'image précédente si
-KO. Rollback manuel = re-POST update avec le tag précédent.
+Update = pull → recreate même volume/env → health → **rollback auto image**
+si KO. **Pas de nouveau tar.gz par défaut.** Les archives déjà présentes
+dans `{BRAND_ROOT}/docker-data/backups/` sont **conservées** (pas de prune
+dans le flux update).
 
-**Vérification** : `curl -sS http://127.0.0.1:<port>/api/v1/core/version`
-→ la nouvelle version ; `update-status` → `"status":"done"`.
+**GitHub ≠ backup runtime.** GitHub = **code** (image / repo). Les données
+runtime vivent sous `docker-data/servers/<nom>` → `/data` (sqlite, config…).
+Un backup tar.gz = filet si le volume est corrompu un jour — pas à refaire
+à chaque update quand les data ne changent pas.
 
-**Vérité** : `packages/factory/src/server-docker-cli.ts` (publish),
-`packages/observability/fleet-collector/server-admin.mjs` (routes update),
-`server-lib.mjs` (`updateServer`, backups). Env : `CREEZIO_REGISTRY`,
-`CREEZIO_REGISTRY_BASIC`.
+| Quand | Gestes |
+|---|---|
+| Dev / itération VPS (défaut) | `update` sans flag — zéro archive |
+| Prod critique / doute | `update … --backup` ou API `"backup":true` |
+| Référence one-shot (une fois) | `creezio server-docker backup <nom> --brand-root "$BRAND_ROOT"` |
 
-**Pièges** : update synchrone interdit — Cloudflare coupe les requêtes
-longues, d'où le contrat 202 + polling `update-status`. Registre requis
+**Où vivent les backups** : `{BRAND_ROOT}/docker-data/backups/<nom>-<stamp>.tar.gz`.
+
+**Restore depuis un backup existant** (volume cassé — rare) :
+
+```bash
+# 1. Arrêter l'instance
+creezio server-docker stop <nom> --brand-root "$BRAND_ROOT"
+# 2. Remplacer le volume data par l'archive (exemple) :
+DATA="$BRAND_ROOT/docker-data/servers/<nom>"
+BAK="$BRAND_ROOT/docker-data/backups/<nom>-….tar.gz"
+mv "$DATA" "${DATA}.broken-$(date +%s)"
+mkdir -p "$(dirname "$DATA")"
+tar -xzf "$BAK" -C "$(dirname "$DATA")"   # recrée le dossier <nom>/
+# 3. Relancer
+creezio server-docker start <nom> --brand-root "$BRAND_ROOT"
+```
+
+**Vérification** : `curl -sS http://127.0.0.1:<port>/api/v1/core/version` ;
+`update-status` → `"status":"done"` ; steps contiennent
+`pas de nouveau backup (défaut)` sauf si `--backup`.
+
+**Vérité** : `packages/factory/src/server-docker-cli.ts` (`update`, `backup`),
+`server-admin.mjs` / `host-agent.mjs` (`body.backup === true`),
+`server-lib.mjs` (`updateServer`, défaut `backup=false`). Env :
+`CREEZIO_REGISTRY`, `CREEZIO_REGISTRY_BASIC`.
+
+**Pièges** : update synchrone interdit côté admin/agent — Cloudflare coupe
+les requêtes longues, d'où le contrat 202 + polling `update-status` (la CLI
+`update` locale est synchrone OK). Registre requis pour publish
 (`--registry` ou env), sinon erreur explicite.
 
 ## 4b. Déployer sur toute la flotte — releases en PULL (F4-F6)
@@ -507,6 +545,7 @@ L'admin (§5) montre boot-status live, logs et ops par serveur sans SSH.
 | Owner n8n = setup VÉRIFIÉ | n8n vierge répond **200 à `/rest/login` SANS cookie** (shell user) et monte `/rest/*` AVANT la fin de l'init DB : un `POST /rest/owner/setup` trop tôt renvoie 200 mais l'écriture est **perdue** (vécu : « owner: login OK »/« setup OK » sur instance demo/proof vierges, DB sans owner, login 401 ensuite). Règles kit (`n8n/launcher.ts`) : login réussi = 2xx **ET** cookie `n8n-auth` (`n8nLoginSucceeded`) ; readiness = `/rest/settings` avec `userManagement.showSetupOnFirstLoad` présent ; setup conclu seulement après login vérifié (retries). Gate : `test-os-embeds` (prédicats). |
 | Install Hermes root Linux = FHS | L'`install.sh` amont récent en **root Linux** (containers server-docker) installe en layout FHS `/usr/local/lib/hermes-agent` + `/usr/local/bin/hermes` — hors sandbox, le launcher ne trouve jamais le CLI (« CLI toujours introuvable après install », vécu demo). Verrou kit : `HERMES_INSTALL_DIR={profile}/.hermes/hermes-agent` dans l'env d'install (`hermesInstallLayoutEnv`) + fallback lecture FHS root-only (`hermesFhsFallbackDirs`) pour les instances installées avant le verrou. Les instances FHS existantes (demo) retrouvent leur CLI au prochain boot d'une image à jour. |
 | Backup update = tar exit 1 OK | GNU tar sur un volume `/data` **vivant** sort en exit 1 (« file changed as we read it ») avec une archive complète et valide — ne JAMAIS traiter exit 1 comme échec (vécu : « backup indisponible (tar) » avec .tar.gz de 2,4 Go pourtant intègre). SoT `server-lib.mjs backupInstanceData` : exit 0/1 acceptés, `gzip -t` vérifie l'archive, log `backup … (N Mo, gzip vérifié)` ; si le backup demandé est réellement impossible, l'update **échoue proprement AVANT recreate** (plus de warning silencieux). Le fix vit dans les images `creezio-server-admin:local`/`creezio-host-agent:local` → re-runner `admin up` + `agent up` après un pull kit pour l'embarquer. |
+| Backup ≠ GitHub | Le tar.gz sauve les **données** `/data` (sqlite…), pas le code. Défaut update = **pas** de nouveau backup (opt-in `--backup` / `backup:true`). One-shot : `server-docker backup <nom>`. Archives dans `docker-data/backups/` conservées. |
 | Onglet workspace ≠ refetch RSC | Réactiver un onglet workspace (`router.replace` vers une route déjà visitée) ne refetch **JAMAIS** le payload RSC en Next 14 — cache client de session resservi tel quel, zéro requête réseau (prouvé CDP, même après 35 s). Une page RSC en pane keep-alive mutée depuis une autre page reste figée jusqu'au reload dur. Toute mutation hors page doit être couplée à une invalidation : compteur de mutations module-scope + `router.refresh()` quand la pane est/redevient visible (pattern TF3 `panier-live-refresh.tsx` + `notifyPanierChanged`, bug panier 0.3.6). Vaut pour le workspace marque TF verbatim ET la copie kit `shell-ui/ui/workspace`. |
 | Lockfile Docker marque neuve | Empêché structurellement : `prepareBrandDistribution` (vendor+locks) tourne à chaque `new-app`/`brand apply`/push ; `docker:build` appelle `ensure-server-lock.mjs` avant `docker build` ; Dockerfile `npm ci \|\| npm install --omit=dev` ; `server-docker create\|build` régénère si stale. **Interdit** de régénérer le lock Docker à la main hors `ensure-server-lock` / `ensureBrandPackageLocks`. Clone hôte : `npm run install:server-deps` (layout = Docker). Gate : `test-phase-factory-lockfile` + `test-phase-clone-autonomy`. |
 
@@ -538,9 +577,9 @@ daemon et le registre `registry:2`). Quatre mécanismes standard, en couches :
 
 **Politique (décision 2026-08-06, disque saturé 91 %)** : après chaque
 publish/update on ne garde que **N=2 images** par app (version courante +
-rollback 1 cran, daemon ET registre) et **1 backup d'update** par serveur
-(`CREEZIO_UPDATE_BACKUP_KEEP`, prune dans le flux update `server-lib.mjs`
-+ ceinture-bretelles au timer). Build cache plafonné à **5GB**.
+rollback 1 cran, daemon ET registre). Les backups `/data` ne sont **plus**
+créés à chaque update (défaut skip) — les archives de référence dans
+`docker-data/backups/` se gardent. Build cache plafonné à **5GB**.
 
 2. **Timer systemd quotidien** (VPS TempoFlow : `docker-disk-maintenance.timer`,
    04h30 UTC, script `/usr/local/sbin/docker-disk-maintenance.sh`) :
@@ -560,8 +599,9 @@ rollback 1 cran, daemon ET registre) et **1 backup d'update** par serveur
      3 tags ; `--delete-untagged` est bugué avec ces index, ne pas l'utiliser)
      puis `registry garbage-collect` dans le container `creezio-registry`
      (blobs). Pré-requis : `REGISTRY_STORAGE_DELETE_ENABLED=true`.
-   - rétention backups d'update : 1 par instance dans
-     `/opt/docker/*/docker-data/backups` (`DOCKER_MAINT_BACKUP_KEEP`) ;
+   - backups `/data` : **ne pas purger** les archives de référence dans
+     `docker-data/backups/` (politique : un backup stable gardé ; les updates
+     n'en créent plus par défaut) ;
    - rétention daemon : 2 tags par repo du registre local
      (`DOCKER_MAINT_KEEP_DAEMON_TAGS`, images utilisées épargnées par rmi).
    - Réglages : `/etc/default/docker-disk-maintenance` — sourcé AVANT les
@@ -578,14 +618,14 @@ rollback 1 cran, daemon ET registre) et **1 backup d'update** par serveur
    orphelines balayés par le timer). Best-effort : ne fait jamais échouer le
    publish.
 
-4. **Rétention dans le flux update** : `backupInstanceData` puis
-   `pruneBackups` (garde `CREEZIO_UPDATE_BACKUP_KEEP` backups, défaut 1) —
-   embarqué dans `creezio-server-admin:local`/`creezio-host-agent:local`
-   (re-runner `admin up` + `agent up` après un pull kit).
+4. **Flux update** : plus de backup automatique ni de `pruneBackups` —
+   opt-in `--backup` seulement. Les `.tar.gz` de référence restent dans
+   `docker-data/backups/` (re-runner `admin up` + `agent up` après pull kit
+   pour embarquer le défaut `backup=false`).
 
 **Vérification** : `docker system df` (Build Cache ≤ 5GB),
 `df -h /` < 85 %, `curl -s http://127.0.0.1:5000/v2/<repo>/tags/list` ≤ 2 tags,
-1 seul `.tar.gz` par instance dans `docker-data/backups`.
+archives de référence intactes sous `docker-data/backups/`.
 
 **Vérité** : `packages/factory/src/server-docker-cli.ts`
 (`runPublishRetention`, `selectTagsToPrune`) ; hôte : `/etc/docker/daemon.json`,

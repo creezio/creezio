@@ -16,7 +16,7 @@
 | [`fleet-collector/ops-api.mjs`](../fleet-collector/ops-api.mjs) | Agrégation flotte pour l’UI ops (slug → users → activité). Suffixe tunnel / hostnames : opts.tunnelSuffix (injection marque). |
 | [`fleet-collector/registry-pull-proxy.mjs`](../fleet-collector/registry-pull-proxy.mjs) | Proxy PULL-ONLY du registre d'images (F4) : `/v2/*` GET/HEAD (push → 405), auth Basic `hostId:agentToken`, blobs streamés — ingress `registry.{zone}`. |
 | [`fleet-collector/server-admin.mjs`](../fleet-collector/server-admin.mjs) | Backend flotte `creezio-server-admin` (`:18800`, Basic) : API `/admin/api/*` (serveurs, updates 202+status, hôtes/enroll, registry tags, support relay), UI legacy `/admin` ; embarqué dans l'image `docker/server-admin`. |
-| [`fleet-collector/server-lib.mjs`](../fleet-collector/server-lib.mjs) | Logique serveurs Docker partagée admin ↔ agent : `updateServer` (pull → backup `/data` gzip-vérifié → recreate → healthcheck → rollback auto), pruneBackups, registre `servers.json`. |
+| [`fleet-collector/server-lib.mjs`](../fleet-collector/server-lib.mjs) | Logique serveurs Docker partagée admin ↔ agent : `updateServer` (pull → recreate → healthcheck → rollback auto ; backup `/data` opt-in `backup:true`, défaut off, pas de prune), `backupInstanceData`, registre `servers.json`. |
 | [`fleet-collector/server.mjs`](../fleet-collector/server.mjs) | _(pas de cartouche JSDoc en tête — voir le code)_ |
 | [`fleet-collector/test-fleet-collector.mjs`](../fleet-collector/test-fleet-collector.mjs) | Tests locaux du fleet-collector kit (spawn serveur éphémère). Env neutre CREEZIO_* — pas de domaine marque. |
 | [`fleet-collector/test-server-admin.mjs`](../fleet-collector/test-server-admin.mjs) | Tests du backend flotte (routes admin, enroll, update async). |

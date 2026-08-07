@@ -177,7 +177,8 @@ async function handleInstanceRoute(req, res, url, brandId, name, action) {
       inst,
       image,
       audit,
-      backup: body.backup !== false,
+      // Opt-in : seul backup:true crée un tar.gz frais (défaut = skip).
+      backup: body.backup === true,
     })
       .then((r) => {
         entry.status = r.ok ? "done" : "error";

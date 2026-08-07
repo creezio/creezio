@@ -581,8 +581,14 @@ export async function waitBootReady(port, timeoutMs = 180_000) {
 }
 
 /**
- * Update d'une instance : pull nouvelle image → backup /data → recreate
- * même volume/labels/env → attente health → rollback image précédente si KO.
+ * Update d'une instance : pull nouvelle image → [opt-in backup /data] →
+ * recreate même volume/labels/env → attente health → rollback image
+ * précédente si KO.
+ *
+ * Défaut `backup=false` (itération / data stables) : pas de nouveau tar.gz.
+ * Les archives déjà dans `docker-data/backups/` sont **conservées** (pas de
+ * prune ici). Opt-in : CLI `--backup` / API `{"backup":true}` / one-shot
+ * `creezio server-docker backup <nom>`.
  */
 export async function updateServer({
   brandRoot,
@@ -591,7 +597,7 @@ export async function updateServer({
   image,
   audit,
   waitTimeoutMs = 180_000,
-  backup = true,
+  backup = false,
 }) {
   const brandId = registry.brandId;
   const prev = await dockerStateOf(inst.containerName);
@@ -627,8 +633,13 @@ export async function updateServer({
       };
     }
     backupFile = b.file;
+    // Pas de pruneBackups : les archives de référence existantes se gardent
+    // (politique propriétaire — un backup stable > un snapshot à chaque update).
     log(`backup ${b.detail}`);
-    pruneBackups(brandRoot, inst.name);
+  } else {
+    // Défaut : pas de nouveau tar.gz. Volume bind-mount conservé au recreate ;
+    // archives déjà présentes dans docker-data/backups/ inchangées.
+    log("pas de nouveau backup (défaut) — volume /data + archives existantes conservés");
   }
 
   const recreate = async (img) => {

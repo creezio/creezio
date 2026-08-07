@@ -11,7 +11,7 @@ import crypto from "node:crypto";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import {
   allocateServerPort,
   buildDockerRunArgs,
@@ -57,7 +57,14 @@ export type ServerDockerArgs = {
   tail?: number;
   /** logs : suivre. */
   follow?: boolean;
-  /** publish : tag de version (ex. 0.2.0). */
+  /**
+   * update / backup : forcer un tar.gz frais de `/data` (opt-in — défaut
+   * update = pas de nouveau backup ; archives existantes conservées).
+   */
+  backup?: boolean;
+  /** update : image complète (registry/repo:tag). */
+  image?: string;
+  /** publish / update : tag de version (ex. 0.2.0). */
   tag?: string;
   /** publish : registre (défaut env CREEZIO_REGISTRY, ex. 127.0.0.1:5000). */
   registry?: string;
@@ -141,9 +148,12 @@ export function parseServerDockerArgs(argv: string[]): ServerDockerArgs {
       out.profile = (rest.shift() || "") as ServerDockerArgs["profile"];
     }
     else if (a === "--purge-data") out.purgeData = true;
+    else if (a === "--backup") out.backup = true;
     else if (a === "--follow" || a === "-f") out.follow = true;
     else if (a === "--no-push") out.noPush = true;
     else if (a === "--no-retention") out.noRetention = true;
+    else if (a.startsWith("--image=")) out.image = a.slice(8);
+    else if (a === "--image") out.image = rest.shift();
     else if (a.startsWith("--keep-tags=")) out.keepTags = Number(a.slice(12));
     else if (a === "--keep-tags") out.keepTags = Number(rest.shift());
     else if (a.startsWith("--tag=")) out.tag = a.slice(6);
@@ -218,6 +228,14 @@ Instances nommées (registre docker-data/servers.json — recommandé) :
   creezio server-docker rm     <nom> --brand-root <app> [--purge-data]
   creezio server-docker logs   <nom> --brand-root <app> [--tail 200] [--follow]
   creezio server-docker ls     --brand-root <app>
+  creezio server-docker update <nom> --brand-root <app> --image <ref>|--tag <v>
+    [--backup] [--registry 127.0.0.1:5000]
+    (recreate même volume /data ; défaut = PAS de nouveau tar.gz.
+     --backup : snapshot frais avant recreate — prod critique seulement.
+     Archives déjà dans docker-data/backups/ sont conservées.)
+  creezio server-docker backup <nom> --brand-root <app>
+    (one-shot : tar.gz de référence de /data → docker-data/backups/ —
+     à faire une fois ; les updates suivants ne le remplacent pas.)
 
 Admin web multi-serveurs / multi-VPS (fleet-collector étendu) :
   creezio server-docker admin up|down|status --brand-root <app> [--port 18800]
@@ -1386,7 +1404,10 @@ async function runPublishSubcommand(
   run("docker", ["push", image], env);
   console.log(`✓ push ${image}`);
   console.log(
-    `  update flotte : POST agent /agent/api/servers/<brand>/<nom>/update {"image":"${image}"}`,
+    `  update flotte : creezio server-docker update <nom> --brand-root … --image ${image}`,
+  );
+  console.log(
+    `  (défaut sans nouveau backup ; opt-in : --backup / API {"backup":true})`,
   );
   // Référence publique pull-only (F4) : le MÊME repo/tag vu à travers
   // l'ingress registry.{zone} → proxy /v2/* du Creezio Server Admin. Pas de
@@ -2259,6 +2280,101 @@ async function runRegistrySubcommand(
     }
     return;
   }
+
+  if (args.sub === "backup") {
+    const serverLibPath = path.join(
+      paths.kit,
+      "packages/observability/fleet-collector/server-lib.mjs",
+    );
+    if (!fs.existsSync(serverLibPath)) {
+      throw new Error(`server-lib introuvable: ${serverLibPath}`);
+    }
+    const { backupInstanceData } = (await import(
+      pathToFileURL(serverLibPath).href
+    )) as {
+      backupInstanceData: (
+        brandRoot: string,
+        inst: ServerRegistryInstance,
+      ) => Promise<{ ok: boolean; file: string | null; detail: string }>;
+    };
+    console.log(`backup one-shot ${name} (/data → docker-data/backups/)…`);
+    const b = await backupInstanceData(paths.brandRoot, inst);
+    if (!b.ok) {
+      throw new Error(`backup KO: ${b.detail}`);
+    }
+    console.log(`✓ backup ${b.detail}`);
+    console.log(
+      `  conservé pour restore manuel — les updates suivants ne le remplacent pas (défaut sans --backup)`,
+    );
+    return;
+  }
+
+  if (args.sub === "update") {
+    const variant = inst.variant === "browser" ? ("browser" as const) : ("base" as const);
+    let image = (args.image || "").trim();
+    if (!image) {
+      const tag = (args.tag || "").trim();
+      if (!tag || !TAG_RE.test(tag)) {
+        throw new Error(
+          "creezio server-docker update <nom> --image <ref> | --tag <version> [--backup]",
+        );
+      }
+      const regHost = resolveRegistry(args) || "127.0.0.1:5000";
+      image = publishImageName(regHost, brandId, tag, variant);
+    }
+    const serverLibPath = path.join(
+      paths.kit,
+      "packages/observability/fleet-collector/server-lib.mjs",
+    );
+    if (!fs.existsSync(serverLibPath)) {
+      throw new Error(`server-lib introuvable: ${serverLibPath}`);
+    }
+    const { updateServer } = (await import(
+      pathToFileURL(serverLibPath).href
+    )) as {
+      updateServer: (opts: {
+        brandRoot: string;
+        registry: typeof registry;
+        inst: ServerRegistryInstance;
+        image: string;
+        backup?: boolean;
+        audit?: (s: string) => void;
+      }) => Promise<{
+        ok: boolean;
+        error?: string;
+        image?: string;
+        previousImage?: string;
+        version?: string | null;
+        rolledBack?: boolean;
+        backup?: string | null;
+        steps?: string[];
+      }>;
+    };
+    console.log(
+      `update ${name} → ${image}${args.backup ? " (--backup)" : " (sans nouveau backup)"}…`,
+    );
+    const result = await updateServer({
+      brandRoot: paths.brandRoot,
+      registry,
+      inst,
+      image,
+      backup: !!args.backup,
+      audit: (s) => console.log(`  ${s}`),
+    });
+    if (!result.ok) {
+      throw new Error(
+        `update KO: ${result.error || "?"}${
+          result.rolledBack ? ` (rollback → ${result.previousImage})` : ""
+        }`,
+      );
+    }
+    console.log(
+      `✓ ${name} → ${result.image || image} (version ${result.version || "?"}${
+        result.backup ? `, backup ${result.backup}` : ", sans nouveau backup"
+      })`,
+    );
+    return;
+  }
 }
 
 export async function runServerDockerCli(argv: string[]): Promise<void> {
@@ -2293,6 +2409,8 @@ export async function runServerDockerCli(argv: string[]): Promise<void> {
     "rm",
     "logs",
     "ls",
+    "update",
+    "backup",
   ]);
   if (registrySubs.has(args.sub)) {
     await runRegistrySubcommand(args, paths, env);
@@ -2444,6 +2562,6 @@ export async function runServerDockerCli(argv: string[]): Promise<void> {
   }
 
   throw new Error(
-    `Sous-commande inconnue: ${args.sub} (create|start|stop|rm|logs|ls|admin|publish|agent|enroll|build|up|down|ps|proof)`,
+    `Sous-commande inconnue: ${args.sub} (create|start|stop|rm|logs|ls|update|backup|admin|publish|agent|enroll|build|up|down|ps|proof)`,
   );
 }

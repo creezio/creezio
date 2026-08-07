@@ -94,15 +94,30 @@ d'héritage). Matrice historique du chantier :
 
 ## Updates de flotte (essentiel — détail dans la skill)
 
-Deux gestes, tous deux avec backup `/data` + healthcheck + rollback auto :
+GitHub / image Docker = **code**. Les **données runtime** vivent sous
+`docker-data/servers/<nom>` → `/data` (volume persistant au recreate). Un
+backup tar.gz (`docker-data/backups/`) = filet si le volume casse un jour —
+**pas** à refaire à chaque update quand les data sont stables.
+
+**Défaut** : update sans nouveau backup. Opt-in : `--backup` / `"backup":true`.
+Archives existantes **conservées** (pas de prune dans le flux update).
 
 ```bash
-# Unitaire (push manuel via le backend admin — 202 + polling update-status) :
+# Publier une image versionnée :
 creezio server-docker publish --brand-root "$BRAND_ROOT" --tag 0.3.0 --registry 127.0.0.1:5000
+
+# Update unitaire (dev/itération — défaut, rapide) :
+creezio server-docker update <nom> --brand-root "$BRAND_ROOT" --tag 0.3.0
+# API admin (202 + polling) — même défaut :
 curl -sS -u "admin:$ADMPASS" -X POST \
   http://127.0.0.1:18800/admin/api/servers/<brandId>/<nom>/update \
   -H 'content-type: application/json' \
   -d '{"image":"127.0.0.1:5000/creezio-server-<brandId>:0.3.0"}'
+
+# Prod critique : snapshot frais avant recreate → --backup / "backup":true
+# One-shot de référence (une fois) :
+creezio server-docker backup <nom> --brand-root "$BRAND_ROOT"
+# → docker-data/backups/<nom>-<stamp>.tar.gz (gardé ; restore = skill §4)
 
 # Toute la flotte (releases en PULL — les agents hôtes pollent l'app admin) :
 CREEZIO_FLEET_ADMIN_URL=http://127.0.0.1:18801 \

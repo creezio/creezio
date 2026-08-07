@@ -17,6 +17,8 @@ export function serverDockerNpmScripts(brandId?: string): Record<string, string>
     "server-docker:rm": `${cli} rm --brand-root .`,
     "server-docker:logs": `${cli} logs --brand-root .`,
     "server-docker:ls": `${cli} ls --brand-root .`,
+    "server-docker:update": `${cli} update --brand-root .`,
+    "server-docker:backup": `${cli} backup --brand-root .`,
     "server-docker:admin": `${cli} admin up --admin-root ${adminRoot} --brand-root .`,
     "server-docker:up": `${cli} up --brand-root .`,
     "server-docker:down": `${cli} down --brand-root .`,

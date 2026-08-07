@@ -137,16 +137,28 @@ test("listenBrandOsHttp exporte resolveBrandOsHttpHost", () => {
   assert.match(src, /CREEZIO_HTTP_HOST/);
 });
 
-test("CLI registre d'instances : create/start/stop/rm/logs/ls + admin", () => {
+test("CLI registre d'instances : create/start/stop/rm/logs/ls/update/backup + admin", () => {
   const r = spawnSync(
     process.execPath,
     [path.join(root, "packages/factory/bin/creezio.js"), "server-docker", "--help"],
     { encoding: "utf8" },
   );
   assert.equal(r.status, 0, r.stderr || r.stdout);
-  for (const sub of ["create", "start", "stop", "rm", "logs", "ls", "admin"]) {
+  for (const sub of [
+    "create",
+    "start",
+    "stop",
+    "rm",
+    "logs",
+    "ls",
+    "update",
+    "backup",
+    "admin",
+  ]) {
     assert.match(r.stdout, new RegExp(`\\b${sub}\\b`), `help sans ${sub}`);
   }
+  assert.match(r.stdout, /--backup/);
+  assert.match(r.stdout, /PAS de nouveau tar\.gz|pas de nouveau tar/);
   assert.match(r.stdout, /servers\.json/);
   assert.match(r.stdout, /127\.0\.0\.1/);
   assert.match(r.stdout, /boot-status/);
@@ -171,6 +183,26 @@ test("CLI registre d'instances : create/start/stop/rm/logs/ls + admin", () => {
   );
   assert.match(cli, /--browser/);
   assert.match(cli, /SERVER_VARIANT/);
+  assert.match(cli, /backup: !!args\.backup/);
+  assert.doesNotMatch(cli, /noBackup|--no-backup/);
+  const lib = fs.readFileSync(
+    path.join(
+      root,
+      "packages/observability/fleet-collector/server-lib.mjs",
+    ),
+    "utf8",
+  );
+  assert.match(lib, /backup = false/);
+  assert.match(lib, /pas de nouveau backup \(défaut\)/);
+  assert.doesNotMatch(lib, /pruneBackups\(brandRoot, inst\.name\)/);
+  const admin = fs.readFileSync(
+    path.join(
+      root,
+      "packages/observability/fleet-collector/server-admin.mjs",
+    ),
+    "utf8",
+  );
+  assert.match(admin, /body\.backup === true/);
 });
 
 test("boot progress headless : reporter + early-listen + boot-status", () => {

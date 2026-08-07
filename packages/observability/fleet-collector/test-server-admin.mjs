@@ -380,6 +380,25 @@ try {
   }
 }
 
+// ── updateServer : défaut backup=false, pas de prune des archives existantes
+{
+  const { updateServer } = await import("./server-lib.mjs");
+  const src = fs.readFileSync(
+    path.join(
+      path.dirname(new URL(import.meta.url).pathname),
+      "server-lib.mjs",
+    ),
+    "utf8",
+  );
+  assert.match(src, /backup = false/);
+  assert.match(src, /pas de nouveau backup \(défaut\)/);
+  assert.match(src, /if \(backup\)/);
+  // Politique propriétaire : ne pas purger les backups de référence à l'update.
+  assert.doesNotMatch(src, /pruneBackups\(brandRoot, inst\.name\)/);
+  assert.equal(typeof updateServer, "function");
+  console.log("OK — updateServer défaut sans backup + archives conservées");
+}
+
 // ── dirSizeBytes / buildDiskReport asynchrones (F1) : fs.promises, plus de
 // readdirSync/statSync récursifs qui gèlent l'event loop mono-thread.
 {

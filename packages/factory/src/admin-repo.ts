@@ -168,8 +168,10 @@ creezio server-docker enroll --brand-root . \\
 \`\`\`bash
 # 1. Publier une version (VPS build) :
 creezio server-docker publish --brand-root <marque> --tag 0.2.0 --registry <registre>
-# 2. UI admin → serveur → « Mettre à jour » → tag 0.2.0
-#    (backup /data auto, health-check, rollback auto si KO)
+# 2. Update (défaut = pas de nouveau backup) :
+creezio server-docker update <nom> --brand-root <marque> --tag 0.2.0
+#    Opt-in snapshot frais : --backup / API {"backup":true}
+#    One-shot de référence : creezio server-docker backup <nom> --brand-root <marque>
 \`\`\`
 
 ## Fichiers
