@@ -239,6 +239,8 @@ export function renderUiPackageJson(_manifest: AppManifest): string {
           next: "15.3.3",
           react: "19.1.0",
           "react-dom": "19.1.0",
+          // Middleware auth pages (parité TF3) — jwtVerify cookie session.
+          jose: "^6.2.3",
           "lucide-react": "^0.511.0",
           sonner: "^2.0.3",
           "date-fns": "^4.1.0",
@@ -247,6 +249,7 @@ export function renderUiPackageJson(_manifest: AppManifest): string {
           "class-variance-authority": "^0.7.1",
           clsx: "^2.1.1",
           "tailwind-merge": "^3.3.0",
+
           // Peers file: hoistés — sinon npm install UI échoue sur
           // node_modules/@creezio/platform-core (deps transitives vendor).
           "@creezio/platform-core": "file:../vendor/creezio/platform-core",
@@ -271,6 +274,89 @@ export function renderUiPackageJson(_manifest: AppManifest): string {
       2,
     ) + "\n"
   );
+}
+
+/**
+ * Middleware auth pages — parité TempoFlow3 pour les marques factory.
+ * Cookie = `${brandId}_session` (aligné mountBrandPlatformSurface).
+ * Les routes /api/v1 restent gérées par le kernel Hono (rewrites).
+ */
+export function renderUiAuthMiddleware(brandId: string): string {
+  const cookie = `${brandId.replace(/[^a-z0-9_]/gi, "_")}_session`;
+  return `import { NextResponse, type NextRequest } from "next/server";
+import { jwtVerify } from "jose";
+
+const AUTH_COOKIE = ${JSON.stringify(cookie)};
+const PUBLIC = [
+  "/login",
+  "/setup",
+  "/onboarding",
+  "/health",
+  "/developers",
+  "/oauth",
+  "/.well-known",
+  "/sw.js",
+  "/manifest.webmanifest",
+  "/icons",
+];
+
+function authDisabled() {
+  const v = (process.env.AUTH_DISABLED || "0").toLowerCase();
+  return v === "1" || v === "true" || v === "yes";
+}
+
+function getSecret() {
+  const secret = (process.env.AUTH_SECRET || "").trim();
+  if (!secret) {
+    // Plane UI : AUTH_SECRET injecté par le harness (composeBrandOs).
+    // Absent → fail-closed (redirige login) plutôt que fallback public.
+    return null;
+  }
+  return new TextEncoder().encode(secret);
+}
+
+function loginRedirect(request: NextRequest, nextPath?: string) {
+  const url = request.nextUrl.clone();
+  url.pathname = "/login";
+  url.search = "";
+  if (nextPath && nextPath !== "/login") {
+    url.searchParams.set("next", nextPath);
+  }
+  return NextResponse.redirect(url);
+}
+
+export async function middleware(request: NextRequest) {
+  const { pathname } = request.nextUrl;
+
+  if (
+    PUBLIC.some((p) => pathname === p || pathname.startsWith(p + "/")) ||
+    pathname.startsWith("/_next") ||
+    pathname.startsWith("/favicon") ||
+    pathname.startsWith("/api/")
+  ) {
+    return NextResponse.next();
+  }
+
+  if (authDisabled()) return NextResponse.next();
+
+  const token = request.cookies.get(AUTH_COOKIE)?.value;
+  if (!token) return loginRedirect(request, pathname);
+
+  const secret = getSecret();
+  if (!secret) return loginRedirect(request, pathname);
+
+  try {
+    await jwtVerify(token, secret);
+    return NextResponse.next();
+  } catch {
+    return loginRedirect(request);
+  }
+}
+
+export const config = {
+  matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
+};
+`;
 }
 
 export function renderUiNextConfig(): string {
@@ -459,8 +545,9 @@ import type { ReactNode } from "react";
 import {
   ${iconImports},
 } from "lucide-react";
-import { SessionProvider } from "@creezio/auth/ui";
+import { RequireSession, SessionProvider } from "@creezio/auth/ui";
 import { AssistantRoot } from "@creezio/assistant/ui";
+import { SessionUsageAnalyticsProvider } from "@creezio/observability/ui";
 import {
   configureDefaultNewTabHref,
   configureGlobalSearch,
@@ -515,9 +602,14 @@ configureDefaultNewTabHref(${JSON.stringify(home)});
 export function BrandChrome({ children }: { children: ReactNode }) {
   return (
     <SessionProvider>
-      <AssistantRoot>
-        <WorkspaceRoot>{children}</WorkspaceRoot>
-      </AssistantRoot>
+      <RequireSession>
+        {/* Tracker client → POST /api/v1/analytics/events (Admin → Analytics). */}
+        <SessionUsageAnalyticsProvider>
+          <AssistantRoot>
+            <WorkspaceRoot>{children}</WorkspaceRoot>
+          </AssistantRoot>
+        </SessionUsageAnalyticsProvider>
+      </RequireSession>
     </SessionProvider>
   );
 }

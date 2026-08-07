@@ -51,6 +51,7 @@
   "license": "UNLICENSED",
   "module": "./dist/index.js",
   "peerDependencies": {
+    "@creezio/auth": "0.1.0",
     "@radix-ui/react-slot": "^1.1.0",
     "@radix-ui/react-tabs": "^1.1.0",
     "class-variance-authority": "^0.7.0",
@@ -62,6 +63,9 @@
     "tailwind-merge": "^2.0.0 || ^3.0.0"
   },
   "peerDependenciesMeta": {
+    "@creezio/auth": {
+      "optional": true
+    },
     "@radix-ui/react-slot": {
       "optional": true
     },

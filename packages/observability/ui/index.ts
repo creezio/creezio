@@ -11,6 +11,7 @@ export {
   UsageAnalyticsProvider,
   type UsageAnalyticsProviderSession,
 } from "./usage-analytics-provider";
+export { SessionUsageAnalyticsProvider } from "./session-usage-analytics-provider";
 
 export {
   flushUsageAnalytics,

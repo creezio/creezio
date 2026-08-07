@@ -99,6 +99,12 @@ test("os-ui scaffold : zéro page OS versionnée, materialize + boot kit", () =>
   assert.match(chrome, /configureSidebar/);
   assert.match(chrome, /SessionProvider/);
   assert.match(chrome, /AssistantRoot/);
+  assert.match(
+    chrome,
+    /SessionUsageAnalyticsProvider/,
+    "chrome monte le tracker analytics (sinon Admin → Analytics reste à 0)",
+  );
+  assert.match(chrome, /@creezio\/observability\/ui/);
   assert.match(chrome, /OS_NAV/, "chrome déclare la nav OS native");
   assert.match(chrome, /\/taches/, "chrome lie /taches");
   assert.match(chrome, /\/mails/, "chrome lie /mails");

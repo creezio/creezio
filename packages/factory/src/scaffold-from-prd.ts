@@ -18,6 +18,7 @@ import {
   UI_PRIMITIVE_NAMES,
   renderMetierRendererHtml,
   renderUiBrandChrome,
+  renderUiAuthMiddleware,
   renderUiGlobalsCss,
   renderUiPackageJson,
   renderUiPostcssConfig,
@@ -461,6 +462,13 @@ process.exit(r.status ?? 1);
   writeFile(
     path.join(outDir, "ui/components/brand-chrome.tsx"),
     renderUiBrandChrome(model),
+    force,
+    written,
+  );
+  // Parité TF3 : pages CRM inaccessibles sans cookie session marque.
+  writeFile(
+    path.join(outDir, "ui/middleware.ts"),
+    renderUiAuthMiddleware(model.brandId),
     force,
     written,
   );

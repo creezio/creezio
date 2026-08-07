@@ -1216,6 +1216,7 @@ export function AssistantWidget() {
       const { activeSurface, supplierTabs } = surfaceRef.current;
       const res = await fetch("/api/v1/assistant/chat", {
         method: "POST",
+        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           messages: history,
@@ -1231,6 +1232,13 @@ export function AssistantWidget() {
 
       if (!res.ok) {
         const err = (await res.json().catch(() => ({}))) as { error?: string };
+        if (res.status === 401) {
+          throw new Error(
+            err.error === "Non authentifié"
+              ? "Session expirée ou absente — reconnectez-vous"
+              : err.error || "Non authentifié",
+          );
+        }
         throw new Error(err.error || `Erreur HTTP ${res.status}`);
       }
 
@@ -1364,6 +1372,9 @@ export function AssistantWidget() {
         (e instanceof DOMException && e.name === "AbortError") ||
         (e instanceof Error && e.name === "AbortError");
       const msg = e instanceof Error ? e.message : "Erreur inconnue";
+      const sessionLost =
+        !aborted &&
+        /non authentifié|session expirée|session invalide/i.test(msg);
       setMessages((prev) =>
         prev.map((m) =>
           m.id === assistantId
@@ -1378,6 +1389,14 @@ export function AssistantWidget() {
         ),
       );
       setTraceRefreshKey((k) => k + 1);
+      if (sessionLost && typeof window !== "undefined") {
+        const next = `${window.location.pathname}${window.location.search || ""}`;
+        const url = new URL("/login", window.location.origin);
+        if (next && next !== "/login") url.searchParams.set("next", next);
+        window.setTimeout(() => {
+          window.location.assign(url.toString());
+        }, 1200);
+      }
     } finally {
       abortRef.current = null;
       setBusy(false);

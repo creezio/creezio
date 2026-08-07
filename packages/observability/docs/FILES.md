@@ -79,6 +79,7 @@
 | [`ui/request-logs-client.tsx`](../ui/request-logs-client.tsx) | _(pas de cartouche JSDoc en tête — voir le code)_ |
 | [`ui/usage-analytics-client.ts`](../ui/usage-analytics-client.ts) | Tracker d'usage client — pages, dwell, clics, présence (heartbeat / idle / focus). Buffer + flush vers POST /api/v1/analytics/events. Miroir optionnel vers la télémétrie flotte Electron. Vie privée : on ne journalise PAS le contenu des frappes ni les mouvements souris, seulement des signaux d'activité agrégés (heartbeat / idle). |
 | [`ui/usage-analytics-provider.tsx`](../ui/usage-analytics-provider.tsx) | _(pas de cartouche JSDoc en tête — voir le code)_ |
+| [`ui/session-usage-analytics-provider.tsx`](../ui/session-usage-analytics-provider.tsx) | Bridge `useSession` (`@creezio/auth/ui`) → `UsageAnalyticsProvider`. Monté par BrandChrome factory. |
 
 ## `ui/primitives/`
 

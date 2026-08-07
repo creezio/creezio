@@ -16,6 +16,7 @@ export {
   FORBIDDEN_BRAND_OS_UI_SEGMENTS,
   renderUiPackageJson,
   renderUiNextConfig,
+  renderUiAuthMiddleware,
   renderUiTsconfig,
   renderNextLayoutWithOsNav,
   renderUiBrandChrome,

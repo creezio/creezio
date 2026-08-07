@@ -13,3 +13,6 @@ export type {
   SessionRole,
 } from "./session-provider";
 export { SessionProvider, useSession } from "./session-provider";
+
+export type { RequireSessionProps } from "./require-session";
+export { RequireSession } from "./require-session";
