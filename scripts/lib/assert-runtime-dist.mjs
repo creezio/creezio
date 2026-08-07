@@ -171,19 +171,24 @@ function walkFiles(dir, pred) {
 
 /**
  * @param {string[]} files
- * @returns {number} max mtimeMs, or 0 if empty
+ * @returns {{ max: number, path: string | null }} max mtimeMs + chemin du plus récent
  */
-function maxMtime(files) {
+function maxMtimeInfo(files) {
   let max = 0;
+  /** @type {string | null} */
+  let newest = null;
   for (const f of files) {
     try {
       const m = fs.statSync(f).mtimeMs;
-      if (m > max) max = m;
+      if (m > max) {
+        max = m;
+        newest = f;
+      }
     } catch {
       /* ignore */
     }
   }
-  return max;
+  return { max, path: newest };
 }
 
 /**
@@ -271,12 +276,13 @@ export function assertMtimeFreshness(kitRoot, opts = {}) {
       );
       continue;
     }
-    const srcMax = maxMtime(srcFiles);
-    const distMax = maxMtime(distFiles);
-    if (srcMax > distMax + MTIME_SLACK_MS) {
-      const lagSec = ((srcMax - distMax) / 1000).toFixed(1);
+    const srcInfo = maxMtimeInfo(srcFiles);
+    const distInfo = maxMtimeInfo(distFiles);
+    if (srcInfo.max > distInfo.max + MTIME_SLACK_MS) {
+      const lagSec = ((srcInfo.max - distInfo.max) / 1000).toFixed(1);
+      const newestTs = srcInfo.path ? path.basename(srcInfo.path) : "?";
       errors.push(
-        `packages/${name}: src plus récent que dist (+${lagSec}s) — dist stale. Run: npm run build:packages`,
+        `packages/${name}: src plus récent que dist (+${lagSec}s, newest=${newestTs}) — dist stale. Run: npm run build:packages`,
       );
     }
   }

@@ -62,6 +62,19 @@ ils décrivent le chantier, pas l'état courant.
   absent sur ce VPS. Contournement utilisé : smokes de l'app générée avec les
   `node_modules` de TF3 (`/opt/docker/tempoflow3`).
 
+## Dist runtime stale (fail-closed)
+
+`dist/` est gitignoré. Après modif `packages/*/src` consommée par sync /
+publish : **`npm run build:packages`** avant tout resync marque ou
+`creezio server-docker publish|build`. Sinon vendor/image sans routes
+(vécu Admin Database).
+
+- Gate : `test-phase-runtime-dist-freshness` (`test:kit`) — SoT
+  `lib/assert-runtime-dist.mjs` (contrats src↔dist + mtime).
+- Aussi appelé par `sync-creezio-vendor.sh` et `server-docker publish|build`.
+- Bypass urgence uniquement : `CREEZIO_SKIP_RUNTIME_DIST_ASSERT=1`
+  (déconseillé).
+
 ## Gates et `/tmp` (tmpfs)
 
 Les gates écrivent leurs data dirs sous `/tmp` (tmpfs = RAM). Après un
