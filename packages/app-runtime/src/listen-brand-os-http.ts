@@ -1200,7 +1200,18 @@ export async function listenBrandOsHttp(opts: {
       // Routes API propres à la marque servies par le plane UI Next
       // (contrat de composition kernel — voir isKernelFallthrough404).
       // Coupe-circuit boucle kernel→Next→kernel (rewrite next.config).
-      if (isKernelFallthrough404(result) && opts.uiProxyTarget) {
+      //
+      // EXCEPTION `/api/v1/modules/*` : un 404 `{ error: "not_found" }` est
+      // souvent une réponse métier / tenancy (anti-fuite d'existence). Le
+      // rejouer vers Next (rewrite figé sur METIER_BASE_URL au build, ex.
+      // :18791) peut frapper un harness stale et renvoyer 401 unauthorized
+      // — le client croit alors à un bug de session. Servir le 404 module
+      // tel quel.
+      if (
+        isKernelFallthrough404(result) &&
+        opts.uiProxyTarget &&
+        !pathname.startsWith("/api/v1/modules/")
+      ) {
         const fallthroughKey = `${req.method || "GET"} ${pathname}`;
         if (
           hasKernelFallthroughHop(req.headers) ||
