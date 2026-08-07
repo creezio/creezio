@@ -5,6 +5,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Input } from "./primitives/input";
 import { Button } from "./primitives/button";
 import { cn } from "@creezio/shell-ui";
+import { aidProps } from "./lib/aid";
 
 export const SEARCH_DEBOUNCE_MS = 300;
 
@@ -127,7 +128,7 @@ export function SearchInput({
           setSearchValue(e.target.value);
         }}
         placeholder={placeholder}
-        data-tf2-aid={`search.${searchKey}`}
+        {...aidProps(`search.${searchKey}`)}
         className={cn("max-w-sm", inputClassName)}
         autoComplete="off"
       />

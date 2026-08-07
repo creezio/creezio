@@ -169,7 +169,7 @@ export type CrmHostDesktopApi = ReturnType<typeof buildCrmHostDesktopApi>;
 export type PreloadTelemetryOptions = {
   /** Classe CSS zone titlebar à ignorer (ex. `.tempoflow-titlebar-no-drag`). */
   titlebarNoDragClass: string;
-  /** Attribut data aid (défaut historique `data-tf2-aid` partagé ×3). */
+  /** Attribut data aid (défaut kit `data-creezio-aid`). */
   aidAttr?: string;
 };
 
@@ -181,7 +181,7 @@ export function installPreloadTelemetry(
   ipc: IpcRendererLike,
   opts: PreloadTelemetryOptions,
 ): void {
-  const aidAttr = opts.aidAttr ?? "data-tf2-aid";
+  const aidAttr = opts.aidAttr ?? "data-creezio-aid";
 
   function forwardRendererError(payload: {
     kind: string;

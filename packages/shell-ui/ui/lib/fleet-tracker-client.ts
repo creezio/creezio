@@ -5,6 +5,7 @@ import { getShellDesktopApi, getShellUiBrand } from "@creezio/shell-ui";
  */
 
 import { mirrorFleetAction } from "./desktop-host";
+import { resolveAidAttr } from "./aid";
 
 type FleetReport = {
   type?: string;
@@ -117,7 +118,7 @@ export function trackFleetEvent(payload: FleetReport): void {
 }
 
 function clickLabel(el: Element): string {
-  const aid = el.getAttribute("data-tf2-aid");
+  const aid = el.getAttribute(resolveAidAttr());
   if (aid) return aid;
   const aria = el.getAttribute("aria-label");
   if (aria) return aria.slice(0, 120);
@@ -136,7 +137,7 @@ function onClickCapture(ev: MouseEvent): void {
   if (!(t instanceof Element)) return;
   const el =
     t.closest(
-      "[data-tf2-aid],button,a,[role='button'],[role='tab'],input[type='submit']",
+      `[${resolveAidAttr()}],button,a,[role='button'],[role='tab'],input[type='submit']`,
     ) || null;
   if (!el) return;
   // Ignore chrome fenêtre / inputs texte purs
@@ -150,7 +151,7 @@ function onClickCapture(ev: MouseEvent): void {
   ) {
     return;
   }
-  const aid = el.getAttribute("data-tf2-aid") || undefined;
+  const aid = el.getAttribute(resolveAidAttr()) || undefined;
   report({
     name: "ui.click",
     type: "ui.click",

@@ -62,6 +62,7 @@ export {
   buildBrandHermesWorkBrief,
   buildBrandPersonalAgentBrief,
   configureAssistantBrand,
+  mergeAssistantBrandConfig,
   getAssistantBrandConfig,
   requireAssistantBrand,
   requireAssistantDb,

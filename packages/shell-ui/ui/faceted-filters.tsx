@@ -4,6 +4,7 @@ import { useTransition } from "react";
 import { useSearchParams, usePathname, useRouter } from "next/navigation";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./primitives/select";
 import { SearchInput } from "./search-input";
+import { aidProps } from "./lib/aid";
 
 export type FacetOption = { value: string; c: number; label?: string };
 
@@ -95,7 +96,7 @@ export function FacetedFilters({
           >
             <SelectTrigger
               className="w-52"
-              data-tf2-aid={`filter.${f.key}`}
+              {...aidProps(`filter.${f.key}`)}
               aria-label={`Filtre ${f.label}`}
             >
               <SelectValue placeholder={f.label} />

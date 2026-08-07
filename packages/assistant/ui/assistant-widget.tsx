@@ -1323,7 +1323,7 @@ export function AssistantWidget() {
           },
           onUiAction: (action) => {
             window.dispatchEvent(
-              new CustomEvent("tf2-assistant-ui-action", { detail: action }),
+              new CustomEvent("creezio-assistant-ui-action", { detail: action }),
             );
           },
         });
@@ -1417,8 +1417,7 @@ export function AssistantWidget() {
       <button
         type="button"
         data-creezio-assistant-ui
-        data-tf2-assistant-ui
-        onClick={() => setOpen(true)}
+                onClick={() => setOpen(true)}
         className={cn(
           "fixed bottom-5 right-5 z-50 flex h-14 w-14 items-center justify-center rounded-full",
           "bg-sky-600 text-white shadow-lg shadow-sky-900/25",
@@ -1441,16 +1440,14 @@ export function AssistantWidget() {
       <button
         type="button"
         data-creezio-assistant-ui
-        data-tf2-assistant-ui
-        className="fixed inset-0 z-40 bg-slate-900/40 md:hidden"
+                className="fixed inset-0 z-40 bg-slate-900/40 md:hidden"
         aria-label="Fermer l'assistant"
         onClick={() => setOpen(false)}
       />
 
       <aside
         data-creezio-assistant-ui
-        data-tf2-assistant-ui
-        className={cn(
+                className={cn(
           "fixed inset-y-0 right-0 z-50 flex h-[100dvh] flex-col border-l border-slate-200 bg-white shadow-xl shadow-slate-900/10",
           "w-full md:w-[var(--assistant-panel-width)]",
         )}

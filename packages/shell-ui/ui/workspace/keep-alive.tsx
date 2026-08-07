@@ -142,11 +142,11 @@ export function KeepAliveOutlet({
       paneRefs.current.delete(key);
       bump((n) => n + 1);
     }
-    window.addEventListener("tf2-keepalive-invalidate", onInvalidate);
-    window.addEventListener("tf2-keepalive-unfreeze", onInvalidate);
+    window.addEventListener("creezio-keepalive-invalidate", onInvalidate);
+    window.addEventListener("creezio-keepalive-unfreeze", onInvalidate);
     return () => {
-      window.removeEventListener("tf2-keepalive-invalidate", onInvalidate);
-      window.removeEventListener("tf2-keepalive-unfreeze", onInvalidate);
+      window.removeEventListener("creezio-keepalive-invalidate", onInvalidate);
+      window.removeEventListener("creezio-keepalive-unfreeze", onInvalidate);
     };
   }, []);
 
@@ -208,13 +208,13 @@ export function KeepAliveOutlet({
 export function invalidateKeepAlive(href: string) {
   if (typeof window === "undefined") return;
   window.dispatchEvent(
-    new CustomEvent("tf2-keepalive-invalidate", { detail: href }),
+    new CustomEvent("creezio-keepalive-invalidate", { detail: href }),
   );
 }
 
 export function unfreezeKeepAlive(href: string) {
   if (typeof window === "undefined") return;
   window.dispatchEvent(
-    new CustomEvent("tf2-keepalive-unfreeze", { detail: href }),
+    new CustomEvent("creezio-keepalive-unfreeze", { detail: href }),
   );
 }

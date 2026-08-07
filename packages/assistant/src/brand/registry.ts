@@ -27,9 +27,55 @@ const DEFAULT_IDENTITY: AssistantBrandIdentity = {
 /**
  * Configure l’assistant marque (AppMap, Prompts, MCP, tasks, DB, Meili…).
  * À appeler au boot serveur / layout client avant usage runtime.
+ *
+ * Remplace la config entière. Pour enrichir sans écraser (ex. MCP posé
+ * après beforeBoot), utiliser `mergeAssistantBrandConfig`.
  */
 export function configureAssistantBrand(next: AssistantBrandConfig): void {
   config = next;
+}
+
+/**
+ * Fusion shallow des blocs top-level (identity / prompts / tools / …).
+ * Les champs absents du partial conservent la valeur déjà configurée.
+ * Sert au kit (db/presence/tasks/mcp) après un `configureAssistantBrand`
+ * marque au beforeBoot.
+ */
+export function mergeAssistantBrandConfig(
+  partial: Partial<AssistantBrandConfig>,
+): void {
+  if (!config) {
+    config = partial as AssistantBrandConfig;
+    return;
+  }
+  config = {
+    ...config,
+    ...partial,
+    identity: partial.identity
+      ? { ...config.identity, ...partial.identity }
+      : config.identity,
+    appMap: partial.appMap
+      ? { ...config.appMap, ...partial.appMap }
+      : config.appMap,
+    prompts: partial.prompts
+      ? { ...config.prompts, ...partial.prompts }
+      : config.prompts,
+    tools: partial.tools
+      ? { ...config.tools, ...partial.tools }
+      : config.tools,
+    meili: partial.meili
+      ? { ...config.meili, ...partial.meili }
+      : config.meili,
+    hermes: partial.hermes
+      ? { ...config.hermes, ...partial.hermes }
+      : config.hermes,
+    auth: partial.auth
+      ? { ...config.auth, ...partial.auth }
+      : config.auth,
+    desktopPresence: partial.desktopPresence
+      ? { ...config.desktopPresence, ...partial.desktopPresence }
+      : config.desktopPresence,
+  };
 }
 
 export function getAssistantBrandConfig(): AssistantBrandConfig | null {

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 
-const LOCATION_EVENT = "tf2-locationchange";
+const LOCATION_EVENT = "creezio-locationchange";
 let historyPatched = false;
 
 /**

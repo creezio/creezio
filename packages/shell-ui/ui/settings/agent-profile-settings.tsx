@@ -20,6 +20,7 @@ import {
 } from "../primitives/card";
 import { Input } from "../primitives/input";
 import { Label } from "../primitives/label";
+import { aidProps } from "../lib/aid";
 import {
   Select,
   SelectContent,
@@ -100,7 +101,7 @@ export function AgentProfileSettings() {
   if (!loaded) return null;
 
   return (
-    <Card data-tf2-aid="agent-profile-settings">
+    <Card {...aidProps("agent-profile-settings")}>
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-base">
           <Bot className="h-4 w-4" />

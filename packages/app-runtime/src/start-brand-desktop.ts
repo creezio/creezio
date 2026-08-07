@@ -58,6 +58,7 @@ import {
   createApiKeyBearerActorResolver,
   registerHermesHostMcpTools,
 } from "./hermes-mcp-host-tools.js";
+import { wireAssistantMcp } from "./wire-assistant-mcp.js";
 import { createPluginProxyMount } from "./plugin-proxy-mount.js";
 import {
   createPluginToolsDiscovery,
@@ -730,6 +731,8 @@ async function startBrandDesktopBody(args: {
       content: { mounts: api.listMounts() },
     }),
   });
+  // Assistant chat découvre les tools métier via MCP.
+  wireAssistantMcp(mcp);
   // H1/H4 — tools host tasks + workspace pour Hermes (gate acteur interne).
   registerHermesHostMcpTools({ mcp, log: (line) => log("mcp", line) });
   if (os) {

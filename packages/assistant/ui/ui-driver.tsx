@@ -3,7 +3,7 @@
 /**
  * Exécuteur d'actions UI de l'assistant (souris virtuelle).
  *
- * Reçoit les actions via CustomEvent `tf2-assistant-ui-action` (relayées par
+ * Reçoit les actions via CustomEvent `creezio-assistant-ui-action` (relayées par
  * le widget depuis le flux SSE), les exécute visuellement dans la page
  * (déplacement du faux curseur + vrais événements DOM), puis renvoie le
  * résultat au serveur : POST /api/v1/assistant/ui-actions/:id/result.
@@ -11,8 +11,11 @@
 
 import { useEffect } from "react";
 import { getFakeCursor } from "./fake-cursor";
+import { resolveAidAttr } from "@creezio/shell-ui/ui";
 
-export const UI_ACTION_EVENT = "tf2-assistant-ui-action";
+export const UI_ACTION_EVENT = "creezio-assistant-ui-action";
+/** @deprecated alias TF2 */
+export const UI_ACTION_EVENT_LEGACY = "tf2-assistant-ui-action";
 
 type UiActionDetail = {
   actionId: string;
@@ -33,22 +36,24 @@ type TargetInfo = {
 let generation = 0;
 const targetMap = new Map<string, WeakRef<Element>>();
 
-const INTERACTIVE_SELECTOR = [
-  "a[href]",
-  "button",
-  '[role="button"]',
-  '[role="option"]',
-  '[role="menuitem"]',
-  '[role="tab"]',
-  '[role="combobox"]',
-  'input:not([type="hidden"])',
-  "select",
-  "textarea",
-  "[data-tf2-aid]",
-].join(", ");
+function interactiveSelector(): string {
+  return [
+    "a[href]",
+    "button",
+    '[role="button"]',
+    '[role="option"]',
+    '[role="menuitem"]',
+    '[role="tab"]',
+    '[role="combobox"]',
+    'input:not([type="hidden"])',
+    "select",
+    "textarea",
+    `[${resolveAidAttr()}]`,
+  ].join(", ");
+}
 
 function isVisible(el: Element): boolean {
-  if (el.closest("[data-tf2-assistant-ui]")) return false;
+  if (el.closest("[data-creezio-assistant-ui]")) return false;
   if (el.closest('[aria-hidden="true"]')) return false;
   const he = el as HTMLElement;
   if (he.hidden) return false;
@@ -126,12 +131,12 @@ function collectTargets(q?: string): {
     const seen = new Set<Element>();
     const out: TargetInfo[] = [];
     let idx = 0;
-    for (const el of Array.from(document.querySelectorAll(INTERACTIVE_SELECTOR))) {
+    for (const el of Array.from(document.querySelectorAll(interactiveSelector()))) {
       if (seen.has(el)) continue;
       seen.add(el);
       if (!isVisible(el)) continue;
 
-      const aid = el.getAttribute("data-tf2-aid") || undefined;
+      const aid = el.getAttribute(resolveAidAttr()) || undefined;
       const label = labelFor(el);
       if (!label && !aid) continue;
 
@@ -198,9 +203,9 @@ type Candidate = { el: Element; label: string; aid?: string; score: number };
 
 function scoreCandidates(query: string): Candidate[] {
   const out: Candidate[] = [];
-  for (const el of Array.from(document.querySelectorAll(INTERACTIVE_SELECTOR))) {
+  for (const el of Array.from(document.querySelectorAll(interactiveSelector()))) {
     if (!isVisible(el)) continue;
-    const aid = el.getAttribute("data-tf2-aid") || undefined;
+    const aid = el.getAttribute(resolveAidAttr()) || undefined;
     const label = labelFor(el);
     if (!label && !aid) continue;
     const score = Math.max(
@@ -266,8 +271,8 @@ function resolveTarget(refArg?: string, labelArg?: string): Element | null {
     // Le LLM passe parfois un aid (ex. « search.q » ou « produit.123.panier ») en ref.
     if (!/^t\d+-\d+$/.test(refArg)) {
       const nr = normalize(refArg);
-      for (const cand of Array.from(document.querySelectorAll("[data-tf2-aid]"))) {
-        if (normalize(cand.getAttribute("data-tf2-aid") || "") === nr && isVisible(cand)) {
+      for (const cand of Array.from(document.querySelectorAll(`[${resolveAidAttr()}]`))) {
+        if (normalize(cand.getAttribute(resolveAidAttr()) || "") === nr && isVisible(cand)) {
           return cand;
         }
       }
@@ -275,15 +280,15 @@ function resolveTarget(refArg?: string, labelArg?: string): Element | null {
   }
   if (labelArg) {
     const nl = normalize(labelArg);
-    // 1. data-tf2-aid exact
-    for (const el of Array.from(document.querySelectorAll("[data-tf2-aid]"))) {
-      if (normalize(el.getAttribute("data-tf2-aid") || "") === nl && isVisible(el)) {
+    // 1. aidAttr exact
+    for (const el of Array.from(document.querySelectorAll(`[${resolveAidAttr()}]`))) {
+      if (normalize(el.getAttribute(resolveAidAttr()) || "") === nl && isVisible(el)) {
         return el;
       }
     }
     // 2. label exact puis inclusif sur les éléments interactifs
     let partial: Element | null = null;
-    for (const el of Array.from(document.querySelectorAll(INTERACTIVE_SELECTOR))) {
+    for (const el of Array.from(document.querySelectorAll(interactiveSelector()))) {
       if (!isVisible(el)) continue;
       const l = normalize(labelFor(el));
       if (!l) continue;
@@ -456,7 +461,7 @@ function findScrollableRoot(): Element {
   let best: Element | null = null;
   let bestArea = 0;
   for (const el of Array.from(document.querySelectorAll("main, [data-scroll-root], div"))) {
-    if (el.closest("[data-tf2-assistant-ui]")) continue;
+    if (el.closest("[data-creezio-assistant-ui]")) continue;
     const he = el as HTMLElement;
     if (he.scrollHeight <= he.clientHeight + 50) continue;
     const style = window.getComputedStyle(he);
@@ -542,9 +547,11 @@ export function UiDriver() {
     }
 
     window.addEventListener(UI_ACTION_EVENT, onAction);
+    window.addEventListener(UI_ACTION_EVENT_LEGACY, onAction);
     return () => {
       disposed = true;
       window.removeEventListener(UI_ACTION_EVENT, onAction);
+      window.removeEventListener(UI_ACTION_EVENT_LEGACY, onAction);
     };
   }, []);
 

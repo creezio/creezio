@@ -16,6 +16,7 @@ import Link from "next/link";
 import { Button } from "../primitives/button";
 import { AiActivityPanelHost } from "./ai-activity-panel-host";
 import { cn, getShellDesktopApi } from "@creezio/shell-ui";
+import { aidProps } from "../lib/aid";
 
 type Identity = {
   userId: string;
@@ -117,7 +118,7 @@ export function AiWorkspaceBanner() {
           >
             <Link
               href={`/taches?assignee=${encodeURIComponent(identity.userId)}`}
-              data-tf2-aid="ai-banner-missions"
+              {...aidProps("ai-banner-missions")}
             >
               <ListTodo className="mr-1.5 h-3.5 w-3.5" />
               Mes missions
@@ -139,8 +140,8 @@ export function AiWorkspaceBanner() {
       </div>
       {notice ? (
         <div
-          data-tf2-aid="ai-banner-run-notice"
-          data-tf2-run-status={notice.status}
+          {...aidProps("ai-banner-run-notice")}
+          data-creezio-run-status={notice.status}
           className={cn(
             "flex items-center gap-2 border-t px-3 py-1.5 text-xs",
             running

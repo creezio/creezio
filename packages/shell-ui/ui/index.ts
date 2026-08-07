@@ -50,6 +50,7 @@ export * from "./primitives/sonner";
 export * from "./primitives/chart";
 
 /* ── Lib client ── */
+export * from "./lib/aid";
 export * from "./lib/desktop-host";
 export * from "./lib/n8n-ui";
 export * from "./lib/hermes-ui";

@@ -36,10 +36,12 @@ import {
   createAssistantRoutes,
   dispatchSupplierAction,
   getAssistantBrandConfig,
+  mergeAssistantBrandConfig,
   type AssistantDbAccess,
 } from "@creezio/assistant";
 import {
   configureTasksBrand,
+  createAssistantTasksAdapter,
   createTasksHonoRoutes,
   getTasksBrandConfig,
   type TasksBrandConfig,
@@ -474,12 +476,11 @@ export function mountBrandPlatformSurface(opts: {
   };
   runtimeSlot().current = runtime;
 
-  // Assistant : config kit par défaut si la marque n'a rien déclaré au
-  // beforeBoot (idempotent — une config marque existante prime toujours).
-  // Sans elle, POST /api/v1/assistant/chat crashe (`requireAssistantBrand`).
-  // La session vient de la surface (cookie/Bearer par requête) — pas besoin
-  // d'`auth.getSession` sans contexte ici.
-  if (!getAssistantBrandConfig()) {
+  // Assistant : la marque peut avoir posé AppMap/prompts/meili/hermes au
+  // beforeBoot. On complète toujours db + presence + tasks (merge) — sans
+  // écraser le métier. Sans aucune config, pose le défaut kit.
+  // Session = cookie/Bearer par requête (routes) — pas d'auth.getSession ici.
+  {
     const brandDb = opts.brandDb;
     let db: AssistantDbAccess | undefined;
     if (brandDb) {
@@ -501,24 +502,34 @@ export function mountBrandPlatformSurface(opts: {
         getDb: () => handle(),
       };
     }
-    configureAssistantBrand({
-      identity: {
-        productName: opts.brandId,
-        uiStorageKey: `${opts.brandId}-assistant-ui`,
-        modeStorageKey: `${opts.brandId}-assistant-preferred-mode`,
-        desktopApiGlobal: "creezioDesktop",
-        globalStorePrefix: "__creezio",
-      },
+    const platformBits = {
       ...(db ? { db } : {}),
       desktopPresence: {
-        isDesktopOnline: (userId) => presence.isDesktopOnline(userId),
-        desktopOfflineError: (userId) => ({
+        isDesktopOnline: (userId: string) => presence.isDesktopOnline(userId),
+        desktopOfflineError: (userId: string) => ({
           error: "Poste desktop hors ligne — action impossible",
           userId,
         }),
       },
-    });
-    log("assistant: config kit par défaut (marque sans configureAssistantBrand)");
+      // create_task / list_tasks → kanban kit (nécessite configureTasksBrand).
+      tasks: createAssistantTasksAdapter(),
+    };
+    if (!getAssistantBrandConfig()) {
+      configureAssistantBrand({
+        identity: {
+          productName: opts.brandId,
+          uiStorageKey: `${opts.brandId}-assistant-ui`,
+          modeStorageKey: `${opts.brandId}-assistant-preferred-mode`,
+          desktopApiGlobal: "creezioDesktop",
+          globalStorePrefix: "__creezio",
+        },
+        ...platformBits,
+      });
+      log("assistant: config kit par défaut (marque sans configureAssistantBrand)");
+    } else {
+      mergeAssistantBrandConfig(platformBits);
+      log("assistant: merge db/presence/tasks sur config marque");
+    }
   }
 
   // Tasks : même contrat que l'assistant — sans configureTasksBrand au
