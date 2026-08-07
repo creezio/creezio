@@ -49,7 +49,22 @@ type ActivityPayload = {
   runs: Array<Record<string, unknown>>;
 };
 
+type DbStoreInfo = {
+  id: string;
+  label: string;
+  layer: "core" | "brand" | "plugin";
+  path?: string;
+};
+
+function withDb(url: string, dbId: string): string {
+  if (!dbId) return url;
+  const sep = url.includes("?") ? "&" : "?";
+  return `${url}${sep}db=${encodeURIComponent(dbId)}`;
+}
+
 export function DatabaseClient() {
+  const [dbs, setDbs] = useState<DbStoreInfo[]>([]);
+  const [dbId, setDbId] = useState("");
   const [catalog, setCatalog] = useState<CatalogEntry[]>([]);
   const [selected, setSelected] = useState("");
   const [detail, setDetail] = useState<TableDetail | null>(null);
@@ -75,12 +90,54 @@ export function DatabaseClient() {
   } | null>(null);
   const [saving, setSaving] = useState(false);
 
+  const loadDbs = useCallback(async () => {
+    setLoading(true);
+    setError("");
+    try {
+      const response = await fetch("/api/v1/admin/database/dbs");
+      const body = (await response.json()) as {
+        dbs?: DbStoreInfo[];
+        defaultStoreId?: string;
+        error?: string;
+      };
+      if (!response.ok) throw new Error(body.error || "Chargement impossible");
+      const next = body.dbs || [];
+      setDbs(next);
+      setDbId((current) => {
+        if (current && next.some((d) => d.id === current)) return current;
+        return (
+          body.defaultStoreId ||
+          next.find((d) => d.id === "brand")?.id ||
+          next[0]?.id ||
+          ""
+        );
+      });
+      if (next.length === 0) {
+        throw new Error("not_found");
+      }
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Chargement impossible");
+      setDbs([]);
+      setDbId("");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   const loadCatalog = useCallback(async () => {
+    if (!dbId) {
+      setCatalog([]);
+      setSelected("");
+      return;
+    }
     setLoading(true);
     setError("");
     try {
       const response = await fetch(
-        `/api/v1/admin/database/tables?includeSystem=${showSystem ? "1" : "0"}`,
+        withDb(
+          `/api/v1/admin/database/tables?includeSystem=${showSystem ? "1" : "0"}`,
+          dbId,
+        ),
       );
       const body = (await response.json()) as {
         tables?: CatalogEntry[];
@@ -99,10 +156,10 @@ export function DatabaseClient() {
     } finally {
       setLoading(false);
     }
-  }, [showSystem]);
+  }, [dbId, showSystem]);
 
   const loadTable = useCallback(async () => {
-    if (!selected) {
+    if (!selected || !dbId) {
       setDetail(null);
       return;
     }
@@ -112,6 +169,7 @@ export function DatabaseClient() {
       const params = new URLSearchParams({
         page: String(page),
         pageSize: "50",
+        db: dbId,
       });
       if (sort) params.set("sort", sort);
       if (sortDir) params.set("sortDir", sortDir);
@@ -124,7 +182,10 @@ export function DatabaseClient() {
       setDetail(body);
 
       const viewsRes = await fetch(
-        `/api/v1/admin/database/tables/${encodeURIComponent(selected)}/views`,
+        withDb(
+          `/api/v1/admin/database/tables/${encodeURIComponent(selected)}/views`,
+          dbId,
+        ),
       );
       const viewsBody = await viewsRes.json();
       setViews(viewsBody.views || []);
@@ -133,13 +194,20 @@ export function DatabaseClient() {
     } finally {
       setLoading(false);
     }
-  }, [page, q, selected, sort, sortDir]);
+  }, [dbId, page, q, selected, sort, sortDir]);
 
   const loadActivity = useCallback(async () => {
-    const res = await fetch("/api/v1/admin/database/activity?limit=40");
+    if (!dbId) return;
+    const res = await fetch(
+      withDb("/api/v1/admin/database/activity?limit=40", dbId),
+    );
     if (!res.ok) return;
     setActivity((await res.json()) as ActivityPayload);
-  }, []);
+  }, [dbId]);
+
+  useEffect(() => {
+    void loadDbs();
+  }, [loadDbs]);
 
   useEffect(() => {
     void loadCatalog();
@@ -198,10 +266,12 @@ export function DatabaseClient() {
       for (const [k, v] of Object.entries(editValues)) {
         values[k] = v === "" ? null : v;
       }
-      const url =
+      const url = withDb(
         activeRowid != null
           ? `/api/v1/admin/database/tables/${encodeURIComponent(selected)}/rows/${activeRowid}`
-          : `/api/v1/admin/database/tables/${encodeURIComponent(selected)}/rows`;
+          : `/api/v1/admin/database/tables/${encodeURIComponent(selected)}/rows`,
+        dbId,
+      );
       const res = await fetch(url, {
         method: activeRowid != null ? "PATCH" : "POST",
         headers: { "Content-Type": "application/json" },
@@ -224,7 +294,10 @@ export function DatabaseClient() {
     setSaving(true);
     try {
       const res = await fetch(
-        `/api/v1/admin/database/tables/${encodeURIComponent(selected)}/rows/${activeRowid}`,
+        withDb(
+          `/api/v1/admin/database/tables/${encodeURIComponent(selected)}/rows/${activeRowid}`,
+          dbId,
+        ),
         { method: "DELETE" },
       );
       const body = await res.json();
@@ -241,7 +314,10 @@ export function DatabaseClient() {
   async function runButton() {
     if (activeRowid == null || !selected) return;
     await fetch(
-      `/api/v1/admin/database/tables/${encodeURIComponent(selected)}/rows/${activeRowid}/run-button`,
+      withDb(
+        `/api/v1/admin/database/tables/${encodeURIComponent(selected)}/rows/${activeRowid}/run-button`,
+        dbId,
+      ),
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -255,7 +331,10 @@ export function DatabaseClient() {
     const name = prompt("Nom de la vue", "Ma vue");
     if (!name) return;
     await fetch(
-      `/api/v1/admin/database/tables/${encodeURIComponent(selected)}/views`,
+      withDb(
+        `/api/v1/admin/database/tables/${encodeURIComponent(selected)}/views`,
+        dbId,
+      ),
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -288,8 +367,14 @@ export function DatabaseClient() {
   }
 
   const exportUrl = selected
-    ? `/api/v1/admin/database/tables/${encodeURIComponent(selected)}/export?format=csv${q ? `&q=${encodeURIComponent(q)}` : ""}`
+    ? withDb(
+        `/api/v1/admin/database/tables/${encodeURIComponent(selected)}/export?format=csv${q ? `&q=${encodeURIComponent(q)}` : ""}`,
+        dbId,
+      )
     : "#";
+
+  const activeDbLabel =
+    dbs.find((d) => d.id === dbId)?.label || dbId || "Aucune base";
 
   function renderGroup(title: string, items: CatalogEntry[]) {
     if (!items.length) return null;
@@ -346,10 +431,42 @@ export function DatabaseClient() {
           <div>
             <div className="text-sm font-semibold text-slate-900">Bases</div>
             <div className="text-[11px] text-slate-500">
-              {catalog.length} objets
+              {dbs.length} base{dbs.length === 1 ? "" : "s"} · {catalog.length}{" "}
+              objets
             </div>
           </div>
         </div>
+        {dbs.length > 0 ? (
+          <div className="mb-3 space-y-1">
+            {dbs.map((db) => (
+              <button
+                key={db.id}
+                type="button"
+                onClick={() => {
+                  setDbId(db.id);
+                  setSelected("");
+                  setDetail(null);
+                  setPage(1);
+                  setFilter("");
+                  setQ("");
+                  setQDraft("");
+                }}
+                className={`flex w-full items-center justify-between gap-2 rounded-lg px-2.5 py-2 text-left transition ${
+                  dbId === db.id
+                    ? "bg-slate-900 text-white shadow-sm"
+                    : "text-slate-700 hover:bg-white/80"
+                }`}
+              >
+                <span className="truncate text-[13px] font-medium">
+                  {db.label}
+                </span>
+                <span className="shrink-0 text-[10px] uppercase opacity-70">
+                  {db.layer}
+                </span>
+              </button>
+            ))}
+          </div>
+        ) : null}
         <Input
           value={filter}
           onChange={(e) => setFilter(e.target.value)}
@@ -377,7 +494,7 @@ export function DatabaseClient() {
           <div>
             <div className="flex flex-wrap items-center gap-2">
               <h2 className="text-xl font-semibold tracking-tight text-slate-900">
-                {selected || "Aucune base"}
+                {selected || (dbId ? activeDbLabel : "Aucune base")}
               </h2>
               {detail ? (
                 <>
@@ -678,6 +795,7 @@ export function DatabaseClient() {
             {selected && detail ? (
               <DatabaseAutomationsPanel
                 table={selected}
+                db={dbId}
                 canAutomate={detail.table.canAutomate}
                 columns={detail.table.columns.map((c) => c.name)}
               />

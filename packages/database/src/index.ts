@@ -110,5 +110,19 @@ export {
 export { insertRow, updateRow, deleteRow } from "./crud.js";
 export { exportTable } from "./export.js";
 
+export type {
+  DatabaseStoreDef,
+  DatabaseStoreInfo,
+  DatabaseStoreLayer,
+} from "./stores.js";
+export {
+  clearDatabaseStores,
+  getDatabaseStore,
+  listDatabaseStores,
+  registerDatabaseStore,
+  resolveDatabaseStore,
+  unregisterDatabaseStore,
+} from "./stores.js";
+
 export type { AdminDatabaseRouteDeps } from "./http/admin-routes.js";
 export { createAdminDatabaseRoutes } from "./http/admin-routes.js";

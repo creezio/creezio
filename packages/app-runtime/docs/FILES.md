@@ -27,8 +27,9 @@
 | [`src/listen-brand-os-http.ts`](../src/listen-brand-os-http.ts) | Serveur HTTP OS (`/api/v1`, CRM web) |
 | [`src/mcp-jsonrpc.ts`](../src/mcp-jsonrpc.ts) | Pont JSON-RPC 2.0 stateless du endpoint `/mcp` du plane OS (H1) — seuls les corps `jsonrpc:"2.0"` y passent, le transport JSON simple historique est conservé. Consommé par le client MCP natif de Hermes. |
 | [`src/module-mount-auth.ts`](../src/module-mount-auth.ts) | Garde session HTTP default-deny sur `/api/v1/modules/*` (BACKLOG F3) : cookie session / Bearer JWT, allowlist webhook/register/heartbeat/releases/landing public ; boot catalogue (`x-creezio-catalog-internal` + ensure/import) ; `AUTH_DISABLED` → session virtuelle harness. |
+| [`src/mount-brand-admin-database.ts`](../src/mount-brand-admin-database.ts) | Enregistrement auto stores SQLite runtime (`core`/`brand`/plugins) + routes Admin Database montées sur `/api/v1/admin` |
 | [`src/mount-brand-email-surface.ts`](../src/mount-brand-email-surface.ts) | Surface mails optionnelle |
-| [`src/mount-brand-mcp-surface.ts`](../src/mount-brand-mcp-surface.ts) | Surface MCP optionnelle |
+| [`src/mount-brand-mcp-surface.ts`](../src/mount-brand-mcp-surface.ts) | Surface MCP optionnelle (+ Database via `mount-brand-admin-database`) |
 | [`src/mount-brand-platform-surface.ts`](../src/mount-brand-platform-surface.ts) | Surface plateforme optionnelle |
 | [`src/plugin-acl-wiring.ts`](../src/plugin-acl-wiring.ts) | Câblage ACL Product Hub → façade MCP pour les plugins (fail-closed : sans grant, ni visible ni appelable, sauf owner/clé service). |
 | [`src/plugin-proxy-mount.ts`](../src/plugin-proxy-mount.ts) | Mount api-kernel proxy `/api/v1/plugins/<id>/*` → sidecar loopback (enregistré au start, retiré au stop → `plugin_not_mounted`). |

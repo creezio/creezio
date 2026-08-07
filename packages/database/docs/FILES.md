@@ -21,6 +21,7 @@
 | [`src/query.ts`](../src/query.ts) | _(pas de cartouche JSDoc en tête — voir le code)_ |
 | [`src/schema.ts`](../src/schema.ts) | Schéma SQL core — tables Admin Database / automations row-level. Identique à la migration TempoFlow v33 (préfixe `db_*` conservé pour compat). |
 | [`src/sqlite-driver.ts`](../src/sqlite-driver.ts) | Driver SQLite minimal — compatible better-sqlite3 / node:sqlite. Port Database TempoFlow → @creezio/database (R1). |
+| [`src/stores.ts`](../src/stores.ts) | Registre multi-stores Admin Database (`core`/`brand`/plugin) — `registerDatabaseStore` / `listDatabaseStores` / `resolveDatabaseStore` |
 | [`src/triggers.ts`](../src/triggers.ts) | _(pas de cartouche JSDoc en tête — voir le code)_ |
 | [`src/views.ts`](../src/views.ts) | _(pas de cartouche JSDoc en tête — voir le code)_ |
 | [`src/webhooks.ts`](../src/webhooks.ts) | _(pas de cartouche JSDoc en tête — voir le code)_ |

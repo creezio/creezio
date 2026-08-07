@@ -23,6 +23,10 @@ import {
   createRequestLogsRoutes,
 } from "@creezio/observability";
 import type { BrandOsComposition } from "./compose-brand-os.js";
+import {
+  adminDatabaseHandlesPath,
+  createBrandAdminDatabaseRoutes,
+} from "./mount-brand-admin-database.js";
 
 export type BrandMcpSurface = {
   app: Hono;
@@ -178,16 +182,22 @@ export function mountBrandMcpSurface(opts: {
     diagnosticFilenamePrefix: opts.manifest.brandId,
   });
   const requestLogsRoutes = createRequestLogsRoutes();
+  const databaseRoutes = createBrandAdminDatabaseRoutes({
+    runtime: opts.runtime,
+    brandId: opts.manifest.brandId,
+  });
   const adminSurface = new Hono();
   adminSurface.route("/", adminRoutes);
   adminSurface.route("/", requestLogsRoutes);
+  adminSurface.route("/", databaseRoutes);
   adminSurface.route(
     "/",
     createApiEndpointsRoutes({
       getRegistry: () =>
         buildApiEndpointsRegistry({
           routes: collectHonoRoutes(adminSurface, "/api/v1/admin"),
-          source: "brand admin surface (MCP + request-logs + endpoints)",
+          source:
+            "brand admin surface (MCP + database + request-logs + endpoints)",
           openapiUrl: "/api/v1/openapi.json",
         }),
     }),
@@ -228,6 +238,7 @@ export function mcpSurfaceHandlesPath(pathname: string): boolean {
     pathname.startsWith("/.well-known/") ||
     pathname.startsWith("/oauth/") ||
     pathname.startsWith("/api/v1/admin/mcp") ||
+    adminDatabaseHandlesPath(pathname) ||
     pathname === "/api/v1/admin/endpoints" ||
     pathname === "/api/v1/admin/request-logs" ||
     pathname.startsWith("/api/v1/admin/request-logs/") ||

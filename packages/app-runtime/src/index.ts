@@ -98,6 +98,11 @@ export {
   type BrandMcpSurface,
 } from "./mount-brand-mcp-surface.js";
 export {
+  adminDatabaseHandlesPath,
+  createBrandAdminDatabaseRoutes,
+  registerRuntimeDatabaseStores,
+} from "./mount-brand-admin-database.js";
+export {
   mountBrandEmailSurface,
   emailSurfaceHandlesPath,
   type BrandEmailSurface,

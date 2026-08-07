@@ -16,9 +16,17 @@ import type { Automation } from "./types";
 
 type Props = {
   table: string;
+  /** Store SQLite (`?db=`). */
+  db?: string;
   canAutomate: boolean;
   columns: string[];
 };
+
+function withDb(url: string, dbId?: string): string {
+  if (!dbId) return url;
+  const sep = url.includes("?") ? "&" : "?";
+  return `${url}${sep}db=${encodeURIComponent(dbId)}`;
+}
 
 const TRIGGERS = [
   { value: "row_added", label: "Ligne ajoutée" },
@@ -27,7 +35,12 @@ const TRIGGERS = [
   { value: "button_pressed", label: "Bouton manuel" },
 ] as const;
 
-export function DatabaseAutomationsPanel({ table, canAutomate, columns }: Props) {
+export function DatabaseAutomationsPanel({
+  table,
+  db,
+  canAutomate,
+  columns,
+}: Props) {
   const [automations, setAutomations] = useState<Automation[]>([]);
   const [runs, setRuns] = useState<Array<Record<string, unknown>>>([]);
   const [loading, setLoading] = useState(true);
@@ -53,14 +66,20 @@ export function DatabaseAutomationsPanel({ table, canAutomate, columns }: Props)
     setError("");
     try {
       const res = await fetch(
-        `/api/v1/admin/database/tables/${encodeURIComponent(table)}/automations`,
+        withDb(
+          `/api/v1/admin/database/tables/${encodeURIComponent(table)}/automations`,
+          db,
+        ),
       );
       const body = await res.json();
       if (!res.ok) throw new Error(body.error || "Chargement impossible");
       setAutomations(body.automations || []);
       if (body.automations?.[0]?.id) {
         const runsRes = await fetch(
-          `/api/v1/admin/database/automations/${body.automations[0].id}/runs?limit=20`,
+          withDb(
+            `/api/v1/admin/database/automations/${body.automations[0].id}/runs?limit=20`,
+            db,
+          ),
         );
         const runsBody = await runsRes.json();
         setRuns(runsBody.runs || []);
@@ -72,7 +91,7 @@ export function DatabaseAutomationsPanel({ table, canAutomate, columns }: Props)
     } finally {
       setLoading(false);
     }
-  }, [table]);
+  }, [db, table]);
 
   useEffect(() => {
     void load();
@@ -106,7 +125,10 @@ export function DatabaseAutomationsPanel({ table, canAutomate, columns }: Props)
       }
 
       const res = await fetch(
-        `/api/v1/admin/database/tables/${encodeURIComponent(table)}/automations`,
+        withDb(
+          `/api/v1/admin/database/tables/${encodeURIComponent(table)}/automations`,
+          db,
+        ),
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -132,7 +154,7 @@ export function DatabaseAutomationsPanel({ table, canAutomate, columns }: Props)
   }
 
   async function toggle(auto: Automation) {
-    await fetch(`/api/v1/admin/database/automations/${auto.id}`, {
+    await fetch(withDb(`/api/v1/admin/database/automations/${auto.id}`, db), {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ enabled: !auto.enabled }),
@@ -141,12 +163,16 @@ export function DatabaseAutomationsPanel({ table, canAutomate, columns }: Props)
   }
 
   async function remove(id: string) {
-    await fetch(`/api/v1/admin/database/automations/${id}`, { method: "DELETE" });
+    await fetch(withDb(`/api/v1/admin/database/automations/${id}`, db), {
+      method: "DELETE",
+    });
     await load();
   }
 
   async function processNow() {
-    await fetch("/api/v1/admin/database/automations/process", { method: "POST" });
+    await fetch(withDb("/api/v1/admin/database/automations/process", db), {
+      method: "POST",
+    });
     await load();
   }
 

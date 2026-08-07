@@ -38,10 +38,12 @@
 | [`test-os-tunnel-provision.mjs`](../test-os-tunnel-provision.mjs) | Gate OS — resolveTunnelProvision (envPrefix / CREEZIO_TUNNEL_PROVISION_*). |
 | [`test-os-updater.mjs`](../test-os-updater.mjs) | Gate OS — reduceur updater (port TF2 test:updater), sans Electron. |
 | [`test-phase-admin-billing.mjs`](../test-phase-admin-billing.mjs) | Gate — module billing admin (@creezio/admin) : webhook + réconciliation. |
+| [`test-phase-admin-database-runtime.mjs`](../test-phase-admin-database-runtime.mjs) | Gate Admin Database runtime : stores `core`+`brand` auto-enregistrés + `GET /database/dbs` |
 | [`test-phase-admin-fleet-registry.mjs`](../test-phase-admin-fleet-registry.mjs) | Gate — module fleet-registry (@creezio/admin) : DB flotte centrale (F2). |
 | [`test-phase-admin-prospects.mjs`](../test-phase-admin-prospects.mjs) | (à documenter) |
 | [`test-phase-admin-roadmap.mjs`](../test-phase-admin-roadmap.mjs) | (à documenter) |
 | [`test-phase-api-entity-mount.mjs`](../test-phase-api-entity-mount.mjs) | Gate entity mounts — moteur CRUD déclaratif `@creezio/api-kernel` (`createEntityApiMount` / `registerEntityMounts`). |
+| [`test-phase-api-fallthrough-loop.mjs`](../test-phase-api-fallthrough-loop.mjs) | (à documenter) |
 | [`test-phase-app-runtime.mjs`](../test-phase-app-runtime.mjs) | Gate app-runtime — façade exports + composeBrandOs smoke (sans apps/tempoflow3). |
 | [`test-phase-auth-secret.mjs`](../test-phase-auth-secret.mjs) | Gate sécurité AUTH_SECRET serveur (fix trou : serveurs Docker headless signaient les sessions avec le fallback dev public). |
 | [`test-phase-b.mjs`](../test-phase-b.mjs) | !usrbinenv node |
@@ -58,11 +60,13 @@
 | [`test-phase-crash-reporter.mjs`](../test-phase-crash-reporter.mjs) | Gate crash-reporter kit — upload configurable + brandId + pending queue. |
 | [`test-phase-create-brand.mjs`](../test-phase-create-brand.mjs) | Sonde E2E CREATE-BRAND — init → doctor → apply → smoke façade. |
 | [`test-phase-d.mjs`](../test-phase-d.mjs) | !usrbinenv node |
+| [`test-phase-data-changed.mjs`](../test-phase-data-changed.mjs) | (à documenter) |
 | [`test-phase-desktop-server-parity.mjs`](../test-phase-desktop-server-parity.mjs) | Gate parité desktop Serveur TF2 0.10.26 : NSIS (démarrage auto, désinstall profonde), UI Configuration (tray / launchAtStartup / factory-reset), runtime. |
 | [`test-phase-docs-freshness.mjs`](../test-phase-docs-freshness.mjs) | Gate D0 — fraîcheur documentaire (docs/DOC-STANDARD.md). Vérifie, pour chaque cible du périmètre (packages/*, docker/*, apps/*, scripts/) : 1. |
 | [`test-phase-e.mjs`](../test-phase-e.mjs) | !usrbinenv node |
 | [`test-phase-f.mjs`](../test-phase-f.mjs) | !usrbinenv node |
 | [`test-phase-factory-docker-parity.mjs`](../test-phase-factory-docker-parity.mjs) | Gate héritage factory → Docker (env, opt-in CREEZIO_FACTORY_DOCKER=1). |
+| [`test-phase-factory-lockfile.mjs`](../test-phase-factory-lockfile.mjs) | (à documenter) |
 | [`test-phase-factory-prd-experience.mjs`](../test-phase-factory-prd-experience.mjs) | Gate expérience F5 — simulation agent « un prompt produit ». Input = PROMPT-PRODUIT + PRD uniquement ; assert fichiers métier + smoke. |
 | [`test-phase-factory-prd.mjs`](../test-phase-factory-prd.mjs) | Gate F0–F5 — factory --from-prd natif (api-kernel + SQLite). |
 | [`test-phase-factory-two-repos.mjs`](../test-phase-factory-two-repos.mjs) | Gate FLOTTE — factory 2-repos : chaque marque = monorepo (server/ client/) + repo ADMIN dédié `<brand>-admin` (pilotage flotte multi-VPS, sans secret). |

@@ -41,9 +41,13 @@ La marque configure :
 - `configureDatabasePolicy({ crudAllowlist, forbiddenWriteTables })` ;
 - `configureDatabaseEngine({ emitPluginEvent, n8nWebhookBaseUrl })` ;
 - `configureDatabaseWebhookBrand(...)` ;
-- `createAdminDatabaseRoutes({ getDb, getWriteDb, getActor })`.
+- `createAdminDatabaseRoutes({ getDb, getWriteDb, getActor })` ;
+- ou (factory / kernel) laisser `app-runtime` appeler `registerRuntimeDatabaseStores`
+  qui enregistre `core` + `brand` (+ plugins ouverts) — UI via `GET /database/dbs`
+  et `?db=`.
 
-La marque porte aussi l'auth owner/admin, le routing Next/Hono et les decisions UX.
+La marque porte aussi l'auth owner/admin (TF legacy) ; le kernel factory monte
+les routes automatiquement.
 
 ## Tests/gates
 
