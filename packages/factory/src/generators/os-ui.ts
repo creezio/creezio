@@ -315,10 +315,52 @@ function getSecret() {
   return new TextEncoder().encode(secret);
 }
 
+function firstHeader(value: string | null): string {
+  if (!value) return "";
+  return value.split(",")[0]?.trim() || "";
+}
+
+function isLoopbackHost(host: string): boolean {
+  const bare = (host || "").toLowerCase().trim().split(":")[0] || "";
+  return bare === "127.0.0.1" || bare === "localhost" || bare === "::1";
+}
+
+/** Origine publique derrière Cloudflare Tunnel (Host réécrit en loopback). */
+function publicOrigin(request: NextRequest): string {
+  const xfHost = firstHeader(request.headers.get("x-forwarded-host"));
+  const host = firstHeader(request.headers.get("host"));
+  const xfProto = firstHeader(request.headers.get("x-forwarded-proto")).toLowerCase();
+  const appPublic = (process.env.APP_PUBLIC_URL || "").trim().replace(/\\/+$/, "");
+  const cf = Boolean(
+    request.headers.get("cf-connecting-ip") ||
+      request.headers.get("cf-ray") ||
+      /https/i.test(request.headers.get("cf-visitor") || ""),
+  );
+  if (xfHost && !isLoopbackHost(xfHost)) {
+    const proto = xfProto === "http" ? "http" : "https";
+    return \`\${proto}://\${xfHost}\`;
+  }
+  if (host && !isLoopbackHost(host)) {
+    const proto =
+      xfProto === "http" || xfProto === "https"
+        ? xfProto
+        : cf || host.includes(".")
+          ? "https"
+          : "http";
+    return \`\${proto}://\${host}\`;
+  }
+  if (appPublic && (xfProto === "https" || cf)) {
+    try {
+      return new URL(appPublic).origin;
+    } catch {
+      /* ignore */
+    }
+  }
+  return request.nextUrl.origin;
+}
+
 function loginRedirect(request: NextRequest, nextPath?: string) {
-  const url = request.nextUrl.clone();
-  url.pathname = "/login";
-  url.search = "";
+  const url = new URL("/login", publicOrigin(request));
   if (nextPath && nextPath !== "/login") {
     url.searchParams.set("next", nextPath);
   }
