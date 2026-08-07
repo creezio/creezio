@@ -39,7 +39,6 @@
 | [`test-os-updater.mjs`](../test-os-updater.mjs) | Gate OS — reduceur updater (port TF2 test:updater), sans Electron. |
 | [`test-phase-admin-billing.mjs`](../test-phase-admin-billing.mjs) | Gate — module billing admin (@creezio/admin) : webhook + réconciliation. |
 | [`test-phase-admin-database-runtime.mjs`](../test-phase-admin-database-runtime.mjs) | Gate Admin Database runtime : stores `core`+`brand` auto-enregistrés + `GET /database/dbs` |
-| [`test-phase-platform-native-mounts.mjs`](../test-phase-platform-native-mounts.mjs) | Gate montages natifs kit : Tasks autoconfig, Analytics admin, stub OpenAPI `/api/v1/openapi.json` |
 | [`test-phase-admin-fleet-registry.mjs`](../test-phase-admin-fleet-registry.mjs) | Gate — module fleet-registry (@creezio/admin) : DB flotte centrale (F2). |
 | [`test-phase-admin-prospects.mjs`](../test-phase-admin-prospects.mjs) | (à documenter) |
 | [`test-phase-admin-roadmap.mjs`](../test-phase-admin-roadmap.mjs) | (à documenter) |
@@ -169,6 +168,7 @@
 | [`test-phase-p25.mjs`](../test-phase-p25.mjs) | !usrbinenv node |
 | [`test-phase-p29.mjs`](../test-phase-p29.mjs) | !usrbinenv node |
 | [`test-phase-pack-runtime-deps.mjs`](../test-phase-pack-runtime-deps.mjs) | Gate : config electron-builder embarque la clôture npm runtime (hono, better-sqlite3, …) + asarUnpack natifs. |
+| [`test-phase-platform-native-mounts.mjs`](../test-phase-platform-native-mounts.mjs) | Gate montages natifs kit : Tasks autoconfig, Analytics admin, stub OpenAPI `/api/v1/openapi.json` |
 | [`test-phase-platform-users.mjs`](../test-phase-platform-users.mjs) | Gate — référentiel utilisateurs UNIQUE (API plateforme users). |
 | [`test-phase-plugin-insights.mjs`](../test-phase-plugin-insights.mjs) | Gate P4 plugins natifs — plugin démo kit « insights-assistant ». |
 | [`test-phase-plugin-tools.mjs`](../test-phase-plugin-tools.mjs) | Gate P2/P3 plugins natifs — tools MCP plugins + mounts API kernel. |
@@ -180,9 +180,11 @@
 | [`test-phase-r4.mjs`](../test-phase-r4.mjs) | !usrbinenv node |
 | [`test-phase-registry-pull-proxy.mjs`](../test-phase-registry-pull-proxy.mjs) | Gate — exposition du registre Docker en pull authentifié (F4). |
 | [`test-phase-resolve-manifest.mjs`](../test-phase-resolve-manifest.mjs) | Gate resolveManifest — registre + fallback app-manifest.json (from-prd). |
+| [`test-phase-runtime-dist-freshness.mjs`](../test-phase-runtime-dist-freshness.mjs) | Gate ADR.1b généralisée — dist runtime = câblage src (content + mtime) ; fail-closed sync/publish. |
 | [`test-phase-server-docker.mjs`](../test-phase-server-docker.mjs) | Gate — artefacts docker/server + CLI creezio server-docker. |
 | [`test-phase-shell-desktop-api.mjs`](../test-phase-shell-desktop-api.mjs) | Gate — `getShellDesktopApi` uniquement (pas de `window.*Desktop` hardcodé) + import obligatoire ; scan kit UI + TF3 si présent. |
 | [`test-phase-single-data-plane.mjs`](../test-phase-single-data-plane.mjs) | (à documenter) |
+| [`test-phase-tf3-chrome.mjs`](../test-phase-tf3-chrome.mjs) | (à documenter) |
 | [`test-phase-v1.mjs`](../test-phase-v1.mjs) | Phase V1 — fabrique plugins conversationnelle (demobrand E2E). |
 | [`test-phase-v2.mjs`](../test-phase-v2.mjs) | Phase V2 — observabilité native (activité, usages plugins, control-plane). |
 | [`test-phase-v3.mjs`](../test-phase-v3.mjs) | Phase V3 — automations data-driven (triggers lifecycle / données). |
@@ -191,6 +193,7 @@
 
 | Fichier | Rôle |
 |---|---|
+| [`lib/assert-runtime-dist.mjs`](../lib/assert-runtime-dist.mjs) | Assert fail-closed dist runtime (contrats src↔dist + mtime) — CLI + import gate/sync/publish. |
 | [`lib/brand-roots.mjs`](../lib/brand-roots.mjs) | Resolve brand CRM roots across VPS (/opt/docker/…) and sibling layouts (e.g. |
 | [`lib/intention-twins.mjs`](../lib/intention-twins.mjs) | Scanner jumeaux plateforme TF↔CV (Plan P* / intention OS). Mesure cutover : présence + similarité de lignes — pas « package existe ». |
 | [`lib/resolve-probe-brand.mjs`](../lib/resolve-probe-brand.mjs) | Résout la marque sonde TempoFlow3 hors monorepo kit. Layout nominal : 2 repos — monorepo marque (`server/`, `client/`) + repo admin dédié `<brand>-admin`. |

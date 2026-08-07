@@ -180,6 +180,22 @@ toutes les routes plateforme.
 **Objectif** : image versionnée dans le registre Docker local
 (`creezio-registry`, `127.0.0.1:5000`), déployée via l'admin.
 
+**Prérequis kit (fail-closed)** : si le runtime kit a changé, **rebuild le
+dist avant** sync vendor / publish — sinon image sans routes (dist stale) :
+
+```bash
+cd "$CREEZIO_KIT_ROOT" && npm run build:packages
+# preuve : npm run test:kit -- --only runtime-dist-freshness
+# (ou node --test scripts/test-phase-runtime-dist-freshness.mjs)
+# Puis resync marque, puis publish.
+cd "$BRAND_ROOT" && npm run electron:sync-vendor   # ou sync-creezio-vendor.sh
+```
+
+`creezio server-docker publish|build` et `sync-creezio-vendor.sh` appellent
+`scripts/lib/assert-runtime-dist.mjs` (contrats src↔dist + mtime) et
+**refusent** si le dist est plus vieux que le src. Bypass urgence seulement :
+`CREEZIO_SKIP_RUNTIME_DIST_ASSERT=1`.
+
 ```bash
 # Publish (build + push ; --browser pour la variante sidecar) :
 creezio server-docker publish --brand-root "$BRAND_ROOT" \
@@ -522,6 +538,7 @@ L'admin (§5) montre boot-status live, logs et ops par serveur sans SSH.
 | AUTH_SECRET | Généré/persisté **par instance** (`/data/{brand}-config.json`) au boot ; jamais le fallback dev en prod ; ne pas partager entre serveurs. |
 | Setup ≠ login | `POST /api/v1/os/setup` n'écrit pas `creezio_users` → faire aussi `migrateBrandCredentialsToKit` (§2). |
 | Vendor sync | `sync-creezio-vendor.sh` doit inclure `browser-host` (déjà dans la liste par défaut — ne pas la réduire). |
+| dist stale → routes manquantes | Après modif `packages/*/src` : **`npm run build:packages`** avant sync/publish. Gate `test-phase-runtime-dist-freshness` + assert dans sync et `server-docker publish\|build`. Vécu : Admin Database monté en src, dist non rebuild → « Route inconnue ». |
 | Symlinks electron-builder | Refuse les symlinks hors racine projet : `client/vendor` = copie hardlink, pas un symlink. |
 | Publish desktop | Feed sur le même VPS → flux Docker local (`docker cp`), pas de SSH vers soi-même. |
 | Feed TF2 | Ne pas écrire dans le feed/GUID TempoFlow2 — TF3 a son sous-dossier `/tf3/` et son GUID. |

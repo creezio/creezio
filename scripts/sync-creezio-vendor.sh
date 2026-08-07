@@ -197,6 +197,10 @@ if (fail) process.exit(1);
 console.log("▸ kit dist symbols OK (create*/mount*/oauth)");
 ' "${KIT}"
 
+# Garde ADR.1b généralisée : content contracts src↔dist + mtime freshness.
+# Refuse de copier un dist plus vieux que le src (routes admin/database, etc.).
+node "${KIT}/scripts/lib/assert-runtime-dist.mjs" "${KIT}"
+
 rm -rf "${DEST}"
 mkdir -p "${DEST}"
 

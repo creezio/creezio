@@ -25,6 +25,7 @@ ils décrivent le chantier, pas l'état courant.
 | `generate-files-md.mjs` | Génère/rafraîchit les `docs/FILES.md` (standard `docs/DOC-STANDARD.md`) |
 | `lib/brand-roots.mjs` | Résolution chemins brands + kit |
 | `lib/intention-twins.mjs` | Scanner jumeaux intention (P0) |
+| `lib/assert-runtime-dist.mjs` | Fail-closed dist runtime (content + mtime) — sync / publish / gate ADR.1b-gen |
 | `test-phase-*.mjs` | Gates — une phase / un contrat |
 
 ## Ajouter une gate

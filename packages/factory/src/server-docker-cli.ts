@@ -864,6 +864,32 @@ function ensureUiBuild(brandRoot: string): void {
   }
 }
 
+/**
+ * Fail-closed avant publish/build Docker : le dist kit des packages runtime
+ * critiques doit refléter le src (content contracts + mtime). Empêche de
+ * pousser une image dont le vendor a été sync depuis un dist stale
+ * (régression Admin Database / routes manquantes).
+ *
+ * Bypass ops d'urgence uniquement : CREEZIO_SKIP_RUNTIME_DIST_ASSERT=1.
+ */
+function assertKitRuntimeDistFresh(kit: string): void {
+  if (process.env.CREEZIO_SKIP_RUNTIME_DIST_ASSERT === "1") {
+    console.warn(
+      "⚠ CREEZIO_SKIP_RUNTIME_DIST_ASSERT=1 — skip assert dist runtime (déconseillé)",
+    );
+    return;
+  }
+  const script = path.join(kit, "scripts/lib/assert-runtime-dist.mjs");
+  if (!fs.existsSync(script)) {
+    console.warn(
+      `⚠ assert-runtime-dist.mjs absent (${script}) — kit trop ancien ?`,
+    );
+    return;
+  }
+  console.log("assert kit runtime dist (content + mtime)…");
+  run("node", [script, kit], process.env);
+}
+
 function dockerBuildImage(
   paths: ReturnType<typeof resolvePaths>,
   env: NodeJS.ProcessEnv,
@@ -877,6 +903,7 @@ function dockerBuildImage(
   },
 ): void {
   const variant = opts?.variant || "base";
+  assertKitRuntimeDistFresh(paths.kit);
   ensureBrandStandalone(paths.brandRoot, paths.kit);
   ensureElectronBuild(paths.brandRoot);
   ensureUiBuild(paths.brandRoot);

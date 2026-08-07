@@ -11,7 +11,8 @@ Outils du monorepo **creezio** (hors packages npm).
 - **Docs** : `generate-files-md.mjs` — génère/rafraîchit les `docs/FILES.md`
   (standard [../docs/DOC-STANDARD.md](../docs/DOC-STANDARD.md), gate
   `test-phase-docs-freshness.mjs`)
-- **Lib** : `scripts/lib/*` (brand roots, twins intention, etc.)
+- **Lib** : `scripts/lib/*` (brand roots, twins intention,
+  `assert-runtime-dist.mjs` anti dist stale, etc.)
 
 Les journaux d'époque des phases (`PHASE-*.md`) sont archivés dans
 [../docs/archive/](../docs/archive/).

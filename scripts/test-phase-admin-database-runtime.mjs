@@ -1,5 +1,10 @@
 /**
  * Gate — Admin Database auto-monté sur le kernel marque (core + brand).
+ *
+ * ADR.1b (dist anti-stale) est généralisé dans
+ * scripts/test-phase-runtime-dist-freshness.mjs +
+ * scripts/lib/assert-runtime-dist.mjs — ce fichier garde le contrat
+ * database ciblé et délègue au SoT partagé.
  */
 import assert from "node:assert/strict";
 import fs from "node:fs";
@@ -7,6 +12,7 @@ import os from "node:os";
 import path from "node:path";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
+import { assertContentContracts } from "./lib/assert-runtime-dist.mjs";
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
 test("ADR.1 mount-brand-admin-database + proxy path database", () => {
@@ -43,40 +49,34 @@ test("ADR.1b dist app-runtime câble database (anti dist stale)", () => {
   // Régression prod 0.3.15 : src montait Database mais dist gitignoré
   // n'avait pas été rebuild → mcpSurfaceHandlesPath n'interceptait pas
   // /api/v1/admin/database → fallthrough Next twin → « Route inconnue ».
-  const mcpDist = path.join(
-    root,
-    "packages/app-runtime/dist/mount-brand-mcp-surface.js",
-  );
-  const adminDbDist = path.join(
-    root,
-    "packages/app-runtime/dist/mount-brand-admin-database.js",
-  );
-  assert.ok(
-    fs.existsSync(mcpDist),
-    "build @creezio/app-runtime manquant (mount-brand-mcp-surface.js)",
-  );
-  assert.ok(
-    fs.existsSync(adminDbDist),
-    "build @creezio/app-runtime manquant (mount-brand-admin-database.js)",
-  );
-  const mcp = fs.readFileSync(mcpDist, "utf8");
-  assert.match(
-    mcp,
-    /createBrandAdminDatabaseRoutes/,
-    "dist mcp-surface doit monter createBrandAdminDatabaseRoutes",
-  );
-  assert.match(
-    mcp,
-    /adminDatabaseHandlesPath/,
-    "dist mcpSurfaceHandlesPath doit déléguer à adminDatabaseHandlesPath",
-  );
-  assert.match(
-    mcp,
-    /MCP \+ database \+ analytics \+ request-logs/,
-    "registre admin dist doit lister database dans la source",
-  );
-  const handles = fs.readFileSync(adminDbDist, "utf8");
-  assert.match(handles, /\/api\/v1\/admin\/database/);
+  // SoT généralisé : assert-runtime-dist.mjs (content + mtime) — ici on
+  // ancre encore le sous-ensemble Admin Database.
+  const r = assertContentContracts(root, {
+    contracts: [
+      {
+        id: "ADR.1b-app-runtime-admin-database",
+        package: "app-runtime",
+        src: "src/mount-brand-mcp-surface.ts",
+        dist: "dist/mount-brand-mcp-surface.js",
+        tokens: [
+          "createBrandAdminDatabaseRoutes",
+          "adminDatabaseHandlesPath",
+          "MCP + database + analytics + request-logs",
+        ],
+      },
+      {
+        id: "ADR.1b-app-runtime-admin-database-handles",
+        package: "app-runtime",
+        src: "src/mount-brand-admin-database.ts",
+        dist: "dist/mount-brand-admin-database.js",
+        tokens: [
+          "registerRuntimeDatabaseStores",
+          "/api/v1/admin/database",
+        ],
+      },
+    ],
+  });
+  assert.equal(r.ok, true, r.errors.join("\n") || "ADR.1b KO");
 });
 
 test("ADR.2 registre + GET /database/dbs liste core+brand", async () => {

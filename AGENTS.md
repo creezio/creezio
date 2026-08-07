@@ -79,8 +79,12 @@ Voir `package.json` script `build:packages`. Ordre typique :
 `database` → `browser-host` → `electron-shell` → `brand-spec` →
 `app-runtime` → `desktop-tooling` → `factory` → `propagation` → `build:cjs`.
 
-Après changement runtime consommé par les marques : `npm run build:packages` puis
-resync vendor (`scripts/sync-creezio-vendor.sh` côté marque, `CREEZIO_KIT_ROOT`).
+Après changement runtime consommé par les marques : **`npm run build:packages`
+obligatoire** puis resync vendor (`scripts/sync-creezio-vendor.sh` côté marque,
+`CREEZIO_KIT_ROOT`). Un dist stale (src monté, dist pas rebuild) est **refusé**
+fail-closed par la gate `test-phase-runtime-dist-freshness` (ADR.1b généralisée),
+par `sync-creezio-vendor.sh`, et par `creezio server-docker publish|build`
+(`scripts/lib/assert-runtime-dist.mjs` — content contracts + mtime).
 
 ## Où modifier quoi
 
@@ -136,6 +140,13 @@ Workflow : `npm run test:kit` → première rouge → corriger →
 
 ## Pièges connus
 
+- **dist stale → vendor/image sans routes** : `dist/` est gitignoré. Modifier
+  un mount en `packages/*/src` sans `npm run build:packages` puis sync/publish
+  copie un dist vieux → routes absentes en prod (vécu Admin Database).
+  Protection fail-closed : gate `test-phase-runtime-dist-freshness` (dans
+  `test:kit`), `sync-creezio-vendor.sh`, `server-docker publish|build`. Avant
+  tout publish/resync : `cd /opt/docker/creezio && npm run build:packages`.
+  Bypass urgence uniquement : `CREEZIO_SKIP_RUNTIME_DIST_ASSERT=1` (déconseillé).
 - **Meili = recherche ET browse filtré** : dès qu'un index Meili existe
   (`catalog_products`, …) et que les filtres/tris sont exprimables
   (filterable/sortable), les listes catalogue **doivent** passer par Meili —
