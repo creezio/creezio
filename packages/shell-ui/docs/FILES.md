@@ -26,6 +26,7 @@
 |---|---|
 | [`src/lib/api-scopes.ts`](../src/lib/api-scopes.ts) | Scopes des clés API publiques (`api_keys.scopes`). - `full` : accès intégration complet (Hermes, clés UI) - `crm:read` : GET/HEAD/OPTIONS uniquement - `crm:write` : lectures + mutations (implique read) Stockage : chaîne CSV (`crm:read,crm:write`) ou `full`. |
 | [`src/lib/catalog-suspense-key.ts`](../src/lib/catalog-suspense-key.ts) | Clé Suspense stable — inclut la vue + filtres actifs (sans recréer page par page). export function buildCatalogSuspenseKey( sp: Record<string, string \| undefined> \| undefined, resolveView: (raw: string \| undefined) => string, filterKeys: readonly string[], ): string { const view = resolveView(sp?.view); const parts: string[] = [view]; for (const key of filterKeys) { const value = (sp?.[key] \|\| "").trim(); if (value) parts.push(`${key}=${value}`); } |
+| [`src/lib/data-changed.ts`](../src/lib/data-changed.ts) | (à documenter) |
 | [`src/lib/desktop-home-path.ts`](../src/lib/desktop-home-path.ts) | _(pas de cartouche JSDoc en tête — voir le code)_ |
 | [`src/lib/geo-distance.ts`](../src/lib/geo-distance.ts) | Distance géodésique (haversine) — logique pure, testable. |
 | [`src/lib/img.ts`](../src/lib/img.ts) | Réécrit les URLs d'images externes vers leur variante miniature CDN. Évite de charger des originaux de 20+ Mpx dans des cartes de 300 px. |
@@ -73,6 +74,7 @@
 | [`ui/layout/app-shell.tsx`](../ui/layout/app-shell.tsx) | _(pas de cartouche JSDoc en tête — voir le code)_ |
 | [`ui/layout/desktop-update-banner.tsx`](../ui/layout/desktop-update-banner.tsx) | _(pas de cartouche JSDoc en tête — voir le code)_ |
 | [`ui/layout/entity-header.tsx`](../ui/layout/entity-header.tsx) | _(pas de cartouche JSDoc en tête — voir le code)_ |
+| [`ui/layout/native-os-nav.ts`](../ui/layout/native-os-nav.ts) | (à documenter) |
 | [`ui/layout/page-chrome.tsx`](../ui/layout/page-chrome.tsx) | _(pas de cartouche JSDoc en tête — voir le code)_ |
 | [`ui/layout/page-toolbar-context.tsx`](../ui/layout/page-toolbar-context.tsx) | _(pas de cartouche JSDoc en tête — voir le code)_ |
 | [`ui/layout/sandbox-banner.tsx`](../ui/layout/sandbox-banner.tsx) | Bandeau permanent en environnement sandbox (clone restaurant). Activé via APP_ENV=sandbox — jamais en prod / client. Lecture dynamique de process.env pour éviter l'inlining Next au build. |
@@ -86,10 +88,12 @@
 |---|---|
 | [`ui/lib/ai-screencast-hub.ts`](../ui/lib/ai-screencast-hub.ts) | Hub screencast des espaces IA — côté serveur Next (mémoire process). L'app desktop POSTe des frames JPEG (base64) via POST /api/v1/desktop/screencast/frame ; les spectateurs s'abonnent en SSE via GET /api/v1/tasks/screencast/:aiUserId/stream. Backpressure : on ne garde QUE la dernière frame par IA. Chaque spectateur a un slot « latest » écrasé à chaque publication ; la livraison est planifiée (setImmediate) et n'envoie que la frame la plus récente — un spectateur lent saute des frames au lieu d'accumuler une file. Singleton globalThis : survit au HMR dev, simple module en prod. |
 | [`ui/lib/ai-workspace-client.ts`](../ui/lib/ai-workspace-client.ts) | _(pas de cartouche JSDoc en tête — voir le code)_ |
+| [`ui/lib/aid.ts`](../ui/lib/aid.ts) | (à documenter) |
 | [`ui/lib/desktop-host.ts`](../ui/lib/desktop-host.ts) | _(pas de cartouche JSDoc en tête — voir le code)_ |
 | [`ui/lib/fleet-tracker-client.ts`](../ui/lib/fleet-tracker-client.ts) | _(pas de cartouche JSDoc en tête — voir le code)_ |
 | [`ui/lib/hermes-ui.ts`](../ui/lib/hermes-ui.ts) | _(pas de cartouche JSDoc en tête — voir le code)_ |
 | [`ui/lib/n8n-ui.ts`](../ui/lib/n8n-ui.ts) | _(pas de cartouche JSDoc en tête — voir le code)_ |
+| [`ui/lib/use-creezio-resource.tsx`](../ui/lib/use-creezio-resource.tsx) | (à documenter) |
 
 ## `ui/os-pages/`
 

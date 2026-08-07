@@ -29,4 +29,5 @@
 |---|---|
 | [`ui/index.ts`](../ui/index.ts) | @creezio/auth/ui — LoginForm + SessionProvider (React / Next). Bridge desktop : configureShellUiBrand({ desktopApiGlobal }) côté marque. |
 | [`ui/login-form.tsx`](../ui/login-form.tsx) | _(pas de cartouche JSDoc en tête — voir le code)_ |
+| [`ui/require-session.tsx`](../ui/require-session.tsx) | (à documenter) |
 | [`ui/session-provider.tsx`](../ui/session-provider.tsx) | _(pas de cartouche JSDoc en tête — voir le code)_ |

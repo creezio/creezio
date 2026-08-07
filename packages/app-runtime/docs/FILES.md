@@ -16,6 +16,7 @@
 |---|---|
 | [`src/boot-progress.ts`](../src/boot-progress.ts) | Progression de boot headless (modèle splash partagé) — JSON `GET /api/v1/os/boot-status`, JSONL stdout, journal ops |
 | [`src/brand-platform-store.ts`](../src/brand-platform-store.ts) | Store plateforme marque |
+| [`src/cockpit-health.ts`](../src/cockpit-health.ts) | (à documenter) |
 | [`src/compose-brand-os.ts`](../src/compose-brand-os.ts) | Composition OS natif : kernel, stores, auth, fleet (sentinelle `ingest-disabled` par défaut), surfaces |
 | [`src/create-brand-kernel.ts`](../src/create-brand-kernel.ts) | Création du kernel API (espaces core/platform/modules/plugins) |
 | [`src/fleet-heartbeat.ts`](../src/fleet-heartbeat.ts) | Auto-inscription flotte + heartbeat (~90 s) d'un serveur marque vers le module `fleet-registry` de l'app admin (F3) — Bearer secret partagé au register, serverKey ensuite. Câblé harness + desktop serveur. |
@@ -40,4 +41,5 @@
 | [`src/start-brand-ui-plane.ts`](../src/start-brand-ui-plane.ts) | Plan UI (Next standalone / dev) |
 | [`src/types.ts`](../src/types.ts) | Types de config (StartBrandDesktopConfig, harness…) |
 | [`src/warm-brand-native-hosts.ts`](../src/warm-brand-native-hosts.ts) | Préchauffage embeds n8n/Hermes |
+| [`src/wire-assistant-mcp.ts`](../src/wire-assistant-mcp.ts) | (à documenter) |
 | [`src/wire-brand-browser-sidecar.ts`](../src/wire-brand-browser-sidecar.ts) | Wiring sidecar navigateur IA (AiSessionHost, proxy `CREEZIO_BROWSER_PROXY`) |

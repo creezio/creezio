@@ -36,5 +36,6 @@
 
 | Fichier | Rôle |
 |---|---|
+| [`ui/setup/http-setup-api.ts`](../ui/setup/http-setup-api.ts) | (à documenter) |
 | [`ui/setup/setup-types.ts`](../ui/setup/setup-types.ts) | Config optionnelle SetupWizard — le reste vient de getShellUiBrand(). export type SetupWizardConfig = { stepLabels?: [string, string, string, string]; slugPlaceholder?: string; tunnelHelp?: string; requireOpenaiKey?: boolean; afterCompleteHref?: string; accentColor?: string; backgroundColor?: string; }; export type CompleteSetupPayload = { |
 | [`ui/setup/setup-wizard.tsx`](../ui/setup/setup-wizard.tsx) | _(pas de cartouche JSDoc en tête — voir le code)_ |

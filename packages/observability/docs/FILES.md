@@ -21,6 +21,12 @@
 | [`fleet-collector/test-fleet-collector.mjs`](../fleet-collector/test-fleet-collector.mjs) | Tests locaux du fleet-collector kit (spawn serveur éphémère). Env neutre CREEZIO_* — pas de domaine marque. |
 | [`fleet-collector/test-server-admin.mjs`](../fleet-collector/test-server-admin.mjs) | Tests du backend flotte (routes admin, enroll, update async). |
 
+## `scripts/`
+
+| Fichier | Rôle |
+|---|---|
+| [`scripts/test-api-endpoints-registry.mjs`](../scripts/test-api-endpoints-registry.mjs) | (à documenter) |
+
 ## `src/`
 
 | Fichier | Rôle |
@@ -33,6 +39,14 @@
 | [`src/sqlite-driver.ts`](../src/sqlite-driver.ts) | Driver SQLite minimal — dual-build CJS Electron (pas d'import.meta). |
 | [`src/sqlite-store.ts`](../src/sqlite-store.ts) | _(pas de cartouche JSDoc en tête — voir le code)_ |
 | [`src/types.ts`](../src/types.ts) | Contrats observabilité native (vision V2). |
+
+## `src/api-endpoints/`
+
+| Fichier | Rôle |
+|---|---|
+| [`src/api-endpoints/http-routes.ts`](../src/api-endpoints/http-routes.ts) | (à documenter) |
+| [`src/api-endpoints/index.ts`](../src/api-endpoints/index.ts) | (à documenter) |
+| [`src/api-endpoints/registry.ts`](../src/api-endpoints/registry.ts) | (à documenter) |
 
 ## `src/ops/`
 
@@ -77,9 +91,9 @@
 | [`ui/api-endpoints-client.tsx`](../ui/api-endpoints-client.tsx) | _(pas de cartouche JSDoc en tête — voir le code)_ |
 | [`ui/index.ts`](../ui/index.ts) | Observability Admin UI (usage analytics N6 + request-logs / api-endpoints O5). Consommer via `@creezio/observability/ui`. |
 | [`ui/request-logs-client.tsx`](../ui/request-logs-client.tsx) | _(pas de cartouche JSDoc en tête — voir le code)_ |
+| [`ui/session-usage-analytics-provider.tsx`](../ui/session-usage-analytics-provider.tsx) | Bridge `useSession` (`@creezio/auth/ui`) → `UsageAnalyticsProvider`. Monté par BrandChrome factory. |
 | [`ui/usage-analytics-client.ts`](../ui/usage-analytics-client.ts) | Tracker d'usage client — pages, dwell, clics, présence (heartbeat / idle / focus). Buffer + flush vers POST /api/v1/analytics/events. Miroir optionnel vers la télémétrie flotte Electron. Vie privée : on ne journalise PAS le contenu des frappes ni les mouvements souris, seulement des signaux d'activité agrégés (heartbeat / idle). |
 | [`ui/usage-analytics-provider.tsx`](../ui/usage-analytics-provider.tsx) | _(pas de cartouche JSDoc en tête — voir le code)_ |
-| [`ui/session-usage-analytics-provider.tsx`](../ui/session-usage-analytics-provider.tsx) | Bridge `useSession` (`@creezio/auth/ui`) → `UsageAnalyticsProvider`. Monté par BrandChrome factory. |
 
 ## `ui/primitives/`
 

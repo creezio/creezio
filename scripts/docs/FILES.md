@@ -169,6 +169,7 @@
 | [`test-phase-p29.mjs`](../test-phase-p29.mjs) | !usrbinenv node |
 | [`test-phase-pack-runtime-deps.mjs`](../test-phase-pack-runtime-deps.mjs) | Gate : config electron-builder embarque la clôture npm runtime (hono, better-sqlite3, …) + asarUnpack natifs. |
 | [`test-phase-platform-native-mounts.mjs`](../test-phase-platform-native-mounts.mjs) | Gate montages natifs kit : Tasks autoconfig, Analytics admin, stub OpenAPI `/api/v1/openapi.json` |
+| [`test-phase-platform-user-admin.mjs`](../test-phase-platform-user-admin.mjs) | (à documenter) |
 | [`test-phase-platform-users.mjs`](../test-phase-platform-users.mjs) | Gate — référentiel utilisateurs UNIQUE (API plateforme users). |
 | [`test-phase-plugin-insights.mjs`](../test-phase-plugin-insights.mjs) | Gate P4 plugins natifs — plugin démo kit « insights-assistant ». |
 | [`test-phase-plugin-tools.mjs`](../test-phase-plugin-tools.mjs) | Gate P2/P3 plugins natifs — tools MCP plugins + mounts API kernel. |
