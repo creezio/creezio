@@ -49,13 +49,18 @@ export function reduceExternalSiteLoadState(
 export const reduceSupplierLoadState = reduceExternalSiteLoadState;
 
 export function ExternalSiteSlot({
-  siteId,
+  siteId: siteIdProp,
   initialUrl,
 }: {
-  siteId: number;
+  /** Id de partition (number ou string numérique depuis la route). */
+  siteId: number | string;
   /** URL de secours si l'onglet workspace n'a pas encore de meta.externalSite.url. */
   initialUrl?: string;
 }) {
+  const siteIdParsed =
+    typeof siteIdProp === "number" ? siteIdProp : Number(siteIdProp);
+  const siteIdValid = Number.isFinite(siteIdParsed);
+  const siteId = siteIdValid ? siteIdParsed : -1;
   const slotRef = useRef<HTMLDivElement>(null);
   const paneActive = usePaneActive();
   const workspace = useTabWorkspace();
@@ -248,6 +253,14 @@ export function ExternalSiteSlot({
     });
   }, [paneActive, electronTabId, siteId, href, setTabMeta, patchExternalSiteTab]);
 
+  if (!siteIdValid) {
+    return (
+      <div className="flex h-full items-center justify-center text-sm text-slate-500">
+        Site invalide
+      </div>
+    );
+  }
+
   return (
     <div
       ref={slotRef}
@@ -293,7 +306,7 @@ export function SupplierSiteSlot({
   fournisseurId,
   initialUrl,
 }: {
-  fournisseurId: number;
+  fournisseurId: number | string;
   initialUrl?: string;
 }) {
   return <ExternalSiteSlot siteId={fournisseurId} initialUrl={initialUrl} />;

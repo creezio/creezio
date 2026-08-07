@@ -5,7 +5,7 @@
  * publiques product_live_... (Zapier / Make / n8n). La clé complète n'est
  * montrée qu'une fois à la création ; ensuite seul le prefix est visible.
  */
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { toast } from "sonner";
 import { BookOpen, Check, Copy, KeyRound, Plus, Trash2 } from "lucide-react";
@@ -48,22 +48,81 @@ export function ApiKeysSettings({
   /** @deprecated → linkableUsers (compat Fidu/TF page props). */
   users,
 }: {
-  initialKeys: ApiKeyItem[];
+  /** Si omis, charge GET /api/v1/api-keys au mount (page OS client). */
+  initialKeys?: ApiKeyItem[];
   linkableUsers?: LinkableUser[];
   users?: Array<{ id: string; username: string; role?: string; kind?: "human" | "ai" }>;
 }) {
-  const resolvedUsers: LinkableUser[] = linkableUsers ?? (users || []).map((u) => ({
-    id: u.id,
-    username: u.username,
-    kind: u.kind ?? (u.role === "ai" || u.role === "agent" ? "ai" : "human"),
-  }));
-  const [keys, setKeys] = useState<ApiKeyItem[]>(initialKeys);
+  const [resolvedUsers, setResolvedUsers] = useState<LinkableUser[]>(
+    () =>
+      linkableUsers ??
+      (users || []).map((u) => ({
+        id: u.id,
+        username: u.username,
+        kind: u.kind ?? (u.role === "ai" || u.role === "agent" ? "ai" : "human"),
+      })),
+  );
+  const [keys, setKeys] = useState<ApiKeyItem[]>(initialKeys ?? []);
   const [name, setName] = useState("");
   const [scope, setScope] = useState("full");
   const [linkedUser, setLinkedUser] = useState("");
   const [busy, setBusy] = useState(false);
   const [freshKey, setFreshKey] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    if (initialKeys) {
+      setKeys(initialKeys);
+      return;
+    }
+    let cancelled = false;
+    void fetch("/api/v1/api-keys")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data: { api_keys?: ApiKeyItem[] } | null) => {
+        if (!cancelled && Array.isArray(data?.api_keys)) setKeys(data.api_keys);
+      })
+      .catch(() => {
+        /* liste vide tant que l'API est indisponible */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [initialKeys]);
+
+  useEffect(() => {
+    if (linkableUsers || users) {
+      setResolvedUsers(
+        linkableUsers ??
+          (users || []).map((u) => ({
+            id: u.id,
+            username: u.username,
+            kind: u.kind ?? (u.role === "ai" || u.role === "agent" ? "ai" : "human"),
+          })),
+      );
+      return;
+    }
+    let cancelled = false;
+    void fetch("/api/v1/users")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data: { users?: Array<{ id: string; username: string; kind?: string; active?: boolean }> } | null) => {
+        if (cancelled || !Array.isArray(data?.users)) return;
+        setResolvedUsers(
+          data.users
+            .filter((u) => u.active !== false)
+            .map((u) => ({
+              id: u.id,
+              username: u.username,
+              kind: u.kind === "ai" ? "ai" : "human",
+            })),
+        );
+      })
+      .catch(() => {
+        /* owner-only endpoint ; hors droits → liste vide */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [linkableUsers, users]);
 
   const requiresUser = scope === "tasks:run";
 

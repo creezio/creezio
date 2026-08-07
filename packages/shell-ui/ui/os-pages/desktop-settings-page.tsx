@@ -4,9 +4,11 @@
  * Page OS réglages desktop — composition kit (pas de métier marque).
  * Les marques ne font que `export { DesktopSettingsPage as default }`.
  *
- * Parité TF2 0.10.26 Configuration → Système :
- * arrière-plan (tray + lancer au démarrage) + factory reset.
+ * Parité Configuration TF (onglets Connexion / Hosts / Compte / Support / Système).
  */
+import { AccountSettings } from "../settings/account-settings";
+import { AgentProfileSettings } from "../settings/agent-profile-settings";
+import { ApiKeysSettings } from "../settings/api-keys-settings";
 import { DesktopConnectionSettings } from "../settings/desktop-connection-settings";
 import { DesktopHermesSettings } from "../settings/desktop-hermes-settings";
 import { DesktopN8nSettings } from "../settings/desktop-n8n-settings";
@@ -14,6 +16,7 @@ import { DesktopTunnel } from "../settings/desktop-tunnel";
 import { DesktopLlmKeys } from "../settings/desktop-llm-keys";
 import { DesktopUpdateSettings } from "../settings/desktop-update-settings";
 import { DesktopBackgroundSettings } from "../settings/desktop-background-settings";
+import { DesktopFleetTelemetrySettings } from "../settings/desktop-fleet-telemetry-settings";
 import { FactoryResetSettings } from "../settings/factory-reset-settings";
 import { OpsDiagnosticSettings } from "../settings/ops-diagnostic-settings";
 import { SearchReindexSettings } from "../settings/search-reindex-settings";
@@ -25,42 +28,84 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "../primitives/tabs";
 
 export function DesktopSettingsPage() {
   return (
-    <section style={{ padding: "1rem 0", maxWidth: "56rem" }}>
-      <h1 style={{ fontSize: "1.5rem", margin: "0 0 1rem" }}>Réglages</h1>
-      <Tabs defaultValue="connection">
-        <TabsList>
-          <TabsTrigger value="connection">Connexion</TabsTrigger>
-          <TabsTrigger value="hosts">Hosts</TabsTrigger>
-          <TabsTrigger value="llm">LLM</TabsTrigger>
+    <section className="mx-auto max-w-4xl px-0 py-4">
+      <h1 className="mb-4 text-2xl font-semibold tracking-tight text-slate-900">
+        Configuration
+      </h1>
+      <p className="mb-4 text-sm text-slate-600">
+        Chaque service a son onglet — paramètres verrouillés visibles, actions et
+        statut
+      </p>
+      <Tabs defaultValue="connexion" className="w-full">
+        <TabsList className="mb-4 flex h-auto w-full flex-wrap justify-start gap-1">
+          <TabsTrigger value="connexion">Connexion</TabsTrigger>
+          <TabsTrigger value="hermes">Hermes</TabsTrigger>
+          <TabsTrigger value="n8n">n8n</TabsTrigger>
+          <TabsTrigger value="tunnel">Accès distant</TabsTrigger>
+          <TabsTrigger value="compte">Compte &amp; clés</TabsTrigger>
+          <TabsTrigger value="support">Support</TabsTrigger>
           <TabsTrigger value="systeme">Système</TabsTrigger>
         </TabsList>
-        <TabsContent value="connection">
+
+        <TabsContent value="connexion" className="mt-0 space-y-4">
           <DesktopConnectionSettings />
         </TabsContent>
-        <TabsContent value="hosts">
-          <div style={{ display: "grid", gap: "1.25rem" }}>
+
+        <TabsContent value="hermes" className="mt-0 space-y-4">
+          <HostOnlySettings
+            fallback={<HostManagedNotice label="l'agent Hermes" />}
+          >
             <DesktopHermesSettings />
+          </HostOnlySettings>
+        </TabsContent>
+
+        <TabsContent value="n8n" className="mt-0 space-y-4">
+          <HostOnlySettings fallback={<HostManagedNotice label="n8n" />}>
             <DesktopN8nSettings />
+          </HostOnlySettings>
+        </TabsContent>
+
+        <TabsContent value="tunnel" className="mt-0 space-y-4">
+          <HostOnlySettings
+            fallback={<HostManagedNotice label="l'accès distant (tunnel)" />}
+          >
             <DesktopTunnel />
-          </div>
+          </HostOnlySettings>
         </TabsContent>
-        <TabsContent value="llm">
-          <DesktopLlmKeys />
+
+        <TabsContent value="compte" className="mt-0 space-y-4">
+          <HostOnlySettings
+            fallback={
+              <HostManagedNotice label="le compte propriétaire et les clés IA" />
+            }
+          >
+            <AccountSettings />
+            <DesktopLlmKeys />
+          </HostOnlySettings>
+          <AgentProfileSettings />
+          <ApiKeysSettings />
         </TabsContent>
-        <TabsContent value="systeme">
-          <div style={{ display: "grid", gap: "1.25rem" }}>
-            <DesktopUpdateSettings />
-            <DesktopBackgroundSettings />
-            <HostOnlySettings
-              fallback={
-                <HostManagedNotice label="l'index de recherche et la remise à zéro" />
-              }
-            >
-              <SearchReindexSettings />
-              <OpsDiagnosticSettings />
-              <FactoryResetSettings />
-            </HostOnlySettings>
-          </div>
+
+        <TabsContent value="support" className="mt-0 space-y-4">
+          <HostOnlySettings
+            fallback={<HostManagedNotice label="la télémétrie support" />}
+          >
+            <DesktopFleetTelemetrySettings />
+          </HostOnlySettings>
+        </TabsContent>
+
+        <TabsContent value="systeme" className="mt-0 space-y-4">
+          <DesktopUpdateSettings />
+          <DesktopBackgroundSettings />
+          <HostOnlySettings
+            fallback={
+              <HostManagedNotice label="l'index de recherche et la remise à zéro" />
+            }
+          >
+            <SearchReindexSettings />
+            <OpsDiagnosticSettings />
+            <FactoryResetSettings />
+          </HostOnlySettings>
         </TabsContent>
       </Tabs>
     </section>
