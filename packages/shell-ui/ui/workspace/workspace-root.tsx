@@ -4,7 +4,11 @@ import type { ReactNode } from "react";
 import { useEffect } from "react";
 import { usePathname } from "next/navigation";
 import { getShellDesktopApi } from "@creezio/shell-ui";
-import { AssistantWidget, UiDriver } from "@creezio/assistant/ui";
+import {
+  AssistantProvider,
+  AssistantWidget,
+  UiDriver,
+} from "@creezio/assistant/ui";
 import { DesktopBridge } from "../desktop/desktop-bridge";
 import { AuthWindowChrome } from "../desktop/auth-window-chrome";
 import { AiWorkspaceAgentHost } from "./ai-workspace-agent-host";
@@ -119,10 +123,16 @@ export function WorkspaceRoot({
     </>
   );
 
+  // AssistantProvider DOIT envelopper WorkspaceShell + AssistantWidget :
+  // les deux appellent useAssistantUi() du même module kit. Un provider
+  // marque local (createContext jumeau) ne suffit PAS — crash prod
+  // « useAssistantUi must be used within AssistantProvider ».
   return (
-    <TabWorkspaceProvider>
-      {wrappedShell}
-      {afterShell === undefined ? defaultAfterShell : afterShell}
-    </TabWorkspaceProvider>
+    <AssistantProvider>
+      <TabWorkspaceProvider>
+        {wrappedShell}
+        {afterShell === undefined ? defaultAfterShell : afterShell}
+      </TabWorkspaceProvider>
+    </AssistantProvider>
   );
 }

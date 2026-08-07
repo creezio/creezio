@@ -147,6 +147,27 @@ test("data-changed: WorkspaceRoot branche assistant tab workspace", () => {
   );
 });
 
+test("data-changed: WorkspaceRoot enveloppe AssistantProvider kit", () => {
+  const wr = fs.readFileSync(
+    path.join(root, "packages/shell-ui/ui/workspace/workspace-root.tsx"),
+    "utf8",
+  );
+  const shell = fs.readFileSync(
+    path.join(root, "packages/shell-ui/ui/workspace/workspace-shell.tsx"),
+    "utf8",
+  );
+  // Consommateurs du context kit
+  assert.match(shell, /useAssistantUi/);
+  assert.match(wr, /AssistantWidget/);
+  // Provider kit obligatoire (pas un jumeau marque)
+  assert.match(wr, /AssistantProvider/);
+  assert.match(wr, /from ["']@creezio\/assistant\/ui["']/);
+  assert.match(
+    wr,
+    /<AssistantProvider>[\s\S]*<TabWorkspaceProvider>/,
+  );
+});
+
 test("data-changed: docs CREATE-MODULE + DOC-STANDARD-UI", () => {
   const create = fs.readFileSync(
     path.join(root, "docs/agents/CREATE-MODULE.md"),
