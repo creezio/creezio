@@ -46,6 +46,7 @@
     "type": "git",
     "url": "https://github.com/creezio/creezio.git"
   },
-  "dependencies": {},
-  "devDependencies": {}
+  "devDependencies": {
+    "nodemailer": "^7.0.13"
+  }
 }

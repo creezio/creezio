@@ -262,6 +262,13 @@ test("os-ui materialize : une page métier marque prime sur le wrapper OS", () =
     path.join(appDir, "onboarding", "page.tsx"),
     "export default function OnboardingMetier() { return null; }\n",
   );
+  // Parent métier avec enfant kit (/parametres TF + /parametres/email kit) :
+  // chemins finaux différents → l'enfant DOIT survivre.
+  fs.mkdirSync(path.join(appDir, "parametres"), { recursive: true });
+  fs.writeFileSync(
+    path.join(appDir, "parametres", "page.tsx"),
+    "export default function ParametresMetier() { return null; }\n",
+  );
 
   const r = spawnSync(process.execPath, [materialize, "--app-root", brandRoot], {
     encoding: "utf8",
@@ -280,6 +287,15 @@ test("os-ui materialize : une page métier marque prime sur le wrapper OS", () =
     "les autres routes OS restent matérialisées",
   );
   assert.match(r.stdout, /skip \/onboarding/, "skip loggé explicitement");
+
+  assert.ok(
+    !fs.existsSync(path.join(group, "parametres", "page.tsx")),
+    "wrapper /parametres skippé (page métier marque présente)",
+  );
+  assert.ok(
+    fs.existsSync(path.join(group, "parametres", "email", "page.tsx")),
+    "l'enfant kit /parametres/email survit à un parent métier",
+  );
 
   fs.rmSync(brandRoot, { recursive: true, force: true });
 });
