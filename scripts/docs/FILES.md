@@ -9,6 +9,7 @@
 | Fichier | Rôle |
 |---|---|
 | [`build-cjs.mjs`](../build-cjs.mjs) | !usrbinenv node |
+| [`build-workspaces.mjs`](../build-workspaces.mjs) | Build unifié des workspaces (tsc + dual CJS) — SoT du script npm build:packages. |
 | [`generate-files-md.mjs`](../generate-files-md.mjs) | Générateur des inventaires `docs/FILES.md` — format standard du kit. |
 | [`kit-version.mjs`](../kit-version.mjs) | !usrbinenv node |
 | [`propagation-impact.mjs`](../propagation-impact.mjs) | !usrbinenv node |
