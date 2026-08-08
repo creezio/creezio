@@ -234,7 +234,9 @@ export function renderVendorIntegrityGate(): string {
  *   2. chaque package listé existe avec package.json + dist/ non vide ;
  *   3. deps file:vendor/creezio/* de server/package.json ↔ vendor réels ;
  *   4. symlink server/vendor → ../vendor (layout 2-repos) ;
- *   5. aucun node_modules committé sous vendor/.
+ *   5. aucun node_modules committé à la racine des packages vendorisés
+ *      (le contenu des dossiers dist n'est pas inspecté — l'install file:
+ *      du lockfile peut y créer des liens sur certains runners).
  * AUCUN réseau : la fraîcheur kit = workflow vendor-latest.yml.
  */
 import assert from "node:assert/strict";
@@ -299,21 +301,20 @@ assert.ok(
   "server/vendor/creezio inaccessible (symlink ../vendor absent ?)",
 );
 
-const stack = [vendorRoot];
-while (stack.length) {
-  const dir = stack.pop();
-  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
-    if (!entry.isDirectory()) continue;
-    assert.notEqual(
-      entry.name,
-      "node_modules",
-      \`node_modules committé sous \${dir} — resync sale\`,
-    );
-    if (entry.name !== "dist" && entry.name !== "dist-cjs") {
-      stack.push(path.join(dir, entry.name));
-    }
-  }
+// Garde anti-pollution : un node_modules committé à la RACINE d'un package
+// (ou du vendor) est le défaut qui compte. On ne descend PAS dans les
+// dossiers dist : l'install file: du lockfile peut y créer des liens sur
+// certains runners.
+for (const pkg of sync.packages) {
+  assert.ok(
+    !fs.existsSync(path.join(vendorRoot, pkg, "node_modules")),
+    \`node_modules committé à la racine de vendor/creezio/\${pkg} — resync sale\`,
+  );
 }
+assert.ok(
+  !fs.existsSync(path.join(vendorRoot, "node_modules")),
+  "node_modules committé à la racine de vendor/creezio — resync sale",
+);
 
 console.log(
   \`OK test-vendor-integrity — kit \${sync.kitSha} (\${sync.architectureVersion}), \` +
