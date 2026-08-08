@@ -216,6 +216,11 @@ function renderPackageJson(m: AppManifest): string {
           "zod": "^4.0.0",
           "jose": "^6.0.0",
           "better-sqlite3": "^12.11.1",
+          // Mails natifs v2 (@creezio/mails) : transport SMTP + comptes IMAP.
+          // Peers optionnels du kit, posés par défaut côté serveur marque.
+          "nodemailer": "^7.0.9",
+          "imapflow": "^1.0.191",
+          "mailparser": "^3.7.5",
         },
         devDependencies: {
           "@types/node": "^22.15.3",

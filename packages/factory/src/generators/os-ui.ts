@@ -52,8 +52,15 @@ export function listOsUiPages(_manifest: AppManifest): OsUiPageSpec[] {
     {
       rel: "mails/page.tsx",
       source: pageClient(
-        `import { MailInbox } from "@creezio/mails/ui";`,
-        `    <MailInbox />`,
+        `import { MailWorkspace } from "@creezio/mails/ui";`,
+        `    <MailWorkspace />`,
+      ),
+    },
+    {
+      rel: "parametres/email/page.tsx",
+      source: pageClient(
+        `import { MailSettings } from "@creezio/mails/ui";`,
+        `    <MailSettings />`,
       ),
     },
     {
@@ -235,7 +242,13 @@ export function renderUiPackageJson(_manifest: AppManifest): string {
           "@radix-ui/react-separator": "^1.1.7",
           "@radix-ui/react-slot": "^1.2.3",
           "@radix-ui/react-tabs": "^1.1.12",
+          "@radix-ui/react-tooltip": "^1.2.7",
           "@tanstack/react-table": "^8.21.3",
+          // Webmail natif (@creezio/mails/ui) : panneaux + éditeur riche.
+          "react-resizable-panels": "^3.0.3",
+          "@tiptap/react": "^2.14.0",
+          "@tiptap/starter-kit": "^2.14.0",
+          "@tiptap/extension-link": "^2.14.0",
           next: "15.3.3",
           react: "19.1.0",
           "react-dom": "19.1.0",

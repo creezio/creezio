@@ -635,7 +635,38 @@ Règle build : chaque vague kit se conclut par `npm run build:packages`
 4. Audit `email_echec` WinHub : événement outbox `failed_permanent` relayé
    par hook, ou simple consultation du journal (W1).
 
-## 10. Références
+## 10. Notes d'exécution (implémentation, août 2026)
+
+Écarts constatés entre le plan et le code livré — la réalité du code prime :
+
+- **Secrets `integration://`** : pour éviter une dépendance circulaire
+  `@creezio/mails` → `@creezio/integrations`, la résolution passe par un
+  bridge injectable (`configureMailSecretBridge`), câblé par
+  `create-brand-kernel.ts` (app-runtime) sur le store integrations.
+- **Acteur des routes** : `createEmailInboxRoutes` reçoit un `resolveActor`
+  injecté (session → `{ userId, owner }`) plutôt qu'un import direct de
+  l'auth ; `mount-brand-email-surface.ts` exempte `/inbound` et
+  `/webhooks/*` de session (secret partagé / signature Svix).
+- **Migration v1 → v2** : `ensureMailsInboxSchema` exécute le SQL cœur en
+  deux passes (tables, ALTERs idempotents, puis index v2) — les index sur
+  colonnes nouvelles échoueraient sinon sur une base v1 existante.
+- **PJ sortantes** : contenu inline (`Buffer`/base64) à l'enqueue ou via
+  `POST /attachments` (qui crée un brouillon implicite si `mailId` absent) —
+  pas de PJ orpheline sans mail parent (FK).
+- **Décision ouverte n°3 tranchée** : page dédiée
+  `packages/os-ui/routes/parametres/email/page.tsx` (la page `/parametres`
+  existante est le wrapper `DesktopSettingsPage` du kit, pas extensible par
+  onglet sans le modifier).
+- **Peers de test** : `nodemailer`/`imapflow`/`mailparser` ajoutés aussi en
+  devDependencies de `@creezio/mails` pour que les gates kit tournent sans
+  installation manuelle (peers optionnels inchangés côté consommateurs).
+- **Ancienne UI** : `ui/mail-inbox.tsx` supprimée (remplacée par
+  `MailWorkspace`) ; `memory-store.ts` et `providers/smtp-env.ts` supprimés ;
+  gates historiques `test-phase-h1/i3/m8` mises à jour vers l'API v2.
+- **Gate MD supplémentaire** : `test-phase-mails-ui.mjs` couvre MD2+MD3+MD4
+  (une seule gate au lieu d'une par sous-vague).
+
+## 11. Références
 
 - Kit : `packages/mails/*`, `packages/app-runtime/src/create-brand-kernel.ts`,
   `packages/app-runtime/src/mount-brand-email-surface.ts`,

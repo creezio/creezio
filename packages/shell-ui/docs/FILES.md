@@ -124,6 +124,7 @@
 | [`ui/primitives/dropdown-menu.tsx`](../ui/primitives/dropdown-menu.tsx) | _(pas de cartouche JSDoc en tête — voir le code)_ |
 | [`ui/primitives/input.tsx`](../ui/primitives/input.tsx) | _(pas de cartouche JSDoc en tête — voir le code)_ |
 | [`ui/primitives/label.tsx`](../ui/primitives/label.tsx) | _(pas de cartouche JSDoc en tête — voir le code)_ |
+| [`ui/primitives/resizable.tsx`](../ui/primitives/resizable.tsx) | Panneaux redimensionnables (react-resizable-panels) — layout webmail. |
 | [`ui/primitives/scroll-area.tsx`](../ui/primitives/scroll-area.tsx) | _(pas de cartouche JSDoc en tête — voir le code)_ |
 | [`ui/primitives/select.tsx`](../ui/primitives/select.tsx) | _(pas de cartouche JSDoc en tête — voir le code)_ |
 | [`ui/primitives/separator.tsx`](../ui/primitives/separator.tsx) | _(pas de cartouche JSDoc en tête — voir le code)_ |
@@ -131,6 +132,8 @@
 | [`ui/primitives/skeleton.tsx`](../ui/primitives/skeleton.tsx) | _(pas de cartouche JSDoc en tête — voir le code)_ |
 | [`ui/primitives/sonner.tsx`](../ui/primitives/sonner.tsx) | _(pas de cartouche JSDoc en tête — voir le code)_ |
 | [`ui/primitives/tabs.tsx`](../ui/primitives/tabs.tsx) | _(pas de cartouche JSDoc en tête — voir le code)_ |
+| [`ui/primitives/textarea.tsx`](../ui/primitives/textarea.tsx) | Zone de texte multi-lignes stylée kit. |
+| [`ui/primitives/tooltip.tsx`](../ui/primitives/tooltip.tsx) | Tooltip Radix (provider/trigger/content). |
 
 ## `ui/pwa/`
 

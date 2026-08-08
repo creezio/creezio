@@ -80,7 +80,7 @@
 
 | Fichier | Rôle |
 |---|---|
-| [`routes/mails/page.tsx`](../routes/mails/page.tsx) | Inbox mails (wrapper `@creezio/mails/ui`) |
+| [`routes/mails/page.tsx`](../routes/mails/page.tsx) | Webmail (wrapper `MailWorkspace` @creezio/mails/ui) |
 
 ## `routes/mcp/`
 
@@ -99,6 +99,12 @@
 | Fichier | Rôle |
 |---|---|
 | [`routes/parametres/page.tsx`](../routes/parametres/page.tsx) | Paramètres |
+
+## `routes/parametres/email/`
+
+| Fichier | Rôle |
+|---|---|
+| [`routes/parametres/email/page.tsx`](../routes/parametres/email/page.tsx) | Paramètres email owner (wrapper `MailSettings` @creezio/mails/ui) |
 
 ## `routes/server-cockpit/`
 

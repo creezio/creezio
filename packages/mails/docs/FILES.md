@@ -20,24 +20,48 @@
 | [`src/email-routes.ts`](../src/email-routes.ts) | Routes Hono boîte mail plateforme — équivalent fonctionnel `/api/v1/email` gold TF. Auth session reste côté marque (montage) ; inbound protégé par secret partagé. |
 | [`src/env-bridge.ts`](../src/env-bridge.ts) | Bridge inbound → kit SoT (core.db). Préférer `createEmailInboxRoutes` / `insertInboundFull` ; conservé pour compat scripts / indexation légère sans PJ. |
 | [`src/env-store.ts`](../src/env-store.ts) | Store mails SoT via env `CREEZIO_CORE_DB_PATH` / `DB_PATH` (process Next/CRM). |
+| [`src/inbound-resend.ts`](../src/inbound-resend.ts) | Ingestion inbound Resend (Receiving API) — opt-in `MAIL_INBOUND_RESEND=1`. |
 | [`src/inbox-queries.ts`](../src/inbox-queries.ts) | Requêtes boîte mail plateforme (SoT kit — core.db). Remplace les jumeaux marque `email-queries.ts`. |
 | [`src/index.ts`](../src/index.ts) | @creezio/mails — mails plateforme (SoT inbox + providers + UI). Pas de templates TempoFlow/Fidu. |
-| [`src/memory-store.ts`](../src/memory-store.ts) | _(pas de cartouche JSDoc en tête — voir le code)_ |
 | [`src/migrate-brand-emails.ts`](../src/migrate-brand-emails.ts) | Migration one-shot tables marque `emails` / `email_attachments` → kit SoT. Idempotent via message_id / brand_email_id. |
+| [`src/outbox.ts`](../src/outbox.ts) | Worker outbox durable : drain, claim atomique, retries backoff, journal. |
 | [`src/sqlite-driver.ts`](../src/sqlite-driver.ts) | Driver SQLite minimal — @creezio/mails (I3 + inbox). import { createRequire } from "node:module"; import path from "node:path"; export type SqliteStatement = { run(...params: unknown[]): { changes?: number; lastInsertRowid?: number \| bigint }; get(...params: unknown[]): unknown; all(...params: unknown[]): unknown[]; }; export type SqliteDatabase = { exec(sql: string): unknown; |
 | [`src/sqlite-store.ts`](../src/sqlite-store.ts) | Store mails plateforme — sqlite **core** (I3 + inbox SoT complète). |
+| [`src/transport-resolve.ts`](../src/transport-resolve.ts) | Résolution du transport actif (settings > env > inférence) + bridge secrets `integration://`. |
+| [`src/transport.ts`](../src/transport.ts) | Contrat `MailTransport` / `OutgoingMail` / `MailSendResult` (multi-provider). |
 | [`src/types.ts`](../src/types.ts) | _(pas de cartouche JSDoc en tête — voir le code)_ |
+
+## `src/imap/`
+
+| Fichier | Rôle |
+|---|---|
+| [`src/imap/accounts.ts`](../src/imap/accounts.ts) | Comptes IMAP : parsing entrées API (create/patch), vue publique sans secret. |
+| [`src/imap/sync.ts`](../src/imap/sync.ts) | Sync IMAP incrémentale (imapflow/mailparser dynamiques) + scheduler + verify. |
 
 ## `src/providers/`
 
 | Fichier | Rôle |
 |---|---|
-| [`src/providers/file-sink.ts`](../src/providers/file-sink.ts) | Provider mails **non-stub** : écrit chaque envoi dans un fichier JSON sous `outDir` (sink local / tests / CI). Pas de templates marque. Pour SMTP réel, enregistrer un autre `MailProvider` via `registerProvider` et passer `defaultProviderId`. |
-| [`src/providers/smtp-env.ts`](../src/providers/smtp-env.ts) | Provider SMTP minimal via env (nodemailer optionnel — refus propre s'il est absent). |
+| [`src/providers/file-sink.ts`](../src/providers/file-sink.ts) | Transport file-sink : écrit chaque envoi en JSON sous `outDir` (dev/CI). |
+| [`src/providers/resend.ts`](../src/providers/resend.ts) | Transport Resend — fetch natif, Idempotency-Key, erreurs 429/5xx réessayables. |
+| [`src/providers/smtp.ts`](../src/providers/smtp.ts) | Transport SMTP (nodemailer dynamique) — URL ou champs, préréglage Cloudflare. |
+
+## `src/webhooks/`
+
+| Fichier | Rôle |
+|---|---|
+| [`src/webhooks/resend.ts`](../src/webhooks/resend.ts) | Webhooks Resend : vérification Svix (timing-safe) + application des statuts delivered/bounced. |
 
 ## `ui/`
 
 | Fichier | Rôle |
 |---|---|
-| [`ui/index.ts`](../ui/index.ts) | @creezio/mails/ui — boîte de réception native (gold TF). |
-| [`ui/mail-inbox.tsx`](../ui/mail-inbox.tsx) | _(pas de cartouche JSDoc en tête — voir le code)_ |
+| [`ui/index.ts`](../ui/index.ts) | @creezio/mails/ui — webmail natif v2 (MailWorkspace, MailSettings, composer…). |
+| [`ui/mail-composer.tsx`](../ui/mail-composer.tsx) | Composer modal : Tiptap dynamique (fallback textarea), brouillons auto, PJ. |
+| [`ui/mail-display.tsx`](../ui/mail-display.tsx) | Détail mail : iframe sandboxée (HTML entrant), fil, PJ, actions, journal d'envoi. |
+| [`ui/mail-folders.tsx`](../ui/mail-folders.tsx) | Navigation dossiers (inbox/sent/drafts/outbox/archive/trash) + bouton composer. |
+| [`ui/mail-list.tsx`](../ui/mail-list.tsx) | Liste des mails : recherche, filtre non lus, badges statut sortant. |
+| [`ui/mail-settings.tsx`](../ui/mail-settings.tsx) | Page paramètres (owner) : transport, test d'envoi, comptes IMAP. |
+| [`ui/mail-types.ts`](../ui/mail-types.ts) | Types partagés UI (rows/detail/meta, dossiers, labels statuts) + helpers format. |
+| [`ui/mail-workspace.tsx`](../ui/mail-workspace.tsx) | Webmail 3 panneaux resizable — orchestration dossiers/liste/détail/composer. |
+| [`ui/recipients-input.tsx`](../ui/recipients-input.tsx) | Saisie destinataires en chips (validation email, Enter/virgule/collage). |

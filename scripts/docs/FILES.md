@@ -119,6 +119,11 @@
 | [`test-phase-m8.mjs`](../test-phase-m8.mjs) | !usrbinenv node |
 | [`test-phase-m8p.mjs`](../test-phase-m8p.mjs) | !usrbinenv node |
 | [`test-phase-m9.mjs`](../test-phase-m9.mjs) | !usrbinenv node |
+| [`test-phase-mails-imap.mjs`](../test-phase-mails-imap.mjs) | MC1 — CRUD comptes IMAP + sync incrémentale contre mock IMAP local. |
+| [`test-phase-mails-outbox.mjs`](../test-phase-mails-outbox.mjs) | MB1 — outbox durable : enqueue, worker, retries backoff, PJ, brouillons. |
+| [`test-phase-mails-transports.mjs`](../test-phase-mails-transports.mjs) | MA2 — résolution transport, preset cloudflare, SMTP local, mock Resend. |
+| [`test-phase-mails-ui.mjs`](../test-phase-mails-ui.mjs) | MD — webmail : exports, iframe sandbox (XSS), Tiptap, wrappers os-ui/factory. |
+| [`test-phase-mails-webhooks.mjs`](../test-phase-mails-webhooks.mjs) | MB2 — webhooks Resend : signature Svix, delivered/bounced, inbound opt-in. |
 | [`test-phase-mcp-tool-policy-guard.mjs`](../test-phase-mcp-tool-policy-guard.mjs) | Gate M1-M2 — garde d'enforcement réutilisable des policies MCP admin (`packages/mcp-facade/src/admin/tool-policy-guard.ts`). |
 | [`test-phase-meili-feed.mjs`](../test-phase-meili-feed.mjs) | Gate Phase C — BrandMeiliFeed générique (pas de tf2_* dans le chemin feed). |
 | [`test-phase-module-docs.mjs`](../test-phase-module-docs.mjs) | (à documenter) |
