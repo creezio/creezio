@@ -15,6 +15,34 @@ export type BrandUiPlaneHandle = {
   close: () => Promise<void>;
 };
 
+/** Attend la sortie du process (résout true) ou le délai (résout false). */
+function waitForExit(child: ChildProcess, timeoutMs: number): Promise<boolean> {
+  if (child.exitCode !== null || child.signalCode !== null) {
+    return Promise.resolve(true);
+  }
+  return new Promise((resolve) => {
+    const timer = setTimeout(() => resolve(false), timeoutMs);
+    child.once("exit", () => {
+      clearTimeout(timer);
+      resolve(true);
+    });
+  });
+}
+
+/**
+ * Arrêt fiable du plane Next : SIGTERM puis escalade SIGKILL.
+ * Le server.js standalone Next peut ignorer SIGTERM (connexions ouvertes) —
+ * sans escalade, un restart du plane (ex. propagation env Hermes) laisse
+ * l'ancien process orphelin.
+ */
+async function stopUiPlaneChild(child: ChildProcess): Promise<void> {
+  if (child.exitCode !== null || child.signalCode !== null) return;
+  child.kill("SIGTERM");
+  if (await waitForExit(child, 5_000)) return;
+  child.kill("SIGKILL");
+  await waitForExit(child, 2_000);
+}
+
 /** Candidats entrée Next standalone (build `next build` output standalone). */
 function uiPlaneEntryCandidates(appRoot: string): string[] {
   const candidates = [
@@ -124,9 +152,7 @@ export async function startBrandUiPlane(opts: {
           kind: "next",
           baseUrl,
           child,
-          close: async () => {
-            child.kill("SIGTERM");
-          },
+          close: () => stopUiPlaneChild(child),
         };
       }
     } catch {
@@ -136,7 +162,7 @@ export async function startBrandUiPlane(opts: {
   }
 
   log("ui", "Next plane timeout — fallback SPA");
-  child.kill("SIGTERM");
+  void stopUiPlaneChild(child);
   return {
     kind: "spa",
     baseUrl: null,
