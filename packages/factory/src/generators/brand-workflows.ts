@@ -169,6 +169,11 @@ export function renderVendorLatestScript(opts: BrandWorkflowsOptions): string {
 # factory. S'exécute sur le runner self-hosted, cwd = checkout de la marque.
 set -euo pipefail
 
+# TMPDIR hors du tmpfs /tmp : sur un hôte avec session graphique, Chrome fuit
+# des fichiers tmp en RAM et sature le tmpfs, cassant npm ci (ENOENT). Disque.
+export TMPDIR="\${TMPDIR:-\$HOME/actions-runners/tmp}"
+mkdir -p "\${TMPDIR}"
+
 BRAND_ROOT="$(pwd)"
 KIT_CI_CLONE="\${KIT_CI_CLONE:-\$HOME/.cache/creezio-ci/kit}"
 KIT_GIT="\${CREEZIO_KIT_GIT:-https://github.com/creezio/creezio.git}"
