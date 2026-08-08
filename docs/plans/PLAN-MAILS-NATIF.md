@@ -665,6 +665,28 @@ Règle build : chaque vague kit se conclut par `npm run build:packages`
   gates historiques `test-phase-h1/i3/m8` mises à jour vers l'API v2.
 - **Gate MD supplémentaire** : `test-phase-mails-ui.mjs` couvre MD2+MD3+MD4
   (une seule gate au lieu d'une par sous-vague).
+- **Vague W (WinHub, livrée)** :
+  - `CREEZIO_MAIL_OUTBOX_INTERVAL_MS` ajouté au kernel (app-runtime) — les
+    gates marque ont besoin d'un drain outbox rapide (120 ms) car l'envoi est
+    devenu asynchrone (avant : `provider.send()` synchrone dans la requête).
+  - Sémantique `email_sent` des réponses API marque = **mise en file OK**
+    (plus « envoi réussi ») ; `email_echec` (audit) réservé à l'échec
+    d'ENQUEUE. Un échec de transport se prouve côté gate par
+    `failed_permanent`/`transport_unconfigured` dans `core.db`
+    (gate orders) — plus d'event audit pour un échec de transport.
+  - Asserts mails des gates marque réécrits en « attendre LE mail attendu »
+    (prédicat + poll) au lieu de compter les fichiers sink — le drain
+    asynchrone rend les comptages exacts non déterministes.
+  - `nodemailer` **conservé** dans les deps server WinHub (transport SMTP du
+    kit chargé dynamiquement) + `imapflow`/`mailparser` (réception IMAP).
+  - Deps UI webmail (`react-resizable-panels`, `@radix-ui/react-tooltip`,
+    `@tiptap/*`) à ajouter dans `server/ui/package.json` des marques
+    existantes (les nouvelles marques les reçoivent via la factory) ; après
+    resync vendor, forcer le refresh des copies `file:` de
+    `server/ui/node_modules/@creezio` (npm ne re-copie pas sans bump).
+  - dist kit : `tsc` ne supprime pas les sorties orphelines — purge manuelle
+    de `dist*/providers/smtp-env.*` et `dist*/memory-store.*` avant resync
+    (sinon le vendor marque garde l'ancien provider).
 
 ## 11. Références
 
@@ -674,7 +696,8 @@ Règle build : chaque vague kit se conclut par `npm run build:packages`
   `packages/factory/src/generators/os-ui.ts`,
   `packages/integrations/*`, `docs/adr/ADR-integrations-store.md`.
 - WinHub : `server/src/electron/modules/{orders,payments,logistics,organizations,needs}.ts`,
-  `docs/EMAILS-PRODUCTION.md`, `scripts/test-mail-smtp-env.mjs`.
+  `docs/EMAILS-PRODUCTION.md`, `server/scripts/test-mail-outbox.mjs`
+  (remplace `test-mail-smtp-env.mjs`).
 - Externe (2026) :
   - Resend — API emails <https://resend.com/docs/api-reference/emails>,
     webhooks <https://resend.com/docs/webhooks/introduction>, receiving
