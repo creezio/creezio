@@ -91,10 +91,31 @@ export function OpsDiagnosticSettings() {
     setBusy(true);
     try {
       const qs = lvl ? `&level=${lvl}` : "";
-      const res = await fetch(`/api/v1/ops/events?limit=120${qs}`);
-      if (res.ok) setData((await res.json()) as OpsPayload);
-    } catch {
-      /* serveur pur / route absente */
+      // Route kit canonique (owner, journal {dataDir}/ops du harness) puis
+      // route marque historique (TF2_OPS_DIR desktop).
+      let emptyKit: OpsPayload | null = null;
+      for (const base of ["/api/v1/platform/ops/events", "/api/v1/ops/events"]) {
+        try {
+          const res = await fetch(`${base}?limit=120${qs}`, {
+            cache: "no-store",
+          });
+          if (res.ok) {
+            const payload = (await res.json()) as OpsPayload;
+            // Kit OK mais journal vide : la route marque (TF2_OPS_DIR) peut
+            // encore avoir les événements en desktop — on la tente avant de
+            // conclure.
+            if (!payload.available && base.startsWith("/api/v1/platform/")) {
+              emptyKit = payload;
+              continue;
+            }
+            setData(payload);
+            return;
+          }
+        } catch {
+          /* route absente */
+        }
+      }
+      if (emptyKit) setData(emptyKit);
     } finally {
       setBusy(false);
     }

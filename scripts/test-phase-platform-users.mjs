@@ -33,6 +33,9 @@ const { configureAuth, migrateBrandCredentialsToKit } = await import(
 const { configureTasksBrand } = await import(
   "../packages/tasks/dist/index.js"
 );
+const { initOpsJournal, track } = await import(
+  "../packages/observability/dist/index.js"
+);
 
 const OWNER_PERMS = ["nav.a", "nav.b", "nav.c", "nav.admin"];
 const DEFAULTS = ["nav.a", "nav.b"];
@@ -53,6 +56,51 @@ await migrateBrandCredentialsToKit({
 let baseUrl = "";
 /** Pont BYOK factice (miroir du store local-config du harness headless). */
 const llmStore = { openai: null, anthropic: null };
+/** Pont tunnel factice (miroir du tunnelService headless). */
+const tunnelState = { online: false, reserved: null };
+const tunnelBridge = {
+  getTunnelStatus: () => ({
+    configured: Boolean(tunnelState.reserved),
+    online: tunnelState.online,
+    slug: tunnelState.reserved,
+    hostname: tunnelState.reserved ? `${tunnelState.reserved}.gate.local` : null,
+    publicUrl: tunnelState.reserved
+      ? `https://${tunnelState.reserved}.gate.local`
+      : null,
+  }),
+  checkTunnelSlug: async (slug) => ({
+    available: slug !== "pris",
+    ...(slug === "pris" ? { reason: "déjà réservé" } : {}),
+  }),
+  reserveTunnel: async (slug) => {
+    tunnelState.reserved = slug;
+    return { ok: true, hostname: `${slug}.gate.local`, publicUrl: `https://${slug}.gate.local` };
+  },
+  configureTunnelIngress: async () => {},
+  startCloudflared: async () => {
+    tunnelState.online = true;
+  },
+  stopCloudflared: () => {
+    tunnelState.online = false;
+  },
+};
+/** Pont recherche factice (miroir du searchBridge harness). */
+const searchState = { reindexed: 0 };
+const searchBridge = {
+  health: async () => ({
+    configured: true,
+    health: { ok: true },
+    coherence: {
+      stale: false,
+      sql: { produits: 3 },
+      meili: { catalog_products: 3 },
+    },
+  }),
+  reindex: async () => {
+    searchState.reindexed += 1;
+    return { ok: true, ready: true, indexed: { catalog_products: 3 } };
+  },
+};
 const surface = mountBrandPlatformSurface({
   brandId: "gatebrand",
   coreDbPath: process.env.CREEZIO_CORE_DB_PATH,
@@ -70,6 +118,9 @@ const surface = mountBrandPlatformSurface({
       else delete process.env[envKey];
     },
   },
+  tunnelBridge: () => tunnelBridge,
+  localPort: () => 18790,
+  searchBridge: () => searchBridge,
 });
 
 configureTasksBrand({
@@ -264,7 +315,103 @@ const llmBad = await api("PUT", "/api/v1/platform/llm-keys", owner.cookie, {
 });
 assert.equal(llmBad.status, 400, "provider inconnu → 400");
 
+/* 10. Tunnel headless : owner-only, cycle check → reserve → start/stop */
+const tunAnon = await api("POST", "/api/v1/platform/tunnel/stop", "");
+assert.equal(tunAnon.status, 403, "tunnel stop sans session → 403");
+const tunCollab = await api(
+  "POST",
+  "/api/v1/platform/tunnel/stop",
+  collab.cookie,
+);
+assert.equal(tunCollab.status, 403, "tunnel stop collaborateur → 403");
+const slugTaken = await api(
+  "POST",
+  "/api/v1/platform/tunnel/check-slug",
+  owner.cookie,
+  { slug: "pris" },
+);
+assert.equal(slugTaken.body.available, false, "slug pris refusé");
+const slugFree = await api(
+  "POST",
+  "/api/v1/platform/tunnel/check-slug",
+  owner.cookie,
+  { slug: "chez-gate" },
+);
+assert.equal(slugFree.body.available, true, "slug libre accepté");
+const slugInvalid = await api(
+  "POST",
+  "/api/v1/platform/tunnel/check-slug",
+  owner.cookie,
+  { slug: "Mauvais Slug!!" },
+);
+assert.equal(slugInvalid.body.available, false, "slug invalide refusé");
+const reserve = await api(
+  "POST",
+  "/api/v1/platform/tunnel/reserve",
+  owner.cookie,
+  { slug: "chez-gate" },
+);
+assert.equal(reserve.status, 200, `reserve (${JSON.stringify(reserve.body)})`);
+assert.equal(reserve.body.ok, true, "tunnel réservé");
+assert.equal(tunnelState.online, true, "cloudflared démarré après reserve");
+const stopTun = await api(
+  "POST",
+  "/api/v1/platform/tunnel/stop",
+  owner.cookie,
+);
+assert.equal(stopTun.status, 200, "stop tunnel");
+assert.equal(tunnelState.online, false, "cloudflared arrêté");
+const startTun = await api(
+  "POST",
+  "/api/v1/platform/tunnel/start",
+  owner.cookie,
+);
+assert.equal(startTun.status, 200, "start tunnel");
+assert.equal(tunnelState.online, true, "cloudflared relancé");
+
+/* 11. Recherche headless : health + reindex owner-only */
+const searchAnon = await api("GET", "/api/v1/platform/search/health", "");
+assert.equal(searchAnon.status, 403, "search health sans session → 403");
+const searchHealth = await api(
+  "GET",
+  "/api/v1/platform/search/health",
+  owner.cookie,
+);
+assert.equal(searchHealth.status, 200, "search health owner 200");
+assert.equal(searchHealth.body.coherence.stale, false, "index cohérent");
+const reindex = await api(
+  "POST",
+  "/api/v1/platform/search/reindex",
+  owner.cookie,
+);
+assert.equal(reindex.status, 200, "reindex owner 200");
+assert.equal(searchState.reindexed, 1, "réindexation exécutée");
+
+/* 12. Journal ops headless : owner-only, événements du boot courant */
+initOpsJournal(tmp, "0.0.0-gate");
+track({ level: "decision", kind: "gate.check", outcome: "ok" });
+track({ level: "error", kind: "gate.boom", reason: "volontaire" });
+const opsAnon = await api("GET", "/api/v1/platform/ops/events", "");
+assert.equal(opsAnon.status, 403, "ops events sans session → 403");
+const ops = await api("GET", "/api/v1/platform/ops/events", owner.cookie);
+assert.equal(ops.status, 200, "ops events owner 200");
+assert.equal(ops.body.available, true, "journal disponible");
+assert.ok(
+  (ops.body.events || []).some((e) => e.kind === "gate.boom"),
+  "événement error lu dans le journal",
+);
+const opsErrors = await api(
+  "GET",
+  "/api/v1/platform/ops/events?level=error",
+  owner.cookie,
+);
+assert.ok(
+  (opsErrors.body.events || []).every((e) => e.level === "error"),
+  "filtre level=error respecté",
+);
+assert.ok(Array.isArray(ops.body.boots), "résumés de boots présents");
+
 surface.close();
 server.close();
 fs.rmSync(tmp, { recursive: true, force: true });
-console.log("OK test-phase-platform-users — référentiel users unique (alias /api/v1/users, credentials kit, meta ACL, reset, désactivation, llm-keys owner)");
+console.log("OK test-phase-platform-users — référentiel users unique (alias /api/v1/users, credentials kit, meta ACL, reset, désactivation, llm-keys owner, tunnel/search/ops headless)");

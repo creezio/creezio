@@ -14,9 +14,11 @@ import { isFeatureEnabled } from "@creezio/brand-config";
 import { pluginsRootDir } from "@creezio/platform-core";
 import {
   ensureKitOsBinaries,
+  expectedCountsForFeed,
   kitBinaryPaths,
   listenBrandKernelHttp,
   maybeBootBrandMeili,
+  runFeedIndexation,
 } from "@creezio/electron-shell";
 import { createMcpFacade } from "@creezio/mcp-facade";
 import {
@@ -313,6 +315,10 @@ export async function startBrandKernelHarness(
   // baseUrl résolue paresseusement (le listen arrive plus bas).
   let advertisedBaseUrl = "";
   let platformSurface: BrandPlatformSurface | null = null;
+  // État Meili capturé après son boot (le searchBridge de la surface est
+  // lazy — la surface est montée avant).
+  let meiliRuntime: { host: string; masterKey: string } | null = null;
+  let meiliReindexInFlight: Promise<unknown> | null = null;
   if (desktopProfile === "full") {
     platformSurface = mountBrandPlatformSurface({
       brandId: config.brandId,
@@ -373,6 +379,131 @@ export async function startBrandKernelHarness(
           else delete process.env[envKey];
         },
       },
+      // Tunnel headless : actions owner de la Configuration web (start/stop/
+      // check-slug/reserve) — mêmes primitives que les IPC tunnel:* desktop.
+      tunnelBridge: () => {
+        try {
+          const tunnel = brandOs?.hostRuntime.tunnelService() as unknown as
+            | {
+                getTunnelStatus: () => unknown;
+                checkTunnelSlug: (slug: string) => Promise<{
+                  available: boolean;
+                  reason?: string;
+                  hostname?: string;
+                }>;
+                reserveTunnel: (
+                  slug: string,
+                  localPort: number,
+                ) => Promise<
+                  | { ok: true; hostname: string; publicUrl: string }
+                  | { ok: false; error: string }
+                >;
+                configureTunnelIngress: (ports: {
+                  crmPort: number;
+                }) => Promise<void>;
+                startCloudflared: () => Promise<void>;
+                stopCloudflared: () => void;
+              }
+            | undefined;
+          return tunnel ?? null;
+        } catch {
+          return null;
+        }
+      },
+      localPort: () => port || 0,
+      // Recherche headless : santé Meili + réindexation manuelle (owner).
+      // Lazy : Meili boote APRÈS le montage de la surface.
+      searchBridge: () => {
+        const rt = meiliRuntime;
+        const feed = config.meiliFeed;
+        if (!rt || !feed) return null;
+        const authHeaders = { Authorization: `Bearer ${rt.masterKey}` };
+        return {
+          health: async () => {
+            let meiliOk = false;
+            let meiliError: string | null = null;
+            try {
+              const r = await fetch(`${rt.host}/health`, {
+                headers: authHeaders,
+              });
+              meiliOk = r.ok;
+            } catch (err) {
+              meiliError = err instanceof Error ? err.message : String(err);
+            }
+            const sql: Record<string, number> = {};
+            try {
+              const db = runtime.getBrand();
+              for (const [key, table] of Object.entries(feed.countTables)) {
+                try {
+                  const row = db
+                    .prepare(`SELECT COUNT(*) AS n FROM ${table}`)
+                    .get() as { n?: number } | undefined;
+                  sql[key] = Number(row?.n ?? 0);
+                } catch {
+                  sql[key] = 0;
+                }
+              }
+            } catch {
+              /* brand db pas encore prête */
+            }
+            const meiliCounts: Record<string, number> = {};
+            for (const idx of feed.indexes) {
+              try {
+                const r = await fetch(
+                  `${rt.host}/indexes/${idx.uid}/stats`,
+                  { headers: authHeaders },
+                );
+                const j = (await r.json()) as { numberOfDocuments?: number };
+                meiliCounts[idx.uid] = Number(j.numberOfDocuments ?? 0);
+              } catch {
+                meiliCounts[idx.uid] = 0;
+              }
+            }
+            const expected = expectedCountsForFeed(feed, {
+              produits: sql.produits ?? 0,
+              fournisseurs: sql.sites ?? sql.fournisseurs ?? 0,
+            });
+            const emptyWhileExpected = feed.indexes.find(
+              (idx) =>
+                (expected[idx.uid] ?? 0) > 0 &&
+                (meiliCounts[idx.uid] ?? 0) === 0,
+            );
+            const stale = !meiliOk || Boolean(emptyWhileExpected);
+            return {
+              configured: true,
+              health: {
+                ok: meiliOk,
+                ...(meiliError ? { error: meiliError } : {}),
+              },
+              coherence: {
+                stale,
+                reason: !meiliOk
+                  ? "meili-injoignable"
+                  : emptyWhileExpected
+                    ? `index vide: ${emptyWhileExpected.uid}`
+                    : undefined,
+                sql,
+                meili: meiliCounts,
+              },
+            };
+          },
+          reindex: async () => {
+            if (meiliReindexInFlight) return meiliReindexInFlight;
+            meiliReindexInFlight = (async () => {
+              const result = await runFeedIndexation({
+                feed,
+                dbPath: runtime.getBrand().path,
+                meiliHost: rt.host,
+                masterKey: rt.masterKey,
+              });
+              return { ok: true as const, ready: true, indexed: result.indexed };
+            })().finally(() => {
+              meiliReindexInFlight = null;
+            });
+            return meiliReindexInFlight;
+          },
+        };
+      },
     });
   }
 
@@ -412,6 +543,10 @@ export async function startBrandKernelHarness(
     });
     searchEngine = meiliBoot.engine;
     if (meiliBoot.meili) {
+      meiliRuntime = {
+        host: meiliBoot.meili.host,
+        masterKey: meiliBoot.meili.masterKey,
+      };
       meiliStop = () => meiliBoot.meili?.stop();
     }
     if (meiliBoot.engine === "meili") {

@@ -17,6 +17,8 @@
  */
 
 import { createHash } from "node:crypto";
+import fs from "node:fs";
+import path from "node:path";
 import { Hono, type Context } from "hono";
 import { getCookie } from "hono/cookie";
 import {
@@ -59,6 +61,7 @@ import {
   createSqliteIntegrationsStore,
   type N8nBridge,
 } from "@creezio/integrations";
+import { getOpsDir } from "@creezio/observability";
 import {
   openBrandPlatformStore,
   type BrandPlatformStore,
@@ -407,6 +410,10 @@ const PLATFORM_PREFIXES = [
   "/api/v1/platform/integrations",
   // Clés IA BYOK owner (Configuration web headless).
   "/api/v1/platform/llm-keys",
+  // Tunnel / recherche / journal ops owner (Configuration web headless).
+  "/api/v1/platform/tunnel",
+  "/api/v1/platform/search",
+  "/api/v1/platform/ops",
 ];
 
 /** Chemins proxifiés Node http → surface plateforme (streaming SSE). */
@@ -450,6 +457,35 @@ export function mountBrandPlatformSurface(opts: {
     get: () => { openai: boolean; anthropic: boolean };
     set: (provider: "openai" | "anthropic", key: string | null) => void;
   };
+  /**
+   * Pont tunnel headless (owner) — miroir HTTP des IPC tunnel:* desktop.
+   * Lazy : le service tunnel vit dans l'OS composé par le harness.
+   */
+  tunnelBridge?: () => {
+    getTunnelStatus: () => unknown;
+    checkTunnelSlug: (
+      slug: string,
+    ) => Promise<{ available: boolean; reason?: string; hostname?: string }>;
+    reserveTunnel: (
+      slug: string,
+      localPort: number,
+    ) => Promise<
+      { ok: true; hostname: string; publicUrl: string } | { ok: false; error: string }
+    >;
+    configureTunnelIngress?: (ports: { crmPort: number }) => Promise<void>;
+    startCloudflared: () => Promise<void>;
+    stopCloudflared: () => void;
+  } | null;
+  /** Port HTTP local du serveur (reserve tunnel). */
+  localPort?: () => number;
+  /**
+   * Pont recherche headless (owner) — santé Meili + réindexation manuelle,
+   * miroir HTTP de l'IPC search:reindex desktop.
+   */
+  searchBridge?: () => {
+    health: () => Promise<unknown>;
+    reindex: () => Promise<unknown>;
+  } | null;
   onLog?: (line: string) => void;
 }): BrandPlatformSurface {
   const log =
@@ -783,6 +819,235 @@ export function mountBrandPlatformSurface(opts: {
       return c.json(llmKeysPayload());
     });
   }
+
+  /** Garde owner partagée par les routes Configuration headless ci-dessous. */
+  const requireOwner = async (c: Context): Promise<boolean> => {
+    const session = await sessionFromContext(c);
+    return Boolean(
+      session &&
+        sessionActorIsOwner(session) &&
+        !sessionIsImpersonating(session),
+    );
+  };
+
+  /* Tunnel headless (owner) — miroir HTTP des IPC tunnel:* desktop. Sans
+   * bridge (OS non composé), 503 explicite. */
+  if (opts.tunnelBridge) {
+    const bridge = opts.tunnelBridge;
+    const SLUG_RE = /^[a-z0-9]([a-z0-9-]{0,46}[a-z0-9])$/;
+    app.post("/api/v1/platform/tunnel/start", async (c) => {
+      if (!(await requireOwner(c))) {
+        return c.json({ error: "Réservé au compte principal" }, 403);
+      }
+      const tunnel = bridge();
+      if (!tunnel) return c.json({ error: "tunnel_unavailable" }, 503);
+      try {
+        if (tunnel.configureTunnelIngress && opts.localPort) {
+          await tunnel.configureTunnelIngress({ crmPort: opts.localPort() });
+        }
+        await tunnel.startCloudflared();
+        return c.json({ ok: true, status: tunnel.getTunnelStatus() });
+      } catch (err) {
+        return c.json(
+          { error: err instanceof Error ? err.message : String(err) },
+          500,
+        );
+      }
+    });
+    app.post("/api/v1/platform/tunnel/stop", async (c) => {
+      if (!(await requireOwner(c))) {
+        return c.json({ error: "Réservé au compte principal" }, 403);
+      }
+      const tunnel = bridge();
+      if (!tunnel) return c.json({ error: "tunnel_unavailable" }, 503);
+      tunnel.stopCloudflared();
+      log("tunnel: arrêté via Configuration web (owner)");
+      return c.json({ ok: true, status: tunnel.getTunnelStatus() });
+    });
+    app.post("/api/v1/platform/tunnel/check-slug", async (c) => {
+      if (!(await requireOwner(c))) {
+        return c.json({ error: "Réservé au compte principal" }, 403);
+      }
+      const tunnel = bridge();
+      if (!tunnel) return c.json({ error: "tunnel_unavailable" }, 503);
+      const body = (await c.req.json().catch(() => ({}))) as {
+        slug?: string;
+      };
+      const slug = String(body.slug || "").trim().toLowerCase();
+      if (!SLUG_RE.test(slug)) {
+        return c.json(
+          { available: false, reason: "Slug invalide (a-z, 0-9, tirets, 2–48 car.)" },
+          200,
+        );
+      }
+      try {
+        return c.json(await tunnel.checkTunnelSlug(slug));
+      } catch (err) {
+        return c.json(
+          {
+            available: false,
+            reason: err instanceof Error ? err.message : String(err),
+          },
+          200,
+        );
+      }
+    });
+    app.post("/api/v1/platform/tunnel/reserve", async (c) => {
+      if (!(await requireOwner(c))) {
+        return c.json({ error: "Réservé au compte principal" }, 403);
+      }
+      const tunnel = bridge();
+      if (!tunnel) return c.json({ error: "tunnel_unavailable" }, 503);
+      const body = (await c.req.json().catch(() => ({}))) as {
+        slug?: string;
+      };
+      const slug = String(body.slug || "").trim().toLowerCase();
+      if (!SLUG_RE.test(slug)) {
+        return c.json({ error: "slug_invalide" }, 400);
+      }
+      try {
+        const r = await tunnel.reserveTunnel(slug, opts.localPort?.() ?? 0);
+        if (!r.ok) return c.json({ error: r.error }, 400);
+        if (tunnel.configureTunnelIngress && opts.localPort) {
+          await tunnel.configureTunnelIngress({ crmPort: opts.localPort() });
+        }
+        await tunnel.startCloudflared();
+        log(`tunnel: slug ${slug} réservé via Configuration web (owner)`);
+        return c.json({
+          ok: true,
+          hostname: r.hostname,
+          publicUrl: r.publicUrl,
+          status: tunnel.getTunnelStatus(),
+        });
+      } catch (err) {
+        return c.json(
+          { error: err instanceof Error ? err.message : String(err) },
+          500,
+        );
+      }
+    });
+  }
+
+  /* Recherche Meili headless (owner) — miroir HTTP de l'IPC search:reindex. */
+  if (opts.searchBridge) {
+    const bridge = opts.searchBridge;
+    app.get("/api/v1/platform/search/health", async (c) => {
+      if (!(await requireOwner(c))) {
+        return c.json({ error: "Réservé au compte principal" }, 403);
+      }
+      const search = bridge();
+      if (!search) return c.json({ error: "search_unavailable" }, 503);
+      try {
+        return c.json(await search.health());
+      } catch (err) {
+        return c.json(
+          { error: err instanceof Error ? err.message : String(err) },
+          500,
+        );
+      }
+    });
+    app.post("/api/v1/platform/search/reindex", async (c) => {
+      if (!(await requireOwner(c))) {
+        return c.json({ error: "Réservé au compte principal" }, 403);
+      }
+      const search = bridge();
+      if (!search) return c.json({ error: "search_unavailable" }, 503);
+      try {
+        log("search: réindexation demandée via Configuration web (owner)");
+        return c.json(await search.reindex());
+      } catch (err) {
+        return c.json(
+          { error: err instanceof Error ? err.message : String(err) },
+          500,
+        );
+      }
+    });
+  }
+
+  /* Journal ops headless (owner) — boîte noire {dataDir}/ops écrite par le
+   * harness (initOpsJournal). Miroir de la route marque /api/v1/ops/events,
+   * en canonique kit pour toutes les apps serveur. */
+  app.get("/api/v1/platform/ops/events", async (c) => {
+    if (!(await requireOwner(c))) {
+      return c.json({ error: "Réservé au compte principal" }, 403);
+    }
+    const dir = getOpsDir();
+    if (!dir || !fs.existsSync(dir)) {
+      return c.json({ available: false, events: [], boots: [] });
+    }
+    const limit = Math.min(
+      500,
+      Math.max(1, Number(c.req.query("limit") || 120) || 120),
+    );
+    const level = (c.req.query("level") || "").trim();
+    const bootId = (c.req.query("bootId") || "").replace(/[^a-z0-9-]/gi, "");
+    const files = (() => {
+      try {
+        if (bootId) {
+          const f = path.join(dir, `${bootId}.jsonl`);
+          return fs.existsSync(f) ? [f] : [];
+        }
+        return fs
+          .readdirSync(dir)
+          .filter((f) => f.endsWith(".jsonl"))
+          .map((f) => {
+            const full = path.join(dir, f);
+            let mtime = 0;
+            try {
+              mtime = fs.statSync(full).mtimeMs;
+            } catch {
+              /* volatil */
+            }
+            return { full, mtime };
+          })
+          .sort((a, b) => b.mtime - a.mtime)
+          .slice(0, 3)
+          .map((f) => f.full);
+      } catch {
+        return [] as string[];
+      }
+    })();
+    const events: Record<string, unknown>[] = [];
+    for (const file of files) {
+      try {
+        for (const line of fs.readFileSync(file, "utf8").trim().split("\n")) {
+          try {
+            const evt = JSON.parse(line) as Record<string, unknown>;
+            if (level && evt.level !== level) continue;
+            events.push(evt);
+          } catch {
+            /* ligne corrompue */
+          }
+        }
+      } catch {
+        /* fichier absent */
+      }
+    }
+    events.sort(
+      (a, b) =>
+        String(b.ts || "").localeCompare(String(a.ts || "")) ||
+        Number(b.seq || 0) - Number(a.seq || 0),
+    );
+    let boots: Record<string, unknown>[] = [];
+    try {
+      const raw = JSON.parse(
+        fs.readFileSync(path.join(dir, "index.json"), "utf8"),
+      ) as { boots?: Record<string, unknown>[] };
+      boots = Array.isArray(raw.boots) ? raw.boots : [];
+      boots = boots
+        .sort((a, b) =>
+          String(b.startedAt || "").localeCompare(String(a.startedAt || "")),
+        )
+        .slice(0, 15);
+    } catch {
+      /* pas d'index */
+    }
+    return c.json({
+      available: true,
+      events: events.slice(0, limit),
+      boots,
+    });
+  });
 
   /* ACL plugins cockpit — liste vide tant que Product Hub n'est pas branché
    * ici (évite le fallthrough UI qui timeoute sur /cockpit/plugin-acl). */

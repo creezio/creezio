@@ -27,51 +27,68 @@ export function SearchReindexSettings() {
   const [desktop, setDesktop] = useState(false);
   const [busy, setBusy] = useState(false);
   const [health, setHealth] = useState<HealthPayload | null>(null);
+  // Web serveur : la réindexation passe par la route kit owner
+  // /api/v1/platform/search/reindex (miroir HTTP de l'IPC desktop).
+  const [httpReindex, setHttpReindex] = useState(false);
 
   useEffect(() => {
     setDesktop(Boolean(getShellDesktopApi()?.reindexSearch));
   }, []);
 
-  useEffect(() => {
-    void (async () => {
+  const refreshHealth = useCallback(async () => {
+    // Route kit canonique (owner) d'abord, route marque historique ensuite.
+    for (const url of [
+      "/api/v1/platform/search/health",
+      "/api/v1/search/health",
+    ]) {
       try {
-        const res = await fetch("/api/v1/search/health");
-        if (res.ok) setHealth((await res.json()) as HealthPayload);
+        const res = await fetch(url, { cache: "no-store" });
+        if (res.ok) {
+          setHealth((await res.json()) as HealthPayload);
+          if (url.startsWith("/api/v1/platform/")) setHttpReindex(true);
+          return;
+        }
       } catch {
-        /* ignore */
+        /* route absente */
       }
-    })();
+    }
   }, []);
+
+  useEffect(() => {
+    void refreshHealth();
+  }, [refreshHealth]);
 
   if (!desktop && !health) return null;
 
-  async function refreshHealth() {
-    try {
-      const res = await fetch("/api/v1/search/health");
-      if (res.ok) setHealth((await res.json()) as HealthPayload);
-    } catch {
-      /* ignore */
-    }
-  }
-
   async function onReindex() {
     const api = getShellDesktopApi();
-    if (!api?.reindexSearch) {
-      toast.error("Réindexation disponible uniquement sur l’app desktop");
-      return;
-    }
     setBusy(true);
     try {
-      const r = await api.reindexSearch();
-      if (!r.ok) {
-        toast.error(r.error || "Échec de la réindexation");
+      if (api?.reindexSearch) {
+        const r = await api.reindexSearch();
+        if (!r.ok) {
+          toast.error(r.error || "Échec de la réindexation");
+          return;
+        }
+        toast.success(
+          r.ready
+            ? "Recherche réindexée"
+            : `Réindexation terminée (${r.reason || "vérifiez le health"})`,
+        );
+      } else if (httpReindex) {
+        const res = await fetch("/api/v1/platform/search/reindex", {
+          method: "POST",
+        });
+        const body = (await res.json()) as { error?: string };
+        if (!res.ok) {
+          toast.error(body.error || "Échec de la réindexation");
+          return;
+        }
+        toast.success("Recherche réindexée");
+      } else {
+        toast.error("Réindexation réservée au compte propriétaire");
         return;
       }
-      toast.success(
-        r.ready
-          ? "Recherche réindexée"
-          : `Réindexation terminée (${r.reason || "vérifiez le health"})`,
-      );
       await refreshHealth();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Erreur");
@@ -90,9 +107,8 @@ export function SearchReindexSettings() {
           <Search className="h-4 w-4" /> Recherche (Meilisearch)
         </CardTitle>
         <CardDescription>
-          Recalcule l&apos;index local (entreprises, contacts, dossiers, pièces)
-          sans effacer vos données. Utile si Ctrl+K ne trouve plus un contact
-          pourtant présent en base.
+          Recalcule l&apos;index de recherche sans effacer vos données. Utile
+          si Ctrl+K ne trouve plus un élément pourtant présent en base.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
@@ -105,14 +121,16 @@ export function SearchReindexSettings() {
             {health.coherence.sql ? (
               <>
                 {" "}
-                · SQL entreprises={health.coherence.sql.entreprises ?? "?"} /
-                contacts={health.coherence.sql.contacts ?? "?"}
+                · SQL{" "}
+                {Object.entries(health.coherence.sql)
+                  .map(([k, v]) => `${k}=${v ?? "?"}`)
+                  .join(" / ")}
               </>
             ) : null}
           </p>
         ) : null}
         <div className="flex flex-wrap gap-2">
-          {desktop ? (
+          {desktop || httpReindex ? (
             <Button type="button" onClick={() => void onReindex()} disabled={busy}>
               {busy ? (
                 <>
