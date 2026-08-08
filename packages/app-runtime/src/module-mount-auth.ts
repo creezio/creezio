@@ -5,7 +5,7 @@
  * framework-agnostique. Allowlist explicite des chemins machine/public
  * (webhooks signés, register/heartbeat Bearer, agent releases, LP public).
  */
-import { createHash, timingSafeEqual } from "node:crypto";
+import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import type { IncomingHttpHeaders } from "node:http";
@@ -66,24 +66,59 @@ export const PUBLIC_MODULE_PATHS: readonly PublicModulePathRule[] = [
 ];
 
 /**
- * Header boot catalogue marque (`x-creezio-catalog-internal: 1`).
- * Posé uniquement par le host de boot / harness — jamais un client UI.
+ * Header boot catalogue marque — porte le **secret interne par processus**
+ * (`CREEZIO_CATALOG_INTERNAL_SECRET`), jamais une constante. Posé uniquement
+ * par le host de boot / harness / scripts ops (même process ou parent qui a
+ * injecté le secret dans l'env de l'enfant) — jamais un client UI.
  */
 export const CATALOG_INTERNAL_HEADER = "x-creezio-catalog-internal";
 
 /**
+ * Env portant le secret machine du boot catalogue. Généré aléatoirement par
+ * processus via `ensureCatalogInternalSecret()` — un client HTTP externe ne
+ * peut pas le deviner (fix P0 : l'ancienne valeur constante `1` était un
+ * bypass anonyme d'`ensure`/`import`).
+ */
+export const CATALOG_INTERNAL_SECRET_ENV = "CREEZIO_CATALOG_INTERNAL_SECRET";
+
+const CATALOG_INTERNAL_SECRET_MIN_LENGTH = 16;
+
+/**
+ * Retourne le secret interne catalogue du processus, en le générant
+ * (32 octets aléatoires hex) s'il est absent ou trop court. À appeler côté
+ * émetteur (host de boot / harness) AVANT l'appel HTTP ensure/import.
+ */
+export function ensureCatalogInternalSecret(): string {
+  const current = (process.env[CATALOG_INTERNAL_SECRET_ENV] || "").trim();
+  if (current.length >= CATALOG_INTERNAL_SECRET_MIN_LENGTH) return current;
+  const generated = randomBytes(32).toString("hex");
+  process.env[CATALOG_INTERNAL_SECRET_ENV] = generated;
+  return generated;
+}
+
+/** Compare header interne ↔ secret env (fail-closed, temps constant). */
+export function catalogInternalHeaderAllows(
+  headers: IncomingHttpHeaders,
+): boolean {
+  const raw = headers[CATALOG_INTERNAL_HEADER];
+  const value = String(Array.isArray(raw) ? raw[0] || "" : raw || "").trim();
+  if (!value) return false;
+  const secret = (process.env[CATALOG_INTERNAL_SECRET_ENV] || "").trim();
+  if (secret.length < CATALOG_INTERNAL_SECRET_MIN_LENGTH) return false;
+  return sameKey(value, secret);
+}
+
+/**
  * Chemins ensure/import catalogue joignables sans JWT **si** le header
- * interne est présent. Le mount marque refuse toujours les mutations sans
- * ce header (403) — la garde ne fait que laisser passer le boot headless.
+ * interne porte le secret du processus. Le mount marque revérifie le même
+ * secret (403 sinon) — la garde ne fait que laisser passer le boot headless.
  */
 export function isCatalogInternalBootPath(
   method: string,
   pathname: string,
   headers: IncomingHttpHeaders,
 ): boolean {
-  const raw = headers[CATALOG_INTERNAL_HEADER];
-  const value = Array.isArray(raw) ? raw[0] || "" : raw || "";
-  if (String(value).trim() !== "1") return false;
+  if (!catalogInternalHeaderAllows(headers)) return false;
   const m = (method || "GET").toUpperCase();
   if (pathname === "/api/v1/modules/catalog/ensure" && m === "POST") {
     return true;

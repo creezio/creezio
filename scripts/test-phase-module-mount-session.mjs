@@ -22,7 +22,10 @@ import { createApiKernel } from "../packages/api-kernel/dist/index.js";
 import {
   assertModuleMountSession,
   CATALOG_INTERNAL_HEADER,
+  CATALOG_INTERNAL_SECRET_ENV,
+  catalogInternalHeaderAllows,
   createBrandApiKeyModuleVerifier,
+  ensureCatalogInternalSecret,
   isCatalogInternalBootPath,
   isPublicModulePath,
   listenBrandOsHttp,
@@ -31,6 +34,7 @@ import {
 const prevAuthDisabled = process.env.AUTH_DISABLED;
 const prevAuthSecret = process.env.AUTH_SECRET;
 const prevAllowDev = process.env.AUTH_ALLOW_DEV_SECRET;
+const prevCatalogSecret = process.env[CATALOG_INTERNAL_SECRET_ENV];
 
 function restoreEnv() {
   if (prevAuthDisabled === undefined) delete process.env.AUTH_DISABLED;
@@ -39,6 +43,9 @@ function restoreEnv() {
   else process.env.AUTH_SECRET = prevAuthSecret;
   if (prevAllowDev === undefined) delete process.env.AUTH_ALLOW_DEV_SECRET;
   else process.env.AUTH_ALLOW_DEV_SECRET = prevAllowDev;
+  if (prevCatalogSecret === undefined) {
+    delete process.env[CATALOG_INTERNAL_SECRET_ENV];
+  } else process.env[CATALOG_INTERNAL_SECRET_ENV] = prevCatalogSecret;
   resetAuthConfigForTests();
 }
 
@@ -73,12 +80,38 @@ test("module-mount-session : allowlist + décision pure", async () => {
   assert.equal(pub.ok, true);
   assert.equal(pub.public, true);
 
-  // Boot catalogue : header interne + path ensure/import seulement.
+  // Boot catalogue : header = secret par processus + path ensure/import.
+  // Fail-closed sans secret env (P0 : plus de constante `1`).
+  delete process.env[CATALOG_INTERNAL_SECRET_ENV];
   assert.equal(
     isCatalogInternalBootPath("POST", "/api/v1/modules/catalog/import", {
       [CATALOG_INTERNAL_HEADER]: "1",
     }),
+    false,
+    "sans secret env, tout header est refusé",
+  );
+  const secret = ensureCatalogInternalSecret();
+  assert.ok(secret.length >= 32, "secret généré assez long");
+  assert.equal(
+    isCatalogInternalBootPath("POST", "/api/v1/modules/catalog/import", {
+      [CATALOG_INTERNAL_HEADER]: "1",
+    }),
+    false,
+    "legacy `1` refusé (bypass P0 fermé)",
+  );
+  assert.equal(
+    isCatalogInternalBootPath("POST", "/api/v1/modules/catalog/import", {
+      [CATALOG_INTERNAL_HEADER]: secret,
+    }),
     true,
+  );
+  assert.equal(
+    catalogInternalHeaderAllows({ [CATALOG_INTERNAL_HEADER]: secret }),
+    true,
+  );
+  assert.equal(
+    catalogInternalHeaderAllows({ [CATALOG_INTERNAL_HEADER]: "wrong" }),
+    false,
   );
   assert.equal(
     isCatalogInternalBootPath("POST", "/api/v1/modules/catalog/import", {}),
@@ -86,7 +119,7 @@ test("module-mount-session : allowlist + décision pure", async () => {
   );
   assert.equal(
     isCatalogInternalBootPath("GET", "/api/v1/modules/catalog/status", {
-      [CATALOG_INTERNAL_HEADER]: "1",
+      [CATALOG_INTERNAL_HEADER]: secret,
     }),
     false,
   );
@@ -100,14 +133,14 @@ test("module-mount-session : allowlist + décision pure", async () => {
   const catalogBoot = await assertModuleMountSession({
     method: "POST",
     pathname: "/api/v1/modules/catalog/import",
-    headers: { [CATALOG_INTERNAL_HEADER]: "1" },
+    headers: { [CATALOG_INTERNAL_HEADER]: secret },
   });
   assert.equal(catalogBoot.ok, true);
   assert.equal(catalogBoot.public, true);
   const catalogEnsure = await assertModuleMountSession({
     method: "POST",
     pathname: "/api/v1/modules/catalog/ensure",
-    headers: { [CATALOG_INTERNAL_HEADER]: "1" },
+    headers: { [CATALOG_INTERNAL_HEADER]: secret },
   });
   assert.equal(catalogEnsure.ok, true);
   restoreEnv();
@@ -219,16 +252,17 @@ test("module-mount-session : listenBrandOsHttp exige une session", async () => {
     assert.equal(landing.status, 200);
     assert.equal((await landing.json()).public, true);
 
-    // Mount catalogue minimal — prouve le header interne traverse la garde
-    // HTTP (repro du 401 boot headless) sans AUTH_DISABLED.
+    // Mount catalogue minimal — prouve le header interne (secret processus)
+    // traverse la garde HTTP (repro du 401 boot headless) sans AUTH_DISABLED,
+    // et que le legacy `1` reste bloqué.
+    const bootSecret = ensureCatalogInternalSecret();
     api.registerModuleApi("catalog", {
       dbLayer: "brand",
       handle: async ({ req, subPath }) => {
         const parts = String(subPath || "")
           .split("/")
           .filter(Boolean);
-        const internal =
-          String(req.headers?.[CATALOG_INTERNAL_HEADER] || "").trim() === "1";
+        const internal = catalogInternalHeaderAllows(req.headers || {});
         if (parts[0] === "import" && req.method === "POST") {
           if (!internal) {
             return { status: 403, body: { error: "catalog_mutate_forbidden" } };
@@ -247,13 +281,29 @@ test("module-mount-session : listenBrandOsHttp exige une session", async () => {
       },
     );
     assert.equal(catalogAnon.status, 401);
-    const catalogInternal = await fetch(
+    const catalogLegacy = await fetch(
       `${http.baseUrl}/api/v1/modules/catalog/import`,
       {
         method: "POST",
         headers: {
           "content-type": "application/json",
           [CATALOG_INTERNAL_HEADER]: "1",
+        },
+        body: "{}",
+      },
+    );
+    assert.equal(
+      catalogLegacy.status,
+      401,
+      "legacy `1` ne passe plus la garde (bypass P0 fermé)",
+    );
+    const catalogInternal = await fetch(
+      `${http.baseUrl}/api/v1/modules/catalog/import`,
+      {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          [CATALOG_INTERNAL_HEADER]: bootSecret,
         },
         body: "{}",
       },

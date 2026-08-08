@@ -55,11 +55,14 @@ export {
 } from "./listen-brand-os-http.js";
 export {
   CATALOG_INTERNAL_HEADER,
+  CATALOG_INTERNAL_SECRET_ENV,
   PUBLIC_MODULE_PATHS,
   anyModuleMachineKeyVerifier,
   assertModuleMountSession,
+  catalogInternalHeaderAllows,
   createBrandApiKeyModuleVerifier,
   createPluginDiskKeyModuleVerifier,
+  ensureCatalogInternalSecret,
   isCatalogInternalBootPath,
   isModuleApiPath,
   isPublicModulePath,

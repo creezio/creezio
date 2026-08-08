@@ -1,0 +1,38 @@
+# CI kit Creezio — filet minimal (P1 audit : « aucun filet CI visible »).
+# Garantit que main compile (build workspaces unifié) et que la suite kit
+# rapide passe sur chaque push/PR. Les gates lourdes (Electron, Docker,
+# desktop packagé) restent sur le VPS — élargir progressivement.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      CREEZIO_SKIP_KIT_BINARIES: "1"
+      CREEZIO_NATIVE_WARM: "0"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Build workspaces (source unique)
+        run: npm run build:packages
+
+      - name: Suite kit rapide
+        run: npm run test:kit -- --keep-going

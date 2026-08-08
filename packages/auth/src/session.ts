@@ -23,10 +23,25 @@ export type {
   SessionUserLookup,
 } from "./session-types.js";
 
+let warnedAuthDisabledProd = false;
+
 export function isAuthDisabled(): boolean {
   // Fail-closed : variable absente = auth active.
   const v = (process.env.AUTH_DISABLED || "0").toLowerCase();
-  return v === "1" || v === "true" || v === "yes";
+  const wanted = v === "1" || v === "true" || v === "yes";
+  if (!wanted) return false;
+  // P0 : jamais de session owner virtuelle en production — AUTH_DISABLED
+  // est réservé aux harness/gates dev (NODE_ENV ≠ production).
+  if (process.env.NODE_ENV === "production") {
+    if (!warnedAuthDisabledProd) {
+      warnedAuthDisabledProd = true;
+      console.error(
+        "[creezio-auth] AUTH_DISABLED=1 ignoré : interdit avec NODE_ENV=production (auth reste active).",
+      );
+    }
+    return false;
+  }
+  return true;
 }
 
 /** Fallback dev PUBLIC — ne doit jamais signer une session en production. */
