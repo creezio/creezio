@@ -41,10 +41,24 @@ for (const glob of globs) {
     if (!fs.existsSync(pkgPath)) continue;
     const pkg = JSON.parse(fs.readFileSync(pkgPath, "utf8"));
     if (!pkg.scripts?.build) continue;
+    // Les peerDependencies OPTIONNELLES (peerDependenciesMeta[dep].optional)
+    // ne contraignent pas l'ordre de build des types : elles sont résolues
+    // au RUNTIME (createRequire), jamais importées à la compilation.
+    // Ex. platform-core → auth/database/product-hub en peer optionnelle :
+    // les compter créait un cycle fantôme plaçant platform-core APRÈS
+    // assistant (erreur TS2307 « Cannot find module @creezio/platform-core »
+    // sur node_modules propre / CI). On les exclut du tri topo.
+    const optionalPeers = new Set(
+      Object.entries(pkg.peerDependenciesMeta || {})
+        .filter(([, meta]) => meta && meta.optional)
+        .map(([dep]) => dep),
+    );
     const deps = [
       ...Object.keys(pkg.dependencies || {}),
       ...Object.keys(pkg.devDependencies || {}),
-      ...Object.keys(pkg.peerDependencies || {}),
+      ...Object.keys(pkg.peerDependencies || {}).filter(
+        (d) => !optionalPeers.has(d),
+      ),
     ].filter((d) => d.startsWith("@creezio/"));
     workspaces.set(pkg.name, { dir: path.join(base, entry), deps });
   }
