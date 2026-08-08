@@ -21,6 +21,8 @@ import type { EnqueueMailInput, InboundEmailInput } from "./types.js";
 import { MAIL_MAX_ATTACHMENT_TOTAL_BYTES } from "./transport.js";
 import {
   MAIL_SETTINGS_KEYS,
+  describeMailTransportError,
+  isMailTransportConfigured,
   resolveMailTransport,
 } from "./transport-resolve.js";
 import {
@@ -341,6 +343,10 @@ export function createEmailInboxRoutes(deps: EmailInboxRouteDeps = {}): Hono {
         source: resolved.source,
         preset: resolved.preset,
         configured: Boolean(resolved.transport),
+        error: resolved.transport
+          ? null
+          : describeMailTransportError(resolved.error),
+        errorCode: resolved.transport ? null : resolved.error || "transport_unconfigured",
       },
     });
   });
@@ -360,6 +366,15 @@ export function createEmailInboxRoutes(deps: EmailInboxRouteDeps = {}): Hono {
   app.post("/send", async (c) => {
     const gate = requireStore(c);
     if (!gate.ok) return gate.res;
+    // Ne pas mettre en file un mail condamné à failed_permanent immédiat :
+    // l'UI affichait « envoyé » alors que « Envoyés » restait vide.
+    const transportGate = isMailTransportConfigured(gate.store);
+    if (!transportGate.ok) {
+      return c.json(
+        { error: transportGate.error, code: transportGate.code },
+        503,
+      );
+    }
     const body = await c.req.json().catch(() => null);
     const userId = (await resolveActor(c)).userId || "system";
 
@@ -456,6 +471,13 @@ export function createEmailInboxRoutes(deps: EmailInboxRouteDeps = {}): Hono {
   app.post("/drafts/:id/send", async (c) => {
     const gate = requireStore(c);
     if (!gate.ok) return gate.res;
+    const transportGate = isMailTransportConfigured(gate.store);
+    if (!transportGate.ok) {
+      return c.json(
+        { error: transportGate.error, code: transportGate.code },
+        503,
+      );
+    }
     const id = String(c.req.param("id") || "").trim();
     try {
       const mail = gate.store.sendDraft(id);

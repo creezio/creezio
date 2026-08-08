@@ -350,3 +350,39 @@ function safeSettings(store: SqliteMailsStore): Record<string, string> {
     return {};
   }
 }
+
+/**
+ * Message FR pour l'UI / les réponses API quand le transport n'est pas
+ * utilisable. Les codes techniques restent en `error` machine.
+ */
+export function describeMailTransportError(
+  code: string | null | undefined,
+): string {
+  const c = (code || "transport_unconfigured").trim();
+  if (c === "transport_unconfigured") {
+    return "Aucun transport d'envoi configuré. Ouvrez Paramètres → Email pour configurer SMTP, Resend ou Cloudflare.";
+  }
+  if (c === "resend_secret_unresolved") {
+    return "Clé Resend manquante ou illisible. Vérifiez Paramètres → Email.";
+  }
+  if (c.startsWith("file_sink_dir_required")) {
+    return "Répertoire file-sink manquant (MAIL_FILE_SINK_DIR ou Paramètres → Email).";
+  }
+  if (c.startsWith("transport_inconnu:")) {
+    return "Transport inconnu. Choisissez smtp, resend, cloudflare ou file-sink.";
+  }
+  if (c === "smtp_unconfigured" || c.startsWith("smtp_unconfigured")) {
+    return "SMTP incomplet (SMTP_URL ou SMTP_HOST requis).";
+  }
+  return c;
+}
+
+/** True si un transport d'envoi est résolu et utilisable. */
+export function isMailTransportConfigured(
+  store?: SqliteMailsStore | null,
+): { ok: true } | { ok: false; error: string; code: string } {
+  const resolved = resolveMailTransport({ store: store ?? null });
+  if (resolved.transport) return { ok: true };
+  const code = resolved.error || "transport_unconfigured";
+  return { ok: false, error: describeMailTransportError(code), code };
+}

@@ -5,6 +5,7 @@
  */
 import type { ApiMount } from "@creezio/api-kernel";
 import type { SqliteMailsStore } from "./sqlite-store.js";
+import { isMailTransportConfigured } from "./transport-resolve.js";
 
 function actorFromReq(req: {
   headers?: Record<string, string | string[] | undefined>;
@@ -54,6 +55,17 @@ export function createMailsApiMount(store: SqliteMailsStore): ApiMount {
 
       // Enqueue direct (jamais bloquant) — modules marque.
       if (subPath === "send" && method === "POST") {
+        const transportGate = isMailTransportConfigured(store);
+        if (!transportGate.ok) {
+          return {
+            status: 503,
+            body: {
+              ok: false,
+              error: transportGate.error,
+              code: transportGate.code,
+            },
+          };
+        }
         const body = (req.body || {}) as {
           to?: string | string[];
           cc?: string | string[];
@@ -85,6 +97,17 @@ export function createMailsApiMount(store: SqliteMailsStore): ApiMount {
 
       const sendMatch = subPath.match(/^([0-9a-f-]{36})\/send$/i);
       if (sendMatch && method === "POST") {
+        const transportGate = isMailTransportConfigured(store);
+        if (!transportGate.ok) {
+          return {
+            status: 503,
+            body: {
+              ok: false,
+              error: transportGate.error,
+              code: transportGate.code,
+            },
+          };
+        }
         try {
           const mail = store.sendDraft(sendMatch[1]!, userId);
           return { status: 202, body: { ok: true, mail } };

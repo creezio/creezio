@@ -21,6 +21,7 @@ import {
 import { cn } from "@creezio/shell-ui";
 import {
   MAIL_STATUS_LABELS,
+  describeMailError,
   formatMailDate,
   mailFromLabel,
   type MailDetail,
@@ -201,7 +202,10 @@ export function MailDisplay(props: MailDisplayProps) {
               {isOutgoing ? statusLabel : `À ${detail.to_addr}`} ·{" "}
               {formatMailDate(detail.received_at)}
               {detail.last_error && (
-                <span className="text-red-700"> · {detail.last_error}</span>
+                <span className="text-red-700">
+                  {" "}
+                  · {describeMailError(detail.last_error)}
+                </span>
               )}
             </p>
           </div>

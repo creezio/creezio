@@ -15,6 +15,7 @@ export type MailListRow = {
   preview: string | null;
   status: string;
   thread_id: string | null;
+  last_error?: string | null;
 };
 
 export type MailAttachmentMeta = {
@@ -64,8 +65,29 @@ export type MailMeta = {
     source: string;
     preset: string | null;
     configured: boolean;
+    error?: string | null;
+    errorCode?: string | null;
   };
 };
+
+/** Libellé FR pour les codes d'erreur transport / outbox. */
+export function describeMailError(code: string | null | undefined): string {
+  const c = (code || "").trim();
+  if (!c) return "";
+  if (c === "transport_unconfigured") {
+    return "Aucun transport d'envoi configuré (Paramètres → Email).";
+  }
+  if (c === "resend_secret_unresolved") {
+    return "Clé Resend manquante ou illisible.";
+  }
+  if (c.startsWith("file_sink_dir_required")) {
+    return "Répertoire file-sink manquant.";
+  }
+  if (c.startsWith("smtp_unconfigured")) {
+    return "SMTP incomplet.";
+  }
+  return c;
+}
 
 export type MailFolderId =
   | "inbox"

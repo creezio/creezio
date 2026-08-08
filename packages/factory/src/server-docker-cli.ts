@@ -219,7 +219,8 @@ Instances nommées (registre docker-data/servers.json — recommandé) :
     --profile prod : serveur flotte — CREEZIO_NATIVE_WARM=1 + CREEZIO_CATALOG=1
                 + forward env hôte CREEZIO_TUNNEL_PROVISION_URL/_TOKEN/_SLUG,
                 CREEZIO_FLEET_ENDPOINT, CREEZIO_CRASH_ENDPOINT, CREEZIO_PLUGINS,
-                EMAIL_INBOUND_SECRET, OPENAI_API_KEY, ANTHROPIC_API_KEY,
+                EMAIL_INBOUND_SECRET, EMAIL_DOMAIN, MAIL_*/SMTP_*/RESEND_*,
+                OPENAI_API_KEY, ANTHROPIC_API_KEY,
                 CREEZIO_FLEET_ADMIN_URL/_REGISTER_SECRET/_HOST_ID
                 (auto-inscription flotte ; uniquement s'ils sont posés —
                 aucun DNS/collector activé par défaut)
@@ -2201,6 +2202,22 @@ async function runRegistrySubcommand(
         "CREEZIO_CRASH_ENDPOINT",
         "CREEZIO_PLUGINS",
         "EMAIL_INBOUND_SECRET",
+        // Transport mails natifs (@creezio/mails) — forward si posés sur
+        // l'hôte / .env marque (sinon l'UI Paramètres → Email reste la voie).
+        "EMAIL_DOMAIN",
+        "MAIL_TRANSPORT",
+        "MAIL_FROM",
+        "SMTP_URL",
+        "SMTP_HOST",
+        "SMTP_PORT",
+        "SMTP_SECURE",
+        "SMTP_USER",
+        "SMTP_PASS",
+        "SMTP_FROM",
+        "RESEND_API_KEY",
+        "RESEND_WEBHOOK_SECRET",
+        "CLOUDFLARE_EMAIL_API_TOKEN",
+        "CLOUDFLARE_EMAIL_TOKEN",
         // Superadmin flotte uniforme : owner n8n auto + protection WebUI
         // Hermes sur chaque serveur (jamais de valeur inventée — env hôte).
         "CREEZIO_SUPERADMIN_EMAIL",

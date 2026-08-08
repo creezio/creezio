@@ -196,11 +196,35 @@ export function MailWorkspace(props: MailWorkspaceProps = {}) {
         : props.emptyStateNoDomainHint ||
           meta?.emptyStateNoDomainHint ||
           "Configurez la réception pour recevoir des mails ici."
-      : undefined;
+      : folder === "sent"
+        ? "Les messages réellement envoyés (après passage par la file d'attente) apparaissent ici."
+        : folder === "outbox"
+          ? "Les envois en cours ou en échec restent ici jusqu'à succès."
+          : undefined;
+
+  const transportOk = meta?.transport?.configured !== false;
+  const transportHint =
+    meta?.transport?.error ||
+    "Aucun transport d'envoi configuré. Configurez SMTP, Resend ou Cloudflare pour que les messages quittent la file d'attente.";
 
   return (
-    <div className="h-[calc(100vh-8.5rem)] min-h-[420px] overflow-hidden rounded-2xl border border-[#e6e0d4] bg-white/80 shadow-sm">
-      <ResizablePanelGroup direction="horizontal" autoSaveId="creezio-mails">
+    <div className="flex h-[calc(100vh-8.5rem)] min-h-[420px] flex-col overflow-hidden rounded-2xl border border-[#e6e0d4] bg-white/80 shadow-sm">
+      {meta && !transportOk && (
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-amber-200 bg-amber-50 px-4 py-2.5 text-sm text-amber-950">
+          <p className="min-w-0 flex-1">{transportHint}</p>
+          <a
+            href="/parametres/email"
+            className="shrink-0 rounded-md bg-[#14182f] px-3 py-1.5 text-xs font-medium text-white hover:bg-[#232946]"
+          >
+            Paramètres email
+          </a>
+        </div>
+      )}
+      <ResizablePanelGroup
+        direction="horizontal"
+        autoSaveId="creezio-mails"
+        className="min-h-0 flex-1"
+      >
         <ResizablePanel defaultSize={17} minSize={12} maxSize={28}>
           <MailFolders
             folder={folder}
@@ -264,7 +288,13 @@ export function MailWorkspace(props: MailWorkspaceProps = {}) {
         apiBase={apiBase}
         open={composerOpen}
         onClose={() => setComposerOpen(false)}
-        onDone={() => onChanged()}
+        onDone={(kind) => {
+          // File d'attente d'abord (async outbox) — « Envoyés » seulement
+          // après drain réussi du worker.
+          if (kind === "sent") setFolder("outbox");
+          else if (kind === "draft") setFolder("drafts");
+          onChanged();
+        }}
         initial={composerInitial}
       />
     </div>

@@ -130,7 +130,7 @@ export function computeThreadId(
 const LIST_SELECT = `
 SELECT e.id, e.message_id, e.from_addr, e.to_addr, e.subject,
   COALESCE(e.received_at, e.sent_at, e.created_at) AS received_at,
-  e.read_at, e.folder, e.status, e.thread_id,
+  e.read_at, e.folder, e.status, e.thread_id, e.last_error,
   (SELECT COUNT(*) FROM creezio_platform_mail_attachments a WHERE a.mail_id = e.id) AS has_attachments,
   CASE
     WHEN e.text_body IS NOT NULL AND trim(e.text_body) != '' THEN substr(e.text_body, 1, 180)

@@ -69,6 +69,8 @@ test("mails-ui.3 workspace 3 panneaux resizable + dossiers + threads", () => {
   assert.match(ws, /MailList/);
   assert.match(ws, /MailDisplay/);
   assert.match(ws, /MailComposer/);
+  assert.match(ws, /parametres\/email/, "bandeau → réglages transport");
+  assert.match(ws, /setFolder\("outbox"\)/, "après envoi → file d'attente");
 
   const types = read("packages/mails/ui/mail-types.ts");
   for (const folder of ["inbox", "sent", "drafts", "outbox", "archive", "trash"]) {

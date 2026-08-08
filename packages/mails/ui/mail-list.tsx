@@ -5,6 +5,7 @@ import { Button, Input, ScrollArea } from "@creezio/shell-ui/ui/kit";
 import { cn } from "@creezio/shell-ui";
 import {
   MAIL_STATUS_LABELS,
+  describeMailError,
   formatMailDate,
   mailFromLabel,
   stripHtmlPreview,
@@ -150,7 +151,12 @@ export function MailList(props: MailListProps) {
                         {badge.label}
                       </span>
                     )}
-                    {row.preview && (
+                    {row.last_error && (
+                      <p className="truncate text-xs text-red-700">
+                        {describeMailError(row.last_error)}
+                      </p>
+                    )}
+                    {row.preview && !row.last_error && (
                       <p className="truncate text-xs text-[#9aa1b2]">
                         {stripHtmlPreview(row.preview)}
                       </p>

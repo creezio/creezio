@@ -83,7 +83,9 @@ export type {
 export {
   MAIL_SETTINGS_KEYS,
   configureMailSecretBridge,
+  describeMailTransportError,
   getMailSecretBridge,
+  isMailTransportConfigured,
   resolveMailSecret,
   resolveMailTransport,
 } from "./transport-resolve.js";

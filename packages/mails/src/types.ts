@@ -178,6 +178,8 @@ export type InboxEmailListItem = {
   /** v2 */
   status: string;
   thread_id: string | null;
+  /** Présent surtout en outbox (échecs d'envoi). */
+  last_error: string | null;
 };
 
 export type InboxEmailAttachmentMeta = {

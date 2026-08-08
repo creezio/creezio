@@ -11,8 +11,10 @@
  *      429 → retryable, 422 → permanent).
  */
 import assert from "node:assert/strict";
+import fs from "node:fs";
 import http from "node:http";
 import net from "node:net";
+import os from "node:os";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
 import { test } from "node:test";
@@ -61,6 +63,13 @@ test("transports.resolve — env MAIL_TRANSPORT + rétro-inférence", () =>
     assert.equal(r.transport, null);
     assert.equal(r.source, "none");
     assert.equal(r.error, "transport_unconfigured");
+    assert.match(
+      mails.describeMailTransportError(r.error),
+      /Paramètres → Email/,
+    );
+    const gate = mails.isMailTransportConfigured();
+    assert.equal(gate.ok, false);
+    assert.equal(gate.code, "transport_unconfigured");
 
     // MAIL_TRANSPORT=file-sink + dossier.
     process.env.MAIL_TRANSPORT = "file-sink";
@@ -416,5 +425,51 @@ test("transports.secret-bridge — integration:// résolu via le pont", () =>
       assert.equal(mails.resolveMailSecret("integration://mail-key"), "s3cret");
     } finally {
       mails.configureMailSecretBridge(null);
+    }
+  }));
+
+test("transports.http-send — 503 sans transport, 202 avec file-sink", async () =>
+  withCleanMailEnv(async () => {
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "creezio-gate-send-"));
+    const store = mails.createSqliteMailsStore({
+      coreDbPath: path.join(tmp, "core.db"),
+    });
+    try {
+      const routes = mails.createEmailInboxRoutes({ getStore: () => store });
+      const denied = await routes.request("/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          to: ["client@example.test"],
+          subject: "Sans transport",
+          text: "corps",
+        }),
+      });
+      assert.equal(denied.status, 503);
+      const deniedBody = await denied.json();
+      assert.match(deniedBody.error, /Paramètres → Email/);
+      assert.equal(deniedBody.code, "transport_unconfigured");
+      assert.equal(
+        store.listInbox({ folder: "outbox" }).total,
+        0,
+        "aucun mail mis en file si transport absent",
+      );
+
+      process.env.MAIL_TRANSPORT = "file-sink";
+      process.env.MAIL_FILE_SINK_DIR = path.join(tmp, "sink");
+      const ok = await routes.request("/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          to: ["client@example.test"],
+          subject: "Avec file-sink",
+          text: "corps",
+        }),
+      });
+      assert.equal(ok.status, 202);
+      assert.equal(store.listInbox({ folder: "outbox" }).total, 1);
+    } finally {
+      store.close();
+      fs.rmSync(tmp, { recursive: true, force: true });
     }
   }));

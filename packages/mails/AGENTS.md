@@ -100,7 +100,9 @@ Vérifications hôte utiles :
 
 - `GET /api/v1/email/meta` retourne `ready` et `domain`.
 - `POST /api/v1/email/inbound` refuse un secret invalide.
-- `POST /api/v1/email/send` répond immédiatement (`queued`) même sans transport.
+- `POST /api/v1/email/send` répond `202 queued` si un transport est configuré ;
+  refuse `503` avec message FR si `transport_unconfigured` (évite un faux
+  « envoyé » alors que « Envoyés » reste vide).
 - un inbound avec PJ est listé et la PJ est téléchargeable.
 - `PATCH /:id` bascule lu/non lu et déplace de dossier.
 - `MailWorkspace` reste utilisable si aucun domaine mail n'est configuré.
