@@ -25,8 +25,40 @@ import {
   HostOnlySettings,
 } from "../settings/host-only-settings";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../primitives/tabs";
+import type { ReactNode } from "react";
 
-export function DesktopSettingsPage() {
+export type DesktopSettingsExtraTab = {
+  value: string;
+  label: string;
+  content: ReactNode;
+};
+
+export type DesktopSettingsPageProps = {
+  /**
+   * Onglets additionnels injectés par la marque / le wrapper os-ui —
+   * ex. Email (`MailSettings` de @creezio/mails/ui, dépendance inverse
+   * interdite depuis shell-ui). Insérés avant Support.
+   */
+  extraTabs?: DesktopSettingsExtraTab[];
+  /** Onglet ouvert par défaut (ex. `?tab=email`). Défaut : connexion. */
+  defaultTab?: string;
+};
+
+export function DesktopSettingsPage({
+  extraTabs = [],
+  defaultTab,
+}: DesktopSettingsPageProps = {}) {
+  const known = new Set([
+    "connexion",
+    "hermes",
+    "n8n",
+    "tunnel",
+    "compte",
+    "support",
+    "systeme",
+    ...extraTabs.map((t) => t.value),
+  ]);
+  const initial = defaultTab && known.has(defaultTab) ? defaultTab : "connexion";
   return (
     <section className="mx-auto max-w-4xl px-0 py-4">
       <h1 className="mb-4 text-2xl font-semibold tracking-tight text-slate-900">
@@ -36,13 +68,18 @@ export function DesktopSettingsPage() {
         Chaque service a son onglet — paramètres verrouillés visibles, actions et
         statut
       </p>
-      <Tabs defaultValue="connexion" className="w-full">
+      <Tabs defaultValue={initial} className="w-full">
         <TabsList className="mb-4 flex h-auto w-full flex-wrap justify-start gap-1">
           <TabsTrigger value="connexion">Connexion</TabsTrigger>
           <TabsTrigger value="hermes">Hermes</TabsTrigger>
           <TabsTrigger value="n8n">n8n</TabsTrigger>
           <TabsTrigger value="tunnel">Accès distant</TabsTrigger>
           <TabsTrigger value="compte">Compte &amp; clés</TabsTrigger>
+          {extraTabs.map((t) => (
+            <TabsTrigger key={t.value} value={t.value}>
+              {t.label}
+            </TabsTrigger>
+          ))}
           <TabsTrigger value="support">Support</TabsTrigger>
           <TabsTrigger value="systeme">Système</TabsTrigger>
         </TabsList>
@@ -85,6 +122,12 @@ export function DesktopSettingsPage() {
           <AgentProfileSettings />
           <ApiKeysSettings />
         </TabsContent>
+
+        {extraTabs.map((t) => (
+          <TabsContent key={t.value} value={t.value} className="mt-0 space-y-4">
+            {t.content}
+          </TabsContent>
+        ))}
 
         <TabsContent value="support" className="mt-0 space-y-4">
           <HostOnlySettings

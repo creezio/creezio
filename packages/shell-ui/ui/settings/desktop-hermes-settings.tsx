@@ -19,6 +19,7 @@ import {
 } from "../lib/hermes-ui";
 import { LockedConfigField } from "./locked-config-field";
 import { DesktopEmbedEnvPanel } from "./desktop-embed-env-panel";
+import { ServerServiceStatusCard } from "./server-mode-cards";
 
 type HermesStatus = {
   status: string;
@@ -134,7 +135,8 @@ export function DesktopHermesSettings() {
     return () => clearInterval(t);
   }, [status?.installing, status?.status, installing, refresh]);
 
-  if (!desktop) return null;
+  // Web (serveur headless) : statut via /api/v1/os/hermes/status.
+  if (!desktop) return <ServerServiceStatusCard kind="hermes" />;
 
   async function onInstallRuntime() {
     const api = getShellDesktopApi();

@@ -22,6 +22,7 @@ import { useTabWorkspaceOptional } from "../workspace/tab-workspace-host";
 import { openN8nUiInWorkspace } from "../lib/n8n-ui";
 import { LockedConfigField } from "./locked-config-field";
 import { DesktopEmbedEnvPanel } from "./desktop-embed-env-panel";
+import { ServerServiceStatusCard } from "./server-mode-cards";
 
 type N8nStatus = {
   status: string;
@@ -116,7 +117,8 @@ export function DesktopN8nSettings() {
     void refresh();
   }, [refresh]);
 
-  if (!desktop) return null;
+  // Web (serveur headless) : statut via /api/v1/os/n8n/status.
+  if (!desktop) return <ServerServiceStatusCard kind="n8n" />;
 
   async function onOpenUiTab() {
     const r = await openN8nUiInWorkspace({

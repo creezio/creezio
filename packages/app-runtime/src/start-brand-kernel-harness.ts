@@ -336,6 +336,43 @@ export async function startBrandKernelHarness(
           return null;
         }
       },
+      // Clés IA BYOK en headless : la Configuration web écrit dans le store
+      // local-config (comme l'IPC desktop) et hydrate l'env du process
+      // kernel — l'assistant (platform surface) les utilise immédiatement.
+      llmKeys: {
+        get: () => {
+          const store = brandOs?.store as unknown as
+            | {
+                getLlmKeys?: () => {
+                  openai?: string | null;
+                  anthropic?: string | null;
+                };
+              }
+            | undefined;
+          const keys = store?.getLlmKeys?.() ?? {};
+          const real = (v: string | null | undefined) =>
+            Boolean(String(v || "").trim() && v !== "sk-setup-placeholder");
+          return { openai: real(keys.openai), anthropic: real(keys.anthropic) };
+        },
+        set: (provider, key) => {
+          const store = brandOs?.store as unknown as
+            | {
+                setLlmKey?: (
+                  provider: "openai" | "anthropic",
+                  key: string | null,
+                ) => void;
+              }
+            | undefined;
+          if (!store?.setLlmKey) {
+            throw new Error("store BYOK indisponible (OS non composé)");
+          }
+          store.setLlmKey(provider, key);
+          const envKey =
+            provider === "openai" ? "OPENAI_API_KEY" : "ANTHROPIC_API_KEY";
+          if (key) process.env[envKey] = key;
+          else delete process.env[envKey];
+        },
+      },
     });
   }
 

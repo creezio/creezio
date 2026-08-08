@@ -16,6 +16,7 @@ import { Copy, Globe, Loader2, Wifi, WifiOff } from "lucide-react";
 import { Button } from "../primitives/button";
 import { Input } from "../primitives/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../primitives/card";
+import { ServerTunnelCard } from "./server-mode-cards";
 
 type TunnelPublicUrls = {
   crm: string;
@@ -59,7 +60,8 @@ export function DesktopTunnel() {
     return () => clearInterval(t);
   }, [refresh]);
 
-  if (!desktop) return null;
+  // Web (serveur headless) : URLs publiques via /api/v1/os/tunnel/status.
+  if (!desktop) return <ServerTunnelCard />;
 
   async function checkAvailability() {
     const api = getShellDesktopApi();

@@ -405,6 +405,8 @@ const PLATFORM_PREFIXES = [
   "/api/v1/platform/desktop",
   // Intégrations / clés API tierces (ADR-integrations-store).
   "/api/v1/platform/integrations",
+  // Clés IA BYOK owner (Configuration web headless).
+  "/api/v1/platform/llm-keys",
 ];
 
 /** Chemins proxifiés Node http → surface plateforme (streaming SSE). */
@@ -438,6 +440,16 @@ export function mountBrandPlatformSurface(opts: {
    * Alimente la sync des intégrations vers les credentials n8n.
    */
   n8nBridge?: () => N8nBridge | null;
+  /**
+   * Pont clés IA BYOK (owner) — lecture/écriture du store local-config de
+   * l'hôte. Injecté par le harness headless : la page Configuration web
+   * (Compte & clés) passe par GET/PUT /api/v1/platform/llm-keys au lieu de
+   * l'IPC Electron.
+   */
+  llmKeys?: {
+    get: () => { openai: boolean; anthropic: boolean };
+    set: (provider: "openai" | "anthropic", key: string | null) => void;
+  };
   onLog?: (line: string) => void;
 }): BrandPlatformSurface {
   const log =
@@ -712,6 +724,65 @@ export function mountBrandPlatformSurface(opts: {
       .filter((u) => u.kind === "ai" && u.active).length;
     return c.json({ ...health, ai_collaborators: aiCollaborators });
   });
+
+  /* Clés IA BYOK (owner, headless) — miroir HTTP de l'IPC setLlmKey desktop.
+   * `active` = env process courant (l'assistant tourne dans CE process). */
+  if (opts.llmKeys) {
+    const llmKeysBridge = opts.llmKeys;
+    const llmKeysPayload = () => {
+      const stored = llmKeysBridge.get();
+      const openaiActive = Boolean((process.env.OPENAI_API_KEY || "").trim());
+      const anthropicActive = Boolean(
+        (process.env.ANTHROPIC_API_KEY || "").trim(),
+      );
+      return {
+        ok: true,
+        openai: { stored: stored.openai, active: openaiActive },
+        anthropic: { stored: stored.anthropic, active: anthropicActive },
+        assistantReady: openaiActive,
+      };
+    };
+    app.get("/api/v1/platform/llm-keys", async (c) => {
+      const session = await sessionFromContext(c);
+      if (
+        !session ||
+        !sessionActorIsOwner(session) ||
+        sessionIsImpersonating(session)
+      ) {
+        return c.json({ error: "Réservé au compte principal" }, 403);
+      }
+      return c.json(llmKeysPayload());
+    });
+    app.put("/api/v1/platform/llm-keys", async (c) => {
+      const session = await sessionFromContext(c);
+      if (
+        !session ||
+        !sessionActorIsOwner(session) ||
+        sessionIsImpersonating(session)
+      ) {
+        return c.json({ error: "Réservé au compte principal" }, 403);
+      }
+      const body = (await c.req.json().catch(() => ({}))) as {
+        provider?: string;
+        key?: string | null;
+      };
+      const provider = body.provider;
+      if (provider !== "openai" && provider !== "anthropic") {
+        return c.json({ error: "provider openai|anthropic requis" }, 400);
+      }
+      const key = typeof body.key === "string" ? body.key.trim() : null;
+      try {
+        llmKeysBridge.set(provider, key || null);
+      } catch (err) {
+        return c.json(
+          { error: err instanceof Error ? err.message : String(err) },
+          500,
+        );
+      }
+      log(`llm-keys: clé ${provider} ${key ? "enregistrée" : "supprimée"} (owner)`);
+      return c.json(llmKeysPayload());
+    });
+  }
 
   /* ACL plugins cockpit — liste vide tant que Product Hub n'est pas branché
    * ici (évite le fallthrough UI qui timeoute sur /cockpit/plugin-acl). */

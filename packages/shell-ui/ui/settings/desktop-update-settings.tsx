@@ -13,6 +13,7 @@ import { ArrowUpCircle, Loader2, RefreshCw } from "lucide-react";
 import { Button } from "../primitives/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../primitives/card";
 import type { DesktopUpdateStatus } from "../desktop-types";
+import { ServerVersionCard } from "./server-mode-cards";
 
 function labelFor(status: DesktopUpdateStatus | null): string {
   if (!status) return "…";
@@ -59,7 +60,8 @@ export function DesktopUpdateSettings() {
     return () => unsub?.();
   }, [refresh]);
 
-  if (!desktop) return null;
+  // Web (serveur headless) : version d'image — updates gérées par la flotte.
+  if (!desktop) return <ServerVersionCard />;
 
   const canInstall =
     status?.state === "available" ||

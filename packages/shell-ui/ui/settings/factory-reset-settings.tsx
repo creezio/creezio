@@ -13,6 +13,7 @@ import { toast } from "sonner";
 import { Button } from "../primitives/button";
 import { Input } from "../primitives/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../primitives/card";
+import { ServerOperatorNotice } from "./server-mode-cards";
 
 export function FactoryResetSettings() {
   const [confirm, setConfirm] = useState("");
@@ -23,7 +24,9 @@ export function FactoryResetSettings() {
     setDesktop(Boolean(getShellDesktopApi()?.factoryReset));
   }, []);
 
-  if (!desktop) return null;
+  // Web (serveur headless) : wipe = opération opérateur (backup + recreate).
+  if (!desktop)
+    return <ServerOperatorNotice label="la remise à zéro usine" />;
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();

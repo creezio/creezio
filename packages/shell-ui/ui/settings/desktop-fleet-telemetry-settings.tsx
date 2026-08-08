@@ -12,6 +12,7 @@ import { Loader2, Shield } from "lucide-react";
 import { Button } from "../primitives/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../primitives/card";
 import { Label } from "../primitives/label";
+import { ServerOperatorNotice } from "./server-mode-cards";
 
 type FleetScopeId =
   | "heartbeat"
@@ -161,7 +162,8 @@ export function DesktopFleetTelemetrySettings() {
     await apply({ scopes: { [id]: value } });
   }
 
-  if (!desktop) return null;
+  // Web (serveur headless) : consentement posé par l'opérateur de l'instance.
+  if (!desktop) return <ServerOperatorNotice label="la télémétrie support" />;
   if (loading || !cfg) {
     return (
       <Card>

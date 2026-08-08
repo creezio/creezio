@@ -16,6 +16,7 @@ import { Loader2, Network, Server } from "lucide-react";
 import { Button } from "../primitives/button";
 import { Input } from "../primitives/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../primitives/card";
+import { ServerInstanceCard } from "./server-mode-cards";
 
 type ConnProfile = {
   mode: "local" | "remote";
@@ -53,7 +54,8 @@ export function DesktopConnectionSettings() {
     void refresh();
   }, [refresh]);
 
-  if (!desktop) return null;
+  // Web (serveur headless) : pas de profil Héberger/Rejoindre — carte serveur.
+  if (!desktop) return <ServerInstanceCard />;
 
   async function onTest() {
     const api = getShellDesktopApi();

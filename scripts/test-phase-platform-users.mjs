@@ -51,10 +51,25 @@ await migrateBrandCredentialsToKit({
 });
 
 let baseUrl = "";
+/** Pont BYOK factice (miroir du store local-config du harness headless). */
+const llmStore = { openai: null, anthropic: null };
 const surface = mountBrandPlatformSurface({
   brandId: "gatebrand",
   coreDbPath: process.env.CREEZIO_CORE_DB_PATH,
   baseUrl: () => baseUrl,
+  llmKeys: {
+    get: () => ({
+      openai: Boolean(llmStore.openai),
+      anthropic: Boolean(llmStore.anthropic),
+    }),
+    set: (provider, key) => {
+      llmStore[provider] = key;
+      const envKey =
+        provider === "openai" ? "OPENAI_API_KEY" : "ANTHROPIC_API_KEY";
+      if (key) process.env[envKey] = key;
+      else delete process.env[envKey];
+    },
+  },
 });
 
 configureTasksBrand({
@@ -215,7 +230,41 @@ assert.equal(
   "compte désactivé → login refusé",
 );
 
+/* 9. Clés IA BYOK headless : owner-only, write-through env process */
+delete process.env.OPENAI_API_KEY;
+const llmAnon = await api("GET", "/api/v1/platform/llm-keys", "");
+assert.equal(llmAnon.status, 403, "llm-keys sans session → 403");
+const llmForbidden = await api(
+  "GET",
+  "/api/v1/platform/llm-keys",
+  collab.cookie,
+);
+assert.equal(llmForbidden.status, 403, "llm-keys collaborateur → 403");
+const llmEmpty = await api("GET", "/api/v1/platform/llm-keys", owner.cookie);
+assert.equal(llmEmpty.status, 200, "llm-keys owner 200");
+assert.equal(llmEmpty.body.openai.stored, false, "openai non stockée");
+assert.equal(llmEmpty.body.assistantReady, false, "assistant pas prêt");
+const llmSet = await api("PUT", "/api/v1/platform/llm-keys", owner.cookie, {
+  provider: "openai",
+  key: "sk-gate-test-123",
+});
+assert.equal(llmSet.status, 200, "PUT llm-keys openai");
+assert.equal(llmSet.body.openai.stored, true, "openai stockée");
+assert.equal(llmSet.body.openai.active, true, "openai active (env hydraté)");
+assert.equal(llmSet.body.assistantReady, true, "assistant prêt après PUT");
+assert.equal(process.env.OPENAI_API_KEY, "sk-gate-test-123", "env process posé");
+const llmClear = await api("PUT", "/api/v1/platform/llm-keys", owner.cookie, {
+  provider: "openai",
+  key: null,
+});
+assert.equal(llmClear.body.openai.stored, false, "openai supprimée");
+assert.equal(process.env.OPENAI_API_KEY, undefined, "env process nettoyé");
+const llmBad = await api("PUT", "/api/v1/platform/llm-keys", owner.cookie, {
+  provider: "pigeon",
+});
+assert.equal(llmBad.status, 400, "provider inconnu → 400");
+
 surface.close();
 server.close();
 fs.rmSync(tmp, { recursive: true, force: true });
-console.log("OK test-phase-platform-users — référentiel users unique (alias /api/v1/users, credentials kit, meta ACL, reset, désactivation)");
+console.log("OK test-phase-platform-users — référentiel users unique (alias /api/v1/users, credentials kit, meta ACL, reset, désactivation, llm-keys owner)");

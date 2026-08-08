@@ -17,6 +17,7 @@ import { KeyRound, Loader2 } from "lucide-react";
 import { Button } from "../primitives/button";
 import { Input } from "../primitives/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../primitives/card";
+import { ServerLlmKeysCard } from "./server-mode-cards";
 
 type Provider = "openai" | "anthropic";
 
@@ -62,7 +63,8 @@ export function DesktopLlmKeys() {
     return () => unsub?.();
   }, []);
 
-  if (!desktop) return null;
+  // Web (serveur headless) : GET/PUT /api/v1/platform/llm-keys (owner).
+  if (!desktop) return <ServerLlmKeysCard />;
 
   async function save(provider: Provider) {
     const api = getShellDesktopApi();

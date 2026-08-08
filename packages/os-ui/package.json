@@ -36,6 +36,7 @@
     "materialize": "node ./scripts/materialize.mjs"
   },
   "dependencies": {
+    "@creezio/mails": "0.1.0",
     "@creezio/shell-ui": "0.1.0"
   },
   "peerDependencies": {
