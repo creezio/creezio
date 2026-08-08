@@ -72,7 +72,7 @@ test("mails.inbox — schema ready + inbound", () => {
   }
 });
 
-test("mails.file-sink — queueSend écrit un JSON local", async () => {
+test("mails.file-sink — draft → outbox → JSON local (v2)", async () => {
   mails.resetMailsConfigForTests();
   mails.configureMails({ rootDomain: "example.test" });
 
@@ -81,9 +81,6 @@ test("mails.file-sink — queueSend écrit un JSON local", async () => {
   const outDir = path.join(tmp, "outbox");
   try {
     const store = mails.createSqliteMailsStore({ coreDbPath: coreDb });
-    const provider = mails.createFileSinkMailProvider({ outDir });
-    store.registerProvider(provider);
-    assert.equal(store.defaultProviderId, mails.FILE_SINK_PROVIDER_ID);
 
     const draft = store.createDraft({
       userId: "user-1",
@@ -91,18 +88,29 @@ test("mails.file-sink — queueSend écrit un JSON local", async () => {
       subject: "Probe sortant",
       body: "Contenu probe",
     });
-    const sent = await store.queueSend(draft.id, "user-1");
+    const queued = store.sendDraft(draft.id, "user-1");
+    assert.equal(queued.status, "queued");
+
+    const worker = mails.startMailOutboxWorker({
+      store,
+      resolveTransport: () =>
+        mails.createFileSinkMailTransport({ outDir }),
+      manual: true,
+    });
+    await worker.drainOnce();
+    worker.stop();
+
+    const sent = store.get(draft.id);
     assert.equal(sent.status, "sent");
-    assert.equal(sent.providerId, mails.FILE_SINK_PROVIDER_ID);
+    assert.equal(sent.folder, "sent");
 
     const files = fs.readdirSync(outDir).filter((f) => f.endsWith(".json"));
     assert.equal(files.length, 1);
     const payload = JSON.parse(
       fs.readFileSync(path.join(outDir, files[0]), "utf8"),
     );
-    assert.equal(payload.to, "dest@example.test");
+    assert.deepEqual(payload.to, ["dest@example.test"]);
     assert.equal(payload.subject, "Probe sortant");
-    assert.equal(payload.providerId, mails.FILE_SINK_PROVIDER_ID);
 
     store.close();
   } finally {

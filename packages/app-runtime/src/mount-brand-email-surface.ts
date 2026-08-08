@@ -1,9 +1,11 @@
 /**
- * Surface Hono `/api/v1/email/*` — inbound Worker CF + inbox store kit.
+ * Surface Hono `/api/v1/email/*` — inbound Worker CF + inbox/outbox kit.
  * Montée par listenBrandOsHttp (desktop + harness).
  *
  * Auth : session cookie/Bearer requise pour l'inbox (lecture/écriture).
- * `/inbound` reste protégé par secret partagé (Worker Cloudflare).
+ * `/inbound` reste protégé par secret partagé (Worker Cloudflare) ;
+ * `/webhooks/*` par signature (Svix Resend). Les routes owner-only
+ * (`/settings*`, `/accounts*`) exigent une session owner.
  */
 import { Hono } from "hono";
 import { getCookie } from "hono/cookie";
@@ -14,6 +16,7 @@ import {
 } from "@creezio/auth";
 import {
   createEmailInboxRoutes,
+  type MailRouteActor,
   type SqliteMailsStore,
 } from "@creezio/mails";
 
@@ -21,12 +24,18 @@ export type BrandEmailSurface = {
   app: Hono;
 };
 
-async function sessionFromEmailContext(c: {
+type HeaderContext = {
   req: {
     header: (name: string) => string | undefined;
   };
-}): Promise<boolean> {
-  if (isAuthDisabled()) return true;
+};
+
+async function sessionFromEmailContext(
+  c: HeaderContext,
+): Promise<{ sub: string; role: string } | null> {
+  if (isAuthDisabled()) {
+    return { sub: "auth-disabled", role: "owner" };
+  }
   let token = "";
   try {
     const cookieName = getAuthConfig().cookieName;
@@ -40,9 +49,18 @@ async function sessionFromEmailContext(c: {
       token = authz.slice(7).trim();
     }
   }
-  if (!token) return false;
+  if (!token) return null;
   const session = await verifySessionToken(token);
-  return Boolean(session?.sub);
+  if (!session?.sub) return null;
+  return { sub: session.sub, role: session.role || "collaborator" };
+}
+
+function isPublicEmailPath(path: string): boolean {
+  return (
+    path === "/inbound" ||
+    path.endsWith("/inbound") ||
+    path.includes("/webhooks/")
+  );
 }
 
 export function mountBrandEmailSurface(opts?: {
@@ -55,7 +73,7 @@ export function mountBrandEmailSurface(opts?: {
   // Middleware AVANT les routes (Hono n'enveloppe pas les routes déjà posées).
   inbox.use("*", async (c, next) => {
     const path = c.req.path || "";
-    if (path === "/inbound" || path.endsWith("/inbound")) {
+    if (isPublicEmailPath(path)) {
       return next();
     }
     if (!(await sessionFromEmailContext(c))) {
@@ -64,11 +82,20 @@ export function mountBrandEmailSurface(opts?: {
     return next();
   });
 
+  const resolveActor = async (c: HeaderContext): Promise<MailRouteActor> => {
+    const session = await sessionFromEmailContext(c);
+    return {
+      userId: session?.sub ?? null,
+      owner: session?.role === "owner",
+    };
+  };
+
   inbox.route(
     "/",
-    createEmailInboxRoutes(
-      opts?.getStore ? { getStore: opts.getStore } : {},
-    ),
+    createEmailInboxRoutes({
+      ...(opts?.getStore ? { getStore: opts.getStore } : {}),
+      resolveActor,
+    }),
   );
 
   app.route("/api/v1/email", inbox);

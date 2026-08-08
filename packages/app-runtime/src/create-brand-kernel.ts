@@ -39,18 +39,26 @@ import {
   type SqliteTasksStore,
 } from "@creezio/tasks";
 import {
-  FILE_SINK_PROVIDER_ID,
   PLATFORM_MAILS_CORE_SQL,
-  createFileSinkMailProvider,
+  configureMailSecretBridge,
   createMailsApiMount,
   createSqliteMailsStore,
+  startImapSyncScheduler,
+  startMailOutboxWorker,
+  type ImapSyncScheduler,
+  type MailOutboxWorker,
   type SqliteMailsStore,
 } from "@creezio/mails";
 import {
   SUPPORT_CORE_SQL,
   createSupportServerMount,
 } from "@creezio/support";
-import { INTEGRATIONS_CORE_SQL } from "@creezio/integrations";
+import {
+  INTEGRATIONS_CORE_SQL,
+  createSqliteIntegrationsStore,
+  parseIntegrationReference,
+  type SqliteIntegrationsStore,
+} from "@creezio/integrations";
 import type { BrandKernelHandle } from "./types.js";
 
 export type CreateBrandKernelOptions = {
@@ -88,18 +96,11 @@ function platformExtras(): SqliteMigration[] {
 function mountPlatformServices(
   api: ApiKernel,
   runtime: SqliteRuntime,
-  userDataDir: string,
 ): Pick<BrandKernelBoot, "tasks" | "mails" | "assistant"> {
   const coreDbPath = runtime.paths.core;
   const assistant = createSqliteAssistantStore({ coreDbPath });
   const tasks = createSqliteTasksStore({ coreDbPath });
-  const mailOutDir = path.join(userDataDir, "mail-outbox");
-  fs.mkdirSync(mailOutDir, { recursive: true });
-  const mails = createSqliteMailsStore({
-    coreDbPath,
-    defaultProviderId: FILE_SINK_PROVIDER_ID,
-  });
-  mails.registerProvider(createFileSinkMailProvider({ outDir: mailOutDir }));
+  const mails = createSqliteMailsStore({ coreDbPath });
 
   api.registerPlatformApi("platform-tasks", createTasksApiMount(tasks));
   api.registerPlatformApi("platform-mails", createMailsApiMount(mails));
@@ -107,6 +108,36 @@ function mountPlatformServices(
   api.registerPlatformApi("platform-support", createSupportServerMount());
 
   return { tasks, mails, assistant };
+}
+
+/**
+ * Pont secrets mails → store intégrations (AES-256-GCM au repos).
+ * `integration://<slug>` résolu côté kernel ; le store d'intégrations est
+ * lazy (même core.db).
+ */
+function wireMailSecretBridge(
+  getIntegrations: () => SqliteIntegrationsStore,
+): void {
+  configureMailSecretBridge({
+    resolve(reference) {
+      const slug = parseIntegrationReference(reference);
+      if (!slug) return null;
+      try {
+        return getIntegrations().resolveBySlug(slug)?.secret ?? null;
+      } catch {
+        return null;
+      }
+    },
+    store(input) {
+      const created = getIntegrations().create({
+        provider: input.provider,
+        label: input.label,
+        secret: input.secret,
+        meta: input.meta,
+      });
+      return created.reference;
+    },
+  });
 }
 
 export function createBrandKernel(
@@ -180,8 +211,36 @@ export function createBrandKernel(
   });
 
   let platform: Pick<BrandKernelBoot, "tasks" | "mails" | "assistant"> = {};
+  let outboxWorker: MailOutboxWorker | null = null;
+  let imapScheduler: ImapSyncScheduler | null = null;
+  let integrations: SqliteIntegrationsStore | null = null;
   if (enablePlatform) {
-    platform = mountPlatformServices(api, runtime, opts.userDataDir);
+    platform = mountPlatformServices(api, runtime);
+    const getIntegrations = (): SqliteIntegrationsStore => {
+      if (!integrations) {
+        integrations = createSqliteIntegrationsStore({
+          coreDbPath: runtime.paths.core,
+        });
+      }
+      return integrations;
+    };
+    // Secrets mails (`integration://…`) résolus via le store intégrations.
+    wireMailSecretBridge(getIntegrations);
+    // Worker outbox — côté kernel uniquement (jamais dans le plane Next :
+    // pas de double envoi). Opt-out : CREEZIO_MAIL_OUTBOX=0.
+    if (platform.mails && process.env.CREEZIO_MAIL_OUTBOX !== "0") {
+      outboxWorker = startMailOutboxWorker({
+        store: platform.mails,
+        log: (line) => console.log(`[creezio-mails] ${line}`),
+      });
+    }
+    // Sync IMAP par poll (comptes en base). Opt-out : CREEZIO_MAIL_IMAP=0.
+    if (platform.mails && process.env.CREEZIO_MAIL_IMAP !== "0") {
+      imapScheduler = startImapSyncScheduler({
+        store: platform.mails,
+        log: (line) => console.log(`[creezio-mails] ${line}`),
+      });
+    }
   }
 
   opts.registerModuleApi(api);
@@ -195,9 +254,12 @@ export function createBrandKernel(
     getPluginAclPolicy: (pluginId: string) =>
       getProductHub().getAclPolicy(pluginId),
     close: () => {
+      outboxWorker?.stop();
+      imapScheduler?.stop();
       platform.tasks?.close();
       platform.mails?.close();
       platform.assistant?.close();
+      integrations?.close();
       productHub?.close();
       runtime.close();
     },

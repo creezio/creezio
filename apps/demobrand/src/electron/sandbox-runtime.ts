@@ -37,9 +37,7 @@ import {
   type SqliteTasksStore,
 } from "@creezio/tasks";
 import {
-  FILE_SINK_PROVIDER_ID,
   PLATFORM_MAILS_CORE_SQL,
-  createFileSinkMailProvider,
   createMailsApiMount,
   createSqliteMailsStore,
   type SqliteMailsStore,
@@ -368,12 +366,9 @@ export function createDemobrandSandbox(opts?: {
     coreDbPath: runtime.paths.core,
   });
 
-  const mailOutDir = path.join(userDataRoot, "mail-outbox");
   const mails = createSqliteMailsStore({
     coreDbPath: runtime.paths.core,
-    defaultProviderId: FILE_SINK_PROVIDER_ID,
   });
-  mails.registerProvider(createFileSinkMailProvider({ outDir: mailOutDir }));
 
   const observability = createSqliteObservabilityStore({
     coreDbPath: runtime.paths.core,

@@ -1,5 +1,10 @@
+/**
+ * ApiMount `platform-mails` — canal programmatique interne (modules marque).
+ * v2 : réaligné sur l'outbox durable (`enqueue` / `sendDraft`) — même
+ * surface (list/draft/send), plus `POST /send` direct.
+ */
 import type { ApiMount } from "@creezio/api-kernel";
-import type { PlatformMailsStore } from "./types.js";
+import type { SqliteMailsStore } from "./sqlite-store.js";
 
 function actorFromReq(req: {
   headers?: Record<string, string | string[] | undefined>;
@@ -12,7 +17,7 @@ function actorFromReq(req: {
   return null;
 }
 
-export function createMailsApiMount(store: PlatformMailsStore): ApiMount {
+export function createMailsApiMount(store: SqliteMailsStore): ApiMount {
   return {
     handle: async ({ req, subPath }) => {
       const method = req.method.toUpperCase();
@@ -27,28 +32,67 @@ export function createMailsApiMount(store: PlatformMailsStore): ApiMount {
 
       if ((subPath === "" || subPath === "draft") && method === "POST") {
         const body = (req.body || {}) as {
-          to?: string;
+          to?: string | string[];
+          cc?: string | string[];
+          bcc?: string | string[];
           subject?: string;
           body?: string;
+          text?: string;
+          html?: string;
         };
         const mail = store.createDraft({
           userId,
-          to: String(body.to || ""),
+          to: body.to,
+          cc: body.cc,
+          bcc: body.bcc,
           subject: String(body.subject || ""),
-          body: body.body,
+          text: body.text ?? body.body ?? null,
+          html: body.html ?? null,
         });
         return { status: 201, body: { ok: true, mail } };
+      }
+
+      // Enqueue direct (jamais bloquant) — modules marque.
+      if (subPath === "send" && method === "POST") {
+        const body = (req.body || {}) as {
+          to?: string | string[];
+          cc?: string | string[];
+          bcc?: string | string[];
+          replyTo?: string;
+          subject?: string;
+          text?: string;
+          html?: string;
+          inReplyTo?: string;
+        };
+        try {
+          const mail = store.enqueue({
+            userId,
+            to: body.to || [],
+            cc: body.cc,
+            bcc: body.bcc,
+            replyTo: body.replyTo,
+            subject: String(body.subject || ""),
+            text: body.text ?? null,
+            html: body.html ?? null,
+            inReplyTo: body.inReplyTo ?? null,
+          });
+          return { status: 202, body: { ok: true, mail } };
+        } catch (e) {
+          const msg = e instanceof Error ? e.message : "error";
+          return { status: 422, body: { ok: false, error: msg } };
+        }
       }
 
       const sendMatch = subPath.match(/^([0-9a-f-]{36})\/send$/i);
       if (sendMatch && method === "POST") {
         try {
-          const mail = await store.queueSend(sendMatch[1]!, userId);
-          return { status: 200, body: { ok: true, mail } };
+          const mail = store.sendDraft(sendMatch[1]!, userId);
+          return { status: 202, body: { ok: true, mail } };
         } catch (e) {
           const msg = e instanceof Error ? e.message : "error";
           return {
-            status: msg === "forbidden" ? 403 : 404,
+            status:
+              msg === "forbidden" ? 403 : msg === "not_found" ? 404 : 422,
             body: { ok: false, error: msg },
           };
         }
