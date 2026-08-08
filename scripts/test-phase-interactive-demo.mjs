@@ -352,6 +352,216 @@ test("interactive-demo : preferences PUT upsert + GET par user", async () => {
   assert.deepEqual(other.body.answers, {});
 });
 
+test("interactive-demo : kind waitFor (validation + mount PUT)", async () => {
+  const mod = await loadDist();
+  const { validateDemoScenario } = mod;
+
+  const scenarioWith = (step) => ({ id: "w", title: "WaitFor", steps: [step] });
+
+  // Valide : target seul, url seul, target+url+absent.
+  assert.deepEqual(
+    validateDemoScenario(
+      scenarioWith({ id: "w1", kind: "waitFor", target: { selector: "main h1" } }),
+    ),
+    [],
+  );
+  assert.deepEqual(
+    validateDemoScenario(scenarioWith({ id: "w2", kind: "waitFor", url: "/taches" })),
+    [],
+  );
+  assert.deepEqual(
+    validateDemoScenario(
+      scenarioWith({
+        id: "w3",
+        kind: "waitFor",
+        target: ".spinner",
+        absent: true,
+        url: "/mails",
+        timeoutMs: 12000,
+      }),
+    ),
+    [],
+  );
+
+  // Invalide : ni target ni url ; url ne commençant pas par « / » ; cible vide.
+  assert.ok(
+    validateDemoScenario(scenarioWith({ id: "w", kind: "waitFor" })).includes(
+      "etape_0_cible_ou_url_requise",
+    ),
+  );
+  assert.ok(
+    validateDemoScenario(
+      scenarioWith({ id: "w", kind: "waitFor", url: "taches" }),
+    ).includes("etape_0_url_invalide"),
+  );
+  assert.ok(
+    validateDemoScenario(
+      scenarioWith({ id: "w", kind: "waitFor", target: {} }),
+    ).includes("etape_0_cible_invalide"),
+  );
+
+  // Mount : PUT accepte un scénario avec waitFor, rejette waitFor vide (400).
+  const db = await createDb(mod.interactiveDemoMigrations());
+  const mount = mod.createInteractiveDemoMount({ defaults: DEFAULTS });
+
+  const ok = await call(mount, {
+    method: "PUT",
+    subPath: "scenarios/tour",
+    db,
+    body: {
+      steps: [
+        { id: "intro", kind: "say", title: "Bienvenue" },
+        { id: "attend", kind: "waitFor", target: { selector: "main h1" }, url: "/taches" },
+      ],
+    },
+  });
+  assert.equal(ok.status, 200);
+  assert.equal(ok.body.scenario.steps[1].kind, "waitFor");
+
+  const rejected = await call(mount, {
+    method: "PUT",
+    subPath: "scenarios/tour",
+    db,
+    body: { steps: [{ id: "attend", kind: "waitFor" }] },
+  });
+  assert.equal(rejected.status, 400);
+  assert.equal(rejected.body.error, "scenario_invalide");
+  assert.ok(rejected.body.details.includes("etape_0_cible_ou_url_requise"));
+});
+
+test("interactive-demo : scénarios par rôle (validation + filtre + mount)", async () => {
+  const mod = await loadDist();
+  const { validateDemoScenario, scenarioMatchesRole, mergeDemoScenarios } = mod;
+  assert.equal(typeof scenarioMatchesRole, "function");
+
+  // Validation roles : tableau de strings non vides, sinon roles_invalide.
+  assert.deepEqual(validateDemoScenario({ ...DEFAULTS[0], roles: ["admin"] }), []);
+  assert.deepEqual(validateDemoScenario({ ...DEFAULTS[0], roles: [] }), []);
+  assert.ok(
+    validateDemoScenario({ ...DEFAULTS[0], roles: "admin" }).includes("roles_invalide"),
+  );
+  assert.ok(
+    validateDemoScenario({ ...DEFAULTS[0], roles: ["admin", 1] }).includes(
+      "roles_invalide",
+    ),
+  );
+
+  // Logique de filtre (celle du lanceur/autoStart d'InteractiveDemoRoot).
+  assert.equal(scenarioMatchesRole({}, null), true, "role null → pas de filtre");
+  assert.equal(scenarioMatchesRole({ roles: ["admin"] }, null), true);
+  assert.equal(scenarioMatchesRole({ roles: ["admin"] }, undefined), true);
+  assert.equal(scenarioMatchesRole({}, "membre"), true, "sans roles → tous");
+  assert.equal(scenarioMatchesRole({ roles: [] }, "membre"), true, "roles vide → tous");
+  assert.equal(scenarioMatchesRole({ roles: ["admin"] }, "membre"), false);
+  assert.equal(scenarioMatchesRole({ roles: ["admin", "membre"] }, "membre"), true);
+
+  // Merge : roles des défauts conservés, override roles = remplacement.
+  const merged = mergeDemoScenarios(
+    [{ ...DEFAULTS[0], roles: ["admin"] }],
+    [{ id: "tour", roles: ["membre"] }],
+  );
+  assert.deepEqual(merged[0].roles, ["membre"]);
+  const kept = mergeDemoScenarios([{ ...DEFAULTS[0], roles: ["admin"] }], []);
+  assert.deepEqual(kept[0].roles, ["admin"]);
+
+  // Mount : PUT roles valide → 200 (mergé), roles invalide → 400.
+  const db = await createDb(mod.interactiveDemoMigrations());
+  const mount = mod.createInteractiveDemoMount({ defaults: DEFAULTS });
+  const ok = await call(mount, {
+    method: "PUT",
+    subPath: "scenarios/tour",
+    db,
+    body: { roles: ["admin"] },
+  });
+  assert.equal(ok.status, 200);
+  assert.deepEqual(ok.body.scenario.roles, ["admin"]);
+  const bad = await call(mount, {
+    method: "PUT",
+    subPath: "scenarios/tour",
+    db,
+    body: { roles: "admin" },
+  });
+  assert.equal(bad.status, 400);
+  assert.ok(bad.body.details.includes("roles_invalide"));
+});
+
+test("interactive-demo : osFeatureChapters + genericOsTourScenario recomposé", async () => {
+  const mod = await loadDist();
+  const { osFeatureChapters, genericOsTourScenario, validateDemoScenario } = mod;
+  assert.equal(typeof osFeatureChapters, "function");
+
+  const base = osFeatureChapters();
+  const baseExplicit = osFeatureChapters({ isAdmin: false });
+  const admin = osFeatureChapters({ isAdmin: true });
+
+  assert.equal(base.length, baseExplicit.length, "défaut = isAdmin:false");
+  assert.ok(
+    admin.length > base.length,
+    "isAdmin:true ajoute les chapitres admin",
+  );
+
+  for (const step of admin) {
+    assert.match(step.id, /^os-/, `id préfixé os- : ${step.id}`);
+    if (step.kind !== "navigate") {
+      assert.equal(step.optional, true, `cible optional : ${step.id}`);
+    }
+  }
+  assert.equal(
+    new Set(admin.map((s) => s.id)).size,
+    admin.length,
+    "ids de chapitres uniques",
+  );
+
+  // Chapitres attendus (tous rôles + admin).
+  const ids = new Set(admin.map((s) => s.id));
+  for (const expected of [
+    "os-taches-nav",
+    "os-taches-carte",
+    "os-mails-nav",
+    "os-assistant-carte",
+    "os-parametres-nav",
+    "os-collaborateurs-nav",
+    "os-configuration-nav",
+    "os-analytics-nav",
+    "os-database-nav",
+    "os-plugins-nav",
+    "os-integrations-nav",
+    "os-api-nav",
+    "os-mcp-nav",
+    "os-request-logs-nav",
+  ]) {
+    assert.ok(ids.has(expected), `chapitre attendu : ${expected}`);
+  }
+  // Sous-pages admin : navigate (le groupe Admin peut être replié).
+  for (const s of admin) {
+    if (/^os-(analytics|database|plugins|integrations|api|mcp|request-logs)-nav$/.test(s.id)) {
+      assert.equal(s.kind, "navigate", `${s.id} doit être un navigate`);
+      assert.match(s.href, /^\/admin\//);
+    }
+  }
+
+  // Chapitres composables dans un scénario arbitraire : valides tels quels.
+  assert.deepEqual(
+    validateDemoScenario({ id: "x", title: "X", steps: admin }),
+    [],
+  );
+
+  // Scénario générique recomposé : rétrocompatible et valide.
+  const tour = genericOsTourScenario({ productName: "Demo" });
+  assert.equal(tour.id, "os-tour", "id de scénario inchangé");
+  assert.equal(tour.autoStart, false, "autoStart inchangé");
+  assert.deepEqual(validateDemoScenario(tour), []);
+  assert.equal(tour.steps[0].id, "welcome");
+  assert.equal(tour.steps[1].id, "sidebar");
+  assert.equal(tour.steps[tour.steps.length - 1].id, "end");
+  const tourIds = tour.steps.map((s) => s.id);
+  assert.ok(tourIds.includes("os-taches-nav"), "chapitres OS composés");
+  assert.ok(
+    !tourIds.some((id) => id.startsWith("os-analytics")),
+    "pas de chapitre admin dans le tour générique",
+  );
+});
+
 test("interactive-demo : surface UI (exports ./ui + CSS + composants)", () => {
   const pkg = JSON.parse(
     fs.readFileSync(path.join(PKG, "package.json"), "utf8"),

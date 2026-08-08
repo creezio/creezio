@@ -18,12 +18,13 @@ export type {
   DemoTypeStep,
   DemoScrollStep,
   DemoWaitStep,
+  DemoWaitForStep,
   DemoStep,
   DemoStepKind,
   DemoScenario,
   DemoScenarioOverride,
 } from "./types.js";
-export { validateDemoScenario } from "./types.js";
+export { validateDemoScenario, scenarioMatchesRole } from "./types.js";
 
 export {
   INTERACTIVE_DEMO_SCHEMA_SQL,
@@ -33,5 +34,5 @@ export {
 } from "./content.js";
 export type { InteractiveDemoMountOptions } from "./content.js";
 
-export { genericOsTourScenario } from "./generic.js";
-export type { GenericOsTourOptions } from "./generic.js";
+export { genericOsTourScenario, osFeatureChapters } from "./generic.js";
+export type { GenericOsTourOptions, OsFeatureChaptersOptions } from "./generic.js";

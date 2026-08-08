@@ -14,6 +14,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { DemoScenario } from "@creezio/interactive-demo";
+import { scenarioMatchesRole } from "@creezio/interactive-demo";
 import { DemoPlayer } from "./demo-player";
 
 export const INTERACTIVE_DEMO_EVENT = "creezio-interactive-demo";
@@ -33,6 +34,13 @@ export type InteractiveDemoRootProps = {
   navigate?: (href: string) => void;
   /** Clé utilisateur pour la persistance serveur du « déjà vu ». */
   userKey?: string | null;
+  /**
+   * Rôle de l'utilisateur courant : le lanceur et l'autoStart ne proposent
+   * que les scénarios sans `roles` ou dont `roles` inclut ce rôle.
+   * `null`/`undefined` = pas de filtrage (comportement historique). Un
+   * lancement explicite (`startInteractiveDemo(id)`) ignore ce filtre.
+   */
+  role?: string | null;
   /** Lancement auto du scénario `autoStart` à la première visite (défaut true). */
   autoStart?: boolean;
   /** Affiche le bouton flottant « Visite guidée » (défaut true). */
@@ -69,6 +77,7 @@ export function InteractiveDemoRoot({
   apiBase = "/api/v1/modules/interactive-demo",
   navigate,
   userKey,
+  role,
   autoStart = true,
   showLauncher = true,
   launcherLabel = "Visite guidée",
@@ -82,6 +91,8 @@ export function InteractiveDemoRoot({
   const serverSeenRef = useRef<Set<string>>(new Set());
 
   const enabled = scenarios.filter((s) => s.enabled !== false && s.steps.length > 0);
+  /* Lanceur + autoStart : scénarios visibles pour le rôle courant. */
+  const visible = enabled.filter((s) => scenarioMatchesRole(s, role));
 
   /* Chargement des scénarios + « déjà vu » serveur. */
   useEffect(() => {
@@ -148,12 +159,17 @@ export function InteractiveDemoRoot({
     (scenarioId?: string) => {
       setMenuOpen(false);
       const list = scenarios.filter((s) => s.enabled !== false && s.steps.length > 0);
-      const scenario = scenarioId
-        ? list.find((s) => s.id === scenarioId)
-        : list.find((s) => s.autoStart) ?? list[0];
+      // Id explicite (startInteractiveDemo) : lancement forcé, sans filtre rôle.
+      if (scenarioId) {
+        const scenario = list.find((s) => s.id === scenarioId);
+        if (scenario) setActive(scenario);
+        return;
+      }
+      const candidates = list.filter((s) => scenarioMatchesRole(s, role));
+      const scenario = candidates.find((s) => s.autoStart) ?? candidates[0];
       if (scenario) setActive(scenario);
     },
-    [scenarios],
+    [scenarios, role],
   );
 
   /* Déclenchement programmatique. */
@@ -169,7 +185,7 @@ export function InteractiveDemoRoot({
   /* Lancement auto à la première visite. */
   useEffect(() => {
     if (!autoStart || autoStartedRef.current || active) return;
-    const candidate = enabled.find((s) => s.autoStart);
+    const candidate = visible.find((s) => s.autoStart);
     if (!candidate) return;
     if (hasSeenLocally(candidate.id) || serverSeenRef.current.has(candidate.id)) {
       return;
@@ -178,7 +194,7 @@ export function InteractiveDemoRoot({
     const timer = setTimeout(() => setActive(candidate), 1400);
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [autoStart, active, scenarios]);
+  }, [autoStart, active, scenarios, role]);
 
   const stop = useCallback(
     (finished: boolean) => {
@@ -201,13 +217,13 @@ export function InteractiveDemoRoot({
     );
   }
 
-  if (!showLauncher || enabled.length === 0) return null;
+  if (!showLauncher || visible.length === 0) return null;
 
   return (
     <div data-creezio-demo-ui="1">
-      {menuOpen && enabled.length > 1 ? (
+      {menuOpen && visible.length > 1 ? (
         <div className="creezio-demo-launcher-menu">
-          {enabled.map((s) => (
+          {visible.map((s) => (
             <button
               key={s.id}
               type="button"
@@ -226,7 +242,7 @@ export function InteractiveDemoRoot({
         type="button"
         className="creezio-demo-launcher"
         onClick={() =>
-          enabled.length > 1 ? setMenuOpen((v) => !v) : start(enabled[0]!.id)
+          visible.length > 1 ? setMenuOpen((v) => !v) : start(visible[0]!.id)
         }
         aria-label={launcherLabel}
       >

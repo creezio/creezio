@@ -86,6 +86,31 @@ export type DemoScrollStep = DemoStepBase & {
 /** Pause simple. */
 export type DemoWaitStep = DemoStepBase & { kind: "wait"; ms: number };
 
+/**
+ * Attente active d'une condition de page (polling, même cadence que la
+ * résolution de cible) :
+ *
+ * - `target` posé (sans `absent`) → attendre que la cible EXISTE ;
+ * - `target` + `absent: true` → attendre que la cible N'EXISTE PLUS ;
+ * - `url` posé → attendre que `location.pathname` commence par `url` ;
+ * - `target` + `url` → ET logique des deux conditions.
+ *
+ * Au moins un des deux critères (`target` ou `url`) est requis. Timeout
+ * défaut 8000 ms ; au timeout, même politique que la cible introuvable
+ * (`optional !== false` → étape sautée avec note ; `optional: false` →
+ * démo interrompue). Étape silencieuse par défaut : la carte n'est
+ * affichée pendant l'attente que si `title`/`body` sont posés.
+ */
+export type DemoWaitForStep = DemoStepBase & {
+  kind: "waitFor";
+  /** Cible attendue (présente, ou absente si `absent: true`). */
+  target?: DemoTarget;
+  /** Inverse la condition cible : attendre la disparition. */
+  absent?: boolean;
+  /** Préfixe attendu de `location.pathname` (doit commencer par `/`). */
+  url?: string;
+};
+
 export type DemoStep =
   | DemoSayStep
   | DemoNavigateStep
@@ -93,7 +118,8 @@ export type DemoStep =
   | DemoClickStep
   | DemoTypeStep
   | DemoScrollStep
-  | DemoWaitStep;
+  | DemoWaitStep
+  | DemoWaitForStep;
 
 export type DemoStepKind = DemoStep["kind"];
 
@@ -113,6 +139,12 @@ export type DemoScenario = {
    * persisté par utilisateur (preferences + localStorage).
    */
   autoStart?: boolean;
+  /**
+   * Rôles autorisés à voir le scénario dans le lanceur et l'autoStart.
+   * Absent ou vide = visible pour tous. Un lancement explicite
+   * (`startInteractiveDemo(id)`) ignore ce filtre.
+   */
+  roles?: string[];
   steps: DemoStep[];
 };
 
@@ -133,7 +165,23 @@ const STEP_KINDS: readonly DemoStepKind[] = [
   "type",
   "scroll",
   "wait",
+  "waitFor",
 ];
+
+/**
+ * Filtre par rôle du lanceur et de l'autoStart : un scénario sans `roles`
+ * (ou avec un tableau vide) est visible pour tous ; `role` null/undefined
+ * = pas de filtrage (comportement historique).
+ */
+export function scenarioMatchesRole(
+  scenario: Pick<DemoScenario, "roles">,
+  role?: string | null,
+): boolean {
+  if (role == null) return true;
+  const roles = scenario.roles;
+  if (!Array.isArray(roles) || roles.length === 0) return true;
+  return roles.includes(role);
+}
 
 function isValidTarget(t: unknown): boolean {
   if (typeof t === "string") return t.trim().length > 0;
@@ -156,6 +204,13 @@ export function validateDemoScenario(scenario: unknown): string[] {
   const s = scenario as Partial<DemoScenario>;
   if (typeof s.id !== "string" || !s.id.trim()) errors.push("id_requis");
   if (typeof s.title !== "string" || !s.title.trim()) errors.push("titre_requis");
+  if (
+    s.roles !== undefined &&
+    (!Array.isArray(s.roles) ||
+      s.roles.some((r) => typeof r !== "string" || !r.trim()))
+  ) {
+    errors.push("roles_invalide");
+  }
   if (!Array.isArray(s.steps) || s.steps.length === 0) {
     errors.push("etapes_requises");
     return errors;
@@ -202,6 +257,24 @@ export function validateDemoScenario(scenario: unknown): string[] {
       case "wait":
         if (typeof st.ms !== "number" || !(st.ms > 0)) errors.push(`${at}_ms_invalide`);
         break;
+      case "waitFor": {
+        const hasTarget = st.target !== undefined;
+        const hasUrl = st.url !== undefined;
+        if (!hasTarget && !hasUrl) {
+          errors.push(`${at}_cible_ou_url_requise`);
+          break;
+        }
+        if (hasTarget && !isValidTarget(st.target)) {
+          errors.push(`${at}_cible_invalide`);
+        }
+        if (
+          hasUrl &&
+          (typeof st.url !== "string" || !(st.url as string).startsWith("/"))
+        ) {
+          errors.push(`${at}_url_invalide`);
+        }
+        break;
+      }
     }
   });
   return errors;

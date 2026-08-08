@@ -20,6 +20,7 @@ import { getDemoCursor } from "./fake-cursor";
 import {
   findScrollableRoot,
   moveCursorToElement,
+  resolveDemoTarget,
   sleep,
   submitField,
   synthClick,
@@ -404,6 +405,44 @@ export function DemoPlayer({
         case "wait": {
           await sleep(step.ms);
           return !cancelled();
+        }
+
+        case "waitFor": {
+          clearStage();
+          // Step silencieux par défaut : carte seulement si title/body posés.
+          if (step.title || step.body) {
+            setCard({
+              kicker,
+              title: step.title,
+              body: step.body,
+              centered: true,
+              showNext: false,
+            });
+          }
+          const conditionMet = () => {
+            if (step.target) {
+              const el = resolveDemoTarget(step.target);
+              if (step.absent ? el !== null : el === null) return false;
+            }
+            if (step.url && !window.location.pathname.startsWith(step.url)) {
+              return false;
+            }
+            return true;
+          };
+          // Même cadence de polling que la résolution de cible (150 ms).
+          const deadline = Date.now() + Math.max(0, step.timeoutMs ?? 8000);
+          let met = conditionMet();
+          while (!met && Date.now() < deadline) {
+            if (cancelled()) return false;
+            await sleep(150);
+            met = conditionMet();
+          }
+          setCard(null);
+          if (cancelled()) return false;
+          if (!met) {
+            return (await missTarget(step)) === "skip";
+          }
+          return true;
         }
       }
     };

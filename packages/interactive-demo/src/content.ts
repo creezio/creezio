@@ -53,6 +53,7 @@ export function interactiveDemoMigrations(): SqliteMigration[] {
 function cloneScenario(s: DemoScenario): DemoScenario {
   return {
     ...s,
+    ...(Array.isArray(s.roles) ? { roles: [...s.roles] } : {}),
     steps: s.steps.map((st) => ({ ...st })),
   };
 }
@@ -89,6 +90,7 @@ export function mergeDemoScenarios(
       ...(typeof o.description === "string" ? { description: o.description } : {}),
       ...(typeof o.enabled === "boolean" ? { enabled: o.enabled } : {}),
       ...(typeof o.autoStart === "boolean" ? { autoStart: o.autoStart } : {}),
+      ...(Array.isArray(o.roles) ? { roles: [...o.roles] } : {}),
       ...(Array.isArray(o.steps) && o.steps.length > 0
         ? { steps: o.steps.map((st) => ({ ...st })) }
         : {}),
@@ -224,7 +226,7 @@ export function createInteractiveDemoMount(
                 body: { ok: false, error: "scenario_invalide", details: errors },
               };
             }
-          } else if (Array.isArray(override.steps)) {
+          } else if (Array.isArray(override.steps) || override.roles !== undefined) {
             const defaultScenario = defaults.find((s) => s.id === id)!;
             const errors = validateDemoScenario({
               ...defaultScenario,
