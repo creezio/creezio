@@ -37,6 +37,7 @@ const MAIL_ENV_KEYS = [
   "SMTP_FROM",
   "EMAIL_FROM",
   "CLOUDFLARE_EMAIL_API_TOKEN",
+  "CLOUDFLARE_EMAIL_TOKEN",
 ];
 
 function withCleanMailEnv(fn) {
@@ -126,6 +127,18 @@ test("transports.resolve — env MAIL_TRANSPORT + rétro-inférence", () =>
     r = mails.resolveMailTransport();
     assert.equal(r.kind, "resend");
     assert.equal(r.source, "inferred");
+
+    // Rétro-inférence Cloudflare : le token Email Sending suffit (infra par
+    // défaut du kit), sous ses deux noms historiques, et prime sur Resend.
+    delete process.env.RESEND_API_KEY;
+    for (const key of ["CLOUDFLARE_EMAIL_API_TOKEN", "CLOUDFLARE_EMAIL_TOKEN"]) {
+      process.env[key] = "cf_email_token_test";
+      r = mails.resolveMailTransport();
+      assert.equal(r.kind, "smtp", key);
+      assert.equal(r.source, "inferred", key);
+      assert.equal(r.preset, "cloudflare", key);
+      delete process.env[key];
+    }
   }));
 
 test("transports.resolve — réglage store prioritaire sur env", () =>
