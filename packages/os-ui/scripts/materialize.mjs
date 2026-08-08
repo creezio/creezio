@@ -57,6 +57,10 @@ function walkFiles(dir, base = dir, out = []) {
  * refuse le build (« two parallel pages that resolve to the same path »).
  * C'est le contrat « l'architecture accueille l'app » : une page métier
  * verbatim (ex. /onboarding, /parametres TF) prime toujours sur le wrapper.
+ *
+ * La possession est **exacte, pas récursive** : `/parametres` métier ne doit
+ * pas emporter l'enfant kit `/parametres/email` (chemins finaux différents,
+ * aucune collision Next) — sinon la page disparaît silencieusement du build.
  */
 function brandOwnedRouteDirs(appDir, files) {
   const owned = new Set();
@@ -98,11 +102,9 @@ function main() {
   const skipped = new Set();
   let copied = 0;
   for (const rel of files) {
-    const ownedDir = [...owned].find(
-      (d) => rel === d || rel.startsWith(`${d}${path.sep}`) || rel.startsWith(`${d}/`),
-    );
-    if (ownedDir) {
-      skipped.add(ownedDir);
+    const routeDir = path.dirname(rel).split(path.sep).join("/");
+    if (owned.has(routeDir)) {
+      skipped.add(routeDir);
       continue;
     }
     const from = path.join(ROUTES_SRC, rel);

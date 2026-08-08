@@ -68,7 +68,8 @@ Priorité de résolution (`resolveMailTransport`) :
 1. **Réglages instance** (`creezio_platform_mail_settings`, édités par la
    page `/parametres/email` — owner only) ;
 2. **Env** : `MAIL_TRANSPORT=cloudflare|smtp|resend|file-sink` ;
-3. **Rétro-inférence** : `SMTP_URL`/`SMTP_HOST` → smtp ; `RESEND_API_KEY`
+3. **Rétro-inférence** : `CLOUDFLARE_EMAIL_API_TOKEN` → cloudflare ;
+   `SMTP_URL`/`SMTP_HOST` → smtp ; `RESEND_API_KEY`
    → resend ;
 4. sinon : non configuré — les mails restent `queued` puis passent
    `failed_permanent` avec erreur explicite.
@@ -77,7 +78,7 @@ Variables par transport :
 
 | Transport | Variables |
 |---|---|
-| `cloudflare` | `CLOUDFLARE_EMAIL_TOKEN` (ou `SMTP_PASS`) — host/port/user imposés (`smtp.mx.cloudflare.net:587`) |
+| `cloudflare` | `CLOUDFLARE_EMAIL_API_TOKEN` / `CLOUDFLARE_EMAIL_TOKEN` (ou `SMTP_PASS`) — token API avec la permission **Email Sending: Edit**, domaine onboardé sous Email Service ; host/port/user imposés (`smtp.mx.cloudflare.net:465`, TLS implicite, user `api_token`) |
 | `smtp` | `SMTP_URL` **ou** `SMTP_HOST`/`SMTP_PORT`/`SMTP_SECURE`/`SMTP_USER`/`SMTP_PASS` |
 | `resend` | `RESEND_API_KEY`, opt. `RESEND_WEBHOOK_SECRET` (Svix), `MAIL_INBOUND_RESEND=1` (inbound opt-in) |
 | `file-sink` | `MAIL_FILE_SINK_DIR` (défaut `{data}/mails-out`) |

@@ -7,8 +7,9 @@
  *   2. Env `MAIL_TRANSPORT=resend|smtp|cloudflare|file-sink`
  *      (+ `RESEND_API_KEY` / `SMTP_*` / `MAIL_FILE_SINK_DIR`) —
  *      `cloudflare` = alias du preset SMTP Cloudflare ;
- *   3. Rétro-inférence : `SMTP_URL`/`SMTP_HOST` posés → smtp ;
- *      `RESEND_API_KEY` → resend ;
+ *   3. Rétro-inférence : `CLOUDFLARE_EMAIL_API_TOKEN` (ou
+ *      `CLOUDFLARE_EMAIL_TOKEN`) → preset cloudflare ; `SMTP_URL`/`SMTP_HOST`
+ *      posés → smtp ; `RESEND_API_KEY` → resend ;
  *   4. Défaut : non configuré (l'outbox marque `failed_permanent`
  *      `transport_unconfigured`).
  *
@@ -102,6 +103,18 @@ function envFrom(): string | null {
   );
 }
 
+/**
+ * Token Cloudflare Email Sending (permission « Email Sending: Edit »).
+ * Les deux noms historiques sont acceptés — la doc kit a longtemps cité
+ * `CLOUDFLARE_EMAIL_TOKEN` alors que le code ne lisait que `..._API_TOKEN`.
+ */
+function envCloudflareEmailToken(): string {
+  return (
+    (process.env.CLOUDFLARE_EMAIL_API_TOKEN || "").trim() ||
+    (process.env.CLOUDFLARE_EMAIL_TOKEN || "").trim()
+  );
+}
+
 function envSmtpConfig(preset: "cloudflare" | null): {
   url?: string;
   host?: string;
@@ -112,9 +125,7 @@ function envSmtpConfig(preset: "cloudflare" | null): {
 } {
   if (preset === "cloudflare") {
     return {
-      pass:
-        (process.env.SMTP_PASS || "").trim() ||
-        (process.env.CLOUDFLARE_EMAIL_API_TOKEN || "").trim(),
+      pass: (process.env.SMTP_PASS || "").trim() || envCloudflareEmailToken(),
     };
   }
   const url = (process.env.SMTP_URL || "").trim();
@@ -315,7 +326,16 @@ export function resolveMailTransport(opts?: {
     };
   }
 
-  // 3. Rétro-inférence (instances Docker existantes configurées SMTP_*).
+  // 3. Rétro-inférence. Cloudflare d'abord : c'est l'infra par défaut du kit
+  // (tunnel + Email Routing), un token Email Sending posé suffit à envoyer.
+  if (envCloudflareEmailToken()) {
+    return buildSmtp({
+      source: "inferred",
+      preset: "cloudflare",
+      from: envFrom(),
+      cfg: envSmtpConfig("cloudflare"),
+    });
+  }
   if ((process.env.SMTP_URL || "").trim() || (process.env.SMTP_HOST || "").trim()) {
     return buildSmtp({
       source: "inferred",
