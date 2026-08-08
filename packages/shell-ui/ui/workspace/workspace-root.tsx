@@ -74,6 +74,8 @@ export function WorkspaceRoot({
   banners?: ReactNode;
   sidebar?: ReactNode;
   footbar?: ReactNode;
+  /** Slot ADDITIF rendu après le chrome par défaut (assistant inclus) —
+   *  ne remplace PAS le widget assistant (pour le masquer : hideAssistantOn). */
   afterShell?: ReactNode;
   hideAssistantOn?: (pathname: string | null) => boolean;
 }) {
@@ -110,6 +112,10 @@ export function WorkspaceRoot({
   );
 
   const wrappedShell = wrapWorkspace ? wrapWorkspace(shell) : shell;
+  // afterShell est un slot ADDITIF : il s'insère APRÈS le chrome par défaut
+  // (bridge desktop, widget assistant, UiDriver, agent host). Le remplacer
+  // ferait disparaître l'assistant — régression prod constatée (TF3 y montait
+  // sa cloche d'alertes et perdait FAB + panneau chat).
   const defaultAfterShell = (
     <>
       <DesktopBridge />
@@ -120,6 +126,7 @@ export function WorkspaceRoot({
           <AiWorkspaceAgentHost />
         </>
       )}
+      {afterShell}
     </>
   );
 
@@ -131,7 +138,7 @@ export function WorkspaceRoot({
     <AssistantProvider>
       <TabWorkspaceProvider>
         {wrappedShell}
-        {afterShell === undefined ? defaultAfterShell : afterShell}
+        {defaultAfterShell}
       </TabWorkspaceProvider>
     </AssistantProvider>
   );

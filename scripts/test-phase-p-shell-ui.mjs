@@ -193,6 +193,21 @@ test("P-shell.4 injection configure* SoT", () => {
   assert.match(rootUi, /wrapWorkspace/);
   assert.match(rootUi, /banners/);
   assert.doesNotMatch(rootUi, /PanierProvider|ImpersonationBanner|from ["']@\//);
+  // afterShell = slot ADDITIF : le chrome par défaut (DesktopBridge,
+  // AssistantWidget, UiDriver, AiWorkspaceAgentHost) doit TOUJOURS être rendu,
+  // le slot s'y ajoute. Sémantique « remplacement » = assistant qui disparaît
+  // (régression prod TF3 : la cloche d'alertes montée via afterShell avait
+  // fait disparaître FAB + panneau chat).
+  assert.doesNotMatch(
+    rootUi,
+    /afterShell\s*===\s*undefined\s*\?\s*defaultAfterShell\s*:\s*afterShell/,
+    "afterShell ne doit JAMAIS remplacer le chrome par défaut (slot additif)",
+  );
+  assert.match(
+    rootUi,
+    /AiWorkspaceAgentHost\s*\/>\s*<\/>\s*\)\}\s*\{afterShell\}/,
+    "afterShell doit être rendu APRÈS le chrome assistant par défaut",
+  );
 });
 
 /** Jumeaux chrome P1 — absents après cutover marques (dockerRoot sibling). */
