@@ -228,9 +228,17 @@ export function createBrandKernel(
     wireMailSecretBridge(getIntegrations);
     // Worker outbox — côté kernel uniquement (jamais dans le plane Next :
     // pas de double envoi). Opt-out : CREEZIO_MAIL_OUTBOX=0.
+    // CREEZIO_MAIL_OUTBOX_INTERVAL_MS : drain rapide pour gates/dev (ex. 120).
     if (platform.mails && process.env.CREEZIO_MAIL_OUTBOX !== "0") {
+      const intervalRaw = Number(
+        process.env.CREEZIO_MAIL_OUTBOX_INTERVAL_MS || "",
+      );
       outboxWorker = startMailOutboxWorker({
         store: platform.mails,
+        intervalMs:
+          Number.isFinite(intervalRaw) && intervalRaw > 0
+            ? intervalRaw
+            : undefined,
         log: (line) => console.log(`[creezio-mails] ${line}`),
       });
     }
