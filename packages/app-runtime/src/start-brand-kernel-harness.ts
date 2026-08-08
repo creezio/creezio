@@ -740,6 +740,43 @@ export async function startBrandKernelHarness(
         log: phaseLog("hermes-bridge"),
       });
     }
+
+    // Le plane Next a été spawné AVANT le warm : son env est un snapshot sans
+    // la clé gateway Hermes (headless server-docker — le desktop, lui, passe
+    // par buildNextHermesEnv au spawn). Sans relance, hermesKanbanConfigured()
+    // reste false côté CRM et les tâches IA attendent Hermes pour toujours.
+    // Une relance unique après warm+bridge suffit : l'enfant hérite du
+    // process.env fraîchement peuplé par applyNativeEmbedNextEnv.
+    if (
+      uiPlane?.kind === "next" &&
+      (process.env.HERMES_API_SERVER_KEY || "").trim()
+    ) {
+      boot.patch("next", {
+        detail: "Relance UI Next (env Hermes)…",
+        status: "running",
+      });
+      try {
+        await uiPlane.close();
+        uiPlane = await startBrandUiPlane({
+          appRoot: config.appRoot,
+          metierBaseUrl: httpServer.baseUrl,
+        });
+        boot.done(
+          "next",
+          uiPlane.kind === "next"
+            ? `CRM web prêt (${httpServer.baseUrl}/) — env Hermes propagé`
+            : "UI Next indisponible après relance env Hermes",
+        );
+        phaseLog("native-env")(
+          `UI plane relancé avec env Hermes (kind=${uiPlane.kind})`,
+        );
+      } catch (err) {
+        boot.patch("next", {
+          status: "error",
+          detail: `Relance UI env Hermes échouée: ${err instanceof Error ? err.message : String(err)}`,
+        });
+      }
+    }
   }
 
   // Plugins user (sidecars + control plane loopback) — actifs par défaut.
