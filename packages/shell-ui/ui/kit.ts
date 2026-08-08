@@ -20,6 +20,9 @@ export * from "./primitives/breadcrumb";
 export * from "./primitives/command";
 export * from "./primitives/sonner";
 export * from "./primitives/chart";
+export * from "./primitives/resizable";
+export * from "./primitives/tooltip";
+export * from "./primitives/textarea";
 
 export { isRemoteDesktopClient } from "./lib/desktop-host";
 export { openAiWorkspaceView, aiWorkspaceAvailable } from "./lib/ai-workspace-client";

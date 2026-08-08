@@ -58,8 +58,8 @@ test("M8.2 kit expose env helpers + contrat", () => {
   assert.equal(typeof mails.getKitMailsStore, "function");
   assert.equal(typeof mails.migrateBrandEmailsToKit, "function");
   assert.ok(
-    fs.existsSync(path.join(root, "packages/mails/ui/mail-inbox.tsx")),
-    "MailInbox UI",
+    fs.existsSync(path.join(root, "packages/mails/ui/mail-workspace.tsx")),
+    "MailWorkspace UI",
   );
   assert.ok(
     fs.existsSync(path.join(root, "packages/mails/email-worker/worker.js")),

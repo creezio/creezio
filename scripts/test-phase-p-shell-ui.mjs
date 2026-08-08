@@ -56,6 +56,43 @@ test("P-shell.1 modules chrome SoT présents", () => {
   assert.match(index, /configureGlobalSearch|global-search-config/);
 });
 
+test("P-shell.1b primitives webmail (MD1) : resizable/tooltip/textarea", () => {
+  for (const rel of [
+    "packages/shell-ui/ui/primitives/resizable.tsx",
+    "packages/shell-ui/ui/primitives/tooltip.tsx",
+    "packages/shell-ui/ui/primitives/textarea.tsx",
+  ]) {
+    assert.ok(fs.existsSync(path.join(root, rel)), rel);
+  }
+  const kit = fs.readFileSync(
+    path.join(root, "packages/shell-ui/ui/kit.ts"),
+    "utf8",
+  );
+  assert.match(kit, /primitives\/resizable/);
+  assert.match(kit, /primitives\/tooltip/);
+  assert.match(kit, /primitives\/textarea/);
+
+  const resizable = fs.readFileSync(
+    path.join(root, "packages/shell-ui/ui/primitives/resizable.tsx"),
+    "utf8",
+  );
+  assert.match(resizable, /ResizablePanelGroup/);
+  assert.match(resizable, /ResizableHandle/);
+  assert.match(resizable, /react-resizable-panels/);
+
+  const pkg = JSON.parse(
+    fs.readFileSync(path.join(root, "packages/shell-ui/package.json"), "utf8"),
+  );
+  assert.ok(
+    pkg.peerDependencies["react-resizable-panels"],
+    "peer react-resizable-panels",
+  );
+  assert.ok(
+    pkg.peerDependencies["@radix-ui/react-tooltip"],
+    "peer @radix-ui/react-tooltip",
+  );
+});
+
 test("P-shell.2 README contrat O9 + hors scope + extinction", () => {
   const readme = fs.readFileSync(
     path.join(root, "packages/shell-ui/README.md"),
