@@ -1,6 +1,7 @@
 /**
  * Requêtes boîte mail plateforme (SoT kit — core.db).
- * Remplace les jumeaux marque `email-queries.ts`.
+ * v2 : dossiers étendus (inbox/sent/drafts/outbox/archive/trash), threads
+ * (`thread_id` calculé à l'insertion via In-Reply-To/References), move.
  */
 
 import crypto from "node:crypto";
@@ -13,8 +14,31 @@ import type {
 } from "./types.js";
 import { PLATFORM_MAILS_CORE_SQL, ensureMailsInboundColumnsSql } from "./types.js";
 
+const KIT_FOLDERS = new Set([
+  "inbox",
+  "sent",
+  "drafts",
+  "outbox",
+  "archive",
+  "trash",
+]);
+
+function execEachStatement(db: SqliteDatabase, sql: string): void {
+  for (const raw of sql.split(/;\s*\n/)) {
+    const stmt = raw.trim();
+    if (!stmt) continue;
+    try {
+      db.exec(stmt);
+    } catch {
+      /* index v2 sur colonne pas encore migrée — seconde passe après ALTERs */
+    }
+  }
+}
+
 export function ensureMailsInboxSchema(db: SqliteDatabase): void {
-  db.exec(PLATFORM_MAILS_CORE_SQL);
+  // 1re passe : tables (les index v2 peuvent échouer sur un schéma v1).
+  execEachStatement(db, PLATFORM_MAILS_CORE_SQL);
+  // ALTERs idempotents (migration colonnes v1 → v2).
   for (const sql of ensureMailsInboundColumnsSql()) {
     try {
       db.exec(sql);
@@ -22,6 +46,8 @@ export function ensureMailsInboxSchema(db: SqliteDatabase): void {
       /* already exists */
     }
   }
+  // 2de passe : index v2 maintenant que les colonnes existent.
+  execEachStatement(db, PLATFORM_MAILS_CORE_SQL);
 }
 
 export function emailsReady(db: SqliteDatabase): boolean {
@@ -66,6 +92,55 @@ function decodeBase64(b64: string): Buffer | null {
   }
 }
 
+/**
+ * Threading : hériter du `thread_id` d'un mail connu cité par
+ * `In-Reply-To` / `References` ; sinon null (l'appelant prend l'id du mail).
+ */
+export function computeThreadId(
+  db: SqliteDatabase,
+  input: {
+    inReplyTo?: string | null;
+    references?: string | null;
+  },
+): string | null {
+  const candidates: string[] = [];
+  if (input.inReplyTo?.trim()) candidates.push(input.inReplyTo.trim());
+  if (input.references) {
+    for (const ref of input.references.split(/\s+/)) {
+      const clean = ref.trim();
+      if (clean) candidates.push(clean);
+    }
+  }
+  for (const messageId of candidates) {
+    try {
+      const row = db
+        .prepare(
+          `SELECT id, thread_id FROM creezio_platform_mails
+           WHERE message_id = ? LIMIT 1`,
+        )
+        .get(messageId) as { id: string; thread_id: string | null } | undefined;
+      if (row) return row.thread_id || row.id;
+    } catch {
+      /* colonne absente = pas de threads */
+    }
+  }
+  return null;
+}
+
+const LIST_SELECT = `
+SELECT e.id, e.message_id, e.from_addr, e.to_addr, e.subject,
+  COALESCE(e.received_at, e.sent_at, e.created_at) AS received_at,
+  e.read_at, e.folder, e.status, e.thread_id,
+  (SELECT COUNT(*) FROM creezio_platform_mail_attachments a WHERE a.mail_id = e.id) AS has_attachments,
+  CASE
+    WHEN e.text_body IS NOT NULL AND trim(e.text_body) != '' THEN substr(e.text_body, 1, 180)
+    WHEN e.html_body IS NOT NULL THEN substr(e.html_body, 1, 180)
+    WHEN e.body IS NOT NULL AND trim(e.body) != '' THEN substr(e.body, 1, 180)
+    ELSE NULL
+  END AS preview
+FROM creezio_platform_mails e
+`;
+
 export function listInboxEmails(
   db: SqliteDatabase,
   opts: {
@@ -77,11 +152,13 @@ export function listInboxEmails(
   } = {},
 ): { rows: InboxEmailListItem[]; total: number; unread: number } {
   if (!emailsReady(db)) return { rows: [], total: 0, unread: 0 };
-  const folder = opts.folder || "inbox";
+  const folder = KIT_FOLDERS.has(opts.folder || "")
+    ? (opts.folder as string)
+    : "inbox";
   const limit = Math.min(Math.max(opts.limit ?? 50, 1), 200);
   const offset = Math.max(opts.offset ?? 0, 0);
   const params: unknown[] = [folder];
-  let where = `e.folder = ? AND e.status = 'inbound'`;
+  let where = `e.folder = ?`;
   if (opts.unreadOnly) {
     where += ` AND e.read_at IS NULL`;
   }
@@ -107,20 +184,9 @@ export function listInboxEmails(
     )?.c ?? 0;
   const rows = db
     .prepare(
-      `
-SELECT e.id, e.message_id, e.from_addr, e.to_addr, e.subject,
-  COALESCE(e.received_at, e.created_at) AS received_at,
-  e.read_at, e.folder,
-  (SELECT COUNT(*) FROM creezio_platform_mail_attachments a WHERE a.mail_id = e.id) AS has_attachments,
-  CASE
-    WHEN e.text_body IS NOT NULL AND trim(e.text_body) != '' THEN substr(e.text_body, 1, 180)
-    WHEN e.html_body IS NOT NULL THEN substr(e.html_body, 1, 180)
-    WHEN e.body IS NOT NULL AND trim(e.body) != '' THEN substr(e.body, 1, 180)
-    ELSE NULL
-  END AS preview
-FROM creezio_platform_mails e
+      `${LIST_SELECT}
 WHERE ${where}
-ORDER BY COALESCE(e.received_at, e.created_at) DESC, e.id DESC
+ORDER BY COALESCE(e.received_at, e.sent_at, e.created_at) DESC, e.id DESC
 LIMIT ? OFFSET ?
 `,
     )
@@ -137,7 +203,10 @@ export function getInboxEmail(
     .prepare(
       `
 SELECT id, message_id, from_addr, to_addr, subject, text_body, html_body, body,
-  COALESCE(received_at, created_at) AS received_at, read_at, folder, raw_headers
+  COALESCE(received_at, sent_at, created_at) AS received_at, read_at, folder,
+  raw_headers, status, thread_id, cc, bcc, reply_to, in_reply_to,
+  references_list, provider_message_id, retry_count, next_attempt_at,
+  last_error, sent_at, delivered_at, account_id
 FROM creezio_platform_mails WHERE id = ?
 `,
     )
@@ -155,6 +224,20 @@ FROM creezio_platform_mails WHERE id = ?
         read_at: string | null;
         folder: string;
         raw_headers: string | null;
+        status: string;
+        thread_id: string | null;
+        cc: string | null;
+        bcc: string | null;
+        reply_to: string | null;
+        in_reply_to: string | null;
+        references_list: string | null;
+        provider_message_id: string | null;
+        retry_count: number;
+        next_attempt_at: string | null;
+        last_error: string | null;
+        sent_at: string | null;
+        delivered_at: string | null;
+        account_id: string | null;
       }
     | undefined;
   if (!row) return null;
@@ -176,12 +259,26 @@ FROM creezio_platform_mail_attachments WHERE mail_id = ? ORDER BY filename, id
     received_at: row.received_at,
     read_at: row.read_at,
     folder: row.folder,
+    status: row.status,
+    thread_id: row.thread_id,
     has_attachments: attachments.length,
     preview: previewFrom(textBody, row.html_body),
     text_body: textBody,
     html_body: row.html_body,
     raw_headers: row.raw_headers,
     attachments,
+    cc: row.cc,
+    bcc: row.bcc,
+    reply_to: row.reply_to,
+    in_reply_to: row.in_reply_to,
+    references: row.references_list,
+    provider_message_id: row.provider_message_id,
+    retry_count: row.retry_count ?? 0,
+    next_attempt_at: row.next_attempt_at,
+    last_error: row.last_error,
+    sent_at: row.sent_at,
+    delivered_at: row.delivered_at,
+    account_id: row.account_id,
   };
 }
 
@@ -232,12 +329,35 @@ export function markInboxEmailRead(
   return (r.changes ?? 0) > 0;
 }
 
+/** Déplace un mail vers un dossier kit (archive/trash/inbox…). */
+export function moveInboxEmail(
+  db: SqliteDatabase,
+  id: string,
+  folder: string,
+): boolean {
+  if (!emailsReady(db) || !id) return false;
+  if (!KIT_FOLDERS.has(folder)) return false;
+  const r = db
+    .prepare(
+      `UPDATE creezio_platform_mails SET folder = ?, updated_at = ? WHERE id = ?`,
+    )
+    .run(folder, new Date().toISOString(), id);
+  return (r.changes ?? 0) > 0;
+}
+
 export function deleteInboxEmail(db: SqliteDatabase, id: string): boolean {
   if (!emailsReady(db) || !id) return false;
   const run = () => {
     db.prepare(`DELETE FROM creezio_platform_mail_attachments WHERE mail_id = ?`).run(
       id,
     );
+    try {
+      db.prepare(`DELETE FROM creezio_platform_mail_events WHERE mail_id = ?`).run(
+        id,
+      );
+    } catch {
+      /* table absente sur très vieux schémas */
+    }
     return (
       (db.prepare(`DELETE FROM creezio_platform_mails WHERE id = ?`).run(id).changes ??
         0) > 0
@@ -281,14 +401,29 @@ export function insertInboundEmail(
   const id = cryptoRandomId();
   const ts = new Date().toISOString();
 
+  // Threading : In-Reply-To / References depuis les headers inbound.
+  const headerLookup = (name: string): string | null => {
+    if (!input.headers) return null;
+    for (const [k, v] of Object.entries(input.headers)) {
+      if (k.toLowerCase() === name) return String(v || "").trim() || null;
+    }
+    return null;
+  };
+  const inReplyTo = headerLookup("in-reply-to");
+  const referencesRaw = headerLookup("references");
+  const threadId =
+    computeThreadId(db, { inReplyTo, references: referencesRaw }) ?? id;
+
   const run = () => {
     db.prepare(
       `
 INSERT INTO creezio_platform_mails
   (id, user_id, to_addr, subject, body, status, provider_id,
    from_addr, message_id, folder, read_at, brand_email_id,
-   text_body, html_body, received_at, raw_headers, created_at, updated_at)
-VALUES (?, ?, ?, ?, ?, 'inbound', NULL, ?, ?, 'inbox', NULL, NULL, ?, ?, ?, ?, ?, ?)
+   text_body, html_body, received_at, raw_headers,
+   in_reply_to, references_list, thread_id, account_id,
+   created_at, updated_at)
+VALUES (?, ?, ?, ?, ?, 'inbound', NULL, ?, ?, 'inbox', NULL, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `,
     ).run(
       id,
@@ -302,6 +437,10 @@ VALUES (?, ?, ?, ?, ?, 'inbound', NULL, ?, ?, 'inbox', NULL, NULL, ?, ?, ?, ?, ?
       html,
       receivedAt,
       headersJson,
+      inReplyTo,
+      referencesRaw,
+      threadId,
+      input.account_id ?? null,
       ts,
       ts,
     );

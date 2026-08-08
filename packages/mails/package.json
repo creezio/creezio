@@ -27,7 +27,7 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test:inbox": "node --import tsx/esm ../../scripts/test-mails-inbox.mjs"
+    "test:inbox": "node ../../scripts/test-mails-inbox.mjs"
   },
   "dependencies": {
     "@creezio/api-kernel": "0.1.0",
@@ -39,14 +39,41 @@
   "devDependencies": {
     "@types/node": "^22.15.3",
     "@types/react": "^18.3.12",
+    "imapflow": "^1.0.191",
+    "mailparser": "^3.7.5",
+    "nodemailer": "^7.0.9",
     "typescript": "^5.8.3"
   },
   "peerDependencies": {
+    "@tiptap/extension-link": ">=2.0.0",
+    "@tiptap/react": ">=2.0.0",
+    "@tiptap/starter-kit": ">=2.0.0",
+    "imapflow": ">=1.0.0",
     "lucide-react": ">=0.400.0",
+    "mailparser": ">=3.0.0",
+    "nodemailer": ">=6.9.0",
     "react": "^18.0.0 || ^19.0.0"
   },
   "peerDependenciesMeta": {
+    "@tiptap/extension-link": {
+      "optional": true
+    },
+    "@tiptap/react": {
+      "optional": true
+    },
+    "@tiptap/starter-kit": {
+      "optional": true
+    },
+    "imapflow": {
+      "optional": true
+    },
     "lucide-react": {
+      "optional": true
+    },
+    "mailparser": {
+      "optional": true
+    },
+    "nodemailer": {
       "optional": true
     },
     "react": {

@@ -13,10 +13,9 @@ import {
   createTasksApiMount,
 } from "../packages/tasks/dist/index.js";
 import {
-  FILE_SINK_PROVIDER_ID,
-  createFileSinkMailProvider,
+  createFileSinkMailTransport,
   createSqliteMailsStore,
-  createMailsApiMount,
+  startMailOutboxWorker,
 } from "../packages/mails/dist/index.js";
 import { createApiKernel } from "../packages/api-kernel/dist/index.js";
 import { createDemobrandSandbox } from "../apps/demobrand/build/electron/sandbox-runtime.js";
@@ -54,23 +53,28 @@ test("I3 tasks sqlite CRUD + API mount", async () => {
   live.close();
 });
 
-test("I3 mails sqlite + file-sink non-stub", async () => {
+test("I3 mails sqlite + file-sink non-stub (outbox v2)", async () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "creezio-i3-mails-"));
   const outDir = path.join(dir, "outbox");
   const store = createSqliteMailsStore({
     coreDbPath: path.join(dir, "core.db"),
-    defaultProviderId: FILE_SINK_PROVIDER_ID,
   });
-  store.registerProvider(createFileSinkMailProvider({ outDir }));
   const draft = store.createDraft({
     userId: "u1",
     to: "dest@example.com",
     subject: "I3",
     body: "hello",
   });
-  const sent = await store.queueSend(draft.id, "u1");
-  assert.equal(sent.status, "sent");
-  assert.equal(sent.providerId, FILE_SINK_PROVIDER_ID);
+  const queued = store.sendDraft(draft.id, "u1");
+  assert.equal(queued.status, "queued");
+  const worker = startMailOutboxWorker({
+    store,
+    resolveTransport: () => createFileSinkMailTransport({ outDir }),
+    manual: true,
+  });
+  await worker.drainOnce();
+  worker.stop();
+  assert.equal(store.get(draft.id)?.status, "sent");
   const files = fs.readdirSync(outDir).filter((f) => f.endsWith(".json"));
   assert.ok(files.length >= 1, "file-sink must write a file");
   store.close();
@@ -87,9 +91,8 @@ test("I3 demobrand tasks/mails mounts + migrations", async () => {
     to: "a@b.c",
     subject: "s",
   });
-  const sent = await sandbox.mails.queueSend(draft.id, "demo");
-  assert.equal(sent.providerId, FILE_SINK_PROVIDER_ID);
-  assert.equal(sent.status, "sent");
+  const queued = sandbox.mails.sendDraft(draft.id, "demo");
+  assert.equal(queued.status, "queued");
 
   const list = await sandbox.api.handle({
     method: "GET",

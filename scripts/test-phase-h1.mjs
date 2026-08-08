@@ -41,7 +41,7 @@ import {
   createTasksApiMount,
 } from "../packages/tasks/dist/index.js";
 import {
-  createMemoryMailsStore,
+  createSqliteMailsStore,
   createMailsApiMount,
 } from "../packages/mails/dist/index.js";
 import {
@@ -251,16 +251,19 @@ test("H1.6 tasks CRUD + api mount ACL user", async () => {
   assert.equal(res.body.tasks.length, 1);
 });
 
-test("H1.7 mails draft + send stub", async () => {
-  const store = createMemoryMailsStore();
+test("H1.7 mails draft + envoi outbox (v2, jamais bloquant)", async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "creezio-h1-mails-"));
+  const store = createSqliteMailsStore({
+    coreDbPath: path.join(dir, "core.db"),
+  });
   const draft = store.createDraft({
     userId: "u1",
     to: "a@b.c",
     subject: "Hello",
     body: "world",
   });
-  const sent = await store.queueSend(draft.id, "u1");
-  assert.equal(sent.status, "sent");
+  const queued = store.sendDraft(draft.id, "u1");
+  assert.equal(queued.status, "queued");
 
   const api = createApiKernel();
   api.registerPlatformApi("platform-mails", createMailsApiMount(store));
@@ -270,6 +273,7 @@ test("H1.7 mails draft + send stub", async () => {
     headers: { "x-creezio-user-id": "u1" },
   });
   assert.equal(list.body.mails.length, 1);
+  store.close();
 });
 
 test("H1.8 product-hub sqlite core + ACL + ensurePluginDb", () => {

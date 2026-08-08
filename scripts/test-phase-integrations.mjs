@@ -37,9 +37,11 @@ const {
   migrateBrandCredentialsToKit,
   openNodeSqliteDatabase,
 } = await import("../packages/auth/dist/index.js");
-const { parseIntegrationReference, formatIntegrationReference } = await import(
-  "../packages/integrations/dist/index.js"
-);
+const {
+  parseIntegrationReference,
+  formatIntegrationReference,
+  getIntegrationProvider,
+} = await import("../packages/integrations/dist/index.js");
 
 /* ── unités référence ── */
 assert.equal(parseIntegrationReference("integration://openai"), "openai");
@@ -414,6 +416,58 @@ assert.equal(
   404,
   "référence supprimée → 404",
 );
+
+/* 9. providers mails (MA3) : resend/smtp/imap au catalogue + mapping n8n */
+{
+  const cat = await api("GET", "/api/v1/platform/integrations/catalog", owner);
+  for (const id of ["resend", "smtp", "imap"]) {
+    assert.ok(
+      cat.body.providers.some((p) => p.id === id),
+      `provider ${id} au catalogue`,
+    );
+  }
+
+  const RESEND_SECRET = "re_gate_resend_secret_0123456789";
+  const resendCreated = await api(
+    "POST",
+    "/api/v1/platform/integrations",
+    owner,
+    { provider: "resend", label: "Resend mails", secret: RESEND_SECRET },
+  );
+  assert.equal(resendCreated.status, 201, "create resend");
+  assert.equal(
+    resendCreated.body.integration.reference,
+    "integration://resend",
+  );
+  const resendPush = n8nCalls.find(
+    (c) => c.method === "POST" && c.body?.name === "creezio:resend",
+  );
+  assert.ok(resendPush, "credential creezio:resend poussée vers n8n");
+  assert.equal(resendPush.body.type, "httpHeaderAuth");
+  assert.equal(resendPush.body.data.value, `Bearer ${RESEND_SECRET}`);
+
+  // Mapping n8n smtp/imap : user/host/port depuis meta, password = secret.
+  const smtpData = getIntegrationProvider("smtp").n8n.buildData("pw-smtp", {
+    user: "api_token",
+    host: "smtp.mx.cloudflare.net",
+    port: 465,
+  });
+  assert.deepEqual(smtpData, {
+    user: "api_token",
+    password: "pw-smtp",
+    host: "smtp.mx.cloudflare.net",
+    port: 465,
+    secure: true,
+  });
+  const imapData = getIntegrationProvider("imap").n8n.buildData("pw-imap", {
+    user: "compte@brand.test",
+    host: "imap.example.test",
+    secure: false,
+  });
+  assert.equal(imapData.port, 993);
+  assert.equal(imapData.secure, false);
+  assert.equal(imapData.password, "pw-imap");
+}
 
 surface.close();
 server.close();

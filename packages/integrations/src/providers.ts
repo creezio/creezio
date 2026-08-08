@@ -8,6 +8,9 @@ export type IntegrationProviderId =
   | "openai"
   | "anthropic"
   | "notion"
+  | "resend"
+  | "smtp"
+  | "imap"
   | "custom";
 
 export type IntegrationProviderSpec = {
@@ -51,6 +54,49 @@ export const INTEGRATION_PROVIDERS: readonly IntegrationProviderSpec[] = [
     n8n: {
       credentialType: "notionApi",
       buildData: (secret) => ({ apiKey: secret }),
+    },
+  },
+  {
+    id: "resend",
+    label: "Resend (emails)",
+    secretPlaceholder: "re_…",
+    n8n: {
+      // Pas de credential Resend natif n8n — header Authorization générique.
+      credentialType: "httpHeaderAuth",
+      buildData: (secret) => ({
+        name: "Authorization",
+        value: `Bearer ${secret}`,
+      }),
+    },
+  },
+  {
+    id: "smtp",
+    label: "SMTP (envoi d'emails)",
+    secretPlaceholder: "mot de passe / API token SMTP",
+    n8n: {
+      credentialType: "smtp",
+      buildData: (secret, meta) => ({
+        user: typeof meta.user === "string" ? meta.user : "",
+        password: secret,
+        host: typeof meta.host === "string" ? meta.host : "",
+        port: Number(meta.port) || 465,
+        secure: meta.secure !== false,
+      }),
+    },
+  },
+  {
+    id: "imap",
+    label: "IMAP (réception d'emails)",
+    secretPlaceholder: "mot de passe boîte mail",
+    n8n: {
+      credentialType: "imap",
+      buildData: (secret, meta) => ({
+        user: typeof meta.user === "string" ? meta.user : "",
+        password: secret,
+        host: typeof meta.host === "string" ? meta.host : "",
+        port: Number(meta.port) || 993,
+        secure: meta.secure !== false,
+      }),
     },
   },
   {
