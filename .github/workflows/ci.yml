@@ -1,20 +1,35 @@
-# CI kit Creezio — filet minimal (P1 audit : « aucun filet CI visible »).
-# Garantit que main compile (build workspaces unifié) et que la suite kit
-# rapide passe sur chaque push/PR. Les gates lourdes (Electron, Docker,
-# desktop packagé) restent sur le VPS — élargir progressivement.
+# CI kit Creezio — filet anti-régression des fonctions NATIVES.
+#
+# Les tests natifs (test-phase-*, test-os-*) vivent ICI, jamais dupliqués
+# dans les marques : une marque ne teste que son métier (gates colocalisées
+# brand-spec/modules/*/gate.mjs) + son intégration (gates transversales).
+#
+# 3 étages :
+#   1. build-and-test (GitHub-hosted) : build workspaces + suite kit rapide
+#      sur chaque push/PR ;
+#   2. notify-brands (self-hosted, main vert uniquement) : repository_dispatch
+#      `kit-main-green` vers les marques — chaque marque teste alors son code
+#      contre le DERNIER kit et resynchronise son vendor automatiquement si
+#      vert (workflow vendor-latest.yml des marques) ;
+#   3. nightly-suites (self-hosted, cron) : suites lourdes `brands` + `env`
+#      (marques sondes, Docker, Electron) qui ne tournent pas sur GH-hosted.
 name: CI
 
 on:
   push:
     branches: [main]
   pull_request:
+  schedule:
+    - cron: "43 2 * * *"
+  workflow_dispatch:
 
 concurrency:
-  group: ci-${{ github.ref }}
+  group: ci-${{ github.ref }}-${{ github.event_name == 'schedule' && 'nightly' || 'push' }}
   cancel-in-progress: true
 
 jobs:
   build-and-test:
+    if: github.event_name != 'schedule'
     runs-on: ubuntu-latest
     timeout-minutes: 90
     env:
@@ -36,3 +51,55 @@ jobs:
 
       - name: Suite kit rapide
         run: npm run test:kit -- --keep-going
+
+  # Main kit vert → prévenir les marques : « nouveau kit disponible, testez
+  # votre métier contre lui et récupérez-le si vert » (contrat fraîcheur
+  # vendor, valable pour TOUTES les apps Creezio). Le dispatch part du runner
+  # self-hosted : gh y est authentifié, aucun PAT à stocker en secret.
+  notify-brands:
+    needs: build-and-test
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: [self-hosted, fluxpro]
+    timeout-minutes: 5
+    steps:
+      - name: Dispatch kit-main-green vers les marques
+        run: |
+          set -euo pipefail
+          for repo in creezio/winhub creezio/winhub-admin; do
+            if gh api "repos/${repo}/dispatches" \
+                 -f event_type=kit-main-green \
+                 -F 'client_payload[kit_sha]=${{ github.sha }}'; then
+              echo "✓ dispatch kit-main-green → ${repo}"
+            else
+              echo "::warning::dispatch impossible vers ${repo} (repo absent ou workflow non posé)"
+            fi
+          done
+
+  # Suites lourdes nightly sur le VPS : marques sondes (tempoflow3…),
+  # environnement Docker/Electron réel.
+  nightly-suites:
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: [self-hosted, fluxpro]
+    timeout-minutes: 180
+    env:
+      CREEZIO_NATIVE_WARM: "0"
+      # Marque sonde : clone de dev du VPS (le checkout runner n'a pas de
+      # sibling tempoflow3).
+      CREEZIO_TEMPOFLOW3_ROOT: /home/fidus/tempoflow3
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install
+        run: npm ci
+
+      - name: Build workspaces
+        run: npm run build:packages
+
+      - name: Suite kit
+        run: npm run test:kit -- --keep-going
+
+      - name: Suite brands (marques sondes)
+        run: npm run test:brands -- --keep-going
+
+      - name: Suite env (Docker / Electron)
+        run: npm run test:env -- --keep-going

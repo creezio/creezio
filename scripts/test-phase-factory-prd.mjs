@@ -235,14 +235,22 @@ test("F1–F4 scaffold --from-prd génère 2 repos (monorepo + admin dédié, ru
   assert.ok(
     fs.existsSync(path.join(outDir, "brand-spec/modules/fournisseurs/prd.md")),
   );
+  // Gates colocalisées (DOC-STANDARD-MODULE : 5ᵉ fichier + runner découvert).
+  assert.ok(
+    fs.existsSync(
+      path.join(outDir, "brand-spec/modules/fournisseurs/gate.mjs"),
+    ),
+    "gate.mjs colocalisée non scaffoldée",
+  );
+  assert.ok(
+    fs.existsSync(path.join(server, "scripts/run-module-gates.mjs")),
+    "runner run-module-gates.mjs non scaffoldé",
+  );
   const serverPkg = JSON.parse(
     fs.readFileSync(path.join(server, "package.json"), "utf8"),
   );
-  assert.ok(
-    serverPkg.scripts["test:module-fournisseurs"],
-    "gate module branchée npm",
-  );
-  assert.match(serverPkg.scripts.test, /test:module-fournisseurs/);
+  assert.ok(serverPkg.scripts["test:modules"], "runner gates branché npm");
+  assert.match(serverPkg.scripts.test, /test:modules/);
 
   const feed = fs.readFileSync(
     path.join(server, "src/electron/meili-feed.ts"),

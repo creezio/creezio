@@ -183,11 +183,25 @@ Desktop Creezio.
     ),
     /clientsModule/,
   );
-  const gate = spawnSync(
-    process.execPath,
-    [path.join(serverDir, "scripts/test-module-clients.mjs")],
-    { encoding: "utf8", cwd: serverDir, env: SMOKE_ENV },
+  // Gate colocalisée (DOC-STANDARD-MODULE : 5ᵉ fichier) + runner découvert.
+  const gatePath = path.join(appDir, "brand-spec/modules/clients/gate.mjs");
+  assert.ok(fs.existsSync(gatePath), "gate.mjs colocalisée non scaffoldée");
+  assert.ok(
+    fs.existsSync(path.join(serverDir, "scripts/run-module-gates.mjs")),
+    "runner run-module-gates.mjs non scaffoldé",
   );
+  const serverPkg = JSON.parse(
+    fs.readFileSync(path.join(serverDir, "package.json"), "utf8"),
+  );
+  assert.ok(
+    serverPkg.scripts?.["test:modules"],
+    "script test:modules absent du package.json scaffoldé",
+  );
+  const gate = spawnSync(process.execPath, [gatePath], {
+    encoding: "utf8",
+    cwd: serverDir,
+    env: SMOKE_ENV,
+  });
   assert.equal(gate.status, 0, gate.stderr + "\n" + gate.stdout);
 
   const firstRun = spawnSync(

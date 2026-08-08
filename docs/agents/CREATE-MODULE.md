@@ -2,9 +2,9 @@
 
 Guide pour ajouter un module métier dans un **repo marque** (jamais dans le
 kit). Un module = **unité de travail autonome** au sens du standard
-[DOC-STANDARD-MODULE.md](../DOC-STANDARD-MODULE.md) : dossier spec 4 fichiers
-+ un fichier de wiring + ses pages UI + sa gate. Référence vivante : le repo
-`tempoflow3` (`server/src/electron/modules/`).
+[DOC-STANDARD-MODULE.md](../DOC-STANDARD-MODULE.md) : dossier spec 5 fichiers
+(gate colocalisée comprise) + un fichier de wiring + ses pages UI. Référence
+vivante : le repo `tempoflow3` (`server/src/electron/modules/`).
 
 ## 0. Scaffolder l'unité de travail
 
@@ -16,10 +16,12 @@ Pose :
 
 - `brand-spec/modules/<id>/` — `prd.md`, `interview.md`, `TODO.md`,
   `CHANGELOG.md` (templates à remplir — le PRD et l'interview sont la SoT,
-  voir le standard) ;
-- `server/src/electron/modules/<id>.ts` — stub `BrandModuleDef` ;
-- `server/scripts/test-module-<id>.mjs` — stub de gate (structurel, à
+  voir le standard) + `gate.mjs` **colocalisée** (stub structurel, à
   enrichir en preuves HTTP) ;
+- `server/src/electron/modules/<id>.ts` — stub `BrandModuleDef` ;
+- `server/scripts/run-module-gates.mjs` — runner d'auto-découverte des
+  gates colocalisées (+ scripts `test:modules` / `test:module` branchés
+  dans `npm test`) ;
 - la ligne d'import + l'entrée dans le registre `modules/index.ts`
   (marqueurs `<creezio:module-imports>` / `<creezio:module-registry>`).
 
@@ -160,12 +162,16 @@ dans l'interview (§5 : readOnly/destructive, requiredScope, rôles).
 
 ## 5. Gates métier
 
-Chaque module a sa gate dans le `npm test` de la marque (TF3 : 15 gates,
-reprise `npm run test:fast -- --from <gate>`). Une gate de module prouve :
-migration appliquée, CRUD via HTTP, cas métier des hooks, tools MCP
-répondants. Le stub `test-module-<id>.mjs` posé par `module init` ne
-vérifie que la structure — l'enrichir. La gate kit `test-phase-module-docs`
-vérifie en plus le contrat des 4 fichiers spec.
+Chaque module a sa gate **colocalisée** `modules/<id>/gate.mjs`, découverte
+par `npm run test:modules` (runner `run-module-gates.mjs` — un module sans
+gate = échec). Une gate de module prouve : migration appliquée, CRUD via
+HTTP, cas métier des hooks, tools MCP répondants. Le stub posé par
+`module init` ne vérifie que la structure — l'enrichir
+(`npm run test:module -- <id>` pour la lancer seule). La gate kit
+`test-phase-module-docs` vérifie en plus le contrat des 5 fichiers spec
+(marqueur `moduleGates: colocated` dans `brand.yaml`). Les tests des
+fonctions **natives** Creezio restent dans le repo kit — jamais dupliqués
+côté marque.
 
 ## Périmètre de fichiers (multi-agents)
 

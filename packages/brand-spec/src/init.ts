@@ -56,6 +56,9 @@ domain: {{domain}}
 tagline: {{tagline}}
 vertical: {{vertical}}
 sandbox: true
+# Gates de module colocalisées (modules/<id>/gate.mjs — DOC-STANDARD-MODULE) :
+# exigé par la gate kit module-docs pour toute nouvelle marque.
+moduleGates: colocated
 
 platform:
   auth: true
@@ -301,8 +304,9 @@ Aucun
 
 ## 9. Gates de validation
 
-- gate : \`scripts/test-module-{{moduleId}}.mjs\` — prouve : migration
-  appliquée, CRUD HTTP, cas métier des hooks, tools MCP répondants.
+- gate : \`modules/{{moduleId}}/gate.mjs\` (colocalisée, découverte par
+  \`scripts/run-module-gates.mjs\`) — prouve : migration appliquée,
+  CRUD HTTP, cas métier des hooks, tools MCP répondants.
 
 ## 10. i18n
 
@@ -320,10 +324,10 @@ Claim : passage \`[todo]\` → \`[in-progress]\` + ligne
 ### [todo] {{moduleTodoPrefix}}-1 — Implémenter le module
 - priorite: P1
 - depends: aucune
-- fichiers: server/src/electron/modules/{{moduleId}}.ts
+- fichiers: server/src/electron/modules/{{moduleId}}.ts, modules/{{moduleId}}/gate.mjs
 - criteres:
   - [ ] migration appliquée
-  - [ ] gate test-module-{{moduleId}} verte
+  - [ ] gate modules/{{moduleId}}/gate.mjs verte (npm run test:module -- {{moduleId}})
 `,
   "modules/_template/CHANGELOG.md": `# CHANGELOG — {{moduleId}}
 
@@ -332,7 +336,11 @@ Format : \`## YYYY-MM-DD — <ID> — titre\` + ligne \`- gate: <preuve>\`.
 `,
 };
 
-/** Noms des 4 fichiers du standard module (docs/DOC-STANDARD-MODULE.md). */
+/**
+ * Fichiers markdown du standard module (docs/DOC-STANDARD-MODULE.md).
+ * Le 5ᵉ fichier obligatoire, `gate.mjs` (gate colocalisée), est généré par
+ * la factory (`renderModuleGateStub`) — pas un template markdown.
+ */
 export const MODULE_SPEC_FILES = [
   "prd.md",
   "interview.md",
@@ -357,8 +365,9 @@ export function moduleTemplateFiles(): Record<string, string> {
 }
 
 /**
- * Rend les 4 fichiers spec d'un module concret (templates `modules/_template`
- * avec variables substituées) — utilisé par `creezio brand module init`.
+ * Rend les fichiers spec markdown d'un module concret (templates
+ * `modules/_template` avec variables substituées) — utilisé par
+ * `creezio brand module init` (qui y ajoute la gate.mjs colocalisée).
  */
 export function renderModuleSpecFiles(
   moduleId: string,

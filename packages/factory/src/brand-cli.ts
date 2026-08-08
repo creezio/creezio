@@ -113,9 +113,9 @@ Notes:
   - Icônes : --icons-dir ou <spec>/icons/{client,server}.png (pas le PNG 1×1)
   - apply-modules inventorie modules/*/prd.md et refuse d'écraser owned-by-brand
   - module init scaffolde l'unité de travail module (standard
-    DOC-STANDARD-MODULE.md) : spec 4 fichiers (prd/interview/TODO/CHANGELOG),
-    wiring src/electron/modules/<id>.ts, gate scripts/test-module-<id>.mjs,
-    ligne d'import dans le registre modules/index.ts
+    DOC-STANDARD-MODULE.md) : spec 5 fichiers (prd/interview/TODO/CHANGELOG
+    + gate.mjs colocalisée), wiring src/electron/modules/<id>.ts,
+    ligne d'import dans le registre modules/index.ts, runner test:modules
   - Runtime desktop = @creezio/app-runtime (startBrandDesktop)
 `);
 }
@@ -469,7 +469,8 @@ export async function runBrandCli(argv: string[]): Promise<void> {
     }
     console.log("");
     console.log("Suite: remplir prd.md + interview.md, puis implémenter");
-    console.log("modules/<id>.ts et enrichir la gate test-module-<id>.mjs.");
+    console.log("modules/<id>.ts et enrichir la gate modules/<id>/gate.mjs");
+    console.log("(npm run test:module -- <id> pour la lancer seule).");
     return;
   }
 

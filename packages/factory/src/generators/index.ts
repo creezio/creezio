@@ -53,7 +53,17 @@ export {
   wireModuleGateInPackageJson,
   entityToModuleId,
   registerModuleInIndex,
+  renderModuleGatesRunner,
 } from "./modules-registry.js";
+export {
+  renderBrandWorkflowFiles,
+  renderBrandCiWorkflow,
+  renderVendorLatestWorkflow,
+  renderBrandDeployWorkflow,
+  renderVendorLatestScript,
+  renderVendorIntegrityGate,
+} from "./brand-workflows.js";
+export type { BrandWorkflowsOptions } from "./brand-workflows.js";
 export {
   renderMetierParcoursSmoke,
   renderFirstRunAuthSmoke,

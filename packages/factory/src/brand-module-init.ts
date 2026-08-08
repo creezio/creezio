@@ -1,14 +1,14 @@
 /**
  * `creezio brand module init <id>` — scaffolde une unité de travail module
  * conforme au standard kit (docs/DOC-STANDARD-MODULE.md) :
- *   1. dossier spec 4 fichiers (prd/interview/TODO/CHANGELOG) sous
+ *   1. dossier spec 5 fichiers (prd/interview/TODO/CHANGELOG/gate.mjs) sous
  *      `brand-spec/modules/<id>/` (ou `admin-spec/modules/<id>/` pour un
- *      repo admin) ;
+ *      repo admin) — la gate est COLOCALISÉE avec la spec ;
  *   2. stub de wiring `server/src/electron/modules/<id>.ts` (BrandModuleDef) ;
- *   3. stub de gate `server/scripts/test-module-<id>.mjs` ;
- *   4. ligne d'import + entrée dans le registre `modules/index.ts`
+ *   3. ligne d'import + entrée dans le registre `modules/index.ts`
  *      (créé avec `types.ts` s'il n'existe pas encore) ;
- *   5. branche `test:module-<id>` dans `server/package.json` → `npm test`.
+ *   4. runner `server/scripts/run-module-gates.mjs` + scripts `test:modules`
+ *      / `test:module` dans `server/package.json` → `npm test`.
  */
 import fs from "node:fs";
 import path from "node:path";
@@ -85,7 +85,8 @@ export function runBrandModuleInit(
     written.push(filePath);
   };
 
-  // 1. Spec 4 fichiers (admin-spec/ si repo admin, sinon brand-spec/).
+  // 1. Spec 5 fichiers (admin-spec/ si repo admin, sinon brand-spec/) —
+  //    gate.mjs colocalisée incluse.
   const specRootName = fs.existsSync(path.join(appDir, "admin-spec"))
     ? "admin-spec"
     : "brand-spec";
@@ -112,9 +113,9 @@ export function runBrandModuleInit(
     registerModuleInIndex(registryPath, moduleId);
   }
 
-  // 3. Gate stub + branchement npm test.
+  // 3. Gate colocalisée + runner + branchement npm test.
   write(
-    path.join(serverDir, "scripts", `test-module-${moduleId}.mjs`),
+    path.join(specDir, "gate.mjs"),
     renderModuleGateStub(moduleId, specRootName),
   );
   wireModuleGateInPackageJson(serverDir, moduleId);

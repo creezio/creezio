@@ -571,8 +571,9 @@ process.exit(r.status ?? 1);
         written,
       );
     }
+    // Gate colocalisée avec la spec (5ᵉ fichier — DOC-STANDARD-MODULE.md).
     writeFile(
-      path.join(outDir, "scripts", `test-module-${moduleId}.mjs`),
+      path.join(rootDir, "brand-spec", "modules", moduleId, "gate.mjs"),
       renderModuleGateStub(moduleId, "brand-spec"),
       force,
       written,

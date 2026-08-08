@@ -7,7 +7,12 @@
  *      (prd.md, interview.md, TODO.md, CHANGELOG.md) ;
  *   2. prd.md / interview.md portent les sections normalisées ;
  *   3. TODO.md est bien formé : statuts valides, claims datés pour
- *      [in-progress]/[blocked], ligne `done:` datée pour [done].
+ *      [in-progress]/[blocked], ligne `done:` datée pour [done] ;
+ *   4. si le spec-root a opté pour les gates colocalisées
+ *      (`moduleGates: colocated` dans brand.yaml/admin.yaml à côté de
+ *      `modules/`) : `gate.mjs` est le 5ᵉ fichier OBLIGATOIRE de chaque
+ *      module. Opt-in scaffoldé d'office pour les nouvelles marques —
+ *      les marques historiques migrent à leur rythme.
  *
  * Périmètres :
  *   - kit : `packages/admin/modules/` (modules admin natifs) ;
@@ -73,9 +78,31 @@ function lintTodo(raw) {
   return errors;
 }
 
-/** Erreurs du contrat 4 fichiers pour un module donné. */
-function lintModule(moduleDir) {
+/**
+ * Le spec-root exige-t-il la gate colocalisée (`gate.mjs`) ?
+ * Marqueur `moduleGates: colocated` dans le yaml frère de `modules/`
+ * (brand-spec/brand.yaml ou admin-spec/admin.yaml).
+ */
+function requiresColocatedGate(modulesRoot) {
+  const specRoot = path.dirname(modulesRoot);
+  for (const yaml of ["brand.yaml", "admin.yaml"]) {
+    const p = path.join(specRoot, yaml);
+    if (!fs.existsSync(p)) continue;
+    if (/^moduleGates:\s*colocated\s*$/m.test(fs.readFileSync(p, "utf8"))) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/** Erreurs du contrat 4/5 fichiers pour un module donné. */
+function lintModule(moduleDir, { withGate = false } = {}) {
   const errors = [];
+  if (withGate && !fs.existsSync(path.join(moduleDir, "gate.mjs"))) {
+    errors.push(
+      "gate.mjs manquant (5ᵉ fichier — moduleGates: colocated actif)",
+    );
+  }
   for (const name of REQUIRED_FILES) {
     const file = path.join(moduleDir, name);
     if (!fs.existsSync(file)) {
@@ -148,9 +175,11 @@ for (const scope of scopes()) {
     }
   });
 
+  const withGate = requiresColocatedGate(scope.modulesRoot);
+
   for (const id of modules) {
     test(`module-docs ${scope.label} — ${id}`, () => {
-      const errors = lintModule(path.join(scope.modulesRoot, id));
+      const errors = lintModule(path.join(scope.modulesRoot, id), { withGate });
       assert.deepEqual(
         errors,
         [],

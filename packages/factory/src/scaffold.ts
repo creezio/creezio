@@ -36,6 +36,7 @@ import {
   MODULES_INDEX_TS,
   MODULES_TYPES_TS,
   renderBrandAgentsMd,
+  renderBrandWorkflowFiles,
 } from "./generators/index.js";
 import { scaffoldAdminApp } from "./admin-repo.js";
 import { installKitPluginTemplate } from "./plugin-templates.js";
@@ -1764,6 +1765,14 @@ export function scaffoldNewApp(opts: NewAppOptions): ScaffoldResult {
     force,
     written,
   );
+
+  // CI/CD flotte : chaque marque naît avec le filet complet (CI push/PR,
+  // fraîcheur vendor vs dernier kit, CD sur CI verte, gate vendor-integrity).
+  for (const [rel, body] of Object.entries(
+    renderBrandWorkflowFiles({ brandId: manifest.brandId }),
+  )) {
+    writeFile(path.join(outDir, rel), body, force, written);
+  }
 
   // Vendor partagé racine + .env racine. server/vendor = symlink (runtime suit le
   // vendor racine) ; client/vendor = dossier réel — copie hardlink stagée par

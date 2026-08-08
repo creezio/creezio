@@ -19,9 +19,9 @@ suite brands pour la partie repos marque).
 
 `modules/_template/` est réservé aux templates (ignoré par la gate).
 
-## Les 4 fichiers obligatoires
+## Les 5 fichiers obligatoires
 
-Chaque `modules/<id>/` porte exactement ces 4 fichiers :
+Chaque `modules/<id>/` porte exactement ces 5 fichiers :
 
 | Fichier | Rôle | Niveau d'exigence |
 |---|---|---|
@@ -29,6 +29,27 @@ Chaque `modules/<id>/` porte exactement ces 4 fichiers :
 | `interview.md` | questionnaire d'architecture **rempli** — SoT des décisions | toute décision structurante (table, endpoint, composant UI, tool MCP) y est tracée avec sa justification |
 | `TODO.md` | milestones + tâches cochables | format normé ci-dessous (parsé par la gate) |
 | `CHANGELOG.md` | une entrée datée par livraison | ID de tâche + gate qui prouve |
+| `gate.mjs` | **gate du module, colocalisée** — le test métier vit avec la spec | prouve les critères du prd (migration, CRUD HTTP, hooks, tools MCP) ; découverte auto par `server/scripts/run-module-gates.mjs` (`npm run test:modules`) — un module sans gate fait échouer `npm test` |
+
+### `gate.mjs` — gate colocalisée (tests métier)
+
+- **Séparation native / métier** : les tests des fonctions **natives** Creezio
+  vivent dans le repo kit (`scripts/test-phase-*.mjs`, CI kit) et ne sont
+  JAMAIS dupliqués côté marque. La `gate.mjs` d'un module ne teste que le
+  **métier** du module ; la marque ajoute des gates transversales
+  d'**intégration** (vendor-integrity, parcours, e1-smoke) dans
+  `server/scripts/`.
+- Découverte : `server/scripts/run-module-gates.mjs` énumère
+  `<spec-root>/modules/*/gate.mjs` (hors `_template`) — un module sans
+  `gate.mjs` = échec du runner. `npm run test:module -- <id>` pour une seule.
+- Chemins : la gate résout la racine depuis son propre emplacement
+  (`appDir = ../../..`, `serverDir = appDir/server` si présent) — jamais
+  depuis `cwd`.
+- Adoption : marqueur `moduleGates: colocated` dans `brand.yaml` /
+  `admin.yaml` (scaffoldé d'office pour les nouvelles marques) — la gate kit
+  `module-docs` exige alors `gate.mjs` dans chaque module. Marques
+  historiques : migrer les `scripts/test-module-<id>.mjs` puis poser le
+  marqueur.
 
 ### `prd.md` — sections normalisées
 
@@ -146,12 +167,11 @@ Une entrée par livraison (merge sur `main`), la plus récente en haut.
 
 Un agent travaillant sur le module `<id>` ne modifie que :
 
-1. son dossier spec `modules/<id>/` (les 4 fichiers) ;
+1. son dossier spec `modules/<id>/` (les 5 fichiers, gate comprise) ;
 2. son fichier de wiring `server/src/electron/modules/<id>.ts` ;
 3. ses pages UI (`server/ui/app/<routes du module>/`) et ses composants
    dédiés (`server/ui/components/<id>/`) ;
-4. sa gate (`scripts/test-module-<id>.mjs` ou la gate existante du module) ;
-5. **une seule ligne** dans le registre `modules/index.ts` (son import).
+4. **une seule ligne** dans le registre `modules/index.ts` (son import).
 
 Tout fichier partagé (registre au-delà de sa ligne, `brand-migrations.ts`,
 `package.json`, composants UI partagés, `tool-registry.ts`…) = **tâche
@@ -162,5 +182,6 @@ séparée sérialisée** (une PR dédiée, jamais mélangée au flux module).
 - Branche : `module/<id>/<tache>` (ex. `module/promotions/PROMO-3`).
 - PR vers `main` ; la gate du module + la gate `module-docs` prouvent.
 - Nouvelle marque / nouveau module : `creezio brand module init <id>`
-  scaffolde les 4 fichiers + wiring + stub de gate
+  scaffolde les 5 fichiers (gate.mjs colocalisée comprise) + wiring +
+  runner `run-module-gates.mjs`
   (voir [docs/agents/CREATE-MODULE.md](./agents/CREATE-MODULE.md)).

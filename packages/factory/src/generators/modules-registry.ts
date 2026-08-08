@@ -191,30 +191,141 @@ export function registerModuleInIndex(
   );
 }
 
-/** Branche `test:module-<id>` dans package.json serveur (npm test). */
+/**
+ * Runner d'auto-découverte des gates colocalisées
+ * (`<spec-root>/modules/<id>/gate.mjs` — DOC-STANDARD-MODULE.md).
+ * Écrit dans `server/scripts/run-module-gates.mjs` : un module sans gate
+ * fait échouer `npm test` — aucun module n'entre sans filet.
+ */
+export function renderModuleGatesRunner(): string {
+  return `#!/usr/bin/env node
+/**
+ * Runner des gates de module colocalisées (convention kit
+ * DOC-STANDARD-MODULE : \`<spec-root>/modules/<id>/gate.mjs\`).
+ * Généré par la factory Creezio — générique, ne pas spécialiser.
+ *
+ * \`--only <regex>\` pour cibler, \`--keep-going\` pour l'inventaire complet.
+ * Un module SANS gate.mjs = échec (aucun module ne rentre sans filet).
+ */
+import { spawn } from "node:child_process";
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+const serverRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+const appRoot = path.resolve(serverRoot, "..");
+const modulesDir = ["brand-spec", "admin-spec"]
+  .map((d) => path.join(appRoot, d, "modules"))
+  .find((d) => fs.existsSync(d));
+
+if (!modulesDir) {
+  console.error("aucun <spec-root>/modules trouvé (brand-spec/ ou admin-spec/)");
+  process.exit(1);
+}
+
+const args = process.argv.slice(2);
+const keepGoing = args.includes("--keep-going");
+const onlyIdx = args.indexOf("--only");
+const only = onlyIdx >= 0 ? new RegExp(args[onlyIdx + 1] ?? "") : null;
+
+const moduleIds = fs
+  .readdirSync(modulesDir, { withFileTypes: true })
+  .filter((e) => e.isDirectory() && e.name !== "_template")
+  .map((e) => e.name)
+  .sort();
+
+const missing = moduleIds.filter(
+  (id) => !fs.existsSync(path.join(modulesDir, id, "gate.mjs")),
+);
+if (missing.length) {
+  console.error(
+    \`✗ modules SANS gate.mjs (DOC-STANDARD-MODULE): \${missing.join(", ")}\`,
+  );
+  process.exit(1);
+}
+
+const selected = only ? moduleIds.filter((id) => only.test(id)) : moduleIds;
+
+function runGate(id) {
+  return new Promise((resolve) => {
+    const started = Date.now();
+    process.stdout.write(\`▶ \${id}\\n\`);
+    const child = spawn(
+      process.execPath,
+      [path.join(modulesDir, id, "gate.mjs")],
+      {
+        cwd: serverRoot,
+        env: { ...process.env, CREEZIO_APP_ROOT: appRoot },
+        stdio: ["ignore", "pipe", "pipe"],
+      },
+    );
+    let out = "";
+    child.stdout.on("data", (d) => (out += d));
+    child.stderr.on("data", (d) => (out += d));
+    child.on("close", (code) => {
+      const secs = Math.round((Date.now() - started) / 1000);
+      if (code === 0) {
+        process.stdout.write(\`✓ OK (\${secs}s) \${id}\\n\`);
+        resolve({ id, ok: true, secs });
+      } else {
+        process.stdout.write(\`✗ FAIL (\${secs}s) \${id}\\n\${out.slice(-8000)}\\n\`);
+        resolve({ id, ok: false, secs });
+      }
+    });
+  });
+}
+
+const results = [];
+for (const id of selected) {
+  const res = await runGate(id);
+  results.push(res);
+  if (!res.ok && !keepGoing) break;
+}
+
+const failed = results.filter((r) => !r.ok);
+if (failed.length) {
+  console.error(
+    \`✗ \${failed.length}/\${results.length} gate(s) module rouges: \${failed.map((r) => r.id).join(", ")}\`,
+  );
+  process.exit(1);
+}
+console.log(
+  \`OK run-module-gates — \${results.length} modules verts (\${selected.join(", ")})\`,
+);
+`;
+}
+
+/**
+ * Branche le runner de gates colocalisées dans package.json serveur :
+ * scripts `test:modules` (tous) + `test:module` (--only) et présence dans
+ * la chaîne `test`. Écrit `scripts/run-module-gates.mjs` s'il manque.
+ */
 export function wireModuleGateInPackageJson(
   serverDir: string,
-  moduleId: string,
+  _moduleId?: string,
 ): boolean {
+  const runnerPath = path.join(serverDir, "scripts", "run-module-gates.mjs");
+  if (!fs.existsSync(runnerPath)) {
+    fs.mkdirSync(path.dirname(runnerPath), { recursive: true });
+    fs.writeFileSync(runnerPath, renderModuleGatesRunner(), "utf8");
+  }
   const pkgPath = path.join(serverDir, "package.json");
   if (!fs.existsSync(pkgPath)) return false;
   const pkg = JSON.parse(fs.readFileSync(pkgPath, "utf8")) as {
     scripts?: Record<string, string>;
   };
   pkg.scripts = pkg.scripts ?? {};
-  const scriptName = `test:module-${moduleId}`;
-  const scriptCmd = `node scripts/test-module-${moduleId}.mjs`;
-  if (pkg.scripts[scriptName] === scriptCmd && pkg.scripts.test?.includes(scriptName)) {
-    return false;
-  }
-  pkg.scripts[scriptName] = scriptCmd;
-  const testScript = pkg.scripts.test || "echo \"no tests\"";
-  if (!testScript.includes(scriptName)) {
+  const before = JSON.stringify(pkg.scripts);
+  pkg.scripts["test:modules"] = "node scripts/run-module-gates.mjs";
+  pkg.scripts["test:module"] ??= "node scripts/run-module-gates.mjs --only";
+  const testScript = pkg.scripts.test || 'echo "no tests"';
+  if (!testScript.includes("test:modules")) {
     pkg.scripts.test =
       testScript === 'echo "no tests"'
-        ? `npm run ${scriptName}`
-        : `${testScript} && npm run ${scriptName}`;
+        ? "npm run test:modules"
+        : `${testScript} && npm run test:modules`;
   }
+  if (JSON.stringify(pkg.scripts) === before) return false;
   fs.writeFileSync(pkgPath, `${JSON.stringify(pkg, null, 2)}\n`, "utf8");
   return true;
 }
@@ -530,7 +641,11 @@ export function writeProductModelModules(
   return moduleIds;
 }
 
-/** Stub gate structurel (même contrat que \`brand module init\`). */
+/**
+ * Stub gate structurel COLOCALISÉ (même contrat que \`brand module init\`) :
+ * écrit dans \`<spec-root>/modules/<id>/gate.mjs\`, découvert par
+ * \`scripts/run-module-gates.mjs\` (DOC-STANDARD-MODULE.md — 5ᵉ fichier).
+ */
 export function renderModuleGateStub(
   id: string,
   specRootName = "brand-spec",
@@ -538,7 +653,9 @@ export function renderModuleGateStub(
   return `#!/usr/bin/env node
 /**
  * Gate module ${id} — stub scaffoldé par la factory / \`brand module init\`.
- * Vérifie le contrat structurel (spec 4 fichiers + wiring + registre).
+ * Colocalisée dans ${specRootName}/modules/${id}/ (5ᵉ fichier obligatoire,
+ * découverte par scripts/run-module-gates.mjs).
+ * Vérifie le contrat structurel (spec 5 fichiers + wiring + registre).
  * À enrichir : boot harness + CRUD HTTP + hooks + tools MCP (voir
  * DOC-STANDARD-MODULE.md §9).
  */
@@ -546,12 +663,15 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-const serverDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const appDir = path.resolve(serverDir, "..");
+const specDir = path.dirname(fileURLToPath(import.meta.url));
+const appDir = path.resolve(specDir, "../../..");
+const maybeServer = path.join(appDir, "server");
+const serverDir = fs.existsSync(path.join(maybeServer, "package.json"))
+  ? maybeServer
+  : appDir;
 const errors = [];
 
-const specDir = path.join(appDir, "${specRootName}", "modules", "${id}");
-for (const f of ["prd.md", "interview.md", "TODO.md", "CHANGELOG.md"]) {
+for (const f of ["prd.md", "interview.md", "TODO.md", "CHANGELOG.md", "gate.mjs"]) {
   if (!fs.existsSync(path.join(specDir, f))) errors.push(\`spec manquant: \${f}\`);
 }
 
@@ -578,10 +698,10 @@ if (fs.existsSync(mig) && !fs.readFileSync(mig, "utf8").includes("collectModuleM
 }
 
 if (errors.length) {
-  console.error(\`✗ test-module-${id}:\\n\` + errors.map((e) => \`  - \${e}\`).join("\\n"));
+  console.error(\`✗ gate ${id}:\\n\` + errors.map((e) => \`  - \${e}\`).join("\\n"));
   process.exit(1);
 }
-console.log("OK test-module-${id} (structurel — enrichir avec des preuves HTTP)");
+console.log("OK gate ${id} (structurel — enrichir avec des preuves HTTP)");
 `;
 }
 
@@ -600,8 +720,9 @@ Marque légère sur **OS Creezio** — monorepo client + server (layout 2 repos)
 - Déclaration = migrations + \`registerModuleApi\` + feed + nav **métier**
 - Métier = **registre de modules** \`server/src/electron/modules/<id>.ts\`
   (un \`BrandModuleDef\` par module : entitySpecs, apiMounts, navItems,
-  mcpTools, meiliIndexes, migrations) + specs 4 fichiers
-  \`brand-spec/modules/<id>/\` (standard kit \`DOC-STANDARD-MODULE.md\`).
+  mcpTools, meiliIndexes, migrations) + specs 5 fichiers
+  \`brand-spec/modules/<id>/\` (prd, interview, TODO, CHANGELOG, gate.mjs —
+  standard kit \`DOC-STANDARD-MODULE.md\`, runner \`npm run test:modules\`).
   \`brand-module-api.ts\` / \`brand-migrations.ts\` / \`vertical-slot.ts\` /
   \`brand-mcp-tools.ts\` / \`meili-feed.ts\` = consommateurs du registre
   (\`collectEntitySpecs\` / \`collectModuleMigrations\` / \`collectNavItems\`…).
