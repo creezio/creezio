@@ -47,6 +47,13 @@ export function getConsoleObservabilityStore(): ObservabilityStore {
   return storeSingleton;
 }
 
+export type ObservabilityConsoleSummary = {
+  activity: number;
+  plugin_usage: number;
+  control_plane: number;
+  total: number;
+};
+
 export function loadObservabilityConsoleSnapshot(): {
   updatedAt: string;
   filePath: string;
@@ -55,16 +62,33 @@ export function loadObservabilityConsoleSnapshot(): {
   events: ReturnType<ObservabilityStore["list"]>;
   usageByPlugin: PluginUsageAggregate[];
   activityByOrg: OrgActivityAggregate[];
+  /** Miroir du GET /api/observability?summary (contrat ObservabilityPanel). */
+  summary: ObservabilityConsoleSummary;
+  usage: PluginUsageAggregate[];
+  orgs: OrgActivityAggregate[];
+  recent: ReturnType<ObservabilityStore["list"]>;
 } {
   const store = getConsoleObservabilityStore();
   const dbPath = observabilityConsoleDbPath();
+  const usage = store.aggregatePluginUsage({ limit: 20 });
+  const orgs = store.aggregateOrgActivity({ limit: 20 });
+  const events = store.list({ limit: 200 });
   return {
     updatedAt: new Date().toISOString(),
     filePath: dbPath,
     dbPath,
     persisted: "sqlite",
-    events: store.list({ limit: 200 }),
-    usageByPlugin: store.usageByPlugin(),
-    activityByOrg: store.activityByOrg(),
+    events,
+    usageByPlugin: usage,
+    activityByOrg: orgs,
+    summary: {
+      activity: store.count({ kind: "activity" }),
+      plugin_usage: store.count({ kind: "plugin_usage" }),
+      control_plane: store.count({ kind: "control_plane" }),
+      total: store.count(),
+    },
+    usage,
+    orgs,
+    recent: store.list({ limit: 20 }),
   };
 }
