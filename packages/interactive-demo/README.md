@@ -28,6 +28,53 @@ que des cartes de narration présentent chaque fonctionnalité.
 - **Scénario générique OS** : `genericOsTourScenario({ productName })` —
   démo de base jour 1 (sidebar, tâches, mails, assistant) pour toute marque
   sans scénario produit.
+- **Collecteur de contributions modules** : `collectInteractiveDemoDefaults(contributions)`
+  agrège les scénarios `demo` des modules métier (validation
+  `validateDemoScenario`, dédup par id, ordre stable, erreurs agrégées
+  explicites) — la brique derrière `collectDemoScenarios()` du registre
+  `modules/index.ts` généré par la factory.
+
+## Défauts par modules (registre — câblage cible)
+
+Chaque module métier peut déclarer ses scénarios dans son
+`server/src/electron/modules/<id>.ts` (champ optionnel `demo` du
+`BrandModuleDef`) :
+
+```ts
+export const promotionsModule: BrandModuleDef = {
+  id: "promotions",
+  // entitySpecs, navItems…
+  demo: {
+    scenarios: [
+      {
+        id: "promotions-tour",
+        title: "Promotions",
+        steps: [{ id: "intro", kind: "say", title: "Créez vos promos" }],
+      },
+    ],
+  },
+};
+```
+
+Le registre `modules/index.ts` (généré factory) agrège tout via
+`collectDemoScenarios()` — le mount n'est alors qu'**une ligne** côté app :
+
+```ts
+// server/src/electron/brand-module-api.ts
+import { collectDemoScenarios } from "./modules/index.js";
+import { createInteractiveDemoMount } from "@creezio/interactive-demo";
+
+api.registerModuleApi(
+  "interactive-demo",
+  createInteractiveDemoMount({ defaults: collectDemoScenarios() }),
+);
+```
+
+`collectDemoScenarios()` délègue à `collectInteractiveDemoDefaults()` :
+scénarios invalides ou ids en conflit entre modules = **erreur explicite au
+boot** (liste complète module:scénario), jamais une démo tronquée servie en
+silence. L'approche fichier unique ci-dessous reste supportée
+(rétrocompatibilité).
 
 ## Câblage marque (câblé en prod : WinHub)
 

@@ -275,6 +275,10 @@ Questionnaire d'architecture REMPLI — SoT des décisions du module
   (justifier) :
 - hooks / extraRoutes / mounts additionnels :
 - wiring : \`server/src/electron/modules/{{moduleId}}.ts\` (BrandModuleDef)
+- démo interactive (optionnel) : champ \`demo: { scenarios: DemoScenario[] }\`
+  du BrandModuleDef — scénarios du tour produit du module, agrégés par
+  \`collectDemoScenarios()\` (registre) en défauts du mount
+  \`interactive-demo\` (« Aucun » sinon) :
 
 ## 4. UI, nav & permissions — kit graphique imposé
 

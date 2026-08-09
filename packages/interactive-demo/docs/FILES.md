@@ -9,6 +9,7 @@
 | Fichier | Rôle |
 |---|---|
 | [`src/content.ts`](../src/content.ts) | Contenu hybride DB (ADR-module-natif-hybride) : `interactiveDemoMigrations` (tables `interactive_demo_content` + `interactive_demo_preferences`), `mergeDemoScenarios` (merge pur défauts/overrides — `steps` = remplacement), `createInteractiveDemoMount` → `/api/v1/modules/interactive-demo/*` (câblé en prod : WinHub) |
+| [`src/contributions.ts`](../src/contributions.ts) | `DemoModuleContribution` + `collectInteractiveDemoDefaults` : agrégation des scénarios `demo` des modules du registre marque (validation `validateDemoScenario`, dédup par id, ordre stable, erreurs agrégées) — brique derrière `collectDemoScenarios()` du `modules/index.ts` généré factory |
 | [`src/generic.ts`](../src/generic.ts) | `genericOsTourScenario({ productName })` — démo de base jour 1 des surfaces OS (sidebar, tâches, mails, assistant), sans texte métier marque (disponible pour toute marque) |
 | [`src/index.ts`](../src/index.ts) | Surface publique runtime (types + contenu + scénario générique) |
 | [`src/types.ts`](../src/types.ts) | Contrat déclaratif : `DemoScenario`, `DemoStep` (say/navigate/highlight/click/type/scroll/wait), `DemoTarget` (sélecteur → `data-aid` → libellé) et `validateDemoScenario` (pur, sans DOM) |

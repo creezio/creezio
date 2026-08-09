@@ -54,6 +54,7 @@ export const ${camel}Module: BrandModuleDef = {
     { id: "brand.${id}", label: "${title}", href: "/${id}", group: "brand", order: 500 },
   ],
   // mcpTools: (api) => [/* registerGuardedMcpTool côté serveur MCP */],
+  // demo: { scenarios: [/* DemoScenario[] — tour produit du module */] },
   // migrations: () => [{ id: "mod_${camel}_001_init", sql: \`…\` }],
 };
 `;

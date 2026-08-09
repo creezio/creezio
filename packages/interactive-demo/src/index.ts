@@ -3,9 +3,10 @@
  *
  * Moteur de démo interactive native (product tour live « Storylane-like »,
  * joué dans l'app par un faux curseur) : types de scénario déclaratifs,
- * contenu hybride DB (migrations + merge + mount api-kernel) et scénario
- * générique OS. Les composants React vivent dans
- * `@creezio/interactive-demo/ui`.
+ * collecteur des contributions des modules métier
+ * (`collectInteractiveDemoDefaults`), contenu hybride DB (migrations +
+ * merge + mount api-kernel) et scénario générique OS. Les composants React
+ * vivent dans `@creezio/interactive-demo/ui`.
  */
 
 export type {
@@ -25,6 +26,9 @@ export type {
   DemoScenarioOverride,
 } from "./types.js";
 export { validateDemoScenario, scenarioMatchesRole } from "./types.js";
+
+export { collectInteractiveDemoDefaults } from "./contributions.js";
+export type { DemoModuleContribution } from "./contributions.js";
 
 export {
   INTERACTIVE_DEMO_SCHEMA_SQL,

@@ -257,6 +257,7 @@ const SERVER_CREEZIO_DEPS = [
   "desktop-tooling",
   "electron-shell",
   "integrations",
+  "interactive-demo",
   "mails",
   "mcp-facade",
   "observability",

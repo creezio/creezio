@@ -24,6 +24,7 @@ import type { McpRegisteredTool } from "@creezio/mcp-facade";
 import type { SqliteMigration } from "@creezio/platform-core";
 import type { BrandMeiliFeed } from "@creezio/electron-shell/meili";
 import type { CoreNavItem } from "@creezio/shell-ui";
+import type { DemoScenario } from "@creezio/interactive-demo";
 
 /** Entrée de nav métier — \`order\` fixe la position dans la sidebar. */
 export type BrandNavItem = CoreNavItem & { order: number };
@@ -44,6 +45,12 @@ export type BrandModuleDef = {
   /** Index Meili contribués au feed marque. */
   meiliIndexes?: BrandMeiliIndex[];
   /**
+   * Scénarios de démo interactive contribués par le module (tour produit
+   * métier) — agrégés par \`collectDemoScenarios()\` (registre) et servis en
+   * défauts du mount \`interactive-demo\`.
+   */
+  demo?: { scenarios: DemoScenario[] };
+  /**
    * Migrations du module — \`mod_<module>_00N_<slug>\`, jamais renuméroter
    * une migration appliquée ; migrations cross-module interdites.
    */
@@ -61,6 +68,8 @@ export const MODULES_INDEX_TS = `/**
 import type { ApiKernel, ApiMount, EntitySpec } from "@creezio/api-kernel";
 import type { McpRegisteredTool } from "@creezio/mcp-facade";
 import type { SqliteMigration } from "@creezio/platform-core";
+import { collectInteractiveDemoDefaults } from "@creezio/interactive-demo";
+import type { DemoScenario } from "@creezio/interactive-demo";
 import type { BrandMeiliIndex, BrandModuleDef, BrandNavItem } from "./types.js";
 
 // <creezio:module-imports> (une ligne par module — insertion \`brand module init\`)
@@ -123,6 +132,20 @@ export function collectMeiliIndexes(): BrandMeiliIndex[] {
 /** Migrations des modules (IDs stables mod_<module>_*). */
 export function collectModuleMigrations(): SqliteMigration[] {
   return BRAND_MODULES.flatMap((mod) => mod.migrations?.() ?? []);
+}
+
+/**
+ * Scénarios démo interactive contribués par les modules (champ \`demo\`) —
+ * défauts marque du mount :
+ * \`createInteractiveDemoMount({ defaults: collectDemoScenarios() })\`.
+ * Validation + dédup par id : \`collectInteractiveDemoDefaults\` (kit).
+ */
+export function collectDemoScenarios(): DemoScenario[] {
+  return collectInteractiveDemoDefaults(
+    BRAND_MODULES.flatMap((mod) =>
+      mod.demo ? [{ moduleId: mod.id, scenarios: mod.demo.scenarios }] : [],
+    ),
+  );
 }
 `;
 
@@ -720,7 +743,7 @@ Marque légère sur **OS Creezio** — monorepo client + server (layout 2 repos)
 - Déclaration = migrations + \`registerModuleApi\` + feed + nav **métier**
 - Métier = **registre de modules** \`server/src/electron/modules/<id>.ts\`
   (un \`BrandModuleDef\` par module : entitySpecs, apiMounts, navItems,
-  mcpTools, meiliIndexes, migrations) + specs 5 fichiers
+  mcpTools, meiliIndexes, demo, migrations) + specs 5 fichiers
   \`brand-spec/modules/<id>/\` (prd, interview, TODO, CHANGELOG, gate.mjs —
   standard kit \`DOC-STANDARD-MODULE.md\`, runner \`npm run test:modules\`).
   \`brand-module-api.ts\` / \`brand-migrations.ts\` / \`vertical-slot.ts\` /

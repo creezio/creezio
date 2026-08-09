@@ -157,6 +157,29 @@ Desktop Creezio.
     ),
     /collectModuleMigrations/,
   );
+
+  // Registre : champ `demo` des modules + collecteur collectDemoScenarios
+  // (défauts du mount interactive-demo) + dep serveur scaffoldée.
+  const modulesIndex = fs.readFileSync(
+    path.join(serverDir, "src/electron/modules/index.ts"),
+    "utf8",
+  );
+  assert.match(modulesIndex, /collectDemoScenarios/);
+  assert.match(modulesIndex, /collectInteractiveDemoDefaults/);
+  assert.match(
+    fs.readFileSync(
+      path.join(serverDir, "src/electron/modules/types.ts"),
+      "utf8",
+    ),
+    /demo\?: \{ scenarios: DemoScenario\[\] \}/,
+  );
+  const scaffoldedServerPkg = JSON.parse(
+    fs.readFileSync(path.join(serverDir, "package.json"), "utf8"),
+  );
+  assert.ok(
+    scaffoldedServerPkg.dependencies?.["@creezio/interactive-demo"],
+    "dep @creezio/interactive-demo absente du serveur scaffoldé",
+  );
   assert.match(
     fs.readFileSync(path.join(appDir, "AGENTS.md"), "utf8"),
     /BrandModuleDef/,
