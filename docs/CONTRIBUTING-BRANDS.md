@@ -46,6 +46,14 @@ scaffold factory (creezio new-app)
    build:packages` dans le clone kit du serveur) : un pull du clone kit
    sans rebuild laisse un dist stale et la garde `assert-runtime-dist`
    refuse ? ? juste titre ? le build d'image.
+   **Update `--backup` : sudo requis pour le runner.** Les fichiers de
+   `docker-data/servers/<nom>/` sont écrits par les conteneurs (root, y
+   compris des secrets en mode 600) et `docker-data/backups/` appartient à
+   root : le tar de snapshot lancé par l'utilisateur du runner échoue en
+   `Permission denied` et l'update est annulé (échec propre, rien touché).
+   Le job deploy lance donc les étapes `server-docker update` en
+   `sudo -n env "PATH=$PATH" node …` — l'utilisateur du runner doit avoir
+   sudo NOPASSWD sur le serveur (constat tempoflow-vps, runner `deploy`).
 3. **Vendor pinné** : `vendor/creezio/SYNC.json` pinne `kitSha` +
    `architectureVersion`. Le vendor est GÉNÉRÉ (README sentinelle posé par le
    sync) — jamais édité à la main.
