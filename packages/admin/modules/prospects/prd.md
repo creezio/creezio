@@ -127,4 +127,4 @@ Aucun.
 - Import/scraping de prospects, scoring, relances automatiques.
 - Le mount métier `--from-prd` des apps admin générées (table brand
   `prospects`) : documenté côté repo marque (ex.
-  `tempoflow-admin/admin-spec/modules/entites-fromprd/`).
+  `tempoflow3-admin/admin-spec/modules/entites-fromprd/`).

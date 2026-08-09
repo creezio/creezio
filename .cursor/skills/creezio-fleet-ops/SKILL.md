@@ -356,7 +356,7 @@ Deux plans (ADR `docs/adr/ADR-admin-app-os.md`) :
 
 1. **Backend flotte** (`creezio-server-admin`, Node pur, port 18800 loopback,
    Basic) — SoT des gestes flotte, API `/admin/api/*`, ancienne UI `/admin`.
-2. **App admin** (repo dédié `{ADMIN_ROOT}`, ex. `creezio/tempoflow-admin`) —
+2. **App admin** (repo dédié `{ADMIN_ROOT}`, ex. `creezio/tempoflow3-admin`) —
    app Creezio complète (mode admin) : login OS, sidebar, assistant, modules
    Flotte (`/flotte`, proxy `/api/v1/modules/fleet/*` → backend), Tickets,
    Prospects, Clients, Roadmap. Env : `CREEZIO_FLEET_BACKEND_URL` +
@@ -379,7 +379,7 @@ admin qui fait foi (pas un éventuel `docker-data/server-admin.json` de la
 marque).
 
 **Vérité** : `packages/observability/fleet-collector/server-admin.mjs`,
-`docker/server-admin/README.md`, repo `creezio/tempoflow-admin`.
+`docker/server-admin/README.md`, repo `creezio/tempoflow3-admin`.
 
 ### 5b. Support E2E (serveur marque → admin → réponse)
 

@@ -88,7 +88,7 @@ La page de l'app admin (`server/ui/app/<route>/page.tsx` du repo
 
 Après modification kit : build + push `main` + resync vendor du repo admin,
 puis rebuild/recreate du conteneur — procédure canonique dans l'AGENTS du
-repo `tempoflow-admin`.
+repo `tempoflow3-admin`.
 
 ## Checklist finale
 

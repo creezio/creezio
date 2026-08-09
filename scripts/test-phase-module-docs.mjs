@@ -17,7 +17,7 @@
  * Périmètres :
  *   - kit : `packages/admin/modules/` (modules admin natifs) ;
  *   - marque sonde TF3 : `<root>/brand-spec/modules/` (skip si absente) ;
- *   - repo admin sonde : `<root sibling>/tempoflow-admin/admin-spec/modules/`
+ *   - repo admin sonde : `<root sibling>/tempoflow3-admin/admin-spec/modules/`
  *     (skip si absent).
  */
 import assert from "node:assert/strict";
@@ -146,11 +146,12 @@ function scopes() {
     });
     const adminRoot = [
       process.env.CREEZIO_TEMPOFLOW_ADMIN_ROOT,
+      path.resolve(tf3, "../tempoflow3-admin"),
       path.resolve(tf3, "../tempoflow-admin"),
     ].filter(Boolean).find((p) => fs.existsSync(p));
     if (adminRoot) {
       out.push({
-        label: "tempoflow-admin admin-spec",
+        label: "tempoflow3-admin admin-spec",
         modulesRoot: path.join(adminRoot, "admin-spec/modules"),
         required: false,
       });

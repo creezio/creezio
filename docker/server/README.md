@@ -144,7 +144,7 @@ creezio server-docker admin up --admin-root "$ADMIN_ROOT"   # repo admin dédié
 
 Config versionnable **sans secrets** (`port`, `user`, `brandRoots[]`) : à la
 racine du **repo admin dédié** (`{ADMIN_ROOT}/server-admin.json`, ex.
-`creezio/tempoflow-admin`) — le `pass` runtime reste dans
+`creezio/tempoflow3-admin`) — le `pass` runtime reste dans
 `{ADMIN_ROOT}/docker-data/server-admin.json` (gitignoré). Le chemin legacy
 `{BRAND_ROOT}/admin/server-admin.json` reste lu mais n'est plus généré.
 

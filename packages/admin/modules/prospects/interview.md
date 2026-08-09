@@ -60,7 +60,7 @@ Session OS de l'app admin ; pas de granularité par rôle dans le module.
 ## 7. Meili / n8n / plugins
 
 Aucun dans le kit. (Côté TempoFlow Admin, le feed Meili marque indexe
-`admin_prospects` — voir `tempoflow-admin/admin-spec/modules/wiring/`.)
+`admin_prospects` — voir `tempoflow3-admin/admin-spec/modules/wiring/`.)
 
 ## 8. Seeds & onboarding
 

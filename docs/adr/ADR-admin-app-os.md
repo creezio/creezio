@@ -109,7 +109,7 @@ Package natif kit, présent sur **tous les serveurs marque** :
 1. Le backend flotte actuel (`creezio-server-admin`, port 18800 loopback)
    **reste en place** : c'est lui qui sert le module `fleet` (et l'ancienne
    UI `/admin` reste accessible en loopback pendant la transition).
-2. L'app admin v2 (repo `tempoflow-admin`, OS complet) tourne comme serveur
+2. L'app admin v2 (repo `tempoflow3-admin`, OS complet) tourne comme serveur
    headless en `--network host` (elle doit joindre le backend flotte + les
    boot-status loopback), port dédié.
 3. `admin.tempoflow.fr` bascule vers l'app v2 quand les fonctions flotte

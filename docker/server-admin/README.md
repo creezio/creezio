@@ -8,7 +8,7 @@ dépendance npm — même esprit que le fleet collector). Point d'entrée
 ## Usage
 
 Voie nominale : depuis le **repo admin dédié** de la marque (`<brand>-admin`,
-privé — ex. `creezio/tempoflow-admin`), config auto-générée dans
+privé — ex. `creezio/tempoflow3-admin`), config auto-générée dans
 `{adminRoot}/docker-data/server-admin.json` :
 
 ```bash

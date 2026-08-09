@@ -15,7 +15,7 @@ import { prepareBrandDistribution } from "./prepare-brand-distribution.js";
 export type GithubRepoSpec = {
   /** Dossier local à pousser (doit exister). */
   dir: string;
-  /** Nom du repo GitHub (ex. tempoflow3, tempoflow-admin). */
+  /** Nom du repo GitHub (ex. tempoflow3, tempoflow3-admin). */
   name: string;
   description?: string;
 };

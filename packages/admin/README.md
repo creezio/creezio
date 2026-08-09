@@ -2,7 +2,7 @@
 
 Modules natifs des apps admin de marque (« l'OS qui gère l'entreprise de la
 marque ») — voir [ADR-admin-app-os](../../docs/adr/ADR-admin-app-os.md).
-Câblé en prod dans l'app admin TempoFlow (repo `tempoflow-admin`,
+Câblé en prod dans l'app admin TempoFlow (repo `tempoflow3-admin`,
 `admin.tempoflow.fr`).
 
 | Module | Route | Rôle |

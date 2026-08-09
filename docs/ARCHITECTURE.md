@@ -34,7 +34,7 @@ support, prospection, billing… — voir
 [adr/ADR-admin-app-os.md](./adr/ADR-admin-app-os.md)) + la config flotte
 versionnée SANS secrets (`server-admin.json`, `fleet-hosts.json`,
 `docker-compose.admin.yml`) ; runtime avec secrets sous `docker-data/`
-(gitignoré). Exemple prod : `creezio/tempoflow-admin`.
+(gitignoré). Exemple prod : `creezio/tempoflow3-admin`.
 
 Le layout plat historique et le `admin/` embarqué restent détectés par le
 tooling (server-docker, resolvers de sonde) mais ne sont plus générés.
