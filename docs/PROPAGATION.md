@@ -16,15 +16,29 @@ L4 utilisateur (plugins personnels)
   ↑ remontée innovations terrain
 ```
 
-## Chemin nominal
+## Chemin nominal (boucle automatique)
 
-1. Modifier le kit ; `npm run build:packages` ; `npm run test:kit` vert.
-2. Merge sur `main`.
-3. Côté marque :
-   `CREEZIO_KIT_ROOT=<kit> bash crm/scripts/electron/sync-creezio-vendor.sh`
-   — contrat canonique : [`scripts/sync-creezio-vendor.sh`](../scripts/sync-creezio-vendor.sh)
-   (copie les packages construits vers `crm/vendor/creezio`).
-4. Adapter le wiring marque si l'API publique change ; gates marque.
+La descente kit → marques est AUTOMATIQUE (gouvernance complète :
+[CONTRIBUTING-BRANDS.md](./CONTRIBUTING-BRANDS.md)) :
+
+1. Modifier le kit ; `npm run build:packages` ; `npm run test:kit` vert ;
+   push/merge sur `main`.
+2. CI kit : `build-and-test` vert → **`brand-matrix`** synce + teste chaque
+   marque du registre [`docs/brands.json`](./brands.json) contre ce kit
+   (`scripts/ci/brand-matrix-check.sh`, jamais de push) → **`notify-brands`**
+   dispatch `kit-main-green` aux marques.
+3. Chaque marque : workflow **Vendor latest**
+   (`scripts/ci/vendor-latest.sh`) — vendor en retard → resync
+   ([`scripts/sync-creezio-vendor.sh`](../scripts/sync-creezio-vendor.sh),
+   contrat canonique) + suite complète ; vert → push `[vendor-resync]`
+   (CI + deploy marque suivent) ; rouge → signal, rien n'est bloqué.
+4. Breaking change (`ARCHITECTURE_VERSION`) : codemods de migration
+   obligatoires — [`scripts/codemods/README.md`](../scripts/codemods/README.md).
+
+Resync manuel possible (dev local) :
+`CREEZIO_KIT_ROOT=<kit> ROOT=<marque> bash <kit>/scripts/sync-creezio-vendor.sh`.
+`vendor/creezio/` côté marque est GÉNÉRÉ — jamais de patch manuel (garde
+anti-dérive dans `vendor-latest.sh` marque).
 
 Politique de republish des binaires desktop : voir
 [archive/REPUBLISH-POLICY.md](./archive/REPUBLISH-POLICY.md) (politique
