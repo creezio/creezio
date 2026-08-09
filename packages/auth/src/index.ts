@@ -38,7 +38,7 @@ export {
 } from "./env-store.js";
 
 /* ── Config marque ── */
-export type { AuthConfig } from "./config.js";
+export type { AuthConfig, BrandRoleDbLike } from "./config.js";
 export {
   configureAuth,
   getAuthConfig,

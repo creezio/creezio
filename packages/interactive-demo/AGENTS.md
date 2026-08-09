@@ -71,6 +71,12 @@ par toutes les marques — le contenu des démos vit chez la marque.
   une fois dans le chrome + import du CSS. `autoStart` scénario-level +
   prop pour couper le lancement auto. Accent : var CSS
   `--creezio-demo-accent`.
+- Rôle courant : prop `role={me?.brandRole}` lue via `useSession()`
+  (`@creezio/auth/ui`) — côté serveur la marque déclare
+  `configureAuth({ resolveBrandRole })` (callback sur SA db, ex.
+  `user_roles`) ; le kit sert `brand_role` dans `/me` (suit la cible en
+  impersonation). Ne pas réintroduire de fetch d'endpoint rôle custom dans
+  le chrome (approche obsolète).
 - Pas d'env direct dans le package.
 
 ## Tests/gates

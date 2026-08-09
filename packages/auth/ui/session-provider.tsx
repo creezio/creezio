@@ -17,6 +17,12 @@ export type SessionMe = {
   user: string;
   user_id?: string;
   role: SessionRole;
+  /**
+   * Rôle métier marque (configureAuth.resolveBrandRole, champ brand_role de
+   * /me) — ex. backoffice / pos. null = marque sans resolver : aucun
+   * filtrage métier. Suit la CIBLE en impersonation.
+   */
+  brandRole?: string | null;
   kind?: "human" | "ai";
   permissions: string[];
   impersonating: boolean;
@@ -76,6 +82,7 @@ export function SessionProvider({
       const data = (await res.json()) as SessionMe & {
         ok?: boolean;
         kind?: "human" | "ai";
+        brand_role?: string | null;
       };
       // Legacy /me (sans role) = compte principal.
       const role: SessionRole =
@@ -94,6 +101,7 @@ export function SessionProvider({
         user: data.user,
         user_id: data.user_id,
         role,
+        brandRole: typeof data.brand_role === "string" ? data.brand_role : null,
         kind: data.kind === "ai" ? "ai" : "human",
         permissions,
         impersonating: Boolean(data.impersonating),
