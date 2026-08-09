@@ -45,7 +45,17 @@ function metaValue(db, key) {
 
 const db = new DatabaseSync(DB_PATH, { readOnly: true });
 try {
-  const sqliteSchema = Number(db.prepare("PRAGMA user_version").get().user_version || 0);
+  // Même convention que l'indexeur (generic-indexer.readSqliteSchemaVersion) :
+  // table meta, clé schema_version — le user_version SQLite n'est jamais
+  // écrit par les migrations marque (mismatch systématique → réindexation
+  // à chaque boot, régression prod serveur).
+  const sqliteSchema = (() => {
+    if (!tableExists(db, "meta")) return 0;
+    const row = db
+      .prepare("SELECT value FROM meta WHERE key='schema_version'")
+      .get();
+    return Number(row?.value || 0);
+  })();
   const rawFingerprint = metaValue(db, "meili_index_fingerprint");
   const rawInProgress = metaValue(db, "meili_index_in_progress");
   let fingerprint = null;

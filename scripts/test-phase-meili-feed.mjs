@@ -108,6 +108,20 @@ test("D2 boot Meili saute la réindexation quand le fingerprint est à jour", ()
   assert.match(coherenceSrc, /count-drift:/);
   assert.match(coherenceSrc, /export function meiliCoherenceScriptPath/);
 
+  // La sonde SQL doit lire la version de schéma avec la MÊME convention que
+  // l'indexeur (meta.schema_version). PRAGMA user_version n'est jamais écrit
+  // par les migrations marque → mismatch systématique → réindexation à
+  // chaque boot (régression prod serveur).
+  const probeSrc = fs.readFileSync(
+    path.join(
+      ROOT,
+      "packages/electron-shell/resources/scripts/meili-coherence-query.cjs",
+    ),
+    "utf8",
+  );
+  assert.match(probeSrc, /meta.*schema_version|key='schema_version'/);
+  assert.doesNotMatch(probeSrc, /PRAGMA user_version/);
+
   const harnessSrc = fs.readFileSync(
     path.join(ROOT, "packages/app-runtime/src/start-brand-kernel-harness.ts"),
     "utf8",
