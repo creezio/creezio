@@ -175,7 +175,12 @@ export TMPDIR="\${TMPDIR:-\$HOME/actions-runners/tmp}"
 mkdir -p "\${TMPDIR}"
 
 BRAND_ROOT="$(pwd)"
-KIT_CI_CLONE="\${KIT_CI_CLONE:-\$HOME/.cache/creezio-ci/kit}"
+# Cache kit namespacé PAR MARQUE : plusieurs runners self-hosted partagent le
+# même \$HOME — un clone commun serait détruit en plein build par le
+# \`git clean -fdx\` concurrent d'une autre marque (TS2307 en cascade).
+CACHE_SLUG="\${GITHUB_REPOSITORY##*/}"
+CACHE_SLUG="\${CACHE_SLUG:-\$(basename "\${BRAND_ROOT}")}"
+KIT_CI_CLONE="\${KIT_CI_CLONE:-\$HOME/.cache/creezio-ci/kit-\${CACHE_SLUG}}"
 KIT_GIT="\${CREEZIO_KIT_GIT:-https://github.com/creezio/creezio.git}"
 KIT_DEV_CLONE="\${CREEZIO_KIT_DEV_CLONE:-}"
 
