@@ -1059,8 +1059,23 @@ export async function startBrandKernelHarness(
   boot.complete(`Serveur ${config.brandId} prêt`);
 
   const close = async () => {
+    // Ordre critique : le chemin DB d'abord, les sidecars ensuite. Docker
+    // stop accorde ~10 s avant SIGKILL — si des sidecars lents (plugins,
+    // navigateur, Meili) consomment ce budget AVANT closeKernel(), le
+    // process meurt avant la fermeture SQLite et laisse un WAL chaud au
+    // boot suivant (corruption « malformed » constatée en prod).
     fleetHeartbeat?.stop();
     fleetPhase?.stop();
+    try {
+      await httpServer.close();
+    } catch {
+      /* écoute déjà fermée */
+    }
+    platformSurface?.close();
+    await uiPlane?.close();
+    brandOs?.close();
+    closeKernel();
+    // Sidecars sans lien avec la DB — tués après la fermeture SQLite.
     await pluginsPhase?.close();
     if (brandOs) {
       try {
@@ -1071,11 +1086,6 @@ export async function startBrandKernelHarness(
     }
     meiliStop?.();
     await browserSidecar?.close();
-    platformSurface?.close();
-    await uiPlane?.close();
-    await httpServer.close();
-    brandOs?.close();
-    closeKernel();
   };
 
   const shutdown = () => {

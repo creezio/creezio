@@ -5,6 +5,7 @@
  * Plugin : `openPlugin(id)` à l'install (ensurePluginDb + migrations).
  */
 
+import fs from "node:fs";
 import type { PathsContext } from "./paths.js";
 import {
   openNodeSqliteDatabase,
@@ -137,13 +138,74 @@ function wrapHandle(
 }
 
 /**
+ * true si l'erreur d'ouverture est une corruption SQLite (SQLITE_CORRUPT /
+ * NOTADB) — seul cas où la quarantaine WAL est légitime.
+ */
+function isSqliteCorruptOpen(err: unknown): boolean {
+  const e = err as { errcode?: number; message?: string } | null;
+  const msg = String(e?.message || err || "");
+  return (
+    e?.errcode === 11 || // SQLITE_CORRUPT
+    e?.errcode === 26 || // SQLITE_NOTADB
+    /malformed|not a database|database disk image/i.test(msg)
+  );
+}
+
+/**
+ * Ouvre une DB avec auto-guérison WAL : après un kill sauvage (OOM killer,
+ * SIGKILL de recreate Docker), le couple -wal/-shm peut être incohérent avec
+ * le fichier principal — l'open échoue alors en « database disk image is
+ * malformed » alors que le fichier principal est sain (constat prod 2×).
+ * La relecture du WAL étant précisément ce qui échoue, on met les sidecars
+ * en quarantaine et on rouvre le fichier principal seul (les frames non
+ * checkpointées du WAL orphelin sont perdues — préférable à un boot-loop).
+ * Si le fichier principal est lui-même corrompu, le retry jette l'erreur
+ * d'origine : pas de masquage.
+ */
+function openWithWalQuarantine(
+  open: OpenSqliteDatabase,
+  dbPath: string,
+): SqliteDatabase {
+  const probe = (db: SqliteDatabase): SqliteDatabase => {
+    // Force la relecture du WAL dès l'open (node:sqlite peut être paresseux).
+    db.prepare("SELECT COUNT(*) AS c FROM sqlite_master").get();
+    return db;
+  };
+  try {
+    return probe(open(dbPath));
+  } catch (err) {
+    if (!isSqliteCorruptOpen(err)) throw err;
+    const sidecars = [`${dbPath}-wal`, `${dbPath}-shm`].filter((p) =>
+      fs.existsSync(p),
+    );
+    if (sidecars.length === 0) throw err; // pas de WAL → fichier principal corrompu
+    const stamp = new Date().toISOString().replace(/[:.]/g, "-");
+    for (const side of sidecars) {
+      try {
+        fs.renameSync(side, `${side}.quarantine-${stamp}`);
+      } catch {
+        /* rename impossible → on tente l'open quand même */
+      }
+    }
+    console.warn(
+      `[sqlite] open « malformed » sur ${dbPath} — WAL/SHM mis en quarantaine ` +
+        `(${sidecars.length} fichier(s)), retry sur le fichier principal ` +
+        `(${err instanceof Error ? err.message : err})`,
+    );
+    return probe(open(dbPath));
+  }
+}
+
+/**
  * Crée le runtime multi-DB : layout jour 0 + open core/brand + migrations.
  * Aucun plugin n'est ouvert tant que `openPlugin` n'est pas appelé.
  */
 export function createSqliteRuntime(
   opts: CreateSqliteRuntimeOptions,
 ): SqliteRuntime {
-  const open = opts.openDatabase || openNodeSqliteDatabase;
+  const baseOpen = opts.openDatabase || openNodeSqliteDatabase;
+  const open: OpenSqliteDatabase = (dbPath) =>
+    openWithWalQuarantine(baseOpen, dbPath);
   const touchBrand = opts.touchBrand !== false;
   const day0 = ensureDay0SqliteLayout(opts.ctx, { touchBrand });
 
@@ -289,9 +351,26 @@ export function createSqliteRuntime(
     close() {
       if (closed) return;
       closed = true;
-      for (const h of plugins.values()) h.close();
+      // Checkpoint passif best-effort avant fermeture : pousse les frames du
+      // WAL dans le fichier principal tant que possible. La dernière
+      // connexion qui se ferme checkpointe + tronque le WAL (comportement
+      // SQLite) — critique pour qu'un recreate Docker ne retrouve jamais un
+      // WAL chaud inutile au boot suivant.
+      const passiveCheckpoint = (h: SqliteHandle | null) => {
+        try {
+          h?.exec("PRAGMA wal_checkpoint(PASSIVE);");
+        } catch {
+          /* DB en journal non-WAL ou verrouillée → close() standard */
+        }
+      };
+      for (const h of plugins.values()) {
+        passiveCheckpoint(h);
+        h.close();
+      }
       plugins.clear();
+      passiveCheckpoint(brandHandle);
       brandHandle?.close();
+      passiveCheckpoint(coreHandle);
       coreHandle?.close();
       brandHandle = null;
       coreHandle = null;
