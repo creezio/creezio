@@ -37,6 +37,15 @@ scaffold factory (creezio new-app)
    repo `CREEZIO_CI_TOKEN` (token lisant le repo kit) — seuls kit-compat et
    vendor-update tournent alors sur GitHub-hosted ; le deploy attend le
    runner du serveur de l'app.
+   **Deploy depuis le SERVEUR de l'app** (pattern winhub, repris par
+   tempoflow3) : la source d?ploy?e est le clone local du brand root ? le
+   registre d'instances `docker-data/servers.json` est gitignor?, donc
+   ABSENT d'un checkout runner (`--brand-root .` depuis le checkout casse
+   `server-docker update`). Le job deploy rebuilde aussi le kit AVANT tout
+   build (`git merge --ff-only origin/main` puis `npm ci && npm run
+   build:packages` dans le clone kit du serveur) : un pull du clone kit
+   sans rebuild laisse un dist stale et la garde `assert-runtime-dist`
+   refuse ? ? juste titre ? le build d'image.
 3. **Vendor pinné** : `vendor/creezio/SYNC.json` pinne `kitSha` +
    `architectureVersion`. Le vendor est GÉNÉRÉ (README sentinelle posé par le
    sync) — jamais édité à la main.
