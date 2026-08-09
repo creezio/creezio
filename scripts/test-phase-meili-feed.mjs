@@ -122,3 +122,33 @@ test("D2 boot Meili saute la réindexation quand le fingerprint est à jour", ()
   );
   assert.match(meiliBarrel, /meiliCoherenceScriptPath/);
 });
+
+test("D3 réindexation post-import catalogue (race boot index ∥ import)", () => {
+  // Régression prod : l'indexation Meili du boot est parallèle (avant le
+  // listen, pour ne pas retarder les healthchecks) MAIS l'import catalogue
+  // projeté tourne APRÈS le listen — l'index était construit sur l'état
+  // pré-import (base vide au premier boot → index vide → recherche dégradée
+  // jusqu'au redémarrage suivant). Le harness doit réindexer après un import
+  // effectif, en attendant l'indexation de boot encore en vol.
+  const harnessSrc = fs.readFileSync(
+    path.join(ROOT, "packages/app-runtime/src/start-brand-kernel-harness.ts"),
+    "utf8",
+  );
+  // Réindexation mutualisée (bridge HTTP + post-import), jamais deux en vol.
+  assert.match(harnessSrc, /const triggerMeiliReindex = /);
+  assert.match(harnessSrc, /reindex: async \(\) => triggerMeiliReindex\(\)/);
+  // L'indexation de boot est trackée pour que le post-import l'attende.
+  assert.match(harnessSrc, /meiliReindexInFlight = meiliBoot\.indexation\.finally/);
+  // Déclencheur post-import : uniquement sur import EFFECTIF + Meili prêt.
+  assert.match(harnessSrc, /catalogState === "imported" && meiliRuntime && config\.meiliFeed/);
+  assert.match(harnessSrc, /await meiliReindexInFlight/);
+  assert.match(harnessSrc, /Réindexation post-import catalogue/);
+
+  const phaseSrc = fs.readFileSync(
+    path.join(ROOT, "packages/app-runtime/src/harness-server-phases.ts"),
+    "utf8",
+  );
+  // La phase remonte l'état d'import au harness (décision de réindexation).
+  assert.match(phaseSrc, /\}\): Promise<string>/);
+  assert.match(phaseSrc, /return typeof state === "string" \? state : "unknown"/);
+});

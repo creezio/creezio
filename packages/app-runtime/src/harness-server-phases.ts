@@ -107,11 +107,11 @@ export function applyStoredLlmEnv(
 export async function runHarnessCatalogImportPhase(opts: {
   boot: BootProgressReporter;
   catalogHost: BrandCatalogHost;
-}): Promise<void> {
+}): Promise<string> {
   const { boot, catalogHost } = opts;
   if (typeof catalogHost.ensureCatalogImported !== "function") {
     boot.skip("catalog-import", "Pas d'import projeté (marque sans snapshot)");
-    return;
+    return "skipped";
   }
   boot.go("catalog-import", { detail: "Import du catalogue dans la base…" });
   try {
@@ -126,11 +126,13 @@ export async function runHarnessCatalogImportPhase(opts: {
     } else {
       boot.done("catalog-import", `Catalogue ${state}`);
     }
+    return typeof state === "string" ? state : "unknown";
   } catch (err) {
     boot.error(
       "catalog-import",
       err instanceof Error ? err.message : String(err),
     );
+    return "error";
   }
 }
 

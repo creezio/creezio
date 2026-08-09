@@ -320,6 +320,26 @@ export async function startBrandKernelHarness(
   // lazy — la surface est montée avant).
   let meiliRuntime: { host: string; masterKey: string } | null = null;
   let meiliReindexInFlight: Promise<unknown> | null = null;
+  // Réindexation complète mutualisée (bridge HTTP /platform/search/reindex ET
+  // réindexation post-import catalogue) — jamais deux indexations en vol.
+  const triggerMeiliReindex = (): Promise<unknown> | null => {
+    const rt = meiliRuntime;
+    const feed = config.meiliFeed;
+    if (!rt || !feed) return null;
+    if (meiliReindexInFlight) return meiliReindexInFlight;
+    meiliReindexInFlight = (async () => {
+      const result = await runFeedIndexation({
+        feed,
+        dbPath: runtime.getBrand().path,
+        meiliHost: rt.host,
+        masterKey: rt.masterKey,
+      });
+      return { ok: true as const, ready: true, indexed: result.indexed };
+    })().finally(() => {
+      meiliReindexInFlight = null;
+    });
+    return meiliReindexInFlight;
+  };
   if (desktopProfile === "full") {
     platformSurface = mountBrandPlatformSurface({
       brandId: config.brandId,
@@ -488,21 +508,7 @@ export async function startBrandKernelHarness(
               },
             };
           },
-          reindex: async () => {
-            if (meiliReindexInFlight) return meiliReindexInFlight;
-            meiliReindexInFlight = (async () => {
-              const result = await runFeedIndexation({
-                feed,
-                dbPath: runtime.getBrand().path,
-                meiliHost: rt.host,
-                masterKey: rt.masterKey,
-              });
-              return { ok: true as const, ready: true, indexed: result.indexed };
-            })().finally(() => {
-              meiliReindexInFlight = null;
-            });
-            return meiliReindexInFlight;
-          },
+          reindex: async () => triggerMeiliReindex(),
         };
       },
     });
@@ -570,6 +576,13 @@ export async function startBrandKernelHarness(
         if (meiliBoot.indexSkipped) {
           boot.skip("index", "Index à jour (fingerprint) — réindexation sautée");
         } else if (meiliBoot.indexation) {
+          // Trackée dans meiliReindexInFlight : une réindexation post-import
+          // catalogue doit ATTENDRE la fin de l'indexation de boot avant de
+          // relire la DB (sinon deux indexations concurrentes, et le
+          // fingerprint périmé pourrait être écrit après le bon).
+          meiliReindexInFlight = meiliBoot.indexation.finally(() => {
+            meiliReindexInFlight = null;
+          });
           void meiliBoot.indexation.then((indexed) => {
             if (indexed) boot.done("index", "Index prêt");
             else
@@ -826,10 +839,39 @@ export async function startBrandKernelHarness(
     desktopProfile === "full" &&
     config.catalogHost?.ensureCatalogImported
   ) {
-    await runHarnessCatalogImportPhase({
+    const catalogState = await runHarnessCatalogImportPhase({
       boot,
       catalogHost: config.catalogHost,
     });
+    // L'indexation Meili du boot est PARALLÈLE (lancée avant le listen pour
+    // ne pas retarder les healthchecks) : si l'import vient de modifier
+    // brand.db, l'index a été construit sur un état pré-import (potentiellement
+    // VIDE — régression prod : recherche vide / fallback SQL lent jusqu'au
+    // redémarrage suivant). Réindexer en arrière-plan dès que l'indexation
+    // en vol est terminée.
+    if (catalogState === "imported" && meiliRuntime && config.meiliFeed) {
+      boot.go("index", {
+        detail: "Réindexation post-import catalogue…",
+        parallel: true,
+      });
+      void (async () => {
+        try {
+          await meiliReindexInFlight;
+        } catch {
+          /* l'indexation de boot a échoué — la réindexation retentera */
+        }
+        await triggerMeiliReindex();
+      })()
+        .then(() => boot.done("index", "Index prêt (post-import catalogue)"))
+        .catch((err) =>
+          boot.patch("index", {
+            status: "error",
+            detail: `Réindexation post-import échouée : ${
+              err instanceof Error ? err.message : String(err)
+            }`,
+          }),
+        );
+    }
   }
 
   // Tunnel Cloudflare réel — uniquement sur env provisioner EXPLICITE
