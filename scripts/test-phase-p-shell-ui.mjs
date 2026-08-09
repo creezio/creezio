@@ -192,7 +192,22 @@ test("P-shell.4 injection configure* SoT", () => {
   );
   assert.match(rootUi, /wrapWorkspace/);
   assert.match(rootUi, /banners/);
-  assert.doesNotMatch(rootUi, /PanierProvider|ImpersonationBanner|from ["']@\//);
+  assert.doesNotMatch(rootUi, /PanierProvider|from ["']@\//);
+  // Bandeau impersonation « Voir comme » = module NATIF kit (fini le wiring
+  // marque à la tempoflow) : monté par WorkspaceRoot au-dessus du slot
+  // banners, nom produit via getShellUiBrand — aucun libellé marque en dur.
+  assert.match(
+    rootUi,
+    /import { ImpersonationBanner } from "\.\/impersonation-banner";/,
+  );
+  assert.match(rootUi, /<ImpersonationBanner \/>\s*\{banners\}/);
+  const impBanner = fs.readFileSync(
+    path.join(root, "packages/shell-ui/ui/workspace/impersonation-banner.tsx"),
+    "utf8",
+  );
+  assert.match(impBanner, /getShellUiBrand\(\)\.productName/);
+  assert.match(impBanner, /stopImpersonate/);
+  assert.doesNotMatch(impBanner, /TempoFlow|WinHub/);
   // afterShell = slot ADDITIF : le chrome par défaut (DesktopBridge,
   // AssistantWidget, UiDriver, AiWorkspaceAgentHost) doit TOUJOURS être rendu,
   // le slot s'y ajoute. Sémantique « remplacement » = assistant qui disparaît
