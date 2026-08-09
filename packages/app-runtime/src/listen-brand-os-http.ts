@@ -1264,6 +1264,16 @@ export async function listenBrandOsHttp(opts: {
     close: () =>
       new Promise((resolve, reject) => {
         server.close((err) => (err ? reject(err) : resolve()));
+        // server.close() attend la fin des connexions keep-alive — sans
+        // closeIdleConnections(), un client silencieux (SSE, fetch agent
+        // keep-alive) bloque l'arrêt jusqu'au SIGKILL (budget docker stop
+        // ~10 s) et laisse un WAL chaud. On ferme les idles tout de suite,
+        // et on détruit les actives après 2 s de grâce.
+        server.closeIdleConnections?.();
+        const killer = setTimeout(() => {
+          server.closeAllConnections?.();
+        }, 2000);
+        killer.unref?.();
       }),
   };
 }

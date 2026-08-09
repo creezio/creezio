@@ -1108,6 +1108,19 @@ export async function startBrandKernelHarness(
     // boot suivant (corruption « malformed » constatée en prod).
     fleetHeartbeat?.stop();
     fleetPhase?.stop();
+    // Tunnel AVANT brandOs.close() : composeBrandOs.close() appelle
+    // hostRuntime.resetForTests() qui remet le singleton tunnel à null —
+    // stopCloudflared() après coup recréerait un service VIDE et laisserait
+    // le process cloudflared vivant (ses pipes stdio retiennent la boucle
+    // node → shutdown qui hang jusqu'au SIGKILL). kill() est synchrone et
+    // instantané : aucun impact sur le budget de fermeture DB.
+    if (brandOs) {
+      try {
+        brandOs.hostRuntime.tunnelService().stopCloudflared();
+      } catch {
+        /* tunnel jamais composé */
+      }
+    }
     try {
       await httpServer.close();
     } catch {
@@ -1119,13 +1132,6 @@ export async function startBrandKernelHarness(
     closeKernel();
     // Sidecars sans lien avec la DB — tués après la fermeture SQLite.
     await pluginsPhase?.close();
-    if (brandOs) {
-      try {
-        brandOs.hostRuntime.tunnelService().stopCloudflared();
-      } catch {
-        /* tunnel jamais composé */
-      }
-    }
     meiliStop?.();
     await browserSidecar?.close();
   };
