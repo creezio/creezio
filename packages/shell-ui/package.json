@@ -61,8 +61,8 @@
     "typescript": "^5.8.3"
   },
   "peerDependencies": {
-    "@creezio/assistant": "^0.4.0",
-    "@creezio/auth": "^0.4.0",
+    "@creezio/assistant": ">=0.4.0",
+    "@creezio/auth": ">=0.4.0",
     "@radix-ui/react-avatar": "^1.0.0",
     "@radix-ui/react-dialog": "^1.0.0",
     "@radix-ui/react-dropdown-menu": "^2.0.0",

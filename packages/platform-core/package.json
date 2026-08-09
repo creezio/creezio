@@ -25,9 +25,9 @@
     "@creezio/brand-config": "^0.4.0"
   },
   "peerDependencies": {
-    "@creezio/auth": "^0.4.0",
-    "@creezio/database": "^0.4.0",
-    "@creezio/product-hub": "^0.4.0",
+    "@creezio/auth": ">=0.4.0",
+    "@creezio/database": ">=0.4.0",
+    "@creezio/product-hub": ">=0.4.0",
     "better-sqlite3": ">=9"
   },
   "peerDependenciesMeta": {
