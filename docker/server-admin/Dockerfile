@@ -23,4 +23,8 @@ ENV NODE_ENV=production \
 
 EXPOSE 18800
 
+# Sonde authentifi?e : /admin/api/health (Basic depuis les env du conteneur).
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+  CMD ["node", "-e", "const u=process.env.CREEZIO_ADMIN_USER||'admin',p=process.env.CREEZIO_ADMIN_PASS||'';fetch('http://'+(process.env.CREEZIO_ADMIN_HOST||'127.0.0.1')+':'+(process.env.CREEZIO_ADMIN_PORT||18800)+'/admin/api/health',{headers:{authorization:'Basic '+Buffer.from(u+':'+p).toString('base64')}}).then(r=>r.json()).then(j=>process.exit(j&&j.ok?0:1)).catch(()=>process.exit(1))"]
+
 CMD ["node", "server-admin.mjs"]
