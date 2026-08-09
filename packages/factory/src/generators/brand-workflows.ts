@@ -175,6 +175,18 @@ export TMPDIR="\${TMPDIR:-\$HOME/actions-runners/tmp}"
 mkdir -p "\${TMPDIR}"
 
 BRAND_ROOT="$(pwd)"
+
+# ── Garde anti-dérive : vendor/ doit être vierge avant tout resync. Une
+# modification locale de vendor/creezio/ est INTERDITE (le resync l'écraserait
+# silencieusement) : bug ou évolution kit → test kit + PR creezio/creezio,
+# propagation automatique via ce workflow (docs/CONTRIBUTING-BRANDS.md du kit).
+if [[ -n "\$(git -C "\${BRAND_ROOT}" status --porcelain -- vendor/)" ]]; then
+  echo "✗ dérive locale détectée sous vendor/ — patch vendor interdit :" >&2
+  git -C "\${BRAND_ROOT}" status --porcelain -- vendor/ >&2
+  echo "  → reproduire dans un test kit puis PR sur creezio/creezio" >&2
+  exit 1
+fi
+
 # Cache kit namespacé PAR MARQUE : plusieurs runners self-hosted partagent le
 # même \$HOME — un clone commun serait détruit en plein build par le
 # \`git clean -fdx\` concurrent d'une autre marque (TS2307 en cascade).
