@@ -353,4 +353,12 @@ export async function runCli(argv: string[]): Promise<void> {
     `  npm run install:server-deps            # clone hôte : layout node_modules (= Docker)`,
     `  npm run server-docker:create -- demo   # serveur Docker + CRM (image : layout déjà OK)`,
   );
+  console.log("");
+  console.log(
+    "⚠ Gouvernance flotte : ajouter la marque au registre docs/brands.json du kit",
+  );
+  console.log(
+    "  (repo + runnerLabels + active) — la CI kit (brand-matrix + notify-brands)",
+  );
+  console.log("  ne voit que les marques du registre (docs/CONTRIBUTING-BRANDS.md).");
 }

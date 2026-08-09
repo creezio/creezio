@@ -4,14 +4,18 @@
 # dans les marques : une marque ne teste que son métier (gates colocalisées
 # brand-spec/modules/*/gate.mjs) + son intégration (gates transversales).
 #
-# 3 étages :
+# 4 étages (registre des marques : docs/brands.json — SoT unique) :
 #   1. build-and-test (GitHub-hosted) : build workspaces + suite kit rapide
-#      sur chaque push/PR ;
-#   2. notify-brands (self-hosted, main vert uniquement) : repository_dispatch
-#      `kit-main-green` vers les marques — chaque marque teste alors son code
-#      contre le DERNIER kit et resynchronise son vendor automatiquement si
-#      vert (workflow vendor-latest.yml des marques) ;
-#   3. nightly-suites (self-hosted, cron) : suites lourdes `brands` + `env`
+#      sur chaque push/PR ; expose aussi le registre marques en outputs ;
+#   2. brand-matrix (self-hosted, main uniquement) : chaque marque active du
+#      registre est synchée + testée CONTRE CE KIT (scripts/ci/
+#      brand-matrix-check.sh, jamais de push) — un kit qui casse une marque
+#      ne passe pas au vert ;
+#   3. notify-brands (self-hosted, main vert + matrix verte) :
+#      repository_dispatch `kit-main-green` vers les marques — chaque marque
+#      teste alors son code contre le DERNIER kit et resynchronise son vendor
+#      automatiquement si vert (workflow vendor-latest.yml des marques) ;
+#   4. nightly-suites (self-hosted, cron) : suites lourdes `brands` + `env`
 #      (marques sondes, Docker, Electron) qui ne tournent pas sur GH-hosted.
 name: CI
 
@@ -35,8 +39,28 @@ jobs:
     env:
       CREEZIO_SKIP_KIT_BINARIES: "1"
       CREEZIO_NATIVE_WARM: "0"
+    outputs:
+      brand-names: ${{ steps.registry.outputs.brand-names }}
+      brand-repos: ${{ steps.registry.outputs.brand-repos }}
     steps:
       - uses: actions/checkout@v4
+
+      # Registre marques (docs/brands.json) → outputs pour brand-matrix
+      # (noms courts) et notify-brands (repos complets). Marques actives only.
+      - name: Lire le registre marques
+        id: registry
+        run: |
+          node -e '
+            const fs = require("fs");
+            const reg = JSON.parse(fs.readFileSync("docs/brands.json", "utf8"));
+            const active = reg.brands.filter((b) => b.active);
+            const names = active.map((b) => b.repo.split("/").pop());
+            const repos = active.map((b) => b.repo);
+            fs.appendFileSync(process.env.GITHUB_OUTPUT,
+              "brand-names=" + JSON.stringify(names) + "\n" +
+              "brand-repos=" + JSON.stringify(repos) + "\n");
+            console.log("marques actives :", repos.join(", "));
+          '
 
       - uses: actions/setup-node@v4
         with:
@@ -59,20 +83,51 @@ jobs:
       - name: Suite kit rapide
         run: npm run test:kit -- --keep-going
 
+  # Chaque marque active du registre est validée CONTRE CE KIT sur le runner
+  # self-hosted : clone CI dédié, sync vendor depuis le checkout, suite
+  # complète — jamais de push (validation pure ; le resync réel = workflow
+  # Vendor latest des marques). Le runner kit n'exécute qu'un job à la fois :
+  # les marques passent en séquence (accepté).
+  brand-matrix:
+    needs: build-and-test
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: [self-hosted, fluxpro]
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        brand: ${{ fromJSON(needs.build-and-test.outputs.brand-names) }}
+    env:
+      CREEZIO_NATIVE_WARM: "0"
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install kit
+        run: npm ci --no-audit --no-fund
+
+      - name: Build workspaces
+        run: npm run build:packages
+
+      - name: Marque ${{ matrix.brand }} contre ce kit
+        run: bash scripts/ci/brand-matrix-check.sh "${{ matrix.brand }}"
+
   # Main kit vert → prévenir les marques : « nouveau kit disponible, testez
   # votre métier contre lui et récupérez-le si vert » (contrat fraîcheur
   # vendor, valable pour TOUTES les apps Creezio). Le dispatch part du runner
   # self-hosted : gh y est authentifié, aucun PAT à stocker en secret.
+  # La liste des marques vient du registre docs/brands.json (job build-and-test).
   notify-brands:
-    needs: build-and-test
+    needs: [build-and-test, brand-matrix]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: [self-hosted, fluxpro]
     timeout-minutes: 5
+    env:
+      BRAND_REPOS: ${{ needs.build-and-test.outputs.brand-repos }}
     steps:
       - name: Dispatch kit-main-green vers les marques
         run: |
           set -euo pipefail
-          for repo in creezio/winhub creezio/winhub-admin; do
+          for repo in $(node -e 'console.log(JSON.parse(process.env.BRAND_REPOS).join("\n"))'); do
             if gh api "repos/${repo}/dispatches" \
                  -f event_type=kit-main-green \
                  -F 'client_payload[kit_sha]=${{ github.sha }}'; then
