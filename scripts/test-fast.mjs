@@ -299,6 +299,11 @@ for (const item of plan) {
       );
       break;
     }
+    // --keep-going : ne pas avaler la cause — sans extrait, les logs CI ne
+    // montrent que « ✗ FAIL » et obligent à reproduire localement à l'aveugle.
+    console.log(dim(`── extrait ${item.base} ──`));
+    console.log(r.out.trim().split("\n").slice(-30).join("\n"));
+    console.log(dim(`── fin extrait ──`));
   }
 }
 
