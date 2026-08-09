@@ -14,7 +14,6 @@
 | [`kit-version.mjs`](../kit-version.mjs) | !usrbinenv node |
 | [`propagation-impact.mjs`](../propagation-impact.mjs) | !usrbinenv node |
 | [`reset-tempoflow3.mjs`](../reset-tempoflow3.mjs) | Reset scripté TempoFlow3 : backup → brand apply --force → les fichiers creezio:owned-by-brand / creezio.ownedByBrand sont préservés. |
-| [`sync-creezio-vendor.sh`](../sync-creezio-vendor.sh) | !usrbinenv bash |
 | [`test-fast.mjs`](../test-fast.mjs) | Runner gates fail-fast lisible (`npm run test:kit`/`test:brands`/`test:env`) — suites auto-détectées (matrice dans README), séquentiel, stop 1re rouge, `--from`/`--only`/`--skip`, JSONL /tmp/creezio-test-fast.log |
 | [`test-mails-inbox.mjs`](../test-mails-inbox.mjs) | Tests inbox SoT @creezio/mails (insert/list/read/delete/PJ + configureMails). |
 | [`test-meili-no-brand-legacy.mjs`](../test-meili-no-brand-legacy.mjs) | Gate — pas de vocabulaire marque legacy (`tf2_`) dans le module Meili natif. |

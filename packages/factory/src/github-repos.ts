@@ -194,7 +194,7 @@ export async function maybePushBrandRepos(
   o: MaybePushOptions,
 ): Promise<CreateRepoResult[] | null> {
   const log = o.log || ((l: string) => console.log(l));
-  // Toujours préparer vendor + locks (même sans push) : une marque locale
+  // Toujours préparer les locks (même sans push) : une marque locale
   // doit pouvoir `docker:build` immédiatement.
   prepareBrandDistribution(o.outDir, { log });
 

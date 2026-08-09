@@ -1,12 +1,10 @@
 # Codemods d'architecture — migrations kit → marques
 
 Quand `ARCHITECTURE_VERSION` (`packages/platform-core/src/architecture-version.ts`)
-change (ex. `H6` → `H7`), les marques déjà vendorisées portent l'ancienne
-version dans `vendor/creezio/SYNC.json`. Le sync
-([`scripts/sync-creezio-vendor.sh`](../sync-creezio-vendor.sh)) refuse alors le
-resync **sauf si un codemod de migration existe ici** : il l'exécute
-automatiquement, puis continue le sync (le `SYNC.json` final porte la nouvelle
-version).
+change (ex. `H6` → `H7`), les marques consommateurs npm doivent migrer. Le
+bump est REFUSÉ par la gate `test-phase-arch-codemod` **sauf si un codemod
+de migration existe ici** : la marque l'exécute lors de sa montée de
+version (`npm update "@creezio/*"` + codemods).
 
 ## Contrat
 

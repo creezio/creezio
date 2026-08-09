@@ -157,10 +157,10 @@ test("updater reduce + builder config", () => {
     serverFiles.some(
       (e) =>
         typeof e === "object" &&
-        e?.from === "vendor/creezio/brand-config" &&
+        e?.from?.endsWith("node_modules/@creezio/brand-config") &&
         e?.to === "node_modules/@creezio/brand-config",
     ),
-    "server : asar embarque @creezio/brand-config depuis vendor/",
+    "server : asar embarque @creezio/brand-config (package npm installé)",
   );
   for (const pkg of [
     "brand-config",
@@ -179,9 +179,11 @@ test("updater reduce + builder config", () => {
     assert.ok(
       serverFiles.some(
         (e) =>
-          typeof e === "object" && e?.from === `vendor/creezio/${pkg}`,
+          typeof e === "object" &&
+          e?.from?.endsWith(`node_modules/@creezio/${pkg}`) &&
+          e?.to === `node_modules/@creezio/${pkg}`,
       ),
-      `server : asar embarque @creezio/${pkg}`,
+      `server : asar embarque @creezio/${pkg} (npm)`,
     );
   }
   const collected = collectCreezioRuntimePackages();
@@ -243,9 +245,10 @@ test("updater reduce + builder config", () => {
     (clientCfg.files || []).some(
       (e) =>
         typeof e === "object" &&
-        e?.from === "vendor/creezio/brand-config",
+        e?.from?.endsWith("node_modules/@creezio/brand-config") &&
+        e?.to === "node_modules/@creezio/brand-config",
     ),
-    "client slim : asar embarque aussi @creezio/*",
+    "client slim : asar embarque aussi @creezio/* (npm)",
   );
   assert.ok(
     (clientCfg.files || []).some(

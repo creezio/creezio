@@ -4,6 +4,7 @@
  * elles sont matérialisées localement sous `ui/app/(creezio-os)/` (gitignoré).
  */
 import type { AppManifest } from "@creezio/brand-config";
+import { creezioDepSpec } from "../kit-release.js";
 import type { ProductModel } from "../product-model.js";
 
 export type OsUiPageSpec = {
@@ -206,6 +207,9 @@ export default function Page() {
 }
 
 export function renderUiPackageJson(_manifest: AppManifest): string {
+  // Spec npm lockstep des packages @creezio/* publiés (GitHub Packages) —
+  // plus de file:vendor. Résolu depuis le kit courant (fallback bootstrap).
+  const spec = creezioDepSpec();
   return (
     JSON.stringify(
       {
@@ -220,19 +224,19 @@ export function renderUiPackageJson(_manifest: AppManifest): string {
           start: "node .next/standalone/server.js",
         },
         dependencies: {
-          "@creezio/os-ui": "file:../vendor/creezio/os-ui",
-          "@creezio/shell-ui": "file:../vendor/creezio/shell-ui",
-          "@creezio/support": "file:../vendor/creezio/support",
-          "@creezio/assistant": "file:../vendor/creezio/assistant",
-          "@creezio/mails": "file:../vendor/creezio/mails",
-          "@creezio/tasks": "file:../vendor/creezio/tasks",
-          "@creezio/auth": "file:../vendor/creezio/auth",
-          "@creezio/onboarding": "file:../vendor/creezio/onboarding",
-          "@creezio/mcp-facade": "file:../vendor/creezio/mcp-facade",
-          "@creezio/product-hub": "file:../vendor/creezio/product-hub",
-          "@creezio/cockpit": "file:../vendor/creezio/cockpit",
-          "@creezio/database": "file:../vendor/creezio/database",
-          "@creezio/observability": "file:../vendor/creezio/observability",
+          "@creezio/os-ui": spec,
+          "@creezio/shell-ui": spec,
+          "@creezio/support": spec,
+          "@creezio/assistant": spec,
+          "@creezio/mails": spec,
+          "@creezio/tasks": spec,
+          "@creezio/auth": spec,
+          "@creezio/onboarding": spec,
+          "@creezio/mcp-facade": spec,
+          "@creezio/product-hub": spec,
+          "@creezio/cockpit": spec,
+          "@creezio/database": spec,
+          "@creezio/observability": spec,
           "@radix-ui/react-avatar": "^1.1.10",
           "@radix-ui/react-dialog": "^1.1.14",
           "@radix-ui/react-dropdown-menu": "^2.1.15",
@@ -263,13 +267,13 @@ export function renderUiPackageJson(_manifest: AppManifest): string {
           clsx: "^2.1.1",
           "tailwind-merge": "^3.3.0",
 
-          // Peers file: hoistés — sinon npm install UI échoue sur
-          // node_modules/@creezio/platform-core (deps transitives vendor).
-          "@creezio/platform-core": "file:../vendor/creezio/platform-core",
-          "@creezio/brand-config": "file:../vendor/creezio/brand-config",
-          "@creezio/shell": "file:../vendor/creezio/shell",
-          "@creezio/api-kernel": "file:../vendor/creezio/api-kernel",
-          "@creezio/integrations": "file:../vendor/creezio/integrations",
+          // Peers @creezio déclarés explicitement (lock lisible, résolution
+          // déterministe hors workspace — install UI indépendante).
+          "@creezio/platform-core": spec,
+          "@creezio/brand-config": spec,
+          "@creezio/shell": spec,
+          "@creezio/api-kernel": spec,
+          "@creezio/integrations": spec,
         },
         devDependencies: {
           "@types/node": "^22.15.3",
@@ -431,7 +435,7 @@ const metierProxyTarget = (
 const nextConfig = {
   output: "standalone",
   reactStrictMode: true,
-  // Sources vendor kit : typés dans creezio (workspaces). Ici, peers résolus via webpack.
+  // Packages npm @creezio/* : typés côté kit. Ici, peers résolus via webpack.
   typescript: { ignoreBuildErrors: true },
   transpilePackages: [
     "@creezio/os-ui",
@@ -457,7 +461,7 @@ const nextConfig = {
     ];
   },
   webpack: (config) => {
-    // Imports depuis vendor/… résolvent les peers installés dans ui/node_modules.
+    // Imports @creezio/* (node_modules) résolvent les peers de ui/node_modules.
     config.resolve.modules = [
       path.join(__dirname, "node_modules"),
       ...(config.resolve.modules || ["node_modules"]),
@@ -470,7 +474,7 @@ export default nextConfig;
 `;
 }
 
-/** tsconfig UI — paths pour typer les sources vendor contre peers ui/. */
+/** tsconfig UI — paths pour typer les packages npm @creezio contre peers ui/. */
 export function renderUiTsconfig(): string {
   return `{
   "compilerOptions": {
@@ -685,7 +689,7 @@ export function defaultWorkspaceHome(model: ProductModel): string {
 
 /**
  * Tailwind : preset kit (thème Creezio canonique, extrait du gold TF) +
- * scan app + composants + sources UI vendor kit.
+ * scan app + composants + sources UI des packages npm @creezio/*.
  */
 export function renderUiTailwindConfig(): string {
   return `import type { Config } from "tailwindcss";
@@ -695,16 +699,19 @@ const require = createRequire(import.meta.url);
 
 // Le design system vient du kit (preset + theme.css @creezio/shell-ui) :
 // une app générée ne DOIT PAS repartir d'un thème vide / HTML brut.
-// Le scan doit inclure les sources UI vendor (\`vendor/creezio/<pkg>/ui\`
-// + routes OS), sinon les classes du kit sont purgées.
+// Le scan doit inclure les sources UI des packages npm @creezio/*
+// (\`node_modules/@creezio/<pkg>/ui\` + routes OS — deux profondeurs :
+// hoisting racine si workspaces, local sinon), sinon purge des classes.
 const config: Config = {
   presets: [require("@creezio/shell-ui/tailwind-preset")],
   content: [
     "./app/**/*.{js,ts,jsx,tsx,mdx}",
     "./components/**/*.{js,ts,jsx,tsx,mdx}",
     "./lib/**/*.{js,ts,jsx,tsx}",
-    "../vendor/creezio/*/ui/**/*.{js,ts,jsx,tsx}",
-    "../vendor/creezio/*/routes/**/*.{js,ts,jsx,tsx}",
+    "../../node_modules/@creezio/*/ui/**/*.{js,ts,jsx,tsx}",
+    "../../node_modules/@creezio/*/routes/**/*.{js,ts,jsx,tsx}",
+    "./node_modules/@creezio/*/ui/**/*.{js,ts,jsx,tsx}",
+    "./node_modules/@creezio/*/routes/**/*.{js,ts,jsx,tsx}",
   ],
   theme: {
     extend: {},
@@ -746,19 +753,38 @@ export function renderUiGlobalsCss(): string {
 `;
 }
 
-/** Script marque : matérialise ui/app/(creezio-os) depuis vendor. */
+/** Script marque : matérialise ui/app/(creezio-os) depuis le package npm. */
 export function renderMaterializeOsUiScript(): string {
   return `#!/usr/bin/env node
 /**
  * Matérialise les pages OS kit sous ui/app/(creezio-os)/ (gitignoré).
  * Ne pas versionner de dossier OS dans ui/app/.
+ *
+ * Source = package npm @creezio/os-ui (scripts/materialize.mjs), résolu par
+ * walk-up node_modules (workspaces racine : hoisting au node_modules racine).
  */
 import { spawnSync } from "node:child_process";
+import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const script = path.join(root, "vendor/creezio/os-ui/scripts/materialize.mjs");
+
+function resolvePkgScript(pkg, rel) {
+  let dir = root;
+  for (;;) {
+    const cand = path.join(dir, "node_modules", pkg, rel);
+    if (fs.existsSync(cand)) return cand;
+    const parent = path.dirname(dir);
+    if (parent === dir) break;
+    dir = parent;
+  }
+  throw new Error(
+    \`\${pkg}/\${rel} introuvable — lancer npm install à la racine (workspaces)\`,
+  );
+}
+
+const script = resolvePkgScript("@creezio/os-ui", "scripts/materialize.mjs");
 const r = spawnSync(process.execPath, [script, "--app-root", root], {
   stdio: "inherit",
   env: { ...process.env, CREEZIO_BRAND_ROOT: root },

@@ -81,11 +81,12 @@ Voir `package.json` script `build:packages`. Ordre typique :
 `app-runtime` → `desktop-tooling` → `factory` → `propagation` → `build:cjs`.
 
 Après changement runtime consommé par les marques : **`npm run build:packages`
-obligatoire** puis resync vendor (`scripts/sync-creezio-vendor.sh` côté marque,
-`CREEZIO_KIT_ROOT`). Un dist stale (src monté, dist pas rebuild) est **refusé**
-fail-closed par la gate `test-phase-runtime-dist-freshness` (ADR.1b généralisée),
-par `sync-creezio-vendor.sh`, et par `creezio server-docker publish|build`
-(`scripts/lib/assert-runtime-dist.mjs` — content contracts + mtime).
+obligatoire**, puis changeset + merge `main` → publication npm
+(`docs/NPM-DISTRIBUTION.md`) ; la marque consomme via `npm update "@creezio/*"`.
+Un dist stale (src monté, dist pas rebuild) est **refusé** fail-closed par la
+gate `test-phase-runtime-dist-freshness` (ADR.1b généralisée) et par
+`creezio server-docker publish|build` (`scripts/lib/assert-runtime-dist.mjs` —
+content contracts + mtime).
 
 ## Où modifier quoi
 
@@ -146,8 +147,8 @@ Workflow : `npm run test:kit` → première rouge → corriger →
   un mount en `packages/*/src` sans `npm run build:packages` puis sync/publish
   copie un dist vieux → routes absentes en prod (vécu Admin Database).
   Protection fail-closed : gate `test-phase-runtime-dist-freshness` (dans
-  `test:kit`), `sync-creezio-vendor.sh`, `server-docker publish|build`. Avant
-  tout publish/resync : `cd /opt/docker/creezio && npm run build:packages`.
+  `test:kit`) + `server-docker publish|build`. Avant
+  tout publish : `cd /opt/docker/creezio && npm run build:packages`.
   Bypass urgence uniquement : `CREEZIO_SKIP_RUNTIME_DIST_ASSERT=1` (déconseillé).
 - **Meili = recherche ET browse filtré** : dès qu'un index Meili existe
   (`catalog_products`, …) et que les filtres/tris sont exprimables
@@ -174,26 +175,20 @@ Workflow : `npm run test:kit` → première rouge → corriger →
   encapsulent déjà zod.
 - **Identité git** : ne jamais toucher `git config` — committer avec
   `git -c user.name=Creezio -c user.email=creezio@users.noreply.github.com commit …`.
-- **Resync vendor après push** : tout changement kit consommé par les marques
-  n'existe pour elles qu'après **push sur `main`** puis resync
-  (`CREEZIO_KIT_ROOT=/opt/docker/creezio bash server/scripts/sync-creezio-vendor.sh`
-  côté marque) — `SYNC.json` pinne le HEAD du kit, donc resync toujours APRÈS
-  le push, jamais avant.
-- **INTERDIT sync partiel** : ne jamais lancer le sync avec
-  `CREEZIO_VENDOR_PACKAGES=unSeul` (ou un sous-ensemble) — le script fait
-  `rm -rf` du vendor puis réécrit `SYNC.json.packages` = cette liste (vendor
-  vidé / tronqué). Toujours baseline complète ; opt-out uniquement via
-  `CREEZIO_VENDOR_ALLOW_PARTIAL=1` (déconseillé).
-- **Layout `node_modules` hôte** : clone marque → `npm run install:server-deps`
-  (pas `npm ci --prefix server` seul). Docker pose `/app/node_modules` tout seul.
+- **Consommation après publish** : tout changement kit n'existe pour les
+  marques qu'après **publication npm** (merge `main` → publish.yml) puis
+  `npm update "@creezio/*"` côté marque — le lockfile pinne la version,
+  donc update toujours APRÈS la publication, jamais avant.
+- **Layout `node_modules` hôte** : clone marque → `npm ci` racine (workspace
+  — hoisting racine). Docker pose `/app/node_modules` via `npm ci -w server`.
 
 ## Propagation vers marques
 
-1. Changer le kit + build.
-2. PR kit mergée sur `main`.
-3. Côté marque : `CREEZIO_KIT_ROOT=… bash server/scripts/sync-creezio-vendor.sh`
-   (legacy TF2 : `crm/scripts/electron/sync-creezio-vendor.sh`).
-4. Adapter wiring / tests marque si l’API publique change.
+1. Changer le kit + build + changeset.
+2. PR kit mergée sur `main` → publication npm (publish.yml).
+3. Côté marque : `npm update "@creezio/*"` + commit du lockfile.
+4. Adapter wiring / tests marque si l’API publique change (codemods
+   fournis sur bump ARCHITECTURE_VERSION).
 5. `test:shell` / gates marque.
 
 ## Guides de création (`docs/agents/`)

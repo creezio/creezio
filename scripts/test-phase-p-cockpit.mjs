@@ -186,19 +186,13 @@ test("P-CKPT.4 config deep-link / download / tabs", () => {
   resetCockpitConfigForTests();
 });
 
-test("P-CKPT.5 workspace wiring + vendor sync liste", () => {
+test("P-CKPT.5 workspace wiring + builds cockpit", () => {
   const rootPkg = JSON.parse(
     fs.readFileSync(path.join(root, "package.json"), "utf8"),
   );
   assert.match(rootPkg.scripts.build, /@creezio\/cockpit/);
   assert.match(rootPkg.scripts["build:packages"], /@creezio\/cockpit/);
   assert.match(rootPkg.scripts.test, /test-phase-p-cockpit/);
-
-  const sync = fs.readFileSync(
-    path.join(root, "scripts/sync-creezio-vendor.sh"),
-    "utf8",
-  );
-  assert.match(sync, /^\s*cockpit\s*$/m);
 
   const cjs = fs.readFileSync(path.join(root, "scripts/build-cjs.mjs"), "utf8");
   assert.match(cjs, /"cockpit"/);

@@ -7,7 +7,6 @@ Outils du monorepo **creezio** (hors packages npm).
 - **Gates de phases** : `test-phase-*.mjs` — assertions architecture / contrats / docs
 - **Build dual CJS** : `build-cjs.mjs` — génère `packages/*/dist-cjs` pour Electron `require`
 - **Propagation** : `kit-version.mjs`, `propagation-impact.mjs`
-- **Sync vendor** : `sync-creezio-vendor.sh` (canonique consommé par les marques)
 - **Docs** : `generate-files-md.mjs` — génère/rafraîchit les `docs/FILES.md`
   (standard [../docs/DOC-STANDARD.md](../docs/DOC-STANDARD.md), gate
   `test-phase-docs-freshness.mjs`)

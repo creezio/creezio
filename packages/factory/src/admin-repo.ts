@@ -2,7 +2,7 @@
  * Scaffold du repo ADMIN dédié d'une marque (`<brand>-admin`).
  *
  * Toute marque factory est livrée en 2 repos GitHub privés :
- *   - monorepo marque : server/ client/ brand-spec/ vendor/
+ *   - monorepo marque : server/ client/ brand-spec/ (workspace npm racine)
  *   - repo admin      : **app OS Creezio complète en mode admin**
  *     (ADR-admin-app-os) — modules natifs flotte / support / prospection /
  *     roadmap / billing Stripe (@creezio/admin) + config flotte
@@ -14,6 +14,7 @@
  */
 
 import fs from "node:fs";
+import { creezioDepSpec } from "./kit-release.js";
 import path from "node:path";
 import { moduleTemplateFiles } from "@creezio/brand-spec";
 import type { ProductModel } from "./product-model.js";
@@ -469,19 +470,20 @@ import { createLandingMount } from "@creezio/landing";`,
   );
 
   // 3. Dépendances @creezio/admin (mounts serveur + UI React des modules).
+  const creezioSpec = creezioDepSpec();
   patchFile(
     path.join(serverDir, "package.json"),
-    `"@creezio/api-kernel": "file:vendor/creezio/api-kernel",`,
-    `"@creezio/api-kernel": "file:vendor/creezio/api-kernel",
-    "@creezio/admin": "file:vendor/creezio/admin",
-    "@creezio/landing": "file:vendor/creezio/landing",`,
+    `"@creezio/api-kernel": "${creezioSpec}",`,
+    `"@creezio/api-kernel": "${creezioSpec}",
+    "@creezio/admin": "${creezioSpec}",
+    "@creezio/landing": "${creezioSpec}",`,
   );
   patchFile(
     path.join(serverDir, "ui/package.json"),
-    `"@creezio/shell-ui": "file:../vendor/creezio/shell-ui",`,
-    `"@creezio/shell-ui": "file:../vendor/creezio/shell-ui",
-    "@creezio/admin": "file:../vendor/creezio/admin",
-    "@creezio/landing": "file:../vendor/creezio/landing",`,
+    `"@creezio/shell-ui": "${creezioSpec}",`,
+    `"@creezio/shell-ui": "${creezioSpec}",
+    "@creezio/admin": "${creezioSpec}",
+    "@creezio/landing": "${creezioSpec}",`,
   );
 
   // 4. Pages des modules natifs (remplacent les stubs générés).

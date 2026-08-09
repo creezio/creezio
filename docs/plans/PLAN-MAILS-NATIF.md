@@ -518,7 +518,7 @@ vague sont parallélisables sauf mention contraire.
 **W1 — Resync + bascule des 5 modules + purge du provisoire**
 
 - Préambule (ops, 15 min) :
-  `CREEZIO_KIT_ROOT=/home/fidus/creezio bash server/scripts/sync-creezio-vendor.sh`
+  `npm update "@creezio/*"` (distribution npm — plus de sync vendor)
   (baseline complète, jamais de sync partiel), puis
   `npm run install:server-deps`.
 - Fichiers marque (périmètre strict) :

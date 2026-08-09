@@ -313,7 +313,7 @@ function ensureDocker(): void {
 }
 
 /** Marqueur de version du template — un .dockerignore sans lui est rafraîchi. */
-const DOCKERIGNORE_MARKER = "# creezio-dockerignore v3";
+const DOCKERIGNORE_MARKER = "# creezio-dockerignore v4";
 
 /**
  * Layout monorepo 3 livrables (client/ server/ admin/) : le livrable serveur
@@ -338,7 +338,7 @@ function ensureBrandDockerignore(brandRoot: string, kit: string): void {
     const cur = fs.readFileSync(dest, "utf8");
     if (cur.includes(DOCKERIGNORE_MARKER)) return;
     fs.copyFileSync(src, dest);
-    console.log(`~ .dockerignore rafraîchi (template kit v3 — layout monorepo)`);
+    console.log(`~ .dockerignore rafraîchi (template kit v4 — npm, sans vendor)`);
     return;
   }
   fs.copyFileSync(src, dest);
@@ -700,118 +700,41 @@ export function writeServerDesktopShortcuts(opts: {
 }
 
 /**
- * App standalone dockerisable — répare automatiquement une app factory
- * fraîche (hors workspace kit) : deps `@creezio/*` → `file:vendor/creezio/*`,
- * sync vendor depuis le kit, `npm install` (node_modules + package-lock
- * cohérent, requis par le `npm ci` de l'image).
+ * App standalone dockerisable (mode npm) — garantit les package-lock alignés
+ * (lock racine workspace = SoT, entrées `""` + `server` ; locks autonomes
+ * ui/client) avant le `npm ci` de l'image. Les deps `@creezio/*` sont des
+ * packages npm publiés (GitHub Packages) : plus de vendor à sync, mais la
+ * régénération du lock interroge le registre → CREEZIO_NPM_TOKEN requis.
  *
- * Ne PAS « corriger » un lock Docker à la main dans server/ : ça casse le
- * symlink monorepo `server/node_modules` → `../node_modules`. Passer par
- * cette fonction (via `creezio server-docker build|create`).
+ * Ne PAS « corriger » un lock Docker à la main : passer par cette fonction
+ * (via `creezio server-docker build|create`).
  */
 function ensureBrandStandalone(brandRoot: string, kit: string): void {
+  void kit; // kit non utilisé en mode npm (deps publiées, pas de sync vendor)
   const serverDir = resolveBrandServerDir(brandRoot);
+  const monorepo = serverDir !== brandRoot;
+  const rootLock = path.join(brandRoot, "package-lock.json");
   const pkgPath = path.join(serverDir, "package.json");
-  const pkg = JSON.parse(fs.readFileSync(pkgPath, "utf8")) as {
-    dependencies?: Record<string, string>;
-    devDependencies?: Record<string, string>;
-  };
-  const creezioPkgs = new Set<string>();
-  let rewrote = false;
-  for (const field of ["dependencies", "devDependencies"] as const) {
-    const deps = pkg[field];
-    if (!deps) continue;
-    for (const [k, v] of Object.entries(deps)) {
-      const m = /^@creezio\/(.+)$/.exec(k);
-      if (!m || !m[1]) continue;
-      creezioPkgs.add(m[1]);
-      if (!v.startsWith("file:")) {
-        deps[k] = `file:vendor/creezio/${m[1]}`;
-        rewrote = true;
-      }
-    }
-  }
-  if (creezioPkgs.size === 0) return;
-
-  // Monorepo : vendor partagé racine + symlink server/vendor → ../vendor
-  // (les deps restent file:vendor/creezio/* dans server/package.json).
-  if (serverDir !== brandRoot) {
-    const link = path.join(serverDir, "vendor");
-    if (!fs.existsSync(link)) {
-      fs.symlinkSync("../vendor", link);
-      console.log("+ symlink server/vendor → ../vendor");
-    }
-  }
-
-  const vendorDir = path.join(brandRoot, "vendor/creezio");
-  if (!fs.existsSync(path.join(vendorDir, "SYNC.json"))) {
-    const syncScript = path.join(kit, "scripts/sync-creezio-vendor.sh");
-    if (!fs.existsSync(syncScript)) {
-      throw new Error(
-        `vendor/creezio absent et script sync introuvable: ${syncScript}`,
-      );
-    }
-    // Union deps app + socle : les packages vendorés se référencent en
-    // file:../<name> — tout le graphe doit être présent.
-    // ALIGNER sur DEFAULT_PACKAGES de scripts/sync-creezio-vendor.sh (une
-    // dérive ici = vendor incomplet → clone marque cassé, cf. gate
-    // test-phase-clone-autonomy).
-    const base = [
-      "brand-config",
-      "shell",
-      "platform-core",
-      "product-hub",
-      "electron-shell",
-      "desktop-tooling",
-      "api-kernel",
-      "mcp-facade",
-      "os-ui",
-      "shell-ui",
-      "onboarding",
-      "interactive-demo",
-      "cockpit",
-      "auth",
-      "assistant",
-      "tasks",
-      "mails",
-      "observability",
-      "landing",
-      "admin",
-      "support",
-      "integrations",
-      "browser-host",
-      "automations",
-      "database",
-      "brand-spec",
-      "app-runtime",
-    ];
-    const list = [...new Set([...base, ...creezioPkgs])];
-    console.log("vendor/creezio manquant — sync depuis le kit…");
-    run("bash", [syncScript], {
-      ...process.env,
-      CREEZIO_KIT_ROOT: kit,
-      ROOT: brandRoot,
-      CREEZIO_VENDOR_PACKAGES: list.join(" "),
-    });
-  }
-  if (rewrote) {
-    fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + "\n");
-    console.log("package.json : deps @creezio/* → file:vendor/creezio/*");
-  }
-  const lockOk = isPackageLockInSync(pkgPath);
-  if (rewrote || !lockOk) {
+  const lockOk = monorepo
+    ? isPackageLockInSync(path.join(brandRoot, "package.json"), rootLock) &&
+      isPackageLockInSync(pkgPath, rootLock, "server")
+    : isPackageLockInSync(pkgPath);
+  if (!lockOk) {
     console.log(
       "package-lock incohérent/absent — régénération (évite l'échec npm ci Docker)…",
     );
-    // Régénère server (+ ui/client si besoin) ; mode install = node_modules host.
+    // Régénère racine workspace (+ ui/client si besoin) ; mode install = node_modules host.
     ensureBrandPackageLocks(brandRoot, { mode: "install" });
-  } else if (!fs.existsSync(path.join(serverDir, "node_modules"))) {
-    console.log("npm install (node_modules, lock déjà cohérent)…");
+  } else if (!fs.existsSync(path.join(brandRoot, "node_modules"))) {
+    console.log("npm install (node_modules racine, lock déjà cohérent)…");
     run("npm", ["install", "--no-audit", "--no-fund"], process.env, {
-      cwd: serverDir,
+      cwd: brandRoot,
     });
   }
 }
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+
 
 function ensureElectronBuild(brandRoot: string): void {
   const serverDir = resolveBrandServerDir(brandRoot);
@@ -868,9 +791,10 @@ function ensureUiBuild(brandRoot: string): void {
 
 /**
  * Fail-closed avant publish/build Docker : le dist kit des packages runtime
- * critiques doit refléter le src (content contracts + mtime). Empêche de
- * pousser une image dont le vendor a été sync depuis un dist stale
- * (régression Admin Database / routes manquantes).
+ * critiques doit refléter le src (content contracts + mtime). En mode npm
+ * l'image consomme les packages PUBLIÉS, mais le CLI tourne depuis le dist
+ * local — un dist stale = comportement CLI trompeur (régression Admin
+ * Database / routes manquantes).
  *
  * Bypass ops d'urgence uniquement : CREEZIO_SKIP_RUNTIME_DIST_ASSERT=1.
  */
@@ -909,8 +833,22 @@ function dockerBuildImage(
   ensureBrandStandalone(paths.brandRoot, paths.kit);
   ensureElectronBuild(paths.brandRoot);
   ensureUiBuild(paths.brandRoot);
+  // Deps @creezio/* npm (GitHub Packages) : token via secret BuildKit —
+  // jamais en ARG/ENV de l'image (hors historique, invisible dans
+  // `docker history`). Fail-fast : sans token, le npm ci de l'image
+  // échouerait sur les packages privés.
+  const npmToken = env.CREEZIO_NPM_TOKEN || process.env.CREEZIO_NPM_TOKEN;
+  if (!npmToken) {
+    throw new Error(
+      "CREEZIO_NPM_TOKEN absent — requis pour le `npm ci` des @creezio/* " +
+        "privés pendant le build Docker (PAT read:packages, exporté dans " +
+        "l'environnement ou le .env marque).",
+    );
+  }
   const args = [
     "build",
+    "--secret",
+    "id=CREEZIO_NPM_TOKEN,env=CREEZIO_NPM_TOKEN",
     "-f",
     paths.dockerfile,
     "--build-arg",
@@ -926,7 +864,11 @@ function dockerBuildImage(
     args.push("-t", t);
   }
   args.push(paths.brandRoot);
-  run("docker", args, env);
+  run("docker", args, {
+    ...env,
+    DOCKER_BUILDKIT: "1",
+    CREEZIO_NPM_TOKEN: npmToken,
+  });
 }
 
 function dockerImageExists(image: string): boolean {

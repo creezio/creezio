@@ -179,12 +179,18 @@ test("F1–F4 scaffold --from-prd génère 2 repos (monorepo + admin dédié, ru
   assert.ok(adminCfg.port && adminCfg.user && Array.isArray(adminCfg.brandRoots));
   assert.equal(adminCfg.pass, undefined, "pas de secret versionné");
 
-  // Vendor partagé racine : server = symlink, client = dossier réel (copie
-  // hardlink stagée par sync — electron-builder refuse les symlinks hors projet).
-  assert.ok(fs.lstatSync(path.join(server, "vendor")).isSymbolicLink());
-  const clientVendor = path.join(outDir, "client/vendor");
-  assert.ok(!fs.lstatSync(clientVendor).isSymbolicLink(), "client/vendor réel");
-  assert.ok(fs.statSync(clientVendor).isDirectory());
+  // Mode npm : zéro vendor ni symlink tracké — workspace racine + .npmrc
+  // (registre @creezio → GitHub Packages, token via env).
+  assert.ok(!fs.existsSync(path.join(server, "vendor")), "server/vendor ne doit plus exister");
+  assert.ok(
+    !fs.existsSync(path.join(outDir, "client/vendor")),
+    "client/vendor ne doit plus exister",
+  );
+  assert.ok(fs.existsSync(path.join(outDir, ".npmrc")), ".npmrc racine manquant");
+  const rootPkgPrd = JSON.parse(
+    fs.readFileSync(path.join(outDir, "package.json"), "utf8"),
+  );
+  assert.deepEqual(rootPkgPrd.workspaces, ["server"], "workspaces racine");
 
   const mounts = fs.readFileSync(
     path.join(server, "src/electron/brand-module-api.ts"),

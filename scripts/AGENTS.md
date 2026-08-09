@@ -21,7 +21,6 @@ ils décrivent le chantier, pas l'état courant.
 | `build-cjs.mjs` | Dual package CJS post-`tsc` |
 | `kit-version.mjs` | Bump semver package + CHANGELOG |
 | `propagation-impact.mjs` | Impact d’un bump sur marques |
-| `sync-creezio-vendor.sh` | Canon sync → `vendor/creezio` marques |
 | `generate-files-md.mjs` | Génère/rafraîchit les `docs/FILES.md` (standard `docs/DOC-STANDARD.md`) |
 | `lib/brand-roots.mjs` | Résolution chemins brands + kit |
 | `lib/intention-twins.mjs` | Scanner jumeaux intention (P0) |
@@ -71,7 +70,7 @@ publish : **`npm run build:packages`** avant tout resync marque ou
 
 - Gate : `test-phase-runtime-dist-freshness` (`test:kit`) — SoT
   `lib/assert-runtime-dist.mjs` (contrats src↔dist + mtime).
-- Aussi appelé par `sync-creezio-vendor.sh` et `server-docker publish|build`.
+- Aussi appelé par `server-docker publish|build`.
 - Bypass urgence uniquement : `CREEZIO_SKIP_RUNTIME_DIST_ASSERT=1`
   (déconseillé).
 

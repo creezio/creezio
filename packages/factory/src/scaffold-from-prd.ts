@@ -3,6 +3,7 @@
  * Chemin natif OS : SQLite + api-kernel (pas de sidecar JSON métier).
  */
 import fs from "node:fs";
+import { creezioNpmDeps, renderCreezioNpmrc } from "./kit-release.js";
 import path from "node:path";
 import type { AppManifest } from "@creezio/brand-config";
 import { renderModuleSpecFiles } from "@creezio/brand-spec";
@@ -84,7 +85,7 @@ function renderPackageJsonFromPrd(m: AppManifest, model: ProductModel): string {
     "test:meili-config": "node scripts/test-meili-config.mjs",
     "electron:config:server": "node scripts/build-builder-config.mjs server",
     "electron:stage-win-bins":
-      "bash vendor/creezio/desktop-tooling/scripts/stage-win-bins.sh",
+      "bash ../node_modules/@creezio/desktop-tooling/scripts/stage-win-bins.sh",
     "pack:win:server":
       "npm run electron:stage-win-bins && npm run electron:config:server && npm run build:electron && CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --config electron-builder.server.json --win nsis --x64 -c.win.signAndEditExecutable=false",
     "pack:linux:server":
@@ -95,7 +96,7 @@ function renderPackageJsonFromPrd(m: AppManifest, model: ProductModel): string {
     "smoke:tunnel": "node scripts/smoke-tunnel.mjs",
     "smoke:tunnel-catalog": "node scripts/smoke-tunnel-catalog.mjs",
     "electron:ensure-linux-native":
-      "node vendor/creezio/desktop-tooling/scripts/ensure-linux-native-modules.mjs",
+      "node ../node_modules/@creezio/desktop-tooling/scripts/ensure-linux-native-modules.mjs",
     "desktop:dev": "npm run build:electron && electron .",
   };
   if (chr) {
@@ -118,31 +119,33 @@ function renderPackageJsonFromPrd(m: AppManifest, model: ProductModel): string {
         main: "./build/electron/main.js",
         scripts,
         dependencies: {
-          // Clôture file: vendor (npm 9.2 + file:../ transitifs → ENOENT sinon).
-          // Garder aligné avec SERVER_CREEZIO_DEPS (scaffold.ts) / winhub.
-          "@creezio/api-kernel": "file:vendor/creezio/api-kernel",
-          "@creezio/app-runtime": "file:vendor/creezio/app-runtime",
-          "@creezio/assistant": "file:vendor/creezio/assistant",
-          "@creezio/auth": "file:vendor/creezio/auth",
-          "@creezio/brand-config": "file:vendor/creezio/brand-config",
-          "@creezio/brand-spec": "file:vendor/creezio/brand-spec",
-          "@creezio/browser-host": "file:vendor/creezio/browser-host",
-          "@creezio/cockpit": "file:vendor/creezio/cockpit",
-          "@creezio/database": "file:vendor/creezio/database",
-          "@creezio/desktop-tooling": "file:vendor/creezio/desktop-tooling",
-          "@creezio/electron-shell": "file:vendor/creezio/electron-shell",
-          "@creezio/integrations": "file:vendor/creezio/integrations",
-          "@creezio/mails": "file:vendor/creezio/mails",
-          "@creezio/mcp-facade": "file:vendor/creezio/mcp-facade",
-          "@creezio/observability": "file:vendor/creezio/observability",
-          "@creezio/onboarding": "file:vendor/creezio/onboarding",
-          "@creezio/os-ui": "file:vendor/creezio/os-ui",
-          "@creezio/platform-core": "file:vendor/creezio/platform-core",
-          "@creezio/product-hub": "file:vendor/creezio/product-hub",
-          "@creezio/shell": "file:vendor/creezio/shell",
-          "@creezio/shell-ui": "file:vendor/creezio/shell-ui",
-          "@creezio/support": "file:vendor/creezio/support",
-          "@creezio/tasks": "file:vendor/creezio/tasks",
+          // Deps npm publiées (GitHub Packages, lockstep ^<version>) —
+          // aligné SERVER_CREEZIO_DEPS (scaffold.ts). Plus de file:vendor.
+          ...creezioNpmDeps([
+            "api-kernel",
+            "app-runtime",
+            "assistant",
+            "auth",
+            "brand-config",
+            "brand-spec",
+            "browser-host",
+            "cockpit",
+            "database",
+            "desktop-tooling",
+            "electron-shell",
+            "integrations",
+            "mails",
+            "mcp-facade",
+            "observability",
+            "onboarding",
+            "os-ui",
+            "platform-core",
+            "product-hub",
+            "shell",
+            "shell-ui",
+            "support",
+            "tasks",
+          ]),
           "electron-updater": "^6.3.9",
           // Deps npm runtime main (asar FileSets kit) — pas seulement transitifs
           "hono": "^4.12.30",
@@ -168,7 +171,6 @@ function renderPackageJsonFromPrd(m: AppManifest, model: ProductModel): string {
           nativeKernel: true,
           brandId: m.brandId,
           kind: "server",
-          kitVendor: "vendor/creezio",
           vertical: model.vertical || (chr ? "chr" : "generic"),
           entities: model.entities.map((e) => e.id),
           flows: model.flows.map((f) => f.id),
@@ -376,6 +378,13 @@ export function writeFromPrdArtifacts(opts: {
     renderUiPackageJson(manifest),
     written,
   );
+  // Projet npm indépendant hors workspace : npm ne remonte pas chercher le
+  // .npmrc racine → copie locale (token via env, jamais commité).
+  writeOsUiAppFile(
+    path.join(outDir, "ui/.npmrc"),
+    renderCreezioNpmrc(),
+    written,
+  );
   writeOsUiAppFile(
     path.join(outDir, "ui/next.config.mjs"),
     renderUiNextConfig(),
@@ -399,12 +408,21 @@ import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 const root = process.cwd();
-const cands = [
-  path.join(root, "vendor/creezio/desktop-tooling/scripts/${rel}"),
-  path.join(root, "node_modules/@creezio/desktop-tooling/scripts/${rel}"),
-];
-const script = cands.find((p) => fs.existsSync(p));
-if (!script) throw new Error("${rel} kit manquant — sync vendor / npm i");
+// Mode npm : le package vit dans node_modules (walk-up — workspaces racine :
+// hoisting au node_modules racine, d'où la remontée).
+function resolvePkgScript(pkg, relScript) {
+  let dir = root;
+  for (;;) {
+    const cand = path.join(dir, "node_modules", pkg, relScript);
+    if (fs.existsSync(cand)) return cand;
+    const parent = path.dirname(dir);
+    if (parent === dir) break;
+    dir = parent;
+  }
+  return null;
+}
+const script = resolvePkgScript("@creezio/desktop-tooling", "scripts/${rel}");
+if (!script) throw new Error("${rel} kit manquant — npm install à la racine (workspaces)");
 const r = spawnSync(process.execPath, [script, ...process.argv.slice(2)], {
   cwd: root,
   env: { ...process.env, CREEZIO_APP_ROOT: root },

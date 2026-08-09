@@ -35,12 +35,16 @@ test("M2.2 kit expose UI source + createAdminDatabaseRoutes", () => {
   assert.ok(fs.existsSync(path.join(dbPkg, "dist/http/admin-routes.js")));
 });
 
-test("M2.3 sync vendor copie le dossier ui/", () => {
-  const sync = fs.readFileSync(
-    path.join(root, "scripts/sync-creezio-vendor.sh"),
-    "utf8",
+test("M2.3 tarball npm @creezio/database embarque ui/", () => {
+  // Distribution npm : le champ `files` du package publie ui/ (consommé par
+  // les apps via @creezio/database/ui depuis node_modules).
+  const pkg = JSON.parse(
+    fs.readFileSync(path.join(dbPkg, "package.json"), "utf8"),
   );
-  assert.match(sync, /\$\{src\}\/ui/);
+  assert.ok(
+    Array.isArray(pkg.files) && pkg.files.includes("ui"),
+    "@creezio/database: files sans ui/ — les apps npm ne verraient pas database/ui",
+  );
 });
 
 test("M2.4 TF : panels absents, page + route kit", () => {

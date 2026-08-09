@@ -170,28 +170,35 @@ ops JSONL, disque. Voir `docker/server-admin/README.md`.
 
 ## Prérequis
 
-- `docker` + `docker compose` (plugin v2+)
-- Marque avec `scripts/brand-kernel-harness.mjs` + `vendor/creezio`
+- `docker` + `docker compose` (plugin v2+, BuildKit — défaut Docker 23+)
+- Marque **npm** (docs/NPM-DISTRIBUTION.md) : deps `@creezio/*` en versions
+  publiées (GitHub Packages), `.npmrc` racine commité (référence
+  `${CREEZIO_NPM_TOKEN}`, sans secret) + lockfile racine workspace
+- `CREEZIO_NPM_TOKEN` exporté côté hôte (PAT `read:packages`) — passé au
+  build en **secret BuildKit** par le CLI (jamais dans l'historique image)
+- Marque avec `scripts/brand-kernel-harness.mjs`
 - `npm run build:runtime` côté marque (dossier `build/` requis)
 - `npm run build:ui` si la marque a `ui/` (CRM web — le CLI `build` le fait)
 
 ## Distribution autonome (clone marque sans kit)
 
-Chaque monorepo marque poussé sur GitHub doit être **autonome au clone** :
-le vendor pré-buildé est commité et trois artefacts sont **matérialisés**
-dans la marque (SoT ici, rafraîchis à chaque `sync-creezio-vendor.sh` et
-posés d'office par le scaffold factory) :
+Chaque monorepo marque poussé sur GitHub doit être **autonome au clone**
+(mode npm — docs/NPM-DISTRIBUTION.md) : les deps `@creezio/*` sont des
+versions npm publiées, le `.npmrc` racine (sans secret) et les lockfiles
+sont commités. Deux artefacts sont **matérialisés** dans la marque (SoT
+ici, posés d'office par le scaffold factory) :
 
 | Artefact marque | SoT kit | Rôle |
 |-----------------|---------|------|
-| `scripts/stage-client-vendor.mjs` | `docker/server/stage-client-vendor.mjs` | `npm run bootstrap` — re-stage `client/vendor` (hardlinks) depuis le vendor racine, sans `CREEZIO_KIT_ROOT` |
 | `docker/server.Dockerfile` | `docker/server/Dockerfile` | `npm run docker:build` — image serveur sans kit checké out |
-| `.dockerignore` | `docker/server/brand.dockerignore` | contexte de build (posé si absent/stale) |
+| `scripts/ensure-server-lock.mjs` | `docker/server/ensure-server-lock.mjs` | pré-flight lockfiles avant `docker build` (regen `--package-lock-only` si drift) |
+| `.dockerignore` | `docker/server/brand.dockerignore` | contexte de build (posé/rafraîchi si marqueur absent — v4) |
 
-Le push GitHub factory (`maybePushBrandRepos`) synchronise le vendor **avant**
-le push initial (sinon repo distant cassé). Les binaires fat (Meili,
-cloudflared) restent hors git : l'image les télécharge au build, le desktop au
-premier run. Gates : `scripts/test-phase-clone-autonomy.mjs` (kit) +
+L'auth registre (`CREEZIO_NPM_TOKEN`) ne se matérialise JAMAIS dans le repo :
+exportée en local, secret CI en CI, secret BuildKit au `docker build`.
+Les binaires fat (Meili, cloudflared) restent hors git : l'image les
+télécharge au build, le desktop au premier run. Gates :
+`scripts/test-phase-clone-autonomy.mjs` (kit) +
 `server/scripts/test-clone-autonomy.mjs` (marque, dans son `npm test`).
 
 ## Nommage des instances
@@ -314,7 +321,7 @@ Côté marque, minimum :
    pointe `BRAND_ROOT=.` et `CREEZIO_KIT_ROOT`
 3. `.dockerignore` aligné sur `docker/server/brand.dockerignore` (le CLI le pose)
 
-Pas de domaine métier dans l’image kit : le context = sources marque + vendor.
+Pas de domaine métier dans l’image kit : le context = sources marque + lockfile npm.
 
 ## Lien Electron server
 

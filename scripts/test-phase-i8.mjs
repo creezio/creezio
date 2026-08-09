@@ -62,25 +62,6 @@ test("I8 factory scaffold boote startBrandDesktop + registerBrandNav", () => {
   assert.ok(!slot.includes("mergeNav(coreNavItems"));
 });
 
-test("I8 sync dry-run expect H6", () => {
-  const r = spawnSync(
-    "bash",
-    [path.join(ROOT, "scripts/sync-creezio-vendor.sh")],
-    {
-      env: {
-        ...process.env,
-        CREEZIO_KIT_ROOT: ROOT,
-        DEST: path.join(ROOT, ".tmp-vendor-i8-dry"),
-        CREEZIO_SYNC_DRY_RUN: "1",
-        CREEZIO_EXPECT_ARCH_VERSION: "H6",
-      },
-      encoding: "utf8",
-    },
-  );
-  assert.equal(r.status, 0, r.stderr || r.stdout);
-  assert.match(r.stdout, /ARCHITECTURE_VERSION=H6/);
-});
-
 test("I8 docs freeze présents", () => {
   for (const p of [
     "docs/archive/PHASE-I8.md",

@@ -165,8 +165,8 @@ n'ajoute que ses pages métier.
 
 1. Modifier le kit, `npm run build:packages`, gates vertes (`test:kit`).
 2. Merge sur `main`.
-3. Côté marque : `CREEZIO_KIT_ROOT=<kit> bash crm/scripts/electron/sync-creezio-vendor.sh`
-   (copie `packages/*` construits vers `crm/vendor/creezio`).
+3. Côté marque : `npm update "@creezio/*"` après publication npm
+   (packages `@creezio/*` sur GitHub Packages — `docs/NPM-DISTRIBUTION.md`).
 4. Adapter le wiring marque si l'API publique change ; gates marque.
 
 `@creezio/propagation` outille l'impact (`npm run kit:impact`), les bumps

@@ -8,12 +8,20 @@
 #                      L'image base n'est jamais alourdie.
 #
 # Layout marque (SERVER_DIR) :
-#   server (défaut) — monorepo 3 livrables : client/ server/ admin/ + vendor racine
+#   server (défaut) — monorepo : workspace npm racine + livrable server/
 #   .               — layout plat legacy (tout à la racine marque)
+#
+# Deps @creezio/* = packages npm publiés sur GitHub Packages (plus de
+# vendoring). Le token passe par secret BuildKit — jamais en ARG/ENV, donc
+# rien dans l'historique d'image ni dans `docker history` :
+#   docker build --secret id=CREEZIO_NPM_TOKEN,env=CREEZIO_NPM_TOKEN …
+# Le .npmrc racine de la marque (commité, SANS secret) référence
+# ${CREEZIO_NPM_TOKEN} — expansé par npm au moment du npm ci.
 #
 # Build context = racine marque (ex. tempoflow3) :
 #   docker build -f $CREEZIO_KIT_ROOT/docker/server/Dockerfile \
 #     --build-arg SERVER_DIR=server \
+#     --secret id=CREEZIO_NPM_TOKEN,env=CREEZIO_NPM_TOKEN \
 #     -t creezio-server-<brandId>:local /path/to/brand
 #
 # Prérequis marque : `npm run build:runtime` (dossier <SERVER_DIR>/build présent)
@@ -35,19 +43,25 @@ RUN apt-get update \
     python3 make g++ ca-certificates curl \
   && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
-# Deps du livrable serveur (file:vendor/creezio/* → symlink vers /app/vendor)
-COPY ${SERVER_DIR}/package.json ${SERVER_DIR}/package-lock.json ./server-deps/
-COPY vendor ./vendor
+# Deps du livrable serveur = workspace npm racine (lockfile racine SoT).
+# .npmrc commité sans secret : @creezio → npm.pkg.github.com, token via env.
+# (server/ui reste un projet npm indépendant avec son propre lockfile :
+# l'UI Next est servie en standalone self-contained, ses deps ne vont pas
+# dans l'image.)
+COPY package.json package-lock.json .npmrc ./
+COPY ${SERVER_DIR}/package.json ./${SERVER_DIR}/package.json
 # electron est en devDependencies — omit=dev = image serveur sans GUI.
-# Fallback npm install si lock stale (marque neuve / sync vendor sans
-# relock) : évite la boucle agents « régénère lock → casse symlink nm ».
-# Le CLI `creezio server-docker build` régénère le lock en amont ; ce
-# fallback couvre `npm run docker:build` (clone autonome sans kit).
-RUN ln -sfn ../vendor ./server-deps/vendor \
-  && cd server-deps \
-  && if ! npm ci --omit=dev; then \
-       echo "⚠ package-lock incohérent avec package.json — fallback npm install --omit=dev" >&2; \
-       npm install --omit=dev --no-audit --no-fund; \
+# Monorepo : -w ${SERVER_DIR} = seules les deps du livrable serveur
+# (install workspace → node_modules RACINE, walk-up standard depuis
+# /app/${SERVER_DIR}). Layout plat : npm ci à la racine (la racine EST le
+# livrable). npm ci strict : le lock commité est garanti frais par les
+# gates (test-clone-autonomy + CI marque) — pas de fallback silencieux.
+RUN --mount=type=secret,id=CREEZIO_NPM_TOKEN \
+    export CREEZIO_NPM_TOKEN="$(cat /run/secrets/CREEZIO_NPM_TOKEN)" \
+  && if [ "${SERVER_DIR}" = "." ]; then \
+       npm ci --omit=dev --no-audit --no-fund; \
+     else \
+       npm ci --omit=dev --workspace="${SERVER_DIR}" --no-audit --no-fund; \
      fi \
   && npm rebuild better-sqlite3
 
@@ -90,20 +104,17 @@ LABEL org.opencontainers.image.version=${SERVER_VERSION}
 COPY --from=meili /usr/local/bin/meilisearch /opt/creezio/bin/meilisearch
 COPY --from=cloudflared /usr/local/bin/cloudflared /opt/creezio/bin/cloudflared
 
-# Sources / artefacts marque (voir brand.dockerignore v3 —
+# Sources / artefacts marque (voir brand.dockerignore —
 # inclut <SERVER_DIR>/ui/.next/standalone + static si la marque a une UI Next)
 COPY . .
 
-# Deps rebuildées + vendor kit (COPY . ne ramène pas node_modules grâce au dockerignore).
-# node_modules à la RACINE contexte : les packages vendor résolvent leurs pairs
-# @creezio/* + deps npm par walk-up realpath (vendor/… → /app/node_modules).
-COPY --from=deps /app/vendor ./vendor
-COPY --from=deps /app/server-deps/node_modules ./node_modules
+# Deps rebuildées (COPY . ne ramène pas node_modules grâce au dockerignore).
+# node_modules à la RACINE : résolution standard par walk-up depuis
+# /app/${SERVER_DIR} (packages npm réels — plus de vendor ni de symlink).
+COPY --from=deps /app/node_modules ./node_modules
 
 # Workdir = livrable serveur (monorepo : /app/server ; plat : /app).
-# Le symlink vendor → ../vendor est recréé si absent (layout plat = no-op).
 WORKDIR /app/${SERVER_DIR}
-RUN [ -e vendor ] || ln -s ../vendor vendor
 
 ENV NODE_ENV=production \
     CREEZIO_HTTP_HOST=0.0.0.0 \

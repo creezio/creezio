@@ -188,10 +188,10 @@ cd "$CREEZIO_KIT_ROOT" && npm run build:packages
 # preuve : npm run test:kit -- --only runtime-dist-freshness
 # (ou node --test scripts/test-phase-runtime-dist-freshness.mjs)
 # Puis resync marque, puis publish.
-cd "$BRAND_ROOT" && npm run electron:sync-vendor   # ou sync-creezio-vendor.sh
+cd "$BRAND_ROOT" && npm update "@creezio/*"   # distribution npm (après publish kit)
 ```
 
-`creezio server-docker publish|build` et `sync-creezio-vendor.sh` appellent
+`creezio server-docker publish|build` appelle
 `scripts/lib/assert-runtime-dist.mjs` (contrats src↔dist + mtime) et
 **refusent** si le dist est plus vieux que le src. Bypass urgence seulement :
 `CREEZIO_SKIP_RUNTIME_DIST_ASSERT=1`.
@@ -505,9 +505,7 @@ picker : `packages/electron-shell/src/desktop/brand-desktop-runtime.ts`.
 **Pièges** : publish détecte le feed **local** (container nginx-proxy-manager
 sur le même VPS) → `docker cp` direct, PAS de ssh-vers-soi ; feed TF2
 (`…/dl-…/` racine ou GUID TF2) à ne jamais polluer — TF3 = sous-dossier
-`/tf3/` + GUID dédié ; electron-builder refuse les symlinks hors racine
-projet → `client/vendor` est une **copie hardlink** stagée par
-`sync-creezio-vendor.sh` (ne pas remettre un symlink).
+`/tf3/` + GUID dédié.
 
 ## 8. Diagnostics — boot qui échoue
 
@@ -537,7 +535,7 @@ L'admin (§5) montre boot-status live, logs et ops par serveur sans SSH.
 | Ordre catalogue vs listen | L'import catalogue doit tourner **après** le listen HTTP (`METIER_BASE_URL` posé), sinon « skipped ». Déjà corrigé dans le harness — ne pas réintroduire d'étape catalogue pré-listen. |
 | AUTH_SECRET | Généré/persisté **par instance** (`/data/{brand}-config.json`) au boot ; jamais le fallback dev en prod ; ne pas partager entre serveurs. |
 | Setup ≠ login | `POST /api/v1/os/setup` n'écrit pas `creezio_users` → faire aussi `migrateBrandCredentialsToKit` (§2). |
-| Vendor sync | `sync-creezio-vendor.sh` doit inclure `browser-host` (déjà dans la liste par défaut — ne pas la réduire). |
+| Packages npm | `browser-host` est publié (`@creezio/browser-host`) — consommé via `npm update "@creezio/*"`. |
 | dist stale → routes manquantes | Après modif `packages/*/src` : **`npm run build:packages`** avant sync/publish. Gate `test-phase-runtime-dist-freshness` + assert dans sync et `server-docker publish\|build`. Vécu : Admin Database monté en src, dist non rebuild → « Route inconnue ». |
 | Symlinks electron-builder | Refuse les symlinks hors racine projet : `client/vendor` = copie hardlink, pas un symlink. |
 | Publish desktop | Feed sur le même VPS → flux Docker local (`docker cp`), pas de SSH vers soi-même. |
@@ -799,15 +797,15 @@ factory `packages/factory/src/admin-repo.ts` (câblage généré), gate
 
 ## 14. Clone autonome d'un repo marque (sans kit)
 
-Les monorepos marque GitHub embarquent le kit **pré-buildé commité**
-(`vendor/creezio/`) + artefacts matérialisés (`scripts/stage-client-vendor.mjs`,
-`docker/server.Dockerfile`, `.dockerignore`). Sur une machine SANS
-`/opt/docker/creezio` :
+Les monorepos marque GitHub consomment le kit en **packages npm publiés**
+(`@creezio/*` GitHub Packages) + artefacts matérialisés
+(`scripts/ensure-server-lock.mjs`, `docker/server.Dockerfile`, `.dockerignore`,
+`.npmrc`). Sur une machine SANS `/opt/docker/creezio` :
 
 ```bash
 git clone https://github.com/creezio/<brand>.git && cd <brand>
-npm run bootstrap               # stage client/vendor (hardlinks, sans kit)
-npm run install:server-deps     # npm ci server + layout hôte (= Docker /app/node_modules)
+export CREEZIO_NPM_TOKEN=…      # PAT read:packages (org creezio)
+npm ci                          # workspace racine (deps @creezio/* npm)
 npm ci --prefix server/ui && npm ci --prefix client
 npm run build:runtime && npm run build:ui
 npm run docker:build            # ensure-server-lock + image via docker/server.Dockerfile

@@ -345,7 +345,7 @@ test("landing.factory — câblage repo admin (migrations, mount, pages, middlew
   assert.match(src, /ui\/app\/landing\/page\.tsx/);
   assert.match(src, /ui\/app\/lp\/page\.tsx/);
   assert.match(src, /ui\/app\/lp-media\/\[file\]\/route\.ts/);
-  assert.match(src, /"@creezio\/landing": "file:vendor\/creezio\/landing"/);
+  assert.match(src, /"@creezio\/landing": "\$\{creezioSpec\}"/);
   assert.match(src, /host\.startsWith\("lp\."\)/);
   // Nav : la page landing est déclarée dans le ProductModel admin.
   assert.match(src, /path: "\/landing", title: "Landing page"/);

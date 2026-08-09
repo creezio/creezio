@@ -107,15 +107,12 @@ npm run test:kit                           # 100 % vert
 - [`AGENTS.md` racine](../../AGENTS.md) : ordre de build + table
   « Où modifier quoi ».
 
-## 7. Propagation vendor
+## 7. Propagation npm
 
-Ajouter `<nom>` à `DEFAULT_PACKAGES` dans
-`scripts/sync-creezio-vendor.sh` si les marques doivent le consommer.
-Après merge sur `main` (jamais avant — `SYNC.json` pinne le HEAD kit) :
-
-```bash
-cd /opt/docker/tempoflow3 && npm run electron:sync-vendor
-```
+Si les marques doivent consommer le package : `publishConfig.registry`
+`https://npm.pkg.github.com` + champ `files` (dist, dist-cjs, ui si
+présent) + version lockstep alignée. Après merge sur `main`, le workflow
+`publish.yml` publie ; côté marque : `npm update "@creezio/*"`.
 
 ## Pièges
 
@@ -136,5 +133,5 @@ cd /opt/docker/tempoflow3 && npm run electron:sync-vendor
 - [ ] Gate créée **et** enregistrée dans la ligne `test` racine
 - [ ] `npm run test:kit` 100 % vert (docs-freshness incluse)
 - [ ] PACKAGES.md + README racine + AGENTS racine à jour
-- [ ] `sync-creezio-vendor.sh` mis à jour si consommé par les marques
-- [ ] Resync vendor des marques APRÈS push `main`
+- [ ] `publishConfig` + `files` npm si consommé par les marques
+- [ ] `npm update "@creezio/*"` des marques APRÈS publication

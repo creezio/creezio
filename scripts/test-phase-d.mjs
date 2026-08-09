@@ -184,8 +184,10 @@ test("scaffoldNewApp génère structure + builder configs", () => {
   assert.ok(pkg.dependencies["@creezio/api-kernel"]);
   assert.ok(pkg.dependencies["@creezio/auth"]);
   assert.ok(pkg.dependencies["@creezio/app-runtime"]);
-  assert.ok(
-    pkg.dependencies["@creezio/app-runtime"].startsWith("file:vendor/creezio/"),
+  assert.match(
+    pkg.dependencies["@creezio/app-runtime"],
+    /^\^\d+\.\d+\.\d+$/,
+    "deps @creezio/* = versions npm publiées (plus de file:vendor)",
   );
 
   const clientPkg = JSON.parse(
