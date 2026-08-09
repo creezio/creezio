@@ -55,6 +55,7 @@ export type { MeiliCoherencePaths, MeiliReadyDecision } from "./coherence.js";
 export {
   configureMeiliCoherencePaths,
   decideMeiliReady,
+  meiliCoherenceScriptPath,
 } from "./coherence.js";
 
 export { runIndexation } from "./indexer.js";

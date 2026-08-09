@@ -18,6 +18,7 @@ import {
   kitBinaryPaths,
   listenBrandKernelHttp,
   maybeBootBrandMeili,
+  meiliCoherenceScriptPath,
   runFeedIndexation,
 } from "@creezio/electron-shell";
 import { createMcpFacade } from "@creezio/mcp-facade";
@@ -540,6 +541,20 @@ export async function startBrandKernelHarness(
       // faire expirer les healthchecks d'update flotte. /search répond
       // `source:"indexing"` tant que l'index n'est pas prêt.
       backgroundIndex: true,
+      // Fingerprint persisté à jour (redémarrage sans changement de données
+      // ni de schéma) → sauter la réindexation complète : sur un catalogue
+      // 85k+ docs elle monopolise CPU/IO plusieurs minutes et dégrade tout
+      // le serveur à chaque boot de container.
+      skipIfCoherent: true,
+      coherencePaths: {
+        dbPath: () => runtime.getBrand().path,
+        nodeBinary: () => process.execPath,
+        nodeScript: (rel) =>
+          rel.replace(/\.js$/, ".cjs").endsWith("meili-coherence-query.cjs")
+            ? meiliCoherenceScriptPath()
+            : rel,
+        nodeModulesPathForScripts: () => null,
+      },
     });
     searchEngine = meiliBoot.engine;
     if (meiliBoot.meili) {
@@ -552,7 +567,9 @@ export async function startBrandKernelHarness(
     if (meiliBoot.engine === "meili") {
       boot.done("meili", "Meilisearch prêt");
       if (doIndex) {
-        if (meiliBoot.indexation) {
+        if (meiliBoot.indexSkipped) {
+          boot.skip("index", "Index à jour (fingerprint) — réindexation sautée");
+        } else if (meiliBoot.indexation) {
           void meiliBoot.indexation.then((indexed) => {
             if (indexed) boot.done("index", "Index prêt");
             else

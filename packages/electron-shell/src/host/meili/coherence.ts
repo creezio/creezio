@@ -6,6 +6,7 @@
  */
 
 import { spawnSync } from "node:child_process";
+import path from "node:path";
 import {
   GED_INDEXES,
   INDEX_SCHEMA_VERSION,
@@ -14,6 +15,7 @@ import {
   type MeiliFingerprint,
   type GedIndexUid,
 } from "./index-schema.js";
+import { kitOsResourcesRoot } from "../kit-os-resources.js";
 import { expectedCountsForFeed, getMeiliBrandFeed } from "./feed.js";
 import type { RunningMeili } from "../meili-launcher.js";
 import { envForNodeScriptSpawn } from "../node-runtime.js";
@@ -43,6 +45,20 @@ function requirePaths(): MeiliCoherencePaths {
 
 export type { GedSqlCounts, MeiliFingerprint };
 export { INDEX_SCHEMA_VERSION } from "./index-schema.js";
+
+/**
+ * Chemin absolu du script de sonde SQL embarqué dans le package
+ * (resources/scripts, copié hors asar côté desktop). Utilisable par le
+ * harness serveur pour configurer MeiliCoherencePaths sans connaître le
+ * layout interne du package.
+ */
+export function meiliCoherenceScriptPath(): string {
+  return path.join(
+    kitOsResourcesRoot(),
+    "scripts",
+    "meili-coherence-query.cjs",
+  );
+}
 
 type CoherenceDbSnapshot = {
   sql: GedSqlCounts;
@@ -118,10 +134,18 @@ export type MeiliReadyDecision = {
  *
  * UIDs + compteurs attendus : depuis le `BrandMeiliFeed` configuré si
  * présent (marques feed) — sinon les UIDs génériques `catalog_*` par défaut.
+ *
+ * `strictCounts` (serveur headless) : exige l'égalité exacte des compteurs
+ * SQL ↔ Meili par index — le mode desktop historique tolère la dérive
+ * (seul « index vide alors que SQL > 0 » invalide), mais côté serveur le
+ * feed de boot est la SEULE resynchronisation (pas d'indexation
+ * incrémentale aux imports) : sauter une réindexation malgré une dérive
+ * figerait l'index jusqu'au prochain bump de schemaVersion.
  */
 export async function decideMeiliReady(
   m: RunningMeili,
   dbFile?: string,
+  opts?: { strictCounts?: boolean },
 ): Promise<MeiliReadyDecision> {
   dbFile = dbFile ?? requirePaths().dbPath();
   const snap = queryDbSnapshot(dbFile);
@@ -180,6 +204,12 @@ export async function decideMeiliReady(
     const want = expected[uid] ?? 0;
     if (want > 0 && st.docs === 0) {
       return decide(false, `index-empty-while-sql:${uid} sql=${want}`);
+    }
+    if (opts?.strictCounts && st.docs !== want) {
+      return decide(
+        false,
+        `count-drift:${uid} meili=${st.docs} want=${want}`,
+      );
     }
   }
 

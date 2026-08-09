@@ -85,3 +85,40 @@ test("D1 kit expose listenBrandKernelHttp + maybeBootBrandMeili", () => {
   assert.match(barrel, /listenBrandKernelHttp/);
   assert.match(barrel, /maybeBootBrandMeili/);
 });
+
+test("D2 boot Meili saute la réindexation quand le fingerprint est à jour", () => {
+  // Régression prod : le harness serveur réindexait 85k+ docs à CHAQUE boot
+  // de container (~7 min de CPU/IO → recherche dégradée), alors que le
+  // desktop sautait déjà via decideMeiliReady. Le skip doit être câblé.
+  const bootSrc = fs.readFileSync(
+    path.join(ROOT, "packages/electron-shell/src/host/brand-meili-boot.ts"),
+    "utf8",
+  );
+  assert.match(bootSrc, /skipIfCoherent\?: boolean/);
+  assert.match(bootSrc, /decideMeiliReady\(meili, opts\.dbPath, \{\s*strictCounts: true/);
+  assert.match(bootSrc, /indexSkipped: true/);
+
+  const coherenceSrc = fs.readFileSync(
+    path.join(ROOT, "packages/electron-shell/src/host/meili/coherence.ts"),
+    "utf8",
+  );
+  // Compteurs stricts côté serveur : une dérive (import hors indexation
+  // incrémentale) doit invalider le fingerprint, sinon l'index se fige.
+  assert.match(coherenceSrc, /strictCounts\?: boolean/);
+  assert.match(coherenceSrc, /count-drift:/);
+  assert.match(coherenceSrc, /export function meiliCoherenceScriptPath/);
+
+  const harnessSrc = fs.readFileSync(
+    path.join(ROOT, "packages/app-runtime/src/start-brand-kernel-harness.ts"),
+    "utf8",
+  );
+  assert.match(harnessSrc, /skipIfCoherent: true/);
+  assert.match(harnessSrc, /meiliCoherenceScriptPath/);
+  assert.match(harnessSrc, /indexSkipped/);
+
+  const meiliBarrel = fs.readFileSync(
+    path.join(ROOT, "packages/electron-shell/src/host/meili/index.ts"),
+    "utf8",
+  );
+  assert.match(meiliBarrel, /meiliCoherenceScriptPath/);
+});

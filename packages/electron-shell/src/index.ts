@@ -736,6 +736,7 @@ export {
   expectedCountsForFeed,
   expectedMeiliCounts,
   getMeiliBrandFeed,
+  meiliCoherenceScriptPath,
   getMeiliCatalogSqlTables,
   parseFingerprint,
   readCoherenceDbSnapshot,
