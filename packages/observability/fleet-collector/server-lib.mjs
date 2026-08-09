@@ -482,6 +482,10 @@ export function backupInstanceData(brandRoot, inst) {
       "-czf",
       file,
       "--warning=no-file-changed",
+      // Fichiers illisibles (état volatil root-owned écrit par le container,
+      // ex. hermes-home/cron/*) : warning, pas d'échec fatal — l'archive
+      // reste complète à 99,9 % et le deploy n'est pas bloqué.
+      "--ignore-failed-read",
       "-C",
       path.dirname(dataAbs),
       path.basename(dataAbs),
