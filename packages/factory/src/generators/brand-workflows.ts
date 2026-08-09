@@ -1,13 +1,14 @@
 /**
  * Workflows GitHub CI/CD scaffoldés pour chaque marque Creezio.
  *
- * Contrat flotte (même filet pour TOUTES les apps Creezio — modèle
- * « le kit notifie, l'app rapporte l'impact, le dev décide ») :
+ * Contrat flotte (même filet pour TOUTES les apps Creezio — modèle PULL
+ * open source : le kit ne connaît pas ses consommateurs, chaque app tire
+ * le kit quand elle le décide) :
  *   - `ci.yml` — anti-régression sur chaque push/PR (GitHub-hosted) :
  *     install lockfile, gate vendor-integrity, build backend, gates
  *     complètes (`npm test`, dont les gates module colocalisées), build UI ;
- *   - `kit-compat.yml` — rapport d'impact kit : sur dispatch
- *     `kit-main-green` (émis par la CI du kit), nightly ou à la demande,
+ *   - `kit-compat.yml` — rapport d'impact kit, PULL uniquement (à la
+ *     demande + cron hebdo, choix de l'app — le kit ne notifie personne) :
  *     resync ÉPHÉMÈRE du vendor vers le dernier kit (workspace jetable,
  *     JAMAIS de push) + suite complète, puis publication du rapport dans
  *     l'issue unique « 📦 Compatibilité kit — rapport automatique » ;
@@ -135,16 +136,17 @@ export function renderKitCompatWorkflow(opts: BrandWorkflowsOptions): string {
 # automatique » : kit pinné vs dernier kit, commits kit entre les deux,
 # packages vendorisés touchés, résultat ✅/❌ de la suite complète.
 # La mise à jour réelle reste un geste explicite : workflow vendor-update.
+# Modèle PULL (kit open source) : le kit ne notifie personne — cette app
+# choisit QUAND vérifier (manuel + cron hebdo par défaut, à ajuster/retirer
+# librement).
 # Un run rouge = échec d'infrastructure uniquement ; une incompatibilité
 # kit est rapportée ❌ dans l'issue et le run reste vert (le rapport EST le
 # signal — un rouge permanent serait illisible).
 name: Kit compat
 
 on:
-  repository_dispatch:
-    types: [kit-main-green]
   schedule:
-    - cron: "17 3 * * *"
+    - cron: "17 3 * * 1"
   workflow_dispatch:
 
 concurrency:

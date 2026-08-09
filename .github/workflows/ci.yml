@@ -1,24 +1,24 @@
 # CI kit Creezio — filet anti-régression des fonctions NATIVES.
 #
 # Les tests natifs (test-phase-*, test-os-*) vivent ICI, jamais dupliqués
-# dans les marques : une marque ne teste que son métier (gates colocalisées
-# brand-spec/modules/*/gate.mjs) + son intégration (gates transversales).
+# dans les apps consommatrices : une app ne teste que son métier (gates
+# colocalisées brand-spec/modules/*/gate.mjs) + son intégration (gates
+# transversales).
 #
-# 4 étages (registre des marques : docs/brands.json — SoT unique) :
+# Modèle open source PULL : le kit NE CONNAÎT PAS ses consommateurs — pas de
+# registre, pas de notification, pas de test des apps ici. Le kit publie sur
+# main avec changelog + ARCHITECTURE_VERSION + codemods (la gate
+# arch-codemod refuse un bump sans migration : c'est ELLE qui protège les
+# apps). Chaque app tire le kit quand elle le décide : son workflow
+# kit-compat mesure l'impact (rapport, jamais de push), son workflow
+# vendor-update applique la mise à jour (docs/PROPAGATION.md).
+#
+# 2 étages :
 #   1. build-and-test (GitHub-hosted) : build workspaces + suite kit rapide
-#      sur chaque push/PR ; expose aussi le registre marques en outputs ;
-#   2. brand-matrix (self-hosted, main uniquement) : chaque marque active du
-#      registre est synchée + testée CONTRE CE KIT (scripts/ci/
-#      brand-matrix-check.sh, jamais de push) — un kit qui casse une marque
-#      ne passe pas au vert ;
-#   3. notify-brands (self-hosted, main vert + matrix verte) :
-#      repository_dispatch `kit-main-green` vers les marques — chaque marque
-#      teste alors son code contre le DERNIER kit et publie un RAPPORT
-#      d'impact (workflow kit-compat.yml des marques, issue « 📦
-#      Compatibilité kit ») ; la mise à jour reste un geste explicite du
-#      dev (workflow vendor-update.yml) — jamais de push automatique ;
-#   4. nightly-suites (self-hosted, cron) : suites lourdes `brands` + `env`
-#      (marques sondes, Docker, Electron) qui ne tournent pas sur GH-hosted.
+#      sur chaque push/PR ;
+#   2. nightly-suites (self-hosted, cron) : suites lourdes `brands` + `env`
+#      (apps sondes locales, Docker, Electron) qui ne tournent pas sur
+#      GH-hosted.
 name: CI
 
 on:
@@ -41,28 +41,8 @@ jobs:
     env:
       CREEZIO_SKIP_KIT_BINARIES: "1"
       CREEZIO_NATIVE_WARM: "0"
-    outputs:
-      brand-names: ${{ steps.registry.outputs.brand-names }}
-      brand-repos: ${{ steps.registry.outputs.brand-repos }}
     steps:
       - uses: actions/checkout@v4
-
-      # Registre marques (docs/brands.json) → outputs pour brand-matrix
-      # (noms courts) et notify-brands (repos complets). Marques actives only.
-      - name: Lire le registre marques
-        id: registry
-        run: |
-          node -e '
-            const fs = require("fs");
-            const reg = JSON.parse(fs.readFileSync("docs/brands.json", "utf8"));
-            const active = reg.brands.filter((b) => b.active);
-            const names = active.map((b) => b.repo.split("/").pop());
-            const repos = active.map((b) => b.repo);
-            fs.appendFileSync(process.env.GITHUB_OUTPUT,
-              "brand-names=" + JSON.stringify(names) + "\n" +
-              "brand-repos=" + JSON.stringify(repos) + "\n");
-            console.log("marques actives :", repos.join(", "));
-          '
 
       - uses: actions/setup-node@v4
         with:
@@ -85,62 +65,7 @@ jobs:
       - name: Suite kit rapide
         run: npm run test:kit -- --keep-going
 
-  # Chaque marque active du registre est validée CONTRE CE KIT sur le runner
-  # self-hosted : clone CI dédié, sync vendor depuis le checkout, suite
-  # complète — jamais de push (validation pure ; la mise à jour réelle =
-  # workflow Vendor update des marques, à la demande). Le runner kit
-  # n'exécute qu'un job à la fois : les marques passent en séquence (accepté).
-  brand-matrix:
-    needs: build-and-test
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    runs-on: [self-hosted, fluxpro]
-    timeout-minutes: 90
-    strategy:
-      fail-fast: false
-      matrix:
-        brand: ${{ fromJSON(needs.build-and-test.outputs.brand-names) }}
-    env:
-      CREEZIO_NATIVE_WARM: "0"
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Install kit
-        run: npm ci --no-audit --no-fund
-
-      - name: Build workspaces
-        run: npm run build:packages
-
-      - name: Marque ${{ matrix.brand }} contre ce kit
-        run: bash scripts/ci/brand-matrix-check.sh "${{ matrix.brand }}"
-
-  # Main kit vert → prévenir les marques : « nouveau kit disponible, testez
-  # votre métier contre lui et publiez votre rapport d'impact » (contrat
-  # flotte : le kit notifie, l'app rapporte, le dev décide de la mise à
-  # jour). Le dispatch part du runner self-hosted : gh y est authentifié,
-  # aucun PAT à stocker en secret.
-  # La liste des marques vient du registre docs/brands.json (job build-and-test).
-  notify-brands:
-    needs: [build-and-test, brand-matrix]
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    runs-on: [self-hosted, fluxpro]
-    timeout-minutes: 5
-    env:
-      BRAND_REPOS: ${{ needs.build-and-test.outputs.brand-repos }}
-    steps:
-      - name: Dispatch kit-main-green vers les marques
-        run: |
-          set -euo pipefail
-          for repo in $(node -e 'console.log(JSON.parse(process.env.BRAND_REPOS).join("\n"))'); do
-            if gh api "repos/${repo}/dispatches" \
-                 -f event_type=kit-main-green \
-                 -F 'client_payload[kit_sha]=${{ github.sha }}'; then
-              echo "✓ dispatch kit-main-green → ${repo}"
-            else
-              echo "::warning::dispatch impossible vers ${repo} (repo absent ou workflow non posé)"
-            fi
-          done
-
-  # Suites lourdes nightly sur le VPS : marques sondes (tempoflow3…),
+  # Suites lourdes nightly sur le VPS : apps sondes (tempoflow3…),
   # environnement Docker/Electron réel.
   nightly-suites:
     if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
@@ -148,7 +73,7 @@ jobs:
     timeout-minutes: 180
     env:
       CREEZIO_NATIVE_WARM: "0"
-      # Marque sonde : clone de dev du VPS (le checkout runner n'a pas de
+      # App sonde : clone de dev du VPS (le checkout runner n'a pas de
       # sibling tempoflow3).
       CREEZIO_TEMPOFLOW3_ROOT: /home/fidus/tempoflow3
       # Gates « binaires natifs » (os-native-pnp, os-shell-contracts) : le
@@ -169,7 +94,7 @@ jobs:
       - name: Suite kit
         run: npm run test:kit -- --keep-going
 
-      - name: Suite brands (marques sondes)
+      - name: Suite brands (apps sondes)
         run: npm run test:brands -- --keep-going
 
       - name: Suite env (Docker / Electron)

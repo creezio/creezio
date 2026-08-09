@@ -16,53 +16,53 @@ L4 utilisateur (plugins personnels)
   ↑ remontée innovations terrain
 ```
 
-## Chemin nominal — le kit notifie, l'app rapporte l'impact, le dev décide
+## Chemin nominal — modèle PULL (open source)
 
-La descente kit → marques est PILOTÉE : le kit annonce, chaque marque mesure
-et publie l'impact, et la mise à jour effective reste un geste explicite du
-développeur — jamais de push automatique sur `main` d'une marque
+Le kit est open source : il aura potentiellement 100+ apps consommatrices,
+dont des apps d'autres développeurs. **Le kit ne connaît pas ses
+consommateurs** — pas de registre, pas de notification, pas de test des
+apps dans la CI kit. La propagation est à l'initiative de CHAQUE app
 (gouvernance complète : [CONTRIBUTING-BRANDS.md](./CONTRIBUTING-BRANDS.md)) :
 
-1. Modifier le kit ; `npm run build:packages` ; `npm run test:kit` vert ;
-   push/merge sur `main`.
-2. CI kit : `build-and-test` vert → **`brand-matrix`** synce + teste chaque
-   marque du registre [`docs/brands.json`](./brands.json) contre ce kit
-   (`scripts/ci/brand-matrix-check.sh`, jamais de push) → **`notify-brands`**
-   dispatch `kit-main-green` aux marques.
-3. Chaque marque : workflow **Kit compat** (`scripts/ci/kit-compat.sh`,
-   aussi nightly + manuel) — resync ÉPHÉMÈRE du vendor vers le dernier kit
-   dans un workspace jetable
-   ([`scripts/sync-creezio-vendor.sh`](../scripts/sync-creezio-vendor.sh),
+1. **Le kit publie** : modifier le kit ; `npm run build:packages` ;
+   `npm run test:kit` vert ; push/merge sur `main`. Le kit se protège avec
+   SES gates — dont `test-phase-arch-codemod` : un bump
+   `ARCHITECTURE_VERSION` sans codemod de migration est ROUGE
+   ([`scripts/codemods/README.md`](../scripts/codemods/README.md)). C'est ce
+   contrat (changelog + versioning + codemods) qui protège les apps.
+2. **L'app mesure quand elle veut** : workflow **Kit compat**
+   (`scripts/ci/kit-compat.sh` — manuel + cron hebdo par défaut, choix de
+   l'app) — resync ÉPHÉMÈRE du vendor vers le dernier kit dans un workspace
+   jetable ([`scripts/sync-creezio-vendor.sh`](../scripts/sync-creezio-vendor.sh),
    contrat canonique) + suite complète, puis RAPPORT dans l'issue unique
    « 📦 Compatibilité kit — rapport automatique » : kit pinné vs dernier
    kit (SHA + date), commits kit entre les deux (breaking `feat!`/`fix!`
    / bump `ARCHITECTURE_VERSION` mis en avant), packages vendorisés
    touchés, résultat ✅ compatible / ❌ incompatible (avec la gate en échec
    et les 30 dernières lignes de log). Rien n'est poussé.
-4. Le développeur décide : workflow **Vendor update** de la marque
+3. **Le développeur de l'app décide** : workflow **Vendor update**
    (Actions → Vendor update → Run workflow, input `kit_sha` optionnel) —
    resync réel + suite complète ; vert → commit `[vendor-update]` + push
-   `main` (CI + deploy marque suivent) ; déjà à jour → run vert sans commit.
-5. Breaking change (`ARCHITECTURE_VERSION`) : codemods de migration
-   obligatoires — [`scripts/codemods/README.md`](../scripts/codemods/README.md).
+   `main` (CI + deploy de l'app suivent) ; déjà à jour → run vert sans
+   commit.
+4. Breaking change (`ARCHITECTURE_VERSION`) : codemods de migration
+   obligatoires, exécutés AUTOMATIQUEMENT par le sync lors du
+   vendor-update d'une app en version antérieure.
 
 Resync manuel possible (dev local) :
 `CREEZIO_KIT_ROOT=<kit> ROOT=<marque> bash <kit>/scripts/sync-creezio-vendor.sh`.
-`vendor/creezio/` côté marque est GÉNÉRÉ — jamais de patch manuel (garde
-anti-dérive dans `kit-compat.sh` / `vendor-update.sh` marque).
+`vendor/creezio/` côté app est GÉNÉRÉ — jamais de patch manuel (garde
+anti-dérive dans `kit-compat.sh` / `vendor-update.sh` app).
 
 ## Topologie multi-serveurs
 
 Chaque app est indépendante : **un serveur par app**, avec son runner
 self-hosted pour ses workflows lourds (kit-compat, vendor-update, deploy).
-Le serveur qui héberge le kit fait en plus tourner `brand-matrix` : c'est le
-banc de test de la flotte — il valide chaque marque contre le kit candidat
-AVANT de la notifier, sans jamais rien pousser chez elle. Une marque SANS
-runner sur le serveur du kit reçoit quand même ses notifications et publie
-ses rapports : ses workflows kit-compat/vendor-update tournent alors sur
-GitHub-hosted (`githubHosted: true` à la génération factory + secret repo
-`CREEZIO_CI_TOKEN`, un PAT lisant le kit privé). Le deploy, lui, exige
-toujours le runner du serveur de la marque.
+Une app SANS runner (serveur pas encore câblé, ou dev tiers sans infra)
+tourne intégralement sur GitHub-hosted : générer ses workflows avec
+`githubHosted: true` (factory) + secret repo `CREEZIO_CI_TOKEN` (token
+lisant le repo kit) — seuls kit-compat et vendor-update en ont besoin ; le
+deploy, lui, exige toujours le runner du serveur de l'app.
 
 Politique de republish des binaires desktop : voir
 [archive/REPUBLISH-POLICY.md](./archive/REPUBLISH-POLICY.md) (politique

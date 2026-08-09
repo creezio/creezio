@@ -37,6 +37,7 @@ scripts/codemods/
 2. `scripts/codemods/<nouvelleVersion>/manifest.json` + scripts (la gate
    `scripts/test-phase-arch-codemod.mjs` REFUSE un bump sans manifest) ;
 3. ADR dans `docs/adr/` expliquant le breaking change ;
-4. push → le job `brand-matrix` de la CI kit prouve la migration sur chaque
-   marque du registre `docs/brands.json` avant que `notify-brands` ne
-   propage.
+4. push sur `main` → chaque app consommatrice verra le bump dans son rapport
+   kit-compat (commit surligné ⚠️) et exécutera le codemod automatiquement
+   lors de son `vendor-update` (le sync détecte l'écart de version et
+   applique la migration).

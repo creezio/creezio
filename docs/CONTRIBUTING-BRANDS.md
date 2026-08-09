@@ -1,58 +1,63 @@
-# Contributing Brands — gouvernance kit ↔ marques
+# Contributing Brands — gouvernance kit ↔ apps consommatrices
 
-Comment une marque naît, vit avec le kit, et comment le kit évolue sans
-casser sa flotte. Complète [PROPAGATION.md](./PROPAGATION.md) (contrat de
+Comment une app naît, vit avec le kit, et comment le kit évolue sans casser
+ses consommateurs. Complète [PROPAGATION.md](./PROPAGATION.md) (contrat de
 propagation) — ici : le cycle de vie opérationnel et les règles.
 
-## Cycle de vie d'une marque
+**Modèle open source PULL** : le kit ne connaît pas ses consommateurs
+(potentiellement 100+ apps, dont des apps d'autres développeurs). Pas de
+registre central, pas de notification, pas de test des apps dans la CI kit.
+Le kit publie sur `main` avec changelog + `ARCHITECTURE_VERSION` + codemods ;
+chaque app tire la dernière version QUAND ELLE LE DÉCIDE, mesure l'impact
+chez elle (kit-compat) et applique la mise à jour par un geste explicite
+(vendor-update).
+
+## Cycle de vie d'une app
 
 ```
 scaffold factory (creezio new-app)
-  → repo marque : vendor/creezio pinné (SYNC.json.kitSha) + workflows CI/CD
-  → rapport d'impact : workflow Kit compat (dispatch kit-main-green du kit,
-    nightly, manuel) — resync éphémère + suite complète, JAMAIS de push
+  → repo app : vendor/creezio pinné (SYNC.json.kitSha) + workflows CI/CD
+  → rapport d'impact : workflow Kit compat (manuel + cron hebdo, choix de
+    l'app) — resync éphémère + suite complète, JAMAIS de push
   → mise à jour décidée : workflow Vendor update (workflow_dispatch)
-  → deploy : workflow Deploy sur CI verte de main (runner du serveur marque)
+  → deploy : workflow Deploy sur CI verte de main (runner du serveur app)
 ```
 
-1. **Scaffold** : `creezio new-app` génère le repo marque complet — dont
+1. **Scaffold** : `creezio new-app` génère le repo app complet — dont
    `.github/workflows/{ci,kit-compat,vendor-update,deploy}.yml`,
    `scripts/ci/{kit-compat,vendor-update}.sh` et la gate
    `server/scripts/test-vendor-integrity.mjs`
    (générateur : `packages/factory/src/generators/brand-workflows.ts`).
-2. **Registre** : ajouter la marque à [`docs/brands.json`](./brands.json)
-   (`repo`, `runnerLabels`, `active: true`) — la CI kit (jobs `brand-matrix`
-   et `notify-brands`) ne voit que les marques du registre.
-3. **Un serveur par app, un runner par app** : chaque marque vit sur SON
+2. **Un serveur par app, un runner par app** : chaque app vit sur SON
    serveur, avec son runner self-hosted pour kit-compat/vendor-update/deploy
-   (pattern : `~/actions-runners/<marque>` + service systemd user, `.env`
-   avec `TMPDIR` hors tmpfs — voir les runners existants). Le serveur du
-   kit fait tourner `brand-matrix` : banc de test flotte, aucun push.
-   Marque sans runner (serveur pas encore câblé) : générer les workflows
-   avec `githubHosted: true` (ubuntu-latest) + secret repo
-   `CREEZIO_CI_TOKEN` (PAT lisant le kit privé) — seuls kit-compat et
+   (pattern : `~/actions-runners/<app>` + service systemd user, `.env`
+   avec `TMPDIR` hors tmpfs — voir les runners existants).
+   App sans runner (serveur pas encore câblé, dev tiers sans infra) :
+   générer les workflows avec `githubHosted: true` (ubuntu-latest) + secret
+   repo `CREEZIO_CI_TOKEN` (token lisant le repo kit) — seuls kit-compat et
    vendor-update tournent alors sur GitHub-hosted ; le deploy attend le
-   runner du serveur de la marque.
-4. **Vendor pinné** : `vendor/creezio/SYNC.json` pinne `kitSha` +
+   runner du serveur de l'app.
+3. **Vendor pinné** : `vendor/creezio/SYNC.json` pinne `kitSha` +
    `architectureVersion`. Le vendor est GÉNÉRÉ (README sentinelle posé par le
    sync) — jamais édité à la main.
-5. **Rapport d'impact** : le workflow **Kit compat** de la marque compare
+4. **Rapport d'impact (pull)** : le workflow **Kit compat** de l'app compare
    `SYNC.json.kitSha` au tip kit ; en retard → resync ÉPHÉMÈRE (workspace
    jetable) + suite complète, puis met à jour l'issue unique « 📦
    Compatibilité kit — rapport automatique » : ✅ compatible / ❌
    incompatible, commits kit entre pin et tip (breaking mis en avant),
    packages vendorisés touchés, log de la gate en échec. RIEN n'est poussé ;
-   un run rouge = échec d'infrastructure uniquement.
-6. **Mise à jour décidée** : le développeur lance **Vendor update**
+   un run rouge = échec d'infrastructure uniquement. Déclencheurs : manuel
+   + cron hebdo par défaut — l'app ajuste ou retire le cron librement.
+5. **Mise à jour décidée** : le développeur de l'app lance **Vendor update**
    (workflow_dispatch, input `kit_sha` optionnel) — resync réel + suite
    complète ; vert → commit `[vendor-update] kit X → Y` + push `main`
    (CI + deploy suivent) ; déjà à jour → run vert sans commit.
 
-## Process app → kit (bug ou évolution du kit constaté depuis une marque)
+## Process app → kit (bug ou évolution du kit constaté depuis une app)
 
 **Jamais de patch dans `vendor/creezio/`.** Ce dossier est écrasé à chaque
 resync, et le garde anti-dérive de `scripts/ci/kit-compat.sh` /
-`scripts/ci/vendor-update.sh` (marque) refuse de tourner si
+`scripts/ci/vendor-update.sh` (app) refuse de tourner si
 `git status --porcelain vendor/` n'est pas vide.
 
 Chemin nominal :
@@ -61,54 +66,34 @@ Chemin nominal :
    creezio — gate dédiée ou cas ajouté à une gate existante) ;
 2. corriger le kit ; `npm run build:packages` ; `npm run test:kit` vert ;
 3. PR (ou push main) sur `creezio/creezio` ;
-4. la propagation suit le contrat « le kit notifie, l'app rapporte, le dev
-   décide » : CI kit verte → `brand-matrix` prouve les marques →
-   `notify-brands` dispatch `kit-main-green` → chaque marque publie son
-   rapport d'impact (**Kit compat**) → mise à jour par **Vendor update**
-   quand le développeur le décide.
+4. chaque app verra le correctif dans son prochain rapport **Kit compat**
+   et le récupérera via **Vendor update** quand son développeur le décide.
 
 ## Breaking change — définition
 
 Est breaking (et exige le process ci-dessous) tout changement qui casse une
-marque à jour de son wiring :
+app à jour de son wiring :
 
 - contrats `BrandMeiliFeed`, `gate.mjs` (gates module colocalisées),
   manifest `brand-spec` ;
-- migrations SQL dont le schéma impacte le métier marque ;
-- signatures/exports publics `@creezio/*` consommés par le wiring marque ;
+- migrations SQL dont le schéma impacte le métier app ;
+- signatures/exports publics `@creezio/*` consommés par le wiring app ;
 - plus généralement : tout ce qui justifie un bump d'`ARCHITECTURE_VERSION`
   (`packages/platform-core/src/architecture-version.ts`).
 
 ## Checklist codemod (bump `ARCHITECTURE_VERSION`)
+
+C'est CE contrat qui protège les 100+ apps : un breaking change est
+versionné et livre sa migration automatique.
 
 1. bump de la valeur dans
    `packages/platform-core/src/architecture-version.ts` ;
 2. codemods de migration dans `scripts/codemods/<nouvelleVersion>/`
    (`manifest.json` + scripts idempotents, contrat :
    [`scripts/codemods/README.md`](../scripts/codemods/README.md)) — la gate
-   `scripts/test-phase-arch-codemod.mjs` refuse un bump sans manifest, et
+   `scripts/test-phase-arch-codemod.mjs` REFUSE un bump sans manifest, et
    `sync-creezio-vendor.sh` exécute les codemods automatiquement au resync
-   d'une marque en version antérieure ;
+   d'une app en version antérieure ;
 3. ADR dans [`docs/adr/`](./adr/) documentant le breaking change ;
-4. `brand-matrix` verte : le job CI kit synce + teste chaque marque du
-   registre contre le kit candidat AVANT `notify-brands` — un kit qui casse
-   une marque ne lui est jamais annoncé.
-
-## Registre `docs/brands.json`
-
-SoT des marques de la flotte, consommée par la CI kit :
-
-```json
-{
-  "brands": [
-    { "repo": "creezio/winhub", "runnerLabels": ["self-hosted", "fluxpro"], "active": true }
-  ]
-}
-```
-
-- `repo` — repo GitHub de la marque ;
-- `runnerLabels` — où tournent les workflows kit-compat/vendor-update de la
-  marque : labels de son runner self-hosted, ou `["ubuntu-latest"]` si la
-  marque est GitHub-hosted (pas encore de runner sur son serveur) ;
-- `active` — `false` retire la marque de `brand-matrix` + `notify-brands`
-  sans perdre sa trace (marque gelée, migration en cours…).
+4. le commit de bump apparaîtra surligné ⚠️ dans le rapport kit-compat de
+   chaque app — la mise à jour reste son choix, la migration est fournie.

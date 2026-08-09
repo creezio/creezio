@@ -199,12 +199,6 @@
 | [`test-phase-v2.mjs`](../test-phase-v2.mjs) | Phase V2 — observabilité native (activité, usages plugins, control-plane). |
 | [`test-phase-v3.mjs`](../test-phase-v3.mjs) | Phase V3 — automations data-driven (triggers lifecycle / données). |
 
-## `ci/`
-
-| Fichier | Rôle |
-|---|---|
-| [`ci/brand-matrix-check.sh`](../ci/brand-matrix-check.sh) | (à documenter) |
-
 ## `lib/`
 
 | Fichier | Rôle |

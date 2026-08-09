@@ -355,10 +355,12 @@ export async function runCli(argv: string[]): Promise<void> {
   );
   console.log("");
   console.log(
-    "⚠ Gouvernance flotte : ajouter la marque au registre docs/brands.json du kit",
+    "ℹ Modèle pull : le kit ne connaît pas ses consommateurs. L'app tire le",
   );
   console.log(
-    "  (repo + runnerLabels + active) — la CI kit (brand-matrix + notify-brands)",
+    "  kit quand elle le décide — kit-compat.yml rapporte l'impact (issue),",
   );
-  console.log("  ne voit que les marques du registre (docs/CONTRIBUTING-BRANDS.md).");
+  console.log(
+    "  vendor-update.yml applique la mise à jour (docs/PROPAGATION.md du kit).",
+  );
 }
