@@ -82,6 +82,24 @@ const ENV_GATES = new Map([
       why: "app neuve factory + npm install + build UI + image Docker (~10 min)",
     },
   ],
+  // Ces deux gates exigent les binaires natifs réels (meili, cloudflared,
+  // hermes, n8n) : impossibles quand CREEZIO_SKIP_KIT_BINARIES=1 (CI GH-hosted
+  // les saute volontairement). Elles tournent en nightly self-hosted où les
+  // binaires sont téléchargeables et cachés entre runs.
+  [
+    "test-os-native-pnp.mjs",
+    {
+      optIn: "CREEZIO_KIT_BINARIES",
+      why: "télécharge les binaires natifs meili/cloudflared/hermes/n8n",
+    },
+  ],
+  [
+    "test-os-shell-contracts.mjs",
+    {
+      optIn: "CREEZIO_KIT_BINARIES",
+      why: "assert ensureKitOsBinaries → binaires natifs réels requis",
+    },
+  ],
 ]);
 
 // Une gate « marques » lit les repos marque : import des libs de résolution

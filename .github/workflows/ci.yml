@@ -93,6 +93,9 @@ jobs:
       # Marque sonde : clone de dev du VPS (le checkout runner n'a pas de
       # sibling tempoflow3).
       CREEZIO_TEMPOFLOW3_ROOT: /home/fidus/tempoflow3
+      # Gates « binaires natifs » (os-native-pnp, os-shell-contracts) : le
+      # VPS a le réseau et le cache runner persiste entre les runs.
+      CREEZIO_KIT_BINARIES: "1"
     steps:
       - uses: actions/checkout@v4
 
