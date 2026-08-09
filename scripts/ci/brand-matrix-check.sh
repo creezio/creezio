@@ -11,13 +11,13 @@
 #     dev), checkout origin/main, nettoyé à chaque run ;
 #   - sync vendor DEPUIS LE KIT COURANT (checkout du workflow, pas origin/main
 #     du kit) puis suite complète marque ;
-#   - JAMAIS de push : validation pure, le resync réel reste le rôle du
-#     workflow Vendor latest de chaque marque.
+#   - JAMAIS de push : validation pure, la mise à jour réelle du vendor
+#     reste un geste explicite (workflow Vendor update de chaque marque).
 set -euo pipefail
 
 BRAND="${1:?usage: brand-matrix-check.sh <marque> (ex. winhub)}"
 
-# TMPDIR hors du tmpfs /tmp (même garde que vendor-latest.sh des marques).
+# TMPDIR hors du tmpfs /tmp (même garde que kit-compat.sh des marques).
 export TMPDIR="${TMPDIR:-$HOME/actions-runners/tmp}"
 mkdir -p "${TMPDIR}"
 

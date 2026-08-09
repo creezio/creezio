@@ -1767,7 +1767,8 @@ export function scaffoldNewApp(opts: NewAppOptions): ScaffoldResult {
   );
 
   // CI/CD flotte : chaque marque naît avec le filet complet (CI push/PR,
-  // fraîcheur vendor vs dernier kit, CD sur CI verte, gate vendor-integrity).
+  // rapport d'impact kit + mise à jour vendor décidée, CD sur CI verte,
+  // gate vendor-integrity).
   for (const [rel, body] of Object.entries(
     renderBrandWorkflowFiles({ brandId: manifest.brandId }),
   )) {

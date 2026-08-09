@@ -16,10 +16,12 @@ L4 utilisateur (plugins personnels)
   ↑ remontée innovations terrain
 ```
 
-## Chemin nominal (boucle automatique)
+## Chemin nominal — le kit notifie, l'app rapporte l'impact, le dev décide
 
-La descente kit → marques est AUTOMATIQUE (gouvernance complète :
-[CONTRIBUTING-BRANDS.md](./CONTRIBUTING-BRANDS.md)) :
+La descente kit → marques est PILOTÉE : le kit annonce, chaque marque mesure
+et publie l'impact, et la mise à jour effective reste un geste explicite du
+développeur — jamais de push automatique sur `main` d'une marque
+(gouvernance complète : [CONTRIBUTING-BRANDS.md](./CONTRIBUTING-BRANDS.md)) :
 
 1. Modifier le kit ; `npm run build:packages` ; `npm run test:kit` vert ;
    push/merge sur `main`.
@@ -27,18 +29,40 @@ La descente kit → marques est AUTOMATIQUE (gouvernance complète :
    marque du registre [`docs/brands.json`](./brands.json) contre ce kit
    (`scripts/ci/brand-matrix-check.sh`, jamais de push) → **`notify-brands`**
    dispatch `kit-main-green` aux marques.
-3. Chaque marque : workflow **Vendor latest**
-   (`scripts/ci/vendor-latest.sh`) — vendor en retard → resync
+3. Chaque marque : workflow **Kit compat** (`scripts/ci/kit-compat.sh`,
+   aussi nightly + manuel) — resync ÉPHÉMÈRE du vendor vers le dernier kit
+   dans un workspace jetable
    ([`scripts/sync-creezio-vendor.sh`](../scripts/sync-creezio-vendor.sh),
-   contrat canonique) + suite complète ; vert → push `[vendor-resync]`
-   (CI + deploy marque suivent) ; rouge → signal, rien n'est bloqué.
-4. Breaking change (`ARCHITECTURE_VERSION`) : codemods de migration
+   contrat canonique) + suite complète, puis RAPPORT dans l'issue unique
+   « 📦 Compatibilité kit — rapport automatique » : kit pinné vs dernier
+   kit (SHA + date), commits kit entre les deux (breaking `feat!`/`fix!`
+   / bump `ARCHITECTURE_VERSION` mis en avant), packages vendorisés
+   touchés, résultat ✅ compatible / ❌ incompatible (avec la gate en échec
+   et les 30 dernières lignes de log). Rien n'est poussé.
+4. Le développeur décide : workflow **Vendor update** de la marque
+   (Actions → Vendor update → Run workflow, input `kit_sha` optionnel) —
+   resync réel + suite complète ; vert → commit `[vendor-update]` + push
+   `main` (CI + deploy marque suivent) ; déjà à jour → run vert sans commit.
+5. Breaking change (`ARCHITECTURE_VERSION`) : codemods de migration
    obligatoires — [`scripts/codemods/README.md`](../scripts/codemods/README.md).
 
 Resync manuel possible (dev local) :
 `CREEZIO_KIT_ROOT=<kit> ROOT=<marque> bash <kit>/scripts/sync-creezio-vendor.sh`.
 `vendor/creezio/` côté marque est GÉNÉRÉ — jamais de patch manuel (garde
-anti-dérive dans `vendor-latest.sh` marque).
+anti-dérive dans `kit-compat.sh` / `vendor-update.sh` marque).
+
+## Topologie multi-serveurs
+
+Chaque app est indépendante : **un serveur par app**, avec son runner
+self-hosted pour ses workflows lourds (kit-compat, vendor-update, deploy).
+Le serveur qui héberge le kit fait en plus tourner `brand-matrix` : c'est le
+banc de test de la flotte — il valide chaque marque contre le kit candidat
+AVANT de la notifier, sans jamais rien pousser chez elle. Une marque SANS
+runner sur le serveur du kit reçoit quand même ses notifications et publie
+ses rapports : ses workflows kit-compat/vendor-update tournent alors sur
+GitHub-hosted (`githubHosted: true` à la génération factory + secret repo
+`CREEZIO_CI_TOKEN`, un PAT lisant le kit privé). Le deploy, lui, exige
+toujours le runner du serveur de la marque.
 
 Politique de republish des binaires desktop : voir
 [archive/REPUBLISH-POLICY.md](./archive/REPUBLISH-POLICY.md) (politique

@@ -58,9 +58,11 @@ export {
 export {
   renderBrandWorkflowFiles,
   renderBrandCiWorkflow,
-  renderVendorLatestWorkflow,
+  renderKitCompatWorkflow,
+  renderVendorUpdateWorkflow,
   renderBrandDeployWorkflow,
-  renderVendorLatestScript,
+  renderKitCompatScript,
+  renderVendorUpdateScript,
   renderVendorIntegrityGate,
 } from "./brand-workflows.js";
 export type { BrandWorkflowsOptions } from "./brand-workflows.js";

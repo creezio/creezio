@@ -13,8 +13,10 @@
 #      ne passe pas au vert ;
 #   3. notify-brands (self-hosted, main vert + matrix verte) :
 #      repository_dispatch `kit-main-green` vers les marques — chaque marque
-#      teste alors son code contre le DERNIER kit et resynchronise son vendor
-#      automatiquement si vert (workflow vendor-latest.yml des marques) ;
+#      teste alors son code contre le DERNIER kit et publie un RAPPORT
+#      d'impact (workflow kit-compat.yml des marques, issue « 📦
+#      Compatibilité kit ») ; la mise à jour reste un geste explicite du
+#      dev (workflow vendor-update.yml) — jamais de push automatique ;
 #   4. nightly-suites (self-hosted, cron) : suites lourdes `brands` + `env`
 #      (marques sondes, Docker, Electron) qui ne tournent pas sur GH-hosted.
 name: CI
@@ -85,9 +87,9 @@ jobs:
 
   # Chaque marque active du registre est validée CONTRE CE KIT sur le runner
   # self-hosted : clone CI dédié, sync vendor depuis le checkout, suite
-  # complète — jamais de push (validation pure ; le resync réel = workflow
-  # Vendor latest des marques). Le runner kit n'exécute qu'un job à la fois :
-  # les marques passent en séquence (accepté).
+  # complète — jamais de push (validation pure ; la mise à jour réelle =
+  # workflow Vendor update des marques, à la demande). Le runner kit
+  # n'exécute qu'un job à la fois : les marques passent en séquence (accepté).
   brand-matrix:
     needs: build-and-test
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
@@ -112,9 +114,10 @@ jobs:
         run: bash scripts/ci/brand-matrix-check.sh "${{ matrix.brand }}"
 
   # Main kit vert → prévenir les marques : « nouveau kit disponible, testez
-  # votre métier contre lui et récupérez-le si vert » (contrat fraîcheur
-  # vendor, valable pour TOUTES les apps Creezio). Le dispatch part du runner
-  # self-hosted : gh y est authentifié, aucun PAT à stocker en secret.
+  # votre métier contre lui et publiez votre rapport d'impact » (contrat
+  # flotte : le kit notifie, l'app rapporte, le dev décide de la mise à
+  # jour). Le dispatch part du runner self-hosted : gh y est authentifié,
+  # aucun PAT à stocker en secret.
   # La liste des marques vient du registre docs/brands.json (job build-and-test).
   notify-brands:
     needs: [build-and-test, brand-matrix]

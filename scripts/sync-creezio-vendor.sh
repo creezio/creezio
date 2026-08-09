@@ -366,20 +366,23 @@ fs.writeFileSync(path.join(dest, "SYNC.json"), JSON.stringify(out, null, 2) + "\
 ' "${DEST}" "${ARCH}" "${KIT_SHA}" "${PACKAGES[@]}"
 
 # README sentinelle : le vendor est GÉNÉRÉ — toute édition manuelle est
-# interdite (et refusée par le garde anti-dérive de vendor-latest.sh marque).
+# interdite (et refusée par le garde anti-dérive de kit-compat.sh /
+# vendor-update.sh marque).
 cat > "${DEST}/README.md" <<'VENDORREADME'
 # vendor/creezio — dossier GÉNÉRÉ, NE JAMAIS ÉDITER
 
 Contenu produit par `scripts/sync-creezio-vendor.sh` du kit
 [creezio/creezio](https://github.com/creezio/creezio) (packages `@creezio/*`
 buildés, pinnés par `SYNC.json.kitSha`). Toute modification locale serait
-écrasée au prochain resync — et bloque le workflow **Vendor latest** (garde
-anti-dérive).
+écrasée au prochain resync — et bloque les workflows **Kit compat** /
+**Vendor update** (garde anti-dérive).
 
 - Bug ou évolution kit → reproduire dans un test kit (`scripts/test-*.mjs`
-  du repo creezio) → PR sur `creezio/creezio` → propagation automatique.
-- Resync : workflow **Vendor latest** de la marque (`gh workflow run
-  vendor-latest.yml`), ou localement
+  du repo creezio) → PR sur `creezio/creezio` → le kit vert notifie les
+  marques, qui publient leur rapport d'impact (issue « 📦 Compatibilité
+  kit »).
+- Mise à jour du vendor : geste explicite — workflow **Vendor update** de la
+  marque (`gh workflow run vendor-update.yml`), ou localement
   `CREEZIO_KIT_ROOT=<kit> ROOT=<marque> bash <kit>/scripts/sync-creezio-vendor.sh`.
 - Doctrine complète : `docs/CONTRIBUTING-BRANDS.md` du kit.
 VENDORREADME

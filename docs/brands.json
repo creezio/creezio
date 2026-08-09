@@ -13,7 +13,7 @@
     },
     {
       "repo": "creezio/tempoflow3",
-      "runnerLabels": ["self-hosted", "fluxpro"],
+      "runnerLabels": ["ubuntu-latest"],
       "active": true
     }
   ]
