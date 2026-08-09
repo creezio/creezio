@@ -46,6 +46,7 @@
 | [`test-phase-api-entity-mount.mjs`](../test-phase-api-entity-mount.mjs) | Gate entity mounts — moteur CRUD déclaratif `@creezio/api-kernel` (`createEntityApiMount` / `registerEntityMounts`). |
 | [`test-phase-api-fallthrough-loop.mjs`](../test-phase-api-fallthrough-loop.mjs) | (à documenter) |
 | [`test-phase-app-runtime.mjs`](../test-phase-app-runtime.mjs) | Gate app-runtime — façade exports + composeBrandOs smoke (sans apps/tempoflow3). |
+| [`test-phase-arch-codemod.mjs`](../test-phase-arch-codemod.mjs) | (à documenter) |
 | [`test-phase-auth-secret.mjs`](../test-phase-auth-secret.mjs) | Gate sécurité AUTH_SECRET serveur (fix trou : serveurs Docker headless signaient les sessions avec le fallback dev public). |
 | [`test-phase-b.mjs`](../test-phase-b.mjs) | !usrbinenv node |
 | [`test-phase-b2.mjs`](../test-phase-b2.mjs) | !usrbinenv node |
@@ -197,6 +198,12 @@
 | [`test-phase-v1.mjs`](../test-phase-v1.mjs) | Phase V1 — fabrique plugins conversationnelle (demobrand E2E). |
 | [`test-phase-v2.mjs`](../test-phase-v2.mjs) | Phase V2 — observabilité native (activité, usages plugins, control-plane). |
 | [`test-phase-v3.mjs`](../test-phase-v3.mjs) | Phase V3 — automations data-driven (triggers lifecycle / données). |
+
+## `ci/`
+
+| Fichier | Rôle |
+|---|---|
+| [`ci/brand-matrix-check.sh`](../ci/brand-matrix-check.sh) | (à documenter) |
 
 ## `lib/`
 

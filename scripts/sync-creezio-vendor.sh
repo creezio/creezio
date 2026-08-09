@@ -10,7 +10,9 @@
 #   CREEZIO_KIT_ROOT   — racine kit (défaut /opt/docker/creezio)
 #   DEST               — dossier vendor cible (obligatoire sauf si ROOT fourni)
 #   ROOT               — racine crm marque ; DEST défaut = $ROOT/vendor/creezio
-#   CREEZIO_EXPECT_ARCH_VERSION — assert (défaut H5) ; vide = skip assert
+#   CREEZIO_EXPECT_ARCH_VERSION — assert strict optionnel (vide = skip) ;
+#     la compatibilité de version est désormais gérée marque↔kit via
+#     DEST/SYNC.json + codemods (voir scripts/codemods/README.md)
 #   CREEZIO_VENDOR_PACKAGES — liste espace-séparée (sinon DEFAULT_PACKAGES)
 #   CREEZIO_VENDOR_ALLOW_PARTIAL=1 — autorise un sous-ensemble (DÉCONSEILLÉ :
 #     le script fait rm -rf DEST puis réécrit SYNC.json = liste fournie)
@@ -23,7 +25,10 @@
 set -euo pipefail
 
 KIT="${CREEZIO_KIT_ROOT:-/opt/docker/creezio}"
-EXPECT_ARCH="${CREEZIO_EXPECT_ARCH_VERSION-H6}"
+# Assert externe optionnel uniquement : le contrat de version nominal est
+# marque (DEST/SYNC.json.architectureVersion) ↔ kit, avec migration codemod
+# automatique (scripts/codemods/<versionKit>/manifest.json) en cas d'écart.
+EXPECT_ARCH="${CREEZIO_EXPECT_ARCH_VERSION-}"
 DRY_RUN="${CREEZIO_SYNC_DRY_RUN:-0}"
 
 DEFAULT_PACKAGES=(
@@ -98,6 +103,55 @@ echo "▸ kit ARCHITECTURE_VERSION=${ARCH} (expect=${EXPECT_ARCH:-skip})"
 if [[ -n "${EXPECT_ARCH}" && "${ARCH}" != "${EXPECT_ARCH}" ]]; then
   echo "ERROR: ARCHITECTURE_VERSION mismatch: got ${ARCH}, expected ${EXPECT_ARCH}" >&2
   exit 1
+fi
+
+# ── Version marque ↔ kit + codemods (scripts/codemods/README.md) ─────────
+# Marque déjà vendorisée sur une autre ARCHITECTURE_VERSION :
+#   - un codemod de migration existe pour la version kit → l'exécuter
+#     (scripts idempotents, ROOT = racine marque) PUIS continuer le sync ;
+#   - sinon → refus explicite (le mécanisme codemod est le chemin nominal).
+# Première sync (pas de SYNC.json) : sync direct, pas de codemod.
+BRAND_ARCH=""
+if [[ -f "${DEST}/SYNC.json" ]]; then
+  BRAND_ARCH="$(node -e '
+try {
+  const j = require(process.argv[1]);
+  process.stdout.write(String(j.architectureVersion || ""));
+} catch (_) { /* SYNC.json illisible = première sync */ }
+' "${DEST}/SYNC.json")"
+fi
+
+if [[ -n "${BRAND_ARCH}" && "${BRAND_ARCH}" != "${ARCH}" ]]; then
+  CODEMOD_DIR="${KIT}/scripts/codemods/${ARCH}"
+  CODEMOD_MANIFEST="${CODEMOD_DIR}/manifest.json"
+  if [[ ! -f "${CODEMOD_MANIFEST}" ]]; then
+    echo "ERROR: ARCHITECTURE_VERSION marque=${BRAND_ARCH} ≠ kit=${ARCH}" >&2
+    echo "       et aucun codemod de migration n'existe : ${CODEMOD_MANIFEST}" >&2
+    echo "       Un bump d'ARCHITECTURE_VERSION doit livrer ses codemods" >&2
+    echo "       (scripts/codemods/${ARCH}/manifest.json + scripts idempotents" >&2
+    echo "       exécutés avec ROOT=<racine marque>) — voir" >&2
+    echo "       scripts/codemods/README.md et docs/CONTRIBUTING-BRANDS.md." >&2
+    exit 1
+  fi
+  if [[ -z "${ROOT:-}" ]]; then
+    echo "ERROR: migration ${BRAND_ARCH} → ${ARCH} : les codemods transforment" >&2
+    echo "       la marque et exigent ROOT=<racine marque> (DEST seul insuffisant)." >&2
+    exit 1
+  fi
+  if [[ "${DRY_RUN}" == "1" ]]; then
+    echo "▸ dry-run : migration ${BRAND_ARCH} → ${ARCH} — codemods de ${CODEMOD_DIR} seraient exécutés"
+  else
+    echo "▸ migration ${BRAND_ARCH} → ${ARCH} : exécution des codemods ${CODEMOD_DIR}"
+    while IFS= read -r script; do
+      [[ -n "${script}" ]] || continue
+      echo "  ▸ codemod ${script}"
+      ROOT="${ROOT}" node "${CODEMOD_DIR}/${script}"
+    done < <(node -e '
+const j = require(process.argv[1]);
+for (const s of j.scripts || []) console.log(s);
+' "${CODEMOD_MANIFEST}")
+    echo "▸ codemods ${ARCH} OK — le sync continue (SYNC.json portera ${ARCH})"
+  fi
 fi
 
 echo "▸ packages: ${PACKAGES[*]}"
@@ -310,6 +364,25 @@ const out = {
 };
 fs.writeFileSync(path.join(dest, "SYNC.json"), JSON.stringify(out, null, 2) + "\n");
 ' "${DEST}" "${ARCH}" "${KIT_SHA}" "${PACKAGES[@]}"
+
+# README sentinelle : le vendor est GÉNÉRÉ — toute édition manuelle est
+# interdite (et refusée par le garde anti-dérive de vendor-latest.sh marque).
+cat > "${DEST}/README.md" <<'VENDORREADME'
+# vendor/creezio — dossier GÉNÉRÉ, NE JAMAIS ÉDITER
+
+Contenu produit par `scripts/sync-creezio-vendor.sh` du kit
+[creezio/creezio](https://github.com/creezio/creezio) (packages `@creezio/*`
+buildés, pinnés par `SYNC.json.kitSha`). Toute modification locale serait
+écrasée au prochain resync — et bloque le workflow **Vendor latest** (garde
+anti-dérive).
+
+- Bug ou évolution kit → reproduire dans un test kit (`scripts/test-*.mjs`
+  du repo creezio) → PR sur `creezio/creezio` → propagation automatique.
+- Resync : workflow **Vendor latest** de la marque (`gh workflow run
+  vendor-latest.yml`), ou localement
+  `CREEZIO_KIT_ROOT=<kit> ROOT=<marque> bash <kit>/scripts/sync-creezio-vendor.sh`.
+- Doctrine complète : `docs/CONTRIBUTING-BRANDS.md` du kit.
+VENDORREADME
 
 # Monorepo 3 livrables : client/vendor = copie hardlink du vendor racine.
 # electron-builder refuse tout fichier hors racine projet (symlinks résolus en
