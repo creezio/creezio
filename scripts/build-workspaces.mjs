@@ -19,6 +19,7 @@ import { execSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { writeSrcHashManifests } from "./lib/assert-runtime-dist.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const packagesOnly = process.argv.includes("--packages-only");
@@ -101,6 +102,12 @@ for (const name of order) {
   execSync(`npm run build -w ${name}`, { cwd: root, stdio: "inherit" });
 }
 execSync("node scripts/build-cjs.mjs", { cwd: root, stdio: "inherit" });
+// Manifest src-hash (garde assert-runtime-dist) : preuve par CONTENU que le
+// dist reflète le src — les mtimes ne sont pas fiables (constat tempoflow-vps).
+const manifested = writeSrcHashManifests(root);
+console.log(
+  `[build-workspaces] manifests src-hash écrits: ${manifested.length} packages runtime`,
+);
 console.log(
   `\n[build-workspaces] OK — ${order.length} workspaces (${packagesOnly ? "packages" : "packages + apps"}) + build-cjs`,
 );

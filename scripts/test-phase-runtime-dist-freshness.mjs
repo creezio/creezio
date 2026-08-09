@@ -1,7 +1,7 @@
 /**
  * Gate — dist runtime critiques = câblage source (anti dist stale).
  *
- * Généralise ADR.1b (Admin Database) : contrats src↔dist + fraîcheur mtime
+ * Généralise ADR.1b (Admin Database) : contrats src↔dist + fraîcheur par contenu (src-hash)
  * sur app-runtime, database, mcp-facade, api-kernel, etc.
  *
  * Empêche la récidive « mount en source → vendor/image sans routes ».
@@ -16,7 +16,7 @@ import {
   CONTENT_CONTRACTS,
   FRESHNESS_PACKAGES,
   assertContentContracts,
-  assertMtimeFreshness,
+  assertSrcHashFreshness,
   assertRuntimeDist,
 } from "./lib/assert-runtime-dist.mjs";
 
@@ -39,7 +39,7 @@ test("ADR.1b-gen content contracts src↔dist (runtime critique)", () => {
   );
 });
 
-test("ADR.1b-gen mtime freshness packages runtime", () => {
+test("ADR.1b-gen src-hash freshness packages runtime", () => {
   assert.ok(
     FRESHNESS_PACKAGES.includes("app-runtime"),
     "app-runtime dans FRESHNESS_PACKAGES",
@@ -48,11 +48,11 @@ test("ADR.1b-gen mtime freshness packages runtime", () => {
     FRESHNESS_PACKAGES.includes("database"),
     "database dans FRESHNESS_PACKAGES",
   );
-  const r = assertMtimeFreshness(root);
+  const r = assertSrcHashFreshness(root);
   assert.equal(
     r.ok,
     true,
-    r.errors.join("\n") || "mtime freshness KO",
+    r.errors.join("\n") || "src-hash freshness KO",
   );
 });
 

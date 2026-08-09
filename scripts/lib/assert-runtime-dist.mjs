@@ -6,7 +6,9 @@
  *
  * Deux couches :
  *   1. Contrats de contenu (tokens présents dans src ET dist) — ADR.1b généralisé.
- *   2. Fraîcheur mtime : max(src .ts) ≤ max(dist .js) par package.
+ *   2. Fraîcheur par CONTENU : hash sha256 des src .ts comparé au manifest
+ *      dist/.creezio-src-hash.json écrit par build-workspaces (mtimes non
+ *      fiables : src « touchés » à contenu git propre, constat tempoflow-vps).
  *
  * Usage :
  *   node scripts/lib/assert-runtime-dist.mjs [kitRoot]
@@ -15,6 +17,7 @@
  * Exit 1 + message « Run: npm run build:packages » si stale / manquant.
  */
 
+import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -135,8 +138,8 @@ export const CONTENT_CONTRACTS = [
   },
 ];
 
-/** Tolérance mtime (ms) — FS / copie peuvent avoir une résolution grossière. */
-const MTIME_SLACK_MS = 2000;
+/** Manifest de hash src écrit dans dist/ par build-workspaces (contenu). */
+export const SRC_HASH_MANIFEST = ".creezio-src-hash.json";
 
 /**
  * @param {string} dir
@@ -170,25 +173,55 @@ function walkFiles(dir, pred) {
 }
 
 /**
- * @param {string[]} files
- * @returns {{ max: number, path: string | null }} max mtimeMs + chemin du plus récent
+ * Hash sha256 du CONTENU des src .ts d'un package (chemins relatifs triés +
+ * octets). Indépendant des mtimes.
+ * @param {string} pkgRoot
+ * @returns {string | null} hex, ou null si aucun .ts sous src/
  */
-function maxMtimeInfo(files) {
-  let max = 0;
-  /** @type {string | null} */
-  let newest = null;
+export function computeSrcHash(pkgRoot) {
+  const files = walkFiles(
+    path.join(pkgRoot, "src"),
+    (n) => n.endsWith(".ts") && !n.endsWith(".d.ts"),
+  ).sort();
+  if (!files.length) return null;
+  const h = crypto.createHash("sha256");
   for (const f of files) {
-    try {
-      const m = fs.statSync(f).mtimeMs;
-      if (m > max) {
-        max = m;
-        newest = f;
-      }
-    } catch {
-      /* ignore */
-    }
+    h.update(path.relative(pkgRoot, f).split(path.sep).join("/"));
+    h.update("\0");
+    h.update(fs.readFileSync(f));
+    h.update("\0");
   }
-  return { max, path: newest };
+  return h.digest("hex");
+}
+
+/**
+ * Écrit le manifest src-hash dans dist/ des packages runtime (appelé en fin
+ * de build-workspaces). Le dist porte ainsi la preuve du src qui l'a produit.
+ * @param {string} kitRoot
+ * @param {string[]} [packages]
+ * @returns {string[]} packages écrits
+ */
+export function writeSrcHashManifests(kitRoot, packages = FRESHNESS_PACKAGES) {
+  /** @type {string[]} */
+  const written = [];
+  for (const name of packages) {
+    const pkgRoot = path.join(kitRoot, "packages", name);
+    const distDir = path.join(pkgRoot, "dist");
+    if (!fs.existsSync(distDir)) continue;
+    const hash = computeSrcHash(pkgRoot);
+    if (!hash) continue;
+    fs.writeFileSync(
+      path.join(distDir, SRC_HASH_MANIFEST),
+      JSON.stringify(
+        { srcHash: hash, generatedAt: new Date().toISOString() },
+        null,
+        2,
+      ) + "\n",
+      "utf8",
+    );
+    written.push(name);
+  }
+  return written;
 }
 
 /**
@@ -237,11 +270,15 @@ export function assertContentContracts(kitRoot, opts = {}) {
 }
 
 /**
+ * Fraîcheur par CONTENU : le hash des src .ts doit égaler le manifest écrit
+ * dans dist/ lors du dernier build (writeSrcHashManifests). Remplace la
+ * comparaison par mtimes, non fiable (src « touchés » sans changement de
+ * contenu — constat tempoflow-vps, git status propre).
  * @param {string} kitRoot
  * @param {{ packages?: string[] }} [opts]
  * @returns {AssertResult}
  */
-export function assertMtimeFreshness(kitRoot, opts = {}) {
+export function assertSrcHashFreshness(kitRoot, opts = {}) {
   const packages = opts.packages || FRESHNESS_PACKAGES;
   /** @type {string[]} */
   const errors = [];
@@ -249,7 +286,6 @@ export function assertMtimeFreshness(kitRoot, opts = {}) {
   const warnings = [];
   for (const name of packages) {
     const pkgRoot = path.join(kitRoot, "packages", name);
-    const srcDir = path.join(pkgRoot, "src");
     const distDir = path.join(pkgRoot, "dist");
     if (!fs.existsSync(pkgRoot)) {
       errors.push(`package manquant: packages/${name}`);
@@ -261,33 +297,37 @@ export function assertMtimeFreshness(kitRoot, opts = {}) {
       );
       continue;
     }
-    const srcFiles = walkFiles(
-      srcDir,
-      (n) => n.endsWith(".ts") && !n.endsWith(".d.ts"),
-    );
-    const distFiles = walkFiles(distDir, (n) => n.endsWith(".js"));
-    if (!srcFiles.length) {
-      warnings.push(`packages/${name}: aucun .ts sous src/ (skip mtime)`);
+    const current = computeSrcHash(pkgRoot);
+    if (current == null) {
+      warnings.push(`packages/${name}: aucun .ts sous src/ (skip hash)`);
       continue;
     }
-    if (!distFiles.length) {
+    const manifestPath = path.join(distDir, SRC_HASH_MANIFEST);
+    if (!fs.existsSync(manifestPath)) {
       errors.push(
-        `packages/${name}: dist/ sans .js — Run: npm run build:packages`,
+        `packages/${name}: manifest ${SRC_HASH_MANIFEST} absent (dist construit avant la garde par contenu) — Run: npm run build:packages`,
       );
       continue;
     }
-    const srcInfo = maxMtimeInfo(srcFiles);
-    const distInfo = maxMtimeInfo(distFiles);
-    if (srcInfo.max > distInfo.max + MTIME_SLACK_MS) {
-      const lagSec = ((srcInfo.max - distInfo.max) / 1000).toFixed(1);
-      const newestTs = srcInfo.path ? path.basename(srcInfo.path) : "?";
+    /** @type {string | null} */
+    let recorded = null;
+    try {
+      const parsed = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
+      recorded = typeof parsed?.srcHash === "string" ? parsed.srcHash : null;
+    } catch {
+      recorded = null;
+    }
+    if (recorded !== current) {
       errors.push(
-        `packages/${name}: src plus récent que dist (+${lagSec}s, newest=${newestTs}) — dist stale. Run: npm run build:packages`,
+        `packages/${name}: hash src (contenu) différent du manifest du dernier build — dist stale. Run: npm run build:packages`,
       );
     }
   }
   return { ok: errors.length === 0, errors, warnings };
 }
+
+/** @deprecated mtimes non fiables — alias de compat vers la garde par contenu. */
+export const assertMtimeFreshness = assertSrcHashFreshness;
 
 /**
  * @param {string} [kitRoot]
@@ -307,7 +347,7 @@ export function assertRuntimeDist(kitRoot = DEFAULT_KIT_ROOT, opts = {}) {
     warnings.push(...r.warnings);
   }
   if (wantMtime) {
-    const r = assertMtimeFreshness(kitRoot);
+    const r = assertSrcHashFreshness(kitRoot);
     errors.push(...r.errors);
     warnings.push(...r.warnings);
   }
@@ -340,7 +380,7 @@ function main() {
   const kit = path.resolve(process.argv[2] || DEFAULT_KIT_ROOT);
   try {
     assertRuntimeDistOrThrow(kit, { label: "kit runtime dist" });
-    console.log("▸ kit runtime dist OK (content contracts + mtime freshness)");
+    console.log("▸ kit runtime dist OK (content contracts + src-hash freshness)");
   } catch (e) {
     console.error(e instanceof Error ? e.message : String(e));
     process.exit(1);
