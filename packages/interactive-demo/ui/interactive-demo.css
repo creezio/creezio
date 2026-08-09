@@ -287,8 +287,10 @@
 
 .creezio-demo-launcher {
   position: fixed;
-  left: 18px;
-  bottom: 18px;
+  /* Haut-droite : extr?mit? libre de la barre d'onglets du workspace ?
+   * en bas-gauche le lanceur recouvrait la sidebar (retour winhub). */
+  right: 18px;
+  top: 10px;
   z-index: calc(var(--creezio-demo-z) - 10);
   display: inline-flex;
   align-items: center;
@@ -318,8 +320,8 @@
 
 .creezio-demo-launcher-menu {
   position: fixed;
-  left: 18px;
-  bottom: 66px;
+  right: 18px;
+  top: 52px;
   z-index: calc(var(--creezio-demo-z) - 9);
   background: var(--creezio-demo-card-bg);
   border-radius: 14px;

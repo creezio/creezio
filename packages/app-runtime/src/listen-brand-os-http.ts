@@ -392,7 +392,17 @@ export async function listenBrandOsHttp(opts: {
     // notFound de mountBrandPlatformSurface) : la marque peut servir cette
     // route in-plane (ex. /api/v1/desktop/heartbeat TF2) — rejeu vers le
     // plane UI, même contrat que le fallthrough kernel → plane.
-    if (response.status === 404 && fallbackTarget) {
+    if (
+      response.status === 404 &&
+      fallbackTarget &&
+      // Anti-boucle : si ce hop est D?J? un rejeu OS ? plane (header pos?
+      // ci-dessous, m?me marqueur que le fallthrough kernel), ne jamais
+      // rejouer. Un plane sans handler in-plane re-proxifie /api vers l'OS
+      // (rewrite Next `/api/v1/:path*`) : sans ce garde la requ?te
+      // rebondit OS ? UI ? l'infini ? temp?te CPU constat?e sur winhub
+      // (POST /api/v1/desktop/heartbeat sans route m?tier in-plane).
+      !hasKernelFallthroughHop(req.headers)
+    ) {
       const target = fallbackTarget();
       if (target) {
         const probe = await response
@@ -403,7 +413,9 @@ export async function listenBrandOsHttp(opts: {
           (probe as { error?: string } | null)?.error ===
           "platform_route_not_found"
         ) {
-          proxyRawHttp(req, res, target, bodyBuf);
+          proxyRawHttp(req, res, target, bodyBuf, {
+            [KERNEL_API_FALLTHROUGH_HEADER]: "1",
+          });
           return;
         }
       }
