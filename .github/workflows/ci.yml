@@ -49,6 +49,13 @@ jobs:
       - name: Build workspaces (source unique)
         run: npm run build:packages
 
+      # apps/demobrand n'est pas couverte par --packages-only ; ses artefacts
+      # build/electron sont importés par plusieurs gates (phase-d, i*, v*…).
+      # Sans cette étape elles ne passent que sur un clone de dev ayant déjà
+      # buildé l'app — jamais sur un checkout CI vierge.
+      - name: Build app sonde demobrand
+        run: npm run build -w @creezio/app-demobrand
+
       - name: Suite kit rapide
         run: npm run test:kit -- --keep-going
 
@@ -94,6 +101,9 @@ jobs:
 
       - name: Build workspaces
         run: npm run build:packages
+
+      - name: Build app sonde demobrand
+        run: npm run build -w @creezio/app-demobrand
 
       - name: Suite kit
         run: npm run test:kit -- --keep-going

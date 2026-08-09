@@ -239,9 +239,10 @@ export function renderVendorIntegrityGate(): string {
  *   2. chaque package listé existe avec package.json + dist/ non vide ;
  *   3. deps file:vendor/creezio/* de server/package.json ↔ vendor réels ;
  *   4. symlink server/vendor → ../vendor (layout 2-repos) ;
- *   5. aucun node_modules committé à la racine des packages vendorisés
- *      (le contenu des dossiers dist n'est pas inspecté — l'install file:
- *      du lockfile peut y créer des liens sur certains runners).
+ *   5. aucun node_modules COMMITTÉ sous vendor/ (vérifié via l'index git —
+ *      l'install file: crée des node_modules réels dans les packages
+ *      vendorisés, légitimes et non committés ; hors repo git, repli
+ *      filesystem limité à la racine des packages).
  * AUCUN réseau : la fraîcheur kit = workflow vendor-latest.yml.
  */
 import assert from "node:assert/strict";
@@ -306,19 +307,32 @@ assert.ok(
   "server/vendor/creezio inaccessible (symlink ../vendor absent ?)",
 );
 
-// Garde anti-pollution : un node_modules committé à la RACINE d'un package
-// (ou du vendor) est le défaut qui compte. On ne descend PAS dans les
-// dossiers dist : l'install file: du lockfile peut y créer des liens sur
-// certains runners.
-for (const pkg of sync.packages) {
-  assert.ok(
-    !fs.existsSync(path.join(vendorRoot, pkg, "node_modules")),
-    \`node_modules committé à la racine de vendor/creezio/\${pkg} — resync sale\`,
-  );
+// Garde anti-pollution : aucun node_modules COMMITTÉ sous vendor/. On
+// interroge l'index git (pas le filesystem) : \`npm ci\` crée légitimement
+// des node_modules DANS les packages vendorisés file: pendant l'install —
+// ceux-là ne sont pas committés et ne doivent pas faire échouer la gate.
+import { execFileSync } from "node:child_process";
+let committed = [];
+try {
+  committed = execFileSync("git", ["ls-files", "vendor/creezio"], {
+    cwd: appRoot,
+    encoding: "utf8",
+  })
+    .split("\\n")
+    .filter((f) => f.includes("node_modules"));
+} catch {
+  // Hors repo git (archive) : repli filesystem, racine des packages seule.
+  for (const pkg of sync.packages) {
+    assert.ok(
+      !fs.existsSync(path.join(vendorRoot, pkg, "node_modules")),
+      \`node_modules à la racine de vendor/creezio/\${pkg} — resync sale\`,
+    );
+  }
 }
-assert.ok(
-  !fs.existsSync(path.join(vendorRoot, "node_modules")),
-  "node_modules committé à la racine de vendor/creezio — resync sale",
+assert.equal(
+  committed.length,
+  0,
+  \`node_modules committés sous vendor/ :\\n  \${committed.slice(0, 10).join("\\n  ")}\`,
 );
 
 console.log(

@@ -171,6 +171,7 @@
 | [`ui/settings/locked-config-field.tsx`](../ui/settings/locked-config-field.tsx) | _(pas de cartouche JSDoc en tête — voir le code)_ |
 | [`ui/settings/ops-diagnostic-settings.tsx`](../ui/settings/ops-diagnostic-settings.tsx) | _(pas de cartouche JSDoc en tête — voir le code)_ |
 | [`ui/settings/search-reindex-settings.tsx`](../ui/settings/search-reindex-settings.tsx) | _(pas de cartouche JSDoc en tête — voir le code)_ |
+| [`ui/settings/server-mode-cards.tsx`](../ui/settings/server-mode-cards.tsx) | (à documenter) |
 
 ## `ui/theme/`
 

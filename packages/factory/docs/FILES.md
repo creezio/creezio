@@ -37,6 +37,7 @@
 | Fichier | Rôle |
 |---|---|
 | [`src/generators/api.ts`](../src/generators/api.ts) | API métier HTTP |
+| [`src/generators/brand-workflows.ts`](../src/generators/brand-workflows.ts) | (à documenter) |
 | [`src/generators/index.ts`](../src/generators/index.ts) | Re-exports |
 | [`src/generators/linux-e2e.ts`](../src/generators/linux-e2e.ts) | Artefacts pack Linux / E2E / env pour `--from-prd` (wrappers minces vers desktop-tooling, metier-base, `.env.example`). |
 | [`src/generators/modules-registry.ts`](../src/generators/modules-registry.ts) | (à documenter) |
