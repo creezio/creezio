@@ -1,6 +1,6 @@
 {
   "name": "@creezio/support",
-  "version": "0.1.0",
+  "version": "0.4.0",
   "description": "Support natif OS — tickets clients sur chaque serveur marque (page /support) + export vers l'admin de marque",
   "type": "module",
   "main": "./dist-cjs/index.js",
@@ -28,7 +28,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@creezio/api-kernel": "0.1.0"
+    "@creezio/api-kernel": "^0.4.0"
   },
   "devDependencies": {
     "@types/node": "^22.15.3",
@@ -36,7 +36,7 @@
     "typescript": "^5.8.3"
   },
   "peerDependencies": {
-    "@creezio/shell-ui": "0.1.0",
+    "@creezio/shell-ui": "^0.4.0",
     "react": "^18.0.0 || ^19.0.0"
   },
   "peerDependenciesMeta": {
@@ -48,5 +48,13 @@
     }
   },
   "license": "UNLICENSED",
-  "module": "./dist/index.js"
+  "module": "./dist/index.js",
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/creezio/creezio.git",
+    "directory": "packages/support"
+  }
 }

@@ -1,6 +1,6 @@
 {
   "name": "@creezio/platform-core",
-  "version": "0.1.0",
+  "version": "0.4.0",
   "description": "Paths userData / local-config schema paramétrés par brand-config (sans marque hardcodée)",
   "type": "module",
   "main": "./dist-cjs/index.js",
@@ -22,12 +22,12 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@creezio/brand-config": "0.1.0"
+    "@creezio/brand-config": "^0.4.0"
   },
   "peerDependencies": {
-    "@creezio/auth": "0.1.0",
-    "@creezio/database": "0.1.0",
-    "@creezio/product-hub": "0.1.0",
+    "@creezio/auth": "^0.4.0",
+    "@creezio/database": "^0.4.0",
+    "@creezio/product-hub": "^0.4.0",
     "better-sqlite3": ">=9"
   },
   "peerDependenciesMeta": {
@@ -50,5 +50,13 @@
     "typescript": "^5.8.3"
   },
   "license": "UNLICENSED",
-  "module": "./dist/index.js"
+  "module": "./dist/index.js",
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/creezio/creezio.git",
+    "directory": "packages/platform-core"
+  }
 }

@@ -1,6 +1,6 @@
 {
   "name": "@creezio/brand-config",
-  "version": "0.1.0",
+  "version": "0.4.0",
   "description": "AppManifest, createAppManifest, manifests marque (TempoFlow, Certivan, Fidu, DemoBrand) — client + serveur",
   "type": "module",
   "main": "./dist-cjs/index.js",
@@ -29,5 +29,13 @@
     "typescript": "^5.8.3"
   },
   "license": "UNLICENSED",
-  "module": "./dist/index.js"
+  "module": "./dist/index.js",
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/creezio/creezio.git",
+    "directory": "packages/brand-config"
+  }
 }

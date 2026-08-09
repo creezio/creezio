@@ -3,6 +3,13 @@
 Comment un changement du kit atteint les marques (TempoFlow, Certivan,
 Fidu, TempoFlow3…), et comment les innovations terrain remontent.
 
+
+> **DOCTRINE CIBLE (2026-08) — distribution npm versionnée.** Les packages
+> `@creezio/*` sont désormais publiés sur GitHub Packages avec des versions
+> semver en lockstep ([NPM-DISTRIBUTION.md](./NPM-DISTRIBUTION.md)). Les apps
+> migrent vers `npm update @creezio/…`. Le mécanisme vendor décrit ci-dessous
+> est **DÉPRÉCIÉ** : il reste documenté et fonctionnel le temps de la
+> migration, puis sera retiré.
 ## Modèle
 
 ```

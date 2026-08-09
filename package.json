@@ -47,6 +47,7 @@
     "url": "https://github.com/creezio/creezio.git"
   },
   "devDependencies": {
+    "@changesets/cli": "^2.31.1",
     "nodemailer": "^7.0.13"
   }
 }

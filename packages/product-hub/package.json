@@ -1,6 +1,6 @@
 {
   "name": "@creezio/product-hub",
-  "version": "0.1.0",
+  "version": "0.4.0",
   "description": "Product Hub / plugins — lifecycle, ACL, admin UI (N6)",
   "type": "module",
   "main": "./dist-cjs/index.js",
@@ -28,8 +28,8 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@creezio/brand-config": "0.1.0",
-    "@creezio/platform-core": "0.1.0",
+    "@creezio/brand-config": "^0.4.0",
+    "@creezio/platform-core": "^0.4.0",
     "hono": "^4.12.32",
     "zod": "^3.25.76"
   },
@@ -79,5 +79,13 @@
     "tailwind-merge": {
       "optional": true
     }
+  },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/creezio/creezio.git",
+    "directory": "packages/product-hub"
   }
 }

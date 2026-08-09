@@ -10,11 +10,11 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@creezio/automations": "0.1.0",
-    "@creezio/brand-config": "0.1.0",
-    "@creezio/desktop-tooling": "0.1.0",
-    "@creezio/observability": "0.1.0",
-    "@creezio/product-hub": "0.1.0",
+    "@creezio/automations": "^0.4.0",
+    "@creezio/brand-config": "^0.4.0",
+    "@creezio/desktop-tooling": "^0.4.0",
+    "@creezio/observability": "^0.4.0",
+    "@creezio/product-hub": "^0.4.0",
     "@creezio/propagation": "0.1.0",
     "next": "^15.3.2",
     "react": "^19.1.0",

@@ -71,7 +71,10 @@ test("P-CKPT.1 package scaffold + exports", () => {
   assert.equal(pkg.name, "@creezio/cockpit");
   assert.ok(pkg.exports["."]);
   assert.ok(pkg.exports["./ui"]);
-  assert.equal(pkg.dependencies["@creezio/shell-ui"], "0.1.0");
+  const shellUiVersion = JSON.parse(
+    fs.readFileSync(path.join(root, "packages/shell-ui/package.json"), "utf8"),
+  ).version;
+  assert.equal(pkg.dependencies["@creezio/shell-ui"], `^${shellUiVersion}`);
   assert.ok(fs.existsSync(path.join(root, "packages/cockpit/dist/index.js")));
   assert.deepEqual([...DEFAULT_COCKPIT_TABS], [
     "sante",

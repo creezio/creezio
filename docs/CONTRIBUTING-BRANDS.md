@@ -70,6 +70,14 @@ scaffold factory (creezio new-app)
    complète ; vert → commit `[vendor-update] kit X → Y` + push `main`
    (CI + deploy suivent) ; déjà à jour → run vert sans commit.
 
+
+## Consommation npm (doctrine cible — remplace le vendoring)
+
+Voir [NPM-DISTRIBUTION.md](./NPM-DISTRIBUTION.md). Résumé app :
+`.npmrc` (registry GitHub Packages + `CREEZIO_NPM_TOKEN`), deps
+`"@creezio/<pkg>": "^0.4.0"`, mise à jour par `npm update "@creezio/*"`.
+Les workflows `kit-compat` / `vendor-update` et les scripts
+`install-server-deps` / symlinks trackés sont **DÉPRÉCIÉS** (transition).
 ## Process app → kit (bug ou évolution du kit constaté depuis une app)
 
 **Jamais de patch dans `vendor/creezio/`.** Ce dossier est écrasé à chaque

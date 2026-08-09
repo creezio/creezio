@@ -1,7 +1,7 @@
 {
   "name": "@creezio/app-runtime",
-  "version": "0.1.0",
-  "description": "Fa\u00e7ade runtime marque \u2014 startBrandDesktop / startBrandKernelHarness (orchestration OS)",
+  "version": "0.4.0",
+  "description": "Façade runtime marque — startBrandDesktop / startBrandKernelHarness (orchestration OS)",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -13,29 +13,30 @@
     }
   },
   "files": [
-    "dist"
+    "dist",
+    "scripts"
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@creezio/api-kernel": "0.1.0",
-    "@creezio/assistant": "0.1.0",
-    "@creezio/auth": "0.1.0",
-    "@creezio/brand-config": "0.1.0",
-    "@creezio/browser-host": "0.1.0",
-    "@creezio/database": "0.1.0",
-    "@creezio/electron-shell": "0.1.0",
-    "@creezio/integrations": "0.1.0",
-    "@creezio/mails": "0.1.0",
-    "@creezio/mcp-facade": "0.1.0",
-    "@creezio/observability": "0.1.0",
-    "@creezio/platform-core": "0.1.0",
-    "@creezio/product-hub": "0.1.0",
-    "@creezio/shell-ui": "0.1.0",
-    "@creezio/support": "0.1.0",
-    "@creezio/tasks": "0.1.0",
+    "@creezio/api-kernel": "^0.4.0",
+    "@creezio/assistant": "^0.4.0",
+    "@creezio/auth": "^0.4.0",
+    "@creezio/brand-config": "^0.4.0",
+    "@creezio/browser-host": "^0.4.0",
+    "@creezio/database": "^0.4.0",
+    "@creezio/electron-shell": "^0.4.0",
+    "@creezio/integrations": "^0.4.0",
+    "@creezio/mails": "^0.4.0",
+    "@creezio/mcp-facade": "^0.4.0",
+    "@creezio/observability": "^0.4.0",
+    "@creezio/platform-core": "^0.4.0",
+    "@creezio/product-hub": "^0.4.0",
+    "@creezio/shell-ui": "^0.4.0",
+    "@creezio/support": "^0.4.0",
+    "@creezio/tasks": "^0.4.0",
     "hono": "^4.12.33"
   },
   "peerDependencies": {
@@ -50,5 +51,13 @@
     "@types/node": "^22.15.3",
     "typescript": "^5.8.3"
   },
-  "license": "UNLICENSED"
+  "license": "UNLICENSED",
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/creezio/creezio.git",
+    "directory": "packages/app-runtime"
+  }
 }

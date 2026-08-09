@@ -1,6 +1,6 @@
 {
   "name": "@creezio/browser-host",
-  "version": "0.1.0",
+  "version": "0.4.0",
   "description": "Navigateur Chromium sidecar serveur (CDP websocket) — driver external_* partagé avec Electron, sessions IA headless, screencast",
   "type": "module",
   "main": "./dist-cjs/index.js",
@@ -15,18 +15,27 @@
   },
   "files": [
     "dist",
-    "dist-cjs"
+    "dist-cjs",
+    "scripts"
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@creezio/platform-core": "0.1.0"
+    "@creezio/platform-core": "^0.4.0"
   },
   "devDependencies": {
     "@types/node": "^22.15.3",
     "typescript": "^5.8.3"
   },
-  "module": "./dist/index.js"
+  "module": "./dist/index.js",
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/creezio/creezio.git",
+    "directory": "packages/browser-host"
+  }
 }

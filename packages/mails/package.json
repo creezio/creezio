@@ -1,6 +1,6 @@
 {
   "name": "@creezio/mails",
-  "version": "0.1.0",
+  "version": "0.4.0",
   "description": "Mails natifs plateforme Creezio (boîte générique + PJ + UI + slot providers marque)",
   "type": "module",
   "main": "./dist-cjs/index.js",
@@ -30,10 +30,10 @@
     "test:inbox": "node ../../scripts/test-mails-inbox.mjs"
   },
   "dependencies": {
-    "@creezio/api-kernel": "0.1.0",
-    "@creezio/auth": "0.1.0",
-    "@creezio/platform-core": "0.1.0",
-    "@creezio/shell-ui": "0.1.0",
+    "@creezio/api-kernel": "^0.4.0",
+    "@creezio/auth": "^0.4.0",
+    "@creezio/platform-core": "^0.4.0",
+    "@creezio/shell-ui": "^0.4.0",
     "hono": "^4.12.30"
   },
   "devDependencies": {
@@ -81,5 +81,13 @@
     }
   },
   "license": "UNLICENSED",
-  "module": "./dist/index.js"
+  "module": "./dist/index.js",
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/creezio/creezio.git",
+    "directory": "packages/mails"
+  }
 }

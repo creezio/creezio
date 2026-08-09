@@ -1,0 +1,48 @@
+# Publication npm des packages @creezio/* — GitHub Packages (npm.pkg.github.com).
+#
+# Flux nominal (docs/NPM-DISTRIBUTION.md) :
+#   dev kit → `npx changeset` (intention de bump, lockstep) → merge main →
+#   ce workflow ouvre/actualise la PR « Version Packages » →
+#   merge de cette PR → publication automatique des nouvelles versions.
+# Si aucun changeset n'est en attente, le job publie directement toute
+# version locale absente du registre (cas du bootstrap 0.4.0).
+name: Publish
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: publish-kit
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  pull-requests: write
+  packages: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          registry-url: "https://npm.pkg.github.com"
+          scope: "@creezio"
+      - run: npm ci --no-audit --no-fund
+      - run: npm run build:packages
+      - name: PR de version ou publication
+        uses: changesets/action@v1
+        with:
+          publish: npx changeset publish
+          title: "chore(release): version packages"
+          commit: "chore(release): version packages"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

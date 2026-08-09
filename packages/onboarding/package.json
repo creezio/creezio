@@ -1,6 +1,6 @@
 {
   "name": "@creezio/onboarding",
-  "version": "0.1.0",
+  "version": "0.4.0",
   "description": "Setup first-run + moteur onboarding plateforme (steps/slots marque)",
   "type": "module",
   "main": "./dist-cjs/index.js",
@@ -29,9 +29,9 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@creezio/api-kernel": "0.1.0",
-    "@creezio/platform-core": "0.1.0",
-    "@creezio/shell-ui": "0.1.0"
+    "@creezio/api-kernel": "^0.4.0",
+    "@creezio/platform-core": "^0.4.0",
+    "@creezio/shell-ui": "^0.4.0"
   },
   "devDependencies": {
     "@types/node": "^22.15.3",
@@ -51,5 +51,13 @@
     }
   },
   "license": "UNLICENSED",
-  "module": "./dist/index.js"
+  "module": "./dist/index.js",
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/creezio/creezio.git",
+    "directory": "packages/onboarding"
+  }
 }

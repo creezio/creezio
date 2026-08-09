@@ -42,7 +42,10 @@ test("ADR.1 mount-brand-admin-database + proxy path database", () => {
       "utf8",
     ),
   );
-  assert.equal(pkg.dependencies["@creezio/database"], "0.1.0");
+  const dbVersion = JSON.parse(
+    fs.readFileSync(path.join(root, "packages/database/package.json"), "utf8"),
+  ).version;
+  assert.equal(pkg.dependencies["@creezio/database"], `^${dbVersion}`);
 });
 
 test("ADR.1b dist app-runtime câble database (anti dist stale)", () => {
