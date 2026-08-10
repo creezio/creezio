@@ -186,6 +186,7 @@
 | [`ui/workspace/ai-activity-panel-host.tsx`](../ui/workspace/ai-activity-panel-host.tsx) | _(pas de cartouche JSDoc en tête — voir le code)_ |
 | [`ui/workspace/ai-workspace-agent-host.tsx`](../ui/workspace/ai-workspace-agent-host.tsx) | _(pas de cartouche JSDoc en tête — voir le code)_ |
 | [`ui/workspace/ai-workspace-banner.tsx`](../ui/workspace/ai-workspace-banner.tsx) | _(pas de cartouche JSDoc en tête — voir le code)_ |
+| [`ui/workspace/impersonation-banner.tsx`](../ui/workspace/impersonation-banner.tsx) | (à documenter) |
 | [`ui/workspace/keep-alive.tsx`](../ui/workspace/keep-alive.tsx) | _(pas de cartouche JSDoc en tête — voir le code)_ |
 | [`ui/workspace/tab-workspace-context.tsx`](../ui/workspace/tab-workspace-context.tsx) | _(pas de cartouche JSDoc en tête — voir le code)_ |
 | [`ui/workspace/tab-workspace-host.ts`](../ui/workspace/tab-workspace-host.ts) | Host marque pour le tab-workspace (nav / surfaces métier reste marque). O9 — injection ; pas de jumeau. Capacité native = ouvrir un **site externe** (onglet), pas un « fournisseur ». Les libellés métier (Fournisseur, Outil, …) = config/UI marque. |
