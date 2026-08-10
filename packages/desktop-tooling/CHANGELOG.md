@@ -1,5 +1,15 @@
 # @creezio/desktop-tooling
 
+## 0.7.1
+
+### Patch Changes
+
+- 200476c: e2e-browser-parcours : résolution hoist-safe des packages @creezio (imports
+  nus depuis le script publié — workspaces monorepo où tout est hoisté à la
+  racine) + export du sous-chemin `./scripts/*` pour que les wrappers apps
+  résolvent via `import.meta.resolve` (plus de sondage `server/node_modules`).
+  - @creezio/brand-config@0.7.1
+
 ## 0.7.0
 
 ### Minor Changes
