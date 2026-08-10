@@ -6,6 +6,9 @@
 #   merge de cette PR → publication automatique des nouvelles versions.
 # Si aucun changeset n'est en attente, le job publie directement toute
 # version locale absente du registre (cas du bootstrap initial).
+# `version:packages` regenere aussi package-lock.json apres le bump :
+# sans ca les entrees workspace du lock restent a l'ancienne version
+# (desync 0.4.0 vs 0.5.0 — npm ci casse hors registre, CI hybride).
 name: Publish
 
 on:
@@ -41,6 +44,7 @@ jobs:
         uses: changesets/action@v1
         with:
           publish: npx changeset publish
+          version: npm run version:packages
           title: "chore(release): version packages"
           commit: "chore(release): version packages"
         env:
