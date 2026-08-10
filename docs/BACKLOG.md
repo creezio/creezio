@@ -29,8 +29,8 @@ affaibli pour la masquer. (Backlogs d'époque : `docs/archive/BACKLOG-*.md`.)
 
 - **`test:brands` sur ce VPS** : l'oracle `tempoflow2` local est en état
   pré-cutover (pas de `crm/vendor/creezio`) et `certivan-app`/`fidu` sont
-  absents — les 55 gates marques skippent (raison affichée). Les exécuter
-  sur un poste avec les repos marque synchronisés.
+  absents — les gates marques historiques skippent (raison affichée). Les
+  exécuter sur un poste avec les repos marque d'époque synchronisés.
 - **`test:env`** : `test-os-cold-warm` (réseau embeds + ~4 Go /tmp),
   `test-phase-factory-prd*` (npm install d'une app générée, binaire Electron
   téléchargeable) et `test-phase-factory-docker-parity` (app neuve factory →

@@ -18,7 +18,7 @@ apps/*/ui/node_modules/
 apps/*/ui/.next/
 
 # Binaires OS kit (téléchargés via electron-shell/scripts/ensure-kit-binaries.mjs)
-# Jamais versionnés ni syncés fat dans vendor marques (packaging client slim).
+# Jamais versionnés (packaging client slim).
 packages/electron-shell/resources/bin/meili
 packages/electron-shell/resources/bin/meili.exe
 packages/electron-shell/resources/bin/meilisearch

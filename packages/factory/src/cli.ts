@@ -350,7 +350,7 @@ export async function runCli(argv: string[]): Promise<void> {
     console.log(`  npm run test:first-run-auth`);
   }
   console.log(
-    `  npm run install:server-deps            # clone hôte : layout node_modules (= Docker)`,
+    `  npm ci                                 # clone hôte : layout node_modules (= Docker)`,
     `  npm run server-docker:create -- demo   # serveur Docker + CRM (image : layout déjà OK)`,
   );
   console.log("");

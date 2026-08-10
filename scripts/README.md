@@ -35,7 +35,7 @@ Gates ciblées :
 ```bash
 node --test scripts/test-phase-p29.mjs
 node --test scripts/test-phase-c2.mjs
-node --test scripts/test-phase-o11.mjs
+node --test scripts/test-phase-o9.mjs
 ```
 
 ## Suites de gates (`test-fast.mjs`)
@@ -50,12 +50,13 @@ aucune liste figée de noms, aucun assert affaibli.
 | Suite | Détection | Prérequis | Skip |
 |-------|-----------|-----------|------|
 | `kit` | défaut (ne lit que ce repo) | aucun — doit être 100 % verte partout | jamais |
-| `brands` | la gate importe `scripts/lib/brand-roots.mjs` / `lib/intention-twins.mjs` ou résout `dockerRoot` | clones des repos marque présents pour chaque marque référencée (`tempoflow2` — repo legacy figé avec son `crm/vendor/creezio` d'époque —, `certivan-app`, `fidu`) | auto : par marque manquante, raison affichée |
+| `brands` | la gate importe `scripts/lib/brand-roots.mjs` ou résout `dockerRoot` | clones des repos marque présents pour chaque marque référencée (`tempoflow2` — repo legacy figé avec son `crm/vendor/creezio` d'époque —, `certivan-app`, `fidu`) | auto : par marque manquante, raison affichée |
 | `env` | liste `ENV_GATES` dans `test-fast.mjs` | `test-os-cold-warm.mjs` : `CREEZIO_COLD_WARM=1` (bootstrap embeds réseau, ~4 Go `/tmp`, ~10 min) ; `test-phase-factory-prd*.mjs` : `CREEZIO_FACTORY_PRD=1` (npm install d'une app générée, binaire Electron téléchargeable) ; `test-phase-factory-docker-parity.mjs` : `CREEZIO_FACTORY_DOCKER=1` (app neuve factory → npm install → image Docker → parité boot-status/cloudflared, ~10 min, docker requis) ; `test-os-native-pnp.mjs` + `test-os-shell-contracts.mjs` : `CREEZIO_KIT_BINARIES=1` (binaires natifs réels meili/cloudflared/hermes/n8n — incompatibles avec `CREEZIO_SKIP_KIT_BINARIES=1`, tournent en nightly self-hosted) | opt-in : skip explicite tant que la variable n'est pas posée |
 
 Workflow quotidien : `npm run test:kit` → première rouge → corriger →
 `npm run test:kit -- --from <gate>`. Sur un poste avec les repos marque à
-jour, `npm run test:brands` lance les ~55 gates M/N/O/P + intention.
+jour, `npm run test:brands` lance les gates historiques M/N/O/P (cutover
+marques de l'ère vendoring — skip auto sans les repos d'époque).
 
 ### Ajouter une gate
 

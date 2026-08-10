@@ -426,7 +426,7 @@ export async function runBrandCli(argv: string[]): Promise<void> {
     console.log(`  cd ${result.outDir}`);
     console.log(`  npm run test:metier-parcours`);
     console.log(
-      `  npm run install:server-deps            # clone hôte : layout node_modules (= Docker)`,
+      `  npm ci                                 # clone hôte : layout node_modules (= Docker)`,
       `  npm run server-docker:create -- demo   # serveur Docker + CRM`,
     );
     return;

@@ -20,12 +20,11 @@ import path from "node:path";
 
 const root = process.cwd();
 const cands = [
-  path.join(root, "vendor/creezio/desktop-tooling/scripts/${scriptName}"),
   path.join(root, "node_modules/@creezio/desktop-tooling/scripts/${scriptName}"),
 ];
 const script = cands.find((p) => fs.existsSync(p));
 if (!script) {
-  throw new Error("${scriptName} kit manquant — sync vendor / npm i");
+  throw new Error("${scriptName} introuvable — npm ci requis (package @creezio/desktop-tooling)");
 }
 ${passRoot}
 const r = spawnSync(process.execPath, args, {
