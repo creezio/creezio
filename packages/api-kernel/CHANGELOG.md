@@ -1,5 +1,12 @@
 # @creezio/api-kernel
 
+## 0.6.0
+
+### Patch Changes
+
+- @creezio/brand-config@0.6.0
+- @creezio/platform-core@0.6.0
+
 ## 0.5.0
 
 ### Patch Changes
