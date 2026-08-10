@@ -1,6 +1,6 @@
 {
   "name": "@creezio/observability",
-  "version": "0.4.0",
+  "version": "1.0.0",
   "description": "Observabilité — activité/CP + ops/fleet + fleet-collector (P25) + usage analytics (N6) + request-logs admin (O5)",
   "type": "module",
   "main": "./dist-cjs/index.js",
@@ -40,8 +40,8 @@
     "test:api-endpoints": "node scripts/test-api-endpoints-registry.mjs"
   },
   "dependencies": {
-    "@creezio/api-kernel": "^0.4.0",
-    "@creezio/platform-core": "^0.4.0",
+    "@creezio/api-kernel": "^1.0.0",
+    "@creezio/platform-core": "^1.0.0",
     "hono": "^4.12.32"
   },
   "devDependencies": {
@@ -52,7 +52,7 @@
   "license": "UNLICENSED",
   "module": "./dist/index.js",
   "peerDependencies": {
-    "@creezio/auth": ">=0.4.0",
+    "@creezio/auth": ">=1.0.0",
     "@radix-ui/react-slot": "^1.1.0",
     "@radix-ui/react-tabs": "^1.1.0",
     "class-variance-authority": "^0.7.0",
