@@ -25,6 +25,41 @@ L'image embarque :
   chronos) ; chaque transition = une ligne JSONL dans `docker logs` ;
   journal ops JSONL sous `/data/ops/`
 
+## Modèle standard (M2) — 1 instance = 1 stack compose autonome
+
+Chaque instance serveur est un **projet compose autonome**
+(`docker-data/stacks/<nom>/compose.yml`, généré — ne pas éditer) :
+
+- **app** : image `creezio-server-<brand>` — port **interne fixe 18791** dans
+  le réseau du stack, volume `/data`, healthcheck `/api/v1/core/health` ;
+- **cloudflared** : sidecar tunnel (image `cloudflare/cloudflared`, token dans
+  `tunnel.env` chmod 600 — jamais dans `ps`, le registre ou `docker inspect`),
+  joint l'app par nom de service : ingress `http://app:18791` ;
+- **port hôte indifférent** : `127.0.0.1::18791` (attribution auto, loopback
+  seul) pour debug/healthcheck — fini les collisions entre instances ;
+  `--host-port N` pour un port fixe (ex. tempoflowadmin : 18801, ciblé par le
+  tunnel lp hôte + NPM) ;
+- **zéro port public** : l'accès utilisateur passe par Cloudflare.
+
+```bash
+creezio server-docker create resto-x --brand-root … --profile prod
+# → stack compose + tunnel provisionné (ingress http://app:18791)
+
+creezio server-docker migrate-stack resto-lyon --brand-root …
+# → legacy docker run → stack : backup /data obligatoire, ingress repointé,
+#   rollback legacy automatique si le health échoue
+
+# Debug : quel port hôte pour une instance ?
+creezio server-docker ls --brand-root …          # colonne PORT (* = auto)
+docker compose -f docker-data/stacks/resto-x/compose.yml port app 18791
+```
+
+Le kernel en mode sidecar (`CREEZIO_TUNNEL_SIDECAR=1`, posé par le stack) ne
+spawn plus cloudflared : il seede sa config tunnel depuis `tunnel.env`
+(`CREEZIO_TUNNEL_TOKEN/_HOSTNAME/_ID`) et repointe l'ingress via le
+provisioner avec `serviceHost=app`. `update` régénère le compose avec la
+nouvelle image (tunnel.env conservé) puis `compose up -d`.
+
 ## Une ligne (recommandé) — registre d'instances
 
 ```bash

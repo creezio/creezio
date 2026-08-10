@@ -647,6 +647,18 @@ export async function updateServer({
   }
 
   const recreate = async (img) => {
+    if (inst.stack) {
+      // Stack compose (M2) : régénère compose.yml avec la nouvelle image
+      // (tunnel.env conservé — le sidecar est rendu tant qu'il existe),
+      // puis up. Compose ne recrée que ce qui change ; le port hôte auto
+      // peut être réattribué → registre réaligné.
+      const stack = await import("./instance-stack.mjs");
+      stack.writeInstanceStack({ brandRoot, brandId, image: img, inst });
+      stack.stackUp(brandRoot, inst, { quiet: true });
+      const hp = stack.stackHostPort(inst.containerName);
+      if (hp) inst.port = hp;
+      return;
+    }
     try {
       await removeContainer(inst.containerName, { force: true });
     } catch {

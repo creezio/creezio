@@ -155,6 +155,18 @@ export function createTunnelService(opts: {
   let lastError: string | null = null;
   let online = false;
 
+  /**
+   * Mode sidecar (M2) : cloudflared tourne dans un conteneur du stack
+   * compose — le kernel ne spawn plus rien. L'ingress pointe le nom de
+   * service (`CREEZIO_TUNNEL_SERVICE_HOST`, défaut "app") et la config
+   * tunnel peut être seedée par env (stack provisionné par le CLI hôte).
+   */
+  const sidecar = /^(1|true|yes)$/i.test(
+    String(process.env.CREEZIO_TUNNEL_SIDECAR || "").trim(),
+  );
+  const serviceHost = () =>
+    String(process.env.CREEZIO_TUNNEL_SERVICE_HOST || "app").trim() || "app";
+
   function provision() {
     const p = ctx.tunnelProvision;
     if (!p?.baseUrl || !p?.token) {
@@ -222,7 +234,9 @@ export function createTunnelService(opts: {
       publicUrls,
       online: isLocalSurface
         ? online
-        : online && Boolean(child && !child.killed),
+        : sidecar
+          ? online // sidecar : pas de child in-process — seed/configure suffisent
+          : online && Boolean(child && !child.killed),
       error: lastError,
       pcMustBeOn: true,
     };
@@ -249,6 +263,40 @@ export function createTunnelService(opts: {
   }
 
   async function reserveTunnel(slug: string, localPort: number) {
+    // Stack compose : le tunnel est provisionné par le CLI hôte — le token
+    // et le hostname arrivent par env (tunnel.env du stack). On seede le
+    // store local sans re-réserver (le /reserve provisioner n'est pas
+    // idempotent : un slug pris renvoie 409).
+    if (sidecar) {
+      const envToken = String(process.env.CREEZIO_TUNNEL_TOKEN || "").trim();
+      if (!envToken) {
+        return {
+          ok: false as const,
+          error:
+            "CREEZIO_TUNNEL_SIDECAR=1 sans CREEZIO_TUNNEL_TOKEN — stack incomplet (creezio server-docker migrate-stack <nom>)",
+        };
+      }
+      const hostname = (
+        process.env.CREEZIO_TUNNEL_HOSTNAME || `${slug}.${ctx.manifest.tunnelRootDomain}`
+      ).trim();
+      const publicUrl = `https://${hostname}`;
+      store.setTunnelConfig({
+        slug,
+        hostname,
+        publicUrl,
+        tunnelId: String(process.env.CREEZIO_TUNNEL_ID || "").trim(),
+        tunnelToken: envToken,
+        localPort,
+        publicUrls: urlsForHostname(hostname),
+        hostMode: brandHostMode(),
+        emailDomain: `${slug}.mail.${ctx.manifest.tunnelRootDomain}`,
+        servicePorts: {
+          n8n: N8N_DESKTOP_PORT,
+          hermes: HERMES_DESKTOP_WEBUI_PORT,
+        },
+      });
+      return { ok: true as const, hostname, publicUrl };
+    }
     const p = provision();
     const { status, json } = await httpJson(
       "POST",
@@ -325,6 +373,7 @@ export function createTunnelService(opts: {
         crmPort: ports.crmPort,
         n8nPort,
         hermesPort,
+        ...(sidecar ? { serviceHost: serviceHost() } : {}),
       },
     );
     if (status !== 200 || !json.ok) {
@@ -426,6 +475,19 @@ export function createTunnelService(opts: {
 
   async function startCloudflared(): Promise<void> {
     const cfg = store.getTunnelConfig();
+    if (sidecar) {
+      // Le sidecar cloudflared du stack compose tourne déjà (tunnel.env) —
+      // le kernel ne spawn rien. L'état online est confirmé par la 1re
+      // requête publique ; ici on se fie à la config seedée.
+      online = Boolean(cfg?.tunnelToken);
+      lastError = null;
+      hostLog(
+        ctx,
+        "tunnel",
+        "cloudflared géré par le sidecar compose (CREEZIO_TUNNEL_SIDECAR=1)",
+      );
+      return;
+    }
     if (!cfg?.tunnelToken) {
       lastError = null;
       online = false;

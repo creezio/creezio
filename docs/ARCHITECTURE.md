@@ -60,6 +60,20 @@ lance un container par instance. Le kernel harness
 (`startBrandKernelHarness`) boote l'OS sans Electron : API `/api/v1`, CRM
 web, embeds. Données par instance dans `docker-data/servers/server-N`.
 
+**Modèle standard (M2) — 1 instance = 1 stack compose autonome.** Chaque
+instance est un projet compose (`docker-data/stacks/<nom>/compose.yml`,
+généré) contenant TOUT : l'app (port **interne fixe 18791** dans le réseau
+du stack) + le tunnel **cloudflared en sidecar** (token dans `tunnel.env`
+chmod 600, ingress `http://app:18791` par nom de service). Le port hôte est
+indifférent : publié sur `127.0.0.1` en attribution auto pour le
+debug/healthcheck, jamais exposé publiquement — l'accès utilisateur passe
+obligatoirement par Cloudflare. Le kernel ne spawn plus cloudflared
+(`CREEZIO_TUNNEL_SIDECAR=1` : config seedée par env, ingress repointé via le
+provisioner avec `serviceHost=app`). Les instances legacy `docker run` se
+basculent par `creezio server-docker migrate-stack <nom>` (backup /data
+obligatoire, rollback automatique si KO). Détails opérationnels :
+`docker/server/README.md`.
+
 ### 3. Client desktop « thin » (remote-only)
 
 Le même binaire desktop, configuré avec `defaultServerUrl` (profil de
