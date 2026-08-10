@@ -8,6 +8,7 @@
 
 | Fichier | Rôle |
 |---|---|
+| [`scripts/dev-stack.mjs`](../scripts/dev-stack.mjs) | (à documenter) |
 | [`scripts/smoke-platform-surface.mjs`](../scripts/smoke-platform-surface.mjs) | Smoke live hors Docker : surface plateforme (login owner kit-first, collab IA) + sidecar navigateur IA. |
 
 ## `src/`

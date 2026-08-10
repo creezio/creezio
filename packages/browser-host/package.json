@@ -37,5 +37,8 @@
     "type": "git",
     "url": "https://github.com/creezio/creezio.git",
     "directory": "packages/browser-host"
+  },
+  "engines": {
+    "node": ">=22.5"
   }
 }

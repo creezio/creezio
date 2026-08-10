@@ -92,5 +92,8 @@
     "type": "git",
     "url": "https://github.com/creezio/creezio.git",
     "directory": "packages/assistant"
+  },
+  "engines": {
+    "node": ">=22.5"
   }
 }

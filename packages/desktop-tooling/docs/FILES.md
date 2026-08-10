@@ -16,6 +16,7 @@
 | [`scripts/ensure-linux-native-modules.mjs`](../scripts/ensure-linux-native-modules.mjs) | Rebuild better-sqlite3 ELF pour Electron courant (après ensure-win-native MZ). |
 | [`scripts/ensure-win-native-modules.mjs`](../scripts/ensure-win-native-modules.mjs) | Prépare better-sqlite3 win32 (PE) avant pack:win cross-compilé depuis Linux. |
 | [`scripts/load-local-env.mjs`](../scripts/load-local-env.mjs) | Charge `<appRoot>/.env` (gitignoré) dans process.env. N’écrase pas une variable déjà définie dans le shell. |
+| [`scripts/port-guard.mjs`](../scripts/port-guard.mjs) | (à documenter) |
 | [`scripts/publish-desktop.sh`](../scripts/publish-desktop.sh) | Publie l'installeur (NSIS win / AppImage linux) + latest*.yml vers le feed. |
 | [`scripts/remote-build-win.sh`](../scripts/remote-build-win.sh) | Build Windows (NSIS) distant — générique multi-marque (AppManifest). |
 | [`scripts/resolve-config.mjs`](../scripts/resolve-config.mjs) | _(pas de cartouche JSDoc en tête — voir le code)_ |

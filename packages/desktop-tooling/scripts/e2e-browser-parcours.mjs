@@ -20,11 +20,13 @@ import fs from "node:fs";
 import net from "node:net";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
+import { portHolderLabel } from "./port-guard.mjs";
 
 const root = path.resolve(process.env.CREEZIO_APP_ROOT || process.cwd());
 const keep = process.argv.includes("--keep");
 const creezioRoot =
-  process.env.CREEZIO_ROOT ||
+  process.env.CREEZIO_KIT_ROOT ||
+  process.env.CREEZIO_ROOT || // legacy — préférer CREEZIO_KIT_ROOT (Q8)
   (fs.existsSync("/opt/docker/creezio")
     ? "/opt/docker/creezio"
     : path.resolve(root, "../creezio"));
@@ -127,10 +129,32 @@ async function findFreePort() {
 }
 
 async function resolveApiPort() {
-  if (process.env.METIER_PORT) return Number(process.env.METIER_PORT);
+  const raw = (process.env.METIER_PORT || "").trim();
+  if (raw && raw !== "0") {
+    const p = Number(raw);
+    if (!(await portFree(p))) {
+      // Q2 — échec clair plutôt que des 401 trompeurs contre un serveur étranger
+      throw new Error(
+        `METIER_PORT=${p} occupé${portHolderLabel(p)} — npm run stop ou METIER_PORT=0 (port auto)`,
+      );
+    }
+    return p;
+  }
   if (await portFree(18791)) return 18791;
   log("port", "18791 occupé — port libre");
   return findFreePort();
+}
+
+async function resolveUiPort() {
+  const raw = (process.env.UI_PORT || "").trim();
+  if (!raw || raw === "0") return findFreePort();
+  const p = Number(raw);
+  if (!(await portFree(p))) {
+    throw new Error(
+      `UI_PORT=${p} occupé${portHolderLabel(p)} — npm run stop ou UI_PORT=0 (port auto)`,
+    );
+  }
+  return p;
 }
 
 async function main() {
@@ -141,9 +165,7 @@ async function main() {
   );
 
   const apiPort = await resolveApiPort();
-  const uiPort = process.env.UI_PORT
-    ? Number(process.env.UI_PORT)
-    : await findFreePort();
+  const uiPort = await resolveUiPort();
   const apiBase = `http://127.0.0.1:${apiPort}`;
 
   const build = spawnSync("npm", ["run", "build:electron"], {

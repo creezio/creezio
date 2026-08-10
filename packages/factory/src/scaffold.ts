@@ -29,6 +29,7 @@ import { writeAppFile } from "./write-app-file.js";
 import {
   serverDockerNpmScripts,
   renderCreezioCliProxyMjs,
+  renderCreezioDevProxyMjs,
 } from "./generators/server-docker-scripts.js";
 import {
   creezioNpmDeps,
@@ -862,6 +863,14 @@ function renderRootPackageJson(
   // Serveur Docker headless : brandRoot = racine monorepo (scripts kit SoT).
   Object.assign(scripts, serverDockerNpmScripts(m.brandId));
 
+  // Dev local standard (Q1/Q6) : clone → npm run setup → npm run dev.
+  // Orchestrateur unique dans le kit (@creezio/app-runtime/scripts/dev-stack)
+  // exposé via le proxy scripts/creezio-dev.mjs — zéro copie divergente.
+  scripts["dev"] = "node scripts/creezio-dev.mjs dev";
+  scripts["stop"] = "node scripts/creezio-dev.mjs stop";
+  scripts["status"] = "node scripts/creezio-dev.mjs status";
+  scripts["setup"] = "node scripts/creezio-dev.mjs setup";
+
   const creezio: Record<string, unknown> = {
     brandId: m.brandId,
     layout: "monorepo",
@@ -885,7 +894,7 @@ function renderRootPackageJson(
         scripts,
         workspaces: ["server"],
         creezio,
-        engines: { node: ">=20" },
+        engines: { node: ">=22.5" },
         license: "UNLICENSED",
       },
       null,
@@ -948,6 +957,16 @@ docker-data/    # runtime gitignoré (registre servers.json, volumes)
 | feed client | \`${m.client.feedUrl}\` |
 | sandbox | \`${Boolean(m.sandbox)}\` |
 
+## Quickstart dev (5 lignes)
+
+\`\`\`bash
+export CREEZIO_NPM_TOKEN=…        # PAT read:packages org creezio (registre privé)
+npm run setup                   # deps racine + ui + client, build kernel
+npm run dev                     # kernel + Next dev — URL affichée
+npm run status                  # état des processus (PID files .creezio/)
+npm run stop                    # arrêt propre (process group)
+\`\`\`
+
 ## Flux courants (racine)
 
 \`\`\`bash
@@ -963,7 +982,10 @@ kit \`docker/server/README.md\`.
 
 ## Clone autonome (sans le kit creezio)
 
-Distribution npm (docs/NPM-DISTRIBUTION.md du kit) : les deps \`@creezio/*\`
+**Registre privé — écosystème fermé assumé** : \`@creezio/*\` n'est
+installable qu'avec un PAT \`read:packages\` de l'org creezio
+(\`CREEZIO_NPM_TOKEN\`). Distribution npm (docs/NPM-DISTRIBUTION.md du kit) :
+les deps \`@creezio/*\`
 sont des versions publiées sur GitHub Packages — aucun vendor à synchroniser.
 Le \`.npmrc\` racine (commité, sans secret) référence \`\${CREEZIO_NPM_TOKEN}\` :
 exporter un PAT \`read:packages\` avant tout install. Post-clone :
@@ -1732,6 +1754,8 @@ export function scaffoldNewApp(opts: NewAppOptions): ScaffoldResult {
     force,
     written,
   );
+  // Node 22.5+ (node:sqlite) — nvm/fnm + engines (Q4).
+  writeFile(path.join(outDir, ".nvmrc"), "22\n", force, written);
   writeFile(
     path.join(outDir, "README.md"),
     renderRootReadme(manifest),
@@ -1741,6 +1765,12 @@ export function scaffoldNewApp(opts: NewAppOptions): ScaffoldResult {
   writeFile(
     path.join(outDir, "scripts/creezio-cli.mjs"),
     renderCreezioCliProxyMjs(),
+    force,
+    written,
+  );
+  writeFile(
+    path.join(outDir, "scripts/creezio-dev.mjs"),
+    renderCreezioDevProxyMjs(),
     force,
     written,
   );
