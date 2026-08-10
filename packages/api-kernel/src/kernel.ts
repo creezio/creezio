@@ -176,6 +176,32 @@ export function createApiKernel(opts: ApiKernelOptions = {}): ApiKernel {
       return json(400, { ok: false, error: "invalid_path" });
     }
 
+    // Garde permission déclarée par le mount (module/platform) — la sidebar
+    // filtre l'affichage, ICI on refuse l'appel API. Compat : sans hook
+    // authorizeModuleAccess (marques historiques), aucun contrôle ajouté.
+    if (
+      mount.permission &&
+      opts.authorizeModuleAccess &&
+      (space === "module" || space === "platform")
+    ) {
+      const decision = await opts.authorizeModuleAccess({
+        space,
+        mountId: id,
+        permission: mount.permission,
+        method: req.method.toUpperCase(),
+        subPath,
+        req,
+      });
+      if (!decision.allow) {
+        return json(decision.status ?? 403, {
+          ok: false,
+          error: decision.reason,
+          mount: id,
+          permission: mount.permission,
+        });
+      }
+    }
+
     const method = req.method.toUpperCase();
     if (
       WRITE_METHODS.has(method) &&
@@ -255,6 +281,7 @@ export function createApiKernel(opts: ApiKernelOptions = {}): ApiKernel {
           id,
           allowCrossWrite: Boolean(m.allowCrossWrite),
           dbLayer: m.dbLayer ?? "core",
+          ...(m.permission ? { permission: m.permission } : {}),
         });
       }
       for (const [id, m] of modules) {
@@ -263,6 +290,7 @@ export function createApiKernel(opts: ApiKernelOptions = {}): ApiKernel {
           id,
           allowCrossWrite: Boolean(m.allowCrossWrite),
           dbLayer: m.dbLayer ?? "brand",
+          ...(m.permission ? { permission: m.permission } : {}),
         });
       }
       for (const [id, m] of plugins) {

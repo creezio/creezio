@@ -158,6 +158,13 @@ export default function Page() {
       ),
     },
     {
+      rel: "admin/access/page.tsx",
+      source: pageClient(
+        `import { AccessAdminClient } from "@creezio/access-control/ui";`,
+        `    <AccessAdminClient />`,
+      ),
+    },
+    {
       rel: "admin/database/page.tsx",
       source: pageClient(
         `import { DatabaseClient } from "@creezio/database/ui";`,
@@ -236,6 +243,7 @@ export function renderUiPackageJson(_manifest: AppManifest): string {
           "@creezio/product-hub": spec,
           "@creezio/cockpit": spec,
           "@creezio/database": spec,
+          "@creezio/access-control": spec,
           "@creezio/observability": spec,
           "@radix-ui/react-avatar": "^1.1.10",
           "@radix-ui/react-dialog": "^1.1.14",
@@ -451,6 +459,7 @@ const nextConfig = {
     "@creezio/database",
     "@creezio/observability",
     "@creezio/interactive-demo",
+    "@creezio/access-control",
   ],
   async rewrites() {
     return [
@@ -578,6 +587,7 @@ export function renderUiBrandChrome(model: ProductModel): string {
     "ScrollText",
     "Settings",
     "Shield",
+    "ShieldCheck",
     "SlidersHorizontal",
   ]);
   const navLines = model.pages.map((p) => {
@@ -634,7 +644,8 @@ configureSidebar({
   getAdminItems: () => [
     { href: "/configuration", label: "Configuration", icon: Settings },
     { href: "/admin/analytics", label: "Analytics", icon: Activity },
-${pluginsAdminLine}    { href: "/admin/database", label: "Database", icon: Database },
+${pluginsAdminLine}    { href: "/admin/access", label: "Rôles & accès", icon: ShieldCheck, permission: "platform.access.manage" },
+    { href: "/admin/database", label: "Database", icon: Database },
     { href: "/admin/integrations", label: "Intégrations", icon: KeyRound },
     { href: "/admin/api", label: "API", icon: Braces },
     { href: "/admin/mcp", label: "MCP", icon: Cable },

@@ -60,6 +60,15 @@ import {
   type SqliteIntegrationsStore,
 } from "@creezio/integrations";
 import type { BrandKernelHandle } from "./types.js";
+import { sessionFromNodeHeaders } from "./module-mount-auth.js";
+import {
+  getAuthConfig,
+  sessionIsImpersonating,
+} from "@creezio/auth";
+import {
+  isAccessControlConfigured,
+  resolvePermissions,
+} from "@creezio/access-control";
 
 export type CreateBrandKernelOptions = {
   manifest: AppManifest;
@@ -203,10 +212,67 @@ export function createBrandKernel(
     );
   }
 
+  /**
+   * Garde permissions des mounts déclarés (ApiMount.permission) :
+   * session cookie/Bearer → owner (non impersonné) OK, sinon permission
+   * effective — résolution access-control (défauts rôle + overrides DB) si
+   * la marque l'a configuré, claim JWT historique sinon. Sans session :
+   * 401 — SAUF credential machine (clé opaque / header interne boot) déjà
+   * authentifié à la bordure listenBrandOsHttp (confiance bordure).
+   */
+  async function authorizeModuleAccess(accessCtx: {
+    space: "platform" | "module";
+    mountId: string;
+    permission: string;
+    method: string;
+    subPath: string;
+    req: ApiRequest;
+  }) {
+    const headers = accessCtx.req.headers || {};
+    const session = await sessionFromNodeHeaders(headers);
+    if (!session) {
+      // Pas de session : ne laisser passer que les credentials MACHINE déjà
+      // authentifiés à la bordure (clé opaque / header interne boot). Un
+      // Bearer JWT (3 segments) invalide ou expiré n'est PAS un hint machine.
+      const bearerRaw = String(
+        (Array.isArray(headers.authorization)
+          ? headers.authorization[0]
+          : headers.authorization) || "",
+      );
+      const bearer = bearerRaw.toLowerCase().startsWith("bearer ")
+        ? bearerRaw.slice(7).trim()
+        : "";
+      const opaqueBearer = bearer && bearer.split(".").length !== 3;
+      const machineHint =
+        headers["x-api-key"] ||
+        headers["x-creezio-catalog-internal"] ||
+        opaqueBearer;
+      if (machineHint) return { allow: true as const };
+      return { allow: false as const, reason: "unauthenticated", status: 401 };
+    }
+    if (session.role === "owner" && !sessionIsImpersonating(session)) {
+      return { allow: true as const };
+    }
+    const permissions = isAccessControlConfigured()
+      ? await resolvePermissions(session.sub, null).catch(
+          () => session.permissions,
+        )
+      : session.permissions;
+    if (permissions.includes(accessCtx.permission)) {
+      return { allow: true as const };
+    }
+    return {
+      allow: false as const,
+      reason: `permission_denied: ${accessCtx.permission}`,
+      status: 403,
+    };
+  }
+
   const api = createApiKernel({
     brandId: opts.manifest.brandId,
     sqliteRuntime: runtime,
     authorizePluginAccess,
+    authorizeModuleAccess,
     ...(appVersion ? { appVersion } : {}),
   });
 

@@ -34,6 +34,14 @@ import {
   type SessionPayload,
 } from "@creezio/auth";
 import {
+  createAccessControlRoutes,
+  createSqliteAccessStore,
+  getAccessControlStore,
+  isAccessControlConfigured,
+  registerAccessControlStore,
+  resolvePermissions,
+} from "@creezio/access-control";
+import {
   configureAssistantBrand,
   createAssistantRoutes,
   dispatchSupplierAction,
@@ -394,6 +402,9 @@ export type BrandPlatformSurface = {
 
 const PLATFORM_PREFIXES = [
   "/api/v1/auth",
+  // Module natif access-control (rôles & accès) — monté si la marque
+  // appelle configureAccessControl au beforeBoot.
+  "/api/v1/access",
   "/api/v1/tasks",
   "/api/v1/assistant",
   "/api/v1/desktop",
@@ -510,6 +521,15 @@ export function mountBrandPlatformSurface(opts: {
       ? { ownerPermissions: opts.ownerPermissions }
       : {}),
   });
+
+  // Module natif access-control : la marque a appelé configureAccessControl
+  // au beforeBoot → tables posées sur le MÊME core.db + slot runtime pour
+  // resolvePermissions (sidebar, /me, garde API kernel).
+  const accessControlEnabled = isAccessControlConfigured();
+  if (accessControlEnabled && !getAccessControlStore()) {
+    registerAccessControlStore(createSqliteAccessStore({ db: store.db }));
+    log("access-control: store enregistré (core.db)");
+  }
 
   let sidecar: BrandBrowserSidecarHandle | null = null;
   const getSidecar = () => sidecar;
@@ -697,8 +717,64 @@ export function mountBrandPlatformSurface(opts: {
           return null;
         }
       },
+      // Permissions dynamiques (access-control) : /me + JWT mintés frais.
+      // Owner = ownerPermissions (court-circuit — jamais bridé par la matrice).
+      ...(accessControlEnabled
+        ? {
+            resolveEffectivePermissions: async (
+              userId: string,
+              kitRole: "owner" | "collaborator",
+            ) => {
+              if (kitRole === "owner") return getAuthConfig().ownerPermissions;
+              let brandRole: string | null = null;
+              try {
+                brandRole =
+                  (await getAuthConfig().resolveBrandRole?.(
+                    userId,
+                    opts.brandDb?.() ?? null,
+                  )) ?? null;
+              } catch {
+                brandRole = null;
+              }
+              return resolvePermissions(userId, brandRole);
+            },
+          }
+        : {}),
     }),
   );
+
+  /* Access-control (matrice rôles × permissions, comptes, audit). */
+  if (accessControlEnabled) {
+    app.route(
+      "/api/v1/access",
+      createAccessControlRoutes({
+        getSession: (c) => sessionFromContext(c),
+        listUsers: () =>
+          store.listUsers().map((u) => ({
+            id: u.id,
+            username: u.username,
+            role: u.role,
+            kind: u.kind,
+            active: u.active,
+          })),
+        getUserById: (id) => {
+          const u = store.getUserById(id);
+          return u
+            ? {
+                id: u.id,
+                username: u.username,
+                role: u.role,
+                kind: u.kind,
+                active: u.active,
+              }
+            : null;
+        },
+        ownerPermissions: () => getAuthConfig().ownerPermissions,
+        userAdminPermission: () => getAuthConfig().userAdminPermission,
+      }),
+    );
+    log("access-control: routes /api/v1/access montées");
+  }
 
   /* Assistant (chat, ui-actions résultats, flux desktop-actions SSE). */
   app.route(

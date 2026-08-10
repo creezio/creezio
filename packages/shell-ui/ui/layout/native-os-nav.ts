@@ -22,6 +22,7 @@ import {
   ScrollText,
   Settings,
   Shield,
+  ShieldCheck,
   SlidersHorizontal,
 } from "lucide-react";
 import type { SidebarAdminItem, SidebarNavItem } from "./sidebar-host";
@@ -67,6 +68,12 @@ export function defaultOsAdminNavItems(
     items.push({ href: "/admin/plugins", label: "Plugins", icon: Package });
   }
   items.push(
+    {
+      href: "/admin/access",
+      label: "Rôles & accès",
+      icon: ShieldCheck,
+      permission: "platform.access.manage",
+    },
     { href: "/admin/database", label: "Database", icon: Database },
     { href: "/admin/integrations", label: "Intégrations", icon: KeyRound },
     { href: "/admin/api", label: "API", icon: Braces },

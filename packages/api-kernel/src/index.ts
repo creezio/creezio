@@ -3,6 +3,7 @@
  */
 
 export type {
+  ApiAuthorizeModuleAccessFn,
   ApiAuthorizePluginAccessFn,
   ApiHandlerContext,
   ApiKernelOptions,

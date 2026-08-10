@@ -64,7 +64,10 @@ function canShowHref(host: SidebarHost, href: string, me: any): boolean {
   return host.canShowHref?.(href, me) !== false;
 }
 
-function hasItemPermission(item: SidebarAdminItem, me: any): boolean {
+function hasItemPermission(
+  item: { permission?: string | null },
+  me: any,
+): boolean {
   if (!item.permission) return true;
   if (!me) return true;
   const permissions = Array.isArray(me.permissions) ? me.permissions : [];
@@ -612,6 +615,7 @@ function NavLinks({
     >
       {navItems.map((item: SidebarNavItem) => {
         const path = hrefPath(item.href);
+        if (!hasItemPermission(item, me)) return null;
         if (!canShowHref(host, path, me)) return null;
         const active =
           forced != null ? path === forced : isActiveHref(pathname, item.href);

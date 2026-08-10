@@ -18,6 +18,7 @@
       "@creezio/interactive-demo",
       "@creezio/cockpit",
       "@creezio/auth",
+      "@creezio/access-control",
       "@creezio/assistant",
       "@creezio/tasks",
       "@creezio/mails",

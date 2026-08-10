@@ -22,6 +22,7 @@ const PACKAGES = [
   "api-kernel",
   "mcp-facade",
   "auth",
+  "access-control",
   "shell-ui",
   "onboarding",
   "interactive-demo",
