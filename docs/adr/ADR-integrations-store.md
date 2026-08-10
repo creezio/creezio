@@ -2,6 +2,8 @@
 
 Statut : accepté · Date : 2026-08-06
 
+> Note 2026-08-10 : les mentions de `vendor/creezio` / sync ci-dessous décrivent le mécanisme de distribution de l'époque — remplacé par les packages npm ([../NPM-DISTRIBUTION.md](../NPM-DISTRIBUTION.md)). La décision reste en vigueur.
+
 ## Contexte
 
 Les utilisateurs d'une marque Creezio doivent pouvoir enregistrer leurs clés

@@ -6,8 +6,13 @@
 > `MailTransport` multi-provider **remplace** l'existant (`MailProvider` v1 /
 > `smtp-env`) — pas de chemin legacy maintenu en parallèle. Les breaking
 > changes d'API interne kit sont autorisés : la vague de migration marque
-> (vague W) les absorbe dans la même fenêtre (kit d'abord → push `main` →
-> resync vendor → bascule WinHub).
+> (vague W) les absorbe dans la même fenêtre.
+>
+> **Note 2026-08-10** : la distribution du kit est passée aux packages npm
+> versionnés ([../NPM-DISTRIBUTION.md](../NPM-DISTRIBUTION.md)) — les
+> mentions « resync vendor » / `SYNC.json` ci-dessous sont historiques ;
+> lire « merge `main` kit → publication npm → `npm update "@creezio/*"`
+> côté marque ».
 
 ---
 

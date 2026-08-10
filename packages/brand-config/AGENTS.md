@@ -54,7 +54,7 @@ Le package est un socle : une erreur ici peut casser les upgrades, les feeds, le
 2. Pour un manifest de production, comparer les valeurs aux apps sources et aux builds existants. Ne pas "normaliser" un champ qui semble incohérent si le commentaire indique une compatibilité historique (ex. `Fidu` et `%APPDATA%/Fidu`).
 3. Si vous ajoutez une feature dans `BrandFeatures`, garder la règle actuelle : absent ou `true` = activé, `false` = désactivé.
 4. Si vous ajoutez une marque sandbox, préférer `createAppManifest` et vérifier `validateAppManifest`.
-5. Si vous modifiez `buildElectronBuilderConfig`, vérifier les deux kinds (`client`, `server`) et l'impact sur l'asar. Le commentaire sur `vendor/creezio/*` documente un crash packagé réel (`Cannot find module '@creezio/brand-config'`).
+5. Si vous modifiez `buildElectronBuilderConfig`, vérifier les deux kinds (`client`, `server`) et l'impact sur l'asar — crash packagé réel documenté : `Cannot find module '@creezio/brand-config'` (d'où `ensureCreezioVendorInAsar`, qui résout les packages npm installés).
 6. `docs/FILES.md` est maintenu via `node scripts/generate-files-md.mjs brand-config` (gate `test-phase-docs-freshness`) — la colonne Rôle s'édite à la main, ne pas inventer d'autre format.
 
 ## Config attendue côté brand

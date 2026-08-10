@@ -150,7 +150,7 @@ La marque doit :
 - monter les routes derriere une auth owner/admin ;
 - brancher `emitPluginEvent` et `n8nWebhookBaseUrl` si necessaire ;
 - configurer les headers webhook brandes ;
-- ajouter `@creezio/database/ui` au transpile/Tailwind si l'UI est vendoree.
+- ajouter `@creezio/database/ui` au transpile/Tailwind quand l'UI est consommée.
 
 ## Dépendances
 

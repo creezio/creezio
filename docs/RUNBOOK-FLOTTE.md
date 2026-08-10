@@ -37,9 +37,9 @@ vérifiées sur le VPS TempoFlow.
 8. **Diagnostics boot** — `boot-status`, `health`, `version`, `ready`,
    logs JSONL `boot-step`, `/data/ops/*.jsonl`, `crash:list`
 9. **Pièges connus** — ordre catalogue/listen, AUTH_SECRET par instance,
-   setup ≠ login, vendor browser-host, symlinks electron-builder, publish
-   local pas SSH, feed TF2, collector :8665, slugs réservés, timeouts
-   Cloudflare, nommage Compose
+   setup ≠ login, package npm browser-host, symlinks electron-builder,
+   publish local pas SSH, feed TF2, collector :8665, slugs réservés,
+   timeouts Cloudflare, nommage Compose
 10. **Entretien disque Docker (VPS)** — GC BuildKit native (`daemon.json`
     `builder.gc`), timer `docker-disk-maintenance` quotidien (prune sans
     `-a` + `--keep-storage` + rétention registre 5 tags + alerte ≥ 85 %),

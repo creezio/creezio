@@ -67,7 +67,7 @@ affaibli pour la masquer. (Backlogs d'époque : `docs/archive/BACKLOG-*.md`.)
   webhook/register/heartbeat/releases/landing public ; gate
   `test-phase-module-mount-session.mjs`). Adoption / preuve côté marques :
   tâche TF3 DASH-5 (`tempoflow3/brand-spec/modules/dashboard/TODO.md`) —
-  resync vendor après merge `main` kit.
+  `npm update "@creezio/*"` après publication npm du kit.
 
 ## Admin app OS (ADR-admin-app-os) — suites
 

@@ -86,9 +86,9 @@ La page de l'app admin (`server/ui/app/<route>/page.tsx` du repo
 
 ## Déploiement (app admin TempoFlow)
 
-Après modification kit : build + push `main` + resync vendor du repo admin,
-puis rebuild/recreate du conteneur — procédure canonique dans l'AGENTS du
-repo `tempoflow3-admin`.
+Après modification kit : build + changeset + merge `main` → publication npm,
+puis `npm update "@creezio/*"` dans le repo admin et rebuild/recreate du
+conteneur — procédure canonique dans l'AGENTS du repo `tempoflow3-admin`.
 
 ## Checklist finale
 
@@ -102,4 +102,4 @@ repo `tempoflow3-admin`.
 - [ ] Gate créée et enregistrée dans la ligne `test` racine
 - [ ] README/AGENTS/FILES de `packages/admin` à jour
       (`node scripts/generate-files-md.mjs admin`)
-- [ ] Resync vendor du repo `<brand>-admin` après push, rebuild+recreate
+- [ ] `npm update "@creezio/*"` du repo `<brand>-admin` après publication, rebuild+recreate

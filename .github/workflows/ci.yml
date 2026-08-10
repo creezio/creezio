@@ -6,12 +6,11 @@
 # transversales).
 #
 # Modèle open source PULL : le kit NE CONNAÎT PAS ses consommateurs — pas de
-# registre, pas de notification, pas de test des apps ici. Le kit publie sur
-# main avec changelog + ARCHITECTURE_VERSION + codemods (la gate
-# arch-codemod refuse un bump sans migration : c'est ELLE qui protège les
-# apps). Chaque app tire le kit quand elle le décide : son workflow
-# kit-compat mesure l'impact (rapport, jamais de push), son workflow
-# vendor-update applique la mise à jour (docs/PROPAGATION.md).
+# registre, pas de notification, pas de test des apps ici. Le kit publie des
+# packages npm versionnés (publish.yml + changesets ; changelog +
+# ARCHITECTURE_VERSION + codemods — la gate arch-codemod refuse un bump sans
+# migration : c'est ELLE qui protège les apps). Chaque app tire le kit quand
+# elle le décide : `npm update "@creezio/*"` + sa CI (docs/PROPAGATION.md).
 #
 # 2 étages :
 #   1. build-and-test (GitHub-hosted) : build workspaces + suite kit rapide

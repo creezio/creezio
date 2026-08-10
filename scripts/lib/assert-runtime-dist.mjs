@@ -2,7 +2,7 @@
  * Garde fail-closed — dist des packages runtime critiques doit refléter le src.
  *
  * Régression prod (Admin Database 0.3.15) : mount câblé en src, dist gitignoré
- * non rebuildé → sync vendor / image Docker sans routes (« Route inconnue »).
+ * non rebuildé → package publié / image Docker sans routes (« Route inconnue »).
  *
  * Deux couches :
  *   1. Contrats de contenu (tokens présents dans src ET dist) — ADR.1b généralisé.
@@ -26,8 +26,8 @@ const HERE = path.dirname(fileURLToPath(import.meta.url));
 export const DEFAULT_KIT_ROOT = path.resolve(HERE, "../..");
 
 /**
- * Packages embarqués dont un dist stale casse vendor / image / routes HTTP.
- * Aligné sur DEFAULT_PACKAGES sync (sous-ensemble runtime critique).
+ * Packages embarqués dont un dist stale casse package / image / routes HTTP.
+ * Sous-ensemble runtime critique des packages publiés.
  */
 export const FRESHNESS_PACKAGES = [
   "app-runtime",

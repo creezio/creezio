@@ -23,7 +23,7 @@ Next de la marque au build, dans le groupe App Router `(creezio-os)`
 ```bash
 # copie les pages OS dans l'app Next de la marque (dossier gitignoré)
 creezio-materialize-os-ui --app-root <brandRoot>
-# ou : node vendor/creezio/os-ui/scripts/materialize.mjs --app-root .
+# ou : node node_modules/@creezio/os-ui/scripts/materialize.mjs --app-root .
 ```
 
 Le layout racine de la marque enveloppe l'app avec `CreezioUiBoot`

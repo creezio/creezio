@@ -29,6 +29,7 @@ Chrome CRM / UI :
 - primitives shadcn-like (`Button`, `Input`, `Card`, `Dialog`, `Command`, etc.) ;
 - sidebar CRM (`Sidebar`, `CrmSidebar`) et host `configureSidebar` ;
 - workspace a onglets (`TabWorkspaceProvider`, `WorkspaceShell`, `WorkspaceRoot`, `WorkspaceTabBar`) ;
+- bandeau impersonation natif (`ImpersonationBanner`, rendu par `WorkspaceRoot` dès que `me.impersonating` — « Revenir à mon compte » via `stopImpersonate`) ;
 - recherche globale (`configureGlobalSearch`, `GlobalSearchProvider`) ;
 - surfaces desktop/site externe (`ExternalSiteSlot`, `DesktopBridge`, `SiteLink`) ;
 - settings desktop (`DesktopHermesSettings`, `DesktopN8nSettings`, `ApiKeysSettings`, etc.) ;
@@ -206,7 +207,7 @@ Exports majeurs :
 - brand/hosts : `configureShellUiBrand`, `configureTabWorkspaceHost`, `configureGlobalSearchHost`, `configureAiActivityPanel`
 - primitives : `Button`, `Badge`, `Input`, `Card`, `Tabs`, `Dialog`, `Sheet`, `DropdownMenu`, `Command`, `Toaster`, `ChartContainer`, etc.
 - layout : `AppShell`, `PageChrome`, `PageToolbarProvider`, `SectionViewShell`, `EntityHeader`, `Sidebar`, `CrmSidebar`, `configureSidebar`
-- workspace : `TabWorkspaceProvider`, `WorkspaceShell`, `WorkspaceRoot`, `WorkspaceTabBar`, `KeepAliveOutlet`, `createTab`, `createExternalSiteTab`
+- workspace : `TabWorkspaceProvider`, `WorkspaceShell`, `WorkspaceRoot`, `WorkspaceTabBar`, `KeepAliveOutlet`, `ImpersonationBanner`, `createTab`, `createExternalSiteTab`
 - search : `configureGlobalSearch`, `GlobalSearchProvider`, `GlobalSearchTrigger`, `SearchInput`, `search-history`
 - desktop : `ExternalSiteSlot`, `DesktopBridge`, `AuthWindowChrome`, `WindowChromeControls`, `SiteLink`
 - settings : `DesktopHermesSettings`, `DesktopN8nSettings`, `DesktopTunnel`, `ApiKeysSettings`, `AccountSettings`, etc.

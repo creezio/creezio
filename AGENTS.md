@@ -8,16 +8,16 @@ Le kit est la **source of truth (SoT)** du socle desktop Creezio (CMS stable) :
 auth, shell UI, API, MCP, assistant, tasks, mails, observability, plugins host,
 Electron runtime, tooling publish, factory, propagation.
 
-Les marques (`tempoflow2`, `certivan-app`, `fidu`, `tempoflow3`) consomment le
-kit via leur vendor synchronisé (`vendor/creezio` racine ; legacy TF2 :
-`crm/vendor/creezio`) + wiring métier. **Le métier vertical reste dans les
-repos marque.**
+Les marques (`winhub`, `tempoflow3`…) consomment le kit en **packages npm
+versionnés** (`@creezio/*` publiés sur GitHub Packages —
+[docs/NPM-DISTRIBUTION.md](./docs/NPM-DISTRIBUTION.md)) + wiring métier.
+**Le métier vertical reste dans les repos marque.**
 
 Toute marque générée par la factory = **2 repos** :
 
 1. **Monorepo marque** (`server/` métier + Docker, `client/` desktop thin
-   remote-only, avec `brand-spec/` + `vendor/creezio/` partagés à la racine et
-   `docker-data/` runtime gitignoré). **Pas de `admin/` dans le monorepo.**
+   remote-only, avec `brand-spec/` à la racine et `docker-data/` runtime
+   gitignoré). **Pas de `admin/` dans le monorepo.**
 2. **Repo admin dédié** `<brand>-admin` (privé, jamais public) : l'app admin
    de la marque (pilotage flotte, support, billing… — voir
    [docs/adr/ADR-admin-app-os.md](./docs/adr/ADR-admin-app-os.md)), config
@@ -86,7 +86,7 @@ obligatoire**, puis changeset + merge `main` → publication npm
 Un dist stale (src monté, dist pas rebuild) est **refusé** fail-closed par la
 gate `test-phase-runtime-dist-freshness` (ADR.1b généralisée) et par
 `creezio server-docker publish|build` (`scripts/lib/assert-runtime-dist.mjs` —
-content contracts + mtime).
+contrats src↔dist + hash de contenu).
 
 ## Où modifier quoi
 
@@ -143,9 +143,9 @@ Workflow : `npm run test:kit` → première rouge → corriger →
 
 ## Pièges connus
 
-- **dist stale → vendor/image sans routes** : `dist/` est gitignoré. Modifier
-  un mount en `packages/*/src` sans `npm run build:packages` puis sync/publish
-  copie un dist vieux → routes absentes en prod (vécu Admin Database).
+- **dist stale → package/image sans routes** : `dist/` est gitignoré. Modifier
+  un mount en `packages/*/src` sans `npm run build:packages` puis release/publish
+  embarque un dist vieux → routes absentes en prod (vécu Admin Database).
   Protection fail-closed : gate `test-phase-runtime-dist-freshness` (dans
   `test:kit`) + `server-docker publish|build`. Avant
   tout publish : `cd /opt/docker/creezio && npm run build:packages`.
@@ -162,9 +162,10 @@ Workflow : `npm run test:kit` → première rouge → corriger →
   (section Meili) + `app-runtime` (feed/boot).
 - **Bug générique marque → fix kit/factory d'abord** : si le défaut touche
   toute marque générée (layout, smokes, scaffold, Docker, auth harness…),
-  corriger dans `@creezio/*` / `packages/factory` puis resync — **interdit**
-  de « documenter seulement » une marque (workaround docs TF3-only) pour un
-  trou factory. Descente marque = resync + alignement docs, pas le SoT.
+  corriger dans `@creezio/*` / `packages/factory` puis publier (changeset) —
+  **interdit** de « documenter seulement » une marque (workaround docs
+  TF3-only) pour un trou factory. Descente marque = release npm + `npm
+  update` + alignement docs, pas le SoT.
 - **Plugins Electron** : dans `electron-shell` `host/plugins/launcher.ts`, le
   handler `child.on("exit")` doit comparer `cur?.child === child` avant
   `running.delete(id)`, sinon un restart après PUT files efface le process
@@ -241,8 +242,8 @@ ADR : [`docs/adr/ADR-factory-from-prd.md`](./docs/adr/ADR-factory-from-prd.md).
 - Modifier `docs/archive/PHASE-*.md` historiques pour cacher une régression (ajouter une note / nouvelle phase).
 - Toucher `apps/demobrand` comme produit client — c’est une sandbox kit.
 - Réécrire toute la doc dans un seul fichier à la racine.
-- Exiger un plan ingénieur (host-stack, sync-vendor, phases P*) pour un brief
-  produit : utiliser `--from-prd` à la place.
+- Exiger un plan ingénieur (host-stack, phases P*) pour un brief produit :
+  utiliser `--from-prd` à la place.
 
 ## Liens rapides
 

@@ -1,4 +1,4 @@
-# Distribution npm — GitHub Packages (doctrine cible)
+# Distribution npm — GitHub Packages (en vigueur)
 
 Les packages `@creezio/*` sont publiés en **versions semver** sur
 **GitHub Packages** (`https://npm.pkg.github.com`, owner `creezio`).
@@ -17,7 +17,7 @@ visible par TOUT l'écosystème standard.
 - Tous les packages publiés partagent la MÊME version (groupe `fixed` de
   changesets) — équivalent moderne de `ARCHITECTURE_VERSION` : une version
   de kit = un ensemble cohérent de packages.
-- Version bootstrap : **0.4.0**.
+- Version courante : **0.5.0** (bootstrap initial : 0.4.0).
 - Outil : [changesets](https://github.com/changesets/changesets).
   Tout changement de `packages/` dans une PR doit être accompagné d'un
   changeset (`npx changeset`) — gate CI `changeset-status`.
@@ -44,12 +44,12 @@ visible par TOUT l'écosystème standard.
   l'org creezio. En CI : secret `CREEZIO_NPM_TOKEN` exporté en env du job.
   En local : `export CREEZIO_NPM_TOKEN=…` (shell) ou token dans le
   `~/.npmrc` utilisateur.
-- `package.json` : `"@creezio/<pkg>": "^0.4.0"` (plus de `file:vendor/…`).
+- `package.json` : `"@creezio/<pkg>": "^0.5.0"` (plus de `file:vendor/…`).
 - Vérifier la disponibilité :
   `npm view @creezio/app-runtime versions --registry=https://npm.pkg.github.com`
 - Mise à jour : `npm update "@creezio/*"` puis CI de l'app.
 
-## Packages publiés (lockstep 0.4.0)
+## Packages publiés (lockstep 0.5.0)
 
 `admin`, `api-kernel`, `app-runtime`, `assistant`, `auth`, `automations`,
 `brand-config`, `brand-spec`, `browser-host`, `cockpit`, `database`,
@@ -60,11 +60,12 @@ visible par TOUT l'écosystème standard.
 Restent privés (outillage interne, non publiés) : `factory`, `propagation`,
 apps `console` / `demobrand`.
 
-## Migration depuis le vendoring (transition)
+## Migration depuis le vendoring (terminée)
 
 L'ancien système (sync vendor, `SYNC.json`, `kit-compat`, `vendor-update`,
 `install-server-deps`, symlinks trackés) est **SUPPRIMÉ** du kit
 (feat/npm-deploy-tooling : Dockerfile + factory + CLI server-docker en mode
-npm). Les apps migrent une à une (référence : feat/npm-consumption de
-tempoflow3). Ne PAS mélanger les deux modes dans une même app : une app
-est soit vendored (legacy figée), soit npm (cible).
+npm). Apps migrées : **winhub** (PR #4) et **tempoflow3** (PR #15) — toutes
+deux en `^0.5.0`, déployées. Les repos admin (`winhub-admin`,
+`tempoflow3-admin`) migrent à leur tour. Il n'existe plus d'app vendored
+maintenue : toute app consomme les packages npm.

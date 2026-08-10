@@ -3,6 +3,8 @@
 Statut : **accepté** (direction produit, 2026-08).
 Remplace la vision « console technique » de `docker/server-admin`.
 
+> Note 2026-08-10 : les mentions de `vendor/creezio` ci-dessous décrivent le mécanisme de distribution de l'époque — remplacé par les packages npm ([../NPM-DISTRIBUTION.md](../NPM-DISTRIBUTION.md)). La décision (2 repos, admin dédié) reste en vigueur.
+
 ## Contexte
 
 Chaque marque (TempoFlow, Certivan, Fidu…) a besoin d'un **admin d'entreprise** :

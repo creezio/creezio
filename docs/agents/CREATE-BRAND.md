@@ -117,8 +117,8 @@ Reset clean-room TF3 : `node scripts/reset-tempoflow3.mjs` (backup + apply + bui
 
 ## 5. Premier serveur Docker (marque neuve) vs clone hôte
 
-`brand apply` / `new-app` préparent **automatiquement** vendor +
-`package-lock` (même sans `--push`). Ensuite :
+`brand apply` / `new-app` préparent **automatiquement** les lockfiles npm
+(`package-lock.json`, même sans `--push`). Ensuite :
 
 ```bash
 cd <app>

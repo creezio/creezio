@@ -12,9 +12,9 @@ sans réécrire le socle.
 ```
                       ┌──────────────────────────────┐
                       │        kit creezio           │
-                      │  packages/@creezio/* (28)    │
+                      │  packages/@creezio/* (29)    │
                       └──────────────┬───────────────┘
-                                     │  sync vendor (vendor/creezio)
+                                     │  packages npm @creezio/* (GitHub Packages)
         ┌────────────────────────────┼────────────────────────────┐
         ▼                            ▼                            ▼
    marque A (tempoflow3)        marque B (certivan)          marque C (fidu)
@@ -42,7 +42,7 @@ npm run test:kit         # gates pures kit — doivent être 100 % vertes
 ```
 
 Suites de tests complémentaires (voir [scripts/README.md](./scripts/README.md)) :
-`npm run test:brands` (nécessite les repos marque synchronisés, skip auto sinon)
+`npm run test:brands` (nécessite les clones locaux des repos marque, skip auto sinon)
 et `npm run test:env` (gates lourdes opt-in).
 
 ## Commandes clés
@@ -63,14 +63,16 @@ npx creezio server-docker create --brand-root <racine-marque> --name server-1
 npx creezio server-docker admin up
 npx creezio server-docker admin add-brand <racine-marque>
 
-# Propagation kit → marques
+# Propagation kit → marques : changeset (`npx changeset`) → merge main →
+# PR « version packages » → publication npm → `npm update "@creezio/*"` marque
+# (docs/NPM-DISTRIBUTION.md). Outils d'analyse internes :
 npm run kit:impact -- --package=@creezio/platform-core
 npm run kit:version -- --package=@creezio/shell --bump=patch
 ```
 
 Toute app générée = **2 repos** : le monorepo marque (`server/` métier +
-Docker, `client/` desktop thin remote-only, `brand-spec/` + `vendor/creezio/`
-partagés à la racine) **et** un repo admin dédié privé `<brand>-admin`
+Docker, `client/` desktop thin remote-only, `brand-spec/` à la racine)
+**et** un repo admin dédié privé `<brand>-admin`
 (app admin de la marque : flotte, support, billing…) — voir
 [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md).
 

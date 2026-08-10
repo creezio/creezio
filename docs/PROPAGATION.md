@@ -4,17 +4,17 @@ Comment un changement du kit atteint les marques (TempoFlow, Certivan,
 Fidu, TempoFlow3…), et comment les innovations terrain remontent.
 
 
-> **DOCTRINE CIBLE (2026-08) — distribution npm versionnée.** Les packages
-> `@creezio/*` sont désormais publiés sur GitHub Packages avec des versions
-> semver en lockstep ([NPM-DISTRIBUTION.md](./NPM-DISTRIBUTION.md)). Les apps
-> migrent vers `npm update @creezio/…`. Le mécanisme vendor décrit ci-dessous
-> est **DÉPRÉCIÉ** : il reste documenté et fonctionnel le temps de la
-> migration, puis sera retiré.
+> **EN VIGUEUR (depuis 2026-08-10) — distribution npm versionnée.** Les
+> packages `@creezio/*` sont publiés sur GitHub Packages en versions semver
+> lockstep ([NPM-DISTRIBUTION.md](./NPM-DISTRIBUTION.md)) ; les apps
+> consomment via `npm update "@creezio/*"`. Le mécanisme vendor historique
+> (sync `vendor/creezio`, `SYNC.json`, workflows `kit-compat`/`vendor-update`)
+> est **SUPPRIMÉ** — voir `docs/archive/` pour l'historique.
 ## Modèle
 
 ```
 L1 cœur (@creezio/*)
-  ↓ descente (sync vendor + PR marque)
+  ↓ descente (release npm + `npm update` marque)
 L2 produit métier (marques)
   ↓
 L3 organisation cliente (plugins / ACL org)
@@ -55,12 +55,13 @@ apps dans la CI kit. La propagation est à l'initiative de CHAQUE app
 ## Topologie multi-serveurs
 
 Chaque app est indépendante : **un serveur par app**, avec son runner
-self-hosted pour ses workflows lourds (kit-compat, vendor-update, deploy).
-Une app SANS runner (serveur pas encore câblé, ou dev tiers sans infra)
-tourne intégralement sur GitHub-hosted : générer ses workflows avec
-`githubHosted: true` (factory) + secret repo `CREEZIO_CI_TOKEN` (token
-lisant le repo kit) — seuls kit-compat et vendor-update en ont besoin ; le
-deploy, lui, exige toujours le runner du serveur de l'app.
+self-hosted pour le deploy (la CI tourne sur GitHub-hosted). Une app SANS
+runner (serveur pas encore câblé, ou dev tiers sans infra) tourne
+intégralement sur GitHub-hosted : générer ses workflows avec
+`githubHosted: true` (factory) + secret repo `CREEZIO_NPM_TOKEN` (PAT
+`read:packages` de l'org, requis par le `.npmrc` pour installer les
+`@creezio/*`) ; le deploy, lui, exige toujours le runner du serveur de
+l'app.
 
 Politique de republish des binaires desktop : voir
 [archive/REPUBLISH-POLICY.md](./archive/REPUBLISH-POLICY.md) (politique
@@ -103,8 +104,9 @@ boot), `os-ui` (pages OS à rematérialiser), `desktop-tooling` (publish),
 
 ## Canaux marque
 
-Contrat **kit bump → PR par marque** (`buildAllBrandPrPayloads(impact)`,
-template [`.github/PULL_REQUEST_TEMPLATE/kit-bump.md`](../.github/PULL_REQUEST_TEMPLATE/kit-bump.md)).
+Outillage **interne kit** (package privé `@creezio/propagation`) : corps de
+PR par marque (`buildAllBrandPrPayloads(impact)`, template
+[`.github/PULL_REQUEST_TEMPLATE/kit-bump.md`](../.github/PULL_REQUEST_TEMPLATE/kit-bump.md)).
 Les gates historiques de premier branchement (G1/G2/G3) sont signées et
 archivées : [archive/gates/](./archive/gates/).
 

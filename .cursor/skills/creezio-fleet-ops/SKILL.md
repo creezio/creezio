@@ -181,18 +181,18 @@ toutes les routes plateforme.
 (`creezio-registry`, `127.0.0.1:5000`), déployée via l'admin.
 
 **Prérequis kit (fail-closed)** : si le runtime kit a changé, **rebuild le
-dist avant** sync vendor / publish — sinon image sans routes (dist stale) :
+dist avant** toute release / publish — sinon package ou image sans routes (dist stale) :
 
 ```bash
 cd "$CREEZIO_KIT_ROOT" && npm run build:packages
 # preuve : npm run test:kit -- --only runtime-dist-freshness
 # (ou node --test scripts/test-phase-runtime-dist-freshness.mjs)
-# Puis resync marque, puis publish.
+# Puis release npm (changeset → Version PR → publish), puis côté marque :
 cd "$BRAND_ROOT" && npm update "@creezio/*"   # distribution npm (après publish kit)
 ```
 
 `creezio server-docker publish|build` appelle
-`scripts/lib/assert-runtime-dist.mjs` (contrats src↔dist + mtime) et
+`scripts/lib/assert-runtime-dist.mjs` (contrats src↔dist + hash de contenu) et
 **refusent** si le dist est plus vieux que le src. Bypass urgence seulement :
 `CREEZIO_SKIP_RUNTIME_DIST_ASSERT=1`.
 
@@ -444,7 +444,7 @@ resynchronise les projections (idempotent, pagination `starting_after`).
 ```
 
 **Piège** : l'image serveur admin embarque `server/ui/.next` PRÉ-buildé de
-l'hôte — après toute modif UI (pages, `@creezio/admin/ui` via vendor), faire
+l'hôte — après toute modif UI (pages, `@creezio/admin/ui` — bump npm), faire
 `npm run build --prefix server` (ou `build:ui`) AVANT
 `npm run server-docker:build`, sinon la nouvelle page → 404.
 
@@ -499,7 +499,7 @@ jamais le dernier choix utilisateur.
 
 **Vérité** : `client/package.json` + `client/electron-builder.client.json`
 (GUID NSIS propre TF3, feed `…/tf3/`),
-`vendor/creezio/desktop-tooling/scripts/publish-desktop.sh`,
+`node_modules/@creezio/desktop-tooling/scripts/publish-desktop.sh`,
 picker : `packages/electron-shell/src/desktop/brand-desktop-runtime.ts`.
 
 **Pièges** : publish détecte le feed **local** (container nginx-proxy-manager
@@ -537,7 +537,7 @@ L'admin (§5) montre boot-status live, logs et ops par serveur sans SSH.
 | Setup ≠ login | `POST /api/v1/os/setup` n'écrit pas `creezio_users` → faire aussi `migrateBrandCredentialsToKit` (§2). |
 | Packages npm | `browser-host` est publié (`@creezio/browser-host`) — consommé via `npm update "@creezio/*"`. |
 | dist stale → routes manquantes | Après modif `packages/*/src` : **`npm run build:packages`** avant sync/publish. Gate `test-phase-runtime-dist-freshness` + assert dans sync et `server-docker publish\|build`. Vécu : Admin Database monté en src, dist non rebuild → « Route inconnue ». |
-| Symlinks electron-builder | Refuse les symlinks hors racine projet : `client/vendor` = copie hardlink, pas un symlink. |
+| Symlinks electron-builder | Refuse les symlinks hors racine projet (leçon de l'ancien layout `client/vendor` — copie hardlink, pas un symlink ; layout npm = `node_modules` standard). |
 | Publish desktop | Feed sur le même VPS → flux Docker local (`docker cp`), pas de SSH vers soi-même. |
 | Feed TF2 | Ne pas écrire dans le feed/GUID TempoFlow2 — TF3 a son sous-dossier `/tf3/` et son GUID. |
 | Collector TF2 | `tf2-fleet-collector.service` loopback **:8665** = prod TF2, ne pas toucher (ni élargir son `ALLOWED_REMOTE`). Provisioner kit = `creezio-tunnel-provisioner` **:8666**. |
@@ -545,7 +545,7 @@ L'admin (§5) montre boot-status live, logs et ops par serveur sans SSH.
 | Cloudflare timeouts | Toute opération longue exposée via tunnel = async (202 + route de statut), jamais une requête bloquante. |
 | Compose vs registre | Instances Compose = `server-1`, `server-2` (chiffres) ; instances registre (`create <nom>`) = libres. Projet Compose `creezio-servers`/`tf3-servers`, jamais `tempoflow`/`n8n`. |
 | Résolution module packagé | Jamais de parsing de stack pour retrouver `file://` (les frames Windows `file:///C:/…` cassent tout regex naïf → crash client). SoT : `createAppRequire` (`@creezio/platform-core`) ; gate `verify-pack-runtime` refuse le pattern. |
-| UI marque = chrome kit + Tailwind | La factory génère `ui/tailwind.config.ts` (scan `../vendor/creezio/*/ui`), `postcss.config.js`, `globals.css` (tokens) et `components/brand-chrome.tsx` (WorkspaceRoot/configureSidebar). App qui rend du HTML brut sans sidebar = Tailwind/chrome manquant, corriger la factory (gate `test-phase-os-ui-scaffold`). |
+| UI marque = chrome kit + Tailwind | La factory génère `ui/tailwind.config.ts` (scan `node_modules/@creezio/*/ui` + routes OS), `postcss.config.js`, `globals.css` (tokens) et `components/brand-chrome.tsx` (WorkspaceRoot/configureSidebar). App qui rend du HTML brut sans sidebar = Tailwind/chrome manquant, corriger la factory (gate `test-phase-os-ui-scaffold`). |
 | Gros catalogues (85k+ skus) | Jamais une requête SQL par ligne dans un handler liste (N+1 = event loop bloqué, tout le serveur pend, même `/health`). Agréger en SQL (CTE + window), indexer (`produits(sku_id)`, `prix(produit_id)`), capper les listes génériques. |
 | Login API | `POST /api/v1/auth/login` body JSON `{"email": <username>, "password": …}` (champ `email` même pour un username) ; cookie de session, contrôle via `/api/v1/auth/me`. |
 | Permissions owner | La marque DOIT déclarer `configureAuth({ cookieName, ownerPermissions })` au beforeBoot (bindings plateforme) — sinon les sessions owner sont signées avec `permissions: []`, `/api/v1/auth/me` renvoie une liste vide et la sidebar métier est amputée (seules les entrées non gardées restent). Collaborateurs : permissions stockées par user (`creezio_platform_users.permissions`) ; défauts/assignables/owner-only déclarés via `configureAuth({ collaboratorDefaultPermissions, collaboratorAssignablePermissions, ownerOnlyPermissions })`. |
@@ -555,14 +555,14 @@ L'admin (§5) montre boot-status live, logs et ops par serveur sans SSH.
 | Page métier vs wrapper os-ui | `materialize.mjs` (os-ui) skippe toute route que la marque possède (`ui/app/<route>/page.*`) — la page métier verbatim (ex. `/onboarding`, `/parametres` TF) prime sur le wrapper kit. Ne jamais supprimer une page métier pour « résoudre » un conflit parallel pages : c'est le wrapper qui cède. La possession est **exacte, pas récursive** : `/parametres` marque ne doit pas emporter l'enfant kit `/parametres/email` (vécu TF3 : page email absente du build, lien « Paramètres email » en 404). Gate : `test-phase-os-ui-scaffold`. |
 | Réindexation Meili vs update | Une réindexation complète (bump `schemaVersion` du feed marque, gros catalogue : ~5 min pour 86k produits) ne doit JAMAIS être awaitée dans le boot — sinon le healthcheck d'update (180 s) expire et l'update **rollback automatiquement** (vécu sur 0.3.4). SoT : `maybeBootBrandMeili({ backgroundIndex: true })` dans le harness et le desktop ; `/search` sert `source:"indexing"` pendant l'indexation, boot-step `index` passe à done à la fin (`docker logs … \| grep index.done`). |
 | Feed Meili riche marque | UIDs marque legacy (`tf2_*`) interdits — le kit impose `catalog_*`. Pour des documents riches (jointures/provenance/taxonomie), la marque fournit `loadDocs` dans son `BrandMeiliIndexSpec` (SQL marque côté marque, jamais dans le kit) + fallback documents simples si le schéma catalogue n'est pas encore matérialisé (serveur neuf). L'UI doit interroger les mêmes UIDs (`lib/meilisearch.ts`, `queries.ts`, `meili-rag.ts`). |
-| Sous-routes plateforme in-plane | Les préfixes plateforme (`/api/v1/{auth,users,tasks,assistant,desktop}`) sont interceptés par la surface kit AVANT le kernel ; une sous-route inconnue (ex. `POST /api/v1/desktop/heartbeat` métier) fallthrough vers le plane UI via le marqueur `platform_route_not_found` (notFound de `mountBrandPlatformSurface`). Si une route métier sous ces préfixes renvoie un 404 texte : vérifier que le vendor porte ce fix. |
+| Sous-routes plateforme in-plane | Les préfixes plateforme (`/api/v1/{auth,users,tasks,assistant,desktop}`) sont interceptés par la surface kit AVANT le kernel ; une sous-route inconnue (ex. `POST /api/v1/desktop/heartbeat` métier) fallthrough vers le plane UI via le marqueur `platform_route_not_found` (notFound de `mountBrandPlatformSurface`). Si une route métier sous ces préfixes renvoie un 404 texte : vérifier que la version `@creezio/*` consommée porte ce fix. |
 | E2E parité marque | `tempoflow3/server/scripts/test-e2e-parite.mjs` (env `TF3_BASE` — pas `TF3_BASE_URL` —, `TF3_OWNER_USER/PASS`, `TF3_STAFF_USER/PASS`, `--full` pour le volet mutant étude→optimiser→dispatch). CDP : les sleeps fixes flakent à froid post-update — toujours des attentes actives (`waitEv` sur sélecteur) + retry de page ; `document.body` peut être null pendant une transition. La sidebar SSR est NON filtrée (le filtre ACL est client après `/auth/me`) : attendre l'hydratation avant d'asserter. |
 | Owner n8n = setup VÉRIFIÉ | n8n vierge répond **200 à `/rest/login` SANS cookie** (shell user) et monte `/rest/*` AVANT la fin de l'init DB : un `POST /rest/owner/setup` trop tôt renvoie 200 mais l'écriture est **perdue** (vécu : « owner: login OK »/« setup OK » sur instance demo/proof vierges, DB sans owner, login 401 ensuite). Règles kit (`n8n/launcher.ts`) : login réussi = 2xx **ET** cookie `n8n-auth` (`n8nLoginSucceeded`) ; readiness = `/rest/settings` avec `userManagement.showSetupOnFirstLoad` présent ; setup conclu seulement après login vérifié (retries). Gate : `test-os-embeds` (prédicats). |
 | Install Hermes root Linux = FHS | L'`install.sh` amont récent en **root Linux** (containers server-docker) installe en layout FHS `/usr/local/lib/hermes-agent` + `/usr/local/bin/hermes` — hors sandbox, le launcher ne trouve jamais le CLI (« CLI toujours introuvable après install », vécu demo). Verrou kit : `HERMES_INSTALL_DIR={profile}/.hermes/hermes-agent` dans l'env d'install (`hermesInstallLayoutEnv`) + fallback lecture FHS root-only (`hermesFhsFallbackDirs`) pour les instances installées avant le verrou. Les instances FHS existantes (demo) retrouvent leur CLI au prochain boot d'une image à jour. |
 | Backup update = tar exit 1 OK | GNU tar sur un volume `/data` **vivant** sort en exit 1 (« file changed as we read it ») avec une archive complète et valide — ne JAMAIS traiter exit 1 comme échec (vécu : « backup indisponible (tar) » avec .tar.gz de 2,4 Go pourtant intègre). SoT `server-lib.mjs backupInstanceData` : exit 0/1 acceptés, `gzip -t` vérifie l'archive, log `backup … (N Mo, gzip vérifié)` ; si le backup demandé est réellement impossible, l'update **échoue proprement AVANT recreate** (plus de warning silencieux). Le fix vit dans les images `creezio-server-admin:local`/`creezio-host-agent:local` → re-runner `admin up` + `agent up` après un pull kit pour l'embarquer. |
 | Backup ≠ GitHub | Le tar.gz sauve les **données** `/data` (sqlite…), pas le code. Défaut update = **pas** de nouveau backup (opt-in `--backup` / `backup:true`). One-shot : `server-docker backup <nom>`. Archives dans `docker-data/backups/` conservées. |
 | Onglet workspace ≠ refetch RSC | Réactiver un onglet workspace (`router.replace` vers une route déjà visitée) ne refetch **JAMAIS** le payload RSC en Next 14 — cache client de session resservi tel quel, zéro requête réseau (prouvé CDP, même après 35 s). Une page RSC en pane keep-alive mutée depuis une autre page reste figée jusqu'au reload dur. Toute mutation hors page doit être couplée à une invalidation : compteur de mutations module-scope + `router.refresh()` quand la pane est/redevient visible (pattern TF3 `panier-live-refresh.tsx` + `notifyPanierChanged`, bug panier 0.3.6). Vaut pour le workspace marque TF verbatim ET la copie kit `shell-ui/ui/workspace`. |
-| Lockfile Docker marque neuve | Empêché structurellement : `prepareBrandDistribution` (vendor+locks) tourne à chaque `new-app`/`brand apply`/push ; `docker:build` appelle `ensure-server-lock.mjs` avant `docker build` ; Dockerfile `npm ci \|\| npm install --omit=dev` ; `server-docker create\|build` régénère si stale. **Interdit** de régénérer le lock Docker à la main hors `ensure-server-lock` / `ensureBrandPackageLocks`. Clone hôte : `npm run install:server-deps` (layout = Docker). Gate : `test-phase-factory-lockfile` + `test-phase-clone-autonomy`. |
+| Lockfile Docker marque neuve | Empêché structurellement : `prepareBrandDistribution` (locks npm) tourne à chaque `new-app`/`brand apply`/push ; `docker:build` appelle `ensure-server-lock.mjs` avant `docker build` ; Dockerfile `npm ci \|\| npm install --omit=dev` ; `server-docker create\|build` régénère si stale. **Interdit** de régénérer le lock Docker à la main hors `ensure-server-lock` / `ensureBrandPackageLocks`. Clone hôte : `npm ci` racine (workspace — layout = Docker). Gate : `test-phase-factory-lockfile` + `test-phase-clone-autonomy`. |
 
 ## 10. Entretien disque Docker (VPS hôte)
 
@@ -786,7 +786,7 @@ immédiatement visible sur `https://lp.{zone}`.
 | Piège | Règle |
 |---|---|
 | 500 + `EPROTO wrong version number` dans les logs Next | Le middleware doit forcer `url.protocol = "http:"` sur le rewrite `/lp` (le plane Next sert en http clair derrière le tunnel TLS). |
-| Chrome OS (sidebar/onglets) visible sur la page publique | `WorkspaceRoot` (shell-ui) rend « bare » `/lp` et tout host `lp.*` — vendor à resynchroniser si la marque a un shell-ui antérieur. |
+| Chrome OS (sidebar/onglets) visible sur la page publique | `WorkspaceRoot` (shell-ui) rend « bare » `/lp` et tout host `lp.*` — bump `@creezio/shell-ui` si la marque a une version antérieure. |
 | QUIC flap (`timeout: no recent network activity`) | Toujours `--protocol http2` pour les tunnels hôte. |
 | Slug `lp` volé par un serveur client | `lp` est dans `RESERVED_SLUGS` — seuls les reserves `kind=brand-web` peuvent le prendre. |
 
@@ -818,10 +818,11 @@ curl -sS http://127.0.0.1:18791/api/v1/os/boot-status | head -c 200
   / au premier run desktop (`ensure-kit-binaries`) ; pack Win :
   `electron:stage-win-bins`.
 - Les gestes riches `server-docker:*` (registre, admin, enroll) exigent le kit.
-- Si une dep `@creezio/*` manque au clone : sync-list marque incomplète →
-  aligner sur `DEFAULT_PACKAGES` du sync kit, resync, commit. Gates :
+- Si une dep `@creezio/*` manque au clone : l'ajouter au `package.json`
+  marque + `npm install` (lockfile commité). Gates :
   `test-phase-clone-autonomy` (kit) / `test:clone-autonomy` (marque).
-- Le push GitHub factory sync le vendor avant push (`maybePushBrandRepos`).
+- Le push GitHub factory prépare les locks npm avant push
+  (`maybePushBrandRepos` → `prepareBrandDistribution`).
 
 ## Ressources
 

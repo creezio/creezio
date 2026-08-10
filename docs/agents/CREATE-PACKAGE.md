@@ -3,13 +3,13 @@
 Guide pas-à-pas pour ajouter un package natif au kit. Chaque étape est
 obligatoire : les derniers packages créés ont chacun raté au moins une
 étape de cette liste (gate non branchée, ordre de build absent, doc trio
-manquant, vendor non synchronisé…).
+manquant, changeset oublié…).
 
 ## Flux
 
 ```text
 squelette → build:packages (ordre) → dual CJS → trio doc → gate →
-enregistrements racine → sync vendor marques
+enregistrements racine → changeset → publication npm
 ```
 
 ## 1. Squelette `packages/<nom>/`
@@ -118,7 +118,7 @@ présent) + version lockstep alignée. Après merge sur `main`, le workflow
 
 | Piège | Règle |
 |---|---|
-| Sync partiel | **INTERDIT** `CREEZIO_VENDOR_PACKAGES=unPkg` — `rm -rf` vendor + `SYNC.json` tronqué. Toujours `npm run electron:sync-vendor` / liste complète. |
+| Changeset oublié | Tout changement de `packages/` dans une PR exige un changeset (`npx changeset`) — sinon pas de bump de version, contenu invisible pour les apps (gate CI `changeset-status`). |
 | zod v3/v4 | Ne **pas** ajouter `zod` aux dependencies — le hoisting npm résout la v3 attendue par le kit (une v4 locale casse les types croisés). Utiliser les helpers de `@creezio/tasks` qui encapsulent déjà zod. |
 | Domaine marque | Aucun métier TF/CV/Fidu dans un package natif — ADR [ADR-no-brand-domain-in-native-packages](../adr/ADR-no-brand-domain-in-native-packages.md). |
 | Electron dans un package pur | Seuls `electron-shell` / `app-runtime` touchent Electron ; les autres reçoivent leurs side effects par injection. |

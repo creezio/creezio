@@ -29,11 +29,10 @@ npm run fleet-collector -w @creezio/observability
 npx creezio-fleet-collector
 ```
 
-Marques (après vendor sync) :
+Marques (package npm installé) :
 
 ```bash
-node vendor/creezio/observability/fleet-collector/server.mjs
-# ou wrapper mince crm/scripts/fleet-collector/server.mjs
+node node_modules/@creezio/observability/fleet-collector/server.mjs
 ```
 
 ## Env (neutre + dual-read legacy)

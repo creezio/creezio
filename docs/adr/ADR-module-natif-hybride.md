@@ -3,6 +3,8 @@
 Statut : **accepté** (direction produit, 2026-08).
 Instances : `@creezio/landing` (référence), `@creezio/onboarding` (aligné).
 
+> Note 2026-08-10 : les mentions de `vendor/creezio` / sync ci-dessous décrivent le mécanisme de distribution de l'époque — remplacé par les packages npm ([../NPM-DISTRIBUTION.md](../NPM-DISTRIBUTION.md)). Le patron reste en vigueur.
+
 ## Contexte
 
 Certains modules doivent être **natifs** (toutes les apps Creezio les ont :

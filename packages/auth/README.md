@@ -72,6 +72,18 @@ configureAuth({
 
 `cookieName` est obligatoire avant tout appel a `getSession`, `sessionCookieOptions` ou `createHonoAuth`. `ownerPermissions` alimente les sessions owner et le mode `AUTH_DISABLED`.
 
+Options complémentaires :
+
+- `userAdminPermission` : les gardes `POST`/`PATCH` users acceptent le owner
+  OU une session collaborateur portant cette permission (défaut : owner-only).
+- `resolveBrandRole(userId, db)` : rôle métier marque exposé en session (ex.
+  `backoffice`, `pos`), résolu à la volée depuis la db métier de la marque —
+  jamais stocké dans le JWT. Servi par `GET /api/v1/auth/me` (champ
+  `brand_role`, résolu pour la cible en impersonation) et exposé côté UI via
+  `useSession().me.brandRole` (démo interactive par rôle, lanceurs
+  conditionnels…). Option absente = `brand_role` `null`. Le wiring
+  `app-runtime` passe automatiquement la db brand au resolver.
+
 Variables lues par le kit :
 
 | Variable | Usage |

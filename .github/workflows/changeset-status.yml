@@ -9,7 +9,7 @@ on:
 
 jobs:
   status:
-    # Exception unique : la PR de migration (bootstrap 0.4.0) bump à la main.
+    # Exception historique : la PR de migration bootstrap (feat/npm-distribution) bumpait à la main.
     if: github.head_ref != 'feat/npm-distribution'
     runs-on: ubuntu-latest
     timeout-minutes: 15

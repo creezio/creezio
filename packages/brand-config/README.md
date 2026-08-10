@@ -131,7 +131,7 @@ Options principales :
 - `clientSlim` : `true` par défaut ; `false` pour les apps qui gardent encore la stack locale dans le Client.
 - `nsisInclude` : force le fichier include NSIS (`installer.nsh` par défaut) ou `false`.
 - `iconDir` : dossier relatif des icônes `client.png` / `server.png`.
-- `packCreezioVendor` : embarque les packages runtime `@creezio/*` depuis `vendor/creezio/` dans l'asar.
+- `packCreezioVendor` : embarque les packages runtime `@creezio/*` (résolus depuis `node_modules`, walk-up workspaces) dans l'asar.
 - `winBinStage` : stage bins Windows serveur (défaut `.creezio/win-bin-stage` ou `CREEZIO_WIN_BIN_STAGE`).
 
 Packaging bins (parité TF2) :

@@ -5,7 +5,7 @@
 #   ce workflow ouvre/actualise la PR « Version Packages » →
 #   merge de cette PR → publication automatique des nouvelles versions.
 # Si aucun changeset n'est en attente, le job publie directement toute
-# version locale absente du registre (cas du bootstrap 0.4.0).
+# version locale absente du registre (cas du bootstrap initial).
 name: Publish
 
 on:

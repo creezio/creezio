@@ -37,7 +37,7 @@ Chaque `modules/<id>/` porte exactement ces 5 fichiers :
   vivent dans le repo kit (`scripts/test-phase-*.mjs`, CI kit) et ne sont
   JAMAIS dupliqués côté marque. La `gate.mjs` d'un module ne teste que le
   **métier** du module ; la marque ajoute des gates transversales
-  d'**intégration** (vendor-integrity, parcours, e1-smoke) dans
+  d'**intégration** (deps-integrity, parcours, e1-smoke) dans
   `server/scripts/`.
 - Découverte : `server/scripts/run-module-gates.mjs` énumère
   `<spec-root>/modules/*/gate.mjs` (hors `_template`) — un module sans

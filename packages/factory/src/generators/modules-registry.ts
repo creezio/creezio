@@ -739,7 +739,7 @@ Marque légère sur **OS Creezio** — monorepo client + server (layout 2 repos)
 - \`client/\` = desktop thin remote-only (main **sans** imports métier)
 - Admin flotte = **repo dédié privé** \`<brand>-admin\` (frère du monorepo) —
   jamais de \`admin/\` ici
-- \`vendor/creezio\` = kit partagé (symlinks \`server/vendor\`, \`client/vendor\`)
+- Kit \`@creezio/*\` = **packages npm versionnés** (GitHub Packages, auth \`CREEZIO_NPM_TOKEN\`) — plus de \`vendor/\` ni symlinks
 - Déclaration = migrations + \`registerModuleApi\` + feed + nav **métier**
 - Métier = **registre de modules** \`server/src/electron/modules/<id>.ts\`
   (un \`BrandModuleDef\` par module : entitySpecs, apiMounts, navItems,

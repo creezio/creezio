@@ -23,11 +23,11 @@ scripts/codemods/
 - Chaque script est un module Node (`.mjs`) lancé par
   `ROOT=<racine marque> node <script>` :
   - `ROOT` (env) = racine du clone marque à transformer (fichiers marque
-    uniquement — jamais `vendor/`, que le sync écrase juste après) ;
+    uniquement — jamais `node_modules/`, réinstallé au prochain `npm ci`) ;
   - **idempotent** : relancer le script sur une marque déjà migrée est un
-    no-op vert (le sync peut être rejoué) ;
-  - exit ≠ 0 = migration impossible → le sync s'arrête (la marque reste
-    intacte, le codemod s'exécute AVANT toute copie vendor).
+    no-op vert ;
+  - exit ≠ 0 = migration impossible → la marque reste intacte (le codemod
+    s'exécute AVANT le commit du lockfile bumpé).
 
 ## Checklist bump `ARCHITECTURE_VERSION` (docs/CONTRIBUTING-BRANDS.md)
 
@@ -35,7 +35,6 @@ scripts/codemods/
 2. `scripts/codemods/<nouvelleVersion>/manifest.json` + scripts (la gate
    `scripts/test-phase-arch-codemod.mjs` REFUSE un bump sans manifest) ;
 3. ADR dans `docs/adr/` expliquant le breaking change ;
-4. push sur `main` → chaque app consommatrice verra le bump dans son rapport
-   kit-compat (commit surligné ⚠️) et exécutera le codemod automatiquement
-   lors de son `vendor-update` (le sync détecte l'écart de version et
-   applique la migration).
+4. push sur `main` → publication npm ; chaque app consommatrice voit le bump
+   dans le CHANGELOG / la release et exécute les codemods lors de sa montée
+   de version (`npm update "@creezio/*"` + `ROOT=. node <codemod>`).

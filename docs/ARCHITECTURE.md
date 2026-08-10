@@ -3,8 +3,9 @@
 Creezio est un OS d'application métier : le kit (`packages/@creezio/*`)
 fournit le socle complet, les marques n'apportent que leur métier (migrations,
 `registerModuleApi`, feed catalogue, nav `brand.*`, BrandSpec). Une marque
-consomme le kit par copie vendored (`vendor/creezio` à la racine du repo
-marque), jamais par dépendance npm publique.
+consomme le kit en **packages npm versionnés** (`@creezio/*` publiés sur
+GitHub Packages, registry privé de l'org — voir
+[NPM-DISTRIBUTION.md](./NPM-DISTRIBUTION.md)).
 
 ## Layout marque — 2 repos (LA norme)
 
@@ -15,8 +16,6 @@ Chaque marque générée par la factory = **2 repos GitHub privés** :
 ```text
 <marque>/
 ├── brand-spec/     # SoT marque
-├── vendor/creezio/ # kit synchronisé, partagé (server/vendor = symlink,
-│                   # client/vendor = copie hardlink stagée par le sync)
 ├── server/         # livrable principal : métier src/electron, ui/ Next,
 │                   # harness, scripts, cible du Dockerfile serveur
 ├── client/         # desktop thin remote-only : main client-only (sans

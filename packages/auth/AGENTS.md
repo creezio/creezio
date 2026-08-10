@@ -85,6 +85,10 @@ La marque doit fournir :
 - `configureShellUiBrand({ desktopApiGlobal })` si l'UI tourne en desktop ;
 - binding IPC Electron si necessaire.
 
+Optionnel : `resolveBrandRole` (rôle métier en session — `GET /me` renvoie
+`brand_role`, UI `useSession().me.brandRole`) et `userAdminPermission`
+(garde users owner OU permission). Voir README § Configuration.
+
 ## Tests / gates
 
 Commandes utiles :

@@ -3,7 +3,7 @@
 ## Mission
 
 Garantir que le kit reste cohérent : packages présents, frontières kit/marque
-sans régression, docs fraîches, sync vendor possible. Les journaux d'époque
+sans régression, docs fraîches, publication npm possible. Les journaux d'époque
 des phases (`PHASE-*.md`) vivent dans [`../docs/archive/`](../docs/archive/) —
 ils décrivent le chantier, pas l'état courant.
 
@@ -24,7 +24,7 @@ ils décrivent le chantier, pas l'état courant.
 | `generate-files-md.mjs` | Génère/rafraîchit les `docs/FILES.md` (standard `docs/DOC-STANDARD.md`) |
 | `lib/brand-roots.mjs` | Résolution chemins brands + kit |
 | `lib/intention-twins.mjs` | Scanner jumeaux intention (P0) |
-| `lib/assert-runtime-dist.mjs` | Fail-closed dist runtime (content + mtime) — sync / publish / gate ADR.1b-gen |
+| `lib/assert-runtime-dist.mjs` | Fail-closed dist runtime (contrats + hash de contenu src↔dist) — publish / gate ADR.1b-gen |
 | `test-phase-*.mjs` | Gates — une phase / un contrat |
 
 ## Ajouter une gate
@@ -63,9 +63,9 @@ ils décrivent le chantier, pas l'état courant.
 
 ## Dist runtime stale (fail-closed)
 
-`dist/` est gitignoré. Après modif `packages/*/src` consommée par sync /
-publish : **`npm run build:packages`** avant tout resync marque ou
-`creezio server-docker publish|build`. Sinon vendor/image sans routes
+`dist/` est gitignoré. Après modif `packages/*/src` consommée par les apps
+(packages publiés) : **`npm run build:packages`** avant toute release ou
+`creezio server-docker publish|build`. Sinon package/image sans routes
 (vécu Admin Database).
 
 - Gate : `test-phase-runtime-dist-freshness` (`test:kit`) — SoT
@@ -89,7 +89,7 @@ timeouts en conséquence.
 
 Les gates marques peuvent pointer vers `/opt/docker/<brand>` ou
 `/agent/repos/<brand>` via `brand-roots.mjs`. Sur agents cloud, un symlink
-`/opt/docker/creezio → repo` est souvent requis pour le sync.
+`/opt/docker/creezio → repo` est souvent requis pour le CLI `server-docker`.
 
 ## Liens
 
