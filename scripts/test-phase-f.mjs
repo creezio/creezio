@@ -175,7 +175,11 @@ test("inventaire kit local", () => {
   assert.ok(inv.packages.length >= 8);
   const prop = inv.packages.find((p) => p.name === "@creezio/propagation");
   assert.ok(prop?.local);
-  assert.equal(prop.version, "0.1.0");
+  // Version lue depuis le package (bumpee par changesets a chaque release).
+  const propPkg = JSON.parse(
+    fs.readFileSync(path.join(ROOT, "packages/propagation/package.json"), "utf8"),
+  );
+  assert.equal(prop.version, propPkg.version);
   const hints = publishedHintsFromInventory(inv);
   assert.ok(hints.every((h) => h.publishChannel === "workspace-local"));
 });
