@@ -1,5 +1,7 @@
 # AGENTS — monorepo `creezio`
 
+> **Agents/devs : lisez d'abord [docs/RUNBOOK-AGENTS.md](./docs/RUNBOOK-AGENTS.md)** — topologie serveurs, release kit→apps, runners, gates CI, deploy, cookbook incidents.
+
 Guide pour agents IA travaillant sur le kit plateforme `@creezio/*`.
 
 ## Mission du repo

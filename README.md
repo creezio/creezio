@@ -1,5 +1,7 @@
 # Creezio — OS desktop & serveur pour marques
 
+> **Agents/devs : lisez d'abord [docs/RUNBOOK-AGENTS.md](./docs/RUNBOOK-AGENTS.md)** — topologie serveurs, release kit→apps, runners, gates CI, deploy, cookbook incidents.
+
 Creezio est un **kit plateforme** (monorepo `@creezio/*`) : un « OS » complet
 d'application métier — auth, shell UI, API, MCP, assistant IA, tâches, mails,
 observabilité, plugins, runtime Electron, serveur Docker headless — que des
