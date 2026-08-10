@@ -94,6 +94,7 @@
 | [`ui/lib/hermes-ui.ts`](../ui/lib/hermes-ui.ts) | _(pas de cartouche JSDoc en tête — voir le code)_ |
 | [`ui/lib/n8n-ui.ts`](../ui/lib/n8n-ui.ts) | _(pas de cartouche JSDoc en tête — voir le code)_ |
 | [`ui/lib/use-creezio-resource.tsx`](../ui/lib/use-creezio-resource.tsx) | (à documenter) |
+| [`ui/lib/use-shell-ui-brand.ts`](../ui/lib/use-shell-ui-brand.ts) | (à documenter) |
 
 ## `ui/os-pages/`
 

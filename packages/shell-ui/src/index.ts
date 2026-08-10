@@ -17,12 +17,13 @@ export type {
 export { createNavShellAdapter } from "./adapters/nav-shell.js";
 
 /* ── O9 : brand + libs plateforme ── */
-export type { ShellUiBrand } from "./brand.js";
+export type { ShellUiBrand, ShellUiLoginBrand } from "./brand.js";
 export {
   configureShellUiBrand,
   getShellUiBrand,
   getShellDesktopApi,
   resetShellUiBrandForTests,
+  subscribeShellUiBrand,
 } from "./brand.js";
 
 export {

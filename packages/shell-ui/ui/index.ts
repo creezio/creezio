@@ -51,6 +51,8 @@ export * from "./primitives/chart";
 
 /* ── Lib client ── */
 export * from "./lib/aid";
+export { useShellUiBrand } from "./lib/use-shell-ui-brand";
+export type { ShellUiLoginBrand } from "../dist/brand.js";
 export * from "./lib/desktop-host";
 export * from "./lib/n8n-ui";
 export * from "./lib/hermes-ui";
