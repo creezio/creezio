@@ -1,5 +1,12 @@
 # @creezio/support
 
+## 0.8.0
+
+### Patch Changes
+
+- Updated dependencies [848ec06]
+  - @creezio/api-kernel@0.8.0
+
 ## 0.7.1
 
 ### Patch Changes
