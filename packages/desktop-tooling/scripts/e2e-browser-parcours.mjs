@@ -31,6 +31,20 @@ const creezioRoot =
     ? "/opt/docker/creezio"
     : path.resolve(root, "../creezio"));
 
+// Résolution hoist-safe des packages @creezio : import nu (résolu depuis CE
+// script publié → node_modules effectif, quel que soit le hoisting workspaces),
+// repli path-based pour les layouts legacy (vendor/, server/node_modules).
+async function importCreezio(pkgName) {
+  try {
+    return await import(pkgName);
+  } catch {
+    return await import(
+      pathToFileURL(path.join(root, "node_modules", pkgName, "dist/index.js"))
+        .href,
+    );
+  }
+}
+
 const tmpBase = process.env.TMPDIR || path.join(root, ".tmp");
 fs.mkdirSync(tmpBase, { recursive: true });
 
@@ -106,14 +120,7 @@ function portFree(port) {
 async function findFreePort() {
   // Prefer kit helper if available
   try {
-    const mod = await import(
-      pathToFileURL(
-        path.join(
-          root,
-          "node_modules/@creezio/platform-core/dist/index.js",
-        ),
-      ).href
-    );
+    const mod = await importCreezio("@creezio/platform-core");
     if (typeof mod.findFreePort === "function") return mod.findFreePort();
   } catch {
     /* */
@@ -158,11 +165,7 @@ async function resolveUiPort() {
 }
 
 async function main() {
-  const { startBrandUiPlane } = await import(
-    pathToFileURL(
-      path.join(root, "node_modules/@creezio/app-runtime/dist/index.js"),
-    ).href
-  );
+  const { startBrandUiPlane } = await importCreezio("@creezio/app-runtime");
 
   const apiPort = await resolveApiPort();
   const uiPort = await resolveUiPort();
