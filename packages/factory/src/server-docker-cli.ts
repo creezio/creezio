@@ -2426,16 +2426,19 @@ async function runRegistrySubcommand(
 
     const kc = stack.readKernelTunnelConfig(paths.brandRoot, inst, brandId);
     const brandDotEnv = readEnvFileValues(path.join(paths.brandRoot, ".env"));
+    // Priorite : env process > env instance (registre — provisioner reel
+    // de l instance) > .env marque (peut viser un endpoint public legacy
+    // qui ignore serviceHost — resto-lyon : ingress reste sur 127.0.0.1).
     const provUrl = (
       env.CREEZIO_TUNNEL_PROVISION_URL ||
-      brandDotEnv.CREEZIO_TUNNEL_PROVISION_URL ||
       inst.env?.CREEZIO_TUNNEL_PROVISION_URL ||
+      brandDotEnv.CREEZIO_TUNNEL_PROVISION_URL ||
       ""
     ).trim();
     const provToken = (
       env.CREEZIO_TUNNEL_PROVISION_TOKEN ||
-      brandDotEnv.CREEZIO_TUNNEL_PROVISION_TOKEN ||
       inst.env?.CREEZIO_TUNNEL_PROVISION_TOKEN ||
+      brandDotEnv.CREEZIO_TUNNEL_PROVISION_TOKEN ||
       ""
     ).trim();
     let tunnel:
