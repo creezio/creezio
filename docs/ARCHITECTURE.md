@@ -174,6 +174,14 @@ n'ajoute que ses pages métier.
   `@creezio/app-runtime` (`hermes-mcp-host-tools`), `@creezio/tasks`,
   `@creezio/platform-core` (`web-allowlist`).
 
+## Manifeste des packages publiés (`kit-packages.json`)
+
+`packages/platform-core/kit-packages.json` liste les packages `@creezio/*`
+publiés (généré par `scripts/generate-kit-packages.mjs` à chaque build,
+fraîcheur garantie par la gate `test-phase-kit-packages-manifest`). Les apps
+le lisent via `node_modules/@creezio/platform-core/kit-packages.json` (gate
+deps-integrity) — plus de liste en dur à maintenir dans chaque app.
+
 ## Contrôle d'accès (`@creezio/access-control`)
 
 Visibilité des modules et de la sidebar **par rôle**, administrable en UI

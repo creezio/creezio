@@ -6,6 +6,7 @@
 "@creezio/app-runtime": minor
 "@creezio/factory": minor
 "@creezio/os-ui": minor
+"@creezio/platform-core": minor
 ---
 
 Module natif `@creezio/access-control` : visibilité modules/sidebar par rôle,
@@ -17,6 +18,9 @@ administrable en UI.
   (cache 30 s invalidé aux écritures), API `/api/v1/access/*` gardée par
   `platform.access.manage`, UI admin « Rôles & accès » (matrice, comptes,
   journal).
+- - **platform-core** : manifeste `kit-packages.json` (liste officielle des
+  packages publiés, généré au build, gate de fraîcheur) — les gates
+  deps-integrity des apps le lisent au lieu de listes en dur.
 - **auth** : adaptateur `resolveEffectivePermissions` — `/me` et les JWT
   mintés (login, impersonation) embarquent les permissions résolues
   dynamiquement quand la marque configure access-control.
