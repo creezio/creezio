@@ -69,6 +69,40 @@ export type AuthRouteAdapters = {
   resolveBrandRole?: (
     userId: string,
   ) => string | null | Promise<string | null>;
+  /**
+   * Résolution DYNAMIQUE des permissions effectives (module natif
+   * @creezio/access-control) — injectée par app-runtime quand la marque
+   * configure access-control. /me sert alors la valeur résolue (défauts de
+   * rôle + overrides DB, cache court) au lieu du claim JWT, et les tokens
+   * mintés (login / impersonate) embarquent la valeur fraîche — un toggle
+   * admin est effectif à la prochaine requête / reconnexion, sans toucher
+   * au référentiel (creezio_platform_users.permissions devient donnée
+   * historique inerte pour ces marques). Absent = comportement historique
+   * (permissions figées), octet pour octet.
+   */
+  resolveEffectivePermissions?: (
+    userId: string,
+    kitRole: "owner" | "collaborator",
+  ) => readonly string[] | Promise<readonly string[]>;
+};
+
+/** Permissions résolues dynamiquement si l'adaptateur est présent. */
+async function effectivePermissions(
+  adapters: AuthRouteAdapters,
+  user: { id: string; role: string },
+  fallback: readonly string[],
+): Promise<string[]> {
+  if (!adapters.resolveEffectivePermissions) return [...fallback];
+  try {
+    return [
+      ...(await adapters.resolveEffectivePermissions(
+        user.id,
+        user.role === "owner" ? "owner" : "collaborator",
+      )),
+    ];
+  } catch {
+    return [...fallback]; // fail-open : jamais de 500 sur /me ou login
+  }
 };
 
 const ErrorSchema = z.object({ error: z.string() }).openapi("AuthError");
@@ -188,7 +222,14 @@ export function createAuthRoutes(
       if (!user) {
         return c.json({ error: "Identifiants invalides" }, 401);
       }
-      const token = await createSessionToken({ user });
+      const permissions = await effectivePermissions(
+        adapters,
+        user,
+        user.permissions,
+      );
+      const token = await createSessionToken({
+        user: { ...user, permissions },
+      });
       const opts = sessionCookieOptions(token, {
         secure: adapters.resolveCookieSecure(c),
       });
@@ -271,6 +312,11 @@ export function createAuthRoutes(
       const actor = session.actorSub
         ? adapters.getUserById(session.actorSub)
         : null;
+      const permissions = await effectivePermissions(
+        adapters,
+        { id: session.sub, role: session.role },
+        session.permissions,
+      );
       /* Rôle métier marque (configureAuth.resolveBrandRole) — best effort :
        * un resolver en échec ne doit JAMAIS faire échouer /me. */
       let brandRole: string | null = null;
@@ -286,7 +332,7 @@ export function createAuthRoutes(
           user_id: session.sub,
           role: session.role,
           kind: me?.kind || "human",
-          permissions: session.permissions,
+          permissions,
           impersonating: sessionIsImpersonating(session),
           brand_role: brandRole,
           actor: actor
@@ -322,8 +368,16 @@ export function createAuthRoutes(
     if (!targetActive || target?.role === "owner" || !actor) {
       return c.json({ error: "Collaborateur introuvable" }, 404);
     }
+    const targetPermissions = await effectivePermissions(
+      adapters,
+      target!,
+      target!.permissions,
+    );
     const opts = sessionCookieOptions(
-      await createSessionToken({ user: target!, actor }),
+      await createSessionToken({
+        user: { ...target!, permissions: targetPermissions },
+        actor,
+      }),
       { secure: adapters.resolveCookieSecure(c) },
     );
     setCookie(c, opts.name, opts.value, toHonoCookie(opts));

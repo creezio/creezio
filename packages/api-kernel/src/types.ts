@@ -44,6 +44,20 @@ export type ApiAuthorizePluginAccessFn = (ctx: {
   req: ApiRequest;
 }) => ApiPluginAccessDecision | Promise<ApiPluginAccessDecision>;
 
+/**
+ * Garde permission déclarée par un mount module/platforme (`permission`).
+ * Implémentée par app-runtime : session cookie/Bearer → owner ou permission
+ * effective (résolution access-control si configuré, sinon claim JWT).
+ */
+export type ApiAuthorizeModuleAccessFn = (ctx: {
+  space: Exclude<ApiSpace, "core" | "plugin">;
+  mountId: string;
+  permission: string;
+  method: string;
+  subPath: string;
+  req: ApiRequest;
+}) => ApiPluginAccessDecision | Promise<ApiPluginAccessDecision>;
+
 export type ApiResponse = {
   status: number;
   headers?: Record<string, string>;
@@ -70,6 +84,13 @@ export type ApiMountHandler = (
 
 export type ApiMount = {
   handle: ApiMountHandler;
+  /**
+   * Permission requise pour appeler ce mount (ex. "nav.crm"). Vérifiée par
+   * le hook `authorizeModuleAccess` du kernel (401 sans session, 403 sans
+   * la permission) — la sidebar n'est plus la seule frontière. Absente =
+   * pas de contrôle au-delà de la garde session de bordure.
+   */
+  permission?: string;
   /**
    * Si true, le handler peut recevoir des écritures cross-space
    * (défaut false = deny-by-default).
@@ -101,6 +122,11 @@ export type ApiKernelOptions = {
    * Absent ⇒ compat H2/H4 (pas de filtre org).
    */
   authorizePluginAccess?: ApiAuthorizePluginAccessFn;
+  /**
+   * Garde permissions des mounts `permission` (modules + platform).
+   * Absent ⇒ les `permission` déclarées ne sont PAS vérifiées (compat).
+   */
+  authorizeModuleAccess?: ApiAuthorizeModuleAccessFn;
 };
 
 export type MountedApiInfo = {
@@ -108,4 +134,6 @@ export type MountedApiInfo = {
   id: string;
   allowCrossWrite: boolean;
   dbLayer: "core" | "brand" | "plugin";
+  /** Permission déclarée par le mount, si présente. */
+  permission?: string;
 };

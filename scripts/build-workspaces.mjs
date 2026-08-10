@@ -102,6 +102,9 @@ for (const name of order) {
   execSync(`npm run build -w ${name}`, { cwd: root, stdio: "inherit" });
 }
 execSync("node scripts/build-cjs.mjs", { cwd: root, stdio: "inherit" });
+// Manifeste des packages publiés (consommé par les gates deps-integrity des
+// apps via node_modules/@creezio/platform-core/kit-packages.json).
+execSync("node scripts/generate-kit-packages.mjs", { cwd: root, stdio: "inherit" });
 // Manifest src-hash (garde assert-runtime-dist) : preuve par CONTENU que le
 // dist reflète le src — les mtimes ne sont pas fiables (constat tempoflow-vps).
 const manifested = writeSrcHashManifests(root);

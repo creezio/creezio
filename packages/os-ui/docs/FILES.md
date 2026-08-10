@@ -4,6 +4,12 @@
 > `node scripts/generate-files-md.mjs os-ui` (gate `test-phase-docs-freshness`).
 > Colonne « Rôle » éditable à la main : la régénération la préserve.
 
+## `routes/admin/access/`
+
+| Fichier | Rôle |
+|---|---|
+| [`routes/admin/access/page.tsx`](../routes/admin/access/page.tsx) | Page admin « Rôles & accès » (wrapper AccessAdminClient @creezio/access-control/ui) |
+
 ## `routes/admin/analytics/`
 
 | Fichier | Rôle |

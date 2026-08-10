@@ -12,6 +12,7 @@
 | [`build-workspaces.mjs`](../build-workspaces.mjs) | Build unifié des workspaces (tsc + dual CJS) — SoT du script npm build:packages. |
 | [`clean.mjs`](../clean.mjs) | (à documenter) |
 | [`generate-files-md.mjs`](../generate-files-md.mjs) | Générateur des inventaires `docs/FILES.md` — format standard du kit. |
+| [`generate-kit-packages.mjs`](../generate-kit-packages.mjs) | Génère/vérifie packages/platform-core/kit-packages.json (manifeste des packages publiés, consommé par les apps) |
 | [`kit-version.mjs`](../kit-version.mjs) | !usrbinenv node |
 | [`propagation-impact.mjs`](../propagation-impact.mjs) | !usrbinenv node |
 | [`reset-tempoflow3.mjs`](../reset-tempoflow3.mjs) | Reset scripté TempoFlow3 : backup → brand apply --force → les fichiers creezio:owned-by-brand / creezio.ownedByBrand sont préservés. |
@@ -38,6 +39,7 @@
 | [`test-os-shell.mjs`](../test-os-shell.mjs) | Agrégat test:shell kit — contrats + surfaces BYOK/recovery/updater/tunnel. |
 | [`test-os-tunnel-provision.mjs`](../test-os-tunnel-provision.mjs) | Gate OS — resolveTunnelProvision (envPrefix / CREEZIO_TUNNEL_PROVISION_*). |
 | [`test-os-updater.mjs`](../test-os-updater.mjs) | Gate OS — reduceur updater (port TF2 test:updater), sans Electron. |
+| [`test-phase-access-control.mjs`](../test-phase-access-control.mjs) | Gate @creezio/access-control : résolution rôles+overrides, cache, garde API /access, matrice, comptes, audit |
 | [`test-phase-admin-billing.mjs`](../test-phase-admin-billing.mjs) | Gate — module billing admin (@creezio/admin) : webhook + réconciliation. |
 | [`test-phase-admin-database-runtime.mjs`](../test-phase-admin-database-runtime.mjs) | Gate Admin Database runtime : stores `core`+`brand` auto-enregistrés + `GET /database/dbs` |
 | [`test-phase-admin-fleet-registry.mjs`](../test-phase-admin-fleet-registry.mjs) | Gate — module fleet-registry (@creezio/admin) : DB flotte centrale (F2). |
@@ -99,6 +101,7 @@
 | [`test-phase-instance-stack.mjs`](../test-phase-instance-stack.mjs) | (à documenter) |
 | [`test-phase-integrations.mjs`](../test-phase-integrations.mjs) | Gate — intégrations / clés API tierces (ADR-integrations-store). |
 | [`test-phase-interactive-demo.mjs`](../test-phase-interactive-demo.mjs) | Gate @creezio/interactive-demo : patron hybride (migrations, merge défauts/overrides, mount scenarios/preferences), validation de scénario, scénario générique OS, surface UI |
+| [`test-phase-kit-packages-manifest.mjs`](../test-phase-kit-packages-manifest.mjs) | Gate : manifeste kit-packages.json à jour (rattrapage : generate-kit-packages.mjs) |
 | [`test-phase-landing.mjs`](../test-phase-landing.mjs) | Gate — module natif hybride « landing page » (ADR-module-natif-hybride). |
 | [`test-phase-m0.mjs`](../test-phase-m0.mjs) | Phase M0 — baseline vision stricte : inventaire + freeze anti-stub. |
 | [`test-phase-m1.mjs`](../test-phase-m1.mjs) | Phase M1 — cutover Database TF sans shims (vision stricte). |

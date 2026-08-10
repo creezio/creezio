@@ -37,7 +37,8 @@
     "@creezio/shell-ui": "^0.7.1",
     "@creezio/support": "^0.7.1",
     "@creezio/tasks": "^0.7.1",
-    "hono": "^4.12.33"
+    "hono": "^4.12.33",
+    "@creezio/access-control": "^0.7.1"
   },
   "peerDependencies": {
     "electron": ">=28"

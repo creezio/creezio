@@ -174,6 +174,35 @@ n'ajoute que ses pages métier.
   `@creezio/app-runtime` (`hermes-mcp-host-tools`), `@creezio/tasks`,
   `@creezio/platform-core` (`web-allowlist`).
 
+## Contrôle d'accès (`@creezio/access-control`)
+
+Visibilité des modules et de la sidebar **par rôle**, administrable en UI
+(sans redéploiement) :
+
+- **Rôles déclaratifs** — la marque déclare `roles` (id, label,
+  `defaultPermissions`) et le catalogue `permissionGroups` via
+  `configureAccessControl` au boot. C'est la seule part « config ».
+- **Overrides en DB** (core.db) — `access_role_overrides`
+  (`role, permission, effect allow|deny, updated_by, updated_at`) :
+  un `deny` retire une permission du défaut, un `allow` en ajoute une.
+  `access_user_roles` = assignation rôle ↔ compte (sauf si la marque a sa
+  source de vérité métier via les adaptateurs `getUserRole`/`setUserRole`).
+  `access_audit_log` = qui a changé quoi, quand.
+- **Résolution dynamique** — `resolvePermissions(userId, brandRole)` =
+  défauts du rôle + overrides, cache mémoire 30 s invalidé à chaque
+  écriture. Consommée par `/api/v1/auth/me`, par les JWT mintés (login,
+  impersonation) et par la garde API kernel.
+- **Garde API** — un mount peut déclarer `permission` (`ApiMount`) ; le
+  kernel vérifie via `authorizeModuleAccess` (401 sans session, 403 sans
+  la permission) — la sidebar n'est plus la seule frontière.
+- **UI native** — écran « Rôles & accès » (`/admin/access`, entrée de nav
+  admin filtrée par la permission `platform.access.manage`) : matrice
+  rôles × permissions groupées par module, gestion des rôles des comptes,
+  journal d'audit. Le rôle owner est figé (tous les accès, toujours).
+
+Sans `configureAccessControl` au boot marque, le module est inerte :
+comportement historique (permissions figées) inchangé.
+
 ## Propagation kit → marques
 
 1. Modifier le kit, `npm run build:packages`, gates vertes (`test:kit`).

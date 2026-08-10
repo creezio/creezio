@@ -3,6 +3,11 @@ export type SidebarNavItem = {
   label: string;
   icon: any;
   fromShell?: boolean;
+  /**
+   * Permission requise pour voir l'entrée primaire (ex. "nav.panier") —
+   * filtrée sur me.permissions comme les entrées admin. Absente = visible.
+   */
+  permission?: string | null;
 };
 
 export type SidebarAdminItem = {
