@@ -29,6 +29,14 @@ export type ServerRegistryInstance = {
   env?: Record<string, string>;
   /** Variant image (base par défaut ; browser = sidecar navigateur IA). */
   variant?: ServerVariant;
+  /**
+   * Stack compose autonome (M2) : app + cloudflared sidecar, ports internes
+   * fixes (18791), port hôte loopback auto (hostPort 0/absent) ou fixe.
+   * Absent/false = legacy `docker run` (port hôte = inst.port).
+   */
+  stack?: boolean;
+  /** Port hôte fixe loopback (0/absent = attribution auto en mode stack). */
+  hostPort?: number;
 };
 
 export type ServerRegistry = {

@@ -249,6 +249,21 @@ async function cmdDev(appRoot) {
     if (b.status !== 0) fail("build kernel en échec (voir erreurs ci-dessus)");
   }
 
+  // Pages OS fraîches (Q5) : le dev-stack lance `next dev` directement —
+  // le hook predev de server/ui est contourné, donc materialize tourne ici
+  // (idempotent, <1s) : jamais de pages stale ou absentes au premier dev.
+  const materialize = path.join(server, "scripts", "materialize-os-ui.mjs");
+  if (fs.existsSync(materialize)) {
+    const m = spawnSync(process.execPath, [materialize], {
+      cwd: server,
+      stdio: "inherit",
+      env: process.env,
+    });
+    if (m.status !== 0) {
+      fail("os-ui:materialize en échec — pages OS non matérialisées");
+    }
+  }
+
   const dataDir = process.env.METIER_DATA_DIR || path.join(stateDir(appRoot), "data");
   fs.mkdirSync(dataDir, { recursive: true });
 

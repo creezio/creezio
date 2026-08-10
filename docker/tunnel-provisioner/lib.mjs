@@ -207,12 +207,17 @@ export function normalizePorts(raw, defaults) {
 /**
  * Règles ingress complètes (PUT remplace toute la config).
  *
- * crm/n8n/hermes pointent 127.0.0.1 (cloudflared tourne DANS le container
- * serveur). L'entrée `agent` pointe l'agent hôte flotte — hors container —
- * joignable depuis le container via la gateway bridge Docker (172.17.0.1).
+ * crm/n8n/hermes pointent `opts.serviceHost` (défaut 127.0.0.1 — cloudflared
+ * dans le container serveur). Modèle stack compose (M2) : serviceHost = "app"
+ * (nom de service du stack, cloudflared sidecar). L'entrée `agent` pointe
+ * l'agent hôte flotte — hors stack — joignable via host.docker.internal
+ * (extra_hosts host-gateway) ou la gateway bridge historique (172.17.0.1).
  */
 export function buildIngressRules(hostname, ports, agent, opts) {
   const hostOpts = { hostMode: hostModeFromOpts(opts) };
+  // Hôte des services crm/n8n/hermes : 127.0.0.1 (cloudflared in-container,
+  // historique) ou "app" (stack compose M2 — sidecar joint le service par nom).
+  const svcHost = String(opts?.serviceHost || "127.0.0.1").trim() || "127.0.0.1";
   const svcRule = (svcHostname, service) => ({
     hostname: svcHostname,
     service,
@@ -221,19 +226,19 @@ export function buildIngressRules(hostname, ports, agent, opts) {
   if (opts?.embeds === false) {
     // Réservation brand-web (ex. lp.{zone}) : un seul service HTTP local.
     return [
-      svcRule(hostname, `http://127.0.0.1:${ports.crmPort}`),
+      svcRule(hostname, `http://${svcHost}:${ports.crmPort}`),
       { service: "http_status:404" },
     ];
   }
   const rules = [
-    svcRule(hostname, `http://127.0.0.1:${ports.crmPort}`),
+    svcRule(hostname, `http://${svcHost}:${ports.crmPort}`),
     svcRule(
       serviceHostname(hostname, "n8n", hostOpts),
-      `http://127.0.0.1:${ports.n8nPort}`,
+      `http://${svcHost}:${ports.n8nPort}`,
     ),
     svcRule(
       serviceHostname(hostname, "hermes", hostOpts),
-      `http://127.0.0.1:${ports.hermesPort}`,
+      `http://${svcHost}:${ports.hermesPort}`,
     ),
   ];
   if (agent && agent.port) {

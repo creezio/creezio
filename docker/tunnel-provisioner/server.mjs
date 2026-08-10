@@ -306,7 +306,7 @@ async function ensureTunnelDns(env, slug, hostname, tunnelId, opts) {
     );
   }
 }
-async function reserveSlug(slug, installId, portsIn, env, kind) {
+async function reserveSlug(slug, installId, portsIn, env, kind, serviceHost) {
   // Zone-level (brand-web lp.{zone}, registry.{zone}) : un seul ingress
   // HTTP, pas d'embeds/wildcard/e-mail.
   const zoneLevel = isZoneLevelKind(kind);
@@ -333,6 +333,7 @@ async function reserveSlug(slug, installId, portsIn, env, kind) {
   await putIngress(env, tunnelId, hostname, ports, null, {
     embeds: !zoneLevel,
     hostMode,
+    ...(serviceHost ? { serviceHost } : {}),
   });
   await ensureTunnelDns(env, slug, hostname, tunnelId, {
     wildcard: !zoneLevel,
@@ -365,6 +366,7 @@ async function reserveSlug(slug, installId, portsIn, env, kind) {
     agent: null,
     publicUrls,
     emailDomain,
+    ...(serviceHost ? { serviceHost } : {}),
     reservedAt: new Date().toISOString(),
   };
   writeState(slug, state);
@@ -510,6 +512,7 @@ async function handle(req, res) {
       body,
       env,
       body.kind || undefined,
+      String(body.serviceHost || "").trim() || undefined,
     );
     return send(res, r.ok ? 200 : 409, r);
   }
@@ -536,9 +539,14 @@ async function handle(req, res) {
         ? resolveTunnelHostMode(body.hostMode)
         : resolveTunnelHostMode();
     const agent = zoneLevel ? null : agentFromBody(body, st);
+    // Stack compose (M2) : serviceHost="app" — le sidecar cloudflared joint
+    // le service par nom. Persisté en state pour les re-configures suivants.
+    const serviceHost =
+      String(body.serviceHost || "").trim() || st?.serviceHost || undefined;
     const ports = await putIngress(env, tunnelId, hostname, portsIn, agent, {
       embeds: !zoneLevel,
       hostMode,
+      ...(serviceHost ? { serviceHost } : {}),
     });
     if (slug) {
       try {
@@ -567,6 +575,7 @@ async function handle(req, res) {
     const inboundSecret = emailInboundSecret(env);
     if (st && slug) {
       st.localPort = ports.crmPort;
+      if (serviceHost) st.serviceHost = serviceHost;
       st.ports = ports;
       st.agent = agent;
       st.hostMode = zoneLevel ? "nested" : hostMode;

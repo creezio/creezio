@@ -106,6 +106,14 @@ export type ServerDockerArgs = {
   bindHosts?: string;
   /** admin up : racine admin indépendante du brand-root (repo admin dédié). */
   adminRoot?: string;
+  /**
+   * create : stack compose autonome app+cloudflared (M2) — DÉFAUT.
+   * --no-stack = legacy `docker run` (port hôte fixe registre).
+   */
+  stack?: boolean;
+  noStack?: boolean;
+  /** create/migrate-stack : port hôte loopback FIXE (défaut 0 = auto). */
+  hostPort?: number;
   rest: string[];
 };
 
@@ -147,6 +155,10 @@ export function parseServerDockerArgs(argv: string[]): ServerDockerArgs {
     } else if (a === "--profile") {
       out.profile = (rest.shift() || "") as ServerDockerArgs["profile"];
     }
+    else if (a === "--stack") out.stack = true;
+    else if (a === "--no-stack") out.noStack = true;
+    else if (a.startsWith("--host-port=")) out.hostPort = Number(a.slice(12));
+    else if (a === "--host-port") out.hostPort = Number(rest.shift());
     else if (a === "--purge-data") out.purgeData = true;
     else if (a === "--backup") out.backup = true;
     else if (a === "--follow" || a === "-f") out.follow = true;
@@ -238,6 +250,19 @@ Instances nommées (registre docker-data/servers.json — recommandé) :
     (one-shot : tar.gz de référence de /data → docker-data/backups/ —
      à faire une fois ; les updates suivants ne le remplacent pas.)
 
+Stack compose autonome (M2 — modèle standard) :
+  create génère par défaut un stack compose par instance : app (port interne
+  fixe 18791) + cloudflared sidecar (tunnel.env chmod 600), port hôte
+  loopback auto 127.0.0.1::18791 (debug/healthcheck), zéro port public.
+    --no-stack : legacy docker run (port hôte fixe du registre)
+    --host-port N : port hôte loopback FIXE au lieu de l'attribution auto
+  creezio server-docker migrate-stack <nom> --brand-root <app> [--host-port N]
+    (bascule une instance legacy en stack : backup /data obligatoire →
+     ingress tunnel repointé http://app:18791 → compose up → health →
+     rollback legacy automatique si KO. Token tunnel lu du store kernel
+     /data — jamais affiché. Provisioner requis pour le repointage ingress :
+     CREEZIO_TUNNEL_PROVISION_URL/_TOKEN env ou .env marque.)
+
 Admin web multi-serveurs / multi-VPS (fleet-collector étendu) :
   creezio server-docker admin up|down|status --brand-root <app> [--port 18800]
   creezio server-docker admin up --admin-root <repo-admin> [--brand-root <app>]
@@ -310,6 +335,75 @@ function ensureDocker(): void {
   if (c.status !== 0) {
     throw new Error("docker compose introuvable — installer le plugin Compose v2");
   }
+}
+
+/**
+ * Module stack compose (M2) — SoT `instance-stack.mjs` (fleet-collector),
+ * partagée avec server-lib.mjs (update stack-aware). Import dynamique : le
+ * module vit dans le clone kit du VPS (pas de dist factory).
+ */
+async function importInstanceStack(kit: string) {
+  const p = path.join(
+    kit,
+    "packages/observability/fleet-collector/instance-stack.mjs",
+  );
+  if (!fs.existsSync(p)) {
+    throw new Error(`instance-stack introuvable: ${p}`);
+  }
+  return (await import(pathToFileURL(p).href)) as {
+    STACK_APP_PORT: number;
+    writeInstanceStack: (opts: {
+      brandRoot: string;
+      brandId: string;
+      image: string;
+      inst: ServerRegistryInstance;
+      tunnel?: { token: string; hostname?: string; tunnelId?: string };
+    }) => { dir: string; composeFile: string; withTunnel: boolean };
+    stackUp: (
+      brandRoot: string,
+      inst: ServerRegistryInstance,
+      opts?: { quiet?: boolean },
+    ) => void;
+    stackDown: (
+      brandRoot: string,
+      inst: ServerRegistryInstance,
+      opts?: { quiet?: boolean },
+    ) => void;
+    stackStop: (
+      brandRoot: string,
+      inst: ServerRegistryInstance,
+      opts?: { quiet?: boolean },
+    ) => void;
+    stackStart: (
+      brandRoot: string,
+      inst: ServerRegistryInstance,
+      opts?: { quiet?: boolean },
+    ) => void;
+    stackLogs: (
+      brandRoot: string,
+      inst: ServerRegistryInstance,
+      opts?: { tail?: number; follow?: boolean },
+    ) => void;
+    stackHostPort: (containerName: string) => number;
+    readKernelTunnelConfig: (
+      brandRoot: string,
+      inst: ServerRegistryInstance,
+      brandId: string,
+    ) => {
+      slug: string;
+      hostname: string;
+      publicUrl: string;
+      tunnelId: string;
+      tunnelToken: string;
+      localPort: number;
+    } | null;
+    provisionerCall: (
+      baseUrl: string,
+      token: string,
+      route: string,
+      body: Record<string, unknown>,
+    ) => Promise<{ status: number; json: Record<string, unknown> }>;
+  };
 }
 
 /** Marqueur de version du template — un .dockerignore sans lui est rafraîchi. */
@@ -2080,10 +2174,14 @@ async function runRegistrySubcommand(
       return;
     }
     console.log(`${"NOM".padEnd(14)}${"CONTAINER".padEnd(34)}${"PORT".padEnd(8)}${"ÉTAT".padEnd(12)}SANTÉ`);
+    if (registry.instances.some((i) => i.stack)) {
+      console.log("(* port hôte loopback auto — stack compose : app interne :18791, tunnel sidecar)");
+    }
     for (const inst of registry.instances) {
       const st = dockerContainerState(inst.containerName);
+      const port = inst.stack ? `${inst.port}*` : String(inst.port);
       console.log(
-        `${inst.name.padEnd(14)}${inst.containerName.padEnd(34)}${String(inst.port).padEnd(8)}${st.status.padEnd(12)}${st.health ?? "-"}`,
+        `${inst.name.padEnd(14)}${inst.containerName.padEnd(34)}${port.padEnd(8)}${st.status.padEnd(12)}${st.health ?? "-"}`,
       );
     }
     return;
@@ -2195,6 +2293,73 @@ async function runRegistrySubcommand(
     fs.mkdirSync(instanceDataDirAbs(paths.brandRoot, inst), {
       recursive: true,
     });
+
+    // Stack compose autonome (M2) — DÉFAUT : app + cloudflared sidecar,
+    // port interne fixe 18791, port hôte loopback auto (--no-stack = legacy).
+    if (!args.noStack) {
+      const stack = await importInstanceStack(paths.kit);
+      let tunnel:
+        | { token: string; hostname?: string; tunnelId?: string }
+        | undefined;
+      const provUrl = (extraEnv.CREEZIO_TUNNEL_PROVISION_URL || "").trim();
+      const provToken = (extraEnv.CREEZIO_TUNNEL_PROVISION_TOKEN || "").trim();
+      if (provUrl && provToken) {
+        const slug = (extraEnv.CREEZIO_TUNNEL_SLUG || name).trim();
+        const r = await stack.provisionerCall(provUrl, provToken, "/reserve", {
+          slug,
+          installId: "server-docker-cli",
+          crmPort: stack.STACK_APP_PORT,
+          serviceHost: "app",
+        });
+        if (r.status !== 200 || !r.json?.ok) {
+          throw new Error(
+            `reserve tunnel ${slug}: ${String(r.json?.error || r.status)}`,
+          );
+        }
+        tunnel = {
+          token: String(r.json.tunnelToken || ""),
+          hostname: String(r.json.hostname || ""),
+          tunnelId: String(r.json.tunnelId || ""),
+        };
+        console.log(
+          `tunnel ${slug} réservé → ${String(r.json.publicUrl || "")} (sidecar compose)`,
+        );
+      }
+      inst.stack = true;
+      inst.hostPort =
+        args.hostPort && args.hostPort > 0
+          ? args.hostPort
+          : args.port && args.port > 0
+            ? args.port
+            : 0;
+      inst.port = 0; // renseigné après up (attribution auto)
+      stack.writeInstanceStack({
+        brandRoot: paths.brandRoot,
+        brandId,
+        image,
+        inst,
+        tunnel,
+      });
+      stack.stackUp(paths.brandRoot, inst);
+      const hp = stack.stackHostPort(containerName);
+      if (!hp) {
+        throw new Error(`port hôte du stack introuvable après up (${containerName})`);
+      }
+      inst.port = hp;
+      registry.instances.push(inst);
+      saveServerRegistry(paths.brandRoot, registry);
+      console.log(
+        `+ instance ${name} (stack compose) → http://127.0.0.1:${hp}/ ` +
+          `(container ${containerName}, port hôte ${inst.hostPort ? "fixe" : "auto"}, app interne :${stack.STACK_APP_PORT})`,
+      );
+      console.log(
+        `  boot-status : curl http://127.0.0.1:${hp}/api/v1/os/boot-status`,
+      );
+      await waitBootReady(hp);
+      console.log(`✓ serveur ${name} prêt — CRM: http://127.0.0.1:${hp}/`);
+      return;
+    }
+
     run(
       "docker",
       buildDockerRunArgs({
@@ -2225,7 +2390,175 @@ async function runRegistrySubcommand(
     );
   }
 
+  if (args.sub === "migrate-stack") {
+    // Bascule legacy `docker run` → stack compose autonome (M2) :
+    // backup obligatoire → ingress repointé (http://app:18791) → stack up →
+    // health → rollback legacy si KO. Le token tunnel est lu du store kernel
+    // (/data) — jamais affiché ni stocké dans le registre.
+    if (inst.stack) {
+      console.log(`✓ ${name} déjà en stack compose — rien à faire`);
+      return;
+    }
+    const stack = await importInstanceStack(paths.kit);
+    const image =
+      (inst as { image?: string }).image || registry.image ||
+      serverImageName(brandId);
+    console.log(`migration ${name} → stack compose (image ${image})…`);
+
+    const serverLibPath = path.join(
+      paths.kit,
+      "packages/observability/fleet-collector/server-lib.mjs",
+    );
+    const { backupInstanceData } = (await import(
+      pathToFileURL(serverLibPath).href
+    )) as {
+      backupInstanceData: (
+        brandRoot: string,
+        inst: ServerRegistryInstance,
+      ) => Promise<{ ok: boolean; file: string | null; detail: string }>;
+    };
+    console.log("backup /data avant bascule…");
+    const b = await backupInstanceData(paths.brandRoot, inst);
+    if (!b.ok) {
+      throw new Error(`backup KO: ${b.detail} — migration annulée (rien touché)`);
+    }
+    console.log(`✓ backup ${b.detail}`);
+
+    const kc = stack.readKernelTunnelConfig(paths.brandRoot, inst, brandId);
+    const brandDotEnv = readEnvFileValues(path.join(paths.brandRoot, ".env"));
+    const provUrl = (
+      env.CREEZIO_TUNNEL_PROVISION_URL ||
+      brandDotEnv.CREEZIO_TUNNEL_PROVISION_URL ||
+      inst.env?.CREEZIO_TUNNEL_PROVISION_URL ||
+      ""
+    ).trim();
+    const provToken = (
+      env.CREEZIO_TUNNEL_PROVISION_TOKEN ||
+      brandDotEnv.CREEZIO_TUNNEL_PROVISION_TOKEN ||
+      inst.env?.CREEZIO_TUNNEL_PROVISION_TOKEN ||
+      ""
+    ).trim();
+    let tunnel:
+      | { token: string; hostname?: string; tunnelId?: string }
+      | undefined;
+    if (kc) {
+      tunnel = { token: kc.tunnelToken, hostname: kc.hostname, tunnelId: kc.tunnelId };
+      if (provUrl && provToken) {
+        const r = await stack.provisionerCall(provUrl, provToken, "/configure", {
+          slug: kc.slug,
+          tunnelId: kc.tunnelId,
+          hostname: kc.hostname,
+          crmPort: stack.STACK_APP_PORT,
+          serviceHost: "app",
+        });
+        if (r.status !== 200 || !r.json?.ok) {
+          throw new Error(
+            `reconfigure ingress ${kc.slug}: ${String(r.json?.error || r.status)} — migration annulée (conteneur legacy intact)`,
+          );
+        }
+        console.log(
+          `✓ ingress ${kc.hostname} → http://app:${stack.STACK_APP_PORT} (sidecar)`,
+        );
+      } else {
+        console.log(
+          "⚠ provisioner non configuré (URL/token absents) — ingress NON repointé ; " +
+            "le sidecar démarrera mais Cloudflare visera encore l'ancien port. " +
+            "Repointer manuellement vers http://app:18791.",
+        );
+      }
+    } else {
+      console.log("pas de tunnel kernel dans /data — stack sans sidecar cloudflared");
+    }
+
+    const instStack: ServerRegistryInstance = {
+      ...inst,
+      stack: true,
+      hostPort: args.hostPort && args.hostPort > 0 ? args.hostPort : 0,
+      env: { ...(inst.env || {}), CREEZIO_TUNNEL_LOCAL: "0" },
+    };
+    stack.writeInstanceStack({
+      brandRoot: paths.brandRoot,
+      brandId,
+      image,
+      inst: instStack,
+      tunnel,
+    });
+    console.log("bascule : rm conteneur legacy → compose up…");
+    run("docker", ["rm", "-f", inst.containerName], env);
+    let hp = 0;
+    try {
+      stack.stackUp(paths.brandRoot, instStack, { quiet: true });
+      hp = stack.stackHostPort(inst.containerName);
+    } catch (e) {
+      hp = 0;
+    }
+    const ready = hp > 0 && (await waitBootReady(hp).then(() => true, () => false));
+    if (!ready) {
+      console.error("✗ stack KO — rollback vers le conteneur legacy…");
+      try {
+        stack.stackDown(paths.brandRoot, instStack, { quiet: true });
+      } catch {
+        /* best-effort */
+      }
+      if (kc && provUrl && provToken) {
+        await stack
+          .provisionerCall(provUrl, provToken, "/configure", {
+            slug: kc.slug,
+            tunnelId: kc.tunnelId,
+            hostname: kc.hostname,
+            crmPort: inst.port,
+            serviceHost: "127.0.0.1",
+          })
+          .catch(() => {});
+      }
+      run(
+        "docker",
+        buildDockerRunArgs({ brandRoot: paths.brandRoot, brandId, image, inst }),
+        env,
+      );
+      const back = await waitBootReady(inst.port).then(() => true, () => false);
+      throw new Error(
+        `migration ${name} KO — rollback legacy ${back ? "OK (service restauré)" : "ÉCHOUÉ (intervention manuelle: docker start " + inst.containerName + ")"}`,
+      );
+    }
+    instStack.port = hp;
+    registry.instances = registry.instances.map((i) =>
+      i.name === name ? instStack : i,
+    );
+    saveServerRegistry(paths.brandRoot, registry);
+    console.log(
+      `✓ ${name} migré en stack compose — app interne :${stack.STACK_APP_PORT}, ` +
+        `port hôte debug 127.0.0.1:${hp} (${instStack.hostPort ? "fixe" : "auto"})`,
+    );
+    if (tunnel?.hostname) {
+      try {
+        const res = await fetch(
+          `https://${tunnel.hostname}/api/v1/core/health`,
+          { signal: AbortSignal.timeout(20000) },
+        );
+        console.log(`✓ public https://${tunnel.hostname} → HTTP ${res.status}`);
+      } catch (e) {
+        console.log(
+          `⚠ vérif publique https://${tunnel.hostname} en échec: ${e instanceof Error ? e.message : String(e)}`,
+        );
+      }
+    }
+    return;
+  }
+
   if (args.sub === "start") {
+    if (inst.stack) {
+      const stack = await importInstanceStack(paths.kit);
+      stack.stackStart(paths.brandRoot, inst);
+      const hp = stack.stackHostPort(inst.containerName) || inst.port;
+      if (hp && hp !== inst.port) {
+        inst.port = hp;
+        saveServerRegistry(paths.brandRoot, registry);
+      }
+      await waitBootReady(hp);
+      console.log(`✓ ${name} démarré (stack) — http://127.0.0.1:${hp}/`);
+      return;
+    }
     run("docker", ["start", inst.containerName], env);
     await waitBootReady(inst.port);
     console.log(`✓ ${name} démarré — http://127.0.0.1:${inst.port}/`);
@@ -2233,6 +2566,12 @@ async function runRegistrySubcommand(
   }
 
   if (args.sub === "stop") {
+    if (inst.stack) {
+      const stack = await importInstanceStack(paths.kit);
+      stack.stackStop(paths.brandRoot, inst);
+      console.log(`✓ ${name} arrêté (stack app + tunnel)`);
+      return;
+    }
     run("docker", ["stop", inst.containerName], env);
     console.log(`✓ ${name} arrêté`);
     return;
@@ -2240,6 +2579,11 @@ async function runRegistrySubcommand(
 
   if (args.sub === "logs") {
     const tail = args.tail && args.tail > 0 ? args.tail : 200;
+    if (inst.stack) {
+      const stack = await importInstanceStack(paths.kit);
+      stack.stackLogs(paths.brandRoot, inst, { tail, follow: !!args.follow });
+      return;
+    }
     const logArgs = ["logs", "--tail", String(tail)];
     if (args.follow) logArgs.push("-f");
     logArgs.push(inst.containerName);
@@ -2248,6 +2592,18 @@ async function runRegistrySubcommand(
   }
 
   if (args.sub === "rm") {
+    if (inst.stack) {
+      const stack = await importInstanceStack(paths.kit);
+      try {
+        stack.stackDown(paths.brandRoot, inst, { quiet: true });
+      } catch {
+        /* stack déjà down */
+      }
+      fs.rmSync(
+        path.join(paths.brandRoot, "docker-data", "stacks", inst.name),
+        { recursive: true, force: true },
+      );
+    }
     const st = dockerContainerState(inst.containerName);
     if (st.exists) {
       run("docker", ["rm", "-f", inst.containerName], env);
@@ -2398,6 +2754,7 @@ export async function runServerDockerCli(argv: string[]): Promise<void> {
     "ls",
     "update",
     "backup",
+    "migrate-stack",
   ]);
   if (registrySubs.has(args.sub)) {
     await runRegistrySubcommand(args, paths, env);
