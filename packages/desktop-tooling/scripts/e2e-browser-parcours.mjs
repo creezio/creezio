@@ -20,6 +20,7 @@ import fs from "node:fs";
 import net from "node:net";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
+import { createRequire } from "node:module";
 import { portHolderLabel } from "./port-guard.mjs";
 
 const root = path.resolve(process.env.CREEZIO_APP_ROOT || process.cwd());
@@ -106,14 +107,10 @@ function portFree(port) {
 async function findFreePort() {
   // Prefer kit helper if available
   try {
-    const mod = await import(
-      pathToFileURL(
-        path.join(
-          root,
-          "node_modules/@creezio/platform-core/dist/index.js",
-        ),
-      ).href
+    const pcEntry = createRequire(path.join(root, "package.json")).resolve(
+      "@creezio/platform-core",
     );
+    const mod = await import(pathToFileURL(pcEntry).href);
     if (typeof mod.findFreePort === "function") return mod.findFreePort();
   } catch {
     /* */
@@ -158,11 +155,12 @@ async function resolveUiPort() {
 }
 
 async function main() {
-  const { startBrandUiPlane } = await import(
-    pathToFileURL(
-      path.join(root, "node_modules/@creezio/app-runtime/dist/index.js"),
-    ).href
+  // Résolution package depuis la racine app (jamais de sondage de chemins
+  // node_modules — hoisting workspaces quelconque).
+  const appRuntimeEntry = createRequire(path.join(root, "package.json")).resolve(
+    "@creezio/app-runtime",
   );
+  const { startBrandUiPlane } = await import(pathToFileURL(appRuntimeEntry).href);
 
   const apiPort = await resolveApiPort();
   const uiPort = await resolveUiPort();
