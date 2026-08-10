@@ -102,6 +102,24 @@ electron-builder), `shell` (preload/main), `platform-core` (SqliteRuntime,
 boot), `os-ui` (pages OS à rematérialiser), `desktop-tooling` (publish),
 `factory` / `propagation` (outillage).
 
+## Règle d'or du bump côté apps
+
+Toujours bumper **les deux** manifests en même temps :
+
+`ash
+npm install '@creezio/<pkg>@^X.Y.Z' --save          # racine / workspace server
+npm install '@creezio/<pkg>@^X.Y.Z' --save --prefix server/ui
+`
+
+Le hook prebuild os-ui:materialize lit les routes OS depuis le
+
+ode_modules du workspace server (hoisté à la racine), **pas** celui de
+server/ui. Un bump partiel (UI seule) laisse les pages OS matérialisées sur
+l'ancienne version et crée un 
+ode_modules nested (dual-package) — CI verte,
+deploy vert, mais ancienne page servie. Incident réel : login 0.6.0
+(2026-08-10), corrigé en alignant les 24 deps @creezio/* des deux manifests.
+
 ## Canaux marque
 
 Outillage **interne kit** (package privé `@creezio/propagation`) : corps de
