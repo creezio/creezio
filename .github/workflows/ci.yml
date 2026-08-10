@@ -38,9 +38,15 @@ jobs:
     if: github.event_name != 'schedule'
     runs-on: ubuntu-latest
     timeout-minutes: 90
+    permissions:
+      contents: read
+      packages: read
     env:
       CREEZIO_SKIP_KIT_BINARIES: "1"
       CREEZIO_NATIVE_WARM: "0"
+      # Gates scaffold/factory : les apps generees resolvent @creezio/* sur
+      # GitHub Packages (E401 sans token). GITHUB_TOKEN a packages:read ici.
+      CREEZIO_NPM_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
       - uses: actions/checkout@v4
 
@@ -71,8 +77,12 @@ jobs:
     if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
     runs-on: [self-hosted, fluxpro]
     timeout-minutes: 180
+    permissions:
+      contents: read
+      packages: read
     env:
       CREEZIO_NATIVE_WARM: "0"
+      CREEZIO_NPM_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       # App sonde : clone de dev du VPS (le checkout runner n'a pas de
       # sibling tempoflow3).
       CREEZIO_TEMPOFLOW3_ROOT: /home/fidus/tempoflow3
