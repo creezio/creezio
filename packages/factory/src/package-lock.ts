@@ -1,13 +1,15 @@
 /**
  * Cohérence package.json ↔ package-lock.json (requis par `npm ci` Docker).
  *
- * Piège récurrent marque neuve : le push factory sync le vendor mais ne
- * générait pas de lock → `npm run docker:build` (COPY + npm ci) ou un lock
- * stale fait échouer le build ; les agents régénèrent à la main, cassent le
- * symlink `server/node_modules` → `../node_modules`, et bouclent.
+ * Mode npm (distribution GitHub Packages) : la racine marque est le SoT —
+ * `packages[""]` (orchestrateur) + `packages["server"]` (livrable serveur,
+ * workspace). Locks autonomes pour les projets npm indépendants (server/ui,
+ * client/). Plus de vendor ni de clôture file: à expanser.
  *
- * SoT : vérifier le root lock (`packages[""]`) comme `npm ci`, régénérer via
- * `npm install --package-lock-only` (push) ou `npm install` (build host).
+ * Régénération via `npm install --package-lock-only` (push) ou
+ * `npm install` (build host) — interroge le registre GitHub Packages :
+ * CREEZIO_NPM_TOKEN doit être exporté (le .npmrc généré référence
+ * ${CREEZIO_NPM_TOKEN}).
  */
 import { spawnSync } from "node:child_process";
 import fs from "node:fs";
@@ -39,17 +41,20 @@ function declaredDeps(pkg: PkgJson): Record<string, string> {
   };
 }
 
-function lockedRootDeps(lock: LockRoot): Record<string, string> | null {
-  const root = lock.packages?.[""];
-  if (root) {
+function lockedEntryDeps(
+  lock: LockRoot,
+  lockKey: string,
+): Record<string, string> | null {
+  const entry = lock.packages?.[lockKey];
+  if (entry) {
     return {
-      ...(root.dependencies || {}),
-      ...(root.devDependencies || {}),
-      ...(root.optionalDependencies || {}),
+      ...(entry.dependencies || {}),
+      ...(entry.devDependencies || {}),
+      ...(entry.optionalDependencies || {}),
     };
   }
-  // lockfileVersion 1 legacy
-  if (lock.dependencies) {
+  // lockfileVersion 1 legacy (locks racine uniquement)
+  if (lockKey === "" && lock.dependencies) {
     const out: Record<string, string> = {};
     for (const [name, meta] of Object.entries(lock.dependencies)) {
       if (typeof meta === "string") out[name] = meta;
@@ -60,10 +65,15 @@ function lockedRootDeps(lock: LockRoot): Record<string, string> | null {
   return null;
 }
 
-/** True si le lock couvre exactement les deps déclarées (contrat npm ci). */
+/**
+ * True si le lock couvre exactement les deps déclarées (contrat npm ci).
+ * lockKey "" = entrée racine ; "server" = membre du workspace racine (lock
+ * racine SoT).
+ */
 export function isPackageLockInSync(
   packageJsonPath: string,
   lockPath = path.join(path.dirname(packageJsonPath), "package-lock.json"),
+  lockKey = "",
 ): boolean {
   if (!fs.existsSync(packageJsonPath) || !fs.existsSync(lockPath)) return false;
   let pkg: PkgJson;
@@ -75,7 +85,7 @@ export function isPackageLockInSync(
     return false;
   }
   const declared = declaredDeps(pkg);
-  const locked = lockedRootDeps(lock);
+  const locked = lockedEntryDeps(lock, lockKey);
   if (!locked) return false;
   const dKeys = Object.keys(declared).sort();
   const lKeys = Object.keys(locked).sort();
@@ -86,96 +96,48 @@ export function isPackageLockInSync(
   return true;
 }
 
-function ensureVendorSymlink(brandRoot: string, serverDir: string): void {
-  if (serverDir === brandRoot) return;
-  const link = path.join(serverDir, "vendor");
-  try {
-    const st = fs.lstatSync(link);
-    if (st.isSymbolicLink() || st.isDirectory()) return;
-  } catch {
-    /* absent */
-  }
-  fs.symlinkSync("../vendor", link);
-}
-
-const FILE_VENDOR_RE = /^file:((?:\.\.\/)*vendor\/creezio)\/([^/]+)$/;
+type LockTarget = {
+  pkgPath: string;
+  lockPath: string;
+  lockKey: string;
+  /** cwd de la régénération npm (workspace → racine). */
+  cwd: string;
+  rel: string;
+};
 
 /**
- * npm (Debian 9.2 / lock-only) résout les deps transitives `file:../pkg`
- * des packages vendor **relativement à node_modules/@creezio/<parent>**,
- * pas au dossier vendor — → ENOENT sur
- * `node_modules/@creezio/<pkg>/package.json`. Contre-mesure : déclarer
- * toute la clôture `file:` en deps directes `file:…/vendor/creezio/<pkg>`
- * (hoist ROOT, chemins valides). Miroir : docker/server/ensure-server-lock.mjs.
+ * Cibles à garantir : racine (SoT) + membre server/ si monorepo (couvert
+ * par le lock racine, entrée packages["server"]) + projets npm autonomes
+ * (server/ui, client/) avec leur propre lock.
  */
-export function expandFileVendorClosure(
-  packageJsonPath: string,
-): { added: string[] } {
-  if (!fs.existsSync(packageJsonPath)) return { added: [] };
-  let pkg: PkgJson & { name?: string };
-  try {
-    pkg = JSON.parse(fs.readFileSync(packageJsonPath, "utf8")) as PkgJson & {
-      name?: string;
-    };
-  } catch {
-    return { added: [] };
+function collectTargets(brandRoot: string): LockTarget[] {
+  const monorepo = fs.existsSync(path.join(brandRoot, "server/package.json"));
+  const rootPkg = path.join(brandRoot, "package.json");
+  const rootLock = path.join(brandRoot, "package-lock.json");
+  const targets: LockTarget[] = [
+    { pkgPath: rootPkg, lockPath: rootLock, lockKey: "", cwd: brandRoot, rel: "." },
+  ];
+  if (monorepo) {
+    targets.push({
+      pkgPath: path.join(brandRoot, "server/package.json"),
+      lockPath: rootLock,
+      lockKey: "server",
+      cwd: brandRoot, // regen workspace à la racine (jamais de lock server/)
+      rel: "server",
+    });
   }
-  const deps = { ...(pkg.dependencies || {}) };
-  /** @type {Map<string, string>} name → file: spec relative to package.json dir */
-  const declared = new Map<string, string>();
-  let vendorPrefix: string | null = null;
-  for (const [name, spec] of Object.entries(deps)) {
-    if (!name.startsWith("@creezio/") || typeof spec !== "string") continue;
-    const m = FILE_VENDOR_RE.exec(spec);
-    if (!m?.[1]) continue;
-    vendorPrefix = m[1];
-    declared.set(name.slice("@creezio/".length), spec);
+  for (const sub of ["server/ui", "client"]) {
+    const dir = path.join(brandRoot, sub);
+    if (!fs.existsSync(path.join(dir, "package.json"))) continue;
+    targets.push({
+      pkgPath: path.join(dir, "package.json"),
+      lockPath: path.join(dir, "package-lock.json"),
+      lockKey: "",
+      cwd: dir,
+      rel: sub,
+    });
   }
-  if (!vendorPrefix || declared.size === 0) return { added: [] };
-
-  const pkgDir = path.dirname(packageJsonPath);
-  const vendorRoot = path.resolve(pkgDir, vendorPrefix);
-  if (!fs.existsSync(vendorRoot)) return { added: [] };
-
-  const queue = [...declared.keys()];
-  const seen = new Set(queue);
-  while (queue.length) {
-    const id = queue.shift()!;
-    const nestedPkg = path.join(vendorRoot, id, "package.json");
-    if (!fs.existsSync(nestedPkg)) continue;
-    let nested: PkgJson;
-    try {
-      nested = JSON.parse(fs.readFileSync(nestedPkg, "utf8")) as PkgJson;
-    } catch {
-      continue;
-    }
-    const nestedDeps = {
-      ...(nested.dependencies || {}),
-      ...(nested.optionalDependencies || {}),
-    };
-    for (const [name, spec] of Object.entries(nestedDeps)) {
-      if (!name.startsWith("@creezio/") || typeof spec !== "string") continue;
-      if (!spec.startsWith("file:")) continue;
-      const child = name.slice("@creezio/".length);
-      if (seen.has(child)) continue;
-      seen.add(child);
-      queue.push(child);
-    }
-  }
-
-  const added: string[] = [];
-  for (const id of [...seen].sort()) {
-    if (declared.has(id)) continue;
-    const childPath = path.join(vendorRoot, id, "package.json");
-    if (!fs.existsSync(childPath)) continue;
-    const spec = `file:${vendorPrefix}/${id}`;
-    deps[`@creezio/${id}`] = spec;
-    added.push(`@creezio/${id}`);
-  }
-  if (!added.length) return { added: [] };
-  pkg.dependencies = deps;
-  fs.writeFileSync(packageJsonPath, `${JSON.stringify(pkg, null, 2)}\n`);
-  return { added };
+  return targets;
 }
 
 /**
@@ -192,36 +154,13 @@ export function ensureBrandPackageLocks(
 ): { refreshed: string[] } {
   const log = opts?.log || ((l: string) => console.log(l));
   const mode = opts?.mode || "lock-only";
-  const serverDir = fs.existsSync(path.join(brandRoot, "server/package.json"))
-    ? path.join(brandRoot, "server")
-    : brandRoot;
-  ensureVendorSymlink(brandRoot, serverDir);
-
-  const dirs: string[] = [serverDir];
-  const uiDir = path.join(serverDir, "ui");
-  if (fs.existsSync(path.join(uiDir, "package.json"))) dirs.push(uiDir);
-  const clientDir = path.join(brandRoot, "client");
-  if (
-    clientDir !== serverDir &&
-    fs.existsSync(path.join(clientDir, "package.json"))
-  ) {
-    dirs.push(clientDir);
-  }
-
   const refreshed: string[] = [];
-  for (const dir of dirs) {
-    const pkgPath = path.join(dir, "package.json");
-    const expanded = expandFileVendorClosure(pkgPath);
-    if (expanded.added.length) {
-      const relPkg = path.relative(brandRoot, dir) || ".";
-      log(
-        `deps @creezio/* complétées (${relPkg}) : ${expanded.added.join(", ")} (clôture file: vendor — npm ENOENT)`,
-      );
+  for (const target of collectTargets(brandRoot)) {
+    if (isPackageLockInSync(target.pkgPath, target.lockPath, target.lockKey)) {
+      continue;
     }
-    if (isPackageLockInSync(pkgPath)) continue;
-    const rel = path.relative(brandRoot, dir) || ".";
     log(
-      `package-lock manquant/incohérent (${rel}) — npm ${mode === "install" ? "install" : "install --package-lock-only"}…`,
+      `package-lock manquant/incohérent (${target.rel}) — npm ${mode === "install" ? "install" : "install --package-lock-only"}…`,
     );
     const args =
       mode === "install"
@@ -234,21 +173,22 @@ export function ensureBrandPackageLocks(
             "--no-fund",
           ];
     const r = spawnSync("npm", args, {
-      cwd: dir,
+      cwd: target.cwd,
       stdio: "inherit",
       env: process.env,
     });
     if (r.status !== 0) {
       throw new Error(
-        `npm ${args.join(" ")} exit ${r.status ?? "?"} dans ${rel} — lock Docker impossible`,
+        `npm ${args.join(" ")} exit ${r.status ?? "?"} dans ${target.rel} — ` +
+          "lock impossible (deps @creezio/* privées → exporter CREEZIO_NPM_TOKEN)",
       );
     }
-    if (!isPackageLockInSync(pkgPath)) {
+    if (!isPackageLockInSync(target.pkgPath, target.lockPath, target.lockKey)) {
       throw new Error(
-        `package-lock toujours incohérent après npm dans ${rel} (deps package.json ≠ packages[""])`,
+        `package-lock toujours incohérent après npm dans ${target.rel} (deps package.json ≠ lock)`,
       );
     }
-    refreshed.push(rel);
+    refreshed.push(target.rel);
   }
   return { refreshed };
 }

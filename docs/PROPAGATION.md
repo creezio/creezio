@@ -37,29 +37,20 @@ apps dans la CI kit. La propagation est à l'initiative de CHAQUE app
    `ARCHITECTURE_VERSION` sans codemod de migration est ROUGE
    ([`scripts/codemods/README.md`](../scripts/codemods/README.md)). C'est ce
    contrat (changelog + versioning + codemods) qui protège les apps.
-2. **L'app mesure quand elle veut** : workflow **Kit compat**
-   (`scripts/ci/kit-compat.sh` — manuel + cron hebdo par défaut, choix de
-   l'app) — resync ÉPHÉMÈRE du vendor vers le dernier kit dans un workspace
-   jetable ([`scripts/sync-creezio-vendor.sh`](../scripts/sync-creezio-vendor.sh),
-   contrat canonique) + suite complète, puis RAPPORT dans l'issue unique
-   « 📦 Compatibilité kit — rapport automatique » : kit pinné vs dernier
-   kit (SHA + date), commits kit entre les deux (breaking `feat!`/`fix!`
-   / bump `ARCHITECTURE_VERSION` mis en avant), packages vendorisés
-   touchés, résultat ✅ compatible / ❌ incompatible (avec la gate en échec
-   et les 30 dernières lignes de log). Rien n'est poussé.
-3. **Le développeur de l'app décide** : workflow **Vendor update**
-   (Actions → Vendor update → Run workflow, input `kit_sha` optionnel) —
-   resync réel + suite complète ; vert → commit `[vendor-update]` + push
-   `main` (CI + deploy de l'app suivent) ; déjà à jour → run vert sans
-   commit.
+2. **L'app mesure quand elle veut** : distribution npm — la marque
+   consomme `@creezio/*` en versions publiées (`^<lockstep>`). Vérifier une
+   montée = `npm update "@creezio/*"` sur une branche + suite complète CI.
+   Le changelog kit (changesets) liste les breaking `feat!`/`fix!` et les
+   bumps `ARCHITECTURE_VERSION`.
+3. **Le développeur de l'app décide** : merge de la branche de bump
+   (lockfile commité — CI + deploy de l'app suivent).
 4. Breaking change (`ARCHITECTURE_VERSION`) : codemods de migration
-   obligatoires, exécutés AUTOMATIQUEMENT par le sync lors du
-   vendor-update d'une app en version antérieure.
+   obligatoires, livrés dans le MÊME commit kit que le bump (gate
+   `test-phase-arch-codemod`) et appliqués par la marque lors de la
+   montée de version.
 
-Resync manuel possible (dev local) :
-`CREEZIO_KIT_ROOT=<kit> ROOT=<marque> bash <kit>/scripts/sync-creezio-vendor.sh`.
-`vendor/creezio/` côté app est GÉNÉRÉ — jamais de patch manuel (garde
-anti-dérive dans `kit-compat.sh` / `vendor-update.sh` app).
+`node_modules/` côté app est GÉNÉRÉ — jamais de patch manuel d'un package
+`@creezio/*` installé (écrasé au prochain `npm ci`).
 
 ## Topologie multi-serveurs
 

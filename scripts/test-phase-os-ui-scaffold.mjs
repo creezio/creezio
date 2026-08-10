@@ -117,8 +117,8 @@ test("os-ui scaffold : zéro page OS versionnée, materialize + boot kit", () =>
   );
   assert.match(
     tailwind,
-    /vendor\/creezio\/\*\/ui/,
-    "tailwind scanne les sources UI vendor kit (sinon classes purgées)",
+    /node_modules\/@creezio\/\*\/ui/,
+    "tailwind scanne les sources UI des packages npm @creezio/* (sinon classes purgées)",
   );
   assert.match(
     tailwind,
@@ -135,8 +135,8 @@ test("os-ui scaffold : zéro page OS versionnée, materialize + boot kit", () =>
     "utf8",
   );
   assert.match(globals, /@tailwind base/);
-  // Les tokens vivent dans le kit (theme.css, SoT — le vendor de l'app est
-  // synchronisé plus tard par sync-creezio-vendor.sh qui copie ui/ entier).
+  // Les tokens vivent dans le kit (theme.css, SoT — consommée via le
+  // package npm @creezio/shell-ui, ui/ inclus dans le tarball publié).
   const kitTheme = fs.readFileSync(
     path.join(ROOT, "packages/shell-ui/ui/theme/theme.css"),
     "utf8",

@@ -50,11 +50,12 @@ test("docker/server artefacts présents", () => {
   assert.match(df, /CREEZIO_BROWSER_SIDECAR=1/);
   assert.match(df, /CREEZIO_CHROMIUM_BIN=\/usr\/bin\/chromium/);
   assert.match(df, /CREEZIO_BROWSER_DATA_DIR=\/data\/browser/);
-  // Lock stale marque neuve : npm ci puis fallback install (clone autonome
-  // via docker:build sans passer par ensureBrandStandalone).
+  // Mode npm : npm ci strict (lock garanti par ensure-server-lock) + secret
+  // BuildKit pour le token GitHub Packages (jamais en ARG/ENV ni historique).
   assert.match(df, /npm ci --omit=dev/);
-  assert.match(df, /npm install --omit=dev/);
-  assert.match(df, /package-lock incohérent/);
+  assert.match(df, /--mount=type=secret,id=CREEZIO_NPM_TOKEN/);
+  assert.match(df, /--workspace/);
+  assert.doesNotMatch(df, /npm install --omit=dev|COPY vendor/);
   // Pas de domaine marque dans l'image générique.
   assert.doesNotMatch(df, /TF3_|TEMPOFLOW|CERTIVAN|FIDU/);
   const compose = fs.readFileSync(
@@ -70,13 +71,14 @@ test("docker/server artefacts présents", () => {
   // Sécurité : ports publiés sur loopback par défaut (opt-in SERVER_BIND).
   assert.match(compose, /\$\{SERVER_BIND:-127\.0\.0\.1\}:\$\{SERVER_1_PORT:-18791\}/);
   assert.match(compose, /\$\{SERVER_BIND:-127\.0\.0\.1\}:\$\{SERVER_2_PORT:-18792\}/);
-  // UI Next incluse dans l'image (dockerignore v3 monorepo avec ré-inclusions
-  // server/ui + compat layout plat legacy).
+  // UI Next incluse dans l'image (dockerignore v4 npm — ré-inclusions
+  // server/ui + compat layout plat legacy, plus d'exceptions vendor).
   const di = fs.readFileSync(
     path.join(dockerServer, "brand.dockerignore"),
     "utf8",
   );
-  assert.match(di, /creezio-dockerignore v3/);
+  assert.match(di, /creezio-dockerignore v4/);
+  assert.doesNotMatch(di, /!vendor\//);
   assert.match(di, /!server\/ui\/\.next\/standalone\/\*\*/);
   assert.match(di, /!server\/ui\/\.next\/static\/\*\*/);
   assert.match(di, /!ui\/\.next\/standalone\/\*\*/);

@@ -6,8 +6,8 @@
  *   1. si HEAD change la valeur d'ARCHITECTURE_VERSION
  *      (packages/platform-core/src/architecture-version.ts) par rapport à
  *      HEAD~1, alors scripts/codemods/<nouvelleValeur>/manifest.json existe —
- *      les marques déjà vendorisées doivent pouvoir migrer automatiquement
- *      (sync-creezio-vendor.sh exécute les codemods au resync) ;
+ *      les marques doivent pouvoir migrer automatiquement (les codemods
+ *      accompagnent le bump de version npm qu'elles consomment) ;
  *   2. chaque manifest existant référence des scripts présents sur disque ;
  *   3. chaque script codemod est syntaxiquement valide (`node --check`).
  */
@@ -61,7 +61,7 @@ test("A1 bump ARCHITECTURE_VERSION ⇒ codemods livrés", () => {
     fs.existsSync(manifest),
     `ARCHITECTURE_VERSION bumpée ${previous} → ${current} sans codemod de ` +
       `migration : ${path.relative(ROOT, manifest)} manquant.\n` +
-      `Les marques vendorisées en ${previous} ne pourraient plus resync — ` +
+      `Les marques en ${previous} ne pourraient plus migrer proprement — ` +
       `livrer les codemods (scripts/codemods/README.md) dans le MÊME commit.`,
   );
 });

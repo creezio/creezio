@@ -63,6 +63,8 @@ apps `console` / `demobrand`.
 ## Migration depuis le vendoring (transition)
 
 L'ancien système (sync vendor, `SYNC.json`, `kit-compat`, `vendor-update`,
-`install-server-deps`, symlinks trackés) est **DÉPRÉCIÉ** mais conservé le
-temps que chaque app migre. Ne PAS mélanger les deux modes dans une même
-app : une app est soit vendored (legacy), soit npm (cible).
+`install-server-deps`, symlinks trackés) est **SUPPRIMÉ** du kit
+(feat/npm-deploy-tooling : Dockerfile + factory + CLI server-docker en mode
+npm). Les apps migrent une à une (référence : feat/npm-consumption de
+tempoflow3). Ne PAS mélanger les deux modes dans une même app : une app
+est soit vendored (legacy figée), soit npm (cible).

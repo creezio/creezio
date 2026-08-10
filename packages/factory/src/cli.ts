@@ -358,9 +358,9 @@ export async function runCli(argv: string[]): Promise<void> {
     "ℹ Modèle pull : le kit ne connaît pas ses consommateurs. L'app tire le",
   );
   console.log(
-    "  kit quand elle le décide — kit-compat.yml rapporte l'impact (issue),",
+    "  kit quand elle le décide : npm update \"@creezio/*\" (distribution npm,",
   );
   console.log(
-    "  vendor-update.yml applique la mise à jour (docs/PROPAGATION.md du kit).",
+    "  docs/NPM-DISTRIBUTION.md du kit).",
   );
 }

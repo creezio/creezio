@@ -54,13 +54,13 @@ creezio brand smoke --app apps/acme
 ```text
 <app>/                  # monorepo marque (client + server)
 ├── brand-spec/     # SoT marque
-├── vendor/creezio/ # kit synchronisé — UN SEUL vendor partagé
 ├── server/         # livrable principal (métier, ui/, harness, Docker)
-│   └── vendor -> ../vendor (symlink)
+│                   # (membre du workspace npm racine)
 ├── client/         # desktop thin remote-only (main client-only, pack, feeds)
-│   └── vendor/     # copie hardlink stagée par sync-creezio-vendor.sh
+│                   # (projet npm indépendant — .npmrc local)
 ├── docker-data/    # runtime gitignoré (registre servers.json, volumes)
-└── package.json    # orchestrateur racine (scripts délégués)
+├── .npmrc          # registre @creezio → GitHub Packages (token via env)
+└── package.json    # orchestrateur racine + workspaces ["server"]
 
 <app>-admin/            # repo ADMIN dédié (privé, jamais public)
 ├── server-admin.json        # config flotte versionnée SANS secrets
@@ -130,12 +130,12 @@ npm run server-docker:create -- demo
 | Chemin | Layout `node_modules` | Action |
 |--------|----------------------|--------|
 | **Docker** (`server-docker:*`, `docker:build`) | Dockerfile COPY vers `/app/node_modules` | Locks via `prepareBrandDistribution` / `ensure-server-lock.mjs` — **ne pas** bricoler à la main dans l'image |
-| **Clone hôte** (harness, `metier:api`, smokes) | `{marque}/node_modules` + symlink `server/node_modules` → `../node_modules` | **Obligatoire** : `npm run install:server-deps` (script factory `scripts/install-server-deps.mjs`) après clone / avant harness |
+| **Clone hôte** (harness, `metier:api`, smokes) | `{marque}/node_modules` (hoisting workspace racine) | **Obligatoire** : `npm ci` à la racine (workspace) après clone / avant harness |
 
-Le scaffold pose déjà le symlink git `server/node_modules` → `../node_modules`
-(dangling jusqu'au premier `install:server-deps`). Un `npm ci --prefix server`
-seul sans rebascule casse la résolution `@creezio/*` (walk-up realpath depuis
-`vendor/`).
+Le scaffold génère `workspaces: ["server"]` à la racine : un `npm ci` racine
+hoiste les deps dans `node_modules/` racine et `server/` résout par walk-up
+standard. Un `npm ci --prefix server` seul créerait un lock parasite —
+toujours installer depuis la racine.
 
 ## 6. Sonde TempoFlow3
 

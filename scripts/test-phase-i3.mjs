@@ -1,5 +1,5 @@
 /**
- * Phase I3 — tasks/mails sqlite + file-sink provider + vendor list.
+ * Phase I3 — tasks/mails sqlite + file-sink provider.
  */
 import assert from "node:assert/strict";
 import fs from "node:fs";
@@ -102,31 +102,4 @@ test("I3 demobrand tasks/mails mounts + migrations", async () => {
   assert.equal(list.status, 200);
   assert.ok(list.body.tasks.length >= 1);
   sandbox.close();
-});
-
-test("I3 vendor sync liste inclut assistant tasks mails", () => {
-  const script = fs.readFileSync(
-    path.join(ROOT, "scripts/sync-creezio-vendor.sh"),
-    "utf8",
-  );
-  for (const p of ["assistant", "tasks", "mails"]) {
-    assert.match(script, new RegExp(`\\b${p}\\b`));
-  }
-  const r = spawnSync(
-    "bash",
-    [path.join(ROOT, "scripts/sync-creezio-vendor.sh")],
-    {
-      env: {
-        ...process.env,
-        CREEZIO_KIT_ROOT: ROOT,
-        DEST: path.join(ROOT, ".tmp-vendor-i3-dry"),
-        CREEZIO_SYNC_DRY_RUN: "1",
-      },
-      encoding: "utf8",
-    },
-  );
-  assert.equal(r.status, 0, r.stderr || r.stdout);
-  assert.match(r.stdout, /assistant/);
-  assert.match(r.stdout, /tasks/);
-  assert.match(r.stdout, /mails/);
 });

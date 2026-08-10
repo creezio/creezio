@@ -4,7 +4,7 @@
  * Layout généré (LA norme — plus de layout plat) :
  *   <out>/server/   livrable serveur (métier, harness, UI, electron-builder.server)
  *   <out>/client/   livrable desktop thin remote-only (main client-only)
- *   <out>/          package.json orchestrateur + brand-spec/ + vendor/ partagé
+ *   <out>/          package.json orchestrateur (workspace npm racine) + brand-spec/
  *   <out>-admin/    repo ADMIN dédié (pilotage flotte multi-VPS, sans secrets)
  *
  * Mode classique (`--name/--id/--domain`) : OS shell + slot métier vide.
@@ -30,6 +30,10 @@ import {
   serverDockerNpmScripts,
   renderCreezioCliProxyMjs,
 } from "./generators/server-docker-scripts.js";
+import {
+  creezioNpmDeps,
+  renderCreezioNpmrc,
+} from "./kit-release.js";
 import {
   renderEnsureLinuxIconsMjs,
   ensureModulesRegistry,
@@ -84,15 +88,6 @@ export type ScaffoldResult = {
   productModel?: ProductModel;
 };
 
-/** Deps @creezio/* → file:vendor/creezio/* (vendor partagé racine, symlinks). */
-function creezioVendorDeps(names: string[]): Record<string, string> {
-  const deps: Record<string, string> = {};
-  for (const name of names.sort()) {
-    deps[`@creezio/${name}`] = `file:vendor/creezio/${name}`;
-  }
-  return deps;
-}
-
 /** Racine kit par défaut : packages/factory/{src,dist} → ../../.. */
 function scaffoldKitRootDefault(): string {
   const here = path.dirname(fileURLToPath(import.meta.url));
@@ -100,9 +95,9 @@ function scaffoldKitRootDefault(): string {
 }
 
 /**
- * Matérialise dans la marque les artefacts « clone autonome » (SoT kit
- * docker/server/) : stage client/vendor sans kit, Dockerfile serveur,
- * .dockerignore. Rafraîchis ensuite à chaque sync-creezio-vendor.sh.
+ * Matérialise dans la marque les artefacts « clone autonome » npm (SoT kit
+ * docker/server/) : Dockerfile serveur, pré-flight lockfiles, .dockerignore.
+ * L'auth registre ne se matérialise pas (CREEZIO_NPM_TOKEN = env/secret).
  */
 function materializeStandaloneDistribution(
   outDir: string,
@@ -114,9 +109,7 @@ function materializeStandaloneDistribution(
   );
   const dockerServer = path.join(kit, "docker/server");
   const copies: Array<[src: string, dest: string]> = [
-    ["stage-client-vendor.mjs", "scripts/stage-client-vendor.mjs"],
     ["ensure-server-lock.mjs", "scripts/ensure-server-lock.mjs"],
-    ["install-server-deps.mjs", "scripts/install-server-deps.mjs"],
     ["Dockerfile", "docker/server.Dockerfile"],
   ];
   for (const [src, dest] of copies) {
@@ -201,16 +194,15 @@ function renderPackageJson(m: AppManifest): string {
           "electron:config:server":
             "node scripts/build-builder-config.mjs server",
           "electron:stage-win-bins":
-            "bash vendor/creezio/desktop-tooling/scripts/stage-win-bins.sh",
+            "bash ../node_modules/@creezio/desktop-tooling/scripts/stage-win-bins.sh",
           "pack:win:server":
             "npm run electron:stage-win-bins && npm run electron:config:server && npm run build:electron && CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --config electron-builder.server.json --win nsis --x64 -c.win.signAndEditExecutable=false",
           "pack:linux:server":
             "node scripts/ensure-linux-icons.mjs && npm run electron:config:server && npm run build:electron && electron-builder --config electron-builder.server.json --linux AppImage dir --x64",
         },
         dependencies: {
-          // Clôture file: vendor complète (npm 9.2 résout mal les file:../
-          // transitives → ENOENT node_modules/@creezio/<pkg>). Aligné winhub.
-          ...creezioVendorDeps(SERVER_CREEZIO_DEPS),
+          // Deps npm publiées (GitHub Packages, lockstep) — clôture explicite.
+          ...creezioNpmDeps(SERVER_CREEZIO_DEPS),
           "electron-updater": "^6.3.9",
           // Deps npm runtime main (asar FileSets kit) — pas seulement transitifs
           "hono": "^4.12.30",
@@ -239,7 +231,6 @@ function renderPackageJson(m: AppManifest): string {
         creezio: {
           brandId: m.brandId,
           kind: "server",
-          kitVendor: "vendor/creezio",
         },
         license: "UNLICENSED",
       },
@@ -250,9 +241,8 @@ function renderPackageJson(m: AppManifest): string {
 }
 
 /**
- * Clôture @creezio serveur (deps directes file:vendor) — doit couvrir le
- * graphe `file:../` des packages vendor, sinon `npm install --package-lock-only`
- * échoue (ENOENT sous node_modules/@creezio/*).
+ * Clôture @creezio serveur (deps directes npm publiées) — explicite pour un
+ * lock lisible et des updates ciblables (`npm update "@creezio/*"`).
  */
 const SERVER_CREEZIO_DEPS = [
   "api-kernel",
@@ -335,18 +325,18 @@ function renderClientPackageJson(m: AppManifest): string {
             "npm run electron:ensure-win-native && npm run electron:config:client && npm run build:electron && CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --config electron-builder.client.json --win nsis --x64 -c.win.signAndEditExecutable=false",
           "pack:win:zip":
             "npm run electron:config:client && npm run build:electron && CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --config electron-builder.client.json --win zip --x64 -c.win.signAndEditExecutable=false",
-          "electron:publish": `CREEZIO_BRAND=${m.brandId} CREEZIO_APP_ROOT=. bash vendor/creezio/desktop-tooling/scripts/publish-desktop.sh`,
-          "electron:publish:linux": `CREEZIO_BRAND=${m.brandId} CREEZIO_APP_ROOT=. bash vendor/creezio/desktop-tooling/scripts/publish-desktop.sh --platform=linux`,
-          "electron:publish:dry": `CREEZIO_BRAND=${m.brandId} CREEZIO_APP_ROOT=. bash vendor/creezio/desktop-tooling/scripts/publish-desktop.sh --dry-run`,
+          "electron:publish": `CREEZIO_BRAND=${m.brandId} CREEZIO_APP_ROOT=. bash node_modules/@creezio/desktop-tooling/scripts/publish-desktop.sh`,
+          "electron:publish:linux": `CREEZIO_BRAND=${m.brandId} CREEZIO_APP_ROOT=. bash node_modules/@creezio/desktop-tooling/scripts/publish-desktop.sh --platform=linux`,
+          "electron:publish:dry": `CREEZIO_BRAND=${m.brandId} CREEZIO_APP_ROOT=. bash node_modules/@creezio/desktop-tooling/scripts/publish-desktop.sh --dry-run`,
           "electron:ensure-win-native":
-            "node vendor/creezio/desktop-tooling/scripts/ensure-win-native-modules.mjs",
+            "node node_modules/@creezio/desktop-tooling/scripts/ensure-win-native-modules.mjs",
           "electron:ensure-linux-native":
-            "node vendor/creezio/desktop-tooling/scripts/ensure-linux-native-modules.mjs",
+            "node node_modules/@creezio/desktop-tooling/scripts/ensure-linux-native-modules.mjs",
           "electron:verify-pack":
-            "node vendor/creezio/desktop-tooling/scripts/verify-pack-runtime.mjs . --kind=client",
+            "node node_modules/@creezio/desktop-tooling/scripts/verify-pack-runtime.mjs . --kind=client",
         },
         dependencies: {
-          ...creezioVendorDeps(CLIENT_CREEZIO_DEPS),
+          ...creezioNpmDeps(CLIENT_CREEZIO_DEPS),
           "better-sqlite3": "^12.11.1",
           "electron-updater": "^6.3.9",
           "hono": "^4.12.30",
@@ -368,7 +358,6 @@ function renderClientPackageJson(m: AppManifest): string {
         creezio: {
           brandId: m.brandId,
           kind: "client",
-          kitVendor: "vendor/creezio",
         },
         license: "UNLICENSED",
       },
@@ -508,27 +497,28 @@ function renderElectronBuilderBase(m: AppManifest): string {
           buildResources: "resources",
         },
         // Parité TF2 : exclure node_modules (sinon bins kit + deps → asar ~450 Mo).
-        // @creezio/* runtime ré-inclus via buildElectronBuilderConfig (vendor/).
+        // @creezio/* runtime ré-inclus via buildElectronBuilderConfig (FileSets
+        // résolus npm : ../node_modules/@creezio/* — hoisting workspace racine).
         files: [
           "build/electron/**/*",
           "package.json",
           "!node_modules/**/*",
-          "node_modules/electron-updater/**/*",
-          "node_modules/builder-util-runtime/**/*",
-          "node_modules/fs-extra/**/*",
-          "node_modules/jsonfile/**/*",
-          "node_modules/universalify/**/*",
-          "node_modules/graceful-fs/**/*",
-          "node_modules/js-yaml/**/*",
-          "node_modules/argparse/**/*",
-          "node_modules/semver/**/*",
-          "node_modules/lazy-val/**/*",
-          "node_modules/lodash.escaperegexp/**/*",
-          "node_modules/lodash.isequal/**/*",
-          "node_modules/tiny-typed-emitter/**/*",
-          "node_modules/debug/**/*",
-          "node_modules/ms/**/*",
-          "node_modules/sax/**/*",
+          "../node_modules/electron-updater/**/*",
+          "../node_modules/builder-util-runtime/**/*",
+          "../node_modules/fs-extra/**/*",
+          "../node_modules/jsonfile/**/*",
+          "../node_modules/universalify/**/*",
+          "../node_modules/graceful-fs/**/*",
+          "../node_modules/js-yaml/**/*",
+          "../node_modules/argparse/**/*",
+          "../node_modules/semver/**/*",
+          "../node_modules/lazy-val/**/*",
+          "../node_modules/lodash.escaperegexp/**/*",
+          "../node_modules/lodash.isequal/**/*",
+          "../node_modules/tiny-typed-emitter/**/*",
+          "../node_modules/debug/**/*",
+          "../node_modules/ms/**/*",
+          "../node_modules/sax/**/*",
         ],
         extraResources: [
           {
@@ -863,23 +853,17 @@ function renderRootPackageJson(
   scripts["client:build"] = "npm run build:runtime --prefix client";
   scripts.typecheck =
     "npm run typecheck --prefix server && npm run typecheck --prefix client";
-  // Clone autonome (repo GitHub sans kit) : stage client/vendor depuis le
-  // vendor racine commité + build image serveur via Dockerfile matérialisé.
-  scripts.bootstrap = "node scripts/stage-client-vendor.mjs";
-  // Layout hôte = Docker : npm ci server + node_modules racine + symlink
-  // server/node_modules → ../node_modules (walk-up realpath vendor).
-  scripts["install:server-deps"] = "node scripts/install-server-deps.mjs";
-  // ensure-server-lock AVANT docker build : empêche npm ci rouge sur lock
-  // stale/absent (clone autonome sans kit CLI).
+  // Clone autonome npm (repo GitHub sans kit) : ensure-server-lock
+  // (lock racine workspace + ui/client) AVANT docker build + secret BuildKit
+  // pour le token registre (jamais en ARG — hors historique image).
   scripts["docker:build"] =
-    `node scripts/ensure-server-lock.mjs && docker build -f docker/server.Dockerfile --build-arg SERVER_DIR=server -t ${m.brandId}-server:local .`;
+    `node scripts/ensure-server-lock.mjs && docker build -f docker/server.Dockerfile --build-arg SERVER_DIR=server --secret id=CREEZIO_NPM_TOKEN,env=CREEZIO_NPM_TOKEN -t ${m.brandId}-server:local .`;
   // Serveur Docker headless : brandRoot = racine monorepo (scripts kit SoT).
   Object.assign(scripts, serverDockerNpmScripts(m.brandId));
 
   const creezio: Record<string, unknown> = {
     brandId: m.brandId,
     layout: "monorepo",
-    kitVendor: "vendor/creezio",
   };
   if (opts.model) {
     creezio.fromPrd = true;
@@ -898,6 +882,7 @@ function renderRootPackageJson(
         description: `${m.client.productName} — monorepo marque (server/ client/) sur OS Creezio ; admin flotte = repo dédié ${m.brandId}-admin`,
         type: "module",
         scripts,
+        workspaces: ["server"],
         creezio,
         engines: { node: ">=20" },
         license: "UNLICENSED",
@@ -910,8 +895,6 @@ function renderRootPackageJson(
 
 function renderRootGitignore(): string {
   return `node_modules/
-# Symlink git server/node_modules → ../node_modules (layout hôte = Docker)
-!server/node_modules
 **/ui/.next/
 build/
 **/build/
@@ -930,12 +913,6 @@ dist-electron-server/
 .env.local
 # Surfaces OS matérialisées depuis @creezio/os-ui — jamais versionnées dans la marque
 **/ui/app/(creezio-os)/
-# Binaires OS fat — sync vendor ne les copie pas
-vendor/creezio/electron-shell/resources/bin/*
-!vendor/creezio/electron-shell/resources/bin/.gitkeep
-!vendor/creezio/electron-shell/resources/bin/README.md
-# client/vendor = copie hardlink stagée par sync-creezio-vendor.sh (jamais versionnée)
-/client/vendor/
 
 # Runtime serveurs Docker (registre servers.json, volumes, secrets admin)
 docker-data/
@@ -953,8 +930,8 @@ Le pilotage de flotte vit dans le **repo admin dédié** \`${m.brandId}-admin\`
 
 \`\`\`
 brand-spec/     # SoT marque (brand.yaml, product.md, modules/)
-vendor/creezio/ # kit @creezio/* synchronisé (partagé server + client)
 server/         # livrable serveur : métier, harness, UI Next, Docker
+                  # (workspace npm racine — deps @creezio/* publiées, ^lockstep)
 client/         # livrable desktop thin remote-only (picker serveur)
 docker-data/    # runtime gitignoré (registre servers.json, volumes)
 \`\`\`
@@ -985,11 +962,14 @@ kit \`docker/server/README.md\`.
 
 ## Clone autonome (sans le kit creezio)
 
-Le repo embarque le kit pré-buildé (\`vendor/creezio/\`, commité). Post-clone :
+Distribution npm (docs/NPM-DISTRIBUTION.md du kit) : les deps \`@creezio/*\`
+sont des versions publiées sur GitHub Packages — aucun vendor à synchroniser.
+Le \`.npmrc\` racine (commité, sans secret) référence \`\${CREEZIO_NPM_TOKEN}\` :
+exporter un PAT \`read:packages\` avant tout install. Post-clone :
 
 \`\`\`bash
-npm run bootstrap               # stage client/vendor depuis le vendor racine
-npm run install:server-deps     # npm ci server + layout hôte (= Docker /app/node_modules)
+export CREEZIO_NPM_TOKEN=…        # PAT read:packages (org creezio)
+npm ci                          # workspace racine (server/) — lock commité
 npm ci --prefix server/ui && npm ci --prefix client
 npm run build:runtime && npm run build:ui
 npm run docker:build            # ensure-server-lock + image via docker/server.Dockerfile
@@ -997,18 +977,16 @@ npm run docker:build            # ensure-server-lock + image via docker/server.D
 
 ### Layout \`node_modules\` (hôte vs Docker)
 
-- **Docker** : le Dockerfile COPY les deps vers \`/app/node_modules\` (walk-up
-  realpath depuis \`vendor/\`). Pas besoin de \`install:server-deps\` dans l'image.
-- **Clone hôte** (harness, smokes, desktop) : \`npm ci --prefix server\` seul
-  laisse \`server/node_modules\` → résolution \`@creezio/*\` cassée. Le script
-  \`install:server-deps\` rebascule vers \`node_modules/\` racine et recrée le
-  symlink git \`server/node_modules\` → \`../node_modules\`.
+- **Docker** : le Dockerfile \`npm ci --workspace=server\` pose
+  \`/app/node_modules\` (walk-up standard — packages npm réels).
+- **Clone hôte** : même layout — \`npm ci\` à la racine (workspace) hoiste
+  dans \`node_modules/\` racine ; \`server/\` résout par walk-up.
 
-Les binaires fat (Meili, cloudflared — \`vendor/creezio/electron-shell/resources/bin/\`)
-sont volontairement hors git : l'image Docker les télécharge au build, le
-desktop les retélécharge au premier run (\`ensure-kit-binaries\`). Les gestes
-\`server-docker:*\` (registre d'instances, admin flotte, enroll) restent
-outillés par le CLI kit (\`CREEZIO_KIT_ROOT\`).
+Les binaires fat (Meili, cloudflared) ne sont pas dans les tarballs npm :
+l'image Docker les télécharge au build, le desktop au premier run
+(\`ensure-kit-binaries\`). Les gestes \`server-docker:*\` (registre
+d'instances, admin flotte, enroll) restent outillés par le CLI kit
+(\`CREEZIO_KIT_ROOT\`).
 `;
 }
 
@@ -1767,33 +1745,27 @@ export function scaffoldNewApp(opts: NewAppOptions): ScaffoldResult {
   );
 
   // CI/CD flotte : chaque marque naît avec le filet complet (CI push/PR,
-  // rapport d'impact kit + mise à jour vendor décidée, CD sur CI verte,
-  // gate vendor-integrity).
+  // rapport d'impact kit npm + mise à jour décidée kit-update, CD sur CI
+  // verte). Intégrité = `npm ci` (lockfile commité + registre).
   for (const [rel, body] of Object.entries(
     renderBrandWorkflowFiles({ brandId: manifest.brandId }),
   )) {
     writeFile(path.join(outDir, rel), body, force, written);
   }
 
-  // Vendor partagé racine + .env racine. server/vendor = symlink (runtime suit le
-  // vendor racine) ; client/vendor = dossier réel — copie hardlink stagée par
-  // sync-creezio-vendor.sh, car electron-builder refuse les symlinks hors projet.
-  // server/node_modules → ../node_modules : layout hôte = Docker (dangling OK
-  // jusqu'à `npm run install:server-deps` qui pose le vrai dossier racine).
-  fs.mkdirSync(path.join(outDir, "vendor"), { recursive: true });
-  ensureRelativeSymlink(path.join(serverDir, "vendor"), "../vendor");
-  ensureRelativeSymlink(path.join(serverDir, "node_modules"), "../node_modules");
-  const clientVendorLink = path.join(clientDir, "vendor");
-  if (fs.existsSync(clientVendorLink) && fs.lstatSync(clientVendorLink).isSymbolicLink()) {
-    fs.rmSync(clientVendorLink);
-  }
-  fs.mkdirSync(path.join(clientVendorLink, "creezio"), { recursive: true });
+  // .npmrc (registre @creezio → GitHub Packages, token via env — jamais
+  // commité) : racine (workspace) + client/ (install indépendante — npm ne
+  // remonte pas chercher le .npmrc parent hors workspaces). server/ui/.npmrc
+  // est posé par le scaffold UI (from-prd) quand une UI existe.
+  writeFile(path.join(outDir, ".npmrc"), renderCreezioNpmrc(), force, written);
+  writeFile(path.join(clientDir, ".npmrc"), renderCreezioNpmrc(), force, written);
+  // .env partagé racine (runtime server + client).
   ensureRelativeSymlink(path.join(serverDir, ".env"), "../.env");
   ensureRelativeSymlink(path.join(clientDir, ".env"), "../.env");
 
-  // Distribution autonome (clone GitHub sans kit) : matérialiser le stage
-  // client/vendor + le Dockerfile serveur + .dockerignore (SoT kit docker/server/,
-  // rafraîchis ensuite à chaque sync-creezio-vendor.sh).
+  // Distribution autonome npm (clone GitHub sans kit) : matérialiser le
+  // Dockerfile serveur + ensure-server-lock + .dockerignore (SoT kit
+  // docker/server/).
   materializeStandaloneDistribution(outDir, opts.kitRoot, written);
 
   return {

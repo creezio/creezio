@@ -20,6 +20,7 @@
 | [`src/cli.ts`](../src/cli.ts) | CLI `new-app`, `--from-prd` |
 | [`src/github-repos.ts`](../src/github-repos.ts) | Création + push des 2 repos GitHub privés d'une marque (monorepo + `<brand>-admin`) ; token env `GITHUB_TOKEN`/`CREEZIO_GITHUB_TOKEN` ou `.github-token`, vendor + package-lock synchronisés AVANT push. |
 | [`src/index.ts`](../src/index.ts) | Exports publics |
+| [`src/kit-release.ts`](../src/kit-release.ts) | (à documenter) |
 | [`src/minimal-png.ts`](../src/minimal-png.ts) | Icône placeholder |
 | [`src/package-lock.ts`](../src/package-lock.ts) | Cohérence package.json ↔ package-lock (npm ci Docker) — régénération lock-only / install. |
 | [`src/plugin-templates.ts`](../src/plugin-templates.ts) | Installation des templates de plugins kit (`templates/plugins/<id>/`) dans le répertoire plugins d'une app (`<userData>/plugins/<id>/` + `.enabled`). |
@@ -29,7 +30,6 @@
 | [`src/scaffold.ts`](../src/scaffold.ts) | Scaffold OS + branche PRD |
 | [`src/server-docker-cli.ts`](../src/server-docker-cli.ts) | CLI `creezio server-docker` — create/start/stop/rm/logs/ls, build/up/down/proof, `publish` (+ rétention, `--release` = déclaration draft dans l'app admin), `admin up`, `agent up`, `enroll`. |
 | [`src/server-docker-registry.ts`](../src/server-docker-registry.ts) | Registre d'instances serveur Docker par marque — SoT `docker-data/servers.json` (image `creezio-server-<brandId>`, containers `<brandId>-server-<nom>`). |
-| [`src/vendor-sync.ts`](../src/vendor-sync.ts) | Sync vendor kit → marque avant push GitHub (clone autonome) |
 | [`src/write-app-file.ts`](../src/write-app-file.ts) | Écriture des fichiers d'app marque — respecte le marker `creezio:owned-by-brand` même avec `--force` (merge package.json, jamais de wipe du métier enrichi). |
 
 ## `src/generators/`

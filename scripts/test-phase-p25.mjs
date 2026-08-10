@@ -63,12 +63,17 @@ check("package.json expose bin + files fleet-collector", () => {
   assert.ok(pkg.scripts?.["test:fleet-collector"]);
 });
 
-check("sync-creezio-vendor copie fleet-collector", () => {
-  const sh = fs.readFileSync(
-    path.join(root, "scripts/sync-creezio-vendor.sh"),
-    "utf8",
+check("tarball npm observability embarque fleet-collector", () => {
+  // Distribution npm : files du package publié (plus de sync vendor).
+  const pkg = JSON.parse(
+    fs.readFileSync(path.join(root, "packages/observability/package.json"), "utf8"),
   );
-  assert.ok(sh.includes("fleet-collector"));
+  assert.ok(pkg.files?.includes("fleet-collector"), "files sans fleet-collector");
+  assert.equal(
+    pkg.publishConfig?.registry,
+    "https://npm.pkg.github.com",
+    "observability non publiable npm",
+  );
 });
 
 check("README observability documente collector", () => {

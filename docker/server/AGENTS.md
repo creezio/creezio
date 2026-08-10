@@ -19,11 +19,13 @@ CRM web Next) via Docker, multi-instances, sans AppImage/Electron.
 - Committer secrets tunnel/catalog dans compose ou `.env` versionné.
 - Dupliquer l'orchestration OS : le CMD doit rester le harness marque →
   `startBrandKernelHarness`.
-- Régénérer un `package-lock` Docker à la main dans `server/` sans passer
-  par `ensureBrandPackageLocks` / `ensure-server-lock.mjs` : relance la
-  boucle `npm ci` rouge. Pour le **clone hôte** (harness), utiliser
-  `scripts/install-server-deps.mjs` (SoT ici) — pas un `mv` improvisé hors
-  script. Docker image : le Dockerfile pose déjà `/app/node_modules`.
+- Régénérer un `package-lock` à la main sans passer par
+  `ensureBrandPackageLocks` / `scripts/ensure-server-lock.mjs` (lock racine
+  workspace + locks ui/client) : relance la boucle `npm ci` rouge.
+  Docker image : le Dockerfile pose déjà `/app/node_modules`.
+- Passer le token npm en ARG/ENV de build — obligatoirement en **secret
+  BuildKit** (`--secret id=CREEZIO_NPM_TOKEN,env=CREEZIO_NPM_TOKEN`, posé
+  par le CLI) : un ARG reste dans `docker history`.
 
 ## Points d'entrée
 
@@ -31,9 +33,9 @@ CRM web Next) via Docker, multi-instances, sans AppImage/Electron.
 |---------|------|
 | `Dockerfile` | Image générique (context = racine marque, Meili + UI Next embarqués) |
 | `docker-compose.yml` | Legacy `server-1` + `server-2` (bind 127.0.0.1) |
-| `brand.dockerignore` | Template ignore v2 (posé/rafraîchi en `.dockerignore` marque) |
-| `stage-client-vendor.mjs` | SoT stage `client/vendor` sans kit — matérialisé en marque `scripts/stage-client-vendor.mjs` (sync + scaffold), avec `Dockerfile` → `docker/server.Dockerfile` marque (clone GitHub autonome ; gate `test-phase-clone-autonomy`) |
-| `install-server-deps.mjs` | SoT layout hôte `node_modules` racine + symlink `server/node_modules` — matérialisé en `scripts/install-server-deps.mjs` (obligatoire hors Docker) |
+| `brand.dockerignore` | Template ignore v4 (posé/rafraîchi en `.dockerignore` marque) |
+| `Dockerfile` | Image serveur npm — `npm ci` workspace via **secret BuildKit** `CREEZIO_NPM_TOKEN` ; matérialisé en `docker/server.Dockerfile` marque (clone GitHub autonome ; gate `test-phase-clone-autonomy`) |
+| `ensure-server-lock.mjs` | SoT pré-flight lockfiles npm (racine workspace + ui/client) — matérialisé en `scripts/ensure-server-lock.mjs` |
 | `creezio-open-url.sh` | Opener navigateur (firefox/gio/xdg-open…) → `~/bin/` |
 | `README.md` | Doc humaine (registre, admin, sécurité, boot-status) |
 | `REMOTE-ACCESS.md` | Reverse proxy nginx-proxy-manager |
@@ -60,7 +62,8 @@ CRM web Next) via Docker, multi-instances, sans AppImage/Electron.
    (le loopback se fait au publish côté hôte).
 2. Warm natif off par défaut (`CREEZIO_NATIVE_WARM=0`) pour image légère.
 3. Après changement runtime consommé : `npm run build -w @creezio/app-runtime`
-   (+ electron-shell si besoin) puis sync vendor marque.
+   (+ electron-shell si besoin), changeset → publication npm, puis
+   `npm update "@creezio/*"` côté marque.
 4. Gate : `node --test scripts/test-phase-server-docker.mjs`.
 
 ## Preuve

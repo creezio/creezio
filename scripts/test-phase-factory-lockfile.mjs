@@ -102,14 +102,15 @@ test("isPackageLockInSync : match / mismatch / absent", async () => {
   }
 });
 
-test("Dockerfile : fallback npm install si npm ci échoue", () => {
+test("Dockerfile : npm ci strict + secret BuildKit (mode npm)", () => {
   const df = fs.readFileSync(
     path.join(ROOT, "docker/server/Dockerfile"),
     "utf8",
   );
   assert.match(df, /npm ci --omit=dev/);
-  assert.match(df, /fallback npm install/);
-  assert.match(df, /npm install --omit=dev/);
+  assert.match(df, /--mount=type=secret,id=CREEZIO_NPM_TOKEN/);
+  assert.doesNotMatch(df, /fallback npm install/);
+  assert.doesNotMatch(df, /COPY vendor/);
 });
 
 test("push GitHub + ensureBrandStandalone régénèrent le lock", () => {
@@ -153,7 +154,7 @@ test("ensure-server-lock.mjs autonome (syntaxe + contrat)", () => {
   assert.doesNotMatch(src, /ln -sfn.*node_modules|renameSync.*node_modules/);
 });
 
-test("prepareBrandDistribution produit un lock server/ sur marque minimale", async () => {
+test("prepareBrandDistribution produit le lock racine workspace (mode npm)", async (t) => {
   const { isPackageLockInSync } = await loadLockHelpers();
   const prepMod = await import(
     pathToFileURL(
@@ -162,42 +163,55 @@ test("prepareBrandDistribution produit un lock server/ sur marque minimale", asy
   );
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "creezio-prep-"));
   try {
+    // Marque minimale npm : orchestrateur racine (workspaces [server]) +
+    // livrable server/ avec une dep npm publique (registre requis).
     const server = path.join(dir, "server");
     fs.mkdirSync(server, { recursive: true });
-    fs.mkdirSync(path.join(dir, "vendor/creezio/probe"), { recursive: true });
     fs.writeFileSync(
-      path.join(dir, "vendor/creezio/probe/package.json"),
-      JSON.stringify({ name: "@creezio/probe", version: "0.0.1", type: "module" }),
+      path.join(dir, "package.json"),
+      JSON.stringify({
+        name: "prep-probe",
+        private: true,
+        type: "module",
+        workspaces: ["server"],
+      }),
     );
-    fs.writeFileSync(
-      path.join(dir, "vendor/creezio/SYNC.json"),
-      JSON.stringify({ packages: ["probe"] }),
-    );
-    fs.symlinkSync("../vendor", path.join(server, "vendor"));
     fs.writeFileSync(
       path.join(server, "package.json"),
       JSON.stringify({
         name: "@creezio/app-prep",
         private: true,
         type: "module",
-        dependencies: {
-          "@creezio/probe": "file:vendor/creezio/probe",
-          ms: "^2.1.3",
-        },
+        dependencies: { ms: "^2.1.3" },
       }),
     );
+    const hasNetwork = (() => {
+      const ping = spawnSync("npm", ["view", "ms", "version"], {
+        encoding: "utf8",
+      });
+      return ping.status === 0;
+    })();
+    if (!hasNetwork) {
+      t.skip("registre npm injoignable — lock-only non testé ici");
+      return;
+    }
     const r = prepMod.prepareBrandDistribution(dir, {
       log: () => {},
     });
+    const rootLock = path.join(dir, "package-lock.json");
     assert.ok(
-      isPackageLockInSync(path.join(server, "package.json")),
-      "lock server absent/incohérent après prepare",
+      isPackageLockInSync(path.join(dir, "package.json"), rootLock),
+      "lock racine absent/incohérent après prepare",
     );
     assert.ok(
-      r.locksRefreshed.includes("server") ||
-        fs.existsSync(path.join(server, "package-lock.json")),
-      "prepare n'a pas produit server/package-lock.json",
+      isPackageLockInSync(path.join(server, "package.json"), rootLock, "server"),
+      "entrée packages[server] du lock racine incohérente après prepare",
     );
+    assert.ok(
+      !fs.existsSync(path.join(server, "package-lock.json")),
+      "pas de lock server/ propre en mode workspace (SoT = racine)",
+    );
+    assert.ok(r.locksRefreshed.length >= 1, "prepare n'a rien régénéré");
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
   }

@@ -38,8 +38,10 @@ en jumeau dans `main.ts`.
 
 ## Layout hôte + smokes
 
-- Scaffold pose `server/node_modules` → `../node_modules` + matérialise
-  `scripts/install-server-deps.mjs` (SoT `docker/server/`).
+- Scaffold npm : workspace racine (`workspaces: ["server"]`) + `.npmrc`
+  (registre @creezio → GitHub Packages, token via `CREEZIO_NPM_TOKEN`) +
+  matérialise `scripts/ensure-server-lock.mjs` (SoT `docker/server/`).
+  Plus de vendor ni de symlinks trackés.
 - Smokes `test:metier-parcours` : `AUTH_DISABLED=1` dans `harnessPrelude`
   (garde mounts F3 — sinon 401 notes).
 

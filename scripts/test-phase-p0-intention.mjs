@@ -200,19 +200,25 @@ test("P0.3 mesure cutover : jumeau local ⇒ dette ; absent ⇒ SoT kit obligato
   }
 });
 
-test("P0.4 sync vendor DEFAULT = liste complète + Paperclip mort", () => {
-  const syncSh = fs.readFileSync(
-    path.join(KIT_ROOT, "scripts/sync-creezio-vendor.sh"),
-    "utf8",
-  );
+test("P0.4 surface npm = liste complète publiable + Paperclip mort", () => {
+  // Distribution npm : chaque package du socle est publié sur GitHub
+  // Packages (publishConfig + version lockstep, pas de private:true) — plus
+  // de DEFAULT_PACKAGES vendor.
   for (const pkg of FULL_VENDOR) {
-    assert.match(
-      syncSh,
-      new RegExp(`\\b${pkg}\\b`),
-      `DEFAULT_PACKAGES manque ${pkg}`,
+    const pj = JSON.parse(
+      fs.readFileSync(
+        path.join(KIT_ROOT, "packages", pkg, "package.json"),
+        "utf8",
+      ),
     );
+    assert.ok(!pj.private, `${pkg} private — non publiable`);
+    assert.equal(
+      pj.publishConfig?.registry,
+      "https://npm.pkg.github.com",
+      `${pkg} sans publishConfig npm.pkg.github.com`,
+    );
+    assert.doesNotMatch(JSON.stringify(pj), PAPERCLIP_RE);
   }
-  assert.doesNotMatch(syncSh, PAPERCLIP_RE);
 
   for (const [name, dir] of Object.entries(BRANDS)) {
     assert.ok(fs.existsSync(dir), `${name} crm`);

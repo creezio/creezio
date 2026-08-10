@@ -125,13 +125,9 @@ test("O0.3 SYNC.json liste complète H6 (18 packages)", () => {
   }
 });
 
-test("O0.4 sync script pin kitSha + dry-run ×3", () => {
-  const syncSh = fs.readFileSync(
-    path.join(root, "scripts/sync-creezio-vendor.sh"),
-    "utf8",
-  );
-  assert.match(syncSh, /kitSha/);
-  assert.match(syncSh, /git rev-parse|rev-parse --short/);
+test("O0.4 sync script marque (legacy) : dry-run ×3", () => {
+  // Le script kit scripts/sync-creezio-vendor.sh a été supprimé (distrib npm)
+  // — les marques legacy vendor-era conservent leur copie locale figée.
   for (const { id, crm } of brands) {
     const out = execFileSync(
       "bash",

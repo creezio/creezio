@@ -1,4 +1,4 @@
-# creezio-dockerignore v3 — layout monorepo 3 livrables (client/ server/ admin/)
+# creezio-dockerignore v4 — layout monorepo 3 livrables (client/ server/ admin/)
 # + compat layout plat legacy. UI Next standalone incluse dans l'image.
 # Copié en `.dockerignore` à la racine marque avant `docker build`
 # (CLI `creezio server-docker build` le pose / rafraîchit si marqueur absent).
@@ -14,8 +14,6 @@
 **/dist-electron
 **/dist-electron-server
 **/ui
-# Exports UI des packages kit (@creezio/*/ui) — requis pour npm ci file:vendor
-!vendor/creezio/**/ui/**
 **/dumps
 **/crm
 **/src

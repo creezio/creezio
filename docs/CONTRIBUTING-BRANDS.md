@@ -77,13 +77,13 @@ Voir [NPM-DISTRIBUTION.md](./NPM-DISTRIBUTION.md). Résumé app :
 `.npmrc` (registry GitHub Packages + `CREEZIO_NPM_TOKEN`), deps
 `"@creezio/<pkg>": "^0.4.0"`, mise à jour par `npm update "@creezio/*"`.
 Les workflows `kit-compat` / `vendor-update` et les scripts
-`install-server-deps` / symlinks trackés sont **DÉPRÉCIÉS** (transition).
+`install-server-deps` / symlinks trackés sont **SUPPRIMÉS** (côté kit —
+les apps migrent une à une, cf. feat/npm-consumption de tempoflow3).
 ## Process app → kit (bug ou évolution du kit constaté depuis une app)
 
-**Jamais de patch dans `vendor/creezio/`.** Ce dossier est écrasé à chaque
-resync, et le garde anti-dérive de `scripts/ci/kit-compat.sh` /
-`scripts/ci/vendor-update.sh` (app) refuse de tourner si
-`git status --porcelain vendor/` n'est pas vide.
+**Jamais de patch dans `node_modules/@creezio/`.** Ces packages sont
+réinstallés à chaque `npm ci` — un fix se fait dans le repo kit, publié,
+puis consommé par `npm update "@creezio/*"`.
 
 Chemin nominal :
 
@@ -116,9 +116,8 @@ versionné et livre sa migration automatique.
 2. codemods de migration dans `scripts/codemods/<nouvelleVersion>/`
    (`manifest.json` + scripts idempotents, contrat :
    [`scripts/codemods/README.md`](../scripts/codemods/README.md)) — la gate
-   `scripts/test-phase-arch-codemod.mjs` REFUSE un bump sans manifest, et
-   `sync-creezio-vendor.sh` exécute les codemods automatiquement au resync
-   d'une app en version antérieure ;
+   `scripts/test-phase-arch-codemod.mjs` REFUSE un bump sans manifest ;
+   la marque applique les codemods lors de sa montée de version npm ;
 3. ADR dans [`docs/adr/`](./adr/) documentant le breaking change ;
 4. le commit de bump apparaîtra surligné ⚠️ dans le rapport kit-compat de
    chaque app — la mise à jour reste son choix, la migration est fournie.

@@ -294,17 +294,21 @@ test("P.5 moteur: initial / advance / interstitial (3 et 8 steps)", () => {
   assert.equal(computeInitialStep({ stepCount: long.length, editMode: true }), 7);
 });
 
-test("P.6 workspace wiring + vendor sync liste", () => {
+test("P.6 workspace wiring + package publié npm", () => {
   const rootPkg = JSON.parse(fs.readFileSync(path.join(root, "package.json"), "utf8"));
   assert.match(rootPkg.scripts.build, /@creezio\/onboarding/);
   assert.match(rootPkg.scripts["build:packages"], /@creezio\/onboarding/);
   assert.match(rootPkg.scripts.test, /test-phase-p-onboarding/);
 
-  const sync = fs.readFileSync(
-    path.join(root, "scripts/sync-creezio-vendor.sh"),
-    "utf8",
+  // Distribution npm : le package est publié (plus de sync-list vendor).
+  const onb = JSON.parse(
+    fs.readFileSync(path.join(root, "packages/onboarding/package.json"), "utf8"),
   );
-  assert.match(sync, /^\s*onboarding\s*$/m);
+  assert.equal(
+    onb.publishConfig?.registry,
+    "https://npm.pkg.github.com",
+    "onboarding non publiable npm",
+  );
 
   const cjs = fs.readFileSync(path.join(root, "scripts/build-cjs.mjs"), "utf8");
   assert.match(cjs, /"onboarding"/);

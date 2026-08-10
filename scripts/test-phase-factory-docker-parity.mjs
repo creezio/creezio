@@ -94,9 +94,9 @@ test("FDP factory → Docker : app neuve = même architecture serveur que TF3", 
     assert.match(harness, /startBrandKernelHarness/);
 
     // 3) Boot Docker via le CLI kit — ZÉRO étape manuelle : `create` fait
-    //    lui-même sync vendor → npm install → build runtime/UI → image → run.
-    //    (Ne PAS npm install avant : vendor/ est vide à la génération, le
-    //    lockfile serait corrompu et le `npm ci` de l'image échouerait.)
+    //    lui-même locks → npm install → build runtime/UI → image → run.
+    //    (Mode npm : deps @creezio/* publiées, CREEZIO_NPM_TOKEN requis —
+    //    secret BuildKit passé au build par le CLI.)
     const port = await freePort();
     const create = sh(
       process.execPath,

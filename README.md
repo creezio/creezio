@@ -134,5 +134,5 @@ produit client).
   les repos marque (pas de domaine marque dans `@creezio/*` —
   [ADR](./docs/adr/ADR-no-brand-domain-in-native-packages.md)).
 - Isolation DB stricte `core` / `brand` / `plugin/<id>`.
-- Les marques consomment le kit via leur `vendor/creezio` racine
-  (`scripts/sync-creezio-vendor.sh` ; legacy TF2 : `crm/vendor/creezio`).
+- Les marques consomment le kit en packages npm publiés
+  (`@creezio/*` sur GitHub Packages — `docs/NPM-DISTRIBUTION.md`).
