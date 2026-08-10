@@ -1,0 +1,14 @@
+# @creezio/tasks
+
+## 0.5.0
+
+### Patch Changes
+
+- Updated dependencies [8b4c876]
+- Updated dependencies [0ff4ed2]
+- Updated dependencies [d674c86]
+  - @creezio/auth@0.5.0
+  - @creezio/shell-ui@0.5.0
+  - @creezio/assistant@0.5.0
+  - @creezio/platform-core@0.5.0
+  - @creezio/api-kernel@0.5.0
