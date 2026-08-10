@@ -42,10 +42,11 @@ while [ $# -gt 0 ]; do
     --brand-root=*)
       BRAND_ROOT="${a#--brand-root=}"; HAS_BRAND_ROOT=1; shift ;;
     --tag)
-      [[ "${2:-}" =~ ^[0-9]+\.[0-9]+\.[0-9]+([.-][A-Za-z0-9.-]+)?$ ]] || die "tag invalide: ${2:-}"
+      # tags semver (0.7.0) ET auto (auto.202608101152.441a96c) — charset sûr.
+      [[ "${2:-}" =~ ^[A-Za-z0-9][A-Za-z0-9._-]{0,80}$ ]] || die "tag invalide: ${2:-}"
       shift 2 ;;
     --tag=*)
-      [[ "${a#--tag=}" =~ ^[0-9]+\.[0-9]+\.[0-9]+([.-][A-Za-z0-9.-]+)?$ ]] || die "tag invalide: ${a#--tag=}"
+      [[ "${a#--tag=}" =~ ^[A-Za-z0-9][A-Za-z0-9._-]{0,80}$ ]] || die "tag invalide: ${a#--tag=}"
       shift ;;
     --image)
       [[ "${2:-}" =~ ^[A-Za-z0-9./:@_-]+$ ]] || die "image invalide"
