@@ -1,5 +1,13 @@
 # @creezio/desktop-tooling
 
+## 0.8.1
+
+### Patch Changes
+
+- 1dfb6f4: e2e-browser-parcours : importCreezio hoist-safe reapplique (le correctif 0.7.1
+  avait ete perdu avant commit). Prouve localement : MISSION=SUCCESS sur winhub.
+  - @creezio/brand-config@0.8.1
+
 ## 0.8.0
 
 ### Patch Changes
