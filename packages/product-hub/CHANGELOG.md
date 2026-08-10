@@ -1,5 +1,12 @@
 # @creezio/product-hub
 
+## 0.7.1
+
+### Patch Changes
+
+- @creezio/brand-config@0.7.1
+- @creezio/platform-core@0.7.1
+
 ## 0.7.0
 
 ### Patch Changes
