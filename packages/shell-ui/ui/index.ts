@@ -94,6 +94,7 @@ export * from "./workspace/workspace-root";
 export * from "./workspace/workspace-tab-bar";
 export * from "./workspace/keep-alive";
 export * from "./workspace/ai-workspace-banner";
+export * from "./workspace/impersonation-banner";
 export { configureAiActivityPanel, AiActivityPanelHost } from "./workspace/ai-activity-panel-host";
 export * from "./workspace/window-chrome-controls";
 export * from "./workspace/ai-workspace-agent-host";

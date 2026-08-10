@@ -13,6 +13,7 @@ import { DesktopBridge } from "../desktop/desktop-bridge";
 import { AuthWindowChrome } from "../desktop/auth-window-chrome";
 import { AiWorkspaceAgentHost } from "./ai-workspace-agent-host";
 import { AiWorkspaceBanner } from "./ai-workspace-banner";
+import { ImpersonationBanner } from "./impersonation-banner";
 import { TabWorkspaceProvider } from "./tab-workspace-context";
 import { WorkspaceShell } from "./workspace-shell";
 
@@ -106,6 +107,7 @@ export function WorkspaceRoot({
   const shell = (
     <WorkspaceShell sidebar={sidebar} footbar={footbar}>
       {hideAssistant ? null : <AiWorkspaceBanner />}
+      <ImpersonationBanner />
       {banners}
       {content}
     </WorkspaceShell>
