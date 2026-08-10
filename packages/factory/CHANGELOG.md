@@ -1,5 +1,16 @@
 # @creezio/factory
 
+## 0.5.1
+
+### Patch Changes
+
+- f2baaf8: migrate-stack : provisioner resolu depuis l env de l instance (registre) avant
+  le .env de marque — ce dernier peut viser un endpoint public legacy qui ignore
+  serviceHost (ingress reste sur 127.0.0.1, 502 post-migration resto-lyon).
+  - @creezio/brand-config@0.8.1
+  - @creezio/product-hub@0.8.1
+  - @creezio/brand-spec@0.8.1
+
 ## 0.5.0
 
 ### Minor Changes

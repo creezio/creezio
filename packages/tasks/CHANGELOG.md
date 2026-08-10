@@ -1,5 +1,15 @@
 # @creezio/tasks
 
+## 0.8.1
+
+### Patch Changes
+
+- @creezio/platform-core@0.8.1
+- @creezio/api-kernel@0.8.1
+- @creezio/shell-ui@0.8.1
+- @creezio/auth@0.8.1
+- @creezio/assistant@0.8.1
+
 ## 0.8.0
 
 ### Patch Changes

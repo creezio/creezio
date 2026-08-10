@@ -1,6 +1,6 @@
 {
   "name": "@creezio/support",
-  "version": "0.8.0",
+  "version": "0.8.1",
   "description": "Support natif OS — tickets clients sur chaque serveur marque (page /support) + export vers l'admin de marque",
   "type": "module",
   "main": "./dist-cjs/index.js",
@@ -28,7 +28,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@creezio/api-kernel": "^0.8.0"
+    "@creezio/api-kernel": "^0.8.1"
   },
   "devDependencies": {
     "@types/node": "^22.15.3",
