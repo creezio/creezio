@@ -1,5 +1,11 @@
 # @creezio/propagation
 
+## 0.1.3
+
+### Patch Changes
+
+- @creezio/brand-config@0.7.0
+
 ## 0.1.2
 
 ### Patch Changes

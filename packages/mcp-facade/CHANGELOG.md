@@ -1,5 +1,12 @@
 # @creezio/mcp-facade
 
+## 0.7.0
+
+### Patch Changes
+
+- @creezio/platform-core@0.7.0
+- @creezio/api-kernel@0.7.0
+
 ## 0.6.0
 
 ### Patch Changes
