@@ -46,6 +46,7 @@
 | [`test-phase-api-fallthrough-loop.mjs`](../test-phase-api-fallthrough-loop.mjs) | (à documenter) |
 | [`test-phase-app-runtime.mjs`](../test-phase-app-runtime.mjs) | Gate app-runtime — façade exports + composeBrandOs smoke (sans apps/tempoflow3). |
 | [`test-phase-arch-codemod.mjs`](../test-phase-arch-codemod.mjs) | (à documenter) |
+| [`test-phase-auth-brand-role.mjs`](../test-phase-auth-brand-role.mjs) | Gate rôle métier en session — configureAuth.resolveBrandRole : absent→null, résolu via db brand, impersonation→rôle de la cible, resolver en échec→null (jamais de 500 sur /me). |
 | [`test-phase-auth-secret.mjs`](../test-phase-auth-secret.mjs) | Gate sécurité AUTH_SECRET serveur (fix trou : serveurs Docker headless signaient les sessions avec le fallback dev public). |
 | [`test-phase-b.mjs`](../test-phase-b.mjs) | !usrbinenv node |
 | [`test-phase-b2.mjs`](../test-phase-b2.mjs) | !usrbinenv node |

@@ -52,14 +52,35 @@ api.registerModuleApi(
 // ui : chrome de la marque (layout / BrandChrome)
 import { InteractiveDemoRoot } from "@creezio/interactive-demo/ui";
 import "@creezio/interactive-demo/ui/interactive-demo.css";
+import { useSession } from "@creezio/auth/ui";
 
-<InteractiveDemoRoot navigate={router.push} userKey={me?.user} />
+// Le rôle courant vient de la SESSION : me.brandRole (champ brand_role de
+// /api/v1/auth/me, alimenté par configureAuth({ resolveBrandRole }) côté
+// serveur). Ne PAS coder de fetch d'endpoint rôle custom : obsolète.
+const { me } = useSession();
+<InteractiveDemoRoot
+  navigate={router.push}
+  userKey={me?.user}
+  role={me?.brandRole}
+/>
 ```
 
 Le scénario marqué `autoStart: true` se lance automatiquement à la première
 visite (après le setup / l'onboarding) ; « déjà vu » est persisté par
 utilisateur (preferences + localStorage). Le lanceur flottant permet de
 rejouer la visite à tout moment.
+
+## Scénarios par rôle
+
+Un scénario peut restreindre sa visibilité avec `roles?: string[]` (lanceur
++ autoStart ; un lancement explicite `startInteractiveDemo(id)` ignore le
+filtre). Le rôle courant est une **donnée de session**, pas une donnée
+métier : la marque déclare `configureAuth({ resolveBrandRole })`
+(`@creezio/auth`, callback qui résout le rôle depuis SA db — ex. lookup
+`user_roles`), le kit sert `brand_role` dans `/api/v1/auth/me` (la valeur
+suit la cible en impersonation) et `useSession().me.brandRole` côté UI.
+Sans resolver : `brandRole` est `null` → aucun filtrage (comportement
+historique).
 
 ## Éditer la démo (ajouter / enlever des étapes)
 

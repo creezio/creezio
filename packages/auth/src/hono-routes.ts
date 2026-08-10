@@ -60,6 +60,15 @@ export type AuthRouteAdapters = {
    * Fidu peut forcer true après cutover.
    */
   kitFirst?: boolean;
+  /**
+   * Rôle métier marque de la session (champ brand_role de /me) — construit
+   * par app-runtime depuis configureAuth.resolveBrandRole + la db brand de
+   * la surface. sub = la CIBLE en impersonation : le rôle suivi est celui
+   * du compte vu. Adapter absent = brand_role null (rétrocompatible).
+   */
+  resolveBrandRole?: (
+    userId: string,
+  ) => string | null | Promise<string | null>;
 };
 
 const ErrorSchema = z.object({ error: z.string() }).openapi("AuthError");
@@ -228,6 +237,7 @@ export function createAuthRoutes(
                 permissions: z.array(z.string()).optional(),
                 impersonating: z.boolean().optional(),
                 auth_disabled: z.boolean().optional(),
+                brand_role: z.string().nullable().optional(),
               }),
             },
           },
@@ -248,6 +258,7 @@ export function createAuthRoutes(
             role: "owner",
             permissions: [...adapters.ownerPermissions],
             impersonating: false,
+            brand_role: null,
           },
           200,
         );
@@ -260,6 +271,14 @@ export function createAuthRoutes(
       const actor = session.actorSub
         ? adapters.getUserById(session.actorSub)
         : null;
+      /* Rôle métier marque (configureAuth.resolveBrandRole) — best effort :
+       * un resolver en échec ne doit JAMAIS faire échouer /me. */
+      let brandRole: string | null = null;
+      try {
+        brandRole = (await adapters.resolveBrandRole?.(session.sub)) ?? null;
+      } catch {
+        brandRole = null;
+      }
       return c.json(
         {
           ok: true as const,
@@ -269,6 +288,7 @@ export function createAuthRoutes(
           kind: me?.kind || "human",
           permissions: session.permissions,
           impersonating: sessionIsImpersonating(session),
+          brand_role: brandRole,
           actor: actor
             ? { id: actor.id, username: actor.username, role: actor.role }
             : null,

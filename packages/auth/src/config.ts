@@ -3,6 +3,15 @@
  * Aucun nom de cookie ni bridge hardcodé dans le kit.
  */
 
+/**
+ * Accès db minimal (structurel) passé au resolver de rôle marque : la
+ * couche brand du kernel (brand.db) quand la surface la fournit, sinon
+ * null. Type structurel local, zéro dépendance runtime.
+ */
+export type BrandRoleDbLike = {
+  prepare: (sql: string) => { get: (...params: unknown[]) => unknown };
+};
+
 export type AuthConfig = {
   /**
    * Nom du cookie de session JWT (ex. tempoflow2_crm_session / fidu_session).
@@ -32,6 +41,18 @@ export type AuthConfig = {
    * Option absente (défaut) = garde owner-only historique, octet pour octet.
    */
   userAdminPermission?: string;
+  /**
+   * Rôle métier marque exposé en session (ex. backoffice, pos) : résolu à
+   * la volée par la marque depuis SA db métier, jamais stocké dans le JWT.
+   * Servi par GET /api/v1/auth/me (champ brand_role, sub = cible en
+   * impersonation) puis exposé côté UI via useSession().me.brandRole (démo
+   * interactive par rôle, lanceurs conditionnels…). Option absente
+   * (défaut) = brand_role null, aucun filtrage métier côté kit.
+   */
+  resolveBrandRole?: (
+    userId: string,
+    db: BrandRoleDbLike | null,
+  ) => string | null | Promise<string | null>;
 };
 
 const DEFAULT_MAX_AGE = 60 * 60 * 24 * 7;
@@ -45,6 +66,8 @@ type ResolvedAuthConfig = {
   ownerOnlyPermissions: readonly string[];
   /** E1 — vide = non déclarée (garde users owner-only inchangée). */
   userAdminPermission: string;
+  /** undefined = non déclaré : /me renvoie brand_role null. */
+  resolveBrandRole: AuthConfig["resolveBrandRole"];
 };
 
 const DEFAULT: ResolvedAuthConfig = {
@@ -55,6 +78,7 @@ const DEFAULT: ResolvedAuthConfig = {
   collaboratorAssignablePermissions: [],
   ownerOnlyPermissions: [],
   userAdminPermission: "",
+  resolveBrandRole: undefined,
 };
 
 let config: ResolvedAuthConfig = { ...DEFAULT };
@@ -86,6 +110,7 @@ export function configureAuth(next: AuthConfig): void {
       typeof next.userAdminPermission === "string"
         ? next.userAdminPermission.trim()
         : config.userAdminPermission,
+    resolveBrandRole: next.resolveBrandRole ?? config.resolveBrandRole,
   };
 }
 

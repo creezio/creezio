@@ -682,6 +682,21 @@ export function mountBrandPlatformSurface(opts: {
       resolveCookieSecure: (c) =>
         (c.req.header("x-forwarded-proto") || "").toLowerCase() === "https",
       getSessionFromContext: sessionFromContext,
+      // Rôle métier marque (configureAuth.resolveBrandRole) résolu contre la
+      // db brand de la surface — best effort, jamais de throw (la route /me
+      // retombe sur brand_role null).
+      resolveBrandRole: async (userId) => {
+        try {
+          return (
+            (await getAuthConfig().resolveBrandRole?.(
+              userId,
+              opts.brandDb?.() ?? null,
+            )) ?? null
+          );
+        } catch {
+          return null;
+        }
+      },
     }),
   );
 
