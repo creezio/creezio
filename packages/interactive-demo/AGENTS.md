@@ -31,6 +31,11 @@ par toutes les marques — le contenu des démos vit chez la marque.
 - `src/index.ts` : surface publique runtime.
 - `src/types.ts` : contrat `DemoScenario` / `DemoStep` / `DemoTarget` +
   `validateDemoScenario` (pur, sans DOM).
+- `src/contributions.ts` : `DemoModuleContribution` +
+  `collectInteractiveDemoDefaults` — agrège les `demo` des modules du
+  registre marque (validation, dédup par id, ordre stable, erreurs
+  agrégées). Utilisé par `collectDemoScenarios()` du `modules/index.ts`
+  généré factory.
 - `src/content.ts` : hybride DB — `interactiveDemoMigrations`,
   `mergeDemoScenarios`, `createInteractiveDemoMount` →
   `/api/v1/modules/interactive-demo/*` (tables `interactive_demo_content`
@@ -63,7 +68,8 @@ par toutes les marques — le contenu des démos vit chez la marque.
 
 ## Config brand
 
-- Défauts : UN fichier explicite
+- Défauts : au choix champ `demo` des modules du registre
+  (`collectDemoScenarios()` — câblage cible) ou UN fichier explicite
   `server/src/electron/brand-interactive-demo-content.ts` ; migrations
   composées dans `brand-migrations.ts` ; mount enregistré sous l'id
   `interactive-demo` dans `brand-module-api.ts`.

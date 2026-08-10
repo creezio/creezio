@@ -134,6 +134,7 @@ function renderPackageJsonFromPrd(m: AppManifest, model: ProductModel): string {
             "desktop-tooling",
             "electron-shell",
             "integrations",
+            "interactive-demo",
             "mails",
             "mcp-facade",
             "observability",

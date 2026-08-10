@@ -3,11 +3,13 @@
  * hybride » (docs/adr/ADR-module-natif-hybride.md).
  *
  * Verrouille : exports kit (migrations + merge + mount + validation +
- * scénario générique), schéma interactive_demo_content /
- * interactive_demo_preferences, merge pur défauts/overrides (steps =
- * remplacement, enabled:false, scénario additionnel), mount 503 sans db,
- * GET/PUT/DELETE scenarios + preferences sur une vraie DB (node:sqlite si
- * dispo, sinon stub mémoire), et surface UI (exports ./ui + CSS).
+ * scénario générique + collecteur de contributions modules), schéma
+ * interactive_demo_content / interactive_demo_preferences, merge pur
+ * défauts/overrides (steps = remplacement, enabled:false, scénario
+ * additionnel), mount 503 sans db, GET/PUT/DELETE scenarios + preferences
+ * sur une vraie DB (node:sqlite si dispo, sinon stub mémoire), surface UI
+ * (exports ./ui + CSS), et collectInteractiveDemoDefaults (validation
+ * agrégée, dédup par id, ordre stable).
  */
 import assert from "node:assert/strict";
 import fs from "node:fs";
@@ -137,6 +139,7 @@ test("interactive-demo : exports kit + migrations", async () => {
   assert.equal(typeof mod.mergeDemoScenarios, "function");
   assert.equal(typeof mod.validateDemoScenario, "function");
   assert.equal(typeof mod.genericOsTourScenario, "function");
+  assert.equal(typeof mod.collectInteractiveDemoDefaults, "function");
 
   const migs = mod.interactiveDemoMigrations();
   assert.equal(migs.length, 1);
@@ -175,6 +178,78 @@ test("interactive-demo : validateDemoScenario", async () => {
   assert.ok(bad.includes("etape_2_cible_invalide"));
   assert.ok(bad.includes("etape_3_ms_invalide"));
   assert.ok(bad.includes("etape_4_kind_invalide"));
+});
+
+test("interactive-demo : collectInteractiveDemoDefaults (validation, dédup, ordre stable)", async () => {
+  const mod = await loadDist();
+  const { collectInteractiveDemoDefaults, mergeDemoScenarios } = mod;
+  assert.equal(typeof collectInteractiveDemoDefaults, "function");
+
+  const scen = (id, title = id) => ({
+    id,
+    title,
+    steps: [{ id: "s1", kind: "say", title: "Bonjour" }],
+  });
+
+  // Aucune contribution → liste vide (mount serviable tel quel).
+  assert.deepEqual(collectInteractiveDemoDefaults([]), []);
+
+  // Ordre stable : ordre des contributions puis de déclaration, jamais de tri.
+  const ordered = collectInteractiveDemoDefaults([
+    { moduleId: "zeta", scenarios: [scen("z-2"), scen("z-1")] },
+    { moduleId: "alpha", scenarios: [scen("a-1")] },
+  ]);
+  assert.deepEqual(ordered.map((s) => s.id), ["z-2", "z-1", "a-1"]);
+
+  // Dédup : même module contribuant deux fois le même id (registre listé
+  // en double) → une seule copie, sans erreur.
+  const deduped = collectInteractiveDemoDefaults([
+    { moduleId: "promo", scenarios: [scen("tour")] },
+    { moduleId: "promo", scenarios: [scen("tour")] },
+  ]);
+  assert.deepEqual(deduped.map((s) => s.id), ["tour"]);
+
+  // Conflit : deux modules distincts, même id → erreur nommant les deux.
+  assert.throws(
+    () =>
+      collectInteractiveDemoDefaults([
+        { moduleId: "promo", scenarios: [scen("tour")] },
+        { moduleId: "catalogue", scenarios: [scen("tour")] },
+      ]),
+    /scenario en double: tour \(modules promo et catalogue\)/,
+  );
+
+  // Validation : UNE Error agrégée, préfixée module:scénario, codes de
+  // validateDemoScenario repris.
+  let err = null;
+  try {
+    collectInteractiveDemoDefaults([
+      { moduleId: "promo", scenarios: [{ id: "casse", title: "X", steps: [] }] },
+      {
+        moduleId: "stats",
+        scenarios: [{ title: "sans id", steps: [{ id: "s", kind: "say", title: "t" }] }],
+      },
+    ]);
+  } catch (e) {
+    err = e;
+  }
+  assert.ok(err, "scénarios invalides → throw");
+  assert.match(err.message, /promo:casse: etapes_requises/);
+  assert.match(err.message, /stats:<sans_id>: id_requis/);
+
+  // Contributions malformées → erreurs claires, jamais de crash muet.
+  assert.throws(
+    () => collectInteractiveDemoDefaults([{ moduleId: "x", scenarios: "nope" }]),
+    /x: scenarios_requis/,
+  );
+  assert.throws(
+    () => collectInteractiveDemoDefaults([null]),
+    /contribution_invalide/,
+  );
+
+  // Sortie directement consommable par le mount (merge avec overrides DB).
+  const merged = mergeDemoScenarios(ordered, null);
+  assert.deepEqual(merged.map((s) => s.id), ["z-2", "z-1", "a-1"]);
 });
 
 test("interactive-demo : mergeDemoScenarios pur", async () => {
