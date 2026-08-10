@@ -25,4 +25,6 @@ export * from "./primitives/tooltip";
 export * from "./primitives/textarea";
 
 export { isRemoteDesktopClient } from "./lib/desktop-host";
+export { useShellUiBrand } from "./lib/use-shell-ui-brand";
+export type { ShellUiBrand, ShellUiLoginBrand } from "../dist/brand.js";
 export { openAiWorkspaceView, aiWorkspaceAvailable } from "./lib/ai-workspace-client";

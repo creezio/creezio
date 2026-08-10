@@ -75,9 +75,9 @@ export function listOsUiPages(_manifest: AppManifest): OsUiPageSpec[] {
       rel: "login/page.tsx",
       source: pageClient(
         `import { Suspense } from "react";
-import { LoginForm } from "@creezio/auth/ui";`,
+import { LoginPage } from "@creezio/auth/ui";`,
         `    <Suspense fallback={<p>Chargement…</p>}>
-      <LoginForm defaultRedirect="/dashboard" />
+      <LoginPage defaultRedirect="/dashboard" />
     </Suspense>`,
       ),
     },

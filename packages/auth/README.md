@@ -11,7 +11,7 @@ Surfaces publiees :
 | Import | Usage |
 |---|---|
 | `@creezio/auth` | config, store, JWT/cookies, Hono, IPC, recovery |
-| `@creezio/auth/ui` | `LoginForm`, `SessionProvider`, `useSession` |
+| `@creezio/auth/ui` | `LoginPage` (split-screen brand-configurable), `LoginForm`, `SessionProvider`, `useSession` |
 
 ## Périmètre (kit vs marque)
 
@@ -26,7 +26,9 @@ Ce qui appartient au kit :
 - options cookie Hono/Next (`sessionCookieOptions`, `clearSessionCookieOptions`, `toHonoCookie`) ;
 - middlewares Hono (`createHonoAuth`) ;
 - routes Hono (`createAuthRoutes`) : login/logout/me, impersonation, AI workspace session ;
-- composants React `LoginForm`, `SessionProvider`, `useSession` ;
+- composants React `LoginPage` (page /login split-screen 50/50 : formulaire
+  + panneau brand configuré par `ShellUiBrand.login`, défaut neutre sans
+  config), `LoginForm`, `SessionProvider`, `useSession` ;
 - IPC Electron sur `IpcChannels.auth` ;
 - recovery key crypto reexportee depuis `@creezio/platform-core`.
 
@@ -36,7 +38,9 @@ Ce qui reste dans la marque :
 - source des users/roles/permissions (`ALL_NAV_PERMISSIONS`, `authenticateUser`, `listUsers`, etc.) ;
 - prefixe et verification des API keys publiques ;
 - resolution `secure` des cookies derriere tunnel/proxy ;
-- layout de la page login et redirections ;
+- contenu brand du panneau login (tagline, highlights, logo, gradient) via
+  `login` sur `CreezioUiBoot` — le layout split-screen lui-même est kit ;
+- redirections post-login (`defaultRedirect`, `next`) ;
 - config `@creezio/shell-ui` pour le bridge desktop UI ;
 - OAuth MCP (`src/lib/mcp-oauth.ts`, `src/server/mcp/oauth.ts`) : cela appartient a `@creezio/mcp-facade`, pas a `@creezio/auth`.
 

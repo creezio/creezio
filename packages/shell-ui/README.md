@@ -98,6 +98,34 @@ configureShellUiBrand({
 
 `getShellDesktopApi()` lit `window[desktopApiGlobal]` de maniere souple et retourne `undefined` cote serveur.
 
+#### Page login (`login`)
+
+Le panneau brand de la page login split-screen (`LoginPage` de
+`@creezio/auth/ui`) se configure via la clé `login` — tout est optionnel,
+le défaut est neutre (gradient encre du thème kit, tuile initiale du nom
+produit, aucun texte marketing) :
+
+```ts
+configureShellUiBrand({
+  productName: "Ma Marque",
+  // …
+  login: {
+    tagline: "La tagline produit affichée dans le panneau.",
+    highlights: ["Argument un", "Argument deux", "Argument trois"],
+    logoUrl: "/logo.svg",                    // défaut : initiale du produit
+    panelBackground: "linear-gradient(165deg, #15112e, #221d4d)",
+    panelImageUrl: "/login-visual.jpg",      // optionnel, voilé sombre
+    panelSide: "right",                      // ou "left"
+  },
+});
+```
+
+En pratique la marque passe cet objet à `CreezioUiBoot` (prop `login`,
+`@creezio/os-ui/boot`) plutôt que d'appeler `configureShellUiBrand`
+elle-même. Les composants qui lisent la brand au render utilisent le hook
+`useShellUiBrand` (`@creezio/shell-ui/ui[/kit]`) : la marque est appliquée
+au render par `CreezioUiBoot` et le hook re-render si elle change.
+
 ### Boot client marque typique
 
 Un seul fichier de wiring est attendu cote marque, par exemple `crm/src/lib/shell-ui/configure-shell-ui-client.ts`.
@@ -176,7 +204,7 @@ Exports nav :
 
 Exports brand :
 
-- `configureShellUiBrand`, `getShellUiBrand`, `getShellDesktopApi`, `resetShellUiBrandForTests`
+- `configureShellUiBrand`, `getShellUiBrand`, `getShellDesktopApi`, `resetShellUiBrandForTests`, `subscribeShellUiBrand` (+ hook `useShellUiBrand` côté `./ui`)
 
 Exports helpers :
 
