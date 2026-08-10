@@ -26,6 +26,51 @@ export function serverDockerNpmScripts(brandId?: string): Record<string, string>
   };
 }
 
+/** Scripts npm dev/stop/status/setup injectés dans le package.json généré (Q1/Q6). */
+export function devStackNpmScripts(): Record<string, string> {
+  const proxy = "node scripts/creezio-dev.mjs";
+  return {
+    dev: `${proxy} dev`,
+    stop: `${proxy} stop`,
+    status: `${proxy} status`,
+    setup: `${proxy} setup`,
+  };
+}
+
+/**
+ * Proxy dev-stack : résout @creezio/app-runtime/scripts/dev-stack.mjs depuis
+ * les node_modules de l'app (workspace racine ou server/). Aucune copie de
+ * l'orchestrateur dans la marque — la SoT reste le kit publié.
+ */
+export function renderCreezioDevProxyMjs(): string {
+  return `#!/usr/bin/env node
+/** Thin → dev-stack kit (@creezio/app-runtime). Résolution : node_modules app. */
+import { spawnSync } from "node:child_process";
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+const candidates = [
+  path.join(root, "node_modules/@creezio/app-runtime/scripts/dev-stack.mjs"),
+  path.join(root, "server/node_modules/@creezio/app-runtime/scripts/dev-stack.mjs"),
+];
+const script = candidates.find((p) => fs.existsSync(p));
+if (!script) {
+  console.error(
+    "dev-stack introuvable — dépendances absentes ? npm run setup d'abord.",
+  );
+  process.exit(1);
+}
+const r = spawnSync(process.execPath, [script, ...process.argv.slice(2)], {
+  cwd: root,
+  env: { ...process.env, CREEZIO_APP_ROOT: process.env.CREEZIO_APP_ROOT || root },
+  stdio: "inherit",
+});
+process.exit(r.status ?? 1);
+`;
+}
+
 /** Résolveur CLI `creezio` : kit env → node_modules → chemin VPS. */
 export function renderCreezioCliProxyMjs(): string {
   return `#!/usr/bin/env node

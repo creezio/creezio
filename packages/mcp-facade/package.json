@@ -84,5 +84,8 @@
     "type": "git",
     "url": "https://github.com/creezio/creezio.git",
     "directory": "packages/mcp-facade"
+  },
+  "engines": {
+    "node": ">=22.5"
   }
 }

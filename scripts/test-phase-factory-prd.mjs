@@ -36,7 +36,8 @@ const EXPECTED = JSON.parse(
 const CLI = path.join(ROOT, "packages/factory/bin/creezio.js");
 const SMOKE_ENV = {
   ...process.env,
-  CREEZIO_ROOT: ROOT,
+  CREEZIO_KIT_ROOT: ROOT,
+  CREEZIO_ROOT: ROOT, // legacy compat (Q8)
   // Gates structurelles : pas de vendor/lock Docker (layout node_modules tmp).
   CREEZIO_SKIP_BRAND_DIST: "1",
   NODE_PATH: path.join(ROOT, "node_modules"),

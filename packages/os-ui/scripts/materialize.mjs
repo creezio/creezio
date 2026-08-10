@@ -15,12 +15,19 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PKG_ROOT = path.resolve(__dirname, "..");
 const ROUTES_SRC = path.join(PKG_ROOT, "routes");
 const ROUTE_GROUP = "(creezio-os)";
+const PKG_VERSION = JSON.parse(
+  fs.readFileSync(path.join(PKG_ROOT, "package.json"), "utf8"),
+).version;
+const MARKER = ".materialized-from-os-ui";
 
 function parseArgs(argv) {
   let appRoot = process.env.CREEZIO_BRAND_ROOT || process.env.ROOT || "";
+  let check = false;
   for (let i = 2; i < argv.length; i++) {
     if (argv[i] === "--app-root" && argv[i + 1]) {
       appRoot = argv[++i];
+    } else if (argv[i] === "--check") {
+      check = true;
     } else if (argv[i] === "--help" || argv[i] === "-h") {
       console.log(
         "Usage: creezio-materialize-os-ui --app-root <brandRoot>\n" +
@@ -38,7 +45,34 @@ function parseArgs(argv) {
       appRoot = cwd;
     }
   }
-  return { appRoot: path.resolve(appRoot || ".") };
+  return { appRoot: path.resolve(appRoot || "."), check };
+}
+
+/**
+ * Garde anti-stale (Q5) : les pages matérialisées doivent venir de la version
+ * d'@creezio/os-ui ACTUELLEMENT installée. Appelé par --check (next.config,
+ * CI) — erreur claire et actionnable si divergence, jamais de build stale.
+ */
+function checkMaterialized(appRoot) {
+  const markerFile = path.join(appRoot, "ui", "app", ROUTE_GROUP, MARKER);
+  if (!fs.existsSync(markerFile)) {
+    console.error(
+      `ERROR os-ui: pages OS non matérialisées (marker absent: ${markerFile}) — lancez npm run os-ui:materialize`,
+    );
+    process.exit(1);
+  }
+  const raw = fs.readFileSync(markerFile, "utf8");
+  const m = raw.match(/^version=(.+)$/m);
+  const markerVersion = m ? m[1].trim() : "";
+  if (markerVersion !== PKG_VERSION) {
+    console.error(
+      `ERROR os-ui: pages matérialisées par @creezio/os-ui@${markerVersion || "inconnue"}, version installée ${PKG_VERSION} — lancez npm run os-ui:materialize (hook predev/prebuild) avant de continuer`,
+    );
+    process.exit(1);
+  }
+  console.log(
+    `OK os-ui check — pages matérialisées à jour (@creezio/os-ui@${PKG_VERSION})`,
+  );
 }
 
 function walkFiles(dir, base = dir, out = []) {
@@ -82,7 +116,11 @@ function brandOwnedRouteDirs(appDir, files) {
 }
 
 function main() {
-  const { appRoot } = parseArgs(process.argv);
+  const { appRoot, check } = parseArgs(process.argv);
+  if (check) {
+    checkMaterialized(appRoot);
+    return;
+  }
   const destApp = path.join(appRoot, "ui", "app", ROUTE_GROUP);
   if (!fs.existsSync(path.join(appRoot, "ui", "app"))) {
     console.error(`ERROR: ui/app introuvable sous ${appRoot}`);
@@ -117,10 +155,10 @@ function main() {
     console.log(`  skip /${dir} — page métier marque (ui/app/${dir}/page.*)`);
   }
 
-  // Marker pour diagnostics / allowlist locale
+  // Marker versionné (garde anti-stale Q5) + diagnostics / allowlist locale
   fs.writeFileSync(
-    path.join(destApp, ".materialized-from-os-ui"),
-    `kit=@creezio/os-ui\nsource=${ROUTES_SRC}\nat=${new Date().toISOString()}\n`,
+    path.join(destApp, MARKER),
+    `kit=@creezio/os-ui\nversion=${PKG_VERSION}\nsource=${ROUTES_SRC}\nat=${new Date().toISOString()}\n`,
   );
 
   console.log(

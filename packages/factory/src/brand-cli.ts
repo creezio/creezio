@@ -485,7 +485,8 @@ export async function runBrandCli(argv: string[]): Promise<void> {
       encoding: "utf8",
       env: {
         ...process.env,
-        CREEZIO_ROOT: root,
+        CREEZIO_KIT_ROOT: root,
+        CREEZIO_ROOT: root, // legacy compat (Q8)
         NODE_PATH: path.join(root, "node_modules"),
         PATH: [
           path.join(root, "node_modules", ".bin"),

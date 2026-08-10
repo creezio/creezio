@@ -9,7 +9,10 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "${model.brandId}-metier-"));
 const port = 19000 + Math.floor(Math.random() * 1000);
 
-const creezioRoot = process.env.CREEZIO_ROOT || "";
+const creezioRoot =
+  process.env.CREEZIO_KIT_ROOT ||
+  process.env.CREEZIO_ROOT || // legacy — préférer CREEZIO_KIT_ROOT (Q8)
+  "";
 // Hors monorepo (/tmp) : partager node_modules du kit (tsc + @types + packages).
 const localNm = path.join(root, "node_modules");
 if (creezioRoot && !fs.existsSync(localNm)) {
@@ -32,7 +35,8 @@ const toolEnv = {
   ...process.env,
   PATH: binPath,
   NODE_PATH: nodePathParts.join(path.delimiter),
-  CREEZIO_ROOT: creezioRoot,
+  CREEZIO_KIT_ROOT: creezioRoot,
+  CREEZIO_ROOT: creezioRoot, // legacy tant que des scripts générés anciens tournent
 };
 
 const build = spawnSync("npm", ["run", "build:electron"], {
@@ -279,9 +283,10 @@ async function loadCreateDesktopSessionStore() {
     /* fallback */
   }
   const candidates = [];
-  if (process.env.CREEZIO_ROOT) {
+  const kitRootEnv = process.env.CREEZIO_KIT_ROOT || process.env.CREEZIO_ROOT;
+  if (kitRootEnv) {
     candidates.push(
-      path.join(process.env.CREEZIO_ROOT, "packages/electron-shell/dist/index.js"),
+      path.join(kitRootEnv, "packages/electron-shell/dist/index.js"),
     );
   }
   let dir = root;
@@ -453,7 +458,10 @@ import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const creezioRoot = process.env.CREEZIO_ROOT || "";
+const creezioRoot =
+  process.env.CREEZIO_KIT_ROOT ||
+  process.env.CREEZIO_ROOT || // legacy — préférer CREEZIO_KIT_ROOT (Q8)
+  "";
 const localNm = path.join(root, "node_modules");
 if (creezioRoot && !fs.existsSync(localNm)) {
   const kitNm = path.join(creezioRoot, "node_modules");
@@ -473,7 +481,8 @@ const toolEnv = {
   ...process.env,
   PATH: binPath,
   NODE_PATH: nodePathParts.join(path.delimiter),
-  CREEZIO_ROOT: creezioRoot,
+  CREEZIO_KIT_ROOT: creezioRoot,
+  CREEZIO_ROOT: creezioRoot, // legacy tant que des scripts générés anciens tournent
 };
 
 const build = spawnSync("npm", ["run", "build:electron"], {

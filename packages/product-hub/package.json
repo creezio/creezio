@@ -87,5 +87,8 @@
     "type": "git",
     "url": "https://github.com/creezio/creezio.git",
     "directory": "packages/product-hub"
+  },
+  "engines": {
+    "node": ">=22.5"
   }
 }

@@ -68,7 +68,8 @@ function ensureBuilt() {
       cwd: TF3,
       env: {
         ...process.env,
-        CREEZIO_ROOT: ROOT,
+        CREEZIO_KIT_ROOT: ROOT,
+        CREEZIO_ROOT: ROOT, // legacy compat (Q8)
         NODE_PATH: path.join(ROOT, "node_modules"),
       },
     },

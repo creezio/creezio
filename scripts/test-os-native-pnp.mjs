@@ -27,7 +27,8 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const CLI = path.join(ROOT, "packages/factory/bin/creezio.js");
 const SMOKE_ENV = {
   ...process.env,
-  CREEZIO_ROOT: ROOT,
+  CREEZIO_KIT_ROOT: ROOT,
+  CREEZIO_ROOT: ROOT, // legacy compat (Q8)
   CREEZIO_NATIVE_WARM: "0",
   CREEZIO_TUNNEL_LOCAL: "1",
   NODE_PATH: path.join(ROOT, "node_modules"),

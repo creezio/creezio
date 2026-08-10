@@ -38,7 +38,8 @@ const SPEC = path.join(APP, "brand-spec");
 
 const env = {
   ...process.env,
-  CREEZIO_ROOT: ROOT,
+  CREEZIO_KIT_ROOT: ROOT,
+  CREEZIO_ROOT: ROOT, // legacy compat (Q8)
   NODE_PATH: path.join(ROOT, "node_modules"),
   PATH: [
     path.join(ROOT, "node_modules", ".bin"),

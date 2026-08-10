@@ -56,7 +56,7 @@ jobs:
     env:
       AUTH_DISABLED: "1"
       CREEZIO_NATIVE_WARM: "0"
-      CREEZIO_ROOT: \${{ github.workspace }}
+      CREEZIO_APP_ROOT: \${{ github.workspace }}
       # Secret repo (PAT read:packages sur l'org creezio) — consommé par le
       # .npmrc commité (jamais de token en clair dans le repo).
       # Poser le secret : gh secret set CREEZIO_NPM_TOKEN -R <owner/marque>.

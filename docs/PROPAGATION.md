@@ -23,10 +23,12 @@ L4 utilisateur (plugins personnels)
   ↑ remontée innovations terrain
 ```
 
-## Chemin nominal — modèle PULL (open source)
+## Chemin nominal — modèle PULL (écosystème fermé)
 
-Le kit est open source : il aura potentiellement 100+ apps consommatrices,
-dont des apps d'autres développeurs. **Le kit ne connaît pas ses
+Le kit est distribué en **registre privé** (décision actée 2026-08-10 :
+écosystème fermé assumé — toute installation exige un PAT `read:packages`
+de l'org, cf. README). Il peut avoir 100+ apps consommatrices au sein de
+l'org. **Le kit ne connaît pas ses
 consommateurs** — pas de registre, pas de notification, pas de test des
 apps dans la CI kit. La propagation est à l'initiative de CHAQUE app
 (gouvernance complète : [CONTRIBUTING-BRANDS.md](./CONTRIBUTING-BRANDS.md)) :

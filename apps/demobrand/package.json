@@ -47,5 +47,8 @@
       "optional": true
     }
   },
-  "license": "UNLICENSED"
+  "license": "UNLICENSED",
+  "engines": {
+    "node": ">=22.5"
+  }
 }

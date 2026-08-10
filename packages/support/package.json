@@ -56,5 +56,8 @@
     "type": "git",
     "url": "https://github.com/creezio/creezio.git",
     "directory": "packages/support"
+  },
+  "engines": {
+    "node": ">=22.5"
   }
 }

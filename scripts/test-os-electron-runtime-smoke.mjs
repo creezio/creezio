@@ -64,7 +64,8 @@ test("electron.runtime launch smoke (si electron+xvfb + probe brand)", async () 
     shell: true,
     env: {
       ...process.env,
-      CREEZIO_ROOT: ROOT,
+      CREEZIO_KIT_ROOT: ROOT,
+      CREEZIO_ROOT: ROOT, // legacy compat (Q8)
       NODE_PATH: path.join(ROOT, "node_modules"),
       PATH: [
         path.join(ROOT, "node_modules/.bin"),
@@ -80,7 +81,8 @@ test("electron.runtime launch smoke (si electron+xvfb + probe brand)", async () 
     cwd: probe,
     env: {
       ...process.env,
-      CREEZIO_ROOT: ROOT,
+      CREEZIO_KIT_ROOT: ROOT,
+      CREEZIO_ROOT: ROOT, // legacy compat (Q8)
       CREEZIO_NATIVE_WARM: "0",
       CREEZIO_DESKTOP_SHELL: "runtime",
       ELECTRON_USER_DATA: userData,

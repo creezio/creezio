@@ -36,11 +36,11 @@
     "desktop:build-status": "node packages/desktop-tooling/scripts/desktop-build-status.mjs",
     "desktop:publish": "bash packages/desktop-tooling/scripts/publish-desktop.sh",
     "desktop:remote-build": "bash packages/desktop-tooling/scripts/remote-build-win.sh",
-    "clean": "rm -rf packages/*/dist apps/console/.next apps/demobrand/build",
+    "clean": "node scripts/clean.mjs",
     "test:api-fallthrough": "node --test scripts/test-phase-api-fallthrough-loop.mjs"
   },
   "engines": {
-    "node": ">=20"
+    "node": ">=22.5"
   },
   "license": "UNLICENSED",
   "repository": {

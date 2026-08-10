@@ -68,7 +68,8 @@ test("expérience: dry-run agent = new-app --from-prd seulement", () => {
       timeout: 120000,
       env: {
         ...process.env,
-        CREEZIO_ROOT: ROOT,
+        CREEZIO_KIT_ROOT: ROOT,
+        CREEZIO_ROOT: ROOT, // legacy compat (Q8)
         NODE_PATH: path.join(ROOT, "node_modules"),
         PATH: [
           path.join(ROOT, "node_modules", ".bin"),

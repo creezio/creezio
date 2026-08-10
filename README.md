@@ -7,6 +7,14 @@ observabilité, plugins, runtime Electron, serveur Docker headless — que des
 leur métier vertical. Une nouvelle marque se crée depuis un brief produit,
 sans réécrire le socle.
 
+> **Écosystème privé (décision actée).** Les packages `@creezio/*` sont
+> publiés sur GitHub Packages en **registre privé** — écosystème fermé assumé.
+> Toute installation (`npm ci` / `npm install`, kit ou app) exige
+> `CREEZIO_NPM_TOKEN` = PAT GitHub `read:packages` d'un compte membre de
+> l'org creezio (`gh auth token` si `gh` est authentifié, sinon créer le PAT
+> sur github.com/settings/tokens). Le `.npmrc` des repos consomme cette
+> variable — jamais de token commité.
+
 ## Architecture en bref
 
 ```
