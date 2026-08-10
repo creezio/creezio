@@ -17,7 +17,7 @@
  *   kit    — gates pures kit : lisent uniquement ce repo. Doivent être 100 %
  *            vertes partout, sans repos externes ni réseau.
  *   brands — gates qui lisent les repos marque (import `lib/brand-roots.mjs`
- *            ou `lib/intention-twins.mjs`, ou résolution `dockerRoot`).
+ *            ou résolution `dockerRoot`).
  *            Skip AUTO-DÉTECTÉ par marque référencée : repo absent, ou
  *            `crm/vendor/creezio` absent (oracle pré-cutover / lecture seule).
  *   env    — gates coûteuses/environnementales (liste ENV_GATES, documentée
@@ -102,9 +102,9 @@ const ENV_GATES = new Map([
   ],
 ]);
 
-// Une gate « marques » lit les repos marque : import des libs de résolution
+// Une gate « marques » lit les repos marque : import de la lib de résolution
 // ou identifiant dockerRoot (twins /opt/docker | siblings).
-const BRAND_GATE_RE = /lib\/(brand-roots|intention-twins)\.mjs|dockerRoot/;
+const BRAND_GATE_RE = /lib\/brand-roots\.mjs|dockerRoot/;
 
 /** État d'un repo marque pour les gates : utilisable, ou raison du skip. */
 function brandAvailability(id) {

@@ -352,7 +352,6 @@ function walk(dir, out = []) {
       ent.name === "node_modules" ||
       ent.name === "build" ||
       ent.name === ".data-metier" ||
-      ent.name === "vendor" ||
       ent.name === ".git" ||
       ent.name === "(creezio-os)"
     ) {

@@ -26,10 +26,10 @@ export function serverDockerNpmScripts(brandId?: string): Record<string, string>
   };
 }
 
-/** Résolveur CLI `creezio` : kit env → vendor → node_modules → chemin VPS. */
+/** Résolveur CLI `creezio` : kit env → node_modules → chemin VPS. */
 export function renderCreezioCliProxyMjs(): string {
   return `#!/usr/bin/env node
-/** Thin → CLI creezio (kit). Résolution : CREEZIO_KIT_ROOT > vendor > node_modules. */
+/** Thin → CLI creezio (kit). Résolution : CREEZIO_KIT_ROOT > node_modules. */
 import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
@@ -39,7 +39,6 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const candidates = [
   process.env.CREEZIO_KIT_ROOT &&
     path.join(process.env.CREEZIO_KIT_ROOT, "packages/factory/bin/creezio.js"),
-  path.join(root, "vendor/creezio/factory/bin/creezio.js"),
   path.join(root, "node_modules/@creezio/factory/bin/creezio.js"),
   "/opt/docker/creezio/packages/factory/bin/creezio.js",
 ].filter(Boolean);

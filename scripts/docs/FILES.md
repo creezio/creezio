@@ -108,7 +108,6 @@
 | [`test-phase-m14.mjs`](../test-phase-m14.mjs) | !usrbinenv node |
 | [`test-phase-m15.mjs`](../test-phase-m15.mjs) | !usrbinenv node |
 | [`test-phase-m16.mjs`](../test-phase-m16.mjs) | !usrbinenv node |
-| [`test-phase-m1p.mjs`](../test-phase-m1p.mjs) | Phase M1p — propagate Database Certivan puis Fidu (vision stricte). |
 | [`test-phase-m2.mjs`](../test-phase-m2.mjs) | Phase M2 — Admin UI Database hors TF (vision stricte). |
 | [`test-phase-m2p.mjs`](../test-phase-m2p.mjs) | Phase M2p — Admin UI Database Certivan puis Fidu (vision stricte). |
 | [`test-phase-m3.mjs`](../test-phase-m3.mjs) | Phase M3 — Product Hub / control-plane zéro façade TF (vision stricte). |
@@ -145,10 +144,7 @@
 | [`test-phase-n7.mjs`](../test-phase-n7.mjs) | !usrbinenv node |
 | [`test-phase-n8.mjs`](../test-phase-n8.mjs) | !usrbinenv node |
 | [`test-phase-n9.mjs`](../test-phase-n9.mjs) | !usrbinenv node |
-| [`test-phase-o0.mjs`](../test-phase-o0.mjs) | !usrbinenv node |
 | [`test-phase-o1.mjs`](../test-phase-o1.mjs) | !usrbinenv node |
-| [`test-phase-o10.mjs`](../test-phase-o10.mjs) | !usrbinenv node |
-| [`test-phase-o11.mjs`](../test-phase-o11.mjs) | !usrbinenv node |
 | [`test-phase-o2.mjs`](../test-phase-o2.mjs) | !usrbinenv node |
 | [`test-phase-o3.mjs`](../test-phase-o3.mjs) | !usrbinenv node |
 | [`test-phase-o3p.mjs`](../test-phase-o3p.mjs) | !usrbinenv node |
@@ -159,18 +155,15 @@
 | [`test-phase-o4r3.mjs`](../test-phase-o4r3.mjs) | !usrbinenv node |
 | [`test-phase-o4r4.mjs`](../test-phase-o4r4.mjs) | !usrbinenv node |
 | [`test-phase-o5.mjs`](../test-phase-o5.mjs) | !usrbinenv node |
-| [`test-phase-o5p.mjs`](../test-phase-o5p.mjs) | !usrbinenv node |
 | [`test-phase-o6.mjs`](../test-phase-o6.mjs) | !usrbinenv node |
 | [`test-phase-o7.mjs`](../test-phase-o7.mjs) | !usrbinenv node |
 | [`test-phase-o8.mjs`](../test-phase-o8.mjs) | !usrbinenv node |
 | [`test-phase-o9.mjs`](../test-phase-o9.mjs) | !usrbinenv node |
-| [`test-phase-o9p.mjs`](../test-phase-o9p.mjs) | !usrbinenv node |
 | [`test-phase-onboarding-hybride.mjs`](../test-phase-onboarding-hybride.mjs) | Gate : @creezio/onboarding conforme au patron « module natif hybride » (docs/adr/ADR-module-natif-hybride.md). |
 | [`test-phase-os-ui-scaffold.mjs`](../test-phase-os-ui-scaffold.mjs) | Gate : factory --from-prd ne versionne PLUS de pages OS dans ui/app/. |
 | [`test-phase-p-cockpit.mjs`](../test-phase-p-cockpit.mjs) | !usrbinenv node |
 | [`test-phase-p-onboarding.mjs`](../test-phase-p-onboarding.mjs) | !usrbinenv node |
 | [`test-phase-p-shell-ui.mjs`](../test-phase-p-shell-ui.mjs) | !usrbinenv node |
-| [`test-phase-p0-intention.mjs`](../test-phase-p0-intention.mjs) | !usrbinenv node |
 | [`test-phase-p18-host-tools.mjs`](../test-phase-p18-host-tools.mjs) | !usrbinenv node |
 | [`test-phase-p18-open-external-tab.mjs`](../test-phase-p18-open-external-tab.mjs) | !usrbinenv node |
 | [`test-phase-p25.mjs`](../test-phase-p25.mjs) | !usrbinenv node |
@@ -205,5 +198,4 @@
 |---|---|
 | [`lib/assert-runtime-dist.mjs`](../lib/assert-runtime-dist.mjs) | Assert fail-closed dist runtime (contrats src↔dist + mtime) — CLI + import gate/sync/publish. |
 | [`lib/brand-roots.mjs`](../lib/brand-roots.mjs) | Resolve brand CRM roots across VPS (/opt/docker/…) and sibling layouts (e.g. |
-| [`lib/intention-twins.mjs`](../lib/intention-twins.mjs) | Scanner jumeaux plateforme TF↔CV (Plan P* / intention OS). Mesure cutover : présence + similarité de lignes — pas « package existe ». |
 | [`lib/resolve-probe-brand.mjs`](../lib/resolve-probe-brand.mjs) | Résout la marque sonde TempoFlow3 hors monorepo kit. Layout nominal : 2 repos — monorepo marque (`server/`, `client/`) + repo admin dédié `<brand>-admin`. |
