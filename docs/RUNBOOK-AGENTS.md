@@ -179,7 +179,250 @@ Diagnostics boot : `GET /api/v1/os/boot-status` (répond dès le lancement),
 `/health`, `/version` ; transitions JSONL dans `docker logs <container>` ;
 journal ops `/data/ops/*.jsonl`.
 
-## 7. Règles d'or agents (les 8 commandements)
+## 7. Mécaniques internes — image, create, tunnel, sandbox
+
+> Ce que `server-docker` et le provisioner font sous le capot. Lu une fois
+> ici = jamais redécouvert en pleine mission. SoT code :
+> `docker/server/Dockerfile`, `packages/factory/src/server-docker-cli.ts`,
+> `packages/observability/fleet-collector/instance-stack.mjs`,
+> `docker/tunnel-provisioner/{lib,server}.mjs`.
+
+### 7.1 Build d'image app (`docker/server/Dockerfile`)
+
+Multi-stage BuildKit, **contexte = racine marque**, Dockerfile = **kit**
+(`$CREEZIO_KIT_ROOT/docker/server/Dockerfile` — le CLI/CI utilisent toujours
+celui-là ; winhub conserve un `docker/server.Dockerfile` local d'ère
+pré-standard, script `docker:build`, utile en sandbox §7.4).
+
+| Stage | Rôle |
+|---|---|
+| `deps` | Copie **uniquement les manifests** : `package.json`, `package-lock.json`, `.npmrc` (racine) + `${SERVER_DIR}/package.json`, puis `npm ci --omit=dev -w server` (**strict** — pas de fallback) + `npm rebuild better-sqlite3`. Token via **secret BuildKit** (`--secret id=CREEZIO_NPM_TOKEN,env=CREEZIO_NPM_TOKEN`), jamais en ARG/ENV : invisible dans `docker history`. |
+| `meili` / `cloudflared` | Binaires téléchargés (versions alignées `ensure-kit-binaries.ts`) → `/opt/creezio/bin/`. |
+| `runtime-base` | `COPY . .` (sources filtrées par `brand.dockerignore` v4, copié en `.dockerignore` marque par le CLI) + `COPY --from=deps /app/node_modules`. Version embarquée : `--build-arg SERVER_VERSION` (publish) → `GET /api/v1/core/version`. |
+| `runtime-browser` | Variant `--browser` : + chromium/xvfb/fonts (`shm_size: 1g` appliqué au create). |
+
+**L'UI Next n'est PAS buildée dans l'image** : `dockerBuildImage` la builde
+sur l'hôte AVANT (`ensureUiBuild` → `npm run build:ui` →
+`server/ui/.next/standalone/server.js`) ; le dockerignore exclut `**/ui`
+puis ré-inclut seulement `.next/standalone` + `.next/static` + `public`
+(`server/ui` = projet npm indépendant, ses deps ne vont jamais dans
+l'image). Précèdent aussi le build : `ensureElectronBuild`
+(`server/build/electron/app-manifest.js`) et la garde assert-runtime-dist
+(§5) — donc `npm ci` + `npm run build:packages` à jour côté kit.
+
+**PIÈGE MAJEUR — le stage `deps` ne copie QUE les manifests** : toute source
+supplémentaire exigée par `npm ci` (ex. **tarballs locaux** en `file:`,
+§7.4) doit être **copiée explicitement dans le stage deps** (avant le
+`RUN npm ci`), sinon le build échoue sur un tarball absent alors que tout
+est en place côté hôte.
+
+### 7.2 `server-docker create <nom>` — séquence exacte
+
+1. Valide le nom (`[a-z0-9][a-z0-9-]*`) ; refuse si déjà au registre ou si
+   le container `<brandId>-server-<nom>` existe.
+2. **Image** : `creezio-server-<brandId>:local` (override env
+   `SERVER_IMAGE` ; variant browser : suffixe `-browser`) — **buildée si
+   absente** (séquence §7.1, `CREEZIO_NPM_TOKEN` requis, fail-fast sinon).
+3. Entrées : `--host-port N` (loopback fixe — sinon **auto**), `--port N`
+   (legacy), `--profile prod` (warm natif + catalogue + **forward d'une
+   liste fixe d'env** tunnel/fleet/mails/LLM lues depuis l'env process PUIS
+   le `.env` racine marque — rien n'est inventé), `--env K=V`, `--browser`,
+   `--no-stack` (legacy `docker run`).
+4. Crée `docker-data/servers/<nom>/` (futur `/data`).
+5. **Stack M2 (défaut)** : si `CREEZIO_TUNNEL_PROVISION_URL` **et**
+   `CREEZIO_TUNNEL_PROVISION_TOKEN` sont posés → `POST /reserve` au
+   provisioner (`slug = CREEZIO_TUNNEL_SLUG || <nom>`, `crmPort: 18791`,
+   `serviceHost: "app"`) → `{tunnelToken, hostname, tunnelId}`. Puis
+   écriture de `docker-data/stacks/<nom>/compose.yml` (**généré**, régénéré
+   à chaque update — ne jamais éditer) + `tunnel.env` **chmod 600**
+   (`TUNNEL_TOKEN` + seed kernel — jamais dans `ps`, le registre ou
+   `docker inspect`), `docker compose up -d`, port hôte réel relu via
+   `docker inspect` et enregistré. Sans URL/token provisioner : stack local
+   sans tunnel (loopback seul).
+6. Attend le boot (`GET /api/v1/os/boot-status` jusqu'à ready) puis affiche
+   l'URL loopback.
+
+Datas (tout gitignoré) : registre `docker-data/servers.json` · volume
+`/data` = `docker-data/servers/<nom>` · stack `docker-data/stacks/<nom>/` ·
+backups `docker-data/backups/<nom>-<stamp>.tar.gz`.
+
+### 7.3 Tunnel provisioner (`docker/tunnel-provisioner/`)
+
+HTTP Bearer-only (`CREEZIO_TUNNEL_PROVISION_TOKEN`), écoute loopback +
+gateway bridge `172.17.0.1` (joignable depuis les containers). **fluxpro**
+: unité systemd **user** `creezio-tunnel-provisioner-winhub.service`, port
+**8667**, env `/home/fidus/creezio-fleet/winhub/tunnel-provisioner.env`
+(state `…/winhub/tunnel-state/<slug>.json` ; CF env
+`…/winhub/.cloudflare.env` → **`CF_ZONE_NAME=winhub.fr`**, prefix tunnel
+`winhub-server-`, **`CREEZIO_TUNNEL_FLAT_HOSTS=1`**). **tempoflow** : port
+8666, même layout sous `/opt/docker/`. Une zone = un provisioner + son env
+CF (`CF_API_TOKEN`/`CF_ZONE_ID`/`CF_ZONE_NAME`) — nouvelle zone = dupliquer
+le service avec un autre fichier env.
+
+| Endpoint | Rôle |
+|---|---|
+| `GET /health` | Sans auth → `{ok, hostMode}`. |
+| `GET /check?slug=` | Dispo (format, réservés, state, DNS). |
+| `GET /state?slug=` | Réservation courante — **jamais** le token. |
+| `POST /reserve` | Crée le tunnel CF (`<prefix><slug>`), PUT ingress (`{slug}.zone` → `serviceHost:crmPort`, + n8n/hermes, 404 final), DNS CNAME, MX/SPF `{slug}.mail.zone`, state 0600. **`tunnelToken` restitué uniquement ici** — le consommer tout de suite. |
+| `POST /configure` | Re-PUT ingress (ports/agent/`serviceHost` conservés du state si omis) + DNS ensure. |
+| `POST /deprovision` | Nettoie DNS (nested+flat+mail), supprime le tunnel (connexions coupées d'abord) et le state. |
+
+**Mode flat (winhub.fr)** : hostnames **plats** `n8n-{slug}.winhub.fr` /
+`hermes-{slug}.winhub.fr` / `agent-{slug}.winhub.fr` (CNAMEs plats, pas de
+`*.{slug}`) — Universal SSL ne couvre qu'**un** niveau de wildcard
+(`*.winhub.fr` couvre `{slug}.winhub.fr` et `n8n-{slug}.winhub.fr`, **pas**
+`n8n.{slug}.winhub.fr`). Défaut historique = nested. Détail :
+[adr/ADR-tunnel-flat-hosts.md](./adr/ADR-tunnel-flat-hosts.md).
+
+**Slugs réservés** (`RESERVED_SLUGS` dans `lib.mjs`) : `demo`, `test`,
+`dev`, `staging`, `sandbox`, `admin`, `app`, `api`… refusés par `/reserve`
+(409 « Slug réservé »). **Un hostname de test = slug NON réservé**
+(`recette-01`, `qa-foo`…) — `demo.winhub.fr` est irréservable.
+
+Provision manuelle d'un hostname de test (stack : `serviceHost:"app"`) :
+
+```bash
+set -a && . /home/fidus/winhub/.env && set +a   # PROVISION_URL + TOKEN
+curl -s -H "Authorization: Bearer $CREEZIO_TUNNEL_PROVISION_TOKEN" \
+  "$CREEZIO_TUNNEL_PROVISION_URL/check?slug=recette-01"
+curl -s -X POST -H "Authorization: Bearer $CREEZIO_TUNNEL_PROVISION_TOKEN" \
+  -H 'content-type: application/json' \
+  -d '{"slug":"recette-01","crmPort":18791,"serviceHost":"app"}' \
+  "$CREEZIO_TUNNEL_PROVISION_URL/reserve"   # réponse = tunnelToken à conserver
+```
+
+### 7.4 Build local sans GitHub (packages kit modifiés, zéro push/publish)
+
+Prouvé sur `/home/fidus/sandboxes/` — image Docker d'une app embarquant des
+`@creezio/*` modifiés localement :
+
+```bash
+# 1. Worktree kit (jamais le clone serveur) + dist à jour (garde §5 satisfaite)
+git -C /home/fidus/creezio worktree add /home/fidus/sandboxes/kit-<xp> -b demo/<xp>
+cd /home/fidus/sandboxes/kit-<xp> && npm ci && npm run build:packages
+# 2. Tarballs des packages modifiés
+npm pack -w @creezio/<pkg> --pack-destination packs   # → packs/creezio-<pkg>-<v>.tgz
+# 3. Worktree app + tarballs DANS le contexte de build
+git -C /home/fidus/winhub worktree add /home/fidus/sandboxes/winhub-<xp> -b demo/<xp>
+mkdir -p /home/fidus/sandboxes/winhub-<xp>/server/vendor-demo
+cp packs/*.tgz /home/fidus/sandboxes/winhub-<xp>/server/vendor-demo/
+```
+
+4. Références `file:` — `server/package.json` : `"@creezio/<pkg>":
+   "file:vendor-demo/creezio-<pkg>-<v>.tgz"` ; `server/ui/package.json` :
+   `"file:../vendor-demo/…"` si l'UI consomme le package. Un `@creezio/*`
+   **transitif** à forcer : `overrides` dans le `package.json` racine. Les
+   packages non patchés restent en `^` publiés → **`CREEZIO_NPM_TOKEN`
+   reste requis** au build.
+5. **Régénérer les DEUX lockfiles** (`npm ci` strict) : `rm
+   package-lock.json && npm install` à la racine — et dans `server/ui/` si
+   son manifest a changé.
+6. **PIÈGE §7.1** : copier les tarballs dans le stage `deps` du Dockerfile
+   utilisé — kit worktree (`docker/server/Dockerfile`, build CLI avec
+   `CREEZIO_KIT_ROOT=/home/fidus/sandboxes/kit-<xp>`) ou Dockerfile local
+   marque (winhub : `docker/server.Dockerfile`) :
+
+```dockerfile
+COPY ${SERVER_DIR}/vendor-demo ./${SERVER_DIR}/vendor-demo   # avant RUN npm ci
+```
+
+7. Build avec tag local :
+   `SERVER_IMAGE=creezio-server-<brandId>:test-<xp> node scripts/creezio-cli.mjs server-docker build --brand-root .`
+   (`create` réutilise l'image si présente — sinon il rebuild via le
+   Dockerfile de `CREEZIO_KIT_ROOT`).
+
+**Rien de tout ça ne quitte le worktree** : manifests `file:`, lockfiles
+régénérés, COPY Dockerfile = edits sandbox à marquer « ne pas pousser ».
+`.dockerignore` v4 n'exclut pas `vendor-demo/` (mais exclut `**/src`,
+`**/data`, `**/dumps`… — ne pas nommer le dossier ainsi).
+
+### 7.5 Instance de test isolée (données réalistes → destruction propre)
+
+```bash
+# Worktree sandbox — JAMAIS le clone deploy (son docker-data/ = registre prod).
+git -C /home/fidus/winhub worktree add /home/fidus/sandboxes/winhub-<xp> -b demo/<xp>
+cd /home/fidus/sandboxes/winhub-<xp> && npm ci && npm install --prefix server/ui
+SERVER_IMAGE=creezio-server-winhub:test-<xp> npm run server-docker:build   # §7.4 si kit patché
+# Le .env est gitignoré → ABSENT du worktree : sourcer celui du clone deploy.
+set -a && . /home/fidus/winhub/.env && set +a
+node scripts/creezio-cli.mjs server-docker create test-<xp> --brand-root . --profile prod
+#   (slug tunnel = nom d'instance → non réservé, §7.3 ; port hôte loopback auto)
+# Données réalistes : backup prod → volume du test (archive = dossier <nom>/).
+node scripts/creezio-cli.mjs server-docker stop test-<xp> --brand-root .
+rm -rf docker-data/servers/test-<xp> && mkdir -p docker-data/servers/test-<xp>
+tar -xzf /home/fidus/winhub/docker-data/backups/server-1-<stamp>.tar.gz \
+  -C docker-data/servers/test-<xp> --strip-components=1
+node scripts/creezio-cli.mjs server-docker start test-<xp> --brand-root .
+# Vérifs : curl http://127.0.0.1:<port>/api/v1/core/health ; https://test-<xp>.winhub.fr/login → 200
+# Destruction PROPRE — `rm` ne déprovisionne PAS le tunnel, 2 gestes :
+node scripts/creezio-cli.mjs server-docker rm test-<xp> --brand-root . --purge-data
+curl -s -X POST -H "Authorization: Bearer $CREEZIO_TUNNEL_PROVISION_TOKEN" \
+  -H 'content-type: application/json' -d '{"slug":"test-<xp>"}' \
+  "$CREEZIO_TUNNEL_PROVISION_URL/deprovision"
+```
+
+Isolation : registre `docker-data/servers.json` propre au worktree,
+containers `<brandId>-server-test-<xp>` (+ sidecar `-tunnel`) nommés par
+instance, port hôte loopback auto — zéro collision avec la prod. Ne
+restaurer qu'un backup de la **même marque** (les secrets d'instance —
+`AUTH_SECRET`… — vivent dans `/data`).
+
+### Instance de test locale sans GitHub (démo sandbox)
+
+Procédure vérifiée le 2026-08-10 (fix palette Ctrl+K + merge d'une PR pour
+démo uniquement). Principe : tout se passe dans des worktrees sandbox, rien
+ne part sur GitHub, la prod n'est jamais touchée.
+
+1. **Worktrees sandbox** : `/home/fidus/sandboxes/kit-demo` (kit, branche
+   `demo/ui-fixes`) et `/home/fidus/sandboxes/winhub-demo` (app, branche
+   `demo/local-fixes`). Pour inclure une PR dans la démo sans la pousser :
+   `git fetch origin <branche>` puis `git merge --no-ff origin/<branche>`
+   dans le sandbox app.
+2. **Modifier le kit** dans le sandbox kit (ex. `packages/shell-ui/...`).
+3. **npm pack** : `cd /home/fidus/sandboxes/kit-demo/packages/shell-ui && npm pack`
+   → tarball `creezio-shell-ui-<version>.tgz`.
+4. **Installer dans le sandbox app** : copier le tarball dans
+   `/home/fidus/sandboxes/winhub-demo/server/vendor-demo/` ; les manifests
+   `server/package.json` et `server/ui/package.json` référencent le package
+   en `file:../vendor-demo/<tarball>.tgz`.
+   **Piège integrity** : `npm install` ne met PAS à jour l'`integrity` du
+   lockfile pour une dep `file:` re-packagée à nom/version identiques →
+   recalculer `openssl dgst -sha512 -binary <tgz> | base64` et l'écrire dans
+   `package-lock.json` racine ET `server/ui/package-lock.json`, puis
+   `rm -rf node_modules/@creezio/<pkg> server/ui/node_modules/@creezio/<pkg>`
+   + `npm install` pour forcer la réinstallation. Vérifier le contenu dans
+   `node_modules` AVANT de builder.
+5. **Build UI** : `npm run build --prefix server/ui`.
+   **Piège cache Next** : le cache webpack (`.next/cache`) peut servir
+   l'ANCIEN contenu d'une dep `file:` (hash CSS identique malgré le nouveau
+   source — le CSS servi reste l'ancien). En cas de doute :
+   `rm -rf server/ui/.next` avant le build. Vérifier le marqueur attendu :
+   `grep -l <marqueur> server/ui/.next/static/css/*.css`.
+6. **Build image** : `node scripts/creezio-cli.mjs server-docker build --brand-root .`.
+   **Piège Dockerfile** : le Dockerfile du kit doit copier les tarballs locaux
+   dans le contexte (`COPY ${SERVER_DIR}/vendor-demo ./${SERVER_DIR}/vendor-demo`,
+   ajouté dans `docker/server/Dockerfile` du sandbox kit), sinon `npm ci`
+   échoue sur les deps `file:` (exit 254).
+7. **Recréer le stack** : stack existant → `docker compose up -d` depuis
+   `docker-data/stacks/<slug>` (recrée l'app seule, volumes/données
+   préservés). Stack supprimé mais `docker-data/servers/<slug>` intact →
+   `server-docker create <slug> ...` REPREND les données telles quelles
+   (mkdir seulement, aucun wipe) ; réutiliser le MÊME slug pour garder le
+   même hostname tunnel (sinon déprovisionner l'ancien hostname d'abord).
+   **Piège tag image** : `server-docker build` tagge `creezio-server-<brand>:local`
+   mais un stack déjà créé référence `:<slug>` (ex. `:demo`) → après rebuild,
+   `docker tag creezio-server-<brand>:local creezio-server-<brand>:<slug>` PUIS
+   `docker compose up -d --force-recreate app` (sans retag, compose recrée sur
+   l'ANCIENNE image et sert l'ancien build).
+   Note : le slug `demo` est réservé → l'instance s'appelle `demo-1`,
+   hostname `demo-1.winhub.fr`.
+8. **Vérifs** : `curl http://127.0.0.1:<port>/api/v1/core/health` → 200 ;
+   `https://<slug>.winhub.fr/login` → 200 ; grep du marqueur dans le CSS
+   servi (`curl -s https://<slug>.winhub.fr/login | grep -o '/_next/static/css/[^"]*\.css'`
+   puis fetch + grep). Non-régression : prod `docker ps` healthy.
+
+## 8. Règles d'or agents (les 8 commandements)
 
 1. **Aucun fichier sur le PC local** — tout vit sur les VPS.
 2. **SSH base64 pour le non-trivial** — toute commande ssh avec quotes, pipes
@@ -197,7 +440,7 @@ journal ops `/data/ops/*.jsonl`.
 8. **Branche + PR + CI verte avant merge** — jamais de push direct sur
    `main` ; branche courte depuis un `origin/main` frais.
 
-## 8. Cookbook incidents (cause → fix)
+## 9. Cookbook incidents (cause → fix)
 
 | Incident | Cause → fix |
 |---|---|
@@ -218,7 +461,7 @@ journal ops `/data/ops/*.jsonl`.
 | Login resté en 0.5.x après bump 0.6.0 | bump partiel (`server/ui` seul) → pages OS matérialisées sur l'ancienne version → double manifest obligatoire (`d657798`, §3). |
 | Gate jamais exécutée | `scripts/test-*.mjs` non listé dans la ligne `test` du `package.json` racine = jamais run → l'y ajouter (vécu : `os-ui-scaffold`). |
 
-## 9. Liens — le détail par domaine
+## 10. Liens — le détail par domaine
 
 | Doc | Contenu |
 |---|---|
