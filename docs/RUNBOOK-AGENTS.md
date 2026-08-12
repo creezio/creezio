@@ -392,59 +392,63 @@ instance, port hôte loopback auto — zéro collision avec la prod. Ne
 restaurer qu'un backup de la **même marque** (les secrets d'instance —
 `AUTH_SECRET`… — vivent dans `/data`).
 
-### Instance de test locale sans GitHub (démo sandbox)
+### Instance de démo/test — le chemin standard (depuis main)
 
-Procédure vérifiée le 2026-08-10 (fix palette Ctrl+K + merge d'une PR pour
-démo uniquement). Principe : tout se passe dans des worktrees sandbox, rien
-ne part sur GitHub, la prod n'est jamais touchée.
+Une instance de démo ou de test est une instance **comme les autres** :
+créée par le chemin standard depuis `main`, build 100 % in-image, rien de
+spécial. L'ère des tarballs `npm pack` / deps `file:` est révolue — un
+correctif destiné à la démo entre dans le kit par une PR (changeset →
+release → bump app, §3), jamais par un contournement local. **Toute
+déviation de ce chemin est un bug du standard** → corriger le kit/factory
+(PR), ne pas bricoler l'instance.
 
-1. **Worktrees sandbox** : `/home/fidus/sandboxes/kit-demo` (kit, branche
-   `demo/ui-fixes`) et `/home/fidus/sandboxes/winhub-demo` (app, branche
-   `demo/local-fixes`). Pour inclure une PR dans la démo sans la pousser :
-   `git fetch origin <branche>` puis `git merge --no-ff origin/<branche>`
-   dans le sandbox app.
-2. **Modifier le kit** dans le sandbox kit (ex. `packages/shell-ui/...`).
-3. **npm pack** : `cd /home/fidus/sandboxes/kit-demo/packages/shell-ui && npm pack`
-   → tarball `creezio-shell-ui-<version>.tgz`.
-4. **Installer dans le sandbox app** : copier le tarball dans
-   `/home/fidus/sandboxes/winhub-demo/server/vendor-demo/` ; les manifests
-   `server/package.json` et `server/ui/package.json` référencent le package
-   en `file:../vendor-demo/<tarball>.tgz`.
-   **Piège integrity** : `npm install` ne met PAS à jour l'`integrity` du
-   lockfile pour une dep `file:` re-packagée à nom/version identiques →
-   recalculer `openssl dgst -sha512 -binary <tgz> | base64` et l'écrire dans
-   `package-lock.json` racine ET `server/ui/package-lock.json`, puis
-   `rm -rf node_modules/@creezio/<pkg> server/ui/node_modules/@creezio/<pkg>`
-   + `npm install` pour forcer la réinstallation. Vérifier le contenu dans
-   `node_modules` AVANT de builder.
-5. **Build UI** : `npm run build --prefix server/ui`.
-   **Piège cache Next** : le cache webpack (`.next/cache`) peut servir
-   l'ANCIEN contenu d'une dep `file:` (hash CSS identique malgré le nouveau
-   source — le CSS servi reste l'ancien). En cas de doute :
-   `rm -rf server/ui/.next` avant le build. Vérifier le marqueur attendu :
-   `grep -l <marqueur> server/ui/.next/static/css/*.css`.
-6. **Build image** : `node scripts/creezio-cli.mjs server-docker build --brand-root .`.
-   **Piège Dockerfile** : le Dockerfile du kit doit copier les tarballs locaux
-   dans le contexte (`COPY ${SERVER_DIR}/vendor-demo ./${SERVER_DIR}/vendor-demo`,
-   ajouté dans `docker/server/Dockerfile` du sandbox kit), sinon `npm ci`
-   échoue sur les deps `file:` (exit 254).
-7. **Recréer le stack** : stack existant → `docker compose up -d` depuis
-   `docker-data/stacks/<slug>` (recrée l'app seule, volumes/données
-   préservés). Stack supprimé mais `docker-data/servers/<slug>` intact →
-   `server-docker create <slug> ...` REPREND les données telles quelles
-   (mkdir seulement, aucun wipe) ; réutiliser le MÊME slug pour garder le
-   même hostname tunnel (sinon déprovisionner l'ancien hostname d'abord).
-   **Piège tag image** : `server-docker build` tagge `creezio-server-<brand>:local`
-   mais un stack déjà créé référence `:<slug>` (ex. `:demo`) → après rebuild,
-   `docker tag creezio-server-<brand>:local creezio-server-<brand>:<slug>` PUIS
-   `docker compose up -d --force-recreate app` (sans retag, compose recrée sur
-   l'ANCIENNE image et sert l'ancien build).
-   Note : le slug `demo` est réservé → l'instance s'appelle `demo-1`,
-   hostname `demo-1.winhub.fr`.
-8. **Vérifs** : `curl http://127.0.0.1:<port>/api/v1/core/health` → 200 ;
-   `https://<slug>.winhub.fr/login` → 200 ; grep du marqueur dans le CSS
-   servi (`curl -s https://<slug>.winhub.fr/login | grep -o '/_next/static/css/[^"]*\.css'`
-   puis fetch + grep). Non-régression : prod `docker ps` healthy.
+```bash
+# Clone marque du serveur, sur origin/main frais :
+cd /home/fidus/winhub && git checkout --detach origin/main
+CREEZIO_KIT_ROOT=/home/fidus/creezio \
+  node scripts/creezio-cli.mjs server-docker create <nom> --brand-root . --profile prod
+# `create` build l'image si absente (§7.1), provisionne le tunnel, écrit le
+# stack M2, attend le boot. Slug non réservé (§7.3) — rappel : `demo` est
+# réservé, l'instance démo s'appelle `demo-1` (hostname demo-1.winhub.fr).
+```
+
+Aligner une démo existante sur main (données conservées — même volume
+`/data`, backup frais avant recreate) :
+
+```bash
+CREEZIO_KIT_ROOT=/home/fidus/creezio \
+  node scripts/creezio-cli.mjs server-docker build --brand-root .
+CREEZIO_KIT_ROOT=/home/fidus/creezio \
+  node scripts/creezio-cli.mjs server-docker update <nom> --brand-root . \
+    --image creezio-server-<brand>:local --backup
+```
+
+**Checklist « une démo prête doit avoir »** — tout est natif au kit courant
+(0.9.x), rien à câbler à la main. Un point manquant = un bug du wiring de
+l'app sur main : le remonter (PR kit/app), ne pas le contourner.
+
+- [ ] version du kit courante **dans le conteneur** (`docker exec
+      <container> node -p "require('/app/node_modules/@creezio/platform-core/package.json').version"`)
+- [ ] `/login` → 200 + lien « Créer un compte » → `/inscription` (slot
+      `login.secondaryLink`)
+- [ ] palette Ctrl+K native (classe `.creezio-search-palette` dans le bundle
+      servi)
+- [ ] visite guidée : entrée d'action en sidebar (`launcher: "sidebar"`),
+      **aucun bouton flottant**, rien sur `/login`
+- [ ] panneau démo interactive compact (carte `creezio-demo-card` bornée au
+      viewport)
+- [ ] écran « Rôles & accès » fonctionnel (matrice groupes × permissions —
+      winhub : 6 groupes, 19 permissions)
+- [ ] sidebar owner complète (toutes les permissions `nav.*` — winhub : 17)
+- [ ] données de démo seedées (comptes de rôle + contenu métier —
+      `GET /api/v1/modules/demo-data/status`)
+- [ ] enregistrement flotte : l'instance apparaît sur la console admin avec
+      heartbeat actif
+- [ ] `/health` → 200 (pas 503 `degraded`) après restart à froid
+      (`server-docker stop <nom>` puis `start <nom>`)
+
+Pour expérimenter du kit **non publié** (zéro push, sandbox jetable) :
+§7.4 — ce n'est **pas** le chemin d'une démo.
 
 ## 8. Règles d'or agents (les 8 commandements)
 
