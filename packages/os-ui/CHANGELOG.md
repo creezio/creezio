@@ -1,5 +1,12 @@
 # @creezio/os-ui
 
+## 0.9.2
+
+### Patch Changes
+
+- @creezio/shell-ui@0.9.2
+- @creezio/mails@0.9.2
+
 ## 0.9.1
 
 ### Patch Changes
