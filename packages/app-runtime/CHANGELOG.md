@@ -1,5 +1,28 @@
 # @creezio/app-runtime
 
+## 0.9.1
+
+### Patch Changes
+
+- f825a95: fix(app-runtime): health « degraded » cosmétique au boot en mode sidecar M2 — l'étape « tunnel » appelait le provisioner (172.17.0.1, gateway docker0) injoignable depuis le réseau compose du stack et partait en timeout 30 s. En mode sidecar, la re-configuration provisioner devient best-effort en arrière-plan et l'étape valide l'état RÉEL du tunnel en sondant l'URL publique avec retry + backoff (opt-out : CREEZIO_TUNNEL_PUBLIC_PROBE=0).
+  - @creezio/brand-config@0.9.1
+  - @creezio/platform-core@0.9.1
+  - @creezio/product-hub@0.9.1
+  - @creezio/electron-shell@0.9.1
+  - @creezio/api-kernel@0.9.1
+  - @creezio/mcp-facade@0.9.1
+  - @creezio/shell-ui@0.9.1
+  - @creezio/auth@0.9.1
+  - @creezio/access-control@0.9.1
+  - @creezio/assistant@0.9.1
+  - @creezio/tasks@0.9.1
+  - @creezio/mails@0.9.1
+  - @creezio/observability@0.9.1
+  - @creezio/support@0.9.1
+  - @creezio/integrations@0.9.1
+  - @creezio/browser-host@0.9.1
+  - @creezio/database@0.9.1
+
 ## 0.9.0
 
 ### Minor Changes
