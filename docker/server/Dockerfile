@@ -54,7 +54,16 @@ WORKDIR /app
 # dans l'image.)
 COPY package.json package-lock.json .npmrc ./
 COPY ${SERVER_DIR}/package.json ./${SERVER_DIR}/package.json
-# electron est en devDependencies — omit=dev = image serveur sans GUI.
+# electron atterrit dans l arbre PROD via le lockfile (dev=false) malgre
+# omit=dev : son postinstall telecharge le binaire (~100 Mo, CDN GitHub
+# flaky — vecu tempoflow 2026-08-12, socket hang up). Le serveur headless
+# n en a jamais besoin → skip dans TOUS les stages.
+ENV ELECTRON_SKIP_BINARY_DOWNLOAD=1
+# Resilience registre : reset TLS transitoire sous charge (2 npm ci
+# concurrents — vecu idem). Retries npm via env, identique partout.
+ENV NPM_CONFIG_FETCH_RETRIES=5 \
+    NPM_CONFIG_FETCH_RETRY_MINTIMEOUT=15000 \
+    NPM_CONFIG_FETCH_RETRY_MAXTIMEOUT=120000
 # Monorepo : -w ${SERVER_DIR} = seules les deps du livrable serveur
 # (install workspace → node_modules RACINE, walk-up standard depuis
 # /app/${SERVER_DIR}). Layout plat : npm ci à la racine (la racine EST le
@@ -111,6 +120,9 @@ COPY ${SERVER_DIR}/package.json ./${SERVER_DIR}/package.json
 # ELECTRON_SKIP_BINARY_DOWNLOAD : le binaire electron est inutile pour tsc —
 # le télécharger alourdirait le stage sans rien apporter à l'image serveur.
 ENV ELECTRON_SKIP_BINARY_DOWNLOAD=1
+ENV NPM_CONFIG_FETCH_RETRIES=5 \
+    NPM_CONFIG_FETCH_RETRY_MINTIMEOUT=15000 \
+    NPM_CONFIG_FETCH_RETRY_MAXTIMEOUT=120000
 RUN --mount=type=secret,id=CREEZIO_NPM_TOKEN \
     export CREEZIO_NPM_TOKEN="$(cat /run/secrets/CREEZIO_NPM_TOKEN)" \
   && if [ "${SERVER_DIR}" = "." ]; then \
