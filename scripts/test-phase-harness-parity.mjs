@@ -26,6 +26,7 @@ import { fileURLToPath } from "node:url";
 import { createAppManifest } from "../packages/brand-config/dist/index.js";
 import {
   applyBrandCatalogEnvDefaults,
+  probeTunnelPublicUrl,
   startBrandKernelHarness,
 } from "../packages/app-runtime/dist/index.js";
 
@@ -360,4 +361,50 @@ test("HPP3 applyBrandCatalogEnvDefaults : léger par défaut, opt-in prod", () =
       else process.env[k] = v;
     }
   }
+});
+
+test("HPP4 sonde publique tunnel (mode sidecar M2) : retry/backoff, succès réel, échec honnêt", async () => {
+  // Stub HTTP : 502 ×2 puis 200 — la sonde doit retenter puis conclure OK.
+  let hits = 0;
+  const srv = http.createServer((req, res) => {
+    hits += 1;
+    res.statusCode = hits >= 3 ? 200 : 502;
+    res.end("{}");
+  });
+  await new Promise((resolve) => srv.listen(0, "127.0.0.1", resolve));
+  const stubPort = srv.address().port;
+  try {
+    const ok = await probeTunnelPublicUrl(`http://127.0.0.1:${stubPort}`, {
+      budgetMs: 15_000,
+      requestTimeoutMs: 1_000,
+    });
+    assert.equal(ok.ok, true, JSON.stringify(ok));
+    assert.equal(ok.attempts, 3, "2 × 502 puis 200 → 3 sondes");
+  } finally {
+    srv.closeAllConnections?.();
+    await new Promise((resolve) => srv.close(resolve));
+  }
+
+  // Cible injoignable : échec explicite après budget — jamais de faux done.
+  const ko = await probeTunnelPublicUrl("http://127.0.0.1:1", {
+    budgetMs: 2_500,
+    requestTimeoutMs: 300,
+  });
+  assert.equal(ko.ok, false, JSON.stringify(ko));
+  assert.ok(ko.attempts >= 1 && ko.lastError, "échec tracé");
+
+  // Câblage : en mode sidecar, la phase tunnel ne dépend plus du
+  // provisioner (injoignable depuis le réseau compose) — configure
+  // best-effort en arrière-plan + sonde de l'URL publique réelle.
+  const phases = fs.readFileSync(
+    path.join(ROOT, "packages/app-runtime/src/harness-server-phases.ts"),
+    "utf8",
+  );
+  assert.match(phases, /harnessTunnelSidecarMode/, "détection sidecar");
+  assert.match(phases, /probeTunnelPublicUrl/, "sonde publique câblée");
+  assert.match(
+    phases,
+    /best-effort ignoré/,
+    "configure provisioner best-effort non fatal en sidecar",
+  );
 });
