@@ -1,6 +1,6 @@
 {
   "name": "@creezio/onboarding",
-  "version": "0.8.1",
+  "version": "0.9.0",
   "description": "Setup first-run + moteur onboarding plateforme (steps/slots marque)",
   "type": "module",
   "main": "./dist-cjs/index.js",
@@ -29,9 +29,9 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@creezio/api-kernel": "^0.8.1",
-    "@creezio/platform-core": "^0.8.1",
-    "@creezio/shell-ui": "^0.8.1"
+    "@creezio/api-kernel": "^0.9.0",
+    "@creezio/platform-core": "^0.9.0",
+    "@creezio/shell-ui": "^0.9.0"
   },
   "devDependencies": {
     "@types/node": "^22.15.3",
