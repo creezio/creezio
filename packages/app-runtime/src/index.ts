@@ -149,12 +149,15 @@ export {
   applyStoredEmailEnv,
   applyStoredLlmEnv,
   harnessTunnelProvisionRequested,
+  harnessTunnelSidecarMode,
+  probeTunnelPublicUrl,
   runHarnessCatalogImportPhase,
   runHarnessFleetPhase,
   runHarnessHermesBridgePhase,
   runHarnessPluginsPhase,
   runHarnessTunnelPhase,
   type HarnessTunnelPhaseResult,
+  type TunnelPublicProbeResult,
 } from "./harness-server-phases.js";
 export {
   buildCockpitHealth,

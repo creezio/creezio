@@ -151,6 +151,67 @@ export function harnessTunnelProvisionRequested(
   );
 }
 
+/**
+ * Mode sidecar (M2) : cloudflared tourne dans un conteneur dédié du stack
+ * compose — même détection d'env explicite que le service tunnel.
+ */
+export function harnessTunnelSidecarMode(): boolean {
+  return /^(1|true|yes)$/i.test(
+    String(process.env.CREEZIO_TUNNEL_SIDECAR || "").trim(),
+  );
+}
+
+export type TunnelPublicProbeResult = {
+  ok: boolean;
+  attempts: number;
+  lastError?: string;
+};
+
+/**
+ * Sonde l'état RÉEL du tunnel via l'URL publique (hairpin Cloudflare →
+ * sidecar → app) avec retry + backoff. En mode sidecar, le provisioner
+ * (172.17.0.1 = gateway docker0) n'est pas joignable depuis le réseau
+ * compose du stack : seule la réponse publique prouve que le tunnel sert.
+ * Budget ~45 s par défaut — un sidecar sain répond en quelques secondes
+ * après un restart à froid (502 le temps que cloudflared reconnecte).
+ */
+export async function probeTunnelPublicUrl(
+  publicUrl: string,
+  opts?: { budgetMs?: number; requestTimeoutMs?: number; log?: Log },
+): Promise<TunnelPublicProbeResult> {
+  const budgetMs = opts?.budgetMs ?? 45_000;
+  const requestTimeoutMs = opts?.requestTimeoutMs ?? 5_000;
+  const url = `${publicUrl.replace(/\/+$/, "")}/api/v1/core/health`;
+  const started = Date.now();
+  let attempts = 0;
+  let lastError = "inconnu";
+  let delayMs = 2_000;
+  for (;;) {
+    attempts += 1;
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), requestTimeoutMs);
+    try {
+      const res = await fetch(url, {
+        signal: ctrl.signal,
+        redirect: "manual",
+      });
+      if (res.ok) return { ok: true, attempts };
+      lastError = `HTTP ${res.status}`;
+    } catch (err) {
+      lastError = err instanceof Error ? err.message : String(err);
+    } finally {
+      clearTimeout(timer);
+    }
+    if (Date.now() - started + delayMs > budgetMs) break;
+    opts?.log?.(
+      `sonde publique tunnel: ${lastError} — nouvelle tentative dans ${Math.round(delayMs / 1000)}s`,
+    );
+    await new Promise((r) => setTimeout(r, delayMs));
+    delayMs = Math.min(Math.round(delayMs * 1.6), 10_000);
+  }
+  return { ok: false, attempts, lastError };
+}
+
 export type HarnessTunnelPhaseResult = {
   publicUrl: string | null;
   hostname: string | null;
@@ -196,6 +257,7 @@ export async function runHarnessTunnelPhase(opts: {
       .toLowerCase()
       .replace(/[^a-z0-9-]+/g, "-");
 
+    const sidecar = harnessTunnelSidecarMode();
     if (!hasRealTunnel) {
       const reserved = await tunnel.reserveTunnel(slug, port);
       if (!reserved.ok) {
@@ -205,8 +267,27 @@ export async function runHarnessTunnelPhase(opts: {
     } else {
       log(`tunnel déjà réservé (${existing?.hostname}) — configure + run`);
     }
-    await tunnel.configureTunnelIngress({ crmPort: port });
-    await tunnel.startCloudflared();
+    if (sidecar) {
+      // cloudflared = sidecar compose : pas de spawn in-process (no-op qui
+      // confirme l'état online depuis le token seedé). Le provisioner
+      // (172.17.0.1, gateway docker0) est injoignable depuis le réseau du
+      // stack : re-configure best-effort en arrière-plan — jamais bloquant,
+      // jamais fatal — puis validation par sonde de l'URL publique réelle.
+      await tunnel.startCloudflared();
+      void (async () => {
+        try {
+          await tunnel.configureTunnelIngress({ crmPort: port });
+          log("ingress tunnel re-configuré (provisioner joignable)");
+        } catch (err) {
+          log(
+            `configure provisioner best-effort ignoré: ${err instanceof Error ? err.message : String(err)}`,
+          );
+        }
+      })().catch(() => {});
+    } else {
+      await tunnel.configureTunnelIngress({ crmPort: port });
+      await tunnel.startCloudflared();
+    }
 
     const cfg = store.getTunnelConfig();
     out.publicUrl = cfg?.publicUrl || null;
@@ -247,11 +328,30 @@ export async function runHarnessTunnelPhase(opts: {
       );
     }
 
-    const st = tunnel.getTunnelStatus();
-    boot.done(
-      "tunnel",
-      `${out.publicUrl || "configuré"} (cloudflared ${st.online ? "online" : "démarré"})`,
-    );
+    if (sidecar && out.publicUrl && /^https:\/\//.test(out.publicUrl)) {
+      if (process.env.CREEZIO_TUNNEL_PUBLIC_PROBE === "0") {
+        boot.done("tunnel", `${out.publicUrl} (sidecar — sonde désactivée)`);
+      } else {
+        const probe = await probeTunnelPublicUrl(out.publicUrl, { log });
+        if (probe.ok) {
+          boot.done(
+            "tunnel",
+            `${out.publicUrl} (tunnel vérifié en ligne, ${probe.attempts} sonde(s))`,
+          );
+        } else {
+          boot.error(
+            "tunnel",
+            `URL publique ${out.publicUrl} sans réponse après ${probe.attempts} sondes (${probe.lastError}) — CRM local reste utilisable`,
+          );
+        }
+      }
+    } else {
+      const st = tunnel.getTunnelStatus();
+      boot.done(
+        "tunnel",
+        `${out.publicUrl || "configuré"} (cloudflared ${st.online ? "online" : "démarré"})`,
+      );
+    }
   } catch (err) {
     boot.error(
       "tunnel",
