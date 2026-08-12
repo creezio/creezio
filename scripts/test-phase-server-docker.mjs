@@ -212,6 +212,12 @@ test("CLI registre d'instances : create/start/stop/rm/logs/ls/update/backup + ad
   );
   assert.match(lib, /backup = false/);
   assert.match(lib, /pas de nouveau backup \(défaut\)/);
+  // Backup via tar en conteneur éphémère (volume root-owned / backups/
+  // root-owned : le tar hôte user serait incomplet ou impossible — vécu
+  // tempoflow 2026-08-12). Socket docker = seul privilège requis.
+  assert.match(lib, /conteneur éphémère/);
+  assert.match(lib, /"run",\s*"--rm"/);
+  assert.match(lib, /chown \$\{uid\}:\$\{gid\}/);
   assert.doesNotMatch(lib, /pruneBackups\(brandRoot, inst\.name\)/);
   const admin = fs.readFileSync(
     path.join(
