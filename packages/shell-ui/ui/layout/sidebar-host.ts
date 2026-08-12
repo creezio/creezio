@@ -17,11 +17,24 @@ export type SidebarAdminItem = {
   permission?: string | null;
 };
 
+export type SidebarActionItem = {
+  /** Identifiant stable (clé de rendu, aid). */
+  id: string;
+  label: string;
+  icon: any;
+  /** Action au clic — entrée SANS navigation (ex. visite guidée). */
+  onSelect: () => void;
+  /** Permission requise (même filtrage que les entrées nav/admin). */
+  permission?: string | null;
+};
+
 export type SidebarHost = {
   /** Primary nav items (ordered). */
   getNavItems: () => SidebarNavItem[];
   /** Admin page links (Hermes/n8n added separately if tools enabled). */
   getAdminItems?: () => SidebarAdminItem[];
+  /** Entrées d'action sans navigation (ex. visite guidée), rendues après le groupe Admin. */
+  getActionItems?: () => SidebarActionItem[];
   /** ACL: return false to hide item. me from useSession. */
   canShowHref?: (href: string, me: any) => boolean;
   /** Forced active href for soft-ctx (product detail etc). */
@@ -55,4 +68,57 @@ export function getSidebarHost(): SidebarHost {
 
 export function getSidebarHostOptional(): SidebarHost | null {
   return host;
+}
+
+/**
+ * Registre d'actions sidebar contribuées par des modules kit (ex.
+ * @creezio/interactive-demo) SANS passer par le host de la marque : les
+ * providers enregistrés ici sont fusionnés avec `getActionItems` au
+ * rendu. Réactif (useSyncExternalStore) : le snapshot n'est recalculé
+ * qu'à l'enregistrement ou au retrait d'un provider.
+ */
+export type SidebarActionsProvider = () => SidebarActionItem[];
+
+const sidebarActionsProviders = new Set<SidebarActionsProvider>();
+const sidebarActionsListeners = new Set<() => void>();
+let sidebarActionsSnapshot: SidebarActionItem[] = [];
+
+function recomputeSidebarActions(): void {
+  const next: SidebarActionItem[] = [];
+  for (const provider of sidebarActionsProviders) {
+    try {
+      next.push(...(provider() ?? []));
+    } catch {
+      /* provider défaillant — les autres actions restent servies */
+    }
+  }
+  sidebarActionsSnapshot = next;
+  for (const listener of sidebarActionsListeners) listener();
+}
+
+/**
+ * Enregistre un provider d'actions sidebar et renvoie la fonction de retrait
+ * (à appeler au démontage). Le provider est relu à chaque
+ * enregistrement/retrait : le garder pur et sans I/O.
+ */
+export function registerSidebarActionsProvider(
+  provider: SidebarActionsProvider,
+): () => void {
+  sidebarActionsProviders.add(provider);
+  recomputeSidebarActions();
+  return () => {
+    sidebarActionsProviders.delete(provider);
+    recomputeSidebarActions();
+  };
+}
+
+export function subscribeSidebarActions(listener: () => void): () => void {
+  sidebarActionsListeners.add(listener);
+  return () => {
+    sidebarActionsListeners.delete(listener);
+  };
+}
+
+export function getSidebarActionsSnapshot(): SidebarActionItem[] {
+  return sidebarActionsSnapshot;
 }

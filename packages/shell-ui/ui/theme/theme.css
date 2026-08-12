@@ -282,3 +282,47 @@ html {
 .tempoflow-titlebar-no-drag button {
   cursor: default;
 }
+
+/* ------------------------------------------------------------------ */
+/* Palette de recherche globale (Ctrl+K)                              */
+/* ------------------------------------------------------------------ */
+
+/*
+ * Styles possédés par le composant : la palette ne doit JAMAIS dépendre des
+ * règles génériques de modales de la marque (un `[role="dialog"]` global qui
+ * borne largeur/hauteur/overflow a détruit son rendu — incident winhub PR #8,
+ * 2026-08-10). Classe doublée + attribut = spécificité (0,3,0) : prime sur
+ * tout sélecteur générique à une classe/un attribut, quel que soit l ordre
+ * des feuilles de styles. Les classes Tailwind du composant restent pour le
+ * visuel (fond, ombre, bord) ; la géométrie vit ICI et nulle part ailleurs.
+ */
+.creezio-search-palette.creezio-search-palette[role="dialog"] {
+  position: fixed;
+  z-index: 50;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100dvh;
+  max-height: none;
+  overflow-x: hidden;
+  overflow-y: hidden;
+  overscroll-behavior: auto;
+}
+
+@media (min-width: 768px) {
+  .creezio-search-palette.creezio-search-palette[role="dialog"] {
+    top: 8%;
+    right: auto;
+    bottom: 0;
+    left: 50%;
+    width: min(920px, calc(100vw - 2rem));
+    height: auto;
+    max-height: min(680px, 85vh);
+    transform: translateX(-50%);
+    border-radius: 0.75rem;
+  }
+}

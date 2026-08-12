@@ -277,6 +277,20 @@ export default function LoginPage() {
 }
 ```
 
+Lien secondaire de la page login (optionnel) : `LoginPage` affiche sous
+le formulaire un lien d'action secondaire quand la marque le configure via
+`ShellUiBrand.login.secondaryLink` (`CreezioUiBoot`) — ex. inscription POS :
+
+```ts
+configureShellUiBrand({
+  login: {
+    secondaryLink: { label: "Créer un compte", href: "/inscription" },
+  },
+});
+```
+
+Clé absente = rien ne s'affiche (aucun défaut kit, aucun libellé hardcodé).
+
 Session provider :
 
 ```tsx

@@ -185,6 +185,19 @@ export function LoginPage({ footer, ...formProps }: LoginPageProps = {}) {
               </p>
             </div>
             <LoginForm {...formProps} />
+            {login.secondaryLink?.label && login.secondaryLink?.href ? (
+              <p
+                data-creezio-login="secondary-link"
+                className="mt-6 text-center text-sm text-slate-500"
+              >
+                <a
+                  href={login.secondaryLink.href}
+                  className="font-medium text-sky-600 underline-offset-4 transition-colors hover:text-sky-700 hover:underline"
+                >
+                  {login.secondaryLink.label}
+                </a>
+              </p>
+            ) : null}
             {footer ? <div className="mt-8">{footer}</div> : null}
           </div>
         </div>

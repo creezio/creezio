@@ -15,7 +15,26 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { DemoScenario } from "@creezio/interactive-demo";
 import { scenarioMatchesRole } from "@creezio/interactive-demo";
+import { registerSidebarActionsProvider } from "@creezio/shell-ui/ui";
 import { DemoPlayer } from "./demo-player";
+
+/** Icône du lanceur (play) — inline : lucide-react est un peer optionnel. */
+function LauncherIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+      className={className}
+    >
+      <path d="M5 3l14 9-14 9V3z" />
+    </svg>
+  );
+}
 
 export const INTERACTIVE_DEMO_EVENT = "creezio-interactive-demo";
 
@@ -45,6 +64,14 @@ export type InteractiveDemoRootProps = {
   autoStart?: boolean;
   /** Affiche le bouton flottant « Visite guidée » (défaut true). */
   showLauncher?: boolean;
+  /**
+   * Placement du lanceur : "floating" = bouton flottant historique (défaut,
+   * rétrocompatible) ; "sidebar" = entrée d'action dans la sidebar kit
+   * (registre @creezio/shell-ui — visible uniquement dans le workspace
+   * authentifié, jamais sur /login) ; "none" = aucun lanceur (déclenchement
+   * uniquement via `startInteractiveDemo()`).
+   */
+  launcher?: "floating" | "sidebar" | "none";
   /** Libellé du lanceur. */
   launcherLabel?: string;
   /** Scénarios injectés (tests / offline) — court-circuite le fetch. */
@@ -80,6 +107,7 @@ export function InteractiveDemoRoot({
   role,
   autoStart = true,
   showLauncher = true,
+  launcher = "floating",
   launcherLabel = "Visite guidée",
   scenarios: injected,
   cursorLabel,
@@ -196,6 +224,22 @@ export function InteractiveDemoRoot({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoStart, active, scenarios, role]);
 
+  /* Lanceur « sidebar » : entrée d'action dans la sidebar kit dès qu'un
+     scénario est proposable pour le rôle courant. L'entrée reste visible
+     même pendant une lecture (cliquer relance proprement via start()). Le
+     provider est relu à chaque (ré)enregistrement — garder la closure pure. */
+  useEffect(() => {
+    if (launcher !== "sidebar" || visible.length === 0) return;
+    return registerSidebarActionsProvider(() => [
+      {
+        id: "interactive-demo",
+        label: launcherLabel,
+        icon: LauncherIcon,
+        onSelect: () => start(),
+      },
+    ]);
+  }, [launcher, launcherLabel, visible.length, start]);
+
   const stop = useCallback(
     (finished: boolean) => {
       if (active) markSeen(active.id);
@@ -217,7 +261,9 @@ export function InteractiveDemoRoot({
     );
   }
 
-  if (!showLauncher || visible.length === 0) return null;
+  if (launcher !== "floating" || !showLauncher || visible.length === 0) {
+    return null;
+  }
 
   return (
     <div data-creezio-demo-ui="1">
