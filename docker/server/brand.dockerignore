@@ -1,6 +1,8 @@
-# creezio-dockerignore v4 — layout monorepo 3 livrables (client/ server/ admin/)
-# + compat layout plat legacy. UI Next standalone incluse dans l'image.
-# Copié en `.dockerignore` à la racine marque avant `docker build`
+# creezio-dockerignore v5 — build UI + runtime 100% dans l'image (stage
+# brand-build du Dockerfile kit) : les sources server/ (dont server/ui)
+# entrent dans le contexte, les artefacts hôte (node_modules, .next, build)
+# N'ENTRENT JAMAIS — l'image rebuild tout, à l'identique sur tous les
+# serveurs. Copié en `.dockerignore` à la racine marque avant `docker build`
 # (CLI `creezio server-docker build` le pose / rafraîchit si marqueur absent).
 
 .git
@@ -11,12 +13,13 @@
 **/.env
 **/.env.*
 **/node_modules
+**/.next
 **/dist-electron
 **/dist-electron-server
-**/ui
+server/build
+build
 **/dumps
 **/crm
-**/src
 **/data
 **/docker-data
 **/docker-data/**
@@ -36,16 +39,3 @@ docs
 *.md
 !README.md
 node-compile-cache
-
-# UI Next standalone (CRM navigateur dans le container) — ré-inclusion après
-# l'exclusion **/ui et **/node_modules (dockerignore : dernier motif gagnant).
-# Layout monorepo (server/ui) :
-!server/ui/.next/standalone/**
-!server/ui/.next/static/**
-!server/ui/.next/BUILD_ID
-!server/ui/public/**
-# Layout plat legacy (ui à la racine) :
-!ui/.next/standalone/**
-!ui/.next/static/**
-!ui/.next/BUILD_ID
-!ui/public/**
