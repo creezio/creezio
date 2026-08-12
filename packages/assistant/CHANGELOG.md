@@ -1,5 +1,12 @@
 # @creezio/assistant
 
+## 0.9.2
+
+### Patch Changes
+
+- @creezio/shell@0.9.2
+- @creezio/platform-core@0.9.2
+
 ## 0.9.1
 
 ### Patch Changes

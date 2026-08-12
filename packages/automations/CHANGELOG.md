@@ -1,5 +1,15 @@
 # @creezio/automations
 
+## 0.9.2
+
+### Patch Changes
+
+- Updated dependencies [10b5198]
+  - @creezio/observability@0.9.2
+  - @creezio/platform-core@0.9.2
+  - @creezio/product-hub@0.9.2
+  - @creezio/api-kernel@0.9.2
+
 ## 0.9.1
 
 ### Patch Changes
