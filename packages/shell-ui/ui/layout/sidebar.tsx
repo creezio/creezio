@@ -6,6 +6,7 @@ import {
   useMemo,
   useRef,
   useState,
+  useSyncExternalStore,
   type RefObject,
 } from "react";
 import Link from "next/link";
@@ -36,7 +37,10 @@ import {
 } from "../lib/hermes-ui";
 import { openN8nUiInWorkspace } from "../lib/n8n-ui";
 import {
+  getSidebarActionsSnapshot,
   getSidebarHost,
+  subscribeSidebarActions,
+  type SidebarActionItem,
   type SidebarAdminItem,
   type SidebarHost,
   type SidebarNavItem,
@@ -589,6 +593,73 @@ function PluginSidebarLinks({
   );
 }
 
+const EMPTY_SIDEBAR_ACTIONS: SidebarActionItem[] = [];
+
+/**
+ * Entrées d'action de la sidebar (sans navigation — ex. « Visite
+ * guidée ») : items du host de marque (`getActionItems`) + providers
+ * kit enregistrés (`registerSidebarActionsProvider`), filtrés par
+ * permission comme les entrées nav. La sidebar n'existant que dans le
+ * workspace authentifié, ces entrées ne sont jamais visibles sur les
+ * pages publiques (/login, /lp…).
+ */
+function SidebarActionLinks({
+  host,
+  me,
+  collapsed,
+  onNavigate,
+}: {
+  host: SidebarHost;
+  me: any;
+  collapsed?: boolean;
+  onNavigate?: () => void;
+}) {
+  const registered = useSyncExternalStore(
+    subscribeSidebarActions,
+    getSidebarActionsSnapshot,
+    () => EMPTY_SIDEBAR_ACTIONS,
+  );
+  const items = useMemo(
+    () =>
+      [...(host.getActionItems?.() ?? []), ...registered].filter((item) =>
+        hasItemPermission(item, me),
+      ),
+    [host, me, registered],
+  );
+  if (!items.length) return null;
+  return (
+    <>
+      {items.map((item) => {
+        const Icon = item.icon;
+        return (
+          <button
+            key={item.id}
+            type="button"
+            onClick={() => {
+              item.onSelect();
+              onNavigate?.();
+            }}
+            {...aidProps(`nav.${aidSlug(item.label)}`)}
+            title={collapsed ? item.label : undefined}
+            className={cn(
+              "flex w-full items-center rounded-lg text-sm transition-colors",
+              collapsed ? "h-9 justify-center" : "gap-3 px-3 py-2",
+              "text-slate-300 hover:bg-slate-800/60 hover:text-white",
+            )}
+          >
+            <Icon className="h-4 w-4 shrink-0" />
+            {collapsed ? (
+              <span className="sr-only">{item.label}</span>
+            ) : (
+              <span className="truncate">{item.label}</span>
+            )}
+          </button>
+        );
+      })}
+    </>
+  );
+}
+
 function NavLinks({
   host,
   pathname,
@@ -658,6 +729,12 @@ function NavLinks({
         host={host}
         me={me}
         pathname={pathname}
+        collapsed={collapsed}
+        onNavigate={onNavigate}
+      />
+      <SidebarActionLinks
+        host={host}
+        me={me}
         collapsed={collapsed}
         onNavigate={onNavigate}
       />

@@ -131,6 +131,26 @@
   padding: 28px 28px 22px;
 }
 
+/*
+ * Garde-fou contre la règle globale « modales bornées au viewport »
+ * des apps (ex. `[role="dialog"]:not(.inset-y-0) { width: calc(100vw - 2rem);
+ * max-height: calc(100vh - 2rem) }`) : la carte démo porte role="dialog"
+ * mais ne doit JAMAIS être étirée au viewport — elle garde ses
+ * dimensions compactes (spécificité volontairement supérieure :
+ * élément + classe + attribut).
+ */
+div.creezio-demo-card[role="dialog"] {
+  width: min(380px, calc(100vw - 32px));
+  max-height: min(72vh, 560px);
+  max-height: min(72dvh, 560px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+div.creezio-demo-card--centered[role="dialog"] {
+  width: min(460px, calc(100vw - 32px));
+}
+
 .creezio-demo-card-kicker {
   font: 700 10px/1 system-ui, sans-serif;
   letter-spacing: 0.14em;

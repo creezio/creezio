@@ -23,6 +23,12 @@ export type ShellUiLoginBrand = {
   panelImageUrl?: string;
   /** Côté du panneau sur desktop (défaut "right"). */
   panelSide?: "left" | "right";
+  /**
+   * Lien d'action secondaire sous le formulaire de connexion (ex.
+   * inscription POS de la marque : { label: "Créer un compte", href:
+   * "/inscription" }). Absent = aucun lien affiché — jamais de défaut kit.
+   */
+  secondaryLink?: { label: string; href: string };
 };
 
 export type ShellUiBrand = {

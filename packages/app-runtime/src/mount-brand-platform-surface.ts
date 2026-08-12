@@ -797,6 +797,21 @@ export function mountBrandPlatformSurface(opts: {
   /* Tasks (kanban + runs + activity + screencast SSE). */
   app.route("/api/v1/tasks", createTasksHonoRoutes());
 
+  /* Heartbeat desktop — pollé toutes les 60 s par le SessionProvider kit
+   * dès qu'une session est ouverte. No-op natif : sans bridge Electron en
+   * ligne, 200 { ok, desktop: false } au lieu du 404
+   * platform_route_not_found (qui repartait en fallthrough vers le plane UI
+   * — bruit logs + faux états sur les apps web sans desktop). Bridge
+   * connecté : desktop: true reflète le registre de présence réel. */
+  app.post("/api/v1/desktop/heartbeat", async (c) => {
+    const session = await sessionFromContext(c);
+    if (!session) return c.json({ error: "Non authentifié" }, 401);
+    return c.json({
+      ok: true,
+      desktop: presence.isDesktopOnline(session.sub),
+    });
+  });
+
   /* Frames screencast POSTées par le bridge Electron (session requise). */
   app.post("/api/v1/desktop/screencast/frame", async (c) => {
     const session = await sessionFromContext(c);

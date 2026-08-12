@@ -316,7 +316,7 @@ function GlobalSearchModal({
         <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-black/50 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
         <DialogPrimitive.Content
           className={cn(
-            "fixed z-50 flex flex-col overflow-hidden bg-white shadow-2xl outline-none",
+            "creezio-search-palette fixed z-50 flex flex-col overflow-hidden bg-white shadow-2xl outline-none",
             "inset-0 h-[100dvh] w-full rounded-none",
             "md:inset-x-auto md:left-1/2 md:top-[8%] md:h-auto md:max-h-[min(680px,85vh)] md:w-[min(920px,calc(100vw-2rem))] md:-translate-x-1/2 md:rounded-xl md:border md:border-slate-200",
           )}
