@@ -24,8 +24,12 @@
 #     --secret id=CREEZIO_NPM_TOKEN,env=CREEZIO_NPM_TOKEN \
 #     -t creezio-server-<brandId>:local /path/to/brand
 #
-# Prérequis marque : `npm run build:runtime` (dossier <SERVER_DIR>/build présent)
-#   + `npm run build:ui` si <SERVER_DIR>/ui existe (CRM web servi par le container).
+# Build 100% in-image (stage brand-build) : tsc (build/electron) + materialize
+#   os-ui + next build (ui/.next/standalone). L'hôte ne fournit QUE les sources
+#   git — node/npm de l'hôte ne produisent AUCUN artefact consommé par l'image
+#   (brand.dockerignore v5 exclut **/node_modules, **/.next, build/ du contexte).
+#   Même image, même comportement, sur tous les serveurs : une seule commande
+#   (`creezio server-docker build`), zéro divergence possible.
 # Runtime : startBrandKernelHarness via scripts/brand-kernel-harness.mjs
 #   → boot-status HTTP dès le démarrage (GET /api/v1/os/boot-status)
 #   → reverse-proxy UI Next standalone (CRM navigateur sur /)
@@ -88,6 +92,51 @@ RUN apt-get update \
   && chmod 755 /usr/local/bin/cloudflared \
   && /usr/local/bin/cloudflared --version
 
+# ---------------------------------------------------------------------------
+# Stage brand-build — build runtime (tsc) + UI Next 100% dans l'image.
+# ---------------------------------------------------------------------------
+FROM node:22-bookworm-slim AS brand-build
+ARG SERVER_DIR
+# Outils de build natif (better-sqlite3 et cie) — stage jetable, jamais
+# copié dans le runtime.
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends \
+    python3 make g++ ca-certificates \
+  && rm -rf /var/lib/apt/lists/*
+WORKDIR /app
+# Manifests d'abord (cache BuildKit) : racine + livrable serveur.
+COPY package.json package-lock.json .npmrc ./
+COPY ${SERVER_DIR}/package.json ./${SERVER_DIR}/package.json
+# Deps COMPLÈTES du livrable serveur (dev inclus : typescript pour tsc…).
+# ELECTRON_SKIP_BINARY_DOWNLOAD : le binaire electron est inutile pour tsc —
+# le télécharger alourdirait le stage sans rien apporter à l'image serveur.
+ENV ELECTRON_SKIP_BINARY_DOWNLOAD=1
+RUN --mount=type=secret,id=CREEZIO_NPM_TOKEN \
+    export CREEZIO_NPM_TOKEN="$(cat /run/secrets/CREEZIO_NPM_TOKEN)" \
+  && if [ "${SERVER_DIR}" = "." ]; then \
+       npm ci --no-audit --no-fund; \
+     else \
+       npm ci --workspace="${SERVER_DIR}" --no-audit --no-fund; \
+     fi
+# Sources marque (filtrées par brand.dockerignore v5 : aucun artefact hôte).
+COPY . .
+# UI Next : projet npm indépendant (lockfile propre) — install + builds.
+#   build:runtime = tsc → <SERVER_DIR>/build/electron (requis par le harness :
+#   app-manifest, migrations, API métier). build:ui = materialize os-ui (lit
+#   @creezio/os-ui hoisté racine) + next build → ui/.next/standalone.
+#   App sans ui/ : stage vide garanti par mkdir, runtime = API seule.
+RUN --mount=type=secret,id=CREEZIO_NPM_TOKEN \
+    export CREEZIO_NPM_TOKEN="$(cat /run/secrets/CREEZIO_NPM_TOKEN)" \
+  && P="./${SERVER_DIR}" \
+  && if [ -f "$P/ui/package.json" ]; then \
+       npm ci --prefix "$P/ui" --no-audit --no-fund; \
+     fi \
+  && npm run build:runtime --prefix "$P" \
+  && if [ -f "$P/ui/package.json" ]; then \
+       npm run build:ui --prefix "$P"; \
+     fi \
+  && mkdir -p "$P/ui/.next/standalone" "$P/ui/.next/static" "$P/ui/public"
+
 FROM node:22-bookworm-slim AS runtime-base
 ARG SERVER_DIR
 ARG SERVER_VERSION
@@ -104,14 +153,23 @@ LABEL org.opencontainers.image.version=${SERVER_VERSION}
 COPY --from=meili /usr/local/bin/meilisearch /opt/creezio/bin/meilisearch
 COPY --from=cloudflared /usr/local/bin/cloudflared /opt/creezio/bin/cloudflared
 
-# Sources / artefacts marque (voir brand.dockerignore —
-# inclut <SERVER_DIR>/ui/.next/standalone + static si la marque a une UI Next)
+# Sources marque (brand.dockerignore v5 : sources server/ et server/ui
+# incluses ; artefacts hôte exclus — tout artefact de build vient du stage
+# brand-build ci-dessous, jamais de l'hôte).
 COPY . .
 
 # Deps rebuildées (COPY . ne ramène pas node_modules grâce au dockerignore).
 # node_modules à la RACINE : résolution standard par walk-up depuis
 # /app/${SERVER_DIR} (packages npm réels — plus de vendor ni de symlink).
 COPY --from=deps /app/node_modules ./node_modules
+
+# Artefacts de build produits IN-IMAGE (stage brand-build) :
+#   build/electron  — harness : app-manifest, migrations, API métier
+#   ui/.next/standalone + static + public — CRM navigateur servi par le kernel
+COPY --from=brand-build /app/${SERVER_DIR}/build ./${SERVER_DIR}/build
+COPY --from=brand-build /app/${SERVER_DIR}/ui/.next/standalone ./${SERVER_DIR}/ui/.next/standalone
+COPY --from=brand-build /app/${SERVER_DIR}/ui/.next/static ./${SERVER_DIR}/ui/.next/static
+COPY --from=brand-build /app/${SERVER_DIR}/ui/public ./${SERVER_DIR}/ui/public
 
 # Workdir = livrable serveur (monorepo : /app/server ; plat : /app).
 WORKDIR /app/${SERVER_DIR}

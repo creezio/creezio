@@ -71,18 +71,34 @@ test("docker/server artefacts présents", () => {
   // Sécurité : ports publiés sur loopback par défaut (opt-in SERVER_BIND).
   assert.match(compose, /\$\{SERVER_BIND:-127\.0\.0\.1\}:\$\{SERVER_1_PORT:-18791\}/);
   assert.match(compose, /\$\{SERVER_BIND:-127\.0\.0\.1\}:\$\{SERVER_2_PORT:-18792\}/);
-  // UI Next incluse dans l'image (dockerignore v4 npm — ré-inclusions
-  // server/ui + compat layout plat legacy, plus d'exceptions vendor).
+  // Build 100% in-image (dockerignore v5) : sources server/ + server/ui
+  // dans le contexte ; artefacts hôte (node_modules, .next, build) exclus —
+  // l'image rebuild tout, zéro dépendance au node/npm de l'hôte.
   const di = fs.readFileSync(
     path.join(dockerServer, "brand.dockerignore"),
     "utf8",
   );
-  assert.match(di, /creezio-dockerignore v4/);
+  assert.match(di, /creezio-dockerignore v5/);
   assert.doesNotMatch(di, /!vendor\//);
-  assert.match(di, /!server\/ui\/\.next\/standalone\/\*\*/);
-  assert.match(di, /!server\/ui\/\.next\/static\/\*\*/);
-  assert.match(di, /!ui\/\.next\/standalone\/\*\*/);
-  assert.match(di, /!ui\/\.next\/static\/\*\*/);
+  assert.match(di, /^\*\*\/node_modules$/m, "node_modules hôte exclus du contexte");
+  assert.match(di, /^\*\*\/\.next$/m, ".next hôte exclu du contexte");
+  assert.match(di, /^server\/build$/m, "build hôte exclu du contexte");
+  assert.doesNotMatch(di, /^\*\*\/ui$/m, "sources ui exclues — requises in-image");
+  assert.doesNotMatch(di, /^\*\*\/src$/m, "sources src exclues — requises in-image");
+  assert.doesNotMatch(
+    di,
+    /\.\.\/\.\.\/node_modules/,
+    "artefacts standalone copiés depuis le contexte (v4) — v5 = COPY --from",
+  );
+  // Dockerfile : le stage brand-build produit build/electron + standalone.
+  assert.match(df, /FROM node:22-bookworm-slim AS brand-build/);
+  assert.match(df, /npm run build:runtime --prefix/);
+  assert.match(df, /npm run build:ui --prefix/);
+  assert.match(df, /COPY --from=brand-build \/app\/\$\{SERVER_DIR\}\/build /);
+  assert.match(
+    df,
+    /COPY --from=brand-build \/app\/\$\{SERVER_DIR\}\/ui\/\.next\/standalone /,
+  );
 });
 
 test("CLI creezio server-docker help", () => {

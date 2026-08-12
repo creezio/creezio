@@ -128,12 +128,12 @@ test("kit : artefacts distribution autonome npm (SoT docker/server/)", () => {
   assert.doesNotMatch(dockerfile, /COPY vendor/, "Dockerfile COPY vendor résiduel");
   assert.doesNotMatch(dockerfile, /server-deps/, "Dockerfile server-deps résiduel");
 
-  // .dockerignore v4 sans exception vendor.
+  // .dockerignore v5 sans exception vendor.
   const ignore = fs.readFileSync(
     path.join(DOCKER_SERVER, "brand.dockerignore"),
     "utf8",
   );
-  assert.match(ignore, /creezio-dockerignore v4/, "dockerignore pas v4");
+  assert.match(ignore, /creezio-dockerignore v5/, "dockerignore pas v5");
   assert.doesNotMatch(ignore, /!vendor\//, "dockerignore exception vendor résiduelle");
 
   // La factory connaît le spec npm lockstep + le .npmrc généré.

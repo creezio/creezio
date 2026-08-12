@@ -407,7 +407,7 @@ async function importInstanceStack(kit: string) {
 }
 
 /** Marqueur de version du template — un .dockerignore sans lui est rafraîchi. */
-const DOCKERIGNORE_MARKER = "# creezio-dockerignore v4";
+const DOCKERIGNORE_MARKER = "# creezio-dockerignore v5";
 
 /**
  * Layout monorepo 3 livrables (client/ server/ admin/) : le livrable serveur
@@ -432,7 +432,7 @@ function ensureBrandDockerignore(brandRoot: string, kit: string): void {
     const cur = fs.readFileSync(dest, "utf8");
     if (cur.includes(DOCKERIGNORE_MARKER)) return;
     fs.copyFileSync(src, dest);
-    console.log(`~ .dockerignore rafraîchi (template kit v4 — npm, sans vendor)`);
+    console.log(`~ .dockerignore rafraîchi (template kit v5 — build 100% in-image)`);
     return;
   }
   fs.copyFileSync(src, dest);
@@ -827,62 +827,6 @@ function ensureBrandStandalone(brandRoot: string, kit: string): void {
   }
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-
-
-function ensureElectronBuild(brandRoot: string): void {
-  const serverDir = resolveBrandServerDir(brandRoot);
-  const marker = path.join(serverDir, "build/electron/app-manifest.js");
-  if (fs.existsSync(marker)) return;
-  // build:runtime = nom nominal ; build:electron = alias historique.
-  const pkg = JSON.parse(
-    fs.readFileSync(path.join(serverDir, "package.json"), "utf8"),
-  ) as { scripts?: Record<string, string> };
-  const script = pkg.scripts?.["build:runtime"]
-    ? "build:runtime"
-    : "build:electron";
-  console.log(`build/electron manquant — npm run ${script}…`);
-  run("npm", ["run", script], process.env, { cwd: serverDir });
-  if (!fs.existsSync(marker)) {
-    throw new Error(`${script} n'a pas produit ${marker}`);
-  }
-}
-
-/**
- * UI Next standalone pour le container (CRM navigateur).
- * Si `ui/` existe sans build standalone → `npm run build:ui` (ou build --prefix ui).
- */
-function ensureUiBuild(brandRoot: string): void {
-  const serverDir = resolveBrandServerDir(brandRoot);
-  const uiDir = path.join(serverDir, "ui");
-  if (!fs.existsSync(path.join(uiDir, "package.json"))) {
-    console.log("⚠ pas de ui/ — le container servira l'API sans CRM web");
-    return;
-  }
-  const marker = path.join(uiDir, ".next/standalone/server.js");
-  if (fs.existsSync(marker)) return;
-  if (!fs.existsSync(path.join(uiDir, "node_modules"))) {
-    console.log("ui/node_modules manquant — npm install (ui)…");
-    run("npm", ["install", "--no-audit", "--no-fund"], process.env, {
-      cwd: uiDir,
-    });
-  }
-  console.log("ui/.next/standalone manquant — build UI Next…");
-  const pkg = JSON.parse(
-    fs.readFileSync(path.join(serverDir, "package.json"), "utf8"),
-  ) as { scripts?: Record<string, string> };
-  if (pkg.scripts?.["build:ui"]) {
-    run("npm", ["run", "build:ui"], process.env, { cwd: serverDir });
-  } else {
-    run("npm", ["run", "build", "--prefix", "ui"], process.env, {
-      cwd: serverDir,
-    });
-  }
-  if (!fs.existsSync(marker)) {
-    throw new Error(`build UI n'a pas produit ${marker}`);
-  }
-}
-
 /**
  * Fail-closed avant publish/build Docker : le dist kit des packages runtime
  * critiques doit refléter le src (content contracts + mtime). En mode npm
@@ -925,8 +869,9 @@ function dockerBuildImage(
   const variant = opts?.variant || "base";
   assertKitRuntimeDistFresh(paths.kit);
   ensureBrandStandalone(paths.brandRoot, paths.kit);
-  ensureElectronBuild(paths.brandRoot);
-  ensureUiBuild(paths.brandRoot);
+  // Build runtime (tsc) + UI Next : 100% dans l'image (stage brand-build du
+  // Dockerfile kit). node/npm de l'hôte ne produisent AUCUN artefact d'image
+  // — même résultat sur tous les serveurs, zéro divergence possible.
   // Deps @creezio/* npm (GitHub Packages) : token via secret BuildKit —
   // jamais en ARG/ENV de l'image (hors historique, invisible dans
   // `docker history`). Fail-fast : sans token, le npm ci de l'image
@@ -2807,8 +2752,7 @@ export async function runServerDockerCli(argv: string[]): Promise<void> {
   }
 
   if (args.sub === "up" || args.sub === "proof") {
-    ensureElectronBuild(paths.brandRoot);
-    ensureUiBuild(paths.brandRoot);
+    // Builds 100% in-image (stage brand-build) — rien à builder sur l'hôte.
     const upArgs = [
       "compose",
       "-p",

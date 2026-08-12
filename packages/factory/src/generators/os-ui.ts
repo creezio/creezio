@@ -710,17 +710,19 @@ const require = createRequire(import.meta.url);
 
 // Le design system vient du kit (preset + theme.css @creezio/shell-ui) :
 // une app générée ne DOIT PAS repartir d'un thème vide / HTML brut.
-// Le scan doit inclure les sources UI des packages npm @creezio/*
-// (\`node_modules/@creezio/<pkg>/ui\` + routes OS — deux profondeurs :
-// hoisting racine si workspaces, local sinon), sinon purge des classes.
+// Le scan inclut les sources UI des packages npm @creezio/* — LOCALES
+// (./node_modules) EXCLUSIVEMENT : server/ui est un projet npm indépendant
+// (lockfile propre, npm ci --prefix server/ui), les deps n'y sont jamais
+// hoistées. NE JAMAIS ajouter de glob ../../node_modules/@creezio/* : le
+// symlink workspace racine @creezio/app-<brand> → server/ y matcherait, et
+// Tailwind scannerait server/ui/node_modules + .next (~900 Mo → compile
+// Next 30 s → 17 min+, vécu tempoflow3-admin 2026-08-12), sinon purge.
 const config: Config = {
   presets: [require("@creezio/shell-ui/tailwind-preset")],
   content: [
     "./app/**/*.{js,ts,jsx,tsx,mdx}",
     "./components/**/*.{js,ts,jsx,tsx,mdx}",
     "./lib/**/*.{js,ts,jsx,tsx}",
-    "../../node_modules/@creezio/*/ui/**/*.{js,ts,jsx,tsx}",
-    "../../node_modules/@creezio/*/routes/**/*.{js,ts,jsx,tsx}",
     "./node_modules/@creezio/*/ui/**/*.{js,ts,jsx,tsx}",
     "./node_modules/@creezio/*/routes/**/*.{js,ts,jsx,tsx}",
   ],

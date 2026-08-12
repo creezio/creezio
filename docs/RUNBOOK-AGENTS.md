@@ -161,6 +161,24 @@ monorepo marque ; `CREEZIO_KIT_ROOT` pointe le clone kit du serveur).
 | Publier une image versionnée | `publish --tag <v> [--registry 127.0.0.1:5000] [--release]` (la garde assert-runtime-dist s'applique au build) |
 | Admin flotte | `admin up --admin-root <repo-admin>` · `admin add-brand <brandRoot>` |
 
+### One-line install — serveur vierge → app qui tourne
+
+**Prérequis hôte (une fois)** : `docker` + `docker compose` (BuildKit), `git`,
+les 2 clones (`creezio` kit + repo marque), `CREEZIO_NPM_TOKEN` dans l'env.
+**Jamais** node/npm/builds sur l'hôte : `tsc`, `os-ui:materialize`,
+`next build`, `npm ci` tournent **tous dans le `docker build`** (stage
+`brand-build`, §7.1) — l'hôte ne fournit que les sources git.
+
+```bash
+cd <repo-marque> && node scripts/creezio-cli.mjs server-docker create <nom> --brand-root . --profile prod
+```
+
+`create` build l'image si absente (in-image, identique sur tout serveur),
+provisionne le tunnel, écrit le stack M2, attend le boot. Update ensuite :
+`server-docker build` puis `update <nom> --image creezio-server-<brand>:local
+--backup`. Une app qui dévie de ce chemin = un bug du standard → corriger le
+kit/factory (PR), jamais contourner sur une seule app.
+
 **Modèle cible ports/tunnel (M2, mergé 2026-08-10, #55)** : 1 instance = 1
 stack compose autonome (`docker-data/stacks/<nom>/compose.yml`, généré — ne
 pas éditer) : **app** (port interne fixe `18791` dans le réseau du stack,
@@ -198,23 +216,29 @@ pré-standard, script `docker:build`, utile en sandbox §7.4).
 |---|---|
 | `deps` | Copie **uniquement les manifests** : `package.json`, `package-lock.json`, `.npmrc` (racine) + `${SERVER_DIR}/package.json`, puis `npm ci --omit=dev -w server` (**strict** — pas de fallback) + `npm rebuild better-sqlite3`. Token via **secret BuildKit** (`--secret id=CREEZIO_NPM_TOKEN,env=CREEZIO_NPM_TOKEN`), jamais en ARG/ENV : invisible dans `docker history`. |
 | `meili` / `cloudflared` | Binaires téléchargés (versions alignées `ensure-kit-binaries.ts`) → `/opt/creezio/bin/`. |
-| `runtime-base` | `COPY . .` (sources filtrées par `brand.dockerignore` v4, copié en `.dockerignore` marque par le CLI) + `COPY --from=deps /app/node_modules`. Version embarquée : `--build-arg SERVER_VERSION` (publish) → `GET /api/v1/core/version`. |
+| `brand-build` | **Build 100% in-image** : `npm ci` complet du workspace serveur (dev inclus — `ELECTRON_SKIP_BINARY_DOWNLOAD=1`, tsc seul compte), `COPY . .` des sources filtrées (v5), `npm ci` ui + `build:runtime` (tsc → `build/electron`) + `build:ui` (materialize os-ui → `next build` → `ui/.next/standalone`). Stage jetable : rien n'en part sauf les artefacts copiés par `runtime-base`. |
+| `runtime-base` | `COPY . .` (sources filtrées par `brand.dockerignore` v5, copié en `.dockerignore` marque par le CLI) + `COPY --from=deps /app/node_modules` + `COPY --from=brand-build` de `build/` et `ui/.next/{standalone,static}` + `ui/public`. Version embarquée : `--build-arg SERVER_VERSION` (publish) → `GET /api/v1/core/version`. |
 | `runtime-browser` | Variant `--browser` : + chromium/xvfb/fonts (`shm_size: 1g` appliqué au create). |
 
-**L'UI Next n'est PAS buildée dans l'image** : `dockerBuildImage` la builde
-sur l'hôte AVANT (`ensureUiBuild` → `npm run build:ui` →
-`server/ui/.next/standalone/server.js`) ; le dockerignore exclut `**/ui`
-puis ré-inclut seulement `.next/standalone` + `.next/static` + `public`
-(`server/ui` = projet npm indépendant, ses deps ne vont jamais dans
-l'image). Précèdent aussi le build : `ensureElectronBuild`
-(`server/build/electron/app-manifest.js`) et la garde assert-runtime-dist
-(§5) — donc `npm ci` + `npm run build:packages` à jour côté kit.
+**Tout est buildé DANS l'image** (stage `brand-build`, depuis 2026-08-12) :
+`build:runtime` (tsc → `server/build/electron`) et `build:ui` (materialize +
+`next build` → `server/ui/.next/standalone`) tournent dans le `docker build`.
+node/npm de l'hôte ne produisent **aucun** artefact consommé par l'image —
+le dockerignore v5 exclut `**/node_modules`, `**/.next` et `build/` du
+contexte, donc même un résidu de build hôte (ex. `.next/standalone` d'un
+ancien flow) ne peut pas fuiter dans l'image. `server/ui` reste un projet
+npm indépendant : ses deps ne vont pas dans l'image finale (le standalone
+Next est self-contained — tracé). Seules la garde assert-runtime-dist (§5)
+et l'hygiène des lockfiles (`ensureBrandStandalone`) touchent encore l'hôte
+— donc `npm ci` + `npm run build:packages` à jour côté kit.
 
 **PIÈGE MAJEUR — le stage `deps` ne copie QUE les manifests** : toute source
 supplémentaire exigée par `npm ci` (ex. **tarballs locaux** en `file:`,
 §7.4) doit être **copiée explicitement dans le stage deps** (avant le
 `RUN npm ci`), sinon le build échoue sur un tarball absent alors que tout
-est en place côté hôte.
+est en place côté hôte. Même vigilance côté `brand-build` : ses `npm ci`
+(racine full + ui) précèdent le `COPY . .` — une dep `file:` ui pointant
+hors manifests exige un COPY dédié dans le Dockerfile de sandbox.
 
 ### 7.2 `server-docker create <nom>` — séquence exacte
 

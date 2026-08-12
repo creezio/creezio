@@ -212,8 +212,9 @@ ops JSONL, disque. Voir `docker/server-admin/README.md`.
 - `CREEZIO_NPM_TOKEN` exporté côté hôte (PAT `read:packages`) — passé au
   build en **secret BuildKit** par le CLI (jamais dans l'historique image)
 - Marque avec `scripts/brand-kernel-harness.mjs`
-- `npm run build:runtime` côté marque (dossier `build/` requis)
-- `npm run build:ui` si la marque a `ui/` (CRM web — le CLI `build` le fait)
+- **aucun build hôte** : `build:runtime` (tsc) et `build:ui` (Next) tournent
+  dans le `docker build` (stage `brand-build`) — node/npm de l'hôte ne
+  produisent aucun artefact d'image, le résultat est identique partout
 
 ## Distribution autonome (clone marque sans kit)
 
@@ -227,7 +228,7 @@ ici, posés d'office par le scaffold factory) :
 |-----------------|---------|------|
 | `docker/server.Dockerfile` | `docker/server/Dockerfile` | `npm run docker:build` — image serveur sans kit checké out |
 | `scripts/ensure-server-lock.mjs` | `docker/server/ensure-server-lock.mjs` | pré-flight lockfiles avant `docker build` (regen `--package-lock-only` si drift) |
-| `.dockerignore` | `docker/server/brand.dockerignore` | contexte de build (posé/rafraîchi si marqueur absent — v4) |
+| `.dockerignore` | `docker/server/brand.dockerignore` | contexte de build (posé/rafraîchi si marqueur absent — v5) |
 
 L'auth registre (`CREEZIO_NPM_TOKEN`) ne se matérialise JAMAIS dans le repo :
 exportée en local, secret CI en CI, secret BuildKit au `docker build`.
@@ -295,9 +296,8 @@ Flux typique first-run Docker :
 ```bash
 export CREEZIO_KIT_ROOT=<racine du kit>
 export BRAND_ROOT=<racine de la marque>
-cd "$BRAND_ROOT" && npm run build:runtime
 
-# Image
+# Image (build runtime + UI 100% in-image — rien à builder sur l'hôte)
 creezio server-docker build --brand-root "$BRAND_ROOT"
 
 # Une instance (ne lancer que server-1)
