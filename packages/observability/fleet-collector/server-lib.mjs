@@ -461,13 +461,19 @@ export function backupsDir(brandRoot) {
 export function backupInstanceData(brandRoot, inst) {
   const run = (cmd, args) =>
     new Promise((resolve) => {
-      const child = spawn(cmd, args, { stdio: ["ignore", "ignore", "pipe"] });
+      const child = spawn(cmd, args, { stdio: ["ignore", "pipe", "pipe"] });
+      let stdout = "";
       let stderr = "";
+      child.stdout?.on("data", (c) => {
+        if (stdout.length < 4096) stdout += String(c);
+      });
       child.stderr?.on("data", (c) => {
         if (stderr.length < 4096) stderr += String(c);
       });
-      child.on("error", (e) => resolve({ code: -1, stderr: String(e?.message || e) }));
-      child.on("exit", (code) => resolve({ code: code ?? -1, stderr }));
+      child.on("error", (e) =>
+        resolve({ code: -1, stdout, stderr: String(e?.message || e) }),
+      );
+      child.on("exit", (code) => resolve({ code: code ?? -1, stdout, stderr }));
     });
   return (async () => {
     const dataAbs = instanceDataDirAbs(brandRoot, inst);
@@ -478,21 +484,56 @@ export function backupInstanceData(brandRoot, inst) {
     fs.mkdirSync(dir, { recursive: true });
     const stamp = new Date().toISOString().replace(/[:.]/g, "-");
     const file = path.join(dir, `${inst.name}-${stamp}.tar.gz`);
-    const tar = await run("tar", [
-      "-czf",
-      file,
-      "--warning=no-file-changed",
-      // Fichiers illisibles (état volatil root-owned écrit par le container,
-      // ex. hermes-home/cron/*) : warning, pas d'échec fatal — l'archive
-      // reste complète à 99,9 % et le deploy n'est pas bloqué.
-      "--ignore-failed-read",
-      "-C",
-      path.dirname(dataAbs),
-      path.basename(dataAbs),
+    // Le tar tourne DANS un conteneur éphémère (image de l'instance — Debian,
+    // GNU tar) : /data contient des fichiers root-owned 600 écrits par le
+    // conteneur (token plugins, config) et backups/ peut être root-owned.
+    // Un tar hôte en user deploy produirait une archive INCOMPLÈTE (fichiers
+    // skippés) voire non créable (vécu tempoflow 2026-08-12, tar exit 2).
+    // Via le socket docker (groupe docker, sans sudo) le tar s'exécute en
+    // root : lecture complète + écriture garantie, puis chown au uid/gid de
+    // l'appelant pour que la rétention (pruneBackups, user hôte) fonctionne.
+    // Comportement identique sur tous les hôtes, quelle que soit l'ownership.
+    const insp = await run("docker", [
+      "inspect",
+      "--format",
+      "{{.Config.Image}}",
+      inst.containerName,
+    ]);
+    const image = insp.code === 0 ? insp.stdout.trim().split("\n")[0] : "";
+    if (!image) {
+      return {
+        ok: false,
+        file: null,
+        detail: `image du conteneur ${inst.containerName} introuvable (docker inspect)`,
+      };
+    }
+    const uid = typeof process.getuid === "function" ? process.getuid() : 0;
+    const gid = typeof process.getgid === "function" ? process.getgid() : 0;
+    const base = path.basename(file);
+    const name = path.basename(dataAbs);
+    // tar 0/1 → gzip -t + chown (exit 0) ; tar ≥ 2 → fatal (exit propagé).
+    const script =
+      `tar -czf /out/${base} --warning=no-file-changed --ignore-failed-read` +
+      ` -C /srv ${name}; code=$?;` +
+      ` if [ "$code" -le 1 ]; then` +
+      ` if [ "$code" = 1 ]; then echo TAR_LIVE=1; fi;` +
+      ` gzip -t /out/${base} && chown ${uid}:${gid} /out/${base};` +
+      ` else echo "TAR_FATAL=$code" >&2; exit "$code"; fi`;
+    const tar = await run("docker", [
+      "run",
+      "--rm",
+      "-v",
+      `${path.dirname(dataAbs)}:/srv:ro`,
+      "-v",
+      `${dir}:/out`,
+      image,
+      "sh",
+      "-c",
+      script,
     ]);
     // GNU tar : 0 = OK, 1 = fichiers modifiés pendant la lecture (archive
     // complète — normal sur un container up), ≥ 2 / -1 = erreur réelle.
-    if (tar.code !== 0 && tar.code !== 1) {
+    if (tar.code !== 0) {
       try {
         fs.rmSync(file, { force: true });
       } catch {
@@ -501,18 +542,16 @@ export function backupInstanceData(brandRoot, inst) {
       return {
         ok: false,
         file: null,
-        detail: `tar exit ${tar.code}${tar.stderr ? ` — ${tar.stderr.trim().slice(0, 300)}` : ""}`,
+        detail: `tar conteneur exit ${tar.code}${tar.stderr ? ` — ${tar.stderr.trim().slice(0, 300)}` : ""}`,
       };
     }
     let size = 0;
     try {
       size = fs.statSync(file).size;
     } catch {
-      /* stat KO → vérif gzip échouera */
+      /* stat KO → archive absente */
     }
-    // Vérification : gzip -t relit l'archive de bout en bout.
-    const check = await run("gzip", ["-t", file]);
-    if (check.code !== 0 || size <= 0) {
+    if (size <= 0) {
       try {
         fs.rmSync(file, { force: true });
       } catch {
@@ -521,13 +560,13 @@ export function backupInstanceData(brandRoot, inst) {
       return {
         ok: false,
         file: null,
-        detail: `archive invalide (gzip -t exit ${check.code}, ${size} octets)`,
+        detail: "archive invalide (0 octet après tar conteneur)",
       };
     }
     return {
       ok: true,
       file,
-      detail: `${path.basename(file)} (${Math.round(size / 1e6)} Mo, gzip vérifié${tar.code === 1 ? ", fichiers vivants" : ""})`,
+      detail: `${path.basename(file)} (${Math.round(size / 1e6)} Mo, gzip vérifié en conteneur${tar.stdout.includes("TAR_LIVE") ? ", fichiers vivants" : ""})`,
     };
   })();
 }

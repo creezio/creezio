@@ -156,7 +156,7 @@ monorepo marque ; `CREEZIO_KIT_ROOT` pointe le clone kit du serveur).
 | Créer une instance (stack M2 par défaut) | `creezio server-docker create <nom> --brand-root . [--profile prod] [--browser] [--host-port N]` (`--no-stack` = legacy `docker run`) |
 | Lister / logs / cycle de vie | `ls --brand-root .` · `logs <nom> [--tail 500] [--follow]` · `start\|stop <nom>` · `rm <nom> [--purge-data]` |
 | Update (recreate, même volume `/data`) | `update <nom> --image <ref> [--backup]` — **défaut = PAS de nouveau tar.gz** ; `--backup` = snapshot frais avant recreate (prod critique) |
-| Backup one-shot | `backup <nom>` → `docker-data/backups/` (tar exit 0/1 acceptés, archive vérifiée `gzip -t`) |
+| Backup one-shot | `backup <nom>` → `docker-data/backups/` — tar **en conteneur éphémère** (image de l'instance, socket docker seul privilège — lit les fichiers root-owned du volume, archive `chown`ée à l'appelant, vérifiée `gzip -t`) |
 | Legacy → stack M2 | `migrate-stack <nom>` — backup `/data` obligatoire, ingress tunnel repointé `http://app:18791`, healthcheck URL publique, **rollback legacy automatique si KO** |
 | Publier une image versionnée | `publish --tag <v> [--registry 127.0.0.1:5000] [--release]` (la garde assert-runtime-dist s'applique au build) |
 | Admin flotte | `admin up --admin-root <repo-admin>` · `admin add-brand <brandRoot>` |
