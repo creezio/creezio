@@ -91,6 +91,11 @@ test("docker/server artefacts présents", () => {
     "artefacts standalone copiés depuis le contexte (v4) — v5 = COPY --from",
   );
   // Dockerfile : le stage brand-build produit build/electron + standalone.
+  // ELECTRON_SKIP_BINARY_DOWNLOAD dans deps ET brand-build : electron
+  // atterrit dans l arbre prod via le lock (dev=false) ; son postinstall
+  // telecharge ~100 Mo sur CDN GitHub flaky (vecu tempoflow 2026-08-12).
+  assert.match(df, /ENV ELECTRON_SKIP_BINARY_DOWNLOAD=1[\s\S]*ENV ELECTRON_SKIP_BINARY_DOWNLOAD=1/);
+  assert.match(df, /NPM_CONFIG_FETCH_RETRIES=5/);
   assert.match(df, /FROM node:22-bookworm-slim AS brand-build/);
   assert.match(df, /npm run build:runtime --prefix/);
   assert.match(df, /npm run build:ui --prefix/);
