@@ -239,8 +239,22 @@ export function registerBrandModuleApi(api: ApiKernel): void {
 
 export function renderMeiliFeedTs(model: ProductModel): string {
   if (!isChrModel(model)) {
+    // Première entité RÉELLE du spec — jamais un hardcode « notes » : la
+    // table indexée doit exister dans le schema brand généré (sinon
+    // l'indexation Meili plante sur une table absente — vécu foove2-admin).
+    const ent = model.entities[0];
+    if (!ent) {
+      throw new Error("renderMeiliFeedTs: model.entities vide");
+    }
+    const textFields = ent.fields
+      .filter((f) => f.type === "text")
+      .map((f) => f.name);
+    const searchable = textFields.length
+      ? textFields
+      : ent.fields.slice(0, 1).map((f) => f.name);
+    const columns = ["id", ...searchable];
     return `/**
- * Feed Meili générique — notes (sandbox).
+ * Feed Meili générique — première entité du spec (${ent.id}).
  */
 import {
   configureMeiliBrandFeed,
@@ -249,20 +263,20 @@ import {
 } from "@creezio/electron-shell/meili";
 
 export const brandMeiliFeed: BrandMeiliFeed = {
-  id: "${model.brandId}-notes",
+  id: "${model.brandId}-${ent.id}",
   schemaVersion: 1,
   progressPrefix: "${model.brandId.replace(/[^A-Za-z0-9]/g, "").toUpperCase().slice(0, 24) || "BRAND"}",
-  countTables: { produits: "notes", sites: "notes" },
+  countTables: { produits: "${ent.id}", sites: "${ent.id}" },
   indexes: [
     {
       uid: "catalog_products",
       countKey: "produits",
-      table: "notes",
-      columns: ["id", "titre", "contenu"],
-      docType: "note",
+      table: "${ent.id}",
+      columns: ${JSON.stringify(columns)},
+      docType: "${ent.id}",
       settings: {
-        searchableAttributes: ["titre", "contenu"],
-        displayedAttributes: ["id", "type", "titre", "contenu"],
+        searchableAttributes: ${JSON.stringify(searchable)},
+        displayedAttributes: ${JSON.stringify(["id", "type", ...searchable])},
       },
     },
   ],
