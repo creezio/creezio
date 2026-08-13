@@ -81,6 +81,21 @@ test("factory 2-repos : monorepo + repo admin dédié (sans réseau)", () => {
     assert.match(gitignore, /docker-data\//);
     assert.match(gitignore, /^\.env$/m);
 
+    // Cursor cloud agents : les 2 repos naissent avec l'environnement
+    // d'install standard (ajouté à la main sur foove2/* — désormais natif).
+    for (const repoDir of [appDir, adminDir]) {
+      const envFile = path.join(repoDir, ".cursor", "environment.json");
+      assert.ok(
+        fs.existsSync(envFile),
+        `.cursor/environment.json manquant: ${repoDir}`,
+      );
+      assert.deepEqual(
+        JSON.parse(fs.readFileSync(envFile, "utf8")),
+        { install: "npm install --no-audit --no-fund" },
+        `contenu .cursor/environment.json inattendu: ${repoDir}`,
+      );
+    }
+
     // Le monorepo pointe vers le repo admin frère.
     const rootPkg = JSON.parse(
       fs.readFileSync(path.join(appDir, "package.json"), "utf8"),
@@ -185,6 +200,12 @@ test("brand apply : mêmes 2 arbres + --admin-out custom", () => {
     assert.ok(fs.existsSync(path.join(adminDir, "server-admin.json")));
     assert.ok(!fs.existsSync(path.join(appDir, "admin")));
     assert.match(apply.stdout, /--no-push/);
+    for (const repoDir of [appDir, adminDir]) {
+      assert.ok(
+        fs.existsSync(path.join(repoDir, ".cursor", "environment.json")),
+        `.cursor/environment.json manquant: ${repoDir}`,
+      );
+    }
   } finally {
     fs.rmSync(tmp, { recursive: true, force: true });
   }
