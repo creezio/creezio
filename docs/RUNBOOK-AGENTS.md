@@ -35,19 +35,19 @@ Tunnel-provisioner : fluxpro `:8667`, tempoflow `:8666`
 
 | Instance | Serveur | Container | Port hôte (loopback) | URL |
 |---|---|---|---|---|
-| winhub `server-1` | fluxpro | `winhub-server-server-1` | 18791→18791 | https://server-1.winhub.fr |
-| tempoflow3 `resto-lyon` | tempoflow | `tempoflow3-server-resto-lyon` | 18796→18791 | https://resto-lyon.tempoflow.fr |
-| tempoflow3 `resto-marseille` | tempoflow | `tempoflow3-server-resto-marseille` | 18795→18791 | https://resto-marseille.tempoflow.fr |
+| winhub `server-1` | fluxpro | `winhub-server-server-1` | auto→18791 | https://server-1.winhub.fr |
+| tempoflow3 `resto-lyon` | tempoflow | `tempoflow3-server-resto-lyon` | auto→18791 | https://resto-lyon.tempoflow.fr |
+| tempoflow3 `resto-marseille` | tempoflow | `tempoflow3-server-resto-marseille` | auto→18791 | https://resto-marseille.tempoflow.fr |
 | admin winhub | fluxpro | `winhubadmin-server-main` | 18801→18791 | console admin flotte (repo `winhub-admin`) |
-| admin tempoflow3 | tempoflow | `tempoflowadmin-server-main` | — | https://admin.tempoflow.fr |
+| admin tempoflow3 | tempoflow | `tempoflowadmin-server-main` | 18801→18791 | https://admin.tempoflow.fr |
 
 Registre d'instances : `{brand-root}/docker-data/servers.json` (gitignoré —
 absent du checkout runner, présent sur le clone serveur).
 
-> **État 2026-08-10** : les instances prod tournent encore en conteneurs
-> legacy `docker run` (ports hôtes fixes). Le modèle cible M2 (stacks compose
-> + cloudflared sidecar, §6) est mergé dans le kit ; bascule par
-> `creezio server-docker migrate-stack <nom>`.
+> **État 2026-08-13** : toutes les instances (prod + admin, deux marques)
+> tournent en stacks compose M2 + sidecar cloudflared (ports hôtes loopback
+> auto, aucun port public hors tunnel). La bascule d'une instance legacy
+> `docker run` se fait par `creezio server-docker migrate-stack <nom>`.
 
 ### Repos GitHub (org `creezio`, tous privés)
 
