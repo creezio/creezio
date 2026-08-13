@@ -76,10 +76,11 @@ scaffold factory (creezio new-app)
 
 Voir [NPM-DISTRIBUTION.md](./NPM-DISTRIBUTION.md). Résumé app :
 `.npmrc` (registry GitHub Packages + `CREEZIO_NPM_TOKEN`), deps
-`"@creezio/<pkg>": "^0.5.0"`, mise à jour par `npm update "@creezio/*"`.
+`"@creezio/<pkg>": "^0.9.2"`, mise à jour par `npm update "@creezio/*"`.
 Les workflows `kit-compat` / `vendor-update` et les scripts
-`install-server-deps` / symlinks trackés sont **SUPPRIMÉS** ; winhub et
-tempoflow3 sont migrés et déployés en `^0.5.0`.
+`install-server-deps` / symlinks trackés sont **SUPPRIMÉS** ; les 4 apps
+(winhub, tempoflow3 et leurs repos admin) sont migrées et déployées en
+`^0.9.2`.
 ## Process app → kit (bug ou évolution du kit constaté depuis une app)
 
 **Jamais de patch dans `node_modules/@creezio/`.** Ces packages sont
