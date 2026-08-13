@@ -4,9 +4,9 @@
  *
  * Prouve, avec un VRAI serveur admin (spawn server-admin.mjs) devant un mock
  * de registre Docker v2 :
- *  1. tunnel-provisioner : slug `registry` réservé par défaut, réservable
- *     UNIQUEMENT en kind=registry (zone-level : un seul ingress, pas
- *     d'embeds/wildcard) ;
+ *  1. client CF (platform-core) : slug `registry` réservé par défaut,
+ *     réservable UNIQUEMENT en kind=registry (zone-level : un seul ingress,
+ *     pas d'embeds/wildcard) ;
  *  2. proxy /v2/* : pull anonyme → 401 (WWW-Authenticate Basic) ; pull
  *     authentifié Basic hostId:agentToken (credential flotte existant,
  *     fleet-hosts.json) → proxifié au registre amont (handshake /v2/,
@@ -35,9 +35,10 @@ const COLLECTOR = path.join(
   "packages/observability/fleet-collector",
 );
 
-const { slugCheckLocal, isZoneLevelKind, buildIngressRules } = await import(
-  path.join(COLLECTOR, "../../../docker/tunnel-provisioner/lib.mjs")
-);
+const { slugCheckLocal, isZoneLevelKind, buildTunnelIngressRules } =
+  await import(
+    path.join(COLLECTOR, "../../platform-core/dist/tunnel-cf.js")
+  );
 const {
   isPullMethod,
   isRegistryPath,
@@ -55,7 +56,7 @@ function ephemeralPort() {
   });
 }
 
-test("provisioner : slug registry réservé sauf kind=registry (zone-level)", () => {
+test("tunnel CF : slug registry réservé sauf kind=registry (zone-level)", () => {
   assert.equal(slugCheckLocal("registry").available, false, "réservé par défaut");
   assert.equal(
     slugCheckLocal("registry", { kind: "server" }).available,
@@ -76,10 +77,9 @@ test("provisioner : slug registry réservé sauf kind=registry (zone-level)", ()
   assert.equal(isZoneLevelKind("brand-web"), true);
   assert.equal(isZoneLevelKind("server"), false);
   // Zone-level : un seul ingress HTTP + fallback 404 (pas d'embeds).
-  const rules = buildIngressRules(
+  const rules = buildTunnelIngressRules(
     "registry.example.test",
     { crmPort: 18800, n8nPort: 1, hermesPort: 2 },
-    null,
     { embeds: false },
   );
   assert.equal(rules.length, 2);

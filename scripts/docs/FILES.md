@@ -37,7 +37,6 @@
 | [`test-os-shell-contracts.mjs`](../test-os-shell-contracts.mjs) | Contrats shell OS kit (splash / tray / embeds / updater / vendors). |
 | [`test-os-shell-more.mjs`](../test-os-shell-more.mjs) | Extensions shell kit — fonctions réellement exportées par @creezio/platform-core. |
 | [`test-os-shell.mjs`](../test-os-shell.mjs) | Agrégat test:shell kit — contrats + surfaces BYOK/recovery/updater/tunnel. |
-| [`test-os-tunnel-provision.mjs`](../test-os-tunnel-provision.mjs) | Gate OS — resolveTunnelProvision (envPrefix / CREEZIO_TUNNEL_PROVISION_*). |
 | [`test-os-updater.mjs`](../test-os-updater.mjs) | Gate OS — reduceur updater (port TF2 test:updater), sans Electron. |
 | [`test-phase-access-control.mjs`](../test-phase-access-control.mjs) | Gate @creezio/access-control : résolution rôles+overrides, cache, garde API /access, matrice, comptes, audit |
 | [`test-phase-admin-billing.mjs`](../test-phase-admin-billing.mjs) | Gate — module billing admin (@creezio/admin) : webhook + réconciliation. |
@@ -193,6 +192,7 @@
 | [`test-phase-single-data-plane.mjs`](../test-phase-single-data-plane.mjs) | (à documenter) |
 | [`test-phase-sqlite-wal-resilience.mjs`](../test-phase-sqlite-wal-resilience.mjs) | (à documenter) |
 | [`test-phase-tf3-chrome.mjs`](../test-phase-tf3-chrome.mjs) | (à documenter) |
+| [`test-phase-tunnel-self-provision.mjs`](../test-phase-tunnel-self-provision.mjs) | (à documenter) |
 | [`test-phase-v1.mjs`](../test-phase-v1.mjs) | Phase V1 — fabrique plugins conversationnelle (demobrand E2E). |
 | [`test-phase-v2.mjs`](../test-phase-v2.mjs) | Phase V2 — observabilité native (activité, usages plugins, control-plane). |
 | [`test-phase-v3.mjs`](../test-phase-v3.mjs) | Phase V3 — automations data-driven (triggers lifecycle / données). |

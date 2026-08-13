@@ -31,15 +31,16 @@ Pages Next (repo admin, versionnées) :
 
 ## Exposition publique
 
-Tunnel provisioner (`docker/tunnel-provisioner`), réservation **brand-web** :
+Réservation **brand-web** `lp.{zone}` via le client CF du kit
+(`@creezio/platform-core` `tunnel-cf-client`, 0.10.0 — auto-provisioning par
+l'instance, fin du provisioner VPS) :
 
-```bash
-curl -X POST http://127.0.0.1:8666/reserve -H "authorization: Bearer $TOKEN" \
-  -H 'content-type: application/json' \
-  -d '{"slug":"lp","kind":"brand-web","crmPort":18801}'
-# → lp.{zone} → 127.0.0.1:18801 (plane app admin), un seul ingress,
-#   pas d'embeds/wildcard/e-mail. cloudflared avec le tunnelToken retourné.
-```
+- kind `brand-web` = **zone-level** : un seul ingress
+  (`lp.{zone}` → `http://127.0.0.1:18801`, plane app admin), pas
+  d'embeds/wildcard/e-mail ;
+- contrat env `CREEZIO_CF_API_TOKEN` / `_ACCOUNT_ID` / `_ZONE_ID` (+
+  `_ZONE_NAME`) — le tunnel est créé/configuré via l'API Cloudflare puis
+  servi par le cloudflared in-process de l'instance admin.
 
 ## Surcharge par la marque
 

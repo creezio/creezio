@@ -117,6 +117,17 @@ jobs:
       github.event.workflow_run.conclusion == 'success'
     runs-on: ${labels(opts)}
     timeout-minutes: 30
+    # Contrat Cloudflare Tunnel (auto-provisioning instance au boot) —
+    # poser les secrets repo : gh secret set CREEZIO_CF_API_TOKEN …
+    # (account token scopé compte+zone), CREEZIO_CF_ACCOUNT_ID,
+    # CREEZIO_CF_ZONE_ID. Le CLI server-docker les forward vers cf.env
+    # (chmod 600) — jamais en clair dans le compose.yml.
+    env:
+      CREEZIO_CF_API_TOKEN: \${{ secrets.CREEZIO_CF_API_TOKEN }}
+      CREEZIO_CF_ACCOUNT_ID: \${{ secrets.CREEZIO_CF_ACCOUNT_ID }}
+      CREEZIO_CF_ZONE_ID: \${{ secrets.CREEZIO_CF_ZONE_ID }}
+      CREEZIO_CF_ZONE_NAME: \${{ secrets.CREEZIO_CF_ZONE_NAME }}
+      CREEZIO_CF_UNIVERSAL_SSL: \${{ secrets.CREEZIO_CF_UNIVERSAL_SSL }}
     steps:
       - name: Déployer (adapter : server-docker publish + update --backup)
         run: |

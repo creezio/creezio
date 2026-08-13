@@ -35,7 +35,7 @@ export function applyBrandCatalogEnvDefaults(envPrefix: string): void {
 
 /**
  * Expose EMAIL_INBOUND_SECRET / EMAIL_DOMAIN depuis la config locale
- * (posés par le provisioner tunnel) — routes mails inbound in-process.
+ * (posés lors du provisioning tunnel CF) — routes mails inbound in-process.
  * Ne jamais écraser un env explicite opérateur sauf `force` (post-provision).
  */
 export function applyStoredEmailEnv(
@@ -139,25 +139,16 @@ export async function runHarnessCatalogImportPhase(opts: {
 /**
  * Provision tunnel demandée ? Uniquement sur env EXPLICITE (jamais le défaut
  * sandbox de composeBrandOs) — aucun DNS prod créé sans intention opérateur.
+ * Contrat 0.10.0 : `CREEZIO_CF_API_TOKEN` (ou `${PREFIX}_CF_API_TOKEN`),
+ * livré au conteneur via `cf.env` (600) généré par le CLI — l'instance
+ * auto-provisionne son tunnel via l'API Cloudflare (fin du provisioner VPS).
  */
 export function harnessTunnelProvisionRequested(
   manifest: AppManifest,
 ): boolean {
   return Boolean(
-    (process.env.CREEZIO_TUNNEL_PROVISION_URL || "").trim() ||
-      (
-        process.env[`${manifest.envPrefix}_TUNNEL_PROVISION_URL`] || ""
-      ).trim(),
-  );
-}
-
-/**
- * Mode sidecar (M2) : cloudflared tourne dans un conteneur dédié du stack
- * compose — même détection d'env explicite que le service tunnel.
- */
-export function harnessTunnelSidecarMode(): boolean {
-  return /^(1|true|yes)$/i.test(
-    String(process.env.CREEZIO_TUNNEL_SIDECAR || "").trim(),
+    (process.env.CREEZIO_CF_API_TOKEN || "").trim() ||
+      (process.env[`${manifest.envPrefix}_CF_API_TOKEN`] || "").trim(),
   );
 }
 
@@ -169,15 +160,24 @@ export type TunnelPublicProbeResult = {
 
 /**
  * Sonde l'état RÉEL du tunnel via l'URL publique (hairpin Cloudflare →
- * sidecar → app) avec retry + backoff. En mode sidecar, le provisioner
- * (172.17.0.1 = gateway docker0) n'est pas joignable depuis le réseau
- * compose du stack : seule la réponse publique prouve que le tunnel sert.
- * Budget ~45 s par défaut — un sidecar sain répond en quelques secondes
- * après un restart à froid (502 le temps que cloudflared reconnecte).
+ * cloudflared in-process → app) avec retry + backoff. Seule la réponse
+ * publique prouve que le tunnel sert. Budget ~45 s par défaut — un tunnel
+ * sain répond en quelques secondes après un restart à froid (502 le temps
+ * que cloudflared reconnecte). Lancée en arrière-plan au boot (non fatale).
  */
 export async function probeTunnelPublicUrl(
   publicUrl: string,
-  opts?: { budgetMs?: number; requestTimeoutMs?: number; log?: Log },
+  opts?: {
+    budgetMs?: number;
+    requestTimeoutMs?: number;
+    log?: Log;
+    /**
+     * true = timers unref'd (sonde d'arrière-plan au boot : ne retient pas
+     * l'event loop d'un process éphémère). Défaut false : un appelant qui
+     * AWAIT la sonde (gates, CLI) a besoin de timers ref'd.
+     */
+    unrefTimers?: boolean;
+  },
 ): Promise<TunnelPublicProbeResult> {
   const budgetMs = opts?.budgetMs ?? 45_000;
   const requestTimeoutMs = opts?.requestTimeoutMs ?? 5_000;
@@ -206,7 +206,10 @@ export async function probeTunnelPublicUrl(
     opts?.log?.(
       `sonde publique tunnel: ${lastError} — nouvelle tentative dans ${Math.round(delayMs / 1000)}s`,
     );
-    await new Promise((r) => setTimeout(r, delayMs));
+    await new Promise((r) => {
+      const t = setTimeout(r, delayMs);
+      if (opts?.unrefTimers) t.unref?.();
+    });
     delayMs = Math.min(Math.round(delayMs * 1.6), 10_000);
   }
   return { ok: false, attempts, lastError };
@@ -218,9 +221,11 @@ export type HarnessTunnelPhaseResult = {
 };
 
 /**
- * Étape tunnel : reserve → configure ingress → cloudflared → resync webhooks
- * n8n + env publics (APP_PUBLIC_URL / MCP_PUBLIC_URL / EMAIL_*).
- * Piloté par CREEZIO_TUNNEL_PROVISION_URL / _TOKEN (+ _SLUG).
+ * Étape tunnel : ensure CF (GET → 404 → recréation, PUT ingress, DNS
+ * idempotent) → cloudflared in-process → resync webhooks n8n + env publics
+ * (APP_PUBLIC_URL / MCP_PUBLIC_URL / EMAIL_*). Mode unique in-process
+ * (fin du sidecar). Piloté par CREEZIO_CF_API_TOKEN / _ACCOUNT_ID /
+ * _ZONE_ID (+ _SLUG, _DOMAIN, _UNIVERSAL_SSL) — cf.env du stack.
  */
 export async function runHarnessTunnelPhase(opts: {
   boot: BootProgressReporter;
@@ -257,37 +262,19 @@ export async function runHarnessTunnelPhase(opts: {
       .toLowerCase()
       .replace(/[^a-z0-9-]+/g, "-");
 
-    const sidecar = harnessTunnelSidecarMode();
     if (!hasRealTunnel) {
       const reserved = await tunnel.reserveTunnel(slug, port);
       if (!reserved.ok) {
         throw new Error(`reserve ${slug}: ${reserved.error}`);
       }
-      log(`tunnel réservé ${slug} → ${reserved.publicUrl}`);
+      log(`tunnel provisionné ${slug} → ${reserved.publicUrl}`);
     } else {
-      log(`tunnel déjà réservé (${existing?.hostname}) — configure + run`);
+      log(`tunnel déjà provisionné (${existing?.hostname}) — ensure + run`);
     }
-    if (sidecar) {
-      // cloudflared = sidecar compose : pas de spawn in-process (no-op qui
-      // confirme l'état online depuis le token seedé). Le provisioner
-      // (172.17.0.1, gateway docker0) est injoignable depuis le réseau du
-      // stack : re-configure best-effort en arrière-plan — jamais bloquant,
-      // jamais fatal — puis validation par sonde de l'URL publique réelle.
-      await tunnel.startCloudflared();
-      void (async () => {
-        try {
-          await tunnel.configureTunnelIngress({ crmPort: port });
-          log("ingress tunnel re-configuré (provisioner joignable)");
-        } catch (err) {
-          log(
-            `configure provisioner best-effort ignoré: ${err instanceof Error ? err.message : String(err)}`,
-          );
-        }
-      })().catch(() => {});
-    } else {
-      await tunnel.configureTunnelIngress({ crmPort: port });
-      await tunnel.startCloudflared();
-    }
+    // Ensure idempotent (GET tunnel → 404/token absent → recréation + CNAME
+    // mis à jour, PUT ingress, upsert DNS) puis cloudflared in-process.
+    await tunnel.configureTunnelIngress({ crmPort: port });
+    await tunnel.startCloudflared();
 
     const cfg = store.getTunnelConfig();
     out.publicUrl = cfg?.publicUrl || null;
@@ -298,7 +285,7 @@ export async function runHarnessTunnelPhase(opts: {
       process.env.APP_PUBLIC_URL = out.publicUrl;
       process.env.MCP_PUBLIC_URL = out.publicUrl;
     }
-    // Secret inbound mails posé par le provisioner → env in-process.
+    // Secret inbound mails persisté au provisioning → env in-process.
     applyStoredEmailEnv(os, { force: true, log });
 
     // n8n a pu démarrer avant le tunnel → réaligner WEBHOOK_URL publique.
@@ -328,22 +315,28 @@ export async function runHarnessTunnelPhase(opts: {
       );
     }
 
-    if (sidecar && out.publicUrl && /^https:\/\//.test(out.publicUrl)) {
+    if (out.publicUrl && /^https:\/\//.test(out.publicUrl)) {
       if (process.env.CREEZIO_TUNNEL_PUBLIC_PROBE === "0") {
-        boot.done("tunnel", `${out.publicUrl} (sidecar — sonde désactivée)`);
+        boot.done("tunnel", `${out.publicUrl} (sonde publique désactivée)`);
       } else {
-        const probe = await probeTunnelPublicUrl(out.publicUrl, { log });
-        if (probe.ok) {
-          boot.done(
-            "tunnel",
-            `${out.publicUrl} (tunnel vérifié en ligne, ${probe.attempts} sonde(s))`,
+        const st = tunnel.getTunnelStatus();
+        boot.done(
+          "tunnel",
+          `${out.publicUrl} (cloudflared ${st.online ? "online" : "démarré"} — sonde publique en arrière-plan)`,
+        );
+        // Sonde publique en arrière-plan — retry borné, non fatale : le
+        // boot ne dépend pas de la propagation DNS/TLS Cloudflare.
+        void (async () => {
+          const probe = await probeTunnelPublicUrl(out.publicUrl!, {
+            log,
+            unrefTimers: true,
+          });
+          log(
+            probe.ok
+              ? `sonde publique tunnel OK (${probe.attempts} essai(s))`
+              : `sonde publique tunnel sans réponse après ${probe.attempts} essais (${probe.lastError}) — non fatal`,
           );
-        } else {
-          boot.error(
-            "tunnel",
-            `URL publique ${out.publicUrl} sans réponse après ${probe.attempts} sondes (${probe.lastError}) — CRM local reste utilisable`,
-          );
-        }
+        })().catch(() => {});
       }
     } else {
       const st = tunnel.getTunnelStatus();

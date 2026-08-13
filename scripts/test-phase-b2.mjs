@@ -87,7 +87,7 @@ test("hermes / n8n status + env builders", () => {
     remoteCrmOrigin: "https://resto.tempoflow.fr",
     tunnelRootDomain: "tempoflow.fr",
   });
-  assert.equal(h.webuiUrl, "https://hermes.resto.tempoflow.fr");
+  assert.equal(h.webuiUrl, "https://hermes-resto.tempoflow.fr");
   assert.equal(h.status, "remote");
 
   const n = n8nPublicStatus({
@@ -300,6 +300,6 @@ test("binary resolve sandbox (no PATH)", () => {
       "n8n",
       "fidu.creez.io",
     ),
-    "https://n8n.x.fidu.creez.io",
+    "https://n8n-x.fidu.creez.io",
   );
 });

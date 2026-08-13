@@ -149,7 +149,6 @@ export {
   applyStoredEmailEnv,
   applyStoredLlmEnv,
   harnessTunnelProvisionRequested,
-  harnessTunnelSidecarMode,
   probeTunnelPublicUrl,
   runHarnessCatalogImportPhase,
   runHarnessFleetPhase,

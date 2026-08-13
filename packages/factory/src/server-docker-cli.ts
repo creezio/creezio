@@ -100,7 +100,7 @@ export type ServerDockerArgs = {
   slug?: string;
   /** enroll / agent : label lisible (hôte, token). */
   label?: string;
-  /** enroll : URL agent explicite (sinon dérivée du provisioner tunnel). */
+  /** enroll : URL agent explicite (sinon ingress agent posée via API CF). */
   agentUrl?: string;
   /** agent up : hôtes d'écoute (défaut 127.0.0.1,172.17.0.1). */
   bindHosts?: string;
@@ -229,10 +229,13 @@ Instances nommées (registre docker-data/servers.json — recommandé) :
     --browser : image variant browser (Chromium+Xvfb, sidecar navigateur IA,
                 profils /data/browser, shm 1 Go)
     --profile prod : serveur flotte — CREEZIO_NATIVE_WARM=1 + CREEZIO_CATALOG=1
-                + forward env hôte CREEZIO_TUNNEL_PROVISION_URL/_TOKEN/_SLUG,
-                CREEZIO_FLEET_ENDPOINT, CREEZIO_CRASH_ENDPOINT, CREEZIO_PLUGINS,
-                EMAIL_INBOUND_SECRET, EMAIL_DOMAIN, MAIL_*/SMTP_*/RESEND_*,
-                OPENAI_API_KEY, ANTHROPIC_API_KEY,
+                + contrat Cloudflare CREEZIO_CF_API_TOKEN/_ACCOUNT_ID/_ZONE_ID
+                (/_ZONE_NAME/_UNIVERSAL_SSL, CREEZIO_DOMAIN, CREEZIO_TUNNEL_SLUG)
+                forwardé vers cf.env (chmod 600 — jamais dans le compose) :
+                l'instance auto-provisionne son tunnel au boot (API CF directe)
+                + forward env hôte CREEZIO_FLEET_ENDPOINT, CREEZIO_CRASH_ENDPOINT,
+                CREEZIO_PLUGINS, EMAIL_INBOUND_SECRET, EMAIL_DOMAIN,
+                MAIL_*/SMTP_*/RESEND_*, OPENAI_API_KEY, ANTHROPIC_API_KEY,
                 CREEZIO_FLEET_ADMIN_URL/_REGISTER_SECRET/_HOST_ID
                 (auto-inscription flotte ; uniquement s'ils sont posés —
                 aucun DNS/collector activé par défaut)
@@ -250,18 +253,21 @@ Instances nommées (registre docker-data/servers.json — recommandé) :
     (one-shot : tar.gz de référence de /data → docker-data/backups/ —
      à faire une fois ; les updates suivants ne le remplacent pas.)
 
-Stack compose autonome (M2 — modèle standard) :
-  create génère par défaut un stack compose par instance : app (port interne
-  fixe 18791) + cloudflared sidecar (tunnel.env chmod 600), port hôte
-  loopback auto 127.0.0.1::18791 (debug/healthcheck), zéro port public.
+Stack compose autonome (modèle standard — cloudflared in-process) :
+  create génère par défaut un stack compose par instance : app seule (port
+  interne fixe 18791, cloudflared in-process), cf.env + secrets.env chmod
+  600 (jamais de secret dans le compose), port hôte loopback auto
+  127.0.0.1::18791 (debug/healthcheck), zéro port public.
     --no-stack : legacy docker run (port hôte fixe du registre)
     --host-port N : port hôte loopback FIXE au lieu de l'attribution auto
   creezio server-docker migrate-stack <nom> --brand-root <app> [--host-port N]
-    (bascule une instance legacy en stack : backup /data obligatoire →
-     ingress tunnel repointé http://app:18791 → compose up → health →
-     rollback legacy automatique si KO. Token tunnel lu du store kernel
-     /data — jamais affiché. Provisioner requis pour le repointage ingress :
-     CREEZIO_TUNNEL_PROVISION_URL/_TOKEN env ou .env marque.)
+    (bascule une instance sidecar ou legacy en stack in-process : backup
+     /data obligatoire → cf.env écrit (CREEZIO_CF_* requis — env hôte ou
+     .env marque) → compose up : le kernel re-ensure l'ingress au boot →
+     health → rollback automatique si KO. Token tunnel lu du store kernel
+     /data — jamais affiché.)
+  creezio server-docker rm <nom> : déprovisionne aussi le tunnel Cloudflare
+    (DNS + tunnel via API CF directe, best-effort) si CREEZIO_CF_* posés.
 
 Admin web multi-serveurs / multi-VPS (fleet-collector étendu) :
   creezio server-docker admin up|down|status --brand-root <app> [--port 18800]
@@ -298,8 +304,9 @@ Agent hôte flotte (VPS restaurant — exposé via agent.{slug}.{zone}) :
     --token <enrollToken> [--slug <slug>] [--label <label>] [--agent-url <url>]
     [--admin-app <url app admin>]  (F5 : updates en pull — pose
     adminAppUrl + fleetKey dans le state agent ; recréer via agent up)
-    (provisionne l'ingress agent.{slug} via le provisioner tunnel
-     + enregistre l'hôte auprès de l'admin — token agent hashé, révocable)
+    (pose l'ingress agent.{slug} / agent-{slug} sur le tunnel de l'instance
+     via l'API Cloudflare + enregistre l'hôte auprès de l'admin —
+     token agent hashé, révocable)
 
 Compose legacy (server-1 / server-2) :
   creezio server-docker build  --brand-root <app> [--kit-root <kit>]
@@ -338,7 +345,7 @@ function ensureDocker(): void {
 }
 
 /**
- * Module stack compose (M2) — SoT `instance-stack.mjs` (fleet-collector),
+ * Module stack compose — SoT `instance-stack.mjs` (fleet-collector),
  * partagée avec server-lib.mjs (update stack-aware). Import dynamique : le
  * module vit dans le clone kit du VPS (pas de dist factory).
  */
@@ -352,13 +359,17 @@ async function importInstanceStack(kit: string) {
   }
   return (await import(pathToFileURL(p).href)) as {
     STACK_APP_PORT: number;
+    CF_ENV_KEYS: string[];
+    stackDir: (brandRoot: string, inst: ServerRegistryInstance) => string;
+    composeFilePath: (brandRoot: string, inst: ServerRegistryInstance) => string;
+    cfEnvPath: (brandRoot: string, inst: ServerRegistryInstance) => string;
     writeInstanceStack: (opts: {
       brandRoot: string;
       brandId: string;
       image: string;
       inst: ServerRegistryInstance;
-      tunnel?: { token: string; hostname?: string; tunnelId?: string };
-    }) => { dir: string; composeFile: string; withTunnel: boolean };
+      cf?: Record<string, string> | null;
+    }) => { dir: string; composeFile: string; withCf: boolean };
     stackUp: (
       brandRoot: string,
       inst: ServerRegistryInstance,
@@ -397,13 +408,185 @@ async function importInstanceStack(kit: string) {
       tunnelToken: string;
       localPort: number;
     } | null;
-    provisionerCall: (
-      baseUrl: string,
-      token: string,
-      route: string,
-      body: Record<string, unknown>,
-    ) => Promise<{ status: number; json: Record<string, unknown> }>;
   };
+}
+
+/** Contrat Cloudflare côté hôte (CLI) — mêmes clés que cf.env. */
+const CF_CLI_ENV_KEYS = [
+  "CREEZIO_CF_API_TOKEN",
+  "CREEZIO_CF_ACCOUNT_ID",
+  "CREEZIO_CF_ZONE_ID",
+  "CREEZIO_CF_ZONE_NAME",
+  "CREEZIO_CF_UNIVERSAL_SSL",
+  "CREEZIO_DOMAIN",
+  "CREEZIO_TUNNEL_SLUG",
+  "CREEZIO_TUNNEL_EXTRA_HOSTNAMES",
+] as const;
+
+type CfTunnelEnv = {
+  apiToken: string;
+  accountId: string;
+  zoneId: string;
+  zoneName?: string;
+};
+
+type CfTunnelEnsureResult = {
+  ok: true;
+  slug: string;
+  hostname: string;
+  hostMode: "nested" | "flat";
+  tunnelId: string;
+  tunnelToken: string;
+  publicUrl: string;
+  emailDomain: string | null;
+  recreated: boolean;
+};
+
+/**
+ * Client Cloudflare Tunnel du kit (`platform-core/dist`) — import dynamique
+ * (même pattern qu'instance-stack : pas de dist factory). Requiert
+ * `npm run build:packages` dans le clone kit.
+ */
+async function importTunnelCf(kit: string) {
+  const clientPath = path.join(
+    kit,
+    "packages/platform-core/dist/tunnel-cf-client.js",
+  );
+  const purePath = path.join(kit, "packages/platform-core/dist/tunnel-cf.js");
+  if (!fs.existsSync(clientPath) || !fs.existsSync(purePath)) {
+    throw new Error(
+      `client CF introuvable (${clientPath}) — lancer npm run build:packages dans le kit`,
+    );
+  }
+  const client = (await import(pathToFileURL(clientPath).href)) as {
+    resolveCfTunnelEnv: (env: NodeJS.ProcessEnv) => CfTunnelEnv | null;
+    missingCfTunnelEnvKeys: (env: NodeJS.ProcessEnv) => string[];
+    verifyCfApiToken: (
+      env: CfTunnelEnv,
+    ) => Promise<{ ok: boolean; kind: "account" | "user"; id?: string }>;
+    ensureCfTunnel: (
+      env: CfTunnelEnv,
+      opts: {
+        slug: string;
+        domain?: string;
+        ports?: { crmPort: number; n8nPort?: number; hermesPort?: number };
+        hostMode?: "nested" | "flat" | null;
+        extraHostnames?: string[];
+        agent?: { host?: string; port: number } | null;
+        stored?: { tunnelId?: string; tunnelToken?: string } | null;
+        log?: (line: string) => void;
+      },
+    ) => Promise<CfTunnelEnsureResult>;
+    putCfTunnelIngress: (
+      env: CfTunnelEnv,
+      tunnelId: string,
+      ingress: Array<{ hostname?: string; service: string }>,
+    ) => Promise<void>;
+    deprovisionCfSlug: (
+      env: CfTunnelEnv,
+      opts: {
+        slug: string;
+        hostname?: string;
+        tunnelId?: string;
+        extraHostnames?: string[];
+        log?: (line: string) => void;
+      },
+    ) => Promise<{
+      ok: true;
+      slug: string;
+      removed: { dns: string[]; tunnel: string | null };
+    }>;
+  };
+  const pure = (await import(pathToFileURL(purePath).href)) as {
+    tunnelAgentHostname: (
+      hostname: string,
+      hostMode: "nested" | "flat",
+    ) => string;
+    parseExtraHostnames: (raw: unknown) => string[];
+    buildTunnelIngressRules: (
+      hostname: string,
+      ports: { crmPort: number; n8nPort?: number; hermesPort?: number },
+      opts?: {
+        hostMode?: "nested" | "flat" | null;
+        originHost?: string;
+        extraHostnames?: string[];
+        agent?: { host?: string; port: number } | null;
+      },
+    ) => Array<{ hostname?: string; service: string }>;
+  };
+  return { ...client, ...pure };
+}
+
+/**
+ * Contrat CF pour les commandes hôte : env process > .env racine marque.
+ * Retourne uniquement les clés posées (jamais de valeur inventée).
+ */
+function resolveCliCfEnv(brandRoot: string): Record<string, string> {
+  const brandDotEnv = readEnvFileValues(path.join(brandRoot, ".env"));
+  const out: Record<string, string> = {};
+  for (const key of CF_CLI_ENV_KEYS) {
+    const v = (process.env[key] || "").trim() || (brandDotEnv[key] || "").trim();
+    if (v) out[key] = v;
+  }
+  return out;
+}
+
+/** resolveCfTunnelEnv sur env fusionné (process + .env marque). */
+function cfEnvFromMerged(
+  cf: Awaited<ReturnType<typeof importTunnelCf>>,
+  cfVars: Record<string, string>,
+): CfTunnelEnv | null {
+  return cf.resolveCfTunnelEnv({
+    ...process.env,
+    ...cfVars,
+  } as NodeJS.ProcessEnv);
+}
+
+/**
+ * Déprovisionnement Cloudflare d'une instance (rm) : DNS (nested + flat +
+ * mail + extras) puis tunnel. Best-effort — un résidu est signalé, jamais
+ * bloquant pour la suppression locale. Lu AVANT la suppression du stack dir
+ * (cf.env contient CREEZIO_DOMAIN / CREEZIO_TUNNEL_EXTRA_HOSTNAMES).
+ */
+async function deprovisionInstanceTunnelCf(
+  kit: string,
+  brandRoot: string,
+  inst: ServerRegistryInstance,
+  brandId: string,
+): Promise<void> {
+  const stack = await importInstanceStack(kit);
+  const cf = await importTunnelCf(kit);
+  const kc = stack.readKernelTunnelConfig(brandRoot, inst, brandId);
+  const cfFileVars = readEnvFileValues(stack.cfEnvPath(brandRoot, inst));
+  const cfVars = { ...cfFileVars, ...resolveCliCfEnv(brandRoot) };
+  const env = cfEnvFromMerged(cf, cfVars);
+  if (!env) {
+    if (kc?.tunnelId) {
+      console.log(
+        "⚠ CREEZIO_CF_* absents — tunnel/DNS Cloudflare NON nettoyés " +
+          `(tunnel ${kc.tunnelId} toujours actif côté Cloudflare)`,
+      );
+    }
+    return;
+  }
+  const slug = (
+    kc?.slug ||
+    cfVars.CREEZIO_TUNNEL_SLUG ||
+    inst.name
+  ).trim();
+  const r = await cf.deprovisionCfSlug(env, {
+    slug,
+    hostname:
+      (cfVars.CREEZIO_DOMAIN || "").trim() || kc?.hostname || undefined,
+    tunnelId: kc?.tunnelId || undefined,
+    extraHostnames: cf.parseExtraHostnames(
+      cfVars.CREEZIO_TUNNEL_EXTRA_HOSTNAMES,
+    ),
+    log: (s) => console.log(`  ${s}`),
+  });
+  console.log(
+    `✓ Cloudflare nettoyé — dns: ${r.removed.dns.length} enregistrement(s), tunnel: ${r.removed.tunnel || "aucun"}`,
+  );
 }
 
 /** Marqueur de version du template — un .dockerignore sans lui est rafraîchi. */
@@ -1945,7 +2128,7 @@ async function runAgentSubcommand(
 /**
  * Enrôlement du VPS auprès de l'admin flotte :
  *   1. token agent dédié à l'admin (hashé localement, révocable)
- *   2. ingress `agent.{slug}` via le provisioner tunnel (si --slug)
+ *   2. ingress `agent.{slug}` via l'API Cloudflare directe (si --slug)
  *   3. POST {admin}/admin/api/enroll (authentifié par enrollToken)
  */
 async function runEnrollSubcommand(
@@ -1968,44 +2151,63 @@ async function runEnrollSubcommand(
     );
   }
 
-  // URL publique de l'agent : explicite, ou ingress agent.{slug} provisionnée.
+  // URL publique de l'agent : explicite, ou ingress agent.{slug} (nested) /
+  // agent-{slug}.{zone} (flat) posée sur le tunnel de l'instance via l'API
+  // Cloudflare (client kit — fin du provisioner VPS).
   let agentUrl = (args.agentUrl || "").trim().replace(/\/+$/, "");
   if (!agentUrl) {
     const slug = (args.slug || "").trim().toLowerCase();
     if (!slug) {
       throw new Error(
-        "--slug <slug> (ingress agent.{slug} via provisioner) ou --agent-url <url> requis",
+        "--slug <slug> (ingress agent via API Cloudflare) ou --agent-url <url> requis",
       );
     }
-    const provUrl = (process.env.CREEZIO_TUNNEL_PROVISION_URL || "")
-      .trim()
-      .replace(/\/+$/, "");
-    const provToken = (process.env.CREEZIO_TUNNEL_PROVISION_TOKEN || "").trim();
-    if (!provUrl || !provToken) {
+    const cf = await importTunnelCf(paths.kit);
+    const cfVars = resolveCliCfEnv(brandRoot);
+    const cfEnv = cfEnvFromMerged(cf, cfVars);
+    if (!cfEnv) {
       throw new Error(
-        "CREEZIO_TUNNEL_PROVISION_URL / _TOKEN requis pour provisionner agent.{slug}",
+        `contrat Cloudflare incomplet (${cf.missingCfTunnelEnvKeys({ ...process.env, ...cfVars } as NodeJS.ProcessEnv).join(", ")} requis) pour l'ingress agent de ${slug}`,
       );
     }
-    console.log(`provision ingress agent.${slug} (port ${state.port})…`);
-    const res = await fetch(`${provUrl}/configure`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${provToken}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ slug, agentPort: state.port }),
+    // Tunnel de l'instance porteuse du slug (store kernel /data — l'instance
+    // a déjà auto-provisionné son tunnel au boot).
+    const stack = await importInstanceStack(paths.kit);
+    const brandId = String(composeEnv(paths).BRAND_ID);
+    const registry = loadServerRegistry(brandRoot, brandId);
+    let kc: ReturnType<typeof stack.readKernelTunnelConfig> = null;
+    for (const i of registry.instances) {
+      if (i.name !== slug) continue;
+      kc = stack.readKernelTunnelConfig(brandRoot, i, brandId);
+      break;
+    }
+    if (!kc) {
+      // Repli : slug stocké différent du nom d'instance — scan complet.
+      for (const i of registry.instances) {
+        const c = stack.readKernelTunnelConfig(brandRoot, i, brandId);
+        if (c && c.slug === slug) {
+          kc = c;
+          break;
+        }
+      }
+    }
+    if (!kc?.tunnelId || !kc.tunnelToken) {
+      throw new Error(
+        `tunnel kernel introuvable pour slug ${slug} — l'instance a-t-elle booté avec cf.env (CREEZIO_CF_*) ?`,
+      );
+    }
+    console.log(
+      `ingress agent ${slug} → host.docker.internal:${state.port} (API Cloudflare)…`,
+    );
+    const ensured = await cf.ensureCfTunnel(cfEnv, {
+      slug,
+      domain: kc.hostname,
+      ports: { crmPort: stack.STACK_APP_PORT },
+      stored: { tunnelId: kc.tunnelId, tunnelToken: kc.tunnelToken },
+      agent: { host: "host.docker.internal", port: state.port },
+      log: (s) => console.log(`  ${s}`),
     });
-    const json = (await res.json().catch(() => ({}))) as {
-      ok?: boolean;
-      agentUrl?: string;
-      error?: string;
-    };
-    if (res.status !== 200 || !json.ok || !json.agentUrl) {
-      throw new Error(
-        `provision agent.{slug} KO (${res.status}): ${json.error || "réponse invalide"}`,
-      );
-    }
-    agentUrl = json.agentUrl.replace(/\/+$/, "");
+    agentUrl = `https://${cf.tunnelAgentHostname(ensured.hostname, ensured.hostMode)}`;
     console.log(`✓ ingress agent : ${agentUrl}`);
   }
 
@@ -2120,7 +2322,7 @@ async function runRegistrySubcommand(
     }
     console.log(`${"NOM".padEnd(14)}${"CONTAINER".padEnd(34)}${"PORT".padEnd(8)}${"ÉTAT".padEnd(12)}SANTÉ`);
     if (registry.instances.some((i) => i.stack)) {
-      console.log("(* port hôte loopback auto — stack compose : app interne :18791, tunnel sidecar)");
+      console.log("(* port hôte loopback auto — stack compose : app interne :18791, cloudflared in-process)");
     }
     for (const inst of registry.instances) {
       const st = dockerContainerState(inst.containerName);
@@ -2168,9 +2370,12 @@ async function runRegistrySubcommand(
       // (jamais de valeur inventée — pas d'effet de bord infra implicite).
       extraEnv.CREEZIO_NATIVE_WARM = "1";
       extraEnv.CREEZIO_CATALOG = "1";
-      if ((env.CREEZIO_TUNNEL_PROVISION_URL || "").trim()) {
-        // Tunnel provisionné → surface publique (MCP/webhooks via {slug}.zone),
-        // pas la surface loopback par défaut de l'image.
+      // Contrat Cloudflare (CREEZIO_CF_*) → cf.env (600), intercepté dans
+      // la branche stack ci-dessous — JAMAIS dans inst.env / environment:.
+      const cfVarsForProfile = resolveCliCfEnv(paths.brandRoot);
+      if ((cfVarsForProfile.CREEZIO_CF_API_TOKEN || "").trim()) {
+        // Tunnel auto-provisionné → surface publique (MCP/webhooks via
+        // {slug}.{zone}), pas la surface loopback par défaut de l'image.
         extraEnv.CREEZIO_TUNNEL_LOCAL = "0";
       }
       // Priorité : env process > .env racine marque (secrets locaux gitignorés)
@@ -2179,10 +2384,6 @@ async function runRegistrySubcommand(
         path.join(paths.brandRoot, ".env"),
       );
       for (const key of [
-        "CREEZIO_TUNNEL_PROVISION_URL",
-        "CREEZIO_TUNNEL_PROVISION_TOKEN",
-        "CREEZIO_TUNNEL_SLUG",
-        "CREEZIO_TUNNEL_FLAT_HOSTS",
         "CREEZIO_FLEET_ENDPOINT",
         "CREEZIO_CRASH_ENDPOINT",
         "CREEZIO_PLUGINS",
@@ -2239,35 +2440,45 @@ async function runRegistrySubcommand(
       recursive: true,
     });
 
-    // Stack compose autonome (M2) — DÉFAUT : app + cloudflared sidecar,
+    // Stack compose autonome — DÉFAUT : app seule (cloudflared in-process),
     // port interne fixe 18791, port hôte loopback auto (--no-stack = legacy).
     if (!args.noStack) {
       const stack = await importInstanceStack(paths.kit);
-      let tunnel:
-        | { token: string; hostname?: string; tunnelId?: string }
-        | undefined;
-      const provUrl = (extraEnv.CREEZIO_TUNNEL_PROVISION_URL || "").trim();
-      const provToken = (extraEnv.CREEZIO_TUNNEL_PROVISION_TOKEN || "").trim();
-      if (provUrl && provToken) {
-        const slug = (extraEnv.CREEZIO_TUNNEL_SLUG || name).trim();
-        const r = await stack.provisionerCall(provUrl, provToken, "/reserve", {
-          slug,
-          installId: "server-docker-cli",
-          crmPort: stack.STACK_APP_PORT,
-          serviceHost: "app",
-        });
-        if (r.status !== 200 || !r.json?.ok) {
+      // Contrat Cloudflare → cf.env (chmod 600) : l'instance auto-provisionne
+      // son tunnel au boot via l'API CF (fin de l'appel /reserve au
+      // provisioner VPS). Aucun secret dans le registre ni le compose.
+      let cf: Record<string, string> | undefined;
+      const cfVars = resolveCliCfEnv(paths.brandRoot);
+      if ((cfVars.CREEZIO_CF_API_TOKEN || "").trim()) {
+        const cfClient = await importTunnelCf(paths.kit);
+        const cfEnv = cfEnvFromMerged(cfClient, cfVars);
+        if (!cfEnv) {
           throw new Error(
-            `reserve tunnel ${slug}: ${String(r.json?.error || r.status)}`,
+            `contrat Cloudflare incomplet (${cfClient.missingCfTunnelEnvKeys({ ...process.env, ...cfVars } as NodeJS.ProcessEnv).join(", ")} requis) — poser les CREEZIO_CF_* (env hôte ou .env marque)`,
           );
         }
-        tunnel = {
-          token: String(r.json.tunnelToken || ""),
-          hostname: String(r.json.hostname || ""),
-          tunnelId: String(r.json.tunnelId || ""),
+        // Fail-fast : token rejeté (401/403) = erreur immédiate ; souci
+        // réseau = avertissement (l'instance réessaiera au boot).
+        try {
+          const check = await cfClient.verifyCfApiToken(cfEnv);
+          console.log(`✓ token Cloudflare vérifié (${check.kind})`);
+        } catch (err) {
+          const status = Number((err as { status?: number })?.status || 0);
+          if (status === 401 || status === 403) {
+            throw new Error(
+              `token Cloudflare rejeté (HTTP ${status}) — vérifier CREEZIO_CF_API_TOKEN`,
+            );
+          }
+          console.log(
+            `⚠ vérification token CF impossible (${err instanceof Error ? err.message : String(err)}) — l'instance réessaiera au boot`,
+          );
+        }
+        cf = {
+          ...cfVars,
+          CREEZIO_TUNNEL_SLUG: (cfVars.CREEZIO_TUNNEL_SLUG || name).trim(),
         };
         console.log(
-          `tunnel ${slug} réservé → ${String(r.json.publicUrl || "")} (sidecar compose)`,
+          `tunnel auto-provisionné au boot par l'instance (slug ${cf.CREEZIO_TUNNEL_SLUG}, cf.env 600)`,
         );
       }
       inst.stack = true;
@@ -2283,7 +2494,7 @@ async function runRegistrySubcommand(
         brandId,
         image,
         inst,
-        tunnel,
+        cf,
       });
       stack.stackUp(paths.brandRoot, inst);
       const hp = stack.stackHostPort(containerName);
@@ -2336,19 +2547,30 @@ async function runRegistrySubcommand(
   }
 
   if (args.sub === "migrate-stack") {
-    // Bascule legacy `docker run` → stack compose autonome (M2) :
-    // backup obligatoire → ingress repointé (http://app:18791) → stack up →
-    // health → rollback legacy si KO. Le token tunnel est lu du store kernel
-    // (/data) — jamais affiché ni stocké dans le registre.
-    if (inst.stack) {
-      console.log(`✓ ${name} déjà en stack compose — rien à faire`);
+    // Migration vers le modèle in-process (0.10.0) :
+    //  - stack sidecar (cloudflared compose) → stack app seule + cf.env ;
+    //  - legacy `docker run` → stack compose.
+    // Backup /data obligatoire → cf.env écrit (CREEZIO_CF_* + slug + hostname
+    // exact préservé via CREEZIO_DOMAIN) → compose up : le kernel re-ensure
+    // le tunnel au boot (ingress http://127.0.0.1:18791 + DNS) et spawn
+    // cloudflared in-process → health → rollback si KO.
+    // Le token tunnel reste dans le store kernel /data — jamais affiché.
+    const stack = await importInstanceStack(paths.kit);
+    const composeFile = stack.composeFilePath(paths.brandRoot, inst);
+    const hasSidecar =
+      Boolean(inst.stack) &&
+      fs.existsSync(composeFile) &&
+      fs.readFileSync(composeFile, "utf8").includes("cloudflared:");
+    if (inst.stack && !hasSidecar) {
+      console.log(`✓ ${name} déjà en stack in-process — rien à faire`);
       return;
     }
-    const stack = await importInstanceStack(paths.kit);
     const image =
       (inst as { image?: string }).image || registry.image ||
       serverImageName(brandId);
-    console.log(`migration ${name} → stack compose (image ${image})…`);
+    console.log(
+      `migration ${name} → stack in-process (${hasSidecar ? "sidecar → in-container" : "legacy → stack"}, image ${image})…`,
+    );
 
     const serverLibPath = path.join(
       paths.kit,
@@ -2370,94 +2592,117 @@ async function runRegistrySubcommand(
     console.log(`✓ backup ${b.detail}`);
 
     const kc = stack.readKernelTunnelConfig(paths.brandRoot, inst, brandId);
-    const brandDotEnv = readEnvFileValues(path.join(paths.brandRoot, ".env"));
-    // Priorite : env process > env instance (registre — provisioner reel
-    // de l instance) > .env marque (peut viser un endpoint public legacy
-    // qui ignore serviceHost — resto-lyon : ingress reste sur 127.0.0.1).
-    const provUrl = (
-      env.CREEZIO_TUNNEL_PROVISION_URL ||
-      inst.env?.CREEZIO_TUNNEL_PROVISION_URL ||
-      brandDotEnv.CREEZIO_TUNNEL_PROVISION_URL ||
-      ""
-    ).trim();
-    const provToken = (
-      env.CREEZIO_TUNNEL_PROVISION_TOKEN ||
-      inst.env?.CREEZIO_TUNNEL_PROVISION_TOKEN ||
-      brandDotEnv.CREEZIO_TUNNEL_PROVISION_TOKEN ||
-      ""
-    ).trim();
-    let tunnel:
-      | { token: string; hostname?: string; tunnelId?: string }
-      | undefined;
+    let cf: Record<string, string> | undefined;
     if (kc) {
-      tunnel = { token: kc.tunnelToken, hostname: kc.hostname, tunnelId: kc.tunnelId };
-      if (provUrl && provToken) {
-        const r = await stack.provisionerCall(provUrl, provToken, "/configure", {
-          slug: kc.slug,
-          tunnelId: kc.tunnelId,
-          hostname: kc.hostname,
-          crmPort: stack.STACK_APP_PORT,
-          serviceHost: "app",
-        });
-        if (r.status !== 200 || !r.json?.ok) {
-          throw new Error(
-            `reconfigure ingress ${kc.slug}: ${String(r.json?.error || r.status)} — migration annulée (conteneur legacy intact)`,
-          );
-        }
-        console.log(
-          `✓ ingress ${kc.hostname} → http://app:${stack.STACK_APP_PORT} (sidecar)`,
-        );
-      } else {
-        console.log(
-          "⚠ provisioner non configuré (URL/token absents) — ingress NON repointé ; " +
-            "le sidecar démarrera mais Cloudflare visera encore l'ancien port. " +
-            "Repointer manuellement vers http://app:18791.",
+      const cfClient = await importTunnelCf(paths.kit);
+      const cfVars = resolveCliCfEnv(paths.brandRoot);
+      const cfEnv = cfEnvFromMerged(cfClient, cfVars);
+      if (!cfEnv) {
+        throw new Error(
+          `tunnel ${kc.slug} présent mais contrat Cloudflare incomplet (${cfClient.missingCfTunnelEnvKeys({ ...process.env, ...cfVars } as NodeJS.ProcessEnv).join(", ")}) — poser les CREEZIO_CF_* (env hôte ou .env marque) puis relancer`,
         );
       }
+      cf = { ...cfVars, CREEZIO_TUNNEL_SLUG: kc.slug };
+      // Hostname exact préservé (custom ou zone-level) — sinon le kernel
+      // dériverait `{slug}.{zone}` au boot.
+      if (!cf.CREEZIO_DOMAIN) cf.CREEZIO_DOMAIN = kc.hostname;
+      console.log(
+        `✓ contrat CF prêt — l'instance re-ensure le tunnel ${kc.slug} au boot (ingress 127.0.0.1:${stack.STACK_APP_PORT})`,
+      );
     } else {
-      console.log("pas de tunnel kernel dans /data — stack sans sidecar cloudflared");
+      console.log("pas de tunnel kernel dans /data — stack sans cf.env");
     }
 
     const instStack: ServerRegistryInstance = {
       ...inst,
       stack: true,
       hostPort: args.hostPort && args.hostPort > 0 ? args.hostPort : 0,
-      env: { ...(inst.env || {}), CREEZIO_TUNNEL_LOCAL: "0" },
+      env: Object.fromEntries(
+        Object.entries({ ...(inst.env || {}), CREEZIO_TUNNEL_LOCAL: "0" }).filter(
+          ([k]) =>
+            !/^CREEZIO_TUNNEL_(PROVISION_URL|PROVISION_TOKEN|FLAT_HOSTS|SIDECAR|SERVICE_HOST|TOKEN|HOSTNAME|ID)$/.test(
+              k,
+            ),
+        ),
+      ),
     };
+
+    // Backup du stack dir existant (rollback sidecar : compose + tunnel.env).
+    const stackDirPath = stack.stackDir(paths.brandRoot, inst);
+    const stackBackup = `${stackDirPath}.bak-migrate`;
+    if (inst.stack && fs.existsSync(stackDirPath)) {
+      fs.rmSync(stackBackup, { recursive: true, force: true });
+      fs.cpSync(stackDirPath, stackBackup, { recursive: true });
+    }
+
     stack.writeInstanceStack({
       brandRoot: paths.brandRoot,
       brandId,
       image,
       inst: instStack,
-      tunnel,
+      cf,
     });
-    console.log("bascule : rm conteneur legacy → compose up…");
-    run("docker", ["rm", "-f", inst.containerName], env);
+    // L'ancien tunnel.env (secret sidecar) n'a plus lieu d'être.
+    fs.rmSync(path.join(stackDirPath, "tunnel.env"), { force: true });
+
+    console.log("bascule : arrêt ancien conteneur/stack → compose up…");
+    if (inst.stack) {
+      try {
+        stack.stackDown(paths.brandRoot, inst, { quiet: true });
+      } catch {
+        /* stack déjà down */
+      }
+    } else {
+      run("docker", ["rm", "-f", inst.containerName], env);
+    }
     let hp = 0;
     try {
       stack.stackUp(paths.brandRoot, instStack, { quiet: true });
       hp = stack.stackHostPort(inst.containerName);
-    } catch (e) {
+    } catch {
       hp = 0;
     }
     const ready = hp > 0 && (await waitBootReady(hp).then(() => true, () => false));
     if (!ready) {
-      console.error("✗ stack KO — rollback vers le conteneur legacy…");
+      console.error("✗ stack KO — rollback…");
       try {
         stack.stackDown(paths.brandRoot, instStack, { quiet: true });
       } catch {
         /* best-effort */
       }
-      if (kc && provUrl && provToken) {
-        await stack
-          .provisionerCall(provUrl, provToken, "/configure", {
-            slug: kc.slug,
-            tunnelId: kc.tunnelId,
-            hostname: kc.hostname,
-            crmPort: inst.port,
-            serviceHost: "127.0.0.1",
-          })
-          .catch(() => {});
+      if (inst.stack && fs.existsSync(stackBackup)) {
+        // Rollback sidecar : restaurer compose.yml + tunnel.env, repointer
+        // l'ingress vers http://app:18791 (le boot a pu le basculer sur
+        // 127.0.0.1), puis relancer l'ancien stack.
+        fs.rmSync(stackDirPath, { recursive: true, force: true });
+        fs.cpSync(stackBackup, stackDirPath, { recursive: true });
+        if (kc?.tunnelId && cf) {
+          try {
+            const cfClient = await importTunnelCf(paths.kit);
+            const cfEnv = cfEnvFromMerged(cfClient, cf);
+            if (cfEnv) {
+              await cfClient.putCfTunnelIngress(
+                cfEnv,
+                kc.tunnelId,
+                cfClient.buildTunnelIngressRules(
+                  kc.hostname,
+                  { crmPort: stack.STACK_APP_PORT },
+                  { originHost: "app" },
+                ),
+              );
+            }
+          } catch {
+            /* best-effort */
+          }
+        }
+        try {
+          stack.stackUp(paths.brandRoot, inst, { quiet: true });
+        } catch {
+          /* best-effort */
+        }
+        throw new Error(
+          `migration ${name} KO — rollback stack sidecar restauré (vérifier https://${kc?.hostname || "?"})`,
+        );
       }
       run(
         "docker",
@@ -2469,25 +2714,26 @@ async function runRegistrySubcommand(
         `migration ${name} KO — rollback legacy ${back ? "OK (service restauré)" : "ÉCHOUÉ (intervention manuelle: docker start " + inst.containerName + ")"}`,
       );
     }
+    fs.rmSync(stackBackup, { recursive: true, force: true });
     instStack.port = hp;
     registry.instances = registry.instances.map((i) =>
       i.name === name ? instStack : i,
     );
     saveServerRegistry(paths.brandRoot, registry);
     console.log(
-      `✓ ${name} migré en stack compose — app interne :${stack.STACK_APP_PORT}, ` +
+      `✓ ${name} migré en stack in-process — app interne :${stack.STACK_APP_PORT}, ` +
         `port hôte debug 127.0.0.1:${hp} (${instStack.hostPort ? "fixe" : "auto"})`,
     );
-    if (tunnel?.hostname) {
+    if (kc?.hostname) {
       try {
         const res = await fetch(
-          `https://${tunnel.hostname}/api/v1/core/health`,
+          `https://${kc.hostname}/api/v1/core/health`,
           { signal: AbortSignal.timeout(20000) },
         );
-        console.log(`✓ public https://${tunnel.hostname} → HTTP ${res.status}`);
+        console.log(`✓ public https://${kc.hostname} → HTTP ${res.status}`);
       } catch (e) {
         console.log(
-          `⚠ vérif publique https://${tunnel.hostname} en échec: ${e instanceof Error ? e.message : String(e)}`,
+          `⚠ vérif publique https://${kc.hostname} en échec: ${e instanceof Error ? e.message : String(e)}`,
         );
       }
     }
@@ -2542,6 +2788,17 @@ async function runRegistrySubcommand(
   if (args.sub === "rm") {
     if (inst.stack) {
       const stack = await importInstanceStack(paths.kit);
+      // Déprovisionnement Cloudflare (DNS + tunnel) AVANT la suppression du
+      // stack dir — cf.env contient CREEZIO_DOMAIN / EXTRA_HOSTNAMES et le
+      // store kernel /data le tunnelId. Best-effort : un échec CF n'empêche
+      // pas la suppression locale (résidu signalé).
+      try {
+        await deprovisionInstanceTunnelCf(paths.kit, paths.brandRoot, inst, brandId);
+      } catch (err) {
+        console.log(
+          `⚠ déprovisionnement Cloudflare en échec: ${err instanceof Error ? err.message : String(err)} — résidus possibles (DNS/tunnel) à nettoyer à la main`,
+        );
+      }
       try {
         stack.stackDown(paths.brandRoot, inst, { quiet: true });
       } catch {

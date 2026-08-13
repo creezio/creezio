@@ -1,14 +1,18 @@
 #!/usr/bin/env node
 /**
- * Gate M2 — stack compose autonome par instance (app + cloudflared sidecar).
+ * Gate M2 (0.10.0) — stack compose autonome par instance, modèle UNIQUE :
+ * app seule, cloudflared IN-PROCESS (fin du sidecar et du provisioner VPS).
  *
  * Vérifie le contrat du renderer instance-stack.mjs :
  *   - port INTERNE fixe 18791, port hôte loopback auto (127.0.0.1::18791)
  *     ou fixe (hostPort > 0) — jamais de port public ;
- *   - sidecar cloudflared rendu ssi tunnel (token ou tunnel.env existant) ;
+ *   - AUCUN service cloudflared dans le compose (auto-provisioning CF au
+ *     boot par l'instance elle-même) ;
+ *   - contrat Cloudflare via env_file cf.env (chmod 600) — jamais de
+ *     CREEZIO_CF_* en clair dans `environment:` du compose.yml ;
+ *   - secrets applicatifs (TOKEN/SECRET/PASSWORD/API_KEY…) isolés dans
+ *     secrets.env (chmod 600) — règle d'audit généralisée ;
  *   - container_name stable (fleet tooling) + labels creezio.server ;
- *   - token UNIQUEMENT dans tunnel.env (chmod 600) — jamais dans compose.yml ;
- *   - ingress provisioner : serviceHost "app" (stack) vs 127.0.0.1 (legacy) ;
  *   - lecture du store kernel /data (format {plain}).
  */
 import assert from "node:assert/strict";
@@ -16,22 +20,15 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { test } from "node:test";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const STACK = path.join(
   ROOT,
   "packages/observability/fleet-collector/instance-stack.mjs",
 );
-const PROVISIONER_LIB = path.join(ROOT, "docker/tunnel-provisioner/lib.mjs");
 
-const stack = await import(pathToFileUrl(STACK));
-const provLib = await import(pathToFileUrl(PROVISIONER_LIB));
-
-function pathToFileUrl(p) {
-  const abs = path.resolve(p).replace(/\\/g, "/");
-  return `file://${abs.startsWith("/") ? "" : "/"}${abs}`;
-}
+const stack = await import(pathToFileURL(STACK).href);
 
 const BASE_INST = {
   name: "resto-test",
@@ -44,13 +41,21 @@ const BASE_INST = {
   stack: true,
 };
 
+const CF = {
+  CREEZIO_CF_API_TOKEN: "cf-token-secret-123",
+  CREEZIO_CF_ACCOUNT_ID: "acc-1",
+  CREEZIO_CF_ZONE_ID: "zone-1",
+  CREEZIO_CF_ZONE_NAME: "tempoflow.fr",
+  CREEZIO_TUNNEL_SLUG: "resto-test",
+};
+
 test("M2 stack : ports internes fixes + port hôte loopback auto", () => {
   const yml = stack.renderInstanceCompose({
     brandRoot: "/srv/brand",
     brandId: "tempoflow3",
     image: "creezio-server-tempoflow3:local",
     inst: BASE_INST,
-    withTunnel: true,
+    withCf: true,
   });
   // App interne toujours 18791 ; publication loopback à attribution auto.
   assert.match(yml, /PORT: "18791"/);
@@ -61,92 +66,158 @@ test("M2 stack : ports internes fixes + port hôte loopback auto", () => {
   assert.match(yml, /container_name: tempoflow3-server-resto-test/);
   assert.match(yml, /creezio\.server=1/);
   assert.match(yml, /creezio\.stack=compose/);
-  // Sidecar cloudflared : token via env_file, jamais en clair dans le YAML.
-  assert.match(yml, /cloudflared:/);
-  assert.match(yml, /env_file:\n      - \.\/tunnel\.env/);
-  assert.match(yml, /command: tunnel --no-autoupdate run/);
-  assert.doesNotMatch(yml, /eyJ[A-Za-z0-9_-]{10}/);
-  // Seed kernel : le kernel ne spawn plus cloudflared, ingress par nom.
-  assert.match(yml, /CREEZIO_TUNNEL_SIDECAR: "1"/);
-  assert.match(yml, /CREEZIO_TUNNEL_SERVICE_HOST: "app"/);
-  // Agent hôte joignable depuis le sidecar (extra_hosts host-gateway).
+  // Modèle unique : AUCUN service sidecar cloudflared — l'app
+  // auto-provisionne et spawn cloudflared in-process (hors compose).
+  assert.doesNotMatch(yml, /^  cloudflared:/m);
+  assert.doesNotMatch(yml, /cloudflared\/cloudflared/);
+  // Contrat CF via env_file cf.env — jamais en clair dans le YAML.
+  assert.match(yml, /env_file:\n      - \.\/cf\.env/);
+  assert.doesNotMatch(yml, /CREEZIO_CF_API_TOKEN:/);
+  assert.doesNotMatch(yml, /cf-token-secret-123/);
+  // Plus aucune trace de l'ancien modèle sidecar/provisioner.
+  assert.doesNotMatch(yml, /CREEZIO_TUNNEL_SIDECAR/);
+  assert.doesNotMatch(yml, /CREEZIO_TUNNEL_SERVICE_HOST/);
+  assert.doesNotMatch(yml, /TUNNEL_TOKEN/);
+  assert.doesNotMatch(yml, /tunnel\.env/);
+  // Agent hôte joignable depuis le conteneur (extra_hosts host-gateway).
   assert.match(yml, /host\.docker\.internal:host-gateway/);
   // Healthcheck interne au réseau du stack.
   assert.match(yml, /api\/v1\/core\/health/);
 });
 
-test("M2 stack : hostPort fixe (cas tempoflowadmin — lp tunnel + NPM)", () => {
+test("M2 stack : hostPort fixe (cas tempoflowadmin — lp tunnel)", () => {
   const yml = stack.renderInstanceCompose({
     brandRoot: "/srv/brand",
     brandId: "tempoflowadmin",
     image: "creezio-server-tempoflowadmin:local",
     inst: { ...BASE_INST, name: "main", containerName: "tempoflowadmin-server-main", hostPort: 18801 },
-    withTunnel: false,
+    withCf: false,
   });
   assert.match(yml, /"127\.0\.0\.1:18801:18791"/);
-  assert.doesNotMatch(yml, /cloudflared:/);
+  assert.doesNotMatch(yml, /^  cloudflared:/m);
+  assert.doesNotMatch(yml, /^    env_file:/m);
 });
 
-test("M2 stack : sans tunnel → pas de sidecar ni env_file", () => {
+test("M2 stack : sans contrat CF → pas d'env_file", () => {
   const yml = stack.renderInstanceCompose({
     brandRoot: "/srv/brand",
     brandId: "tempoflow3",
     image: "img:local",
     inst: BASE_INST,
-    withTunnel: false,
+    withCf: false,
   });
-  assert.doesNotMatch(yml, /cloudflared/);
-  assert.doesNotMatch(yml, /tunnel\.env/);
+  assert.doesNotMatch(yml, /^  cloudflared:/m);
+  assert.doesNotMatch(yml, /cf\.env/);
   assert.doesNotMatch(yml, /CREEZIO_TUNNEL_SIDECAR/);
 });
 
-test("M2 stack : writeInstanceStack écrit tunnel.env 0600, token hors compose", () => {
+test("M2 stack : secrets applicatifs → secrets.env 600, jamais dans environment:", () => {
   const brandRoot = fs.mkdtempSync(path.join(os.tmpdir(), "creezio-stack-"));
-  const inst = { ...BASE_INST };
-  const { composeFile, withTunnel } = stack.writeInstanceStack({
+  const inst = {
+    ...BASE_INST,
+    env: {
+      CREEZIO_NATIVE_WARM: "1",
+      N8N_BASIC_AUTH_PASSWORD: "n8n-pass-secret",
+      OPENAI_API_KEY: "sk-secret-xyz",
+      EMAIL_INBOUND_SECRET: "inbound-secret",
+    },
+  };
+  const { composeFile } = stack.writeInstanceStack({
     brandRoot,
     brandId: "tempoflow3",
     image: "img:local",
     inst,
-    tunnel: { token: "tok-secret-123", hostname: "resto-test.tempoflow.fr", tunnelId: "tid" },
+    cf: CF,
   });
-  assert.ok(withTunnel);
-  const envFile = path.join(brandRoot, "docker-data", "stacks", "resto-test", "tunnel.env");
-  const stat = fs.statSync(envFile);
-  assert.equal(stat.mode & 0o777, 0o600, "tunnel.env doit être 0600");
-  const envBody = fs.readFileSync(envFile, "utf8");
-  assert.match(envBody, /TUNNEL_TOKEN=tok-secret-123/);
-  assert.match(envBody, /CREEZIO_TUNNEL_TOKEN=tok-secret-123/);
-  assert.match(envBody, /CREEZIO_TUNNEL_HOSTNAME=resto-test\.tempoflow\.fr/);
   const yml = fs.readFileSync(composeFile, "utf8");
-  assert.ok(!yml.includes("tok-secret-123"), "token dans compose.yml !");
-  // Re-render SANS token (update) : le sidecar persiste grâce à tunnel.env.
+  // Clés non secrètes : restent dans environment:.
+  assert.match(yml, /CREEZIO_NATIVE_WARM: "1"/);
+  // Clés secrètes : env_file secrets.env, jamais en clair dans le YAML.
+  assert.match(yml, /- \.\/secrets\.env/);
+  assert.doesNotMatch(yml, /n8n-pass-secret/);
+  assert.doesNotMatch(yml, /sk-secret-xyz/);
+  assert.doesNotMatch(yml, /inbound-secret/);
+  assert.doesNotMatch(yml, /N8N_BASIC_AUTH_PASSWORD:/);
+  assert.doesNotMatch(yml, /OPENAI_API_KEY:/);
+  const secretsFile = stack.secretsEnvPath(brandRoot, inst);
+  const stat = fs.statSync(secretsFile);
+  assert.equal(stat.mode & 0o777, 0o600, "secrets.env doit être 0600");
+  const body = fs.readFileSync(secretsFile, "utf8");
+  assert.match(body, /N8N_BASIC_AUTH_PASSWORD=n8n-pass-secret/);
+  assert.match(body, /OPENAI_API_KEY=sk-secret-xyz/);
+  assert.match(body, /EMAIL_INBOUND_SECRET=inbound-secret/);
+  assert.doesNotMatch(body, /CREEZIO_NATIVE_WARM/);
+  fs.rmSync(brandRoot, { recursive: true, force: true });
+});
+
+test("M2 stack : writeInstanceStack écrit cf.env 0600, token hors compose", () => {
+  const brandRoot = fs.mkdtempSync(path.join(os.tmpdir(), "creezio-stack-"));
+  const inst = { ...BASE_INST };
+  const { composeFile, withCf } = stack.writeInstanceStack({
+    brandRoot,
+    brandId: "tempoflow3",
+    image: "img:local",
+    inst,
+    cf: CF,
+  });
+  assert.ok(withCf);
+  const envFile = stack.cfEnvPath(brandRoot, inst);
+  assert.ok(
+    envFile.endsWith(path.join("stacks", "resto-test", "cf.env")),
+    "cf.env dans le répertoire du stack",
+  );
+  const stat = fs.statSync(envFile);
+  assert.equal(stat.mode & 0o777, 0o600, "cf.env doit être 0600");
+  const envBody = fs.readFileSync(envFile, "utf8");
+  assert.match(envBody, /CREEZIO_CF_API_TOKEN=cf-token-secret-123/);
+  assert.match(envBody, /CREEZIO_CF_ACCOUNT_ID=acc-1/);
+  assert.match(envBody, /CREEZIO_CF_ZONE_ID=zone-1/);
+  assert.match(envBody, /CREEZIO_TUNNEL_SLUG=resto-test/);
+  const yml = fs.readFileSync(composeFile, "utf8");
+  assert.ok(!yml.includes("cf-token-secret-123"), "token CF dans compose.yml !");
+  // Re-render SANS cf (update) : cf.env existant conservé → env_file gardé.
   const again = stack.writeInstanceStack({
     brandRoot,
     brandId: "tempoflow3",
     image: "img:v2",
     inst,
   });
-  assert.ok(again.withTunnel, "sidecar conservé à l'update");
-  assert.match(fs.readFileSync(composeFile, "utf8"), /image: img:v2/);
+  assert.ok(again.withCf, "cf.env conservé à l'update");
+  const yml2 = fs.readFileSync(composeFile, "utf8");
+  assert.match(yml2, /image: img:v2/);
+  assert.match(yml2, /- \.\/cf\.env/);
+  // cf: null → tunnel désactivé : cf.env supprimé, env_file retiré.
+  const off = stack.writeInstanceStack({
+    brandRoot,
+    brandId: "tempoflow3",
+    image: "img:v3",
+    inst,
+    cf: null,
+  });
+  assert.equal(off.withCf, false);
+  assert.ok(!fs.existsSync(envFile), "cf.env supprimé");
+  assert.doesNotMatch(fs.readFileSync(composeFile, "utf8"), /cf\.env/);
   fs.rmSync(brandRoot, { recursive: true, force: true });
 });
 
-test("M2 provisioner : serviceHost app (stack) vs 127.0.0.1 (legacy)", () => {
-  const ports = { crmPort: 18791, n8nPort: 15678, hermesPort: 18797 };
-  const legacy = provLib.buildIngressRules("x.tempoflow.fr", ports, null, {});
-  assert.deepEqual(
-    legacy.map((r) => r.service),
-    ["http://127.0.0.1:18791", "http://127.0.0.1:15678", "http://127.0.0.1:18797", "http_status:404"],
-  );
-  const stacked = provLib.buildIngressRules("x.tempoflow.fr", ports, null, { serviceHost: "app" });
-  assert.deepEqual(
-    stacked.map((r) => r.service),
-    ["http://app:18791", "http://app:15678", "http://app:18797", "http_status:404"],
-  );
-  // L'ingress agent reste hors stack (hôte) — jamais réécrit en "app".
-  const withAgent = provLib.buildIngressRules("x.tempoflow.fr", ports, { port: 18810, host: "host.docker.internal" }, { serviceHost: "app" });
-  assert.ok(withAgent.some((r) => r.service === "http://host.docker.internal:18810"));
+test("M2 stack : splitInstanceEnv classe les clés secrètes", () => {
+  const { plain, secret } = stack.splitInstanceEnv({
+    BRAND_ID: "x",
+    CREEZIO_CF_API_TOKEN: "t",
+    MCP_JWT_SECRET: "s",
+    N8N_BASIC_AUTH_PASSWORD: "p",
+    OPENAI_API_KEY: "k",
+    GOOGLE_CREDENTIALS: "c",
+    CREEZIO_NATIVE_WARM: "1",
+  });
+  assert.deepEqual(Object.keys(secret).sort(), [
+    "CREEZIO_CF_API_TOKEN",
+    "GOOGLE_CREDENTIALS",
+    "MCP_JWT_SECRET",
+    "N8N_BASIC_AUTH_PASSWORD",
+    "OPENAI_API_KEY",
+  ]);
+  assert.deepEqual(Object.keys(plain).sort(), ["BRAND_ID", "CREEZIO_NATIVE_WARM"]);
 });
 
 test("M2 store kernel : readKernelTunnelConfig parse le format {plain}", () => {

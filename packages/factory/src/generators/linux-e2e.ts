@@ -148,8 +148,12 @@ export function renderSmokeTunnelCatalogMjs(model: ProductModel): string {
   const brandUpper = model.brandId.toUpperCase().replace(/[^A-Z0-9]/g, "_");
   return `#!/usr/bin/env node
 /**
- * Smoke ops : tunnel provisioner + HEAD catalogue (optionnel).
- * Secrets : \`.env\` (voir \`.env.example\`).
+ * Smoke ops : contrat Cloudflare Tunnel (auto-provisioning instance) +
+ * HEAD catalogue (optionnel). Secrets : \`.env\` (voir \`.env.example\`).
+ *
+ * Vérifie le token CF (account token via /accounts/{id}/tokens/verify,
+ * user token via /user/tokens/verify) et la résolution de la zone — sans
+ * créer aucune ressource (lecture seule).
  */
 import assert from "node:assert/strict";
 import { loadLocalEnv } from "./load-local-env.mjs";
@@ -157,40 +161,51 @@ import { loadLocalEnv } from "./load-local-env.mjs";
 const root = process.cwd();
 loadLocalEnv(root);
 
-const tunnelUrl = (
-  process.env.${brandUpper}_TUNNEL_PROVISION_URL ||
-  process.env.CREEZIO_TUNNEL_PROVISION_URL ||
-  ""
-).replace(/\\/$/, "");
-const tunnelToken =
-  process.env.${brandUpper}_TUNNEL_PROVISION_TOKEN ||
-  process.env.CREEZIO_TUNNEL_PROVISION_TOKEN ||
+const cfToken =
+  process.env.${brandUpper}_CF_API_TOKEN ||
+  process.env.CREEZIO_CF_API_TOKEN ||
+  "";
+const cfAccount =
+  process.env.${brandUpper}_CF_ACCOUNT_ID ||
+  process.env.CREEZIO_CF_ACCOUNT_ID ||
+  "";
+const cfZone =
+  process.env.${brandUpper}_CF_ZONE_ID ||
+  process.env.CREEZIO_CF_ZONE_ID ||
   "";
 const catalogUrl =
   process.env.${brandUpper}_CATALOG_URL ||
   process.env.CREEZIO_CATALOG_URL ||
   "";
 
-assert.ok(tunnelUrl, "TUNNEL_PROVISION_URL manquant (.env)");
-assert.ok(tunnelToken, "TUNNEL_PROVISION_TOKEN manquant (.env)");
+assert.ok(cfToken, "CF_API_TOKEN manquant (.env)");
+assert.ok(cfAccount, "CF_ACCOUNT_ID manquant (.env)");
+assert.ok(cfZone, "CF_ZONE_ID manquant (.env)");
 
-const health = await fetch(\`\${tunnelUrl}/health\`);
-assert.equal(health.status, 200, \`tunnel /health HTTP \${health.status}\`);
-const healthJson = await health.json();
-assert.equal(healthJson.ok, true);
+const CF = "https://api.cloudflare.com/client/v4";
+const headers = { Authorization: \`Bearer \${cfToken}\` };
 
-const slug = \`\${process.env.npm_package_name || "brand"}-smoke-\${Date.now().toString(36).slice(-6)}\`;
-const check = await fetch(\`\${tunnelUrl}/check?slug=\${slug}\`, {
-  headers: { Authorization: \`Bearer \${tunnelToken}\` },
+// Token : account d'abord, user ensuite (les deux sont supportés).
+let kind = "account";
+let verify = await fetch(\`\${CF}/accounts/\${cfAccount}/tokens/verify\`, {
+  headers,
 });
-assert.equal(check.status, 200, \`tunnel /check HTTP \${check.status}\`);
-const checkJson = await check.json();
-assert.equal(checkJson.ok, true);
+if (verify.status !== 200) {
+  kind = "user";
+  verify = await fetch(\`\${CF}/user/tokens/verify\`, { headers });
+}
+assert.equal(verify.status, 200, \`token CF verify HTTP \${verify.status}\`);
+const verifyJson = await verify.json();
+assert.equal(verifyJson.success, true, "token CF invalide");
 
-console.log("OK tunnel", JSON.stringify({
-  health: healthJson.service,
-  hostname: checkJson.hostname,
-  available: checkJson.available,
+const zone = await fetch(\`\${CF}/zones/\${cfZone}\`, { headers });
+assert.equal(zone.status, 200, \`zone CF HTTP \${zone.status}\`);
+const zoneJson = await zone.json();
+assert.equal(zoneJson.success, true, "zone CF illisible");
+
+console.log("OK cloudflare", JSON.stringify({
+  tokenKind: kind,
+  zone: zoneJson.result?.name,
 }));
 
 if (catalogUrl) {
@@ -207,11 +222,18 @@ export function renderEnvExample(model: ProductModel): string {
   const brandUpper = model.brandId.toUpperCase().replace(/[^A-Z0-9]/g, "_");
   return `# Copier vers \`.env\` (gitignoré). Secrets hors git.
 
-# --- Tunnel Cloudflare (provisioner) ---
-CREEZIO_TUNNEL_PROVISION_URL=https://example.invalid/tunnel-<TOKEN>
-CREEZIO_TUNNEL_PROVISION_TOKEN=<TOKEN>
-# ${brandUpper}_TUNNEL_PROVISION_URL=…
-# ${brandUpper}_TUNNEL_PROVISION_TOKEN=…
+# --- Tunnel Cloudflare (auto-provisioning par l'instance, API CF directe) ---
+# Account token scopé compte+zone (Zero Trust → Tunnels + DNS de la zone).
+CREEZIO_CF_API_TOKEN=<TOKEN>
+CREEZIO_CF_ACCOUNT_ID=<account-id>
+CREEZIO_CF_ZONE_ID=<zone-id>
+# CREEZIO_CF_ZONE_NAME=example.fr   (optionnel — dérivé via GET /zones/{id})
+# CREEZIO_CF_UNIVERSAL_SSL=1        (optionnel — hostnames nested
+#                                    n8n.{slug}.{zone} ; défaut flat
+#                                    n8n-{slug}.{zone})
+# CREEZIO_TUNNEL_SLUG=<slug>        (optionnel — défaut nom d'instance/brandId)
+# CREEZIO_DOMAIN=app.example.fr     (optionnel — hostname complet custom)
+# Variantes marque possibles : ${brandUpper}_CF_API_TOKEN=… etc.
 
 # --- Catalogue distant (optionnel) ---
 # CREEZIO_CATALOG_URL=https://example.invalid/catalog.db.gz

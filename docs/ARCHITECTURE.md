@@ -60,19 +60,31 @@ lance un container par instance. Le kernel harness
 (`startBrandKernelHarness`) boote l'OS sans Electron : API `/api/v1`, CRM
 web, embeds. Données par instance dans `docker-data/servers/server-N`.
 
-**Modèle standard (M2) — 1 instance = 1 stack compose autonome.** Chaque
-instance est un projet compose (`docker-data/stacks/<nom>/compose.yml`,
-généré) contenant TOUT : l'app (port **interne fixe 18791** dans le réseau
-du stack) + le tunnel **cloudflared en sidecar** (token dans `tunnel.env`
-chmod 600, ingress `http://app:18791` par nom de service). Le port hôte est
-indifférent : publié sur `127.0.0.1` en attribution auto pour le
-debug/healthcheck, jamais exposé publiquement — l'accès utilisateur passe
-obligatoirement par Cloudflare. Le kernel ne spawn plus cloudflared
-(`CREEZIO_TUNNEL_SIDECAR=1` : config seedée par env, ingress repointé via le
-provisioner avec `serviceHost=app`). Les instances legacy `docker run` se
-basculent par `creezio server-docker migrate-stack <nom>` (backup /data
-obligatoire, rollback automatique si KO). Détails opérationnels :
-`docker/server/README.md`.
+**Modèle standard (0.10.0) — 1 instance = 1 stack compose autonome, app
+seule.** Chaque instance est un projet compose
+(`docker-data/stacks/<nom>/compose.yml`, généré) contenant l'app (port
+**interne fixe 18791**) — **cloudflared tourne IN-PROCESS** dans le
+conteneur (binaire pinné de l'image, fin du sidecar). Le tunnel Cloudflare
+est **auto-provisionné par l'instance au boot** via l'API CF (client
+`@creezio/platform-core` `tunnel-cf-client`, zéro dépendance) : GET du
+tunnel persisté dans `/data` → 404/token absent → recréation idempotente
+(le CNAME suit le nouvel id), PUT ingress (`http://127.0.0.1:18791` +
+hostnames de services + éventuels hostnames supplémentaires multi-domaines
+sur le même tunnel), upsert DNS idempotent, sonde publique en arrière-plan.
+Le contrat (`CREEZIO_CF_API_TOKEN` / `_ACCOUNT_ID` / `_ZONE_ID` /
+`_ZONE_NAME` / `_UNIVERSAL_SSL` / `CREEZIO_TUNNEL_SLUG` / `CREEZIO_DOMAIN`)
+arrive par **`cf.env` chmod 600** écrit par `server-docker create` — jamais
+en clair dans `environment:` ; les secrets applicatifs vivent dans
+**`secrets.env` chmod 600** (règle généralisée). Hostnames de services :
+**flat** par défaut (`n8n-{slug}.{zone}`), **nested** (`n8n.{slug}.{zone}`)
+si `CREEZIO_CF_UNIVERSAL_SSL` truthy. Le port hôte est indifférent : publié
+sur `127.0.0.1` en attribution auto pour le debug/healthcheck, jamais exposé
+publiquement — l'accès utilisateur passe obligatoirement par Cloudflare. Les
+instances sidecar/legacy `docker run` se basculent par `creezio
+server-docker migrate-stack <nom>` (backup /data obligatoire, rollback
+automatique si KO). Pour les environnements éphémères (cloud agents), une
+**zone Cloudflare sandbox dédiée** est recommandée (token scopé à cette
+seule zone). Détails opérationnels : `docker/server/README.md`.
 
 ### 3. Client desktop « thin » (remote-only)
 

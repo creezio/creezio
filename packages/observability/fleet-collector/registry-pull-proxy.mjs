@@ -2,7 +2,8 @@
  * Proxy PULL-ONLY du registre d'images Docker de la flotte (F4).
  *
  * Exposé par le Creezio Server Admin sous `/v2/*` — l'ingress public
- * `registry.{zone}` (tunnel-provisioner `kind=registry`) pointe dessus, ce
+ * `registry.{zone}` (tunnel de l'instance admin, kind registry) pointe
+ * dessus, ce
  * qui rend les images versionnées résolubles depuis les VPS distants
  * (`docker pull registry.{zone}/creezio-server-<brand>:<tag>`).
  *

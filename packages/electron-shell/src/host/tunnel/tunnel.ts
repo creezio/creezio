@@ -1,19 +1,30 @@
 /**
- * Cloudflare Tunnel — service brand-agnostic (TF2 tunnel.ts).
- * Provision URLs / tokens injectés via HostRuntimeContext.tunnelProvision.
+ * Cloudflare Tunnel — service brand-agnostic.
+ *
+ * Auto-provisioning par l'instance elle-même via l'API Cloudflare (client
+ * `@creezio/platform-core` : tunnel-cf / tunnel-cf-client) — le provisioner
+ * VPS et le sidecar cloudflared sont supprimés (0.10.0, D3) : cloudflared
+ * tourne in-process, mode unique. Contrat d'env : `CREEZIO_CF_API_TOKEN` /
+ * `CREEZIO_CF_ACCOUNT_ID` / `CREEZIO_CF_ZONE_ID` (+ variantes marque),
+ * arrivant au conteneur via `cf.env` (chmod 600) généré par le CLI.
  */
 
 import { spawn, type ChildProcess } from "node:child_process";
 import fs from "node:fs";
-import http from "node:http";
-import https from "node:https";
 import path from "node:path";
 import {
   buildTunnelPublicUrls,
   deriveTunnelServiceUrl,
+  ensureCfTunnel,
   HERMES_DESKTOP_WEBUI_PORT,
+  missingCfTunnelEnvKeys,
   N8N_DESKTOP_PORT,
+  parseExtraHostnames,
+  resolveCfTunnelEnv,
+  resolveCfZoneName,
   resolveTunnelHostMode,
+  slugCheckLocal,
+  TUNNEL_UNIVERSAL_SSL_ENV,
   type TunnelEmbedService,
   type TunnelHostMode,
   type TunnelPublicUrls,
@@ -56,7 +67,7 @@ export type TunnelService = {
   configureTunnelIngress: (ports: TunnelIngressPorts) => Promise<void>;
   /**
    * Surface publique locale (sans Cloudflare) — MCP = `{publicUrl}/mcp`.
-   * Utilisé quand le provisioner distant n’est pas joignable / en harness.
+   * Utilisé quand l'auto-provisioning CF n'est pas configuré / en harness.
    */
   enableLocalPublicSurface: (opts: {
     localPort: number;
@@ -70,57 +81,6 @@ export type TunnelService = {
   forgetTunnel: () => void;
   publicUrlForServer: () => string | null;
 };
-
-function httpJson(
-  method: string,
-  urlStr: string,
-  token: string,
-  body?: unknown,
-): Promise<{ status: number; json: Record<string, unknown> }> {
-  return new Promise((resolve, reject) => {
-    const u = new URL(urlStr);
-    const lib = u.protocol === "https:" ? https : http;
-    const payload = body ? JSON.stringify(body) : null;
-    const req = lib.request(
-      {
-        protocol: u.protocol,
-        hostname: u.hostname,
-        port: u.port || (u.protocol === "https:" ? 443 : 80),
-        path: u.pathname + u.search,
-        method,
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-          ...(payload
-            ? { "Content-Length": Buffer.byteLength(payload) }
-            : {}),
-        },
-        timeout: 30000,
-      },
-      (res) => {
-        const chunks: Buffer[] = [];
-        res.on("data", (c) => chunks.push(c));
-        res.on("end", () => {
-          const raw = Buffer.concat(chunks).toString("utf8");
-          let json: Record<string, unknown> = {};
-          try {
-            json = raw ? (JSON.parse(raw) as Record<string, unknown>) : {};
-          } catch {
-            json = { error: raw.slice(0, 200) };
-          }
-          resolve({ status: res.statusCode || 0, json });
-        });
-      },
-    );
-    req.on("timeout", () => {
-      req.destroy();
-      reject(new Error("Timeout provisioner tunnel"));
-    });
-    req.on("error", reject);
-    if (payload) req.write(payload);
-    req.end();
-  });
-}
 
 function cloudflaredBinary(
   ctx: HostRuntimeContext,
@@ -155,53 +115,50 @@ export function createTunnelService(opts: {
   let lastError: string | null = null;
   let online = false;
 
-  /**
-   * Mode sidecar (M2) : cloudflared tourne dans un conteneur du stack
-   * compose — le kernel ne spawn plus rien. L'ingress pointe le nom de
-   * service (`CREEZIO_TUNNEL_SERVICE_HOST`, défaut "app") et la config
-   * tunnel peut être seedée par env (stack provisionné par le CLI hôte).
-   */
-  const sidecar = /^(1|true|yes)$/i.test(
-    String(process.env.CREEZIO_TUNNEL_SIDECAR || "").trim(),
-  );
-  const serviceHost = () =>
-    String(process.env.CREEZIO_TUNNEL_SERVICE_HOST || "app").trim() || "app";
-
-  function provision() {
-    const p = ctx.tunnelProvision;
-    if (!p?.baseUrl || !p?.token) {
-      throw new Error(
-        "tunnelProvision manquant sur HostRuntimeContext (baseUrl + token)",
-      );
-    }
-    return p;
+  /** Contrat CF résolu depuis l'env (variante marque d'abord). */
+  function cfEnv() {
+    return resolveCfTunnelEnv(process.env, ctx.manifest.envPrefix);
   }
 
-  /** Env CREEZIO_TUNNEL_FLAT_HOSTS > manifest.tunnelHostMode > nested. */
+  function cfEnvError(): string {
+    const missing = missingCfTunnelEnvKeys(
+      process.env,
+      ctx.manifest.envPrefix,
+    ).join(", ");
+    return `Auto-provisioning tunnel non configuré (${missing} requis — cf.env de l'instance)`;
+  }
+
+  /**
+   * Mode de hostnames (D2, mécanique unique) : env
+   * `CREEZIO_CF_UNIVERSAL_SSL` truthy → nested ; sinon flat (défaut).
+   * `manifest.tunnelHostMode` reste le défaut marque quand l'env est absente.
+   */
   function brandHostMode(): TunnelHostMode {
-    const env = String(process.env.CREEZIO_TUNNEL_FLAT_HOSTS || "").trim();
-    if (env) return resolveTunnelHostMode();
+    const envRaw = String(process.env[TUNNEL_UNIVERSAL_SSL_ENV] || "").trim();
+    if (envRaw) return resolveTunnelHostMode();
     return resolveTunnelHostMode(ctx.manifest.tunnelHostMode);
+  }
+
+  /** `CREEZIO_DOMAIN` (variante marque d'abord) — hostname complet custom. */
+  function instanceDomain(): string {
+    const prefix = ctx.manifest.envPrefix;
+    return (
+      String(process.env[`${prefix}_DOMAIN`] || "").trim() ||
+      String(process.env.CREEZIO_DOMAIN || "").trim()
+    ).toLowerCase();
+  }
+
+  /** D1 — hostnames supplémentaires sur le même tunnel (virgules). */
+  function extraHostnames(): string[] {
+    const prefix = ctx.manifest.envPrefix;
+    return parseExtraHostnames(
+      process.env[`${prefix}_TUNNEL_EXTRA_HOSTNAMES`] ||
+        process.env.CREEZIO_TUNNEL_EXTRA_HOSTNAMES,
+    );
   }
 
   function urlsForHostname(hostname: string): TunnelPublicUrls {
     return buildTunnelPublicUrls(hostname, brandHostMode());
-  }
-
-  function parseProvisionerPublicUrls(
-    raw: unknown,
-    hostname: string,
-  ): TunnelPublicUrls {
-    if (raw && typeof raw === "object") {
-      const o = raw as Record<string, unknown>;
-      const crm = typeof o.crm === "string" ? o.crm : "";
-      const n8n = typeof o.n8n === "string" ? o.n8n : "";
-      const hermes = typeof o.hermes === "string" ? o.hermes : "";
-      if (crm && n8n && hermes) {
-        return { crm, n8n, hermes };
-      }
-    }
-    return urlsForHostname(hostname);
   }
 
   function getTunnelStatus(): TunnelRuntimeStatus {
@@ -234,177 +191,152 @@ export function createTunnelService(opts: {
       publicUrls,
       online: isLocalSurface
         ? online
-        : sidecar
-          ? online // sidecar : pas de child in-process — seed/configure suffisent
-          : online && Boolean(child && !child.killed),
+        : online && Boolean(child && !child.killed),
       error: lastError,
       pcMustBeOn: true,
     };
   }
 
   async function checkTunnelSlug(slug: string) {
-    const p = provision();
-    const { status, json } = await httpJson(
-      "GET",
-      `${p.baseUrl}/check?slug=${encodeURIComponent(slug)}`,
-      p.token,
-    );
-    if (status !== 200) {
-      return {
-        available: false,
-        reason: String(json.error || `HTTP ${status}`),
-      };
+    const mode = brandHostMode();
+    const local = slugCheckLocal(slug, { hostMode: mode });
+    if (!local.available) {
+      return { available: false, reason: local.reason };
+    }
+    const env = cfEnv();
+    let zone = "";
+    if (env) {
+      try {
+        zone = await resolveCfZoneName(env);
+      } catch (err) {
+        return {
+          available: false,
+          reason: err instanceof Error ? err.message : String(err),
+        };
+      }
+    } else {
+      zone = (
+        process.env.CREEZIO_CF_ZONE_NAME ||
+        ctx.manifest.tunnelRootDomain ||
+        ""
+      ).trim();
     }
     return {
-      available: Boolean(json.available),
-      reason: json.reason ? String(json.reason) : undefined,
-      hostname: json.hostname ? String(json.hostname) : undefined,
+      available: true,
+      hostname: `${slug}.${zone || "localhost"}`,
     };
   }
 
   async function reserveTunnel(slug: string, localPort: number) {
-    // Stack compose : le tunnel est provisionné par le CLI hôte — le token
-    // et le hostname arrivent par env (tunnel.env du stack). On seede le
-    // store local sans re-réserver (le /reserve provisioner n'est pas
-    // idempotent : un slug pris renvoie 409).
-    if (sidecar) {
-      const envToken = String(process.env.CREEZIO_TUNNEL_TOKEN || "").trim();
-      if (!envToken) {
-        return {
-          ok: false as const,
-          error:
-            "CREEZIO_TUNNEL_SIDECAR=1 sans CREEZIO_TUNNEL_TOKEN — stack incomplet (creezio server-docker migrate-stack <nom>)",
-        };
-      }
-      const hostname = (
-        process.env.CREEZIO_TUNNEL_HOSTNAME || `${slug}.${ctx.manifest.tunnelRootDomain}`
-      ).trim();
-      const publicUrl = `https://${hostname}`;
-      store.setTunnelConfig({
+    const env = cfEnv();
+    if (!env) {
+      return { ok: false as const, error: cfEnvError() };
+    }
+    // Réutilisation du tunnel persisté uniquement pour le MÊME slug — un
+    // changement de slug crée un tunnel neuf (l'ancien est nettoyé via
+    // `server-docker rm` / forgetTunnel, comme avant).
+    const existing = store.getTunnelConfig();
+    const reusable =
+      existing &&
+      existing.slug === slug &&
+      Boolean(existing.tunnelId) &&
+      Boolean(existing.tunnelToken) &&
+      existing.tunnelToken !== "local";
+    try {
+      const result = await ensureCfTunnel(env, {
         slug,
-        hostname,
-        publicUrl,
-        tunnelId: String(process.env.CREEZIO_TUNNEL_ID || "").trim(),
-        tunnelToken: envToken,
-        localPort,
-        publicUrls: urlsForHostname(hostname),
+        domain: instanceDomain() || undefined,
+        ports: {
+          crmPort: localPort,
+          n8nPort: N8N_DESKTOP_PORT,
+          hermesPort: HERMES_DESKTOP_WEBUI_PORT,
+        },
         hostMode: brandHostMode(),
-        emailDomain: `${slug}.mail.${ctx.manifest.tunnelRootDomain}`,
+        extraHostnames: extraHostnames(),
+        stored: reusable
+          ? { tunnelId: existing!.tunnelId, tunnelToken: existing!.tunnelToken }
+          : null,
+        log: (line) => hostLog(ctx, "tunnel", line),
+      });
+      const emailSecret = (
+        process.env[`${ctx.manifest.envPrefix}_EMAIL_INBOUND_SECRET`] ||
+        process.env.CREEZIO_EMAIL_INBOUND_SECRET ||
+        process.env.EMAIL_INBOUND_SECRET ||
+        ""
+      ).trim();
+      if (emailSecret) store.setEmailInboundSecret(emailSecret);
+      const publicUrls =
+        "n8n" in result.publicUrls
+          ? result.publicUrls
+          : urlsForHostname(result.hostname);
+      store.setTunnelConfig({
+        slug: result.slug,
+        hostname: result.hostname,
+        publicUrl: result.publicUrl,
+        tunnelId: result.tunnelId,
+        tunnelToken: result.tunnelToken,
+        localPort,
+        publicUrls,
+        hostMode: result.hostMode,
+        emailDomain:
+          result.emailDomain ||
+          `${result.slug}.mail.${ctx.manifest.tunnelRootDomain}`,
         servicePorts: {
           n8n: N8N_DESKTOP_PORT,
           hermes: HERMES_DESKTOP_WEBUI_PORT,
         },
       });
-      return { ok: true as const, hostname, publicUrl };
+      return {
+        ok: true as const,
+        hostname: result.hostname,
+        publicUrl: result.publicUrl,
+      };
+    } catch (err) {
+      return {
+        ok: false as const,
+        error: err instanceof Error ? err.message : String(err),
+      };
     }
-    const p = provision();
-    const { status, json } = await httpJson(
-      "POST",
-      `${p.baseUrl}/reserve`,
-      p.token,
-      {
-        slug,
-        installId: ctx.getInstallId?.() ?? "unknown",
-        localPort,
-      },
-    );
-    if (status !== 200 || !json.ok) {
-      return { ok: false as const, error: String(json.error || `HTTP ${status}`) };
-    }
-    const tunnelToken = String(json.tunnelToken || "");
-    const hostname = String(json.hostname || "");
-    const publicUrl = String(json.publicUrl || `https://${hostname}`);
-    const tunnelId = String(json.tunnelId || "");
-    if (!tunnelToken || !hostname || !tunnelId) {
-      return { ok: false as const, error: "Réponse provisioner incomplete" };
-    }
-    const publicUrls = parseProvisionerPublicUrls(json.publicUrls, hostname);
-    const hostMode =
-      json.hostMode === "flat" || json.hostMode === "nested"
-        ? (json.hostMode as TunnelHostMode)
-        : brandHostMode();
-    const mailRoot =
-      p.mailRootDomain || `mail.${ctx.manifest.tunnelRootDomain}`;
-    const emailDomain =
-      typeof json.emailDomain === "string" && json.emailDomain
-        ? String(json.emailDomain)
-        : `${String(json.slug || slug)}.${mailRoot}`;
-    const emailInboundSecret =
-      typeof json.emailInboundSecret === "string"
-        ? String(json.emailInboundSecret).trim()
-        : "";
-    if (emailInboundSecret) store.setEmailInboundSecret(emailInboundSecret);
-    store.setTunnelConfig({
-      slug: String(json.slug || slug),
-      hostname,
-      publicUrl,
-      tunnelId,
-      tunnelToken,
-      localPort,
-      publicUrls,
-      hostMode,
-      emailDomain,
-      servicePorts: {
-        n8n: N8N_DESKTOP_PORT,
-        hermes: HERMES_DESKTOP_WEBUI_PORT,
-      },
-    });
-    return { ok: true as const, hostname, publicUrl };
   }
 
   async function configureTunnelIngress(ports: TunnelIngressPorts) {
     const cfg = store.getTunnelConfig();
     if (!cfg) return;
-    const p = provision();
+    // Surface locale (harness / sans CF) : rien à configurer côté Cloudflare.
+    if (!cfg.tunnelId || !cfg.tunnelToken || cfg.tunnelToken === "local") {
+      return;
+    }
+    const env = cfEnv();
+    if (!env) {
+      throw new Error(cfEnvError());
+    }
     const n8nPort = ports.n8nPort ?? cfg.servicePorts?.n8n ?? N8N_DESKTOP_PORT;
     const hermesPort =
       ports.hermesPort ??
       cfg.servicePorts?.hermes ??
       HERMES_DESKTOP_WEBUI_PORT;
-    const { status, json } = await httpJson(
-      "POST",
-      `${p.baseUrl}/configure`,
-      p.token,
-      {
-        slug: cfg.slug,
-        tunnelId: cfg.tunnelId,
-        hostname: cfg.hostname,
-        localPort: ports.crmPort,
-        crmPort: ports.crmPort,
-        n8nPort,
-        hermesPort,
-        ...(sidecar ? { serviceHost: serviceHost() } : {}),
-      },
-    );
-    if (status !== 200 || !json.ok) {
-      throw new Error(String(json.error || `configure tunnel HTTP ${status}`));
-    }
-    const publicUrls = parseProvisionerPublicUrls(
-      json.publicUrls,
-      cfg.hostname,
-    );
-    const hostMode =
-      json.hostMode === "flat" || json.hostMode === "nested"
-        ? (json.hostMode as TunnelHostMode)
-        : brandHostMode();
-    const mailRoot =
-      p.mailRootDomain || `mail.${ctx.manifest.tunnelRootDomain}`;
-    const emailDomain =
-      typeof json.emailDomain === "string" && json.emailDomain
-        ? String(json.emailDomain)
-        : cfg.emailDomain || `${cfg.slug}.${mailRoot}`;
-    const emailInboundSecret =
-      typeof json.emailInboundSecret === "string"
-        ? String(json.emailInboundSecret).trim()
-        : "";
-    if (emailInboundSecret) store.setEmailInboundSecret(emailInboundSecret);
+    // ensureCfTunnel = PUT ingress (ports à jour, règle agent préservée) +
+    // DNS idempotent + self-healing si le tunnel a disparu côté CF.
+    const result = await ensureCfTunnel(env, {
+      slug: cfg.slug,
+      domain: cfg.hostname,
+      ports: { crmPort: ports.crmPort, n8nPort, hermesPort },
+      hostMode: cfg.hostMode ?? brandHostMode(),
+      extraHostnames: extraHostnames(),
+      stored: { tunnelId: cfg.tunnelId, tunnelToken: cfg.tunnelToken },
+      log: (line) => hostLog(ctx, "tunnel", line),
+    });
+    const publicUrls =
+      "n8n" in result.publicUrls ? result.publicUrls : cfg.publicUrls;
     store.setTunnelConfig({
       ...cfg,
+      tunnelId: result.tunnelId,
+      tunnelToken: result.tunnelToken,
       localPort: ports.crmPort,
       servicePorts: { n8n: n8nPort, hermes: hermesPort },
       publicUrls,
-      hostMode,
-      emailDomain,
+      hostMode: result.hostMode,
+      emailDomain: result.emailDomain || cfg.emailDomain,
     });
     hostLog(
       ctx,
@@ -475,20 +407,7 @@ export function createTunnelService(opts: {
 
   async function startCloudflared(): Promise<void> {
     const cfg = store.getTunnelConfig();
-    if (sidecar) {
-      // Le sidecar cloudflared du stack compose tourne déjà (tunnel.env) —
-      // le kernel ne spawn rien. L'état online est confirmé par la 1re
-      // requête publique ; ici on se fie à la config seedée.
-      online = Boolean(cfg?.tunnelToken);
-      lastError = null;
-      hostLog(
-        ctx,
-        "tunnel",
-        "cloudflared géré par le sidecar compose (CREEZIO_TUNNEL_SIDECAR=1)",
-      );
-      return;
-    }
-    if (!cfg?.tunnelToken) {
+    if (!cfg?.tunnelToken || cfg.tunnelToken === "local") {
       lastError = null;
       online = false;
       return;

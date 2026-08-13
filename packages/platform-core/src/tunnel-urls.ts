@@ -1,7 +1,7 @@
 /**
  * URLs publiques des embeds via tunnel Cloudflare.
  *
- * Deux modes d'hôtes (SoT partagé avec docker/tunnel-provisioner) :
+ * Deux modes d'hôtes (SoT partagée avec `tunnel-cf.ts`) :
  *
  *   nested (défaut, rétrocompat) — certificats Advanced Certificate Manager
  *     CRM     : https://{slug}.{zone}
@@ -15,8 +15,10 @@
  *     Hermes  : https://hermes-{slug}.{zone}
  *     agent   : https://agent-{slug}.{zone}
  *
- * Activation : `CREEZIO_TUNNEL_FLAT_HOSTS=1` (env) ou opts/manifest
- * `hostMode: "flat"` / `tunnelHostMode: "flat"`. Défaut = nested.
+ * Pilotage (D2, mécanique unique) : env `CREEZIO_CF_UNIVERSAL_SSL` truthy →
+ * nested ; sinon (défaut) → flat. Un explicite `hostMode` (opts / config
+ * persistée) prime toujours l'env. Remplace `CREEZIO_TUNNEL_FLAT_HOSTS`
+ * (supprimé en 0.10.0 — pas de double mécanisme).
  */
 
 export const TUNNEL_EMBED_SERVICES = ["n8n", "hermes"] as const;
@@ -39,8 +41,12 @@ export type TunnelUrlOpts = {
   hostMode?: TunnelHostMode;
 };
 
-/** Nom de l'env qui active les hostnames aplatis (Universal SSL). */
-export const TUNNEL_FLAT_HOSTS_ENV = "CREEZIO_TUNNEL_FLAT_HOSTS";
+/**
+ * Env du mode de hostnames (D2) : truthy → nested (`n8n.{slug}.{zone}`,
+ * zones avec certificat multi-niveaux) ; absent/falsy → flat
+ * (`n8n-{slug}.{zone}`, compatible Universal SSL — défaut).
+ */
+export const TUNNEL_UNIVERSAL_SSL_ENV = "CREEZIO_CF_UNIVERSAL_SSL";
 
 function cleanHost(raw: string): string {
   return String(raw || "")
@@ -58,8 +64,8 @@ function escapeRegex(s: string): string {
  * Résout nested | flat.
  * - explicit "flat" | true | "1" → flat
  * - explicit "nested" | false | "0" → nested
- * - sinon env CREEZIO_TUNNEL_FLAT_HOSTS=1|true → flat
- * - défaut → nested (rétrocompat TempoFlow / zones ACM)
+ * - sinon env CREEZIO_CF_UNIVERSAL_SSL=1|true → nested
+ * - défaut → flat (Universal SSL, 1 niveau de sous-domaine)
  */
 export function resolveTunnelHostMode(
   explicit?: TunnelHostMode | boolean | string | null,
@@ -70,13 +76,13 @@ export function resolveTunnelHostMode(
   if (explicit === "nested" || explicit === false || explicit === "0") {
     return "nested";
   }
-  const env = String(process.env[TUNNEL_FLAT_HOSTS_ENV] || "")
+  const env = String(process.env[TUNNEL_UNIVERSAL_SSL_ENV] || "")
     .trim()
     .toLowerCase();
   if (env === "1" || env === "true" || env === "yes" || env === "on") {
-    return "flat";
+    return "nested";
   }
-  return "nested";
+  return "flat";
 }
 
 function modeFromOpts(opts?: TunnelUrlOpts | TunnelHostMode): TunnelHostMode {

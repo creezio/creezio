@@ -28,8 +28,11 @@
 | tempoflow : `/home/deploy/actions-runners/tempoflow3` | runner self-hosted (`actions-runner-tempoflow3.service`) |
 | tempoflow : `127.0.0.1:5000` | registry d'images local (container `creezio-registry`) |
 
-Tunnel-provisioner : fluxpro `:8667`, tempoflow `:8666`
-(`CREEZIO_TUNNEL_PROVISION_URL=http://172.17.0.1:<port>` dans les env d'instances).
+Tunnel Cloudflare : **auto-provisionné par chaque instance** au boot via
+l'API Cloudflare (0.10.0 — fin du provisioner VPS et du sidecar). Le contrat
+`CREEZIO_CF_API_TOKEN` / `CREEZIO_CF_ACCOUNT_ID` / `CREEZIO_CF_ZONE_ID`
+(+/ `_ZONE_NAME`, `_UNIVERSAL_SSL`) arrive au conteneur via `cf.env`
+(chmod 600, généré par `server-docker create` — §7.3).
 
 ### Instances prod et domaines
 
@@ -44,10 +47,12 @@ Tunnel-provisioner : fluxpro `:8667`, tempoflow `:8666`
 Registre d'instances : `{brand-root}/docker-data/servers.json` (gitignoré —
 absent du checkout runner, présent sur le clone serveur).
 
-> **État 2026-08-13** : toutes les instances (prod + admin, deux marques)
-> tournent en stacks compose M2 + sidecar cloudflared (ports hôtes loopback
-> auto, aucun port public hors tunnel). La bascule d'une instance legacy
-> `docker run` se fait par `creezio server-docker migrate-stack <nom>`.
+> **État 0.10.0** : toutes les instances (prod + admin, deux marques)
+> tournent en stacks compose autonomes **app seule** — cloudflared tourne
+> IN-PROCESS dans le conteneur de l'app (binaire de l'image), le tunnel est
+> auto-provisionné via l'API Cloudflare au boot (ports hôtes loopback auto,
+> aucun port public hors tunnel). La bascule d'une instance sidecar/legacy
+> se fait par `creezio server-docker migrate-stack <nom>`.
 
 ### Repos GitHub (org `creezio`, tous privés)
 
@@ -179,17 +184,20 @@ provisionne le tunnel, écrit le stack M2, attend le boot. Update ensuite :
 --backup`. Une app qui dévie de ce chemin = un bug du standard → corriger le
 kit/factory (PR), jamais contourner sur une seule app.
 
-**Modèle cible ports/tunnel (M2, mergé 2026-08-10, #55)** : 1 instance = 1
-stack compose autonome (`docker-data/stacks/<nom>/compose.yml`, généré — ne
-pas éditer) : **app** (port interne fixe `18791` dans le réseau du stack,
-healthcheck `/api/v1/core/health`) + **cloudflared sidecar** (token dans
-`tunnel.env` chmod 600 — jamais dans `ps`, le registre ou `docker inspect` ;
-ingress `http://app:18791` par nom de service). Port hôte **loopback auto**
-(`127.0.0.1::18791`) pour debug/healthcheck seulement — fini les collisions
-entre instances ; **zéro port public**, l'accès utilisateur passe par
-Cloudflare. Kernel en mode sidecar : `CREEZIO_TUNNEL_SIDECAR=1` (config
-seedée par env, cloudflared non spawné, ingress repointé via le provisioner
-avec `serviceHost=app`).
+**Modèle cible ports/tunnel (0.10.0)** : 1 instance = 1 stack compose
+autonome (`docker-data/stacks/<nom>/compose.yml`, généré — ne pas éditer) :
+**app seule** (port interne fixe `18791`, healthcheck
+`/api/v1/core/health`). **cloudflared tourne IN-PROCESS** dans le conteneur
+de l'app (binaire `/opt/creezio/bin/cloudflared` pinné dans l'image) — fini
+le sidecar. Le tunnel est **auto-provisionné au boot** via l'API Cloudflare
+: GET tunnel du store `/data` → 404/token absent → recréation (idempotent,
+le CNAME suit le nouvel id), PUT ingress (`http://127.0.0.1:18791` +
+services), upsert DNS, sonde publique en arrière-plan (non fatale). Le
+contrat CF arrive par **`cf.env` chmod 600** (écrit par `create`, jamais
+dans `environment:` du compose) ; les secrets applicatifs partent dans
+**`secrets.env` chmod 600** (règle d'audit généralisée). Port hôte
+**loopback auto** (`127.0.0.1::18791`) pour debug/healthcheck seulement —
+**zéro port public**, l'accès utilisateur passe par Cloudflare.
 
 **Healthchecks de déploiement** (pattern winhub `deploy.yml`) : après update,
 `GET /health`, `/login`, `/inscription` sur l'URL publique → 200 exigé.
@@ -199,11 +207,12 @@ journal ops `/data/ops/*.jsonl`.
 
 ## 7. Mécaniques internes — image, create, tunnel, sandbox
 
-> Ce que `server-docker` et le provisioner font sous le capot. Lu une fois
-> ici = jamais redécouvert en pleine mission. SoT code :
+> Ce que `server-docker` et l'auto-provisioning tunnel font sous le
+> capot. Lu une fois ici = jamais redécouvert en pleine mission. SoT code :
 > `docker/server/Dockerfile`, `packages/factory/src/server-docker-cli.ts`,
 > `packages/observability/fleet-collector/instance-stack.mjs`,
-> `docker/tunnel-provisioner/{lib,server}.mjs`.
+> `packages/platform-core/src/tunnel-cf{,-client}.ts` (client API CF +
+> fonctions pures, zéro dépendance).
 
 ### 7.1 Build d'image app (`docker/server/Dockerfile`)
 
@@ -253,16 +262,19 @@ hors manifests exige un COPY dédié dans le Dockerfile de sandbox.
    le `.env` racine marque — rien n'est inventé), `--env K=V`, `--browser`,
    `--no-stack` (legacy `docker run`).
 4. Crée `docker-data/servers/<nom>/` (futur `/data`).
-5. **Stack M2 (défaut)** : si `CREEZIO_TUNNEL_PROVISION_URL` **et**
-   `CREEZIO_TUNNEL_PROVISION_TOKEN` sont posés → `POST /reserve` au
-   provisioner (`slug = CREEZIO_TUNNEL_SLUG || <nom>`, `crmPort: 18791`,
-   `serviceHost: "app"`) → `{tunnelToken, hostname, tunnelId}`. Puis
-   écriture de `docker-data/stacks/<nom>/compose.yml` (**généré**, régénéré
-   à chaque update — ne jamais éditer) + `tunnel.env` **chmod 600**
-   (`TUNNEL_TOKEN` + seed kernel — jamais dans `ps`, le registre ou
-   `docker inspect`), `docker compose up -d`, port hôte réel relu via
-   `docker inspect` et enregistré. Sans URL/token provisioner : stack local
-   sans tunnel (loopback seul).
+5. **Stack (défaut)** : si `CREEZIO_CF_API_TOKEN` +
+   `CREEZIO_CF_ACCOUNT_ID` + `CREEZIO_CF_ZONE_ID` sont posés (env process
+   PUIS `.env` racine marque) → le token est **vérifié** (`GET
+   /accounts/{id}/tokens/verify`, fallback `/user/tokens/verify`) puis le
+   contrat CF complet (`CREEZIO_CF_*` + `CREEZIO_TUNNEL_SLUG` +
+   `CREEZIO_DOMAIN` éventuels) est écrit dans
+   `docker-data/stacks/<nom>/cf.env` **chmod 600** — **aucune** création de
+   tunnel à ce stade : l'instance s'auto-provisionne au boot (§7.3). Puis
+   écriture du `compose.yml` (**généré**, régénéré à chaque update — ne
+   jamais éditer ; `env_file: cf.env` + `secrets.env` éventuel, jamais de
+   secret dans `environment:`), `docker compose up -d`, port hôte réel relu
+   via `docker inspect` et enregistré. Sans contrat CF : stack local sans
+   tunnel (loopback seul).
 6. Attend le boot (`GET /api/v1/os/boot-status` jusqu'à ready) puis affiche
    l'URL loopback.
 
@@ -270,51 +282,58 @@ Datas (tout gitignoré) : registre `docker-data/servers.json` · volume
 `/data` = `docker-data/servers/<nom>` · stack `docker-data/stacks/<nom>/` ·
 backups `docker-data/backups/<nom>-<stamp>.tar.gz`.
 
-### 7.3 Tunnel provisioner (`docker/tunnel-provisioner/`)
+### 7.3 Tunnel Cloudflare auto-provisionné (0.10.0)
 
-HTTP Bearer-only (`CREEZIO_TUNNEL_PROVISION_TOKEN`), écoute loopback +
-gateway bridge `172.17.0.1` (joignable depuis les containers). **fluxpro**
-: unité systemd **user** `creezio-tunnel-provisioner-winhub.service`, port
-**8667**, env `/home/fidus/creezio-fleet/winhub/tunnel-provisioner.env`
-(state `…/winhub/tunnel-state/<slug>.json` ; CF env
-`…/winhub/.cloudflare.env` → **`CF_ZONE_NAME=winhub.fr`**, prefix tunnel
-`winhub-server-`, **`CREEZIO_TUNNEL_FLAT_HOSTS=1`**). **tempoflow** : port
-8666, même layout sous `/opt/docker/`. Une zone = un provisioner + son env
-CF (`CF_API_TOKEN`/`CF_ZONE_ID`/`CF_ZONE_NAME`) — nouvelle zone = dupliquer
-le service avec un autre fichier env.
+**Une seule méthode pour toutes les instances, admins comprises** : le
+conteneur crée/configure son tunnel lui-même via l'API Cloudflare au boot
+(cloudflared in-process). Plus de service VPS, plus de sidecar, plus de
+reverse-proxy hôte — un tunnel CF par instance, piloté par env.
 
-| Endpoint | Rôle |
+**Contrat d'environnement** (livré via `cf.env` chmod 600, écrit par
+`server-docker create` — jamais en clair dans `compose.yml`) :
+
+| Variable | Rôle |
 |---|---|
-| `GET /health` | Sans auth → `{ok, hostMode}`. |
-| `GET /check?slug=` | Dispo (format, réservés, state, DNS). |
-| `GET /state?slug=` | Réservation courante — **jamais** le token. |
-| `POST /reserve` | Crée le tunnel CF (`<prefix><slug>`), PUT ingress (`{slug}.zone` → `serviceHost:crmPort`, + n8n/hermes, 404 final), DNS CNAME, MX/SPF `{slug}.mail.zone`, state 0600. **`tunnelToken` restitué uniquement ici** — le consommer tout de suite. |
-| `POST /configure` | Re-PUT ingress (ports/agent/`serviceHost` conservés du state si omis) + DNS ensure. |
-| `POST /deprovision` | Nettoie DNS (nested+flat+mail), supprime le tunnel (connexions coupées d'abord) et le state. |
+| `CREEZIO_CF_API_TOKEN` | **requis** — token CF scopé compte+zone (Zero Trust → Tunnels : edit ; DNS de la zone : edit) |
+| `CREEZIO_CF_ACCOUNT_ID` | **requis** |
+| `CREEZIO_CF_ZONE_ID` | **requis** |
+| `CREEZIO_CF_ZONE_NAME` | optionnel — dérivé via `GET /zones/{zone_id}` |
+| `CREEZIO_CF_UNIVERSAL_SSL` | optionnel — truthy → hostnames **nested** (`n8n.{slug}.{zone}`) ; défaut **flat** (`n8n-{slug}.{zone}`) |
+| `CREEZIO_TUNNEL_SLUG` | optionnel — défaut nom d'instance/brandId |
+| `CREEZIO_DOMAIN` | optionnel — hostname complet custom (défaut `{slug}.{zoneName}`) |
+| `CREEZIO_TUNNEL_EXTRA_HOSTNAMES` | optionnel — multi-domaines D1 (virgules) : hostnames supplémentaires servis par le MÊME tunnel (ex. `console.winhub.fr` + `app.winhub.fr` sur le tunnel de l'admin) |
 
-**Mode flat (winhub.fr)** : hostnames **plats** `n8n-{slug}.winhub.fr` /
-`hermes-{slug}.winhub.fr` / `agent-{slug}.winhub.fr` (CNAMEs plats, pas de
-`*.{slug}`) — Universal SSL ne couvre qu'**un** niveau de wildcard
-(`*.winhub.fr` couvre `{slug}.winhub.fr` et `n8n-{slug}.winhub.fr`, **pas**
-`n8n.{slug}.winhub.fr`). Défaut historique = nested. Détail :
+**Séquence de boot** (kernel, phase tunnel — `harness-server-phases.ts`) :
+lecture du store `/data/<brand>-config.json` (`tunnelMeta` + `tunnelToken`,
+format `{plain}` géré) → `GET cfd_tunnel/{id}` → 404 ou token absent →
+**recréation** via API et persistance (un `/data` wipé aboutit à un tunnel
+recréé proprement, CNAME mis à jour) → `PUT configurations` (ingress
+`http://127.0.0.1:18791` + services selon le mode de hostnames + extras D1,
+règle `agent` existante préservée) → **upsert DNS idempotent** (CNAME
+`{hostname}` → `{tunnelId}.cfargotunnel.com`, proxied — jamais d'échec si
+déjà à la bonne cible) → spawn cloudflared in-process → sonde publique
+`https://<domaine>/api/v1/core/health` en arrière-plan (retry borné, non
+fatale).
+
+**Mode flat (défaut)** : hostnames **plats** `n8n-{slug}.{zone}` /
+`hermes-{slug}.{zone}` / `agent-{slug}.{zone}` (CNAMEs plats, pas de
+`*.{slug}`) — Universal SSL ne couvre qu'**un** niveau de wildcard. Poser
+`CREEZIO_CF_UNIVERSAL_SSL=1` (certificat Advanced/Total) → mode **nested**
+`n8n.{slug}.{zone}` + wildcard `*.{slug}.{zone}`. Détail :
 [adr/ADR-tunnel-flat-hosts.md](./adr/ADR-tunnel-flat-hosts.md).
 
-**Slugs réservés** (`RESERVED_SLUGS` dans `lib.mjs`) : `demo`, `test`,
-`dev`, `staging`, `sandbox`, `admin`, `app`, `api`… refusés par `/reserve`
-(409 « Slug réservé »). **Un hostname de test = slug NON réservé**
-(`recette-01`, `qa-foo`…) — `demo.winhub.fr` est irréservable.
+**Slugs réservés** (`RESERVED_SLUGS` dans
+`packages/platform-core/src/tunnel-cf.ts`) : `demo`, `test`, `dev`,
+`staging`, `sandbox`, `admin`, `app`, `api`… refusés à la création. **Un
+hostname de test = slug NON réservé** (`recette-01`, `qa-foo`…) —
+`demo.winhub.fr` est irréservable.
 
-Provision manuelle d'un hostname de test (stack : `serviceHost:"app"`) :
-
-```bash
-set -a && . /home/fidus/winhub/.env && set +a   # PROVISION_URL + TOKEN
-curl -s -H "Authorization: Bearer $CREEZIO_TUNNEL_PROVISION_TOKEN" \
-  "$CREEZIO_TUNNEL_PROVISION_URL/check?slug=recette-01"
-curl -s -X POST -H "Authorization: Bearer $CREEZIO_TUNNEL_PROVISION_TOKEN" \
-  -H 'content-type: application/json' \
-  -d '{"slug":"recette-01","crmPort":18791,"serviceHost":"app"}' \
-  "$CREEZIO_TUNNEL_PROVISION_URL/reserve"   # réponse = tunnelToken à conserver
-```
+**Cycle de vie** : `server-docker create` écrit `cf.env` (aucun appel CF
+créateur — tout se fait au boot) ; `server-docker rm <nom>` **déprovisionne
+via l'API CF directe** (DNS nested+flat+mail+extras supprimés, tunnel
+supprimé — connexions coupées d'abord) avant de retirer le stack ;
+`server-docker enroll` pose l'ingress `agent[-.]{slug}` via le client CF
+(en relisant la config courante du tunnel de l'instance).
 
 ### 7.4 Build local sans GitHub (packages kit modifiés, zéro push/publish)
 
@@ -379,18 +398,40 @@ tar -xzf /home/fidus/winhub/docker-data/backups/server-1-<stamp>.tar.gz \
   -C docker-data/servers/test-<xp> --strip-components=1
 node scripts/creezio-cli.mjs server-docker start test-<xp> --brand-root .
 # Vérifs : curl http://127.0.0.1:<port>/api/v1/core/health ; https://test-<xp>.winhub.fr/login → 200
-# Destruction PROPRE — `rm` ne déprovisionne PAS le tunnel, 2 gestes :
+# Destruction PROPRE — un seul geste : `rm` déprovisionne le tunnel via
+# l'API CF directe (DNS + tunnel) avant de retirer le stack (0.10.0).
 node scripts/creezio-cli.mjs server-docker rm test-<xp> --brand-root . --purge-data
-curl -s -X POST -H "Authorization: Bearer $CREEZIO_TUNNEL_PROVISION_TOKEN" \
-  -H 'content-type: application/json' -d '{"slug":"test-<xp>"}' \
-  "$CREEZIO_TUNNEL_PROVISION_URL/deprovision"
 ```
 
 Isolation : registre `docker-data/servers.json` propre au worktree,
-containers `<brandId>-server-test-<xp>` (+ sidecar `-tunnel`) nommés par
-instance, port hôte loopback auto — zéro collision avec la prod. Ne
+container `<brandId>-server-test-<xp>` nommé par instance (cloudflared
+in-process — plus de conteneur sidecar), port hôte loopback auto — zéro
+collision avec la prod. Ne
 restaurer qu'un backup de la **même marque** (les secrets d'instance —
 `AUTH_SECRET`… — vivent dans `/data`).
+
+### 7.6 Environnements éphémères / cloud agents (zone sandbox)
+
+Un cloud agent (ou toute CI éphémère) qui doit exposer une instance de test
+utilise le MÊME chemin standard (`server-docker create`) — l'auto-
+provisioning CF rend l'opération sans-touch côté VPS. **5 secrets minimum**
+à poser dans l'environnement de l'agent :
+
+| Secret | Rôle |
+|---|---|
+| `CREEZIO_NPM_TOKEN` | pull `@creezio/*` (GitHub Packages) au build |
+| `CREEZIO_CF_API_TOKEN` | auto-provisioning tunnel (account token scopé) |
+| `CREEZIO_CF_ACCOUNT_ID` | compte Cloudflare |
+| `CREEZIO_CF_ZONE_ID` | zone du hostname éphémère |
+| `CREEZIO_TUNNEL_SLUG` | slug unique de l'environnement (ex. `ci-<run>`) |
+
+**Recommandation (D4)** : dédier une **zone Cloudflare sandbox** (ex.
+`creezio-sandbox.dev`) aux environnements éphémères — séparée de la zone
+prod (`winhub.fr` / `tempoflow.fr`). Avantages : aucun risque de collision
+ou de fuite DNS vers la prod, nettoyage de masse sans peur (`rm` reste
+idempotent), token CF scopé à la seule zone sandbox (blast radius minimal
+si le token de l'agent fuite). Le mode flat (défaut) suffit — Universal SSL
+couvre `*.{zone}`.
 
 ### Instance de démo/test — le chemin standard (depuis main)
 

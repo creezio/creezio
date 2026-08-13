@@ -51,4 +51,6 @@ configureMails({
 api.route("/email", createEmailInboxRoutes());
 ```
 
-Les MX/SPF `{slug}.mail.{root}` restent créés par le tunnel-provisioner marque.
+Les MX/SPF `{slug}.mail.{root}` sont assurés par l'auto-provisioning
+tunnel de l'instance (client CF `@creezio/platform-core`, best-effort au
+boot — 0.10.0).
