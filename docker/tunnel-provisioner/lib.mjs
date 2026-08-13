@@ -17,8 +17,10 @@
  * uniquement via `kind: "brand-web"` (jamais par un serveur client).
  *   lp.{zone} → landing page publique (rendue par le plane de l'app admin —
  *   ADR-module-natif-hybride).
+ *   admin.{zone} → app OS admin de la marque (ADR-admin-app-os §« admin.{zone}
+ *   bascule vers l'app v2 ») — même mécanique : un seul ingress HTTP.
  */
-export const BRAND_WEB_SLUGS = new Set(["lp"]);
+export const BRAND_WEB_SLUGS = new Set(["lp", "admin"]);
 
 /**
  * Slug "registry" : ingress `registry.{zone}` → proxy pull-only du registre
