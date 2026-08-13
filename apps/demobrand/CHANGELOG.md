@@ -1,5 +1,12 @@
 # @creezio/app-demobrand
 
+## 0.1.10
+
+### Patch Changes
+
+- Updated dependencies [cfd5c31]
+  - @creezio/factory@0.5.5
+
 ## 0.1.9
 
 ### Patch Changes
