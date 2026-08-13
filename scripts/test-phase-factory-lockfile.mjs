@@ -216,3 +216,86 @@ test("prepareBrandDistribution produit le lock racine workspace (mode npm)", asy
     fs.rmSync(dir, { recursive: true, force: true });
   }
 });
+
+test("push GitHub : locks préparés sur les DEUX repos (marque + admin)", () => {
+  const gh = fs.readFileSync(
+    path.join(ROOT, "packages/factory/src/github-repos.ts"),
+    "utf8",
+  );
+  // Régression vécue (foove2-admin, 2026-08-13) : maybePushBrandRepos ne
+  // préparait les locks que du monorepo marque → repo admin poussé sans
+  // package-lock.json.
+  assert.match(gh, /prepareBrandDistribution\(o\.outDir/);
+  assert.match(gh, /prepareBrandDistribution\(o\.adminDir/);
+});
+
+test("maybePushBrandRepos --no-push produit les locks marque ET admin", async (t) => {
+  const hasNetwork = (() => {
+    const ping = spawnSync("npm", ["view", "ms", "version"], {
+      encoding: "utf8",
+    });
+    return ping.status === 0;
+  })();
+  if (!hasNetwork) {
+    t.skip("registre npm injoignable — lock-only non testé ici");
+    return;
+  }
+  const { maybePushBrandRepos } = await import(
+    pathToFileURL(path.join(ROOT, "packages/factory/dist/github-repos.js")).href,
+  );
+  const { isPackageLockInSync } = await loadLockHelpers();
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "creezio-push-locks-"));
+  try {
+    // Arbres minimaux npm : racine workspace + server/ (dep publique).
+    for (const dir of [path.join(tmp, "brandx"), path.join(tmp, "brandx-admin")]) {
+      fs.mkdirSync(path.join(dir, "server"), { recursive: true });
+      fs.writeFileSync(
+        path.join(dir, "package.json"),
+        JSON.stringify({
+          name: `${path.basename(dir)}-probe`,
+          private: true,
+          type: "module",
+          workspaces: ["server"],
+        }),
+      );
+      fs.writeFileSync(
+        path.join(dir, "server", "package.json"),
+        JSON.stringify({
+          name: `@creezio/app-${path.basename(dir)}`,
+          private: true,
+          type: "module",
+          dependencies: { ms: "^2.1.3" },
+        }),
+      );
+    }
+    const outDir = path.join(tmp, "brandx");
+    const adminDir = path.join(tmp, "brandx-admin");
+    const res = await maybePushBrandRepos({
+      outDir,
+      adminDir,
+      brandId: "brandx",
+      productName: "BrandX",
+      noPush: true,
+      log: () => {},
+    });
+    assert.equal(res, null, "--no-push ne crée aucun repo");
+    for (const dir of [outDir, adminDir]) {
+      const lock = path.join(dir, "package-lock.json");
+      assert.ok(fs.existsSync(lock), `lock racine manquant: ${dir}`);
+      assert.ok(
+        isPackageLockInSync(path.join(dir, "package.json"), lock),
+        `lock racine incohérent: ${dir}`,
+      );
+      assert.ok(
+        isPackageLockInSync(
+          path.join(dir, "server", "package.json"),
+          lock,
+          "server",
+        ),
+        `entrée packages[server] incohérente: ${dir}`,
+      );
+    }
+  } finally {
+    fs.rmSync(tmp, { recursive: true, force: true });
+  }
+});

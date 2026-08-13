@@ -197,6 +197,10 @@ export async function maybePushBrandRepos(
   // Toujours préparer les locks (même sans push) : une marque locale
   // doit pouvoir `docker:build` immédiatement.
   prepareBrandDistribution(o.outDir, { log });
+  // Le repo admin est une app OS complète (scaffoldAdminApp → scaffoldNewApp)
+  // avec les mêmes cibles de locks (racine workspace + server/ui + client) :
+  // sans ça il naît SANS package-lock.json (vécu foove2-admin, 2026-08-13).
+  prepareBrandDistribution(o.adminDir, { log });
 
   if (o.noPush) {
     log("--no-push : repos GitHub non créés");

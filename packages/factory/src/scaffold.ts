@@ -929,6 +929,17 @@ docker-data/
 `;
 }
 
+/**
+ * Cursor cloud agents : tout repo factory naît avec son environnement
+ * d'install déclaré (reproductible, adossé au lockfile commité).
+ */
+function renderCursorEnvironmentJson(): string {
+  return (
+    JSON.stringify({ install: "npm install --no-audit --no-fund" }, null, 2) +
+    "\n"
+  );
+}
+
 function renderRootReadme(m: AppManifest): string {
   return `# ${m.client.productName}
 
@@ -1751,6 +1762,14 @@ export function scaffoldNewApp(opts: NewAppOptions): ScaffoldResult {
   writeFile(
     path.join(outDir, ".gitignore"),
     renderRootGitignore(),
+    force,
+    written,
+  );
+  // Cursor cloud agents : environnement d'install standard dès la naissance
+  // (marque ET repo admin — les deux passent par scaffoldNewApp).
+  writeFile(
+    path.join(outDir, ".cursor/environment.json"),
+    renderCursorEnvironmentJson(),
     force,
     written,
   );

@@ -51,7 +51,10 @@ en jumeau dans `main.ts`.
 - `src/cli.ts` : `new-app` + dispatch `brand` / `server-docker`.
 - `src/server-docker-cli.ts` : serveurs marque headless (`docker/server`).
 - `src/package-lock.ts` / `src/prepare-brand-distribution.ts` : locks npm
-  dès `new-app`/`brand apply` (Docker prêt out-of-the-box).
+  des DEUX repos (marque + `<brand>-admin`) dès `new-app`/`brand apply`
+  (Docker prêt out-of-the-box) — échec explicite si un lock n'est pas produit.
+- Tout scaffold génère `.cursor/environment.json` (install standard
+  `npm install --no-audit --no-fund`) — cloud agents Cursor prêts.
 - `src/brand-cli.ts` : BrandSpec init/doctor/apply/smoke.
 - `src/product-model.ts` : `ProductModel`, `parseProductPrd`, `safeBrandId`.
 - `src/scaffold.ts` / `scaffold-from-prd.ts` : artefacts.
