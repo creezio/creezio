@@ -1,7 +1,7 @@
 /**
  * Générateurs de smokes — kernel natif (pas de store.json).
  */
-import type { ProductModel } from "../product-model.js";
+import type { ProductEntity, ProductModel } from "../product-model.js";
 
 function harnessPrelude(model: ProductModel): string {
   return `
@@ -86,6 +86,71 @@ async function json(method, urlPath, body) {
 `;
 }
 
+/**
+ * Payload d'exemple des smokes générés : champs requis + champs texte de
+ * l'entité (refs/json optionnels omis). Premier champ texte = « Hello ».
+ */
+function smokeSamplePayload(entity: ProductEntity): string {
+  const body: Record<string, unknown> = {};
+  let firstText = true;
+  for (const f of entity.fields) {
+    const isText = f.type === "text";
+    if (!f.required && !isText) continue;
+    if (isText) {
+      body[f.name] = firstText ? "Hello" : "world";
+      firstText = false;
+    } else if (f.type === "number") {
+      body[f.name] = 1;
+    } else if (f.type === "boolean") {
+      body[f.name] = true;
+    } else if (f.type === "date") {
+      body[f.name] = "2026-01-01";
+    } else if (f.type === "json") {
+      body[f.name] = {};
+    } else {
+      body[f.name] = "ref-smoke";
+    }
+  }
+  return JSON.stringify(body);
+}
+
+/**
+ * Fixture SQL du smoke Meili généré : INSERT concret dans la table de la
+ * première entité du spec (le schema brand est généré du MÊME ProductModel —
+ * la table existe forcément). Premier champ texte = « Tomates » pour que la
+ * recherche « tom » du smoke matche. Les valeurs sont des expressions JS
+ * évaluées par le script généré (date → variable now).
+ */
+function meiliSmokeFixture(entity: ProductEntity): {
+  cols: string;
+  placeholders: string;
+  values: string;
+} {
+  const cols: string[] = [];
+  const values: string[] = [];
+  let firstText = true;
+  for (const f of entity.fields) {
+    cols.push(f.name);
+    if (f.type === "text") {
+      values.push(JSON.stringify(firstText ? "Tomates" : "smoke"));
+      firstText = false;
+    } else if (f.type === "number" || f.type === "boolean") {
+      values.push("1");
+    } else if (f.type === "date") {
+      values.push("now");
+    } else if (f.type === "json") {
+      values.push(JSON.stringify("{}"));
+    } else {
+      values.push(JSON.stringify("ref-smoke"));
+    }
+  }
+  return {
+    cols: cols.length ? `, ${cols.join(", ")}` : "",
+    placeholders: cols.length ? `, ${cols.map(() => "?").join(", ")}` : "",
+    values: values.length ? `, ${values.join(", ")}` : "",
+  };
+}
+
 export function renderMetierParcoursSmoke(model: ProductModel): string {
   const hasChr =
     model.entities.some((e) => e.id === "fournisseurs") &&
@@ -93,9 +158,17 @@ export function renderMetierParcoursSmoke(model: ProductModel): string {
     model.entities.some((e) => e.id === "commandes");
 
   if (!hasChr) {
+    // Première entité RÉELLE du spec — jamais un hardcode « notes »
+    // (régression foove2-admin, 2026-08-13 : smoke sur un module inexistant
+    // → 404 → CI de l'app neuve rouge).
+    const entity = model.entities[0];
+    if (!entity) {
+      throw new Error("renderMetierParcoursSmoke: model.entities vide");
+    }
+    const payload = smokeSamplePayload(entity);
     return `#!/usr/bin/env node
 /**
- * Smoke métier générique — notes via api-kernel + SQLite.
+ * Smoke métier générique — ${entity.id} via api-kernel + SQLite.
  */
 import assert from "node:assert/strict";
 import { spawn, spawnSync } from "node:child_process";
@@ -107,15 +180,12 @@ ${harnessPrelude(model)}
 
 async function main() {
   await waitHealth();
-  const create = await json("POST", "/api/v1/modules/notes", {
-    titre: "Hello",
-    contenu: "world",
-  });
+  const create = await json("POST", "/api/v1/modules/${entity.id}", ${payload});
   assert.ok(create.id);
-  const list = await json("GET", "/api/v1/modules/notes");
+  const list = await json("GET", "/api/v1/modules/${entity.id}");
   assert.ok(list.items.length >= 1);
   assert.ok(!fs.existsSync(path.join(dataDir, "store.json")));
-  console.log("OK test:metier-parcours (notes / api-kernel)");
+  console.log("OK test:metier-parcours (${entity.id} / api-kernel)");
   child.kill("SIGTERM");
   process.exit(0);
 }
@@ -444,6 +514,14 @@ console.log("OK test:allowlist ${model.brandName} (OS natif, pas sidecar JSON)")
 }
 
 export function renderMeiliConfigSmoke(model: ProductModel): string {
+  // Fixture d'indexation : première entité réelle du spec (jamais le
+  // try/catch fournisseurs/produits/notes historique — tables inexistantes
+  // dans une app générique → recherche « tom » sans hit → gate rouge).
+  const ent0 = model.entities[0];
+  if (!ent0) {
+    throw new Error("renderMeiliConfigSmoke: model.entities vide");
+  }
+  const fixture = meiliSmokeFixture(ent0);
   return `#!/usr/bin/env node
 /**
  * Smoke Meili générique — config feed + fallback sans binaire + fake Meili HTTP.
@@ -496,10 +574,27 @@ assert.equal(build.status, 0, build.stderr || build.stdout);
 const feedSrc = fs.readFileSync(path.join(root, "src/electron/meili-feed.ts"), "utf8");
 assert.doesNotMatch(feedSrc, /tf2_produits|tf2_marketplaces|tf2_all/);
 
+// Résolution du package electron-shell : node_modules npm (seule source en
+// CI depuis la migration npm) d'abord, puis racine kit de dev
+// (CREEZIO_KIT_ROOT / sibling packages/ — dev kit local uniquement).
+function electronShellDist(...segments) {
+  const candidates = [
+    // Install standalone du livrable server (node_modules local)…
+    path.join(root, "node_modules", "@creezio", "electron-shell", "dist", ...segments),
+    // …ou workspaces racine du repo (deps hoistées).
+    path.join(root, "..", "node_modules", "@creezio", "electron-shell", "dist", ...segments),
+    ...(creezioRoot
+      ? [path.join(creezioRoot, "packages/electron-shell/dist", ...segments)]
+      : []),
+    path.join(root, "../..", "packages/electron-shell/dist", ...segments),
+  ];
+  const found = candidates.find((c) => fs.existsSync(c));
+  if (!found) throw new Error(\`electron-shell/dist/\${segments.join("/")} introuvable\`);
+  return found;
+}
+
 const { startMeili } = await import(
-  pathToFileURL(
-    path.join(creezioRoot || path.join(root, "../.."), "packages/electron-shell/dist/host/meili-launcher.js"),
-  ).href
+  pathToFileURL(electronShellDist("host", "meili-launcher.js")).href,
 );
 const none = await startMeili({
   binaryPath: null,
@@ -637,29 +732,16 @@ const brand = runtime.getBrand();
 const resolvedDb = brand.path;
 assert.ok(fs.existsSync(resolvedDb), "brand.db attendu après boot");
 
+// Fixture dans la table de la première entité du spec (schema brand
+// généré du même ProductModel) : le doc doit matcher la recherche « tom ».
 const now = new Date().toISOString();
-try {
-  brand.prepare(
-    \`INSERT INTO fournisseurs (id, nom, created_at, updated_at) VALUES (?, ?, ?, ?)\`,
-  ).run("f1", "Metro", now, now);
-  brand.prepare(
-    \`INSERT INTO produits (id, nom, fournisseur_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?)\`,
-  ).run("p1", "Tomates", "f1", now, now);
-} catch {
-  try {
-    brand.prepare(
-      \`INSERT INTO notes (id, titre, contenu, created_at, updated_at) VALUES (?, ?, ?, ?, ?)\`,
-    ).run("n1", "Tomates", "note", now, now);
-  } catch {
-    /* schéma minimal */
-  }
-}
+brand.prepare(
+  \`INSERT INTO ${ent0.id} (id, created_at, updated_at${fixture.cols}) VALUES (?, ?, ?${fixture.placeholders})\`,
+).run("smoke1", now, now${fixture.values});
 close();
 
 const { runFeedIndexation, searchMeiliIndexes } = await import(
-  pathToFileURL(
-    path.join(creezioRoot || path.join(root, "../.."), "packages/electron-shell/dist/host/meili/generic-indexer.js"),
-  ).href
+  pathToFileURL(electronShellDist("host", "meili", "generic-indexer.js")).href,
 );
 
 const result = await runFeedIndexation({
