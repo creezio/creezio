@@ -102,6 +102,34 @@ test("BS4 initBrandSpec écrit squelette", () => {
   assert.ok(fs.existsSync(path.join(result.outDir, "interview.schema.json")));
   const doctor = doctorBrandSpec(result.outDir);
   assert.equal(doctor.ok, true, formatDoctorReport(doctor));
+
+  // Le gabarit d'interview module porte les conventions dures du kit :
+  // une interview générée ne doit plus POUVOIR proposer « accueil à / »
+  // (vécu foove2 — contradiction spec ↔ workspace kit, DOC-STANDARD-MODULE).
+  const interviewTpl = fs.readFileSync(
+    path.join(result.outDir, "modules/_template/interview.md"),
+    "utf8",
+  );
+  assert.match(
+    interviewTpl,
+    /## Conventions OS non négociables/,
+    "template interview sans section Conventions OS",
+  );
+  assert.match(
+    interviewTpl,
+    /Home = `\/dashboard`/,
+    "template interview : home = /dashboard absent",
+  );
+  assert.match(
+    interviewTpl,
+    /`\/` = pure redirection factory/,
+    "template interview : '/' pure redirection absent",
+  );
+  assert.match(
+    interviewTpl,
+    /href: "\/dashboard"/,
+    "template interview : nav accueil → /dashboard absent",
+  );
 });
 
 test("BS5 ADR + CREATE-BRAND docs", () => {
