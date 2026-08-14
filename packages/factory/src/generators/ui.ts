@@ -11,20 +11,19 @@ import type { ProductModel } from "../product-model.js";
  * design system kit (gate test-phase-os-ui-scaffold).
  */
 
-export function renderNextHomePage(model: ProductModel): string {
-  const dash = model.pages.find(
-    (p) => p.kind === "dashboard" || p.path === "/dashboard",
-  );
-  const home = dash?.path || model.pages[0]?.path || "/dashboard";
+export function renderNextHomePage(_model: ProductModel): string {
   return `/** creezio:owned-by-brand */
 import { redirect } from "next/navigation";
 
 /**
- * "/" est une pure redirection : le workspace kit canonise "/" → /dashboard
- * (normalizeHref) — aucune pane keep-alive ne doit référencer la racine.
+ * CONVENTION OS — ne jamais mettre de contenu ici.
+ * La page d'accueil réelle de la marque vit à /dashboard : le workspace kit
+ * canonise tout href "/" → "/dashboard" (normalizeHref / targetHref).
+ * Implémenter la home dans app/dashboard/page.tsx et garder ce fichier en
+ * pure redirection.
  */
 export default function HomePage() {
-  redirect(${JSON.stringify(home)});
+  redirect("/dashboard");
 }
 `;
 }
@@ -35,6 +34,14 @@ export function renderNextEntityPage(model: ProductModel, pageId: string): strin
   const entityId = page?.entityId;
 
   if (page?.kind === "dashboard" || pageId === "dashboard") {
+    // Compteurs dérivés des entités RÉELLES du modèle (API modules/dashboard
+    // expose `entities: { <id>: count }`) — jamais de vocabulaire CHR en dur.
+    const statLines = model.entities
+      .map(
+        (e) =>
+          `    [${JSON.stringify(e.labelPlural || e.label)}, d?.entities?.[${JSON.stringify(e.id)}]],`,
+      )
+      .join("\n");
     return `import {
   Card,
   CardContent,
@@ -53,16 +60,10 @@ async function loadDashboard() {
 
 export default async function Page() {
   const d = await loadDashboard() as {
-    fournisseurs?: number;
-    produits?: number;
-    panier_lignes?: number;
-    commandes?: number;
+    entities?: Record<string, number>;
   } | null;
   const stats: Array<[string, number | undefined]> = [
-    ["Fournisseurs", d?.fournisseurs],
-    ["Produits", d?.produits],
-    ["Panier", d?.panier_lignes],
-    ["Commandes", d?.commandes],
+${statLines}
   ];
   return (
     <section className="space-y-6 p-6">

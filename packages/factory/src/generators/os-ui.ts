@@ -688,14 +688,13 @@ export function BrandChrome({ children }: { children: ReactNode }) {
 }
 
 /**
- * Home workspace : le chrome kit canonise "/" → /dashboard (DASHBOARD_PATH).
- * Si le modèle n'a pas de page dashboard, retomber sur la première page.
+ * CONVENTION OS — home workspace : le chrome kit canonise "/" → /dashboard
+ * (normalizeHref / targetHref, DASHBOARD_PATH) et l'onglet de base vit sur
+ * /dashboard. Jamais de fallback vers une autre page (ensureDashboardPage
+ * garantit que /dashboard existe dans toute app générée).
  */
-export function defaultWorkspaceHome(model: ProductModel): string {
-  const dash = model.pages.find(
-    (p) => p.kind === "dashboard" || p.path === "/dashboard",
-  );
-  return dash?.path || model.pages[0]?.path || "/dashboard";
+export function defaultWorkspaceHome(_model: ProductModel): string {
+  return "/dashboard";
 }
 
 /**

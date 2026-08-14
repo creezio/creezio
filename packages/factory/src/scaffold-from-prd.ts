@@ -7,7 +7,11 @@ import { creezioNpmDeps, renderCreezioNpmrc } from "./kit-release.js";
 import path from "node:path";
 import type { AppManifest } from "@creezio/brand-config";
 import { renderModuleSpecFiles } from "@creezio/brand-spec";
-import { isChrModel, type ProductModel } from "./product-model.js";
+import {
+  ensureDashboardPage,
+  isChrModel,
+  type ProductModel,
+} from "./product-model.js";
 import {
   renderBrandSchemaSql,
   renderBrandSchemaTs,
@@ -261,7 +265,10 @@ export function writeFromPrdArtifacts(opts: {
   force: boolean;
   written: string[];
 }): void {
-  const { outDir, rootDir, manifest, model, force, written } = opts;
+  const { outDir, rootDir, manifest, force, written } = opts;
+  // CONVENTION OS : le workspace kit canonise "/" → /dashboard — toute app
+  // générée doit exposer une page /dashboard (ensureDashboardPage).
+  const model = ensureDashboardPage(opts.model);
   const chr = isChrModel(model);
 
   // Purge glue OS / stubs / sidecar — marque = métier + déclaration.

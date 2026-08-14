@@ -391,6 +391,33 @@ export function parseProductPrd(
   };
 }
 
+/**
+ * CONVENTION OS — la home d'une marque vit à /dashboard : le workspace kit
+ * (@creezio/shell-ui) canonise tout href "/" → "/dashboard" (normalizeHref /
+ * targetHref) et l'onglet de base est créé sur /dashboard. Toute app générée
+ * DOIT donc exposer une page /dashboard, sinon l'onglet de base et la
+ * redirection "/" tombent sur un 404 (vécu foove2 : modèle générique sans
+ * dashboard → redirect("/notes") résiduel).
+ */
+export function ensureDashboardPage(model: ProductModel): ProductModel {
+  const hasDash = model.pages.some(
+    (p) => p.kind === "dashboard" || p.path === "/dashboard",
+  );
+  if (hasDash) return model;
+  return {
+    ...model,
+    pages: [
+      {
+        id: "dashboard",
+        path: "/dashboard",
+        title: "Dashboard",
+        kind: "dashboard",
+      },
+      ...model.pages,
+    ],
+  };
+}
+
 export function assertProductModel(model: ProductModel): void {
   if (!model.brandId || !/^[a-z][a-z0-9]{1,31}$/.test(model.brandId)) {
     throw new Error(`ProductModel.brandId invalide: ${model.brandId}`);
