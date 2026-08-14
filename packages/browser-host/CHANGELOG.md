@@ -1,5 +1,11 @@
 # @creezio/browser-host
 
+## 0.9.3
+
+### Patch Changes
+
+- @creezio/platform-core@0.9.3
+
 ## 0.9.2
 
 ### Patch Changes

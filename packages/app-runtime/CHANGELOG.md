@@ -1,5 +1,27 @@
 # @creezio/app-runtime
 
+## 0.9.3
+
+### Patch Changes
+
+- @creezio/brand-config@0.9.3
+- @creezio/platform-core@0.9.3
+- @creezio/product-hub@0.9.3
+- @creezio/electron-shell@0.9.3
+- @creezio/api-kernel@0.9.3
+- @creezio/mcp-facade@0.9.3
+- @creezio/shell-ui@0.9.3
+- @creezio/auth@0.9.3
+- @creezio/access-control@0.9.3
+- @creezio/assistant@0.9.3
+- @creezio/tasks@0.9.3
+- @creezio/mails@0.9.3
+- @creezio/observability@0.9.3
+- @creezio/support@0.9.3
+- @creezio/integrations@0.9.3
+- @creezio/browser-host@0.9.3
+- @creezio/database@0.9.3
+
 ## 0.9.2
 
 ### Patch Changes

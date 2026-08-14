@@ -1,6 +1,6 @@
 {
   "name": "@creezio/tasks",
-  "version": "0.9.2",
+  "version": "0.9.3",
   "description": "Tâches natives plateforme Creezio — kanban human/ai/hermes + runs + AI (hors PluginTaskRecord product-hub)",
   "type": "module",
   "main": "./dist-cjs/index.js",
@@ -29,11 +29,11 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@creezio/api-kernel": "^0.9.2",
-    "@creezio/assistant": "^0.9.2",
-    "@creezio/auth": "^0.9.2",
-    "@creezio/platform-core": "^0.9.2",
-    "@creezio/shell-ui": "^0.9.2",
+    "@creezio/api-kernel": "^0.9.3",
+    "@creezio/assistant": "^0.9.3",
+    "@creezio/auth": "^0.9.3",
+    "@creezio/platform-core": "^0.9.3",
+    "@creezio/shell-ui": "^0.9.3",
     "hono": "^4.12.32",
     "zod": "^4.4.3"
   },
