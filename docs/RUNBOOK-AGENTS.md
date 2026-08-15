@@ -311,7 +311,9 @@ recréé proprement, CNAME mis à jour) → `PUT configurations` (ingress
 `http://127.0.0.1:18791` + services selon le mode de hostnames + extras D1,
 règle `agent` existante préservée) → **upsert DNS idempotent** (CNAME
 `{hostname}` → `{tunnelId}.cfargotunnel.com`, proxied — jamais d'échec si
-déjà à la bonne cible) → spawn cloudflared in-process → sonde publique
+déjà à la bonne cible) → spawn cloudflared in-process **supervisé**
+(respawn borné + backoff si exit ≠ 0 ou mort inattendue ; même tunnel id
+persisté, pas de recréation API) → sonde publique
 `https://<domaine>/api/v1/core/health` en arrière-plan (retry borné, non
 fatale).
 

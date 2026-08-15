@@ -272,7 +272,8 @@ export async function runHarnessTunnelPhase(opts: {
       log(`tunnel déjà provisionné (${existing?.hostname}) — ensure + run`);
     }
     // Ensure idempotent (GET tunnel → 404/token absent → recréation + CNAME
-    // mis à jour, PUT ingress, upsert DNS) puis cloudflared in-process.
+    // mis à jour, PUT ingress, upsert DNS) puis cloudflared in-process
+    // supervisé (respawn borné, même tunnel id — pas de POST cfd_tunnel).
     await tunnel.configureTunnelIngress({ crmPort: port });
     await tunnel.startCloudflared();
 

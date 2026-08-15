@@ -61,6 +61,7 @@
 | [`test-phase-c4.mjs`](../test-phase-c4.mjs) | Phase C4 — V2/V3 prod-ready : SQLite obs/automations + console + docs. |
 | [`test-phase-c7.mjs`](../test-phase-c7.mjs) | Phase C7 — startHostPluginControlPlane unifié (4 boots + ACL). |
 | [`test-phase-clone-autonomy.mjs`](../test-phase-clone-autonomy.mjs) | Gate — clone autonome des repos marque (distribution sans kit). |
+| [`test-phase-cloudflared-respawn.mjs`](../test-phase-cloudflared-respawn.mjs) | Gate — superviseur cloudflared in-process : politique backoff/abandon, respawn même token/id, stop annule le timer, spawn sans POST cfd_tunnel. |
 | [`test-phase-crash-reporter.mjs`](../test-phase-crash-reporter.mjs) | Gate crash-reporter kit — upload configurable + brandId + pending queue. |
 | [`test-phase-create-brand.mjs`](../test-phase-create-brand.mjs) | Sonde E2E CREATE-BRAND — init → doctor → apply → smoke façade. |
 | [`test-phase-d.mjs`](../test-phase-d.mjs) | !usrbinenv node |

@@ -4,7 +4,8 @@
  * Auto-provisioning par l'instance elle-même via l'API Cloudflare (client
  * `@creezio/platform-core` : tunnel-cf / tunnel-cf-client) — le provisioner
  * VPS et le sidecar cloudflared sont supprimés (0.10.0, D3) : cloudflared
- * tourne in-process, mode unique. Contrat d'env : `CREEZIO_CF_API_TOKEN` /
+ * tourne in-process, mode unique, **supervisé** (respawn borné si exit ≠ 0
+ * ou mort inattendue ; même tunnel id persisté). Contrat d'env : `CREEZIO_CF_API_TOKEN` /
  * `CREEZIO_CF_ACCOUNT_ID` / `CREEZIO_CF_ZONE_ID` (+ variantes marque),
  * arrivant au conteneur via `cf.env` (chmod 600) généré par le CLI.
  */
@@ -34,6 +35,10 @@ import { hostLog, hostProductName } from "../context.js";
 import { kitOsResourcesRoot } from "../kit-os-resources.js";
 import type { LocalConfigStore, TunnelConfig } from "../local-config.js";
 import { applyOsSandboxEnv } from "../sandbox/embed-sandbox.js";
+import {
+  resolveCloudflaredRespawnPolicy,
+  shouldRespawnCloudflared,
+} from "./cloudflared-respawn.js";
 
 export type TunnelRuntimeStatus = {
   configured: boolean;
@@ -114,6 +119,10 @@ export function createTunnelService(opts: {
   let child: ChildProcess | null = null;
   let lastError: string | null = null;
   let online = false;
+  let stopping = false;
+  let respawnTimer: ReturnType<typeof setTimeout> | null = null;
+  let consecutiveFailures = 0;
+  let startedAtMs: number | null = null;
 
   /** Contrat CF résolu depuis l'env (variante marque d'abord). */
   function cfEnv() {
@@ -405,15 +414,23 @@ export function createTunnelService(opts: {
     return { ok: true, publicUrl, publicMcp: `${publicUrl}/mcp` };
   }
 
-  async function startCloudflared(): Promise<void> {
+  function clearRespawnTimer(): void {
+    if (respawnTimer) {
+      clearTimeout(respawnTimer);
+      respawnTimer = null;
+    }
+  }
+
+  /**
+   * Spawn cloudflared avec le token persisté. Ne (re)crée jamais un tunnel
+   * id — `ensureCfTunnel` / `reserveTunnel` restent les seuls chemins API.
+   */
+  function spawnCloudflaredProcess(): void {
+    if (stopping) return;
     const cfg = store.getTunnelConfig();
     if (!cfg?.tunnelToken || cfg.tunnelToken === "local") {
       lastError = null;
       online = false;
-      return;
-    }
-    if (child && !child.killed) {
-      online = true;
       return;
     }
     const bin = cloudflaredBinary(ctx);
@@ -423,7 +440,9 @@ export function createTunnelService(opts: {
       throw new Error(lastError);
     }
     lastError = null;
-    hostLog(ctx, "tunnel", `spawn ${bin} tunnel run`);
+    const tunnelId = cfg.tunnelId;
+    hostLog(ctx, "tunnel", `spawn ${bin} tunnel run (id ${tunnelId})`);
+    startedAtMs = Date.now();
     child = spawn(
       bin,
       ["tunnel", "--no-autoupdate", "run", "--token", cfg.tunnelToken],
@@ -459,19 +478,67 @@ export function createTunnelService(opts: {
       online = false;
       hostLog(ctx, "tunnel", `error: ${e.message}`);
     });
-    child.on("exit", (code) => {
+    child.on("exit", (code, signal) => {
       online = false;
       child = null;
-      if (code && code !== 0) {
-        lastError = `cloudflared exit ${code}`;
+      const decision = shouldRespawnCloudflared({
+        stopping,
+        consecutiveFailures,
+        startedAtMs,
+        exit: { code, signal },
+        policy: resolveCloudflaredRespawnPolicy(),
+      });
+      if (decision.action === "ignore") return;
+      consecutiveFailures = decision.attempt;
+      if (decision.action === "give-up") {
+        lastError = `cloudflared ${decision.reason} — abandon après ${decision.attempt} essai(s)`;
         hostLog(ctx, "tunnel", lastError);
+        return;
       }
+      lastError = `cloudflared ${decision.reason}`;
+      hostLog(
+        ctx,
+        "tunnel",
+        `${lastError} — respawn #${decision.attempt} dans ${decision.delayMs}ms (id ${tunnelId} réutilisé)`,
+      );
+      clearRespawnTimer();
+      respawnTimer = setTimeout(() => {
+        respawnTimer = null;
+        if (stopping) return;
+        try {
+          spawnCloudflaredProcess();
+          if (child && !child.killed) online = true;
+        } catch (err) {
+          lastError = err instanceof Error ? err.message : String(err);
+          hostLog(ctx, "tunnel", `respawn failed: ${lastError}`);
+        }
+      }, decision.delayMs);
+      respawnTimer.unref?.();
     });
+  }
+
+  async function startCloudflared(): Promise<void> {
+    const cfg = store.getTunnelConfig();
+    if (!cfg?.tunnelToken || cfg.tunnelToken === "local") {
+      lastError = null;
+      online = false;
+      return;
+    }
+    if (child && !child.killed) {
+      online = true;
+      return;
+    }
+    stopping = false;
+    consecutiveFailures = 0;
+    clearRespawnTimer();
+    spawnCloudflaredProcess();
     await new Promise((r) => setTimeout(r, 1500));
     if (child && !child.killed) online = true;
   }
 
   function stopCloudflared(): void {
+    stopping = true;
+    clearRespawnTimer();
     if (child) {
       try {
         child.kill();
@@ -481,6 +548,7 @@ export function createTunnelService(opts: {
       child = null;
     }
     online = false;
+    startedAtMs = null;
   }
 
   function forgetTunnel(): void {

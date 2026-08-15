@@ -136,6 +136,17 @@ export const CONTENT_CONTRACTS = [
     dist: "dist/usage/http-routes.js",
     tokens: ["createUsageAnalyticsAdminRoutes", "/analytics/overview"],
   },
+  {
+    id: "electron-shell-cloudflared-respawn",
+    package: "electron-shell",
+    src: "src/host/tunnel/tunnel.ts",
+    dist: "dist/host/tunnel/tunnel.js",
+    tokens: [
+      "shouldRespawnCloudflared",
+      "spawnCloudflaredProcess",
+      "id ${tunnelId} réutilisé",
+    ],
+  },
 ];
 
 /** Manifest de hash src écrit dans dist/ par build-workspaces (contenu). */

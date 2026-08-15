@@ -164,6 +164,18 @@ export {
   buildTunnelPublicUrls,
   deriveTunnelServiceUrl,
 } from "./host/tunnel/tunnel.js";
+export type {
+  CloudflaredExitInfo,
+  CloudflaredRespawnDecision,
+  CloudflaredRespawnPolicy,
+} from "./host/tunnel/cloudflared-respawn.js";
+export {
+  CLOUDFLARED_RESPAWN,
+  cloudflaredRespawnDelayMs,
+  describeCloudflaredExit,
+  resolveCloudflaredRespawnPolicy,
+  shouldRespawnCloudflared,
+} from "./host/tunnel/cloudflared-respawn.js";
 
 export {
   DESKTOP_NODE_MIN_FOR_EMBEDS,
