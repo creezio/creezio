@@ -141,11 +141,13 @@ Questionnaire **rempli** (pas un formulaire vide). Sections :
 ## 3. API
    EntitySpec `createEntityApiMount` (défaut pour tout CRUD) vs mount
    manuscrit (justifier). Hooks, extraRoutes, mounts additionnels.
-   Démo interactive (optionnel) : champ `demo: { scenarios: DemoScenario[] }`
-   du `BrandModuleDef` — scénarios du tour produit du module, agrégés par
-   `collectDemoScenarios()` (registre `modules/index.ts`) en défauts du mount
-   `interactive-demo` (validation + dédup par id :
-   `collectInteractiveDemoDefaults` de `@creezio/interactive-demo`).
+   Démo interactive (**obligatoire**, ≥ 1 scénario valide) : champ
+   `demo: { scenarios: DemoScenario[] }` du `BrandModuleDef` — scénarios du
+   tour produit du module, agrégés par `collectDemoScenarios()` (registre
+   `modules/index.ts`) en défauts du mount `interactive-demo` (validation +
+   dédup par id : `collectInteractiveDemoDefaults` de
+   `@creezio/interactive-demo`). Inclure `genericOsTourScenario({ productName })`
+   (id `os-tour` partagé). Une app Creezio sans démo interactive est invalide.
 
 ## 4. UI, nav & permissions — kit graphique imposé
    Chaque page déclarée liste les composants du kit qu'elle utilise

@@ -130,6 +130,16 @@ test("BS4 initBrandSpec écrit squelette", () => {
     /href: "\/dashboard"/,
     "template interview : nav accueil → /dashboard absent",
   );
+  assert.match(
+    interviewTpl,
+    /démo interactive \(\*\*obligatoire\*\*/,
+    "template interview : démo interactive obligatoire",
+  );
+  assert.doesNotMatch(
+    interviewTpl,
+    /démo interactive \(optionnel\)/,
+    "template interview ne doit plus dire démo optionnelle",
+  );
 });
 
 test("BS5 ADR + CREATE-BRAND docs", () => {
@@ -141,4 +151,49 @@ test("BS5 ADR + CREATE-BRAND docs", () => {
   );
   assert.match(create, /startBrandDesktop/);
   assert.match(create, /brand apply/);
+  assert.match(create, /Démo interactive native obligatoire/);
+  const createMod = fs.readFileSync(
+    path.join(ROOT, "docs/agents/CREATE-MODULE.md"),
+    "utf8",
+  );
+  assert.doesNotMatch(createMod, /Démo interactive \(optionnel\)/);
+  assert.match(createMod, /Démo interactive \(\*\*obligatoire\*\*/);
+});
+
+test("BS6 doctor : module sans demo.scenarios = erreur (app scaffoldée)", () => {
+  const work = fs.mkdtempSync(path.join(os.tmpdir(), "brand-spec-demo-"));
+  const result = initBrandSpec({
+    outDir: path.join(work, "brand-spec"),
+    brandId: "demodoc",
+    brandName: "Demo Doc",
+    domain: "demodoc.local",
+    vertical: "generic",
+    force: true,
+  });
+  const modulesDir = path.join(work, "server/src/electron/modules");
+  fs.mkdirSync(modulesDir, { recursive: true });
+  fs.writeFileSync(
+    path.join(modulesDir, "notes.ts"),
+    `export const notesModule = { id: "notes" };\n`,
+    "utf8",
+  );
+  const doctor = doctorBrandSpec(result.outDir);
+  assert.equal(doctor.ok, false);
+  assert.ok(
+    doctor.issues.some((i) => i.code === "MODULE_DEMO_MISSING"),
+    formatDoctorReport(doctor),
+  );
+  fs.writeFileSync(
+    path.join(modulesDir, "notes.ts"),
+    `import { genericOsTourScenario } from "@creezio/interactive-demo";
+export const notesModule = {
+  id: "notes",
+  demo: { scenarios: [genericOsTourScenario({ productName: "Demo Doc" })] },
+};
+`,
+    "utf8",
+  );
+  const ok = doctorBrandSpec(result.outDir);
+  assert.equal(ok.ok, true, formatDoctorReport(ok));
+  fs.rmSync(work, { recursive: true, force: true });
 });

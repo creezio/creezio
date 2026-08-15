@@ -14,7 +14,8 @@
  *   scénario invalide est une erreur de module (bug), pas un cas runtime ;
  * - **dédup par id** : un même id contribué deux fois par le MÊME module
  *   (module listé en double dans le registre) est ignoré silencieusement ;
- *   un même id contribué par DEUX modules différents est un conflit ;
+ *   un même id contribué par DEUX modules différents est un conflit, sauf
+ *   `os-tour` (`genericOsTourScenario` partagé — premier gagne) ;
  * - **erreurs claires** : toutes les erreurs sont agrégées puis levées en
  *   UNE Error listant module + scénario + codes de validation — le boot
  *   échoue explicitement plutôt que de servir une démo tronquée ;
@@ -80,10 +81,12 @@ export function collectInteractiveDemoDefaults(
       const at = `${moduleId}:${typeof id === "string" && id ? id : "<sans_id>"}`;
 
       // Dédup par id : doublon interne au même module = ignoré (registre
-      // listé deux fois) ; doublon entre modules distincts = conflit.
+      // listé deux fois) ; doublon entre modules distincts = conflit —
+      // sauf `os-tour` (scénario OS partagé : premier gagne, les suivants
+      // sont le même `genericOsTourScenario` posé par chaque stub module).
       if (typeof id === "string" && id && ownerById.has(id)) {
         const owner = ownerById.get(id)!;
-        if (owner === moduleId) continue;
+        if (owner === moduleId || id === "os-tour") continue;
         errors.push(`scenario en double: ${id} (modules ${owner} et ${moduleId})`);
         continue;
       }

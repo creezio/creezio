@@ -1,4 +1,4 @@
-export { CreezioUiBoot, type CreezioUiBootProps } from "./boot.js";
+export { CreezioUiBoot, type CreezioUiBootProps } from "./boot-types.js";
 
 /** Dossiers OS interdits dans ui/app/ versionné d'une marque. */
 export const OS_UI_ROUTE_SEGMENTS = [

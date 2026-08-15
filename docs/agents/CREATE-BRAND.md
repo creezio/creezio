@@ -36,6 +36,14 @@ ne peut PAS les contredire. En particulier : la home d'une marque vit à
 l'entrée de nav « accueil » pointe `href: "/dashboard"` — jamais `href: "/"`.
 Routes OS (`/taches`, `/mails`, `/admin/*`…) et `/site/*` : réservées.
 
+**Démo interactive native obligatoire** : la factory câble le mount
+(`createInteractiveDemoMount`), les migrations, le CSS et la dep UI ;
+`CreezioUiBoot` monte `InteractiveDemoRoot` (le chrome marque ne peut pas
+l'oublier). Chaque `BrandModuleDef` expose ≥ 1 scénario jouable
+(`genericOsTourScenario({ productName })` inclus). Une app sans démo
+interactive est invalide. Le seed de données métier reste marque
+(`demo-seed` / `demo-data`).
+
 Ne **jamais** demander à l'agent d'implémenter des launchers Meili/n8n/Hermes
 dans la marque.
 

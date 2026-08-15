@@ -181,6 +181,52 @@ Desktop Creezio.
     scaffoldedServerPkg.dependencies?.["@creezio/interactive-demo"],
     "dep @creezio/interactive-demo absente du serveur scaffoldé",
   );
+
+  // 4 branchements natifs (issue #88) — plus optionnels.
+  const brandApi = fs.readFileSync(
+    path.join(serverDir, "src/electron/brand-module-api.ts"),
+    "utf8",
+  );
+  assert.match(brandApi, /createInteractiveDemoMount/, "mount interactive-demo");
+  assert.match(brandApi, /genericOsTourScenario/, "OS tour dans les défauts du mount");
+  const brandMig = fs.readFileSync(
+    path.join(serverDir, "src/electron/brand-migrations.ts"),
+    "utf8",
+  );
+  assert.match(brandMig, /interactiveDemoMigrations/, "migrations interactive-demo");
+  const layout = fs.readFileSync(
+    path.join(serverDir, "ui/app/layout.tsx"),
+    "utf8",
+  );
+  assert.match(
+    layout,
+    /@creezio\/interactive-demo\/ui\/interactive-demo\.css/,
+    "layout importe le CSS démo",
+  );
+  const uiPkg = JSON.parse(
+    fs.readFileSync(path.join(serverDir, "ui/package.json"), "utf8"),
+  );
+  assert.ok(
+    uiPkg.dependencies?.["@creezio/interactive-demo"],
+    "dep UI @creezio/interactive-demo absente",
+  );
+  const boot = fs.readFileSync(
+    path.join(ROOT, "packages/os-ui/src/boot.tsx"),
+    "utf8",
+  );
+  assert.match(boot, /InteractiveDemoRoot/, "CreezioUiBoot monte le lecteur");
+  const entityMod = fs
+    .readdirSync(path.join(serverDir, "src/electron/modules"))
+    .find((f) => f.endsWith(".ts") && f !== "types.ts" && f !== "index.ts");
+  assert.ok(entityMod, "au moins un module entité généré");
+  assert.match(
+    fs.readFileSync(
+      path.join(serverDir, "src/electron/modules", entityMod),
+      "utf8",
+    ),
+    /genericOsTourScenario/,
+    "module factory : stub demo.scenarios jouable",
+  );
   assert.match(
     fs.readFileSync(path.join(appDir, "AGENTS.md"), "utf8"),
     /BrandModuleDef/,
@@ -206,6 +252,28 @@ Desktop Creezio.
       "utf8",
     ),
     /clientsModule/,
+  );
+  const clientsMod = fs.readFileSync(
+    path.join(serverDir, "src/electron/modules/clients.ts"),
+    "utf8",
+  );
+  assert.match(clientsMod, /genericOsTourScenario/, "module init : OS tour");
+  assert.match(clientsMod, /demo:\s*\{/, "module init : demo.scenarios (plus un commentaire)");
+  assert.doesNotMatch(
+    clientsMod,
+    /\/\/ demo: \{ scenarios:/,
+    "module init ne doit plus laisser demo en commentaire",
+  );
+  const appDoctor = runCli([
+    "brand",
+    "doctor",
+    "--spec",
+    path.join(appDir, "brand-spec"),
+  ]);
+  assert.equal(
+    appDoctor.status,
+    0,
+    appDoctor.stderr + "\n" + appDoctor.stdout,
   );
   // Gate colocalisée (DOC-STANDARD-MODULE : 5ᵉ fichier) + runner découvert.
   const gatePath = path.join(appDir, "brand-spec/modules/clients/gate.mjs");

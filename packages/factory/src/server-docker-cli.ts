@@ -38,6 +38,7 @@ import {
 import {
   CREATE_OWNER_ENV_KEYS,
   applyFirstRunOwner,
+  assertInteractiveDemoScenarios,
   formatOwnerLoginLog,
   resolveCreateOwnerPolicy,
   type CreateOwnerPolicy,
@@ -2290,12 +2291,19 @@ async function applyCreateOwner(
   ownerPolicy: CreateOwnerPolicy,
 ): Promise<void> {
   if (ownerPolicy.mode !== "create") return;
+  const baseUrl = `http://127.0.0.1:${port}`;
   await applyFirstRunOwner({
-    baseUrl: `http://127.0.0.1:${port}`,
+    baseUrl,
     email: ownerPolicy.email,
     password: ownerPolicy.password,
   });
   console.log(`  ${formatOwnerLoginLog(ownerPolicy.email)}`);
+  const demo = await assertInteractiveDemoScenarios({
+    baseUrl,
+    email: ownerPolicy.email,
+    password: ownerPolicy.password,
+  });
+  console.log(`  démo interactive : ${demo.count} scénario(s)`);
 }
 
 async function waitBootReady(port: number, timeoutMs = 180000): Promise<void> {

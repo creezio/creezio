@@ -17,6 +17,7 @@ export function renderBrandMigrationsTs(model: ProductModel): string {
  * migrations \`mod_<module>_*\` (brand module init / modules/<id>.ts).
  */
 import { composeMigrations, type SqliteMigration } from "@creezio/platform-core";
+import { interactiveDemoMigrations } from "@creezio/interactive-demo";
 import { collectModuleMigrations } from "./modules/index.js";
 
 export const BRAND_SCHEMA_SQL = \`${sql}\`;
@@ -53,6 +54,7 @@ export function brandMigrations(): SqliteMigration[] {
       id: "fromprd_brand_api_keys",
       sql: BRAND_API_KEYS_SQL,
     },
+    interactiveDemoMigrations(),
     collectModuleMigrations(),
   );
 }
@@ -83,7 +85,12 @@ import type {
   ApiRequest,
 } from "@creezio/api-kernel";
 import { registerEntityMounts } from "@creezio/api-kernel";
-import { collectApiMounts, collectEntitySpecs } from "./modules/index.js";
+import {
+  collectInteractiveDemoDefaults,
+  createInteractiveDemoMount,
+  genericOsTourScenario,
+} from "@creezio/interactive-demo";
+import { collectApiMounts, collectDemoScenarios, collectEntitySpecs } from "./modules/index.js";
 
 const require = createRequire(import.meta.url);
 
@@ -224,6 +231,22 @@ export function registerBrandModuleApi(api: ApiKernel): void {
   api.registerModuleApi("schema", createSchemaMount());
   api.registerModuleApi("dashboard", createDashboardMount());
   api.registerModuleApi("search", createSearchMount());
+  api.registerModuleApi(
+    "interactive-demo",
+    createInteractiveDemoMount({
+      defaults: collectInteractiveDemoDefaults([
+        {
+          moduleId: "os",
+          scenarios: [
+            genericOsTourScenario({
+              productName: ${JSON.stringify(model.brandName)},
+            }),
+          ],
+        },
+        { moduleId: "brand", scenarios: collectDemoScenarios() },
+      ]),
+    }),
+  );
   // Bonus marque optionnel (brand-bonus-api.ts) — ignore si absent.
   try {
     const bonus = require("./brand-bonus-api.js") as {

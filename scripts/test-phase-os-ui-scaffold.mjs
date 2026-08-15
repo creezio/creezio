@@ -74,6 +74,30 @@ test("os-ui scaffold : zéro page OS versionnée, materialize + boot kit", () =>
   const layout = fs.readFileSync(path.join(srv, "ui/app/layout.tsx"), "utf8");
   assert.match(layout, /@creezio\/os-ui\/boot/);
   assert.match(layout, /CreezioUiBoot/);
+  assert.match(
+    layout,
+    /@creezio\/interactive-demo\/ui\/interactive-demo\.css/,
+    "layout importe le CSS démo interactive",
+  );
+  assert.ok(
+    uiPkg.dependencies["@creezio/interactive-demo"],
+    "dep UI @creezio/interactive-demo",
+  );
+  const bootSrc = fs.readFileSync(
+    path.join(ROOT, "packages/os-ui/src/boot.tsx"),
+    "utf8",
+  );
+  assert.match(bootSrc, /InteractiveDemoRoot/, "CreezioUiBoot monte InteractiveDemoRoot");
+  const brandApi = fs.readFileSync(
+    path.join(srv, "src/electron/brand-module-api.ts"),
+    "utf8",
+  );
+  assert.match(brandApi, /createInteractiveDemoMount/);
+  const brandMig = fs.readFileSync(
+    path.join(srv, "src/electron/brand-migrations.ts"),
+    "utf8",
+  );
+  assert.match(brandMig, /interactiveDemoMigrations/);
   assert.doesNotMatch(layout, /OS_NAV/);
   assert.doesNotMatch(layout, /\/mails/);
 

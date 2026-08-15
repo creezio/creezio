@@ -18,7 +18,8 @@ wrappers minces sur les UI des packages plateforme, boot client
 ## Points d'entrée
 
 - `src/index.ts` : `OS_UI_ROUTE_SEGMENTS`, `OS_UI_ROUTE_GROUP`, exports.
-- `src/boot.tsx` : `CreezioUiBoot` (configureShellUiBrand côté client).
+- `src/boot.tsx` : `CreezioUiBoot` (configureShellUiBrand + `InteractiveDemoRoot`
+  natif — une app sans démo est invalide ; le chrome marque ne peut pas l'oublier).
 - `scripts/materialize.mjs` : copie `routes/` → `ui/app/(creezio-os)/`.
 - `routes/<segment>/page.tsx` : une page OS = un wrapper.
 

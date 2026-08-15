@@ -245,6 +245,7 @@ export function renderUiPackageJson(_manifest: AppManifest): string {
           "@creezio/database": spec,
           "@creezio/access-control": spec,
           "@creezio/observability": spec,
+          "@creezio/interactive-demo": spec,
           "@radix-ui/react-avatar": "^1.1.10",
           "@radix-ui/react-dialog": "^1.1.14",
           "@radix-ui/react-dropdown-menu": "^2.1.15",
@@ -527,6 +528,7 @@ export function renderNextLayoutWithOsNav(model: ProductModel): string {
 import { CreezioUiBoot } from "@creezio/os-ui/boot";
 import { BrandChrome } from "@/components/brand-chrome";
 import "@creezio/shell-ui/theme.css";
+import "@creezio/interactive-demo/ui/interactive-demo.css";
 import "./globals.css";
 
 export const metadata = {

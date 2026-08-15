@@ -45,9 +45,11 @@ export type BrandModuleDef = {
   /** Index Meili contribués au feed marque. */
   meiliIndexes?: BrandMeiliIndex[];
   /**
-   * Scénarios de démo interactive contribués par le module (tour produit
-   * métier) — agrégés par \`collectDemoScenarios()\` (registre) et servis en
-   * défauts du mount \`interactive-demo\`.
+   * Scénarios de démo interactive du module — **obligatoire** (≥ 1 scénario
+   * valide). Agrégés par \`collectDemoScenarios()\` (registre) et servis en
+   * défauts du mount \`interactive-demo\`. Inclure
+   * \`genericOsTourScenario({ productName })\` (id \`os-tour\` partagé).
+   * Une app Creezio sans démo interactive est invalide.
    */
   demo?: { scenarios: DemoScenario[] };
   /**
@@ -375,6 +377,54 @@ function pageForEntity(
   return model.pages.find((p) => p.entityId === entityId || p.id === entityId);
 }
 
+/** Champ `demo` jouable (OS tour + scénario module) — factory + `brand module init`. */
+export function renderPlayableDemoBlock(opts: {
+  moduleId: string;
+  title: string;
+  productName: string;
+  navLabel?: string;
+}): string {
+  const nav = opts.navLabel || opts.title;
+  return `  demo: {
+    scenarios: [
+      genericOsTourScenario({ productName: ${JSON.stringify(opts.productName)} }),
+      {
+        id: ${JSON.stringify(`${opts.moduleId}-tour`)},
+        title: ${JSON.stringify(`Découvrir ${opts.title}`)},
+        description: ${JSON.stringify(`Visite guidée de ${opts.title}.`)},
+        enabled: true,
+        steps: [
+          {
+            id: "welcome",
+            kind: "say",
+            title: ${JSON.stringify(opts.title)},
+            body: ${JSON.stringify(
+              `Cette section couvre ${opts.title}. Suivez le curseur ou quittez à tout moment.`,
+            )},
+          },
+          {
+            id: "nav",
+            kind: "highlight",
+            target: { text: ${JSON.stringify(nav)} },
+            title: ${JSON.stringify(opts.title)},
+            body: "Ouvrez cette entrée depuis la navigation.",
+            optional: true,
+          },
+        ],
+      },
+    ],
+  },`;
+}
+
+/** Un wiring module a ≥ 1 scénario jouable (pas un commentaire). */
+export function moduleWiringHasDemoScenarios(src: string): boolean {
+  if (!/\bdemo\s*:/.test(src) || !/\bscenarios\s*:/.test(src)) return false;
+  return (
+    /genericOsTourScenario\s*\(/.test(src) ||
+    /kind\s*:\s*["'](?:say|navigate|highlight|click|type|scroll|wait)/.test(src)
+  );
+}
+
 function renderEntityHooksAndExtras(
   model: ProductModel,
   entity: ProductEntity,
@@ -560,6 +610,7 @@ export function renderEntityModuleTs(
   const importLines = [
     needsUuid ? `import { randomUUID } from "node:crypto";` : "",
     `import type {\n${typeImports.map((t) => `  ${t},`).join("\n")}\n} from "@creezio/api-kernel";`,
+    `import { genericOsTourScenario } from "@creezio/interactive-demo";`,
     `import type { BrandModuleDef } from "./types.js";`,
   ]
     .filter(Boolean)
@@ -621,6 +672,12 @@ export const ${camel}Module: BrandModuleDef = {
       order: ${order},
     },
   ],
+${renderPlayableDemoBlock({
+    moduleId,
+    title: navLabel,
+    productName: model.brandName,
+    navLabel,
+  })}
 };
 `,
   };
@@ -713,6 +770,18 @@ if (!fs.existsSync(registry) || !fs.readFileSync(registry, "utf8").includes("./$
 const api = path.join(serverDir, "src/electron/brand-module-api.ts");
 if (fs.existsSync(api) && !fs.readFileSync(api, "utf8").includes("collectEntitySpecs")) {
   errors.push("brand-module-api ne consomme pas collectEntitySpecs (registre)");
+}
+
+if (fs.existsSync(wiring)) {
+  const wiringSrc = fs.readFileSync(wiring, "utf8");
+  if (!/\\bdemo\\s*:/.test(wiringSrc) || !/\\bscenarios\\s*:/.test(wiringSrc)) {
+    errors.push("demo.scenarios obligatoire (≥ 1 scénario jouable)");
+  } else if (
+    !/genericOsTourScenario\\s*\\(/.test(wiringSrc) &&
+    !/kind\\s*:\\s*["'](?:say|navigate|highlight|click|type|scroll|wait)/.test(wiringSrc)
+  ) {
+    errors.push("demo.scenarios sans scénario jouable (genericOsTourScenario ou steps)");
+  }
 }
 
 const mig = path.join(serverDir, "src/electron/brand-migrations.ts");
