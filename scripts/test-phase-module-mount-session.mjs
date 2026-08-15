@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 /**
- * Gate — session HTTP sur `/api/v1/modules/*` (BACKLOG F3 / DASH-5).
+ * Gate — session HTTP sur `/api/v1/modules/*` (BACKLOG F3 / DASH-5)
+ * et `/api/v1/admin/*` (foove2#78 — supervision sans session).
  *
  * Prouve la garde à la bordure `listenBrandOsHttp` :
  *  1. GET module anonyme → 401 ;
@@ -8,7 +9,9 @@
  *  3. chemin allowlisté (landing/public) sans session → pas bloqué par la garde ;
  *  4. `api.handle` in-process reste libre (pollers / gates unitaires) ;
  *  5. clé API machine brand (Bearer opaque, table api_keys) → 200 en lecture,
- *     clé inconnue → 401 (auth machine Hermes/plugins/n8n).
+ *     clé inconnue → 401 (auth machine Hermes/plugins/n8n) ;
+ *  6. GET `/api/v1/admin/*` anonyme → 401 (avant proxy Hono) ; JWT → 200 ;
+ *     clé machine métier ne déverrouille pas l'admin ; `/health` reste 200.
  */
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
@@ -19,6 +22,9 @@ import {
   resetAuthConfigForTests,
 } from "../packages/auth/dist/index.js";
 import { createApiKernel } from "../packages/api-kernel/dist/index.js";
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import {
   assertModuleMountSession,
   CATALOG_INTERNAL_HEADER,
@@ -26,10 +32,16 @@ import {
   catalogInternalHeaderAllows,
   createBrandApiKeyModuleVerifier,
   ensureCatalogInternalSecret,
+  isAdminApiPath,
   isCatalogInternalBootPath,
   isPublicModulePath,
   listenBrandOsHttp,
 } from "../packages/app-runtime/dist/index.js";
+
+const KIT_ROOT = path.resolve(
+  path.dirname(fileURLToPath(import.meta.url)),
+  "..",
+);
 
 const prevAuthDisabled = process.env.AUTH_DISABLED;
 const prevAuthSecret = process.env.AUTH_SECRET;
@@ -49,7 +61,28 @@ function restoreEnv() {
   resetAuthConfigForTests();
 }
 
+test("module-mount-session : listenBrandOsHttp garde admin avant proxy Hono", () => {
+  const src = fs.readFileSync(
+    path.join(KIT_ROOT, "packages/app-runtime/src/listen-brand-os-http.ts"),
+    "utf8",
+  );
+  const adminIdx = src.indexOf("isAdminApiPath(pathname)");
+  const proxyIdx = src.indexOf("opts.mcpSurfaceFetch");
+  assert.ok(adminIdx > 0, "isAdminApiPath doit être appelé à la bordure");
+  assert.ok(
+    proxyIdx > adminIdx,
+    "la garde admin doit précéder le proxy Hono MCP",
+  );
+});
+
 test("module-mount-session : allowlist + décision pure", async () => {
+  assert.equal(isAdminApiPath("/api/v1/admin/mcp/status"), true);
+  assert.equal(isAdminApiPath("/api/v1/admin/database/dbs"), true);
+  assert.equal(isAdminApiPath("/health"), false);
+  assert.equal(isAdminApiPath("/login"), false);
+  assert.equal(isAdminApiPath("/api/v1/os/setup"), false);
+  assert.equal(isAdminApiPath("/api/v1/modules/widgets"), false);
+
   assert.equal(
     isPublicModulePath("GET", "/api/v1/modules/landing/public"),
     true,
@@ -71,6 +104,21 @@ test("module-mount-session : allowlist + décision pure", async () => {
   });
   assert.equal(denied.ok, false);
   if (!denied.ok) assert.equal(denied.status, 401);
+
+  const adminDenied = await assertModuleMountSession({
+    method: "GET",
+    pathname: "/api/v1/admin/mcp/status",
+    headers: {},
+  });
+  assert.equal(adminDenied.ok, false);
+  if (!adminDenied.ok) assert.equal(adminDenied.status, 401);
+
+  const healthPass = await assertModuleMountSession({
+    method: "GET",
+    pathname: "/health",
+    headers: {},
+  });
+  assert.equal(healthPass.ok, true);
 
   const pub = await assertModuleMountSession({
     method: "GET",
@@ -192,12 +240,21 @@ test("module-mount-session : listenBrandOsHttp exige une session", async () => {
     }),
   };
 
+  let mcpSurfaceHits = 0;
   const http = await listenBrandOsHttp({
     api,
     mcp,
     host: "127.0.0.1",
     port: 0,
     moduleMountMachineKey: createBrandApiKeyModuleVerifier(() => fakeBrandDb),
+    mcpSurfaceHandlesPath: (p) => p.startsWith("/api/v1/admin/"),
+    mcpSurfaceFetch: async () => {
+      mcpSurfaceHits += 1;
+      return new Response(JSON.stringify({ ready: true, toolCount: 1 }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
+    },
   });
 
   try {
@@ -205,6 +262,22 @@ test("module-mount-session : listenBrandOsHttp exige une session", async () => {
     assert.equal(anon.status, 401);
     const anonBody = await anon.json();
     assert.equal(anonBody.error, "unauthorized");
+
+    const adminAnon = await fetch(`${http.baseUrl}/api/v1/admin/mcp/status`);
+    assert.equal(adminAnon.status, 401);
+    assert.equal((await adminAnon.json()).error, "unauthorized");
+    const adminDbs = await fetch(`${http.baseUrl}/api/v1/admin/database/dbs`);
+    assert.equal(adminDbs.status, 401);
+    const health = await fetch(`${http.baseUrl}/health`);
+    assert.equal(health.status, 200);
+    assert.equal((await health.json()).ok, true);
+    assert.equal(mcpSurfaceHits, 0, "Hono admin ne doit pas être atteint sans session");
+
+    // Clé machine métier : modules OK, admin toujours 401.
+    const adminMachine = await fetch(`${http.baseUrl}/api/v1/admin/mcp/status`, {
+      headers: { Authorization: `Bearer ${machineKey}` },
+    });
+    assert.equal(adminMachine.status, 401);
 
     // Clé machine valide (Bearer opaque) → passe la garde en lecture.
     const machine = await fetch(`${http.baseUrl}/api/v1/modules/widgets`, {
@@ -245,6 +318,13 @@ test("module-mount-session : listenBrandOsHttp exige une session", async () => {
     });
     assert.equal(authed.status, 200);
     assert.equal((await authed.json()).ok, true);
+
+    const adminAuthed = await fetch(`${http.baseUrl}/api/v1/admin/mcp/status`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    assert.equal(adminAuthed.status, 200);
+    assert.equal((await adminAuthed.json()).ready, true);
+    assert.ok(mcpSurfaceHits >= 1);
 
     const landing = await fetch(
       `${http.baseUrl}/api/v1/modules/landing/public`,

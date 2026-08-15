@@ -33,6 +33,7 @@ import {
 } from "./mount-brand-email-surface.js";
 import {
   assertModuleMountSession,
+  isAdminApiPath,
   type ModuleMachineKeyVerifier,
 } from "./module-mount-auth.js";
 
@@ -452,6 +453,21 @@ export async function listenBrandOsHttp(opts: {
           emailSurface.app.fetch(request),
         );
         return;
+      }
+
+      // Default-deny `/api/v1/admin/*` AVANT le proxy Hono MCP — sinon
+      // status/dbs/tables/endpoints restent publics (foove2#78). OAuth
+      // `/.well-known` + `/oauth/*` ne matchent pas `isAdminApiPath`.
+      if (isAdminApiPath(pathname)) {
+        const adminAuth = await assertModuleMountSession({
+          method: req.method || "GET",
+          pathname,
+          headers: req.headers,
+        });
+        if (!adminAuth.ok) {
+          send(res, adminAuth.status, adminAuth.body);
+          return;
+        }
       }
 
       // Proxy Hono OAuth / admin MCP (avant handlers JSON OS).

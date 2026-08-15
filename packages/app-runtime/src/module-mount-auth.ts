@@ -1,9 +1,12 @@
 /**
- * Garde session HTTP pour `/api/v1/modules/*` (BACKLOG F3 / DASH-5).
+ * Garde session HTTP pour `/api/v1/modules/*` (BACKLOG F3 / DASH-5)
+ * et `/api/v1/admin/*` (supervision MCP / database / analytics).
  *
  * Default-deny à la bordure `listenBrandOsHttp` — le kernel reste
  * framework-agnostique. Allowlist explicite des chemins machine/public
  * (webhooks signés, register/heartbeat Bearer, agent releases, LP public).
+ * La surface admin n'a **pas** d'allowlist : session cookie/Bearer JWT
+ * obligatoire (AUTH_DISABLED = owner virtuel hors production seulement).
  */
 import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
 import fs from "node:fs";
@@ -136,6 +139,11 @@ export function isModuleApiPath(pathname: string): boolean {
   return (
     pathname === "/api/v1/modules" || pathname.startsWith("/api/v1/modules/")
   );
+}
+
+/** Surface supervision OS (MCP, database, analytics, endpoints, logs). */
+export function isAdminApiPath(pathname: string): boolean {
+  return pathname === "/api/v1/admin" || pathname.startsWith("/api/v1/admin/");
 }
 
 export function isPublicModulePath(method: string, pathname: string): boolean {
@@ -330,8 +338,9 @@ export function anyModuleMachineKeyVerifier(
 }
 
 /**
- * Décision garde mounts modules — à appeler avant `api.handle` sur la
- * surface HTTP. Les appels in-process (`api.handle` direct) ne passent pas ici.
+ * Décision garde mounts modules + admin — à appeler à la bordure HTTP
+ * (avant `api.handle` **et** avant le proxy Hono `/api/v1/admin/*`).
+ * Les appels in-process (`api.handle` / `app.request` Hono) ne passent pas ici.
  */
 export async function assertModuleMountSession(input: {
   method: string;
@@ -340,6 +349,23 @@ export async function assertModuleMountSession(input: {
   /** Auth machine (clé API brand) en plus de la session plateforme. */
   verifyMachineKey?: ModuleMachineKeyVerifier;
 }): Promise<ModuleMountAuthDecision> {
+  // Admin : session uniquement — une clé machine métier ne déverrouille pas
+  // database/MCP/analytics (pas d'owner virtuel hors AUTH_DISABLED harness).
+  if (isAdminApiPath(input.pathname)) {
+    const session = await sessionFromNodeHeaders(input.headers);
+    if (!session) {
+      return {
+        ok: false,
+        status: 401,
+        body: {
+          ok: false,
+          error: "unauthorized",
+          hint: "session cookie or Bearer JWT required",
+        },
+      };
+    }
+    return { ok: true, session };
+  }
   if (!isModuleApiPath(input.pathname)) return { ok: true };
   if (isPublicModulePath(input.method, input.pathname)) {
     return { ok: true, public: true };
