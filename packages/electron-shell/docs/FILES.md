@@ -164,4 +164,5 @@
 
 | Fichier | Rôle |
 |---|---|
-| [`src/host/tunnel/tunnel.ts`](../src/host/tunnel/tunnel.ts) | Cloudflare Tunnel — service brand-agnostic (TF2 tunnel.ts). Provision URLs / tokens injectés via HostRuntimeContext.tunnelProvision. |
+| [`src/host/tunnel/cloudflared-respawn.ts`](../src/host/tunnel/cloudflared-respawn.ts) | Politique de respawn borné cloudflared in-process (backoff, max essais, reset après uptime sain) — pas de recréation d'id tunnel. |
+| [`src/host/tunnel/tunnel.ts`](../src/host/tunnel/tunnel.ts) | Cloudflare Tunnel — service brand-agnostic. Auto-provision API CF (`ensureCfTunnel`) + spawn cloudflared in-process supervisé (respawn borné, même id persisté). |
