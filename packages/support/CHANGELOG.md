@@ -1,5 +1,11 @@
 # @creezio/support
 
+## 0.10.2
+
+### Patch Changes
+
+- @creezio/api-kernel@0.10.2
+
 ## 0.10.1
 
 ### Patch Changes
