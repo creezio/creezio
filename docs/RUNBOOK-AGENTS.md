@@ -324,9 +324,14 @@ fatale).
 
 **Slugs réservés** (`RESERVED_SLUGS` dans
 `packages/platform-core/src/tunnel-cf.ts`) : `demo`, `test`, `dev`,
-`staging`, `sandbox`, `admin`, `app`, `api`… refusés à la création. **Un
-hostname de test = slug NON réservé** (`recette-01`, `qa-foo`…) —
-`demo.winhub.fr` est irréservable.
+`staging`, `sandbox`, `admin`, `app`, `api`… refusés tels quels.
+`server-docker create` **ne skip pas le tunnel** : il dérive
+`CREEZIO_TUNNEL_SLUG=<brand>-<slug>` (ex. `foove2-demo`), log + écriture
+dans `cf.env`. Un hostname client libre reste `{slug}.{zone}`
+(`acme.crm.foove.io`). Create VPS exige aussi `CREEZIO_CF_API_TOKEN` /
+`_ACCOUNT_ID` / `_ZONE_ID` **et** `CREEZIO_OWNER_EMAIL` /
+`CREEZIO_OWNER_PASSWORD` (first-run owner, même contrat cloud). Dev local :
+`CREEZIO_TUNNEL_LOCAL=1` (owner optionnel).
 
 **Cycle de vie** : `server-docker create` écrit `cf.env` (aucun appel CF
 créateur — tout se fait au boot) ; `server-docker rm <nom>` **déprovisionne

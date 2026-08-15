@@ -27,6 +27,21 @@ import {
   ensureBrandPackageLocks,
   isPackageLockInSync,
 } from "./package-lock.js";
+import {
+  CREATE_TUNNEL_ENV_KEYS,
+  formatDerivedSlugLog,
+  loadReservedSlugs,
+  pickEnvValues,
+  resolveCreateTunnelPolicy,
+  type CreateTunnelPolicy,
+} from "./server-docker-tunnel.js";
+import {
+  CREATE_OWNER_ENV_KEYS,
+  applyFirstRunOwner,
+  formatOwnerLoginLog,
+  resolveCreateOwnerPolicy,
+  type CreateOwnerPolicy,
+} from "./server-docker-owner.js";
 
 export type ServerDockerArgs = {
   sub: string;
@@ -229,16 +244,18 @@ Instances nommées (registre docker-data/servers.json — recommandé) :
     --browser : image variant browser (Chromium+Xvfb, sidecar navigateur IA,
                 profils /data/browser, shm 1 Go)
     --profile prod : serveur flotte — CREEZIO_NATIVE_WARM=1 + CREEZIO_CATALOG=1
-                + contrat Cloudflare CREEZIO_CF_API_TOKEN/_ACCOUNT_ID/_ZONE_ID
-                (/_ZONE_NAME/_UNIVERSAL_SSL, CREEZIO_DOMAIN, CREEZIO_TUNNEL_SLUG)
-                forwardé vers cf.env (chmod 600 — jamais dans le compose) :
-                l'instance auto-provisionne son tunnel au boot (API CF directe)
-                + forward env hôte CREEZIO_FLEET_ENDPOINT, CREEZIO_CRASH_ENDPOINT,
-                CREEZIO_PLUGINS, EMAIL_INBOUND_SECRET, EMAIL_DOMAIN,
-                MAIL_*/SMTP_*/RESEND_*, OPENAI_API_KEY, ANTHROPIC_API_KEY,
+                + fail-closed tunnel (CREEZIO_CF_API_TOKEN/_ACCOUNT_ID/_ZONE_ID
+                → cf.env 600, auto-provision au boot) + fail-closed owner
+                (CREEZIO_OWNER_EMAIL/_PASSWORD) + forward env hôte
+                CREEZIO_FLEET_ENDPOINT, CREEZIO_CRASH_ENDPOINT, CREEZIO_PLUGINS,
+                EMAIL_INBOUND_SECRET, EMAIL_DOMAIN, MAIL_*/SMTP_*/RESEND_*,
+                OPENAI_API_KEY, ANTHROPIC_API_KEY,
                 CREEZIO_FLEET_ADMIN_URL/_REGISTER_SECRET/_HOST_ID
-                (auto-inscription flotte ; uniquement s'ils sont posés —
-                aucun DNS/collector activé par défaut)
+    create VPS : CREEZIO_CF_API_TOKEN/_ACCOUNT_ID/_ZONE_ID + CREEZIO_OWNER_EMAIL/
+                _PASSWORD requis (sinon échec — jamais de succès sans hostname
+                public ni compte owner utilisable). Slug réservé (demo…)
+                → CREEZIO_TUNNEL_SLUG=<brand>-<slug> (log + cf.env).
+                Dev local : CREEZIO_TUNNEL_LOCAL=1 (owner optionnel)
   creezio server-docker start  <nom> --brand-root <app>
   creezio server-docker stop   <nom> --brand-root <app>
   creezio server-docker rm     <nom> --brand-root <app> [--purge-data]
@@ -2268,6 +2285,19 @@ async function runEnrollSubcommand(
   }
 }
 
+async function applyCreateOwner(
+  port: number,
+  ownerPolicy: CreateOwnerPolicy,
+): Promise<void> {
+  if (ownerPolicy.mode !== "create") return;
+  await applyFirstRunOwner({
+    baseUrl: `http://127.0.0.1:${port}`,
+    email: ownerPolicy.email,
+    password: ownerPolicy.password,
+  });
+  console.log(`  ${formatOwnerLoginLog(ownerPolicy.email)}`);
+}
+
 async function waitBootReady(port: number, timeoutMs = 180000): Promise<void> {
   const started = Date.now();
   let lastLine = "";
@@ -2357,39 +2387,24 @@ async function runRegistrySubcommand(
     }
     const variant = args.browser ? ("browser" as const) : ("base" as const);
     const image = serverImageName(brandId, variant);
-    if (!dockerImageExists(image)) {
-      console.log(`image ${image} absente — build (variant ${variant})…`);
-      dockerBuildImage(paths, env, { variant, image });
+    if (args.profile && args.profile !== "prod") {
+      throw new Error(`--profile inconnu: ${args.profile} (profils: prod)`);
     }
-    const port =
-      args.port && args.port > 0 ? args.port : await allocateServerPort(registry);
-    const extraEnv: Record<string, string> = {};
+    // Priorité : --env > env process > .env racine marque (gitignoré).
+    // Les vars tunnel sont lues MÊME sans --profile prod : sinon un create
+    // VPS « npm run server-docker:create -- demo » réussissait en loopback.
+    const brandDotEnv = readEnvFileValues(path.join(paths.brandRoot, ".env"));
+    const extraEnv: Record<string, string> = {
+      ...pickEnvValues([env, brandDotEnv], CREATE_TUNNEL_ENV_KEYS),
+    };
     if (args.profile === "prod") {
-      // Profil « serveur flotte prod » : warm natif + catalogue activés,
-      // tunnel/fleet/crash forwardés depuis l'env hôte s'ils sont posés
-      // (jamais de valeur inventée — pas d'effet de bord infra implicite).
       extraEnv.CREEZIO_NATIVE_WARM = "1";
       extraEnv.CREEZIO_CATALOG = "1";
-      // Contrat Cloudflare (CREEZIO_CF_*) → cf.env (600), intercepté dans
-      // la branche stack ci-dessous — JAMAIS dans inst.env / environment:.
-      const cfVarsForProfile = resolveCliCfEnv(paths.brandRoot);
-      if ((cfVarsForProfile.CREEZIO_CF_API_TOKEN || "").trim()) {
-        // Tunnel auto-provisionné → surface publique (MCP/webhooks via
-        // {slug}.{zone}), pas la surface loopback par défaut de l'image.
-        extraEnv.CREEZIO_TUNNEL_LOCAL = "0";
-      }
-      // Priorité : env process > .env racine marque (secrets locaux gitignorés)
-      // — permet de poser le superadmin flotte une fois au niveau du VPS.
-      const brandDotEnv = readEnvFileValues(
-        path.join(paths.brandRoot, ".env"),
-      );
       for (const key of [
         "CREEZIO_FLEET_ENDPOINT",
         "CREEZIO_CRASH_ENDPOINT",
         "CREEZIO_PLUGINS",
         "EMAIL_INBOUND_SECRET",
-        // Transport mails natifs (@creezio/mails) — forward si posés sur
-        // l'hôte / .env marque (sinon l'UI Paramètres → Email reste la voie).
         "EMAIL_DOMAIN",
         "MAIL_TRANSPORT",
         "MAIL_FROM",
@@ -2404,16 +2419,10 @@ async function runRegistrySubcommand(
         "RESEND_WEBHOOK_SECRET",
         "CLOUDFLARE_EMAIL_API_TOKEN",
         "CLOUDFLARE_EMAIL_TOKEN",
-        // Superadmin flotte uniforme : owner n8n auto + protection WebUI
-        // Hermes sur chaque serveur (jamais de valeur inventée — env hôte).
         "CREEZIO_SUPERADMIN_EMAIL",
         "CREEZIO_SUPERADMIN_PASSWORD",
-        // Clés LLM assistant (chat serveur headless) — clé entreprise de la
-        // marque, jamais inventée : forward uniquement si posée sur l'hôte.
         "OPENAI_API_KEY",
         "ANTHROPIC_API_KEY",
-        // Auto-inscription flotte (F3) : le serveur se déclare tout seul
-        // dans la DB centrale de l'app admin (register + heartbeat).
         "CREEZIO_FLEET_ADMIN_URL",
         "CREEZIO_FLEET_REGISTER_SECRET",
         "CREEZIO_FLEET_HOST_ID",
@@ -2421,11 +2430,45 @@ async function runRegistrySubcommand(
         const v = (env[key] || "").trim() || (brandDotEnv[key] || "").trim();
         if (v) extraEnv[key] = v;
       }
-    } else if (args.profile) {
-      throw new Error(`--profile inconnu: ${args.profile} (profils: prod)`);
     }
     Object.assign(extraEnv, args.env);
     if (args.warm) extraEnv.CREEZIO_NATIVE_WARM = "1";
+
+    const reservedSlugs = await loadReservedSlugs(paths.kit);
+    const cfVars = resolveCliCfEnv(paths.brandRoot);
+    const tunnelPolicy: CreateTunnelPolicy = resolveCreateTunnelPolicy({
+      instanceName: name,
+      brandId,
+      profile: args.profile,
+      env: { ...extraEnv, ...cfVars },
+      reservedSlugs,
+      noStack: args.noStack,
+    });
+    if (tunnelPolicy.mode === "local") {
+      extraEnv.CREEZIO_TUNNEL_LOCAL = "1";
+      console.log(
+        "CREEZIO_TUNNEL_LOCAL=1 — create loopback (dev local, pas de hostname public)",
+      );
+    } else {
+      extraEnv.CREEZIO_TUNNEL_LOCAL = "0";
+      extraEnv.CREEZIO_TUNNEL_SLUG = tunnelPolicy.slug;
+      if (tunnelPolicy.derived) {
+        console.log(formatDerivedSlugLog(tunnelPolicy));
+      }
+    }
+    // Owner : lu pour le first-run HTTP hôte — JAMAIS injecté dans compose
+    // (le mot de passe ne doit pas apparaître dans inspect / registre).
+    const ownerPolicy: CreateOwnerPolicy = resolveCreateOwnerPolicy({
+      local: tunnelPolicy.mode === "local",
+      env: pickEnvValues([args.env, env, brandDotEnv], CREATE_OWNER_ENV_KEYS),
+    });
+
+    if (!dockerImageExists(image)) {
+      console.log(`image ${image} absente — build (variant ${variant})…`);
+      dockerBuildImage(paths, env, { variant, image });
+    }
+    const port =
+      args.port && args.port > 0 ? args.port : await allocateServerPort(registry);
     const inst: ServerRegistryInstance = {
       name,
       containerName,
@@ -2445,11 +2488,10 @@ async function runRegistrySubcommand(
     if (!args.noStack) {
       const stack = await importInstanceStack(paths.kit);
       // Contrat Cloudflare → cf.env (chmod 600) : l'instance auto-provisionne
-      // son tunnel au boot via l'API CF (fin de l'appel /reserve au
-      // provisioner VPS). Aucun secret dans le registre ni le compose.
+      // son tunnel au boot via l'API CF. Aucun secret dans le registre
+      // ni le compose. Fail-closed : mode public exige le contrat complet.
       let cf: Record<string, string> | undefined;
-      const cfVars = resolveCliCfEnv(paths.brandRoot);
-      if ((cfVars.CREEZIO_CF_API_TOKEN || "").trim()) {
+      if (tunnelPolicy.mode === "public") {
         const cfClient = await importTunnelCf(paths.kit);
         const cfEnv = cfEnvFromMerged(cfClient, cfVars);
         if (!cfEnv) {
@@ -2475,7 +2517,7 @@ async function runRegistrySubcommand(
         }
         cf = {
           ...cfVars,
-          CREEZIO_TUNNEL_SLUG: (cfVars.CREEZIO_TUNNEL_SLUG || name).trim(),
+          CREEZIO_TUNNEL_SLUG: tunnelPolicy.slug,
         };
         console.log(
           `tunnel auto-provisionné au boot par l'instance (slug ${cf.CREEZIO_TUNNEL_SLUG}, cf.env 600)`,
@@ -2512,7 +2554,17 @@ async function runRegistrySubcommand(
         `  boot-status : curl http://127.0.0.1:${hp}/api/v1/os/boot-status`,
       );
       await waitBootReady(hp);
-      console.log(`✓ serveur ${name} prêt — CRM: http://127.0.0.1:${hp}/`);
+      await applyCreateOwner(hp, ownerPolicy);
+      if (cf?.CREEZIO_TUNNEL_SLUG) {
+        const publicHost =
+          (cf.CREEZIO_DOMAIN || "").trim() ||
+          `${cf.CREEZIO_TUNNEL_SLUG}.${(cf.CREEZIO_CF_ZONE_NAME || "crm.foove.io").trim()}`;
+        console.log(
+          `✓ serveur ${name} prêt — CRM public: https://${publicHost}/ (debug loopback http://127.0.0.1:${hp}/)`,
+        );
+      } else {
+        console.log(`✓ serveur ${name} prêt — CRM: http://127.0.0.1:${hp}/`);
+      }
       return;
     }
 
@@ -2535,6 +2587,7 @@ async function runRegistrySubcommand(
       `  boot-status : curl http://127.0.0.1:${port}/api/v1/os/boot-status`,
     );
     await waitBootReady(port);
+    await applyCreateOwner(port, ownerPolicy);
     console.log(`✓ serveur ${name} prêt — CRM: http://127.0.0.1:${port}/`);
     return;
   }

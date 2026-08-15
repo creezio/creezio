@@ -73,6 +73,7 @@
 | [`test-phase-factory-lockfile.mjs`](../test-phase-factory-lockfile.mjs) | (à documenter) |
 | [`test-phase-factory-prd-experience.mjs`](../test-phase-factory-prd-experience.mjs) | Gate expérience F5 — simulation agent « un prompt produit ». Input = PROMPT-PRODUIT + PRD uniquement ; assert fichiers métier + smoke. |
 | [`test-phase-factory-prd.mjs`](../test-phase-factory-prd.mjs) | Gate F0–F5 — factory --from-prd natif (api-kernel + SQLite). |
+| [`test-phase-factory-templates.mjs`](../test-phase-factory-templates.mjs) | (à documenter) |
 | [`test-phase-factory-two-repos.mjs`](../test-phase-factory-two-repos.mjs) | Gate FLOTTE — factory 2-repos : chaque marque = monorepo (server/ client/) + repo ADMIN dédié `<brand>-admin` (pilotage flotte multi-VPS, sans secret). |
 | [`test-phase-fleet-agent.mjs`](../test-phase-fleet-agent.mjs) | Gate FLOTTE — agent hôte + server-admin multi-VPS (fleet-collector). |
 | [`test-phase-fleet-heartbeat.mjs`](../test-phase-fleet-heartbeat.mjs) | Gate — auto-inscription flotte + heartbeat (F3). Prouve, avec un VRAI serveur HTTP admin (mount fleet-registry @creezio/admin sur DB better-sqlite3) et le client kit (@creezio/app-runtime) : 1. |
@@ -187,6 +188,8 @@
 | [`test-phase-registry-pull-proxy.mjs`](../test-phase-registry-pull-proxy.mjs) | Gate — exposition du registre Docker en pull authentifié (F4). |
 | [`test-phase-resolve-manifest.mjs`](../test-phase-resolve-manifest.mjs) | Gate resolveManifest — registre + fallback app-manifest.json (from-prd). |
 | [`test-phase-runtime-dist-freshness.mjs`](../test-phase-runtime-dist-freshness.mjs) | Gate ADR.1b généralisée — dist runtime = câblage src (content + mtime) ; fail-closed sync/publish. |
+| [`test-phase-server-docker-owner.mjs`](../test-phase-server-docker-owner.mjs) | Gate — create VPS fail-closed sans `CREEZIO_OWNER_EMAIL`/`_PASSWORD` ; LOCAL=1 owner optionnel ; setup + login mockés ; jamais le mot de passe en log. |
+| [`test-phase-server-docker-tunnel.mjs`](../test-phase-server-docker-tunnel.mjs) | Gate — create VPS fail-closed sans contrat CF (`CREEZIO_CF_*`) + mapping slug réservé `demo` → `<brand>-demo`. |
 | [`test-phase-server-docker.mjs`](../test-phase-server-docker.mjs) | Gate — artefacts docker/server + CLI creezio server-docker. |
 | [`test-phase-shell-desktop-api.mjs`](../test-phase-shell-desktop-api.mjs) | Gate — `getShellDesktopApi` uniquement (pas de `window.*Desktop` hardcodé) + import obligatoire ; scan kit UI + TF3 si présent. |
 | [`test-phase-single-data-plane.mjs`](../test-phase-single-data-plane.mjs) | (à documenter) |

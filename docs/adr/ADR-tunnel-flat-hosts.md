@@ -23,7 +23,7 @@ de supporter le schéma nested historique (TempoFlow).
 ## Décision
 
 Deux modes SoT dans `packages/platform-core/src/tunnel-urls.ts` et
-`docker/tunnel-provisioner/` :
+`packages/platform-core/src/tunnel-cf.ts` :
 
 | Mode | Hosts embeds/agent | DNS |
 |------|--------------------|-----|

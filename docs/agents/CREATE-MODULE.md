@@ -30,6 +30,14 @@ d'architecture), poser les tâches dans `TODO.md`, puis claim
 (`[todo]` → `[in-progress]` + `- claim: <agent> <date>` dans le même commit
 que la première modif).
 
+**Conventions OS non négociables** : l'interview ne peut pas contredire les
+conventions dures du kit (section éponyme de
+[DOC-STANDARD-MODULE.md](../DOC-STANDARD-MODULE.md)) — notamment home =
+`/dashboard` (le kit canonise `/` → `/dashboard`), `app/page.tsx` = pure
+redirection, nav accueil → `href: "/dashboard"`, routes OS + `/site/*`
+réservées. Si une spec existante les contredit : corriger la spec, ne pas
+arbitrer.
+
 ## Où va quoi — registre de modules
 
 Tout le wiring d'un module vit dans **son** fichier

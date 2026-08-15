@@ -59,6 +59,27 @@ export {
   type ServerRegistryInstance,
 } from "./server-docker-registry.js";
 export {
+  CREATE_CF_ENV_KEYS,
+  CREATE_TUNNEL_ENV_KEYS,
+  RESERVED_SLUGS_FALLBACK,
+  deriveCreateTunnelSlug,
+  formatMissingProvisionerError,
+  isExplicitTunnelLocal,
+  loadReservedSlugs,
+  resolveCreateTunnelPolicy,
+  type CreateTunnelPolicy,
+  type CreateTunnelPolicyInput,
+} from "./server-docker-tunnel.js";
+export {
+  CREATE_OWNER_ENV_KEYS,
+  applyFirstRunOwner,
+  formatMissingOwnerError,
+  formatOwnerLoginLog,
+  resolveCreateOwnerPolicy,
+  type CreateOwnerPolicy,
+  type CreateOwnerPolicyInput,
+} from "./server-docker-owner.js";
+export {
   writeAppFile,
   isOwnedByBrand,
   OWNED_BY_BRAND_MARKER,

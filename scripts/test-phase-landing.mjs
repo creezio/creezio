@@ -252,12 +252,16 @@ test("landing.media — upload base64 borné, service via route Next", async () 
 
 test("landing.tunnel — slug lp réservé aux marques (kind brand-web)", () => {
   assert.ok(BRAND_WEB_SLUGS.has("lp"));
-  // Un serveur client ne peut pas voler lp.
+  // admin.{zone} = app OS admin de marque (ADR-admin-app-os) — brand-web aussi.
+  assert.ok(BRAND_WEB_SLUGS.has("admin"));
+  // Un serveur client ne peut pas voler lp ni admin.
   assert.equal(slugCheckLocal("lp").available, false);
-  // La marque peut le réserver explicitement.
+  assert.equal(slugCheckLocal("admin").available, false);
+  // La marque peut les réserver explicitement.
   assert.equal(slugCheckLocal("lp", { kind: "brand-web" }).available, true);
+  assert.equal(slugCheckLocal("admin", { kind: "brand-web" }).available, true);
   // brand-web n'ouvre pas les autres slugs réservés.
-  assert.equal(slugCheckLocal("admin", { kind: "brand-web" }).available, false);
+  assert.equal(slugCheckLocal("www", { kind: "brand-web" }).available, false);
 });
 
 test("landing.tunnel — ingress brand-web = un seul service + 404", () => {

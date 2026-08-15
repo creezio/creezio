@@ -227,7 +227,9 @@ hooks, codes d'erreur — routes CRUD générées par EntitySpec incluses)
 
 ## UI
 
-(pages + composants du kit graphique utilisés — voir DOC-STANDARD-UI.md)
+(pages + composants du kit graphique utilisés — voir DOC-STANDARD-UI.md ;
+home = page réelle à \`/dashboard\`, jamais de page à \`/\` — conventions OS
+de DOC-STANDARD-MODULE.md)
 
 ## Tools MCP
 
@@ -254,13 +256,29 @@ Aucun
 Questionnaire d'architecture REMPLI — SoT des décisions du module
 (standard kit docs/DOC-STANDARD-MODULE.md).
 
+## Conventions OS non négociables
+
+Une interview ne peut PAS contredire ces conventions dures du kit
+(section « Conventions OS non négociables » de DOC-STANDARD-MODULE.md) :
+
+- **Home = \`/dashboard\`** : la page d'accueil réelle de la marque vit à
+  \`/dashboard\` (le workspace kit canonise tout href \`/\` → \`/dashboard\`).
+  Ne JAMAIS spécifier « accueil à \`/\` ».
+- **\`/\` = pure redirection factory** (\`app/page.tsx\`) — jamais de contenu.
+- **Nav « accueil »** → \`href: "/dashboard"\`, jamais \`href: "/"\`.
+- **Routes réservées OS** : ne pas revendiquer les routes matérialisées par
+  \`@creezio/os-ui\` (\`/login\`, \`/setup\`, \`/onboarding\`, \`/taches\`,
+  \`/mails\`, \`/parametres\`, \`/collaborateurs\`, \`/configuration\`,
+  \`/support\`, \`/admin/*\`…) ni \`/site/*\` (onglets sites externes,
+  fullscreen).
+
 ## 1. Identité & pages
 
 - id : \`{{moduleId}}\`
 - titre :
-- routes UI :
+- routes UI : (jamais \`/\` — voir Conventions OS ci-dessus)
 - entrée(s) de nav (id, label, href, order) :
-- permission nav :
+- permission nav : (format \`nav.<slug>\` ; absente = visible par tous)
 
 ## 2. Données & migrations
 

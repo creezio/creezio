@@ -1,5 +1,26 @@
 # @creezio/factory
 
+## 0.5.7
+
+### Patch Changes
+
+- ce13ce0: `server-docker create` VPS/prod est fail-closed : sans `CREEZIO_TUNNEL_PROVISION_URL`/`_TOKEN`, la commande échoue (plus de stack loopback « OK »). Un slug d'instance dans `RESERVED_SLUGS` (`demo`…) dérive `CREEZIO_TUNNEL_SLUG=<brand>-<slug>` (log + env instance). `CREEZIO_TUNNEL_LOCAL=1` reste l'opt-in dev local.
+- 35b72d5: `server-docker create` VPS/prod est fail-closed aussi sur le first-run owner : sans `CREEZIO_OWNER_EMAIL` / `CREEZIO_OWNER_PASSWORD`, la commande échoue (plus d'instance « OK » sans compte utilisable). Avec ces vars, le create appelle `POST /api/v1/os/setup` et log l'URL publique + `login : $CREEZIO_OWNER_EMAIL` (jamais le mot de passe). `CREEZIO_TUNNEL_LOCAL=1` : owner optionnel (dev machine).
+  - @creezio/brand-config@0.9.4
+  - @creezio/product-hub@0.9.4
+  - @creezio/brand-spec@0.9.4
+
+## 0.5.6
+
+### Patch Changes
+
+- d26f5db: Convention OS home = /dashboard, appliquée fail-closed par la factory et les gabarits de spec. `renderNextHomePage` redirige TOUJOURS vers `/dashboard` (plus de fallback `model.pages[0]` — vécu foove2 : `redirect("/notes")` résiduel et pas de page /dashboard alors que le workspace kit canonise tout href `/` → `/dashboard`), avec commentaire généré explicite (home réelle = `app/dashboard/page.tsx`). `ensureDashboardPage` garantit une page `/dashboard` dans TOUTE app générée (modèle générique et repo admin compris) ; `defaultWorkspaceHome` retourne toujours `/dashboard` ; le template dashboard dérive ses compteurs des entités réelles du spec (plus de labels CHR en dur). Gabarits brand-spec (interview.md / prd.md) : section « Conventions OS non négociables » (home /dashboard, `/` = pure redirection factory, nav accueil → /dashboard, routes OS + /site/\* réservées) — une interview générée ne peut plus proposer « accueil à / ».
+- 83a1913: Templates factory : les scripts/feeds générés substituent les entités RÉELLES du ProductModel — `test-metier-parcours.mjs` testait un hardcode `notes` (404 sur une app sans ce module — vécu foove2-admin), le feed Meili générique indexait la table `notes` (absente du schema généré), et `test-meili-config.mjs` résolvait `meili-launcher.js`/`generic-indexer.js` par sondage d'un chemin monorepo kit inexistant dans une app npm (helper `electronShellDist` node_modules-first, porté de winhub). Fixture Meili générique : INSERT dans la table de la première entité du spec.
+- Updated dependencies [d26f5db]
+  - @creezio/brand-spec@0.9.3
+  - @creezio/brand-config@0.9.3
+  - @creezio/product-hub@0.9.3
+
 ## 0.5.5
 
 ### Patch Changes

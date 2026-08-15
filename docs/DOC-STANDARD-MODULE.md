@@ -9,6 +9,41 @@ métier autonome qu'un agent peut spécifier, implémenter, tester et livrer
 Vérifié par la gate `scripts/test-phase-module-docs.mjs` (kit `npm test`,
 suite brands pour la partie repos marque).
 
+## Conventions OS non négociables
+
+Une spec de module (`interview.md`, `prd.md`) ne peut **jamais** contredire
+les conventions dures du kit ci-dessous — un agent de dev qui rencontre une
+contradiction doit corriger la spec, pas arbitrer. Toutes sont prouvables
+dans le code du kit :
+
+- **Home = page réelle à `/dashboard`.** Le workspace kit canonise tout
+  href `/` → `/dashboard` (`normalizeHref` / `DASHBOARD_PATH` dans
+  `packages/shell-ui/ui/workspace/types.ts`, `targetHref` dans
+  `tab-workspace-context.tsx`, dupliqué dans
+  `src/lib/keepalive-eviction.ts`) et l'onglet de base (épinglé, non
+  fermable) est créé sur `/dashboard`. Une interview qui propose
+  « accueil à `/` » est **invalide**.
+- **`/` (`app/page.tsx`) = pure redirection vers `/dashboard`**, générée par
+  la factory (`renderNextHomePage`) — jamais de contenu. La home
+  s'implémente dans `app/dashboard/page.tsx`.
+- **Entrée de nav « accueil » → `href: "/dashboard"`**, jamais `href: "/"`.
+- **Routes réservées OS** : les routes matérialisées par `@creezio/os-ui`
+  (`/login`, `/setup`, `/onboarding`, `/taches`, `/mails`, `/parametres`,
+  `/collaborateurs`, `/configuration`, `/support`, `/settings`,
+  `/developers`, `/cockpit`, `/server-cockpit`, `/mcp`, `/admin/*`)
+  appartiennent à l'OS. Une page métier homonyme prime au materialize
+  (override volontaire, ex. `/parametres` TF) — mais un module ne les
+  revendique pas par défaut.
+- **`/site/*` réservé** aux onglets de sites externes (Hermes, n8n…) —
+  panes fullscreen jamais évincées (`isExternalSiteHref`,
+  `keep-alive.tsx`). Aucun module ne déclare de route `/site/...`.
+- **Permission d'entrée nav** : champ `permission` filtré sur
+  `me.permissions` (ex. `nav.panier` ; `/admin/access` exige
+  `platform.access.manage`). Absente = visible par tous
+  (`ui/layout/sidebar-host.ts`).
+- **Chemins fullscreen marque** : uniquement via `configureFullscreenPaths`
+  (défauts vides côté kit) — pas d'autre mécanisme.
+
 ## Où vivent les specs de module
 
 | Type de module | Dossier spec |
@@ -79,8 +114,14 @@ Questionnaire **rempli** (pas un formulaire vide). Sections :
 ```markdown
 # Interview module <id>
 
+## Conventions OS non négociables
+   Rappel des conventions dures du kit (section éponyme de ce standard) —
+   l'interview ne peut pas les contredire : home = /dashboard, "/" = pure
+   redirection, nav accueil → /dashboard, routes OS + /site/* réservées.
+
 ## 1. Identité & pages
-   id, titre, routes UI, entrée(s) de nav, permission nav.
+   id, titre, routes UI (jamais "/" — home = /dashboard), entrée(s) de nav,
+   permission nav.
 
 ## 2. Données & migrations
    Tables (schéma complet), index, FK logiques.

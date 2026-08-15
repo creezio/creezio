@@ -28,6 +28,14 @@ Questions minimales (voir `interview.schema.json`) :
    déclare notamment, pour chaque page UI, les composants du **kit graphique
    imposé** ([DOC-STANDARD-UI.md](../DOC-STANDARD-UI.md)).
 
+**Conventions OS non négociables** (section éponyme de
+[DOC-STANDARD-MODULE.md](../DOC-STANDARD-MODULE.md)) : une interview générée
+ne peut PAS les contredire. En particulier : la home d'une marque vit à
+`/dashboard` (le workspace kit canonise `/` → `/dashboard`), `app/page.tsx`
+(`/`) reste une **pure redirection factory** (jamais de contenu), et
+l'entrée de nav « accueil » pointe `href: "/dashboard"` — jamais `href: "/"`.
+Routes OS (`/taches`, `/mails`, `/admin/*`…) et `/site/*` : réservées.
+
 Ne **jamais** demander à l'agent d'implémenter des launchers Meili/n8n/Hermes
 dans la marque.
 
@@ -122,7 +130,12 @@ Reset clean-room TF3 : `node scripts/reset-tempoflow3.mjs` (backup + apply + bui
 
 ```bash
 cd <app>
-npm run server-docker:create -- demo
+# Dev local (loopback, owner optionnel) :
+CREEZIO_TUNNEL_LOCAL=1 npm run server-docker:create -- demo
+# VPS / prod — hostname {slug}.crm.foove.io + owner first-run obligatoires
+# (.env : CREEZIO_CF_API_TOKEN + _ACCOUNT_ID + _ZONE_ID + CREEZIO_OWNER_EMAIL +
+# CREEZIO_OWNER_PASSWORD ; slug réservé → <brand>-<slug>) :
+npm run server-docker:create -- acme -- --profile prod
 ```
 
 **Deux chemins distincts — ne pas les confondre :**

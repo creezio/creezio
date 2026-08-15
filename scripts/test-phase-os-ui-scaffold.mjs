@@ -35,10 +35,12 @@ test("os-ui scaffold : zéro page OS versionnée, materialize + boot kit", () =>
   );
 
   const out = fs.mkdtempSync(path.join(os.tmpdir(), "creezio-os-ui-"));
+  // 240s : le scaffold régénère les package-locks via le registre npm privé
+  // (réseau) — ~110s observé sur VPS, le budget 120s historique flakait.
   const r = spawnSync(
     process.execPath,
     [CLI, "new-app", "--from-prd", PRD, "--out", out, "--force"],
-    { encoding: "utf8", cwd: ROOT, timeout: 120_000 },
+    { encoding: "utf8", cwd: ROOT, timeout: 240_000 },
   );
   assert.equal(r.status, 0, r.stderr || r.stdout);
 
@@ -173,8 +175,13 @@ test("os-ui scaffold : zéro page OS versionnée, materialize + boot kit", () =>
   const home = fs.readFileSync(path.join(srv, "ui/app/page.tsx"), "utf8");
   assert.match(
     home,
-    /redirect\(/,
-    "home = redirection workspace (pas de placeholder scaffold)",
+    /redirect\("\/dashboard"\)/,
+    "home '/' = pure redirection vers /dashboard (le kit canonise '/' → /dashboard), jamais vers une autre page",
+  );
+  assert.match(
+    home,
+    /CONVENTION OS/,
+    "home '/' porte le commentaire CONVENTION OS (home réelle = app/dashboard/page.tsx)",
   );
 
   // Pages métier générées = composants kit, JAMAIS de HTML brut.

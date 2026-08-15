@@ -28,14 +28,14 @@ import {
 } from "./tunnel-urls.js";
 
 /**
- * Slugs "brand-web" : plans web publics de la marque (zone-level), ex.
- * `lp.{zone}` → landing page publique rendue par le plane de l'app admin
- * (ADR-module-natif-hybride). En auto-provisioning, un hostname zone-level
- * s'obtient via `CREEZIO_DOMAIN` / `CREEZIO_TUNNEL_EXTRA_HOSTNAMES` sur
- * l'instance concernée — la liste reste utile pour refuser ces slugs aux
- * serveurs clients.
+ * Slugs "brand-web" : plans web publics de la marque (zone-level) :
+ *   `lp.{zone}` → landing page publique (plane de l'app admin)
+ *   `admin.{zone}` → app OS admin de marque (ADR-admin-app-os)
+ * En auto-provisioning, un hostname zone-level s'obtient via
+ * `CREEZIO_DOMAIN` / `CREEZIO_TUNNEL_EXTRA_HOSTNAMES` sur l'instance
+ * concernée — la liste refuse ces slugs aux serveurs clients.
  */
-export const BRAND_WEB_SLUGS = new Set(["lp"]);
+export const BRAND_WEB_SLUGS = new Set(["lp", "admin"]);
 
 /** Slug "registry" : `registry.{zone}` → proxy pull-only du registre flotte. */
 export const REGISTRY_SLUGS = new Set(["registry"]);

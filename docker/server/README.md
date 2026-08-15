@@ -56,6 +56,8 @@ Chaque instance serveur est un **projet compose autonome**
 creezio server-docker create resto-x --brand-root … --profile prod
 # → cf.env écrit (contrat CF vérifié) + stack compose ; le tunnel est
 #   créé/configuré par l'instance elle-même au premier boot
+#   hostname public obligatoire : https://resto-x.crm.foove.io
+#   + owner first-run (CREEZIO_OWNER_EMAIL / _PASSWORD)
 
 creezio server-docker migrate-stack resto-lyon --brand-root …
 # → sidecar/legacy docker run → stack in-container : backup /data
@@ -75,9 +77,14 @@ tunnel) avant de retirer le stack.
 ## Une ligne (recommandé) — registre d'instances
 
 ```bash
-creezio server-docker create demo --brand-root "$BRAND_ROOT"
-# → build image si absente, port auto (18790+n), bind 127.0.0.1,
-#   attend le boot (progression live), CRM sur http://127.0.0.1:18793/
+# VPS / prod — hostname public {slug}.crm.foove.io + owner first-run obligatoires
+# (CREEZIO_CF_API_TOKEN + _ACCOUNT_ID + _ZONE_ID + CREEZIO_OWNER_EMAIL +
+# CREEZIO_OWNER_PASSWORD dans le .env marque).
+# Slug réservé (demo, test, admin…) → CREEZIO_TUNNEL_SLUG=<brand>-<slug>.
+creezio server-docker create acme --brand-root "$BRAND_ROOT" --profile prod
+
+# Dev local uniquement (loopback assumé, owner optionnel) :
+CREEZIO_TUNNEL_LOCAL=1 creezio server-docker create demo --brand-root "$BRAND_ROOT"
 
 creezio server-docker ls     --brand-root …   # instances + état docker
 creezio server-docker stop   demo --brand-root …
@@ -106,17 +113,27 @@ parité TF2 desktop complète, sans polluer les défauts test/CI :
 
 - `CREEZIO_NATIVE_WARM=1` (n8n + Hermes dans le container)
 - `CREEZIO_CATALOG=1` (téléchargement + **import** du catalogue après le listen)
+- **fail-closed tunnel** : `CREEZIO_CF_API_TOKEN` + `_ACCOUNT_ID` + `_ZONE_ID`
+  **requis** (hostname public `{slug}.crm.foove.io` / `{slug}.{zone}`,
+  auto-provisionné au boot via `cf.env` 600). Un create VPS **n'est plus un
+  succès silencieux en loopback** si le contrat CF manque. Slug d'instance
+  dans `RESERVED_SLUGS` (`demo`, `test`…) → dérivation explicite
+  `CREEZIO_TUNNEL_SLUG=<brand>-<slug>` (log + cf.env).
+- **fail-closed owner** : `CREEZIO_OWNER_EMAIL` + `CREEZIO_OWNER_PASSWORD`
+  **requis** (first-run `POST /api/v1/os/setup` + vérif login). Même contrat
+  cloud / VPS — pas de `E2E_OWNER_*`. Le create log `login : $CREEZIO_OWNER_EMAIL`
+  (jamais le mot de passe).
 - forward des env **présents sur l'hôte** (jamais inventés) : contrat
-  Cloudflare `CREEZIO_CF_API_TOKEN` / `_ACCOUNT_ID` / `_ZONE_ID` /
-  `_ZONE_NAME` / `_UNIVERSAL_SSL` + `CREEZIO_TUNNEL_SLUG` / `CREEZIO_DOMAIN`
+  Cloudflare `CREEZIO_CF_*` + `CREEZIO_TUNNEL_SLUG` / `CREEZIO_DOMAIN`
   (→ `cf.env` 600), `CREEZIO_FLEET_ENDPOINT`, `CREEZIO_CRASH_ENDPOINT`,
   `CREEZIO_PLUGINS`, `EMAIL_INBOUND_SECRET` (→ `secrets.env` 600)
 
-Chaque phase reste individuellement pilotable par env (`--env K=V` prime) et
-**no-op propre** si non configurée : pas de tunnel sans contrat CF
-(`CREEZIO_CF_API_TOKEN` + `_ACCOUNT_ID` + `_ZONE_ID`), pas de fleet sans
-endpoint (fallback manifest), etc. Aucun side effect prod (DNS Cloudflare,
-collector) sans env explicite posé par l'opérateur.
+Les autres phases (fleet, catalog…) restent no-op si non configurées.
+Le tunnel **et** l'owner **ne le sont plus** : sans `CREEZIO_CF_*` **ou** sans
+owner, `create` échoue avec un message qui indique où poser les vars
+(`.env` marque, Runtime Secrets cloud).
+Dev local : `CREEZIO_TUNNEL_LOCAL=1` (loopback assumé, owner optionnel,
+pas de `--profile prod`).
 
 ### Phases harness (parité TF2 desktop)
 

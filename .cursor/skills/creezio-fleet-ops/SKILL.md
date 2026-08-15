@@ -47,12 +47,15 @@ Ports : auto 18790+n, bind `127.0.0.1` (exposition = `--expose`).
 
 ```bash
 # Test local (image buildée si absente, port auto, attend le boot) :
-creezio server-docker create demo --brand-root "$BRAND_ROOT"
+CREEZIO_TUNNEL_LOCAL=1 creezio server-docker create demo --brand-root "$BRAND_ROOT"
 
-# Prod flotte (warm n8n/Hermes + catalogue + forward env hôte tunnel/fleet) :
-CREEZIO_TUNNEL_PROVISION_URL=http://172.17.0.1:8666 \
-CREEZIO_TUNNEL_PROVISION_TOKEN=<token du service creezio-tunnel-provisioner> \
+# Prod flotte (warm n8n/Hermes + catalogue + tunnel public + owner) :
+CREEZIO_CF_API_TOKEN=<token CF scopé compte+zone> \
+CREEZIO_CF_ACCOUNT_ID=<account> \
+CREEZIO_CF_ZONE_ID=<zone> \
 CREEZIO_TUNNEL_SLUG=<slug> \
+CREEZIO_OWNER_EMAIL=owner@<slug>.example \
+CREEZIO_OWNER_PASSWORD=<mot de passe ≥6, jamais loggé> \
 OPENAI_API_KEY=<clé LLM entreprise de la marque> \
 creezio server-docker create <slug> --brand-root "$BRAND_ROOT" --profile prod
 
@@ -81,16 +84,31 @@ curl -sS http://127.0.0.1:<port>/api/v1/core/health                    # {"ok":t
 `{BRAND_ROOT}/docker-data/servers.json`
 (`packages/factory/src/server-docker-registry.ts`) ; doc
 `docker/server/README.md`. Data : `docker-data/servers/<nom>` → `/data`.
-Provisioner tunnel : service systemd `creezio-tunnel-provisioner` (VPS, :8666,
-code `docker/tunnel-provisioner/`), token dans son unit.
+Tunnel : auto-provisionné au boot par l'instance (API CF, `cf.env` 600).
+Instances déjà up (`recette`, `foove2-demo`, `foove2admin`) restent sur leur
+stack actuel jusqu'à un `migrate-stack` dédié — ne pas les recréer ici.
 
 **Pièges** : prérequis `npm run build:runtime` côté marque ; slug tunnel dans
-`RESERVED_SLUGS` (`docker/tunnel-provisioner/lib.mjs` : `admin`, `mcp`, `api`,
-`agent`, `demo`, `test`, `registry`…) → jamais pour un serveur client.
+`RESERVED_SLUGS` (`packages/platform-core/src/tunnel-cf.ts` : `admin`, `mcp`,
+`api`, `agent`, `demo`, `test`, `registry`…) → `create` dérive `<brand>-<slug>`
+(ex. `foove2-demo`), jamais de skip tunnel. Sans `CREEZIO_CF_API_TOKEN` /
+`_ACCOUNT_ID` / `_ZONE_ID` **ou** sans `CREEZIO_OWNER_EMAIL`/`_PASSWORD`,
+create VPS **échoue** (pas de loopback silencieux, pas d'instance sans owner).
+Dev : `CREEZIO_TUNNEL_LOCAL=1` (owner optionnel).
 
 ## 2. Créer un compte owner / user en headless (sans UI)
 
 **Objectif** : compte qui **se loggue** sur le CRM, sans wizard Electron.
+
+**Voie canonique VPS** : poser `CREEZIO_OWNER_EMAIL` + `CREEZIO_OWNER_PASSWORD`
+avant `server-docker create` (`.env` marque ou Runtime Secrets cloud — **pas**
+`E2E_OWNER_*`, **pas** de fichier magique `.recette-owner.env`). Le create
+appelle `POST /api/v1/os/setup` (qui enchaîne `migrateBrandCredentialsToKit`)
+puis vérifie le login. Log : URL publique + `login : $CREEZIO_OWNER_EMAIL`.
+Jamais le mot de passe.
+
+Le curl ci-dessous reste le rattrapage pour une instance **déjà** créée
+(LOCAL, ou create antérieur au fail-closed owner).
 
 Deux stores distincts — il faut les DEUX pour un owner complet :
 
@@ -147,12 +165,13 @@ jamais créer une table `users` métier parallèle (comptes non logables).
 `packages/app-runtime/src/brand-platform-store.ts` (owner/collaborateurs),
 `mount-brand-platform-surface.ts` (routes `/api/v1/platform/users`).
 
-**Pièges** : `POST /api/v1/os/setup` seul ne suffit PAS pour le login CRM
-(il n'écrit pas `creezio_users`) — sans l'étape (b), `/api/v1/auth/login`
-répond 401. Password ≥ 6 car., username ≥ 2. Ne PAS re-POSTer setup sur un
-serveur déjà configuré (écrase compte + recovery key). Gate de référence :
-`scripts/test-phase-platform-users.mjs` (création → login, meta, reset,
-désactivation).
+**Pièges** : le `POST /api/v1/os/setup` du kernel actuel enchaîne
+`migrateBrandCredentialsToKit` (login CRM). L'étape (b) manuelle n'est plus
+nécessaire sur un kit à jour — elle reste le rattrapage si setup a été fait
+sur un runtime trop vieux. Password ≥ 6 car., username e-mail. Ne PAS
+re-POSTer setup sur un serveur déjà configuré (écrase compte + recovery key).
+Gate de référence : `scripts/test-phase-platform-users.mjs` +
+`scripts/test-phase-server-docker-owner.mjs`.
 
 ## 3. Login / vérifier un compte
 
@@ -326,7 +345,7 @@ saturer le registre. Garde-fou : ≥ 2 échecs (`failed`+`rolled_back`,
 `release_auto_paused` (janitor appelé par le poller du registre).
 
 **Registre d'images pull-only (F4)** : l'ingress `registry.{zone}`
-(tunnel-provisioner `kind=registry`) pointe sur le proxy `/v2/*` du backend
+(slug `registry`, `kind=registry` côté tunnel CF) pointe sur le proxy `/v2/*` du backend
 admin — GET/HEAD uniquement (push → 405, le push reste loopback
 `127.0.0.1:5000`), auth Basic `hostId:agentToken` (credential d'enrôlement,
 aucun nouveau cycle de vie). Les VPS distants pullent
@@ -540,8 +559,8 @@ L'admin (§5) montre boot-status live, logs et ops par serveur sans SSH.
 | Symlinks electron-builder | Refuse les symlinks hors racine projet (leçon de l'ancien layout `client/vendor` — copie hardlink, pas un symlink ; layout npm = `node_modules` standard). |
 | Publish desktop | Feed sur le même VPS → flux Docker local (`docker cp`), pas de SSH vers soi-même. |
 | Feed TF2 | Ne pas écrire dans le feed/GUID TempoFlow2 — TF3 a son sous-dossier `/tf3/` et son GUID. |
-| Collector TF2 | `tf2-fleet-collector.service` loopback **:8665** = prod TF2, ne pas toucher (ni élargir son `ALLOWED_REMOTE`). Provisioner kit = `creezio-tunnel-provisioner` **:8666**. |
-| Slugs réservés | `admin`, `mcp`, `api`, `agent`, `demo`, `test`, `registry`… (`docker/tunnel-provisioner/lib.mjs`) — jamais pour un serveur client. |
+| Collector TF2 | `tf2-fleet-collector.service` loopback **:8665** = prod TF2, ne pas toucher (ni élargir son `ALLOWED_REMOTE`). |
+| Slugs réservés | `admin`, `mcp`, `api`, `agent`, `demo`, `test`, `registry`… (`packages/platform-core/src/tunnel-cf.ts`) — jamais pour un serveur client. |
 | Cloudflare timeouts | Toute opération longue exposée via tunnel = async (202 + route de statut), jamais une requête bloquante. |
 | Compose vs registre | Instances Compose = `server-1`, `server-2` (chiffres) ; instances registre (`create <nom>`) = libres. Projet Compose `creezio-servers`/`tf3-servers`, jamais `tempoflow`/`n8n`. |
 | Résolution module packagé | Jamais de parsing de stack pour retrouver `file://` (les frames Windows `file:///C:/…` cassent tout regex naïf → crash client). SoT : `createAppRequire` (`@creezio/platform-core`) ; gate `verify-pack-runtime` refuse le pattern. |
@@ -791,7 +810,7 @@ immédiatement visible sur `https://lp.{zone}`.
 | Slug `lp` volé par un serveur client | `lp` est dans `RESERVED_SLUGS` — seuls les reserves `kind=brand-web` peuvent le prendre. |
 
 **Vérité** : `packages/landing/` (moteur + prefabs + admin client),
-`docker/tunnel-provisioner/` (`BRAND_WEB_SLUGS`, mode sans embeds),
+`packages/platform-core/src/tunnel-cf.ts` (`BRAND_WEB_SLUGS`, mode sans embeds),
 factory `packages/factory/src/admin-repo.ts` (câblage généré), gate
 `scripts/test-phase-landing.mjs`.
 
@@ -827,5 +846,5 @@ curl -sS http://127.0.0.1:18791/api/v1/os/boot-status | head -c 200
 ## Ressources
 
 - Doc serveur Docker : `docker/server/README.md` (+ `REMOTE-ACCESS.md` ; historique parité : `docs/archive/PARITE-TF2.md`)
-- Admin : `docker/server-admin/README.md` · Provisioner : `docker/tunnel-provisioner/README.md`
+- Admin : `docker/server-admin/README.md` · Tunnel : `docs/RUNBOOK-AGENTS.md` §7.3
 - Miroir doc : `docs/RUNBOOK-FLOTTE.md`
