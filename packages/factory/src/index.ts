@@ -70,6 +70,15 @@ export {
   type CreateTunnelPolicyInput,
 } from "./server-docker-tunnel.js";
 export {
+  CREATE_OWNER_ENV_KEYS,
+  applyFirstRunOwner,
+  formatMissingOwnerError,
+  formatOwnerLoginLog,
+  resolveCreateOwnerPolicy,
+  type CreateOwnerPolicy,
+  type CreateOwnerPolicyInput,
+} from "./server-docker-owner.js";
+export {
   writeAppFile,
   isOwnedByBrand,
   OWNED_BY_BRAND_MARKER,

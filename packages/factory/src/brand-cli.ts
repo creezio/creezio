@@ -432,7 +432,7 @@ export async function runBrandCli(argv: string[]): Promise<void> {
       `  CREEZIO_TUNNEL_LOCAL=1 npm run server-docker:create -- demo   # local`,
     );
     console.log(
-      `  npm run server-docker:create -- acme -- --profile prod         # VPS`,
+      `  npm run server-docker:create -- acme -- --profile prod         # VPS hostname + owner`,
     );
     return;
   }

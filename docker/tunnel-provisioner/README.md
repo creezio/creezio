@@ -65,8 +65,9 @@ creezio server-docker create resto1 --brand-root <marque> --profile prod \
   --env CREEZIO_TUNNEL_SLUG=resto1
 # → reserve + ingress + cloudflared dans le container → https://resto1.{zone}
 # Sans URL/token : create ÉCHOUE (fail-closed). Jamais de stack loopback « OK ».
+# Sans CREEZIO_OWNER_EMAIL/_PASSWORD : create ÉCHOUE (fail-closed owner).
 # Slug réservé (demo, test…) : CREEZIO_TUNNEL_SLUG=<brand>-<slug> auto (ex. foove2-demo).
-# Dev local : CREEZIO_TUNNEL_LOCAL=1
+# Dev local : CREEZIO_TUNNEL_LOCAL=1 (owner optionnel)
 ```
 
 L'agent hôte est ensuite exposé par

@@ -304,7 +304,9 @@ le service avec un autre fichier env.
 (409 « Slug réservé »). `server-docker create` **ne skip pas le tunnel** :
 il dérive `CREEZIO_TUNNEL_SLUG=<brand>-<slug>` (ex. `foove2-demo`), log +
 écriture dans l'env de l'instance. Un hostname client libre reste
-`{slug}.{zone}` (`acme.crm.foove.io`). Dev local : `CREEZIO_TUNNEL_LOCAL=1`.
+`{slug}.{zone}` (`acme.crm.foove.io`). Create VPS exige aussi
+`CREEZIO_OWNER_EMAIL` / `CREEZIO_OWNER_PASSWORD` (first-run owner, même
+contrat cloud). Dev local : `CREEZIO_TUNNEL_LOCAL=1` (owner optionnel).
 
 Provision manuelle d'un hostname de test (stack : `serviceHost:"app"`) :
 

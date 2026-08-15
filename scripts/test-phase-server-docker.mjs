@@ -186,6 +186,7 @@ test("CLI registre d'instances : create/start/stop/rm/logs/ls/update/backup + ad
   assert.match(r.stdout, /127\.0\.0\.1/);
   assert.match(r.stdout, /boot-status/);
   assert.match(r.stdout, /fail-closed|hostname public|CREEZIO_TUNNEL_LOCAL=1/);
+  assert.match(r.stdout, /CREEZIO_OWNER_EMAIL/);
 
   const reg = fs.readFileSync(
     path.join(root, "packages/factory/src/server-docker-registry.ts"),

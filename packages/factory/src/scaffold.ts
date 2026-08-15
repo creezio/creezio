@@ -984,7 +984,7 @@ npm run stop                    # arrêt propre (process group)
 npm test                        # gates métier (délègue server/)
 npm run build:runtime           # TS main+preload serveur
 CREEZIO_TUNNEL_LOCAL=1 npm run server-docker:create -- demo   # local
-# VPS : .env PROVISION_URL/_TOKEN + npm run server-docker:create -- acme -- --profile prod
+# VPS : .env PROVISION_URL/_TOKEN + CREEZIO_OWNER_EMAIL/_PASSWORD + npm run server-docker:create -- acme -- --profile prod
 npm run pack:linux              # client desktop (délègue client/)
 npm run server-docker:admin     # admin web flotte (repo ${m.brandId}-admin)
 \`\`\`

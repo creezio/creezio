@@ -35,6 +35,13 @@ import {
   resolveCreateTunnelPolicy,
   type CreateTunnelPolicy,
 } from "./server-docker-tunnel.js";
+import {
+  CREATE_OWNER_ENV_KEYS,
+  applyFirstRunOwner,
+  formatOwnerLoginLog,
+  resolveCreateOwnerPolicy,
+  type CreateOwnerPolicy,
+} from "./server-docker-owner.js";
 
 export type ServerDockerArgs = {
   sub: string;
@@ -237,16 +244,18 @@ Instances nommées (registre docker-data/servers.json — recommandé) :
     --browser : image variant browser (Chromium+Xvfb, sidecar navigateur IA,
                 profils /data/browser, shm 1 Go)
     --profile prod : serveur flotte — CREEZIO_NATIVE_WARM=1 + CREEZIO_CATALOG=1
-                + fail-closed tunnel (hostname public obligatoire) + forward
+                + fail-closed tunnel (hostname public obligatoire) + fail-closed
+                owner (CREEZIO_OWNER_EMAIL/_PASSWORD) + forward
                 env hôte CREEZIO_TUNNEL_PROVISION_URL/_TOKEN/_SLUG,
                 CREEZIO_FLEET_ENDPOINT, CREEZIO_CRASH_ENDPOINT, CREEZIO_PLUGINS,
                 EMAIL_INBOUND_SECRET, EMAIL_DOMAIN, MAIL_*/SMTP_*/RESEND_*,
                 OPENAI_API_KEY, ANTHROPIC_API_KEY,
                 CREEZIO_FLEET_ADMIN_URL/_REGISTER_SECRET/_HOST_ID
-    create VPS : CREEZIO_TUNNEL_PROVISION_URL/_TOKEN requis (sinon échec —
-                jamais de succès loopback silencieux). Slug réservé (demo…)
+    create VPS : CREEZIO_TUNNEL_PROVISION_URL/_TOKEN + CREEZIO_OWNER_EMAIL/
+                _PASSWORD requis (sinon échec — jamais de succès sans hostname
+                public ni compte owner utilisable). Slug réservé (demo…)
                 → CREEZIO_TUNNEL_SLUG=<brand>-<slug> (log + env instance).
-                Dev local : CREEZIO_TUNNEL_LOCAL=1
+                Dev local : CREEZIO_TUNNEL_LOCAL=1 (owner optionnel)
   creezio server-docker start  <nom> --brand-root <app>
   creezio server-docker stop   <nom> --brand-root <app>
   creezio server-docker rm     <nom> --brand-root <app> [--purge-data]
@@ -2077,6 +2086,19 @@ async function runEnrollSubcommand(
   }
 }
 
+async function applyCreateOwner(
+  port: number,
+  ownerPolicy: CreateOwnerPolicy,
+): Promise<void> {
+  if (ownerPolicy.mode !== "create") return;
+  await applyFirstRunOwner({
+    baseUrl: `http://127.0.0.1:${port}`,
+    email: ownerPolicy.email,
+    password: ownerPolicy.password,
+  });
+  console.log(`  ${formatOwnerLoginLog(ownerPolicy.email)}`);
+}
+
 async function waitBootReady(port: number, timeoutMs = 180000): Promise<void> {
   const started = Date.now();
   let lastLine = "";
@@ -2236,6 +2258,12 @@ async function runRegistrySubcommand(
         console.log(formatDerivedSlugLog(tunnelPolicy));
       }
     }
+    // Owner : lu pour le first-run HTTP hôte — JAMAIS injecté dans compose
+    // (le mot de passe ne doit pas apparaître dans inspect / registre).
+    const ownerPolicy: CreateOwnerPolicy = resolveCreateOwnerPolicy({
+      local: tunnelPolicy.mode === "local",
+      env: pickEnvValues([args.env, env, brandDotEnv], CREATE_OWNER_ENV_KEYS),
+    });
 
     if (!dockerImageExists(image)) {
       console.log(`image ${image} absente — build (variant ${variant})…`);
@@ -2322,6 +2350,7 @@ async function runRegistrySubcommand(
         `  boot-status : curl http://127.0.0.1:${hp}/api/v1/os/boot-status`,
       );
       await waitBootReady(hp);
+      await applyCreateOwner(hp, ownerPolicy);
       if (tunnel?.hostname) {
         console.log(
           `✓ serveur ${name} prêt — CRM public: https://${tunnel.hostname}/ (debug loopback http://127.0.0.1:${hp}/)`,
@@ -2351,6 +2380,7 @@ async function runRegistrySubcommand(
       `  boot-status : curl http://127.0.0.1:${port}/api/v1/os/boot-status`,
     );
     await waitBootReady(port);
+    await applyCreateOwner(port, ownerPolicy);
     console.log(`✓ serveur ${name} prêt — CRM: http://127.0.0.1:${port}/`);
     return;
   }
