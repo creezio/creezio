@@ -427,7 +427,12 @@ export async function runBrandCli(argv: string[]): Promise<void> {
     console.log(`  npm run test:metier-parcours`);
     console.log(
       `  npm ci                                 # clone hôte : layout node_modules (= Docker)`,
-      `  npm run server-docker:create -- demo   # serveur Docker + CRM`,
+    );
+    console.log(
+      `  CREEZIO_TUNNEL_LOCAL=1 npm run server-docker:create -- demo   # local`,
+    );
+    console.log(
+      `  npm run server-docker:create -- acme -- --profile prod         # VPS`,
     );
     return;
   }

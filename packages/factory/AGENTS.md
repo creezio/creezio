@@ -50,6 +50,8 @@ en jumeau dans `main.ts`.
 - `bin/creezio.js` : binaire npm.
 - `src/cli.ts` : `new-app` + dispatch `brand` / `server-docker`.
 - `src/server-docker-cli.ts` : serveurs marque headless (`docker/server`).
+- `src/server-docker-tunnel.ts` : politique create fail-closed (provisioner
+  requis sauf `CREEZIO_TUNNEL_LOCAL=1`) + dérivation slug réservé.
 - `src/package-lock.ts` / `src/prepare-brand-distribution.ts` : locks npm
   des DEUX repos (marque + `<brand>-admin`) dès `new-app`/`brand apply`
   (Docker prêt out-of-the-box) — échec explicite si un lock n'est pas produit.

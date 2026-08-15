@@ -130,7 +130,11 @@ Reset clean-room TF3 : `node scripts/reset-tempoflow3.mjs` (backup + apply + bui
 
 ```bash
 cd <app>
-npm run server-docker:create -- demo
+# Dev local (loopback) :
+CREEZIO_TUNNEL_LOCAL=1 npm run server-docker:create -- demo
+# VPS / prod — hostname {slug}.crm.foove.io obligatoire
+# (.env : CREEZIO_TUNNEL_PROVISION_URL + _TOKEN ; slug réservé → <brand>-<slug>) :
+npm run server-docker:create -- acme -- --profile prod
 ```
 
 **Deux chemins distincts — ne pas les confondre :**

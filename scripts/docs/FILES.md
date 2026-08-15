@@ -189,6 +189,7 @@
 | [`test-phase-registry-pull-proxy.mjs`](../test-phase-registry-pull-proxy.mjs) | Gate — exposition du registre Docker en pull authentifié (F4). |
 | [`test-phase-resolve-manifest.mjs`](../test-phase-resolve-manifest.mjs) | Gate resolveManifest — registre + fallback app-manifest.json (from-prd). |
 | [`test-phase-runtime-dist-freshness.mjs`](../test-phase-runtime-dist-freshness.mjs) | Gate ADR.1b généralisée — dist runtime = câblage src (content + mtime) ; fail-closed sync/publish. |
+| [`test-phase-server-docker-tunnel.mjs`](../test-phase-server-docker-tunnel.mjs) | Gate — create VPS fail-closed sans provisioner + mapping slug réservé `demo` → `<brand>-demo`. |
 | [`test-phase-server-docker.mjs`](../test-phase-server-docker.mjs) | Gate — artefacts docker/server + CLI creezio server-docker. |
 | [`test-phase-shell-desktop-api.mjs`](../test-phase-shell-desktop-api.mjs) | Gate — `getShellDesktopApi` uniquement (pas de `window.*Desktop` hardcodé) + import obligatoire ; scan kit UI + TF3 si présent. |
 | [`test-phase-single-data-plane.mjs`](../test-phase-single-data-plane.mjs) | (à documenter) |
