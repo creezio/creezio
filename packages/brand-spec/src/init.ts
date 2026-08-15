@@ -293,10 +293,12 @@ Une interview ne peut PAS contredire ces conventions dures du kit
   (justifier) :
 - hooks / extraRoutes / mounts additionnels :
 - wiring : \`server/src/electron/modules/{{moduleId}}.ts\` (BrandModuleDef)
-- démo interactive (optionnel) : champ \`demo: { scenarios: DemoScenario[] }\`
-  du BrandModuleDef — scénarios du tour produit du module, agrégés par
-  \`collectDemoScenarios()\` (registre) en défauts du mount
-  \`interactive-demo\` (« Aucun » sinon) :
+- démo interactive (**obligatoire**, ≥ 1 scénario valide) : champ
+  \`demo: { scenarios: DemoScenario[] }\` du BrandModuleDef — scénarios du
+  tour produit du module, agrégés par \`collectDemoScenarios()\` (registre)
+  en défauts du mount \`interactive-demo\`. Inclure
+  \`genericOsTourScenario({ productName })\` (id \`os-tour\` partagé).
+  Une app Creezio sans démo interactive est invalide :
 
 ## 4. UI, nav & permissions — kit graphique imposé
 

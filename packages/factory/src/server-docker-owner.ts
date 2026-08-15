@@ -160,3 +160,115 @@ export async function applyFirstRunOwner(opts: {
 
   return { ok: true, username: String(setupJson.username || email) };
 }
+
+function cookiesFromResponse(res: {
+  headers?: { getSetCookie?: () => string[]; get?: (name: string) => string | null };
+}): string {
+  const headers = res.headers;
+  if (!headers) return "";
+  const list =
+    typeof headers.getSetCookie === "function"
+      ? headers.getSetCookie()
+      : [headers.get?.("set-cookie")].filter(Boolean);
+  return list
+    .map((c) => String(c).split(";")[0]?.trim() || "")
+    .filter(Boolean)
+    .join("; ");
+}
+
+export function formatMissingDemoError(detail: string): string {
+  return [
+    "create refuse une instance sans démo interactive jouable.",
+    detail,
+    "La factory câble createInteractiveDemoMount + interactiveDemoMigrations ;",
+    "chaque module doit exposer ≥ 1 scénario (genericOsTourScenario inclus).",
+    "Une app Creezio sans démo interactive est invalide.",
+    "CREATE LOCAL sans owner (CREEZIO_TUNNEL_LOCAL=1) : ce contrôle runtime est sauté —",
+    "la gate factory (test-phase-create-brand) reste le filet dur.",
+  ].join("\n");
+}
+
+/**
+ * Après setup owner : GET /api/v1/modules/interactive-demo/scenarios ≥ 1.
+ * Session requise (garde /api/v1/modules/*) — relogin avec les creds owner.
+ * Sauté si owner policy = skip (dev local sans first-run).
+ */
+export async function assertInteractiveDemoScenarios(opts: {
+  baseUrl: string;
+  email: string;
+  password: string;
+  fetchImpl?: typeof fetch;
+}): Promise<{ ok: true; count: number }> {
+  const fetchFn = opts.fetchImpl || fetch;
+  const base = String(opts.baseUrl || "").replace(/\/+$/, "");
+  const email = opts.email;
+  const password = opts.password;
+  const wrap = (err: unknown) => {
+    const raw = err instanceof Error ? err.message : String(err);
+    return new Error(redactSecret(raw, password));
+  };
+
+  let cookie = "";
+  try {
+    const loginRes = await fetchFn(`${base}/api/v1/auth/login`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ email, password }),
+    });
+    if (loginRes.status !== 200) {
+      const body = await loginRes.text().catch(() => "");
+      throw new Error(
+        formatMissingDemoError(
+          `login owner pour lire les scénarios → ${loginRes.status} ${body.slice(0, 120)}`,
+        ),
+      );
+    }
+    cookie = cookiesFromResponse(loginRes);
+  } catch (err) {
+    throw wrap(err);
+  }
+
+  const url = `${base}/api/v1/modules/interactive-demo/scenarios`;
+  let res: { status: number; json: () => Promise<unknown> };
+  try {
+    res = await fetchFn(url, {
+      headers: cookie ? { cookie } : {},
+    });
+  } catch (err) {
+    throw wrap(
+      new Error(
+        formatMissingDemoError(`GET ${url} impossible (${err instanceof Error ? err.message : String(err)})`),
+      ),
+    );
+  }
+
+  if (res.status === 404) {
+    throw new Error(
+      formatMissingDemoError(`GET ${url} → 404 (mount createInteractiveDemoMount absent).`),
+    );
+  }
+  if (res.status === 401) {
+    throw new Error(
+      formatMissingDemoError(
+        `GET ${url} → 401 (session owner requise — cookie login absent ou rejeté).`,
+      ),
+    );
+  }
+  if (res.status !== 200) {
+    throw new Error(formatMissingDemoError(`GET ${url} → ${res.status}.`));
+  }
+
+  let json: { scenarios?: unknown };
+  try {
+    json = (await res.json()) as { scenarios?: unknown };
+  } catch (err) {
+    throw wrap(err);
+  }
+  const scenarios = json?.scenarios;
+  if (!Array.isArray(scenarios) || scenarios.length < 1) {
+    throw new Error(
+      formatMissingDemoError(`GET ${url} : 0 scénario (attendu ≥ 1).`),
+    );
+  }
+  return { ok: true, count: scenarios.length };
+}

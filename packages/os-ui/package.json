@@ -36,6 +36,7 @@
     "materialize": "node ./scripts/materialize.mjs"
   },
   "dependencies": {
+    "@creezio/interactive-demo": "^0.10.0",
     "@creezio/mails": "^0.10.0",
     "@creezio/shell-ui": "^0.10.0"
   },

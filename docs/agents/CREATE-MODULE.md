@@ -51,7 +51,7 @@ Tout le wiring d'un module vit dans **son** fichier
 | Nav métier | `navItems` (avec `order`) |
 | Tools MCP métier | `mcpTools(api)` |
 | Index Meili | `meiliIndexes` |
-| Démo interactive (optionnel) | `demo: { scenarios }` — agrégés par `collectInteractiveDemoDefaults` (`@creezio/interactive-demo`) |
+| Démo interactive (**obligatoire**, ≥ 1) | `demo: { scenarios }` — agrégés par `collectInteractiveDemoDefaults` (`@creezio/interactive-demo`). Inclure `genericOsTourScenario({ productName })`. Une app sans démo = invalide. |
 
 Les fichiers d'assemblage (`brand-module-api.ts`, `brand-migrations.ts`,
 `vertical-slot.ts`, `brand-mcp-tools.ts`, `meili-feed.ts`) sont de simples

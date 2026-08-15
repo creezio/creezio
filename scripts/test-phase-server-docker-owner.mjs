@@ -25,6 +25,8 @@ const {
   redactSecret,
   resolveCreateOwnerPolicy,
   applyFirstRunOwner,
+  assertInteractiveDemoScenarios,
+  formatMissingDemoError,
 } = await import(pathToFileURL(dist).href);
 
 test("CREATE_OWNER_ENV_KEYS = contrat canonique (pas E2E_*)", () => {
@@ -205,6 +207,94 @@ test("applyFirstRunOwner : setup déjà complet d'un autre user → refus", asyn
   );
 });
 
+test("assertInteractiveDemoScenarios : ≥ 1 scénario après login, 0 = échec", async () => {
+  const fetchImpl = async (url, init) => {
+    if (String(url).endsWith("/api/v1/auth/login") && init?.method === "POST") {
+      return {
+        status: 200,
+        headers: {
+          getSetCookie: () => ["probebrand_session=tok; Path=/"],
+          get: () => null,
+        },
+        json: async () => ({ ok: true }),
+        text: async () => "",
+      };
+    }
+    if (String(url).endsWith("/interactive-demo/scenarios")) {
+      return {
+        status: 200,
+        json: async () => ({ ok: true, scenarios: [{ id: "os-tour" }] }),
+      };
+    }
+    throw new Error(`unexpected ${url}`);
+  };
+  const r = await assertInteractiveDemoScenarios({
+    baseUrl: "http://127.0.0.1:18791",
+    email: "owner@acme.example",
+    password: "NeverLog-This-Password",
+    fetchImpl,
+  });
+  assert.equal(r.ok, true);
+  assert.equal(r.count, 1);
+});
+
+test("assertInteractiveDemoScenarios : 0 scénario / 404 = échec sans echo du password", async () => {
+  const empty = async (url, init) => {
+    if (String(url).endsWith("/api/v1/auth/login") && init?.method === "POST") {
+      return {
+        status: 200,
+        headers: { getSetCookie: () => ["s=1"], get: () => null },
+        json: async () => ({ ok: true }),
+        text: async () => "",
+      };
+    }
+    if (String(url).endsWith("/interactive-demo/scenarios")) {
+      return { status: 200, json: async () => ({ ok: true, scenarios: [] }) };
+    }
+    throw new Error(`unexpected ${url}`);
+  };
+  await assert.rejects(
+    () =>
+      assertInteractiveDemoScenarios({
+        baseUrl: "http://127.0.0.1:9",
+        email: "owner@acme.example",
+        password: "NeverLog-This-Password",
+        fetchImpl: empty,
+      }),
+    (err) => {
+      const msg = String(err?.message || err);
+      assert.match(msg, /0 scénario|sans démo interactive/);
+      assert.doesNotMatch(msg, /NeverLog-This-Password/);
+      return true;
+    },
+  );
+  const missing = async (url, init) => {
+    if (String(url).endsWith("/api/v1/auth/login") && init?.method === "POST") {
+      return {
+        status: 200,
+        headers: { getSetCookie: () => ["s=1"], get: () => null },
+        json: async () => ({ ok: true }),
+        text: async () => "",
+      };
+    }
+    if (String(url).endsWith("/interactive-demo/scenarios")) {
+      return { status: 404, json: async () => ({ error: "not_found" }) };
+    }
+    throw new Error(`unexpected ${url}`);
+  };
+  await assert.rejects(
+    () =>
+      assertInteractiveDemoScenarios({
+        baseUrl: "http://127.0.0.1:9",
+        email: "owner@acme.example",
+        password: "NeverLog-This-Password",
+        fetchImpl: missing,
+      }),
+    /404|mount/,
+  );
+  assert.match(formatMissingDemoError("x"), /invalide/);
+});
+
 test("CLI create câble la politique owner (fail-closed + setup, pas le password en log)", () => {
   const cli = fs.readFileSync(
     path.join(root, "packages/factory/src/server-docker-cli.ts"),
@@ -212,6 +302,7 @@ test("CLI create câble la politique owner (fail-closed + setup, pas le password
   );
   assert.match(cli, /resolveCreateOwnerPolicy/);
   assert.match(cli, /applyFirstRunOwner/);
+  assert.match(cli, /assertInteractiveDemoScenarios/);
   assert.match(cli, /formatOwnerLoginLog/);
   assert.match(cli, /CREATE_OWNER_ENV_KEYS/);
   assert.match(cli, /CREEZIO_OWNER_EMAIL/);

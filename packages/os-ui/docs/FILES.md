@@ -152,5 +152,6 @@
 
 | Fichier | Rôle |
 |---|---|
-| [`src/boot.tsx`](../src/boot.tsx) | `CreezioUiBoot` — boot client OS : identité desktop (`desktopApiGlobal`, `productName`, `publicHostSuffix`) + `configureShellUiBrand` |
+| [`src/boot-types.ts`](../src/boot-types.ts) | Types `CreezioUiBoot` pour le barrel `@creezio/os-ui` (tsc NodeNext) — l'implémentation React + `InteractiveDemoRoot` reste `boot.tsx` (export `./boot`, source Next) |
+| [`src/boot.tsx`](../src/boot.tsx) | `CreezioUiBoot` — boot client OS : identité desktop (`desktopApiGlobal`, `productName`, `publicHostSuffix`) + `configureShellUiBrand` + `InteractiveDemoRoot` (démo interactive native, lanceur sidebar) |
 | [`src/index.ts`](../src/index.ts) | Exports : `CreezioUiBoot`, `OS_UI_ROUTE_SEGMENTS` (segments OS interdits dans le `ui/app` versionné marque), `OS_UI_ROUTE_GROUP` (`(creezio-os)`) |

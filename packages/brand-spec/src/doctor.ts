@@ -5,6 +5,49 @@ import type { BrandSpecIssue, DoctorResult } from "./types.js";
 
 const BRAND_ID_RE = /^[a-z][a-z0-9]{1,31}$/;
 
+function resolveAppModulesDir(specRoot: string): string | null {
+  const appRoot = path.dirname(specRoot);
+  for (const rel of ["server/src/electron/modules", "src/electron/modules"]) {
+    const dir = path.join(appRoot, rel);
+    if (fs.existsSync(dir)) return dir;
+  }
+  return null;
+}
+
+function moduleWiringHasDemoScenarios(src: string): boolean {
+  if (!/\bdemo\s*:/.test(src) || !/\bscenarios\s*:/.test(src)) return false;
+  return (
+    /genericOsTourScenario\s*\(/.test(src) ||
+    /kind\s*:\s*["'](?:say|navigate|highlight|click|type|scroll|wait)/.test(src)
+  );
+}
+
+/**
+ * Chaque BrandModuleDef d'une app déjà scaffoldée doit exposer ≥ 1 scénario
+ * jouable. Spec seul (avant apply) : pas de modules/*.ts → no-op.
+ */
+function doctorBrandModuleDemos(
+  specRoot: string,
+  issues: BrandSpecIssue[],
+): void {
+  const modulesDir = resolveAppModulesDir(specRoot);
+  if (!modulesDir) return;
+  const files = fs
+    .readdirSync(modulesDir)
+    .filter((f) => f.endsWith(".ts") && f !== "types.ts" && f !== "index.ts")
+    .sort();
+  for (const file of files) {
+    const src = fs.readFileSync(path.join(modulesDir, file), "utf8");
+    if (moduleWiringHasDemoScenarios(src)) continue;
+    issues.push({
+      level: "error",
+      code: "MODULE_DEMO_MISSING",
+      message: `module ${file.replace(/\.ts$/, "")}: demo.scenarios obligatoire (≥ 1 scénario jouable). Une app Creezio sans démo interactive est invalide.`,
+      path: path.relative(specRoot, path.join(modulesDir, file)),
+    });
+  }
+}
+
 /**
  * Valide un BrandSpec (structure + cohérence minimale).
  */
@@ -119,6 +162,8 @@ export function doctorBrandSpec(rootDir: string): DoctorResult {
       path: "brand.yaml",
     });
   }
+
+  doctorBrandModuleDemos(spec.rootDir, issues);
 
   // Anti-jumeau : pas de sidecars dans brand-spec
   for (const bad of ["metier-api.mjs", "store.json", "meili-launcher.ts"]) {

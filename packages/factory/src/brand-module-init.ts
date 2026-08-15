@@ -20,6 +20,7 @@ import {
   ensureModulesRegistry,
   registerModuleInIndex,
   renderModuleGateStub,
+  renderPlayableDemoBlock,
   wireModuleGateInPackageJson,
 } from "./generators/modules-registry.js";
 
@@ -36,7 +37,19 @@ function titleize(id: string): string {
     .join(" ");
 }
 
-function renderModuleStub(id: string): string {
+function readBrandProductName(appDir: string): string {
+  for (const rel of ["brand-spec/brand.yaml", "admin-spec/brand.yaml"]) {
+    const p = path.join(appDir, rel);
+    if (!fs.existsSync(p)) continue;
+    const m = fs
+      .readFileSync(p, "utf8")
+      .match(/^\s*brandName:\s*["']?(.+?)["']?\s*$/m);
+    if (m?.[1]) return m[1].replace(/["']/g, "").trim();
+  }
+  return "l'application";
+}
+
+function renderModuleStub(id: string, productName: string): string {
   const camel = camelizeModuleId(id);
   const title = titleize(id);
   return `/**
@@ -44,6 +57,7 @@ function renderModuleStub(id: string): string {
  * Module ${id} — (décrire la mission en une ligne).
  * Spec : modules/${id}/ (prd + interview + TODO + CHANGELOG).
  */
+import { genericOsTourScenario } from "@creezio/interactive-demo";
 import type { BrandModuleDef } from "./types.js";
 
 export const ${camel}Module: BrandModuleDef = {
@@ -54,7 +68,7 @@ export const ${camel}Module: BrandModuleDef = {
     { id: "brand.${id}", label: "${title}", href: "/${id}", group: "brand", order: 500 },
   ],
   // mcpTools: (api) => [/* registerGuardedMcpTool côté serveur MCP */],
-  // demo: { scenarios: [/* DemoScenario[] — tour produit du module */] },
+${renderPlayableDemoBlock({ moduleId: id, title, productName, navLabel: title })}
   // migrations: () => [{ id: "mod_${camel}_001_init", sql: \`…\` }],
 };
 `;
@@ -107,7 +121,10 @@ export function runBrandModuleInit(
     else if (p.endsWith("index.ts")) write(p, body || MODULES_INDEX_TS);
     else write(p, body);
   });
-  write(path.join(modulesDir, `${moduleId}.ts`), renderModuleStub(moduleId));
+  write(
+    path.join(modulesDir, `${moduleId}.ts`),
+    renderModuleStub(moduleId, readBrandProductName(appDir)),
+  );
 
   const registryPath = path.join(modulesDir, "index.ts");
   if (fs.existsSync(registryPath)) {

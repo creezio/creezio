@@ -6,6 +6,11 @@ import {
   installCreezioDataChangedFetch,
   type ShellUiLoginBrand,
 } from "@creezio/shell-ui";
+import {
+  InteractiveDemoRoot,
+  type InteractiveDemoRootProps,
+} from "@creezio/interactive-demo/ui";
+import "@creezio/interactive-demo/ui/interactive-demo.css";
 
 export type CreezioUiBootProps = {
   children: ReactNode;
@@ -18,10 +23,17 @@ export type CreezioUiBootProps = {
    * Absent = défaut neutre (gradient encre, tuile initiale, pas de tagline).
    */
   login?: ShellUiLoginBrand;
+  /**
+   * Overrides du lecteur de démo interactive (toujours monté ici — une app
+   * Creezio sans démo est invalide ; le chrome marque ne peut pas l'oublier).
+   * Défaut : lanceur sidebar (invisible sur /login).
+   */
+  interactiveDemo?: InteractiveDemoRootProps;
 };
 
 /**
- * Boot client OS — identity desktop + tokens shell-ui + fetch → bus data.
+ * Boot client OS — identity desktop + tokens shell-ui + fetch → bus data
+ * + lecteur de démo interactive natif (`InteractiveDemoRoot`, toujours monté).
  * Vit dans @creezio/os-ui ; la marque ne stocke pas de page OS.
  *
  * configureShellUiBrand est appelé AU RENDER (parent avant enfants) pour que
@@ -34,6 +46,7 @@ export function CreezioUiBoot({
   productName,
   publicHostSuffix,
   login,
+  interactiveDemo,
 }: CreezioUiBootProps) {
   configureShellUiBrand({
     desktopApiGlobal,
@@ -44,5 +57,10 @@ export function CreezioUiBoot({
   useEffect(() => {
     installCreezioDataChangedFetch();
   }, []);
-  return <>{children}</>;
+  return (
+    <>
+      {children}
+      <InteractiveDemoRoot launcher="sidebar" {...interactiveDemo} />
+    </>
+  );
 }

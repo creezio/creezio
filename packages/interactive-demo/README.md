@@ -36,9 +36,11 @@ que des cartes de narration présentent chaque fonctionnalité.
 
 ## Défauts par modules (registre — câblage cible)
 
-Chaque module métier peut déclarer ses scénarios dans son
-`server/src/electron/modules/<id>.ts` (champ optionnel `demo` du
-`BrandModuleDef`) :
+Chaque module métier **doit** déclarer ≥ 1 scénario dans son
+`server/src/electron/modules/<id>.ts` (champ `demo` du `BrandModuleDef`).
+Inclure `genericOsTourScenario({ productName })` (id `os-tour` partagé).
+Une app Creezio sans démo interactive est invalide. La factory câble le
+mount, les migrations et le CSS ; `CreezioUiBoot` monte `InteractiveDemoRoot`.
 
 ```ts
 export const promotionsModule: BrandModuleDef = {

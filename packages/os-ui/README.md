@@ -15,7 +15,7 @@ Next de la marque au build, dans le groupe App Router `(creezio-os)`
 |------|---------|
 | `routes/` | Pages Next OS (wrappers minces sur `@creezio/<pkg>/ui`) — 14 segments |
 | `src/index.ts` | `OS_UI_ROUTE_SEGMENTS` (segments interdits dans `ui/app` versionné marque), `OS_UI_ROUTE_GROUP`, export `CreezioUiBoot` |
-| `src/boot.tsx` | `CreezioUiBoot` — boot client OS (identité desktop + tokens shell-ui) |
+| `src/boot.tsx` | `CreezioUiBoot` — boot client OS (identité desktop + tokens shell-ui + `InteractiveDemoRoot` natif) |
 | `scripts/materialize.mjs` | CLI `creezio-materialize-os-ui` — copie `routes/` → `ui/app/(creezio-os)/` de la marque |
 
 ## Usage côté marque

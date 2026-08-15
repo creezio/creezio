@@ -219,6 +219,15 @@ test("interactive-demo : collectInteractiveDemoDefaults (validation, dédup, ord
     /scenario en double: tour \(modules promo et catalogue\)/,
   );
 
+  // os-tour est partagé (genericOsTourScenario dans chaque stub module) :
+  // premier gagne, pas de conflit.
+  const sharedOs = collectInteractiveDemoDefaults([
+    { moduleId: "os", scenarios: [scen("os-tour", "Découvrir A")] },
+    { moduleId: "crm", scenarios: [scen("os-tour", "Découvrir B"), scen("crm-tour")] },
+  ]);
+  assert.deepEqual(sharedOs.map((s) => s.id), ["os-tour", "crm-tour"]);
+  assert.equal(sharedOs[0].title, "Découvrir A");
+
   // Validation : UNE Error agrégée, préfixée module:scénario, codes de
   // validateDemoScenario repris.
   let err = null;
