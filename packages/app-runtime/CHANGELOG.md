@@ -1,5 +1,28 @@
 # @creezio/app-runtime
 
+## 0.9.4
+
+### Patch Changes
+
+- 0c62242: `/api/v1/admin/*` (MCP, database, analytics, endpoints, request-logs) exige une session à la bordure HTTP — 401 sans cookie/Bearer. Health, login, setup et OAuth MCP restent publics. Ferme la surface admin ouverte en prod (foove2#78).
+  - @creezio/brand-config@0.9.4
+  - @creezio/platform-core@0.9.4
+  - @creezio/product-hub@0.9.4
+  - @creezio/electron-shell@0.9.4
+  - @creezio/api-kernel@0.9.4
+  - @creezio/mcp-facade@0.9.4
+  - @creezio/shell-ui@0.9.4
+  - @creezio/auth@0.9.4
+  - @creezio/access-control@0.9.4
+  - @creezio/assistant@0.9.4
+  - @creezio/tasks@0.9.4
+  - @creezio/mails@0.9.4
+  - @creezio/observability@0.9.4
+  - @creezio/support@0.9.4
+  - @creezio/integrations@0.9.4
+  - @creezio/browser-host@0.9.4
+  - @creezio/database@0.9.4
+
 ## 0.9.3
 
 ### Patch Changes

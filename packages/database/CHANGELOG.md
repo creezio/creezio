@@ -1,5 +1,11 @@
 # @creezio/database
 
+## 0.9.4
+
+### Patch Changes
+
+- @creezio/platform-core@0.9.4
+
 ## 0.9.3
 
 ### Patch Changes

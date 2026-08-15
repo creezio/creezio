@@ -1,6 +1,6 @@
 {
   "name": "@creezio/integrations",
-  "version": "0.9.3",
+  "version": "0.9.4",
   "description": "Gestionnaire d'intégrations / clés API tierces — store natif chiffré (core.db), résolution par référence integration://<slug>, push vers le n8n embarqué",
   "type": "module",
   "main": "./dist-cjs/index.js",
@@ -28,8 +28,8 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@creezio/auth": "^0.9.3",
-    "@creezio/platform-core": "^0.9.3",
+    "@creezio/auth": "^0.9.4",
+    "@creezio/platform-core": "^0.9.4",
     "hono": "^4.12.32"
   },
   "devDependencies": {
