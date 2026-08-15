@@ -1,5 +1,15 @@
 # @creezio/factory
 
+## 0.5.7
+
+### Patch Changes
+
+- ce13ce0: `server-docker create` VPS/prod est fail-closed : sans `CREEZIO_TUNNEL_PROVISION_URL`/`_TOKEN`, la commande échoue (plus de stack loopback « OK »). Un slug d'instance dans `RESERVED_SLUGS` (`demo`…) dérive `CREEZIO_TUNNEL_SLUG=<brand>-<slug>` (log + env instance). `CREEZIO_TUNNEL_LOCAL=1` reste l'opt-in dev local.
+- 35b72d5: `server-docker create` VPS/prod est fail-closed aussi sur le first-run owner : sans `CREEZIO_OWNER_EMAIL` / `CREEZIO_OWNER_PASSWORD`, la commande échoue (plus d'instance « OK » sans compte utilisable). Avec ces vars, le create appelle `POST /api/v1/os/setup` et log l'URL publique + `login : $CREEZIO_OWNER_EMAIL` (jamais le mot de passe). `CREEZIO_TUNNEL_LOCAL=1` : owner optionnel (dev machine).
+  - @creezio/brand-config@0.9.4
+  - @creezio/product-hub@0.9.4
+  - @creezio/brand-spec@0.9.4
+
 ## 0.5.6
 
 ### Patch Changes

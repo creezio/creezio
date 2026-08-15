@@ -1,5 +1,14 @@
 # @creezio/mails
 
+## 0.9.4
+
+### Patch Changes
+
+- @creezio/platform-core@0.9.4
+- @creezio/api-kernel@0.9.4
+- @creezio/shell-ui@0.9.4
+- @creezio/auth@0.9.4
+
 ## 0.9.3
 
 ### Patch Changes
