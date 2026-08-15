@@ -356,7 +356,7 @@ export async function runCli(argv: string[]): Promise<void> {
     `  CREEZIO_TUNNEL_LOCAL=1 npm run server-docker:create -- demo   # local loopback`,
   );
   console.log(
-    `  npm run server-docker:create -- acme -- --profile prod         # VPS hostname public`,
+    `  npm run server-docker:create -- acme -- --profile prod         # VPS hostname + owner`,
   );
   console.log("");
   console.log(

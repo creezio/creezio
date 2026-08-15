@@ -69,7 +69,8 @@ CRM web Next) via Docker, multi-instances, sans AppImage/Electron.
 ## Preuve
 
 ```bash
-# VPS : provisioner requis — hostname {slug}.crm.foove.io (pas de loopback silencieux)
+# VPS : provisioner + owner requis — hostname {slug}.crm.foove.io
+# (CREEZIO_OWNER_EMAIL / CREEZIO_OWNER_PASSWORD — pas de compte magique hors env)
 creezio server-docker create acme --brand-root "$BRAND_ROOT" --profile prod
 # Dev : CREEZIO_TUNNEL_LOCAL=1 creezio server-docker create demo --brand-root "$BRAND_ROOT"
 curl -sS http://127.0.0.1:1879X/api/v1/os/boot-status | head -c 300

@@ -49,10 +49,12 @@ Ports : auto 18790+n, bind `127.0.0.1` (exposition = `--expose`).
 # Test local (image buildée si absente, port auto, attend le boot) :
 CREEZIO_TUNNEL_LOCAL=1 creezio server-docker create demo --brand-root "$BRAND_ROOT"
 
-# Prod flotte (warm n8n/Hermes + catalogue + tunnel public obligatoire) :
+# Prod flotte (warm n8n/Hermes + catalogue + tunnel public + owner) :
 CREEZIO_TUNNEL_PROVISION_URL=http://172.17.0.1:8666 \
 CREEZIO_TUNNEL_PROVISION_TOKEN=<token du service creezio-tunnel-provisioner> \
 CREEZIO_TUNNEL_SLUG=<slug> \
+CREEZIO_OWNER_EMAIL=owner@<slug>.example \
+CREEZIO_OWNER_PASSWORD=<mot de passe ≥6, jamais loggé> \
 OPENAI_API_KEY=<clé LLM entreprise de la marque> \
 creezio server-docker create <slug> --brand-root "$BRAND_ROOT" --profile prod
 
@@ -88,12 +90,23 @@ code `docker/tunnel-provisioner/`), token dans son unit.
 `RESERVED_SLUGS` (`docker/tunnel-provisioner/lib.mjs` : `admin`, `mcp`, `api`,
 `agent`, `demo`, `test`, `registry`…) → `create` dérive `<brand>-<slug>`
 (ex. `foove2-demo`), jamais de skip tunnel. Sans `CREEZIO_TUNNEL_PROVISION_URL`
-/`_TOKEN`, create VPS **échoue** (pas de loopback silencieux). Dev :
-`CREEZIO_TUNNEL_LOCAL=1`.
+/`_TOKEN` **ou** sans `CREEZIO_OWNER_EMAIL`/`_PASSWORD`, create VPS **échoue**
+(pas de loopback silencieux, pas d'instance sans owner). Dev :
+`CREEZIO_TUNNEL_LOCAL=1` (owner optionnel).
 
 ## 2. Créer un compte owner / user en headless (sans UI)
 
 **Objectif** : compte qui **se loggue** sur le CRM, sans wizard Electron.
+
+**Voie canonique VPS** : poser `CREEZIO_OWNER_EMAIL` + `CREEZIO_OWNER_PASSWORD`
+avant `server-docker create` (`.env` marque ou Runtime Secrets cloud — **pas**
+`E2E_OWNER_*`, **pas** de fichier magique `.recette-owner.env`). Le create
+appelle `POST /api/v1/os/setup` (qui enchaîne `migrateBrandCredentialsToKit`)
+puis vérifie le login. Log : URL publique + `login : $CREEZIO_OWNER_EMAIL`.
+Jamais le mot de passe.
+
+Le curl ci-dessous reste le rattrapage pour une instance **déjà** créée
+(LOCAL, ou create antérieur au fail-closed owner).
 
 Deux stores distincts — il faut les DEUX pour un owner complet :
 
@@ -150,12 +163,13 @@ jamais créer une table `users` métier parallèle (comptes non logables).
 `packages/app-runtime/src/brand-platform-store.ts` (owner/collaborateurs),
 `mount-brand-platform-surface.ts` (routes `/api/v1/platform/users`).
 
-**Pièges** : `POST /api/v1/os/setup` seul ne suffit PAS pour le login CRM
-(il n'écrit pas `creezio_users`) — sans l'étape (b), `/api/v1/auth/login`
-répond 401. Password ≥ 6 car., username ≥ 2. Ne PAS re-POSTer setup sur un
-serveur déjà configuré (écrase compte + recovery key). Gate de référence :
-`scripts/test-phase-platform-users.mjs` (création → login, meta, reset,
-désactivation).
+**Pièges** : le `POST /api/v1/os/setup` du kernel actuel enchaîne
+`migrateBrandCredentialsToKit` (login CRM). L'étape (b) manuelle n'est plus
+nécessaire sur un kit à jour — elle reste le rattrapage si setup a été fait
+sur un runtime trop vieux. Password ≥ 6 car., username e-mail. Ne PAS
+re-POSTer setup sur un serveur déjà configuré (écrase compte + recovery key).
+Gate de référence : `scripts/test-phase-platform-users.mjs` +
+`scripts/test-phase-server-docker-owner.mjs`.
 
 ## 3. Login / vérifier un compte
 
