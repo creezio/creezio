@@ -1,5 +1,13 @@
 # @creezio/auth
 
+## 0.10.2
+
+### Patch Changes
+
+- @creezio/shell@0.10.2
+- @creezio/platform-core@0.10.2
+- @creezio/shell-ui@0.10.2
+
 ## 0.10.1
 
 ### Patch Changes

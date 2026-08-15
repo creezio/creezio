@@ -1,5 +1,32 @@
 # @creezio/app-runtime
 
+## 0.10.2
+
+### Patch Changes
+
+- 0748020: **fix(tunnel) — superviseur cloudflared in-process (respawn borné).**
+
+  Si le process QUIC meurt, le kernel logguait `cloudflared exit` et ne le relançait pas → hostname public **525** alors que localhost restait 200 (recette / demo / admin, 15-16/08). `startCloudflared` respawn maintenant avec backoff (1 s → 30 s, 8 essais consécutifs, compteur remis à zéro après 60 s d'uptime sain). `stopCloudflared` / `forgetTunnel` annulent le timer. Le respawn **réutilise** le token et l'id persistés — aucun POST `cfd_tunnel` (pas de nouvel id). Fail-closed #84/#86/#87 inchangé. Prend effet au prochain bump/rebuild ; pas de redéploiement live dans ce tour.
+
+- Updated dependencies [0748020]
+  - @creezio/electron-shell@0.10.2
+  - @creezio/brand-config@0.10.2
+  - @creezio/platform-core@0.10.2
+  - @creezio/product-hub@0.10.2
+  - @creezio/api-kernel@0.10.2
+  - @creezio/mcp-facade@0.10.2
+  - @creezio/shell-ui@0.10.2
+  - @creezio/auth@0.10.2
+  - @creezio/access-control@0.10.2
+  - @creezio/assistant@0.10.2
+  - @creezio/tasks@0.10.2
+  - @creezio/mails@0.10.2
+  - @creezio/observability@0.10.2
+  - @creezio/support@0.10.2
+  - @creezio/integrations@0.10.2
+  - @creezio/browser-host@0.10.2
+  - @creezio/database@0.10.2
+
 ## 0.10.1
 
 ### Patch Changes
