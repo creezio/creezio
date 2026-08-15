@@ -111,11 +111,12 @@ test("mcp oauth well-known + DCR + admin status", async () => {
 
     const admin = await fetch(`${handle.baseUrl}/api/v1/admin/mcp/status`);
     const adminBody = await admin.json();
-    assert.equal(admin.status, 200, JSON.stringify(adminBody));
-    assert.ok(
-      adminBody.oauthReady === true || adminBody.ok !== false,
+    assert.equal(
+      admin.status,
+      401,
       JSON.stringify(adminBody),
     );
+    assert.equal(adminBody.error, "unauthorized");
   } finally {
     await handle.close();
   }

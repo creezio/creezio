@@ -63,6 +63,7 @@ export {
   createBrandApiKeyModuleVerifier,
   createPluginDiskKeyModuleVerifier,
   ensureCatalogInternalSecret,
+  isAdminApiPath,
   isCatalogInternalBootPath,
   isModuleApiPath,
   isPublicModulePath,
