@@ -47,9 +47,9 @@ Ports : auto 18790+n, bind `127.0.0.1` (exposition = `--expose`).
 
 ```bash
 # Test local (image buildée si absente, port auto, attend le boot) :
-creezio server-docker create demo --brand-root "$BRAND_ROOT"
+CREEZIO_TUNNEL_LOCAL=1 creezio server-docker create demo --brand-root "$BRAND_ROOT"
 
-# Prod flotte (warm n8n/Hermes + catalogue + forward env hôte tunnel/fleet) :
+# Prod flotte (warm n8n/Hermes + catalogue + tunnel public obligatoire) :
 CREEZIO_TUNNEL_PROVISION_URL=http://172.17.0.1:8666 \
 CREEZIO_TUNNEL_PROVISION_TOKEN=<token du service creezio-tunnel-provisioner> \
 CREEZIO_TUNNEL_SLUG=<slug> \
@@ -86,7 +86,10 @@ code `docker/tunnel-provisioner/`), token dans son unit.
 
 **Pièges** : prérequis `npm run build:runtime` côté marque ; slug tunnel dans
 `RESERVED_SLUGS` (`docker/tunnel-provisioner/lib.mjs` : `admin`, `mcp`, `api`,
-`agent`, `demo`, `test`, `registry`…) → jamais pour un serveur client.
+`agent`, `demo`, `test`, `registry`…) → `create` dérive `<brand>-<slug>`
+(ex. `foove2-demo`), jamais de skip tunnel. Sans `CREEZIO_TUNNEL_PROVISION_URL`
+/`_TOKEN`, create VPS **échoue** (pas de loopback silencieux). Dev :
+`CREEZIO_TUNNEL_LOCAL=1`.
 
 ## 2. Créer un compte owner / user en headless (sans UI)
 

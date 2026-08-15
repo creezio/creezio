@@ -30,6 +30,7 @@
 | [`src/scaffold.ts`](../src/scaffold.ts) | Scaffold OS + branche PRD |
 | [`src/server-docker-cli.ts`](../src/server-docker-cli.ts) | CLI `creezio server-docker` — create/start/stop/rm/logs/ls, build/up/down/proof, `publish` (+ rétention, `--release` = déclaration draft dans l'app admin), `admin up`, `agent up`, `enroll`. |
 | [`src/server-docker-registry.ts`](../src/server-docker-registry.ts) | Registre d'instances serveur Docker par marque — SoT `docker-data/servers.json` (image `creezio-server-<brandId>`, containers `<brandId>-server-<nom>`). |
+| [`src/server-docker-tunnel.ts`](../src/server-docker-tunnel.ts) | Politique `server-docker create` fail-closed : provisioner requis sauf `CREEZIO_TUNNEL_LOCAL=1` ; slug réservé → `<brand>-<slug>`. |
 | [`src/write-app-file.ts`](../src/write-app-file.ts) | Écriture des fichiers d'app marque — respecte le marker `creezio:owned-by-brand` même avec `--force` (merge package.json, jamais de wipe du métier enrichi). |
 
 ## `src/generators/`

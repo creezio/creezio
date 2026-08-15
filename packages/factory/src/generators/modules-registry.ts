@@ -764,7 +764,7 @@ npm test                      # racine — délègue server/
 npm run metier:api
 creezio brand doctor --spec brand-spec
 creezio brand module init <id> --app .
-npm run server-docker:create -- demo
+CREEZIO_TUNNEL_LOCAL=1 npm run server-docker:create -- demo
 \`\`\`
 `;
 }

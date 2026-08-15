@@ -301,8 +301,10 @@ le service avec un autre fichier env.
 
 **Slugs réservés** (`RESERVED_SLUGS` dans `lib.mjs`) : `demo`, `test`,
 `dev`, `staging`, `sandbox`, `admin`, `app`, `api`… refusés par `/reserve`
-(409 « Slug réservé »). **Un hostname de test = slug NON réservé**
-(`recette-01`, `qa-foo`…) — `demo.winhub.fr` est irréservable.
+(409 « Slug réservé »). `server-docker create` **ne skip pas le tunnel** :
+il dérive `CREEZIO_TUNNEL_SLUG=<brand>-<slug>` (ex. `foove2-demo`), log +
+écriture dans l'env de l'instance. Un hostname client libre reste
+`{slug}.{zone}` (`acme.crm.foove.io`). Dev local : `CREEZIO_TUNNEL_LOCAL=1`.
 
 Provision manuelle d'un hostname de test (stack : `serviceHost:"app"`) :
 
