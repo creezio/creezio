@@ -1,28 +1,37 @@
 /**
  * Politique tunnel de `server-docker create` — fail-closed VPS / `--profile prod`.
  *
- * Un create « prod / VPS » ne réussit pas sans hostname public Cloudflare.
+ * Un create « prod / VPS » ne réussit pas sans contrat Cloudflare
+ * (`CREEZIO_CF_API_TOKEN` + `_ACCOUNT_ID` + `_ZONE_ID`) : l'instance
+ * auto-provisionne son tunnel au boot (cf.env 600). Plus de provisioner VPS.
  * `CREEZIO_TUNNEL_LOCAL=1` reste l'opt-in explicite pour un loopback de dev.
  *
- * Slugs : SoT `RESERVED_SLUGS` = `docker/tunnel-provisioner/lib.mjs`.
- * Un slug d'instance réservé (ex. `demo`) n'est jamais envoyé au provisioner
- * tel quel — on dérive `<brandId>-<slug>` et on l'écrit dans l'env instance.
+ * Slugs : SoT `RESERVED_SLUGS` = `packages/platform-core/src/tunnel-cf.ts`.
+ * Un slug d'instance réservé (ex. `demo`) n'est jamais envoyé tel quel —
+ * on dérive `<brandId>-<slug>` et on l'écrit dans l'env instance / cf.env.
  */
 
 import { pathToFileURL } from "node:url";
 import path from "node:path";
 
-/** Env tunnel toujours forwardés au create (pas seulement `--profile prod`). */
+/**
+ * Clés non secrètes forwardées dans l'env instance (registre).
+ * Les secrets CF (`CREEZIO_CF_API_TOKEN`…) vont uniquement dans `cf.env` 600.
+ */
 export const CREATE_TUNNEL_ENV_KEYS = [
-  "CREEZIO_TUNNEL_PROVISION_URL",
-  "CREEZIO_TUNNEL_PROVISION_TOKEN",
   "CREEZIO_TUNNEL_SLUG",
-  "CREEZIO_TUNNEL_FLAT_HOSTS",
   "CREEZIO_TUNNEL_LOCAL",
 ] as const;
 
+/** Contrat CF requis pour un create public (lu process + .env marque). */
+export const CREATE_CF_ENV_KEYS = [
+  "CREEZIO_CF_API_TOKEN",
+  "CREEZIO_CF_ACCOUNT_ID",
+  "CREEZIO_CF_ZONE_ID",
+] as const;
+
 /**
- * Copie de secours alignée sur `docker/tunnel-provisioner/lib.mjs`.
+ * Copie de secours alignée sur `packages/platform-core/src/tunnel-cf.ts`.
  * La gate `test-phase-server-docker-tunnel` refuse tout drift.
  */
 export const RESERVED_SLUGS_FALLBACK: readonly string[] = [
@@ -79,7 +88,7 @@ export type CreateTunnelPolicyInput = {
   /** Env fusionné (process + .env marque + `--env`) — jamais de secrets en log. */
   env: Record<string, string | undefined>;
   reservedSlugs: ReadonlySet<string>;
-  /** `--no-stack` : pas de sidecar cloudflared, donc pas de hostname public. */
+  /** `--no-stack` : pas de cf.env / compose, donc pas de hostname public. */
   noStack?: boolean;
 };
 
@@ -102,8 +111,6 @@ export type CreateTunnelPolicy =
       slug: string;
       derived: boolean;
       from: string;
-      provisionUrl: string;
-      provisionToken: string;
     };
 
 export function deriveCreateTunnelSlug(opts: {
@@ -146,11 +153,10 @@ export function deriveCreateTunnelSlug(opts: {
 
 export function formatMissingProvisionerError(): string {
   return [
-    "create VPS/prod refuse un stack loopback-only : CREEZIO_TUNNEL_PROVISION_URL et CREEZIO_TUNNEL_PROVISION_TOKEN sont requis (hostname public {slug}.crm.foove.io).",
+    "create VPS/prod refuse un stack loopback-only : CREEZIO_CF_API_TOKEN, CREEZIO_CF_ACCOUNT_ID et CREEZIO_CF_ZONE_ID sont requis (hostname public {slug}.crm.foove.io, auto-provisionné au boot via cf.env).",
     "",
     "Poser les vars dans le .env de la marque (gitignoré), ou les exporter avant create.",
-    "Exemple déjà en prod : foove2-admin, ou /opt/docker/creezio-fleet/tunnel-provisioner.env",
-    "(unité creezio-tunnel-provisioner-crm.service).",
+    "Le token CF ne doit jamais être commité ni écrit dans le registre / compose (cf.env chmod 600).",
     "",
     "Dev local (loopback assumé) : CREEZIO_TUNNEL_LOCAL=1",
   ].join("\n");
@@ -158,7 +164,7 @@ export function formatMissingProvisionerError(): string {
 
 export function formatNoStackPublicError(): string {
   return [
-    "create VPS/prod exige le stack compose (sidecar cloudflared) pour le hostname public.",
+    "create VPS/prod exige le stack compose (cf.env + cloudflared in-process) pour le hostname public.",
     "Retirer --no-stack, ou CREEZIO_TUNNEL_LOCAL=1 pour un loopback de dev.",
   ].join("\n");
 }
@@ -175,13 +181,10 @@ export function resolveCreateTunnelPolicy(
   if (wantLocal && !prod) {
     return { mode: "local", local: true };
   }
-  const provisionUrl = String(input.env.CREEZIO_TUNNEL_PROVISION_URL || "")
-    .trim()
-    .replace(/\/+$/, "");
-  const provisionToken = String(
-    input.env.CREEZIO_TUNNEL_PROVISION_TOKEN || "",
-  ).trim();
-  if (!provisionUrl || !provisionToken) {
+  const apiToken = String(input.env.CREEZIO_CF_API_TOKEN || "").trim();
+  const accountId = String(input.env.CREEZIO_CF_ACCOUNT_ID || "").trim();
+  const zoneId = String(input.env.CREEZIO_CF_ZONE_ID || "").trim();
+  if (!apiToken || !accountId || !zoneId) {
     throw new Error(formatMissingProvisionerError());
   }
   if (input.noStack) {
@@ -199,22 +202,20 @@ export function resolveCreateTunnelPolicy(
     slug: mapped.slug,
     derived: mapped.derived,
     from: mapped.from,
-    provisionUrl,
-    provisionToken,
   };
 }
 
 export function formatDerivedSlugLog(mapped: CreateTunnelSlugResult): string {
   return (
     `slug « ${mapped.from} » réservé (RESERVED_SLUGS) — ` +
-    `CREEZIO_TUNNEL_SLUG dérivé → ${mapped.slug} (écrit dans l'env de l'instance)`
+    `CREEZIO_TUNNEL_SLUG dérivé → ${mapped.slug} (écrit dans cf.env / env instance)`
   );
 }
 
 export async function loadReservedSlugs(
   kitRoot: string,
 ): Promise<Set<string>> {
-  const file = path.join(kitRoot, "docker/tunnel-provisioner/lib.mjs");
+  const file = path.join(kitRoot, "packages/platform-core/dist/tunnel-cf.js");
   try {
     const mod = (await import(pathToFileURL(file).href)) as {
       RESERVED_SLUGS?: Set<string>;

@@ -17,7 +17,7 @@ import {
   type FleetScopeId,
   type FleetTelemetryConfig,
 } from "@creezio/platform-core";
-import type { HostRuntimeContext, TunnelProvisionConfig } from "./context.js";
+import type { HostRuntimeContext } from "./context.js";
 import type { LocalConfigStore } from "./local-config.js";
 import { createHermesHost, type HermesHost } from "./hermes/launcher.js";
 import { createN8nHost, type N8nHost, type N8nAgentKeysHooks } from "./n8n/launcher.js";
@@ -64,14 +64,6 @@ export type BrandRuntimePaths = {
   assistantDbPath?: () => string;
 };
 
-export type BrandTunnelProvisionInput = {
-  envBaseUrlKey: string;
-  defaultBaseUrl: string;
-  envTokenKey: string;
-  defaultToken: string;
-  mailRootDomain: string;
-};
-
 export type BrandFleetInput = {
   envEndpointKey: string;
   defaultEndpoint: string;
@@ -87,7 +79,6 @@ export type BrandHostRuntimeConfig = {
   hermesCrm: HermesCrmKeyBrand;
   n8nApiKey?: N8nApiKeyBrand;
   n8nAgent?: N8nAgentIsolationBrand;
-  tunnel: BrandTunnelProvisionInput;
   fleet?: BrandFleetInput;
   npmUserDataSegment: string;
   secretFilePrefix: string;
@@ -99,18 +90,6 @@ export type BrandHostRuntimeConfig = {
   seedHermesSkills?: (hermesHome: string) => void | Promise<void>;
   log: (scope: string, line: string) => void;
 };
-
-export function resolveTunnelProvision(
-  input: BrandTunnelProvisionInput,
-): TunnelProvisionConfig {
-  return {
-    baseUrl: (
-      process.env[input.envBaseUrlKey] || input.defaultBaseUrl
-    ).replace(/\/$/, ""),
-    token: process.env[input.envTokenKey] || input.defaultToken,
-    mailRootDomain: input.mailRootDomain,
-  };
-}
 
 export function createHermesCrmKeyPaths(
   paths: BrandRuntimePaths,
@@ -210,7 +189,6 @@ export function createBrandHostRuntimeContext(
   } catch {
     packaged = false;
   }
-  const tunnelProvision = resolveTunnelProvision(cfg.tunnel);
   const hermesPaths = () =>
     createHermesCrmKeyPaths(cfg.paths, cfg.ensureDbScriptPath());
 
@@ -266,7 +244,6 @@ export function createBrandHostRuntimeContext(
     resourcesRoot: cfg.paths.resourcesRoot(),
     isPackaged: packaged,
     log: (scope, line) => cfg.log(scope, line),
-    tunnelProvision,
     getInstallId: () => getInstallId(),
     getHermesBridgeEnv,
     getHermesMcpServerConfig,

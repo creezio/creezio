@@ -25,49 +25,60 @@ L'image embarque :
   chronos) ; chaque transition = une ligne JSONL dans `docker logs` ;
   journal ops JSONL sous `/data/ops/`
 
-## Modèle standard (M2) — 1 instance = 1 stack compose autonome
+## Modèle standard (0.10.0) — 1 instance = 1 stack compose autonome
 
 Chaque instance serveur est un **projet compose autonome**
 (`docker-data/stacks/<nom>/compose.yml`, généré — ne pas éditer) :
 
-- **app** : image `creezio-server-<brand>` — port **interne fixe 18791** dans
-  le réseau du stack, volume `/data`, healthcheck `/api/v1/core/health` ;
-- **cloudflared** : sidecar tunnel (image `cloudflare/cloudflared`, token dans
-  `tunnel.env` chmod 600 — jamais dans `ps`, le registre ou `docker inspect`),
-  joint l'app par nom de service : ingress `http://app:18791` ;
+- **app seule** : image `creezio-server-<brand>` — port **interne fixe
+  18791**, volume `/data`, healthcheck `/api/v1/core/health`. **cloudflared
+  tourne IN-PROCESS** dans le conteneur (binaire pinné
+  `/opt/creezio/bin/cloudflared`, `CREEZIO_CLOUDFLARED_BINARY`) — fini le
+  sidecar ;
+- **tunnel auto-provisionné au boot** via l'API Cloudflare (client
+  `@creezio/platform-core`) : GET du tunnel persisté dans `/data` →
+  404/token absent → recréation idempotente (le CNAME suit le nouvel id),
+  PUT ingress `http://127.0.0.1:18791` (+ services + hostnames
+  supplémentaires multi-domaines éventuels sur le même tunnel), upsert DNS
+  idempotent, sonde publique en arrière-plan (non fatale) ;
+- **contrat CF via `cf.env` chmod 600** (`CREEZIO_CF_API_TOKEN` /
+  `_ACCOUNT_ID` / `_ZONE_ID` / `_ZONE_NAME` / `_UNIVERSAL_SSL` /
+  `CREEZIO_TUNNEL_SLUG` / `CREEZIO_DOMAIN`), écrit par `create` — jamais en
+  clair dans `environment:` ; les secrets applicatifs (clés `*TOKEN*`,
+  `*SECRET*`, `*PASSWORD*`, `*API_KEY*`…) partent dans **`secrets.env`
+  chmod 600** ;
 - **port hôte indifférent** : `127.0.0.1::18791` (attribution auto, loopback
   seul) pour debug/healthcheck — fini les collisions entre instances ;
-  `--host-port N` pour un port fixe (ex. tempoflowadmin : 18801, ciblé par le
-  tunnel lp hôte + NPM) ;
+  `--host-port N` pour un port fixe (ex. tempoflowadmin : 18801) ;
 - **zéro port public** : l'accès utilisateur passe par Cloudflare.
 
 ```bash
 creezio server-docker create resto-x --brand-root … --profile prod
-# → stack compose + tunnel provisionné (ingress http://app:18791)
-#    hostname public obligatoire : https://resto-x.crm.foove.io
-#    + owner first-run (CREEZIO_OWNER_EMAIL / _PASSWORD)
-#    (ou {slug}.{zone} de la marque)
+# → cf.env écrit (contrat CF vérifié) + stack compose ; le tunnel est
+#   créé/configuré par l'instance elle-même au premier boot
+#   hostname public obligatoire : https://resto-x.crm.foove.io
+#   + owner first-run (CREEZIO_OWNER_EMAIL / _PASSWORD)
 
 creezio server-docker migrate-stack resto-lyon --brand-root …
-# → legacy docker run → stack : backup /data obligatoire, ingress repointé,
-#   rollback legacy automatique si le health échoue
+# → sidecar/legacy docker run → stack in-container : backup /data
+#   obligatoire, cf.env écrit, rollback automatique si le health échoue
 
 # Debug : quel port hôte pour une instance ?
 creezio server-docker ls --brand-root …          # colonne PORT (* = auto)
 docker compose -f docker-data/stacks/resto-x/compose.yml port app 18791
 ```
 
-Le kernel en mode sidecar (`CREEZIO_TUNNEL_SIDECAR=1`, posé par le stack) ne
-spawn plus cloudflared : il seede sa config tunnel depuis `tunnel.env`
-(`CREEZIO_TUNNEL_TOKEN/_HOSTNAME/_ID`) et repointe l'ingress via le
-provisioner avec `serviceHost=app`. `update` régénère le compose avec la
-nouvelle image (tunnel.env conservé) puis `compose up -d`.
+Le kernel détecte le contrat CF (`CREEZIO_CF_API_TOKEN` présent) et
+provisionne/configure son tunnel au boot (phase `tunnel` du boot-status).
+`update` régénère le compose avec la nouvelle image (`cf.env` conservé)
+puis `compose up -d`. `rm` déprovisionne via l'API CF directe (DNS +
+tunnel) avant de retirer le stack.
 
 ## Une ligne (recommandé) — registre d'instances
 
 ```bash
 # VPS / prod — hostname public {slug}.crm.foove.io + owner first-run obligatoires
-# (CREEZIO_TUNNEL_PROVISION_URL + _TOKEN + CREEZIO_OWNER_EMAIL +
+# (CREEZIO_CF_API_TOKEN + _ACCOUNT_ID + _ZONE_ID + CREEZIO_OWNER_EMAIL +
 # CREEZIO_OWNER_PASSWORD dans le .env marque).
 # Slug réservé (demo, test, admin…) → CREEZIO_TUNNEL_SLUG=<brand>-<slug>.
 creezio server-docker create acme --brand-root "$BRAND_ROOT" --profile prod
@@ -102,25 +113,25 @@ parité TF2 desktop complète, sans polluer les défauts test/CI :
 
 - `CREEZIO_NATIVE_WARM=1` (n8n + Hermes dans le container)
 - `CREEZIO_CATALOG=1` (téléchargement + **import** du catalogue après le listen)
-- **fail-closed tunnel** : `CREEZIO_TUNNEL_PROVISION_URL` + `_TOKEN` **requis**
-  (hostname public `{slug}.crm.foove.io` / `{slug}.{zone}`). Un create VPS
-  **n'est plus un succès silencieux en loopback** si le provisioner manque.
-  Slug d'instance dans `RESERVED_SLUGS` (`demo`, `test`…) → dérivation
-  explicite `CREEZIO_TUNNEL_SLUG=<brand>-<slug>` (log + env instance).
+- **fail-closed tunnel** : `CREEZIO_CF_API_TOKEN` + `_ACCOUNT_ID` + `_ZONE_ID`
+  **requis** (hostname public `{slug}.crm.foove.io` / `{slug}.{zone}`,
+  auto-provisionné au boot via `cf.env` 600). Un create VPS **n'est plus un
+  succès silencieux en loopback** si le contrat CF manque. Slug d'instance
+  dans `RESERVED_SLUGS` (`demo`, `test`…) → dérivation explicite
+  `CREEZIO_TUNNEL_SLUG=<brand>-<slug>` (log + cf.env).
 - **fail-closed owner** : `CREEZIO_OWNER_EMAIL` + `CREEZIO_OWNER_PASSWORD`
   **requis** (first-run `POST /api/v1/os/setup` + vérif login). Même contrat
   cloud / VPS — pas de `E2E_OWNER_*`. Le create log `login : $CREEZIO_OWNER_EMAIL`
   (jamais le mot de passe).
-- forward des env **présents sur l'hôte** (jamais inventés) :
-  `CREEZIO_TUNNEL_PROVISION_URL` / `_TOKEN` / `CREEZIO_TUNNEL_SLUG`,
-  `CREEZIO_FLEET_ENDPOINT`, `CREEZIO_CRASH_ENDPOINT`, `CREEZIO_PLUGINS`,
-  `EMAIL_INBOUND_SECRET`
+- forward des env **présents sur l'hôte** (jamais inventés) : contrat
+  Cloudflare `CREEZIO_CF_*` + `CREEZIO_TUNNEL_SLUG` / `CREEZIO_DOMAIN`
+  (→ `cf.env` 600), `CREEZIO_FLEET_ENDPOINT`, `CREEZIO_CRASH_ENDPOINT`,
+  `CREEZIO_PLUGINS`, `EMAIL_INBOUND_SECRET` (→ `secrets.env` 600)
 
 Les autres phases (fleet, catalog…) restent no-op si non configurées.
-Le tunnel **et** l'owner **ne le sont plus** : sans URL/token **ou** sans
+Le tunnel **et** l'owner **ne le sont plus** : sans `CREEZIO_CF_*` **ou** sans
 owner, `create` échoue avec un message qui indique où poser les vars
-(`.env` marque, Runtime Secrets cloud, exemple `foove2-admin` /
-`creezio-fleet/tunnel-provisioner.env`).
+(`.env` marque, Runtime Secrets cloud).
 Dev local : `CREEZIO_TUNNEL_LOCAL=1` (loopback assumé, owner optionnel,
 pas de `--profile prod`).
 
@@ -133,7 +144,7 @@ runtime desktop — chacune a son étape boot-status :
 |-------------------|-----------|-------|
 | `catalog` | `CREEZIO_CATALOG=1` | `ensureCatalogPresent` (téléchargement snapshot) |
 | `catalog-import` | idem + host `ensureCatalogImported` | projection snapshot → brand.db via `/api/v1/modules/catalog/import` |
-| `tunnel` | `CREEZIO_TUNNEL_PROVISION_URL` + `_TOKEN` | reserve + ingress + `cloudflared` (binaire embarqué dans l'image, `CREEZIO_CLOUDFLARED_BINARY`) ; `APP_PUBLIC_URL`/`MCP_PUBLIC_URL` suivent |
+| `tunnel` | `CREEZIO_CF_API_TOKEN` + `_ACCOUNT_ID` + `_ZONE_ID` | ensure CF (GET → 404 → recréation, PUT ingress, DNS idempotent) + `cloudflared` in-process (binaire embarqué, `CREEZIO_CLOUDFLARED_BINARY`) ; `APP_PUBLIC_URL`/`MCP_PUBLIC_URL` suivent |
 | `plugins` | défaut ON (kill-switch `CREEZIO_PLUGINS=0` / `features.plugins=false`) | `startEnabledPlugins` + control API |
 | `hermes-bridge` | warm actif | clé CRM Hermes, seed contexte, pont n8n↔Hermes, webhook public n8n |
 | `fleet` | `CREEZIO_FLEET_ENDPOINT` (ou manifest) | fleet agent + crash endpoint (`CREEZIO_CRASH_ENDPOINT`) |
@@ -283,7 +294,7 @@ Pas de lettres (`server-a` / `server-b` interdit).
 | `CREEZIO_NATIVE_WARM` | `0` | Skip n8n/Hermes au boot |
 | `CREEZIO_CATALOG` | `0` | Catalogue : présence + import post-listen |
 | `CREEZIO_PLUGINS` | `1` (défaut ON — `0` = kill-switch) | Plugins host + control API |
-| `CREEZIO_TUNNEL_PROVISION_URL` / `_TOKEN` / `CREEZIO_TUNNEL_SLUG` | — | Tunnel Cloudflare (reserve/ingress/cloudflared) |
+| `CREEZIO_CF_API_TOKEN` / `_ACCOUNT_ID` / `_ZONE_ID` (/`_ZONE_NAME` / `_UNIVERSAL_SSL`) + `CREEZIO_TUNNEL_SLUG` / `CREEZIO_DOMAIN` | — | Tunnel Cloudflare auto-provisionné au boot (via `cf.env` 600) |
 | `CREEZIO_FLEET_ENDPOINT` / `CREEZIO_CRASH_ENDPOINT` | manifest | Fleet agent / crash reports |
 | `EMAIL_INBOUND_SECRET` | store | Secret webhooks mails entrants |
 | `CREEZIO_CLOUDFLARED_BINARY` | `/opt/creezio/bin/cloudflared` (image) | Binaire cloudflared |

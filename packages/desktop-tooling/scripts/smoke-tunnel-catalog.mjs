@@ -1,11 +1,14 @@
 #!/usr/bin/env node
 /**
- * Smoke ops générique : provisioner tunnel + HEAD catalogue distant (optionnel).
+ * Smoke ops générique : contrat Cloudflare Tunnel (auto-provisioning
+ * instance, API CF directe — lecture seule) + HEAD catalogue distant
+ * (optionnel).
  *
  *   node …/smoke-tunnel-catalog.mjs
  *   node …/smoke-tunnel-catalog.mjs --download   # marque doit brancher ensure
  *
- * Secrets : `<app>/.env` gitignoré.
+ * Secrets : `<app>/.env` gitignoré — CREEZIO_CF_API_TOKEN /
+ * CREEZIO_CF_ACCOUNT_ID / CREEZIO_CF_ZONE_ID (+ variantes {ENV_PREFIX}_CF_*).
  */
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
@@ -33,17 +36,15 @@ function readEnvPrefix() {
 }
 
 const prefix = readEnvPrefix();
-const tunnelUrl = (
-  (prefix && process.env[`${prefix}_TUNNEL_PROVISION_URL`]) ||
-  process.env.CREEZIO_TUNNEL_PROVISION_URL ||
-  process.env.TEMPOFLOW3_TUNNEL_PROVISION_URL ||
-  ""
-).replace(/\/$/, "");
-const tunnelToken =
-  (prefix && process.env[`${prefix}_TUNNEL_PROVISION_TOKEN`]) ||
-  process.env.CREEZIO_TUNNEL_PROVISION_TOKEN ||
-  process.env.TEMPOFLOW3_TUNNEL_PROVISION_TOKEN ||
+const pick = (key, legacy = []) =>
+  (prefix && process.env[`${prefix}_${key}`]) ||
+  process.env[`CREEZIO_${key}`] ||
+  legacy.map((k) => process.env[k]).find(Boolean) ||
   "";
+
+const cfToken = pick("CF_API_TOKEN", ["TEMPOFLOW3_CF_API_TOKEN"]);
+const cfAccount = pick("CF_ACCOUNT_ID", ["TEMPOFLOW3_CF_ACCOUNT_ID"]);
+const cfZone = pick("CF_ZONE_ID", ["TEMPOFLOW3_CF_ZONE_ID"]);
 const catalogUrl =
   (prefix && process.env[`${prefix}_CATALOG_URL`]) ||
   process.env.CREEZIO_CATALOG_URL ||
@@ -56,8 +57,9 @@ console.log(
     {
       envLoaded: envInfo.loaded,
       envKeys: envInfo.keys,
-      tunnelUrlSet: Boolean(tunnelUrl),
-      tunnelTokenLen: tunnelToken.length,
+      cfTokenSet: Boolean(cfToken),
+      cfAccountSet: Boolean(cfAccount),
+      cfZoneSet: Boolean(cfZone),
       catalogUrlSet: Boolean(catalogUrl),
     },
     null,
@@ -65,36 +67,57 @@ console.log(
   ),
 );
 
-assert.ok(tunnelUrl, "TUNNEL_PROVISION_URL manquant (.env)");
-assert.ok(tunnelToken, "TUNNEL_PROVISION_TOKEN manquant (.env)");
+assert.ok(cfToken, "CF_API_TOKEN manquant (.env)");
+assert.ok(cfAccount, "CF_ACCOUNT_ID manquant (.env)");
+assert.ok(cfZone, "CF_ZONE_ID manquant (.env)");
 
-const health = await fetch(`${tunnelUrl}/health`);
-assert.equal(health.status, 200, `tunnel /health HTTP ${health.status}`);
-const healthJson = await health.json();
-assert.equal(healthJson.ok, true);
+const CF = "https://api.cloudflare.com/client/v4";
+const headers = { Authorization: `Bearer ${cfToken}` };
 
-const slug = `creezio-smoke-${Date.now().toString(36).slice(-6)}`;
-const check = await fetch(`${tunnelUrl}/check?slug=${slug}`, {
-  headers: { Authorization: `Bearer ${tunnelToken}` },
+// Token : account d'abord, user ensuite (les deux sont supportés).
+let kind = "account";
+let verify = await fetch(`${CF}/accounts/${cfAccount}/tokens/verify`, {
+  headers,
 });
-assert.equal(check.status, 200, `tunnel /check HTTP ${check.status}`);
-const checkJson = await check.json();
-assert.equal(checkJson.ok, true);
-assert.equal(checkJson.available, true);
-assert.ok(
-  String(checkJson.hostname || "").includes("."),
-  "hostname tunnel attendu",
+if (verify.status !== 200) {
+  kind = "user";
+  verify = await fetch(`${CF}/user/tokens/verify`, { headers });
+}
+assert.equal(verify.status, 200, `token CF verify HTTP ${verify.status}`);
+const verifyJson = await verify.json();
+assert.equal(verifyJson.success, true, "token CF invalide");
+
+// Zone lisible → nom résolu (base des hostnames {slug}.{zone}).
+const zone = await fetch(`${CF}/zones/${cfZone}`, { headers });
+assert.equal(zone.status, 200, `zone CF HTTP ${zone.status}`);
+const zoneJson = await zone.json();
+assert.equal(zoneJson.success, true, "zone CF illisible");
+const zoneName = String(zoneJson.result?.name || "");
+assert.ok(zoneName.includes("."), "nom de zone inattendu");
+
+// Disponibilité DNS d'un slug jetable (read-only — aucune création).
+const slug = `creezio-smoke-${Date.now().toString(36).slice(-6)}`;
+const hostname = `${slug}.${zoneName}`;
+const dns = await fetch(
+  `${CF}/zones/${cfZone}/dns_records?name=${encodeURIComponent(hostname)}`,
+  { headers },
 );
+assert.equal(dns.status, 200, `dns_records HTTP ${dns.status}`);
+const dnsJson = await dns.json();
+assert.equal(dnsJson.success, true);
+const available = (dnsJson.result || []).length === 0;
 
 console.log(
-  "OK tunnel",
+  "OK cloudflare",
   JSON.stringify({
-    health: healthJson.service,
-    checkSlug: checkJson.slug,
-    hostname: checkJson.hostname,
-    available: checkJson.available,
+    tokenKind: kind,
+    zone: zoneName,
+    checkSlug: slug,
+    hostname,
+    available,
   }),
 );
+assert.ok(available, `hostname ${hostname} déjà pris (DNS existant)`);
 
 if (!catalogUrl) {
   console.log("SKIP catalog (*_CATALOG_URL / CREEZIO_CATALOG_URL absent)");

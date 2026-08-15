@@ -8,15 +8,6 @@ import { displayNameFor, type RuntimeAppKind } from "@creezio/platform-core";
 
 export type HostLogFn = (scope: string, line: string) => void;
 
-export type TunnelProvisionConfig = {
-  /** Base URL provisioner (sans slash final). */
-  baseUrl: string;
-  /** Bearer token. */
-  token: string;
-  /** Domaine mail catch-all : `{slug}.mail.{mailRootDomain}`. */
-  mailRootDomain?: string;
-};
-
 export type HostRuntimeContext = {
   manifest: AppManifest;
   userDataDir: string;
@@ -24,8 +15,6 @@ export type HostRuntimeContext = {
   isPackaged: boolean;
   appKind?: RuntimeAppKind;
   log?: HostLogFn;
-  /** Provisioner tunnel (marque). */
-  tunnelProvision?: TunnelProvisionConfig;
   /** Install ID pour reserve tunnel. */
   getInstallId?: () => string;
   /**

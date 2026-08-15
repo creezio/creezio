@@ -687,8 +687,8 @@ export async function updateServer({
 
   const recreate = async (img) => {
     if (inst.stack) {
-      // Stack compose (M2) : régénère compose.yml avec la nouvelle image
-      // (tunnel.env conservé — le sidecar est rendu tant qu'il existe),
+      // Stack compose : régénère compose.yml avec la nouvelle image
+      // (cf.env conservé — l'env_file est rendu tant qu'il existe),
       // puis up. Compose ne recrée que ce qui change ; le port hôte auto
       // peut être réattribué → registre réaligné.
       const stack = await import("./instance-stack.mjs");

@@ -72,7 +72,8 @@ node packages/observability/fleet-collector/server-admin.mjs
 
 L'admin expose un **proxy pull-only** du registre d'images privé
 (`CREEZIO_REGISTRY`, ex. `127.0.0.1:5000`) sous `/v2/*`, pensé pour être
-publié via l'ingress `registry.{zone}` (tunnel-provisioner `kind=registry`) :
+publié via l'ingress `registry.{zone}` (réservation CF `kind=registry`
+via le client `@creezio/platform-core` — zone-level, pull-only) :
 
 - **GET/HEAD uniquement** — toute méthode push (PUT/POST/PATCH/DELETE) → 405.
   Le `publish` reste loopback-only sur le VPS atelier.

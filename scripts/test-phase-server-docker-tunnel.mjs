@@ -2,7 +2,8 @@
  * Gate — create server-docker fail-closed (tunnel public obligatoire)
  * + mapping slug réservé → `<brand>-<slug>`.
  *
- * Aucun secret : URL/token fictifs uniquement.
+ * Contrat 0.10.0 : CREEZIO_CF_API_TOKEN / _ACCOUNT_ID / _ZONE_ID
+ * (plus de provisioner VPS). Aucun secret réel : valeurs fictives uniquement.
  */
 import assert from "node:assert/strict";
 import fs from "node:fs";
@@ -14,7 +15,7 @@ import { fileURLToPath } from "node:url";
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
 const { RESERVED_SLUGS } = await import(
-  pathToFileURL(path.join(root, "docker/tunnel-provisioner/lib.mjs")).href
+  pathToFileURL(path.join(root, "packages/platform-core/dist/tunnel-cf.js")).href
 );
 
 const dist = path.join(root, "packages/factory/dist/server-docker-tunnel.js");
@@ -29,16 +30,22 @@ const {
   resolveCreateTunnelPolicy,
 } = await import(pathToFileURL(dist).href);
 
-test("RESERVED_SLUGS_FALLBACK factory = SoT provisioner (demo inclus)", () => {
-  assert.ok(RESERVED_SLUGS.has("demo"), "demo est réservé côté provisioner");
+const FAKE_CF = {
+  CREEZIO_CF_API_TOKEN: "test-cf-token-not-a-secret",
+  CREEZIO_CF_ACCOUNT_ID: "acct-test",
+  CREEZIO_CF_ZONE_ID: "zone-test",
+};
+
+test("RESERVED_SLUGS_FALLBACK factory = SoT platform-core (demo inclus)", () => {
+  assert.ok(RESERVED_SLUGS.has("demo"), "demo est réservé côté platform-core");
   assert.deepEqual(
     [...RESERVED_SLUGS].sort(),
     [...RESERVED_SLUGS_FALLBACK].sort(),
-    "drift RESERVED_SLUGS lib.mjs ↔ factory fallback",
+    "drift RESERVED_SLUGS tunnel-cf.ts ↔ factory fallback",
   );
 });
 
-test("create sans provisioner + LOCAL unset : échec actionnable (pas de loopback)", () => {
+test("create sans contrat CF + LOCAL unset : échec actionnable (pas de loopback)", () => {
   assert.throws(
     () =>
       resolveCreateTunnelPolicy({
@@ -49,11 +56,13 @@ test("create sans provisioner + LOCAL unset : échec actionnable (pas de loopbac
       }),
     (err) => {
       const msg = String(err?.message || err);
-      assert.match(msg, /CREEZIO_TUNNEL_PROVISION_URL/);
-      assert.match(msg, /CREEZIO_TUNNEL_PROVISION_TOKEN/);
+      assert.match(msg, /CREEZIO_CF_API_TOKEN/);
+      assert.match(msg, /CREEZIO_CF_ACCOUNT_ID/);
+      assert.match(msg, /CREEZIO_CF_ZONE_ID/);
       assert.match(msg, /crm\.foove\.io/);
-      assert.match(msg, /foove2-admin|tunnel-provisioner\.env/);
+      assert.match(msg, /cf\.env/);
       assert.match(msg, /CREEZIO_TUNNEL_LOCAL=1/);
+      assert.doesNotMatch(msg, /CREEZIO_TUNNEL_PROVISION_URL/);
       assert.doesNotMatch(msg, /gh[po]_[A-Za-z0-9]{20,}/);
       return true;
     },
@@ -62,7 +71,7 @@ test("create sans provisioner + LOCAL unset : échec actionnable (pas de loopbac
   assert.match(text, /loopback-only/);
 });
 
-test("create --profile prod ignore LOCAL=1 et exige le provisioner", () => {
+test("create --profile prod ignore LOCAL=1 et exige le contrat CF", () => {
   assert.throws(
     () =>
       resolveCreateTunnelPolicy({
@@ -72,7 +81,7 @@ test("create --profile prod ignore LOCAL=1 et exige le provisioner", () => {
         env: { CREEZIO_TUNNEL_LOCAL: "1" },
         reservedSlugs: RESERVED_SLUGS,
       }),
-    /CREEZIO_TUNNEL_PROVISION_URL/,
+    /CREEZIO_CF_API_TOKEN/,
   );
 });
 
@@ -101,10 +110,7 @@ test("slug réservé demo → foove2-demo (explicite, écriture env)", () => {
     instanceName: "demo",
     brandId: "foove2",
     profile: "prod",
-    env: {
-      CREEZIO_TUNNEL_PROVISION_URL: "http://127.0.0.1:18667",
-      CREEZIO_TUNNEL_PROVISION_TOKEN: "test-token-not-a-secret",
-    },
+    env: FAKE_CF,
     reservedSlugs: RESERVED_SLUGS,
   });
   assert.equal(p.mode, "public");
@@ -134,16 +140,13 @@ test("slug libre (acme) inchangé", () => {
   assert.equal(mapped.derived, false);
 });
 
-test("--no-stack en mode public : échec (pas de sidecar)", () => {
+test("--no-stack en mode public : échec (pas de cf.env)", () => {
   assert.throws(
     () =>
       resolveCreateTunnelPolicy({
         instanceName: "acme",
         brandId: "foove2",
-        env: {
-          CREEZIO_TUNNEL_PROVISION_URL: "http://127.0.0.1:18667",
-          CREEZIO_TUNNEL_PROVISION_TOKEN: "test-token-not-a-secret",
-        },
+        env: FAKE_CF,
         reservedSlugs: RESERVED_SLUGS,
         noStack: true,
       }),
@@ -151,7 +154,7 @@ test("--no-stack en mode public : échec (pas de sidecar)", () => {
   );
 });
 
-test("CLI create câble la politique (plus de skip silencieux)", () => {
+test("CLI create câble la politique CF (plus de skip silencieux ni provisioner)", () => {
   const cli = fs.readFileSync(
     path.join(root, "packages/factory/src/server-docker-cli.ts"),
     "utf8",
@@ -160,6 +163,10 @@ test("CLI create câble la politique (plus de skip silencieux)", () => {
   assert.match(cli, /loadReservedSlugs/);
   assert.match(cli, /formatDerivedSlugLog/);
   assert.match(cli, /CREATE_TUNNEL_ENV_KEYS/);
+  assert.match(cli, /CREEZIO_CF_API_TOKEN/);
+  assert.match(cli, /cf\.env/);
+  assert.doesNotMatch(cli, /CREEZIO_TUNNEL_PROVISION_URL\s*=/);
+  assert.doesNotMatch(cli, /provisionerCall/);
   assert.doesNotMatch(
     cli,
     /if \(provUrl && provToken\) \{\s*const slug = \(extraEnv\.CREEZIO_TUNNEL_SLUG/,

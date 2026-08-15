@@ -133,7 +133,7 @@ cd <app>
 # Dev local (loopback, owner optionnel) :
 CREEZIO_TUNNEL_LOCAL=1 npm run server-docker:create -- demo
 # VPS / prod — hostname {slug}.crm.foove.io + owner first-run obligatoires
-# (.env : CREEZIO_TUNNEL_PROVISION_URL + _TOKEN + CREEZIO_OWNER_EMAIL +
+# (.env : CREEZIO_CF_API_TOKEN + _ACCOUNT_ID + _ZONE_ID + CREEZIO_OWNER_EMAIL +
 # CREEZIO_OWNER_PASSWORD ; slug réservé → <brand>-<slug>) :
 npm run server-docker:create -- acme -- --profile prod
 ```

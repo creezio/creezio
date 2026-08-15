@@ -24,10 +24,10 @@ import {
 } from "../packages/landing/dist/index.js";
 import {
   BRAND_WEB_SLUGS,
-  buildIngressRules,
-  buildPublicUrls,
+  buildTunnelIngressRules,
+  tunnelPublicUrls,
   slugCheckLocal,
-} from "../docker/tunnel-provisioner/lib.mjs";
+} from "../packages/platform-core/dist/tunnel-cf.js";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -247,7 +247,7 @@ test("landing.media — upload base64 borné, service via route Next", async () 
 });
 
 // ---------------------------------------------------------------------------
-// 2. Tunnel provisioner — mode brand-web
+// 2. Tunnel CF (platform-core) — mode brand-web
 // ---------------------------------------------------------------------------
 
 test("landing.tunnel — slug lp réservé aux marques (kind brand-web)", () => {
@@ -266,7 +266,7 @@ test("landing.tunnel — slug lp réservé aux marques (kind brand-web)", () => 
 
 test("landing.tunnel — ingress brand-web = un seul service + 404", () => {
   const ports = { crmPort: 18801, n8nPort: 15678, hermesPort: 18797 };
-  const rules = buildIngressRules("lp.example.test", ports, null, {
+  const rules = buildTunnelIngressRules("lp.example.test", ports, {
     embeds: false,
   });
   assert.equal(rules.length, 2);
@@ -274,39 +274,37 @@ test("landing.tunnel — ingress brand-web = un seul service + 404", () => {
   assert.equal(rules[0].service, "http://127.0.0.1:18801");
   assert.deepEqual(rules[1], { service: "http_status:404" });
   // Rétrocompat : sans opts, comportement serveur complet inchangé.
-  const full = buildIngressRules("resto.example.test", ports, null);
+  const full = buildTunnelIngressRules("resto.example.test", ports);
   assert.equal(full.length, 4);
-  const urls = buildPublicUrls("lp.example.test", { embeds: false });
+  const urls = tunnelPublicUrls("lp.example.test", { embeds: false });
   assert.deepEqual(Object.keys(urls), ["crm"]);
 });
 
 test("landing.tunnel — mode flat aplatit embeds + DNS sans wildcard", async () => {
   const {
-    buildIngressRules: buildRules,
-    buildPublicUrls: buildUrls,
-    dnsRecordSpecs,
-    deprovisionDnsHosts,
-    resolveTunnelHostMode,
-    serviceHostname,
+    buildTunnelIngressRules: buildRules,
+    tunnelPublicUrls: buildUrls,
+    tunnelDnsRecordSpecs: dnsRecordSpecs,
+    tunnelDeprovisionDnsHosts: deprovisionDnsHosts,
     slugCheckLocal: checkSlug,
-  } = await import("../docker/tunnel-provisioner/lib.mjs");
+  } = await import("../packages/platform-core/dist/tunnel-cf.js");
+  const { resolveTunnelHostMode, tunnelServiceHostname: serviceHostname } =
+    await import("../packages/platform-core/dist/tunnel-urls.js");
   assert.equal(resolveTunnelHostMode("flat"), "flat");
   assert.equal(resolveTunnelHostMode("nested"), "nested");
   assert.equal(
-    serviceHostname("resto.winhub.fr", "n8n", { hostMode: "flat" }),
+    serviceHostname("resto.winhub.fr", "n8n", "flat"),
     "n8n-resto.winhub.fr",
   );
   assert.equal(
-    serviceHostname("resto.winhub.fr", "agent", { hostMode: "flat" }),
+    serviceHostname("resto.winhub.fr", "agent", "flat"),
     "agent-resto.winhub.fr",
   );
   const ports = { crmPort: 18791, n8nPort: 15678, hermesPort: 18797 };
-  const rules = buildRules(
-    "resto.winhub.fr",
-    ports,
-    { host: "172.17.0.1", port: 18810 },
-    { hostMode: "flat" },
-  );
+  const rules = buildRules("resto.winhub.fr", ports, {
+    hostMode: "flat",
+    agent: { host: "172.17.0.1", port: 18810 },
+  });
   assert.equal(rules[1].hostname, "n8n-resto.winhub.fr");
   assert.equal(rules[2].hostname, "hermes-resto.winhub.fr");
   assert.equal(rules[3].hostname, "agent-resto.winhub.fr");

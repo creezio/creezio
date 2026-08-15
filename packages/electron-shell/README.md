@@ -57,13 +57,10 @@ const hostRuntime = createBrandHostRuntime({
   hermesCrm,
   n8nApiKey,
   n8nAgent,
-  tunnel: {
-    envBaseUrlKey: "MYBRAND_TUNNEL_PROVISIONER_URL",
-    defaultBaseUrl: "https://tunnel.example.test",
-    envTokenKey: "MYBRAND_TUNNEL_PROVISIONER_TOKEN",
-    defaultToken: "",
-    mailRootDomain: "mail.example.test",
-  },
+  // Tunnel Cloudflare : auto-provisioning via l'API CF (0.10.0) — plus
+  // AUCUNE config tunnel côté runtime. Le contrat est lu depuis l'env :
+  //   MYBRAND_CF_API_TOKEN / _CF_ACCOUNT_ID / _CF_ZONE_ID (variante marque)
+  //   puis CREEZIO_CF_* (générique kit). Voir platform-core tunnel-cf-client.
   npmUserDataSegment: "mybrand-npm",
   secretFilePrefix: "mybrand",
   hermesBridge: "full",

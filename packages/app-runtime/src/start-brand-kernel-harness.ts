@@ -874,8 +874,8 @@ export async function startBrandKernelHarness(
     }
   }
 
-  // Tunnel Cloudflare réel — uniquement sur env provisioner EXPLICITE
-  // (CREEZIO_TUNNEL_PROVISION_URL / ${PREFIX}_TUNNEL_PROVISION_URL).
+  // Tunnel Cloudflare auto-provisionné — uniquement sur env CF EXPLICITE
+  // (CREEZIO_CF_API_TOKEN / ${PREFIX}_CF_API_TOKEN, via cf.env du stack).
   if (brandOs && tunnelRequested && config.manifest) {
     await runHarnessTunnelPhase({
       boot,

@@ -59,6 +59,7 @@ export {
   type ServerRegistryInstance,
 } from "./server-docker-registry.js";
 export {
+  CREATE_CF_ENV_KEYS,
   CREATE_TUNNEL_ENV_KEYS,
   RESERVED_SLUGS_FALLBACK,
   deriveCreateTunnelSlug,

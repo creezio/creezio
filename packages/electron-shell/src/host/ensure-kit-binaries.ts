@@ -20,6 +20,9 @@ export type EnsureKitBinariesResult = {
   errors: string[];
 };
 
+/** Version cloudflared pinée — alignée sur docker/server/Dockerfile. */
+const CLOUDFLARED_VERSION = "2026.7.3";
+
 function defaultDownloadUrl(name: KitBinaryName): string {
   if (name === "meili") {
     if (process.env.CREEZIO_MEILI_URL) return process.env.CREEZIO_MEILI_URL;
@@ -31,8 +34,8 @@ function defaultDownloadUrl(name: KitBinaryName): string {
     return process.env.CREEZIO_CLOUDFLARED_URL;
   }
   return process.platform === "win32"
-    ? "https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-windows-amd64.exe"
-    : "https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64";
+    ? `https://github.com/cloudflare/cloudflared/releases/download/${CLOUDFLARED_VERSION}/cloudflared-windows-amd64.exe`
+    : `https://github.com/cloudflare/cloudflared/releases/download/${CLOUDFLARED_VERSION}/cloudflared-linux-amd64`;
 }
 
 function binaryFileName(name: KitBinaryName): string {

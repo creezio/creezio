@@ -130,7 +130,6 @@ export {
 export type {
   HostLogFn,
   HostRuntimeContext,
-  TunnelProvisionConfig,
 } from "./host/context.js";
 export { hostLog, hostProductName } from "./host/context.js";
 
@@ -580,7 +579,6 @@ export type {
   BrandHostRuntimeConfig,
   BrandHostSingletons,
   BrandRuntimePaths,
-  BrandTunnelProvisionInput,
 } from "./host/brand-host-runtime.js";
 export {
   brandEnsureCrmKeyDbScript,
@@ -590,7 +588,6 @@ export {
   createHermesCrmKeySurface,
   createHermesCrmOnlyBridgeEnv,
   createN8nAgentKeysHooks,
-  resolveTunnelProvision,
 } from "./host/brand-host-runtime.js";
 
 /* ── Phase N5 : feature-off host (marques sans plugins/flotte) ── */

@@ -228,8 +228,8 @@ export type {
 } from "./tunnel-urls.js";
 export {
   TUNNEL_EMBED_SERVICES,
-  TUNNEL_FLAT_HOSTS_ENV,
   TUNNEL_HOST_SERVICES,
+  TUNNEL_UNIVERSAL_SSL_ENV,
   buildTunnelPublicUrls,
   deriveTunnelServiceUrl,
   portFromLocalUrl,
@@ -238,6 +238,62 @@ export {
   stripTunnelServicePrefix,
   tunnelServiceHostname,
 } from "./tunnel-urls.js";
+
+export type {
+  TunnelDnsRecordSpec,
+  TunnelIngressOpts,
+  TunnelIngressPorts,
+  TunnelIngressRule,
+  TunnelSlugKind,
+} from "./tunnel-cf.js";
+export {
+  BRAND_WEB_SLUGS,
+  FLAT_SERVICE_PREFIXES,
+  REGISTRY_SLUGS,
+  RESERVED_SLUGS,
+  SLUG_RE,
+  TUNNEL_DEFAULT_PORTS,
+  buildTunnelIngressRules,
+  isZoneLevelKind,
+  normalizeSlug,
+  normalizeTunnelPorts,
+  parseEnvFileText,
+  parseExtraHostnames,
+  slugCheckLocal,
+  tunnelAgentHostname,
+  tunnelDeprovisionDnsHosts,
+  tunnelDnsRecordSpecs,
+  tunnelPublicUrls,
+} from "./tunnel-cf.js";
+
+export type {
+  CfDnsRecord,
+  CfTunnelEnsureOpts,
+  CfTunnelEnsureResult,
+  CfTunnelEnv,
+  DeprovisionCfSlugOpts,
+  EnsureCfTunnelDnsOpts,
+} from "./tunnel-cf-client.js";
+export {
+  CfApiError,
+  cfApi,
+  createCfTunnel,
+  deleteCfTunnel,
+  deprovisionCfSlug,
+  ensureCfCnameRecord,
+  ensureCfEmailDns,
+  ensureCfTunnel,
+  ensureCfTunnelDns,
+  extractAgentRule,
+  getCfTunnel,
+  getCfTunnelConfig,
+  listCfDnsRecords,
+  missingCfTunnelEnvKeys,
+  putCfTunnelIngress,
+  resolveCfTunnelEnv,
+  resolveCfZoneName,
+  verifyCfApiToken,
+} from "./tunnel-cf-client.js";
 
 export {
   factoryResetPartitionPrefixes,

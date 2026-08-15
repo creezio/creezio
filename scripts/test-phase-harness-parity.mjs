@@ -5,16 +5,20 @@
  *
  * - HPP1 : boot harness synthétique complet →
  *     · import catalogue APRÈS le listen (METIER_BASE_URL posé — plus de skip) ;
- *     · tunnel provisionné via un provisioner STUB local (reserve/configure)
- *       + faux cloudflared spawné avec le token (aucun DNS/réseau réel) ;
+ *     · tunnel AUTO-PROVISIONNÉ via l'API Cloudflare MOCKÉE (POST cfd_tunnel
+ *       → PUT configurations → DNS) + faux cloudflared spawné IN-PROCESS
+ *       avec le token (aucun DNS/réseau réel) — fin du provisioner VPS ;
  *     · MCP OAuth public = URL tunnel https (plus de 127.0.0.1 forcé) ;
- *     · EMAIL_INBOUND_SECRET posé depuis le provisioner (mails entrants) ;
+ *     · EMAIL_INBOUND_SECRET opérateur persisté + EMAIL_DOMAIN dérivé du
+ *       tunnel CF (mails entrants) ;
  *     · plugins démarrés + control plane (CREEZIO_PLUGINS=1) ;
  *     · fleet agent démarré, no-op propre sur endpoint sentinelle ;
  *     · toutes les étapes visibles dans /api/v1/os/boot-status.
  * - HPP2 : ordre du code harness (catalog-import post-listen, bridge Hermes
  *     post-warm, n8n publicBaseUrl) + Dockerfile cloudflared + template factory.
  * - HPP3 : applyBrandCatalogEnvDefaults (défaut léger tests / opt-in prod).
+ * - HPP4 : sonde publique tunnel (retry/backoff, succès réel, échec honnêt)
+ *     + câblage du nouveau contrat CF dans la phase (plus de sidecar).
  */
 import assert from "node:assert/strict";
 import fs from "node:fs";
@@ -36,9 +40,13 @@ const ENV_KEYS = [
   "CREEZIO_SKIP_KIT_BINARIES",
   "CREEZIO_NATIVE_WARM",
   "CREEZIO_PLUGINS",
-  "CREEZIO_TUNNEL_PROVISION_URL",
-  "CREEZIO_TUNNEL_PROVISION_TOKEN",
+  "CREEZIO_CF_API_TOKEN",
+  "CREEZIO_CF_ACCOUNT_ID",
+  "CREEZIO_CF_ZONE_ID",
+  "CREEZIO_CF_ZONE_NAME",
+  "CREEZIO_CF_UNIVERSAL_SSL",
   "CREEZIO_TUNNEL_SLUG",
+  "CREEZIO_TUNNEL_PUBLIC_PROBE",
   "CREEZIO_CLOUDFLARED_BINARY",
   "CREEZIO_FLEET_ENDPOINT",
   "CREEZIO_GATE_CF_MARKER",
@@ -59,51 +67,92 @@ const restoreEnv = (saved) => {
   }
 };
 
-/** Provisioner tunnel STUB local (reserve/configure) — zéro Cloudflare. */
-function startStubProvisioner() {
+/**
+ * API Cloudflare v4 MOCKÉE (stateful : tunnels + DNS) — seul
+ * api.cloudflare.com est intercepté, tout le reste passe au fetch réel
+ * (boot-status, sondes locales du harness).
+ */
+function startCfMock() {
   const calls = [];
-  const server = http.createServer((req, res) => {
-    const chunks = [];
-    req.on("data", (c) => chunks.push(c));
-    req.on("end", () => {
-      const body = chunks.length
-        ? JSON.parse(Buffer.concat(chunks).toString("utf8"))
-        : {};
-      calls.push({ method: req.method, url: req.url, body });
-      res.setHeader("content-type", "application/json");
-      if (req.url?.endsWith("/reserve")) {
-        res.end(
-          JSON.stringify({
-            ok: true,
-            slug: body.slug,
-            hostname: "probe.gate.test",
-            publicUrl: "https://probe.gate.test",
-            tunnelId: "t-gate-1",
-            tunnelToken: "tok-gate-abc",
-            emailDomain: "probe.mail.gate.test",
-            emailInboundSecret: "inbound-secret-gate",
-          }),
+  const tunnels = new Map(); // id → { id, name, config }
+  const dns = new Map(); // id → record
+  let seqT = 0;
+  let seqD = 0;
+  const json = (result, status = 200) =>
+    new Response(JSON.stringify({ success: status < 400, result }), {
+      status,
+      headers: { "content-type": "application/json" },
+    });
+  const fail = (status, message) =>
+    new Response(
+      JSON.stringify({ success: false, errors: [{ message }], result: null }),
+      { status, headers: { "content-type": "application/json" } },
+    );
+  const prev = globalThis.fetch;
+  globalThis.fetch = async (url, init = {}) => {
+    const u = new URL(String(url));
+    if (u.hostname !== "api.cloudflare.com") return prev(url, init);
+    const p = u.pathname.replace(/^\/client\/v4/, "");
+    const method = (init.method || "GET").toUpperCase();
+    const body = init.body ? JSON.parse(String(init.body)) : undefined;
+    calls.push({ method, path: p, body });
+    let m;
+    if ((m = p.match(/^\/accounts\/[^/]+\/cfd_tunnel$/)) && method === "POST") {
+      const id = `t-gate-${++seqT}`;
+      tunnels.set(id, { id, name: body?.name, config: null });
+      return json({ id, name: body?.name, token: `tok-${id}` });
+    }
+    if ((m = p.match(/^\/accounts\/[^/]+\/cfd_tunnel\/([^/]+)$/))) {
+      const t = tunnels.get(m[1]);
+      if (method === "GET") {
+        return t ? json({ id: t.id, name: t.name }) : fail(404, "not found");
+      }
+    }
+    if (
+      (m = p.match(/^\/accounts\/[^/]+\/cfd_tunnel\/([^/]+)\/configurations$/))
+    ) {
+      const t = tunnels.get(m[1]);
+      if (!t) return fail(404, "not found");
+      if (method === "PUT") {
+        t.config = body?.config || null;
+        return json({ config: t.config });
+      }
+      return t.config ? json({ config: t.config }) : fail(404, "no config");
+    }
+    if ((m = p.match(/^\/zones\/[^/]+\/dns_records$/))) {
+      if (method === "GET") {
+        const name = u.searchParams.get("name") || "";
+        const type = u.searchParams.get("type") || "";
+        return json(
+          [...dns.values()].filter(
+            (r) => r.name === name && (!type || r.type === type),
+          ),
         );
-        return;
       }
-      if (req.url?.endsWith("/configure")) {
-        res.end(JSON.stringify({ ok: true }));
-        return;
+      if (method === "POST") {
+        const id = `dns-${++seqD}`;
+        dns.set(id, { id, ...body });
+        return json({ id, ...body });
       }
-      res.statusCode = 404;
-      res.end(JSON.stringify({ error: "not found" }));
-    });
-  });
-  return new Promise((resolve) => {
-    server.listen(0, "127.0.0.1", () => {
-      const port = server.address().port;
-      resolve({
-        baseUrl: `http://127.0.0.1:${port}/prov`,
-        calls,
-        close: () => new Promise((r) => server.close(r)),
-      });
-    });
-  });
+    }
+    if ((m = p.match(/^\/zones\/[^/]+\/dns_records\/([^/]+)$/))) {
+      const rec = dns.get(m[1]);
+      if (!rec) return fail(404, "not found");
+      if (method === "PUT") {
+        dns.set(m[1], { ...rec, ...body });
+        return json(dns.get(m[1]));
+      }
+    }
+    return fail(400, `route inconnue du mock: ${method} ${p}`);
+  };
+  return {
+    calls,
+    tunnels,
+    dns,
+    restore: () => {
+      globalThis.fetch = prev;
+    },
+  };
 }
 
 /** Faux cloudflared : écrit ses args puis émet la ligne « Registered … ». */
@@ -123,26 +172,34 @@ exec sleep 300
   return bin;
 }
 
-test("HPP1 harness : catalogue post-listen + tunnel stub + MCP public + plugins + fleet", async () => {
+test("HPP1 harness : catalogue post-listen + tunnel CF auto-provisionné + MCP public + plugins + fleet", async () => {
   const saved = saveEnv();
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "harness-parity-"));
-  const provisioner = await startStubProvisioner();
+  const cf = startCfMock();
   const marker = path.join(tmp, "cloudflared-args.txt");
   let handle = null;
   try {
     delete process.env.AUTH_SECRET;
     delete process.env.MCP_JWT_SECRET;
-    delete process.env.EMAIL_INBOUND_SECRET;
     delete process.env.EMAIL_DOMAIN;
     delete process.env.CREEZIO_FLEET_ENDPOINT; // sentinelle ingest-disabled
+    delete process.env.CREEZIO_CF_UNIVERSAL_SSL; // mode flat (défaut D2)
     process.env.CREEZIO_SKIP_KIT_BINARIES = "1";
     process.env.CREEZIO_NATIVE_WARM = "0";
     process.env.CREEZIO_PLUGINS = "1";
-    process.env.CREEZIO_TUNNEL_PROVISION_URL = provisioner.baseUrl;
-    process.env.CREEZIO_TUNNEL_PROVISION_TOKEN = "gate-token";
+    // Contrat CF (cf.env de l'instance en prod) — l'instance provisionne
+    // elle-même son tunnel via l'API Cloudflare (mockée ici).
+    process.env.CREEZIO_CF_API_TOKEN = "cf-gate-token";
+    process.env.CREEZIO_CF_ACCOUNT_ID = "acc-gate";
+    process.env.CREEZIO_CF_ZONE_ID = "zone-gate";
+    process.env.CREEZIO_CF_ZONE_NAME = "gate.test";
     process.env.CREEZIO_TUNNEL_SLUG = "probe";
+    process.env.CREEZIO_TUNNEL_PUBLIC_PROBE = "0"; // sonde publique off (DNS fictif)
     process.env.CREEZIO_CLOUDFLARED_BINARY = writeFakeCloudflared(tmp);
     process.env.CREEZIO_GATE_CF_MARKER = marker;
+    // Secret mails entrants : fourni par l'opérateur (secrets.env) —
+    // persisté au provisioning, EMAIL_DOMAIN dérivé du tunnel CF.
+    process.env.EMAIL_INBOUND_SECRET = "inbound-secret-gate";
 
     const manifest = createAppManifest({
       brandId: "harnessprobe",
@@ -189,22 +246,42 @@ test("HPP1 harness : catalogue post-listen + tunnel stub + MCP public + plugins 
       "METIER_BASE_URL posé avant l'import (plus de skip pré-listen)",
     );
 
-    // 2) Provisioner stub : reserve puis configure avec le port CRM réel.
-    const reserve = provisioner.calls.find((c) => c.url?.endsWith("/reserve"));
-    const configure = provisioner.calls.find((c) =>
-      c.url?.endsWith("/configure"),
+    // 2) API CF mockée : tunnel créé (config_src cloudflare) puis ingress
+    //    PUT avec le port CRM réel — aucune ressource externe réelle.
+    const creates = cf.calls.filter(
+      (c) => c.method === "POST" && /\/cfd_tunnel$/.test(c.path),
     );
-    assert.ok(reserve, "reserveTunnel appelé");
-    assert.equal(reserve.body.slug, "probe");
-    assert.ok(configure, "configureTunnelIngress appelé");
-    assert.equal(configure.body.crmPort, handle.port);
+    assert.equal(creates.length, 1, "POST cfd_tunnel (création)");
+    assert.equal(creates[0].body.config_src, "cloudflare");
+    assert.equal(creates[0].body.name, "creezio-server-probe");
+    const puts = cf.calls.filter(
+      (c) => c.method === "PUT" && /\/configurations$/.test(c.path),
+    );
+    assert.ok(puts.length >= 1, "PUT configurations (ingress)");
+    const ingress = puts.at(-1).body.config.ingress;
+    const crmRule = ingress.find((r) => r.hostname === "probe.gate.test");
+    assert.equal(
+      crmRule?.service,
+      `http://127.0.0.1:${handle.port}`,
+      "ingress CRM → port réel, 127.0.0.1 (cloudflared in-process)",
+    );
+    // D2 défaut flat : hostnames de services n8n-{slug}.{zone}.
+    assert.ok(
+      ingress.some((r) => r.hostname === "n8n-probe.gate.test"),
+      "ingress n8n flat",
+    );
+    // DNS : CNAME probe.gate.test → {tunnelId}.cfargotunnel.com (proxied).
+    const cname = [...cf.dns.values()].find((r) => r.name === "probe.gate.test");
+    assert.equal(cname?.type, "CNAME");
+    assert.match(String(cname?.content), /^t-gate-\d+\.cfargotunnel\.com$/);
+    assert.equal(cname?.proxied, true);
 
-    // 3) cloudflared spawné avec le token du provisioner (faux binaire).
+    // 3) cloudflared spawné IN-PROCESS avec le token CF (faux binaire).
     const cfArgs = fs.readFileSync(marker, "utf8").trim().split("\n");
     assert.deepEqual(
       cfArgs,
-      ["tunnel", "--no-autoupdate", "run", "--token", "tok-gate-abc"],
-      "startCloudflared lance le binaire avec le token réservé",
+      ["tunnel", "--no-autoupdate", "run", "--token", "tok-t-gate-1"],
+      "startCloudflared lance le binaire avec le token du tunnel créé",
     );
 
     // 4) Boot-status : étapes serveur visibles et vertes.
@@ -238,12 +315,13 @@ test("HPP1 harness : catalogue post-listen + tunnel stub + MCP public + plugins 
     assert.equal(process.env.APP_PUBLIC_URL, "https://probe.gate.test");
     assert.equal(process.env.MCP_PUBLIC_URL, "https://probe.gate.test");
 
-    // 6) Secret mails entrants posé depuis le provisioner (env in-process).
+    // 6) Mails entrants : secret opérateur persisté, domaine dérivé du
+    //    tunnel CF ({slug}.mail.{zone}).
     assert.equal(process.env.EMAIL_INBOUND_SECRET, "inbound-secret-gate");
     assert.equal(process.env.EMAIL_DOMAIN, "probe.mail.gate.test");
   } finally {
     await handle?.close();
-    await provisioner.close();
+    cf.restore();
     restoreEnv(saved);
     fs.rmSync(tmp, { recursive: true, force: true });
   }
@@ -281,6 +359,16 @@ test("HPP2 ordre harness + Dockerfile cloudflared + template factory", () => {
     dockerfile,
     /CREEZIO_CLOUDFLARED_BINARY=\/opt\/creezio\/bin\/cloudflared/,
     "binaire cloudflared exposé via env générique",
+  );
+  assert.match(
+    dockerfile,
+    /ARG CLOUDFLARED_VERSION=\d{4}\.\d+\.\d+/,
+    "version cloudflared pinnée via ARG (plus de releases/latest)",
+  );
+  assert.doesNotMatch(
+    dockerfile,
+    /releases\/latest\/download/,
+    "aucune URL de téléchargement latest",
   );
 
   // Kit-first : le template factory du harness embarque les mêmes décisions
@@ -363,7 +451,7 @@ test("HPP3 applyBrandCatalogEnvDefaults : léger par défaut, opt-in prod", () =
   }
 });
 
-test("HPP4 sonde publique tunnel (mode sidecar M2) : retry/backoff, succès réel, échec honnêt", async () => {
+test("HPP4 sonde publique tunnel : retry/backoff, succès réel, échec honnêt", async () => {
   // Stub HTTP : 502 ×2 puis 200 — la sonde doit retenter puis conclure OK.
   let hits = 0;
   const srv = http.createServer((req, res) => {
@@ -393,18 +481,27 @@ test("HPP4 sonde publique tunnel (mode sidecar M2) : retry/backoff, succès rée
   assert.equal(ko.ok, false, JSON.stringify(ko));
   assert.ok(ko.attempts >= 1 && ko.lastError, "échec tracé");
 
-  // Câblage : en mode sidecar, la phase tunnel ne dépend plus du
-  // provisioner (injoignable depuis le réseau compose) — configure
-  // best-effort en arrière-plan + sonde de l'URL publique réelle.
+  // Câblage 0.10.0 : la phase tunnel est pilotée par le contrat CF
+  // (CREEZIO_CF_API_TOKEN — auto-provisioning direct par l'instance),
+  // cloudflared in-process, sonde publique en arrière-plan non fatale.
+  // Plus AUCUNE trace du sidecar ni du provisioner VPS.
   const phases = fs.readFileSync(
     path.join(ROOT, "packages/app-runtime/src/harness-server-phases.ts"),
     "utf8",
   );
-  assert.match(phases, /harnessTunnelSidecarMode/, "détection sidecar");
+  assert.match(phases, /harnessTunnelProvisionRequested/, "détection contrat CF");
+  assert.match(phases, /CREEZIO_CF_API_TOKEN/, "phase pilotée par cf.env");
   assert.match(phases, /probeTunnelPublicUrl/, "sonde publique câblée");
   assert.match(
     phases,
-    /best-effort ignoré/,
-    "configure provisioner best-effort non fatal en sidecar",
+    /arrière-plan/,
+    "sonde publique en arrière-plan (non fatale)",
+  );
+  assert.doesNotMatch(phases, /harnessTunnelSidecarMode/, "sidecar supprimé");
+  assert.doesNotMatch(phases, /CREEZIO_TUNNEL_SIDECAR/, "env sidecar supprimé");
+  assert.doesNotMatch(
+    phases,
+    /TUNNEL_PROVISION_URL/,
+    "provisioner VPS supprimé",
   );
 });

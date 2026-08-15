@@ -13,7 +13,7 @@ import {
   type PathsContext,
 } from "@creezio/platform-core";
 import type { DesktopBootContext } from "./boot.js";
-import type { HostRuntimeContext, TunnelProvisionConfig } from "./host/context.js";
+import type { HostRuntimeContext } from "./host/context.js";
 import { createLocalConfigStore, type LocalConfigStore } from "./host/local-config.js";
 import { createHostStack, type HostStack } from "./host/host-stack.js";
 import { log as shellLog } from "./logger.js";
@@ -22,7 +22,6 @@ export type CreateHostRuntimeOptions = {
   boot: DesktopBootContext;
   /** Racine ressources (resourcesPath ou repo crm/). */
   resourcesRoot?: string;
-  tunnelProvision?: TunnelProvisionConfig;
   getInstallId?: () => string;
   seedHermesSkills?: HostRuntimeContext["seedHermesSkills"];
   getHermesBridgeEnv?: HostRuntimeContext["getHermesBridgeEnv"];
@@ -90,7 +89,6 @@ export async function createHostRuntime(
     isPackaged,
     appKind: boot.appKind,
     log: (scope, line) => shellLog(scope, line),
-    tunnelProvision: opts.tunnelProvision,
     getInstallId: opts.getInstallId,
     seedHermesSkills: opts.seedHermesSkills,
     getHermesBridgeEnv: opts.getHermesBridgeEnv,
@@ -107,7 +105,6 @@ export async function createHostRuntime(
 export async function prepareHostDesktop(opts: {
   manifest: AppManifest;
   prepareBoot: () => Promise<DesktopBootContext>;
-  tunnelProvision?: TunnelProvisionConfig;
   getInstallId?: () => string;
   seedHermesSkills?: HostRuntimeContext["seedHermesSkills"];
   getHermesBridgeEnv?: HostRuntimeContext["getHermesBridgeEnv"];
@@ -122,7 +119,6 @@ export async function prepareHostDesktop(opts: {
   const { ctx, store } = await createHostRuntime({
     boot,
     resourcesRoot: opts.resourcesRoot,
-    tunnelProvision: opts.tunnelProvision,
     getInstallId: opts.getInstallId,
     seedHermesSkills: opts.seedHermesSkills,
     getHermesBridgeEnv: opts.getHermesBridgeEnv,

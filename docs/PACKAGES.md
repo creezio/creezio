@@ -71,7 +71,6 @@ Racine : [../README.md](../README.md) · [../AGENTS.md](../AGENTS.md)
 | `docker/server` — serveurs marque headless | [README](../docker/server/README.md) | [AGENTS](../docker/server/AGENTS.md) | [FILES](../docker/server/docs/FILES.md) |
 | `docker/server-admin` — backend flotte web | [README](../docker/server-admin/README.md) | [AGENTS](../docker/server-admin/AGENTS.md) | [FILES](../docker/server-admin/docs/FILES.md) |
 | `docker/host-agent` — agent hôte VPS (updates pull) | [README](../docker/host-agent/README.md) | [AGENTS](../docker/host-agent/AGENTS.md) | [FILES](../docker/host-agent/docs/FILES.md) |
-| `docker/tunnel-provisioner` — tunnels Cloudflare | [README](../docker/tunnel-provisioner/README.md) | [AGENTS](../docker/tunnel-provisioner/AGENTS.md) | [FILES](../docker/tunnel-provisioner/docs/FILES.md) |
 
 ## Scripts & gates
 

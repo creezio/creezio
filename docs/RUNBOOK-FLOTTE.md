@@ -57,6 +57,8 @@ vérifiées sur le VPS TempoFlow.
 
 - [`docker/server/README.md`](../docker/server/README.md) — serveurs headless
 - [`docker/server-admin/README.md`](../docker/server-admin/README.md) — admin web
-- [`docker/tunnel-provisioner/README.md`](../docker/tunnel-provisioner/README.md) — tunnels
+- `packages/platform-core/src/tunnel-cf-client.ts` — client API Cloudflare
+  des tunnels (auto-provisioning instance au boot, 0.10.0) ; contrat env
+  `CREEZIO_CF_*` : voir [RUNBOOK-AGENTS.md §7.3](./RUNBOOK-AGENTS.md)
 - [`docs/adr/ADR-tunnel-flat-hosts.md`](./adr/ADR-tunnel-flat-hosts.md) — nested vs flat (Universal SSL)
 - [`docs/ARCHITECTURE.md`](./ARCHITECTURE.md) — vue d'ensemble

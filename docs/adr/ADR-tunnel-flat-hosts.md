@@ -2,7 +2,11 @@
 
 ## Statut
 
-Accepté (2026-08-07)
+Accepté (2026-08-07) — **amendé 0.10.0** : le mode de hostnames est désormais
+piloté par `CREEZIO_CF_UNIVERSAL_SSL` (truthy → nested, défaut flat ;
+remplace `CREEZIO_TUNNEL_FLAT_HOSTS`) et le provisioner VPS est supprimé
+(auto-provisioning par l'instance via l'API CF). Le présent ADR reste
+l'historique de la décision flat/nested.
 
 ## Contexte
 
@@ -19,7 +23,7 @@ de supporter le schéma nested historique (TempoFlow).
 ## Décision
 
 Deux modes SoT dans `packages/platform-core/src/tunnel-urls.ts` et
-`docker/tunnel-provisioner/` :
+`packages/platform-core/src/tunnel-cf.ts` :
 
 | Mode | Hosts embeds/agent | DNS |
 |------|--------------------|-----|

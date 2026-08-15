@@ -44,11 +44,6 @@ export type ComposeBrandOsOptions = {
   resourcesRoot: string;
   /** __dirname electron compilé (preload / scripts). */
   electronDirname: string;
-  /** Tunnel provision (sinon defaults sandbox / env CREEZIO_TUNNEL_*). */
-  tunnel?: {
-    baseUrl?: string;
-    token?: string;
-  };
   /**
    * Host plugins réel — **activé par défaut** (P&P).
    * Feature-off si `manifest.features.plugins === false` (Fidu) ou
@@ -305,16 +300,6 @@ export function composeBrandOs(
         process.env.CREEZIO_PLUGINS === "0";
   /** Fleet = manifest.features.fleet (Fidu false ; TF/CV/TF3 true). */
   const fleetEnabled = isFeatureEnabled(m, "fleet");
-  const tunnelBaseUrl =
-    opts.tunnel?.baseUrl ||
-    process.env.CREEZIO_TUNNEL_PROVISION_URL ||
-    process.env[`${prefix}_TUNNEL_PROVISION_URL`] ||
-    `https://${domain}/tunnel-sandbox`;
-  const tunnelToken =
-    opts.tunnel?.token ||
-    process.env.CREEZIO_TUNNEL_PROVISION_TOKEN ||
-    process.env[`${prefix}_TUNNEL_PROVISION_TOKEN`] ||
-    "sandbox";
   const fleetDefaultEndpoint =
     process.env.CREEZIO_FLEET_ENDPOINT ||
     process.env[`${prefix}_FLEET_ENDPOINT`] ||
@@ -358,13 +343,6 @@ export function composeBrandOs(
       labelPrefix: `${product} Agent`,
       tagPrefix: `${m.brandId}-agent`,
       productName: product,
-    },
-    tunnel: {
-      envBaseUrlKey: `${prefix}_TUNNEL_PROVISION_URL`,
-      defaultBaseUrl: tunnelBaseUrl,
-      envTokenKey: `${prefix}_TUNNEL_PROVISION_TOKEN`,
-      defaultToken: tunnelToken,
-      mailRootDomain: domain,
     },
     ...(fleetEnabled
       ? {

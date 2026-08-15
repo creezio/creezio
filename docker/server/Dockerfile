@@ -89,15 +89,18 @@ RUN apt-get update \
   && chmod 755 /usr/local/bin/meilisearch \
   && /usr/local/bin/meilisearch --version
 
-# cloudflared Linux embarqué — tunnel d'accès distant (parité TF2 desktop).
-# URL alignée sur ensure-kit-binaries.ts (CREEZIO_SKIP_KIT_BINARIES=1 au run :
-# le binaire vient de l'image, jamais téléchargé au boot).
+# cloudflared Linux embarqué — tunnel d'accès distant, exécuté IN-PROCESS
+# par le kernel (fin du sidecar). Version PINÉE (reproductibilité : plus de
+# releases/latest) — alignée sur ensure-kit-binaries.ts.
+# CREEZIO_SKIP_KIT_BINARIES=1 au run : le binaire vient de l'image, jamais
+# téléchargé au boot.
 FROM node:22-bookworm-slim AS cloudflared
+ARG CLOUDFLARED_VERSION=2026.7.3
 RUN apt-get update \
   && apt-get install -y --no-install-recommends ca-certificates curl \
   && rm -rf /var/lib/apt/lists/* \
   && curl -fsSL -o /usr/local/bin/cloudflared \
-    https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64 \
+    https://github.com/cloudflare/cloudflared/releases/download/${CLOUDFLARED_VERSION}/cloudflared-linux-amd64 \
   && chmod 755 /usr/local/bin/cloudflared \
   && /usr/local/bin/cloudflared --version
 

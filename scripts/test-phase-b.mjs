@@ -106,11 +106,13 @@ test("connection + profile + tunnel", () => {
   assert.equal(launch.mode, "join");
   assert.equal(launch.serverUrl, "http://127.0.0.1:3456");
 
+  // D2 (0.10.0) : le défaut est FLAT (Universal SSL) — nested uniquement
+  // si CREEZIO_CF_UNIVERSAL_SSL truthy ou mode explicite.
   const urls = buildTunnelPublicUrls("resto1.tempoflow.fr");
-  assert.equal(urls.n8n, "https://n8n.resto1.tempoflow.fr");
+  assert.equal(urls.n8n, "https://n8n-resto1.tempoflow.fr");
   assert.equal(
     deriveTunnelServiceUrl("https://resto1.tempoflow.fr", "hermes", "tempoflow.fr"),
-    "https://hermes.resto1.tempoflow.fr",
+    "https://hermes-resto1.tempoflow.fr",
   );
   assert.equal(
     deriveTunnelServiceUrl("https://other.example", "n8n", "tempoflow.fr"),
@@ -131,8 +133,8 @@ test("connection + profile + tunnel", () => {
     ),
     "https://n8n-server-1.winhub.fr",
   );
-  // Nested reste le défaut (pas de régression TempoFlow).
-  const nestedDefault = buildTunnelPublicUrls("resto1.tempoflow.fr");
+  // Nested explicite (zones à certificat multi-niveaux, ex. tempoflow).
+  const nestedDefault = buildTunnelPublicUrls("resto1.tempoflow.fr", "nested");
   assert.equal(nestedDefault.n8n, "https://n8n.resto1.tempoflow.fr");
 });
 
