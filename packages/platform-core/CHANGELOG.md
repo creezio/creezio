@@ -1,5 +1,11 @@
 # @creezio/platform-core
 
+## 0.10.1
+
+### Patch Changes
+
+- @creezio/brand-config@0.10.1
+
 ## 0.10.0
 
 ### Minor Changes
