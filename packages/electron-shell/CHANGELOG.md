@@ -1,5 +1,16 @@
 # @creezio/electron-shell
 
+## 0.10.4
+
+### Patch Changes
+
+- @creezio/brand-config@0.10.4
+- @creezio/shell@0.10.4
+- @creezio/platform-core@0.10.4
+- @creezio/product-hub@0.10.4
+- @creezio/observability@0.10.4
+- @creezio/browser-host@0.10.4
+
 ## 0.10.3
 
 ### Patch Changes
