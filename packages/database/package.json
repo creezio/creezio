@@ -1,6 +1,6 @@
 {
   "name": "@creezio/database",
-  "version": "0.10.2",
+  "version": "0.10.3",
   "description": "Database admin native — engine + HTTP routes + Admin UI (fail-closed CRUD policy; brand allowlists)",
   "type": "module",
   "main": "./dist-cjs/index.js",
@@ -28,7 +28,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@creezio/platform-core": "^0.10.2",
+    "@creezio/platform-core": "^0.10.3",
     "hono": "^4.12.30"
   },
   "peerDependencies": {

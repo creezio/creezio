@@ -1,6 +1,6 @@
 {
   "name": "@creezio/factory",
-  "version": "0.6.1",
+  "version": "0.6.2",
   "description": "Factory Creezio — scaffold new-app Client+Serveur depuis le kit",
   "type": "module",
   "main": "./dist/index.js",
@@ -24,9 +24,9 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@creezio/brand-config": "^0.10.1",
-    "@creezio/brand-spec": "^0.10.1",
-    "@creezio/product-hub": "^0.10.1"
+    "@creezio/brand-config": "^0.10.3",
+    "@creezio/brand-spec": "^0.10.3",
+    "@creezio/product-hub": "^0.10.3"
   },
   "devDependencies": {
     "@types/node": "^22.15.3",
