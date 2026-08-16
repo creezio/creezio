@@ -219,6 +219,11 @@ test("CLI registre d'instances : create/start/stop/rm/logs/ls/update/backup + ad
   );
   assert.match(lib, /backup = false/);
   assert.match(lib, /pas de nouveau backup \(défaut\)/);
+  // 0.10.3 : update ne droppe plus un sidecar / hostname public.
+  assert.match(lib, /resolveStackUpdatePolicy/);
+  assert.match(lib, /preserve-sidecar/);
+  assert.match(cli, /allowDropSidecar: true/);
+  assert.match(cli, /Jamais de nouvelle adresse à l'update/);
   // Backup via tar en conteneur éphémère (volume root-owned / backups/
   // root-owned : le tar hôte user serait incomplet ou impossible — vécu
   // tempoflow 2026-08-12). Socket docker = seul privilège requis.

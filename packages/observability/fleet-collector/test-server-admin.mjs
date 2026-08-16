@@ -395,6 +395,9 @@ try {
   assert.match(src, /if \(backup\)/);
   // Politique propriétaire : ne pas purger les backups de référence à l'update.
   assert.doesNotMatch(src, /pruneBackups\(brandRoot, inst\.name\)/);
+  // 0.10.3 : update ne droppe plus un sidecar / hostname public.
+  assert.match(src, /resolveStackUpdatePolicy/);
+  assert.match(src, /preserve-sidecar/);
   assert.equal(typeof updateServer, "function");
   console.log("OK — updateServer défaut sans backup + archives conservées");
 }
