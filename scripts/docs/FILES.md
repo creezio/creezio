@@ -195,6 +195,7 @@
 | [`test-phase-shell-desktop-api.mjs`](../test-phase-shell-desktop-api.mjs) | Gate — `getShellDesktopApi` uniquement (pas de `window.*Desktop` hardcodé) + import obligatoire ; scan kit UI + TF3 si présent. |
 | [`test-phase-single-data-plane.mjs`](../test-phase-single-data-plane.mjs) | (à documenter) |
 | [`test-phase-sqlite-wal-resilience.mjs`](../test-phase-sqlite-wal-resilience.mjs) | (à documenter) |
+| [`test-phase-stack-update-preserve.mjs`](../test-phase-stack-update-preserve.mjs) | Gate — update ne peut plus retirer un sidecar cloudflared ni changer le hostname : preserve + fail-closed + LOCAL=1 + migrate explicite. |
 | [`test-phase-tf3-chrome.mjs`](../test-phase-tf3-chrome.mjs) | (à documenter) |
 | [`test-phase-tunnel-self-provision.mjs`](../test-phase-tunnel-self-provision.mjs) | (à documenter) |
 | [`test-phase-v1.mjs`](../test-phase-v1.mjs) | Phase V1 — fabrique plugins conversationnelle (demobrand E2E). |

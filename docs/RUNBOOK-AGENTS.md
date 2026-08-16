@@ -342,6 +342,18 @@ supprimé — connexions coupées d'abord) avant de retirer le stack ;
 `server-docker enroll` pose l'ingress `agent[-.]{slug}` via le client CF
 (en relisant la config courante du tunnel de l'instance).
 
+**Update et tunnels publics (0.10.3 — non négociable)** : `server-docker
+update` (et tout recreate compose : agent flotte, apply image) **ne peut
+plus** retirer un service `cloudflared*` ni changer le hostname. Un stack
+historique (sidecar + `tunnel.env`, ex. restos Tempoflow) : l'update
+**patch uniquement l'image app** — même token, même id, même adresse
+publique ; `up` **sans** `--remove-orphans`. Si une adresse publique est
+persistée (`tunnel.env` / kernel) **sans** sidecar et **sans** `cf.env`
+in-process : l'update **refuse** (rien n'est publié). Dev local
+`CREEZIO_TUNNEL_LOCAL=1` : inchangé. Seul `migrate-stack` retire un
+sidecar, et **réutilise** le tunnel / hostname existants — jamais un 2e
+hostname à l'update.
+
 ### 7.4 Build local sans GitHub (packages kit modifiés, zéro push/publish)
 
 Prouvé sur `/home/fidus/sandboxes/` — image Docker d'une app embarquant des

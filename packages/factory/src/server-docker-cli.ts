@@ -266,7 +266,11 @@ Instances nommées (registre docker-data/servers.json — recommandé) :
     [--backup] [--registry 127.0.0.1:5000]
     (recreate même volume /data ; défaut = PAS de nouveau tar.gz.
      --backup : snapshot frais avant recreate — prod critique seulement.
-     Archives déjà dans docker-data/backups/ sont conservées.)
+     Archives déjà dans docker-data/backups/ sont conservées.
+     Sidecar cloudflared historique : CONSERVÉ (même tunnel, même adresse
+     publique). Adresse publique persistée sans sidecar → REFUS (rien
+     n'est touché). Jamais de nouvelle adresse à l'update.
+     Dev local CREEZIO_TUNNEL_LOCAL=1 : inchangé.)
   creezio server-docker backup <nom> --brand-root <app>
     (one-shot : tar.gz de référence de /data → docker-data/backups/ —
      à faire une fois ; les updates suivants ne le remplacent pas.)
@@ -281,9 +285,10 @@ Stack compose autonome (modèle standard — cloudflared in-process) :
   creezio server-docker migrate-stack <nom> --brand-root <app> [--host-port N]
     (bascule une instance sidecar ou legacy en stack in-process : backup
      /data obligatoire → cf.env écrit (CREEZIO_CF_* requis — env hôte ou
-     .env marque) → compose up : le kernel re-ensure l'ingress au boot →
-     health → rollback automatique si KO. Token tunnel lu du store kernel
-     /data — jamais affiché.)
+     .env marque) → compose up : le kernel RÉUTILISE le tunnel / hostname
+     existants (CREEZIO_DOMAIN) — jamais un 2e hostname. Health → rollback
+     automatique si KO. Token tunnel lu du store kernel /data — jamais
+     affiché. Seul chemin autorisé à retirer un sidecar cloudflared.)
   creezio server-docker rm <nom> : déprovisionne aussi le tunnel Cloudflare
     (DNS + tunnel via API CF directe, best-effort) si CREEZIO_CF_* posés.
 
@@ -387,7 +392,13 @@ async function importInstanceStack(kit: string) {
       image: string;
       inst: ServerRegistryInstance;
       cf?: Record<string, string> | null;
-    }) => { dir: string; composeFile: string; withCf: boolean };
+      allowDropSidecar?: boolean;
+    }) => {
+      dir: string;
+      composeFile: string;
+      withCf: boolean;
+      preservedSidecar?: boolean;
+    };
     stackUp: (
       brandRoot: string,
       inst: ServerRegistryInstance,
@@ -2702,6 +2713,7 @@ async function runRegistrySubcommand(
       image,
       inst: instStack,
       cf,
+      allowDropSidecar: true,
     });
     // L'ancien tunnel.env (secret sidecar) n'a plus lieu d'être.
     fs.rmSync(path.join(stackDirPath, "tunnel.env"), { force: true });

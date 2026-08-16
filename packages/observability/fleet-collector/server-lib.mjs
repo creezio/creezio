@@ -632,6 +632,10 @@ export async function waitBootReady(port, timeoutMs = 180_000) {
  * Les archives déjà dans `docker-data/backups/` sont **conservées** (pas de
  * prune ici). Opt-in : CLI `--backup` / API `{"backup":true}` / one-shot
  * `creezio server-docker backup <nom>`.
+ *
+ * Stack compose : un sidecar `cloudflared*` est **préservé** (même tunnel,
+ * même hostname). Un hostname public persisté sans sidecar → refus
+ * (fail-closed) avant tout recreate. Jamais de 2e hostname à l'update.
  */
 export async function updateServer({
   brandRoot,
@@ -650,6 +654,30 @@ export async function updateServer({
     steps.push(s);
     audit?.(`update ${brandId}/${inst.name}: ${s}`);
   };
+
+  let stackMod = null;
+  let stackPolicy = null;
+  if (inst.stack) {
+    stackMod = await import("./instance-stack.mjs");
+    stackPolicy = stackMod.resolveStackUpdatePolicy({ brandRoot, brandId, inst });
+    if (stackPolicy.action === "refuse") {
+      log(stackPolicy.error);
+      return {
+        ok: false,
+        error: stackPolicy.error,
+        image,
+        previousImage,
+        rolledBack: false,
+        backup: null,
+        steps,
+      };
+    }
+    if (stackPolicy.action === "preserve-sidecar") {
+      log(
+        `sidecar ${stackPolicy.sidecarServices.join(", ")} conservé — même tunnel / hostname`,
+      );
+    }
+  }
 
   if (!(await imageExists(image))) {
     log(`pull ${image}`);
@@ -687,14 +715,16 @@ export async function updateServer({
 
   const recreate = async (img) => {
     if (inst.stack) {
-      // Stack compose : régénère compose.yml avec la nouvelle image
-      // (cf.env conservé — l'env_file est rendu tant qu'il existe),
-      // puis up. Compose ne recrée que ce qui change ; le port hôte auto
-      // peut être réattribué → registre réaligné.
-      const stack = await import("./instance-stack.mjs");
-      stack.writeInstanceStack({ brandRoot, brandId, image: img, inst });
-      stack.stackUp(brandRoot, inst, { quiet: true });
-      const hp = stack.stackHostPort(inst.containerName);
+      // Stack compose : writeInstanceStack préserve un sidecar historique
+      // (patch image app seulement) ou refuse si hostname public sans
+      // cloudflared. --remove-orphans interdit dès qu'un sidecar est
+      // conservé (c'est ce flag qui a retiré cloudflared en 0.10.2).
+      stackMod.writeInstanceStack({ brandRoot, brandId, image: img, inst });
+      stackMod.stackUp(brandRoot, inst, {
+        quiet: true,
+        removeOrphans: stackPolicy?.action !== "preserve-sidecar",
+      });
+      const hp = stackMod.stackHostPort(inst.containerName);
       if (hp) inst.port = hp;
       return;
     }
@@ -709,7 +739,23 @@ export async function updateServer({
   };
 
   log(`recreate → ${image}`);
-  await recreate(image);
+  try {
+    await recreate(image);
+  } catch (e) {
+    if (e?.code === "STACK_UPDATE_REFUSED") {
+      log(e.message);
+      return {
+        ok: false,
+        error: e.message,
+        image,
+        previousImage,
+        rolledBack: false,
+        backup: backupFile,
+        steps,
+      };
+    }
+    throw e;
+  }
   const ready = await waitBootReady(inst.port, waitTimeoutMs);
   if (ready) {
     inst.image = image;
