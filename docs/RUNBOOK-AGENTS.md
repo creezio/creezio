@@ -12,7 +12,8 @@
 | Serveur | SSH (depuis le PC Windows) | User | Rôle |
 |---|---|---|---|
 | **fluxpro-vps** | `ssh fluxpro-vps` | `fidus` | marque **winhub** (+ admin), kit, 3 runners |
-| **tempoflow-vps** | `ssh tempoflow-vps` | `deploy` | marque **tempoflow3** (+ admin), kit, runner, registry |
+| **tempoflow-vps** | `ssh tempoflow-vps` | `deploy` | ce VPS Foove : kit, **foove2** (+ admin), **tempoflow3** (+ admin), runner, registry — **pas** les restos Lyon/Marseille |
+| **restos-tf** | VPS `104.168.10.36` | — | restos Tempoflow **Lyon / Marseille** — **pas** ce VPS Foove |
 
 ### Chemins
 
@@ -24,25 +25,27 @@
 | fluxpro : `/home/fidus/actions-runners/{creezio,winhub,winhub-admin}` | runners self-hosted (services systemd user `actions-runner-*.service`) |
 | tempoflow : `/opt/docker/creezio` | clone du kit (branche `main`) |
 | tempoflow : `/opt/docker/tempoflow3` | monorepo marque tempoflow3 |
-| tempoflow : `/opt/docker/tempoflow-admin` | repo admin — remote GitHub `creezio/tempoflow3-admin` (dossier local = ancien nom) |
+| tempoflow : `/opt/docker/tempoflow3-admin` | repo admin `creezio/tempoflow3-admin` (pas `tempoflow-admin`) |
 | tempoflow : `/opt/docker/foove2` | monorepo marque **foove2** (`server/`, `client/`, `brand-spec/`, `docker-data/` gitignoré) |
 | tempoflow : `/opt/docker/foove2-admin` | repo admin foove2 (`creezio/foove2-admin`) |
 | tempoflow : `/home/deploy/actions-runners/tempoflow3` | runner self-hosted (`actions-runner-tempoflow3.service`) |
 | tempoflow : `127.0.0.1:5000` | registry d'images local (container `creezio-registry`) |
 
-Tunnel Cloudflare : **auto-provisionné par chaque instance** au boot via
-l'API Cloudflare (0.10.0 — fin du provisioner VPS et du sidecar). Le contrat
-`CREEZIO_CF_API_TOKEN` / `CREEZIO_CF_ACCOUNT_ID` / `CREEZIO_CF_ZONE_ID`
-(+/ `_ZONE_NAME`, `_UNIVERSAL_SSL`) arrive au conteneur via `cf.env`
-(chmod 600, généré par `server-docker create` — §7.3).
+Tunnel Cloudflare : contrat **0.10.3** — `CREEZIO_CF_*` + `CREEZIO_OWNER_*`,
+auto-provision au boot, `update` préserve tunnel / hostname. Le provisioner
+VPS + sidecar est **legacy** (le sidecar `foove-admin-tunnel` **existe
+encore** sur ce VPS). Le contrat `CREEZIO_CF_API_TOKEN` /
+`CREEZIO_CF_ACCOUNT_ID` / `CREEZIO_CF_ZONE_ID` (+/ `_ZONE_NAME`,
+`_UNIVERSAL_SSL`) arrive au conteneur via `cf.env` (chmod 600, généré par
+`server-docker create` — §7.3).
 
 ### Instances prod et domaines
 
 | Instance | Serveur | Container | Port hôte (loopback) | URL |
 |---|---|---|---|---|
 | winhub `server-1` | fluxpro | `winhub-server-server-1` | auto→18791 | https://server-1.winhub.fr |
-| tempoflow3 `resto-lyon` | tempoflow | `tempoflow3-server-resto-lyon` | auto→18791 | https://resto-lyon.tempoflow.fr |
-| tempoflow3 `resto-marseille` | tempoflow | `tempoflow3-server-resto-marseille` | auto→18791 | https://resto-marseille.tempoflow.fr |
+| tempoflow3 `resto-lyon` | **104.168.10.36** (pas ce VPS) | `tempoflow3-server-resto-lyon` | — | https://resto-lyon.tempoflow.fr |
+| tempoflow3 `resto-marseille` | **104.168.10.36** (pas ce VPS) | `tempoflow3-server-resto-marseille` | — | https://resto-marseille.tempoflow.fr |
 | foove2 `demo` | tempoflow | `foove2-server-demo` | 18901→18791 | https://foove2-demo.crm.foove.io |
 | foove2 `recette` | tempoflow | `foove2-server-recette` | auto→18791 | https://recette.crm.foove.io |
 | admin winhub | fluxpro | `winhubadmin-server-main` | 18801→18791 | console admin flotte (repo `winhub-admin`) |
@@ -52,12 +55,13 @@ l'API Cloudflare (0.10.0 — fin du provisioner VPS et du sidecar). Le contrat
 Registre d'instances : `{brand-root}/docker-data/servers.json` (gitignoré —
 absent du checkout runner, présent sur le clone serveur).
 
-> **État 0.10.0** : toutes les instances (prod + admin, marques listées)
-> tournent en stacks compose autonomes **app seule** — cloudflared tourne
-> IN-PROCESS dans le conteneur de l'app (binaire de l'image), le tunnel est
-> auto-provisionné via l'API Cloudflare au boot (ports hôtes loopback auto,
-> aucun port public hors tunnel). La bascule d'une instance sidecar/legacy
-> se fait par `creezio server-docker migrate-stack <nom>`.
+> **État 0.10.3 (constat 2026-08-16 soir)** : le contrat officiel est
+> in-process (`CREEZIO_CF_*` + `CREEZIO_OWNER_*`). **Ce n'est pas**
+> « toutes les instances en app seule, plus de sidecar » : le sidecar
+> `foove-admin-tunnel` tourne encore sur ce VPS. Un `update` 0.10.3
+> **préserve** tunnel / hostname (sidecar historique inclus). Bascule
+> sidecar → in-process = `migrate-stack` (volontaire). Provisioner VPS +
+> `POST /reserve` = **legacy**, plus la voie officielle.
 
 ### Repos GitHub (org `creezio`, tous privés)
 
@@ -81,15 +85,14 @@ une version de kit = un ensemble cohérent). `@creezio/factory` (CLI
 `creezio`, **privé**, hors groupe `fixed`) est en **0.6.2**.
 `@creezio/propagation` est hors lockstep (0.1.6).
 
-**CLI = `CREEZIO_KIT_ROOT`, pas le pin app.** Le pin `^0.10.3` (ou `^0.9.2`
-sur Winhub) est la version **consommée** au runtime / dans l'image Docker.
-`scripts/creezio-cli.mjs` résout
+**CLI = `CREEZIO_KIT_ROOT`, pas le pin app.** Le pin `^0.10.3` (Winhub
+inclus — `main` `739f79a`) est la version **consommée** au runtime / dans
+l'image Docker. `scripts/creezio-cli.mjs` résout
 `$CREEZIO_KIT_ROOT/packages/factory/bin/creezio.js` **avant**
 `node_modules/@creezio/factory`. Pour `server-docker` / `brand doctor` /
 `brand apply` : toujours le clone kit du VPS
 (`CREEZIO_KIT_ROOT=/opt/docker/creezio` ici, `/home/fidus/creezio` sur
-fluxpro) — jamais « la factory pinnée dans l'app ». Winhub encore en 0.9.2
-utilise le CLI du kit courant.
+fluxpro) — jamais « la factory pinnée dans l'app ».
 
 ## 3. Release kit → apps (le flow exact)
 
@@ -209,12 +212,13 @@ provisionne le tunnel, écrit le stack M2, attend le boot. Update ensuite :
 --backup`. Une app qui dévie de ce chemin = un bug du standard → corriger le
 kit/factory (PR), jamais contourner sur une seule app.
 
-**Modèle cible ports/tunnel (0.10.0)** : 1 instance = 1 stack compose
+**Modèle cible ports/tunnel (0.10.3)** : 1 instance = 1 stack compose
 autonome (`docker-data/stacks/<nom>/compose.yml`, généré — ne pas éditer) :
 **app seule** (port interne fixe `18791`, healthcheck
 `/api/v1/core/health`). **cloudflared tourne IN-PROCESS** dans le conteneur
-de l'app (binaire `/opt/creezio/bin/cloudflared` pinné dans l'image) — fini
-le sidecar. Le tunnel est **auto-provisionné au boot** via l'API Cloudflare
+de l'app (binaire `/opt/creezio/bin/cloudflared` pinné dans l'image) — le
+sidecar est **legacy** (ex. `foove-admin-tunnel` encore vivant). Le tunnel
+est **auto-provisionné au boot** via l'API Cloudflare
 : GET tunnel du store `/data` → 404/token absent → recréation (idempotent,
 le CNAME suit le nouvel id), PUT ingress (`http://127.0.0.1:18791` +
 services), upsert DNS, sonde publique en arrière-plan (non fatale). Le
@@ -309,10 +313,11 @@ backups `docker-data/backups/<nom>-<stamp>.tar.gz`.
 
 ### 7.3 Tunnel Cloudflare auto-provisionné (0.10.0)
 
-**Une seule méthode pour toutes les instances, admins comprises** : le
-conteneur crée/configure son tunnel lui-même via l'API Cloudflare au boot
-(cloudflared in-process). Plus de service VPS, plus de sidecar, plus de
-reverse-proxy hôte — un tunnel CF par instance, piloté par env.
+**Voie officielle (0.10.3), admins comprises** : le conteneur
+crée/configure son tunnel lui-même via l'API Cloudflare au boot
+(cloudflared in-process). Le provisioner VPS + sidecar est **legacy**
+(le sidecar `foove-admin-tunnel` existe encore). Un tunnel CF par
+instance, piloté par env.
 
 **Contrat d'environnement** (livré via `cf.env` chmod 600, écrit par
 `server-docker create` — jamais en clair dans `compose.yml`) :
@@ -370,7 +375,8 @@ supprimé — connexions coupées d'abord) avant de retirer le stack ;
 **Update et tunnels publics (0.10.3 — non négociable)** : `server-docker
 update` (et tout recreate compose : agent flotte, apply image) **ne peut
 plus** retirer un service `cloudflared*` ni changer le hostname. Un stack
-historique (sidecar + `tunnel.env`, ex. restos Tempoflow) : l'update
+historique (sidecar + `tunnel.env`, ex. `foove-admin-tunnel` sur ce VPS ;
+restos Lyon/Marseille = VPS `104.168.10.36`) : l'update
 **patch uniquement l'image app** — même token, même id, même adresse
 publique ; `up` **sans** `--remove-orphans`. Si une adresse publique est
 persistée (`tunnel.env` / kernel) **sans** sidecar et **sans** `cf.env`
