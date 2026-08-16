@@ -3,7 +3,7 @@
  * Gate module-docs — standard module (docs/DOC-STANDARD-MODULE.md).
  *
  * Pour chaque `modules/<id>/` non-template des périmètres connus :
- *   1. les 4 fichiers du contrat sont présents et non vides
+ *   1. les 4 markdown du contrat sont présents et non vides
  *      (prd.md, interview.md, TODO.md, CHANGELOG.md) ;
  *   2. prd.md / interview.md portent les sections normalisées ;
  *   3. TODO.md est bien formé : statuts valides, claims datés pour

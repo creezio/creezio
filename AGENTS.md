@@ -10,7 +10,7 @@ Le kit est la **source of truth (SoT)** du socle desktop Creezio (CMS stable) :
 auth, shell UI, API, MCP, assistant, tasks, mails, observability, plugins host,
 Electron runtime, tooling publish, factory, propagation.
 
-Les marques (`winhub`, `tempoflow3`…) consomment le kit en **packages npm
+Les marques (`winhub`, `tempoflow3`, `foove2`…) consomment le kit en **packages npm
 versionnés** (`@creezio/*` publiés sur GitHub Packages —
 [docs/NPM-DISTRIBUTION.md](./docs/NPM-DISTRIBUTION.md)) + wiring métier.
 **Le métier vertical reste dans les repos marque.**

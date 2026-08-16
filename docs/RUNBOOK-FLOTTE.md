@@ -9,6 +9,10 @@ Chaque procédure y est au format « Objectif → Commande exacte → Vérificat
 → Où est la vérité (fichier) → Pièges », avec les commandes copiables
 vérifiées sur le VPS TempoFlow.
 
+Les zones Cloudflare et hostnames publics sont **ceux de la marque**
+(`{slug}.{zone}` — ex. `resto-lyon.tempoflow.fr`, `{client}.crm.foove.io`,
+`server-1.winhub.fr`), pas seulement `tempoflow.fr`.
+
 ## Table des matières (sections du skill)
 
 1. **Créer un serveur** — `creezio server-docker create` (+ `--profile prod`,

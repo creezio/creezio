@@ -5,6 +5,20 @@ import type { BrandSpecIssue, DoctorResult } from "./types.js";
 
 const BRAND_ID_RE = /^[a-z][a-z0-9]{1,31}$/;
 
+/** Fichiers / stubs d'assemblage — pas des `BrandModuleDef`. */
+const MODULE_HELPER_FILES = new Set([
+  "index.ts",
+  "types.ts",
+  "shared.ts",
+  "mcp-shared.ts",
+  "meili-shared.ts",
+]);
+
+/** Démo fail-closed depuis 0.10.1 — pins plus vieux (ex. Winhub 0.9.2) = warn. */
+const DEMO_CONTRACT_SINCE = { major: 0, minor: 10, patch: 1 };
+
+const MIN_INLINE_DEMO_STEPS = 3;
+
 function resolveAppModulesDir(specRoot: string): string | null {
   const appRoot = path.dirname(specRoot);
   for (const rel of ["server/src/electron/modules", "src/electron/modules"]) {
@@ -12,6 +26,67 @@ function resolveAppModulesDir(specRoot: string): string | null {
     if (fs.existsSync(dir)) return dir;
   }
   return null;
+}
+
+function isModuleHelperName(name: string): boolean {
+  if (MODULE_HELPER_FILES.has(name)) return true;
+  if (name === "_lib.ts" || name.startsWith("_lib.") || name.startsWith("_")) {
+    return true;
+  }
+  return false;
+}
+
+function stripNpmRange(spec: string): string | null {
+  const m = spec.trim().match(/^[\^~>=<\s]*(\d+\.\d+\.\d+)/);
+  return m?.[1] ?? null;
+}
+
+function compareSemver(
+  version: string,
+  ref: { major: number; minor: number; patch: number },
+): number {
+  const parts = version.split(".").map((x) => Number(x));
+  const major = parts[0] ?? 0;
+  const minor = parts[1] ?? 0;
+  const patch = parts[2] ?? 0;
+  if (major !== ref.major) return major - ref.major;
+  if (minor !== ref.minor) return minor - ref.minor;
+  return patch - ref.patch;
+}
+
+/** Pin lockstep de l'app (`server/package.json` puis racine). */
+function readAppLockstepPin(specRoot: string): string | null {
+  const appRoot = path.dirname(specRoot);
+  for (const rel of ["server/package.json", "package.json"]) {
+    const pkgPath = path.join(appRoot, rel);
+    if (!fs.existsSync(pkgPath)) continue;
+    try {
+      const pkg = JSON.parse(fs.readFileSync(pkgPath, "utf8")) as {
+        dependencies?: Record<string, string>;
+        devDependencies?: Record<string, string>;
+      };
+      const deps = { ...pkg.dependencies, ...pkg.devDependencies };
+      for (const name of [
+        "@creezio/platform-core",
+        "@creezio/app-runtime",
+        "@creezio/brand-spec",
+      ]) {
+        const spec = deps[name];
+        if (typeof spec === "string") {
+          const v = stripNpmRange(spec);
+          if (v) return v;
+        }
+      }
+    } catch {
+      /* package.json illisible → pin inconnu */
+    }
+  }
+  return null;
+}
+
+function pinIsPreDemoContract(pin: string | null): boolean {
+  if (!pin) return false;
+  return compareSemver(pin, DEMO_CONTRACT_SINCE) < 0;
 }
 
 function moduleWiringHasDemoScenarios(src: string): boolean {
@@ -22,9 +97,20 @@ function moduleWiringHasDemoScenarios(src: string): boolean {
   );
 }
 
+function countInlineDemoSteps(src: string): number {
+  return (
+    src.match(
+      /kind\s*:\s*["'](?:say|navigate|highlight|click|type|scroll|wait)/g,
+    ) ?? []
+  ).length;
+}
+
 /**
  * Chaque BrandModuleDef d'une app déjà scaffoldée doit exposer ≥ 1 scénario
  * jouable. Spec seul (avant apply) : pas de modules/*.ts → no-op.
+ * Helpers (`_lib`, `shared.ts`, `mcp-shared.ts`, `meili-shared.ts`,
+ * `index.ts`, `types.ts`) ignorés. Démo trop pauvre = **warn** (pas
+ * fail-closed). Pin kit < 0.10.1 (ex. Winhub 0.9.2) : démo absente = warn.
  */
 function doctorBrandModuleDemos(
   specRoot: string,
@@ -32,19 +118,45 @@ function doctorBrandModuleDemos(
 ): void {
   const modulesDir = resolveAppModulesDir(specRoot);
   if (!modulesDir) return;
+  const preContract = pinIsPreDemoContract(readAppLockstepPin(specRoot));
   const files = fs
     .readdirSync(modulesDir)
-    .filter((f) => f.endsWith(".ts") && f !== "types.ts" && f !== "index.ts")
+    .filter((f) => f.endsWith(".ts") && !isModuleHelperName(f))
     .sort();
   for (const file of files) {
-    const src = fs.readFileSync(path.join(modulesDir, file), "utf8");
-    if (moduleWiringHasDemoScenarios(src)) continue;
-    issues.push({
-      level: "error",
-      code: "MODULE_DEMO_MISSING",
-      message: `module ${file.replace(/\.ts$/, "")}: demo.scenarios obligatoire (≥ 1 scénario jouable). Une app Creezio sans démo interactive est invalide.`,
-      path: path.relative(specRoot, path.join(modulesDir, file)),
-    });
+    const id = file.replace(/\.ts$/, "");
+    const filePath = path.join(modulesDir, file);
+    const src = fs.readFileSync(filePath, "utf8");
+    const rel = path.relative(specRoot, filePath);
+    if (!moduleWiringHasDemoScenarios(src)) {
+      issues.push({
+        level: preContract ? "warn" : "error",
+        code: "MODULE_DEMO_MISSING",
+        message: preContract
+          ? `module ${id}: demo.scenarios absent — warn (pin kit < 0.10.1, ex. Winhub 0.9.2) ; obligatoire depuis 0.10.1.`
+          : `module ${id}: demo.scenarios obligatoire (≥ 1 scénario jouable). Une app Creezio sans démo interactive est invalide.`,
+        path: rel,
+      });
+      continue;
+    }
+    const hasAutoStart = /\bautoStart\s*:\s*true\b/.test(src);
+    const usesGeneric = /genericOsTourScenario\s*\(/.test(src);
+    const inlineSteps = countInlineDemoSteps(src);
+    const stepsTooShort =
+      !usesGeneric && inlineSteps > 0 && inlineSteps < MIN_INLINE_DEMO_STEPS;
+    if (!hasAutoStart || stepsTooShort) {
+      const reasons: string[] = [];
+      if (!hasAutoStart) reasons.push("aucun autoStart: true");
+      if (stepsTooShort) {
+        reasons.push(`steps trop courts (< ${MIN_INLINE_DEMO_STEPS})`);
+      }
+      issues.push({
+        level: "warn",
+        code: "MODULE_DEMO_THIN",
+        message: `module ${id}: démo trop pauvre (${reasons.join(", ")}) — warn, pas fail-closed.`,
+        path: rel,
+      });
+    }
   }
 }
 

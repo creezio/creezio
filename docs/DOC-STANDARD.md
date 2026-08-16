@@ -6,7 +6,8 @@ copiables. Vérifié par la gate `scripts/test-phase-docs-freshness.mjs`
 (dans `npm test` / `npm run test:kit`).
 
 Compléments : [DOC-STANDARD-MODULE.md](./DOC-STANDARD-MODULE.md) (contrat
-« module = unité de travail autonome », 4 fichiers spec par module, gate
+« module = unité de travail autonome », 5 fichiers spec par module
+(`prd.md`, `interview.md`, `TODO.md`, `CHANGELOG.md`, `gate.mjs`), gate
 `test-phase-module-docs`) et [DOC-STANDARD-UI.md](./DOC-STANDARD-UI.md)
 (kit graphique imposé).
 

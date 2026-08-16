@@ -34,6 +34,7 @@ Racine : [../README.md](../README.md) · [../AGENTS.md](../AGENTS.md)
 | Package | README | AGENTS | Fichiers |
 |---------|--------|--------|----------|
 | `@creezio/auth` | [README](../packages/auth/README.md) | [AGENTS](../packages/auth/AGENTS.md) | [FILES](../packages/auth/docs/FILES.md) |
+| `@creezio/access-control` | [README](../packages/access-control/README.md) | [AGENTS](../packages/access-control/AGENTS.md) | [FILES](../packages/access-control/docs/FILES.md) |
 | `@creezio/shell-ui` | [README](../packages/shell-ui/README.md) | [AGENTS](../packages/shell-ui/AGENTS.md) | [FILES](../packages/shell-ui/docs/FILES.md) |
 | `@creezio/os-ui` | [README](../packages/os-ui/README.md) | [AGENTS](../packages/os-ui/AGENTS.md) | [FILES](../packages/os-ui/docs/FILES.md) |
 | `@creezio/onboarding` | [README](../packages/onboarding/README.md) | [AGENTS](../packages/onboarding/AGENTS.md) | [FILES](../packages/onboarding/docs/FILES.md) |
