@@ -5,7 +5,7 @@
 Creezio est un **kit plateforme** (monorepo `@creezio/*`) : un « OS » complet
 d'application métier — auth, shell UI, API, MCP, assistant IA, tâches, mails,
 observabilité, plugins, runtime Electron, serveur Docker headless — que des
-**marques** (TempoFlow, Certivan, Fidu…) consomment en y ajoutant uniquement
+**marques** (TempoFlow, Foove, Winhub, Certivan, Fidu…) consomment en y ajoutant uniquement
 leur métier vertical. Une nouvelle marque se crée depuis un brief produit,
 sans réécrire le socle.
 
@@ -22,7 +22,7 @@ sans réécrire le socle.
 ```
                       ┌──────────────────────────────┐
                       │        kit creezio           │
-                      │  packages/@creezio/* (29)    │
+                      │  packages/@creezio/* (30)    │
                       └──────────────┬───────────────┘
                                      │  packages npm @creezio/* (GitHub Packages)
         ┌────────────────────────────┼────────────────────────────┐
@@ -86,7 +86,11 @@ Docker, `client/` desktop thin remote-only, `brand-spec/` à la racine)
 (app admin de la marque : flotte, support, billing…) — voir
 [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md).
 
-## Les 29 packages
+## Les 30 packages
+
+28 publiés en **lockstep 0.10.3** + `@creezio/factory` **0.6.2** (CLI,
+privé, hors lockstep) + `@creezio/propagation` 0.1.6. **CLI =
+`CREEZIO_KIT_ROOT`**, pas le pin app — [docs/README.md](./docs/README.md).
 
 | Package | Rôle |
 |---------|------|
@@ -97,6 +101,7 @@ Docker, `client/` desktop thin remote-only, `brand-spec/` à la racine)
 | `api-kernel` | Façade HTTP `/api/v1` (core/platform/modules/plugins) |
 | `mcp-facade` | MCP unifié, OAuth, host tools |
 | `auth` | Session, login, recovery |
+| `access-control` | Rôles / permissions déclaratifs, overrides DB, écran « Rôles & accès » |
 | `shell-ui` | Nav + chrome CRM UI (React) |
 | `os-ui` | Surfaces Next OS natives (mails, tâches, setup, admin…) matérialisées dans les marques |
 | `onboarding` | Setup first-run + moteur d'onboarding |
@@ -132,6 +137,10 @@ produit client).
 
 | Entrée | Contenu |
 |--------|---------|
+| [docs/README.md](./docs/README.md) | Hub docs : runbook, CREATE-MODULE, standard module, contrat secrets, factory 0.6.2 vs lockstep 0.10.3 |
+| [docs/RUNBOOK-AGENTS.md](./docs/RUNBOOK-AGENTS.md) | Topologie (Winhub, TempoFlow, **Foove** `*.crm.foove.io`), release, deploy |
+| [docs/agents/CREATE-MODULE.md](./docs/agents/CREATE-MODULE.md) | Créer un module (5 fichiers + `gate.mjs`) |
+| [docs/DOC-STANDARD-MODULE.md](./docs/DOC-STANDARD-MODULE.md) | Contrat module |
 | [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) | Modes de déploiement, boot, admin, navigateur IA, propagation |
 | [docs/PACKAGES.md](./docs/PACKAGES.md) | Index de tous les packages |
 | [docs/DOC-STANDARD.md](./docs/DOC-STANDARD.md) | Standard documentaire (trio, format FILES.md, règles éditoriales) |

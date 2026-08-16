@@ -10,7 +10,7 @@ dans `@creezio/app-runtime` / `@creezio/electron-shell`.
 | Export | Rôle |
 |--------|------|
 | `loadBrandSpec` / `resolveBrandSpecDir` | Charge et résout un dossier `brand-spec/` |
-| `doctorBrandSpec` / `formatDoctorReport` | Diagnostic (`creezio brand doctor --spec brand-spec`) |
+| `doctorBrandSpec` / `formatDoctorReport` | Diagnostic (`creezio brand doctor --spec brand-spec`) — helpers modules ignorés ; démo pauvre = warn ; pin < 0.10.1 (Winhub 0.9.2) : démo absente = warn |
 | `initBrandSpec` | Scaffold d'un dossier `brand-spec/` neuf |
 | `resolveOnboardingDecl` / `toSetupWizardConfig` | Déclaration onboarding → config wizard |
 

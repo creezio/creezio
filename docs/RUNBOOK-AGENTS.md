@@ -2,7 +2,7 @@
 
 > **Document de référence opérationnel.** Un agent ou un dev qui débarque lit
 > CE fichier et sait opérer tout l'écosystème sans rien redécouvrir.
-> Faits vérifiés dans le code et sur les serveurs (2026-08-10). Ton assertif,
+> Faits vérifiés dans le code et sur les serveurs (2026-08-16). Ton assertif,
 > zéro aspiration : si un fait change, corriger ce fichier dans la même PR.
 
 ## 1. Topologie
@@ -25,6 +25,8 @@
 | tempoflow : `/opt/docker/creezio` | clone du kit (branche `main`) |
 | tempoflow : `/opt/docker/tempoflow3` | monorepo marque tempoflow3 |
 | tempoflow : `/opt/docker/tempoflow-admin` | repo admin — remote GitHub `creezio/tempoflow3-admin` (dossier local = ancien nom) |
+| tempoflow : `/opt/docker/foove2` | monorepo marque **foove2** (`server/`, `client/`, `brand-spec/`, `docker-data/` gitignoré) |
+| tempoflow : `/opt/docker/foove2-admin` | repo admin foove2 (`creezio/foove2-admin`) |
 | tempoflow : `/home/deploy/actions-runners/tempoflow3` | runner self-hosted (`actions-runner-tempoflow3.service`) |
 | tempoflow : `127.0.0.1:5000` | registry d'images local (container `creezio-registry`) |
 
@@ -41,13 +43,16 @@ l'API Cloudflare (0.10.0 — fin du provisioner VPS et du sidecar). Le contrat
 | winhub `server-1` | fluxpro | `winhub-server-server-1` | auto→18791 | https://server-1.winhub.fr |
 | tempoflow3 `resto-lyon` | tempoflow | `tempoflow3-server-resto-lyon` | auto→18791 | https://resto-lyon.tempoflow.fr |
 | tempoflow3 `resto-marseille` | tempoflow | `tempoflow3-server-resto-marseille` | auto→18791 | https://resto-marseille.tempoflow.fr |
+| foove2 `demo` | tempoflow | `foove2-server-demo` | 18901→18791 | https://foove2-demo.crm.foove.io |
+| foove2 `recette` | tempoflow | `foove2-server-recette` | auto→18791 | https://recette.crm.foove.io |
 | admin winhub | fluxpro | `winhubadmin-server-main` | 18801→18791 | console admin flotte (repo `winhub-admin`) |
 | admin tempoflow3 | tempoflow | `tempoflowadmin-server-main` | 18801→18791 | https://admin.tempoflow.fr |
+| admin foove2 | tempoflow | `foove2admin-server-main` | auto→18791 | https://foove2admin.crm.foove.io |
 
 Registre d'instances : `{brand-root}/docker-data/servers.json` (gitignoré —
 absent du checkout runner, présent sur le clone serveur).
 
-> **État 0.10.0** : toutes les instances (prod + admin, deux marques)
+> **État 0.10.0** : toutes les instances (prod + admin, marques listées)
 > tournent en stacks compose autonomes **app seule** — cloudflared tourne
 > IN-PROCESS dans le conteneur de l'app (binaire de l'image), le tunnel est
 > auto-provisionné via l'API Cloudflare au boot (ports hôtes loopback auto,
@@ -57,7 +62,7 @@ absent du checkout runner, présent sur le clone serveur).
 ### Repos GitHub (org `creezio`, tous privés)
 
 `creezio` (kit — source of truth plateforme) · `winhub` · `winhub-admin` ·
-`tempoflow3` · `tempoflow3-admin`.
+`tempoflow3` · `tempoflow3-admin` · `foove2` · `foove2-admin`.
 
 ## 2. Environnement provisionné (ne PAS re-chercher)
 
@@ -67,6 +72,24 @@ absent du checkout runner, présent sur le clone serveur).
 | Identité git | `Creezio <creezio@users.noreply.github.com>` configurée sur les deux VPS. Ne jamais toucher `git config` : committer avec `git -c user.name=Creezio -c user.email=creezio@users.noreply.github.com commit …`. |
 | `gh` | Authentifié (compte `creezio`) sur les deux VPS. |
 | Registre npm | GitHub Packages **privé** (décision assumée 2026-08-10) : toute installation (`npm ci` / `npm install`, kit ou app) exige un PAT `read:packages` d'un membre de l'org. Le `.npmrc` des repos est commité **sans** token et consomme `${CREEZIO_NPM_TOKEN}`. En CI apps : secret repo `CREEZIO_NPM_TOKEN` ; en CI kit : `GITHUB_TOKEN` (packages:read). |
+
+### Versions — factory 0.6.2 ≠ lockstep 0.10.3
+
+Les packages **publiés** (`@creezio/platform-core`, `app-runtime`,
+`brand-spec`…) sont en **lockstep 0.10.3** (groupe `fixed` de changesets —
+une version de kit = un ensemble cohérent). `@creezio/factory` (CLI
+`creezio`, **privé**, hors groupe `fixed`) est en **0.6.2**.
+`@creezio/propagation` est hors lockstep (0.1.6).
+
+**CLI = `CREEZIO_KIT_ROOT`, pas le pin app.** Le pin `^0.10.3` (ou `^0.9.2`
+sur Winhub) est la version **consommée** au runtime / dans l'image Docker.
+`scripts/creezio-cli.mjs` résout
+`$CREEZIO_KIT_ROOT/packages/factory/bin/creezio.js` **avant**
+`node_modules/@creezio/factory`. Pour `server-docker` / `brand doctor` /
+`brand apply` : toujours le clone kit du VPS
+(`CREEZIO_KIT_ROOT=/opt/docker/creezio` ici, `/home/fidus/creezio` sur
+fluxpro) — jamais « la factory pinnée dans l'app ». Winhub encore en 0.9.2
+utilise le CLI du kit courant.
 
 ## 3. Release kit → apps (le flow exact)
 
@@ -152,9 +175,11 @@ workaround dans une seule app.
 
 ## 6. Deploy et instances
 
-CLI SoT : `packages/factory/src/server-docker-cli.ts`. Depuis une app :
+CLI SoT : `packages/factory/src/server-docker-cli.ts` (**factory 0.6.2**,
+hors lockstep 0.10.3). Depuis une app :
 `node scripts/creezio-cli.mjs server-docker …` (`--brand-root` = racine du
-monorepo marque ; `CREEZIO_KIT_ROOT` pointe le clone kit du serveur).
+monorepo marque ; **`CREEZIO_KIT_ROOT` = clone kit**, jamais le pin
+`@creezio/*` de l'app).
 
 | Geste | Commande |
 |---|---|

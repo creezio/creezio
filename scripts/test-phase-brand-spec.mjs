@@ -197,3 +197,119 @@ export const notesModule = {
   assert.equal(ok.ok, true, formatDoctorReport(ok));
   fs.rmSync(work, { recursive: true, force: true });
 });
+
+test("BS7 doctor : helpers modules ignorés (_lib, shared, mcp-shared, meili-shared, index, types)", () => {
+  const work = fs.mkdtempSync(path.join(os.tmpdir(), "brand-spec-helpers-"));
+  const result = initBrandSpec({
+    outDir: path.join(work, "brand-spec"),
+    brandId: "helpdoc",
+    brandName: "Help Doc",
+    domain: "helpdoc.local",
+    vertical: "generic",
+    force: true,
+  });
+  const modulesDir = path.join(work, "server/src/electron/modules");
+  fs.mkdirSync(modulesDir, { recursive: true });
+  for (const name of [
+    "index.ts",
+    "types.ts",
+    "shared.ts",
+    "mcp-shared.ts",
+    "meili-shared.ts",
+    "_lib.ts",
+  ]) {
+    fs.writeFileSync(
+      path.join(modulesDir, name),
+      `export const helper = "${name}";\n`,
+      "utf8",
+    );
+  }
+  fs.writeFileSync(
+    path.join(modulesDir, "notes.ts"),
+    `import { genericOsTourScenario } from "@creezio/interactive-demo";
+export const notesModule = {
+  id: "notes",
+  demo: { scenarios: [genericOsTourScenario({ productName: "Help Doc" })] },
+};
+`,
+    "utf8",
+  );
+  const doctor = doctorBrandSpec(result.outDir);
+  assert.equal(doctor.ok, true, formatDoctorReport(doctor));
+  assert.ok(
+    !doctor.issues.some(
+      (i) => i.code === "MODULE_DEMO_MISSING" && /shared|_lib|index|types/.test(i.message),
+    ),
+    formatDoctorReport(doctor),
+  );
+  fs.rmSync(work, { recursive: true, force: true });
+});
+
+test("BS8 doctor : démo trop pauvre = warn (pas fail-closed)", () => {
+  const work = fs.mkdtempSync(path.join(os.tmpdir(), "brand-spec-thin-"));
+  const result = initBrandSpec({
+    outDir: path.join(work, "brand-spec"),
+    brandId: "thindoc",
+    brandName: "Thin Doc",
+    domain: "thindoc.local",
+    vertical: "generic",
+    force: true,
+  });
+  const modulesDir = path.join(work, "server/src/electron/modules");
+  fs.mkdirSync(modulesDir, { recursive: true });
+  fs.writeFileSync(
+    path.join(modulesDir, "notes.ts"),
+    `export const notesModule = {
+  id: "notes",
+  demo: {
+    scenarios: [{
+      id: "tiny",
+      title: "Mini",
+      steps: [{ kind: "say", id: "s1", title: "Hi" }],
+    }],
+  },
+};
+`,
+    "utf8",
+  );
+  const doctor = doctorBrandSpec(result.outDir);
+  assert.equal(doctor.ok, true, formatDoctorReport(doctor));
+  const thin = doctor.issues.find((i) => i.code === "MODULE_DEMO_THIN");
+  assert.ok(thin, formatDoctorReport(doctor));
+  assert.equal(thin.level, "warn");
+  assert.match(thin.message, /autoStart|steps trop courts/);
+  fs.rmSync(work, { recursive: true, force: true });
+});
+
+test("BS9 doctor : pin 0.9.2 (Winhub) — démo absente = warn, pas fail-closed", () => {
+  const work = fs.mkdtempSync(path.join(os.tmpdir(), "brand-spec-winhub-"));
+  const result = initBrandSpec({
+    outDir: path.join(work, "brand-spec"),
+    brandId: "winhubdoc",
+    brandName: "Winhub Doc",
+    domain: "winhubdoc.local",
+    vertical: "generic",
+    force: true,
+  });
+  const modulesDir = path.join(work, "server/src/electron/modules");
+  fs.mkdirSync(modulesDir, { recursive: true });
+  fs.writeFileSync(
+    path.join(work, "server/package.json"),
+    JSON.stringify({
+      name: "winhub-server",
+      dependencies: { "@creezio/platform-core": "^0.9.2" },
+    }),
+    "utf8",
+  );
+  fs.writeFileSync(
+    path.join(modulesDir, "notes.ts"),
+    `export const notesModule = { id: "notes" };\n`,
+    "utf8",
+  );
+  const doctor = doctorBrandSpec(result.outDir);
+  assert.equal(doctor.ok, true, formatDoctorReport(doctor));
+  const missing = doctor.issues.find((i) => i.code === "MODULE_DEMO_MISSING");
+  assert.ok(missing, formatDoctorReport(doctor));
+  assert.equal(missing.level, "warn");
+  fs.rmSync(work, { recursive: true, force: true });
+});

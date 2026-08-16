@@ -35,3 +35,6 @@ packages/electron-shell/resources/bin/cloudflared.exe
 # Résidus outillage (pack fake dirs de tests, dumps locaux)
 creezio-pack-fake-*/
 dumps/
+
+# Clés / config SSH locales (jamais versionnées)
+.ssh/

@@ -21,8 +21,8 @@ Questions minimales (voir `interview.schema.json`) :
 3. Entités cœur + champs
 4. Flux métier principal (étapes)
 5. Besoins plateforme : Meili / MCP / chat / onboarding
-6. Modules métier — chaque module = dossier `modules/<id>/` **4 fichiers**
-   (`prd.md`, `interview.md`, `TODO.md`, `CHANGELOG.md`) au standard
+6. Modules métier — chaque module = dossier `modules/<id>/` **5 fichiers**
+   (`prd.md`, `interview.md`, `TODO.md`, `CHANGELOG.md`, `gate.mjs`) au standard
    [DOC-STANDARD-MODULE.md](../DOC-STANDARD-MODULE.md). Scaffold :
    `creezio brand module init <id> --app <app>`. L'interview de module
    déclare notamment, pour chaque page UI, les composants du **kit graphique

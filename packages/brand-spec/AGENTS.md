@@ -15,7 +15,8 @@ plateforme (YAML). SoT pour l'agent créateur ; le runtime reste dans
 ## API
 
 - `loadBrandSpec` / `resolveBrandSpecDir`
-- `doctorBrandSpec` / `formatDoctorReport`
+- `doctorBrandSpec` / `formatDoctorReport` — helpers modules ignorés ;
+  démo pauvre = warn ; pin < 0.10.1 (Winhub 0.9.2) : démo absente = warn
 - `initBrandSpec`
 - `resolveOnboardingDecl` / `toSetupWizardConfig`
 

@@ -200,7 +200,7 @@ spaces:
   - module
   - plugin
 `,
-  // Standard module (4 fichiers) — contrat kit docs/DOC-STANDARD-MODULE.md.
+  // Standard module (5 fichiers : 4 md + gate.mjs) — DOC-STANDARD-MODULE.md.
   "modules/_template/prd.md": `# Module {{moduleId}} — <titre>
 
 ## Vision
@@ -373,7 +373,7 @@ export const MODULE_SPEC_FILES = [
 ] as const;
 
 /**
- * Templates bruts des 4 fichiers (placeholders `{{moduleId}}` intacts) —
+ * Templates bruts des 4 markdown (placeholders `{{moduleId}}` intacts) —
  * pour poser `modules/_template/` dans un spec (brand-spec ou admin-spec).
  */
 export function moduleTemplateFiles(): Record<string, string> {
