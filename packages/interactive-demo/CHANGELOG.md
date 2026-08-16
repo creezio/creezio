@@ -1,5 +1,13 @@
 # @creezio/interactive-demo
 
+## 0.10.4
+
+### Patch Changes
+
+- @creezio/platform-core@0.10.4
+- @creezio/api-kernel@0.10.4
+- @creezio/shell-ui@0.10.4
+
 ## 0.10.3
 
 ### Patch Changes
