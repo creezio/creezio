@@ -1,6 +1,6 @@
 {
   "name": "@creezio/admin",
-  "version": "0.10.2",
+  "version": "0.10.3",
   "description": "Modules natifs des apps admin de marque (mode admin) — fleet, support, prospection, roadmap, billing",
   "type": "module",
   "main": "./dist-cjs/index.js",
@@ -28,9 +28,9 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@creezio/api-kernel": "^0.10.2",
-    "@creezio/integrations": "^0.10.2",
-    "@creezio/platform-core": "^0.10.2"
+    "@creezio/api-kernel": "^0.10.3",
+    "@creezio/integrations": "^0.10.3",
+    "@creezio/platform-core": "^0.10.3"
   },
   "devDependencies": {
     "@types/node": "^22.15.3",
