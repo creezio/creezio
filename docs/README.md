@@ -44,8 +44,8 @@ Détail tunnel / owner : [RUNBOOK-AGENTS.md §7.3](./RUNBOOK-AGENTS.md) et
 | **`@creezio/propagation`** | 0.1.6 | Outillage interne, hors lockstep |
 
 **CLI = clone kit (`CREEZIO_KIT_ROOT`), pas le pin app.** Le pin `^0.10.3`
-(ou `^0.9.2` sur Winhub) est la version **consommée** au runtime / dans
-l'image. `creezio` / `scripts/creezio-cli.mjs` résout
+(Winhub inclus — `main` `739f79a`) est la version **consommée** au runtime /
+dans l'image. `creezio` / `scripts/creezio-cli.mjs` résout
 `$CREEZIO_KIT_ROOT/packages/factory/bin/creezio.js` **avant**
 `node_modules/@creezio/factory`. Toujours pointer le clone kit du VPS
 (`CREEZIO_KIT_ROOT=/opt/docker/creezio` ici) pour create / update / doctor /

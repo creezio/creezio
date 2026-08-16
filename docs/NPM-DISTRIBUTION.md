@@ -71,7 +71,7 @@ Restent privés (outillage interne, **hors lockstep**, non publiés) :
 L'ancien système (sync vendor, `SYNC.json`, `kit-compat`, `vendor-update`,
 `install-server-deps`, symlinks trackés) est **SUPPRIMÉ** du kit
 (feat/npm-deploy-tooling : Dockerfile + factory + CLI server-docker en mode
-npm). Apps migrées : **winhub** (encore pin `^0.9.2`), **tempoflow3**,
+npm). Apps migrées : **winhub** (`^0.10.3`, `main` `739f79a`), **tempoflow3**,
 **foove2** (`^0.10.3`) et leurs repos admin. Il n'existe plus d'app
 vendored maintenue : toute app consomme les packages npm. Le CLI reste
-celui du clone kit (`CREEZIO_KIT_ROOT`), y compris pour Winhub 0.9.2.
+celui du clone kit (`CREEZIO_KIT_ROOT`).

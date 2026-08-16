@@ -127,7 +127,7 @@ scripts et par l'admin.
 pilote plusieurs serveurs Docker de plusieurs marques : état, boot-status,
 start/stop, logs. La config versionnable (SANS secrets : `port`, `user`,
 `brandRoots[]`) vit à la racine du **repo admin dédié** (`--admin-root`,
-ex. `/opt/docker/tempoflow-admin/server-admin.json`) ; la config runtime
+ex. `/opt/docker/tempoflow3-admin/server-admin.json`) ; la config runtime
 (avec `pass`) reste dans `{adminRoot}/docker-data/server-admin.json`
 (gitignoré). `admin add-brand <racine>` ajoute une marque et recrée le
 container. Auth Basic (`CREEZIO_ADMIN_PASS`). Le chemin legacy

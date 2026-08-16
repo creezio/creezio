@@ -13,7 +13,7 @@ Objectif → Commande exacte → Vérification → Où est la vérité → Pièg
 ```bash
 export CREEZIO_KIT_ROOT=/opt/docker/creezio        # kit (SoT)
 export BRAND_ROOT=/opt/docker/tempoflow3           # marque exemple
-export ADMIN_ROOT=/opt/docker/tempoflow-admin      # repo admin flotte
+export ADMIN_ROOT=/opt/docker/tempoflow3-admin     # repo admin flotte
 alias creezio='node $CREEZIO_KIT_ROOT/packages/factory/bin/creezio.js'
 ```
 
