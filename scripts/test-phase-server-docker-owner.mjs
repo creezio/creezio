@@ -347,6 +347,12 @@ test("CLI create câble la politique owner (fail-closed + setup, pas le password
   assert.match(cli, /ensure-owner/);
   assert.match(cli, /CREEZIO_E2E_\*/);
   assert.match(cli, /E2E_OWNER_ENV_KEYS/);
+  const ownerSrc = fs.readFileSync(
+    path.join(root, "packages/factory/src/server-docker-owner.ts"),
+    "utf8",
+  );
+  assert.match(ownerSrc, /creezio_platform_users/);
+  assert.match(ownerSrc, /migrateBrandCredentialsToKit/);
   assert.doesNotMatch(
     cli,
     /console\.log\([^)]*ownerPolicy\.password/,
