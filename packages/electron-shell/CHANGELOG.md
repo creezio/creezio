@@ -1,5 +1,17 @@
 # @creezio/electron-shell
 
+## 0.10.5
+
+### Patch Changes
+
+- Updated dependencies [6bce6a8]
+  - @creezio/observability@0.10.5
+  - @creezio/brand-config@0.10.5
+  - @creezio/shell@0.10.5
+  - @creezio/platform-core@0.10.5
+  - @creezio/product-hub@0.10.5
+  - @creezio/browser-host@0.10.5
+
 ## 0.10.4
 
 ### Patch Changes
