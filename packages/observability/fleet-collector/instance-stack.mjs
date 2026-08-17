@@ -75,6 +75,18 @@ export function secretsEnvPath(brandRoot, inst) {
   return path.join(stackDir(brandRoot, inst), "secrets.env");
 }
 
+/**
+ * Owner / recette e2e — toujours dans secrets.env (600), jamais dans
+ * `environment:` ni le registre. EMAIL ne matche pas isSecretEnvKey
+ * (PASSWORD/TOKEN/…) : liste explicite.
+ */
+export const OWNER_SECRET_ENV_KEYS = [
+  "CREEZIO_OWNER_EMAIL",
+  "CREEZIO_OWNER_PASSWORD",
+  "CREEZIO_E2E_EMAIL",
+  "CREEZIO_E2E_PASSWORD",
+];
+
 /** Sidecar historique (pré-0.10) — token + hostname, chmod 600. */
 export function tunnelEnvPath(brandRoot, inst) {
   return path.join(stackDir(brandRoot, inst), "tunnel.env");
@@ -90,9 +102,59 @@ function yq(value) {
  * Couvre tokens, secrets, mots de passe, clés API/privées.
  */
 export function isSecretEnvKey(key) {
+  const k = String(key || "");
+  if (OWNER_SECRET_ENV_KEYS.includes(k)) return true;
   return /TOKEN|SECRET|PASSWORD|PASSWD|API[_-]?KEY|PRIVATE[_-]?KEY|CREDENTIALS/i.test(
-    String(key || ""),
+    k,
   );
+}
+
+/**
+ * Fusion secrets.env : les clés fournies gagnent ; les clés owner/e2e
+ * déjà persistées ne sont **jamais** droppées si l'update ne les renvoie pas
+ * (inst.env du registre ne contient pas CREEZIO_OWNER_* — volontaire).
+ */
+export function mergeSecretsEnv(existing, next) {
+  const out = { ...(existing || {}) };
+  for (const [k, v] of Object.entries(next || {})) {
+    if (v !== undefined && v !== null && String(v) !== "") out[k] = String(v);
+  }
+  for (const k of OWNER_SECRET_ENV_KEYS) {
+    const incoming = String((next || {})[k] || "").trim();
+    const kept = String((existing || {})[k] || "").trim();
+    if (!incoming && kept) out[k] = kept;
+  }
+  return out;
+}
+
+function writeMergedSecretsFile(secretsFile, instEnv, extra = {}) {
+  const existing = parseDotEnvFile(secretsFile);
+  const { secret } = splitInstanceEnv(instEnv);
+  const merged = mergeSecretsEnv(existing, { ...secret, ...extra });
+  if (Object.keys(merged).length) {
+    writeEnvFile600(secretsFile, merged);
+    return secretsFile;
+  }
+  if (fs.existsSync(secretsFile)) fs.rmSync(secretsFile);
+  return null;
+}
+
+/**
+ * Persiste owner / e2e dans secrets.env (600) sans toucher au compose
+ * (sidecar historique inclus). Jamais de secret en log.
+ */
+export function persistOwnerSecrets({ brandRoot, inst, owner }) {
+  fs.mkdirSync(stackDir(brandRoot, inst), { recursive: true });
+  const extra = {};
+  const email = String(owner?.email || "").trim();
+  const password = String(owner?.password || "").trim();
+  const e2eEmail = String(owner?.e2eEmail || "").trim();
+  const e2ePassword = String(owner?.e2ePassword || "").trim();
+  if (email) extra.CREEZIO_OWNER_EMAIL = email;
+  if (password) extra.CREEZIO_OWNER_PASSWORD = password;
+  if (e2eEmail) extra.CREEZIO_E2E_EMAIL = e2eEmail;
+  if (e2ePassword) extra.CREEZIO_E2E_PASSWORD = e2ePassword;
+  return writeMergedSecretsFile(secretsEnvPath(brandRoot, inst), inst?.env, extra);
 }
 
 /**
@@ -115,7 +177,7 @@ export function splitInstanceEnv(env) {
  * opts.withCf : true → `env_file: cf.env` (contrat Cloudflare — l'instance
  * auto-provisionne son tunnel au boot, cloudflared in-process).
  */
-export function renderInstanceCompose({ brandRoot, brandId, image, inst, withCf }) {
+export function renderInstanceCompose({ brandRoot, brandId, image, inst, withCf, withSecrets }) {
   const dataAbs = path.isAbsolute(inst.dataDir)
     ? inst.dataDir
     : path.join(brandRoot, inst.dataDir);
@@ -150,8 +212,8 @@ export function renderInstanceCompose({ brandRoot, brandId, image, inst, withCf 
   const envFiles = [
     // cf.env : CREEZIO_CF_* (chmod 600) — auto-provisioning tunnel au boot.
     ...(withCf ? [`      - ./cf.env`] : []),
-    // secrets.env : clés applicatives (chmod 600) — jamais dans environment:.
-    ...(Object.keys(secret).length ? [`      - ./secrets.env`] : []),
+    // secrets.env : clés applicatives + owner/e2e (chmod 600).
+    ...(withSecrets || Object.keys(secret).length ? [`      - ./secrets.env`] : []),
   ];
 
   const app = [
@@ -374,6 +436,8 @@ export function writeInstanceStack({
     }
     if (policy.action === "preserve-sidecar") {
       fs.writeFileSync(composeFile, patchComposeAppImage(existing, image));
+      // Sidecar intact — secrets.env fusionné (owner/e2e jamais droppés).
+      writeMergedSecretsFile(secretsEnvPath(brandRoot, inst), inst.env);
       return {
         dir,
         composeFile,
@@ -391,16 +455,12 @@ export function writeInstanceStack({
     fs.rmSync(cfFile);
   }
   const secretsFile = secretsEnvPath(brandRoot, inst);
-  const { secret } = splitInstanceEnv(inst.env);
-  if (Object.keys(secret).length) {
-    writeEnvFile600(secretsFile, secret);
-  } else if (fs.existsSync(secretsFile)) {
-    fs.rmSync(secretsFile);
-  }
+  writeMergedSecretsFile(secretsFile, inst.env);
   const withCf = Boolean(cf && Object.keys(cf).length) || fs.existsSync(cfFile);
+  const withSecrets = fs.existsSync(secretsFile);
   fs.writeFileSync(
     composeFile,
-    renderInstanceCompose({ brandRoot, brandId, image, inst, withCf }),
+    renderInstanceCompose({ brandRoot, brandId, image, inst, withCf, withSecrets }),
   );
   return { dir, composeFile, withCf, preservedSidecar: false };
 }
@@ -430,6 +490,25 @@ export function stackUp(brandRoot, inst, { quiet, removeOrphans = true } = {}) {
   // flag qui a tué cloudflared quand le compose était régénéré app-seule).
   if (removeOrphans) args.push("--remove-orphans");
   run("docker", args, { quiet });
+}
+
+/**
+ * Recrée uniquement le service `app` (injecte secrets.env) — jamais
+ * --remove-orphans, jamais le sidecar cloudflared.
+ */
+export function stackRecreateApp(brandRoot, inst, { quiet } = {}) {
+  run(
+    "docker",
+    [
+      ...composeBase(brandRoot, inst),
+      "up",
+      "-d",
+      "--no-deps",
+      "--force-recreate",
+      "app",
+    ],
+    { quiet },
+  );
 }
 
 export function stackDown(brandRoot, inst, { quiet } = {}) {

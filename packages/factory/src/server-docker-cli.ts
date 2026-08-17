@@ -37,10 +37,17 @@ import {
 } from "./server-docker-tunnel.js";
 import {
   CREATE_OWNER_ENV_KEYS,
+  E2E_OWNER_ENV_KEYS,
   applyFirstRunOwner,
   assertInteractiveDemoScenarios,
+  defaultE2eEmail,
+  fetchSetupStatus,
   formatOwnerLoginLog,
+  generateOwnerPassword,
   resolveCreateOwnerPolicy,
+  resolveEnsureOwnerCreds,
+  seedKitUserViaContainer,
+  verifyOwnerLogin,
   type CreateOwnerPolicy,
 } from "./server-docker-owner.js";
 
@@ -274,6 +281,12 @@ Instances nommées (registre docker-data/servers.json — recommandé) :
   creezio server-docker backup <nom> --brand-root <app>
     (one-shot : tar.gz de référence de /data → docker-data/backups/ —
      à faire une fois ; les updates suivants ne le remplacent pas.)
+  creezio server-docker ensure-owner <nom> --brand-root <app>
+    (rattrapage / seed : first-run si setup incomplet, sinon vérifie le
+     login ; persiste CREEZIO_OWNER_* + CREEZIO_E2E_* optionnels dans
+     secrets.env 600 — jamais dans le registre ni les logs. Recrée
+     uniquement le service app pour injecter l'env, sidecar intact.
+     Fail-closed create VPS inchangé : owner toujours requis au create.)
 
 Stack compose autonome (modèle standard — cloudflared in-process) :
   create génère par défaut un stack compose par instance : app seule (port
@@ -386,6 +399,23 @@ async function importInstanceStack(kit: string) {
     stackDir: (brandRoot: string, inst: ServerRegistryInstance) => string;
     composeFilePath: (brandRoot: string, inst: ServerRegistryInstance) => string;
     cfEnvPath: (brandRoot: string, inst: ServerRegistryInstance) => string;
+    secretsEnvPath: (brandRoot: string, inst: ServerRegistryInstance) => string;
+    parseDotEnvFile: (file: string) => Record<string, string>;
+    persistOwnerSecrets: (opts: {
+      brandRoot: string;
+      inst: ServerRegistryInstance;
+      owner?: {
+        email?: string;
+        password?: string;
+        e2eEmail?: string;
+        e2ePassword?: string;
+      };
+    }) => string | null;
+    stackRecreateApp: (
+      brandRoot: string,
+      inst: ServerRegistryInstance,
+      opts?: { quiet?: boolean },
+    ) => void;
     writeInstanceStack: (opts: {
       brandRoot: string;
       brandId: string;
@@ -2317,6 +2347,119 @@ async function applyCreateOwner(
   console.log(`  démo interactive : ${demo.count} scénario(s)`);
 }
 
+async function runEnsureOwner(opts: {
+  paths: ReturnType<typeof resolvePaths>;
+  env: NodeJS.ProcessEnv;
+  brandId: string;
+  inst: ServerRegistryInstance;
+  args: ServerDockerArgs;
+}): Promise<void> {
+  const { paths, env, brandId, inst, args } = opts;
+  const stack = await importInstanceStack(paths.kit);
+  const brandDotEnv = readEnvFileValues(path.join(paths.brandRoot, ".env"));
+  const secretsFile = stack.secretsEnvPath(paths.brandRoot, inst);
+  const secrets = stack.parseDotEnvFile(secretsFile);
+  const merged = pickEnvValues(
+    [args.env, env, brandDotEnv, secrets],
+    [...CREATE_OWNER_ENV_KEYS, ...E2E_OWNER_ENV_KEYS],
+  );
+  let creds = resolveEnsureOwnerCreds(merged);
+
+  const port = inst.stack
+    ? stack.stackHostPort(inst.containerName) || inst.port
+    : inst.port;
+  if (!port) {
+    throw new Error(
+      `ensure-owner ${inst.name} : port hôte introuvable — instance up ?`,
+    );
+  }
+  const baseUrl = `http://127.0.0.1:${port}`;
+  const setup = await fetchSetupStatus({ baseUrl });
+
+  if (!creds.owner && !setup.setupComplete) {
+    throw new Error(
+      [
+        `ensure-owner ${inst.name} : setup incomplet et CREEZIO_OWNER_* absents.`,
+        "Poser CREEZIO_OWNER_EMAIL + CREEZIO_OWNER_PASSWORD (env, .env marque, ou secrets.env)",
+        "puis relancer — le fail-closed VPS n'est pas contourné.",
+      ].join("\n"),
+    );
+  }
+
+  if (!setup.setupComplete && creds.owner) {
+    await applyFirstRunOwner({
+      baseUrl,
+      email: creds.owner.email,
+      password: creds.owner.password,
+    });
+    console.log(`  first-run ${formatOwnerLoginLog(creds.owner.email)}`);
+  } else if (setup.setupComplete) {
+    console.log(
+      `  setup déjà complet (${setup.username || "owner"}) — pas d'écrasement`,
+    );
+  }
+
+  if (!creds.e2e) {
+    const e2eEmail = defaultE2eEmail(inst.name, brandId);
+    const e2ePassword = generateOwnerPassword();
+    creds = { ...creds, e2e: { email: e2eEmail, password: e2ePassword } };
+    console.log(`  e2e seed : ${formatOwnerLoginLog(e2eEmail)}`);
+  }
+
+  const e2e = creds.e2e!;
+  const loginOk = await verifyOwnerLogin({
+    baseUrl,
+    email: e2e.email,
+    password: e2e.password,
+  });
+  if (!loginOk) {
+    const seeded = seedKitUserViaContainer({
+      containerName: inst.containerName,
+      email: e2e.email,
+      password: e2e.password,
+    });
+    console.log(`  kit user ${seeded.action} — ${formatOwnerLoginLog(seeded.email)}`);
+    const again = await verifyOwnerLogin({
+      baseUrl,
+      email: e2e.email,
+      password: e2e.password,
+    });
+    if (!again) {
+      throw new Error(
+        `ensure-owner ${inst.name} : user seedé mais login KO — voir /api/v1/auth/login`,
+      );
+    }
+  } else {
+    console.log(`  login ok — ${formatOwnerLoginLog(e2e.email)}`);
+  }
+
+  const persistOwner = creds.owner
+    ? creds.owner
+    : setup.username
+      ? { email: setup.username, password: "" }
+      : null;
+  stack.persistOwnerSecrets({
+    brandRoot: paths.brandRoot,
+    inst,
+    owner: {
+      email: persistOwner?.email,
+      password: persistOwner?.password,
+      e2eEmail: e2e.email,
+      e2ePassword: e2e.password,
+    },
+  });
+  console.log(
+    `  persisté ${secretsFile} (chmod 600) — e-mails seulement, jamais le mot de passe`,
+  );
+
+  if (inst.stack) {
+    stack.stackRecreateApp(paths.brandRoot, inst, { quiet: true });
+    const hp = stack.stackHostPort(inst.containerName);
+    if (hp) inst.port = hp;
+    console.log(`  app recréée (sidecar / tunnel intact) — ${formatOwnerLoginLog(e2e.email)}`);
+  }
+}
+
 async function waitBootReady(port: number, timeoutMs = 180000): Promise<void> {
   const started = Date.now();
   let lastLine = "";
@@ -2475,8 +2618,8 @@ async function runRegistrySubcommand(
         console.log(formatDerivedSlugLog(tunnelPolicy));
       }
     }
-    // Owner : lu pour le first-run HTTP hôte — JAMAIS injecté dans compose
-    // (le mot de passe ne doit pas apparaître dans inspect / registre).
+    // Owner : first-run HTTP hôte + persist secrets.env 600 (env_file).
+    // JAMAIS dans compose `environment:` ni le registre (inspect).
     const ownerPolicy: CreateOwnerPolicy = resolveCreateOwnerPolicy({
       local: tunnelPolicy.mode === "local",
       env: pickEnvValues([args.env, env, brandDotEnv], CREATE_OWNER_ENV_KEYS),
@@ -2550,6 +2693,16 @@ async function runRegistrySubcommand(
             ? args.port
             : 0;
       inst.port = 0; // renseigné après up (attribution auto)
+      if (ownerPolicy.mode === "create") {
+        stack.persistOwnerSecrets({
+          brandRoot: paths.brandRoot,
+          inst,
+          owner: {
+            email: ownerPolicy.email,
+            password: ownerPolicy.password,
+          },
+        });
+      }
       stack.writeInstanceStack({
         brandRoot: paths.brandRoot,
         brandId,
@@ -2616,6 +2769,17 @@ async function runRegistrySubcommand(
     throw new Error(
       `instance inconnue: ${name} — creezio server-docker ls (registre ${path.join("docker-data", "servers.json")})`,
     );
+  }
+
+  if (args.sub === "ensure-owner") {
+    await runEnsureOwner({
+      paths,
+      env,
+      brandId,
+      inst,
+      args,
+    });
+    return;
   }
 
   if (args.sub === "migrate-stack") {
@@ -3033,6 +3197,7 @@ export async function runServerDockerCli(argv: string[]): Promise<void> {
     "update",
     "backup",
     "migrate-stack",
+    "ensure-owner",
   ]);
   if (registrySubs.has(args.sub)) {
     await runRegistrySubcommand(args, paths, env);
@@ -3183,6 +3348,6 @@ export async function runServerDockerCli(argv: string[]): Promise<void> {
   }
 
   throw new Error(
-    `Sous-commande inconnue: ${args.sub} (create|start|stop|rm|logs|ls|update|backup|admin|publish|agent|enroll|build|up|down|ps|proof)`,
+    `Sous-commande inconnue: ${args.sub} (create|start|stop|rm|logs|ls|update|backup|ensure-owner|admin|publish|agent|enroll|build|up|down|ps|proof)`,
   );
 }

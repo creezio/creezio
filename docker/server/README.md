@@ -121,8 +121,12 @@ parité TF2 desktop complète, sans polluer les défauts test/CI :
   `CREEZIO_TUNNEL_SLUG=<brand>-<slug>` (log + cf.env).
 - **fail-closed owner** : `CREEZIO_OWNER_EMAIL` + `CREEZIO_OWNER_PASSWORD`
   **requis** (first-run `POST /api/v1/os/setup` + vérif login). Même contrat
-  cloud / VPS — pas de `E2E_OWNER_*`. Le create log `login : $CREEZIO_OWNER_EMAIL`
-  (jamais le mot de passe).
+  cloud / VPS — pas de `E2E_OWNER_*`. Le create **persiste** owner dans
+  `secrets.env` (600, `env_file`) et log `login : $CREEZIO_OWNER_EMAIL`
+  (jamais le mot de passe). Rattrapage / compte recette optionnel :
+  `creezio server-docker ensure-owner <nom>` + `CREEZIO_E2E_EMAIL` /
+  `CREEZIO_E2E_PASSWORD` (seed si absents). `AUTH_DISABLED=1` = harness
+  local seulement — jamais en prod.
 - forward des env **présents sur l'hôte** (jamais inventés) : contrat
   Cloudflare `CREEZIO_CF_*` + `CREEZIO_TUNNEL_SLUG` / `CREEZIO_DOMAIN`
   (→ `cf.env` 600), `CREEZIO_FLEET_ENDPOINT`, `CREEZIO_CRASH_ENDPOINT`,

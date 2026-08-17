@@ -55,7 +55,8 @@ en jumeau dans `main.ts`.
   `CREEZIO_TUNNEL_LOCAL=1`) + dérivation slug réservé.
 - `src/server-docker-owner.ts` : politique create fail-closed owner
   (`CREEZIO_OWNER_EMAIL` / `_PASSWORD` requis en VPS/prod ; optionnel si
-  `CREEZIO_TUNNEL_LOCAL=1`) — first-run `POST /api/v1/os/setup`, jamais le
+  `CREEZIO_TUNNEL_LOCAL=1`) — first-run `POST /api/v1/os/setup`, persist
+  `secrets.env` 600, `ensure-owner` + `CREEZIO_E2E_*` optionnels, jamais le
   mot de passe en log.
 - `src/package-lock.ts` / `src/prepare-brand-distribution.ts` : locks npm
   des DEUX repos (marque + `<brand>-admin`) dès `new-app`/`brand apply`

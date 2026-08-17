@@ -200,6 +200,53 @@ test("M2 stack : writeInstanceStack écrit cf.env 0600, token hors compose", () 
   fs.rmSync(brandRoot, { recursive: true, force: true });
 });
 
+test("M2 stack : CREEZIO_OWNER_* / E2E_* → secrets.env, jamais droppés à l'update", () => {
+  const brandRoot = fs.mkdtempSync(path.join(os.tmpdir(), "creezio-owner-sec-"));
+  const inst = {
+    ...BASE_INST,
+    env: { CREEZIO_NATIVE_WARM: "1" },
+  };
+  stack.writeInstanceStack({
+    brandRoot,
+    brandId: "tempoflow3",
+    image: "img:local",
+    inst,
+    cf: CF,
+  });
+  stack.persistOwnerSecrets({
+    brandRoot,
+    inst,
+    owner: {
+      email: "owner@resto-test.tempoflow.local",
+      password: "owner-pass-secret",
+      e2eEmail: "e2e@resto-test.tempoflow.local",
+      e2ePassword: "e2e-pass-secret",
+    },
+  });
+  const secretsFile = stack.secretsEnvPath(brandRoot, inst);
+  const stat = fs.statSync(secretsFile);
+  assert.equal(stat.mode & 0o777, 0o600);
+  const first = fs.readFileSync(secretsFile, "utf8");
+  assert.match(first, /CREEZIO_OWNER_EMAIL=owner@resto-test\.tempoflow\.local/);
+  assert.match(first, /CREEZIO_OWNER_PASSWORD=owner-pass-secret/);
+  assert.match(first, /CREEZIO_E2E_EMAIL=e2e@resto-test\.tempoflow\.local/);
+  const yml = fs.readFileSync(stack.composeFilePath(brandRoot, inst), "utf8");
+  assert.doesNotMatch(yml, /owner-pass-secret/);
+  assert.doesNotMatch(yml, /CREEZIO_OWNER_EMAIL:/);
+  // update rewrite sans owner dans inst.env : les clés restent.
+  stack.writeInstanceStack({
+    brandRoot,
+    brandId: "tempoflow3",
+    image: "img:v2",
+    inst,
+  });
+  const again = fs.readFileSync(secretsFile, "utf8");
+  assert.match(again, /CREEZIO_OWNER_EMAIL=owner@resto-test\.tempoflow\.local/);
+  assert.match(again, /CREEZIO_OWNER_PASSWORD=owner-pass-secret/);
+  assert.match(again, /CREEZIO_E2E_PASSWORD=e2e-pass-secret/);
+  fs.rmSync(brandRoot, { recursive: true, force: true });
+});
+
 test("M2 stack : splitInstanceEnv classe les clés secrètes", () => {
   const { plain, secret } = stack.splitInstanceEnv({
     BRAND_ID: "x",
@@ -208,10 +255,14 @@ test("M2 stack : splitInstanceEnv classe les clés secrètes", () => {
     N8N_BASIC_AUTH_PASSWORD: "p",
     OPENAI_API_KEY: "k",
     GOOGLE_CREDENTIALS: "c",
+    CREEZIO_OWNER_EMAIL: "owner@acme.example",
+    CREEZIO_E2E_EMAIL: "e2e@acme.example",
     CREEZIO_NATIVE_WARM: "1",
   });
   assert.deepEqual(Object.keys(secret).sort(), [
     "CREEZIO_CF_API_TOKEN",
+    "CREEZIO_E2E_EMAIL",
+    "CREEZIO_OWNER_EMAIL",
     "GOOGLE_CREDENTIALS",
     "MCP_JWT_SECRET",
     "N8N_BASIC_AUTH_PASSWORD",

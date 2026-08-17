@@ -72,10 +72,14 @@ export {
 } from "./server-docker-tunnel.js";
 export {
   CREATE_OWNER_ENV_KEYS,
+  E2E_OWNER_ENV_KEYS,
   applyFirstRunOwner,
+  defaultE2eEmail,
   formatMissingOwnerError,
   formatOwnerLoginLog,
+  generateOwnerPassword,
   resolveCreateOwnerPolicy,
+  resolveEnsureOwnerCreds,
   type CreateOwnerPolicy,
   type CreateOwnerPolicyInput,
 } from "./server-docker-owner.js";

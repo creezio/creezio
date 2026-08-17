@@ -19,21 +19,58 @@ assert.ok(
 );
 const {
   CREATE_OWNER_ENV_KEYS,
+  E2E_OWNER_ENV_KEYS,
   formatInvalidOwnerError,
   formatMissingOwnerError,
   formatOwnerLoginLog,
   redactSecret,
   resolveCreateOwnerPolicy,
+  resolveEnsureOwnerCreds,
+  defaultE2eEmail,
   applyFirstRunOwner,
   assertInteractiveDemoScenarios,
   formatMissingDemoError,
 } = await import(pathToFileURL(dist).href);
 
-test("CREATE_OWNER_ENV_KEYS = contrat canonique (pas E2E_*)", () => {
+test("CREATE_OWNER_ENV_KEYS = contrat canonique (pas E2E_OWNER_*)", () => {
   assert.deepEqual([...CREATE_OWNER_ENV_KEYS], [
     "CREEZIO_OWNER_EMAIL",
     "CREEZIO_OWNER_PASSWORD",
   ]);
+  assert.deepEqual([...E2E_OWNER_ENV_KEYS], [
+    "CREEZIO_E2E_EMAIL",
+    "CREEZIO_E2E_PASSWORD",
+  ]);
+  assert.equal(defaultE2eEmail("resto-marseille", "tempoflow3"), "owner@resto-marseille.tempoflow.local");
+});
+
+test("ensure-owner : paires owner/e2e, partiel = erreur, sans echo password", () => {
+  const empty = resolveEnsureOwnerCreds({});
+  assert.equal(empty.owner, null);
+  assert.equal(empty.e2e, null);
+  assert.throws(
+    () => resolveEnsureOwnerCreds({ CREEZIO_E2E_EMAIL: "e2e@acme.example" }),
+    /ensemble/,
+  );
+  try {
+    resolveEnsureOwnerCreds({
+      CREEZIO_E2E_EMAIL: "e2e@acme.example",
+      CREEZIO_E2E_PASSWORD: "short",
+    });
+    assert.fail("attendu throw e2e password court");
+  } catch (err) {
+    const msg = String(err?.message || err);
+    assert.match(msg, /min\. 6/);
+    assert.doesNotMatch(msg, /short/);
+  }
+  const both = resolveEnsureOwnerCreds({
+    CREEZIO_OWNER_EMAIL: "owner@acme.example",
+    CREEZIO_OWNER_PASSWORD: "secret-os",
+    CREEZIO_E2E_EMAIL: "e2e@acme.example",
+    CREEZIO_E2E_PASSWORD: "secret-e2e",
+  });
+  assert.equal(both.owner?.email, "owner@acme.example");
+  assert.equal(both.e2e?.email, "e2e@acme.example");
 });
 
 test("create VPS sans owner : échec actionnable (pas d'instance « OK »)", () => {
@@ -306,6 +343,16 @@ test("CLI create câble la politique owner (fail-closed + setup, pas le password
   assert.match(cli, /formatOwnerLoginLog/);
   assert.match(cli, /CREATE_OWNER_ENV_KEYS/);
   assert.match(cli, /CREEZIO_OWNER_EMAIL/);
+  assert.match(cli, /persistOwnerSecrets/);
+  assert.match(cli, /ensure-owner/);
+  assert.match(cli, /CREEZIO_E2E_\*/);
+  assert.match(cli, /E2E_OWNER_ENV_KEYS/);
+  const ownerSrc = fs.readFileSync(
+    path.join(root, "packages/factory/src/server-docker-owner.ts"),
+    "utf8",
+  );
+  assert.match(ownerSrc, /creezio_platform_users/);
+  assert.match(ownerSrc, /migrateBrandCredentialsToKit/);
   assert.doesNotMatch(
     cli,
     /console\.log\([^)]*ownerPolicy\.password/,
