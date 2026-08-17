@@ -224,9 +224,37 @@ le CNAME suit le nouvel id), PUT ingress (`http://127.0.0.1:18791` +
 services), upsert DNS, sonde publique en arrière-plan (non fatale). Le
 contrat CF arrive par **`cf.env` chmod 600** (écrit par `create`, jamais
 dans `environment:` du compose) ; les secrets applicatifs partent dans
-**`secrets.env` chmod 600** (règle d'audit généralisée). Port hôte
+**`secrets.env` chmod 600** (règle d'audit généralisée). `CREEZIO_OWNER_*`
+(et `CREEZIO_E2E_*` optionnels) sont **persistés** dans ce `secrets.env`
+par `create` / `ensure-owner` — jamais dans le registre ni
+`environment:`. Un `update` **ne droppe plus** ces clés. Port hôte
 **loopback auto** (`127.0.0.1::18791`) pour debug/healthcheck seulement —
 **zéro port public**, l'accès utilisateur passe par Cloudflare.
+
+### Smoke login (agent) — sans logger le mot de passe
+
+Un agent doit pouvoir ouvrir une session. `AUTH_DISABLED=1` = harness
+**local uniquement** (gates métier) — **interdit en prod / VPS**.
+
+```bash
+# 1. Lire l'e-mail seulement (jamais echo du password) :
+STACK=docker-data/stacks/<nom>
+EMAIL=$(sudo awk -F= '$1=="CREEZIO_E2E_EMAIL"{print $2}' "$STACK/secrets.env")
+# fallback owner si pas d'e2e :
+# EMAIL=$(sudo awk -F= '$1=="CREEZIO_OWNER_EMAIL"{print $2}' "$STACK/secrets.env")
+echo "login : $EMAIL"
+
+# 2. Seed / rattrapage si secrets absents (génère e2e, persist 600, recreate app) :
+creezio server-docker ensure-owner <nom> --brand-root "$BRAND_ROOT"
+# log : « login : owner@<nom>.<marque>.local » — jamais le mot de passe
+
+# 3. Login HTTP (password lu du fichier, pas imprimé) :
+PORT=$(creezio server-docker ls --brand-root "$BRAND_ROOT" | awk -v n=<nom> '$1==n{print $3}' | tr -d '*')
+# ou curl public https://<hostname>/api/v1/auth/login
+```
+
+Navigateur : `/login` → dashboard → parcours métier. Ne pas coller le
+mot de passe dans le chat, un gist, ou un rapport.
 
 **Healthchecks de déploiement** (pattern winhub `deploy.yml`) : après update,
 `GET /health`, `/login`, `/inscription` sur l'URL publique → 200 exigé.

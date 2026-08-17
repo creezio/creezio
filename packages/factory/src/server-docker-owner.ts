@@ -1,3 +1,6 @@
+import { spawnSync } from "node:child_process";
+import crypto from "node:crypto";
+
 /**
  * Politique owner first-run de `server-docker create` — fail-closed VPS / prod.
  *
@@ -12,6 +15,12 @@
 export const CREATE_OWNER_ENV_KEYS = [
   "CREEZIO_OWNER_EMAIL",
   "CREEZIO_OWNER_PASSWORD",
+] as const;
+
+/** Compte recette / smoke optionnel — jamais requis par le fail-closed create. */
+export const E2E_OWNER_ENV_KEYS = [
+  "CREEZIO_E2E_EMAIL",
+  "CREEZIO_E2E_PASSWORD",
 ] as const;
 
 export type CreateOwnerPolicyInput = {
@@ -271,4 +280,162 @@ export async function assertInteractiveDemoScenarios(opts: {
     );
   }
   return { ok: true, count: scenarios.length };
+}
+
+export function defaultE2eEmail(instanceName: string, brandId: string): string {
+  const hint = String(brandId || "creezio").replace(/\d+$/, "") || "creezio";
+  return `owner@${instanceName}.${hint}.local`;
+}
+
+/** Mot de passe fort (≥ 6) — jamais loggé. */
+export function generateOwnerPassword(): string {
+  return crypto.randomBytes(18).toString("base64url");
+}
+
+export function readPair(
+  env: Record<string, string | undefined>,
+  emailKey: string,
+  passwordKey: string,
+): { email: string; password: string } {
+  return {
+    email: String(env[emailKey] || "").trim(),
+    password: String(env[passwordKey] || "").trim(),
+  };
+}
+
+/**
+ * Creds pour `ensure-owner` : owner et/ou e2e.
+ * Partiel (un seul des deux d'une paire) = erreur. Les deux paires absentes = vide.
+ */
+export function resolveEnsureOwnerCreds(env: Record<string, string | undefined>): {
+  owner: { email: string; password: string } | null;
+  e2e: { email: string; password: string } | null;
+} {
+  const owner = readPair(env, "CREEZIO_OWNER_EMAIL", "CREEZIO_OWNER_PASSWORD");
+  const e2e = readPair(env, "CREEZIO_E2E_EMAIL", "CREEZIO_E2E_PASSWORD");
+  if (Boolean(owner.email) !== Boolean(owner.password)) {
+    throw new Error(formatInvalidOwnerError("partial"));
+  }
+  if (Boolean(e2e.email) !== Boolean(e2e.password)) {
+    throw new Error(
+      "CREEZIO_E2E_EMAIL et CREEZIO_E2E_PASSWORD doivent être posés ensemble (un seul des deux est une erreur).",
+    );
+  }
+  if (e2e.email && !EMAIL_RE.test(e2e.email)) {
+    throw new Error("CREEZIO_E2E_EMAIL invalide — attendu un e-mail (ex. owner@resto.example.local).");
+  }
+  if (e2e.password && e2e.password.length < 6) {
+    throw new Error("CREEZIO_E2E_PASSWORD trop court (min. 6 caractères).");
+  }
+  if (owner.email && owner.password) {
+    if (owner.password.length < 6) {
+      throw new Error(formatInvalidOwnerError("password"));
+    }
+  }
+  return {
+    owner: owner.email && owner.password ? owner : null,
+    e2e: e2e.email && e2e.password ? e2e : null,
+  };
+}
+
+export async function fetchSetupStatus(opts: {
+  baseUrl: string;
+  fetchImpl?: typeof fetch;
+}): Promise<{ setupComplete: boolean; username: string }> {
+  const fetchFn = opts.fetchImpl || fetch;
+  const base = String(opts.baseUrl || "").replace(/\/+$/, "");
+  const statusRes = await fetchFn(`${base}/api/v1/os/setup`);
+  const statusJson = (await statusRes.json()) as {
+    setupComplete?: boolean;
+    username?: string | null;
+  };
+  return {
+    setupComplete: Boolean(statusJson?.setupComplete),
+    username: String(statusJson?.username || "").trim(),
+  };
+}
+
+export async function verifyOwnerLogin(opts: {
+  baseUrl: string;
+  email: string;
+  password: string;
+  fetchImpl?: typeof fetch;
+}): Promise<boolean> {
+  const fetchFn = opts.fetchImpl || fetch;
+  const base = String(opts.baseUrl || "").replace(/\/+$/, "");
+  const loginRes = await fetchFn(`${base}/api/v1/auth/login`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ email: opts.email, password: opts.password }),
+  });
+  return loginRes.status === 200;
+}
+
+/**
+ * Rattrapage instance déjà setup : crée / met à jour le hash kit dans le
+ * container (même geste que fleet-ops §2 étape b). Password passé en env
+ * du `docker exec` (pas sur la ligne de commande, pas en log).
+ */
+export function seedKitUserViaContainer(opts: {
+  containerName: string;
+  email: string;
+  password: string;
+}): { ok: true; action: string; email: string } {
+  const email = String(opts.email || "").trim();
+  const password = String(opts.password || "");
+  if (!email || password.length < 6) {
+    throw new Error("seed kit : e-mail + mot de passe (≥6) requis.");
+  }
+  const script = [
+    "import { migrateBrandCredentialsToKit } from '@creezio/auth';",
+    "const r = await migrateBrandCredentialsToKit({",
+    "  username: process.env.CREEZIO_SEED_EMAIL || '',",
+    "  password: process.env.CREEZIO_SEED_PASSWORD || '',",
+    "  displayName: process.env.CREEZIO_SEED_EMAIL || '',",
+    "});",
+    "console.log(JSON.stringify({ ok: r.ok, action: r.action || '', email: r.email || '', error: r.error || '' }));",
+  ].join("");
+  const r = spawnSync(
+    "docker",
+    [
+      "exec",
+      "-w",
+      "/app",
+      "-e",
+      "CREEZIO_CORE_DB_PATH=/data/sqlite/core.db",
+      "-e",
+      `CREEZIO_SEED_EMAIL=${email}`,
+      "-e",
+      `CREEZIO_SEED_PASSWORD=${password}`,
+      opts.containerName,
+      "node",
+      "--input-type=module",
+      "-e",
+      script,
+    ],
+    { encoding: "utf8" },
+  );
+  if (r.status !== 0) {
+    const err = redactSecret(
+      String(r.stderr || r.stdout || `docker exec exit ${r.status}`).slice(0, 240),
+      password,
+    );
+    throw new Error(`seed kit via container : ${err}`);
+  }
+  let parsed: { ok?: boolean; action?: string; email?: string; error?: string };
+  try {
+    parsed = JSON.parse(String(r.stdout || "").trim()) as typeof parsed;
+  } catch {
+    throw new Error("seed kit via container : réponse illisible (pas de secret en log).");
+  }
+  if (!parsed?.ok) {
+    throw new Error(
+      redactSecret(`seed kit via container : ${parsed?.error || "échec"}`, password),
+    );
+  }
+  return {
+    ok: true,
+    action: String(parsed.action || "updated"),
+    email: String(parsed.email || email),
+  };
 }

@@ -102,10 +102,24 @@ Dev : `CREEZIO_TUNNEL_LOCAL=1` (owner optionnel).
 
 **Voie canonique VPS** : poser `CREEZIO_OWNER_EMAIL` + `CREEZIO_OWNER_PASSWORD`
 avant `server-docker create` (`.env` marque ou Runtime Secrets cloud — **pas**
-`E2E_OWNER_*`, **pas** de fichier magique `.recette-owner.env`). Le create
-appelle `POST /api/v1/os/setup` (qui enchaîne `migrateBrandCredentialsToKit`)
-puis vérifie le login. Log : URL publique + `login : $CREEZIO_OWNER_EMAIL`.
-Jamais le mot de passe.
+`E2E_OWNER_*`). Le create appelle `POST /api/v1/os/setup` (qui enchaîne
+`migrateBrandCredentialsToKit`), **persiste** owner dans
+`docker-data/stacks/<nom>/secrets.env` (chmod 600, `env_file` — jamais le
+registre) puis vérifie le login. Log : URL publique +
+`login : $CREEZIO_OWNER_EMAIL`. Jamais le mot de passe.
+
+Rattrapage (instance déjà up, secrets absents) / compte recette :
+
+```bash
+# Optionnel : CREEZIO_E2E_EMAIL=owner@<slug>.example.local CREEZIO_E2E_PASSWORD=…
+creezio server-docker ensure-owner <nom> --brand-root "$BRAND_ROOT"
+# → persist secrets.env 600 + recreate app (sidecar intact)
+# log : login : owner@…  — jamais le mot de passe
+```
+
+`CREEZIO_E2E_*` est **optionnel** (smoke). S'il manque, `ensure-owner`
+génère `owner@<nom>.<marque>.local` et le stocke uniquement dans
+`secrets.env`. `AUTH_DISABLED=1` = harness local — **interdit** en prod.
 
 Le curl ci-dessous reste le rattrapage pour une instance **déjà** créée
 (LOCAL, ou create antérieur au fail-closed owner).

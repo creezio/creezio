@@ -29,8 +29,10 @@ Un seul contrat, partout (VPS, CI, `server-docker create`, cloud agents).
 | `CREEZIO_CF_ACCOUNT_ID` | Compte Cloudflare |
 | `CREEZIO_CF_ZONE_ID` | Zone DNS de **la marque** (pas seulement `tempoflow.fr`) |
 | `CREEZIO_CF_ZONE_NAME` | Optionnel — hostname `{slug}.{zone}` (ex. `crm.foove.io` → `{slug}.crm.foove.io`) |
-| `CREEZIO_OWNER_EMAIL` | First-run owner VPS/prod (`server-docker create`) |
-| `CREEZIO_OWNER_PASSWORD` | First-run owner VPS/prod — **jamais** loggé |
+| `CREEZIO_OWNER_EMAIL` | First-run owner VPS/prod (`server-docker create`) — persisté dans `docker-data/stacks/<nom>/secrets.env` (600), **pas** dans le registre |
+| `CREEZIO_OWNER_PASSWORD` | First-run owner VPS/prod — **jamais** loggé ; même fichier `secrets.env` |
+| `CREEZIO_E2E_EMAIL` | Optionnel — compte recette / smoke (`ensure-owner` le seed s'il manque) |
+| `CREEZIO_E2E_PASSWORD` | Optionnel — recette / smoke — **jamais** loggé |
 
 Détail tunnel / owner : [RUNBOOK-AGENTS.md §7.3](./RUNBOOK-AGENTS.md) et
 §7.2. Dev local : `CREEZIO_TUNNEL_LOCAL=1` (CF + owner optionnels).
