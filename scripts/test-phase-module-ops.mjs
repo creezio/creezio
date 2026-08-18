@@ -14,10 +14,12 @@ import { test } from "node:test";
 import { fileURLToPath } from "node:url";
 import {
   collectKernelOperationRoutes,
+  collectListedOperationRoutes,
   createApiKernel,
   createEntityApiMount,
   entityOperationsFromSpec,
   matchModuleOperation,
+  operationsFromEntitySpec,
   resolveOperationHttpPath,
 } from "../packages/api-kernel/dist/index.js";
 import {
@@ -33,8 +35,48 @@ import {
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
+test("MO0 listOperations + registry : 1 op de mount apparaît", () => {
+  const api = createApiKernel({ brandId: "demobrand" });
+  api.registerModuleApi("notes", {
+    dbLayer: "brand",
+    operations: [
+      {
+        id: "ping",
+        method: "GET",
+        path: "/ping",
+        description: "Sonde notes",
+      },
+    ],
+    handle: async () => ({ status: 200, body: { ok: true } }),
+  });
+  const listed = api.listOperations();
+  assert.equal(listed.length, 1);
+  assert.equal(listed[0].mountId, "notes");
+  assert.equal(listed[0].op.id, "ping");
+  assert.equal(listed[0].space, "module");
+  const mount = api.listMounts().find((m) => m.id === "notes");
+  assert.ok(mount?.operations?.some((o) => o.id === "ping"));
+  const registry = buildApiEndpointsRegistry({
+    routes: [
+      { method: "GET", path: "/api/v1/admin/endpoints" },
+      ...collectListedOperationRoutes(listed),
+    ],
+    source: "test-module-ops-catalogue",
+  });
+  assert.ok(
+    registry.endpoints.some(
+      (e) => e.method === "GET" && e.path === "/api/v1/modules/notes/ping",
+    ),
+    "catalogue contient l'op métier /api/v1/modules/<mount><path>",
+  );
+  assert.ok(
+    registry.endpoints.some((e) => e.path === "/api/v1/admin/endpoints"),
+    "surface admin Hono conservée",
+  );
+});
+
 test("MO1 EntitySpec → ops CRUD auto + extra operations", () => {
-  const ops = entityOperationsFromSpec({
+  const spec = {
     table: "notes",
     columns: [{ name: "titre" }],
     archivable: true,
@@ -46,7 +88,9 @@ test("MO1 EntitySpec → ops CRUD auto + extra operations", () => {
         description: "Épingler une note",
       },
     ],
-  });
+  };
+  assert.equal(entityOperationsFromSpec, operationsFromEntitySpec);
+  const ops = operationsFromEntitySpec(spec);
   assert.deepEqual(
     ops.map((o) => o.id),
     ["list", "create", "get", "update", "delete", "archive", "pin"],

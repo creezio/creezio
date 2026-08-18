@@ -139,6 +139,11 @@ const mount: ApiMount = {
 };
 ```
 
+Lister une op = la lire **sur le module**, pas dans un `ops.ts` global :
+`BrandModuleDef.apiMounts.<id>.operations`, ou `operationsFromEntitySpec(spec)`
+pour un `entitySpecs.<id>`. À runtime : `api.listOperations()` (id mount + op)
+alimente `/api/v1/admin/endpoints` + OpenAPI (`/api/v1/modules/<mount><path>`).
+
 L'isolation DB est portée par le kernel : un module est en couche `brand`,
 tout accès `core`/`plugin` est refusé (`cross_layer_write_denied`).
 

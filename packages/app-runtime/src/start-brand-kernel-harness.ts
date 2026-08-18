@@ -787,6 +787,7 @@ export async function startBrandKernelHarness(
       mcp,
       publicBaseUrl: publicOrigin,
       listKernelMounts: () => api.listMounts(),
+      listKernelOperations: () => api.listOperations(),
     });
     console.log(
       `brand-kernel-harness mcp-oauth ready=${mcpSurface.oauthReady()} public=${mcpSurface.publicUrl()}`,

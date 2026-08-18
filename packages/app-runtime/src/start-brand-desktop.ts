@@ -796,6 +796,7 @@ async function startBrandDesktopBody(args: {
       mcp,
       publicBaseUrl: () => httpServer.baseUrl,
       listKernelMounts: () => api.listMounts(),
+      listKernelOperations: () => api.listOperations(),
     });
     log(
       "mcp",
