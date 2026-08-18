@@ -1,5 +1,16 @@
 # @creezio/api-kernel
 
+## 0.10.8
+
+### Patch Changes
+
+- a2fea46: **feat — `mcpTools` retiré ; `MODULE_MCP_TOOLS_DEPRECATED` = error.**
+
+  `BrandModuleDef.mcpTools` n'existe plus. SoT = `operations[]` → tools MCP générés (`listOperations()`). Plus de merge legacy (`mergeGeneratedAndLegacy` / `warnLegacyModuleMcpTools`). Doctor fail-closed : un `mcpTools()` restant = error. Le hook apps `discoverModuleTools` reste (extras / JWT), sans documenter de tools manuscrits.
+
+  - @creezio/brand-config@0.10.8
+  - @creezio/platform-core@0.10.8
+
 ## 0.10.7
 
 ### Patch Changes

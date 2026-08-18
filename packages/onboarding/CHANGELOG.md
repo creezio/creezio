@@ -1,5 +1,14 @@
 # @creezio/onboarding
 
+## 0.10.8
+
+### Patch Changes
+
+- Updated dependencies [a2fea46]
+  - @creezio/api-kernel@0.10.8
+  - @creezio/platform-core@0.10.8
+  - @creezio/shell-ui@0.10.8
+
 ## 0.10.7
 
 ### Patch Changes
