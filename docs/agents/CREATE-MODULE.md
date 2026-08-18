@@ -159,8 +159,7 @@ depuis `api.listOperations()` (`generateModuleToolsFromOperations` /
 `discoverModuleToolsFromKernel`) : name `module.<mountId>.<op.id>`,
 handler = requête HTTP synthétique vers le même `ApiMount.handle` —
 zéro 2ᵉ implémentation. Pas besoin de `mcpTools()` dans le module métier.
-`BrandModuleDef.mcpTools` est **déprécié** (console.warn + doctor warn ;
-error si recouvrement avec des ops).
+`mcpTools()` manuscrit est **déprécié** (doctor warn `MODULE_MCP_TOOLS_DEPRECATED`). Interdit dès qu'il y a collision de nom (error `MODULE_OP_MCP_OVERLAP`). Le contrat SoT est `operations[]` → tools générés. Ne plus ajouter de factory mcpTools.
 
 Enable/disable et rôles = policies sur les tools générés (`/admin/mcp`).
 `mcpPublishDefault: false` (défaut) : le tool est seedé désactivé.

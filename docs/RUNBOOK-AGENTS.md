@@ -94,6 +94,14 @@ l'image Docker. `scripts/creezio-cli.mjs` résout
 (`CREEZIO_KIT_ROOT=/opt/docker/creezio` ici, `/home/fidus/creezio` sur
 fluxpro) — jamais « la factory pinnée dans l'app ».
 
+### Contrat modules 0.10.6 / 0.10.7 (ops → MCP)
+
+Lockstep publié **0.10.7**. Depuis 0.10.6 : `operations[]` = SoT → tools MCP
+générés via `api.listOperations()`. `mcpTools()` manuscrit est **déprécié**
+(doctor warn `MODULE_MCP_TOOLS_DEPRECATED`). Interdit dès qu'il y a collision
+de nom (error `MODULE_OP_MCP_OVERLAP`). Pas de fail-closed DEPRECATED
+(Winhub / TF3 encore non nettoyés — retrait des manuscrits en PRs apps).
+
 ## 3. Release kit → apps (le flow exact)
 
 1. **Changeset** — toute PR touchant `packages/` embarque un changeset

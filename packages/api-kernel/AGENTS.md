@@ -28,8 +28,13 @@ Le package doit protéger les frontières DB, empêcher les abus historiques com
   - export public.
 - `src/types.ts`
   - contrats `ApiRequest`, `ApiResponse`, `ApiMount`, `ApiHandlerContext`, `ApiKernelOptions`, `MountedApiInfo`.
+  - `ModuleOperation` / `operations[]` sur chaque mount métier (1 capacité = 1 op).
 - `src/kernel.ts`
   - constantes de préfixe, type `ApiKernel`, `createApiKernel`, routes core, dispatch mounts.
+  - `listOperations()` aplatit chaque mount + `operations[]` (`ListedModuleOperation`).
+- `src/operations.ts`
+  - collecte / matching des `ModuleOperation` (SoT HTTP + catalogue `/admin/api`).
+  - Tools MCP générés côté `@creezio/mcp-facade` depuis ce catalogue.
 - `src/db-scope.ts`
   - `CrossLayerWriteDeniedError`, `createScopedDbAccess`, `mountLayerRef`.
 - `src/register.ts`
