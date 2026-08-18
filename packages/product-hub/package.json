@@ -1,6 +1,6 @@
 {
   "name": "@creezio/product-hub",
-  "version": "0.10.7",
+  "version": "0.10.8",
   "description": "Product Hub / plugins — lifecycle, ACL, admin UI (N6)",
   "type": "module",
   "main": "./dist-cjs/index.js",
@@ -28,8 +28,8 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@creezio/brand-config": "^0.10.7",
-    "@creezio/platform-core": "^0.10.7",
+    "@creezio/brand-config": "^0.10.8",
+    "@creezio/platform-core": "^0.10.8",
     "hono": "^4.12.32",
     "zod": "^3.25.76"
   },
