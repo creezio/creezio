@@ -46,10 +46,10 @@ Tout le wiring d'un module vit dans **son** fichier
 | Élément | Champ du `BrandModuleDef` |
 |---|---|
 | Migrations `brand.db` | `migrations()` — IDs `mod_<id>_00N_<slug>` |
-| Entités CRUD | `entitySpecs` (moteur kit `createEntityApiMount`) |
-| Mounts API manuscrits | `apiMounts` |
+| Entités CRUD | `entitySpecs` (moteur kit `createEntityApiMount` — ops CRUD auto) |
+| Mounts API manuscrits | `apiMounts` **avec `operations[]`** (1 capacité = 1 op) |
 | Nav métier | `navItems` (avec `order`) |
-| Tools MCP métier | `mcpTools(api)` |
+| Tools MCP métier | **générés** depuis les ops (`module.<mountId>.<op.id>`) — plus de `mcpTools()` |
 | Index Meili | `meiliIndexes` |
 | Démo interactive (**obligatoire**, ≥ 1) | `demo: { scenarios }` — agrégés par `collectInteractiveDemoDefaults` (`@creezio/interactive-demo`). Inclure `genericOsTourScenario({ productName })`. Une app sans démo = invalide. |
 
@@ -116,35 +116,44 @@ Routes générées : `GET /` (liste `q`/filtres/`limit`/`offset`), `POST /`,
 handle } }`) reste possible pour les flux non-CRUD (à justifier dans
 l'interview).
 
+Un mount manuscrit **doit** porter `operations[]` (doctor `MODULE_OP_MISSING`) :
+
+```ts
+import type { ApiMount, ModuleOperation } from "@creezio/api-kernel";
+
+const ops: ModuleOperation[] = [
+  {
+    id: "from-panier",
+    method: "POST",
+    path: "/from-panier",
+    description: "Créer une commande depuis le panier",
+    roles: ["owner", "collaborator"],
+    // mcpPublishDefault: false → activer dans /admin/mcp
+  },
+];
+
+const mount: ApiMount = {
+  dbLayer: "brand",
+  operations: ops,
+  handle: async (ctx) => { /* derrière l'op déjà déclarée */ },
+};
+```
+
 L'isolation DB est portée par le kernel : un module est en couche `brand`,
 tout accès `core`/`plugin` est refusé (`cross_layer_write_denied`).
 
 ## 3. Tools MCP + policies
 
-Déclarer les tools métier sous le namespace `module.<owner>.*` (façade) ou
-via le serveur MCP SDK de la marque. L'enforcement policies/audit est
-**délégué au kit** (`@creezio/mcp-facade/admin/tool-policy-guard`, câblé
-prod TF3) :
+**Une op dans le module = un tool généré.** Le kit collecte les ops
+(`collect*` / `listMounts().operations`) puis `generateModuleToolsFromOperations` :
+name `module.<mountId>.<op.id>`, handler = requête HTTP synthétique vers le
+même mount — zéro 2ᵉ implémentation. `BrandModuleDef.mcpTools` est
+**déprécié** (doctor error si recouvrement avec des ops).
 
-```ts
-import { registerGuardedMcpTool } from "@creezio/mcp-facade";
-
-registerGuardedMcpTool(server, ctx, {
-  name: "mon_tool",
-  requiredScope: "crm:read",
-  annotations: { readOnlyHint: true, destructiveHint: false,
-                 idempotentHint: true, openWorldHint: false },
-}, config, handler, {
-  resolveRole: (userId) => getUserById(userId)?.role,
-  scopeAllows: (c, def) => apiKeyAllowsMethod(c.scopes, def.requiredScope),
-});
-```
-
-Les policies vivent dans la table `mcp_tool_policies` (page `/admin/mcp`) ;
-`seedMcpToolPolicies` pose les défauts. Ne pas réimplémenter
-l'enforcement côté marque : le registre métier (catégories, rôles par
-défaut) reste marque, la décision/audit est kit. Chaque tool est documenté
-dans l'interview (§5 : readOnly/destructive, requiredScope, rôles).
+Enable/disable et rôles = policies sur les tools générés (`/admin/mcp`).
+`mcpPublishDefault: false` (défaut) : le tool est seedé désactivé.
+`roles` sur l'op = `defaultRoles` de la policy. Ne pas réimplémenter
+l'enforcement côté marque. Documenter chaque op dans l'interview (§5).
 
 ## 4. UI, feed + nav — kit graphique imposé
 
@@ -194,8 +203,8 @@ Branche : `module/<id>/<tache>`. Détails :
 
 - [ ] `prd.md` + `interview.md` remplis (SoT), TODO claimé, CHANGELOG à jour
 - [ ] Migration `mod_<id>_00N_<slug>` (id stable) dans `migrations()` du module
-- [ ] `EntitySpec` (ou mount manuscrit justifié) dans le `BrandModuleDef`
-- [ ] Tools MCP via `registerGuardedMcpTool` / façade + policies seedées
+- [ ] `EntitySpec` (CRUD auto) ou mount manuscrit **avec `operations[]`**
+- [ ] Tools MCP générés depuis les ops (pas de `mcpTools()` parallèle)
 - [ ] Nav + permissions `configureAuth`, feed Meili si recherché
 - [ ] Pages UI 100 % kit graphique (DOC-STANDARD-UI.md)
 - [ ] Gate métier ajoutée au `npm test` marque et verte

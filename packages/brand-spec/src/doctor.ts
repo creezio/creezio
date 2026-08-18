@@ -17,6 +17,18 @@ const MODULE_HELPER_FILES = new Set([
 /** Démo fail-closed depuis 0.10.1 — pins plus vieux (ex. Winhub 0.9.2) = warn. */
 const DEMO_CONTRACT_SINCE = { major: 0, minor: 10, patch: 1 };
 
+/** Ops fail-closed depuis 0.10.6 — pins plus vieux = warn. */
+const OPS_CONTRACT_SINCE = { major: 0, minor: 10, patch: 6 };
+
+const CRUD_OP_IDS = new Set([
+  "list",
+  "get",
+  "create",
+  "update",
+  "delete",
+  "archive",
+]);
+
 const MIN_INLINE_DEMO_STEPS = 3;
 
 function resolveAppModulesDir(specRoot: string): string | null {
@@ -87,6 +99,122 @@ function readAppLockstepPin(specRoot: string): string | null {
 function pinIsPreDemoContract(pin: string | null): boolean {
   if (!pin) return false;
   return compareSemver(pin, DEMO_CONTRACT_SINCE) < 0;
+}
+
+function pinIsPreOpsContract(pin: string | null): boolean {
+  if (!pin) return false;
+  return compareSemver(pin, OPS_CONTRACT_SINCE) < 0;
+}
+
+function extractObjectKeys(src: string, field: string): string[] {
+  const m = src.match(new RegExp(`${field}\\s*:\\s*\\{([^}]*)\\}`));
+  const body = m?.[1];
+  if (!body) return [];
+  return [...body.matchAll(/(?:["']([a-z][\w-]*)["']|(\b[a-z][\w-]*))\s*:/g)]
+    .map((x) => x[1] || x[2])
+    .filter((k): k is string => Boolean(k));
+}
+
+function extractOperationIds(src: string): string[] {
+  const ids: string[] = [];
+  for (const block of src.matchAll(/operations\s*:\s*\[([\s\S]*?)\]/g)) {
+    const body = block[1];
+    if (!body) continue;
+    ids.push(
+      ...[...body.matchAll(/id\s*:\s*["']([a-z][a-z0-9_-]*)["']/g)].map(
+        (hit) => hit[1]!,
+      ),
+    );
+  }
+  return ids;
+}
+
+function extractMcpToolNames(src: string): string[] {
+  return [
+    ...src.matchAll(/name\s*:\s*["'](module\.[a-z][a-z0-9_-]*\.[a-z][a-z0-9_-]*)["']/g),
+  ].map((m) => m[1]!);
+}
+
+/**
+ * Contrat 0.10.6 : apiMount manuscrit ⇒ operations[] ; extraRoutes cataloguées ;
+ * mcpTools + ops qui se recouvrent = error. Pin < 0.10.6 = warn.
+ */
+function doctorBrandModuleOps(
+  specRoot: string,
+  issues: BrandSpecIssue[],
+): void {
+  const modulesDir = resolveAppModulesDir(specRoot);
+  if (!modulesDir) return;
+  const preContract = pinIsPreOpsContract(readAppLockstepPin(specRoot));
+  const level = preContract ? "warn" : "error";
+  const files = fs
+    .readdirSync(modulesDir)
+    .filter((f) => f.endsWith(".ts") && !isModuleHelperName(f))
+    .sort();
+  for (const file of files) {
+    const id = file.replace(/\.ts$/, "");
+    const filePath = path.join(modulesDir, file);
+    const src = fs.readFileSync(filePath, "utf8");
+    const rel = path.relative(specRoot, filePath);
+    const mountKeys = extractObjectKeys(src, "apiMounts");
+    const hasApiMounts = /\bapiMounts\s*:/.test(src);
+    const hasOperations = /\boperations\s*:/.test(src);
+    const hasEntitySpecs = /\bentitySpecs\s*:/.test(src);
+    const hasMcpTools = /\bmcpTools\s*:/.test(src);
+    const hasExtraRoutes = /\bextraRoutes\s*:/.test(src);
+
+    if (hasApiMounts && mountKeys.length > 0 && !hasOperations) {
+      issues.push({
+        level,
+        code: "MODULE_OP_MISSING",
+        message: preContract
+          ? `module ${id}: apiMounts sans operations[] — warn (pin kit < 0.10.6) ; obligatoire depuis 0.10.6.`
+          : `module ${id}: chaque apiMount doit déclarer operations[] (non vide). EntitySpec : CRUD auto, ne pas re-déclarer.`,
+        path: rel,
+      });
+    }
+
+    if (hasExtraRoutes) {
+      const extraIds = extractOperationIds(src).filter(
+        (opId) => !CRUD_OP_IDS.has(opId),
+      );
+      if (extraIds.length === 0) {
+        issues.push({
+          level,
+          code: "MODULE_OP_UNCATALOGUED",
+          message: `module ${id}: extraRoutes hors operations[] — chaque subPath servi doit être une op déclarée.`,
+          path: rel,
+        });
+      }
+    }
+
+    if (hasMcpTools) {
+      const toolNames = extractMcpToolNames(src);
+      const opIds = new Set([
+        ...extractOperationIds(src),
+        ...(hasEntitySpecs ? CRUD_OP_IDS : []),
+      ]);
+      const overlap = toolNames.filter((name) => {
+        const opId = name.split(".")[2];
+        return Boolean(opId && opIds.has(opId));
+      });
+      if (overlap.length) {
+        issues.push({
+          level,
+          code: "MODULE_OP_MCP_OVERLAP",
+          message: `module ${id}: mcpTools() recouvre des ops générées (${overlap.join(", ")}). Supprimer le tool manuscrit — SoT = operations[].`,
+          path: rel,
+        });
+      } else {
+        issues.push({
+          level: "warn",
+          code: "MODULE_MCP_TOOLS_DEPRECATED",
+          message: `module ${id}: mcpTools() est déprécié — les tools sont générés depuis operations[].`,
+          path: rel,
+        });
+      }
+    }
+  }
 }
 
 function moduleWiringHasDemoScenarios(src: string): boolean {
@@ -276,6 +404,7 @@ export function doctorBrandSpec(rootDir: string): DoctorResult {
   }
 
   doctorBrandModuleDemos(spec.rootDir, issues);
+  doctorBrandModuleOps(spec.rootDir, issues);
 
   // Anti-jumeau : pas de sidecars dans brand-spec
   for (const bad of ["metier-api.mjs", "store.json", "meili-launcher.ts"]) {

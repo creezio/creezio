@@ -97,7 +97,7 @@ Chaque `modules/<id>/` porte exactement ces 5 fichiers :
 ## Modèle de données          ← schémas complets : colonnes, types, contraintes, défauts
 ## API                        ← endpoints exhaustifs : méthode, chemin, params, comportement
 ## UI                         ← pages, composants du kit graphique utilisés
-## Tools MCP                  ← noms, schémas d'entrée, scopes, policies
+## Tools MCP                  ← ops du module → tools générés (pas mcpTools parallèle)
 ## Logique métier non triviale ← formules, scores, algorithmes décrits en clair
 ## Seeds & données initiales
 ## Cas limites & règles de gestion
@@ -139,9 +139,10 @@ Questionnaire **rempli** (pas un formulaire vide). Sections :
    `single-data-plane`).
 
 ## 3. API
-   EntitySpec `createEntityApiMount` (défaut pour tout CRUD) vs mount
-   manuscrit (justifier). Hooks, extraRoutes, mounts additionnels.
-   Démo interactive (**obligatoire**, ≥ 1 scénario valide) : champ
+   EntitySpec `createEntityApiMount` (CRUD auto = ops list/get/create/update/delete)
+   vs mount manuscrit : **chaque `apiMount` déclare `operations[]`** (1 capacité
+   = 1 op). extraRoutes doivent figurer dans `operations`. Pas de registre
+   global d'app. Démo interactive (**obligatoire**, ≥ 1 scénario valide) : champ
    `demo: { scenarios: DemoScenario[] }` du `BrandModuleDef` — scénarios du
    tour produit du module, agrégés par `collectDemoScenarios()` (registre
    `modules/index.ts`) en défauts du mount `interactive-demo` (validation +
@@ -154,8 +155,10 @@ Questionnaire **rempli** (pas un formulaire vide). Sections :
    (voir DOC-STANDARD-UI.md). Pas de style ad hoc, pas de lib UI tierce.
 
 ## 5. Tools MCP & policies
-   Tools `module.<owner>.*` : readOnly/destructive hints, requiredScope,
-   rôles par défaut, policies seedées.
+   Tools **générés** `module.<mountId>.<op.id>` depuis les ops du module.
+   `mcpTools()` manuscrit est interdit (SoT = operations[]). Enable/disable
+   et rôles = policies `/admin/mcp` sur les tools générés
+   (`mcpPublishDefault`, `roles` sur l'op).
 
 ## 6. Rôles & permissions
 

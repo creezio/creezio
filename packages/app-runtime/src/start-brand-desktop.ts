@@ -33,7 +33,11 @@ import {
   crashReportsDir,
   splashDataUrl,
 } from "@creezio/electron-shell";
-import { createMcpFacade } from "@creezio/mcp-facade";
+import {
+  createMcpFacade,
+  generateModuleToolsFromMountedOps,
+  mergeGeneratedAndLegacyModuleTools,
+} from "@creezio/mcp-facade";
 import { createNavShellAdapter } from "@creezio/shell-ui";
 import {
   brandKernelBooter,
@@ -699,6 +703,7 @@ async function startBrandDesktopBody(args: {
     authorizeToolCall: aclWiring.authorizeToolCall,
     filterPluginToolsForActor: aclWiring.filterPluginToolsForActor,
     discoverToolsBySpace: async () => {
+      const generated = generateModuleToolsFromMountedOps(api);
       const health = api
         .listMounts()
         .filter((m) => m.space === "module")
@@ -716,7 +721,10 @@ async function startBrandDesktopBody(args: {
         ? await config.discoverModuleTools(api)
         : [];
       return {
-        module: [...health, ...brandTools],
+        module: mergeGeneratedAndLegacyModuleTools(generated, [
+          ...health,
+          ...brandTools,
+        ]),
         plugin: discoverPluginTools(),
       };
     },
@@ -787,6 +795,7 @@ async function startBrandDesktopBody(args: {
       os,
       mcp,
       publicBaseUrl: () => httpServer.baseUrl,
+      listKernelMounts: () => api.listMounts(),
     });
     log(
       "mcp",

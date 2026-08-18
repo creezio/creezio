@@ -25,6 +25,7 @@ import type {
   ApiMount,
   ApiRequest,
   ApiResponse,
+  ModuleOperation,
 } from "./types.js";
 import type { ApiKernel } from "./kernel.js";
 
@@ -133,7 +134,50 @@ export type EntitySpec = {
   hooks?: EntityHooks;
   /** Fallback pour les subPaths métier non couverts par le moteur. */
   extraRoutes?: ApiMount["handle"];
+  /**
+   * Ops hors CRUD (extraRoutes). Le moteur ajoute list/get/create/update/delete
+   * (+ archive si `archivable`) — ne pas re-déclarer le CRUD.
+   */
+  operations?: ModuleOperation[];
 };
+
+/** CRUD auto d'un EntitySpec + extras `spec.operations` (hors ids CRUD). */
+export function entityOperationsFromSpec(spec: EntitySpec): ModuleOperation[] {
+  const table = spec.table;
+  const crud: ModuleOperation[] = [
+    { id: "list", method: "GET", path: "/", description: `Lister ${table}` },
+    { id: "create", method: "POST", path: "/", description: `Créer ${table}` },
+    { id: "get", method: "GET", path: "/:id", description: `Lire ${table}` },
+    {
+      id: "update",
+      method: "PATCH",
+      path: "/:id",
+      description: `Mettre à jour ${table}`,
+    },
+    {
+      id: "delete",
+      method: "DELETE",
+      path: "/:id",
+      description: `Supprimer ${table}`,
+    },
+  ];
+  if (spec.archivable) {
+    crud.push({
+      id: "archive",
+      method: "POST",
+      path: "/:id/archive",
+      description: `Archiver ${table}`,
+    });
+  }
+  const seen = new Set(crud.map((op) => op.id));
+  const extras: ModuleOperation[] = [];
+  for (const extra of spec.operations ?? []) {
+    if (seen.has(extra.id)) continue;
+    extras.push(extra);
+    seen.add(extra.id);
+  }
+  return [...crud, ...extras];
+}
 
 /* ── Validation d'identifiants SQL ──────────────────────────────────────── */
 
@@ -475,6 +519,7 @@ export function createEntityApiMount(spec: EntitySpec): ApiMount {
 
   return {
     dbLayer: "brand",
+    operations: entityOperationsFromSpec(spec),
     handle: async (ctx) => {
       if (!ctx.db) return { status: 503, body: { error: "db_unavailable" } };
       const hctx = ctx as EntityHookContext;

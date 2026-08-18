@@ -20,6 +20,14 @@ export type McpToolDefinition = {
   inputSchema?: Record<string, unknown>;
   /** Nom canonique si cette entrée est un alias legacy exposé. */
   aliasOf?: string;
+  /** Rôles seedés dans `mcp_tool_policies` (ops de module). */
+  defaultRoles?: string[];
+  /**
+   * Seed policy `enabled` — false = à activer dans `/admin/mcp`.
+   * Absent = comportement historique (enabled).
+   */
+  mcpPublishDefault?: boolean;
+  requiredScope?: string;
 };
 
 export type McpToolCallResult = {

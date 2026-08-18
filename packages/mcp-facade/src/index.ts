@@ -87,6 +87,18 @@ export type { CreateBrandMcpFacadeOptions } from "./brand-facade.js";
 export { createBrandMcpFacade } from "./brand-facade.js";
 
 export type {
+  BrandModuleOpsSource,
+  GenerateModuleToolsInvoke,
+  GenerateModuleToolsOptions,
+} from "./module-ops-tools.js";
+export {
+  discoverModuleToolsFromBrandModules,
+  generateModuleToolsFromMountedOps,
+  generateModuleToolsFromOperations,
+  mergeGeneratedAndLegacyModuleTools,
+} from "./module-ops-tools.js";
+
+export type {
   CreateMcpHonoAppOptions,
   McpApiKeyRecord,
   McpConnectedServer,

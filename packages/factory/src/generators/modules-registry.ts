@@ -36,11 +36,17 @@ export type BrandModuleDef = {
   id: string;
   /** Entités CRUD (moteur kit createEntityApiMount) — clé = mount id. */
   entitySpecs?: Record<string, EntitySpec>;
-  /** Mounts API manuscrits — clé = id sous /api/v1/modules/<id>. */
+  /**
+   * Mounts API manuscrits — clé = id sous /api/v1/modules/<id>.
+   * Chaque mount DOIT porter \`operations[]\` (SoT HTTP + /admin/api + MCP).
+   */
   apiMounts?: Record<string, ApiMount>;
   /** Entrées de nav du module (fusionnées + triées par order). */
   navItems?: BrandNavItem[];
-  /** Tools MCP métier du module (surface module.<owner>.*). */
+  /**
+   * @deprecated Tools générés depuis \`operations[]\` / EntitySpec.
+   * Conservé le temps de la migration — collision de nom = doctor error.
+   */
   mcpTools?: (api: ApiKernel) => McpRegisteredTool[];
   /** Index Meili contribués au feed marque. */
   meiliIndexes?: BrandMeiliIndex[];
@@ -68,7 +74,10 @@ export const MODULES_INDEX_TS = `/**
  * meili-feed, brand-mcp-tools) agrègent via les collecteurs ci-dessous.
  */
 import type { ApiKernel, ApiMount, EntitySpec } from "@creezio/api-kernel";
-import type { McpRegisteredTool } from "@creezio/mcp-facade";
+import {
+  discoverModuleToolsFromBrandModules,
+  type McpRegisteredTool,
+} from "@creezio/mcp-facade";
 import type { SqliteMigration } from "@creezio/platform-core";
 import { collectInteractiveDemoDefaults } from "@creezio/interactive-demo";
 import type { DemoScenario } from "@creezio/interactive-demo";
@@ -121,9 +130,9 @@ export function collectNavItems(extra: BrandNavItem[] = []): BrandNavItem[] {
   return items.sort((a, b) => a.order - b.order);
 }
 
-/** Tools MCP métier de tous les modules. */
+/** Tools MCP métier — générés depuis les ops (EntitySpec + apiMounts). */
 export function collectMcpTools(api: ApiKernel): McpRegisteredTool[] {
-  return BRAND_MODULES.flatMap((mod) => mod.mcpTools?.(api) ?? []);
+  return discoverModuleToolsFromBrandModules(BRAND_MODULES, api);
 }
 
 /** Index Meili contribués au feed marque. */
@@ -640,6 +649,14 @@ export function renderEntityModuleTs(
   }
   if (extraRoutes) {
     specLines.push(`    extraRoutes: commandesExtraRoutes,`);
+    specLines.push(`    operations: [`);
+    specLines.push(`      {`);
+    specLines.push(`        id: "from-panier",`);
+    specLines.push(`        method: "POST",`);
+    specLines.push(`        path: "/from-panier",`);
+    specLines.push(`        description: "Créer une commande depuis le panier",`);
+    specLines.push(`      },`);
+    specLines.push(`    ],`);
   }
   specLines.push(`  },`);
 
@@ -811,8 +828,8 @@ Marque légère sur **OS Creezio** — monorepo client + server (layout 2 repos)
 - Kit \`@creezio/*\` = **packages npm versionnés** (GitHub Packages, auth \`CREEZIO_NPM_TOKEN\`) — plus de \`vendor/\` ni symlinks
 - Déclaration = migrations + \`registerModuleApi\` + feed + nav **métier**
 - Métier = **registre de modules** \`server/src/electron/modules/<id>.ts\`
-  (un \`BrandModuleDef\` par module : entitySpecs, apiMounts, navItems,
-  mcpTools, meiliIndexes, demo, migrations) + specs 5 fichiers
+  (un \`BrandModuleDef\` par module : entitySpecs, apiMounts + operations[],
+  navItems, meiliIndexes, demo, migrations) + specs 5 fichiers
   \`brand-spec/modules/<id>/\` (prd, interview, TODO, CHANGELOG, gate.mjs —
   standard kit \`DOC-STANDARD-MODULE.md\`, runner \`npm run test:modules\`).
   \`brand-module-api.ts\` / \`brand-migrations.ts\` / \`vertical-slot.ts\` /

@@ -43,7 +43,8 @@ admin est une app Creezio normale — `adminMigrations()` passe en
 
 ### 2. Mount API
 
-Exporter `create<MonModule>Mount(opts): ApiMount` (couche `brand`) et
+Exporter `create<MonModule>Mount(opts): ApiMount` (couche `brand`) **avec
+`operations[]`** (même contrat métier : 1 capacité = 1 op) et
 l'enregistrer dans `registerAdminModules(api, opts)` → route
 `/api/v1/modules/<id>/*`. Deux postures d'auth, à choisir explicitement :
 

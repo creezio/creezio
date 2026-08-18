@@ -177,6 +177,44 @@ export function createInteractiveDemoMount(
   const defaults = opts.defaults;
   return {
     dbLayer: "brand",
+    operations: [
+      {
+        id: "list-scenarios",
+        method: "GET",
+        path: "/scenarios",
+        description: "Lister les scénarios de démo interactive",
+      },
+      {
+        id: "get-scenario",
+        method: "GET",
+        path: "/scenarios/:id",
+        description: "Lire un scénario de démo",
+      },
+      {
+        id: "put-scenario",
+        method: "PUT",
+        path: "/scenarios/:id",
+        description: "Écrire un override de scénario",
+      },
+      {
+        id: "delete-scenario",
+        method: "DELETE",
+        path: "/scenarios/:id",
+        description: "Supprimer un override de scénario",
+      },
+      {
+        id: "get-preferences",
+        method: "GET",
+        path: "/preferences",
+        description: "Lire les préférences démo d'un utilisateur",
+      },
+      {
+        id: "put-preferences",
+        method: "PUT",
+        path: "/preferences",
+        description: "Enregistrer les préférences démo",
+      },
+    ],
     handle: async ({ req, subPath, db }) => {
       if (!db) {
         return { status: 503, body: { ok: false, error: "db_unavailable" } };
