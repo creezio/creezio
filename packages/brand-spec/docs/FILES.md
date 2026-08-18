@@ -8,7 +8,7 @@
 
 | Fichier | Rôle |
 |---|---|
-| [`src/doctor.ts`](../src/doctor.ts) | `doctorBrandSpec` / `formatDoctorReport` — validation BrandSpec ; ignore helpers modules (`_lib`, `shared.ts`, `mcp-shared.ts`, `meili-shared.ts`, `index.ts`, `types.ts`) ; démo trop pauvre (`MODULE_DEMO_THIN`) = warn ; pin kit < 0.10.1 (ex. Winhub 0.9.2) : démo absente = warn ; contrat ops 0.10.6 : `MODULE_OP_MISSING` / `UNCATALOGUED` / `MCP_OVERLAP` fail-closed (pin < 0.10.6 = warn). |
+| [`src/doctor.ts`](../src/doctor.ts) | `doctorBrandSpec` / `formatDoctorReport` — validation BrandSpec ; ignore helpers modules (`_lib`, `shared.ts`, `mcp-shared.ts`, `meili-shared.ts`, `index.ts`, `types.ts`) ; démo trop pauvre (`MODULE_DEMO_THIN`) = warn ; pin kit < 0.10.1 (ex. Winhub 0.9.2) : démo absente = warn ; contrat ops 0.10.6 : `MODULE_OP_MISSING` (apiMounts sans operations[] non vide) / `UNCATALOGUED` / `MCP_OVERLAP` fail-closed (pin < 0.10.6 = warn) ; `mcpTools` = `MODULE_MCP_TOOLS_DEPRECATED` (warn) ; mounts kit/OS hors `modules/*.ts` non scannés. |
 | [`src/index.ts`](../src/index.ts) | Export public @creezio/brand-spec (types + load + doctor + init + onboarding-from-spec). |
 | [`src/init.ts`](../src/init.ts) | `initBrandSpec` — scaffold d'un dossier brand-spec/ (brand.yaml, modules/, platform/). |
 | [`src/load.ts`](../src/load.ts) | `loadBrandSpec` / `resolveBrandSpecDir` — parse YAML + défauts platform needs. |

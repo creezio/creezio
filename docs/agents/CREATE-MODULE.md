@@ -116,7 +116,12 @@ Routes générées : `GET /` (liste `q`/filtres/`limit`/`offset`), `POST /`,
 handle } }`) reste possible pour les flux non-CRUD (à justifier dans
 l'interview).
 
-Un mount manuscrit **doit** porter `operations[]` (doctor `MODULE_OP_MISSING`) :
+Un mount manuscrit **doit** porter `operations[]` **non vide** (doctor
+`MODULE_OP_MISSING`, fail-closed pin ≥ 0.10.6). Un `EntitySpec` sans ops
+extras est valide : le CRUD est généré par `operationsFromEntitySpec`.
+Les mounts kit internes (`schema`, `dashboard`, `search`,
+`interactive-demo`) et les surfaces OS sont hors `modules/*.ts` — le
+doctor ne les exige pas ; un module métier homonyme n'est pas exempté.
 
 ```ts
 import type { ApiMount, ModuleOperation } from "@creezio/api-kernel";

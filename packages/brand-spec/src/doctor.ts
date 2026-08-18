@@ -136,8 +136,17 @@ function extractMcpToolNames(src: string): string[] {
 }
 
 /**
- * Contrat 0.10.6 : apiMount manuscrit ⇒ operations[] ; extraRoutes cataloguées ;
- * mcpTools + ops qui se recouvrent = error. Pin < 0.10.6 = warn.
+ * Contrat 0.10.6 : apiMount manuscrit ⇒ operations[] **non vide** ;
+ * extraRoutes cataloguées ; mcpTools + ops qui se recouvrent = error.
+ * Pin < 0.10.6 = warn.
+ *
+ * Exemption (documentée, pas un allowlist de noms) : les mounts kit
+ * internes (`KIT_INTERNAL_MODULE_MOUNT_IDS` : schema / dashboard / search /
+ * interactive-demo) et les surfaces OS vivent hors `modules/*.ts` — le
+ * doctor ne les scanne pas. Un BrandModuleDef métier du même nom n'est
+ * PAS exempté (Winhub `dashboard` doit déclarer operations[]).
+ * EntitySpec seul : CRUD auto via `operationsFromEntitySpec` — pas d'ops
+ * manuscrites exigées.
  */
 function doctorBrandModuleOps(
   specRoot: string,
@@ -158,17 +167,18 @@ function doctorBrandModuleOps(
     const rel = path.relative(specRoot, filePath);
     const mountKeys = extractObjectKeys(src, "apiMounts");
     const hasApiMounts = /\bapiMounts\s*:/.test(src);
-    const hasOperations = /\boperations\s*:/.test(src);
+    const declaredOpIds = extractOperationIds(src);
+    const hasNonEmptyOperations = declaredOpIds.length > 0;
     const hasEntitySpecs = /\bentitySpecs\s*:/.test(src);
     const hasMcpTools = /\bmcpTools\s*:/.test(src);
     const hasExtraRoutes = /\bextraRoutes\s*:/.test(src);
 
-    if (hasApiMounts && mountKeys.length > 0 && !hasOperations) {
+    if (hasApiMounts && mountKeys.length > 0 && !hasNonEmptyOperations) {
       issues.push({
         level,
         code: "MODULE_OP_MISSING",
         message: preContract
-          ? `module ${id}: apiMounts sans operations[] — warn (pin kit < 0.10.6) ; obligatoire depuis 0.10.6.`
+          ? `module ${id}: apiMounts sans operations[] non vide — warn (pin kit < 0.10.6) ; obligatoire depuis 0.10.6.`
           : `module ${id}: chaque apiMount doit déclarer operations[] (non vide). EntitySpec : CRUD auto, ne pas re-déclarer.`,
         path: rel,
       });

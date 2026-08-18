@@ -385,6 +385,118 @@ test("MO4 doctor MODULE_OP_MISSING fail-closed (pin ≥ 0.10.6)", () => {
   fs.rmSync(work, { recursive: true, force: true });
 });
 
+test("MO4b doctor EntitySpec sans ops extras : pas MODULE_OP_MISSING", () => {
+  const work = fs.mkdtempSync(path.join(os.tmpdir(), "brand-spec-ops-entity-"));
+  const result = initBrandSpec({
+    outDir: path.join(work, "brand-spec"),
+    brandId: "opsent",
+    brandName: "Ops Entity",
+    domain: "opsent.local",
+    vertical: "generic",
+    force: true,
+  });
+  fs.mkdirSync(path.join(work, "server"), { recursive: true });
+  fs.writeFileSync(
+    path.join(work, "server/package.json"),
+    JSON.stringify({
+      dependencies: { "@creezio/platform-core": "^0.10.6" },
+    }),
+  );
+  writeDemoNotes(
+    path.join(work, "server/src/electron/modules"),
+    `export const notesModule = {
+  id: "notes",
+  entitySpecs: { notes: { table: "notes", columns: [{ name: "titre" }] } },
+  ${DEMO_BLOCK}
+};
+`,
+  );
+  const doctor = doctorBrandSpec(result.outDir);
+  assert.equal(doctor.ok, true, formatDoctorReport(doctor));
+  assert.ok(
+    !doctor.issues.some((i) => i.code === "MODULE_OP_MISSING"),
+    formatDoctorReport(doctor),
+  );
+  fs.rmSync(work, { recursive: true, force: true });
+});
+
+test("MO4c doctor operations: [] = MODULE_OP_MISSING", () => {
+  const work = fs.mkdtempSync(path.join(os.tmpdir(), "brand-spec-ops-empty-"));
+  const result = initBrandSpec({
+    outDir: path.join(work, "brand-spec"),
+    brandId: "opsempty",
+    brandName: "Ops Empty",
+    domain: "opsempty.local",
+    vertical: "generic",
+    force: true,
+  });
+  fs.mkdirSync(path.join(work, "server"), { recursive: true });
+  fs.writeFileSync(
+    path.join(work, "server/package.json"),
+    JSON.stringify({
+      dependencies: { "@creezio/platform-core": "^0.10.6" },
+    }),
+  );
+  writeDemoNotes(
+    path.join(work, "server/src/electron/modules"),
+    `export const notesModule = {
+  id: "notes",
+  apiMounts: { notes: { dbLayer: "brand", operations: [], handle: async () => ({ status: 200 }) } },
+  ${DEMO_BLOCK}
+};
+`,
+  );
+  const doctor = doctorBrandSpec(result.outDir);
+  assert.equal(doctor.ok, false, formatDoctorReport(doctor));
+  assert.ok(
+    doctor.issues.some((i) => i.code === "MODULE_OP_MISSING" && i.level === "error"),
+    formatDoctorReport(doctor),
+  );
+  fs.rmSync(work, { recursive: true, force: true });
+});
+
+test("MO4d doctor MODULE_MCP_TOOLS_DEPRECATED (warn, pas error)", () => {
+  const work = fs.mkdtempSync(path.join(os.tmpdir(), "brand-spec-ops-mcpdep-"));
+  const result = initBrandSpec({
+    outDir: path.join(work, "brand-spec"),
+    brandId: "opsmcp",
+    brandName: "Ops Mcp",
+    domain: "opsmcp.local",
+    vertical: "generic",
+    force: true,
+  });
+  fs.mkdirSync(path.join(work, "server"), { recursive: true });
+  fs.writeFileSync(
+    path.join(work, "server/package.json"),
+    JSON.stringify({
+      dependencies: { "@creezio/platform-core": "^0.10.6" },
+    }),
+  );
+  writeDemoNotes(
+    path.join(work, "server/src/electron/modules"),
+    `export const notesModule = {
+  id: "notes",
+  entitySpecs: { notes: { table: "notes", columns: [{ name: "titre" }] } },
+  mcpTools: () => [{ name: "module.notes.custom", space: "module", ownerId: "notes", handler: async () => ({ ok: true }) }],
+  ${DEMO_BLOCK}
+};
+`,
+  );
+  const doctor = doctorBrandSpec(result.outDir);
+  assert.equal(doctor.ok, true, formatDoctorReport(doctor));
+  assert.ok(
+    doctor.issues.some(
+      (i) => i.code === "MODULE_MCP_TOOLS_DEPRECATED" && i.level === "warn",
+    ),
+    formatDoctorReport(doctor),
+  );
+  assert.ok(
+    !doctor.issues.some((i) => i.code === "MODULE_OP_MCP_OVERLAP"),
+    formatDoctorReport(doctor),
+  );
+  fs.rmSync(work, { recursive: true, force: true });
+});
+
 test("MO5 doctor MODULE_OP_UNCATALOGUED + MCP overlap", () => {
   const work = fs.mkdtempSync(path.join(os.tmpdir(), "brand-spec-ops-uncat-"));
   const result = initBrandSpec({
