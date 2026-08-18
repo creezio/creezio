@@ -20,14 +20,6 @@ const DEMO_CONTRACT_SINCE = { major: 0, minor: 10, patch: 1 };
 /** Ops fail-closed depuis 0.10.6 — pins plus vieux = warn. */
 const OPS_CONTRACT_SINCE = { major: 0, minor: 10, patch: 6 };
 
-/** Mounts kit internes — pas d'exigence `operations` métier. */
-const KIT_INTERNAL_MODULE_MOUNTS = new Set([
-  "schema",
-  "dashboard",
-  "search",
-  "interactive-demo",
-]);
-
 const CRUD_OP_IDS = new Set([
   "list",
   "get",
@@ -164,9 +156,7 @@ function doctorBrandModuleOps(
     const filePath = path.join(modulesDir, file);
     const src = fs.readFileSync(filePath, "utf8");
     const rel = path.relative(specRoot, filePath);
-    const mountKeys = extractObjectKeys(src, "apiMounts").filter(
-      (k) => !KIT_INTERNAL_MODULE_MOUNTS.has(k),
-    );
+    const mountKeys = extractObjectKeys(src, "apiMounts");
     const hasApiMounts = /\bapiMounts\s*:/.test(src);
     const hasOperations = /\boperations\s*:/.test(src);
     const hasEntitySpecs = /\bentitySpecs\s*:/.test(src);
