@@ -95,8 +95,9 @@ export type StartBrandDesktopConfig = {
    */
   catalogHost?: BrandCatalogHost;
   /**
-   * Tools MCP métier (`module.*`) — catalogue / panier / SKU…
-   * Fusionnés avec les tools health auto-générés depuis les mounts.
+   * Tools MCP marque additionnels (legacy `mcpTools()`).
+   * Le runtime génère toujours les tools `module.<mount>.<op>` depuis
+   * `api.listOperations()` (space module) — `mcpTools()` n'est plus la source.
    */
   discoverModuleTools?: (
     api: ApiKernel,
@@ -143,6 +144,10 @@ export type StartBrandKernelHarnessConfig = {
   meiliBinary?: string | null;
   skipIndex?: boolean;
   catalogHost?: BrandCatalogHost;
+  /**
+   * Tools MCP marque additionnels — unionnés avec ceux générés depuis
+   * `api.listOperations()` (space module).
+   */
   discoverModuleTools?: (
     api: ApiKernel,
   ) => McpRegisteredTool[] | Promise<McpRegisteredTool[]>;

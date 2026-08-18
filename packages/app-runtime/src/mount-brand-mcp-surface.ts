@@ -4,8 +4,11 @@
  */
 import { Hono } from "hono";
 import { getCookie } from "hono/cookie";
-import type { MountedApiInfo } from "@creezio/api-kernel";
-import { collectKernelOperationRoutes } from "@creezio/api-kernel";
+import type { ListedModuleOperation, MountedApiInfo } from "@creezio/api-kernel";
+import {
+  collectKernelOperationRoutes,
+  collectListedOperationRoutes,
+} from "@creezio/api-kernel";
 import type { AppManifest } from "@creezio/brand-config";
 import type { SqliteRuntime } from "@creezio/platform-core";
 import {
@@ -119,6 +122,8 @@ export function mountBrandMcpSurface(opts: {
   publicBaseUrl: () => string;
   /** Mounts api-kernel (ops → catalogue `/admin/api`, pas seulement Hono admin). */
   listKernelMounts?: () => MountedApiInfo[];
+  /** Ops aplaties (`api.listOperations()`) — préféré pour le catalogue métier. */
+  listKernelOperations?: () => ListedModuleOperation[];
 }): BrandMcpSurface {
   const getDb = () => opts.runtime.getCore();
 
@@ -230,11 +235,17 @@ export function mountBrandMcpSurface(opts: {
   adminSurface.route("/", databaseRoutes);
   adminSurface.route("/", createUsageAnalyticsAdminRoutes());
 
+  const kernelOpRoutes = () => {
+    const listed = opts.listKernelOperations?.();
+    if (listed) return collectListedOperationRoutes(listed);
+    return collectKernelOperationRoutes(opts.listKernelMounts?.() ?? []);
+  };
+
   const buildAdminRegistry = () =>
     buildApiEndpointsRegistry({
       routes: [
         ...collectHonoRoutes(adminSurface, "/api/v1/admin"),
-        ...collectKernelOperationRoutes(opts.listKernelMounts?.() ?? []),
+        ...kernelOpRoutes(),
       ],
       source:
         "kernel operations (modules + platform) + brand admin surface (MCP + database + analytics + request-logs)",

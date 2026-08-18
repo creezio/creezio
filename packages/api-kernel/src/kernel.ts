@@ -17,6 +17,7 @@ import type {
   ApiRequest,
   ApiResponse,
   ApiSpace,
+  ListedModuleOperation,
   MountedApiInfo,
 } from "./types.js";
 
@@ -84,6 +85,8 @@ export type ApiKernel = {
   unregisterModuleApi(id: string): boolean;
   unregisterPluginApi(id: string): boolean;
   listMounts(): MountedApiInfo[];
+  /** Toutes les ops de tous les mounts (id mount + op). */
+  listOperations(): ListedModuleOperation[];
   handle(req: ApiRequest): Promise<ApiResponse>;
   /** Préfixe domaine unique documenté. */
   readonly prefix: typeof API_V1_PREFIX;
@@ -247,6 +250,50 @@ export function createApiKernel(opts: ApiKernelOptions = {}): ApiKernel {
     }
   }
 
+  function listMounts(): MountedApiInfo[] {
+    const out: MountedApiInfo[] = [];
+    for (const [id, m] of platform) {
+      out.push({
+        space: "platform",
+        id,
+        allowCrossWrite: Boolean(m.allowCrossWrite),
+        dbLayer: m.dbLayer ?? "core",
+        ...(m.permission ? { permission: m.permission } : {}),
+        ...(m.operations?.length ? { operations: m.operations } : {}),
+      });
+    }
+    for (const [id, m] of modules) {
+      out.push({
+        space: "module",
+        id,
+        allowCrossWrite: Boolean(m.allowCrossWrite),
+        dbLayer: m.dbLayer ?? "brand",
+        ...(m.permission ? { permission: m.permission } : {}),
+        ...(m.operations?.length ? { operations: m.operations } : {}),
+      });
+    }
+    for (const [id, m] of plugins) {
+      out.push({
+        space: "plugin",
+        id,
+        allowCrossWrite: Boolean(m.allowCrossWrite),
+        dbLayer: m.dbLayer ?? "plugin",
+        ...(m.operations?.length ? { operations: m.operations } : {}),
+      });
+    }
+    return out;
+  }
+
+  function listOperations(): ListedModuleOperation[] {
+    const out: ListedModuleOperation[] = [];
+    for (const mount of listMounts()) {
+      for (const op of mount.operations ?? []) {
+        out.push({ space: mount.space, mountId: mount.id, op });
+      }
+    }
+    return out;
+  }
+
   return {
     prefix: API_V1_PREFIX,
     sqliteRuntime: runtime,
@@ -279,39 +326,8 @@ export function createApiKernel(opts: ApiKernelOptions = {}): ApiKernel {
       return plugins.delete(id);
     },
 
-    listMounts() {
-      const out: MountedApiInfo[] = [];
-      for (const [id, m] of platform) {
-        out.push({
-          space: "platform",
-          id,
-          allowCrossWrite: Boolean(m.allowCrossWrite),
-          dbLayer: m.dbLayer ?? "core",
-          ...(m.permission ? { permission: m.permission } : {}),
-          ...(m.operations?.length ? { operations: m.operations } : {}),
-        });
-      }
-      for (const [id, m] of modules) {
-        out.push({
-          space: "module",
-          id,
-          allowCrossWrite: Boolean(m.allowCrossWrite),
-          dbLayer: m.dbLayer ?? "brand",
-          ...(m.permission ? { permission: m.permission } : {}),
-          ...(m.operations?.length ? { operations: m.operations } : {}),
-        });
-      }
-      for (const [id, m] of plugins) {
-        out.push({
-          space: "plugin",
-          id,
-          allowCrossWrite: Boolean(m.allowCrossWrite),
-          dbLayer: m.dbLayer ?? "plugin",
-          ...(m.operations?.length ? { operations: m.operations } : {}),
-        });
-      }
-      return out;
-    },
+    listMounts,
+    listOperations,
 
     async handle(req) {
       const path = normalizePath(req.path);

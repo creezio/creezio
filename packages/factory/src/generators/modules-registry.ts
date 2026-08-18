@@ -130,7 +130,7 @@ export function collectNavItems(extra: BrandNavItem[] = []): BrandNavItem[] {
   return items.sort((a, b) => a.order - b.order);
 }
 
-/** Tools MCP métier — générés depuis les ops (EntitySpec + apiMounts). */
+/** Tools MCP métier — générés depuis api.listOperations() (ops du kernel). */
 export function collectMcpTools(api: ApiKernel): McpRegisteredTool[] {
   return discoverModuleToolsFromBrandModules(BRAND_MODULES, api);
 }

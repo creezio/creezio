@@ -23,8 +23,7 @@ import {
 } from "@creezio/electron-shell";
 import {
   createMcpFacade,
-  generateModuleToolsFromMountedOps,
-  mergeGeneratedAndLegacyModuleTools,
+  discoverModuleToolsFromKernel,
 } from "@creezio/mcp-facade";
 import {
   brandKernelBooter,
@@ -652,12 +651,11 @@ export async function startBrandKernelHarness(
     authorizeToolCall: aclWiring.authorizeToolCall,
     filterPluginToolsForActor: aclWiring.filterPluginToolsForActor,
     discoverToolsBySpace: async () => {
-      const generated = generateModuleToolsFromMountedOps(api);
       const brandTools = config.discoverModuleTools
         ? await config.discoverModuleTools(api)
         : [];
       return {
-        module: mergeGeneratedAndLegacyModuleTools(generated, brandTools),
+        module: discoverModuleToolsFromKernel(api, brandTools),
         plugin: discoverPluginTools(),
       };
     },
@@ -787,6 +785,7 @@ export async function startBrandKernelHarness(
       mcp,
       publicBaseUrl: publicOrigin,
       listKernelMounts: () => api.listMounts(),
+      listKernelOperations: () => api.listOperations(),
     });
     console.log(
       `brand-kernel-harness mcp-oauth ready=${mcpSurface.oauthReady()} public=${mcpSurface.publicUrl()}`,

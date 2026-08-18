@@ -142,7 +142,7 @@ export type EntitySpec = {
 };
 
 /** CRUD auto d'un EntitySpec + extras `spec.operations` (hors ids CRUD). */
-export function entityOperationsFromSpec(spec: EntitySpec): ModuleOperation[] {
+export function operationsFromEntitySpec(spec: EntitySpec): ModuleOperation[] {
   const table = spec.table;
   const crud: ModuleOperation[] = [
     { id: "list", method: "GET", path: "/", description: `Lister ${table}` },
@@ -178,6 +178,9 @@ export function entityOperationsFromSpec(spec: EntitySpec): ModuleOperation[] {
   }
   return [...crud, ...extras];
 }
+
+/** Alias conservé — préférer `operationsFromEntitySpec`. */
+export const entityOperationsFromSpec = operationsFromEntitySpec;
 
 /* ── Validation d'identifiants SQL ──────────────────────────────────────── */
 
@@ -519,7 +522,7 @@ export function createEntityApiMount(spec: EntitySpec): ApiMount {
 
   return {
     dbLayer: "brand",
-    operations: entityOperationsFromSpec(spec),
+    operations: operationsFromEntitySpec(spec),
     handle: async (ctx) => {
       if (!ctx.db) return { status: 503, body: { error: "db_unavailable" } };
       const hctx = ctx as EntityHookContext;

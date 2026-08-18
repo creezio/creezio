@@ -176,3 +176,10 @@ export type MountedApiInfo = {
   /** Ops déclarées (catalogue + génération MCP). */
   operations?: ModuleOperation[];
 };
+
+/** Une op aplatie : id du mount + opération (sortie de `listOperations()`). */
+export type ListedModuleOperation = {
+  space: Exclude<ApiSpace, "core">;
+  mountId: string;
+  op: ModuleOperation;
+};

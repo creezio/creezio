@@ -2,9 +2,9 @@
 /**
  * Gate contrat fondateur 0.10.6 — une op dans le module = HTTP + /admin/api + MCP.
  *
- * Couvre : CRUD EntitySpec auto, generateModuleToolsFromOperations (handler =
- * req synthétique), catalogue kernel (pas seulement Hono admin), doctor
- * MODULE_OP_MISSING / UNCATALOGUED / MCP_OVERLAP.
+ * Couvre : CRUD EntitySpec auto, listTools `module.test.from-panier` (handler =
+ * req synthétique → handle()), seed mcp_tool_policies, catalogue kernel,
+ * doctor MODULE_OP_MISSING / UNCATALOGUED / MCP_OVERLAP.
  */
 import assert from "node:assert/strict";
 import fs from "node:fs";
@@ -14,16 +14,26 @@ import { test } from "node:test";
 import { fileURLToPath } from "node:url";
 import {
   collectKernelOperationRoutes,
+  collectListedOperationRoutes,
   createApiKernel,
   createEntityApiMount,
   entityOperationsFromSpec,
   matchModuleOperation,
+  operationsFromEntitySpec,
   resolveOperationHttpPath,
 } from "../packages/api-kernel/dist/index.js";
 import {
+  configureMcpAdmin,
+  createMcpFacade,
+  discoverModuleToolsFromBrandModules,
+  generateModuleToolsFromListedOps,
   generateModuleToolsFromMountedOps,
   generateModuleToolsFromOperations,
+  resetMcpAdminAdaptersForTests,
+  seedMcpToolPolicies,
+  getStoredMcpToolPolicy,
 } from "../packages/mcp-facade/dist/index.js";
+import { DatabaseSync } from "node:sqlite";
 import { buildApiEndpointsRegistry } from "../packages/observability/dist/index.js";
 import {
   doctorBrandSpec,
@@ -33,8 +43,48 @@ import {
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
+test("MO0 listOperations + registry : 1 op de mount apparaît", () => {
+  const api = createApiKernel({ brandId: "demobrand" });
+  api.registerModuleApi("notes", {
+    dbLayer: "brand",
+    operations: [
+      {
+        id: "ping",
+        method: "GET",
+        path: "/ping",
+        description: "Sonde notes",
+      },
+    ],
+    handle: async () => ({ status: 200, body: { ok: true } }),
+  });
+  const listed = api.listOperations();
+  assert.equal(listed.length, 1);
+  assert.equal(listed[0].mountId, "notes");
+  assert.equal(listed[0].op.id, "ping");
+  assert.equal(listed[0].space, "module");
+  const mount = api.listMounts().find((m) => m.id === "notes");
+  assert.ok(mount?.operations?.some((o) => o.id === "ping"));
+  const registry = buildApiEndpointsRegistry({
+    routes: [
+      { method: "GET", path: "/api/v1/admin/endpoints" },
+      ...collectListedOperationRoutes(listed),
+    ],
+    source: "test-module-ops-catalogue",
+  });
+  assert.ok(
+    registry.endpoints.some(
+      (e) => e.method === "GET" && e.path === "/api/v1/modules/notes/ping",
+    ),
+    "catalogue contient l'op métier /api/v1/modules/<mount><path>",
+  );
+  assert.ok(
+    registry.endpoints.some((e) => e.path === "/api/v1/admin/endpoints"),
+    "surface admin Hono conservée",
+  );
+});
+
 test("MO1 EntitySpec → ops CRUD auto + extra operations", () => {
-  const ops = entityOperationsFromSpec({
+  const spec = {
     table: "notes",
     columns: [{ name: "titre" }],
     archivable: true,
@@ -46,7 +96,9 @@ test("MO1 EntitySpec → ops CRUD auto + extra operations", () => {
         description: "Épingler une note",
       },
     ],
-  });
+  };
+  assert.equal(entityOperationsFromSpec, operationsFromEntitySpec);
+  const ops = operationsFromEntitySpec(spec);
   assert.deepEqual(
     ops.map((o) => o.id),
     ["list", "create", "get", "update", "delete", "archive", "pin"],
@@ -58,7 +110,127 @@ test("MO1 EntitySpec → ops CRUD auto + extra operations", () => {
   assert.ok(mount.operations?.some((o) => o.id === "list"));
 });
 
-test("MO2 generateModuleToolsFromOperations — name + invoke HTTP", async () => {
+test("MO2 listTools module.test.from-panier passe par handle()", async () => {
+  let handled = 0;
+  let lastReq = null;
+  const api = createApiKernel({ brandId: "demobrand" });
+  api.registerModuleApi("test", {
+    dbLayer: "brand",
+    operations: [
+      {
+        id: "from-panier",
+        method: "POST",
+        path: "/from-panier",
+        description: "Créer depuis le panier",
+      },
+    ],
+    handle: async ({ req }) => {
+      handled += 1;
+      lastReq = req;
+      return { status: 200, body: { ok: true, via: "handle", path: req.path } };
+    },
+  });
+
+  const generated = generateModuleToolsFromListedOps(api);
+  assert.equal(generated.length, 1);
+  assert.equal(generated[0].name, "module.test.from-panier");
+  assert.equal(generated[0].space, "module");
+  assert.equal(generated[0].ownerId, "test");
+  assert.equal(generated[0].mcpPublishDefault, false);
+
+  const mcp = createMcpFacade({
+    brandId: "demobrand",
+    allowUnauthenticated: true,
+    publicSurface: "canonical",
+    listApiMounts: () => api.listMounts(),
+    discoverToolsBySpace: async () => ({
+      module: generateModuleToolsFromListedOps(api),
+    }),
+  });
+  const listed = await mcp.listTools({ space: "module" });
+  assert.ok(
+    listed.tools.some((t) => t.name === "module.test.from-panier"),
+    `listTools doit contenir module.test.from-panier, obtenu: ${listed.tools.map((t) => t.name).join(",")}`,
+  );
+
+  const result = await mcp.callTool("module.test.from-panier", {
+    fournisseur_id: "f1",
+  });
+  assert.equal(result.ok, true);
+  assert.equal(result.content.via, "handle");
+  assert.equal(handled, 1);
+  assert.equal(lastReq.method, "POST");
+  assert.equal(lastReq.path, "/api/v1/modules/test/from-panier");
+  assert.equal(lastReq.body.fournisseur_id, "f1");
+
+  const fromMounts = generateModuleToolsFromMountedOps(api);
+  assert.ok(fromMounts.some((t) => t.name === "module.test.from-panier"));
+  const viaOps = generateModuleToolsFromOperations(
+    "test",
+    api.listOperations().map((x) => x.op),
+    (req) => api.handle(req),
+    { mountId: "test" },
+  );
+  assert.equal(viaOps[0].name, "module.test.from-panier");
+});
+
+test("MO2b seed mcp_tool_policies depuis tools générés (mcpPublishDefault → enabled)", () => {
+  const db = new DatabaseSync(":memory:");
+  resetMcpAdminAdaptersForTests();
+  configureMcpAdmin({
+    getDb: () => db,
+    getWriteDb: () => db,
+    tableExists: (name) =>
+      Boolean(
+        db
+          .prepare(
+            `SELECT name FROM sqlite_master WHERE type='table' AND name=?`,
+          )
+          .get(name),
+      ),
+    listTools: () => [],
+    mcpOauthReady: () => false,
+    resolveMcpPublicUrl: () => null,
+  });
+  const api = createApiKernel({ brandId: "demobrand" });
+  api.registerModuleApi("test", {
+    dbLayer: "brand",
+    operations: [
+      {
+        id: "from-panier",
+        method: "POST",
+        path: "/from-panier",
+        description: "Créer depuis le panier",
+      },
+      {
+        id: "publish-me",
+        method: "GET",
+        path: "/publish-me",
+        description: "Publié par défaut",
+        mcpPublishDefault: true,
+      },
+    ],
+    handle: async () => ({ status: 200, body: { ok: true } }),
+  });
+  const tools = generateModuleToolsFromListedOps(api);
+  seedMcpToolPolicies(
+    tools.map((t) => ({
+      name: t.name,
+      defaultRoles: t.defaultRoles,
+      requiredScope: t.requiredScope,
+      mcpPublishDefault: t.mcpPublishDefault,
+    })),
+  );
+  const unpublished = getStoredMcpToolPolicy("module.test.from-panier");
+  const published = getStoredMcpToolPolicy("module.test.publish-me");
+  assert.ok(unpublished, "policy seedée pour from-panier");
+  assert.equal(unpublished.enabled, false, "mcpPublishDefault false → enabled 0");
+  assert.ok(published, "policy seedée pour publish-me");
+  assert.equal(published.enabled, true, "mcpPublishDefault true → enabled 1");
+  resetMcpAdminAdaptersForTests();
+});
+
+test("MO2c mcpTools() manuscrit → warn, plus la source", () => {
   const api = createApiKernel({ brandId: "demobrand" });
   api.registerModuleApi("notes", {
     dbLayer: "brand",
@@ -67,28 +239,43 @@ test("MO2 generateModuleToolsFromOperations — name + invoke HTTP", async () =>
         id: "list",
         method: "GET",
         path: "/",
-        description: "Lister les notes démo",
+        description: "Lister",
       },
     ],
-    handle: async () => ({ status: 200, body: { items: [{ id: "n1" }], total: 1 } }),
+    handle: async () => ({ status: 200, body: { ok: true } }),
   });
-  const tools = generateModuleToolsFromOperations(
-    "notes",
-    api.listMounts().find((m) => m.id === "notes").operations,
-    (req) => api.handle(req),
-    { mountId: "notes" },
-  );
-  assert.equal(tools.length, 1);
-  assert.equal(tools[0].name, "module.notes.list");
-  assert.equal(tools[0].space, "module");
-  assert.equal(tools[0].ownerId, "notes");
-  assert.equal(tools[0].mcpPublishDefault, false);
-  const result = await tools[0].handler({});
-  assert.equal(result.ok, true);
-  assert.equal(result.content.total, 1);
-
-  const fromMounts = generateModuleToolsFromMountedOps(api);
-  assert.ok(fromMounts.some((t) => t.name === "module.notes.list"));
+  const warnings = [];
+  const orig = console.warn;
+  console.warn = (...args) => {
+    warnings.push(args.map(String).join(" "));
+  };
+  try {
+    const tools = discoverModuleToolsFromBrandModules(
+      [
+        {
+          id: "notes",
+          mcpTools: () => [
+            {
+              name: "module.notes.custom",
+              description: "legacy",
+              space: "module",
+              ownerId: "notes",
+              handler: async () => ({ ok: true }),
+            },
+          ],
+        },
+      ],
+      api,
+    );
+    assert.ok(tools.some((t) => t.name === "module.notes.list"));
+    assert.ok(tools.some((t) => t.name === "module.notes.custom"));
+    assert.ok(
+      warnings.some((w) => /mcpTools\(\) est déprécié/.test(w)),
+      `attendu warn mcpTools, obtenu: ${warnings.join(" | ")}`,
+    );
+  } finally {
+    console.warn = orig;
+  }
 });
 
 test("MO3 catalogue = ops kernel (mount démo) + Hono admin", () => {
@@ -193,6 +380,153 @@ test("MO4 doctor MODULE_OP_MISSING fail-closed (pin ≥ 0.10.6)", () => {
   assert.equal(doctor.ok, false, formatDoctorReport(doctor));
   assert.ok(
     doctor.issues.some((i) => i.code === "MODULE_OP_MISSING" && i.level === "error"),
+    formatDoctorReport(doctor),
+  );
+  fs.rmSync(work, { recursive: true, force: true });
+});
+
+test("MO4b doctor EntitySpec sans ops extras : pas MODULE_OP_MISSING", () => {
+  const work = fs.mkdtempSync(path.join(os.tmpdir(), "brand-spec-ops-entity-"));
+  const result = initBrandSpec({
+    outDir: path.join(work, "brand-spec"),
+    brandId: "opsent",
+    brandName: "Ops Entity",
+    domain: "opsent.local",
+    vertical: "generic",
+    force: true,
+  });
+  fs.mkdirSync(path.join(work, "server"), { recursive: true });
+  fs.writeFileSync(
+    path.join(work, "server/package.json"),
+    JSON.stringify({
+      dependencies: { "@creezio/platform-core": "^0.10.6" },
+    }),
+  );
+  writeDemoNotes(
+    path.join(work, "server/src/electron/modules"),
+    `export const notesModule = {
+  id: "notes",
+  entitySpecs: { notes: { table: "notes", columns: [{ name: "titre" }] } },
+  ${DEMO_BLOCK}
+};
+`,
+  );
+  const doctor = doctorBrandSpec(result.outDir);
+  assert.equal(doctor.ok, true, formatDoctorReport(doctor));
+  assert.ok(
+    !doctor.issues.some((i) => i.code === "MODULE_OP_MISSING"),
+    formatDoctorReport(doctor),
+  );
+  fs.rmSync(work, { recursive: true, force: true });
+});
+
+test("MO4c doctor operations: [] = MODULE_OP_MISSING", () => {
+  const work = fs.mkdtempSync(path.join(os.tmpdir(), "brand-spec-ops-empty-"));
+  const result = initBrandSpec({
+    outDir: path.join(work, "brand-spec"),
+    brandId: "opsempty",
+    brandName: "Ops Empty",
+    domain: "opsempty.local",
+    vertical: "generic",
+    force: true,
+  });
+  fs.mkdirSync(path.join(work, "server"), { recursive: true });
+  fs.writeFileSync(
+    path.join(work, "server/package.json"),
+    JSON.stringify({
+      dependencies: { "@creezio/platform-core": "^0.10.6" },
+    }),
+  );
+  writeDemoNotes(
+    path.join(work, "server/src/electron/modules"),
+    `export const notesModule = {
+  id: "notes",
+  apiMounts: { notes: { dbLayer: "brand", operations: [], handle: async () => ({ status: 200 }) } },
+  ${DEMO_BLOCK}
+};
+`,
+  );
+  const doctor = doctorBrandSpec(result.outDir);
+  assert.equal(doctor.ok, false, formatDoctorReport(doctor));
+  assert.ok(
+    doctor.issues.some((i) => i.code === "MODULE_OP_MISSING" && i.level === "error"),
+    formatDoctorReport(doctor),
+  );
+  fs.rmSync(work, { recursive: true, force: true });
+});
+
+test("MO4d doctor MODULE_MCP_TOOLS_DEPRECATED (warn, pas error)", () => {
+  const work = fs.mkdtempSync(path.join(os.tmpdir(), "brand-spec-ops-mcpdep-"));
+  const result = initBrandSpec({
+    outDir: path.join(work, "brand-spec"),
+    brandId: "opsmcp",
+    brandName: "Ops Mcp",
+    domain: "opsmcp.local",
+    vertical: "generic",
+    force: true,
+  });
+  fs.mkdirSync(path.join(work, "server"), { recursive: true });
+  fs.writeFileSync(
+    path.join(work, "server/package.json"),
+    JSON.stringify({
+      dependencies: { "@creezio/platform-core": "^0.10.6" },
+    }),
+  );
+  writeDemoNotes(
+    path.join(work, "server/src/electron/modules"),
+    `export const notesModule = {
+  id: "notes",
+  entitySpecs: { notes: { table: "notes", columns: [{ name: "titre" }] } },
+  mcpTools: () => [{ name: "module.notes.custom", space: "module", ownerId: "notes", handler: async () => ({ ok: true }) }],
+  ${DEMO_BLOCK}
+};
+`,
+  );
+  const doctor = doctorBrandSpec(result.outDir);
+  assert.equal(doctor.ok, true, formatDoctorReport(doctor));
+  assert.ok(
+    doctor.issues.some(
+      (i) => i.code === "MODULE_MCP_TOOLS_DEPRECATED" && i.level === "warn",
+    ),
+    formatDoctorReport(doctor),
+  );
+  assert.ok(
+    !doctor.issues.some((i) => i.code === "MODULE_OP_MCP_OVERLAP"),
+    formatDoctorReport(doctor),
+  );
+  fs.rmSync(work, { recursive: true, force: true });
+});
+
+test("MO4e doctor : apiMounts commenté (stub factory) n'est pas MODULE_OP_MISSING", () => {
+  const work = fs.mkdtempSync(path.join(os.tmpdir(), "brand-spec-ops-comment-"));
+  const result = initBrandSpec({
+    outDir: path.join(work, "brand-spec"),
+    brandId: "opscom",
+    brandName: "Ops Com",
+    domain: "opscom.local",
+    vertical: "generic",
+    force: true,
+  });
+  fs.mkdirSync(path.join(work, "server"), { recursive: true });
+  fs.writeFileSync(
+    path.join(work, "server/package.json"),
+    JSON.stringify({
+      dependencies: { "@creezio/platform-core": "^0.10.6" },
+    }),
+  );
+  writeDemoNotes(
+    path.join(work, "server/src/electron/modules"),
+    `export const notesModule = {
+  id: "notes",
+  // apiMounts: { notes: { dbLayer: "brand", operations: [/* 1 op = 1 capacité */], handle } },
+  ${DEMO_BLOCK}
+};
+`,
+  );
+  const doctor = doctorBrandSpec(result.outDir);
+  assert.equal(doctor.ok, true, formatDoctorReport(doctor));
+  assert.ok(
+    !doctor.issues.some((i) => i.code === "MODULE_OP_MISSING"),
     formatDoctorReport(doctor),
   );
   fs.rmSync(work, { recursive: true, force: true });

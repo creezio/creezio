@@ -6,6 +6,7 @@
 
 import type {
   ApiSpace,
+  ListedModuleOperation,
   ModuleOperation,
   ModuleOperationMethod,
   MountedApiInfo,
@@ -119,29 +120,42 @@ export type KernelOperationRoute = {
   tags?: string[];
 };
 
+/** Routes catalogue depuis `listOperations()` (id mount + op). */
+export function collectListedOperationRoutes(
+  listed: ReadonlyArray<Pick<ListedModuleOperation, "space" | "mountId" | "op">>,
+): KernelOperationRoute[] {
+  const out: KernelOperationRoute[] = [];
+  const seen = new Set<string>();
+  for (const { space, mountId, op } of listed) {
+    const path = resolveOperationHttpPath(space, mountId, op.path);
+    const method = op.method.toUpperCase();
+    const key = `${method} ${path}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push({
+      method,
+      path,
+      summary: `${method} ${path}`,
+      description: op.description,
+      tags: [space, mountId],
+    });
+  }
+  return out;
+}
+
 /** Routes catalogue : une ligne par op de chaque mount kernel. */
 export function collectKernelOperationRoutes(
   mounts: ReadonlyArray<
     Pick<MountedApiInfo, "space" | "id" | "operations">
   >,
 ): KernelOperationRoute[] {
-  const out: KernelOperationRoute[] = [];
-  const seen = new Set<string>();
-  for (const mount of mounts) {
-    for (const op of mount.operations ?? []) {
-      const path = resolveOperationHttpPath(mount.space, mount.id, op.path);
-      const method = op.method.toUpperCase();
-      const key = `${method} ${path}`;
-      if (seen.has(key)) continue;
-      seen.add(key);
-      out.push({
-        method,
-        path,
-        summary: `${method} ${path}`,
-        description: op.description,
-        tags: [mount.space, mount.id],
-      });
-    }
-  }
-  return out;
+  return collectListedOperationRoutes(
+    mounts.flatMap((mount) =>
+      (mount.operations ?? []).map((op) => ({
+        space: mount.space,
+        mountId: mount.id,
+        op,
+      })),
+    ),
+  );
 }
