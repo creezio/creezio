@@ -1,6 +1,6 @@
 {
   "name": "@creezio/access-control",
-  "version": "0.10.6",
+  "version": "0.10.7",
   "description": "Contrôle d'accès natif — rôles marque déclaratifs, overrides allow/deny en DB, matrice admin UI, résolution dynamique des permissions",
   "type": "module",
   "main": "./dist-cjs/index.js",
@@ -28,8 +28,8 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@creezio/auth": "^0.10.6",
-    "@creezio/shell-ui": "^0.10.6",
+    "@creezio/auth": "^0.10.7",
+    "@creezio/shell-ui": "^0.10.7",
     "hono": "^4.12.33"
   },
   "peerDependencies": {

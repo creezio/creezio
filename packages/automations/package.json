@@ -1,6 +1,6 @@
 {
   "name": "@creezio/automations",
-  "version": "0.10.6",
+  "version": "0.10.7",
   "description": "Lifecycle automations ONLY (plugins/org/factory/obs) — V3 prototype ≠ Database row-level (@creezio/database)",
   "type": "module",
   "main": "./dist-cjs/index.js",
@@ -22,10 +22,10 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@creezio/api-kernel": "^0.10.6",
-    "@creezio/observability": "^0.10.6",
-    "@creezio/platform-core": "^0.10.6",
-    "@creezio/product-hub": "^0.10.6"
+    "@creezio/api-kernel": "^0.10.7",
+    "@creezio/observability": "^0.10.7",
+    "@creezio/platform-core": "^0.10.7",
+    "@creezio/product-hub": "^0.10.7"
   },
   "devDependencies": {
     "@types/node": "^22.15.3",

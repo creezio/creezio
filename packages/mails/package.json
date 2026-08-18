@@ -1,6 +1,6 @@
 {
   "name": "@creezio/mails",
-  "version": "0.10.6",
+  "version": "0.10.7",
   "description": "Mails natifs plateforme Creezio (boîte générique + PJ + UI + slot providers marque)",
   "type": "module",
   "main": "./dist-cjs/index.js",
@@ -30,10 +30,10 @@
     "test:inbox": "node ../../scripts/test-mails-inbox.mjs"
   },
   "dependencies": {
-    "@creezio/api-kernel": "^0.10.6",
-    "@creezio/auth": "^0.10.6",
-    "@creezio/platform-core": "^0.10.6",
-    "@creezio/shell-ui": "^0.10.6",
+    "@creezio/api-kernel": "^0.10.7",
+    "@creezio/auth": "^0.10.7",
+    "@creezio/platform-core": "^0.10.7",
+    "@creezio/shell-ui": "^0.10.7",
     "hono": "^4.12.30"
   },
   "devDependencies": {
