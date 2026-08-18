@@ -1,5 +1,32 @@
 # @creezio/app-runtime
 
+## 0.10.6
+
+### Patch Changes
+
+- 1c7ec66: **feat — SoT unique : une opération de module = HTTP + /admin/api + tool MCP.**
+
+  `ModuleOperation` sur `ApiMount` / EntitySpec (CRUD auto). Le kit collecte puis génère les tools `module.<mountId>.<op.id>` (handler = requête HTTP synthétique). Catalogue `/admin/api` = ops kernel, plus seulement la surface Hono admin. `mcpTools()` déprécié (doctor error si recouvrement). Doctor fail-closed `MODULE_OP_MISSING` / `MODULE_OP_UNCATALOGUED` depuis 0.10.6. Enable MCP = policies sur tools générés (`mcpPublishDefault`, `roles`).
+
+- Updated dependencies [1c7ec66]
+  - @creezio/api-kernel@0.10.6
+  - @creezio/mcp-facade@0.10.6
+  - @creezio/observability@0.10.6
+  - @creezio/brand-config@0.10.6
+  - @creezio/platform-core@0.10.6
+  - @creezio/product-hub@0.10.6
+  - @creezio/electron-shell@0.10.6
+  - @creezio/shell-ui@0.10.6
+  - @creezio/auth@0.10.6
+  - @creezio/access-control@0.10.6
+  - @creezio/assistant@0.10.6
+  - @creezio/tasks@0.10.6
+  - @creezio/mails@0.10.6
+  - @creezio/support@0.10.6
+  - @creezio/integrations@0.10.6
+  - @creezio/browser-host@0.10.6
+  - @creezio/database@0.10.6
+
 ## 0.10.5
 
 ### Patch Changes
