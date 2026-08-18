@@ -63,11 +63,11 @@ import type { BrandModuleDef } from "./types.js";
 export const ${camel}Module: BrandModuleDef = {
   id: "${id}",
   // entitySpecs: { ${camel}: { table: "${camel}", columns: [/* … */] } },
-  // apiMounts: { "${id}": monMount },
+  // apiMounts: { "${id}": { dbLayer: "brand", operations: [/* 1 op = 1 capacité */], handle } },
   navItems: [
     { id: "brand.${id}", label: "${title}", href: "/${id}", group: "brand", order: 500 },
   ],
-  // mcpTools: (api) => [/* registerGuardedMcpTool côté serveur MCP */],
+  // Tools MCP générés depuis operations[] / EntitySpec — plus de mcpTools().
 ${renderPlayableDemoBlock({ moduleId: id, title, productName, navLabel: title })}
   // migrations: () => [{ id: "mod_${camel}_001_init", sql: \`…\` }],
 };

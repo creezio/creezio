@@ -23,6 +23,9 @@ export type ApiEndpointsRegistry = {
 export type ApiEndpointRouteInput = {
   method: string;
   path: string;
+  summary?: string;
+  description?: string;
+  tags?: string[];
 };
 
 type OpenApiOperation = {
@@ -91,10 +94,12 @@ export function buildApiEndpointsRegistry(opts: {
         {
           method,
           path: route.path,
-          documented: Boolean(operation),
-          summary: operation?.summary || null,
-          description: operation?.description || null,
-          tags: operation?.tags || [],
+          documented: Boolean(operation) || Boolean(route.description || route.summary),
+          summary: operation?.summary || route.summary || null,
+          description: operation?.description || route.description || null,
+          tags: operation?.tags?.length
+            ? operation.tags
+            : route.tags || [],
         } satisfies ApiEndpointRecord,
       ];
     })

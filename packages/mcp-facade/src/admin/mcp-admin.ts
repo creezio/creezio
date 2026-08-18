@@ -92,12 +92,13 @@ export function ensureMcpAdminSchema(): void {
   const insert = db.prepare(
     `INSERT OR IGNORE INTO mcp_tool_policies
        (tool_name, enabled, allowed_roles, allowed_scopes)
-     VALUES (?, 1, ?, ?)`,
+     VALUES (?, ?, ?, ?)`,
   );
   const seedFn = () => {
     for (const tool of MCP_TOOL_REGISTRY()) {
       const roles = (tool.defaultRoles || policyRoleNames()).join(",");
-      insert.run(tool.name, roles, tool.requiredScope);
+      const enabled = tool.mcpPublishDefault === false ? 0 : 1;
+      insert.run(tool.name, enabled, roles, tool.requiredScope);
     }
   };
   if (db.transaction) db.transaction(seedFn)();
@@ -114,7 +115,12 @@ export function ensureMcpAdminSchema(): void {
 export function seedMcpToolPolicies(
   tools: Array<
     Pick<McpToolDefinition, "name"> &
-      Partial<Pick<McpToolDefinition, "requiredScope" | "defaultRoles">>
+      Partial<
+        Pick<
+          McpToolDefinition,
+          "requiredScope" | "defaultRoles" | "mcpPublishDefault"
+        >
+      >
   >,
 ): void {
   ensureMcpAdminSchema();
@@ -122,13 +128,14 @@ export function seedMcpToolPolicies(
   const insert = db.prepare(
     `INSERT OR IGNORE INTO mcp_tool_policies
        (tool_name, enabled, allowed_roles, allowed_scopes)
-     VALUES (?, 1, ?, ?)`,
+     VALUES (?, ?, ?, ?)`,
   );
   const run = () => {
     for (const tool of tools) {
       if (!tool?.name) continue;
       const roles = (tool.defaultRoles || policyRoleNames()).join(",");
-      insert.run(tool.name, roles, tool.requiredScope || "");
+      const enabled = tool.mcpPublishDefault === false ? 0 : 1;
+      insert.run(tool.name, enabled, roles, tool.requiredScope || "");
     }
   };
   if (db.transaction) db.transaction(run)();
@@ -159,9 +166,10 @@ export function listMcpToolPolicies(): McpToolPolicy[] {
   const policy = new Map(rows.map((row) => [row.tool_name, row]));
   return MCP_TOOL_REGISTRY().map((tool) => {
     const row = policy.get(tool.name);
+    const defaultEnabled = tool.mcpPublishDefault !== false;
     return {
       ...tool,
-      enabled: row?.enabled !== 0,
+      enabled: row ? row.enabled !== 0 : defaultEnabled,
       allowedRoles: (row?.allowed_roles || policyRoleNames().join(","))
         .split(",")
         .filter(Boolean),

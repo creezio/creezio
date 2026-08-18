@@ -75,6 +75,11 @@ function toDef(t: McpRegisteredTool): McpToolDefinition {
     ...(t.ownerId ? { ownerId: t.ownerId } : {}),
     ...(t.inputSchema ? { inputSchema: t.inputSchema } : {}),
     ...(t.aliasOf ? { aliasOf: t.aliasOf } : {}),
+    ...(t.defaultRoles?.length ? { defaultRoles: t.defaultRoles } : {}),
+    ...(typeof t.mcpPublishDefault === "boolean"
+      ? { mcpPublishDefault: t.mcpPublishDefault }
+      : {}),
+    ...(t.requiredScope ? { requiredScope: t.requiredScope } : {}),
   };
 }
 

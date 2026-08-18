@@ -222,8 +222,8 @@ migrations)
 
 ## API
 
-(endpoints exhaustifs : méthode, chemin, params query/body, comportement des
-hooks, codes d'erreur — routes CRUD générées par EntitySpec incluses)
+(ops déclarées : méthode, chemin, rôles — CRUD EntitySpec auto + extraRoutes
+cataloguées ; codes d'erreur)
 
 ## UI
 
@@ -233,7 +233,7 @@ de DOC-STANDARD-MODULE.md)
 
 ## Tools MCP
 
-(noms, schémas d'entrée, scopes, policies — « Aucun » sinon)
+(générés depuis les ops \`module.<mountId>.<op.id>\` — « Aucun » sinon)
 
 ## Logique métier non triviale
 
@@ -289,9 +289,9 @@ Une interview ne peut PAS contredire ces conventions dures du kit
 
 ## 3. API
 
-- EntitySpec \`createEntityApiMount\` (défaut CRUD) ou mount manuscrit
-  (justifier) :
-- hooks / extraRoutes / mounts additionnels :
+- EntitySpec \`createEntityApiMount\` (défaut CRUD = ops auto) ou mount
+  manuscrit **avec \`operations[]\`** (1 capacité = 1 op, justifier) :
+- hooks / extraRoutes (chaque extraRoutes = une op déclarée) :
 - wiring : \`server/src/electron/modules/{{moduleId}}.ts\` (BrandModuleDef)
 - démo interactive (**obligatoire**, ≥ 1 scénario valide) : champ
   \`demo: { scenarios: DemoScenario[] }\` du BrandModuleDef — scénarios du
@@ -313,8 +313,8 @@ Pas de style ad hoc, pas de lib UI tierce, pas de fork des primitives.
 
 ## 5. Tools MCP & policies
 
-- tools \`module.<owner>.*\` (readOnly/destructive hints, requiredScope,
-  rôles par défaut) :
+- ops du module → tools générés \`module.<mountId>.<op.id>\` (rôles,
+  mcpPublishDefault). Pas de \`mcpTools()\` manuscrit.
 
 ## 6. Rôles & permissions
 

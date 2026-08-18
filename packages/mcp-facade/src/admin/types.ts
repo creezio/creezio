@@ -11,6 +11,8 @@ export type McpToolDefinition = {
   defaultRoles?: string[];
   annotations?: Record<string, boolean>;
   description?: string;
+  /** Absent = seed enabled (historique). false = désactivé jusqu'à /admin/mcp. */
+  mcpPublishDefault?: boolean;
 };
 
 export type McpAdminSqliteStatement = {

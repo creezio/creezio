@@ -118,6 +118,14 @@ test("entity-mount rejette les identifiants SQL invalides", () => {
   createEntityApiMount({ table: "widgets", columns: [], orderBy: "nom DESC" });
 });
 
+test("entity-mount CRUD auto → operations[] (list/get/create/update/delete/archive)", () => {
+  const mount = createEntityApiMount(WIDGET_SPEC);
+  const ids = (mount.operations || []).map((op) => op.id);
+  assert.deepEqual(ids, ["list", "create", "get", "update", "delete", "archive"]);
+  assert.equal(mount.operations.find((op) => op.id === "list")?.method, "GET");
+  assert.equal(mount.operations.find((op) => op.id === "get")?.path, "/:id");
+});
+
 test("entity-mount CRUD complet + colonnes non déclarées ignorées", async () => {
   const h = makeHarness();
   try {

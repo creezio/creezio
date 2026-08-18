@@ -84,7 +84,14 @@ export function createBrandMcpFacade(
       policySeeded = true;
       try {
         const { tools } = await facade.listTools();
-        seedMcpToolPolicies(tools.map((tool) => ({ name: tool.name })));
+        seedMcpToolPolicies(
+          tools.map((tool) => ({
+            name: tool.name,
+            defaultRoles: tool.defaultRoles,
+            requiredScope: tool.requiredScope,
+            mcpPublishDefault: tool.mcpPublishDefault,
+          })),
+        );
       } catch {
         policySeeded = false; // DB pas prête — retentera au prochain call
       }

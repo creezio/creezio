@@ -13,6 +13,8 @@ export type {
   ApiRequest,
   ApiResponse,
   ApiSpace,
+  ModuleOperation,
+  ModuleOperationMethod,
   MountedApiInfo,
 } from "./types.js";
 
@@ -49,8 +51,21 @@ export type {
 export {
   CREEZIO_DATA_CHANGED_HEADER,
   createEntityApiMount,
+  entityOperationsFromSpec,
   registerEntityMounts,
 } from "./entity-mount.js";
+
+export type { KernelOperationRoute } from "./operations.js";
+export {
+  KIT_INTERNAL_MODULE_MOUNT_IDS,
+  collectKernelOperationRoutes,
+  isKitInternalModuleMount,
+  isModuleOperationMethod,
+  kernelMountPrefix,
+  matchModuleOperation,
+  normalizeModuleOperationPath,
+  resolveOperationHttpPath,
+} from "./operations.js";
 
 export type {
   ApiKernelHonoSpace,

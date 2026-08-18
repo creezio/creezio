@@ -15,6 +15,7 @@
 | [`src/hono-proxy.ts`](../src/hono-proxy.ts) | Proxy façade Electron → Hono `/mcp` (D1/C2 → M9 SoT kit). Parle le transport Streamable HTTP JSON (même shape que test-mcp-oauth). Si l'upstream est absent ou en erreur et `fallbackLocal`, délègue à la façade locale (brand mounts) — zéro perte offline / tests. |
 | [`src/index.ts`](../src/index.ts) | @creezio/mcp-facade — MCP d'app unique (H1.2 / discovery H2.3 / proxy H4 / M9). |
 | [`src/jwt.ts`](../src/jwt.ts) | Vérification JWT HS256 minimale (sans dépendance jsonwebtoken). Alignée sur le secret local-config `mcpJwtSecret` / MCP_JWT_SECRET. |
+| [`src/module-ops-tools.ts`](../src/module-ops-tools.ts) | Génération tools MCP depuis les ops (`generateModuleToolsFromOperations`) — handler = requête HTTP synthétique, zéro 2e implémentation. |
 | [`src/namespace.ts`](../src/namespace.ts) | Namespacing H4 — core.* / creezio.* · module.<owner>.* · plugin.<owner>.* |
 | [`src/open-external-tab-host-tools.ts`](../src/open-external-tab-host-tools.ts) | D-P18 — tool MCP host-only `open_external_tab` (desktop). SoT kit partagée TF / CV / Fidu. Métier résolution URL reste injecté. |
 | [`src/policy.ts`](../src/policy.ts) | Policies MCP H4 — deny cross-layer cohérent api-kernel H2. H5 — plugin ACL (see/execute) alignée Product Hub. |

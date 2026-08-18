@@ -82,8 +82,45 @@ export type ApiMountHandler = (
   ctx: ApiHandlerContext,
 ) => ApiResponse | Promise<ApiResponse>;
 
+export type ModuleOperationMethod =
+  | "GET"
+  | "POST"
+  | "PATCH"
+  | "PUT"
+  | "DELETE";
+
+/**
+ * Une capacité du module = une opération déclarée (SoT).
+ * Le kit collecte puis génère : route HTTP + ligne `/admin/api` + tool MCP
+ * `module.<mountId>.<id>`. Un handler manuscrit n'existe que derrière une
+ * op déjà déclarée.
+ */
+export type ModuleOperation = {
+  /** Identifiant stable — "list" | "from-panier". */
+  id: string;
+  method: ModuleOperationMethod;
+  /** Relatif au mount, ex. "/" | "/:id" | "/from-panier". */
+  path: string;
+  description: string;
+  /** Rôles par défaut de la policy MCP (seed `/admin/mcp`). */
+  roles?: string[];
+  /** Permission HTTP (sinon `ApiMount.permission`). */
+  permission?: string;
+  inputSchema?: object;
+  /**
+   * Tool MCP seedé `enabled` si true. Défaut false : à activer dans
+   * `/admin/mcp`.
+   */
+  mcpPublishDefault?: boolean;
+};
+
 export type ApiMount = {
   handle: ApiMountHandler;
+  /**
+   * Opérations servies par ce mount. Obligatoire pour un mount métier
+   * manuscrit (doctor `MODULE_OP_MISSING`). EntitySpec : CRUD auto.
+   */
+  operations?: ModuleOperation[];
   /**
    * Permission requise pour appeler ce mount (ex. "nav.crm"). Vérifiée par
    * le hook `authorizeModuleAccess` du kernel (401 sans session, 403 sans
@@ -136,4 +173,6 @@ export type MountedApiInfo = {
   dbLayer: "core" | "brand" | "plugin";
   /** Permission déclarée par le mount, si présente. */
   permission?: string;
+  /** Ops déclarées (catalogue + génération MCP). */
+  operations?: ModuleOperation[];
 };

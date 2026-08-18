@@ -10,6 +10,7 @@ import {
   createScopedDbAccess,
   mountLayerRef,
 } from "./db-scope.js";
+import { matchModuleOperation } from "./operations.js";
 import type {
   ApiKernelOptions,
   ApiMount,
@@ -176,18 +177,23 @@ export function createApiKernel(opts: ApiKernelOptions = {}): ApiKernel {
       return json(400, { ok: false, error: "invalid_path" });
     }
 
-    // Garde permission déclarée par le mount (module/platform) — la sidebar
-    // filtre l'affichage, ICI on refuse l'appel API. Compat : sans hook
-    // authorizeModuleAccess (marques historiques), aucun contrôle ajouté.
+    // Garde permission : op.match.permission sinon mount.permission.
+    // Compat : sans hook authorizeModuleAccess, aucun contrôle ajouté.
+    const matchedOp = matchModuleOperation(
+      mount.operations,
+      req.method,
+      subPath,
+    );
+    const permission = matchedOp?.permission ?? mount.permission;
     if (
-      mount.permission &&
+      permission &&
       opts.authorizeModuleAccess &&
       (space === "module" || space === "platform")
     ) {
       const decision = await opts.authorizeModuleAccess({
         space,
         mountId: id,
-        permission: mount.permission,
+        permission,
         method: req.method.toUpperCase(),
         subPath,
         req,
@@ -197,7 +203,7 @@ export function createApiKernel(opts: ApiKernelOptions = {}): ApiKernel {
           ok: false,
           error: decision.reason,
           mount: id,
-          permission: mount.permission,
+          permission,
         });
       }
     }
@@ -282,6 +288,7 @@ export function createApiKernel(opts: ApiKernelOptions = {}): ApiKernel {
           allowCrossWrite: Boolean(m.allowCrossWrite),
           dbLayer: m.dbLayer ?? "core",
           ...(m.permission ? { permission: m.permission } : {}),
+          ...(m.operations?.length ? { operations: m.operations } : {}),
         });
       }
       for (const [id, m] of modules) {
@@ -291,6 +298,7 @@ export function createApiKernel(opts: ApiKernelOptions = {}): ApiKernel {
           allowCrossWrite: Boolean(m.allowCrossWrite),
           dbLayer: m.dbLayer ?? "brand",
           ...(m.permission ? { permission: m.permission } : {}),
+          ...(m.operations?.length ? { operations: m.operations } : {}),
         });
       }
       for (const [id, m] of plugins) {
@@ -299,6 +307,7 @@ export function createApiKernel(opts: ApiKernelOptions = {}): ApiKernel {
           id,
           allowCrossWrite: Boolean(m.allowCrossWrite),
           dbLayer: m.dbLayer ?? "plugin",
+          ...(m.operations?.length ? { operations: m.operations } : {}),
         });
       }
       return out;

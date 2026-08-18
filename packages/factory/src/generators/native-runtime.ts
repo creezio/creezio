@@ -103,6 +103,14 @@ function qstr(req: ApiRequest, key: string): string {
 function createSchemaMount(): ApiMount {
   return {
     dbLayer: "brand",
+    operations: [
+      {
+        id: "get",
+        method: "GET",
+        path: "/",
+        description: "Schéma métier (entités, pages, flux)",
+      },
+    ],
     handle: async ({ req }) => {
       if (req.method.toUpperCase() !== "GET") {
         return { status: 405, body: { error: "method_not_allowed" } };
@@ -123,6 +131,14 @@ function createSchemaMount(): ApiMount {
 function createDashboardMount(): ApiMount {
   return {
     dbLayer: "brand",
+    operations: [
+      {
+        id: "get",
+        method: "GET",
+        path: "/",
+        description: "Compteurs dashboard métier",
+      },
+    ],
     handle: async ({ req, db }) => {
       if (!db) return { status: 503, body: { error: "db_unavailable" } };
       if (req.method.toUpperCase() !== "GET") {
@@ -173,6 +189,14 @@ function createDashboardMount(): ApiMount {
 function createSearchMount(): ApiMount {
   return {
     dbLayer: "brand",
+    operations: [
+      {
+        id: "search",
+        method: "GET",
+        path: "/",
+        description: "Recherche métier (Meili ou SQL)",
+      },
+    ],
     handle: async ({ req, db }) => {
       if (!db) return { status: 503, body: { error: "db_unavailable" } };
       if (req.method.toUpperCase() !== "GET") {

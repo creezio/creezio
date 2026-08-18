@@ -135,6 +135,7 @@
 | [`test-phase-meili-feed.mjs`](../test-phase-meili-feed.mjs) | Gate Phase C — BrandMeiliFeed générique (pas de tf2_* dans le chemin feed). |
 | [`test-phase-module-docs.mjs`](../test-phase-module-docs.mjs) | (à documenter) |
 | [`test-phase-module-mount-session.mjs`](../test-phase-module-mount-session.mjs) | (à documenter) |
+| [`test-phase-module-ops.mjs`](../test-phase-module-ops.mjs) | Gate contrat 0.10.6 — ops EntitySpec auto, tool généré, catalogue kernel (mount démo), doctor MODULE_OP_*. |
 | [`test-phase-n0.mjs`](../test-phase-n0.mjs) | !usrbinenv node |
 | [`test-phase-n1.mjs`](../test-phase-n1.mjs) | !usrbinenv node |
 | [`test-phase-n1p.mjs`](../test-phase-n1p.mjs) | !usrbinenv node |

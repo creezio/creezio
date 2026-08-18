@@ -4,6 +4,8 @@
  */
 import { Hono } from "hono";
 import { getCookie } from "hono/cookie";
+import type { MountedApiInfo } from "@creezio/api-kernel";
+import { collectKernelOperationRoutes } from "@creezio/api-kernel";
 import type { AppManifest } from "@creezio/brand-config";
 import type { SqliteRuntime } from "@creezio/platform-core";
 import {
@@ -20,6 +22,7 @@ import {
   mcpOauthReady,
   resolveMcpPublicUrl,
   mcpAdminStatus,
+  seedMcpToolPolicies,
   type McpFacade,
 } from "@creezio/mcp-facade";
 import {
@@ -114,6 +117,8 @@ export function mountBrandMcpSurface(opts: {
   mcp: McpFacade;
   /** Base URL publique (loopback OK pour preuves locales). */
   publicBaseUrl: () => string;
+  /** Mounts api-kernel (ops → catalogue `/admin/api`, pas seulement Hono admin). */
+  listKernelMounts?: () => MountedApiInfo[];
 }): BrandMcpSurface {
   const getDb = () => opts.runtime.getCore();
 
@@ -135,17 +140,26 @@ export function mountBrandMcpSurface(opts: {
     access: "read" | "write";
     requiredScope: string;
     description?: string;
+    defaultRoles?: string[];
+    mcpPublishDefault?: boolean;
   }> = [];
   void opts.mcp.listTools().then((listed) => {
     toolDefs.length = 0;
     for (const t of listed.tools || []) {
       toolDefs.push({
         name: String(t.name),
-        category: "module",
+        category: t.space === "plugin" ? "plugin" : "module",
         access: "read",
-        requiredScope: "crm:read",
+        requiredScope: t.requiredScope || "crm:read",
         description: t.description ? String(t.description) : undefined,
+        defaultRoles: t.defaultRoles,
+        mcpPublishDefault: t.mcpPublishDefault,
       });
+    }
+    try {
+      seedMcpToolPolicies(toolDefs);
+    } catch {
+      /* DB admin pas prête */
     }
   });
 
@@ -218,9 +232,12 @@ export function mountBrandMcpSurface(opts: {
 
   const buildAdminRegistry = () =>
     buildApiEndpointsRegistry({
-      routes: collectHonoRoutes(adminSurface, "/api/v1/admin"),
+      routes: [
+        ...collectHonoRoutes(adminSurface, "/api/v1/admin"),
+        ...collectKernelOperationRoutes(opts.listKernelMounts?.() ?? []),
+      ],
       source:
-        "brand admin surface (MCP + database + analytics + request-logs + endpoints)",
+        "kernel operations (modules + platform) + brand admin surface (MCP + database + analytics + request-logs)",
       openapiUrl: "/api/v1/openapi.json",
     });
 
