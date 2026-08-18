@@ -93,9 +93,12 @@ export type {
 } from "./module-ops-tools.js";
 export {
   discoverModuleToolsFromBrandModules,
+  discoverModuleToolsFromKernel,
+  generateModuleToolsFromListedOps,
   generateModuleToolsFromMountedOps,
   generateModuleToolsFromOperations,
   mergeGeneratedAndLegacyModuleTools,
+  warnLegacyModuleMcpTools,
 } from "./module-ops-tools.js";
 
 export type {

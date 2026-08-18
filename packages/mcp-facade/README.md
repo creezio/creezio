@@ -240,7 +240,8 @@ export function createMyBrandMcp(api, options = {}) {
 - `enforceNamespaces: true` ;
 - `defaultCrossLayerDeny: true` ;
 - `listApiMounts: () => api.listMounts()` ;
-- `discoverToolsBySpace` avec modules et plugins.
+- tools `module.*` générés depuis `api.listOperations()` (handler = `api.handle`) ;
+- `discoverModuleTools` optionnel = union legacy (`mcpTools()` déprécié).
 
 ### Hono / SDK MCP
 

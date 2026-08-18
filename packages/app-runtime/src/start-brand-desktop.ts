@@ -35,8 +35,7 @@ import {
 } from "@creezio/electron-shell";
 import {
   createMcpFacade,
-  generateModuleToolsFromMountedOps,
-  mergeGeneratedAndLegacyModuleTools,
+  discoverModuleToolsFromKernel,
 } from "@creezio/mcp-facade";
 import { createNavShellAdapter } from "@creezio/shell-ui";
 import {
@@ -703,7 +702,6 @@ async function startBrandDesktopBody(args: {
     authorizeToolCall: aclWiring.authorizeToolCall,
     filterPluginToolsForActor: aclWiring.filterPluginToolsForActor,
     discoverToolsBySpace: async () => {
-      const generated = generateModuleToolsFromMountedOps(api);
       const health = api
         .listMounts()
         .filter((m) => m.space === "module")
@@ -721,10 +719,7 @@ async function startBrandDesktopBody(args: {
         ? await config.discoverModuleTools(api)
         : [];
       return {
-        module: mergeGeneratedAndLegacyModuleTools(generated, [
-          ...health,
-          ...brandTools,
-        ]),
+        module: discoverModuleToolsFromKernel(api, [...health, ...brandTools]),
         plugin: discoverPluginTools(),
       };
     },

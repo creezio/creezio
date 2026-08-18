@@ -149,11 +149,13 @@ tout accès `core`/`plugin` est refusé (`cross_layer_write_denied`).
 
 ## 3. Tools MCP + policies
 
-**Une op dans le module = un tool généré.** Le kit collecte les ops
-(`collect*` / `listMounts().operations`) puis `generateModuleToolsFromOperations` :
-name `module.<mountId>.<op.id>`, handler = requête HTTP synthétique vers le
-même mount — zéro 2ᵉ implémentation. `BrandModuleDef.mcpTools` est
-**déprécié** (doctor error si recouvrement avec des ops).
+**Une op dans le module = un tool généré.** Le runtime génère toujours
+depuis `api.listOperations()` (`generateModuleToolsFromOperations` /
+`discoverModuleToolsFromKernel`) : name `module.<mountId>.<op.id>`,
+handler = requête HTTP synthétique vers le même `ApiMount.handle` —
+zéro 2ᵉ implémentation. Pas besoin de `mcpTools()` dans le module métier.
+`BrandModuleDef.mcpTools` est **déprécié** (console.warn + doctor warn ;
+error si recouvrement avec des ops).
 
 Enable/disable et rôles = policies sur les tools générés (`/admin/mcp`).
 `mcpPublishDefault: false` (défaut) : le tool est seedé désactivé.

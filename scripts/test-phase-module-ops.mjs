@@ -2,9 +2,9 @@
 /**
  * Gate contrat fondateur 0.10.6 — une op dans le module = HTTP + /admin/api + MCP.
  *
- * Couvre : CRUD EntitySpec auto, generateModuleToolsFromOperations (handler =
- * req synthétique), catalogue kernel (pas seulement Hono admin), doctor
- * MODULE_OP_MISSING / UNCATALOGUED / MCP_OVERLAP.
+ * Couvre : CRUD EntitySpec auto, listTools `module.test.from-panier` (handler =
+ * req synthétique → handle()), seed mcp_tool_policies, catalogue kernel,
+ * doctor MODULE_OP_MISSING / UNCATALOGUED / MCP_OVERLAP.
  */
 import assert from "node:assert/strict";
 import fs from "node:fs";
@@ -23,9 +23,17 @@ import {
   resolveOperationHttpPath,
 } from "../packages/api-kernel/dist/index.js";
 import {
+  configureMcpAdmin,
+  createMcpFacade,
+  discoverModuleToolsFromBrandModules,
+  generateModuleToolsFromListedOps,
   generateModuleToolsFromMountedOps,
   generateModuleToolsFromOperations,
+  resetMcpAdminAdaptersForTests,
+  seedMcpToolPolicies,
+  getStoredMcpToolPolicy,
 } from "../packages/mcp-facade/dist/index.js";
+import { DatabaseSync } from "node:sqlite";
 import { buildApiEndpointsRegistry } from "../packages/observability/dist/index.js";
 import {
   doctorBrandSpec,
@@ -102,7 +110,127 @@ test("MO1 EntitySpec → ops CRUD auto + extra operations", () => {
   assert.ok(mount.operations?.some((o) => o.id === "list"));
 });
 
-test("MO2 generateModuleToolsFromOperations — name + invoke HTTP", async () => {
+test("MO2 listTools module.test.from-panier passe par handle()", async () => {
+  let handled = 0;
+  let lastReq = null;
+  const api = createApiKernel({ brandId: "demobrand" });
+  api.registerModuleApi("test", {
+    dbLayer: "brand",
+    operations: [
+      {
+        id: "from-panier",
+        method: "POST",
+        path: "/from-panier",
+        description: "Créer depuis le panier",
+      },
+    ],
+    handle: async ({ req }) => {
+      handled += 1;
+      lastReq = req;
+      return { status: 200, body: { ok: true, via: "handle", path: req.path } };
+    },
+  });
+
+  const generated = generateModuleToolsFromListedOps(api);
+  assert.equal(generated.length, 1);
+  assert.equal(generated[0].name, "module.test.from-panier");
+  assert.equal(generated[0].space, "module");
+  assert.equal(generated[0].ownerId, "test");
+  assert.equal(generated[0].mcpPublishDefault, false);
+
+  const mcp = createMcpFacade({
+    brandId: "demobrand",
+    allowUnauthenticated: true,
+    publicSurface: "canonical",
+    listApiMounts: () => api.listMounts(),
+    discoverToolsBySpace: async () => ({
+      module: generateModuleToolsFromListedOps(api),
+    }),
+  });
+  const listed = await mcp.listTools({ space: "module" });
+  assert.ok(
+    listed.tools.some((t) => t.name === "module.test.from-panier"),
+    `listTools doit contenir module.test.from-panier, obtenu: ${listed.tools.map((t) => t.name).join(",")}`,
+  );
+
+  const result = await mcp.callTool("module.test.from-panier", {
+    fournisseur_id: "f1",
+  });
+  assert.equal(result.ok, true);
+  assert.equal(result.content.via, "handle");
+  assert.equal(handled, 1);
+  assert.equal(lastReq.method, "POST");
+  assert.equal(lastReq.path, "/api/v1/modules/test/from-panier");
+  assert.equal(lastReq.body.fournisseur_id, "f1");
+
+  const fromMounts = generateModuleToolsFromMountedOps(api);
+  assert.ok(fromMounts.some((t) => t.name === "module.test.from-panier"));
+  const viaOps = generateModuleToolsFromOperations(
+    "test",
+    api.listOperations().map((x) => x.op),
+    (req) => api.handle(req),
+    { mountId: "test" },
+  );
+  assert.equal(viaOps[0].name, "module.test.from-panier");
+});
+
+test("MO2b seed mcp_tool_policies depuis tools générés (mcpPublishDefault → enabled)", () => {
+  const db = new DatabaseSync(":memory:");
+  resetMcpAdminAdaptersForTests();
+  configureMcpAdmin({
+    getDb: () => db,
+    getWriteDb: () => db,
+    tableExists: (name) =>
+      Boolean(
+        db
+          .prepare(
+            `SELECT name FROM sqlite_master WHERE type='table' AND name=?`,
+          )
+          .get(name),
+      ),
+    listTools: () => [],
+    mcpOauthReady: () => false,
+    resolveMcpPublicUrl: () => null,
+  });
+  const api = createApiKernel({ brandId: "demobrand" });
+  api.registerModuleApi("test", {
+    dbLayer: "brand",
+    operations: [
+      {
+        id: "from-panier",
+        method: "POST",
+        path: "/from-panier",
+        description: "Créer depuis le panier",
+      },
+      {
+        id: "publish-me",
+        method: "GET",
+        path: "/publish-me",
+        description: "Publié par défaut",
+        mcpPublishDefault: true,
+      },
+    ],
+    handle: async () => ({ status: 200, body: { ok: true } }),
+  });
+  const tools = generateModuleToolsFromListedOps(api);
+  seedMcpToolPolicies(
+    tools.map((t) => ({
+      name: t.name,
+      defaultRoles: t.defaultRoles,
+      requiredScope: t.requiredScope,
+      mcpPublishDefault: t.mcpPublishDefault,
+    })),
+  );
+  const unpublished = getStoredMcpToolPolicy("module.test.from-panier");
+  const published = getStoredMcpToolPolicy("module.test.publish-me");
+  assert.ok(unpublished, "policy seedée pour from-panier");
+  assert.equal(unpublished.enabled, false, "mcpPublishDefault false → enabled 0");
+  assert.ok(published, "policy seedée pour publish-me");
+  assert.equal(published.enabled, true, "mcpPublishDefault true → enabled 1");
+  resetMcpAdminAdaptersForTests();
+});
+
+test("MO2c mcpTools() manuscrit → warn, plus la source", () => {
   const api = createApiKernel({ brandId: "demobrand" });
   api.registerModuleApi("notes", {
     dbLayer: "brand",
@@ -111,28 +239,43 @@ test("MO2 generateModuleToolsFromOperations — name + invoke HTTP", async () =>
         id: "list",
         method: "GET",
         path: "/",
-        description: "Lister les notes démo",
+        description: "Lister",
       },
     ],
-    handle: async () => ({ status: 200, body: { items: [{ id: "n1" }], total: 1 } }),
+    handle: async () => ({ status: 200, body: { ok: true } }),
   });
-  const tools = generateModuleToolsFromOperations(
-    "notes",
-    api.listMounts().find((m) => m.id === "notes").operations,
-    (req) => api.handle(req),
-    { mountId: "notes" },
-  );
-  assert.equal(tools.length, 1);
-  assert.equal(tools[0].name, "module.notes.list");
-  assert.equal(tools[0].space, "module");
-  assert.equal(tools[0].ownerId, "notes");
-  assert.equal(tools[0].mcpPublishDefault, false);
-  const result = await tools[0].handler({});
-  assert.equal(result.ok, true);
-  assert.equal(result.content.total, 1);
-
-  const fromMounts = generateModuleToolsFromMountedOps(api);
-  assert.ok(fromMounts.some((t) => t.name === "module.notes.list"));
+  const warnings = [];
+  const orig = console.warn;
+  console.warn = (...args) => {
+    warnings.push(args.map(String).join(" "));
+  };
+  try {
+    const tools = discoverModuleToolsFromBrandModules(
+      [
+        {
+          id: "notes",
+          mcpTools: () => [
+            {
+              name: "module.notes.custom",
+              description: "legacy",
+              space: "module",
+              ownerId: "notes",
+              handler: async () => ({ ok: true }),
+            },
+          ],
+        },
+      ],
+      api,
+    );
+    assert.ok(tools.some((t) => t.name === "module.notes.list"));
+    assert.ok(tools.some((t) => t.name === "module.notes.custom"));
+    assert.ok(
+      warnings.some((w) => /mcpTools\(\) est déprécié/.test(w)),
+      `attendu warn mcpTools, obtenu: ${warnings.join(" | ")}`,
+    );
+  } finally {
+    console.warn = orig;
+  }
 });
 
 test("MO3 catalogue = ops kernel (mount démo) + Hono admin", () => {

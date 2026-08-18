@@ -1,6 +1,7 @@
 /**
  * DX factory marque — remplace le boilerplate create*BrandMcp ×3.
- * La marque ne fournit que api + aliases + discoverModuleTools.
+ * La marque fournit api + aliases ; tools module.* générés depuis
+ * `api.listOperations()`. `discoverModuleTools` = union legacy optionnelle.
  */
 import type { ApiKernel } from "@creezio/api-kernel";
 import { createMcpFacade, type McpFacade } from "./facade.js";
@@ -11,6 +12,7 @@ import {
   createToolPolicyAuthorize,
   type CreateToolPolicyAuthorizeOptions,
 } from "./admin/tool-policy-guard.js";
+import { discoverModuleToolsFromKernel } from "./module-ops-tools.js";
 import type {
   McpAuthorizeToolCallFn,
   McpFacadeOptions,
@@ -25,8 +27,11 @@ export type CreateBrandMcpFacadeOptions = Omit<
   api: ApiKernel;
   /** Aliases legacy métier (surface publique). */
   aliases: Record<string, string>;
-  /** Discovery tools module.* (factory mcp-tools marque). */
-  discoverModuleTools: (
+  /**
+   * Tools marque additionnels (legacy `mcpTools()`).
+   * Le runtime génère toujours depuis `api.listOperations()` (space module).
+   */
+  discoverModuleTools?: (
     api: ApiKernel,
   ) => McpRegisteredTool[] | Promise<McpRegisteredTool[]>;
   /** Discovery plugins (défaut : []). */
@@ -117,7 +122,10 @@ export function createBrandMcpFacade(
     authorizeToolCall,
     aliases: { ...aliases, ...(extraAliases || {}) },
     discoverToolsBySpace: async () => ({
-      module: await discoverModuleTools(api),
+      module: discoverModuleToolsFromKernel(
+        api,
+        discoverModuleTools ? await discoverModuleTools(api) : [],
+      ),
       plugin: discoverPluginTools
         ? await discoverPluginTools(api)
         : [],

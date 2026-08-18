@@ -6,7 +6,7 @@ Maintenir la façade MCP unique des apps Creezio : discovery/listage des tools, 
 
 La mission technique est de separer clairement :
 
-- façade metier : tools `module.*` / `plugin.*` decouverts par la marque ;
+- façade metier : tools `module.*` générés depuis `api.listOperations()` (ops du mount) ; `plugin.*` découverts par la marque ; `mcpTools()` manuscrit = warn ;
 - coeur kit : `creezio.*` / `core.*` ;
 - host runtime : desktop, AI tasks, introspection ;
 - OAuth/transport : generique et injectable.
@@ -33,7 +33,8 @@ Façade et contrats :
 - `src/namespace.ts` : parser/assertions namespaces.
 - `src/policy.ts` : deny cross-layer et composition de policies.
 - `src/core-tools.ts` : tools coeur.
-- `src/brand-facade.ts` : factory marque.
+- `src/brand-facade.ts` : factory marque (génère toujours depuis `listOperations()`).
+- `src/module-ops-tools.ts` : `generateModuleToolsFromOperations` / `discoverModuleToolsFromKernel`.
 - `src/runtime.ts` : role/proxy/executor.
 
 Hono/OAuth :
@@ -69,7 +70,7 @@ Host/admin/UI :
 La marque doit fournir :
 
 - `api: ApiKernel` a `createBrandMcpFacade` ;
-- `discoverModuleTools(api)` et optionnellement `discoverPluginTools(api)` ;
+- `discoverModuleTools(api)` optionnel (union legacy) — les tools `module.*` sont générés depuis `api.listOperations()` ; `discoverPluginTools(api)` optionnel ;
 - `aliases` legacy publics ;
 - `jwtSecret` / `MCP_JWT_SECRET` ;
 - DB write et `tableExists` pour OAuth/admin ;
