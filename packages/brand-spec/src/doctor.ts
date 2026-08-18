@@ -135,6 +135,15 @@ function extractMcpToolNames(src: string): string[] {
   ].map((m) => m[1]!);
 }
 
+/** Ignore les commentaires ligne et bloc — un stub commenté ne doit pas fail-close. */
+function stripModuleSourceComments(src: string): string {
+  return src
+    .replace(/\/\*[\s\S]*?\*\//g, "")
+    .split("\n")
+    .map((line) => (/^\s*\/\//.test(line) ? "" : line))
+    .join("\n");
+}
+
 /**
  * Contrat 0.10.6 : apiMount manuscrit ⇒ operations[] **non vide** ;
  * extraRoutes cataloguées ; mcpTools + ops qui se recouvrent = error.
@@ -163,7 +172,7 @@ function doctorBrandModuleOps(
   for (const file of files) {
     const id = file.replace(/\.ts$/, "");
     const filePath = path.join(modulesDir, file);
-    const src = fs.readFileSync(filePath, "utf8");
+    const src = stripModuleSourceComments(fs.readFileSync(filePath, "utf8"));
     const rel = path.relative(specRoot, filePath);
     const mountKeys = extractObjectKeys(src, "apiMounts");
     const hasApiMounts = /\bapiMounts\s*:/.test(src);

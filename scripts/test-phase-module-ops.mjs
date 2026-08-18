@@ -497,6 +497,41 @@ test("MO4d doctor MODULE_MCP_TOOLS_DEPRECATED (warn, pas error)", () => {
   fs.rmSync(work, { recursive: true, force: true });
 });
 
+test("MO4e doctor : apiMounts commenté (stub factory) n'est pas MODULE_OP_MISSING", () => {
+  const work = fs.mkdtempSync(path.join(os.tmpdir(), "brand-spec-ops-comment-"));
+  const result = initBrandSpec({
+    outDir: path.join(work, "brand-spec"),
+    brandId: "opscom",
+    brandName: "Ops Com",
+    domain: "opscom.local",
+    vertical: "generic",
+    force: true,
+  });
+  fs.mkdirSync(path.join(work, "server"), { recursive: true });
+  fs.writeFileSync(
+    path.join(work, "server/package.json"),
+    JSON.stringify({
+      dependencies: { "@creezio/platform-core": "^0.10.6" },
+    }),
+  );
+  writeDemoNotes(
+    path.join(work, "server/src/electron/modules"),
+    `export const notesModule = {
+  id: "notes",
+  // apiMounts: { notes: { dbLayer: "brand", operations: [/* 1 op = 1 capacité */], handle } },
+  ${DEMO_BLOCK}
+};
+`,
+  );
+  const doctor = doctorBrandSpec(result.outDir);
+  assert.equal(doctor.ok, true, formatDoctorReport(doctor));
+  assert.ok(
+    !doctor.issues.some((i) => i.code === "MODULE_OP_MISSING"),
+    formatDoctorReport(doctor),
+  );
+  fs.rmSync(work, { recursive: true, force: true });
+});
+
 test("MO5 doctor MODULE_OP_UNCATALOGUED + MCP overlap", () => {
   const work = fs.mkdtempSync(path.join(os.tmpdir(), "brand-spec-ops-uncat-"));
   const result = initBrandSpec({
