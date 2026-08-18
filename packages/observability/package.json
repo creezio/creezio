@@ -1,6 +1,6 @@
 {
   "name": "@creezio/observability",
-  "version": "0.10.6",
+  "version": "0.10.7",
   "description": "Observabilité — activité/CP + ops/fleet + fleet-collector (P25) + usage analytics (N6) + request-logs admin (O5)",
   "type": "module",
   "main": "./dist-cjs/index.js",
@@ -40,8 +40,8 @@
     "test:api-endpoints": "node scripts/test-api-endpoints-registry.mjs"
   },
   "dependencies": {
-    "@creezio/api-kernel": "^0.10.6",
-    "@creezio/platform-core": "^0.10.6",
+    "@creezio/api-kernel": "^0.10.7",
+    "@creezio/platform-core": "^0.10.7",
     "hono": "^4.12.32"
   },
   "devDependencies": {
