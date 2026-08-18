@@ -88,7 +88,7 @@ Docker, `client/` desktop thin remote-only, `brand-spec/` à la racine)
 
 ## Les 30 packages
 
-28 publiés en **lockstep 0.10.3** + `@creezio/factory` **0.6.2** (CLI,
+28 publiés en **lockstep 0.10.8** + `@creezio/factory` **0.6.6** (CLI,
 privé, hors lockstep) + `@creezio/propagation` 0.1.6. **CLI =
 `CREEZIO_KIT_ROOT`**, pas le pin app — [docs/README.md](./docs/README.md).
 
@@ -137,7 +137,7 @@ produit client).
 
 | Entrée | Contenu |
 |--------|---------|
-| [docs/README.md](./docs/README.md) | Hub docs : runbook, CREATE-MODULE, standard module, contrat secrets, factory 0.6.2 vs lockstep 0.10.3 |
+| [docs/README.md](./docs/README.md) | Hub docs : runbook, CREATE-MODULE, standard module, contrat secrets, factory 0.6.6 vs lockstep 0.10.8 |
 | [docs/RUNBOOK-AGENTS.md](./docs/RUNBOOK-AGENTS.md) | Topologie (Winhub, TempoFlow, **Foove** `*.crm.foove.io`), release, deploy |
 | [docs/agents/CREATE-MODULE.md](./docs/agents/CREATE-MODULE.md) | Créer un module (5 fichiers + `gate.mjs`) |
 | [docs/DOC-STANDARD-MODULE.md](./docs/DOC-STANDARD-MODULE.md) | Contrat module |

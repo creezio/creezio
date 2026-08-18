@@ -31,7 +31,7 @@
 | tempoflow : `/home/deploy/actions-runners/tempoflow3` | runner self-hosted (`actions-runner-tempoflow3.service`) |
 | tempoflow : `127.0.0.1:5000` | registry d'images local (container `creezio-registry`) |
 
-Tunnel Cloudflare : contrat **0.10.3** — `CREEZIO_CF_*` + `CREEZIO_OWNER_*`,
+Tunnel Cloudflare : contrat depuis **0.10.3** (pin actuel **0.10.8**) — `CREEZIO_CF_*` + `CREEZIO_OWNER_*`,
 auto-provision au boot, `update` préserve tunnel / hostname. Le provisioner
 VPS + sidecar est **legacy** (le sidecar `foove-admin-tunnel` **existe
 encore** sur ce VPS). Le contrat `CREEZIO_CF_API_TOKEN` /
@@ -55,10 +55,10 @@ encore** sur ce VPS). Le contrat `CREEZIO_CF_API_TOKEN` /
 Registre d'instances : `{brand-root}/docker-data/servers.json` (gitignoré —
 absent du checkout runner, présent sur le clone serveur).
 
-> **État 0.10.3 (constat 2026-08-16 soir)** : le contrat officiel est
-> in-process (`CREEZIO_CF_*` + `CREEZIO_OWNER_*`). **Ce n'est pas**
-> « toutes les instances en app seule, plus de sidecar » : le sidecar
-> `foove-admin-tunnel` tourne encore sur ce VPS. Un `update` 0.10.3
+> **État tunnel (constat 2026-08-16, toujours vrai en 0.10.8)** : le
+> contrat officiel est in-process (`CREEZIO_CF_*` + `CREEZIO_OWNER_*`).
+> **Ce n'est pas** « toutes les instances en app seule, plus de sidecar » :
+> le sidecar `foove-admin-tunnel` tourne encore sur ce VPS. Un `update`
 > **préserve** tunnel / hostname (sidecar historique inclus). Bascule
 > sidecar → in-process = `migrate-stack` (volontaire). Provisioner VPS +
 > `POST /reserve` = **legacy**, plus la voie officielle.
@@ -77,17 +77,17 @@ absent du checkout runner, présent sur le clone serveur).
 | `gh` | Authentifié (compte `creezio`) sur les deux VPS. |
 | Registre npm | GitHub Packages **privé** (décision assumée 2026-08-10) : toute installation (`npm ci` / `npm install`, kit ou app) exige un PAT `read:packages` d'un membre de l'org. Le `.npmrc` des repos est commité **sans** token et consomme `${CREEZIO_NPM_TOKEN}`. En CI apps : secret repo `CREEZIO_NPM_TOKEN` ; en CI kit : `GITHUB_TOKEN` (packages:read). |
 
-### Versions — factory 0.6.2 ≠ lockstep 0.10.3
+### Versions — factory 0.6.6 ≠ lockstep 0.10.8
 
 Les packages **publiés** (`@creezio/platform-core`, `app-runtime`,
-`brand-spec`…) sont en **lockstep 0.10.3** (groupe `fixed` de changesets —
+`brand-spec`…) sont en **lockstep 0.10.8** (groupe `fixed` de changesets —
 une version de kit = un ensemble cohérent). `@creezio/factory` (CLI
-`creezio`, **privé**, hors groupe `fixed`) est en **0.6.2**.
+`creezio`, **privé**, hors groupe `fixed`) est en **0.6.6**.
 `@creezio/propagation` est hors lockstep (0.1.6).
 
-**CLI = `CREEZIO_KIT_ROOT`, pas le pin app.** Le pin `^0.10.3` (Winhub
-inclus — `main` `739f79a`) est la version **consommée** au runtime / dans
-l'image Docker. `scripts/creezio-cli.mjs` résout
+**CLI = `CREEZIO_KIT_ROOT`, pas le pin app.** Le pin `^0.10.8` est la
+version **consommée** au runtime / dans l'image Docker.
+`scripts/creezio-cli.mjs` résout
 `$CREEZIO_KIT_ROOT/packages/factory/bin/creezio.js` **avant**
 `node_modules/@creezio/factory`. Pour `server-docker` / `brand doctor` /
 `brand apply` : toujours le clone kit du VPS
@@ -185,8 +185,8 @@ workaround dans une seule app.
 
 ## 6. Deploy et instances
 
-CLI SoT : `packages/factory/src/server-docker-cli.ts` (**factory 0.6.2**,
-hors lockstep 0.10.3). Depuis une app :
+CLI SoT : `packages/factory/src/server-docker-cli.ts` (**factory 0.6.6**,
+hors lockstep 0.10.8). Depuis une app :
 `node scripts/creezio-cli.mjs server-docker …` (`--brand-root` = racine du
 monorepo marque ; **`CREEZIO_KIT_ROOT` = clone kit**, jamais le pin
 `@creezio/*` de l'app).
@@ -219,7 +219,7 @@ provisionne le tunnel, écrit le stack M2, attend le boot. Update ensuite :
 --backup`. Une app qui dévie de ce chemin = un bug du standard → corriger le
 kit/factory (PR), jamais contourner sur une seule app.
 
-**Modèle cible ports/tunnel (0.10.3)** : 1 instance = 1 stack compose
+**Modèle cible ports/tunnel (depuis 0.10.3, pin 0.10.8)** : 1 instance = 1 stack compose
 autonome (`docker-data/stacks/<nom>/compose.yml`, généré — ne pas éditer) :
 **app seule** (port interne fixe `18791`, healthcheck
 `/api/v1/core/health`). **cloudflared tourne IN-PROCESS** dans le conteneur
@@ -348,7 +348,7 @@ backups `docker-data/backups/<nom>-<stamp>.tar.gz`.
 
 ### 7.3 Tunnel Cloudflare auto-provisionné (0.10.0)
 
-**Voie officielle (0.10.3), admins comprises** : le conteneur
+**Voie officielle (0.10.8), admins comprises** : le conteneur
 crée/configure son tunnel lui-même via l'API Cloudflare au boot
 (cloudflared in-process). Le provisioner VPS + sidecar est **legacy**
 (le sidecar `foove-admin-tunnel` existe encore). Un tunnel CF par
@@ -407,7 +407,7 @@ supprimé — connexions coupées d'abord) avant de retirer le stack ;
 `server-docker enroll` pose l'ingress `agent[-.]{slug}` via le client CF
 (en relisant la config courante du tunnel de l'instance).
 
-**Update et tunnels publics (0.10.3 — non négociable)** : `server-docker
+**Update et tunnels publics (0.10.8 — non négociable)** : `server-docker
 update` (et tout recreate compose : agent flotte, apply image) **ne peut
 plus** retirer un service `cloudflared*` ni changer le hostname. Un stack
 historique (sidecar + `tunnel.env`, ex. `foove-admin-tunnel` sur ce VPS ;

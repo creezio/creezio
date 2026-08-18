@@ -41,13 +41,13 @@ Détail tunnel / owner : [RUNBOOK-AGENTS.md §7.3](./RUNBOOK-AGENTS.md) et
 
 | Ensemble | Version | Quoi |
 |----------|---------|------|
-| **Lockstep** (groupe `fixed` changesets) | **0.10.3** | Packages **publiés** `@creezio/*` (runtime, UI, brand-spec…) — pin app `^0.10.3` |
-| **`@creezio/factory`** | **0.6.2** | CLI `creezio` (privé, **hors** lockstep) — `new-app`, `brand *`, `server-docker` |
+| **Lockstep** (groupe `fixed` changesets) | **0.10.8** | Packages **publiés** `@creezio/*` (runtime, UI, brand-spec…) — pin app `^0.10.8` |
+| **`@creezio/factory`** | **0.6.6** | CLI `creezio` (privé, **hors** lockstep) — `new-app`, `brand *`, `server-docker` |
 | **`@creezio/propagation`** | 0.1.6 | Outillage interne, hors lockstep |
 
-**CLI = clone kit (`CREEZIO_KIT_ROOT`), pas le pin app.** Le pin `^0.10.3`
-(Winhub inclus — `main` `739f79a`) est la version **consommée** au runtime /
-dans l'image. `creezio` / `scripts/creezio-cli.mjs` résout
+**CLI = clone kit (`CREEZIO_KIT_ROOT`), pas le pin app.** Le pin `^0.10.8`
+est la version **consommée** au runtime / dans l'image. `creezio` /
+`scripts/creezio-cli.mjs` résout
 `$CREEZIO_KIT_ROOT/packages/factory/bin/creezio.js` **avant**
 `node_modules/@creezio/factory`. Toujours pointer le clone kit du VPS
 (`CREEZIO_KIT_ROOT=/opt/docker/creezio` ici) pour create / update / doctor /
@@ -70,7 +70,7 @@ apply — jamais « la factory pinnée dans l'app ».
 | [MATRICE-NATIVE-METIER-PLUGIN.md](./MATRICE-NATIVE-METIER-PLUGIN.md) | Qui possède quoi : natif / métier / plugin |
 | [PLATFORM-VS-VERTICAL.md](./PLATFORM-VS-VERTICAL.md) | Règles de décision kit vs marque |
 | [PROPAGATION.md](./PROPAGATION.md) | Propagation kit→marques |
-| [NPM-DISTRIBUTION.md](./NPM-DISTRIBUTION.md) | Publication GitHub Packages, lockstep 0.10.3 vs factory 0.6.2 |
+| [NPM-DISTRIBUTION.md](./NPM-DISTRIBUTION.md) | Publication GitHub Packages, lockstep 0.10.8 vs factory 0.6.6 |
 | [RUNBOOK-FLOTTE.md](./RUNBOOK-FLOTTE.md) | Gestes flotte (zones/hostnames = ceux de **la marque**) |
 | [BACKLOG.md](./BACKLOG.md) | Dettes restantes assumées |
 | [adr/](./adr/) | Décisions d'architecture (ADR) en vigueur |
