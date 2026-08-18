@@ -1,5 +1,14 @@
 # @creezio/os-ui
 
+## 0.10.6
+
+### Patch Changes
+
+- Updated dependencies [1c7ec66]
+  - @creezio/interactive-demo@0.10.6
+  - @creezio/shell-ui@0.10.6
+  - @creezio/mails@0.10.6
+
 ## 0.10.5
 
 ### Patch Changes

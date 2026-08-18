@@ -1,5 +1,11 @@
 # @creezio/desktop-tooling
 
+## 0.10.6
+
+### Patch Changes
+
+- @creezio/brand-config@0.10.6
+
 ## 0.10.5
 
 ### Patch Changes
