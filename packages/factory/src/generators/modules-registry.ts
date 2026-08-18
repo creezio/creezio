@@ -19,8 +19,7 @@ export const MODULES_TYPES_TS = `/**
  * \`modules/<id>.ts\` exportant un \`BrandModuleDef\` (standard kit
  * DOC-STANDARD-MODULE.md).
  */
-import type { ApiKernel, ApiMount, EntitySpec } from "@creezio/api-kernel";
-import type { McpRegisteredTool } from "@creezio/mcp-facade";
+import type { ApiMount, EntitySpec } from "@creezio/api-kernel";
 import type { SqliteMigration } from "@creezio/platform-core";
 import type { BrandMeiliFeed } from "@creezio/electron-shell/meili";
 import type { CoreNavItem } from "@creezio/shell-ui";
@@ -43,11 +42,6 @@ export type BrandModuleDef = {
   apiMounts?: Record<string, ApiMount>;
   /** Entrées de nav du module (fusionnées + triées par order). */
   navItems?: BrandNavItem[];
-  /**
-   * @deprecated Tools générés depuis \`operations[]\` / EntitySpec.
-   * Conservé le temps de la migration — collision de nom = doctor error.
-   */
-  mcpTools?: (api: ApiKernel) => McpRegisteredTool[];
   /** Index Meili contribués au feed marque. */
   meiliIndexes?: BrandMeiliIndex[];
   /**

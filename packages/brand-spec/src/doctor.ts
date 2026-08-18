@@ -146,7 +146,7 @@ function stripModuleSourceComments(src: string): string {
 
 /**
  * Contrat 0.10.6 : apiMount manuscrit ⇒ operations[] **non vide** ;
- * extraRoutes cataloguées ; mcpTools + ops qui se recouvrent = error.
+ * extraRoutes cataloguées ; `mcpTools` restant = error (n'existe plus).
  * Pin < 0.10.6 = warn.
  *
  * Exemption (documentée, pas un allowlist de noms) : les mounts kit
@@ -221,14 +221,14 @@ function doctorBrandModuleOps(
         issues.push({
           level,
           code: "MODULE_OP_MCP_OVERLAP",
-          message: `module ${id}: mcpTools() recouvre des ops générées (${overlap.join(", ")}). Supprimer le tool manuscrit — SoT = operations[].`,
+          message: `module ${id}: mcpTools() recouvre des ops générées (${overlap.join(", ")}). mcpTools n'existe plus — SoT = operations[].`,
           path: rel,
         });
       } else {
         issues.push({
-          level: "warn",
+          level: "error",
           code: "MODULE_MCP_TOOLS_DEPRECATED",
-          message: `module ${id}: mcpTools() est déprécié — les tools sont générés depuis operations[].`,
+          message: `module ${id}: mcpTools() n'existe plus — SoT = operations[] (tools générés).`,
           path: rel,
         });
       }

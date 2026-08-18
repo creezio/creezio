@@ -314,7 +314,7 @@ Pas de style ad hoc, pas de lib UI tierce, pas de fork des primitives.
 ## 5. Tools MCP & policies
 
 - ops du module → tools générés \`module.<mountId>.<op.id>\` (rôles,
-  mcpPublishDefault). Pas de \`mcpTools()\` manuscrit.
+  mcpPublishDefault). \`mcpTools\` n'existe plus. SoT = \`operations[]\`.
 
 ## 6. Rôles & permissions
 

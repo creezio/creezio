@@ -95,9 +95,9 @@ export type StartBrandDesktopConfig = {
    */
   catalogHost?: BrandCatalogHost;
   /**
-   * Tools MCP marque additionnels (legacy `mcpTools()`).
-   * Le runtime génère toujours les tools `module.<mount>.<op>` depuis
-   * `api.listOperations()` (space module) — `mcpTools()` n'est plus la source.
+   * Hook apps (extras / JWT). Le runtime génère toujours les tools
+   * `module.<mount>.<op>` depuis `api.listOperations()` (space module).
+   * SoT = `operations[]` — pas de `mcpTools` manuscrit.
    */
   discoverModuleTools?: (
     api: ApiKernel,

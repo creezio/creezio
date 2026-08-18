@@ -4,7 +4,8 @@
  *
  * Couvre : CRUD EntitySpec auto, listTools `module.test.from-panier` (handler =
  * req synthétique → handle()), seed mcp_tool_policies, catalogue kernel,
- * doctor MODULE_OP_MISSING / UNCATALOGUED / MCP_OVERLAP.
+ * doctor MODULE_OP_MISSING / UNCATALOGUED / MCP_OVERLAP /
+ * MODULE_MCP_TOOLS_DEPRECATED (error).
  */
 import assert from "node:assert/strict";
 import fs from "node:fs";
@@ -230,7 +231,7 @@ test("MO2b seed mcp_tool_policies depuis tools générés (mcpPublishDefault →
   resetMcpAdminAdaptersForTests();
 });
 
-test("MO2c mcpTools() manuscrit → warn, plus la source", () => {
+test("MO2c mcpTools() manuscrit ignoré — SoT = operations[]", () => {
   const api = createApiKernel({ brandId: "demobrand" });
   api.registerModuleApi("notes", {
     dbLayer: "brand",
@@ -244,38 +245,19 @@ test("MO2c mcpTools() manuscrit → warn, plus la source", () => {
     ],
     handle: async () => ({ status: 200, body: { ok: true } }),
   });
-  const warnings = [];
-  const orig = console.warn;
-  console.warn = (...args) => {
-    warnings.push(args.map(String).join(" "));
-  };
-  try {
-    const tools = discoverModuleToolsFromBrandModules(
-      [
-        {
-          id: "notes",
-          mcpTools: () => [
-            {
-              name: "module.notes.custom",
-              description: "legacy",
-              space: "module",
-              ownerId: "notes",
-              handler: async () => ({ ok: true }),
-            },
-          ],
-        },
-      ],
-      api,
-    );
-    assert.ok(tools.some((t) => t.name === "module.notes.list"));
-    assert.ok(tools.some((t) => t.name === "module.notes.custom"));
-    assert.ok(
-      warnings.some((w) => /mcpTools\(\) est déprécié/.test(w)),
-      `attendu warn mcpTools, obtenu: ${warnings.join(" | ")}`,
-    );
-  } finally {
-    console.warn = orig;
-  }
+  const tools = discoverModuleToolsFromBrandModules(
+    [
+      {
+        id: "notes",
+      },
+    ],
+    api,
+  );
+  assert.ok(tools.some((t) => t.name === "module.notes.list"));
+  assert.ok(
+    !tools.some((t) => t.name === "module.notes.custom"),
+    "mcpTools n'existe plus — aucun tool manuscrit fusionné",
+  );
 });
 
 test("MO3 catalogue = ops kernel (mount démo) + Hono admin", () => {
@@ -455,7 +437,7 @@ test("MO4c doctor operations: [] = MODULE_OP_MISSING", () => {
   fs.rmSync(work, { recursive: true, force: true });
 });
 
-test("MO4d doctor MODULE_MCP_TOOLS_DEPRECATED (warn, pas error)", () => {
+test("MO4d doctor MODULE_MCP_TOOLS_DEPRECATED (error, fail-closed)", () => {
   const work = fs.mkdtempSync(path.join(os.tmpdir(), "brand-spec-ops-mcpdep-"));
   const result = initBrandSpec({
     outDir: path.join(work, "brand-spec"),
@@ -483,10 +465,10 @@ test("MO4d doctor MODULE_MCP_TOOLS_DEPRECATED (warn, pas error)", () => {
 `,
   );
   const doctor = doctorBrandSpec(result.outDir);
-  assert.equal(doctor.ok, true, formatDoctorReport(doctor));
+  assert.equal(doctor.ok, false, formatDoctorReport(doctor));
   assert.ok(
     doctor.issues.some(
-      (i) => i.code === "MODULE_MCP_TOOLS_DEPRECATED" && i.level === "warn",
+      (i) => i.code === "MODULE_MCP_TOOLS_DEPRECATED" && i.level === "error",
     ),
     formatDoctorReport(doctor),
   );

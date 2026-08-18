@@ -241,7 +241,7 @@ export function createMyBrandMcp(api, options = {}) {
 - `defaultCrossLayerDeny: true` ;
 - `listApiMounts: () => api.listMounts()` ;
 - tools `module.*` générés depuis `api.listOperations()` (handler = `api.handle`) ;
-- `discoverModuleTools` optionnel = union legacy (`mcpTools()` déprécié).
+- `discoverModuleTools` optionnel = hook apps (extras / JWT) — SoT = `operations[]`, `mcpTools` n'existe plus.
 
 ### Hono / SDK MCP
 

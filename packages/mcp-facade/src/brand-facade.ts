@@ -1,7 +1,8 @@
 /**
  * DX factory marque — remplace le boilerplate create*BrandMcp ×3.
  * La marque fournit api + aliases ; tools module.* générés depuis
- * `api.listOperations()`. `discoverModuleTools` = union legacy optionnelle.
+ * `api.listOperations()`. `discoverModuleTools` = hook apps optionnel
+ * (extras / JWT) — SoT = `operations[]`, pas de `mcpTools` manuscrit.
  */
 import type { ApiKernel } from "@creezio/api-kernel";
 import { createMcpFacade, type McpFacade } from "./facade.js";
@@ -28,8 +29,8 @@ export type CreateBrandMcpFacadeOptions = Omit<
   /** Aliases legacy métier (surface publique). */
   aliases: Record<string, string>;
   /**
-   * Tools marque additionnels (legacy `mcpTools()`).
-   * Le runtime génère toujours depuis `api.listOperations()` (space module).
+   * Hook apps (extras / JWT). Le runtime génère toujours depuis
+   * `api.listOperations()` (space module) — SoT = `operations[]`.
    */
   discoverModuleTools?: (
     api: ApiKernel,

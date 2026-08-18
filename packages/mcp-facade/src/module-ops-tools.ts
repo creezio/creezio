@@ -186,7 +186,7 @@ function toolsFromListedOps(
 
 /**
  * Tools `module.*` générés depuis `api.listOperations()` (space module).
- * SoT runtime — plus besoin de `BrandModuleDef.mcpTools()`.
+ * SoT runtime — `BrandModuleDef.mcpTools` n'existe plus.
  */
 export function generateModuleToolsFromListedOps(
   api: ApiKernel,
@@ -227,107 +227,65 @@ export function generateModuleToolsFromMountedOps(
   return out;
 }
 
-const warnedLegacyMcpTools = new Set<string>();
-
-/** console.warn (une fois par module) — doctor a le pendant `MODULE_MCP_TOOLS_DEPRECATED`. */
-export function warnLegacyModuleMcpTools(moduleId: string): void {
-  if (warnedLegacyMcpTools.has(moduleId)) return;
-  warnedLegacyMcpTools.add(moduleId);
-  console.warn(
-    `[creezio] module ${moduleId}: mcpTools() est déprécié — les tools MCP sont générés depuis operations[] (api.listOperations()). Enable/publish via /admin/mcp.`,
-  );
-}
-
 /**
- * Discovery runtime : toujours générer depuis `listOperations()` (space module),
- * puis union avec les tools marque éventuels (legacy `mcpTools()`).
+ * Discovery runtime : uniquement `listOperations()` (space module).
+ * `extraTools` = hook apps (health, JWT) — pas de `mcpTools` manuscrit.
  */
 export function discoverModuleToolsFromKernel(
   api: ApiKernel,
-  brandTools: readonly McpRegisteredTool[] = [],
+  extraTools: readonly McpRegisteredTool[] = [],
 ): McpRegisteredTool[] {
-  return mergeGeneratedAndLegacyModuleTools(
-    generateModuleToolsFromListedOps(api),
-    brandTools,
-  );
+  const generated = generateModuleToolsFromListedOps(api);
+  if (!extraTools.length) return generated;
+  const seen = new Set(generated.map((t) => t.name));
+  return [...generated, ...extraTools.filter((t) => !seen.has(t.name))];
 }
 
 export type BrandModuleOpsSource = {
   id: string;
   entitySpecs?: Record<string, EntitySpec>;
   apiMounts?: Record<string, ApiMount>;
-  /** @deprecated Tools générés depuis les ops. Conservé le temps de la migration. */
-  mcpTools?: (api: ApiKernel) => McpRegisteredTool[];
 };
 
 /**
  * Discovery kit-side : SoT = `api.listOperations()` (space module).
  * Fallback : ops des BrandModuleDef (EntitySpec CRUD + apiMounts) si le
- * kernel n'a pas encore les mounts. `mcpTools()` manuscrit = warn, fusionné
- * seulement s'il n'y a pas de collision de nom.
+ * kernel n'a pas encore les mounts. Pas de champ `mcpTools`.
  */
 export function discoverModuleToolsFromBrandModules(
   modules: readonly BrandModuleOpsSource[],
   api: ApiKernel,
 ): McpRegisteredTool[] {
   const fromKernel = generateModuleToolsFromListedOps(api);
-  const generated: McpRegisteredTool[] = [...fromKernel];
-  const generatedNames = new Set(fromKernel.map((t) => t.name));
+  if (fromKernel.length) return fromKernel;
+
+  const generated: McpRegisteredTool[] = [];
   const invoke: GenerateModuleToolsInvoke = (req) => api.handle(req);
 
-  if (!fromKernel.length) {
-    for (const mod of modules) {
-      const seenOp = new Set<string>();
-      for (const [mountId, spec] of Object.entries(mod.entitySpecs ?? {})) {
-        const ops = entityOperationsFromSpec(spec);
-        for (const op of ops) seenOp.add(`${mountId}:${op.id}`);
-        const tools = generateModuleToolsFromOperations(mod.id, ops, invoke, {
-          mountId,
-          space: "module",
-        });
-        for (const tool of tools) {
-          generated.push(tool);
-          generatedNames.add(tool.name);
-        }
-      }
-      for (const [mountId, mount] of Object.entries(mod.apiMounts ?? {})) {
-        const extras = (mount.operations ?? []).filter(
-          (op) => !seenOp.has(`${mountId}:${op.id}`),
-        );
-        if (!extras.length) continue;
-        const tools = generateModuleToolsFromOperations(mod.id, extras, invoke, {
-          mountId,
-          space: "module",
-        });
-        for (const tool of tools) {
-          generated.push(tool);
-          generatedNames.add(tool.name);
-        }
-      }
-    }
-  }
-
-  const legacy: McpRegisteredTool[] = [];
   for (const mod of modules) {
-    if (!mod.mcpTools) continue;
-    warnLegacyModuleMcpTools(mod.id);
-    for (const tool of mod.mcpTools(api)) {
-      if (generatedNames.has(tool.name)) continue;
-      legacy.push(tool);
+    const seenOp = new Set<string>();
+    for (const [mountId, spec] of Object.entries(mod.entitySpecs ?? {})) {
+      const ops = entityOperationsFromSpec(spec);
+      for (const op of ops) seenOp.add(`${mountId}:${op.id}`);
+      generated.push(
+        ...generateModuleToolsFromOperations(mod.id, ops, invoke, {
+          mountId,
+          space: "module",
+        }),
+      );
+    }
+    for (const [mountId, mount] of Object.entries(mod.apiMounts ?? {})) {
+      const extras = (mount.operations ?? []).filter(
+        (op) => !seenOp.has(`${mountId}:${op.id}`),
+      );
+      if (!extras.length) continue;
+      generated.push(
+        ...generateModuleToolsFromOperations(mod.id, extras, invoke, {
+          mountId,
+          space: "module",
+        }),
+      );
     }
   }
-  return [...generated, ...legacy];
-}
-
-/** Fusion : générés d'abord (gagnent), manuscrits ensuite si nom libre. */
-export function mergeGeneratedAndLegacyModuleTools(
-  generated: readonly McpRegisteredTool[],
-  legacy: readonly McpRegisteredTool[],
-): McpRegisteredTool[] {
-  const byName = new Map<string, McpRegisteredTool>();
-  for (const tool of generated) byName.set(tool.name, tool);
-  for (const tool of legacy) {
-    if (!byName.has(tool.name)) byName.set(tool.name, tool);
-  }
-  return [...byName.values()];
+  return generated;
 }
