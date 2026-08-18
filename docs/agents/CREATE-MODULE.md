@@ -158,8 +158,10 @@ tout accès `core`/`plugin` est refusé (`cross_layer_write_denied`).
 depuis `api.listOperations()` (`generateModuleToolsFromOperations` /
 `discoverModuleToolsFromKernel`) : name `module.<mountId>.<op.id>`,
 handler = requête HTTP synthétique vers le même `ApiMount.handle` —
-zéro 2ᵉ implémentation. Pas besoin de `mcpTools()` dans le module métier.
-`mcpTools()` manuscrit est **déprécié** (doctor warn `MODULE_MCP_TOOLS_DEPRECATED`). Interdit dès qu'il y a collision de nom (error `MODULE_OP_MCP_OVERLAP`). Le contrat SoT est `operations[]` → tools générés. Ne plus ajouter de factory mcpTools.
+zéro 2ᵉ implémentation. `mcpTools` n'existe plus. SoT = `operations[]` →
+tools générés. Un champ `mcpTools()` restant = doctor error
+`MODULE_MCP_TOOLS_DEPRECATED` (fail-closed) ; collision de nom =
+`MODULE_OP_MCP_OVERLAP`.
 
 Enable/disable et rôles = policies sur les tools générés (`/admin/mcp`).
 `mcpPublishDefault: false` (défaut) : le tool est seedé désactivé.

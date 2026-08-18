@@ -29,6 +29,7 @@ Le package doit protéger les frontières DB, empêcher les abus historiques com
 - `src/types.ts`
   - contrats `ApiRequest`, `ApiResponse`, `ApiMount`, `ApiHandlerContext`, `ApiKernelOptions`, `MountedApiInfo`.
   - `ModuleOperation` / `operations[]` sur chaque mount métier (1 capacité = 1 op).
+    `mcpTools` n'existe plus. SoT = `operations[]` → tools MCP générés côté `@creezio/mcp-facade`.
 - `src/kernel.ts`
   - constantes de préfixe, type `ApiKernel`, `createApiKernel`, routes core, dispatch mounts.
   - `listOperations()` aplatit chaque mount + `operations[]` (`ListedModuleOperation`).

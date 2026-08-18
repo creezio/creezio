@@ -6,7 +6,7 @@ Maintenir la façade MCP unique des apps Creezio : discovery/listage des tools, 
 
 La mission technique est de separer clairement :
 
-- façade metier : tools `module.*` générés depuis `api.listOperations()` (ops du mount) ; `plugin.*` découverts par la marque ; `mcpTools()` manuscrit = warn ;
+- façade metier : tools `module.*` générés depuis `api.listOperations()` (ops du mount) ; `plugin.*` découverts par la marque ; `mcpTools` n'existe plus (SoT = `operations[]`) ;
 - coeur kit : `creezio.*` / `core.*` ;
 - host runtime : desktop, AI tasks, introspection ;
 - OAuth/transport : generique et injectable.
@@ -70,7 +70,7 @@ Host/admin/UI :
 La marque doit fournir :
 
 - `api: ApiKernel` a `createBrandMcpFacade` ;
-- `discoverModuleTools(api)` optionnel (union legacy) — les tools `module.*` sont générés depuis `api.listOperations()` ; `discoverPluginTools(api)` optionnel ;
+- `discoverModuleTools(api)` optionnel (hook apps extras / JWT) — les tools `module.*` sont générés depuis `api.listOperations()` ; `mcpTools` n'existe plus ; `discoverPluginTools(api)` optionnel ;
 - `aliases` legacy publics ;
 - `jwtSecret` / `MCP_JWT_SECRET` ;
 - DB write et `tableExists` pour OAuth/admin ;

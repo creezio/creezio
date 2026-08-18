@@ -97,8 +97,6 @@ export {
   generateModuleToolsFromListedOps,
   generateModuleToolsFromMountedOps,
   generateModuleToolsFromOperations,
-  mergeGeneratedAndLegacyModuleTools,
-  warnLegacyModuleMcpTools,
 } from "./module-ops-tools.js";
 
 export type {
