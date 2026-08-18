@@ -156,8 +156,8 @@ Questionnaire **rempli** (pas un formulaire vide). Sections :
 
 ## 5. Tools MCP & policies
    Tools **générés** `module.<mountId>.<op.id>` depuis les ops du module.
-   `mcpTools()` manuscrit est interdit (SoT = operations[]). Enable/disable
-   et rôles = policies `/admin/mcp` sur les tools générés
+   `mcpTools()` manuscrit est **déprécié** (doctor warn `MODULE_MCP_TOOLS_DEPRECATED`). Interdit dès qu'il y a collision de nom (error `MODULE_OP_MCP_OVERLAP`). Le contrat SoT est `operations[]` → tools générés. Ne plus ajouter de factory mcpTools.
+   Enable/disable et rôles = policies `/admin/mcp` sur les tools générés
    (`mcpPublishDefault`, `roles` sur l'op).
 
 ## 6. Rôles & permissions
