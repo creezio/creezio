@@ -65,7 +65,14 @@ class DemoCursor {
   hide() {
     if (this.hideTimer) clearTimeout(this.hideTimer);
     this.hideTimer = null;
-    if (this.el) this.el.style.opacity = "0";
+    if (this.el) {
+      this.el.style.opacity = "0";
+      /* Terminer / Quitter : retirer le nœud. hide() historique laissait
+         #creezio-demo-cursor (data-creezio-demo-ui) → E2E « overlay reste ». */
+      this.el.remove();
+      this.el = null;
+      this.badge = null;
+    }
   }
 
   hideSoon(delayMs = HIDE_DELAY_MS) {
