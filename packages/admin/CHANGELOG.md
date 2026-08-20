@@ -1,5 +1,13 @@
 # @creezio/admin
 
+## 0.10.9
+
+### Patch Changes
+
+- @creezio/platform-core@0.10.9
+- @creezio/api-kernel@0.10.9
+- @creezio/integrations@0.10.9
+
 ## 0.10.8
 
 ### Patch Changes

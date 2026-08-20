@@ -1,5 +1,20 @@
 # @creezio/os-ui
 
+## 0.10.9
+
+### Patch Changes
+
+- 4cd6614: `creezio brand create` is the only way to birth a brand (no notes, no `server/crm/`, no `demo-app`). Doctor fails closed on stub specs and leftover notes so an agent cannot scaffold a notes/demo app.
+
+  Terminer / Quitter retire le curseur singleton du DOM (`#creezio-demo-cursor` + `data-creezio-demo-ui`) au lieu de le laisser en opacity 0.
+
+  `server-docker create --profile prod` forwarde aussi `CREEZIO_FLEET_BACKEND_URL` et `CREEZIO_FLEET_BACKEND_BASIC`.
+
+- Updated dependencies [4cd6614]
+  - @creezio/interactive-demo@0.10.9
+  - @creezio/shell-ui@0.10.9
+  - @creezio/mails@0.10.9
+
 ## 0.10.8
 
 ### Patch Changes
