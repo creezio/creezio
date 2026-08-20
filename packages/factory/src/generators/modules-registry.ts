@@ -1,6 +1,6 @@
 /**
  * Socle registre de modules marque — SoT partagée entre scaffold factory
- * (`new-app` / `demo-app` / `brand apply`) et `creezio brand module init`.
+ * (`new-app` / `brand create` / `brand apply`) et `creezio brand module init`.
  * Aligné sur le standard kit DOC-STANDARD-MODULE.md / TempoFlow3.
  */
 import fs from "node:fs";
@@ -838,6 +838,16 @@ Marque légère sur **OS Creezio** — monorepo client + server (layout 2 repos)
   \`owned-by-brand\`
 - **Interdit** : glue OS (\`src/lib/*\`, \`brand-runtime\`), sidecar JSON,
   fetch maison vers \`/api/v1/os/*\` dans \`ui/app\`
+
+- Guide naissance : \`$CREEZIO_KIT_ROOT/docs/agents/CREATE-APP.md\`
+- **Interdit** : \`creezio demo-app\`, module notes par défaut, \`server/crm/\`
+
+## Secrets (jamais commités, jamais dumpés)
+
+- Packages : \`CREEZIO_NPM_TOKEN\` / \`GH_TOKEN\` → GitHub Packages \`@creezio/*\`
+- VPS tunnel : \`CREEZIO_CF_API_TOKEN\` + \`_ACCOUNT_ID\` + \`_ZONE_ID\`
+- VPS owner : \`CREEZIO_OWNER_EMAIL\` + \`CREEZIO_OWNER_PASSWORD\`
+- Local : \`CREEZIO_TUNNEL_LOCAL=1\`
 
 \`\`\`bash
 npm test                      # racine — délègue server/

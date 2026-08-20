@@ -4,12 +4,19 @@
 
 Maintenir le CLI `creezio` :
 
+0. **Happy path** (`brand create --id/--name/--domain`) : monorepo + repo
+   admin frère + registre vide + mount interactive-demo. Guide
+   `docs/agents/CREATE-APP.md`. **Pas** `demo-app` (déprécié, exit 1).
+   **Pas** de module notes. **Pas** de `server/crm/`.
 1. **Mode OS** (`new-app --name/--id/--domain`) : squelette Client+Serveur,
-   slot métier vide (sandbox technique).
+   slot métier vide (sandbox technique) — même câblage démo que create.
 2. **Mode produit** (`new-app --from-prd <prd.md>`) : brief → `ProductModel` →
-   artefacts métier + **main mince** (`startBrandDesktop`).
+   artefacts métier + **main mince** (`startBrandDesktop`). `parseProductPrd`
+   extrait `## Entités` ou échoue (pas de fallback notes). CHR seulement
+   si `vertical: chr` explicite.
 3. **BrandSpec** (`brand init|doctor|apply|smoke`) : SoT déclarative agent →
    apply via scaffold (ADR `docs/adr/ADR-brand-spec-app-runtime.md`).
+   Doctor fail-closed : stub `(à remplir)`, leftover notes, 0 modules.
 
 Les générateurs vivent ici. Le métier généré **n’entre pas** dans
 `@creezio/platform-core` (ADR `docs/adr/ADR-factory-from-prd.md` +

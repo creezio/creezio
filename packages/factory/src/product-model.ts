@@ -100,11 +100,16 @@ export function defaultPlatformNeeds(): PlatformNeeds {
   };
 }
 
+const STUB_FILL_RE = /\(à remplir\)/i;
+
+/** Marqueur de spec / PRD non rempli — apply métier interdit. */
+export function isProductSpecStub(text: string): boolean {
+  return STUB_FILL_RE.test(text);
+}
+
 /**
- * App vierge (`creezio demo-app`) — zéro vertical métier : toutes les
- * fonctions natives OS (auth, setup, mails, tâches, assistant, MCP, admin,
- * plugins) + un unique module d'exemple neutre `notes` (placeholder à
- * remplacer par le métier réel via mini-PRDs).
+ * @deprecated `creezio demo-app` est retiré. Utiliser `creezio brand create`.
+ * Plus aucun module `notes` par défaut.
  */
 export function blankAppModel(opts: {
   brandId: string;
@@ -117,35 +122,23 @@ export function blankAppModel(opts: {
     domain: opts.domain,
     tagline: "App vierge sur OS Creezio — serveur Docker par défaut",
     vertical: "generic",
-    entities: [
+    entities: [],
+    pages: [
       {
-        id: "notes",
-        label: "Note",
-        labelPlural: "Notes",
-        archivable: true,
-        fields: [
-          { name: "titre", type: "text", required: true, label: "Titre" },
-          { name: "contenu", type: "text", label: "Contenu" },
-        ],
+        id: "dashboard",
+        path: "/dashboard",
+        title: "Dashboard",
+        kind: "dashboard",
       },
     ],
-    pages: [
-      { id: "notes", path: "/notes", title: "Notes", entityId: "notes", kind: "list" },
-    ],
     flows: [],
-    // Demo / app vierge : pas d'étapes produit → pas d'écran /onboarding mort.
     platformNeeds: { ...defaultPlatformNeeds(), onboarding: false },
   };
 }
 
-/** Cœur achats détecté (fournisseurs + panier + commandes). */
+/** CHR uniquement si `vertical: chr` est déclaré (jamais d'inférence). */
 export function isChrModel(model: ProductModel): boolean {
-  return (
-    model.vertical === "chr" ||
-    (model.entities.some((e) => e.id === "fournisseurs") &&
-      model.entities.some((e) => e.id === "panier_lignes") &&
-      model.entities.some((e) => e.id === "commandes"))
-  );
+  return model.vertical === "chr";
 }
 
 /**
@@ -317,11 +310,137 @@ function extractBrandName(text: string, fallbackH1: string): string {
   return cleaned || "BrandApp";
 }
 
+function slugEntityId(raw: string): string {
+  const id = raw
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "")
+    .slice(0, 48);
+  return id || "entite";
+}
+
+function fieldTypeFromHint(hint: string): FieldType {
+  const h = hint.toLowerCase();
+  if (/nombre|number|int|prix|montant|quantit/.test(h)) return "number";
+  if (/date|datetime/.test(h)) return "date";
+  if (/bool|oui\/non/.test(h)) return "boolean";
+  if (/json|objet/.test(h)) return "json";
+  if (/ref|fk|id_/.test(h)) return "ref";
+  return "text";
+}
+
+function singularizeFr(plural: string): string {
+  const t = plural.trim();
+  if (/articles$/i.test(t)) return t.replace(/articles$/i, "Article");
+  if (/s$/i.test(t) && t.length > 3) return t.slice(0, -1);
+  return t;
+}
+
+function extractEntitiesFromMarkdown(text: string): ProductEntity[] {
+  const heading = text.match(/^##\s+Entit[ée]s\b[^\n]*/im);
+  if (!heading || heading.index === undefined) return [];
+  const afterHeading = text.slice(heading.index + heading[0].length).replace(
+    /^\r?\n/,
+    "",
+  );
+  const nextH2 = afterHeading.search(/^##\s/m);
+  const body = nextH2 === -1 ? afterHeading : afterHeading.slice(0, nextH2);
+  const entities: ProductEntity[] = [];
+  const headingRe = /^###\s+(.+)$/gm;
+  const headings = [...body.matchAll(headingRe)];
+  if (headings.length) {
+    for (let i = 0; i < headings.length; i++) {
+      const title = headings[i]![1]!.trim();
+      const start = headings[i]!.index! + headings[i]![0].length;
+      const end = headings[i + 1]?.index ?? body.length;
+      const chunk = body.slice(start, end);
+      const id = slugEntityId(title);
+      const fields: ProductField[] = [];
+      for (const line of chunk.split("\n")) {
+        const m = line.match(/^\s*[-*]\s+([A-Za-zÀ-ÿ][\wÀ-ÿ]*)\s*(?:\(([^)]+)\))?/);
+        if (!m) continue;
+        const name = slugEntityId(m[1]!);
+        if (!name || name === id) continue;
+        fields.push({
+          name,
+          type: fieldTypeFromHint(m[2] || "texte"),
+          required: /requis|required/i.test(m[2] || ""),
+          label: m[1],
+        });
+      }
+      if (!fields.length) {
+        fields.push({ name: "titre", type: "text", required: true, label: "Titre" });
+      }
+      entities.push({
+        id,
+        label: singularizeFr(title),
+        labelPlural: title,
+        archivable: true,
+        fields,
+      });
+    }
+    return entities;
+  }
+  for (const line of body.split("\n")) {
+    const m = line.match(/^\s*[-*]\s+([A-Za-zÀ-ÿ][\wÀ-ÿ -]{1,40})\s*$/);
+    if (!m) continue;
+    const title = m[1]!.trim();
+    if (STUB_FILL_RE.test(title)) continue;
+    const id = slugEntityId(title);
+    entities.push({
+      id,
+      label: singularizeFr(title),
+      labelPlural: title,
+      archivable: true,
+      fields: [
+        { name: "titre", type: "text", required: true, label: "Titre" },
+      ],
+    });
+  }
+  return entities;
+}
+
+function pagesFromEntities(entities: ProductEntity[]): ProductPage[] {
+  return [
+    { id: "dashboard", path: "/dashboard", title: "Dashboard", kind: "dashboard" },
+    ...entities.map((e) => ({
+      id: e.id,
+      path: `/${e.id}`,
+      title: e.labelPlural,
+      entityId: e.id,
+      kind: "list" as const,
+    })),
+  ];
+}
+
+function detectExplicitVertical(
+  text: string,
+  optsVertical?: "chr" | "generic",
+): "chr" | "generic" {
+  if (optsVertical === "chr" || optsVertical === "generic") return optsVertical;
+  const line = text.match(/^\s*vertical\s*:\s*(chr|generic)\s*$/im);
+  if (line?.[1] === "chr") return "chr";
+  if (line?.[1] === "generic") return "generic";
+  return "generic";
+}
+
 export function parseProductPrd(
   markdown: string,
-  opts?: { sourcePath?: string; brandId?: string; brandName?: string },
+  opts?: {
+    sourcePath?: string;
+    brandId?: string;
+    brandName?: string;
+    vertical?: "chr" | "generic";
+  },
 ): ProductModel {
   const text = markdown.replace(/\r\n/g, "\n");
+  if (isProductSpecStub(text)) {
+    throw new Error(
+      "product.md est un stub « (à remplir) » — extraire les entités ou remplir le PRD avant apply (pas de fallback notes)",
+    );
+  }
   const h1 = text.match(/^#\s+(.+)$/m)?.[1]?.trim() ?? "Nouvelle app";
   const brandName =
     opts?.brandName?.trim() || extractBrandName(text, h1) || "BrandApp";
@@ -329,22 +448,18 @@ export function parseProductPrd(
     ? safeBrandId(opts.brandId)
     : safeBrandId(brandName);
 
-  const lower = text.toLowerCase();
-  const isChr =
-    /\bfournisseur/.test(lower) &&
-    (/\bpanier\b/.test(lower) || /\bcommande/.test(lower)) &&
-    (/\bprix\b/.test(lower) || /\bproduit/.test(lower));
+  const vertical = detectExplicitVertical(text, opts?.vertical);
 
   const taglineMatch =
     text.match(/\*\*Une phrase\*\*\s*[—\-:]\s*(.+)/i) ||
     text.match(/^>\s*(.+)$/m);
   const tagline =
     taglineMatch?.[1]?.trim() ??
-    (isChr
+    (vertical === "chr"
       ? "Prix fournisseurs, catalogue et commandes pour la restauration"
       : `Application métier ${brandName}`);
 
-  if (isChr) {
+  if (vertical === "chr") {
     return {
       brandId,
       brandName,
@@ -359,31 +474,20 @@ export function parseProductPrd(
     };
   }
 
+  const entities = extractEntitiesFromMarkdown(text);
+  if (!entities.length) {
+    throw new Error(
+      "parseProductPrd: aucune entité extraite (section ## Entités / ### headings requise). Fallback notes interdit. Déclarer vertical: chr pour le cœur achats.",
+    );
+  }
+
   return {
     brandId,
     brandName,
     domain: `${brandId}.local`,
     tagline,
-    entities: [
-      {
-        id: "notes",
-        label: "Note",
-        labelPlural: "Notes",
-        fields: [
-          { name: "titre", type: "text", required: true, label: "Titre" },
-          { name: "contenu", type: "text", label: "Contenu" },
-        ],
-      },
-    ],
-    pages: [
-      {
-        id: "notes",
-        path: "/notes",
-        title: "Notes",
-        entityId: "notes",
-        kind: "list",
-      },
-    ],
+    entities,
+    pages: pagesFromEntities(entities),
     flows: [],
     platformNeeds: defaultPlatformNeeds(),
     sourcePrdPath: opts?.sourcePath,

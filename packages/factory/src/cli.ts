@@ -13,7 +13,6 @@ import { fileURLToPath } from "node:url";
 import { scaffoldNewApp, type NewAppOptions } from "./scaffold.js";
 import {
   assertProductModel,
-  blankAppModel,
   parseProductPrd,
   safeBrandId,
   type ProductModel,
@@ -54,6 +53,11 @@ export type CliArgs = {
 export function parseArgs(argv: string[]): CliArgs {
   const out: CliArgs = { command: "", sandbox: true };
   const rest = [...argv];
+  const first = rest[0] || "";
+  if (first === "--help" || first === "-h") {
+    out.help = true;
+    return out;
+  }
   out.command = rest.shift() || "";
 
   if (out.command === "brand" || out.command === "server-docker") {
@@ -108,22 +112,25 @@ function printHelp(): void {
   console.log(`creezio — factory kit Creezio
 
 Usage:
+  creezio brand create --id <id> --name <Name> --domain <host> [--out <dir>]
   creezio new-app --from-prd <prd.md> [--out <dir>] [overrides]
   creezio new-app --name <ProductName> --id <brandId> --domain <host> [options]
-  creezio demo-app --name <ProductName> [--id <brandId>] [--domain <host>] [--out <dir>]
+  creezio demo-app …   (DÉPRÉCIÉ — exit 1 : utiliser brand create)
   creezio brand init|doctor|apply|smoke …
   creezio server-docker create|start|stop|rm|logs|ls|admin|build|up|down|ps|proof --brand-root <app>
 
-Mode produit (recommandé) :
+Happy path (recommandé) :
+  creezio brand create --id acme --name Acme --domain acme.local
+  → spec + monorepo + <id>-admin, registre vide, mount interactive-demo,
+    zéro module notes. Puis : creezio brand module init <id> --app .
+
+Mode produit (legacy TempoFlow3) :
   --from-prd      Brief / PRD markdown non technique
                   Dérive name / id / domain ; génère métier + wiring OS mince
-
-App vierge 1 clic (demo-app) :
-  Toutes fonctions natives (auth, setup, mails, tâches, assistant, MCP,
-  admin DB, cockpit, plugins) + module exemple neutre "notes" + serveur
-  Docker par défaut (server-docker create out of the box).
+                  Exige ## Entités ou vertical: chr — jamais de fallback notes
 
 BrandSpec (agent créateur) :
+  creezio brand create --id <id> --name <Name> --domain <host>
   creezio brand init --id <id> --name <Name> --domain <host>
   creezio brand doctor --spec <brand-spec>
   creezio brand apply --spec <brand-spec> --out <app> --force
@@ -251,9 +258,17 @@ export async function runCli(argv: string[]): Promise<void> {
     return;
   }
 
-  if (args.command !== "new-app" && args.command !== "demo-app") {
+  if (args.command === "demo-app") {
+    console.error(
+      "creezio demo-app est déprécié (plus de module notes par défaut).",
+    );
+    console.error("Utiliser : creezio brand create --id <id> --name <Name> --domain <host>");
+    process.exit(1);
+  }
+
+  if (args.command !== "new-app") {
     throw new Error(
-      `Commande inconnue: ${args.command} (new-app | demo-app | brand | server-docker)`,
+      `Commande inconnue: ${args.command} (new-app | brand | server-docker). demo-app est déprécié — utiliser creezio brand create.`,
     );
   }
 
@@ -263,18 +278,7 @@ export async function runCli(argv: string[]): Promise<void> {
   let productName: string;
   let domain: string;
 
-  if (args.command === "demo-app") {
-    // App vierge 1 clic : natives complètes + module exemple neutre + Docker.
-    if (!args.name) {
-      printHelp();
-      throw new Error("demo-app: --name <ProductName> requis");
-    }
-    productName = args.name.trim();
-    brandId = safeBrandId(args.id || productName);
-    domain = args.domain?.trim() || `${brandId}.local`;
-    productModel = blankAppModel({ brandId, brandName: productName, domain });
-    assertProductModel(productModel);
-  } else if (args.fromPrd) {
+  if (args.fromPrd) {
     productModel = loadProductModel(args, root);
     brandId = productModel.brandId;
     productName = productModel.brandName;

@@ -13,9 +13,6 @@ import {
   type ProductModel,
 } from "./product-model.js";
 import {
-  renderBrandSchemaSql,
-  renderBrandSchemaTs,
-  renderMetierQueriesTs,
   renderNextHomePage,
   renderNextEntityPage,
   renderUiEntityTable,
@@ -290,6 +287,10 @@ export function writeFromPrdArtifacts(opts: {
       const p = path.join(outDir, rel);
       if (fs.existsSync(p)) fs.unlinkSync(p);
     }
+    const crmDir = path.join(outDir, "crm");
+    if (fs.existsSync(crmDir)) {
+      fs.rmSync(crmDir, { recursive: true, force: true });
+    }
     // src/lib vide après purge
     const libDir = path.join(outDir, "src/lib");
     if (fs.existsSync(libDir) && fs.readdirSync(libDir).length === 0) {
@@ -306,25 +307,6 @@ export function writeFromPrdArtifacts(opts: {
   writeFile(
     path.join(outDir, "package.json"),
     renderPackageJsonFromPrd(manifest, model),
-    force,
-    written,
-  );
-
-  writeFile(
-    path.join(outDir, "crm/src/brand/schema.ts"),
-    renderBrandSchemaTs(model),
-    force,
-    written,
-  );
-  writeFile(
-    path.join(outDir, "crm/src/brand/schema.sql"),
-    renderBrandSchemaSql(model),
-    force,
-    written,
-  );
-  writeFile(
-    path.join(outDir, "crm/src/lib/metier-queries.ts"),
-    renderMetierQueriesTs(model),
     force,
     written,
   );

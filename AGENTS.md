@@ -201,40 +201,41 @@ Guides pas-à-pas exploitables sans contexte préalable (commandes copiables
 
 | Je veux créer… | Guide |
 |---|---|
-| une marque | [CREATE-BRAND.md](./docs/agents/CREATE-BRAND.md) |
+| une app marque (happy path) | [CREATE-APP.md](./docs/agents/CREATE-APP.md) |
+| une marque (interview BrandSpec) | [CREATE-BRAND.md](./docs/agents/CREATE-BRAND.md) |
 | un package kit `@creezio/*` | [CREATE-PACKAGE.md](./docs/agents/CREATE-PACKAGE.md) |
 | un plugin (template kit ou marque) | [CREATE-PLUGIN.md](./docs/agents/CREATE-PLUGIN.md) |
 | un module métier de marque | [CREATE-MODULE.md](./docs/agents/CREATE-MODULE.md) |
 | un module d'app admin | [CREATE-ADMIN-MODULE.md](./docs/agents/CREATE-ADMIN-MODULE.md) |
 
-## Créer une marque (BrandSpec + brief produit)
+## Créer une app (happy path)
 
-Chemin nominal agent : interview → `brand-spec/` → `creezio brand apply`
-(voir [docs/agents/CREATE-BRAND.md](./docs/agents/CREATE-BRAND.md)).
+**Une commande** — [docs/agents/CREATE-APP.md](./docs/agents/CREATE-APP.md)
++ skill [`.cursor/skills/creezio-create-app/SKILL.md`](./.cursor/skills/creezio-create-app/SKILL.md) :
 
-Compat : `creezio new-app --from-prd` reste supporté.
+```bash
+creezio brand create --id acme --name Acme --domain acme.local
+creezio brand module init articles --app /chemin/acme
+```
 
-## Créer une marque depuis un brief produit (legacy --from-prd)
+`creezio demo-app` est **déprécié** (exit 1). Plus de module notes par
+défaut, plus de `server/crm/`.
 
-Happy path **non technique** (expérience TempoFlow3) :
+Interview BrandSpec seule : [CREATE-BRAND.md](./docs/agents/CREATE-BRAND.md).
 
-1. Partir du brief produit ([`docs/experiences/tempoflow3/PRD-PRODUIT.md`](./docs/experiences/tempoflow3/PRD-PRODUIT.md)
-   — fixture factory).
-2. Bootstrap :
+## Legacy — brief produit TempoFlow3 (`--from-prd`)
+
+Toujours supporté, **pas** le happy path. Fixture :
+[`docs/experiences/tempoflow3/PRD-PRODUIT.md`](./docs/experiences/tempoflow3/PRD-PRODUIT.md)
+(`vertical: chr` explicite). Un `product.md` stub = **error** (plus de
+fallback notes).
 
 ```bash
 creezio new-app \
   --from-prd docs/experiences/tempoflow3/PRD-PRODUIT.md \
   --out apps/tempoflow3 --force
-cd apps/tempoflow3 && npm run test:metier-parcours
 ```
 
-3. Enrichir **un module à la fois** via des mini-PRDs — jamais en collant
-   du code tempoflow2.
-4. Si un générique manque → **corriger creezio**, pas le prompt.
-
-Historique de l'expérience (prompts, journal) : archivé dans le repo
-`tempoflow3` (`docs/archive/`).  
 ADR : [`docs/adr/ADR-factory-from-prd.md`](./docs/adr/ADR-factory-from-prd.md).
 
 ## Ne pas faire
@@ -244,8 +245,8 @@ ADR : [`docs/adr/ADR-factory-from-prd.md`](./docs/adr/ADR-factory-from-prd.md).
 - Modifier `docs/archive/PHASE-*.md` historiques pour cacher une régression (ajouter une note / nouvelle phase).
 - Toucher `apps/demobrand` comme produit client — c’est une sandbox kit.
 - Réécrire toute la doc dans un seul fichier à la racine.
-- Exiger un plan ingénieur (host-stack, phases P*) pour un brief produit :
-  utiliser `--from-prd` à la place.
+- Exiger un plan ingénieur (host-stack, phases P*) pour naître une app :
+  utiliser `creezio brand create` (CREATE-APP). `--from-prd` = legacy TF3.
 
 ## Liens rapides
 

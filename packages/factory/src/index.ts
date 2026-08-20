@@ -13,6 +13,7 @@ export type {
 } from "./product-model.js";
 export {
   parseProductPrd,
+  isProductSpecStub,
   safeBrandId,
   assertProductModel,
   corePurchaseEntities,

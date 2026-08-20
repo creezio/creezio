@@ -31,6 +31,7 @@ const SMOKE_ENV = {
   CREEZIO_ROOT: ROOT, // legacy compat (Q8)
   CREEZIO_NATIVE_WARM: "0",
   CREEZIO_TUNNEL_LOCAL: "1",
+  CREEZIO_SKIP_BRAND_DIST: "1",
   NODE_PATH: path.join(ROOT, "node_modules"),
   PATH: [
     path.join(ROOT, "node_modules", ".bin"),
@@ -114,6 +115,18 @@ Catalogue simple.
 
 Desktop Creezio natif.
 `,
+    "utf8",
+  );
+  const artDir = path.join(specDir, "modules", "articles");
+  fs.mkdirSync(artDir, { recursive: true });
+  fs.writeFileSync(
+    path.join(artDir, "prd.md"),
+    `# Module articles — Articles\n\nVision remplie pour le livrable de test kit.\n`,
+    "utf8",
+  );
+  fs.writeFileSync(
+    path.join(artDir, "interview.md"),
+    `# Interview articles\n\nDécisions remplies.\n`,
     "utf8",
   );
 

@@ -52,6 +52,7 @@
 | [`test-phase-auth-secret.mjs`](../test-phase-auth-secret.mjs) | Gate sécurité AUTH_SECRET serveur (fix trou : serveurs Docker headless signaient les sessions avec le fallback dev public). |
 | [`test-phase-b.mjs`](../test-phase-b.mjs) | !usrbinenv node |
 | [`test-phase-b2.mjs`](../test-phase-b2.mjs) | !usrbinenv node |
+| [`test-phase-brand-allowlist.mjs`](../test-phase-brand-allowlist.mjs) | Allowlist anti-dérive — brand create sans notes/crm/glue OS, registre + mount demo. |
 | [`test-phase-brand-spec.mjs`](../test-phase-brand-spec.mjs) | Gate BrandSpec — load / doctor / init / onboarding decl. Extract P1.1 : package + ADR (+ CREATE-BRAND doc). |
 | [`test-phase-c.mjs`](../test-phase-c.mjs) | !usrbinenv node |
 | [`test-phase-c0.mjs`](../test-phase-c0.mjs) | Phase C0 — docs/archive/gates/matrice = état réel + backlog C*. |

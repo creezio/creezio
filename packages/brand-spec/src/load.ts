@@ -71,7 +71,7 @@ function loadModules(rootDir: string): BrandModuleSpec[] {
   if (!fs.existsSync(modulesDir)) return [];
   const entries = fs
     .readdirSync(modulesDir, { withFileTypes: true })
-    .filter((e) => e.isDirectory())
+    .filter((e) => e.isDirectory() && e.name !== "_template" && !e.name.startsWith("."))
     .map((e) => e.name)
     .sort();
   return entries.map((id) => {

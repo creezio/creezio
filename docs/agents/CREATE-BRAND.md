@@ -5,6 +5,10 @@ d'orchestration OS.
 
 ## Flux
 
+Happy path **naissance d'app** : une commande
+[`creezio brand create`](./CREATE-APP.md) (pas `demo-app`, pas de notes).
+Ce guide = interview BrandSpec / apply métier **après** remplissage.
+
 ```text
 Interview (questionnaire) → brand-spec/ → creezio brand doctor
                                       → creezio brand apply
@@ -65,7 +69,7 @@ creezio brand smoke --app apps/acme
 
 ## 2b. Layout généré — 2 repos (LA norme)
 
-`creezio brand apply` / `new-app` / `demo-app` génèrent **2 repos** :
+`creezio brand create` / `brand apply` / `new-app` génèrent **2 repos** :
 
 ```text
 <app>/                  # monorepo marque (client + server)
