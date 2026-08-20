@@ -40,7 +40,8 @@ Chaque module métier **doit** déclarer ≥ 1 scénario dans son
 `server/src/electron/modules/<id>.ts` (champ `demo` du `BrandModuleDef`).
 Inclure `genericOsTourScenario({ productName })` (id `os-tour` partagé).
 Une app Creezio sans démo interactive est invalide. La factory câble le
-mount, les migrations et le CSS ; `CreezioUiBoot` monte `InteractiveDemoRoot`.
+mount, les migrations et le CSS ; `BrandChrome` monte **un** `InteractiveDemoRoot`
+dans `SessionProvider` (`CreezioUiBoot` ne remonte plus le lecteur).
 
 ```ts
 export const promotionsModule: BrandModuleDef = {
@@ -75,44 +76,27 @@ api.registerModuleApi(
 `collectDemoScenarios()` délègue à `collectInteractiveDemoDefaults()` :
 scénarios invalides ou ids en conflit entre modules = **erreur explicite au
 boot** (liste complète module:scénario), jamais une démo tronquée servie en
-silence. L'approche fichier unique ci-dessous reste supportée
-(rétrocompatibilité).
+silence.
 
-## Câblage marque (câblé en prod : WinHub)
+## Un seul lecteur — dans SessionProvider
 
-```ts
-// server/src/electron/brand-interactive-demo-content.ts (défauts marque)
-import type { DemoScenario } from "@creezio/interactive-demo";
-export function brandDemoScenarios(): DemoScenario[] { /* … */ }
-
-// server/src/electron/brand-migrations.ts
-import { interactiveDemoMigrations } from "@creezio/interactive-demo";
-// … composeMigrations(…, interactiveDemoMigrations())
-
-// server/src/electron/brand-module-api.ts
-import { createInteractiveDemoMount } from "@creezio/interactive-demo";
-api.registerModuleApi(
-  "interactive-demo",
-  createInteractiveDemoMount({ defaults: brandDemoScenarios() }),
-);
-```
+La factory pose **un** `InteractiveDemoRoot` dans `BrandChrome`, à
+l'intérieur de `SessionProvider` (`useSession()` → `userKey` / `role`).
+`CreezioUiBoot` ne remonte plus un second root (double curseur / Foove #101).
+Pas de `brandDemoScenarios()` — SoT = `collectDemoScenarios()`.
 
 ```tsx
-// ui : chrome de la marque (layout / BrandChrome)
-import { InteractiveDemoRoot } from "@creezio/interactive-demo/ui";
-import "@creezio/interactive-demo/ui/interactive-demo.css";
-import { useSession } from "@creezio/auth/ui";
-
-// Le rôle courant vient de la SESSION : me.brandRole (champ brand_role de
-// /api/v1/auth/me, alimenté par configureAuth({ resolveBrandRole }) côté
-// serveur). Ne PAS coder de fetch d'endpoint rôle custom : obsolète.
+// ui/components/brand-chrome.tsx (généré factory)
 const { me } = useSession();
 <InteractiveDemoRoot
-  navigate={router.push}
+  launcher="sidebar"
   userKey={me?.user}
   role={me?.brandRole}
 />
 ```
+
+PR kit #109 (curseur DOM unmount après Terminer) : **reste ouvert**, non
+fusionné ici pour ne pas mélanger le lockstep 0.10.8.
 
 Le scénario marqué `autoStart: true` se lance automatiquement à la première
 visite (après le setup / l'onboarding) ; « déjà vu » est persisté par

@@ -2,13 +2,21 @@
 
 ## Rôle
 
-CLI `creezio new-app` pour générer une application marque Client + Serveur
-consommant `@creezio/*`, avec option **création depuis un brief produit**
-(`--from-prd`).
+CLI `creezio` pour générer une application marque Client + Serveur
+consommant `@creezio/*`. Happy path : **`creezio brand create`**
+(voir [CREATE-APP.md](../../docs/agents/CREATE-APP.md)). `demo-app` est
+déprécié (exit 1). `--from-prd` reste le legacy TempoFlow3.
 
-## Deux modes
+## Happy path — `brand create`
 
-### Mode produit — `--from-prd`
+```bash
+creezio brand create --id acme --name Acme --domain acme.local --out /tmp/acme
+```
+
+Squelette OS + registre vide + mount interactive-demo + repo `<id>-admin`.
+Zéro notes, zéro `server/crm/`.
+
+## Mode produit — `--from-prd` (legacy)
 
 ```bash
 creezio new-app \
@@ -55,7 +63,7 @@ Plugins **génériques kit** prêts à installer dans toute marque (seed
 `insights-assistant` (synthèse IA des modules découverts via
 `/api/v1/core/architecture` — zéro métier marque, permissions
 `crm:read`+`llm:use`, DB cache `data/plugin.sqlite`). Le scaffold
-(`new-app` / `demo-app` / `brand apply`) appelle
+(`new-app` / `brand create` / `brand apply`) appelle
 `installKitPluginTemplate({ templateId: "insights-assistant", … })` —
 sans cet appel le repo marque part à 0 plugins. Gate E2E :
 `scripts/test-phase-plugin-insights.mjs`. Guide auteur :
@@ -88,12 +96,11 @@ import {
 ## Artefacts `--from-prd`
 
 - `product-model.json`
-- `crm/src/brand/schema.{ts,sql}`
-- `scripts/metier-api.mjs` + `test-metier-parcours.mjs`
-- `ui/app/**` pages App Router
-- `src/lib/{paths,host-stack,creezio-boot,…}.ts` wiring générique
-- `src/electron/main.ts` → `installBrandDesktopRuntime` + boot shell
-- `resources/renderer/index.html` UI SPA métier
+- `product-model.json` + registre `modules/<entité>.ts` (jamais notes par défaut)
+- `scripts/test-metier-parcours.mjs` (pas de sidecar `metier-api.mjs`)
+- `ui/app/**` pages App Router métier (`/dashboard`, entités)
+- `src/electron/main.ts` → `startBrandDesktop`
+- **interdit** : `server/crm/`, `src/lib/host-stack.ts`
 
 ## Build
 

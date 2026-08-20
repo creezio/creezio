@@ -87,7 +87,20 @@ test("os-ui scaffold : zéro page OS versionnée, materialize + boot kit", () =>
     path.join(ROOT, "packages/os-ui/src/boot.tsx"),
     "utf8",
   );
-  assert.match(bootSrc, /InteractiveDemoRoot/, "CreezioUiBoot monte InteractiveDemoRoot");
+  assert.doesNotMatch(
+    bootSrc,
+    /<InteractiveDemoRoot/,
+    "boot ne monte plus InteractiveDemoRoot (lecteur unique dans BrandChrome)",
+  );
+  const chromeSrc = fs.readFileSync(
+    path.join(srv, "ui/components/brand-chrome.tsx"),
+    "utf8",
+  );
+  assert.match(
+    chromeSrc,
+    /InteractiveDemoRoot/,
+    "BrandChrome monte InteractiveDemoRoot dans SessionProvider",
+  );
   const brandApi = fs.readFileSync(
     path.join(srv, "src/electron/brand-module-api.ts"),
     "utf8",

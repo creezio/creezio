@@ -2,7 +2,7 @@
  * Prépare une marque fraîche pour Docker / clone GitHub (mode npm) :
  * package-lock cohérents (racine workspace = SoT, server/ui, client).
  *
- * Doit tourner APRÈS chaque scaffold (new-app / brand apply / demo-app),
+ * Doit tourner APRÈS chaque scaffold (brand create / new-app / brand apply),
  * pas seulement au push — sinon une marque locale part sans lock et
  * `npm ci` Docker échoue. Requiert CREEZIO_NPM_TOKEN (registre privé).
  */

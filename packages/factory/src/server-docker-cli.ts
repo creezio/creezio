@@ -258,7 +258,8 @@ Instances nommées (registre docker-data/servers.json — recommandé) :
                 CREEZIO_FLEET_ENDPOINT, CREEZIO_CRASH_ENDPOINT, CREEZIO_PLUGINS,
                 EMAIL_INBOUND_SECRET, EMAIL_DOMAIN, MAIL_*/SMTP_*/RESEND_*,
                 OPENAI_API_KEY, ANTHROPIC_API_KEY,
-                CREEZIO_FLEET_ADMIN_URL/_REGISTER_SECRET/_HOST_ID
+                CREEZIO_FLEET_ADMIN_URL/_REGISTER_SECRET/_HOST_ID,
+                CREEZIO_FLEET_BACKEND_URL/_BACKEND_BASIC
     create VPS : CREEZIO_CF_API_TOKEN/_ACCOUNT_ID/_ZONE_ID + CREEZIO_OWNER_EMAIL/
                 _PASSWORD requis (sinon échec — jamais de succès sans hostname
                 public ni compte owner utilisable). Slug réservé (demo…)
@@ -2588,6 +2589,8 @@ async function runRegistrySubcommand(
         "CREEZIO_FLEET_ADMIN_URL",
         "CREEZIO_FLEET_REGISTER_SECRET",
         "CREEZIO_FLEET_HOST_ID",
+        "CREEZIO_FLEET_BACKEND_URL",
+        "CREEZIO_FLEET_BACKEND_BASIC",
       ]) {
         const v = (env[key] || "").trim() || (brandDotEnv[key] || "").trim();
         if (v) extraEnv[key] = v;

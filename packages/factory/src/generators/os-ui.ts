@@ -568,8 +568,8 @@ const PAGE_KIND_ICONS: Record<string, string> = {
  * Fichier marque (personnalisable — ex. icônes par page), généré une fois.
  *
  * Les pages OS (mails, tâches, admin…) sont matérialisées via @creezio/os-ui ;
- * sans les lister ici, la sidebar n'afficherait que le métier (régression
- * demo-app = Notes seul). Feature-off plugins (Fidu) : retirer la ligne
+ * sans les lister ici, la sidebar n'afficherait que le métier. Feature-off
+ * plugins (Fidu) : retirer la ligne
  * `/admin/plugins` dans le chrome owned-by-brand — ne pas toucher au kit.
  *
  * Les listes OS sont inlinées (pas d'import barrel shell-ui) pour rester
@@ -617,7 +617,8 @@ import type { ReactNode } from "react";
 import {
   ${iconImports},
 } from "lucide-react";
-import { RequireSession, SessionProvider } from "@creezio/auth/ui";
+import { RequireSession, SessionProvider, useSession } from "@creezio/auth/ui";
+import { InteractiveDemoRoot } from "@creezio/interactive-demo/ui";
 import { AssistantRoot } from "@creezio/assistant/ui";
 import { SessionUsageAnalyticsProvider } from "@creezio/observability/ui";
 import {
@@ -672,6 +673,17 @@ configureGlobalSearch({
 
 configureDefaultNewTabHref(${JSON.stringify(home)});
 
+function DemoInSession() {
+  const { me } = useSession();
+  return (
+    <InteractiveDemoRoot
+      launcher="sidebar"
+      userKey={me?.user}
+      role={me?.brandRole}
+    />
+  );
+}
+
 export function BrandChrome({ children }: { children: ReactNode }) {
   return (
     <SessionProvider>
@@ -683,6 +695,8 @@ export function BrandChrome({ children }: { children: ReactNode }) {
           </AssistantRoot>
         </SessionUsageAnalyticsProvider>
       </RequireSession>
+      {/* Un seul lecteur démo, dans SessionProvider (pas de brandDemoScenarios). */}
+      <DemoInSession />
     </SessionProvider>
   );
 }

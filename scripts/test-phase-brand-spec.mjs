@@ -20,6 +20,34 @@ import {
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
+function makeLivrableSpec(specDir, brandName) {
+  fs.writeFileSync(
+    path.join(specDir, "product.md"),
+    `# ${brandName}
+
+Gestion d'articles.
+
+## Entités
+
+### Articles
+- nom (texte)
+`,
+    "utf8",
+  );
+  const modDir = path.join(specDir, "modules", "articles");
+  fs.mkdirSync(modDir, { recursive: true });
+  fs.writeFileSync(
+    path.join(modDir, "prd.md"),
+    `# Module articles — Articles\n\nVision remplie pour le livrable de test.\n`,
+    "utf8",
+  );
+  fs.writeFileSync(
+    path.join(modDir, "interview.md"),
+    `# Interview articles\n\nDécisions remplies.\n`,
+    "utf8",
+  );
+}
+
 test("BS1 package brand-spec buildé", () => {
   assert.ok(
     fs.existsSync(path.join(ROOT, "packages/brand-spec/dist/index.js")),
@@ -41,8 +69,15 @@ test("BS2 initBrandSpec + load + doctor", () => {
   assert.equal(spec.brand.vertical, "generic");
   assert.ok(spec.productMd);
   const doctor = doctorBrandSpec(result.outDir);
-  assert.equal(doctor.ok, true, formatDoctorReport(doctor));
-  assert.match(formatDoctorReport(doctor), /BrandSpec OK/);
+  assert.equal(doctor.ok, false, formatDoctorReport(doctor));
+  assert.ok(
+    doctor.issues.some((i) => i.code === "NO_MODULES"),
+    formatDoctorReport(doctor),
+  );
+  assert.ok(
+    doctor.issues.some((i) => i.code === "PRODUCT_MD_STUB"),
+    formatDoctorReport(doctor),
+  );
 });
 
 test("BS3 onboarding decl depuis brand-spec", () => {
@@ -101,7 +136,9 @@ test("BS4 initBrandSpec écrit squelette", () => {
   assert.ok(fs.existsSync(path.join(result.outDir, "AGENTS.md")));
   assert.ok(fs.existsSync(path.join(result.outDir, "interview.schema.json")));
   const doctor = doctorBrandSpec(result.outDir);
-  assert.equal(doctor.ok, true, formatDoctorReport(doctor));
+  assert.equal(doctor.ok, false, formatDoctorReport(doctor));
+  assert.ok(doctor.issues.some((i) => i.code === "NO_MODULES"));
+  assert.ok(doctor.issues.some((i) => i.code === "PRODUCT_MD_STUB"));
 
   // Le gabarit d'interview module porte les conventions dures du kit :
   // une interview générée ne doit plus POUVOIR proposer « accueil à / »
@@ -152,6 +189,11 @@ test("BS5 ADR + CREATE-BRAND docs", () => {
   assert.match(create, /startBrandDesktop/);
   assert.match(create, /brand apply/);
   assert.match(create, /Démo interactive native obligatoire/);
+  assert.ok(fs.existsSync(path.join(ROOT, "docs/agents/CREATE-APP.md")));
+  assert.match(
+    fs.readFileSync(path.join(ROOT, "docs/agents/CREATE-APP.md"), "utf8"),
+    /brand create/,
+  );
   const createMod = fs.readFileSync(
     path.join(ROOT, "docs/agents/CREATE-MODULE.md"),
     "utf8",
@@ -170,11 +212,12 @@ test("BS6 doctor : module sans demo.scenarios = erreur (app scaffoldée)", () =>
     vertical: "generic",
     force: true,
   });
+  makeLivrableSpec(result.outDir, "Demo Doc");
   const modulesDir = path.join(work, "server/src/electron/modules");
   fs.mkdirSync(modulesDir, { recursive: true });
   fs.writeFileSync(
-    path.join(modulesDir, "notes.ts"),
-    `export const notesModule = { id: "notes" };\n`,
+    path.join(modulesDir, "articles.ts"),
+    `export const articlesModule = { id: "articles" };\n`,
     "utf8",
   );
   const doctor = doctorBrandSpec(result.outDir);
@@ -184,10 +227,10 @@ test("BS6 doctor : module sans demo.scenarios = erreur (app scaffoldée)", () =>
     formatDoctorReport(doctor),
   );
   fs.writeFileSync(
-    path.join(modulesDir, "notes.ts"),
+    path.join(modulesDir, "articles.ts"),
     `import { genericOsTourScenario } from "@creezio/interactive-demo";
-export const notesModule = {
-  id: "notes",
+export const articlesModule = {
+  id: "articles",
   demo: { scenarios: [genericOsTourScenario({ productName: "Demo Doc" })] },
 };
 `,
@@ -208,6 +251,7 @@ test("BS7 doctor : helpers modules ignorés (_lib, shared, mcp-shared, meili-sha
     vertical: "generic",
     force: true,
   });
+  makeLivrableSpec(result.outDir, "Help Doc");
   const modulesDir = path.join(work, "server/src/electron/modules");
   fs.mkdirSync(modulesDir, { recursive: true });
   for (const name of [
@@ -225,10 +269,10 @@ test("BS7 doctor : helpers modules ignorés (_lib, shared, mcp-shared, meili-sha
     );
   }
   fs.writeFileSync(
-    path.join(modulesDir, "notes.ts"),
+    path.join(modulesDir, "articles.ts"),
     `import { genericOsTourScenario } from "@creezio/interactive-demo";
-export const notesModule = {
-  id: "notes",
+export const articlesModule = {
+  id: "articles",
   demo: { scenarios: [genericOsTourScenario({ productName: "Help Doc" })] },
 };
 `,
@@ -255,12 +299,13 @@ test("BS8 doctor : démo trop pauvre = warn (pas fail-closed)", () => {
     vertical: "generic",
     force: true,
   });
+  makeLivrableSpec(result.outDir, "Thin Doc");
   const modulesDir = path.join(work, "server/src/electron/modules");
   fs.mkdirSync(modulesDir, { recursive: true });
   fs.writeFileSync(
-    path.join(modulesDir, "notes.ts"),
-    `export const notesModule = {
-  id: "notes",
+    path.join(modulesDir, "articles.ts"),
+    `export const articlesModule = {
+  id: "articles",
   demo: {
     scenarios: [{
       id: "tiny",
@@ -291,6 +336,7 @@ test("BS9 doctor : pin 0.9.2 (Winhub) — démo absente = warn, pas fail-closed"
     vertical: "generic",
     force: true,
   });
+  makeLivrableSpec(result.outDir, "Winhub Doc");
   const modulesDir = path.join(work, "server/src/electron/modules");
   fs.mkdirSync(modulesDir, { recursive: true });
   fs.writeFileSync(
@@ -302,8 +348,8 @@ test("BS9 doctor : pin 0.9.2 (Winhub) — démo absente = warn, pas fail-closed"
     "utf8",
   );
   fs.writeFileSync(
-    path.join(modulesDir, "notes.ts"),
-    `export const notesModule = { id: "notes" };\n`,
+    path.join(modulesDir, "articles.ts"),
+    `export const articlesModule = { id: "articles" };\n`,
     "utf8",
   );
   const doctor = doctorBrandSpec(result.outDir);
@@ -312,4 +358,97 @@ test("BS9 doctor : pin 0.9.2 (Winhub) — démo absente = warn, pas fail-closed"
   assert.ok(missing, formatDoctorReport(doctor));
   assert.equal(missing.level, "warn");
   fs.rmSync(work, { recursive: true, force: true });
+});
+
+test("BS10 doctor : leftover notes.ts = error (hors allowlist)", () => {
+  const work = fs.mkdtempSync(path.join(os.tmpdir(), "brand-spec-notes-"));
+  const result = initBrandSpec({
+    outDir: path.join(work, "brand-spec"),
+    brandId: "notesdoc",
+    brandName: "Notes Doc",
+    domain: "notesdoc.local",
+    vertical: "generic",
+    force: true,
+  });
+  makeLivrableSpec(result.outDir, "Notes Doc");
+  const modulesDir = path.join(work, "server/src/electron/modules");
+  fs.mkdirSync(modulesDir, { recursive: true });
+  fs.writeFileSync(
+    path.join(modulesDir, "articles.ts"),
+    `import { genericOsTourScenario } from "@creezio/interactive-demo";
+export const articlesModule = {
+  id: "articles",
+  demo: { scenarios: [genericOsTourScenario({ productName: "Notes Doc" })] },
+};
+`,
+    "utf8",
+  );
+  fs.writeFileSync(
+    path.join(modulesDir, "notes.ts"),
+    `export const notesModule = { id: "notes" };\n`,
+    "utf8",
+  );
+  const doctor = doctorBrandSpec(result.outDir);
+  assert.equal(doctor.ok, false, formatDoctorReport(doctor));
+  assert.ok(
+    doctor.issues.some((i) => i.code === "NOTES_LEFTOVER" && i.level === "error"),
+    formatDoctorReport(doctor),
+  );
+  fs.rmSync(work, { recursive: true, force: true });
+});
+
+test("BS11 doctor : MODULE_SPEC_STUB (à remplir) = error", () => {
+  const work = fs.mkdtempSync(path.join(os.tmpdir(), "brand-spec-modstub-"));
+  const result = initBrandSpec({
+    outDir: path.join(work, "brand-spec"),
+    brandId: "modstub",
+    brandName: "Mod Stub",
+    domain: "modstub.local",
+    vertical: "generic",
+    force: true,
+  });
+  fs.writeFileSync(
+    path.join(result.outDir, "product.md"),
+    `# Mod Stub\n\nGestion d'articles.\n\n## Entités\n\n### Articles\n- nom (texte)\n`,
+    "utf8",
+  );
+  const modDir = path.join(result.outDir, "modules", "articles");
+  fs.mkdirSync(modDir, { recursive: true });
+  fs.writeFileSync(
+    path.join(modDir, "prd.md"),
+    `# Module articles\n\n(à remplir)\n`,
+    "utf8",
+  );
+  fs.writeFileSync(
+    path.join(modDir, "interview.md"),
+    `# Interview articles\n\nDécisions remplies.\n`,
+    "utf8",
+  );
+  const doctor = doctorBrandSpec(result.outDir);
+  assert.equal(doctor.ok, false, formatDoctorReport(doctor));
+  assert.ok(
+    doctor.issues.some((i) => i.code === "MODULE_SPEC_STUB" && i.level === "error"),
+    formatDoctorReport(doctor),
+  );
+  fs.rmSync(work, { recursive: true, force: true });
+});
+
+test("BS12 doctor : product.md manquant = PRODUCT_MD_MISSING", () => {
+  const out = fs.mkdtempSync(path.join(os.tmpdir(), "brand-spec-noprod-"));
+  const result = initBrandSpec({
+    outDir: out,
+    brandId: "noprod",
+    brandName: "No Prod",
+    domain: "noprod.local",
+    vertical: "generic",
+    force: true,
+  });
+  fs.unlinkSync(path.join(result.outDir, "product.md"));
+  const doctor = doctorBrandSpec(result.outDir);
+  assert.equal(doctor.ok, false, formatDoctorReport(doctor));
+  assert.ok(
+    doctor.issues.some((i) => i.code === "PRODUCT_MD_MISSING" && i.level === "error"),
+    formatDoctorReport(doctor),
+  );
+  fs.rmSync(out, { recursive: true, force: true });
 });

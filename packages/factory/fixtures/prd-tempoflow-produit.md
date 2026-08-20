@@ -1,5 +1,7 @@
 # PRD produit — TempoFlow (expérience « brief non technique »)
 
+vertical: chr
+
 Ce document est volontairement **non technique**.  
 Il décrit le produit pour un restaurateur / acheteur CHR.  
 Si un agent ne peut pas créer l’app à partir de **ce seul brief** + le repo

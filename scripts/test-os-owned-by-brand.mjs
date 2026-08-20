@@ -16,6 +16,7 @@ const SMOKE_ENV = {
   ...process.env,
   CREEZIO_KIT_ROOT: ROOT,
   CREEZIO_ROOT: ROOT, // legacy compat (Q8)
+  CREEZIO_SKIP_BRAND_DIST: "1",
   NODE_PATH: path.join(ROOT, "node_modules"),
 };
 
@@ -52,7 +53,19 @@ test("owned-by-brand survit à brand apply --force", () => {
   );
   fs.writeFileSync(
     path.join(specDir, "product.md"),
-    `# OwnedProbe\n\n## Entités\n\n### Notes\n- titre (texte)\n`,
+    `# OwnedProbe\n\n## Entités\n\n### Articles\n- titre (texte)\n`,
+    "utf8",
+  );
+  const artDir = path.join(specDir, "modules", "articles");
+  fs.mkdirSync(artDir, { recursive: true });
+  fs.writeFileSync(
+    path.join(artDir, "prd.md"),
+    `# Module articles — Articles\n\nVision remplie pour le livrable de test kit.\n`,
+    "utf8",
+  );
+  fs.writeFileSync(
+    path.join(artDir, "interview.md"),
+    `# Interview articles\n\nDécisions remplies.\n`,
     "utf8",
   );
   assert.equal(

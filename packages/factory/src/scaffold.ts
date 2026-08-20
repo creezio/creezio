@@ -609,34 +609,58 @@ function renderInstallerNsh(m: AppManifest): string {
 
 function renderBareBrandMigrationsTs(): string {
   return `/**
- * Migrations brand — squelette sans --from-prd.
- * Consommateur du registre : migrations \`mod_<module>_*\` via
- * \`collectModuleMigrations\` (\`creezio brand module init\`).
+ * Migrations brand — squelette \`brand create\` / new-app sans --from-prd.
+ * Même câblage que from-prd : interactive-demo + registre modules.
  */
-import type { SqliteMigration } from "@creezio/platform-core";
+import { composeMigrations, type SqliteMigration } from "@creezio/platform-core";
+import { interactiveDemoMigrations } from "@creezio/interactive-demo";
 import { collectModuleMigrations } from "./modules/index.js";
 
 export function brandMigrations(): SqliteMigration[] {
-  return [...collectModuleMigrations()];
+  return composeMigrations(
+    interactiveDemoMigrations(),
+    collectModuleMigrations(),
+  );
 }
 `;
 }
 
-function renderBareBrandModuleApiTs(): string {
+function renderBareBrandModuleApiTs(productName: string): string {
   return `/**
  * Mounts métier — squelette. Consommateur du registre \`modules/\`.
  * \`creezio brand module init <id>\` branche EntitySpecs / mounts sans
- * refactor ici.
+ * refactor ici. Interactive-demo câblé dès le jour 1 (même contrat from-prd).
  */
 import type { ApiKernel } from "@creezio/api-kernel";
 import { registerEntityMounts } from "@creezio/api-kernel";
-import { collectApiMounts, collectEntitySpecs } from "./modules/index.js";
+import {
+  collectInteractiveDemoDefaults,
+  createInteractiveDemoMount,
+  genericOsTourScenario,
+} from "@creezio/interactive-demo";
+import { collectApiMounts, collectDemoScenarios, collectEntitySpecs } from "./modules/index.js";
 
 export function registerBrandModuleApi(api: ApiKernel): void {
   registerEntityMounts(api, collectEntitySpecs());
   for (const [id, mount] of collectApiMounts()) {
     api.registerModuleApi(id, mount);
   }
+  api.registerModuleApi(
+    "interactive-demo",
+    createInteractiveDemoMount({
+      defaults: collectInteractiveDemoDefaults([
+        {
+          moduleId: "os",
+          scenarios: [
+            genericOsTourScenario({
+              productName: ${JSON.stringify(productName)},
+            }),
+          ],
+        },
+        { moduleId: "brand", scenarios: collectDemoScenarios() },
+      ]),
+    }),
+  );
 }
 `;
 }
@@ -1501,7 +1525,7 @@ export function scaffoldNewApp(opts: NewAppOptions): ScaffoldResult {
     );
     writeFile(
       path.join(serverDir, "src/electron/brand-module-api.ts"),
-      renderBareBrandModuleApiTs(),
+      renderBareBrandModuleApiTs(opts.productName),
       force,
       written,
     );

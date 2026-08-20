@@ -6,10 +6,7 @@ import {
   installCreezioDataChangedFetch,
   type ShellUiLoginBrand,
 } from "@creezio/shell-ui";
-import {
-  InteractiveDemoRoot,
-  type InteractiveDemoRootProps,
-} from "@creezio/interactive-demo/ui";
+import type { InteractiveDemoRootProps } from "@creezio/interactive-demo/ui";
 import "@creezio/interactive-demo/ui/interactive-demo.css";
 
 export type CreezioUiBootProps = {
@@ -24,17 +21,17 @@ export type CreezioUiBootProps = {
    */
   login?: ShellUiLoginBrand;
   /**
-   * Overrides du lecteur de démo interactive (toujours monté ici — une app
-   * Creezio sans démo est invalide ; le chrome marque ne peut pas l'oublier).
-   * Défaut : lanceur sidebar (invisible sur /login).
+   * @deprecated Le lecteur unique vit dans BrandChrome (SessionProvider).
+   * Conservé pour ne pas casser les props existantes ; ignoré ici.
    */
   interactiveDemo?: InteractiveDemoRootProps;
 };
 
 /**
- * Boot client OS — identity desktop + tokens shell-ui + fetch → bus data
- * + lecteur de démo interactive natif (`InteractiveDemoRoot`, toujours monté).
- * Vit dans @creezio/os-ui ; la marque ne stocke pas de page OS.
+ * Boot client OS — identity desktop + tokens shell-ui + fetch → bus data.
+ * Le lecteur démo (`InteractiveDemoRoot`) est monté **une fois** dans le
+ * BrandChrome factory, à l'intérieur de `SessionProvider` (rôle / userKey).
+ * Ne pas remonter un second root ici (double curseur / Foove #101).
  *
  * configureShellUiBrand est appelé AU RENDER (parent avant enfants) pour que
  * la marque soit correcte dès le 1er paint de /login — zéro flash du défaut.
@@ -46,7 +43,6 @@ export function CreezioUiBoot({
   productName,
   publicHostSuffix,
   login,
-  interactiveDemo,
 }: CreezioUiBootProps) {
   configureShellUiBrand({
     desktopApiGlobal,
@@ -57,10 +53,5 @@ export function CreezioUiBoot({
   useEffect(() => {
     installCreezioDataChangedFetch();
   }, []);
-  return (
-    <>
-      {children}
-      <InteractiveDemoRoot launcher="sidebar" {...interactiveDemo} />
-    </>
-  );
+  return <>{children}</>;
 }

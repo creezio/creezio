@@ -34,13 +34,222 @@ function runCli(args, opts = {}) {
   });
 }
 
+function writeFilledModuleSpec(specDir, moduleId, title) {
+  const dir = path.join(specDir, "modules", moduleId);
+  fs.mkdirSync(dir, { recursive: true });
+  fs.writeFileSync(
+    path.join(dir, "prd.md"),
+    `# Module ${moduleId} — ${title}
+
+## Vision
+
+Module ${title} pour le livrable de test kit.
+
+## Utilisateurs & parcours
+
+Opérateurs.
+
+## Capacités (fonctionnel)
+
+- Lister / créer des ${title.toLowerCase()}
+
+## Modèle de données
+
+Table ${moduleId} (id, created_at, updated_at, nom).
+
+## API
+
+CRUD EntitySpec.
+
+## UI
+
+Page /${moduleId}
+
+## Tools MCP
+
+Aucun extra.
+
+## Logique métier non triviale
+
+Aucune
+
+## Seeds & données initiales
+
+Aucun
+
+## Cas limites & règles de gestion
+
+Aucune
+
+## Hors périmètre
+
+Rien
+`,
+    "utf8",
+  );
+  fs.writeFileSync(
+    path.join(dir, "interview.md"),
+    `# Interview module ${moduleId}
+
+## 1. Identité & pages
+
+- id : \`${moduleId}\`
+- titre : ${title}
+- routes UI : /${moduleId}
+
+## 2. Données & migrations
+
+Table ${moduleId}.
+
+## 3. API
+
+EntitySpec CRUD.
+
+## 4. UI
+
+Page /${moduleId}
+
+## 5. Tools MCP & policies
+
+Aucun
+
+## 6. Rôles
+
+## 7. Meili
+
+Aucun
+
+## 8. Seeds
+
+Aucun
+
+## 9. Gates
+
+gate.mjs structurelle
+
+## 10. i18n
+
+fr
+`,
+    "utf8",
+  );
+}
+
+test("CB0 demo-app déprécié — exit 1, pointer brand create", () => {
+  const r = runCli(["demo-app", "--name", "Nope"]);
+  assert.notEqual(r.status, 0, "demo-app doit échouer");
+  const out = `${r.stdout}\n${r.stderr}`;
+  assert.match(out, /déprécié|brand create/i);
+});
+
+test("CB0b help déprécie demo-app et documente brand create", () => {
+  const root = runCli(["--help"]);
+  assert.equal(root.status, 0, root.stderr);
+  assert.match(root.stdout, /brand create/);
+  assert.match(root.stdout, /DÉPRÉCIÉ|déprécié|brand create/);
+  const brand = runCli(["brand", "--help"]);
+  assert.equal(brand.status, 0, brand.stderr);
+  assert.match(brand.stdout, /brand create/);
+});
+
 test("CB1 help brand documente init/doctor/apply/smoke", () => {
   const r = runCli(["brand", "--help"]);
   assert.equal(r.status, 0, r.stderr);
   assert.match(r.stdout, /brand init/);
   assert.match(r.stdout, /brand doctor/);
   assert.match(r.stdout, /brand apply/);
+  assert.match(r.stdout, /brand create/);
   assert.match(r.stdout, /startBrandDesktop/);
+});
+
+test("CB-create brand create --id acme (pas notes, pas crm, admin frère)", () => {
+  const work = fs.mkdtempSync(path.join(os.tmpdir(), "brand-create-"));
+  const appDir = path.join(work, "acme");
+  const created = runCli([
+    "brand",
+    "create",
+    "--id",
+    "acme",
+    "--name",
+    "Acme",
+    "--domain",
+    "acme.local",
+    "--out",
+    appDir,
+    "--force",
+    "--no-push",
+  ]);
+  assert.equal(created.status, 0, created.stderr + "\n" + created.stdout);
+  const serverDir = path.join(appDir, "server");
+  assert.ok(fs.existsSync(path.join(serverDir, "src/electron/modules/index.ts")));
+  assert.ok(!fs.existsSync(path.join(serverDir, "src/electron/modules/notes.ts")));
+  assert.ok(!fs.existsSync(path.join(serverDir, "crm")));
+  assert.ok(fs.existsSync(path.join(`${appDir}-admin`, "server-admin.json")));
+  const brandApi = fs.readFileSync(
+    path.join(serverDir, "src/electron/brand-module-api.ts"),
+    "utf8",
+  );
+  assert.match(brandApi, /createInteractiveDemoMount/);
+  assert.match(brandApi, /collectDemoScenarios/);
+  if (fs.existsSync(path.join(serverDir, "ui/app/page.tsx"))) {
+    assert.doesNotMatch(
+      fs.readFileSync(path.join(serverDir, "ui/app/page.tsx"), "utf8"),
+      /redirect\(["']\/notes["']\)/,
+    );
+  }
+  const modInit = runCli([
+    "brand",
+    "module",
+    "init",
+    "articles",
+    "--app",
+    appDir,
+    "--force",
+  ]);
+  assert.equal(modInit.status, 0, modInit.stderr + "\n" + modInit.stdout);
+  assert.ok(
+    fs.existsSync(path.join(serverDir, "src/electron/modules/articles.ts")),
+  );
+  const runner = path.join(serverDir, "scripts/run-module-gates.mjs");
+  if (fs.existsSync(runner)) {
+    const gates = spawnSync(process.execPath, [runner], {
+      encoding: "utf8",
+      cwd: serverDir,
+      env: SMOKE_ENV,
+    });
+    assert.equal(gates.status, 0, gates.stderr + "\n" + gates.stdout);
+  }
+});
+
+test("CB-apply-stub product.md stub = error (plus notes)", () => {
+  const work = fs.mkdtempSync(path.join(os.tmpdir(), "brand-apply-stub-"));
+  const specDir = path.join(work, "brand-spec");
+  const init = runCli([
+    "brand",
+    "init",
+    "--id",
+    "stubbrand",
+    "--name",
+    "StubBrand",
+    "--domain",
+    "stubbrand.local",
+    "--out",
+    specDir,
+    "--force",
+  ]);
+  assert.equal(init.status, 0, init.stderr + "\n" + init.stdout);
+  const apply = runCli([
+    "brand",
+    "apply",
+    "--spec",
+    specDir,
+    "--out",
+    path.join(work, "app"),
+    "--force",
+  ]);
+  assert.notEqual(apply.status, 0, "apply sur stub doit error");
+  const out = `${apply.stdout}\n${apply.stderr}`;
+  assert.match(out, /PRODUCT_MD_STUB|à remplir|doctor|error/i);
 });
 
 test("CB2 init → doctor → apply → main façade", () => {
@@ -95,6 +304,8 @@ Desktop Creezio.
     "utf8",
   );
 
+  writeFilledModuleSpec(specDir, "articles", "Articles");
+
   const doctor = runCli(["brand", "doctor", "--spec", specDir]);
   assert.equal(doctor.status, 0, doctor.stderr + "\n" + doctor.stdout);
 
@@ -115,6 +326,21 @@ Desktop Creezio.
   assert.ok(fs.existsSync(path.join(appDir, "client/src/electron/main.ts")));
   assert.ok(fs.existsSync(path.join(`${appDir}-admin`, "server-admin.json")));
   assert.ok(!fs.existsSync(path.join(appDir, "admin")));
+  assert.ok(!fs.existsSync(path.join(serverDir, "crm")));
+  assert.ok(
+    !fs.existsSync(path.join(serverDir, "src/electron/modules/notes.ts")),
+    "apply Articles ne doit pas poser notes.ts",
+  );
+  assert.ok(
+    fs.existsSync(path.join(serverDir, "src/electron/modules/articles.ts")),
+    "fixture Articles → modules/articles.ts",
+  );
+  if (fs.existsSync(path.join(serverDir, "ui/app/page.tsx"))) {
+    assert.doesNotMatch(
+      fs.readFileSync(path.join(serverDir, "ui/app/page.tsx"), "utf8"),
+      /redirect\(["']\/notes["']\)/,
+    );
+  }
   assert.ok(fs.existsSync(path.join(appDir, "brand-spec/brand.yaml")));
   assert.ok(
     fs.existsSync(
@@ -210,11 +436,21 @@ Desktop Creezio.
     uiPkg.dependencies?.["@creezio/interactive-demo"],
     "dep UI @creezio/interactive-demo absente",
   );
+  const chrome = fs.readFileSync(
+    path.join(serverDir, "ui/components/brand-chrome.tsx"),
+    "utf8",
+  );
+  assert.match(chrome, /InteractiveDemoRoot/, "BrandChrome monte le lecteur dans SessionProvider");
+  assert.match(chrome, /SessionProvider/);
   const boot = fs.readFileSync(
     path.join(ROOT, "packages/os-ui/src/boot.tsx"),
     "utf8",
   );
-  assert.match(boot, /InteractiveDemoRoot/, "CreezioUiBoot monte le lecteur");
+  assert.doesNotMatch(
+    boot,
+    /<InteractiveDemoRoot/,
+    "boot ne remonte plus un second lecteur",
+  );
   const entityMod = fs
     .readdirSync(path.join(serverDir, "src/electron/modules"))
     .find((f) => f.endsWith(".ts") && f !== "types.ts" && f !== "index.ts");
@@ -264,6 +500,8 @@ Desktop Creezio.
     /\/\/ demo: \{ scenarios:/,
     "module init ne doit plus laisser demo en commentaire",
   );
+  writeFilledModuleSpec(path.join(appDir, "brand-spec"), "articles", "Articles");
+  writeFilledModuleSpec(path.join(appDir, "brand-spec"), "clients", "Clients");
   const appDoctor = runCli([
     "brand",
     "doctor",

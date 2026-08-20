@@ -58,15 +58,17 @@ et `npm run test:env` (gates lourdes opt-in).
 ## Commandes clés
 
 ```bash
-# Créer une app depuis un brief produit (PRD)
+# Happy path — app vide (pas de notes, pas de crm/)
+npx creezio brand create --id acme --name Acme --domain acme.local
+
+# Legacy — brief produit (PRD, vertical: chr ou ## Entités)
 npx creezio new-app --from-prd <PRD.md> --out apps/<id> --force
 
 # Créer/mettre à jour une marque depuis un BrandSpec YAML
 npx creezio brand apply --spec brand-spec/
 npx creezio brand doctor --spec brand-spec/
 
-# Démo jetable du kit
-npx creezio demo-app
+# demo-app est déprécié (exit 1) — utiliser brand create
 
 # Serveur Docker headless multi-instances (+ console admin)
 npx creezio server-docker create --brand-root <racine-marque> --name server-1

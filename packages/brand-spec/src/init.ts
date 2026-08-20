@@ -12,7 +12,7 @@ export type InitBrandSpecOptions = {
   force?: boolean;
   /**
    * Parcours produit `/onboarding`. Défaut `true` (marques réelles).
-   * `false` pour demo-app / apps sans étapes (post-setup → home).
+   * `false` pour apps sans étapes (post-setup → home).
    */
   onboardingEnabled?: boolean;
 };

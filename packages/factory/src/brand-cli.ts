@@ -99,6 +99,8 @@ export function printBrandHelp(): void {
   console.log(`creezio brand — BrandSpec + apply
 
 Usage:
+  creezio brand create --id <id> --name <Name> --domain <host> [--out <dir>]
+                       [--force] [--no-push] [--admin-out <dir>]
   creezio brand init --id <id> --name <Name> --domain <host> [--out <dir>]
   creezio brand doctor [--spec <brand-spec-dir>]
   creezio brand apply --spec <brand-spec-dir> --out <app-dir> [--force] [--icons-dir <dir>]
@@ -108,6 +110,7 @@ Usage:
   creezio brand smoke --app <app-dir>
 
 Notes:
+  - Happy path naissance = \`brand create\` (CREATE-APP.md) — pas demo-app
   - BrandSpec = SoT déclarative (brand.yaml, product.md, modules/*)
   - apply réutilise le scaffold --from-prd (ProductModel) + pose brand-spec/
   - Icônes : --icons-dir ou <spec>/icons/{client,server}.png (pas le PNG 1×1)
@@ -272,6 +275,7 @@ function productModelFromSpec(specDir: string): ProductModel {
     sourcePath: productPath,
     brandId: spec.brand.brandId,
     brandName: spec.brand.brandName,
+    vertical: spec.brand.vertical,
   });
   model.brandId = safeBrandId(spec.brand.brandId);
   model.brandName = spec.brand.brandName;
@@ -316,6 +320,65 @@ export async function runBrandCli(argv: string[]): Promise<void> {
   }
 
   const root = kitRoot();
+
+  if (args.sub === "create") {
+    if (!args.id || !args.name || !args.domain) {
+      printBrandHelp();
+      throw new Error("brand create requiert --id --name --domain");
+    }
+    const brandId = safeBrandId(args.id);
+    const outDir = path.resolve(
+      args.out || path.join(root, "apps", brandId),
+    );
+    const result = scaffoldNewApp({
+      brandId,
+      productName: args.name,
+      domain: args.domain,
+      outDir,
+      sandbox: true,
+      force: Boolean(args.force),
+      kitRoot: root,
+      iconsDir: args.iconsDir ? path.resolve(args.iconsDir) : undefined,
+      adminOut: args.adminOut ? path.resolve(args.adminOut) : undefined,
+    });
+    console.log(`✓ brand create ${brandId}`);
+    console.log(`  out     ${result.outDir}`);
+    console.log(`  admin   ${result.adminDir}`);
+    console.log(`  files   ${result.writtenFiles.length}`);
+    console.log(`  spec    ${path.join(outDir, "brand-spec")}`);
+    const { prepareBrandDistribution } = await import(
+      "./prepare-brand-distribution.js"
+    );
+    prepareBrandDistribution(result.outDir, {
+      kitRoot: root,
+      log: (line) => console.log(`  dist    ${line}`),
+    });
+    const { maybePushBrandRepos } = await import("./github-repos.js");
+    const pushed = await maybePushBrandRepos({
+      outDir: result.outDir,
+      adminDir: result.adminDir,
+      brandId: result.manifest.brandId,
+      productName: result.manifest.client.productName,
+      push: args.push,
+      noPush: args.noPush,
+      org: args.githubOrg,
+      log: (line) => console.log(`  github  ${line}`),
+    });
+    for (const r of pushed || []) {
+      console.log(`  github  ${r.url}`);
+    }
+    console.log("");
+    console.log("Suite:");
+    console.log(`  cd ${result.outDir}`);
+    console.log(`  creezio brand module init <id> --app .`);
+    console.log(
+      `  npm ci                                 # clone hôte : layout node_modules`,
+    );
+    console.log(
+      `  CREEZIO_TUNNEL_LOCAL=1 npm run server-docker:create -- demo   # local`,
+    );
+    return;
+  }
 
   if (args.sub === "init") {
     if (!args.id || !args.name || !args.domain) {
@@ -507,6 +570,6 @@ export async function runBrandCli(argv: string[]): Promise<void> {
   }
 
   throw new Error(
-    `Sous-commande brand inconnue: ${args.sub} (init|doctor|apply|apply-modules|module|smoke)`,
+    `Sous-commande brand inconnue: ${args.sub} (create|init|doctor|apply|apply-modules|module|smoke)`,
   );
 }

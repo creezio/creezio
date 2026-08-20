@@ -319,10 +319,38 @@ test("MO3 catalogue = ops kernel (mount démo) + Hono admin", () => {
   assert.equal(matched?.id, "from-inbox");
 });
 
-function writeDemoNotes(modulesDir, body) {
+function makeLivrableSpec(specDir, brandName) {
+  fs.writeFileSync(
+    path.join(specDir, "product.md"),
+    `# ${brandName}
+
+Gestion d'articles.
+
+## Entités
+
+### Articles
+- nom (texte)
+`,
+    "utf8",
+  );
+  const modDir = path.join(specDir, "modules", "articles");
+  fs.mkdirSync(modDir, { recursive: true });
+  fs.writeFileSync(
+    path.join(modDir, "prd.md"),
+    `# Module articles — Articles\n\nVision remplie pour le livrable de test.\n`,
+    "utf8",
+  );
+  fs.writeFileSync(
+    path.join(modDir, "interview.md"),
+    `# Interview articles\n\nDécisions remplies.\n`,
+    "utf8",
+  );
+}
+
+function writeDemoModule(modulesDir, body) {
   fs.mkdirSync(modulesDir, { recursive: true });
   fs.writeFileSync(
-    path.join(modulesDir, "notes.ts"),
+    path.join(modulesDir, "articles.ts"),
     `import { genericOsTourScenario } from "@creezio/interactive-demo";
 ${body}
 `,
@@ -342,6 +370,7 @@ test("MO4 doctor MODULE_OP_MISSING fail-closed (pin ≥ 0.10.6)", () => {
     vertical: "generic",
     force: true,
   });
+  makeLivrableSpec(result.outDir, "Ops");
   fs.mkdirSync(path.join(work, "server"), { recursive: true });
   fs.writeFileSync(
     path.join(work, "server/package.json"),
@@ -349,10 +378,10 @@ test("MO4 doctor MODULE_OP_MISSING fail-closed (pin ≥ 0.10.6)", () => {
       dependencies: { "@creezio/platform-core": "^0.10.6" },
     }),
   );
-  writeDemoNotes(
+  writeDemoModule(
     path.join(work, "server/src/electron/modules"),
-    `export const notesModule = {
-  id: "notes",
+    `export const articlesModule = {
+  id: "articles",
   apiMounts: { notes: { dbLayer: "brand", handle: async () => ({ status: 200 }) } },
   ${DEMO_BLOCK}
 };
@@ -377,6 +406,7 @@ test("MO4b doctor EntitySpec sans ops extras : pas MODULE_OP_MISSING", () => {
     vertical: "generic",
     force: true,
   });
+  makeLivrableSpec(result.outDir, "Ops");
   fs.mkdirSync(path.join(work, "server"), { recursive: true });
   fs.writeFileSync(
     path.join(work, "server/package.json"),
@@ -384,10 +414,10 @@ test("MO4b doctor EntitySpec sans ops extras : pas MODULE_OP_MISSING", () => {
       dependencies: { "@creezio/platform-core": "^0.10.6" },
     }),
   );
-  writeDemoNotes(
+  writeDemoModule(
     path.join(work, "server/src/electron/modules"),
-    `export const notesModule = {
-  id: "notes",
+    `export const articlesModule = {
+  id: "articles",
   entitySpecs: { notes: { table: "notes", columns: [{ name: "titre" }] } },
   ${DEMO_BLOCK}
 };
@@ -412,6 +442,7 @@ test("MO4c doctor operations: [] = MODULE_OP_MISSING", () => {
     vertical: "generic",
     force: true,
   });
+  makeLivrableSpec(result.outDir, "Ops");
   fs.mkdirSync(path.join(work, "server"), { recursive: true });
   fs.writeFileSync(
     path.join(work, "server/package.json"),
@@ -419,10 +450,10 @@ test("MO4c doctor operations: [] = MODULE_OP_MISSING", () => {
       dependencies: { "@creezio/platform-core": "^0.10.6" },
     }),
   );
-  writeDemoNotes(
+  writeDemoModule(
     path.join(work, "server/src/electron/modules"),
-    `export const notesModule = {
-  id: "notes",
+    `export const articlesModule = {
+  id: "articles",
   apiMounts: { notes: { dbLayer: "brand", operations: [], handle: async () => ({ status: 200 }) } },
   ${DEMO_BLOCK}
 };
@@ -447,6 +478,7 @@ test("MO4d doctor MODULE_MCP_TOOLS_DEPRECATED (error, fail-closed)", () => {
     vertical: "generic",
     force: true,
   });
+  makeLivrableSpec(result.outDir, "Ops");
   fs.mkdirSync(path.join(work, "server"), { recursive: true });
   fs.writeFileSync(
     path.join(work, "server/package.json"),
@@ -454,10 +486,10 @@ test("MO4d doctor MODULE_MCP_TOOLS_DEPRECATED (error, fail-closed)", () => {
       dependencies: { "@creezio/platform-core": "^0.10.6" },
     }),
   );
-  writeDemoNotes(
+  writeDemoModule(
     path.join(work, "server/src/electron/modules"),
-    `export const notesModule = {
-  id: "notes",
+    `export const articlesModule = {
+  id: "articles",
   entitySpecs: { notes: { table: "notes", columns: [{ name: "titre" }] } },
   mcpTools: () => [{ name: "module.notes.custom", space: "module", ownerId: "notes", handler: async () => ({ ok: true }) }],
   ${DEMO_BLOCK}
@@ -489,6 +521,7 @@ test("MO4e doctor : apiMounts commenté (stub factory) n'est pas MODULE_OP_MISSI
     vertical: "generic",
     force: true,
   });
+  makeLivrableSpec(result.outDir, "Ops");
   fs.mkdirSync(path.join(work, "server"), { recursive: true });
   fs.writeFileSync(
     path.join(work, "server/package.json"),
@@ -496,10 +529,10 @@ test("MO4e doctor : apiMounts commenté (stub factory) n'est pas MODULE_OP_MISSI
       dependencies: { "@creezio/platform-core": "^0.10.6" },
     }),
   );
-  writeDemoNotes(
+  writeDemoModule(
     path.join(work, "server/src/electron/modules"),
-    `export const notesModule = {
-  id: "notes",
+    `export const articlesModule = {
+  id: "articles",
   // apiMounts: { notes: { dbLayer: "brand", operations: [/* 1 op = 1 capacité */], handle } },
   ${DEMO_BLOCK}
 };
@@ -524,6 +557,7 @@ test("MO5 doctor MODULE_OP_UNCATALOGUED + MCP overlap", () => {
     vertical: "generic",
     force: true,
   });
+  makeLivrableSpec(result.outDir, "Ops");
   fs.mkdirSync(path.join(work, "server"), { recursive: true });
   fs.writeFileSync(
     path.join(work, "server/package.json"),
@@ -531,10 +565,10 @@ test("MO5 doctor MODULE_OP_UNCATALOGUED + MCP overlap", () => {
       dependencies: { "@creezio/platform-core": "^0.10.6" },
     }),
   );
-  writeDemoNotes(
+  writeDemoModule(
     path.join(work, "server/src/electron/modules"),
-    `export const notesModule = {
-  id: "notes",
+    `export const articlesModule = {
+  id: "articles",
   entitySpecs: { notes: { table: "notes", columns: [], extraRoutes: async () => ({ status: 404 }) } },
   mcpTools: () => [{ name: "module.notes.list", space: "module", ownerId: "notes", handler: async () => ({ ok: true }) }],
   ${DEMO_BLOCK}

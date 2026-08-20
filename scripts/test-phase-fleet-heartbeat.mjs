@@ -20,7 +20,8 @@
  *  7. mount fleet-access : Bearer = accessToken vérifié contre le hash local
  *     (status 200 / mauvais token 401 / non provisionné 503) ;
  *  8. factory : `--profile prod` forwarde CREEZIO_FLEET_ADMIN_URL /
- *     _REGISTER_SECRET / _HOST_ID (anti-régression sur la liste).
+ *     _REGISTER_SECRET / _HOST_ID / _BACKEND_URL / _BACKEND_BASIC
+ *     (anti-régression sur la liste).
  */
 import fs from "node:fs";
 import http from "node:http";
@@ -410,6 +411,8 @@ test("fleet-heartbeat : factory forwarde les env flotte en --profile prod", () =
     "CREEZIO_FLEET_ADMIN_URL",
     "CREEZIO_FLEET_REGISTER_SECRET",
     "CREEZIO_FLEET_HOST_ID",
+    "CREEZIO_FLEET_BACKEND_URL",
+    "CREEZIO_FLEET_BACKEND_BASIC",
   ]) {
     assert.ok(
       cli.includes(`"${key}"`),

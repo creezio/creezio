@@ -31,6 +31,13 @@ const CRUD_OP_IDS = new Set([
 
 const MIN_INLINE_DEMO_STEPS = 3;
 
+/** Module `notes` leftover factory — hors cette allowlist = error. */
+const NOTES_LEFTOVER_ALLOWLIST = new Set<string>([
+  /* vide : aucune marque neuve n'a le droit au leftover notes */
+]);
+
+const STUB_FILL_RE = /\(à remplir\)/i;
+
 function resolveAppModulesDir(specRoot: string): string | null {
   const appRoot = path.dirname(specRoot);
   for (const rel of ["server/src/electron/modules", "src/electron/modules"]) {
@@ -357,9 +364,17 @@ export function doctorBrandSpec(rootDir: string): DoctorResult {
 
   if (!spec.productMd) {
     issues.push({
-      level: "warn",
+      level: "error",
       code: "PRODUCT_MD_MISSING",
-      message: "product.md manquant (recommandé pour apply --from-prd)",
+      message: "product.md manquant — requis (plus de fallback notes)",
+      path: "product.md",
+    });
+  } else if (STUB_FILL_RE.test(spec.productMd)) {
+    issues.push({
+      level: "error",
+      code: "PRODUCT_MD_STUB",
+      message:
+        "product.md contient « (à remplir) » — refill avant apply métier / livrable",
       path: "product.md",
     });
   }
@@ -384,9 +399,10 @@ export function doctorBrandSpec(rootDir: string): DoctorResult {
 
   if (spec.modules.length === 0) {
     issues.push({
-      level: "warn",
+      level: "error",
       code: "NO_MODULES",
-      message: "aucun module sous modules/",
+      message:
+        "aucun module sous modules/ — brand create pose un registre vide ; module init + specs remplies avant apply métier",
       path: "modules/",
     });
   }
@@ -394,12 +410,53 @@ export function doctorBrandSpec(rootDir: string): DoctorResult {
   for (const mod of spec.modules) {
     if (!mod.hasPrd) {
       issues.push({
-        level: "warn",
+        level: "error",
         code: "MODULE_PRD_MISSING",
         message: `module ${mod.id}: prd.md manquant`,
         path: path.relative(spec.rootDir, mod.dir),
       });
+    } else {
+      const prdPath = path.join(mod.dir, "prd.md");
+      const interviewPath = path.join(mod.dir, "interview.md");
+      const prd = fs.existsSync(prdPath)
+        ? fs.readFileSync(prdPath, "utf8")
+        : "";
+      const interview = fs.existsSync(interviewPath)
+        ? fs.readFileSync(interviewPath, "utf8")
+        : "";
+      if (STUB_FILL_RE.test(prd) || STUB_FILL_RE.test(interview)) {
+        issues.push({
+          level: "error",
+          code: "MODULE_SPEC_STUB",
+          message: `module ${mod.id}: spec stub « (à remplir) » — refill avant apply métier`,
+          path: path.relative(spec.rootDir, mod.dir),
+        });
+      }
     }
+    if (mod.id === "notes" && !NOTES_LEFTOVER_ALLOWLIST.has(brand.brandId)) {
+      issues.push({
+        level: "error",
+        code: "NOTES_LEFTOVER",
+        message:
+          "module leftover « notes » interdit (hors allowlist) — utiliser brand create + module init métier",
+        path: path.relative(spec.rootDir, mod.dir),
+      });
+    }
+  }
+
+  const leftoverNotesTs = resolveAppModulesDir(spec.rootDir);
+  if (
+    leftoverNotesTs &&
+    fs.existsSync(path.join(leftoverNotesTs, "notes.ts")) &&
+    !NOTES_LEFTOVER_ALLOWLIST.has(brand.brandId)
+  ) {
+    issues.push({
+      level: "error",
+      code: "NOTES_LEFTOVER",
+      message:
+        "server/src/electron/modules/notes.ts leftover interdit (hors allowlist)",
+      path: path.relative(spec.rootDir, path.join(leftoverNotesTs, "notes.ts")),
+    });
   }
 
   if (brand.meili?.enabled && brand.meili.feedPreset === "custom") {

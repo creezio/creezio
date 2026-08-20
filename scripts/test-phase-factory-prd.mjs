@@ -15,6 +15,45 @@ import {
   scaffoldNewApp,
 } from "../packages/factory/dist/index.js";
 
+test("F1.2b parseProductPrd Articles → entité articles (pas notes)", () => {
+  const model = parseProductPrd(
+    `# Probe
+
+## Entités
+
+### Articles
+- nom (texte)
+- prix (nombre)
+`,
+    { brandId: "probebrand", brandName: "Probe" },
+  );
+  assert.deepEqual(
+    model.entities.map((e) => e.id),
+    ["articles"],
+  );
+  assert.ok(!model.entities.some((e) => e.id === "notes"));
+});
+
+test("F1.2c parseProductPrd stub (à remplir) = error", () => {
+  assert.throws(
+    () =>
+      parseProductPrd(`# Vide
+
+## Entités (à préciser)
+
+- (à remplir)
+`),
+    /à remplir|stub/i,
+  );
+});
+
+test("F1.2d parseProductPrd sans Entités ni vertical: chr = error (pas notes)", () => {
+  assert.throws(
+    () => parseProductPrd(`# App\n\nJuste une phrase.\n`),
+    /aucune entité|notes/i,
+  );
+});
+
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const PRD = path.join(
   ROOT,
@@ -110,7 +149,6 @@ test("F1–F4 scaffold --from-prd génère 2 repos (monorepo + admin dédié, ru
     "AGENTS.md",
     "scripts/creezio-cli.mjs",
     "server/product-model.json",
-    "server/crm/src/brand/schema.sql",
     "server/scripts/brand-kernel-harness.mjs",
     "server/scripts/test-metier-parcours.mjs",
     "server/scripts/test-mini-prd-core.mjs",
@@ -147,6 +185,10 @@ test("F1–F4 scaffold --from-prd génère 2 repos (monorepo + admin dédié, ru
     );
   }
   const server = path.join(outDir, "server");
+  assert.ok(
+    !fs.existsSync(path.join(server, "crm")),
+    "server/crm/ ne doit plus être généré",
+  );
 
   assert.ok(!fs.existsSync(path.join(server, "scripts/metier-api.mjs")));
   assert.ok(!fs.existsSync(path.join(server, "src/lib/brand-module-api.ts")));

@@ -15,17 +15,17 @@
 | Fichier | Rôle |
 |---|---|
 | [`src/admin-repo.ts`](../src/admin-repo.ts) | Scaffold du repo ADMIN dédié `<brand>-admin` (app OS complète en mode admin : modules @creezio/admin, landing, compose) — layout 2 repos. |
-| [`src/brand-cli.ts`](../src/brand-cli.ts) | CLI `creezio brand` — init / doctor / apply / smoke sur un `brand-spec/`. |
+| [`src/brand-cli.ts`](../src/brand-cli.ts) | CLI `creezio brand` — create (happy path) / init / doctor / apply / smoke. |
 | [`src/brand-module-init.ts`](../src/brand-module-init.ts) | (à documenter) |
-| [`src/cli.ts`](../src/cli.ts) | CLI `new-app`, `--from-prd` |
+| [`src/cli.ts`](../src/cli.ts) | CLI `new-app`, `--from-prd` ; `demo-app` déprécié (exit 1). |
 | [`src/github-repos.ts`](../src/github-repos.ts) | Création + push des 2 repos GitHub privés d'une marque (monorepo + `<brand>-admin`) ; token env `GITHUB_TOKEN`/`CREEZIO_GITHUB_TOKEN` ou `.github-token`, vendor + package-lock synchronisés AVANT push. |
 | [`src/index.ts`](../src/index.ts) | Exports publics |
 | [`src/kit-release.ts`](../src/kit-release.ts) | (à documenter) |
 | [`src/minimal-png.ts`](../src/minimal-png.ts) | Icône placeholder |
 | [`src/package-lock.ts`](../src/package-lock.ts) | Cohérence package.json ↔ package-lock (npm ci Docker) — régénération lock-only / install. |
 | [`src/plugin-templates.ts`](../src/plugin-templates.ts) | Installation des templates de plugins kit (`templates/plugins/<id>/`) dans le répertoire plugins d'une app (`<userData>/plugins/<id>/` + `.enabled`). |
-| [`src/prepare-brand-distribution.ts`](../src/prepare-brand-distribution.ts) | Vendor sync + locks après chaque scaffold (new-app / brand apply / push). |
-| [`src/product-model.ts`](../src/product-model.ts) | `ProductModel`, parse PRD |
+| [`src/prepare-brand-distribution.ts`](../src/prepare-brand-distribution.ts) | Locks après chaque scaffold (brand create / new-app / brand apply). |
+| [`src/product-model.ts`](../src/product-model.ts) | `ProductModel`, `parseProductPrd` (extrait `## Entités` ou échoue ; pas de fallback notes). |
 | [`src/scaffold-from-prd.ts`](../src/scaffold-from-prd.ts) | Artefacts métier / wiring |
 | [`src/scaffold.ts`](../src/scaffold.ts) | Scaffold OS + branche PRD |
 | [`src/server-docker-cli.ts`](../src/server-docker-cli.ts) | CLI `creezio server-docker` — create/start/stop/rm/logs/ls, build/up/down/proof, `publish` (+ rétention, `--release` = déclaration draft dans l'app admin), `admin up`, `agent up`, `enroll`, `ensure-owner` (seed + persist `secrets.env` 600). `update` préserve un sidecar cloudflared / refuse si hostname public sans tunnel ; `migrate-stack` seul retire le sidecar (même tunnel). |

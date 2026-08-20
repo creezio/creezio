@@ -137,8 +137,8 @@ import { SetupWizard } from "@creezio/onboarding/ui";
 | `afterCompleteHref` | `/` | `/onboarding` |
 | Page OS `/onboarding` | redirige vers `/` | page marque `ui/app/onboarding/` |
 
-`creezio demo-app` / `blankAppModel` : onboarding **off** par défaut.
-TempoFlow (étapes réelles) : inchangé.
+`creezio brand create` / `blankAppModel` : onboarding **off** par défaut
+(`demo-app` est déprécié, exit 1). TempoFlow (étapes réelles) : inchangé.
 
 ### Contenu hybride en DB + preferences (ADR-module-natif-hybride)
 

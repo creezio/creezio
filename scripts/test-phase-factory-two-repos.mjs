@@ -179,7 +179,32 @@ test("brand apply : mêmes 2 arbres + --admin-out custom", () => {
     assert.equal(init.status, 0, init.stderr + "\n" + init.stdout);
     fs.writeFileSync(
       path.join(specDir, "product.md"),
-      `# TwoBrand\n\nProduit: TwoBrand\nDomaine: twobrand.example\n\n## Vision\n\nGestion simple pour test gate factory 2-repos.\n`,
+      `# TwoBrand
+
+Produit: TwoBrand
+Domaine: twobrand.example
+
+## Vision
+
+Gestion simple pour test gate factory 2-repos.
+
+## Entités
+
+### Articles
+- nom (texte)
+`,
+      "utf8",
+    );
+    const artDir = path.join(specDir, "modules", "articles");
+    fs.mkdirSync(artDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(artDir, "prd.md"),
+      `# Module articles — Articles\n\nVision remplie pour le livrable de test kit.\n`,
+      "utf8",
+    );
+    fs.writeFileSync(
+      path.join(artDir, "interview.md"),
+      `# Interview articles\n\nDécisions remplies.\n`,
       "utf8",
     );
     const appDir = path.join(tmp, "twobrand");

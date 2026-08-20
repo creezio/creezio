@@ -483,12 +483,15 @@ const required = [
   "src/electron/brand-module-api.ts",
   "src/electron/meili-feed.ts",
   "scripts/brand-kernel-harness.mjs",
-  "crm/src/brand/schema.sql",
   "product-model.json",
 ];
 for (const rel of required) {
   assert.ok(fs.existsSync(path.join(root, rel)), \`manquant: \${rel}\`);
 }
+assert.ok(
+  !fs.existsSync(path.join(root, "crm")),
+  "server/crm/ est interdit (schéma = brand.db + registre modules)",
+);
 assert.ok(!fs.existsSync(path.join(root, "src/electron/brand-runtime.ts")));
 assert.ok(!fs.existsSync(path.join(root, "src/lib/host-stack.ts")));
 
