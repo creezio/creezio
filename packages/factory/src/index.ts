@@ -67,7 +67,12 @@ export {
   formatMissingProvisionerError,
   isExplicitTunnelLocal,
   loadReservedSlugs,
+  applyAdminPublicTunnelDefaults,
+  extraHostnamesKey,
+  isAdminBrandId,
+  parseExtraHostnamesList,
   resolveCreateTunnelPolicy,
+  resolveMigrateStackPlan,
   type CreateTunnelPolicy,
   type CreateTunnelPolicyInput,
 } from "./server-docker-tunnel.js";

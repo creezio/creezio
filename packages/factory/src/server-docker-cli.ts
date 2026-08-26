@@ -29,10 +29,14 @@ import {
 } from "./package-lock.js";
 import {
   CREATE_TUNNEL_ENV_KEYS,
+  applyAdminPublicTunnelDefaults,
+  extraHostnamesKey,
   formatDerivedSlugLog,
+  isAdminBrandId,
   loadReservedSlugs,
   pickEnvValues,
   resolveCreateTunnelPolicy,
+  resolveMigrateStackPlan,
   type CreateTunnelPolicy,
 } from "./server-docker-tunnel.js";
 import {
@@ -300,9 +304,11 @@ Stack compose autonome (modèle standard — cloudflared in-process) :
     (bascule une instance sidecar ou legacy en stack in-process : backup
      /data obligatoire → cf.env écrit (CREEZIO_CF_* requis — env hôte ou
      .env marque) → compose up : le kernel RÉUTILISE le tunnel / hostname
-     existants (CREEZIO_DOMAIN) — jamais un 2e hostname. Health → rollback
-     automatique si KO. Token tunnel lu du store kernel /data — jamais
-     affiché. Seul chemin autorisé à retirer un sidecar cloudflared.)
+     existants. Repo admin : aligne CREEZIO_DOMAIN=admin.{zone} +
+     EXTRA_HOSTNAMES=lp.{zone} (sync-cf si déjà in-process). Health →
+     rollback si KO. Token tunnel lu du store kernel /data — jamais
+     affiché. Seul chemin autorisé à retirer un sidecar cloudflared.
+     Pas de NPM / sidecar / 2e stratégie publique.)
   creezio server-docker rm <nom> : déprovisionne aussi le tunnel Cloudflare
     (DNS + tunnel via API CF directe, best-effort) si CREEZIO_CF_* posés.
 
@@ -1332,6 +1338,59 @@ function loadOrInitAdminConfig(
 }
 
 /** Lecture minimale d'un fichier .env (KEY=VALUE, # commentaires). */
+function isAdminBrandRoot(brandRoot: string, brandId: string): boolean {
+  return (
+    isAdminBrandId(brandId) ||
+    fs.existsSync(path.join(brandRoot, "server-admin.json"))
+  );
+}
+
+/** Recopie DOMAIN / EXTRA dans le .env marque (pas de secrets). */
+function persistAdminTunnelKeys(
+  brandRoot: string,
+  cf: Record<string, string>,
+): void {
+  const file = path.join(brandRoot, ".env");
+  const keys: Record<string, string> = {};
+  if (cf.CREEZIO_DOMAIN) keys.CREEZIO_DOMAIN = cf.CREEZIO_DOMAIN;
+  if (cf.CREEZIO_TUNNEL_EXTRA_HOSTNAMES) {
+    keys.CREEZIO_TUNNEL_EXTRA_HOSTNAMES = cf.CREEZIO_TUNNEL_EXTRA_HOSTNAMES;
+  }
+  if (!Object.keys(keys).length) return;
+  upsertEnvFileKeys(file, keys);
+}
+
+function upsertEnvFileKeys(
+  file: string,
+  keys: Record<string, string>,
+): void {
+  let raw = "";
+  try {
+    raw = fs.readFileSync(file, "utf8");
+  } catch {
+    raw = "";
+  }
+  const seen = new Set<string>();
+  const lines = raw.split("\n");
+  const out: string[] = [];
+  for (const line of lines) {
+    const t = line.trim();
+    const i = t.startsWith("#") ? -1 : t.indexOf("=");
+    const k = i > 0 ? t.slice(0, i).trim() : "";
+    if (k && keys[k] !== undefined) {
+      out.push(`${k}=${keys[k]}`);
+      seen.add(k);
+    } else {
+      out.push(line);
+    }
+  }
+  for (const [k, v] of Object.entries(keys)) {
+    if (!seen.has(k)) out.push(`${k}=${v}`);
+  }
+  const text = out.join("\n").replace(/\n+$/, "") + "\n";
+  fs.writeFileSync(file, text);
+}
+
 function readEnvFileValues(file: string): Record<string, string> {
   const out: Record<string, string> = {};
   let raw = "";
@@ -2680,12 +2739,19 @@ async function runRegistrySubcommand(
             `⚠ vérification token CF impossible (${err instanceof Error ? err.message : String(err)}) — l'instance réessaiera au boot`,
           );
         }
-        cf = {
-          ...cfVars,
-          CREEZIO_TUNNEL_SLUG: tunnelPolicy.slug,
-        };
+        const adminTun = applyAdminPublicTunnelDefaults({
+          brandId,
+          isAdmin: isAdminBrandRoot(paths.brandRoot, brandId),
+          env: { ...cfVars, CREEZIO_TUNNEL_SLUG: tunnelPolicy.slug },
+        });
+        cf = adminTun.env;
+        persistAdminTunnelKeys(paths.brandRoot, cf);
         console.log(
-          `tunnel auto-provisionné au boot par l'instance (slug ${cf.CREEZIO_TUNNEL_SLUG}, cf.env 600)`,
+          `tunnel auto-provisionné au boot par l'instance (slug ${cf.CREEZIO_TUNNEL_SLUG}, cf.env 600)` +
+            (adminTun.applied && adminTun.adminHost
+              ? ` — admin ${adminTun.adminHost}` +
+                (adminTun.landingHost ? ` + ${adminTun.landingHost}` : "")
+              : ""),
         );
       }
       inst.stack = true;
@@ -2800,15 +2866,50 @@ async function runRegistrySubcommand(
       Boolean(inst.stack) &&
       fs.existsSync(composeFile) &&
       fs.readFileSync(composeFile, "utf8").includes("cloudflared:");
-    if (inst.stack && !hasSidecar) {
-      console.log(`✓ ${name} déjà en stack in-process — rien à faire`);
+    const cfVarsEarly = resolveCliCfEnv(paths.brandRoot);
+    const cfFileEarly = readEnvFileValues(stack.cfEnvPath(paths.brandRoot, inst));
+    const cfClientEarly = await importTunnelCf(paths.kit);
+    const hasCfContract = Boolean(
+      cfEnvFromMerged(cfClientEarly, cfVarsEarly),
+    );
+    const adminTunEarly = applyAdminPublicTunnelDefaults({
+      brandId,
+      isAdmin: isAdminBrandRoot(paths.brandRoot, brandId),
+      env: { ...cfFileEarly, ...cfVarsEarly },
+    });
+    const needsHostnameSync =
+      extraHostnamesKey(adminTunEarly.env.CREEZIO_TUNNEL_EXTRA_HOSTNAMES) !==
+        extraHostnamesKey(cfFileEarly.CREEZIO_TUNNEL_EXTRA_HOSTNAMES) ||
+      (adminTunEarly.env.CREEZIO_DOMAIN || "").trim() !==
+        (cfFileEarly.CREEZIO_DOMAIN || "").trim();
+    const migratePlan = resolveMigrateStackPlan({
+      isStack: Boolean(inst.stack),
+      hasSidecar,
+      hasCfEnv: fs.existsSync(stack.cfEnvPath(paths.brandRoot, inst)),
+      hasCfContract,
+      needsHostnameSync: Boolean(hasCfContract && needsHostnameSync),
+    });
+    if (migratePlan === "noop-inprocess") {
+      console.log(
+        hasCfContract
+          ? `✓ ${name} déjà en stack in-process — rien à faire`
+          : `✓ ${name} déjà en stack in-process sans tunnel (poser CREEZIO_CF_* + CREEZIO_DOMAIN pour attacher)`,
+      );
       return;
     }
     const image =
       (inst as { image?: string }).image || registry.image ||
       serverImageName(brandId);
+    const migrateKind =
+      migratePlan === "attach-cf"
+        ? "attach-cf"
+        : migratePlan === "sync-cf"
+          ? "sync-cf"
+          : hasSidecar
+            ? "sidecar → in-container"
+            : "legacy → stack";
     console.log(
-      `migration ${name} → stack in-process (${hasSidecar ? "sidecar → in-container" : "legacy → stack"}, image ${image})…`,
+      `migration ${name} → stack in-process (${migrateKind}, image ${image})…`,
     );
 
     const serverLibPath = path.join(
@@ -2832,21 +2933,56 @@ async function runRegistrySubcommand(
 
     const kc = stack.readKernelTunnelConfig(paths.brandRoot, inst, brandId);
     let cf: Record<string, string> | undefined;
+    const cfVars = cfVarsEarly;
+    const cfClient = cfClientEarly;
     if (kc) {
-      const cfClient = await importTunnelCf(paths.kit);
-      const cfVars = resolveCliCfEnv(paths.brandRoot);
       const cfEnv = cfEnvFromMerged(cfClient, cfVars);
       if (!cfEnv) {
         throw new Error(
           `tunnel ${kc.slug} présent mais contrat Cloudflare incomplet (${cfClient.missingCfTunnelEnvKeys({ ...process.env, ...cfVars } as NodeJS.ProcessEnv).join(", ")}) — poser les CREEZIO_CF_* (env hôte ou .env marque) puis relancer`,
         );
       }
-      cf = { ...cfVars, CREEZIO_TUNNEL_SLUG: kc.slug };
-      // Hostname exact préservé (custom ou zone-level) — sinon le kernel
-      // dériverait `{slug}.{zone}` au boot.
+      cf = {
+        ...adminTunEarly.env,
+        CREEZIO_TUNNEL_SLUG: kc.slug,
+      };
       if (!cf.CREEZIO_DOMAIN) cf.CREEZIO_DOMAIN = kc.hostname;
+      persistAdminTunnelKeys(paths.brandRoot, cf);
       console.log(
-        `✓ contrat CF prêt — l'instance re-ensure le tunnel ${kc.slug} au boot (ingress 127.0.0.1:${stack.STACK_APP_PORT})`,
+        `✓ contrat CF prêt — l'instance re-ensure le tunnel ${kc.slug} au boot (ingress 127.0.0.1:${stack.STACK_APP_PORT})` +
+          (cf.CREEZIO_TUNNEL_EXTRA_HOSTNAMES
+            ? ` + extras ${cf.CREEZIO_TUNNEL_EXTRA_HOSTNAMES}`
+            : ""),
+      );
+    } else if (hasCfContract) {
+      const reservedSlugs = await loadReservedSlugs(paths.kit);
+      const tunnelPolicy = resolveCreateTunnelPolicy({
+        instanceName: name,
+        brandId,
+        profile: "prod",
+        env: { ...cfVars, CREEZIO_TUNNEL_LOCAL: "0" },
+        reservedSlugs,
+        noStack: false,
+      });
+      if (tunnelPolicy.mode !== "public") {
+        throw new Error("attach-cf : politique tunnel inattendue (attendu public)");
+      }
+      const attached: Record<string, string> = {
+        ...adminTunEarly.env,
+        CREEZIO_TUNNEL_SLUG: tunnelPolicy.slug,
+      };
+      cf = attached;
+      persistAdminTunnelKeys(paths.brandRoot, cf);
+      if (tunnelPolicy.derived) console.log(formatDerivedSlugLog(tunnelPolicy));
+      console.log(
+        `✓ contrat CF prêt — attach tunnel ${tunnelPolicy.slug}` +
+          (attached.CREEZIO_DOMAIN
+            ? ` (CREEZIO_DOMAIN=${attached.CREEZIO_DOMAIN})`
+            : "") +
+          (attached.CREEZIO_TUNNEL_EXTRA_HOSTNAMES
+            ? ` extras=${attached.CREEZIO_TUNNEL_EXTRA_HOSTNAMES}`
+            : "") +
+          ` au boot (ingress 127.0.0.1:${stack.STACK_APP_PORT})`,
       );
     } else {
       console.log("pas de tunnel kernel dans /data — stack sans cf.env");
@@ -2855,7 +2991,12 @@ async function runRegistrySubcommand(
     const instStack: ServerRegistryInstance = {
       ...inst,
       stack: true,
-      hostPort: args.hostPort && args.hostPort > 0 ? args.hostPort : 0,
+      hostPort:
+        args.hostPort && args.hostPort > 0
+          ? args.hostPort
+          : Number(inst.hostPort) > 0
+            ? Number(inst.hostPort)
+            : 0,
       env: Object.fromEntries(
         Object.entries({ ...(inst.env || {}), CREEZIO_TUNNEL_LOCAL: "0" }).filter(
           ([k]) =>
@@ -2964,16 +3105,17 @@ async function runRegistrySubcommand(
       `✓ ${name} migré en stack in-process — app interne :${stack.STACK_APP_PORT}, ` +
         `port hôte debug 127.0.0.1:${hp} (${instStack.hostPort ? "fixe" : "auto"})`,
     );
-    if (kc?.hostname) {
+    const publicHost = kc?.hostname || cf?.CREEZIO_DOMAIN;
+    if (publicHost) {
       try {
         const res = await fetch(
-          `https://${kc.hostname}/api/v1/core/health`,
+          `https://${publicHost}/api/v1/core/health`,
           { signal: AbortSignal.timeout(20000) },
         );
-        console.log(`✓ public https://${kc.hostname} → HTTP ${res.status}`);
+        console.log(`✓ public https://${publicHost} → HTTP ${res.status}`);
       } catch (e) {
         console.log(
-          `⚠ vérif publique https://${kc.hostname} en échec: ${e instanceof Error ? e.message : String(e)}`,
+          `⚠ vérif publique https://${publicHost} en échec: ${e instanceof Error ? e.message : String(e)}`,
         );
       }
     }

@@ -328,7 +328,7 @@ export function createTunnelService(opts: {
     // DNS idempotent + self-healing si le tunnel a disparu côté CF.
     const result = await ensureCfTunnel(env, {
       slug: cfg.slug,
-      domain: cfg.hostname,
+      domain: instanceDomain() || cfg.hostname,
       ports: { crmPort: ports.crmPort, n8nPort, hermesPort },
       hostMode: cfg.hostMode ?? brandHostMode(),
       extraHostnames: extraHostnames(),
@@ -339,6 +339,8 @@ export function createTunnelService(opts: {
       "n8n" in result.publicUrls ? result.publicUrls : cfg.publicUrls;
     store.setTunnelConfig({
       ...cfg,
+      hostname: result.hostname,
+      publicUrl: result.publicUrl,
       tunnelId: result.tunnelId,
       tunnelToken: result.tunnelToken,
       localPort: ports.crmPort,

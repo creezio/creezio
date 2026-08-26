@@ -5,7 +5,7 @@
 Image de l'admin web multi-serveurs (backend flotte). Le code vit dans
 `packages/observability/fleet-collector/server-admin.mjs` (+ `admin-docker.mjs`,
 `registry-pull-proxy.mjs`, `server-lib.mjs`) — ce dossier contient le
-`Dockerfile` et le script d'exposition `configure-admin-npm.sh`.
+`Dockerfile`. `configure-admin-npm.sh` refuse (exit 1) : plus de NPM.
 
 ## Ne pas faire
 
@@ -13,8 +13,8 @@ Image de l'admin web multi-serveurs (backend flotte). Le code vit dans
 - Toucher `server.mjs` (fleet-collector prod) pour un besoin admin : le point
   d'entrée admin est séparé (`server-admin.mjs`).
 - Binder hors `127.0.0.1` par défaut : le socket Docker monté équivaut à root
-  sur l'hôte. Exposition publique = reverse-proxy TLS + auth uniquement
-  (`configure-admin-npm.sh`).
+  sur l'hôte. Le backend flotte reste loopback. Le public `admin.` / `lp.`
+  est le tunnel in-process de l'app OS — jamais NPM.
 - Autoriser une méthode push sur le proxy registre `/v2/*` (pull-only, F4 —
   gate `scripts/test-phase-registry-pull-proxy.mjs`).
 

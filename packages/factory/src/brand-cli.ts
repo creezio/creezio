@@ -377,6 +377,13 @@ export async function runBrandCli(argv: string[]): Promise<void> {
     console.log(
       `  CREEZIO_TUNNEL_LOCAL=1 npm run server-docker:create -- demo   # local`,
     );
+    console.log(`  cd ${result.adminDir}`);
+    console.log(
+      `  # .env.example : CREEZIO_DOMAIN=admin.${args.domain} EXTRA=lp.${args.domain}`,
+    );
+    console.log(
+      `  # poser CREEZIO_CF_* puis : creezio server-docker create main --brand-root . --profile prod`,
+    );
     return;
   }
 

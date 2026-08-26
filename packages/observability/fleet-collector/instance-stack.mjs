@@ -24,7 +24,8 @@
  *     jamais un compose app-seule qui coupe le site ;
  *   - `CREEZIO_TUNNEL_LOCAL=1` : comportement local inchangé ;
  *   - `migrate-stack` seul a le droit de retirer le sidecar (`allowDropSidecar`)
- *     et **réutilise** le tunnel / hostname existants — jamais un 2e hostname
+ *     et **réutilise** le tunnel existant. Repo admin : admin.{zone} + lp.{zone}
+ *     sur le même tunnel (CREEZIO_DOMAIN + EXTRA_HOSTNAMES).
  *     à l'update.
  *
  * SoT partagée : le CLI factory (server-docker create/migrate-stack) et

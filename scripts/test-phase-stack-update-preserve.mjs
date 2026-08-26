@@ -266,6 +266,42 @@ test("update : stack in-process (cf.env) → rewrite OK, pas de sidecar inventé
   fs.rmSync(brandRoot, { recursive: true, force: true });
 });
 
+test("migrate attach : in-process SANS cf.env → écrit cf.env + env_file, pas de sidecar", () => {
+  const brandRoot = fs.mkdtempSync(path.join(os.tmpdir(), "creezio-upd-attach-"));
+  stack.writeInstanceStack({
+    brandRoot,
+    brandId: "tempoflowadmin",
+    image: "img:admin-1",
+    inst: { ...INST, name: "main", containerName: "tempoflowadmin-server-main" },
+  });
+  assert.equal(fs.existsSync(stack.cfEnvPath(brandRoot, { ...INST, name: "main" })), false);
+  const attached = stack.writeInstanceStack({
+    brandRoot,
+    brandId: "tempoflowadmin",
+    image: "img:admin-1",
+    inst: { ...INST, name: "main", containerName: "tempoflowadmin-server-main" },
+    cf: {
+      CREEZIO_CF_API_TOKEN: "cf-token",
+      CREEZIO_CF_ACCOUNT_ID: "acc",
+      CREEZIO_CF_ZONE_ID: "zone",
+      CREEZIO_CF_ZONE_NAME: "tempoflow.fr",
+      CREEZIO_TUNNEL_SLUG: "tempoflowadmin-lp",
+      CREEZIO_DOMAIN: "lp.tempoflow.fr",
+    },
+    allowDropSidecar: true,
+  });
+  assert.equal(attached.preservedSidecar, false);
+  const yml = fs.readFileSync(attached.composeFile, "utf8");
+  assert.doesNotMatch(yml, /^  cloudflared:/m);
+  assert.match(yml, /- \.\/cf\.env/);
+  const cf = fs.readFileSync(
+    stack.cfEnvPath(brandRoot, { ...INST, name: "main" }),
+    "utf8",
+  );
+  assert.match(cf, /CREEZIO_DOMAIN=lp\.tempoflow\.fr/);
+  fs.rmSync(brandRoot, { recursive: true, force: true });
+});
+
 test("migrate-stack : allowDropSidecar retire le sidecar (chemin explicite)", () => {
   const brandRoot = fs.mkdtempSync(path.join(os.tmpdir(), "creezio-upd-mig-"));
   writeSidecarFixture(brandRoot);

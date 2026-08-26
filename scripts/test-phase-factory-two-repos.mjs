@@ -110,6 +110,13 @@ test("factory 2-repos : monorepo + repo admin dédié (sans réseau)", () => {
     assert.match(readme, /admin\.proofbrand\.example/);
     assert.match(readme, /ADR-admin-app-os/);
     assert.match(readme, /billing-webhook\/stripe/);
+    assert.match(readme, /lp\.proofbrand\.example/);
+    assert.doesNotMatch(readme, /reverse proxy TLS en prod/);
+
+    const envEx = fs.readFileSync(path.join(adminDir, ".env.example"), "utf8");
+    assert.match(envEx, /CREEZIO_DOMAIN=admin\.proofbrand\.example/);
+    assert.match(envEx, /CREEZIO_TUNNEL_EXTRA_HOSTNAMES=lp\.proofbrand\.example/);
+    assert.match(envEx, /Pas de NPM/);
 
     // Repo admin = app OS Creezio COMPLÈTE en mode admin (ADR-admin-app-os).
     for (const f of [

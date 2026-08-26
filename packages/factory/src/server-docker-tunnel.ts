@@ -205,6 +205,126 @@ export function resolveCreateTunnelPolicy(
   };
 }
 
+/**
+ * Décide ce que `migrate-stack` doit faire. Un stack déjà « in-process »
+ * (plus de sidecar compose) n'est pas forcément à jour : s'il n'a pas de
+ * `cf.env` mais que le contrat CF est posé, on **attache** le tunnel natif
+ * (landing extra-hostname, admin sans sidecar historique, etc.).
+ */
+export function isAdminBrandId(brandId: string): boolean {
+  return /admin$/i.test(String(brandId || "").trim());
+}
+
+/** Hostnames extras (virgules) — FQDN avec un point, ordre normalisé. */
+export function parseExtraHostnamesList(raw: unknown): string[] {
+  return String(raw || "")
+    .split(",")
+    .map((s) => s.trim().toLowerCase())
+    .filter((s) => s.includes("."));
+}
+
+export function extraHostnamesKey(raw: unknown): string {
+  return parseExtraHostnamesList(raw).slice().sort().join(",");
+}
+
+export function apexFromHostname(host: string): string {
+  const h = String(host || "")
+    .trim()
+    .toLowerCase()
+    .replace(/\.$/, "");
+  if (h.startsWith("admin.")) return h.slice("admin.".length);
+  if (h.startsWith("lp.")) return h.slice("lp.".length);
+  return h;
+}
+
+/**
+ * Contrat public d'un repo admin : un tunnel, deux hostnames.
+ * `admin.{apex}` = OS, `lp.{apex}` = landing. Jamais l'inverse.
+ * Un DOMAIN custom (ni admin.* ni lp.*) n'est pas écrasé ; on y ajoute lp.
+ */
+export function applyAdminPublicTunnelDefaults(input: {
+  brandId: string;
+  isAdmin?: boolean;
+  env: Record<string, string>;
+}): {
+  env: Record<string, string>;
+  applied: boolean;
+  adminHost: string | null;
+  landingHost: string | null;
+} {
+  const isAdmin = input.isAdmin ?? isAdminBrandId(input.brandId);
+  if (!isAdmin) {
+    return { env: input.env, applied: false, adminHost: null, landingHost: null };
+  }
+  const zoneRaw = (
+    input.env.CREEZIO_CF_ZONE_NAME ||
+    apexFromHostname(input.env.CREEZIO_DOMAIN || "")
+  )
+    .trim()
+    .toLowerCase();
+  const apex = apexFromHostname(zoneRaw);
+  if (!apex.includes(".")) {
+    return { env: input.env, applied: false, adminHost: null, landingHost: null };
+  }
+  const adminHost = `admin.${apex}`;
+  const landingHost = `lp.${apex}`;
+  const current = String(input.env.CREEZIO_DOMAIN || "")
+    .trim()
+    .toLowerCase();
+  const extras = parseExtraHostnamesList(
+    input.env.CREEZIO_TUNNEL_EXTRA_HOSTNAMES,
+  ).filter((h) => h !== adminHost);
+  if (current && current !== adminHost && current !== landingHost) {
+    if (extras.includes(landingHost)) {
+      return { env: input.env, applied: false, adminHost: current, landingHost };
+    }
+    extras.push(landingHost);
+    return {
+      env: {
+        ...input.env,
+        CREEZIO_TUNNEL_EXTRA_HOSTNAMES: extras.join(","),
+      },
+      applied: true,
+      adminHost: current,
+      landingHost,
+    };
+  }
+  if (!extras.includes(landingHost)) extras.push(landingHost);
+  const next = {
+    ...input.env,
+    CREEZIO_DOMAIN: adminHost,
+    CREEZIO_TUNNEL_EXTRA_HOSTNAMES: extras.join(","),
+  };
+  const applied =
+    next.CREEZIO_DOMAIN !== current ||
+    extraHostnamesKey(next.CREEZIO_TUNNEL_EXTRA_HOSTNAMES) !==
+      extraHostnamesKey(input.env.CREEZIO_TUNNEL_EXTRA_HOSTNAMES);
+  return { env: next, applied, adminHost, landingHost };
+}
+
+export function resolveMigrateStackPlan(input: {
+  isStack: boolean;
+  hasSidecar: boolean;
+  hasCfEnv: boolean;
+  hasCfContract: boolean;
+  /** cf.env présent mais DOMAIN / EXTRA pas alignés sur le contrat admin+lp. */
+  needsHostnameSync?: boolean;
+}):
+  | "sidecar-migrate"
+  | "attach-cf"
+  | "sync-cf"
+  | "noop-inprocess"
+  | "legacy-migrate" {
+  if (input.hasSidecar) return "sidecar-migrate";
+  if (!input.isStack) return "legacy-migrate";
+  if (input.hasCfEnv && input.hasCfContract && input.needsHostnameSync) {
+    return "sync-cf";
+  }
+  if (input.hasCfEnv) return "noop-inprocess";
+  if (input.hasCfContract) return "attach-cf";
+  return "noop-inprocess";
+}
+
 export function formatDerivedSlugLog(mapped: CreateTunnelSlugResult): string {
   return (
     `slug « ${mapped.from} » réservé (RESERVED_SLUGS) — ` +
