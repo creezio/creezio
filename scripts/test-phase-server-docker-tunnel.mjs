@@ -28,6 +28,7 @@ const {
   deriveCreateTunnelSlug,
   formatMissingProvisionerError,
   resolveCreateTunnelPolicy,
+  resolveMigrateStackPlan,
 } = await import(pathToFileURL(dist).href);
 
 const FAKE_CF = {
@@ -154,12 +155,52 @@ test("--no-stack en mode public : échec (pas de cf.env)", () => {
   );
 });
 
+test("migrate-stack : in-process sans cf.env + contrat CF → attach-cf", () => {
+  assert.equal(
+    resolveMigrateStackPlan({
+      isStack: true,
+      hasSidecar: false,
+      hasCfEnv: false,
+      hasCfContract: true,
+    }),
+    "attach-cf",
+  );
+  assert.equal(
+    resolveMigrateStackPlan({
+      isStack: true,
+      hasSidecar: false,
+      hasCfEnv: true,
+      hasCfContract: true,
+    }),
+    "noop-inprocess",
+  );
+  assert.equal(
+    resolveMigrateStackPlan({
+      isStack: true,
+      hasSidecar: false,
+      hasCfEnv: false,
+      hasCfContract: false,
+    }),
+    "noop-inprocess",
+  );
+  assert.equal(
+    resolveMigrateStackPlan({
+      isStack: true,
+      hasSidecar: true,
+      hasCfEnv: false,
+      hasCfContract: true,
+    }),
+    "sidecar-migrate",
+  );
+});
+
 test("CLI create câble la politique CF (plus de skip silencieux ni provisioner)", () => {
   const cli = fs.readFileSync(
     path.join(root, "packages/factory/src/server-docker-cli.ts"),
     "utf8",
   );
   assert.match(cli, /resolveCreateTunnelPolicy/);
+  assert.match(cli, /resolveMigrateStackPlan/);
   assert.match(cli, /loadReservedSlugs/);
   assert.match(cli, /formatDerivedSlugLog/);
   assert.match(cli, /CREATE_TUNNEL_ENV_KEYS/);

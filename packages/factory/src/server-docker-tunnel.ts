@@ -205,6 +205,25 @@ export function resolveCreateTunnelPolicy(
   };
 }
 
+/**
+ * Décide ce que `migrate-stack` doit faire. Un stack déjà « in-process »
+ * (plus de sidecar compose) n'est pas forcément à jour : s'il n'a pas de
+ * `cf.env` mais que le contrat CF est posé, on **attache** le tunnel natif
+ * (landing extra-hostname, admin sans sidecar historique, etc.).
+ */
+export function resolveMigrateStackPlan(input: {
+  isStack: boolean;
+  hasSidecar: boolean;
+  hasCfEnv: boolean;
+  hasCfContract: boolean;
+}): "sidecar-migrate" | "attach-cf" | "noop-inprocess" | "legacy-migrate" {
+  if (input.hasSidecar) return "sidecar-migrate";
+  if (!input.isStack) return "legacy-migrate";
+  if (input.hasCfEnv) return "noop-inprocess";
+  if (input.hasCfContract) return "attach-cf";
+  return "noop-inprocess";
+}
+
 export function formatDerivedSlugLog(mapped: CreateTunnelSlugResult): string {
   return (
     `slug « ${mapped.from} » réservé (RESERVED_SLUGS) — ` +

@@ -33,6 +33,7 @@ import {
   loadReservedSlugs,
   pickEnvValues,
   resolveCreateTunnelPolicy,
+  resolveMigrateStackPlan,
   type CreateTunnelPolicy,
 } from "./server-docker-tunnel.js";
 import {
@@ -2800,15 +2801,36 @@ async function runRegistrySubcommand(
       Boolean(inst.stack) &&
       fs.existsSync(composeFile) &&
       fs.readFileSync(composeFile, "utf8").includes("cloudflared:");
-    if (inst.stack && !hasSidecar) {
-      console.log(`✓ ${name} déjà en stack in-process — rien à faire`);
+    const cfVarsEarly = resolveCliCfEnv(paths.brandRoot);
+    const cfClientEarly = await importTunnelCf(paths.kit);
+    const hasCfContract = Boolean(
+      cfEnvFromMerged(cfClientEarly, cfVarsEarly),
+    );
+    const migratePlan = resolveMigrateStackPlan({
+      isStack: Boolean(inst.stack),
+      hasSidecar,
+      hasCfEnv: fs.existsSync(stack.cfEnvPath(paths.brandRoot, inst)),
+      hasCfContract,
+    });
+    if (migratePlan === "noop-inprocess") {
+      console.log(
+        hasCfContract
+          ? `✓ ${name} déjà en stack in-process — rien à faire`
+          : `✓ ${name} déjà en stack in-process sans tunnel (poser CREEZIO_CF_* + CREEZIO_DOMAIN pour attacher)`,
+      );
       return;
     }
     const image =
       (inst as { image?: string }).image || registry.image ||
       serverImageName(brandId);
+    const migrateKind =
+      migratePlan === "attach-cf"
+        ? "attach-cf"
+        : hasSidecar
+          ? "sidecar → in-container"
+          : "legacy → stack";
     console.log(
-      `migration ${name} → stack in-process (${hasSidecar ? "sidecar → in-container" : "legacy → stack"}, image ${image})…`,
+      `migration ${name} → stack in-process (${migrateKind}, image ${image})…`,
     );
 
     const serverLibPath = path.join(
@@ -2832,9 +2854,9 @@ async function runRegistrySubcommand(
 
     const kc = stack.readKernelTunnelConfig(paths.brandRoot, inst, brandId);
     let cf: Record<string, string> | undefined;
+    const cfVars = cfVarsEarly;
+    const cfClient = cfClientEarly;
     if (kc) {
-      const cfClient = await importTunnelCf(paths.kit);
-      const cfVars = resolveCliCfEnv(paths.brandRoot);
       const cfEnv = cfEnvFromMerged(cfClient, cfVars);
       if (!cfEnv) {
         throw new Error(
@@ -2848,6 +2870,32 @@ async function runRegistrySubcommand(
       console.log(
         `✓ contrat CF prêt — l'instance re-ensure le tunnel ${kc.slug} au boot (ingress 127.0.0.1:${stack.STACK_APP_PORT})`,
       );
+    } else if (hasCfContract) {
+      const reservedSlugs = await loadReservedSlugs(paths.kit);
+      const tunnelPolicy = resolveCreateTunnelPolicy({
+        instanceName: name,
+        brandId,
+        profile: "prod",
+        env: { ...cfVars, CREEZIO_TUNNEL_LOCAL: "0" },
+        reservedSlugs,
+        noStack: false,
+      });
+      if (tunnelPolicy.mode !== "public") {
+        throw new Error("attach-cf : politique tunnel inattendue (attendu public)");
+      }
+      const attached: Record<string, string> = {
+        ...cfVars,
+        CREEZIO_TUNNEL_SLUG: tunnelPolicy.slug,
+      };
+      cf = attached;
+      if (tunnelPolicy.derived) console.log(formatDerivedSlugLog(tunnelPolicy));
+      console.log(
+        `✓ contrat CF prêt — attach tunnel ${tunnelPolicy.slug}` +
+          (attached.CREEZIO_DOMAIN
+            ? ` (CREEZIO_DOMAIN=${attached.CREEZIO_DOMAIN})`
+            : "") +
+          ` au boot (ingress 127.0.0.1:${stack.STACK_APP_PORT})`,
+      );
     } else {
       console.log("pas de tunnel kernel dans /data — stack sans cf.env");
     }
@@ -2855,7 +2903,12 @@ async function runRegistrySubcommand(
     const instStack: ServerRegistryInstance = {
       ...inst,
       stack: true,
-      hostPort: args.hostPort && args.hostPort > 0 ? args.hostPort : 0,
+      hostPort:
+        args.hostPort && args.hostPort > 0
+          ? args.hostPort
+          : Number(inst.hostPort) > 0
+            ? Number(inst.hostPort)
+            : 0,
       env: Object.fromEntries(
         Object.entries({ ...(inst.env || {}), CREEZIO_TUNNEL_LOCAL: "0" }).filter(
           ([k]) =>
@@ -2964,16 +3017,17 @@ async function runRegistrySubcommand(
       `✓ ${name} migré en stack in-process — app interne :${stack.STACK_APP_PORT}, ` +
         `port hôte debug 127.0.0.1:${hp} (${instStack.hostPort ? "fixe" : "auto"})`,
     );
-    if (kc?.hostname) {
+    const publicHost = kc?.hostname || cf?.CREEZIO_DOMAIN;
+    if (publicHost) {
       try {
         const res = await fetch(
-          `https://${kc.hostname}/api/v1/core/health`,
+          `https://${publicHost}/api/v1/core/health`,
           { signal: AbortSignal.timeout(20000) },
         );
-        console.log(`✓ public https://${kc.hostname} → HTTP ${res.status}`);
+        console.log(`✓ public https://${publicHost} → HTTP ${res.status}`);
       } catch (e) {
         console.log(
-          `⚠ vérif publique https://${kc.hostname} en échec: ${e instanceof Error ? e.message : String(e)}`,
+          `⚠ vérif publique https://${publicHost} en échec: ${e instanceof Error ? e.message : String(e)}`,
         );
       }
     }

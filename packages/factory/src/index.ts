@@ -68,6 +68,7 @@ export {
   isExplicitTunnelLocal,
   loadReservedSlugs,
   resolveCreateTunnelPolicy,
+  resolveMigrateStackPlan,
   type CreateTunnelPolicy,
   type CreateTunnelPolicyInput,
 } from "./server-docker-tunnel.js";
