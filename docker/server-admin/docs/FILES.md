@@ -9,4 +9,4 @@
 | Fichier | Rôle |
 |---|---|
 | [`Dockerfile`](../Dockerfile) | Image admin web multi-serveurs (backend flotte) — sert `packages/observability/fleet-collector/server-admin.mjs` (Node pur, zéro dépendance npm). |
-| [`configure-admin-npm.sh`](../configure-admin-npm.sh) | Expose l'admin flotte (127.0.0.1:18800) sur `https://admin.{zone}` : DNS Cloudflare + nginx-proxy-manager + certificat Origin. L'auth reste le Basic auth server-admin. |
+| [`configure-admin-npm.sh`](../configure-admin-npm.sh) | REFUS (exit 1). L'admin publique est le tunnel in-process de l'app OS (`CREEZIO_DOMAIN` + `EXTRA_HOSTNAMES`), pas NPM. |

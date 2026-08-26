@@ -59,9 +59,8 @@ affaibli pour la masquer. (Backlogs d'époque : `docs/archive/BACKLOG-*.md`.)
 - **Registry local sans GC** : la suppression de tags (`0.2.2-broken`…)
   demande l'API delete + `registry garbage-collect` — documenté, pas
   automatisé.
-- **admin.tempoflow.fr en cert Origin Cloudflare** (pas Let's Encrypt) via
-  `docker/server-admin/configure-admin-npm.sh` — valide tant que le domaine
-  est proxifié Cloudflare (orange cloud).
+- ~~**admin.tempoflow.fr via NPM + cert Origin**~~ **retiré** :
+  `configure-admin-npm.sh` exit 1. Public admin+lp = tunnel in-process.
 - ~~**Mounts modules sans session HTTP (plateforme-wide)**~~ **fait** (garde
   `assertModuleMountSession` dans `listenBrandOsHttp`, allowlist
   webhook/register/heartbeat/releases/landing public ; gate

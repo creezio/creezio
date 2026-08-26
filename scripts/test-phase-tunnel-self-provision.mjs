@@ -22,6 +22,7 @@
  *  8. deprovisionCfSlug : DNS supprimés + tunnel supprimé (best-effort).
  */
 import assert from "node:assert/strict";
+import fs from "node:fs";
 import path from "node:path";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
@@ -43,6 +44,7 @@ const {
   resolveCfZoneName,
   getCfTunnel,
   ensureCfTunnel,
+  ensureCfCnameRecord,
   deprovisionCfSlug,
   resolveCfTunnelEnv,
   missingCfTunnelEnvKeys,
@@ -499,7 +501,45 @@ test("deprovisionCfSlug : DNS (nested+flat+mail+extras) + tunnel supprimés", as
   }
 });
 
+test("ensureCfCnameRecord : A hérité (NPM) → DELETE + POST CNAME tunnel", async () => {
+  const mock = startCfMock();
+  try {
+    mock.state.dns.set("dns-a", {
+      id: "dns-a",
+      type: "A",
+      name: "admin.gate.test",
+      content: "1.2.3.4",
+      proxied: true,
+    });
+    const r = await ensureCfCnameRecord(ENV, {
+      name: "admin.gate.test",
+      target: "t-99.cfargotunnel.com",
+      comment: "Creezio server test",
+    });
+    assert.equal(r, "updated");
+    const recs = [...mock.state.dns.values()].filter(
+      (x) => x.name === "admin.gate.test",
+    );
+    assert.equal(recs.length, 1);
+    assert.equal(recs[0].type, "CNAME");
+    assert.equal(recs[0].content, "t-99.cfargotunnel.com");
+    assert.equal(recs[0].proxied, true);
+    assert.equal(callsTo(mock.calls, "DELETE", /dns_records\/dns-a/).length, 1);
+  } finally {
+    mock.restore();
+  }
+});
+
 /* ── 9. contrat env ── */
+
+test("configureTunnelIngress suit CREEZIO_DOMAIN, pas seulement le store", () => {
+  const src = fs.readFileSync(
+    path.join(ROOT, "packages/electron-shell/src/host/tunnel/tunnel.ts"),
+    "utf8",
+  );
+  assert.match(src, /domain: instanceDomain\(\) \|\| cfg\.hostname/);
+  assert.match(src, /hostname: result\.hostname/);
+});
 
 test("contrat env : resolveCfTunnelEnv (marque d'abord) + clés manquantes", () => {
   const env = {

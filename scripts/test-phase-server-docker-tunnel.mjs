@@ -25,6 +25,7 @@ assert.ok(
 );
 const {
   RESERVED_SLUGS_FALLBACK,
+  applyAdminPublicTunnelDefaults,
   deriveCreateTunnelSlug,
   formatMissingProvisionerError,
   resolveCreateTunnelPolicy,
@@ -192,6 +193,51 @@ test("migrate-stack : in-process sans cf.env + contrat CF → attach-cf", () => 
     }),
     "sidecar-migrate",
   );
+  assert.equal(
+    resolveMigrateStackPlan({
+      isStack: true,
+      hasSidecar: false,
+      hasCfEnv: true,
+      hasCfContract: true,
+      needsHostnameSync: true,
+    }),
+    "sync-cf",
+  );
+});
+
+test("admin : DOMAIN=lp + zone → admin.{zone} + EXTRA=lp.{zone}", () => {
+  const r = applyAdminPublicTunnelDefaults({
+    brandId: "tempoflowadmin",
+    env: {
+      CREEZIO_CF_ZONE_NAME: "tempoflow.fr",
+      CREEZIO_DOMAIN: "lp.tempoflow.fr",
+      CREEZIO_TUNNEL_SLUG: "tempoflowadmin-lp",
+    },
+  });
+  assert.equal(r.applied, true);
+  assert.equal(r.env.CREEZIO_DOMAIN, "admin.tempoflow.fr");
+  assert.equal(r.env.CREEZIO_TUNNEL_EXTRA_HOSTNAMES, "lp.tempoflow.fr");
+  assert.equal(r.env.CREEZIO_TUNNEL_SLUG, "tempoflowadmin-lp");
+});
+
+test("admin : create vierge pose admin+lp ; resto inchangé", () => {
+  const admin = applyAdminPublicTunnelDefaults({
+    brandId: "acmeadmin",
+    env: { CREEZIO_CF_ZONE_NAME: "acme.example" },
+  });
+  assert.equal(admin.applied, true);
+  assert.equal(admin.env.CREEZIO_DOMAIN, "admin.acme.example");
+  assert.equal(admin.env.CREEZIO_TUNNEL_EXTRA_HOSTNAMES, "lp.acme.example");
+  const resto = applyAdminPublicTunnelDefaults({
+    brandId: "tempoflow3",
+    env: {
+      CREEZIO_CF_ZONE_NAME: "tempoflow.fr",
+      CREEZIO_DOMAIN: "resto-lyon.tempoflow.fr",
+    },
+  });
+  assert.equal(resto.applied, false);
+  assert.equal(resto.env.CREEZIO_DOMAIN, "resto-lyon.tempoflow.fr");
+  assert.equal(resto.env.CREEZIO_TUNNEL_EXTRA_HOSTNAMES, undefined);
 });
 
 test("CLI create câble la politique CF (plus de skip silencieux ni provisioner)", () => {
@@ -201,6 +247,8 @@ test("CLI create câble la politique CF (plus de skip silencieux ni provisioner)
   );
   assert.match(cli, /resolveCreateTunnelPolicy/);
   assert.match(cli, /resolveMigrateStackPlan/);
+  assert.match(cli, /applyAdminPublicTunnelDefaults/);
+  assert.match(cli, /sync-cf/);
   assert.match(cli, /loadReservedSlugs/);
   assert.match(cli, /formatDerivedSlugLog/);
   assert.match(cli, /CREATE_TUNNEL_ENV_KEYS/);

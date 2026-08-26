@@ -278,16 +278,26 @@ export async function listCfDnsRecords(
 /**
  * Upsert idempotent d'un CNAME tunnel : no-op si l'enregistrement existe
  * avec la bonne cible (et proxied) ; PUT si la cible/proxy diffère (ex.
- * tunnel recréé — le CNAME suit le nouvel id) ; POST sinon.
+ * tunnel recréé — le CNAME suit le nouvel id) ; remplace un A/AAAA héritage
+ * (NPM / IP VPS) puis POST sinon. Un A laissé en place bloquait le POST.
  */
 export async function ensureCfCnameRecord(
   env: CfTunnelEnv,
   opts: { name: string; target: string; comment?: string },
 ): Promise<"exists" | "updated" | "created"> {
-  const found = await listCfDnsRecords(env, opts.name, "CNAME");
-  const match = found.find((r) => r.name === opts.name);
+  const all = await listCfDnsRecords(env, opts.name);
+  const here = all.filter((r) => r.name === opts.name);
+  const match = here.find((r) => r.type === "CNAME");
+  const conflicts = here.filter((r) => r.type !== "CNAME");
+  for (const rec of conflicts) {
+    await cfApi(env, "DELETE", `/zones/${env.zoneId}/dns_records/${rec.id}`);
+  }
   if (match) {
-    if (match.content === opts.target && match.proxied !== false) {
+    if (
+      match.content === opts.target &&
+      match.proxied !== false &&
+      conflicts.length === 0
+    ) {
       return "exists";
     }
     await cfApi(env, "PUT", `/zones/${env.zoneId}/dns_records/${match.id}`, {
@@ -306,7 +316,7 @@ export async function ensureCfCnameRecord(
     proxied: true,
     ...(opts.comment ? { comment: opts.comment } : {}),
   });
-  return "created";
+  return conflicts.length ? "updated" : "created";
 }
 
 export type EnsureCfTunnelDnsOpts = {

@@ -106,5 +106,6 @@ Gate : `scripts/test-phase-fleet-releases.mjs`.
   joignables.
 - Basic auth obligatoire (timing-safe) sur **toutes** les routes `/admin*`.
 - Le socket docker monté donne un contrôle root-équivalent sur l'hôte :
-  ne jamais exposer ce service hors loopback sans reverse-proxy TLS + auth.
+  ne jamais exposer ce backend flotte hors loopback. Le hostname
+  `admin.{zone}` appartient à l'app OS (tunnel in-process), pas à :18800.
 - Audit console de chaque action mutante (create/start/stop/rm).

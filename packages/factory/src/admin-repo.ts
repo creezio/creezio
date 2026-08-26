@@ -85,6 +85,14 @@ node_modules/
 function renderEnvExample(o: AdminRepoOptions): string {
   return `# ${o.productName} admin — secrets locaux (copier en .env, gitignoré)
 
+# Tunnel public unique (cloudflared in-process). Pas de NPM, pas de sidecar.
+CREEZIO_DOMAIN=admin.${o.domain}
+CREEZIO_TUNNEL_EXTRA_HOSTNAMES=lp.${o.domain}
+# CREEZIO_CF_API_TOKEN=
+# CREEZIO_CF_ACCOUNT_ID=
+# CREEZIO_CF_ZONE_ID=
+# CREEZIO_CF_ZONE_NAME=${o.domain}
+
 # Auth Basic de l'admin web (le CLI génère un pass runtime si absent)
 # CREEZIO_ADMIN_USER=admin
 # CREEZIO_ADMIN_PASS=…
@@ -115,7 +123,8 @@ services:
     container_name: creezio-server-admin
     restart: unless-stopped
     # host network : sonde les serveurs locaux 127.0.0.1:<port> ;
-    # l'admin lui-même bind 127.0.0.1 (exposition via reverse proxy TLS).
+    # backend flotte loopback only — le public admin+lp est le tunnel
+    # in-process de l'app OS (server-docker create), pas ce compose.
     network_mode: host
     labels:
       creezio.server-admin: "1"
@@ -143,12 +152,17 @@ adresses tunnelisées : CRM/santé \`https://{slug}.${o.domain}\`, actions
 Docker via l'agent hôte \`https://agent.{slug}.${o.domain}\` (Bearer token
 hashé, révocable).
 
+Le hostname public de **cette** app OS est le tunnel in-process
+(\`admin.${o.domain}\` + landing \`lp.${o.domain}\`) — jamais NPM.
+
 ## Démarrer
 
 \`\`\`bash
 # Image + container + config runtime (pass généré sous docker-data/) :
 creezio server-docker admin up --admin-root .
-# → http://127.0.0.1:18800/admin (exposer via reverse proxy TLS en prod)
+# → backend flotte http://127.0.0.1:18800 (loopback)
+# App OS publique : creezio server-docker create main --brand-root .
+#   (CREEZIO_DOMAIN=admin.${o.domain} + EXTRA=lp.${o.domain} déjà dans .env.example)
 \`\`\`
 
 ## Enrôler un VPS restaurant
@@ -306,6 +320,14 @@ function forceWrite(file: string, content: string, written: string[]): void {
 function renderAdminEnvExample(o: AdminRepoOptions): string {
   return `# ${o.productName} Admin — secrets locaux (copier en .env, gitignoré)
 
+# Tunnel public unique (cloudflared in-process). Pas de NPM, pas de sidecar.
+CREEZIO_DOMAIN=admin.${o.domain}
+CREEZIO_TUNNEL_EXTRA_HOSTNAMES=lp.${o.domain}
+# CREEZIO_CF_API_TOKEN=
+# CREEZIO_CF_ACCOUNT_ID=
+# CREEZIO_CF_ZONE_ID=
+# CREEZIO_CF_ZONE_NAME=${o.domain}
+
 # Backend flotte (server-admin.mjs) consommé par le module Flotte
 # CREEZIO_FLEET_BACKEND_URL=http://127.0.0.1:18800
 # CREEZIO_FLEET_BACKEND_BASIC=admin:…
@@ -349,15 +371,20 @@ assistant, tâches, mails, admin database… et les modules admin natifs :
    \`server-admin.mjs\` + host-agents : socket Docker, registres d'instances.
    L'app admin le consomme via \`CREEZIO_FLEET_BACKEND_URL/BASIC\`.
 
+Public : tunnel in-process uniquement — \`admin.${o.domain}\` (OS) +
+\`lp.${o.domain}\` (landing). Poser \`CREEZIO_CF_*\` (déjà dans \`.env.example\`).
+Pas de NPM, pas de sidecar.
+
 ## Démarrer
 
 \`\`\`bash
-# 1. Backend flotte (config runtime docker-data/, pass généré)
+# 1. Backend flotte (loopback :18800 — pas public)
 creezio server-docker admin up --admin-root .
 
-# 2. App admin (build + run — voir scripts package.json)
+# 2. App admin (tunnel admin.${o.domain} + lp.${o.domain})
+#    CREEZIO_CF_* dans .env — voir .env.example
 npm run build && npm run server-docker:build
-npm run server-docker:create -- --name main
+creezio server-docker create main --brand-root . --profile prod
 \`\`\`
 
 ## Stripe
