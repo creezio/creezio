@@ -1,5 +1,14 @@
 # @creezio/factory
 
+## 0.7.2
+
+### Patch Changes
+
+- 38beaeb: Chrome OS (RequireSession + middleware JWT) dès brand create / new-app. Admin : un seul middleware session + rewrite lp.{zone} (plus de /flotte sans cookie). Scaffold MCP : logsSlot RequestLogsClient.
+  - @creezio/brand-config@0.10.11
+  - @creezio/product-hub@0.10.11
+  - @creezio/brand-spec@0.10.11
+
 ## 0.7.1
 
 ### Patch Changes

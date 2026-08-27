@@ -1,5 +1,11 @@
 # @creezio/platform-core
 
+## 0.10.11
+
+### Patch Changes
+
+- @creezio/brand-config@0.10.11
+
 ## 0.10.10
 
 ### Patch Changes

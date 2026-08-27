@@ -1,6 +1,6 @@
 {
   "name": "@creezio/brand-config",
-  "version": "0.10.10",
+  "version": "0.10.11",
   "description": "AppManifest, createAppManifest, manifests marque (TempoFlow, Certivan, Fidu, DemoBrand) — client + serveur",
   "type": "module",
   "main": "./dist-cjs/index.js",
