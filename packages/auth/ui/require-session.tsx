@@ -11,6 +11,7 @@ const PUBLIC_PREFIXES = [
   "/developers",
   "/oauth",
   "/.well-known",
+  "/lp",
 ];
 
 function isPublicPath(pathname: string): boolean {

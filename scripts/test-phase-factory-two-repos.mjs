@@ -172,6 +172,17 @@ test("factory 2-repos : monorepo + repo admin dédié (sans réseau)", () => {
       "chrome admin : RequireSession kit autour de WorkspaceRoot (sinon /flotte 401)",
     );
     assert.doesNotMatch(adminChrome, /function RequireSession/);
+    const adminMw = fs.readFileSync(
+      path.join(adminDir, "server/ui/middleware.ts"),
+      "utf8",
+    );
+    assert.match(adminMw, /jwtVerify/, "middleware admin : garde session JWT");
+    assert.match(adminMw, /loginRedirect/, "middleware admin : redirect /login");
+    assert.match(
+      adminMw,
+      /host\.startsWith\("lp\."\)/,
+      "middleware admin : rewrite landing lp.{zone}",
+    );
     const flottePage = fs.readFileSync(
       path.join(adminDir, "server/ui/app/flotte/page.tsx"),
       "utf8",

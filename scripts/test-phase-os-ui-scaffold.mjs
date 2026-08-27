@@ -47,6 +47,8 @@ test("os-ui generator : RequireSession kit enveloppe WorkspaceRoot (source, sans
     /logsSlot=\{<RequestLogsClient \/>\}/,
     "générateur MCP : logsSlot RequestLogsClient",
   );
+  assert.match(gen, /jwtVerify/, "middleware généré : garde JWT");
+  assert.match(gen, /host\.startsWith\("lp\."\)/, "middleware généré : rewrite lp.");
 });
 
 test("os-ui scaffold : zéro page OS versionnée, materialize + boot kit", () => {

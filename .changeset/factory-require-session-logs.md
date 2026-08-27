@@ -2,4 +2,4 @@
 "@creezio/factory": patch
 ---
 
-Chrome OS (RequireSession kit + WorkspaceRoot) dès brand create / new-app, pas seulement --from-prd. Scaffold MCP : logsSlot RequestLogsClient.
+Chrome OS (RequireSession + middleware JWT) dès brand create / new-app. Admin : un seul middleware session + rewrite lp.{zone} (plus de /flotte sans cookie). Scaffold MCP : logsSlot RequestLogsClient.
