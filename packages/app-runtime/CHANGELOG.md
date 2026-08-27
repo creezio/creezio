@@ -1,5 +1,31 @@
 # @creezio/app-runtime
 
+## 0.10.10
+
+### Patch Changes
+
+- 53695b5: OAuth MCP : réutiliser la session CRM (cookie / Bearer) et authentifier via le login kit, plus seulement le compte desktop local.
+- Updated dependencies [4ecd205]
+- Updated dependencies [53695b5]
+- Updated dependencies [4ecd205]
+  - @creezio/platform-core@0.10.10
+  - @creezio/mcp-facade@0.10.10
+  - @creezio/electron-shell@0.10.10
+  - @creezio/brand-config@0.10.10
+  - @creezio/product-hub@0.10.10
+  - @creezio/api-kernel@0.10.10
+  - @creezio/shell-ui@0.10.10
+  - @creezio/auth@0.10.10
+  - @creezio/access-control@0.10.10
+  - @creezio/assistant@0.10.10
+  - @creezio/tasks@0.10.10
+  - @creezio/mails@0.10.10
+  - @creezio/observability@0.10.10
+  - @creezio/support@0.10.10
+  - @creezio/integrations@0.10.10
+  - @creezio/browser-host@0.10.10
+  - @creezio/database@0.10.10
+
 ## 0.10.9
 
 ### Patch Changes

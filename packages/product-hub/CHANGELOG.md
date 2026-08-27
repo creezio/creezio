@@ -1,5 +1,13 @@
 # @creezio/product-hub
 
+## 0.10.10
+
+### Patch Changes
+
+- Updated dependencies [4ecd205]
+  - @creezio/platform-core@0.10.10
+  - @creezio/brand-config@0.10.10
+
 ## 0.10.9
 
 ### Patch Changes
