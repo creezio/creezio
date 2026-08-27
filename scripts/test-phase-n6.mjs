@@ -145,6 +145,22 @@ test("N6.3 exports publics + ./ui", () => {
   );
   assert.match(uiMcp, /McpAdminClient/);
 
+  const mcpAdminPages = [
+    "packages/os-ui/routes/admin/mcp/page.tsx",
+    "packages/os-ui/routes/mcp/page.tsx",
+    "packages/os-ui/routes/developers/page.tsx",
+  ];
+  for (const rel of mcpAdminPages) {
+    const page = fs.readFileSync(path.join(root, rel), "utf8");
+    assert.match(page, /RequestLogsClient/);
+    assert.match(page, /logsSlot=\{<RequestLogsClient \/>\}/);
+  }
+  const factoryOsUi = fs.readFileSync(
+    path.join(root, "packages/factory/src/generators/os-ui.ts"),
+    "utf8",
+  );
+  assert.match(factoryOsUi, /logsSlot=\{<RequestLogsClient \/>\}/);
+
   const uiObs = fs.readFileSync(
     path.join(root, "packages/observability/ui/index.ts"),
     "utf8",

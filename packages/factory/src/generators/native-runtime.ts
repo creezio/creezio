@@ -291,7 +291,29 @@ export function renderMeiliFeedTs(model: ProductModel): string {
     // l'indexation Meili plante sur une table absente — vécu foove2-admin).
     const ent = model.entities[0];
     if (!ent) {
-      throw new Error("renderMeiliFeedTs: model.entities vide");
+      return `/**
+ * Feed Meili OS shell — aucune table métier tant que module init n'a pas posé d'entité.
+ */
+import {
+  configureMeiliBrandFeed,
+  configureMeiliCatalogSqlTables,
+  type BrandMeiliFeed,
+} from "@creezio/electron-shell/meili";
+
+export const brandMeiliFeed: BrandMeiliFeed = {
+  id: "${model.brandId}-os",
+  schemaVersion: 1,
+  progressPrefix: "${model.brandId.replace(/[^A-Za-z0-9]/g, "").toUpperCase().slice(0, 24) || "BRAND"}",
+  countTables: { produits: "_none", sites: "_none" },
+  indexes: [],
+  metaIndexUid: "catalog_meta",
+};
+
+export function applyBrandMeiliConfig(): void {
+  configureMeiliCatalogSqlTables(brandMeiliFeed.countTables);
+  configureMeiliBrandFeed(brandMeiliFeed);
+}
+`;
     }
     const textFields = ent.fields
       .filter((f) => f.type === "text")

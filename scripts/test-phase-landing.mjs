@@ -348,7 +348,21 @@ test("landing.factory — câblage repo admin (migrations, mount, pages, middlew
   assert.match(src, /ui\/app\/lp\/page\.tsx/);
   assert.match(src, /ui\/app\/lp-media\/\[file\]\/route\.ts/);
   assert.match(src, /"@creezio\/landing": "\$\{creezioSpec\}"/);
-  assert.match(src, /host\.startsWith\("lp\."\)/);
+  assert.match(
+    src,
+    /renderUiAuthMiddleware\(model\.brandId\)/,
+    "admin : middleware unique (session JWT + rewrite lp.) — pas le stub landing-only",
+  );
+  const mwGen = fs.readFileSync(
+    path.join(ROOT, "packages/factory/src/generators/os-ui.ts"),
+    "utf8",
+  );
+  assert.match(
+    mwGen,
+    /host\.startsWith\("lp\."\)/,
+    "générateur middleware : rewrite lp.{zone}",
+  );
+  assert.match(mwGen, /jwtVerify/, "générateur middleware : garde session");
   // Nav : la page landing est déclarée dans le ProductModel admin.
   assert.match(src, /path: "\/landing", title: "Landing page"/);
 });

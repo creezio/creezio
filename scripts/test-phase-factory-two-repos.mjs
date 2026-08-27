@@ -151,6 +151,38 @@ test("factory 2-repos : monorepo + repo admin dédié (sans réseau)", () => {
       fs.readFileSync(path.join(adminDir, "package.json"), "utf8"),
     );
     assert.equal(adminRootPkg.creezio?.appMode, "admin");
+    const brandChrome = fs.readFileSync(
+      path.join(appDir, "server/ui/components/brand-chrome.tsx"),
+      "utf8",
+    );
+    assert.match(brandChrome, /from "@creezio\/auth\/ui"/);
+    assert.match(
+      brandChrome,
+      /<RequireSession>[\s\S]*<WorkspaceRoot>\{children\}<\/WorkspaceRoot>[\s\S]*<\/RequireSession>/,
+      "chrome marque : RequireSession kit autour de WorkspaceRoot",
+    );
+    const adminChrome = fs.readFileSync(
+      path.join(adminDir, "server/ui/components/brand-chrome.tsx"),
+      "utf8",
+    );
+    assert.match(adminChrome, /from "@creezio\/auth\/ui"/);
+    assert.match(
+      adminChrome,
+      /<RequireSession>[\s\S]*<WorkspaceRoot>\{children\}<\/WorkspaceRoot>[\s\S]*<\/RequireSession>/,
+      "chrome admin : RequireSession kit autour de WorkspaceRoot (sinon /flotte 401)",
+    );
+    assert.doesNotMatch(adminChrome, /function RequireSession/);
+    const adminMw = fs.readFileSync(
+      path.join(adminDir, "server/ui/middleware.ts"),
+      "utf8",
+    );
+    assert.match(adminMw, /jwtVerify/, "middleware admin : garde session JWT");
+    assert.match(adminMw, /loginRedirect/, "middleware admin : redirect /login");
+    assert.match(
+      adminMw,
+      /host\.startsWith\("lp\."\)/,
+      "middleware admin : rewrite landing lp.{zone}",
+    );
     const flottePage = fs.readFileSync(
       path.join(adminDir, "server/ui/app/flotte/page.tsx"),
       "utf8",
@@ -232,6 +264,15 @@ Gestion simple pour test gate factory 2-repos.
     assert.ok(fs.existsSync(path.join(adminDir, "server-admin.json")));
     assert.ok(!fs.existsSync(path.join(appDir, "admin")));
     assert.match(apply.stdout, /--no-push/);
+    const applyAdminChrome = fs.readFileSync(
+      path.join(adminDir, "server/ui/components/brand-chrome.tsx"),
+      "utf8",
+    );
+    assert.match(
+      applyAdminChrome,
+      /<RequireSession>[\s\S]*<WorkspaceRoot>\{children\}<\/WorkspaceRoot>[\s\S]*<\/RequireSession>/,
+      "brand apply admin : RequireSession autour de WorkspaceRoot",
+    );
     for (const repoDir of [appDir, adminDir]) {
       assert.ok(
         fs.existsSync(path.join(repoDir, ".cursor", "environment.json")),

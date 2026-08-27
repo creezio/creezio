@@ -125,22 +125,25 @@ export default function Page() {
     {
       rel: "developers/page.tsx",
       source: pageClient(
-        `import { McpAdminClient } from "@creezio/mcp-facade/ui";`,
-        `    <McpAdminClient />`,
+        `import { McpAdminClient } from "@creezio/mcp-facade/ui";
+import { RequestLogsClient } from "@creezio/observability/ui";`,
+        `    <McpAdminClient logsSlot={<RequestLogsClient />} />`,
       ),
     },
     {
       rel: "mcp/page.tsx",
       source: pageClient(
-        `import { McpAdminClient } from "@creezio/mcp-facade/ui";`,
-        `    <McpAdminClient />`,
+        `import { McpAdminClient } from "@creezio/mcp-facade/ui";
+import { RequestLogsClient } from "@creezio/observability/ui";`,
+        `    <McpAdminClient logsSlot={<RequestLogsClient />} />`,
       ),
     },
     {
       rel: "admin/mcp/page.tsx",
       source: pageClient(
-        `import { McpAdminClient } from "@creezio/mcp-facade/ui";`,
-        `    <McpAdminClient />`,
+        `import { McpAdminClient } from "@creezio/mcp-facade/ui";
+import { RequestLogsClient } from "@creezio/observability/ui";`,
+        `    <McpAdminClient logsSlot={<RequestLogsClient />} />`,
       ),
     },
     {
@@ -321,6 +324,8 @@ const PUBLIC = [
   "/developers",
   "/oauth",
   "/.well-known",
+  "/lp",
+  "/lp-media",
   "/sw.js",
   "/manifest.webmanifest",
   "/icons",
@@ -394,7 +399,21 @@ function loginRedirect(request: NextRequest, nextPath?: string) {
 }
 
 export async function middleware(request: NextRequest) {
+  const host = (
+    request.headers.get("x-forwarded-host") ||
+    request.headers.get("host") ||
+    ""
+  ).toLowerCase();
   const { pathname } = request.nextUrl;
+
+  // Landing publique lp.{zone} — rewrite avant la garde session
+  // (sinon /flotte admin se sert sans cookie : 200 HTML + APIs 401).
+  if (host.startsWith("lp.") && pathname !== "/lp") {
+    const url = request.nextUrl.clone();
+    url.pathname = "/lp";
+    url.protocol = "http:";
+    return NextResponse.rewrite(url);
+  }
 
   if (
     PUBLIC.some((p) => pathname === p || pathname.startsWith(p + "/")) ||
@@ -687,6 +706,8 @@ function DemoInSession() {
 export function BrandChrome({ children }: { children: ReactNode }) {
   return (
     <SessionProvider>
+      {/* Contrat @creezio/auth/ui — pas un wrapper local. Sans ça, /flotte
+          (admin) et le CRM marque rendent un workspace creux (APIs 401). */}
       <RequireSession>
         {/* Tracker client → POST /api/v1/analytics/events (Admin → Analytics). */}
         <SessionUsageAnalyticsProvider>

@@ -19,6 +19,7 @@ import path from "node:path";
 import { moduleTemplateFiles } from "@creezio/brand-spec";
 import type { ProductModel } from "./product-model.js";
 import { scaffoldNewApp } from "./scaffold.js";
+import { renderUiAuthMiddleware } from "./generators/os-ui.js";
 
 export type AdminRepoOptions = {
   /** Dossier cible du repo admin (ex. /opt/docker/tempoflow-admin). */
@@ -592,45 +593,13 @@ export const GET = createLandingMediaGET();
 `,
     written,
   );
-  const middlewarePath = path.join(serverDir, "ui/middleware.ts");
-  if (!fs.existsSync(middlewarePath)) {
-    forceWrite(
-      middlewarePath,
-      `import { NextResponse, type NextRequest } from "next/server";
-
-/**
- * Routage par hostname public : lp.{zone} → landing publique /lp
- * (tunnel brand-web du provisioner — ADR-module-natif-hybride).
- * Le host public arrive via x-forwarded-host (proxy OS) ou host (dev direct).
- * Sur le host lp., tous les chemins pages servent la landing — seuls les
- * assets (_next), les médias (/lp-media) et l'API restent accessibles.
- */
-export function middleware(request: NextRequest) {
-  const host = (
-    request.headers.get("x-forwarded-host") ||
-    request.headers.get("host") ||
-    ""
-  ).toLowerCase();
-  const { pathname } = request.nextUrl;
-  if (host.startsWith("lp.") && pathname !== "/lp") {
-    const url = request.nextUrl.clone();
-    url.pathname = "/lp";
-    // Rewrite interne au plane Next (TLS terminé au tunnel) : sans ça,
-    // nextUrl hérite du x-forwarded-proto https et Next se re-proxifie en TLS
-    // sur son port interne → EPROTO. Le plane sert toujours en http clair.
-    url.protocol = "http:";
-    return NextResponse.rewrite(url);
-  }
-  return NextResponse.next();
-}
-
-export const config = {
-  matcher: ["/((?!_next/|lp-media/|api/|favicon\\\\.ico).*)"],
-};
-`,
-      written,
-    );
-  }
+  // Auth session + rewrite lp.{zone} (un seul middleware — pas le stub
+  // landing-only qui laissait /flotte se rendre sans cookie).
+  forceWrite(
+    path.join(serverDir, "ui/middleware.ts"),
+    renderUiAuthMiddleware(model.brandId),
+    written,
+  );
 
   // 4ter. admin-spec/ : specs des modules PROPRES au repo admin (standard
   // kit DOC-STANDARD-MODULE.md — les modules natifs @creezio/admin ont leurs
