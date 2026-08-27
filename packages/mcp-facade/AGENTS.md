@@ -75,7 +75,7 @@ La marque doit fournir :
 - `jwtSecret` / `MCP_JWT_SECRET` ;
 - DB write et `tableExists` pour OAuth/admin ;
 - `resolvePublicUrl` ou variables `MCP_PUBLIC_URL`, `APP_PUBLIC_URL`, `APP_BASE_URL` ;
-- session bridge OAuth : `getSessionFromContext`, `authenticateUser`, `validateCredentials`, `getOwnerId`, `createSessionCookie` ;
+- session bridge OAuth : `getSessionFromContext` (cookie CRM + Bearer JWT), `authenticateUser` (sync ou async, même login kit que `/api/v1/auth`), `validateCredentials`, `getOwnerId`, `createSessionCookie` ;
 - `apiKeyAuth` si `/mcp` accepte les cles API locales ;
 - `buildMcpServer` : façade + `bindFacadeToolsToHono` + host tools ;
 - `resolveOpenTabRequest` et dispatch desktop pour `open_external_tab`.

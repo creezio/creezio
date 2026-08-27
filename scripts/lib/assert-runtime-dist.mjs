@@ -59,6 +59,8 @@ export const CONTENT_CONTRACTS = [
       "createBrandAdminDatabaseRoutes",
       "adminDatabaseHandlesPath",
       "MCP + database + analytics + request-logs",
+      "authenticateViaKit",
+      "verifySessionToken",
     ],
   },
   {
