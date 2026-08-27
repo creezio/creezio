@@ -1,6 +1,6 @@
 {
   "name": "@creezio/landing",
-  "version": "0.10.9",
+  "version": "0.10.10",
   "description": "Module natif hybride « landing page » — moteur (sections/contenu en DB brand, médias, mount /api/v1/modules/landing) + composants préfabriqués surchargeables + client d'édition admin",
   "type": "module",
   "main": "./dist-cjs/index.js",
@@ -29,8 +29,8 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@creezio/api-kernel": "^0.10.9",
-    "@creezio/platform-core": "^0.10.9"
+    "@creezio/api-kernel": "^0.10.10",
+    "@creezio/platform-core": "^0.10.10"
   },
   "devDependencies": {
     "@types/node": "^22.15.3",

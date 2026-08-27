@@ -1,5 +1,14 @@
 # @creezio/mcp-facade
 
+## 0.10.10
+
+### Patch Changes
+
+- 53695b5: OAuth MCP : réutiliser la session CRM (cookie / Bearer) et authentifier via le login kit, plus seulement le compte desktop local.
+- Updated dependencies [4ecd205]
+  - @creezio/platform-core@0.10.10
+  - @creezio/api-kernel@0.10.10
+
 ## 0.10.9
 
 ### Patch Changes

@@ -1,5 +1,12 @@
 # @creezio/platform-core
 
+## 0.10.10
+
+### Patch Changes
+
+- 4ecd205: `ensureCfCnameRecord` remplace un A/AAAA héritage (NPM / IP VPS) par le CNAME tunnel. Sans ça, admin.{zone} restait collé à l'IP hôte.
+  - @creezio/brand-config@0.10.10
+
 ## 0.10.9
 
 ### Patch Changes

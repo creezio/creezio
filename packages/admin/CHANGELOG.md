@@ -1,5 +1,14 @@
 # @creezio/admin
 
+## 0.10.10
+
+### Patch Changes
+
+- Updated dependencies [4ecd205]
+  - @creezio/platform-core@0.10.10
+  - @creezio/api-kernel@0.10.10
+  - @creezio/integrations@0.10.10
+
 ## 0.10.9
 
 ### Patch Changes

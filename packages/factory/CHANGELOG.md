@@ -1,5 +1,15 @@
 # @creezio/factory
 
+## 0.7.1
+
+### Patch Changes
+
+- 4ecd205: Un repo admin pose tout seul `CREEZIO_DOMAIN=admin.{zone}` + `CREEZIO_TUNNEL_EXTRA_HOSTNAMES=lp.{zone}`. `migrate-stack` synchronise un stack déjà in-process (`sync-cf`). NPM n'est plus une voie d'exposition.
+- 4ecd205: migrate-stack attache un tunnel Cloudflare in-process à un stack déjà sans sidecar quand cf.env manque et que CREEZIO*CF*\* + CREEZIO_DOMAIN sont posés (landing extra-hostname / admin historique).
+  - @creezio/brand-config@0.10.10
+  - @creezio/product-hub@0.10.10
+  - @creezio/brand-spec@0.10.10
+
 ## 0.7.0
 
 ### Minor Changes

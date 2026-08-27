@@ -1,5 +1,18 @@
 # @creezio/electron-shell
 
+## 0.10.10
+
+### Patch Changes
+
+- 4ecd205: Au re-ensure boot, le hostname public suit `CREEZIO_DOMAIN` (plus le store seul). Sans ça, un admin passé de `lp` à `admin`+`lp` gardait un ingress lp-only.
+- Updated dependencies [4ecd205]
+  - @creezio/platform-core@0.10.10
+  - @creezio/brand-config@0.10.10
+  - @creezio/shell@0.10.10
+  - @creezio/product-hub@0.10.10
+  - @creezio/observability@0.10.10
+  - @creezio/browser-host@0.10.10
+
 ## 0.10.9
 
 ### Patch Changes
