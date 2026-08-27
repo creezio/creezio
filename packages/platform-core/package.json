@@ -1,6 +1,6 @@
 {
   "name": "@creezio/platform-core",
-  "version": "0.10.10",
+  "version": "0.10.11",
   "description": "Paths userData / local-config schema paramétrés par brand-config (sans marque hardcodée)",
   "type": "module",
   "main": "./dist-cjs/index.js",
@@ -23,7 +23,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@creezio/brand-config": "^0.10.10"
+    "@creezio/brand-config": "^0.10.11"
   },
   "peerDependencies": {
     "@creezio/auth": ">=0.4.0",

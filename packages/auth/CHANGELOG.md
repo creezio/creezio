@@ -1,5 +1,14 @@
 # @creezio/auth
 
+## 0.10.11
+
+### Patch Changes
+
+- 38beaeb: Brancher l'onglet Logs MCP sur RequestLogsClient ; /lp public dans RequireSession.
+  - @creezio/shell@0.10.11
+  - @creezio/platform-core@0.10.11
+  - @creezio/shell-ui@0.10.11
+
 ## 0.10.10
 
 ### Patch Changes
