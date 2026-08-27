@@ -15,6 +15,7 @@ import {
 import { scaffoldNewApp } from "./scaffold.js";
 import {
   assertProductModel,
+  blankAppModel,
   parseProductPrd,
   safeBrandId,
   type ProductModel,
@@ -330,6 +331,15 @@ export async function runBrandCli(argv: string[]): Promise<void> {
     const outDir = path.resolve(
       args.out || path.join(root, "apps", brandId),
     );
+    const shellModel = blankAppModel({
+      brandId,
+      brandName: args.name,
+      domain: args.domain,
+    });
+    shellModel.platformNeeds = {
+      ...shellModel.platformNeeds,
+      onboarding: true,
+    };
     const result = scaffoldNewApp({
       brandId,
       productName: args.name,
@@ -340,6 +350,9 @@ export async function runBrandCli(argv: string[]): Promise<void> {
       kitRoot: root,
       iconsDir: args.iconsDir ? path.resolve(args.iconsDir) : undefined,
       adminOut: args.adminOut ? path.resolve(args.adminOut) : undefined,
+      // Chrome OS (RequireSession + WorkspaceRoot) dès le jour 1 — pas
+      // attendre brand apply. Zéro module métier (entities vides).
+      productModel: shellModel,
     });
     console.log(`✓ brand create ${brandId}`);
     console.log(`  out     ${result.outDir}`);

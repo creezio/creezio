@@ -26,6 +26,29 @@ const FORBIDDEN_OS_DIRS = [
   "mcp",
 ];
 
+test("os-ui generator : RequireSession kit enveloppe WorkspaceRoot (source, sans spawn)", () => {
+  const gen = fs.readFileSync(
+    path.join(ROOT, "packages/factory/src/generators/os-ui.ts"),
+    "utf8",
+  );
+  assert.match(gen, /from "@creezio\/auth\/ui"/);
+  assert.match(
+    gen,
+    /<RequireSession>[\s\S]*<WorkspaceRoot>\{children\}<\/WorkspaceRoot>[\s\S]*<\/RequireSession>/,
+    "générateur BrandChrome : RequireSession autour de WorkspaceRoot",
+  );
+  assert.doesNotMatch(
+    gen,
+    /function RequireSession/,
+    "interdit un RequireSession local dans le générateur",
+  );
+  assert.match(
+    gen,
+    /logsSlot=\{<RequestLogsClient \/>\}/,
+    "générateur MCP : logsSlot RequestLogsClient",
+  );
+});
+
 test("os-ui scaffold : zéro page OS versionnée, materialize + boot kit", () => {
   assert.ok(fs.existsSync(CLI), "factory CLI");
   assert.ok(fs.existsSync(PRD), "PRD produit");
@@ -137,6 +160,22 @@ test("os-ui scaffold : zéro page OS versionnée, materialize + boot kit", () =>
   assert.match(chrome, /WorkspaceRoot/);
   assert.match(chrome, /configureSidebar/);
   assert.match(chrome, /SessionProvider/);
+  assert.match(
+    chrome,
+    /from "@creezio\/auth\/ui"/,
+    "RequireSession vient du contrat kit, pas d'un wrapper local",
+  );
+  assert.match(chrome, /<RequireSession>/);
+  assert.match(
+    chrome,
+    /<RequireSession>[\s\S]*<WorkspaceRoot>\{children\}<\/WorkspaceRoot>[\s\S]*<\/RequireSession>/,
+    "RequireSession doit envelopper WorkspaceRoot (sinon CRM/flotte creux, APIs 401)",
+  );
+  assert.doesNotMatch(
+    chrome,
+    /function RequireSession/,
+    "interdit un RequireSession local — contrat @creezio/auth/ui",
+  );
   assert.match(chrome, /AssistantRoot/);
   assert.match(
     chrome,

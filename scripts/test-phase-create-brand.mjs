@@ -191,6 +191,25 @@ test("CB-create brand create --id acme (pas notes, pas crm, admin frère)", () =
   );
   assert.match(brandApi, /createInteractiveDemoMount/);
   assert.match(brandApi, /collectDemoScenarios/);
+  const createChrome = fs.readFileSync(
+    path.join(serverDir, "ui/components/brand-chrome.tsx"),
+    "utf8",
+  );
+  assert.match(createChrome, /from "@creezio\/auth\/ui"/);
+  assert.match(
+    createChrome,
+    /<RequireSession>[\s\S]*<WorkspaceRoot>\{children\}<\/WorkspaceRoot>[\s\S]*<\/RequireSession>/,
+    "brand create : RequireSession kit dès le jour 1 (pas attendre apply)",
+  );
+  const createAdminChrome = fs.readFileSync(
+    path.join(`${appDir}-admin`, "server/ui/components/brand-chrome.tsx"),
+    "utf8",
+  );
+  assert.match(
+    createAdminChrome,
+    /<RequireSession>[\s\S]*<WorkspaceRoot>\{children\}<\/WorkspaceRoot>[\s\S]*<\/RequireSession>/,
+    "brand create admin : RequireSession autour de WorkspaceRoot",
+  );
   if (fs.existsSync(path.join(serverDir, "ui/app/page.tsx"))) {
     assert.doesNotMatch(
       fs.readFileSync(path.join(serverDir, "ui/app/page.tsx"), "utf8"),
@@ -442,6 +461,22 @@ Desktop Creezio.
   );
   assert.match(chrome, /InteractiveDemoRoot/, "BrandChrome monte le lecteur dans SessionProvider");
   assert.match(chrome, /SessionProvider/);
+  assert.match(chrome, /from "@creezio\/auth\/ui"/);
+  assert.match(
+    chrome,
+    /<RequireSession>[\s\S]*<WorkspaceRoot>\{children\}<\/WorkspaceRoot>[\s\S]*<\/RequireSession>/,
+    "RequireSession kit enveloppe WorkspaceRoot (marque)",
+  );
+  const adminChrome = fs.readFileSync(
+    path.join(`${appDir}-admin`, "server/ui/components/brand-chrome.tsx"),
+    "utf8",
+  );
+  assert.match(adminChrome, /from "@creezio\/auth\/ui"/);
+  assert.match(
+    adminChrome,
+    /<RequireSession>[\s\S]*<WorkspaceRoot>\{children\}<\/WorkspaceRoot>[\s\S]*<\/RequireSession>/,
+    "RequireSession kit enveloppe WorkspaceRoot (admin flotte — sinon /flotte creuse)",
+  );
   const boot = fs.readFileSync(
     path.join(ROOT, "packages/os-ui/src/boot.tsx"),
     "utf8",

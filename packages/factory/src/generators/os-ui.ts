@@ -125,22 +125,25 @@ export default function Page() {
     {
       rel: "developers/page.tsx",
       source: pageClient(
-        `import { McpAdminClient } from "@creezio/mcp-facade/ui";`,
-        `    <McpAdminClient />`,
+        `import { McpAdminClient } from "@creezio/mcp-facade/ui";
+import { RequestLogsClient } from "@creezio/observability/ui";`,
+        `    <McpAdminClient logsSlot={<RequestLogsClient />} />`,
       ),
     },
     {
       rel: "mcp/page.tsx",
       source: pageClient(
-        `import { McpAdminClient } from "@creezio/mcp-facade/ui";`,
-        `    <McpAdminClient />`,
+        `import { McpAdminClient } from "@creezio/mcp-facade/ui";
+import { RequestLogsClient } from "@creezio/observability/ui";`,
+        `    <McpAdminClient logsSlot={<RequestLogsClient />} />`,
       ),
     },
     {
       rel: "admin/mcp/page.tsx",
       source: pageClient(
-        `import { McpAdminClient } from "@creezio/mcp-facade/ui";`,
-        `    <McpAdminClient />`,
+        `import { McpAdminClient } from "@creezio/mcp-facade/ui";
+import { RequestLogsClient } from "@creezio/observability/ui";`,
+        `    <McpAdminClient logsSlot={<RequestLogsClient />} />`,
       ),
     },
     {
@@ -687,6 +690,8 @@ function DemoInSession() {
 export function BrandChrome({ children }: { children: ReactNode }) {
   return (
     <SessionProvider>
+      {/* Contrat @creezio/auth/ui — pas un wrapper local. Sans ça, /flotte
+          (admin) et le CRM marque rendent un workspace creux (APIs 401). */}
       <RequireSession>
         {/* Tracker client → POST /api/v1/analytics/events (Admin → Analytics). */}
         <SessionUsageAnalyticsProvider>

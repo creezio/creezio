@@ -13,6 +13,7 @@ import { fileURLToPath } from "node:url";
 import { scaffoldNewApp, type NewAppOptions } from "./scaffold.js";
 import {
   assertProductModel,
+  blankAppModel,
   parseProductPrd,
   safeBrandId,
   type ProductModel,
@@ -293,6 +294,14 @@ export async function runCli(argv: string[]): Promise<void> {
     brandId = args.id;
     productName = args.name;
     domain = args.domain;
+    // Même chrome OS que brand create (RequireSession + dashboard), zéro métier.
+    const shell = blankAppModel({
+      brandId,
+      brandName: productName,
+      domain,
+    });
+    shell.platformNeeds = { ...shell.platformNeeds, onboarding: true };
+    productModel = shell;
   }
 
   const outDir = path.resolve(

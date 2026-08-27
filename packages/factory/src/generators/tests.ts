@@ -163,7 +163,33 @@ export function renderMetierParcoursSmoke(model: ProductModel): string {
     // → 404 → CI de l'app neuve rouge).
     const entity = model.entities[0];
     if (!entity) {
-      throw new Error("renderMetierParcoursSmoke: model.entities vide");
+      return `#!/usr/bin/env node
+/**
+ * Smoke OS shell — app sans module métier (brand create / new-app).
+ * Le chrome + health existent ; le CRUD métier vient après module init.
+ */
+import assert from "node:assert/strict";
+import { spawn, spawnSync } from "node:child_process";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+${harnessPrelude(model)}
+
+async function main() {
+  await waitHealth();
+  assert.ok(!fs.existsSync(path.join(dataDir, "store.json")));
+  console.log("OK test:metier-parcours (OS shell, 0 entité)");
+  child.kill("SIGTERM");
+  process.exit(0);
+}
+
+main().catch((err) => {
+  console.error(err);
+  child.kill("SIGTERM");
+  process.exit(1);
+});
+`;
     }
     const payload = smokeSamplePayload(entity);
     return `#!/usr/bin/env node
@@ -522,7 +548,21 @@ export function renderMeiliConfigSmoke(model: ProductModel): string {
   // dans une app générique → recherche « tom » sans hit → gate rouge).
   const ent0 = model.entities[0];
   if (!ent0) {
-    throw new Error("renderMeiliConfigSmoke: model.entities vide");
+    return `#!/usr/bin/env node
+/**
+ * Smoke Meili OS shell — feed sans index métier (brand create / new-app).
+ */
+import assert from "node:assert/strict";
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+const feed = fs.readFileSync(path.join(root, "src/electron/meili-feed.ts"), "utf8");
+assert.match(feed, /indexes: \\[\\]/);
+assert.doesNotMatch(feed, /tf2_produits|tf2_marketplaces/);
+console.log("OK test:meili-config (OS shell, 0 index métier)");
+`;
   }
   const fixture = meiliSmokeFixture(ent0);
   return `#!/usr/bin/env node

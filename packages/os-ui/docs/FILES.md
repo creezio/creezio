@@ -38,7 +38,7 @@
 
 | Fichier | Rôle |
 |---|---|
-| [`routes/admin/mcp/page.tsx`](../routes/admin/mcp/page.tsx) | Admin MCP |
+| [`routes/admin/mcp/page.tsx`](../routes/admin/mcp/page.tsx) | Admin MCP (`McpAdminClient` + `logsSlot` RequestLogsClient) |
 
 ## `routes/admin/plugins/`
 
@@ -74,7 +74,7 @@
 
 | Fichier | Rôle |
 |---|---|
-| [`routes/developers/page.tsx`](../routes/developers/page.tsx) | Espace développeurs (API keys…) |
+| [`routes/developers/page.tsx`](../routes/developers/page.tsx) | Espace développeurs / MCP (`McpAdminClient` + `logsSlot` RequestLogsClient) |
 
 ## `routes/login/`
 
@@ -92,7 +92,7 @@
 
 | Fichier | Rôle |
 |---|---|
-| [`routes/mcp/page.tsx`](../routes/mcp/page.tsx) | Console MCP (wrapper `@creezio/mcp-facade/ui`) |
+| [`routes/mcp/page.tsx`](../routes/mcp/page.tsx) | Console MCP (`McpAdminClient` + `logsSlot` RequestLogsClient) |
 
 ## `routes/onboarding/`
 
