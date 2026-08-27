@@ -37,7 +37,7 @@ export type McpOAuthSessionBridge = {
   authenticateUser: (
     username: string,
     password: string,
-  ) => McpOAuthSessionUser | null;
+  ) => McpOAuthSessionUser | null | Promise<McpOAuthSessionUser | null>;
   /** Credentials legacy (setup desktop) — optionnel. */
   validateCredentials?: (username: string, password: string) => boolean;
   getOwnerId: () => string | null;

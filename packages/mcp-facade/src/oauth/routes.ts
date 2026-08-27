@@ -553,7 +553,7 @@ export function createMcpOAuthRoutes(config: McpOAuthRoutesConfig): Hono {
     } else {
       const email = asStr(form.email).trim();
       const password = asStr(form.password);
-      const user = config.session.authenticateUser(email, password);
+      const user = await config.session.authenticateUser(email, password);
       const okLegacy =
         !user && Boolean(config.session.validateCredentials?.(email, password));
       if (!user && !okLegacy) {

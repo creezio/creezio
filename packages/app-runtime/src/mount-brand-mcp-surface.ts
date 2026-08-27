@@ -3,7 +3,7 @@
  * Sans credentials externes : issuer = baseUrl harness/loopback.
  */
 import { Hono } from "hono";
-import { getCookie } from "hono/cookie";
+import { getCookie, setCookie } from "hono/cookie";
 import type { ListedModuleOperation, MountedApiInfo } from "@creezio/api-kernel";
 import {
   collectKernelOperationRoutes,
@@ -12,10 +12,16 @@ import {
 import type { AppManifest } from "@creezio/brand-config";
 import type { SqliteRuntime } from "@creezio/platform-core";
 import {
+  authenticateViaKit,
+  createSessionToken,
   getAuthConfig,
+  sessionCookieOptions,
+  toHonoCookie,
+  validateEnvCredentials,
   verifySessionToken,
   type SessionPayload,
 } from "@creezio/auth";
+import { getTasksBrandConfig } from "@creezio/tasks";
 import {
   configureMcpOAuth,
   configureMcpAdmin,
@@ -184,27 +190,128 @@ export function mountBrandMcpSurface(opts: {
   }
 
   const productName = opts.manifest.client.productName;
+
+  // Session CRM (cookie marque ou Bearer JWT) — même SoT que /api/v1/auth.
+  const sessionFromContext = async (c: {
+    req: { header: (n: string) => string | undefined };
+  }): Promise<SessionPayload | null> => {
+    let token = "";
+    try {
+      const cookieName = getAuthConfig().cookieName;
+      token = getCookie(c as never, cookieName) || "";
+    } catch {
+      token = "";
+    }
+    if (!token) {
+      const authz = c.req.header("authorization") || "";
+      if (authz.toLowerCase().startsWith("bearer ")) {
+        token = authz.slice(7).trim();
+      }
+    }
+    if (!token) return null;
+    return verifySessionToken(token);
+  };
+
+  const resolveCrmUser = (username: string) => {
+    const lc = username.trim().toLowerCase();
+    if (!lc) return null;
+    try {
+      const found = getTasksBrandConfig()
+        ?.users.list()
+        .find((u) => u.username.toLowerCase() === lc && u.active);
+      if (!found) return null;
+      return {
+        id: found.id,
+        username: found.username,
+        role: found.role === "owner" ? ("owner" as const) : ("collaborator" as const),
+        permissions: [...(found.permissions || [])],
+      };
+    } catch {
+      return null;
+    }
+  };
+
+  const matchLocalAuth = (username: string, password: string) => {
+    const auth = opts.os.store.getLocalAuth();
+    if (!auth) return null;
+    if (
+      auth.authUser.toLowerCase() === username.trim().toLowerCase() &&
+      auth.authPassword === password
+    ) {
+      return auth;
+    }
+    return null;
+  };
+
   const oauthRoutes = createMcpOAuthRoutes({
     productName,
     session: {
-      getSessionFromContext: async () => null,
-      authenticateUser: (username, password) => {
-        const auth = opts.os.store.getLocalAuth();
-        if (!auth) return null;
-        if (auth.authUser === username && auth.authPassword === password) {
-          return { id: "owner", username: auth.authUser };
+      getSessionFromContext: async (c) => {
+        const session = await sessionFromContext(c);
+        if (!session) return null;
+        return {
+          email: session.email || null,
+          sub: session.sub || null,
+        };
+      },
+      authenticateUser: async (username, password) => {
+        const raw = username.trim();
+        if (!raw || !password) return null;
+
+        const kitAuth = await authenticateViaKit({ username: raw, password });
+        if (kitAuth.ok) {
+          const crm = resolveCrmUser(kitAuth.email) || resolveCrmUser(raw);
+          return {
+            id: crm?.id || kitAuth.email,
+            username: crm?.username || kitAuth.email,
+          };
+        }
+
+        const local = matchLocalAuth(raw, password);
+        if (local) {
+          const crm = resolveCrmUser(local.authUser);
+          return { id: crm?.id || "owner", username: local.authUser };
+        }
+
+        if (validateEnvCredentials(raw, password)) {
+          const crm = resolveCrmUser(raw);
+          return { id: crm?.id || "owner", username: raw };
         }
         return null;
       },
       validateCredentials: (username, password) => {
-        const auth = opts.os.store.getLocalAuth();
-        return Boolean(
-          auth &&
-            auth.authUser === username &&
-            auth.authPassword === password,
-        );
+        if (matchLocalAuth(username, password)) return true;
+        return validateEnvCredentials(username, password);
       },
-      getOwnerId: () => "owner",
+      getOwnerId: () => {
+        try {
+          return getTasksBrandConfig()?.users.getOwner()?.id ?? "owner";
+        } catch {
+          return "owner";
+        }
+      },
+      createSessionCookie: async (c, user) => {
+        const crm = resolveCrmUser(user.username);
+        const token = await createSessionToken({
+          user: {
+            id: user.id || crm?.id || "owner",
+            username: user.username,
+            role: crm?.role || "owner",
+            permissions: crm?.permissions || getAuthConfig().ownerPermissions,
+          },
+        });
+        const proto = (c.req.header("x-forwarded-proto") || "").toLowerCase();
+        let secure = proto === "https";
+        if (!secure) {
+          try {
+            secure = new URL(c.req.url).protocol === "https:";
+          } catch {
+            /* loopback http */
+          }
+        }
+        const cookie = sessionCookieOptions(token, { secure });
+        setCookie(c, cookie.name, cookie.value, toHonoCookie(cookie));
+      },
     },
   });
 
@@ -263,26 +370,7 @@ export function mountBrandMcpSurface(opts: {
   app.route("/", oauthRoutes);
   app.route("/api/v1/admin", adminSurface);
 
-  // Ingest tracker UI (POST /api/v1/analytics/events) — session cookie/Bearer.
-  const sessionFromContext = async (c: {
-    req: { header: (n: string) => string | undefined };
-  }): Promise<SessionPayload | null> => {
-    let token = "";
-    try {
-      token = getCookie(c as never, getAuthConfig().cookieName) || "";
-    } catch {
-      token = "";
-    }
-    if (!token) {
-      const authz = c.req.header("authorization") || "";
-      if (authz.toLowerCase().startsWith("bearer ")) {
-        token = authz.slice(7).trim();
-      }
-    }
-    if (!token) return null;
-    return verifySessionToken(token);
-  };
-
+  // Ingest tracker UI (POST /api/v1/analytics/events) — même session cookie/Bearer.
   app.route(
     "/api/v1/analytics",
     createUsageAnalyticsIngestRoutes({
