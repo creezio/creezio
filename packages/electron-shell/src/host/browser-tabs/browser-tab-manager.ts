@@ -19,7 +19,8 @@
  * le spinner React ne s'affiche que sur intent-load (pas main-nav-start).
  */
 
-import { BaseWindow, WebContentsView, session, shell, type Session } from "electron";
+import type { BaseWindow, WebContentsView, Session } from "electron";
+import { loadElectron } from "../load-electron.js";
 import fs from "node:fs";
 import crypto from "node:crypto";
 import { log, logError } from "../../logger.js";
@@ -325,7 +326,7 @@ export class SupplierTabManager {
       : isEmbedTool
         ? `persist:extsite-${partitionKey}`
         : `persist:fournisseur-${partitionKey}`;
-    const ses = session.fromPartition(name);
+    const ses = loadElectron().session.fromPartition(name);
     ses.setUserAgent(CHROME_UA);
     return ses;
   }
@@ -472,6 +473,7 @@ export class SupplierTabManager {
           `(gate after-pack desktop-tooling).`,
       );
     }
+    const { WebContentsView } = loadElectron();
     const view = new WebContentsView({
       webPreferences: {
         session: ses,
@@ -550,7 +552,7 @@ export class SupplierTabManager {
         void this.loadAndWait(tab, targetUrl).catch((e) => logError("tabs", e));
         return { action: "deny" };
       }
-      void shell.openExternal(targetUrl).catch((e) => logError("tabs", e));
+      void loadElectron().shell.openExternal(targetUrl).catch((e) => logError("tabs", e));
       return { action: "deny" };
     });
 

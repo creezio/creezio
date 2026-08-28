@@ -54,6 +54,7 @@
 | [`test-phase-b2.mjs`](../test-phase-b2.mjs) | !usrbinenv node |
 | [`test-phase-brand-allowlist.mjs`](../test-phase-brand-allowlist.mjs) | Allowlist anti-dérive — brand create sans notes/crm/glue OS, registre + mount demo. |
 | [`test-phase-brand-spec.mjs`](../test-phase-brand-spec.mjs) | Gate BrandSpec — load / doctor / init / onboarding decl. Extract P1.1 : package + ADR (+ CREATE-BRAND doc). |
+| [`test-phase-build-order-imports.mjs`](../test-phase-build-order-imports.mjs) | Gate P1.a — graphe des imports `@creezio/*` RUNTIME (type-only ignorés, templates factory neutralisés) : zéro cycle + chaque import respecte l'ordre de build (`build-workspaces.mjs --list`). |
 | [`test-phase-c.mjs`](../test-phase-c.mjs) | !usrbinenv node |
 | [`test-phase-c0.mjs`](../test-phase-c0.mjs) | Phase C0 — docs/archive/gates/matrice = état réel + backlog C*. |
 | [`test-phase-c1.mjs`](../test-phase-c1.mjs) | Phase C1 — schéma kit rich + docs cutover TF. |
@@ -65,6 +66,7 @@
 | [`test-phase-cloudflared-respawn.mjs`](../test-phase-cloudflared-respawn.mjs) | Gate — superviseur cloudflared in-process : politique backoff/abandon, respawn même token/id, stop annule le timer, spawn sans POST cfd_tunnel. |
 | [`test-phase-crash-reporter.mjs`](../test-phase-crash-reporter.mjs) | Gate crash-reporter kit — upload configurable + brandId + pending queue. |
 | [`test-phase-create-brand.mjs`](../test-phase-create-brand.mjs) | Sonde E2E CREATE-BRAND — init → doctor → apply → smoke façade. |
+| [`test-phase-creezio-manifest-align.mjs`](../test-phase-creezio-manifest-align.mjs) | Gate P1.a — manifests marque alignés : scaffold factory (specs `@creezio/*` identiques dans server / server/ui / client) + doctor brand-spec `CREEZIO_MANIFEST_MISALIGNED` (incident login 0.6.0). |
 | [`test-phase-d.mjs`](../test-phase-d.mjs) | !usrbinenv node |
 | [`test-phase-data-changed.mjs`](../test-phase-data-changed.mjs) | (à documenter) |
 | [`test-phase-desktop-server-parity.mjs`](../test-phase-desktop-server-parity.mjs) | Gate parité desktop Serveur TF2 0.10.26 : NSIS (démarrage auto, désinstall profonde), UI Configuration (tray / launchAtStartup / factory-reset), runtime. |
@@ -90,6 +92,7 @@
 | [`test-phase-hermes-computer-use.mjs`](../test-phase-hermes-computer-use.mjs) | H3/H4 « Hermes cerveau unique » — verbes navigateur directs + HITL async + skills sites auto-entretenus. |
 | [`test-phase-hermes-mcp.mjs`](../test-phase-hermes-mcp.mjs) | H1 « Hermes cerveau unique » — Hermes pilote le runner de tâches. |
 | [`test-phase-hermes-web-allowlist.mjs`](../test-phase-hermes-web-allowlist.mjs) | H0 « Hermes cerveau unique » — allowlist web appliquée AU NIVEAU EXÉCUTION. |
+| [`test-phase-host-no-electron.mjs`](../test-phase-host-no-electron.mjs) | Gate P1.a — pureté host : zéro import statique d'`electron` dans `electron-shell/src/host/**` (valeurs via `loadElectron()`, seule exception `host/load-electron.ts`). |
 | [`test-phase-hybrid.mjs`](../test-phase-hybrid.mjs) | Gate architecture hybride : browser-host (driver partagé, sans electron), surface plateforme + sidecar IA, client thin `requireRemoteProfile`, bridge session, `defaultServerUrl`, onglets réels install-brand-os-desktop, Hermes `--skip-browser` conditionnel |
 | [`test-phase-i0.mjs`](../test-phase-i0.mjs) | Phase I0 — gouvernance : sync vendor contrat, ARCHITECTURE_VERSION, docs. |
 | [`test-phase-i1.mjs`](../test-phase-i1.mjs) | Phase I1 — createSqliteAuthStore (core.db) + session après restart. |
@@ -153,6 +156,7 @@
 | [`test-phase-n7.mjs`](../test-phase-n7.mjs) | !usrbinenv node |
 | [`test-phase-n8.mjs`](../test-phase-n8.mjs) | !usrbinenv node |
 | [`test-phase-n9.mjs`](../test-phase-n9.mjs) | !usrbinenv node |
+| [`test-phase-no-brand-vocab.mjs`](../test-phase-no-brand-vocab.mjs) | (à documenter) |
 | [`test-phase-o1.mjs`](../test-phase-o1.mjs) | !usrbinenv node |
 | [`test-phase-o2.mjs`](../test-phase-o2.mjs) | !usrbinenv node |
 | [`test-phase-o3.mjs`](../test-phase-o3.mjs) | !usrbinenv node |
@@ -211,4 +215,5 @@
 |---|---|
 | [`lib/assert-runtime-dist.mjs`](../lib/assert-runtime-dist.mjs) | Assert fail-closed dist runtime (contrats src↔dist + mtime) — CLI + import gate/sync/publish. |
 | [`lib/brand-roots.mjs`](../lib/brand-roots.mjs) | Resolve brand CRM roots across VPS (/opt/docker/…) and sibling layouts (e.g. |
+| [`lib/brand-vocab.mjs`](../lib/brand-vocab.mjs) | Scanner vocabulaire marque (SoT patterns + allowlist) — CLI `--print` / `--write-allowlist` (rétrécit uniquement, refuse ajout/incrément). |
 | [`lib/resolve-probe-brand.mjs`](../lib/resolve-probe-brand.mjs) | Résout la marque sonde TempoFlow3 hors monorepo kit. Layout nominal : 2 repos — monorepo marque (`server/`, `client/`) + repo admin dédié `<brand>-admin`. |

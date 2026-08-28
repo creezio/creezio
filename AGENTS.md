@@ -190,6 +190,27 @@ Workflow : `npm run test:kit` → première rouge → corriger →
   donc update toujours APRÈS la publication, jamais avant.
 - **Layout `node_modules` hôte** : clone marque → `npm ci` racine (workspace
   — hoisting racine). Docker pose `/app/node_modules` via `npm ci -w server`.
+- **Vocabulaire marque dans le kit** (frontière n°1) : toute nouvelle
+  occurrence de `tempoflow` / `certivan` / `fidu` / `winhub` / `foove` /
+  `TF2` / `TF3` / `chr-catalog` dans `packages/*/src|ui` est refusée
+  fail-closed — gate `test-phase-no-brand-vocab` (`test:kit`), dette héritée
+  ratchetée dans `scripts/no-brand-vocab-allowlist.json` (compteurs
+  décroissants + tickets audit F1.x, on n'y ajoute JAMAIS rien).
+- **Import statique d'`electron` dans `electron-shell/src/host/**`** : casse
+  le chargement Node pur (tests kit, harness serveur). Valeurs via
+  `loadElectron()` (`host/load-electron.ts`, unique exception), types via
+  `import type` — gate `test-phase-host-no-electron` (`test:kit`).
+- **Bump partiel des manifests marque** : une app a plusieurs manifests à
+  deps `@creezio/*` (server, server/ui, client) ; un bump partiel = CI verte
+  mais ancienne page os-ui servie (incident login 0.6.0, règle d'or
+  [docs/PROPAGATION.md](./docs/PROPAGATION.md)). Protection : doctor
+  brand-spec `CREEZIO_MANIFEST_MISALIGNED` (error) + gate
+  `test-phase-creezio-manifest-align` (`test:kit`).
+- **Import runtime `@creezio/*` hors ordre de build** : un import runtime
+  (non `import type`) vers un package construit après soi = dist
+  stale/absent sur build frais ; idem cycle runtime. Gate
+  `test-phase-build-order-imports` (`test:kit`) — SoT ordre :
+  `node scripts/build-workspaces.mjs --packages-only --list`.
 
 ## Propagation vers marques
 

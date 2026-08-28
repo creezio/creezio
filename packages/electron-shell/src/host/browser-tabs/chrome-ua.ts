@@ -15,7 +15,7 @@
  * résidentielle, fenêtre visible → profil « humain » à préserver).
  */
 
-import { app } from "electron";
+import { loadElectron } from "../load-electron.js";
 
 function chromeMajorVersion(): string {
   return (process.versions.chrome || "131.0.0.0").split(".")[0] + ".0.0.0";
@@ -36,5 +36,6 @@ export const CHROME_UA = `Mozilla/5.0 (${platformToken()}) AppleWebKit/537.36 (K
 
 /** À appeler AVANT app.whenReady() / toute navigation. */
 export function installUserAgent(): void {
+  const { app } = loadElectron();
   app.userAgentFallback = CHROME_UA;
 }
