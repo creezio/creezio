@@ -1,5 +1,17 @@
 # @creezio/electron-shell
 
+## 0.10.15
+
+### Patch Changes
+
+- 0391870: P1.a — invariants d'architecture gravés en gates. brand-spec : le doctor rapporte `CREEZIO_MANIFEST_MISALIGNED` (error fail-closed) quand une dep `@creezio/*` a des specs divergentes entre les manifests d'une app marque (racine/server/server/ui/client — incident réel login 0.6.0, règle d'or docs/PROPAGATION.md). electron-shell : suppression des 2 derniers imports statiques d'`electron` dans `src/host/browser-tabs` (chrome-ua, browser-tab-manager) au profit de `loadElectron()` — `src/host/**` reste chargeable en Node pur (gate `test-phase-host-no-electron`).
+  - @creezio/brand-config@0.10.15
+  - @creezio/shell@0.10.15
+  - @creezio/platform-core@0.10.15
+  - @creezio/product-hub@0.10.15
+  - @creezio/observability@0.10.15
+  - @creezio/browser-host@0.10.15
+
 ## 0.10.14
 
 ### Patch Changes
