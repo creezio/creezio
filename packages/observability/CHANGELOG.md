@@ -1,5 +1,13 @@
 # @creezio/observability
 
+## 0.11.0
+
+### Patch Changes
+
+- Updated dependencies [b0856ee]
+  - @creezio/platform-core@0.11.0
+  - @creezio/api-kernel@0.11.0
+
 ## 0.10.15
 
 ### Patch Changes
