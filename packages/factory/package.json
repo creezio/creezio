@@ -1,6 +1,6 @@
 {
   "name": "@creezio/factory",
-  "version": "0.7.5",
+  "version": "0.7.6",
   "description": "Factory Creezio — scaffold new-app Client+Serveur depuis le kit",
   "type": "module",
   "main": "./dist/index.js",
