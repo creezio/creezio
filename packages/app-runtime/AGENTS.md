@@ -43,10 +43,15 @@ Toute évolution Meili / HTTP kernel / session IPC se fait **ici** (ou dans
 ## Meili (feed + usage UI)
 
 `meiliFeed` (marque) + indexer kit (`electron-shell/host/meili`) alimentent
-les index. **Règle plateforme** (voir aussi `creezio/AGENTS.md` Pièges +
+les index. Au boot, `configureEntityMeiliFromFeed` branche le CRUD
+entity-list (`GET /api/v1/modules/<entité>`) sur Meili dès qu'un index a
+une table + `filterableAttributes` — **y compris q vide**. **Règle
+plateforme** (voir aussi `creezio/AGENTS.md` Pièges +
 `electron-shell/AGENTS.md` section Meili) : l’UI marque doit utiliser Meili
 pour **recherche et browse filtré** dès que les attributs sont indexés —
-ne pas limiter Meili au cas `q` non vide. SQL = fallback / hors index.
+ne pas limiter Meili au cas `q` non vide. Helper : `browseMeiliIndex`.
+`searchMeiliIndexes` est interdit pour le browse (retourne [] si q vide).
+SQL = fallback / hors index.
 
 ## Ne pas faire
 

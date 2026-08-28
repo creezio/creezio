@@ -133,6 +133,7 @@
 | [`test-phase-mails-ui.mjs`](../test-phase-mails-ui.mjs) | MD — webmail : exports, iframe sandbox (XSS), Tiptap, wrappers os-ui/factory. |
 | [`test-phase-mails-webhooks.mjs`](../test-phase-mails-webhooks.mjs) | MB2 — webhooks Resend : signature Svix, delivered/bounced, inbound opt-in. |
 | [`test-phase-mcp-tool-policy-guard.mjs`](../test-phase-mcp-tool-policy-guard.mjs) | Gate M1-M2 — garde d'enforcement réutilisable des policies MCP admin (`packages/mcp-facade/src/admin/tool-policy-guard.ts`). |
+| [`test-phase-meili-browse.mjs`](../test-phase-meili-browse.mjs) | Gate Meili browse : q vide = Meili, 0 hit = meili, filtre rejeté = SQL visible ; factory sans piège 0-hit→SQL ; modules catalogue meiliIndexes ou horsIndexJustification. |
 | [`test-phase-meili-feed.mjs`](../test-phase-meili-feed.mjs) | Gate Phase C — BrandMeiliFeed générique (pas de tf2_* dans le chemin feed). |
 | [`test-phase-module-docs.mjs`](../test-phase-module-docs.mjs) | (à documenter) |
 | [`test-phase-module-mount-session.mjs`](../test-phase-module-mount-session.mjs) | (à documenter) |

@@ -44,7 +44,14 @@ Le package doit protéger les frontières DB, empêcher les abus historiques com
   - moteur CRUD déclaratif : `EntitySpec`, `createEntityApiMount`,
     `registerEntityMounts` (routes list/get/create/patch/delete/archive,
     SQL paramétré, identifiants validés `[a-z_][a-z0-9_]*`, hooks métier).
-    Gate : `scripts/test-phase-api-entity-mount.mjs`.
+    Liste : Meili d'abord si `configureEntityMeili` a un index pour la
+    table **et** que le filtre est exprimable (`q` vide inclus). SQL =
+    fallback visible (`engine:"sql"`, `fallback`) ou hydratation `?ids=`.
+    Gate : `scripts/test-phase-api-entity-mount.mjs` + `test-phase-meili-browse`.
+- `src/meili-browse.ts`
+  - `browseMeiliIndex` (q vide OK) + `configureEntityMeili` /
+    `configureEntityMeiliFromFeed` (UIDs depuis le feed marque, jamais
+    hardcodés). `searchMeiliIndexes` est interdit pour le browse.
 - `src/hono.ts`
   - `apiKernelToHonoHandler`, `applyApiResponse`, `mountApiKernelOnHono`.
 

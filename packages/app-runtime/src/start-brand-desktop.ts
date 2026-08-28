@@ -37,6 +37,7 @@ import {
   createMcpFacade,
   discoverModuleToolsFromKernel,
 } from "@creezio/mcp-facade";
+import { configureEntityMeiliFromFeed } from "@creezio/api-kernel";
 import { createNavShellAdapter } from "@creezio/shell-ui";
 import {
   brandKernelBooter,
@@ -623,6 +624,10 @@ async function startBrandDesktopBody(args: {
 
   let searchEngine: BrandDesktopHandle["searchEngine"] = "off";
   let meiliStop: (() => void) | null = null;
+
+  if (config.meiliFeed) {
+    configureEntityMeiliFromFeed(config.meiliFeed);
+  }
 
   // Le shell runtime démarre Meili depuis le splash. Le faire ici aussi
   // produisait un second spawn pré-UI et réintroduisait un chemin legacy.

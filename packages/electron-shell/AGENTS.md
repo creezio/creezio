@@ -18,6 +18,11 @@ Quand un feed `catalog_*` est indexé :
    écritures, joins métier non projetés dans le document).
 4. **Piège interdit** : `if (q) { meili } else { sql }` — le browse filtré
    sans texte doit aussi passer Meili (audit perf secteurs 3668bbbd).
+5. Helper public : `browseMeiliIndex` (`@creezio/electron-shell/meili`) —
+   POST `q:""` + filter/sort/page. Retourne `null` si KO / index vide /
+   filtre rejeté. **Ne pas** utiliser `searchMeiliIndexes` pour le browse
+   (retourne `[]` si `q` vide). Entity-list kit : `configureEntityMeili`
+   (`@creezio/api-kernel`) auto-branché depuis le feed (`configureEntityMeiliFromFeed`).
 
 Le launcher/indexer vivent ici ; la requête UI (`listProduits` etc.) reste
 dans la marque mais **doit** respecter ce contrat.

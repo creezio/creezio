@@ -10,6 +10,7 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { configureEntityMeiliFromFeed } from "@creezio/api-kernel";
 import { isFeatureEnabled } from "@creezio/brand-config";
 import { pluginsRootDir } from "@creezio/platform-core";
 import {
@@ -521,6 +522,7 @@ export async function startBrandKernelHarness(
   let meiliStop: (() => void) | null = null;
 
   if (config.meiliFeed) {
+    configureEntityMeiliFromFeed(config.meiliFeed);
     const doIndex =
       config.skipIndex !== true && process.env.MEILI_SKIP_INDEX !== "1";
     boot.go("meili", { detail: "Démarrage Meilisearch…" });

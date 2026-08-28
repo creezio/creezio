@@ -50,7 +50,7 @@ Tout le wiring d'un module vit dans **son** fichier
 | Mounts API manuscrits | `apiMounts` **avec `operations[]`** (1 capacité = 1 op) |
 | Nav métier | `navItems` (avec `order`) |
 | Tools MCP métier | **générés** depuis les ops (`module.<mountId>.<op.id>`) — plus de `mcpTools()` |
-| Index Meili | `meiliIndexes` |
+| Index Meili | `meiliIndexes` (liste catalogue) **ou** `horsIndexJustification` |
 | Démo interactive (**obligatoire**, ≥ 1) | `demo: { scenarios }` — agrégés par `collectInteractiveDemoDefaults` (`@creezio/interactive-demo`). Inclure `genericOsTourScenario({ productName })`. Une app sans démo = invalide. |
 
 Les fichiers d'assemblage (`brand-module-api.ts`, `brand-migrations.ts`,
@@ -188,8 +188,13 @@ l'enforcement côté marque. Documenter chaque op dans l'interview (§5).
   (focus si onglet ouvert, nouvel onglet sinon — pas pastille-only).
 - Nav : `navItems` du module (permissions `nav.*` déclarées via
   `configureAuth` — sans quoi la sidebar owner est amputée).
-- Meili : `meiliIndexes` du module (UIDs `catalog_*` imposés par le kit,
-  jamais d'UIDs `tf2_*`, réservés).
+- Meili : tout module avec une **liste catalogue** (browse/filtre, même
+  sans `q`) DOIT déclarer `meiliIndexes` (UIDs `catalog_*` imposés par le
+  kit, jamais `tf2_*`) **ou** `horsIndexJustification` (relevés, joins
+  commande, écritures, SKU EAN, fiche GET by id). Le browse passe par
+  `browseMeiliIndex` / entity-list Meili — **interdit** `if (q) meili else
+  sql`. `searchMeiliIndexes` retourne [] si q vide : ne pas l'utiliser
+  pour le browse. Gate kit `test-phase-meili-browse`.
 
 ## 5. Gates métier
 
@@ -218,7 +223,8 @@ Branche : `module/<id>/<tache>`. Détails :
 - [ ] Migration `mod_<id>_00N_<slug>` (id stable) dans `migrations()` du module
 - [ ] `EntitySpec` (CRUD auto) ou mount manuscrit **avec `operations[]`**
 - [ ] Tools MCP générés depuis les ops (pas de `mcpTools()` parallèle)
-- [ ] Nav + permissions `configureAuth`, feed Meili si recherché
+- [ ] Nav + permissions `configureAuth`
+- [ ] `meiliIndexes` (browse catalogue) **ou** `horsIndexJustification`
 - [ ] Pages UI 100 % kit graphique (DOC-STANDARD-UI.md)
 - [ ] Gate métier ajoutée au `npm test` marque et verte
 - [ ] Pas de glue OS ni fetch maison vers `/api/v1/os/*` / `/api/v1/platform/*`

@@ -115,6 +115,7 @@
 
 | Fichier | Rôle |
 |---|---|
+| [`src/host/meili/browse.ts`](../src/host/meili/browse.ts) | Helper public `browseMeiliIndex` — POST `q:""` + filter/sort/page. `null` si KO / index vide / filtre rejeté. Interdit : `searchMeiliIndexes` pour le browse (retourne [] si q vide). |
 | [`src/host/meili/coherence-db.ts`](../src/host/meili/coherence-db.ts) | Accès SQLite pour la cohérence Meili — process Node vanilla uniquement (better-sqlite3 ABI Node). Ne jamais importer depuis electron/main.ts. Compteurs alignés sur l'indexeur catalogue (tables via `configureMeiliCatalogSqlTables` — défaut TF produits + fournisseurs). |
 | [`src/host/meili/coherence-query.ts`](../src/host/meili/coherence-query.ts) | CLI Node vanilla : lit counts SQL + fingerprint (JSON sur stdout). Spawn depuis electron/main via nodeBinary() + NODE_PATH (better-sqlite3). DB_PATH=... node …/meili/coherence-query.js Dual-build safe : pas d'`import.meta` (CJS Electron). |
 | [`src/host/meili/coherence.ts`](../src/host/meili/coherence.ts) | Cohérence SQLite ↔ Meili au boot Electron. IMPORTANT : pas de better-sqlite3 ici (ABI Node ≠ Electron). Les lectures SQLite passent par un spawn Node vanilla (meili-coherence-query.js). |

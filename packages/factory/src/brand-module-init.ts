@@ -68,6 +68,9 @@ export const ${camel}Module: BrandModuleDef = {
     { id: "brand.${id}", label: "${title}", href: "/${id}", group: "brand", order: 500 },
   ],
   // Tools MCP générés depuis operations[] / EntitySpec — plus de mcpTools().
+  // Liste catalogue : déclarer meiliIndexes (UID catalog_*) OU horsIndexJustification.
+  // meiliIndexes: [{ uid: "catalog_products", countKey: "produits", table: "${camel}", columns: ["id", "nom"], settings: { searchableAttributes: ["nom"], filterableAttributes: ["id"] } }],
+  // horsIndexJustification: "écritures / joins / hors browse catalogue",
 ${renderPlayableDemoBlock({ moduleId: id, title, productName, navLabel: title })}
   // migrations: () => [{ id: "mod_${camel}_001_init", sql: \`…\` }],
 };
