@@ -1,5 +1,21 @@
 # @creezio/electron-shell
 
+## 0.10.14
+
+### Patch Changes
+
+- c0a8177: `searchMeiliIndexes` fail-closed : le catch vide avalait Meili down en `[]`
+  (le search mount répondait 200 `engine:"meili"` silencieux avec un Meili
+  mort). Seul l'index absent (HTTP 404, indexation initiale pas passée) reste
+  toléré — toute autre erreur (connexion refusée, timeout, 5xx) est rethrow
+  pour que l'appelant réponde 503 `meili_unavailable`.
+  - @creezio/brand-config@0.10.14
+  - @creezio/shell@0.10.14
+  - @creezio/platform-core@0.10.14
+  - @creezio/product-hub@0.10.14
+  - @creezio/observability@0.10.14
+  - @creezio/browser-host@0.10.14
+
 ## 0.10.13
 
 ### Patch Changes
