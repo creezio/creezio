@@ -1,6 +1,6 @@
-# @creezio/propagation
+# @creezio/host-runtime
 
-## 0.2.0
+## 0.11.0
 
 ### Minor Changes
 
@@ -50,41 +50,9 @@
 
 ### Patch Changes
 
-- @creezio/brand-config@0.11.0
-
-## 0.1.6
-
-### Patch Changes
-
-- @creezio/brand-config@0.10.0
-
-## 0.1.5
-
-### Patch Changes
-
-- @creezio/brand-config@0.9.0
-
-## 0.1.4
-
-### Patch Changes
-
-- @creezio/brand-config@0.8.0
-
-## 0.1.3
-
-### Patch Changes
-
-- @creezio/brand-config@0.7.0
-
-## 0.1.2
-
-### Patch Changes
-
-- @creezio/brand-config@0.6.0
-
-## 0.1.1
-
-### Patch Changes
-
-- Updated dependencies [e23b259]
-  - @creezio/brand-config@0.5.0
+- Updated dependencies [b0856ee]
+  - @creezio/search@0.11.0
+  - @creezio/platform-core@0.11.0
+  - @creezio/observability@0.11.0
+  - @creezio/product-hub@0.11.0
+  - @creezio/brand-config@0.11.0

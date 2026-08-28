@@ -1,6 +1,6 @@
 {
   "name": "@creezio/auth",
-  "version": "0.10.15",
+  "version": "0.11.0",
   "description": "Session / login / logout / recovery — natif Creezio (sqlite core + JWT + UI)",
   "type": "module",
   "main": "./dist-cjs/index.js",
@@ -28,9 +28,9 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@creezio/platform-core": "^0.10.15",
-    "@creezio/shell": "^0.10.15",
-    "@creezio/shell-ui": "^0.10.15",
+    "@creezio/platform-core": "^0.11.0",
+    "@creezio/shell": "^0.11.0",
+    "@creezio/shell-ui": "^0.11.0",
     "@hono/zod-openapi": "^1.5.1",
     "hono": "^4.12.32",
     "jose": "^6.2.3",
