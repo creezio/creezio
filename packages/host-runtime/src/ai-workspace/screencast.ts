@@ -19,7 +19,7 @@
 import type { WebContents } from "electron";
 import type { AiWorkspaceManager } from "./manager.js";
 import type { AiSupplierTab as SupplierTab } from "./types.js";
-import { log, logError } from "../../logger.js";
+import { log, logError } from "../logger.js";
 
 /** Réponse du POST frame (viewers renvoyé par le hub serveur). */
 export type PostFrameResult = { ok?: boolean; viewers?: number } | null;

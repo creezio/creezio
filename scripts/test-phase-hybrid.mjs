@@ -108,7 +108,7 @@ test("client thin : requireRemoteProfile skip stack locale", () => {
 });
 
 test("bridge remote : auth session + device headers", () => {
-  const bridge = read("packages/electron-shell/src/host/bridge-client.ts");
+  const bridge = read("packages/host-runtime/src/bridge-client.ts");
   assert.match(bridge, /getSessionCookie/);
   assert.match(bridge, /deviceId/);
   const runtime = read(
@@ -155,7 +155,7 @@ test("install-brand-os-desktop : onglets sites externes réels (pas de stub)", (
 
 test("Hermes browser tools : --skip-browser conditionnel", () => {
   const boot = read(
-    "packages/electron-shell/src/host/hermes/runtime-bootstrap.ts",
+    "packages/host-runtime/src/hermes/runtime-bootstrap.ts",
   );
   assert.match(boot, /hermesBrowserToolsEnabled/);
   assert.match(boot, /CREEZIO_HERMES_BROWSER/);

@@ -19,6 +19,8 @@
     { "path": "../integrations" },
     { "path": "../api-kernel" },
     { "path": "../platform-core" },
-    { "path": "../browser-host" }
+    { "path": "../browser-host" },
+    { "path": "../host-runtime" },
+    { "path": "../search" }
   ]
 }

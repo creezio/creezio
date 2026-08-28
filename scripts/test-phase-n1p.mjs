@@ -134,7 +134,7 @@ test("N1p.5 grant prefix marque dans kit control-extras", () => {
   const extras = fs.readFileSync(
     path.join(
       root,
-      "packages/electron-shell/src/host/plugins/control-extras.ts",
+      "packages/host-runtime/src/plugins/control-extras.ts",
     ),
     "utf8",
   );
@@ -157,7 +157,7 @@ test("N1p.6 paperclip mort + gate dans npm test", () => {
   }
   const pluginsDir = path.join(
     root,
-    "packages/electron-shell/src/host/plugins",
+    "packages/host-runtime/src/plugins",
   );
   for (const name of fs.readdirSync(pluginsDir)) {
     if (!name.endsWith(".ts")) continue;

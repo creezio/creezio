@@ -15,7 +15,7 @@
  * résidentielle, fenêtre visible → profil « humain » à préserver).
  */
 
-import { loadElectron } from "../load-electron.js";
+import { loadElectron } from "@creezio/host-runtime";
 
 function chromeMajorVersion(): string {
   return (process.versions.chrome || "131.0.0.0").split(".")[0] + ".0.0.0";

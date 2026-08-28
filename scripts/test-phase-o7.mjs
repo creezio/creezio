@@ -100,12 +100,12 @@ test("O7.4 kit exports O7 + shell preload CRM", () => {
   assert.match(shellIdx, /createBrandHostRuntime/);
   assert.ok(
     fs.existsSync(
-      path.join(root, "packages/electron-shell/src/host/brand-host-stack.ts"),
+      path.join(root, "packages/host-runtime/src/brand-host-stack.ts"),
     ),
   );
   assert.ok(
     fs.existsSync(
-      path.join(root, "packages/electron-shell/src/host/brand-host-runtime.ts"),
+      path.join(root, "packages/host-runtime/src/brand-host-runtime.ts"),
     ),
   );
 

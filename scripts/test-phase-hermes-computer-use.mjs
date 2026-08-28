@@ -341,7 +341,7 @@ test("CU.3 H3 skills — namespace site-* réservé, skill appris survit au seed
   const seed = require(
     path.join(
       ROOT,
-      "packages/electron-shell/dist-cjs/host/hermes/skills-seed.js",
+      "packages/host-runtime/dist-cjs/hermes/skills-seed.js",
     ),
   );
   assert.equal(seed.LEARNED_SITE_SKILL_PREFIX, "site-");
@@ -388,7 +388,7 @@ test("CU.3 H3 skills — namespace site-* réservé, skill appris survit au seed
 
     // Refus tracé dans le seed (source) : assertion sur le code.
     const src = fs.readFileSync(
-      path.join(ROOT, "packages/electron-shell/src/host/hermes/skills-seed.ts"),
+      path.join(ROOT, "packages/host-runtime/src/hermes/skills-seed.ts"),
       "utf8",
     );
     assert.match(src, /isLearnedSiteSkillName\(ent\.name\)/);

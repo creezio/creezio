@@ -6,7 +6,7 @@ import { spawn, type ChildProcess } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import { findFreePort } from "@creezio/platform-core";
-import { log } from "@creezio/electron-shell";
+import { log } from "@creezio/host-runtime";
 
 export type BrandUiPlaneHandle = {
   kind: "next" | "spa";

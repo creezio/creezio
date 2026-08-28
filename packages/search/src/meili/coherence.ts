@@ -15,10 +15,10 @@ import {
   type MeiliFingerprint,
   type GedIndexUid,
 } from "./index-schema.js";
-import { kitOsResourcesRoot } from "../kit-os-resources.js";
+import { kitOsResourcesRoot } from "@creezio/platform-core";
 import { expectedCountsForFeed, getMeiliBrandFeed } from "./feed.js";
 import type { RunningMeili } from "../meili-launcher.js";
-import { envForNodeScriptSpawn } from "../node-runtime.js";
+import { envForNodeScriptSpawn } from "@creezio/platform-core";
 
 export type MeiliCoherencePaths = {
   dbPath: () => string;

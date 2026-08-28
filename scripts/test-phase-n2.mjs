@@ -9,8 +9,20 @@ import { test } from "node:test";
 import { fileURLToPath } from "node:url";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const hostDir = path.join(root, "packages/electron-shell/src/host");
+// P1.b : le host Node pur vit dans @creezio/host-runtime, le sous-domaine
+// Meili dans @creezio/search ; electron-shell garde le reliquat desktop
+// (web-telemetry) et ré-exporte tout (compat figée).
+const hostRuntimeDir = path.join(root, "packages/host-runtime/src");
+const searchDir = path.join(root, "packages/search/src");
+const esHostDir = path.join(root, "packages/electron-shell/src/host");
 const idxPath = path.join(root, "packages/electron-shell/src/index.ts");
+
+/** Résout un module host historique vers son emplacement P1.b. */
+function hostFile(rel) {
+  if (rel.startsWith("meili/")) return path.join(searchDir, rel);
+  if (rel === "web-telemetry.ts") return path.join(esHostDir, rel);
+  return path.join(hostRuntimeDir, rel);
+}
 const PAPERCLIP_RE = /paperclipApi|startPaperclip\b|paperclip-launcher/;
 
 const REQUIRED = [
@@ -46,7 +58,7 @@ test("N2.1 PHASE-N2.md + PLAN-N N2 livré", () => {
 
 test("N2.2 modules host présents", () => {
   for (const rel of REQUIRED) {
-    const p = path.join(hostDir, rel);
+    const p = hostFile(rel);
     assert.ok(fs.existsSync(p), `manquant: ${rel}`);
     const loc = fs.readFileSync(p, "utf8").split("\n").length;
     assert.ok(loc > 15, `${rel} trop court: ${loc}`);
@@ -55,19 +67,19 @@ test("N2.2 modules host présents", () => {
 
 test("N2.3 bindings + exports publics index.ts", () => {
   const bind = fs.readFileSync(
-    path.join(hostDir, "ai-workspace/bindings.ts"),
+    hostFile("ai-workspace/bindings.ts"),
     "utf8",
   );
   assert.match(bind, /export function configureAiWorkspaceHost/);
   assert.match(bind, /aiPartitionSlug/);
   assert.match(bind, /sessionCookieName/);
 
-  const coh = fs.readFileSync(path.join(hostDir, "meili/coherence.ts"), "utf8");
+  const coh = fs.readFileSync(hostFile("meili/coherence.ts"), "utf8");
   assert.match(coh, /export function configureMeiliCoherencePaths/);
   assert.match(coh, /export async function decideMeiliReady/);
 
   const crash = fs.readFileSync(
-    path.join(hostDir, "crash-reporter.ts"),
+    hostFile("crash-reporter.ts"),
     "utf8",
   );
   assert.match(crash, /export function configureCrashReporter/);
@@ -93,14 +105,14 @@ test("N2.3 bindings + exports publics index.ts", () => {
     fs.existsSync(
       path.join(
         root,
-        "packages/electron-shell/dist/host/ai-workspace/manager.js",
+        "packages/host-runtime/dist/ai-workspace/manager.js",
       ),
     ),
     "dist ai-workspace manquant — rebuild electron-shell",
   );
   assert.ok(
     fs.existsSync(
-      path.join(root, "packages/electron-shell/dist/host/meili/indexer.js"),
+      path.join(root, "packages/search/dist/meili/indexer.js"),
     ),
     "dist meili indexer manquant — rebuild electron-shell",
   );
@@ -117,11 +129,11 @@ test("N2.4 embeds B2 toujours SoT platform-core + sandbox kit", () => {
     assert.ok(fs.existsSync(path.join(embeds, name)), `embed manquant: ${name}`);
   }
   assert.ok(
-    fs.existsSync(path.join(hostDir, "sandbox/os-sandbox.ts")),
+    fs.existsSync(hostFile("sandbox/os-sandbox.ts")),
     "os-sandbox kit manquant",
   );
   assert.ok(
-    fs.existsSync(path.join(hostDir, "sandbox/embed-sandbox.ts")),
+    fs.existsSync(hostFile("sandbox/embed-sandbox.ts")),
     "embed-sandbox kit manquant",
   );
   const pcIdx = fs.readFileSync(
@@ -141,7 +153,7 @@ test("N2.5 shell ipc aiWorkspace + zéro hardcode TF crash kit", () => {
   assert.match(ipc, /ai-workspace:list/);
 
   const mgr = fs.readFileSync(
-    path.join(hostDir, "ai-workspace/manager.ts"),
+    hostFile("ai-workspace/manager.ts"),
     "utf8",
   );
   assert.doesNotMatch(mgr, /tempoflow2_crm_session/);
@@ -153,7 +165,7 @@ test("N2.6 paperclip mort + gate dans npm test", () => {
   assert.match(pkg, /test-phase-n2\.mjs/);
 
   for (const rel of REQUIRED) {
-    const src = fs.readFileSync(path.join(hostDir, rel), "utf8");
+    const src = fs.readFileSync(hostFile(rel), "utf8");
     assert.doesNotMatch(src, PAPERCLIP_RE, `paperclip dans ${rel}`);
   }
 });

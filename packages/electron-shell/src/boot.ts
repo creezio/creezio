@@ -27,7 +27,7 @@ import {
   type ProfileLaunch,
   type RuntimeAppKind,
 } from "@creezio/platform-core";
-import { ensureLogsDir } from "./logger.js";
+import { ensureLogsDir } from "@creezio/host-runtime";
 
 export type DesktopBootContext = {
   manifest: AppManifest;

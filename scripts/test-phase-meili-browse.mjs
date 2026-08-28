@@ -33,20 +33,20 @@ test("source : browseMeiliIndex accepte q vide (kit)", () => {
   assert.match(api, /numberOfDocuments/);
   assert.doesNotMatch(api, /if\s*\(\s*!q|if\s*\(\s*!opts\.query/);
 
-  const shell = read("packages/electron-shell/src/host/meili/browse.ts");
+  const shell = read("packages/search/src/meili/browse.ts");
   assert.match(shell, /export async function browseMeiliIndex/);
   assert.match(shell, /q:\s*req\.query \?\? ""/);
   assert.match(shell, /searchMeiliIndexes/);
 });
 
 test("source : searchMeiliIndexes refuse q vide (pas un browse)", () => {
-  const gen = read("packages/electron-shell/src/host/meili/generic-indexer.ts");
+  const gen = read("packages/search/src/meili/generic-indexer.ts");
   assert.match(gen, /export async function searchMeiliIndexes/);
   assert.match(gen, /if\s*\(\s*!q\s*\|\|/);
 });
 
 test("source : searchMeiliIndexes fail-closed — seul le 404 index absent est toléré", () => {
-  const gen = read("packages/electron-shell/src/host/meili/generic-indexer.ts");
+  const gen = read("packages/search/src/meili/generic-indexer.ts");
   const start = gen.indexOf("export async function searchMeiliIndexes");
   assert.ok(start >= 0);
   const chunk = gen.slice(start, start + 1600);
@@ -88,7 +88,7 @@ test("source : factory search — 0 hit reste meili, fail-closed dans le catch",
 });
 
 test("source : boot Meili fail-closed (MeiliRequiredError + échappatoire unique)", () => {
-  const boot = read("packages/electron-shell/src/host/brand-meili-boot.ts");
+  const boot = read("packages/search/src/brand-meili-boot.ts");
   assert.match(boot, /class MeiliRequiredError/);
   assert.match(boot, /MEILI_REQUIRED/);
   assert.match(boot, /CREEZIO_ALLOW_NO_MEILI/);

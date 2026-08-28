@@ -11,8 +11,10 @@
   "references": [
     { "path": "../brand-config" },
     { "path": "../browser-host" },
+    { "path": "../host-runtime" },
     { "path": "../platform-core" },
     { "path": "../product-hub" },
+    { "path": "../search" },
     { "path": "../shell" }
   ]
 }

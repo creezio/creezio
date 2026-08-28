@@ -15,14 +15,14 @@ const dockerRoot = path.resolve(root, "..");
 const KIT_FILES = [
   "packages/platform-core/src/installer-prefs.ts",
   "packages/platform-core/src/licensing.ts",
-  "packages/electron-shell/src/host/n8n/api-key.ts",
-  "packages/electron-shell/src/host/n8n/agent-isolation.ts",
+  "packages/host-runtime/src/n8n/api-key.ts",
+  "packages/host-runtime/src/n8n/agent-isolation.ts",
   "packages/electron-shell/src/desktop/assistant-chrome.ts",
   "packages/electron-shell/src/desktop/oauth-loopback.ts",
   "packages/electron-shell/src/desktop/profile-picker-html.ts",
   "packages/electron-shell/src/desktop/error-page-html.ts",
-  "packages/electron-shell/src/host/hermes/crm-key.ts",
-  "packages/electron-shell/src/host/hermes/ensure-crm-key-db.ts",
+  "packages/host-runtime/src/hermes/crm-key.ts",
+  "packages/host-runtime/src/hermes/ensure-crm-key-db.ts",
 ];
 
 const BRAND_TWINS = [
@@ -79,7 +79,7 @@ test("O3.3 exports barrels", () => {
 
 test("O3.4 paramétrage marque (pas hardcode unique TF dans API)", () => {
   const api = fs.readFileSync(
-    path.join(root, "packages/electron-shell/src/host/n8n/api-key.ts"),
+    path.join(root, "packages/host-runtime/src/n8n/api-key.ts"),
     "utf8",
   );
   assert.match(api, /N8nApiKeyBrand/);

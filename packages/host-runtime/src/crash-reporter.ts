@@ -13,7 +13,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import crypto from "node:crypto";
-import { recentLines, log, logFileTail, logFilePath } from "../logger.js";
+import { recentLines, log, logFileTail, logFilePath } from "./logger.js";
 
 export type CrashReporterConfig = {
   /** URL collecteur par défaut (marque). Absente = conserve la valeur courante. */

@@ -15,7 +15,7 @@ const require = createRequire(import.meta.url);
 
 test("crash-reporter expose configure + pending + brandId", () => {
   const src = fs.readFileSync(
-    path.join(root, "packages/electron-shell/src/host/crash-reporter.ts"),
+    path.join(root, "packages/host-runtime/src/crash-reporter.ts"),
     "utf8",
   );
   assert.match(src, /configureCrashReporter/);

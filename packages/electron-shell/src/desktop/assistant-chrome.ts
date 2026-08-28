@@ -4,8 +4,8 @@
  * Electron chargé via loadElectron (pas d'import top-level — tests kit Node).
  */
 
-import { logError } from "../logger.js";
-import { loadElectron } from "../host/load-electron.js";
+import { logError } from "@creezio/host-runtime";
+import { loadElectron } from "@creezio/host-runtime";
 
 export const ASSISTANT_FAB_SIZE_PX = 56;
 export const ASSISTANT_FAB_MARGIN_PX = 20;

@@ -15,13 +15,15 @@ import { isFeatureEnabled } from "@creezio/brand-config";
 import { pluginsRootDir } from "@creezio/platform-core";
 import {
   ensureKitOsBinaries,
-  expectedCountsForFeed,
   kitBinaryPaths,
   listenBrandKernelHttp,
+} from "@creezio/host-runtime";
+import {
+  expectedCountsForFeed,
   maybeBootBrandMeili,
   meiliCoherenceScriptPath,
   runFeedIndexation,
-} from "@creezio/electron-shell";
+} from "@creezio/search";
 import {
   createMcpFacade,
   discoverModuleToolsFromKernel,

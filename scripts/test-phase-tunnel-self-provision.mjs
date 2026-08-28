@@ -534,7 +534,7 @@ test("ensureCfCnameRecord : A hérité (NPM) → DELETE + POST CNAME tunnel", as
 
 test("configureTunnelIngress suit CREEZIO_DOMAIN, pas seulement le store", () => {
   const src = fs.readFileSync(
-    path.join(ROOT, "packages/electron-shell/src/host/tunnel/tunnel.ts"),
+    path.join(ROOT, "packages/host-runtime/src/tunnel/tunnel.ts"),
     "utf8",
   );
   assert.match(src, /domain: instanceDomain\(\) \|\| cfg\.hostname/);

@@ -7,10 +7,10 @@ import path from "node:path";
 import { spawn } from "node:child_process";
 import type { AppManifest } from "@creezio/brand-config";
 import { factoryResetTargets } from "@creezio/platform-core";
-import { wipeLocalUserData } from "../factory-reset-runtime.js";
+import { wipeLocalUserData } from "./factory-reset-runtime.js";
 import { lazyHost } from "./host-stack.js";
 import { applyOsSandboxEnv } from "./sandbox/embed-sandbox.js";
-import { startMeili } from "./meili-launcher.js";
+import { startMeili } from "@creezio/search";
 import { findFreePort, startBrandNextServer } from "./server-launcher.js";
 import { buildIsolatedNodeEnv } from "./node-runtime.js";
 import {
@@ -22,7 +22,7 @@ import {
   configureMeiliCoherencePaths,
   decideMeiliReady,
   INDEX_SCHEMA_VERSION,
-} from "./meili/index.js";
+} from "@creezio/search";
 import { createFeatureOffHost } from "./feature-off-host.js";
 import { loadElectron } from "./load-electron.js";
 

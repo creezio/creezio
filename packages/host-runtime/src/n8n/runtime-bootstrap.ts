@@ -19,7 +19,7 @@ import {
 } from "@creezio/platform-core";
 import type { HostRuntimeContext } from "../context.js";
 import { hostLog, hostProductName } from "../context.js";
-import { kitOsVendorDir } from "../kit-os-resources.js";
+import { kitOsVendorDir } from "@creezio/platform-core";
 import { runNpmCli } from "../npm-cli.js";
 
 export type N8nBootstrapPhase =

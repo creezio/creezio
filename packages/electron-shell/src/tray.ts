@@ -5,8 +5,8 @@
 
 import fs from "node:fs";
 import path from "node:path";
-import { log, logError } from "./logger.js";
-import { loadElectron } from "./host/load-electron.js";
+import { log, logError } from "@creezio/host-runtime";
+import { loadElectron } from "@creezio/host-runtime";
 
 const TRAY_ICON_FALLBACK_B64 =
   "iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAACAklEQVR42u2X2U7CQBSGeZwCgkvdtUAv+gx9g8IENC5xiUsUA/SKt5qkEMAoRmtcohKBtO/QHHMSLswMygytd/7Jd9P2XxISOo3F/iUhxfIMxfLqiuVRxfJ8xfKCEf7oGt4zIi+O54cknh+68fwQBMFnSejiRGGgJgoDmigMYErQq05VniR9M0n6QZL0ISSYYUqVzxQ/zZniJ0SM2IhUqaemSr0gVepBxGDm5J8jvfVB01sf8EfQ38u330l6+x2+E1ZsHnb8OGB2582d3XmD74QVm4cdY8vndl+Nud1XYAmrcZnYxQ2Y33upz++9AEtYjcvELm7Awv4zXdh/BlFYyXixixugHjz56sETiMJKxotd3IDFw8dg8fARRGEl48UubsDSkRssHbkgCisZL3ZxA5aPH/zl4wcQhZWMF7u4ASsn93Tl5B5EYSXjxS5uwOrpXX319A5EYSXjxS5uwNpZ11g764IorGS82DX233D9/NZdP78FEViJ+rDjx3fBxsUN2bi4ARFYifqw49c34ublNd28vIZJsBLxYPbE84BW7qhauRNo5Q5EDGaKnQ+1q7apXbUhYuTOhZlKy8xUWkGm0oLQYIY51ck4W22qWWqTZqtNmBL0qqG/D3K1BsnVGm6u1gBB8FkS+ReSbjuGbjt13Xaobju+bjvBCH90De8ZsX9J6AvaetnzgauSsgAAAABJRU5ErkJggg==";

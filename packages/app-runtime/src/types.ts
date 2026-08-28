@@ -5,7 +5,7 @@ import type {
   SqliteMigration,
   SqliteRuntime,
 } from "@creezio/platform-core";
-import type { BrandMeiliFeed } from "@creezio/electron-shell/meili";
+import type { BrandMeiliFeed } from "@creezio/search";
 import type { CoreNavItem } from "@creezio/shell-ui";
 import type { McpRegisteredTool } from "@creezio/mcp-facade";
 

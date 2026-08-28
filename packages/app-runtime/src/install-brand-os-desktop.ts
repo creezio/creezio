@@ -4,26 +4,28 @@
  */
 import path from "node:path";
 import {
-  AiScreencaster,
-  AiWorkspaceManager,
   AssistantChromeOverlay,
-  BridgeClient,
   createLocalSplashSteps,
   errorPageDataUrl,
+  installBrandDesktopRuntime,
+  instrumentWebContents,
+  profilePickerHtml,
+  type BrandDesktopDeps,
+} from "@creezio/electron-shell";
+import {
+  AiScreencaster,
+  AiWorkspaceManager,
+  BridgeClient,
   executeAiWorkspaceAction,
   getBootStage,
   getBootTimeline,
   initCrashReporter,
-  installBrandDesktopRuntime,
   installGlobalHandlers,
-  instrumentWebContents,
   isAiWorkspaceActionType,
-  profilePickerHtml,
   reportCrash,
   reportCrashDebounced,
   setBootStage,
-  type BrandDesktopDeps,
-} from "@creezio/electron-shell";
+} from "@creezio/host-runtime";
 import type {
   SupplierTabManager,
   SupplierTabManagerOptions,

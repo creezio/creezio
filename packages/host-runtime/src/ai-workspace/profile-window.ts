@@ -12,7 +12,7 @@
  */
 
 import type { BaseWindow as BaseWindowType, WebContentsView } from "electron";
-import { log, logError } from "../../logger.js";
+import { log, logError } from "../logger.js";
 import { getAiWorkspaceHostBindings } from "./bindings.js";
 import { loadElectron } from "../load-electron.js";
 

@@ -13,7 +13,7 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
 test("C7.1 kit exporte startHostPluginControlPlane + preHandle", () => {
   const src = fs.readFileSync(
-    path.join(root, "packages/electron-shell/src/host/plugins/control-plane.ts"),
+    path.join(root, "packages/host-runtime/src/plugins/control-plane.ts"),
     "utf8",
   );
   assert.match(src, /export async function startHostPluginControlPlane/);
@@ -32,7 +32,7 @@ test("C7.2 marques appellent startHostPluginControlPlane", () => {
   const kitExtras = fs.readFileSync(
     path.join(
       root,
-      "packages/electron-shell/src/host/plugins/control-extras.ts",
+      "packages/host-runtime/src/plugins/control-extras.ts",
     ),
     "utf8",
   );

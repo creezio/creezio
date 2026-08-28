@@ -11,13 +11,13 @@ import {
   isFeatureEnabled,
   type AppManifest,
 } from "@creezio/brand-config";
+import { createLocalSplashSteps } from "@creezio/electron-shell";
 import {
   brandHermesSkillsDirCandidates,
   configureCrashReporter,
   createBrandHostRuntime,
   createBrandHostStack,
   createLocalConfigStoreSync,
-  createLocalSplashSteps,
   createPluginsHost,
   kitHermesSkillsDir,
   log,
@@ -26,7 +26,7 @@ import {
   type BrandHostSingletons,
   type BrandHostStack,
   type LocalConfigStore,
-} from "@creezio/electron-shell";
+} from "@creezio/host-runtime";
 import {
   pluginsRootDir,
   resolveBrandDbPath,

@@ -45,7 +45,7 @@ test("M3p.2 Certivan façades ≤40 + boot kit", () => {
   const kitExtras = fs.readFileSync(
     path.join(
       root,
-      "packages/electron-shell/src/host/plugins/control-extras.ts",
+      "packages/host-runtime/src/plugins/control-extras.ts",
     ),
     "utf8",
   );

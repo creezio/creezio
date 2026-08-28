@@ -14,7 +14,7 @@
 
 import fs from "node:fs";
 import path from "node:path";
-import { kitOsResourcesRoot } from "../kit-os-resources.js";
+import { kitOsResourcesRoot } from "@creezio/platform-core";
 
 /** Dossier des skills génériques shippés par le kit. */
 export function kitHermesSkillsDir(): string {

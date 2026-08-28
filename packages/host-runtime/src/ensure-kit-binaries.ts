@@ -7,7 +7,7 @@ import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import https from "node:https";
 import path from "node:path";
-import { kitOsResourcesRoot } from "./kit-os-resources.js";
+import { kitOsResourcesRoot } from "@creezio/platform-core";
 
 export type KitBinaryName = "meili" | "cloudflared";
 
