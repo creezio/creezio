@@ -33,6 +33,7 @@ Ports : auto 18790+n, bind `127.0.0.1` (exposition = `--expose`).
 | Enrôler un VPS (agent hôte) | 6 |
 | Builder / publier le client desktop | 7 |
 | Diagnostiquer un boot qui échoue | 8 |
+| Diagnostiquer Meili fail-closed (boot refusé, 503 catalogue) | 8b |
 | Ne pas refaire un piège connu | 9 |
 | n8n / Hermes : superadmin, clé API, webhooks, MCP | 11 |
 | Intégrations / clés API tierces (OpenAI, Notion…) | 12 |
@@ -560,6 +561,29 @@ L'admin (§5) montre boot-status live, logs et ops par serveur sans SSH.
 **Vérité** : `packages/app-runtime/src/listen-brand-os-http.ts` (routes os),
 `start-brand-kernel-harness.ts` (étapes boot),
 `packages/observability/src/ops/journal.ts`.
+
+## 8b. Meili fail-closed (kit ≥ 0.10.13/0.10.14) — symptôme → cause → geste
+
+Meili est un composant **CORE fail-closed** (comme SQLite) dès qu'un feed
+marque déclare ≥ 1 index : plus de `engine:"sql-fallback"` silencieux,
+**zéro LIKE SQL de secours** sur le catalogue (browse/filtre/pagination,
+y compris sans `q`).
+
+| Symptôme | Cause | Geste |
+|---|---|---|
+| Boot refuse de démarrer, `MeiliRequiredError` dans les logs | Binaire Meili absent / ne démarre pas alors que le feed déclare des index | Vérifier le binaire embarqué (`ensure-kit-binaries`, image à jour), `docker logs … \| rg boot-step`, relancer ; ne PAS contourner |
+| Browse **et** search catalogue → **503 `{"error":"meili_unavailable"}`** | Meili KO à chaud (process mort, disque plein) | `curl /api/v1/os/ready` (host Meili), redémarrer l'instance ; le 503 est le contrat, pas un bug |
+| Listes vides + `engine:"indexing"` (browse) / `source:"indexing"` (/search), HTTP 200 | Indexation initiale en arrière-plan (normal après create/update, ~5 min pour 86k produits) | Attendre `docker logs … \| grep index.done` ; ne jamais awaiter l'indexation dans le boot (§9) |
+
+Échappatoire `CREEZIO_ALLOW_NO_MEILI=1` : dev/tests **hors-browse**
+uniquement (warning bruyant) — **interdit en prod**. Chaque module métier
+déclare `meiliIndexes` **ou** `horsIndexJustification` (doctor brand-spec
+fail-closed `MODULE_MEILI_MISSING`, 0.10.13+).
+
+**Vérité** : `packages/api-kernel/src/meili-browse.ts` + `entity-mount.ts`
+(503/`engine`), `packages/electron-shell/src/host/brand-meili-boot.ts`
+(`MeiliRequiredError`), section Meili de
+`packages/electron-shell/AGENTS.md`.
 
 ## 9. Pièges connus (ne pas les refaire)
 
