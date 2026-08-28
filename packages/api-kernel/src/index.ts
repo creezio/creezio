@@ -60,11 +60,13 @@ export {
 export type {
   EntityMeiliBinding,
   EntityMeiliConfig,
+  MeiliBrowseOutcome,
   MeiliBrowseRequest,
   MeiliBrowseResult,
 } from "./meili-browse.js";
 export {
   browseMeiliIndex,
+  browseMeiliIndexOutcome,
   configureEntityMeili,
   configureEntityMeiliFromFeed,
   getEntityMeiliConfig,

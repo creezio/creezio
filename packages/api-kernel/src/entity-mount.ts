@@ -9,8 +9,14 @@
  * - `GET    /`            liste (`q`, `archived`, filtres égalité, `limit`, `offset`,
  *                         `ids` = hydratation par PK). Si un index Meili est
  *                         configuré (`configureEntityMeili`) et que les filtres
- *                         sont exprimables → Meili d'abord, **y compris q vide**.
- *                         SQL = fallback visible (Meili KO / filtre hors index).
+ *                         sont exprimables → Meili, **y compris q vide**.
+ *                         Meili = core fail-closed : entité indexée + Meili KO
+ *                         → **503 `meili_unavailable`** (ou `engine:"indexing"`
+ *                         pendant l'indexation initiale) — zéro LIKE SQL de
+ *                         secours. SQL reste légitime hors index seulement
+ *                         (entité non indexée, filtre hors index visible,
+ *                         `?ids=`, archives) ou avec `CREEZIO_ALLOW_NO_MEILI=1`
+ *                         (dev/tests hors-browse, fallback SQL visible).
  * - `POST   /`            création (colonnes déclarées uniquement)
  * - `GET    /:id`         lecture (hook `afterRead` pour enrichissement)
  * - `PATCH  /:id`         merge partiel (colonnes déclarées uniquement)
@@ -33,10 +39,11 @@ import type {
 } from "./types.js";
 import type { ApiKernel } from "./kernel.js";
 import {
-  browseMeiliIndex,
+  browseMeiliIndexOutcome,
   getEntityMeiliConfig,
   hydrateRowsByIds,
   meiliFilterEq,
+  type MeiliBrowseOutcome,
 } from "./meili-browse.js";
 
 /* ── Contrat public ─────────────────────────────────────────────────────── */
@@ -242,6 +249,35 @@ function foldedLowerSql(column: string): string {
 
 function isTruthyFlag(v: string): boolean {
   return v === "1" || v === "true";
+}
+
+/**
+ * Indexation initiale en cours / jamais aboutie : marqueur posé par
+ * l'indexeur kit (`meta.meili_index_in_progress`) ou fingerprint jamais
+ * écrit. Sert à répondre `engine:"indexing"` (le client réessaie) au lieu
+ * d'un 503 pendant la fenêtre de première indexation.
+ */
+function meiliIndexingInProgress(db: {
+  prepare(sql: string): { get(...args: unknown[]): unknown };
+}): boolean {
+  try {
+    const hasMeta = db
+      .prepare(
+        "SELECT COUNT(*) AS c FROM sqlite_master WHERE type='table' AND name='meta'",
+      )
+      .get() as { c: number } | undefined;
+    if (!hasMeta || Number(hasMeta.c) === 0) return true;
+    const inProgress = db
+      .prepare("SELECT value FROM meta WHERE key='meili_index_in_progress'")
+      .get();
+    if (inProgress) return true;
+    const fingerprint = db
+      .prepare("SELECT value FROM meta WHERE key='meili_index_fingerprint'")
+      .get();
+    return !fingerprint;
+  } catch {
+    return false;
+  }
 }
 
 function isFalsyFlag(v: string): boolean {
@@ -470,8 +506,7 @@ export function createEntityApiMount(spec: EntitySpec): ApiMount {
         process.env.MEILI_API_KEY ||
         process.env.MEILI_MASTER_KEY ||
         "";
-      const browse = meiliCfg?.browse ?? browseMeiliIndex;
-      const meili = await browse({
+      const browseReq = {
         host,
         apiKey,
         indexUid: binding.indexUid,
@@ -481,30 +516,93 @@ export function createEntityApiMount(spec: EntitySpec): ApiMount {
         hitsPerPage,
         attributesToRetrieve: ["id"],
         facets: binding.facets,
+      };
+      let outcome: MeiliBrowseOutcome;
+      if (meiliCfg?.browse) {
+        // Override tests : null = incident (indistinguable → fail-closed).
+        const r = await meiliCfg.browse(browseReq);
+        outcome = r
+          ? { kind: "ok", result: r }
+          : { kind: "unavailable", reason: "browse_override_null" };
+      } else {
+        outcome = await browseMeiliIndexOutcome(browseReq);
+      }
+
+      const indexingResponse = (): ApiResponse => ({
+        status: 200,
+        body: { items: [], total: 0, engine: "indexing" },
       });
-      if (!meili) {
+
+      if (outcome.kind === "ok") {
+        // 0 hit sur un index peuplé = succès Meili (jamais un fallback).
+        const meili = outcome.result;
+        const hitIds = meili.hits
+          .map((h) => String(h.id ?? "").trim())
+          .filter(Boolean);
+        const rows = hydrateRowsByIds(db, table, hitIds);
+        if (hooks.afterList) {
+          const body = await hooks.afterList(rows, ctx);
+          if (body !== undefined) return { status: 200, body };
+        }
+        return {
+          status: 200,
+          body: {
+            items: rows,
+            total: meili.total,
+            engine: "meili",
+            ...(meili.facetDistribution
+              ? { facetDistribution: meili.facetDistribution }
+              : {}),
+          },
+        };
+      }
+
+      // Cas hors index légitime : filtre déclaré filterable côté binding
+      // mais rejeté par l'index réel (drift settings) → SQL VISIBLE.
+      if (outcome.kind === "filter_rejected") {
+        return listFromSql(ctx, {
+          engine: "sql",
+          fallback: "filter_rejected",
+        });
+      }
+
+      // Index vide ou absent pendant l'indexation initiale → état explicite,
+      // le client réessaie (jamais de LIKE SQL de secours).
+      if (
+        (outcome.kind === "empty_index" || outcome.kind === "index_missing") &&
+        meiliIndexingInProgress(db)
+      ) {
+        return indexingResponse();
+      }
+      // Index peuplé côté fingerprint mais 0 doc (catalogue réellement
+      // vide) : succès Meili — liste vide.
+      if (outcome.kind === "empty_index") {
+        if (hooks.afterList) {
+          const body = await hooks.afterList([], ctx);
+          if (body !== undefined) return { status: 200, body };
+        }
+        return {
+          status: 200,
+          body: { items: [], total: 0, engine: "meili" },
+        };
+      }
+
+      // Meili core fail-closed : incident (down / index jamais créé /
+      // non configuré) sur une entité indexée = erreur visible, PAS de
+      // LIKE SQL. Échappatoire dev/tests hors-browse : CREEZIO_ALLOW_NO_MEILI=1.
+      if (process.env.CREEZIO_ALLOW_NO_MEILI === "1") {
         return listFromSql(ctx, {
           engine: "sql",
           fallback: host ? "meili_unavailable" : "meili_unconfigured",
         });
       }
-      const hitIds = meili.hits
-        .map((h) => String(h.id ?? "").trim())
-        .filter(Boolean);
-      const rows = hydrateRowsByIds(db, table, hitIds);
-      if (hooks.afterList) {
-        const body = await hooks.afterList(rows, ctx);
-        if (body !== undefined) return { status: 200, body };
-      }
       return {
-        status: 200,
+        status: 503,
         body: {
-          items: rows,
-          total: meili.total,
-          engine: "meili",
-          ...(meili.facetDistribution
-            ? { facetDistribution: meili.facetDistribution }
-            : {}),
+          error: "meili_unavailable",
+          index: binding.indexUid,
+          reason:
+            outcome.kind === "unavailable" ? outcome.reason : outcome.kind,
         },
       };
     }

@@ -101,7 +101,11 @@ export type {
 export { listenBrandKernelHttp } from "./host/brand-kernel-http.js";
 
 export type { BrandMeiliBootResult } from "./host/brand-meili-boot.js";
-export { maybeBootBrandMeili } from "./host/brand-meili-boot.js";
+export {
+  isMeiliRequiredError,
+  maybeBootBrandMeili,
+  MeiliRequiredError,
+} from "./host/brand-meili-boot.js";
 
 export type {
   RunningServer,

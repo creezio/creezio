@@ -44,12 +44,17 @@ Le package doit protéger les frontières DB, empêcher les abus historiques com
   - moteur CRUD déclaratif : `EntitySpec`, `createEntityApiMount`,
     `registerEntityMounts` (routes list/get/create/patch/delete/archive,
     SQL paramétré, identifiants validés `[a-z_][a-z0-9_]*`, hooks métier).
-    Liste : Meili d'abord si `configureEntityMeili` a un index pour la
-    table **et** que le filtre est exprimable (`q` vide inclus). SQL =
-    fallback visible (`engine:"sql"`, `fallback`) ou hydratation `?ids=`.
+    Liste : Meili si `configureEntityMeili` a un index pour la table **et**
+    que le filtre est exprimable (`q` vide inclus). **Meili core
+    fail-closed** : entité indexée + Meili KO = **503 `meili_unavailable`**
+    (ou `engine:"indexing"` pendant l'indexation initiale) — zéro LIKE SQL
+    de secours. SQL légitime : entité non indexée, filtre hors index
+    (`filter_not_indexable`/`filter_rejected` visibles), hydratation
+    `?ids=`, archives, ou `CREEZIO_ALLOW_NO_MEILI=1` (dev/tests).
     Gate : `scripts/test-phase-api-entity-mount.mjs` + `test-phase-meili-browse`.
 - `src/meili-browse.ts`
-  - `browseMeiliIndex` (q vide OK) + `configureEntityMeili` /
+  - `browseMeiliIndexOutcome` (issue discriminée incident/hors-index) +
+    `browseMeiliIndex` (compat `null`) + `configureEntityMeili` /
     `configureEntityMeiliFromFeed` (UIDs depuis le feed marque, jamais
     hardcodés). `searchMeiliIndexes` est interdit pour le browse.
 - `src/hono.ts`

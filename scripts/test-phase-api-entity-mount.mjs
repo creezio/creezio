@@ -607,7 +607,7 @@ test("entity-mount deny cross-write H2 inchangé", async () => {
   }
 });
 
-test("entity-mount liste Meili : q vide + 0 hit + filtre hors index → SQL visible", async () => {
+test("entity-mount liste Meili : q vide + 0 hit + Meili KO fail-closed 503", async () => {
   resetEntityMeiliForTests();
   const h = makeHarness();
   try {
@@ -644,14 +644,30 @@ test("entity-mount liste Meili : q vide + 0 hit + filtre hors index → SQL visi
     assert.equal(zero.body.items.length, 0);
     assert.equal(zero.body.total, 0);
 
-    const rejected = await h.call("GET", "widgets", {
-      query: { group_id: "unknown" },
-    });
-    // browse mock returns null only if filter contains "unknown" — group_id = "unknown"
-    // uses meiliFilterEq → `group_id = "unknown"` which includes unknown → null → SQL
-    assert.equal(rejected.status, 200);
-    assert.equal(rejected.body.engine, "sql");
-    assert.equal(rejected.body.fallback, "meili_unavailable");
+    // Meili KO (override → null) sur une entité indexée = FAIL-CLOSED :
+    // 503 meili_unavailable, jamais de LIKE SQL de secours (Meili = core).
+    const prevAllow = process.env.CREEZIO_ALLOW_NO_MEILI;
+    delete process.env.CREEZIO_ALLOW_NO_MEILI;
+    try {
+      const down = await h.call("GET", "widgets", {
+        query: { group_id: "unknown" },
+      });
+      assert.equal(down.status, 503, "Meili KO → 503 (pas de SQL de secours)");
+      assert.equal(down.body.error, "meili_unavailable");
+
+      // Échappatoire dev/tests hors-browse : CREEZIO_ALLOW_NO_MEILI=1 →
+      // SQL VISIBLE (fallback marqué), jamais silencieux.
+      process.env.CREEZIO_ALLOW_NO_MEILI = "1";
+      const allowed = await h.call("GET", "widgets", {
+        query: { group_id: "unknown" },
+      });
+      assert.equal(allowed.status, 200);
+      assert.equal(allowed.body.engine, "sql");
+      assert.equal(allowed.body.fallback, "meili_unavailable");
+    } finally {
+      if (prevAllow === undefined) delete process.env.CREEZIO_ALLOW_NO_MEILI;
+      else process.env.CREEZIO_ALLOW_NO_MEILI = prevAllow;
+    }
 
     const byIds = await h.call("GET", "widgets", { query: { ids: id } });
     assert.equal(byIds.status, 200);

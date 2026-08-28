@@ -1,11 +1,16 @@
 #!/usr/bin/env node
 /**
- * Gate Meili browse — contrat plateforme :
+ * Gate Meili browse — contrat plateforme « Meili = composant CORE » :
  * - browse q vide = Meili (POST q:"") ;
  * - 0 hit = engine meili (jamais 0-hit → SQL) ;
- * - filtre rejeté / Meili KO = SQL fallback visible ;
- * - factory search mount sans le piège `if (hits.length > 0)` ;
+ * - boot fail-closed : feed indexé + binaire absent = throw MeiliRequiredError
+ *   (échappatoire unique CREEZIO_ALLOW_NO_MEILI=1, dev/tests hors-browse) ;
+ * - entité indexée + Meili KO = 503 meili_unavailable (ou engine:"indexing"
+ *   pendant l'indexation initiale) — zéro LIKE SQL de secours ;
+ * - filtre rejeté = SQL VISIBLE (cas hors index) ;
+ * - factory search mount fail-closed (503 dans le catch, SQL sous flag only) ;
  * - module catalogue généré déclare meiliIndexes OU horsIndexJustification ;
+ * - doctor brand-spec MODULE_MEILI_MISSING (entité listable sans schéma) ;
  * - searchMeiliIndexes n'est PAS le helper de browse (retourne [] si q vide).
  */
 import assert from "node:assert/strict";
@@ -40,11 +45,11 @@ test("source : searchMeiliIndexes refuse q vide (pas un browse)", () => {
   assert.match(gen, /if\s*\(\s*!q\s*\|\|/);
 });
 
-test("source : factory search — 0 hit reste meili, SQL seulement dans catch", () => {
+test("source : factory search — 0 hit reste meili, fail-closed dans le catch", () => {
   const native = read("packages/factory/src/generators/native-runtime.ts");
   const start = native.indexOf("function createSearchMount()");
   assert.ok(start >= 0, "createSearchMount absent");
-  const chunk = native.slice(start, start + 3500);
+  const chunk = native.slice(start, start + 4500);
   assert.doesNotMatch(
     chunk,
     /if\s*\(\s*hits\.length\s*>\s*0\s*\)/,
@@ -53,6 +58,44 @@ test("source : factory search — 0 hit reste meili, SQL seulement dans catch", 
   assert.match(chunk, /engine:\s*"meili"/);
   assert.match(chunk, /0 hit Meili EST la réponse/);
   assert.match(chunk, /hits:\s*mapped/);
+  // Fail-closed : Meili KO = 503 meili_unavailable ; SQL uniquement sous
+  // CREEZIO_ALLOW_NO_MEILI=1 ; engine indexing pendant l'indexation initiale.
+  assert.match(chunk, /meili_unavailable/);
+  assert.match(chunk, /CREEZIO_ALLOW_NO_MEILI/);
+  assert.match(chunk, /engine:\s*"indexing"/);
+});
+
+test("source : boot Meili fail-closed (MeiliRequiredError + échappatoire unique)", () => {
+  const boot = read("packages/electron-shell/src/host/brand-meili-boot.ts");
+  assert.match(boot, /class MeiliRequiredError/);
+  assert.match(boot, /MEILI_REQUIRED/);
+  assert.match(boot, /CREEZIO_ALLOW_NO_MEILI/);
+  assert.match(
+    boot,
+    /throw new MeiliRequiredError/,
+    "feed indexé + binaire absent doit throw (fail-closed)",
+  );
+  // Le harness desktop doit propager l'erreur fail-closed (pas de swallow).
+  const desktop = read("packages/app-runtime/src/start-brand-desktop.ts");
+  assert.match(desktop, /MEILI_REQUIRED/);
+});
+
+test("source : entity-mount fail-closed (503 meili_unavailable, indexing)", () => {
+  const mount = read("packages/api-kernel/src/entity-mount.ts");
+  assert.match(mount, /meili_unavailable/);
+  assert.match(mount, /engine:\s*"indexing"/);
+  assert.match(mount, /CREEZIO_ALLOW_NO_MEILI/);
+  assert.match(mount, /browseMeiliIndexOutcome/);
+  const browse = read("packages/api-kernel/src/meili-browse.ts");
+  assert.match(browse, /export async function browseMeiliIndexOutcome/);
+  assert.match(browse, /filter_rejected/);
+});
+
+test("source : doctor brand-spec impose meiliIndexes ou horsIndexJustification", () => {
+  const doctor = read("packages/brand-spec/src/doctor.ts");
+  assert.match(doctor, /MODULE_MEILI_MISSING/);
+  assert.match(doctor, /doctorBrandModuleMeili/);
+  assert.match(doctor, /horsIndexJustification/);
 });
 
 test("source : factory module catalogue déclare meiliIndexes ou hors-index", () => {
@@ -137,8 +180,145 @@ test("isolé : browse q vide = Meili, 0 hit = meili, filtre rejeté = null", asy
       query: "",
       filters: ["unknown_field = 1"],
     });
-    assert.equal(rejected, null, "filtre rejeté → null (SQL fallback)");
+    assert.equal(rejected, null, "filtre rejeté → null (compat)");
   } finally {
     server.close();
+  }
+});
+
+test("isolé : browseMeiliIndexOutcome discrimine incident vs hors-index", async () => {
+  const { browseMeiliIndexOutcome } = await import(
+    path.join(ROOT, "packages/api-kernel/dist/meili-browse.js")
+  );
+
+  const server = http.createServer((req, res) => {
+    const url = new URL(req.url || "/", "http://127.0.0.1");
+    const json = (code, body) => {
+      res.writeHead(code, { "content-type": "application/json" });
+      res.end(JSON.stringify(body));
+    };
+    if (url.pathname.includes("/indexes/missing_index/")) return json(404, {});
+    if (url.pathname.endsWith("/stats")) {
+      return json(200, { numberOfDocuments: 1 });
+    }
+    if (req.method === "POST" && url.pathname.includes("/search")) {
+      let raw = "";
+      req.on("data", (c) => (raw += c));
+      req.on("end", () => {
+        const body = JSON.parse(raw || "{}");
+        const filter = Array.isArray(body.filter)
+          ? body.filter.join(" AND ")
+          : String(body.filter || "");
+        if (filter.includes("bad_attr")) {
+          return json(400, { message: "invalid filter" });
+        }
+        json(200, { hits: [{ id: "p1" }], totalHits: 1 });
+      });
+      return;
+    }
+    json(404, {});
+  });
+  await new Promise((r) => server.listen(0, "127.0.0.1", r));
+  const { port } = server.address();
+  const host = `http://127.0.0.1:${port}`;
+  try {
+    const ok = await browseMeiliIndexOutcome({
+      host,
+      indexUid: "catalog_products",
+      query: "",
+    });
+    assert.equal(ok.kind, "ok");
+    assert.equal(ok.result.total, 1);
+
+    const missing = await browseMeiliIndexOutcome({
+      host,
+      indexUid: "missing_index",
+      query: "",
+    });
+    assert.equal(missing.kind, "index_missing");
+
+    const rejected = await browseMeiliIndexOutcome({
+      host,
+      indexUid: "catalog_products",
+      query: "",
+      filters: ["bad_attr = 1"],
+    });
+    assert.equal(rejected.kind, "filter_rejected", "400 = hors index (SQL visible)");
+  } finally {
+    server.close();
+  }
+
+  // Meili down (port fermé) = incident → unavailable (503 côté entity-list).
+  const down = await browseMeiliIndexOutcome({
+    host,
+    indexUid: "catalog_products",
+    query: "",
+    timeoutMs: 500,
+  });
+  assert.equal(down.kind, "unavailable", "Meili down doit être un incident");
+
+  const unconfigured = await browseMeiliIndexOutcome({
+    host: "",
+    indexUid: "catalog_products",
+  });
+  assert.equal(unconfigured.kind, "unconfigured");
+});
+
+test("isolé : doctor MODULE_MEILI_MISSING sur entité listable sans schéma", async () => {
+  const os = await import("node:os");
+  const { doctorBrandSpec } = await import(
+    path.join(ROOT, "packages/brand-spec/dist/doctor.js")
+  );
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "creezio-meili-doctor-"));
+  try {
+    const specDir = path.join(tmp, "brand-spec");
+    const modDir = path.join(specDir, "modules", "articles");
+    fs.mkdirSync(modDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(specDir, "brand.yaml"),
+      'brandId: acme\nbrandName: Acme\ndomain: acme.local\n',
+    );
+    fs.writeFileSync(path.join(specDir, "product.md"), "# Produit Acme\n");
+    fs.writeFileSync(path.join(modDir, "prd.md"), "# Articles\n");
+    fs.writeFileSync(path.join(modDir, "interview.md"), "# Interview\n");
+    // Pin lockstep ≥ 0.10.13 → fail-closed.
+    fs.mkdirSync(path.join(tmp, "server"), { recursive: true });
+    fs.writeFileSync(
+      path.join(tmp, "server", "package.json"),
+      JSON.stringify({
+        dependencies: { "@creezio/app-runtime": "^0.10.13" },
+      }),
+    );
+    const modulesDir = path.join(tmp, "server", "src", "electron", "modules");
+    fs.mkdirSync(modulesDir, { recursive: true });
+    const moduleTs = (extra) => `
+export const articlesModule = {
+  id: "articles",
+  entitySpecs: { articles: { table: "articles", columns: [{ name: "nom" }] } },
+${extra}
+  demo: { scenarios: [genericOsTourScenario({ productName: "Acme" })] },
+};
+`;
+    // Sans schéma data/index → error.
+    fs.writeFileSync(path.join(modulesDir, "articles.ts"), moduleTs(""));
+    const bad = doctorBrandSpec(specDir);
+    assert.ok(
+      bad.issues.some(
+        (i) => i.code === "MODULE_MEILI_MISSING" && i.level === "error",
+      ),
+      `MODULE_MEILI_MISSING attendu: ${JSON.stringify(bad.issues)}`,
+    );
+    // Justification hors-index → plus d'issue Meili.
+    fs.writeFileSync(
+      path.join(modulesDir, "articles.ts"),
+      moduleTs('  horsIndexJustification: "écritures internes — hors browse catalogue",'),
+    );
+    const good = doctorBrandSpec(specDir);
+    assert.ok(
+      !good.issues.some((i) => i.code === "MODULE_MEILI_MISSING"),
+      `pas d'issue attendue: ${JSON.stringify(good.issues)}`,
+    );
+  } finally {
+    fs.rmSync(tmp, { recursive: true, force: true });
   }
 });

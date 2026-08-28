@@ -60,5 +60,13 @@ export {
 
 export { runIndexation } from "./indexer.js";
 export { runFeedIndexation, searchMeiliIndexes } from "./generic-indexer.js";
-export { browseMeiliIndex, meiliFilterEq } from "./browse.js";
-export type { MeiliBrowseRequest, MeiliBrowseResult } from "./browse.js";
+export {
+  browseMeiliIndex,
+  browseMeiliIndexOutcome,
+  meiliFilterEq,
+} from "./browse.js";
+export type {
+  MeiliBrowseOutcome,
+  MeiliBrowseRequest,
+  MeiliBrowseResult,
+} from "./browse.js";

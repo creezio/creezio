@@ -57,6 +57,9 @@ const child = spawn(
       METIER_PORT: String(port),
       // Harness métier : session virtuelle (garde mounts F3). Surface prod-like = gate module-mount-session.
       AUTH_DISABLED: "1",
+      // Smoke métier hors-browse : Meili volontairement absent (boot
+      // fail-closed sinon) — le browse indexé répond en SQL visible ici.
+      CREEZIO_ALLOW_NO_MEILI: "1",
     },
     stdio: ["ignore", "pipe", "pipe"],
   },

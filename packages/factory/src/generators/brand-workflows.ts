@@ -56,6 +56,9 @@ jobs:
     env:
       AUTH_DISABLED: "1"
       CREEZIO_NATIVE_WARM: "0"
+      # CI marque sans binaire Meili : boot fail-closed sinon (Meili core).
+      # Les gates browse doivent poser un vrai binaire (test:meili-enforced).
+      CREEZIO_ALLOW_NO_MEILI: "1"
       CREEZIO_APP_ROOT: \${{ github.workspace }}
       # Secret repo (PAT read:packages sur l'org creezio) — consommé par le
       # .npmrc commité (jamais de token en clair dans le repo).

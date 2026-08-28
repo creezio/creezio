@@ -4,25 +4,38 @@
 
 Maintenir le runtime Electron plateforme Creezio : host stack, desktop runtime, launchers locaux, plugins, browser-tabs, ai-workspace, crash/updater/tray/splash et bindings marque. Garder le package generique, testable et sans dependance metier verticale.
 
-## Meili — recherche et browse (contrat marques)
+## Meili — composant CORE fail-closed (contrat marques)
 
-Quand un feed `catalog_*` est indexé :
+**Meili = core, comme SQLite.** Quand un feed déclare ≥ 1 index :
 
-1. **Toujours préférer Meili** pour lister/filtrer des produits (et
-   équivalents catalogue) dès que les filtres/tris sont dans
-   `filterableAttributes` / `sortableAttributes` — **même avec `q` vide**.
-2. Exemples : `/secteurs?categorie=` → Meili ; `/produits?source=europages`
-   → Meili ; recherche texte → Meili ; pagination globale → Meili.
-3. **SQL** = fallback (Meili down, index vide, filtre rejeté) **ou** cas hors
-   index (agrégats `AVG(v_variation)`, bornes prix sur `releves_prix`,
-   écritures, joins métier non projetés dans le document).
-4. **Piège interdit** : `if (q) { meili } else { sql }` — le browse filtré
+1. **Boot fail-closed** : binaire absent / start KO ⇒ `maybeBootBrandMeili`
+   **throw `MeiliRequiredError`** (échec de boot explicite, comme une DB
+   absente). Plus de `engine:"sql-fallback"` par défaut. Unique
+   échappatoire : `CREEZIO_ALLOW_NO_MEILI=1` (dev/tests hors-browse,
+   warning bruyant, interdit en prod).
+2. **Toujours Meili** pour lister/filtrer le catalogue dès que les
+   filtres/tris sont dans `filterableAttributes` / `sortableAttributes` —
+   **même avec `q` vide** (`/secteurs?categorie=`, `/produits?source=…`,
+   pagination globale, recherche texte).
+3. **Meili KO = erreur visible** : entité indexée + Meili injoignable ⇒
+   **503 `{error:"meili_unavailable"}`** ; indexation initiale en cours ⇒
+   `engine:"indexing"` (le client réessaie). **Zéro LIKE SQL de secours
+   sur le catalogue.**
+4. **SQL légitime UNIQUEMENT hors index** : entité non indexée, agrégats
+   (`AVG(v_variation)`), bornes prix sur `releves_prix`, écritures, joins
+   métier non projetés, EAN/`search-skus`, fiche GET by id, filtre rejeté
+   par l'index (`filter_rejected` **visible**).
+5. **Piège interdit** : `if (q) { meili } else { sql }` — le browse filtré
    sans texte doit aussi passer Meili (audit perf secteurs 3668bbbd).
-5. Helper public : `browseMeiliIndex` (`@creezio/electron-shell/meili`) —
-   POST `q:""` + filter/sort/page. Retourne `null` si KO / index vide /
-   filtre rejeté. **Ne pas** utiliser `searchMeiliIndexes` pour le browse
-   (retourne `[]` si `q` vide). Entity-list kit : `configureEntityMeili`
-   (`@creezio/api-kernel`) auto-branché depuis le feed (`configureEntityMeiliFromFeed`).
+6. Helpers publics : `browseMeiliIndexOutcome` (`@creezio/electron-shell/meili`,
+   issue discriminée incident/hors-index) et `browseMeiliIndex` (compat,
+   `null` = tout incident). **Ne pas** utiliser `searchMeiliIndexes` pour le
+   browse (retourne `[]` si `q` vide). Entity-list kit : `configureEntityMeili`
+   (`@creezio/api-kernel`) auto-branché depuis le feed
+   (`configureEntityMeiliFromFeed`) — 503 fail-closed intégré.
+7. **Schéma data + index par module** : chaque `BrandModuleDef` avec entité
+   listable déclare `meiliIndexes` **ou** `horsIndexJustification` — doctor
+   brand-spec `MODULE_MEILI_MISSING` fail-closed (0.10.13+).
 
 Le launcher/indexer vivent ici ; la requête UI (`listProduits` etc.) reste
 dans la marque mais **doit** respecter ce contrat.
