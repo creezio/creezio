@@ -6,7 +6,11 @@
  * la marque fournit le schéma (specs) et le métier (hooks/extraRoutes).
  *
  * Routes générées pour un mount `/api/v1/modules/<id>` :
- * - `GET    /`            liste (`q`, `archived`, filtres égalité, `limit`, `offset`)
+ * - `GET    /`            liste (`q`, `archived`, filtres égalité, `limit`, `offset`,
+ *                         `ids` = hydratation par PK). Si un index Meili est
+ *                         configuré (`configureEntityMeili`) et que les filtres
+ *                         sont exprimables → Meili d'abord, **y compris q vide**.
+ *                         SQL = fallback visible (Meili KO / filtre hors index).
  * - `POST   /`            création (colonnes déclarées uniquement)
  * - `GET    /:id`         lecture (hook `afterRead` pour enrichissement)
  * - `PATCH  /:id`         merge partiel (colonnes déclarées uniquement)
@@ -28,6 +32,12 @@ import type {
   ModuleOperation,
 } from "./types.js";
 import type { ApiKernel } from "./kernel.js";
+import {
+  browseMeiliIndex,
+  getEntityMeiliConfig,
+  hydrateRowsByIds,
+  meiliFilterEq,
+} from "./meili-browse.js";
 
 /* ── Contrat public ─────────────────────────────────────────────────────── */
 
@@ -350,7 +360,10 @@ export function createEntityApiMount(spec: EntitySpec): ApiMount {
     };
   }
 
-  async function handleList(ctx: EntityHookContext): Promise<ApiResponse> {
+  async function listFromSql(
+    ctx: EntityHookContext,
+    extras?: { engine?: string; fallback?: string },
+  ): Promise<ApiResponse> {
     const { req, db } = ctx;
     const { where, params } = buildListWhere(req);
 
@@ -384,7 +397,119 @@ export function createEntityApiMount(spec: EntitySpec): ApiMount {
       const body = await hooks.afterList(rows, ctx);
       if (body !== undefined) return { status: 200, body };
     }
-    return { status: 200, body: { items: rows, total } };
+    return {
+      status: 200,
+      body: {
+        items: rows,
+        total,
+        ...(extras?.engine ? { engine: extras.engine } : {}),
+        ...(extras?.fallback ? { fallback: extras.fallback } : {}),
+      },
+    };
+  }
+
+  async function handleList(ctx: EntityHookContext): Promise<ApiResponse> {
+    const { req, db } = ctx;
+    const idsRaw = qstr(req, "ids").trim();
+    if (idsRaw) {
+      const ids = idsRaw
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean)
+        .slice(0, 200);
+      const rows = hydrateRowsByIds(db, table, ids);
+      if (hooks.afterList) {
+        const body = await hooks.afterList(rows, ctx);
+        if (body !== undefined) return { status: 200, body };
+      }
+      return { status: 200, body: { items: rows, total: rows.length } };
+    }
+
+    const meiliCfg = getEntityMeiliConfig();
+    const binding = meiliCfg?.indexes[table];
+    const archived = archivable ? qstr(req, "archived") || "0" : "0";
+    if (binding && archived !== "1") {
+      const inexpressible: string[] = [];
+      for (const col of filterable) {
+        const raw = qstr(req, col.name);
+        if (!raw) continue;
+        const meiliAttr = binding.filterMap?.[col.name] ?? col.name;
+        if (!binding.filterable.includes(meiliAttr)) {
+          inexpressible.push(col.name);
+        }
+      }
+      if (inexpressible.length > 0) {
+        return listFromSql(ctx, {
+          engine: "sql",
+          fallback: "filter_not_indexable",
+        });
+      }
+
+      const filters: string[] = [];
+      for (const col of filterable) {
+        const raw = qstr(req, col.name);
+        if (!raw) continue;
+        const meiliAttr = binding.filterMap?.[col.name] ?? col.name;
+        filters.push(meiliFilterEq(meiliAttr, raw));
+      }
+
+      const limitRaw = Number(qstr(req, "limit") || "");
+      const limit =
+        Number.isFinite(limitRaw) && limitRaw > 0
+          ? Math.trunc(limitRaw)
+          : spec.defaultLimit ?? 50;
+      const offsetRaw = Number(qstr(req, "offset") || "");
+      const offset =
+        Number.isFinite(offsetRaw) && offsetRaw > 0 ? Math.trunc(offsetRaw) : 0;
+      const hitsPerPage = Math.min(Math.max(limit, 1), 200);
+      const page = Math.floor(offset / hitsPerPage) + 1;
+      const host =
+        meiliCfg?.host || process.env.MEILI_HOST || "";
+      const apiKey =
+        meiliCfg?.apiKey ||
+        process.env.MEILI_API_KEY ||
+        process.env.MEILI_MASTER_KEY ||
+        "";
+      const browse = meiliCfg?.browse ?? browseMeiliIndex;
+      const meili = await browse({
+        host,
+        apiKey,
+        indexUid: binding.indexUid,
+        query: qstr(req, "q").trim(),
+        filters,
+        page,
+        hitsPerPage,
+        attributesToRetrieve: ["id"],
+        facets: binding.facets,
+      });
+      if (!meili) {
+        return listFromSql(ctx, {
+          engine: "sql",
+          fallback: host ? "meili_unavailable" : "meili_unconfigured",
+        });
+      }
+      const hitIds = meili.hits
+        .map((h) => String(h.id ?? "").trim())
+        .filter(Boolean);
+      const rows = hydrateRowsByIds(db, table, hitIds);
+      if (hooks.afterList) {
+        const body = await hooks.afterList(rows, ctx);
+        if (body !== undefined) return { status: 200, body };
+      }
+      return {
+        status: 200,
+        body: {
+          items: rows,
+          total: meili.total,
+          engine: "meili",
+          ...(meili.facetDistribution
+            ? { facetDistribution: meili.facetDistribution }
+            : {}),
+        },
+      };
+    }
+
+    return listFromSql(ctx);
   }
 
   async function handleCreate(ctx: EntityHookContext): Promise<ApiResponse> {

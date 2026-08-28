@@ -30,6 +30,11 @@ test("C2 generic-indexer + runIndexation accepte feed", () => {
   );
   assert.match(gen, /export async function runFeedIndexation/);
   assert.match(gen, /export async function searchMeiliIndexes/);
+  const browse = fs.readFileSync(
+    path.join(ROOT, "packages/electron-shell/src/host/meili/browse.ts"),
+    "utf8",
+  );
+  assert.match(browse, /export async function browseMeiliIndex/);
 
   const idx = fs.readFileSync(
     path.join(ROOT, "packages/electron-shell/src/host/meili/indexer.ts"),

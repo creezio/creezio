@@ -725,6 +725,8 @@ export type {
   MeiliCoherencePaths,
   MeiliFingerprint,
   MeiliIndexInProgress,
+  MeiliBrowseRequest,
+  MeiliBrowseResult,
   MeiliReadyDecision,
 } from "./host/meili/index.js";
 export {
@@ -756,6 +758,8 @@ export {
   resetMeiliCatalogSqlTablesForTests,
   runFeedIndexation,
   runIndexation,
+  browseMeiliIndex,
+  meiliFilterEq,
   searchMeiliIndexes,
   serializeFingerprint,
   writeFingerprintToDb,

@@ -20,9 +20,11 @@ import {
   createSqliteRuntime,
 } from "../packages/platform-core/dist/index.js";
 import {
+  configureEntityMeili,
   createApiKernel,
   createEntityApiMount,
   registerEntityMounts,
+  resetEntityMeiliForTests,
 } from "../packages/api-kernel/dist/index.js";
 
 const BRAND_SQL = `
@@ -601,6 +603,62 @@ test("entity-mount deny cross-write H2 inchangé", async () => {
     assert.equal(deniedHook.status, 403);
     assert.equal(deniedHook.body.error, "cross_layer_write_denied");
   } finally {
+    h.close();
+  }
+});
+
+test("entity-mount liste Meili : q vide + 0 hit + filtre hors index → SQL visible", async () => {
+  resetEntityMeiliForTests();
+  const h = makeHarness();
+  try {
+    const created = await h.call("POST", "widgets", {
+      body: { nom: "Alpha", group_id: "g1" },
+    });
+    assert.equal(created.status, 201);
+    const id = String(created.body.id);
+
+    configureEntityMeili({
+      host: "http://127.0.0.1:9",
+      indexes: {
+        widgets: {
+          indexUid: "catalog_widgets",
+          filterable: ["group_id"],
+        },
+      },
+      browse: async (req) => {
+        if (req.filters?.some((f) => f.includes("unknown"))) return null;
+        if (req.query === "nomatch") return { hits: [], total: 0 };
+        return { hits: [{ id }], total: 1 };
+      },
+    });
+
+    const emptyQ = await h.call("GET", "widgets", { query: { group_id: "g1" } });
+    assert.equal(emptyQ.status, 200);
+    assert.equal(emptyQ.body.engine, "meili", "browse sans q → Meili");
+    assert.equal(emptyQ.body.items.length, 1);
+    assert.equal(emptyQ.body.items[0].id, id);
+
+    const zero = await h.call("GET", "widgets", { query: { q: "nomatch" } });
+    assert.equal(zero.status, 200);
+    assert.equal(zero.body.engine, "meili", "0 hit reste meili");
+    assert.equal(zero.body.items.length, 0);
+    assert.equal(zero.body.total, 0);
+
+    const rejected = await h.call("GET", "widgets", {
+      query: { group_id: "unknown" },
+    });
+    // browse mock returns null only if filter contains "unknown" — group_id = "unknown"
+    // uses meiliFilterEq → `group_id = "unknown"` which includes unknown → null → SQL
+    assert.equal(rejected.status, 200);
+    assert.equal(rejected.body.engine, "sql");
+    assert.equal(rejected.body.fallback, "meili_unavailable");
+
+    const byIds = await h.call("GET", "widgets", { query: { ids: id } });
+    assert.equal(byIds.status, 200);
+    assert.equal(byIds.body.items.length, 1);
+    assert.equal(byIds.body.items[0].nom, "Alpha");
+  } finally {
+    resetEntityMeiliForTests();
     h.close();
   }
 });

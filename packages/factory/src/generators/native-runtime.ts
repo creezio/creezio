@@ -186,6 +186,31 @@ function createDashboardMount(): ApiMount {
   };
 }
 
+function mapMeiliSearchHit(h: Record<string, unknown>): {
+  index: string;
+  id: string;
+  title: string;
+  subtitle?: string;
+  href: string;
+} {
+  const index = String(h._index || h.index || "");
+  const id = String(h.id ?? "");
+  const title = String(h.title || h.nom || id || "");
+  const href =
+    index === "catalog_products" || index.endsWith("_products")
+      ? "/produits/" + encodeURIComponent(id)
+      : index === "catalog_sites" || index.endsWith("_sites")
+        ? "/marketplaces/" + encodeURIComponent(id)
+        : "/" + index.replace(/^catalog_/, "") + "/" + encodeURIComponent(id);
+  return {
+    index,
+    id,
+    title,
+    subtitle: h.subtitle != null ? String(h.subtitle) : undefined,
+    href,
+  };
+}
+
 function createSearchMount(): ApiMount {
   return {
     dbLayer: "brand",
@@ -203,7 +228,7 @@ function createSearchMount(): ApiMount {
         return { status: 405, body: { error: "method_not_allowed" } };
       }
       const q = qstr(req, "q").trim();
-      if (!q) return { status: 200, body: { engine: "none", items: [] } };
+      if (!q) return { status: 200, body: { engine: "none", items: [], hits: [] } };
 
       const host = process.env.MEILI_HOST || "";
       if (host) {
@@ -216,11 +241,12 @@ function createSearchMount(): ApiMount {
             indexUids: brandMeiliFeed.indexes.map((i) => i.uid),
             query: q,
           });
-          if (hits.length > 0) {
-            return { status: 200, body: { engine: "meili", items: hits } };
-          }
+          // 0 hit Meili EST la réponse — jamais de fallback SQL
+          // parce que la tokenisation ne matche pas.
+          const mapped = hits.map((h) => mapMeiliSearchHit(h));
+          return { status: 200, body: { engine: "meili", items: hits, hits: mapped } };
         } catch {
-          /* fallback SQL */
+          /* Meili KO = incident — SQL visible ci-dessous */
         }
       }
 
@@ -242,7 +268,14 @@ function createSearchMount(): ApiMount {
           }
         }
       }
-      return { status: 200, body: { engine: "sql", items } };
+      return {
+        status: 200,
+        body: {
+          engine: "sql",
+          items,
+          hits: items.map((r) => mapMeiliSearchHit(r)),
+        },
+      };
     },
   };
 }

@@ -57,6 +57,23 @@ export {
   registerEntityMounts,
 } from "./entity-mount.js";
 
+export type {
+  EntityMeiliBinding,
+  EntityMeiliConfig,
+  MeiliBrowseRequest,
+  MeiliBrowseResult,
+} from "./meili-browse.js";
+export {
+  browseMeiliIndex,
+  configureEntityMeili,
+  configureEntityMeiliFromFeed,
+  getEntityMeiliConfig,
+  hydrateRowsByIds,
+  meiliFilterEq,
+  resetEntityMeiliForTests,
+  tableForMeiliIndex,
+} from "./meili-browse.js";
+
 export type { KernelOperationRoute } from "./operations.js";
 export {
   KIT_INTERNAL_MODULE_MOUNT_IDS,

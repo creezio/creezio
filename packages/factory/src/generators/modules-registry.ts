@@ -45,6 +45,12 @@ export type BrandModuleDef = {
   /** Index Meili contribués au feed marque. */
   meiliIndexes?: BrandMeiliIndex[];
   /**
+   * Obligatoire si le module a une liste catalogue SANS meiliIndexes
+   * (relevés, joins commande, écritures, SKU EAN…). Une liste browse
+   * sans justification = gate factory rouge.
+   */
+  horsIndexJustification?: string;
+  /**
    * Scénarios de démo interactive du module — **obligatoire** (≥ 1 scénario
    * valide). Agrégés par \`collectDemoScenarios()\` (registre) et servis en
    * défauts du mount \`interactive-demo\`. Inclure
@@ -656,6 +662,7 @@ export function renderEntityModuleTs(
 
   const navHref = page?.path || `/${moduleId}`;
   const navLabel = page?.title || entity.labelPlural || entity.label;
+  const meiliOrHors = renderMeiliOrHorsIndexBlock(entity.id);
 
   return {
     moduleId,
@@ -689,9 +696,60 @@ ${renderPlayableDemoBlock({
     productName: model.brandName,
     navLabel,
   })}
+${meiliOrHors}
 };
 `,
   };
+}
+
+const CATALOG_BROWSE_IDS = new Set([
+  "produits",
+  "produit",
+  "articles",
+  "article",
+  "products",
+  "product",
+  "catalog",
+  "fournisseurs",
+  "fournisseur",
+  "sites",
+  "site",
+]);
+
+const HORS_INDEX_REASONS: Record<string, string> = {
+  commandes: "écritures + joins commande — hors index catalogue",
+  panier: "écritures panier — hors index catalogue",
+  panier_lignes: "écritures panier — hors index catalogue",
+  prix: "bornes prix / relevés — hors index",
+  releves: "relevés de prix — hors index",
+  promotions: "pas d'index Meili dédié",
+  stack: "besoins restaurant — hors index",
+  likes: "préférences utilisateur — hors index",
+};
+
+/** Liste catalogue → meiliIndexes ; sinon justification hors-index. */
+export function renderMeiliOrHorsIndexBlock(entityId: string): string {
+  if (CATALOG_BROWSE_IDS.has(entityId)) {
+    const sites = /fourn|sites?$/.test(entityId);
+    const uid = sites ? "catalog_sites" : "catalog_products";
+    const countKey = sites ? "sites" : "produits";
+    return `  meiliIndexes: [
+    {
+      uid: ${JSON.stringify(uid)},
+      countKey: ${JSON.stringify(countKey)},
+      table: ${JSON.stringify(entityId)},
+      columns: ["id", "nom"],
+      settings: {
+        searchableAttributes: ["nom"],
+        filterableAttributes: ["id"],
+      },
+    },
+  ],`;
+  }
+  const reason =
+    HORS_INDEX_REASONS[entityId] ||
+    "liste hors catalogue (pas de browse Meili)";
+  return `  horsIndexJustification: ${JSON.stringify(reason)},`;
 }
 
 /**
