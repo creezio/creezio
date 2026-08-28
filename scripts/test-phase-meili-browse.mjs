@@ -45,6 +45,28 @@ test("source : searchMeiliIndexes refuse q vide (pas un browse)", () => {
   assert.match(gen, /if\s*\(\s*!q\s*\|\|/);
 });
 
+test("source : searchMeiliIndexes fail-closed — seul le 404 index absent est toléré", () => {
+  const gen = read("packages/electron-shell/src/host/meili/generic-indexer.ts");
+  const start = gen.indexOf("export async function searchMeiliIndexes");
+  assert.ok(start >= 0);
+  const chunk = gen.slice(start, start + 1600);
+  assert.match(
+    chunk,
+    /Meili HTTP 404/,
+    "le catch doit distinguer l'index absent (404)",
+  );
+  assert.match(
+    chunk,
+    /throw err/,
+    "Meili down / 5xx / timeout doivent être RETHROW (pas de [] silencieux)",
+  );
+  assert.doesNotMatch(
+    chunk,
+    /catch\s*\{/,
+    "catch vide interdit — il avalait Meili down en [] (200 silencieux)",
+  );
+});
+
 test("source : factory search — 0 hit reste meili, fail-closed dans le catch", () => {
   const native = read("packages/factory/src/generators/native-runtime.ts");
   const start = native.indexOf("function createSearchMount()");
