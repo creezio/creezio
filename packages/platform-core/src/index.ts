@@ -487,3 +487,11 @@ export {
   pluginsRootDir,
   setPluginEnabled,
 } from "./plugins/plugin-manifest.js";
+
+/* ── P1.b : helpers bas du graphe partagés search / host-runtime ── */
+export {
+  electronShellPackageRoot,
+  kitOsResourcesRoot,
+  kitOsVendorDir,
+} from "./kit-os-resources.js";
+export { envForNodeScriptSpawn } from "./node-spawn-env.js";

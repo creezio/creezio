@@ -15,6 +15,8 @@ Racine : [../README.md](../README.md) · [../AGENTS.md](../AGENTS.md)
 | `@creezio/brand-config` | [README](../packages/brand-config/README.md) | [AGENTS](../packages/brand-config/AGENTS.md) | [FILES](../packages/brand-config/docs/FILES.md) |
 | `@creezio/shell` | [README](../packages/shell/README.md) | [AGENTS](../packages/shell/AGENTS.md) | [FILES](../packages/shell/docs/FILES.md) |
 | `@creezio/platform-core` | [README](../packages/platform-core/README.md) | [AGENTS](../packages/platform-core/AGENTS.md) | [FILES](../packages/platform-core/docs/FILES.md) |
+| `@creezio/search` | [README](../packages/search/README.md) | [AGENTS](../packages/search/AGENTS.md) | [FILES](../packages/search/docs/FILES.md) |
+| `@creezio/host-runtime` | [README](../packages/host-runtime/README.md) | [AGENTS](../packages/host-runtime/AGENTS.md) | [FILES](../packages/host-runtime/docs/FILES.md) |
 | `@creezio/electron-shell` | [README](../packages/electron-shell/README.md) | [AGENTS](../packages/electron-shell/AGENTS.md) | [FILES](../packages/electron-shell/docs/FILES.md) |
 | `@creezio/browser-host` | [README](../packages/browser-host/README.md) | [AGENTS](../packages/browser-host/AGENTS.md) | [FILES](../packages/browser-host/docs/FILES.md) |
 | `@creezio/app-runtime` | [README](../packages/app-runtime/README.md) | [AGENTS](../packages/app-runtime/AGENTS.md) | [FILES](../packages/app-runtime/docs/FILES.md) |
@@ -101,7 +103,9 @@ brand-config
                 ├── observability ──► automations
                 ├── database
                 ├── browser-host
-                └── electron-shell ──► app-runtime ──► brand-spec
-                          └── desktop-tooling (publish)
+                ├── search (Meili)
+                └── host-runtime (host Node pur, dépend de search)
+                      └── electron-shell ──► app-runtime ──► brand-spec
+                                └── desktop-tooling (publish)
 factory / propagation  (transversal)
 ```

@@ -8,6 +8,7 @@ import http from "node:http";
 import https from "node:https";
 import path from "node:path";
 import { envKey } from "@creezio/brand-config";
+import { envForNodeScriptSpawn } from "@creezio/platform-core";
 import type { HostRuntimeContext } from "./context.js";
 import { hostLog, hostProductName } from "./context.js";
 import { applyOsSandboxEnv } from "./sandbox/embed-sandbox.js";
@@ -90,37 +91,6 @@ export function probeNodeVersion(nodeBin: string): string | null {
   } catch {
     return null;
   }
-}
-
-/**
- * Env pour spawn d'un script JS via `nodeBinary`.
- * Si le binaire est Electron (`process.execPath`), FORCE `ELECTRON_RUN_AS_NODE=1`
- * — sinon le child relance l'UI (Win « rien ») / crash chrome-sandbox (Linux).
- */
-export function envForNodeScriptSpawn(
-  nodeBin: string,
-  baseEnv?: NodeJS.ProcessEnv,
-): NodeJS.ProcessEnv {
-  const env: NodeJS.ProcessEnv = { ...(baseEnv || process.env) };
-  let same = false;
-  try {
-    same =
-      path.resolve(nodeBin) === path.resolve(process.execPath) ||
-      fs.realpathSync(nodeBin) === fs.realpathSync(process.execPath);
-  } catch {
-    same = nodeBin === process.execPath;
-  }
-  // Heuristique : binaire Electron packagé (TempoFlow-Server, etc.) sans node système.
-  const base = path.basename(nodeBin).toLowerCase();
-  const looksElectron =
-    same ||
-    base === "electron" ||
-    base.includes("tempoflow") ||
-    base.includes("creezio") ||
-    base.endsWith("-server");
-  if (looksElectron) env.ELECTRON_RUN_AS_NODE = "1";
-  else delete env.ELECTRON_RUN_AS_NODE;
-  return env;
 }
 
 export function buildIsolatedNodeEnv(opts: {
@@ -307,6 +277,9 @@ export async function ensureDesktopNode(
     return { ok: false, detail: `Impossible d'obtenir Node: ${detail}` };
   }
 }
+
+/** Déplacé vers @creezio/platform-core (P1.b) — ré-exporté ici pour compat. */
+export { envForNodeScriptSpawn } from "@creezio/platform-core";
 
 /** @deprecated alias */
 export const ensureTempoflowNode = ensureDesktopNode;

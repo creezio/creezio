@@ -4,7 +4,7 @@
  *
  * L'indexation est pilotée par `BrandMeiliFeed` (obligatoire) : les UIDs
  * marque vivent dans le feed de la marque, jamais dans
- * `packages/electron-shell/src/host/meili/`.
+ * `packages/search/src/meili/`.
  */
 import assert from "node:assert/strict";
 import fs from "node:fs";
@@ -13,7 +13,7 @@ import { test } from "node:test";
 import { fileURLToPath } from "node:url";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const MEILI_DIR = path.join(ROOT, "packages/electron-shell/src/host/meili");
+const MEILI_DIR = path.join(ROOT, "packages/search/src/meili");
 
 test("meili natif — aucun `tf2_` (code ou commentaire)", () => {
   const files = fs

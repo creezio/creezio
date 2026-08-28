@@ -389,7 +389,7 @@ test("HPP2 ordre harness + Dockerfile cloudflared + template factory", () => {
 
   // cloudflaredBinary honore l'override générique kit (image Docker).
   const tunnel = fs.readFileSync(
-    path.join(ROOT, "packages/electron-shell/src/host/tunnel/tunnel.ts"),
+    path.join(ROOT, "packages/host-runtime/src/tunnel/tunnel.ts"),
     "utf8",
   );
   assert.match(tunnel, /CREEZIO_CLOUDFLARED_BINARY/);

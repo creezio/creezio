@@ -86,12 +86,12 @@ test("P29.4 tasks : wire web_* → external_* (supplier_* alias type)", () => {
 });
 
 test("P29.5 electron-shell : Meili tables configurables + driver external_*", () => {
-  const schema = read("packages/electron-shell/src/host/meili/index-schema.ts");
+  const schema = read("packages/search/src/meili/index-schema.ts");
   assert.match(schema, /configureMeiliCatalogSqlTables/);
   assert.match(schema, /sites:\s*"fournisseurs"/);
   assert.match(schema, /getMeiliCatalogSqlTables/);
 
-  const coherence = read("packages/electron-shell/src/host/meili/coherence-db.ts");
+  const coherence = read("packages/search/src/meili/coherence-db.ts");
   assert.match(coherence, /getMeiliCatalogSqlTables/);
 
   const pkg = read("packages/electron-shell/src/index.ts");
@@ -111,7 +111,7 @@ test("P29.5 electron-shell : Meili tables configurables + driver external_*", ()
   assert.match(shared, /case "list_targets"/);
   assert.match(shared, /case "screenshot"/);
 
-  const actions = read("packages/electron-shell/src/host/ai-workspace/actions.ts");
+  const actions = read("packages/host-runtime/src/ai-workspace/actions.ts");
   assert.match(actions, /external_/);
   assert.match(actions, /supplier_/);
 });

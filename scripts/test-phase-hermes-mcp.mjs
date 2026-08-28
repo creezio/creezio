@@ -30,7 +30,7 @@ test("HM.1 upsertHermesMcpConfig — idempotent, config user préservée", () =>
   const sandbox = require(
     path.join(
       ROOT,
-      "packages/electron-shell/dist-cjs/host/sandbox/embed-sandbox.js",
+      "packages/host-runtime/dist-cjs/sandbox/embed-sandbox.js",
     ),
   );
   const cfg = {
@@ -384,7 +384,7 @@ test("HM.3 pont JSON-RPC 2.0 /mcp — initialize, tools/list, tools/call", async
 test("HM.4 câblage launcher/desktop/harness + skill creezio-computer-use", () => {
   // Launcher Electron : écrit le bloc au boot + restart si bloc absent/périmé.
   const launcher = fs.readFileSync(
-    path.join(ROOT, "packages/electron-shell/src/host/hermes/launcher.ts"),
+    path.join(ROOT, "packages/host-runtime/src/hermes/launcher.ts"),
     "utf8",
   );
   assert.match(launcher, /upsertHermesMcpConfig/);
@@ -393,7 +393,7 @@ test("HM.4 câblage launcher/desktop/harness + skill creezio-computer-use", () =
 
   // Config par défaut brand-host-runtime (clé CRM Hermes + URL loopback).
   const hostRuntime = fs.readFileSync(
-    path.join(ROOT, "packages/electron-shell/src/host/brand-host-runtime.ts"),
+    path.join(ROOT, "packages/host-runtime/src/brand-host-runtime.ts"),
     "utf8",
   );
   assert.match(hostRuntime, /getHermesMcpServerConfig/);

@@ -10,8 +10,8 @@
  */
 
 import type { WebContents } from "electron"; // type-only
-import { log, logError } from "../logger.js";
-import { reportCrash, reportCrashDebounced } from "./crash-reporter.js";
+import { log, logError } from "@creezio/host-runtime";
+import { reportCrash, reportCrashDebounced } from "@creezio/host-runtime";
 
 /** Codes did-fail-load ignorés : -3 = ERR_ABORTED (navigation annulée, normal). */
 const IGNORED_LOAD_ERRORS = new Set([-3]);

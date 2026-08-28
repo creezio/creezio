@@ -1,25 +1,19 @@
 /**
- * @creezio/electron-shell — runtime Electron plateforme (Phase B / B.2).
+ * @creezio/electron-shell — desktop Electron plateforme (réduit P1.b).
+ *
+ * Ce package ne contient plus que le desktop pur : boot, fenêtres, tray,
+ * updater, splash, chrome, sessions desktop, browser-tabs, télémétrie
+ * WebContents. Le host runtime Node pur vit dans `@creezio/host-runtime`,
+ * le sous-domaine Meili dans `@creezio/search`, les helpers ressources kit
+ * dans `@creezio/platform-core`.
+ *
+ * Les ré-exports `@deprecated` ci-dessous préservent TOUTE la surface
+ * publique historique (aucun import existant ne casse). Cette liste est
+ * FIGÉE : ne jamais y ajouter un symbole host — gate
+ * `test-phase-electron-shell-frozen-exports`.
  */
 
-export {
-  initLogger,
-  initEarlyBootLogger,
-  ensureLogsDir,
-  log,
-  logError,
-  logFilePath,
-  getLogRing,
-  recentLines,
-  logFileTail,
-  scoped,
-  feedChildLine,
-  setOpsLineHandler,
-} from "./logger.js";
-export type {
-  EarlyBootLogResult,
-  EarlyBootLogSource,
-} from "./logger.js";
+/* ═══════════════ Desktop natif (SoT ici) ═══════════════ */
 
 export {
   windowChromeBarHtml,
@@ -87,273 +81,32 @@ export type {
 export { prepareDesktopBoot, writeAppKindFile } from "./boot.js";
 
 export {
-  factoryResetSessionPartition,
-  wipeLocalUserData,
-} from "./factory-reset-runtime.js";
+  createHostRuntime,
+  localConfigPathForBoot,
+  pathsContextFromBoot,
+  prepareHostDesktop,
+  vendorDir,
+} from "./main-facade.js";
+export type { CreateHostRuntimeOptions } from "./main-facade.js";
 
-export type { RunningMeili, StartMeiliOptions } from "./host/meili-launcher.js";
-export { startMeili } from "./host/meili-launcher.js";
+export { installBrandDesktopRuntime } from "./desktop/brand-desktop-runtime.js";
+export type {
+  BrandDesktopDeps,
+  BrandDesktopHosts,
+  BrandDesktopPaths,
+  BrandDesktopVertical,
+} from "./desktop/brand-desktop-runtime.js";
 
 export type {
-  BrandKernelHttpHandle,
-  BrandKernelLike,
-} from "./host/brand-kernel-http.js";
-export { listenBrandKernelHttp } from "./host/brand-kernel-http.js";
-
-export type { BrandMeiliBootResult } from "./host/brand-meili-boot.js";
+  DesktopSessionApi,
+  DesktopSessionInfo,
+  DesktopSessionStatus,
+} from "./desktop/desktop-session.js";
 export {
-  isMeiliRequiredError,
-  maybeBootBrandMeili,
-  MeiliRequiredError,
-} from "./host/brand-meili-boot.js";
-
-export type {
-  RunningServer,
-  StartServerCoreOptions,
-  StartServerPaths,
-} from "./host/server-env.js";
-export {
-  findFreePort,
-  startNextServerCore,
-  waitForHealth,
-} from "./host/server-env.js";
-
-export type {
-  HermesLaunchRequest,
-  HostProcessHandle,
-  N8nLaunchRequest,
-  TunnelLaunchRequest,
-} from "./host/contracts.js";
-export {
-  DEFAULT_HOST_ONLY_ELECTRON_MODULES,
-  buildEmbedHostEnv,
-  cloudflaredEnvKey,
-} from "./host/contracts.js";
-
-/* ── Phase B.2 ── */
-export type {
-  HostLogFn,
-  HostRuntimeContext,
-} from "./host/context.js";
-export { hostLog, hostProductName } from "./host/context.js";
-
-export type { SafeStorageBackend } from "./host/safe-storage.js";
-export {
-  canEncrypt,
-  loadElectronSafeStorage,
-  loadElectronSafeStorageSync,
-  openValue,
-  sealValue,
-} from "./host/safe-storage.js";
-
-export type {
-  LocalAuth,
-  LocalConfigPath,
-  LocalConfigStore,
-  LocalConfigStoreOptions,
-  TunnelConfig,
-} from "./host/local-config.js";
-export {
-  createLocalConfigStore,
-  createLocalConfigStoreSync,
-} from "./host/local-config.js";
-
-export type {
-  TunnelIngressPorts,
-  TunnelRuntimeStatus,
-  TunnelService,
-} from "./host/tunnel/tunnel.js";
-export {
-  createTunnelService,
-  buildTunnelPublicUrls,
-  deriveTunnelServiceUrl,
-} from "./host/tunnel/tunnel.js";
-export type {
-  CloudflaredExitInfo,
-  CloudflaredRespawnDecision,
-  CloudflaredRespawnPolicy,
-} from "./host/tunnel/cloudflared-respawn.js";
-export {
-  CLOUDFLARED_RESPAWN,
-  cloudflaredRespawnDelayMs,
-  describeCloudflaredExit,
-  resolveCloudflaredRespawnPolicy,
-  shouldRespawnCloudflared,
-} from "./host/tunnel/cloudflared-respawn.js";
-
-export {
-  DESKTOP_NODE_MIN_FOR_EMBEDS,
-  DESKTOP_NODE_PIN,
-  TF2_NODE_MIN_FOR_EMBEDS,
-  TF2_NODE_PIN,
-  buildIsolatedNodeEnv,
-  compareNodeVersions,
-  ensureDesktopNode,
-  ensureTempoflowNode,
-  envForNodeScriptSpawn,
-  nodeSatisfiesMin,
-  nodeUserBinary,
-  nodeUserDir,
-  parseNodeVersion,
-  probeNodeVersion,
-  resolveDesktopNodeBinary,
-  resolveTempoflowNodeBinary,
-} from "./host/node-runtime.js";
-export type { EnsureDesktopNodeResult, NodeVersionTriple } from "./host/node-runtime.js";
-
-export {
-  DESKTOP_NPM_PIN,
-  TF2_NPM_PIN,
-  ensureNpmCli,
-  npmCliCandidates,
-  npmUserDataRoot,
-  resolveNpmCliPath,
-  runNpmCli,
-} from "./host/npm-cli.js";
-export type { EnsureNpmCliResult } from "./host/npm-cli.js";
-
-export {
-  applyOsSandboxEnv,
-  buildHermesMcpYamlBlock,
-  buildHermesSandboxYamlBlock,
-  desktopSandboxPaths,
-  ensureSandboxGitConfig,
-  hermesSandboxPaths,
-  sanitizeHermesMcpServerName,
-  setSandboxEnvVar,
-  tempoflowSandboxPaths,
-  upsertHermesMcpConfig,
-  upsertHermesSandboxConfig,
-  DESKTOP_MCP_ENTRY_MARKER_BEGIN,
-  DESKTOP_MCP_ENTRY_MARKER_END,
-  DESKTOP_MCP_MARKER_BEGIN,
-  DESKTOP_MCP_MARKER_END,
-  DESKTOP_SANDBOX_MARKER_BEGIN,
-  DESKTOP_SANDBOX_MARKER_END,
-} from "./host/sandbox/embed-sandbox.js";
-export type { HermesMcpServerConfig } from "./host/sandbox/embed-sandbox.js";
-export {
-  buildConfinedPath,
-  overridesAllowed,
-  resolveSystemBinary,
-} from "./host/sandbox/os-sandbox.js";
-
-export type {
-  HermesHost,
-  HermesStatusPayload,
-  RunningHermes,
-  StartHermesOptions,
-} from "./host/hermes/launcher.js";
-export {
-  clearGeneratedWebuiPassword,
-  clearTempoflowGeneratedWebuiPassword,
-  createHermesHost,
-  serverWebuiPassword,
-} from "./host/hermes/launcher.js";
-export {
-  LEARNED_SITE_SKILL_PREFIX,
-  brandHermesSkillsDirCandidates,
-  isLearnedSiteSkillName,
-  kitHermesSkillsDir,
-  seedHermesSkillsFromDirs,
-} from "./host/hermes/skills-seed.js";
-export {
-  WEBUI_DEPS_MARKER,
-  WEBUI_DEPS_MARKER_LEGACY,
-  WEBUI_DEPS_MARKER_LEGACY_CERTIVAN,
-  WEBUI_DEPS_MARKER_LEGACY_FIDU,
-  ensureHermesRuntime,
-  ensureHermesWebuiTree,
-  getBootstrapError,
-  getBootstrapPhase,
-  hermesAgentDirCandidates,
-  hermesFhsFallbackDirs,
-  hermesInstallLayoutEnv,
-  hermesInstallOsProfileDir,
-  hermesRuntimeCacheDir,
-  hermesSpaceSafeUserDataRoot,
-  patchHermesInstallShForSpaces,
-  hermesVendorDir,
-  hermesWebuiInstallDir,
-  installHermesAgent,
-  isWebuiDepsMarkerCurrent,
-  loadRuntimeManifest,
-  readWebuiDepsMarker,
-  resolveHermesAgentDir,
-  resolveHermesPython,
-  vendoredInstallScriptPath,
-  webuiDepsMarkerPath,
-  webuiPythonDepsReady,
-  writeWebuiDepsMarker,
-  __resetBootstrapStateForTests,
-} from "./host/hermes/runtime-bootstrap.js";
-export type { BootstrapPhase, RuntimeManifest } from "./host/hermes/runtime-bootstrap.js";
-
-export type {
-  N8nAgentKeysHooks,
-  N8nHost,
-  N8nStatusPayload,
-  RunningN8n,
-  StartN8nOptions,
-} from "./host/n8n/launcher.js";
-export { createN8nHost } from "./host/n8n/launcher.js";
-export {
-  ensureN8nRuntime,
-  getN8nBootstrapError,
-  getN8nBootstrapPhase,
-  loadN8nRuntimeManifest,
-  n8nEntryPath,
-  n8nPackageJsonPath,
-  n8nRuntimeCacheDir,
-  n8nVendorDir,
-  __resetN8nBootstrapStateForTests,
-} from "./host/n8n/runtime-bootstrap.js";
-export {
-  electronShellPackageRoot,
-  kitOsResourcesRoot,
-  kitOsVendorDir,
-} from "./host/kit-os-resources.js";
-export {
-  ensureKitOsBinaries,
-  kitBinaryPaths,
-  type EnsureKitBinariesResult,
-  type KitBinaryName,
-} from "./host/ensure-kit-binaries.js";
-
-/* ── O3 : jumeaux Electron plateforme (extract gold TF) ── */
-export type { N8nApiKeyBrand, N8nApiKeyStored } from "./host/n8n/api-key.js";
-export {
-  N8N_HERMES_API_SCOPES,
-  cookieHeaderFromSetCookie,
-  ensureN8nApiKey,
-  extractRawN8nApiKey,
-  fetchN8nApiKeyScopes,
-  getN8nBridgeEnv,
-  n8nApiKeyPath,
-  n8nHttpJson,
-  n8nLoginSucceeded,
-  n8nNeedsOwnerSetup,
-  readStoredN8nApiKey,
-  writeStoredN8nApiKey,
-} from "./host/n8n/api-key.js";
-
-export type {
-  N8nAgentIsolationBrand,
-  N8nAgentKeyStored,
-  N8nAgentKeysFile,
-} from "./host/n8n/agent-isolation.js";
-export {
-  agentIdSegment,
-  ensureHermesAgentWorkspace,
-  ensureN8nAgentApiKey,
-  hermesAgentWorkspaceDir,
-  n8nAgentKeyLabel,
-  n8nAgentKeysPath,
-  n8nAgentTag,
-  readStoredN8nAgentKeys,
-  revokeN8nAgentApiKey,
-  writeStoredN8nAgentKeys,
-} from "./host/n8n/agent-isolation.js";
+  createDesktopSessionStore,
+  registerDesktopSessionIpc,
+  spawnBrandMetierApi,
+} from "./desktop/desktop-session.js";
 
 export type {
   AssistantChromeBrand,
@@ -390,11 +143,347 @@ export {
   errorPageHtmlDocument,
 } from "./desktop/error-page-html.js";
 
+export { instrumentWebContents } from "./host/web-telemetry.js";
+
+/* ── N7 : browser tabs → import `@creezio/electron-shell/browser-tabs`
+ * (pas le barrel principal : évite de tirer `electron` dans les tests Node). */
+
+/* ═══════════════ Ré-exports compat P1.b — FIGÉS ═══════════════ */
+
+/**
+ * @deprecated P1.b — le logger host vit dans `@creezio/host-runtime` ;
+ * importer depuis là. Ré-export de compat, surface figée.
+ */
+export {
+  initLogger,
+  initEarlyBootLogger,
+  ensureLogsDir,
+  log,
+  logError,
+  logFilePath,
+  getLogRing,
+  recentLines,
+  logFileTail,
+  scoped,
+  feedChildLine,
+  setOpsLineHandler,
+} from "@creezio/host-runtime";
+export type {
+  EarlyBootLogResult,
+  EarlyBootLogSource,
+} from "@creezio/host-runtime";
+
+/**
+ * @deprecated P1.b — factory-reset runtime déplacé dans
+ * `@creezio/host-runtime` ; importer depuis là.
+ */
+export {
+  factoryResetSessionPartition,
+  wipeLocalUserData,
+} from "@creezio/host-runtime";
+
+/**
+ * @deprecated P1.b — sous-domaine Meili déplacé dans `@creezio/search` ;
+ * importer depuis là.
+ */
+export type { RunningMeili, StartMeiliOptions } from "@creezio/search";
+export { startMeili } from "@creezio/search";
+
+/**
+ * @deprecated P1.b — host runtime Node pur déplacé dans
+ * `@creezio/host-runtime` ; importer depuis là.
+ */
+export type {
+  BrandKernelHttpHandle,
+  BrandKernelLike,
+} from "@creezio/host-runtime";
+export { listenBrandKernelHttp } from "@creezio/host-runtime";
+
+/**
+ * @deprecated P1.b — boot Meili marque déplacé dans `@creezio/search` ;
+ * importer depuis là.
+ */
+export type { BrandMeiliBootResult } from "@creezio/search";
+export {
+  isMeiliRequiredError,
+  maybeBootBrandMeili,
+  MeiliRequiredError,
+} from "@creezio/search";
+
+/**
+ * @deprecated P1.b — déplacé dans `@creezio/host-runtime`.
+ */
+export type {
+  RunningServer,
+  StartServerCoreOptions,
+  StartServerPaths,
+} from "@creezio/host-runtime";
+export {
+  findFreePort,
+  startNextServerCore,
+  waitForHealth,
+} from "@creezio/host-runtime";
+
+/** @deprecated P1.b — déplacé dans `@creezio/host-runtime`. */
+export type {
+  HermesLaunchRequest,
+  HostProcessHandle,
+  N8nLaunchRequest,
+  TunnelLaunchRequest,
+} from "@creezio/host-runtime";
+export {
+  DEFAULT_HOST_ONLY_ELECTRON_MODULES,
+  buildEmbedHostEnv,
+  cloudflaredEnvKey,
+} from "@creezio/host-runtime";
+
+/** @deprecated P1.b — déplacé dans `@creezio/host-runtime`. */
+export type {
+  HostLogFn,
+  HostRuntimeContext,
+} from "@creezio/host-runtime";
+export { hostLog, hostProductName } from "@creezio/host-runtime";
+
+/** @deprecated P1.b — déplacé dans `@creezio/host-runtime`. */
+export type { SafeStorageBackend } from "@creezio/host-runtime";
+export {
+  canEncrypt,
+  loadElectronSafeStorage,
+  loadElectronSafeStorageSync,
+  openValue,
+  sealValue,
+} from "@creezio/host-runtime";
+
+/** @deprecated P1.b — déplacé dans `@creezio/host-runtime`. */
+export type {
+  LocalAuth,
+  LocalConfigPath,
+  LocalConfigStore,
+  LocalConfigStoreOptions,
+  TunnelConfig,
+} from "@creezio/host-runtime";
+export {
+  createLocalConfigStore,
+  createLocalConfigStoreSync,
+} from "@creezio/host-runtime";
+
+/** @deprecated P1.b — déplacé dans `@creezio/host-runtime`. */
+export type {
+  TunnelIngressPorts,
+  TunnelRuntimeStatus,
+  TunnelService,
+} from "@creezio/host-runtime";
+export {
+  createTunnelService,
+  buildTunnelPublicUrls,
+  deriveTunnelServiceUrl,
+} from "@creezio/host-runtime";
+export type {
+  CloudflaredExitInfo,
+  CloudflaredRespawnDecision,
+  CloudflaredRespawnPolicy,
+} from "@creezio/host-runtime";
+export {
+  CLOUDFLARED_RESPAWN,
+  cloudflaredRespawnDelayMs,
+  describeCloudflaredExit,
+  resolveCloudflaredRespawnPolicy,
+  shouldRespawnCloudflared,
+} from "@creezio/host-runtime";
+
+/** @deprecated P1.b — déplacé dans `@creezio/host-runtime`. */
+export {
+  DESKTOP_NODE_MIN_FOR_EMBEDS,
+  DESKTOP_NODE_PIN,
+  TF2_NODE_MIN_FOR_EMBEDS,
+  TF2_NODE_PIN,
+  buildIsolatedNodeEnv,
+  compareNodeVersions,
+  ensureDesktopNode,
+  ensureTempoflowNode,
+  envForNodeScriptSpawn,
+  nodeSatisfiesMin,
+  nodeUserBinary,
+  nodeUserDir,
+  parseNodeVersion,
+  probeNodeVersion,
+  resolveDesktopNodeBinary,
+  resolveTempoflowNodeBinary,
+} from "@creezio/host-runtime";
+export type { EnsureDesktopNodeResult, NodeVersionTriple } from "@creezio/host-runtime";
+
+/** @deprecated P1.b — déplacé dans `@creezio/host-runtime`. */
+export {
+  DESKTOP_NPM_PIN,
+  TF2_NPM_PIN,
+  ensureNpmCli,
+  npmCliCandidates,
+  npmUserDataRoot,
+  resolveNpmCliPath,
+  runNpmCli,
+} from "@creezio/host-runtime";
+export type { EnsureNpmCliResult } from "@creezio/host-runtime";
+
+/** @deprecated P1.b — déplacé dans `@creezio/host-runtime`. */
+export {
+  applyOsSandboxEnv,
+  buildHermesMcpYamlBlock,
+  buildHermesSandboxYamlBlock,
+  desktopSandboxPaths,
+  ensureSandboxGitConfig,
+  hermesSandboxPaths,
+  sanitizeHermesMcpServerName,
+  setSandboxEnvVar,
+  tempoflowSandboxPaths,
+  upsertHermesMcpConfig,
+  upsertHermesSandboxConfig,
+  DESKTOP_MCP_ENTRY_MARKER_BEGIN,
+  DESKTOP_MCP_ENTRY_MARKER_END,
+  DESKTOP_MCP_MARKER_BEGIN,
+  DESKTOP_MCP_MARKER_END,
+  DESKTOP_SANDBOX_MARKER_BEGIN,
+  DESKTOP_SANDBOX_MARKER_END,
+} from "@creezio/host-runtime";
+export type { HermesMcpServerConfig } from "@creezio/host-runtime";
+export {
+  buildConfinedPath,
+  overridesAllowed,
+  resolveSystemBinary,
+} from "@creezio/host-runtime";
+
+/** @deprecated P1.b — déplacé dans `@creezio/host-runtime`. */
+export type {
+  HermesHost,
+  HermesStatusPayload,
+  RunningHermes,
+  StartHermesOptions,
+} from "@creezio/host-runtime";
+export {
+  clearGeneratedWebuiPassword,
+  clearTempoflowGeneratedWebuiPassword,
+  createHermesHost,
+  serverWebuiPassword,
+} from "@creezio/host-runtime";
+export {
+  LEARNED_SITE_SKILL_PREFIX,
+  brandHermesSkillsDirCandidates,
+  isLearnedSiteSkillName,
+  kitHermesSkillsDir,
+  seedHermesSkillsFromDirs,
+} from "@creezio/host-runtime";
+export {
+  WEBUI_DEPS_MARKER,
+  WEBUI_DEPS_MARKER_LEGACY,
+  WEBUI_DEPS_MARKER_LEGACY_CERTIVAN,
+  WEBUI_DEPS_MARKER_LEGACY_FIDU,
+  ensureHermesRuntime,
+  ensureHermesWebuiTree,
+  getBootstrapError,
+  getBootstrapPhase,
+  hermesAgentDirCandidates,
+  hermesFhsFallbackDirs,
+  hermesInstallLayoutEnv,
+  hermesInstallOsProfileDir,
+  hermesRuntimeCacheDir,
+  hermesSpaceSafeUserDataRoot,
+  patchHermesInstallShForSpaces,
+  hermesVendorDir,
+  hermesWebuiInstallDir,
+  installHermesAgent,
+  isWebuiDepsMarkerCurrent,
+  loadRuntimeManifest,
+  readWebuiDepsMarker,
+  resolveHermesAgentDir,
+  resolveHermesPython,
+  vendoredInstallScriptPath,
+  webuiDepsMarkerPath,
+  webuiPythonDepsReady,
+  writeWebuiDepsMarker,
+  __resetBootstrapStateForTests,
+} from "@creezio/host-runtime";
+export type { BootstrapPhase, RuntimeManifest } from "@creezio/host-runtime";
+
+/** @deprecated P1.b — déplacé dans `@creezio/host-runtime`. */
+export type {
+  N8nAgentKeysHooks,
+  N8nHost,
+  N8nStatusPayload,
+  RunningN8n,
+  StartN8nOptions,
+} from "@creezio/host-runtime";
+export { createN8nHost } from "@creezio/host-runtime";
+export {
+  ensureN8nRuntime,
+  getN8nBootstrapError,
+  getN8nBootstrapPhase,
+  loadN8nRuntimeManifest,
+  n8nEntryPath,
+  n8nPackageJsonPath,
+  n8nRuntimeCacheDir,
+  n8nVendorDir,
+  __resetN8nBootstrapStateForTests,
+} from "@creezio/host-runtime";
+
+/**
+ * @deprecated P1.b — helpers ressources kit déplacés dans
+ * `@creezio/platform-core` ; importer depuis là.
+ */
+export {
+  electronShellPackageRoot,
+  kitOsResourcesRoot,
+  kitOsVendorDir,
+} from "@creezio/platform-core";
+
+/** @deprecated P1.b — déplacé dans `@creezio/host-runtime`. */
+export {
+  ensureKitOsBinaries,
+  kitBinaryPaths,
+  type EnsureKitBinariesResult,
+  type KitBinaryName,
+} from "@creezio/host-runtime";
+
+/** @deprecated P1.b — déplacé dans `@creezio/host-runtime`. */
+export type { N8nApiKeyBrand, N8nApiKeyStored } from "@creezio/host-runtime";
+export {
+  N8N_HERMES_API_SCOPES,
+  cookieHeaderFromSetCookie,
+  ensureN8nApiKey,
+  extractRawN8nApiKey,
+  fetchN8nApiKeyScopes,
+  getN8nBridgeEnv,
+  n8nApiKeyPath,
+  n8nHttpJson,
+  n8nLoginSucceeded,
+  n8nNeedsOwnerSetup,
+  readStoredN8nApiKey,
+  writeStoredN8nApiKey,
+} from "@creezio/host-runtime";
+
+/** @deprecated P1.b — déplacé dans `@creezio/host-runtime`. */
+export type {
+  N8nAgentIsolationBrand,
+  N8nAgentKeyStored,
+  N8nAgentKeysFile,
+} from "@creezio/host-runtime";
+export {
+  agentIdSegment,
+  ensureHermesAgentWorkspace,
+  ensureN8nAgentApiKey,
+  hermesAgentWorkspaceDir,
+  n8nAgentKeyLabel,
+  n8nAgentKeysPath,
+  n8nAgentTag,
+  readStoredN8nAgentKeys,
+  revokeN8nAgentApiKey,
+  writeStoredN8nAgentKeys,
+} from "@creezio/host-runtime";
+
+/** @deprecated P1.b — déplacé dans `@creezio/host-runtime`. */
 export type {
   HermesCrmKeyBrand,
   HermesCrmKeyPaths,
   HermesCrmKeyStored,
-} from "./host/hermes/crm-key.js";
+} from "@creezio/host-runtime";
 export {
   ensureHermesCrmApiKey,
   generateHermesCrmApiKey,
@@ -402,20 +491,24 @@ export {
   hermesCrmKeyPath,
   readHermesCrmApiKey,
   writeHermesCrmApiKey,
-} from "./host/hermes/crm-key.js";
+} from "@creezio/host-runtime";
 export type {
   N8nBootstrapPhase,
   N8nRuntimeManifest,
-} from "./host/n8n/runtime-bootstrap.js";
+} from "@creezio/host-runtime";
 
+/**
+ * @deprecated P1.b — plugins host (runtime plugins TF → kit, Phase N1)
+ * déplacés dans `@creezio/host-runtime`.
+ */
 export type {
   PluginsHost,
-  RunningPlugin as HostRunningPlugin,
-} from "./host/plugins/host.js";
+  HostRunningPlugin,
+} from "@creezio/host-runtime";
 export {
   PLUGIN_VERTICAL_REMAINING,
   createPluginsHost,
-} from "./host/plugins/host.js";
+} from "@creezio/host-runtime";
 export {
   ensurePluginControlToken,
   generatePluginControlToken,
@@ -423,15 +516,15 @@ export {
   pluginControlTokenPath,
   pluginControlTokenPrefix,
   readPluginControlToken,
-} from "./host/plugins/control-token.js";
-export type { StartHostPluginControlPlaneOptions } from "./host/plugins/control-plane.js";
-export { startHostPluginControlPlane } from "./host/plugins/control-plane.js";
+} from "@creezio/host-runtime";
+export type { StartHostPluginControlPlaneOptions } from "@creezio/host-runtime";
+export { startHostPluginControlPlane } from "@creezio/host-runtime";
 
-/* ── Phase N1 : runtime plugins TF → kit ── */
+/** @deprecated P1.b — déplacé dans `@creezio/host-runtime`. */
 export type {
   PluginHostBindings,
   PluginLlmKeys,
-} from "./host/plugins/brand-bindings.js";
+} from "@creezio/host-runtime";
 export {
   __resetPluginHostBindingsForTests,
   assignPluginEnv,
@@ -444,8 +537,9 @@ export {
   resolveBuildIsolatedNodeEnv,
   resolveFindFreePort,
   tryGetPluginHostBindings,
-} from "./host/plugins/brand-bindings.js";
+} from "@creezio/host-runtime";
 
+/** @deprecated P1.b — déplacé dans `@creezio/host-runtime`. */
 export type {
   DiscoveredPlugin,
   PluginAcceptance,
@@ -453,7 +547,7 @@ export type {
   PluginManifest,
   PluginPanelConfig,
   PluginPermission,
-} from "./host/plugins/runtime.js";
+} from "@creezio/host-runtime";
 export {
   PLUGIN_MANIFEST_FILE,
   discoverPlugins,
@@ -466,9 +560,10 @@ export {
   scaffoldPlugin,
   scaffoldPluginUiCss,
   setPluginEnabled,
-} from "./host/plugins/runtime.js";
+} from "@creezio/host-runtime";
 
-export type { RunningPlugin } from "./host/plugins/launcher.js";
+/** @deprecated P1.b — déplacé dans `@creezio/host-runtime`. */
+export type { RunningPlugin } from "@creezio/host-runtime";
 export {
   createPluginScaffold,
   createPluginScaffoldWithGit,
@@ -490,12 +585,13 @@ export {
   stopAllPlugins,
   writePluginFiles,
   writePluginFilesAndCommit,
-} from "./host/plugins/launcher.js";
+} from "@creezio/host-runtime";
 
+/** @deprecated P1.b — déplacé dans `@creezio/host-runtime`. */
 export type {
   PluginGitCommit,
   PluginGitStatus,
-} from "./host/plugins/git.js";
+} from "@creezio/host-runtime";
 export {
   bumpPluginManifestPatch,
   commitPluginChanges,
@@ -506,54 +602,60 @@ export {
   resetGitBinaryCache,
   resolveGitBinary,
   restorePluginVersion,
-} from "./host/plugins/git.js";
+} from "@creezio/host-runtime";
 
+/** @deprecated P1.b — déplacé dans `@creezio/host-runtime`. */
 export type {
   PluginControlApiState,
-} from "./host/plugins/control-extras.js";
+} from "@creezio/host-runtime";
 export {
   PLUGIN_CONTROL_PREFERRED_PORT,
   archivePluginRuntime,
   createPluginExecutionGrant,
   getPluginControlApi,
-  /** Bridge env depuis API running (TF gold) — distinct du helper token+ctx. */
-  getPluginControlBridgeEnv as getPluginControlApiBridgeEnv,
+  getPluginControlApiBridgeEnv,
   handleBrandExtras,
   handlePluginControlExtras,
   migratePluginData,
   startPluginControlApi,
   stopPluginControlApi,
   validatePluginExecutionGrant,
-} from "./host/plugins/control-extras.js";
+} from "@creezio/host-runtime";
 
-export { buildPluginControlPlaneAdapters } from "./host/plugins/control-adapters.js";
+/** @deprecated P1.b — déplacé dans `@creezio/host-runtime`. */
+export { buildPluginControlPlaneAdapters } from "@creezio/host-runtime";
 
-export type { PluginCrmKeyStored } from "./host/plugins/crm-key.js";
+/** @deprecated P1.b — déplacé dans `@creezio/host-runtime`. */
+export type { PluginCrmKeyStored } from "@creezio/host-runtime";
 export {
   PLUGIN_CRM_KEY_FILE,
   ensurePluginCrmApiKey,
   pluginCrmKeyPath,
   readPluginCrmApiKey,
-} from "./host/plugins/crm-key.js";
+} from "@creezio/host-runtime";
 
+/** @deprecated P1.b — déplacé dans `@creezio/host-runtime`. */
 export type {
   AcceptCheckItem,
   AcceptCheckResult,
-} from "./host/plugins/accept-check.js";
+} from "@creezio/host-runtime";
 export {
   resolvePluginSmokes,
   runPluginAcceptCheck,
-} from "./host/plugins/accept-check.js";
+} from "@creezio/host-runtime";
 
-export type { PluginTestResult } from "./host/plugins/test-runner.js";
-export { runPluginTests } from "./host/plugins/test-runner.js";
+/** @deprecated P1.b — déplacé dans `@creezio/host-runtime`. */
+export type { PluginTestResult } from "@creezio/host-runtime";
+export { runPluginTests } from "@creezio/host-runtime";
 
-export type { PluginDataMigrationReport } from "./host/plugins/data.js";
+/** @deprecated P1.b — déplacé dans `@creezio/host-runtime`. */
+export type { PluginDataMigrationReport } from "@creezio/host-runtime";
 export {
   applyPluginDataMigrations,
   runPluginDataCli,
-} from "./host/plugins/data.js";
+} from "@creezio/host-runtime";
 
+/** @deprecated P1.b — déplacé dans `@creezio/host-runtime`. */
 export {
   PLUGIN_RUNTIME_FILE,
   PLUGIN_SITE_ID_BASE,
@@ -564,38 +666,40 @@ export {
   pluginRuntimePath,
   readPluginRuntimeState,
   writePluginRuntimeState,
-} from "./host/plugins/events.js";
+} from "@creezio/host-runtime";
 export type {
   PluginRuntimeEntry,
   PluginRuntimeState,
-} from "./host/plugins/events.js";
+} from "@creezio/host-runtime";
 
+/** @deprecated P1.b — déplacé dans `@creezio/host-runtime`. */
 export {
   issuePluginExecutionGrant,
   verifyPluginExecutionGrant,
-} from "./host/plugins/execution-grant.js";
+} from "@creezio/host-runtime";
 export type {
   PluginExecutionGrantPayload,
   PluginGrantAction,
-} from "./host/plugins/execution-grant.js";
+} from "@creezio/host-runtime";
 
-export type { HostStack } from "./host/host-stack.js";
-export { createHostStack, lazyHost } from "./host/host-stack.js";
+/** @deprecated P1.b — déplacé dans `@creezio/host-runtime`. */
+export type { HostStack } from "@creezio/host-runtime";
+export { createHostStack, lazyHost } from "@creezio/host-runtime";
 
-/* ── O7 : host wirings mince (stack / runtime) ── */
+/** @deprecated P1.b — déplacé dans `@creezio/host-runtime`. */
 export type {
   BrandHostPathsModule,
   BrandHostStack,
   BrandHostStackConfig,
   BrandLocalConfigStoreLike,
-} from "./host/brand-host-stack.js";
-export { createBrandHostStack } from "./host/brand-host-stack.js";
+} from "@creezio/host-runtime";
+export { createBrandHostStack } from "@creezio/host-runtime";
 export type {
   BrandFleetInput,
   BrandHostRuntimeConfig,
   BrandHostSingletons,
   BrandRuntimePaths,
-} from "./host/brand-host-runtime.js";
+} from "@creezio/host-runtime";
 export {
   brandEnsureCrmKeyDbScript,
   createBrandHostRuntime,
@@ -604,9 +708,9 @@ export {
   createHermesCrmKeySurface,
   createHermesCrmOnlyBridgeEnv,
   createN8nAgentKeysHooks,
-} from "./host/brand-host-runtime.js";
+} from "@creezio/host-runtime";
 
-/* ── Phase N5 : feature-off host (marques sans plugins/flotte) ── */
+/** @deprecated P1.b — déplacé dans `@creezio/host-runtime`. */
 export type {
   FeatureOffFleetAgentHost,
   FeatureOffFleetSamplesHost,
@@ -617,39 +721,11 @@ export type {
   FeatureOffPluginTestsHost,
   FeatureOffPluginsHost,
   FeatureOffPluginsStatus,
-} from "./host/feature-off-host.js";
-export { createFeatureOffHost } from "./host/feature-off-host.js";
+} from "@creezio/host-runtime";
+export { createFeatureOffHost } from "@creezio/host-runtime";
 
-export {
-  createHostRuntime,
-  localConfigPathForBoot,
-  pathsContextFromBoot,
-  prepareHostDesktop,
-  vendorDir,
-} from "./main-facade.js";
-export type { CreateHostRuntimeOptions } from "./main-facade.js";
-
-export { installBrandDesktopRuntime } from "./desktop/brand-desktop-runtime.js";
-export type {
-  BrandDesktopDeps,
-  BrandDesktopHosts,
-  BrandDesktopPaths,
-  BrandDesktopVertical,
-} from "./desktop/brand-desktop-runtime.js";
-
-export type {
-  DesktopSessionApi,
-  DesktopSessionInfo,
-  DesktopSessionStatus,
-} from "./desktop/desktop-session.js";
-export {
-  createDesktopSessionStore,
-  registerDesktopSessionIpc,
-  spawnBrandMetierApi,
-} from "./desktop/desktop-session.js";
-
-/* ── Phase N2 : jumeaux hosts → kit ── */
-export type { CrashKind, CrashReporterConfig } from "./host/crash-reporter.js";
+/** @deprecated P1.b — déplacé dans `@creezio/host-runtime`. */
+export type { CrashKind, CrashReporterConfig } from "@creezio/host-runtime";
 export {
   configureCrashReporter,
   crashEndpoint,
@@ -665,24 +741,25 @@ export {
   reportCrash,
   reportCrashDebounced,
   setBootStage,
-} from "./host/crash-reporter.js";
+} from "@creezio/host-runtime";
 
-export { instrumentWebContents } from "./host/web-telemetry.js";
+/** @deprecated P1.b — déplacé dans `@creezio/host-runtime`. */
+export type { BridgeOptions } from "@creezio/host-runtime";
+export { BridgeClient } from "@creezio/host-runtime";
 
-export type { BridgeOptions } from "./host/bridge-client.js";
-export { BridgeClient } from "./host/bridge-client.js";
-
+/** @deprecated P1.b — déplacé dans `@creezio/host-runtime`. */
 export type {
   BrandServerLauncherDeps,
   ServerSpawnFn,
   StartBrandServerOptions,
-} from "./host/server-launcher.js";
+} from "@creezio/host-runtime";
 export {
   startBrandNextServer,
-  findFreePort as findServerFreePort,
-  waitForHealth as waitForServerHealth,
-} from "./host/server-launcher.js";
+  findServerFreePort,
+  waitForServerHealth,
+} from "@creezio/host-runtime";
 
+/** @deprecated P1.b — déplacé dans `@creezio/host-runtime`. */
 export type {
   AiWorkspaceHostBindings,
   AiWorkspaceInfo,
@@ -696,7 +773,7 @@ export type {
   AiTabInfo,
   PostFrameResult,
   SupplierActionRequest,
-} from "./host/ai-workspace/index.js";
+} from "@creezio/host-runtime";
 export {
   AiProfileWindow,
   AiScreencaster,
@@ -710,11 +787,9 @@ export {
   getAiWorkspaceHostBindings,
   isAiWorkspaceActionType,
   tryGetAiWorkspaceHostBindings,
-} from "./host/ai-workspace/index.js";
+} from "@creezio/host-runtime";
 
-/* ── N7 : browser tabs → import `@creezio/electron-shell/browser-tabs`
- * (pas le barrel principal : évite de tirer `electron` dans les tests Node). */
-
+/** @deprecated P1.b — sous-domaine Meili déplacé dans `@creezio/search`. */
 export type {
   BrandMeiliDocument,
   BrandMeiliFeed,
@@ -732,7 +807,7 @@ export type {
   MeiliBrowseRequest,
   MeiliBrowseResult,
   MeiliReadyDecision,
-} from "./host/meili/index.js";
+} from "@creezio/search";
 export {
   CATALOG_INDEXES,
   GED_INDEXES,
@@ -767,4 +842,4 @@ export {
   searchMeiliIndexes,
   serializeFingerprint,
   writeFingerprintToDb,
-} from "./host/meili/index.js";
+} from "@creezio/search";

@@ -61,7 +61,7 @@ test("M3.4 TF boot = startHostPluginControlPlane + adapters verticaux", () => {
   const extras = fs.readFileSync(
     path.join(
       root,
-      "packages/electron-shell/src/host/plugins/control-extras.ts",
+      "packages/host-runtime/src/plugins/control-extras.ts",
     ),
     "utf8",
   );
@@ -72,7 +72,7 @@ test("M3.4 TF boot = startHostPluginControlPlane + adapters verticaux", () => {
   const adapters = fs.readFileSync(
     path.join(
       root,
-      "packages/electron-shell/src/host/plugins/control-adapters.ts",
+      "packages/host-runtime/src/plugins/control-adapters.ts",
     ),
     "utf8",
   );

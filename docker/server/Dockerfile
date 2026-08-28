@@ -55,9 +55,17 @@ WORKDIR /app
 COPY package.json package-lock.json .npmrc ./
 COPY ${SERVER_DIR}/package.json ./${SERVER_DIR}/package.json
 # electron atterrit dans l arbre PROD via le lockfile (dev=false) malgre
-# omit=dev : son postinstall telecharge le binaire (~100 Mo, CDN GitHub
-# flaky — vecu tempoflow 2026-08-12, socket hang up). Le serveur headless
-# n en a jamais besoin → skip dans TOUS les stages.
+# omit=dev : devDependency du serveur marque qui satisfait le peer OPTIONNEL
+# des packages kit → npm le marque dev=false. Son postinstall telecharge le
+# binaire (~100 Mo, CDN GitHub flaky — vecu tempoflow 2026-08-12, socket hang
+# up). Le serveur headless n en a jamais besoin → skip dans TOUS les stages.
+# P1.b : le harness serveur importe @creezio/host-runtime + @creezio/search
+# (plus de dependance FONCTIONNELLE a electron-shell), mais electron-shell
+# reste dans l arbre : il ship resources/vendor (hermes-agent, n8n) resolus
+# par kitOsResourcesRoot, et le serveur marque le garde en dependency pour
+# le build desktop-server. TODO (suivi P1.c) : deplacer resources/vendor
+# vers @creezio/host-runtime pour couper electron-shell — et alors seulement
+# asserter « pas de node_modules/electron » dans la gate d image.
 ENV ELECTRON_SKIP_BINARY_DOWNLOAD=1
 # Resilience registre : reset TLS transitoire sous charge (2 npm ci
 # concurrents — vecu idem). Retries npm via env, identique partout.
@@ -79,7 +87,7 @@ RUN --mount=type=secret,id=CREEZIO_NPM_TOKEN \
   && npm rebuild better-sqlite3
 
 # Meilisearch Linux embarqué — recherche réelle (plus de sql-fallback).
-# Version alignée sur ensure-kit-binaries.ts (@creezio/electron-shell).
+# Version alignée sur ensure-kit-binaries.ts (@creezio/host-runtime).
 FROM node:22-bookworm-slim AS meili
 RUN apt-get update \
   && apt-get install -y --no-install-recommends ca-certificates curl \

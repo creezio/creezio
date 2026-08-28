@@ -11,7 +11,7 @@ import { createHermesHost, type HermesHost } from "./hermes/launcher.js";
 import { createN8nHost, type N8nHost } from "./n8n/launcher.js";
 import { createTunnelService, type TunnelService } from "./tunnel/tunnel.js";
 import { createPluginsHost, type PluginsHost } from "./plugins/host.js";
-import { startMeili, type RunningMeili, type StartMeiliOptions } from "./meili-launcher.js";
+import { startMeili, type RunningMeili, type StartMeiliOptions } from "@creezio/search";
 import {
   startNextServerCore,
   type RunningServer,

@@ -2,7 +2,7 @@
  * Écran d’erreur boot / crash (hors React) — gold TempoFlow paramétré.
  */
 
-import { logFilePath } from "../logger.js";
+import { logFilePath } from "@creezio/host-runtime";
 import {
   windowChromeBarHtml,
   windowChromeCss,

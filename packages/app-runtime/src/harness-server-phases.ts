@@ -9,7 +9,7 @@
  * Réutilise les hosts déjà câblés par composeBrandOs — zéro logique métier.
  */
 import type { AppManifest } from "@creezio/brand-config";
-import { startHostPluginControlPlane } from "@creezio/electron-shell";
+import { startHostPluginControlPlane } from "@creezio/host-runtime";
 import type { BrandOsComposition } from "./compose-brand-os.js";
 import type { BootProgressReporter } from "./boot-progress.js";
 import type { BrandCatalogHost } from "./types.js";

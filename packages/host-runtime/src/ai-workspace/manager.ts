@@ -13,7 +13,7 @@
 
 import type { BaseWindow, WebContentsView } from "electron";
 import fs from "node:fs";
-import { log, logError } from "../../logger.js";
+import { log, logError } from "../logger.js";
 import { loadElectron } from "../load-electron.js";
 
 import { AiProfileWindow } from "./profile-window.js";

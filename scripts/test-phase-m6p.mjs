@@ -25,7 +25,7 @@ function check(name, fn) {
 }
 
 check("n8n launcher dual-read .${prefix}-encryption-key / owner", () => {
-  const src = read("packages/electron-shell/src/host/n8n/launcher.ts");
+  const src = read("packages/host-runtime/src/n8n/launcher.ts");
   assert.ok(src.includes("-encryption-key"));
   assert.ok(src.includes("-n8n-encryption-key"));
   assert.ok(src.includes("-owner.json"));
@@ -34,7 +34,7 @@ check("n8n launcher dual-read .${prefix}-encryption-key / owner", () => {
 });
 
 check("hermes ensureApiKey brand-aware + clear certivan webui password", () => {
-  const src = read("packages/electron-shell/src/host/hermes/launcher.ts");
+  const src = read("packages/host-runtime/src/hermes/launcher.ts");
   assert.ok(src.includes("-api-server-key"));
   assert.ok(src.includes("secretFilePrefix") || src.includes("manifest.brandId"));
   assert.ok(src.includes("certivan-webui-password"));
@@ -43,7 +43,7 @@ check("hermes ensureApiKey brand-aware + clear certivan webui password", () => {
 
 check("hermes bootstrap WEBUI_DEPS_MARKER_LEGACY_CERTIVAN + FIDU", () => {
   const src = read(
-    "packages/electron-shell/src/host/hermes/runtime-bootstrap.ts",
+    "packages/host-runtime/src/hermes/runtime-bootstrap.ts",
   );
   assert.ok(src.includes("WEBUI_DEPS_MARKER_LEGACY_CERTIVAN"));
   assert.ok(src.includes("WEBUI_DEPS_MARKER_LEGACY_FIDU"));
@@ -54,7 +54,7 @@ check("hermes bootstrap WEBUI_DEPS_MARKER_LEGACY_CERTIVAN + FIDU", () => {
   const idx = read("packages/electron-shell/src/index.ts");
   assert.ok(idx.includes("WEBUI_DEPS_MARKER_LEGACY_CERTIVAN"));
   assert.ok(idx.includes("WEBUI_DEPS_MARKER_LEGACY_FIDU"));
-  const hermes = read("packages/electron-shell/src/host/hermes/launcher.ts");
+  const hermes = read("packages/host-runtime/src/hermes/launcher.ts");
   assert.ok(hermes.includes("fidu-webui-password"));
 });
 

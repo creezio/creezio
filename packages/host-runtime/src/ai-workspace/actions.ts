@@ -8,7 +8,7 @@ import type { AiWorkspaceManager } from "./manager.js";
 import type { AiScreencaster } from "./screencast.js";
 import type { SupplierActionRequest } from "./types.js";
 import { getAiWorkspaceHostBindings } from "./bindings.js";
-import { logError } from "../../logger.js";
+import { logError } from "../logger.js";
 
 type Result = Record<string, unknown>;
 

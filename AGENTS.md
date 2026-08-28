@@ -79,7 +79,8 @@ Voir `package.json` script `build:packages`. Ordre typique :
 `mcp-facade` → `auth` → `shell-ui` → `os-ui` → `onboarding` →
 `interactive-demo` → `cockpit` →
 `assistant` → `tasks` → `mails` → `support` → `integrations` → `observability` → `landing` → `admin` → `automations` →
-`database` → `browser-host` → `electron-shell` → `brand-spec` →
+`database` → `browser-host` → `search` → `host-runtime` →
+`electron-shell` → `brand-spec` →
 `app-runtime` → `desktop-tooling` → `factory` → `propagation` → `build:cjs`.
 
 Après changement runtime consommé par les marques : **`npm run build:packages`
@@ -116,7 +117,9 @@ contrats src↔dist + hash de contenu).
 | Automations lifecycle plugins/org | `automations` |
 | Intégrations / clés API tierces (`integration://<slug>`, sync n8n) | `integrations` |
 | Admin Database CRUD | `database` |
-| Electron host / plugins / sidecars | `electron-shell` |
+| Recherche Meili (feed, indexation, browse, cohérence) | `search` |
+| Host runtime Node pur (hermes, n8n, tunnel, plugins, sandbox, server-launcher) | `host-runtime` |
+| Desktop Electron (boot, fenêtres, tray, updater, splash) | `electron-shell` |
 | Chromium serveur IA (CDP, driver, screencast) | `browser-host` |
 | Façade desktop marque (`startBrandDesktop`) | `app-runtime` |
 | BrandSpec YAML / doctor | `brand-spec` |

@@ -6,7 +6,7 @@
 
 import http from "node:http";
 import crypto from "node:crypto";
-import { loadElectron } from "../host/load-electron.js";
+import { loadElectron } from "@creezio/host-runtime";
 
 const GOOGLE_AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth";
 const GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token";

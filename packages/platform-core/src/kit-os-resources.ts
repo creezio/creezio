@@ -6,7 +6,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { createRequire } from "node:module";
-import { createAppRequire } from "@creezio/platform-core";
+import { createAppRequire } from "./app-require.js";
 import { fileURLToPath } from "node:url";
 
 let cachedRoot: string | null = null;
@@ -76,8 +76,10 @@ export function electronShellPackageRoot(): string {
     /* fallthrough */
   }
 
-  // 3) Fallback : remonter depuis ce fichier compilé
-  cachedRoot = path.resolve(compiledHostDir(), "../..");
+  // 3) Fallback : package frère (node_modules/@creezio/* ou packages/* —
+  // ce module vit désormais dans platform-core, remonter de 2 pointe sur
+  // le dossier parent commun, puis electron-shell).
+  cachedRoot = path.resolve(compiledHostDir(), "../../electron-shell");
   return cachedRoot;
 }
 

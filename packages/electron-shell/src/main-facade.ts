@@ -13,10 +13,10 @@ import {
   type PathsContext,
 } from "@creezio/platform-core";
 import type { DesktopBootContext } from "./boot.js";
-import type { HostRuntimeContext } from "./host/context.js";
-import { createLocalConfigStore, type LocalConfigStore } from "./host/local-config.js";
-import { createHostStack, type HostStack } from "./host/host-stack.js";
-import { log as shellLog } from "./logger.js";
+import type { HostRuntimeContext } from "@creezio/host-runtime";
+import { createLocalConfigStore, type LocalConfigStore } from "@creezio/host-runtime";
+import { createHostStack, type HostStack } from "@creezio/host-runtime";
+import { log as shellLog } from "@creezio/host-runtime";
 
 export type CreateHostRuntimeOptions = {
   boot: DesktopBootContext;

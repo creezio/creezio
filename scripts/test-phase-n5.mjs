@@ -34,7 +34,7 @@ test("N5.1 PHASE-N5.md + PLAN-N N5", () => {
 test("N5.2 createFeatureOffHost exporté + signatures", async () => {
   const src = path.join(
     root,
-    "packages/electron-shell/src/host/feature-off-host.ts",
+    "packages/host-runtime/src/feature-off-host.ts",
   );
   assert.ok(fs.existsSync(src), "feature-off-host.ts manquant");
   const body = fs.readFileSync(src, "utf8");
@@ -53,7 +53,7 @@ test("N5.2 createFeatureOffHost exporté + signatures", async () => {
 
   const dist = path.join(
     root,
-    "packages/electron-shell/dist/host/feature-off-host.js",
+    "packages/host-runtime/dist/feature-off-host.js",
   );
   assert.ok(fs.existsSync(dist), "dist feature-off-host manquant — build?");
   const mod = await import(pathToFileURL(dist).href);

@@ -136,6 +136,12 @@ export const PACKAGE_SURFACE_MAP: Record<
   "@creezio/assistant": ["package-json-deps", "electron-main"],
   "@creezio/tasks": ["package-json-deps", "next-host-env"],
   "@creezio/mails": ["package-json-deps", "next-host-env"],
+  "@creezio/search": ["package-json-deps", "next-host-env"],
+  "@creezio/host-runtime": [
+    "package-json-deps",
+    "electron-main",
+    "next-host-env",
+  ],
   "@creezio/electron-shell": [
     "package-json-deps",
     "electron-main",

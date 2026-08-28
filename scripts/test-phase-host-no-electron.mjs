@@ -1,14 +1,18 @@
 #!/usr/bin/env node
 /**
- * Gate P1.a — pureté host : aucun import STATIQUE d'electron dans
- * `packages/electron-shell/src/host/**`.
+ * Gate P1.a — pureté host : aucun import STATIQUE d'electron dans le code
+ * host Node pur. Depuis P1.b le host vit dans trois zones :
+ *   - `packages/host-runtime/src/**` (runtime host extrait) ;
+ *   - `packages/search/src/**` (sous-domaine Meili extrait) ;
+ *   - `packages/electron-shell/src/host/**` (reliquat browser-tabs, qui
+ *     utilise Electron via loadElectron uniquement).
  *
  * Invariant (audit P1.a) : le host doit rester chargeable en Node pur
  * (tests kit, harness serveur, marques headless). Toute valeur Electron
  * s'obtient au runtime via `loadElectron()` (chargement dynamique lazy) —
- * l'UNIQUE exception tolérée est donc `host/load-electron.ts` lui-même,
- * qui encapsule le `require("electron")` (via eval/createRequire, jamais
- * un import top-level).
+ * l'UNIQUE exception tolérée est donc `host-runtime/src/load-electron.ts`
+ * lui-même, qui encapsule le `require("electron")` (via eval/createRequire,
+ * jamais un import top-level).
  *
  * Autorisé partout :
  *   - `import type { … } from "electron"` (effacé à la compilation) ;
@@ -28,10 +32,14 @@ import { test } from "node:test";
 import { fileURLToPath } from "node:url";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const HOST_DIR = path.join(ROOT, "packages/electron-shell/src/host");
+const HOST_DIRS = [
+  path.join(ROOT, "packages/host-runtime/src"),
+  path.join(ROOT, "packages/search/src"),
+  path.join(ROOT, "packages/electron-shell/src/host"),
+];
 
 /** Unique exception : le helper de chargement dynamique lui-même. */
-const LOADER_REL = "load-electron.ts";
+const LOADER_ABS = path.join(ROOT, "packages/host-runtime/src/load-electron.ts");
 
 function walk(dir, acc = []) {
   for (const name of fs.readdirSync(dir).sort()) {
@@ -71,13 +79,12 @@ function findStaticElectronImports(src) {
   return violations;
 }
 
-test("host/ — le helper load-electron.ts existe et encapsule le chargement", () => {
-  const loader = path.join(HOST_DIR, LOADER_REL);
+test("host — le helper load-electron.ts existe et encapsule le chargement", () => {
   assert.ok(
-    fs.existsSync(loader),
-    `${LOADER_REL} absent de src/host — l'exception de cette gate n'a plus de raison d'être, la mettre à jour`,
+    fs.existsSync(LOADER_ABS),
+    `load-electron.ts absent de host-runtime/src — l'exception de cette gate n'a plus de raison d'être, la mettre à jour`,
   );
-  const src = fs.readFileSync(loader, "utf8");
+  const src = fs.readFileSync(LOADER_ABS, "utf8");
   assert.match(src, /export function loadElectron\(/, "loadElectron() attendu dans load-electron.ts");
   // Même le loader ne doit pas faire d'import statique top-level.
   const staticImports = findStaticElectronImports(src).filter((v) => v.kind === "import" || v.kind === "export");
@@ -88,27 +95,27 @@ test("host/ — le helper load-electron.ts existe et encapsule le chargement", (
   );
 });
 
-test("host/** — zéro import statique d'electron (loadElectron() obligatoire)", () => {
-  const files = walk(HOST_DIR);
-  assert.ok(files.length > 50, `src/host inattendu (${files.length} fichiers)`);
+test("host (host-runtime + search + reliquat electron-shell) — zéro import statique d'electron", () => {
+  const files = HOST_DIRS.flatMap((dir) => walk(dir));
+  assert.ok(files.length > 50, `zones host inattendues (${files.length} fichiers)`);
   const failures = [];
   for (const file of files) {
-    const rel = path.relative(HOST_DIR, file);
+    const rel = path.relative(ROOT, file);
     const src = fs.readFileSync(file, "utf8");
     let violations = findStaticElectronImports(src);
-    if (rel === LOADER_REL) {
+    if (file === LOADER_ABS) {
       // Exception documentée : require("electron") DANS le helper uniquement.
       violations = violations.filter((v) => v.kind !== "require");
     }
     for (const v of violations) {
-      failures.push(`packages/electron-shell/src/host/${rel}:${v.line} — ${v.text}`);
+      failures.push(`${rel}:${v.line} — ${v.text}`);
     }
   }
   assert.equal(
     failures.length,
     0,
-    `import statique d'electron dans host/ (Node pur cassé) :\n  ${failures.join("\n  ")}\n` +
-      `→ remplacer par loadElectron() (host/load-electron.ts) pour les valeurs, ` +
+    `import statique d'electron dans le host (Node pur cassé) :\n  ${failures.join("\n  ")}\n` +
+      `→ remplacer par loadElectron() (@creezio/host-runtime) pour les valeurs, ` +
       `import type { … } from "electron" pour les types.`,
   );
 });

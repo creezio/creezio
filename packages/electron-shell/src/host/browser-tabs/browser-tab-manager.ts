@@ -20,12 +20,12 @@
  */
 
 import type { BaseWindow, WebContentsView, Session } from "electron";
-import { loadElectron } from "../load-electron.js";
+import { loadElectron } from "@creezio/host-runtime";
 import fs from "node:fs";
 import crypto from "node:crypto";
-import { log, logError } from "../../logger.js";
+import { log, logError } from "@creezio/host-runtime";
 import { instrumentWebContents } from "../web-telemetry.js";
-import { reportCrash } from "../crash-reporter.js";
+import { reportCrash } from "@creezio/host-runtime";
 import { CHROME_UA } from "./chrome-ua.js";
 import {
   reduceTabNativeLoadState,

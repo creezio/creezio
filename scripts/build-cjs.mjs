@@ -38,6 +38,8 @@ const PACKAGES = [
   "automations",
   "database",
   "browser-host",
+  "search",
+  "host-runtime",
   "electron-shell",
   "desktop-tooling",
   "propagation",

@@ -43,7 +43,7 @@ test("M4.2 kit : fleetTelemetry + configPath getter + electron sync", () => {
   assert.match(fleet, /applyFleetTelemetryPatch/);
 
   const lc = fs.readFileSync(
-    path.join(root, "packages/electron-shell/src/host/local-config.ts"),
+    path.join(root, "packages/host-runtime/src/local-config.ts"),
     "utf8",
   );
   assert.match(lc, /getFleetTelemetry/);

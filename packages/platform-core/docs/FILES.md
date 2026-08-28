@@ -20,8 +20,10 @@
 | [`src/fleet-telemetry.ts`](../src/fleet-telemetry.ts) | Consentement télémétrie flotte — extrait TempoFlow fleet-telemetry.ts (M4). Labels UI marque restent hors kit ; ici : types + sanitize/patch purs. |
 | [`src/index.ts`](../src/index.ts) | _(pas de cartouche JSDoc en tête — voir le code)_ |
 | [`src/installer-prefs.ts`](../src/installer-prefs.ts) | Préférences écrites par l'installeur NSIS (`installer-prefs.json` sous userData). Consommées une seule fois au boot packagé pour synchroniser `launchAtStartup` avec local-config marque + setLoginItemSettings. Module pur (pas d'import Electron) — testable depuis Node. |
+| [`src/kit-os-resources.ts`](../src/kit-os-resources.ts) | (à documenter) |
 | [`src/licensing.ts`](../src/licensing.ts) | Licence desktop hors-ligne (Ed25519) — gold TempoFlow paramétré. Format clé : `{keyPrefix}-<payload base64url>-<signature base64url>` où payload = { email, plan, exp }. Vérification avec clé publique PEM (env ou option) — aucune connexion serveur requise. |
 | [`src/local-config-schema.ts`](../src/local-config-schema.ts) | Schéma local-config (userData-config.json) — aligné TF2 0.10.26. Le chiffrement safeStorage est dans @creezio/electron-shell. |
+| [`src/node-spawn-env.ts`](../src/node-spawn-env.ts) | (à documenter) |
 | [`src/paths.ts`](../src/paths.ts) | Utilitaires de chemins génériques — paramétrés par AppManifest. Pas d'import Electron ici (testable depuis Node). L'appelant fournit `userDataRoot` (ex. `app.getPath("userData")`) et `isPackaged`. Source d'abstraction : electron/paths.ts (TF2 0.10.26 / Certivan / Fidu). |
 | [`src/platform-stores-contract.ts`](../src/platform-stores-contract.ts) | Contrat cutover stores plateforme (SoT kit core.db) — M8. Zéro dual-write runtime. Extensions brand (ACL, kanban, PJ) hors SoT. |
 | [`src/ports.ts`](../src/ports.ts) | Helpers ports / health — purs Node (utilisés par launchers hôte). Extrait de electron/server-launcher.ts (TF2 0.10.26). |

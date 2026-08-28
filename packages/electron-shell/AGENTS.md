@@ -2,9 +2,37 @@
 
 ## Mission
 
-Maintenir le runtime Electron plateforme Creezio : host stack, desktop runtime, launchers locaux, plugins, browser-tabs, ai-workspace, crash/updater/tray/splash et bindings marque. Garder le package generique, testable et sans dependance metier verticale.
+Maintenir le **desktop Electron** plateforme Creezio : boot, fenêtres, tray,
+updater, splash, bridge, admin-window, overlays desktop, browser-tabs et
+télémétrie webContents. Garder le package générique, testable et sans
+dépendance métier verticale.
+
+## P1.b — extraction host-runtime / search (0.11.x)
+
+Le host Node pur a déménagé :
+
+- **`@creezio/search`** — tout le sous-domaine Meili (launcher, feed,
+  indexation, cohérence, browse, `maybeBootBrandMeili`).
+- **`@creezio/host-runtime`** — le reste du host (logger, hermes/, n8n/,
+  tunnel/, plugins/, sandbox/, ai-workspace/, server-launcher,
+  brand-host-stack, brand-kernel-http, node-runtime, npm-cli,
+  ensure-kit-binaries, crash-reporter, `loadElectron`…).
+- `kitOsResourcesRoot` / `kitOsVendorDir` / `envForNodeScriptSpawn` →
+  `@creezio/platform-core`.
+
+Ce package **ré-exporte tout** avec `@deprecated` (compat des imports
+historiques kit/marques/factory). Cette surface est **FIGÉE** — gate
+`test-phase-electron-shell-frozen-exports` (snapshot
+`scripts/electron-shell-frozen-exports.json`) : tout NOUVEAU symbole host
+s'exporte depuis son package SoT, jamais d'ici. `resources/vendor` et
+`resources/bin` (hermes-agent, n8n, binaires kit) restent shippés ICI
+(résolus par `kitOsResourcesRoot`) — TODO P1.c pour les déménager.
 
 ## Meili — composant CORE fail-closed (contrat marques)
+
+> SoT du code : `@creezio/search` (extrait P1.b). Le contrat ci-dessous
+> reste valable ; les subpaths `@creezio/electron-shell/meili` sont des
+> ré-exports de compat.
 
 **Meili = core, comme SQLite.** Quand un feed déclare ≥ 1 index :
 
@@ -52,23 +80,24 @@ dans la marque mais **doit** respecter ce contrat.
 
 ## Points d'entrée
 
-- `src/index.ts` : barrel public principal.
+- `src/index.ts` : barrel public principal (desktop natif + ré-exports
+  `@deprecated` figés).
 - `src/desktop/brand-desktop-runtime.ts` : runtime desktop complet.
-- `src/host/host-stack.ts` : stack host directe.
-- `src/host/brand-host-stack.ts` : wiring lazy marque.
-- `src/host/brand-host-runtime.ts` : singletons et `HostRuntimeContext` marque.
-- `src/host/plugins/brand-bindings.ts` : `configurePluginHost`.
-- `src/host/plugins/launcher.ts` : start/stop/restart/scaffold/git plugins.
-- `src/host/plugins/control-plane.ts` et `control-extras.ts` : API loopback plugins.
-- `src/host/hermes/launcher.ts`, `src/host/n8n/launcher.ts`, `src/host/meili-launcher.ts`, `src/host/tunnel/tunnel.ts` : embeds.
-- `src/host/meili/*` : indexer générique + schéma d'index — le **contrat
-  catalogue** (filterable `categorie_id` / `famille_id` / `agregateur` /
-  `fournisseur_id`, sortable `prix_min`) sert la recherche **et** le browse
-  filtré sans `q` côté UI marque.
-- `src/host/sandbox/embed-sandbox.ts` : blocs `config.yaml` Hermes upsertés au boot — sandbox (`CREEZIO-SANDBOX`) et `mcp_servers` (`CREEZIO-MCP`, H1 Hermes cerveau unique : URL `/mcp` loopback + Bearer clé CRM via `ctx.getHermesMcpServerConfig`) ; `reapplyHermesBridge` redémarre si le bloc manque/pointe ailleurs.
-- `src/host/hermes/skills-seed.ts` : seed skills vendor — le namespace `site-*` est RÉSERVÉ aux skills appris par Hermes (jamais seedé depuis un vendor, H3). Skills kit : `resources/vendor/hermes-skills/` (`creezio-computer-use`, `creezio-site-skills`, …).
-- `src/host/browser-tabs/index.ts` : sous-export browser-tabs.
-- `src/host/ai-workspace/index.ts` : workspaces IA.
+- `src/host/browser-tabs/index.ts` : sous-export browser-tabs
+  (`@creezio/electron-shell/browser-tabs` — reste ICI, Electron via
+  `loadElectron`).
+- `src/host/web-telemetry.ts` : `instrumentWebContents` (desktop).
+- `src/meili.ts` : shim compat du subpath `./meili` (ré-export
+  `@creezio/search`, surface figée).
+
+Déménagés en P1.b (voir leurs AGENTS) :
+
+- host-stack / brand-host-stack / brand-host-runtime, plugins/, hermes/,
+  n8n/, tunnel/, sandbox/, ai-workspace/, server-launcher, crash-reporter →
+  [`@creezio/host-runtime`](../host-runtime/AGENTS.md) ;
+- meili/ (indexer générique, schéma d'index, contrat catalogue),
+  meili-launcher, brand-meili-boot →
+  [`@creezio/search`](../search/AGENTS.md).
 
 ## Modifier sans casser
 
@@ -114,14 +143,13 @@ Si la modification touche Electron reel, completer par un smoke de marque :
 ## Fichiers sensibles
 
 - `src/desktop/brand-desktop-runtime.ts` : boot global, IPC, restart Next, BYOK.
-- `src/host/plugins/brand-bindings.ts` : contrat d'injection marque.
-- `src/host/plugins/launcher.ts` : spawn sidecars plugins, env secrets, ecriture fichiers.
-- `src/host/plugins/control-token.ts` et `execution-grant.ts` : tokens/grants.
-- `src/host/hermes/crm-key.ts`, `src/host/n8n/api-key.ts`, `src/host/n8n/agent-isolation.ts` : secrets.
-- `src/host/tunnel/tunnel.ts` : provisioner, token tunnel, ingress public.
 - `src/host/browser-tabs/browser-tab-driver.ts` : CDP trusted input.
-- `src/host/ai-workspace/manager.ts` : partitions IA et cookies session.
-- `src/host/sandbox/*` et `src/host/node-runtime.ts` : confinement process.
+- `src/index.ts` + `src/meili.ts` : surface de ré-exports FIGÉE (gate
+  `test-phase-electron-shell-frozen-exports`).
+- `resources/vendor` + `resources/bin` : vendor hermes/n8n + binaires kit
+  shippés par CE package (résolution `kitOsResourcesRoot`).
+- Le reste (plugins, hermes, n8n, tunnel, sandbox, ai-workspace) : voir
+  `packages/host-runtime/AGENTS.md`.
 
 ## Liens
 

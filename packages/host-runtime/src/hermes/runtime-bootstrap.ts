@@ -15,7 +15,7 @@ import https from "node:https";
 import path from "node:path";
 import type { HostRuntimeContext } from "../context.js";
 import { hostLog, hostProductName } from "../context.js";
-import { kitOsVendorDir } from "../kit-os-resources.js";
+import { kitOsVendorDir } from "@creezio/platform-core";
 import { applyOsSandboxEnv, setSandboxEnvVar } from "../sandbox/embed-sandbox.js";
 import { resolveSystemBinary } from "../sandbox/os-sandbox.js";
 import { resolveDesktopNodeBinary } from "../node-runtime.js";

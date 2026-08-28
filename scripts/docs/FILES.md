@@ -72,6 +72,7 @@
 | [`test-phase-desktop-server-parity.mjs`](../test-phase-desktop-server-parity.mjs) | Gate parité desktop Serveur TF2 0.10.26 : NSIS (démarrage auto, désinstall profonde), UI Configuration (tray / launchAtStartup / factory-reset), runtime. |
 | [`test-phase-docs-freshness.mjs`](../test-phase-docs-freshness.mjs) | Gate D0 — fraîcheur documentaire (docs/DOC-STANDARD.md). Vérifie, pour chaque cible du périmètre (packages/*, docker/*, apps/*, scripts/) : 1. |
 | [`test-phase-e.mjs`](../test-phase-e.mjs) | !usrbinenv node |
+| [`test-phase-electron-shell-frozen-exports.mjs`](../test-phase-electron-shell-frozen-exports.mjs) | (à documenter) |
 | [`test-phase-f.mjs`](../test-phase-f.mjs) | !usrbinenv node |
 | [`test-phase-factory-docker-parity.mjs`](../test-phase-factory-docker-parity.mjs) | Gate héritage factory → Docker (env, opt-in CREEZIO_FACTORY_DOCKER=1). |
 | [`test-phase-factory-lockfile.mjs`](../test-phase-factory-lockfile.mjs) | (à documenter) |

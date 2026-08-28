@@ -12,7 +12,7 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
 test("C1 feed.ts expose BrandMeiliFeed + createChrCatalogMeiliFeed", () => {
   const feed = fs.readFileSync(
-    path.join(ROOT, "packages/electron-shell/src/host/meili/feed.ts"),
+    path.join(ROOT, "packages/search/src/meili/feed.ts"),
     "utf8",
   );
   assert.match(feed, /export type BrandMeiliFeed/);
@@ -25,19 +25,19 @@ test("C1 feed.ts expose BrandMeiliFeed + createChrCatalogMeiliFeed", () => {
 
 test("C2 generic-indexer + runIndexation accepte feed", () => {
   const gen = fs.readFileSync(
-    path.join(ROOT, "packages/electron-shell/src/host/meili/generic-indexer.ts"),
+    path.join(ROOT, "packages/search/src/meili/generic-indexer.ts"),
     "utf8",
   );
   assert.match(gen, /export async function runFeedIndexation/);
   assert.match(gen, /export async function searchMeiliIndexes/);
   const browse = fs.readFileSync(
-    path.join(ROOT, "packages/electron-shell/src/host/meili/browse.ts"),
+    path.join(ROOT, "packages/search/src/meili/browse.ts"),
     "utf8",
   );
   assert.match(browse, /export async function browseMeiliIndex/);
 
   const idx = fs.readFileSync(
-    path.join(ROOT, "packages/electron-shell/src/host/meili/indexer.ts"),
+    path.join(ROOT, "packages/search/src/meili/indexer.ts"),
     "utf8",
   );
   assert.match(idx, /opts\?\.feed|getMeiliBrandFeed/);
@@ -74,12 +74,12 @@ test("C5 ADR documente BrandMeiliFeed", () => {
 
 test("D1 kit expose listenBrandKernelHttp + maybeBootBrandMeili", () => {
   const httpSrc = fs.readFileSync(
-    path.join(ROOT, "packages/electron-shell/src/host/brand-kernel-http.ts"),
+    path.join(ROOT, "packages/host-runtime/src/brand-kernel-http.ts"),
     "utf8",
   );
   assert.match(httpSrc, /export async function listenBrandKernelHttp/);
   const bootSrc = fs.readFileSync(
-    path.join(ROOT, "packages/electron-shell/src/host/brand-meili-boot.ts"),
+    path.join(ROOT, "packages/search/src/brand-meili-boot.ts"),
     "utf8",
   );
   assert.match(bootSrc, /export async function maybeBootBrandMeili/);
@@ -96,7 +96,7 @@ test("D2 boot Meili saute la réindexation quand le fingerprint est à jour", ()
   // de container (~7 min de CPU/IO → recherche dégradée), alors que le
   // desktop sautait déjà via decideMeiliReady. Le skip doit être câblé.
   const bootSrc = fs.readFileSync(
-    path.join(ROOT, "packages/electron-shell/src/host/brand-meili-boot.ts"),
+    path.join(ROOT, "packages/search/src/brand-meili-boot.ts"),
     "utf8",
   );
   assert.match(bootSrc, /skipIfCoherent\?: boolean/);
@@ -104,7 +104,7 @@ test("D2 boot Meili saute la réindexation quand le fingerprint est à jour", ()
   assert.match(bootSrc, /indexSkipped: true/);
 
   const coherenceSrc = fs.readFileSync(
-    path.join(ROOT, "packages/electron-shell/src/host/meili/coherence.ts"),
+    path.join(ROOT, "packages/search/src/meili/coherence.ts"),
     "utf8",
   );
   // Compteurs stricts côté serveur : une dérive (import hors indexation
@@ -136,7 +136,7 @@ test("D2 boot Meili saute la réindexation quand le fingerprint est à jour", ()
   assert.match(harnessSrc, /indexSkipped/);
 
   const meiliBarrel = fs.readFileSync(
-    path.join(ROOT, "packages/electron-shell/src/host/meili/index.ts"),
+    path.join(ROOT, "packages/search/src/meili/index.ts"),
     "utf8",
   );
   assert.match(meiliBarrel, /meiliCoherenceScriptPath/);

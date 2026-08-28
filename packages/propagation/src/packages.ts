@@ -8,6 +8,8 @@ export type CreezioPackageName =
   | "@creezio/shell"
   | "@creezio/platform-core"
   | "@creezio/product-hub"
+  | "@creezio/search"
+  | "@creezio/host-runtime"
   | "@creezio/electron-shell"
   | "@creezio/desktop-tooling"
   | "@creezio/factory"
@@ -119,14 +121,37 @@ export const KIT_PACKAGES: readonly KitPackageMeta[] = [
     layer: "L1-core",
   },
   {
+    name: "@creezio/search",
+    dir: "search",
+    summary: "Sous-domaine Meili (feed, indexation, browse, cohérence, launcher)",
+    dependsOn: ["@creezio/platform-core"],
+    layer: "L1-core",
+  },
+  {
+    name: "@creezio/host-runtime",
+    dir: "host-runtime",
+    summary:
+      "Host runtime Node pur (hermes, n8n, tunnel, plugins, sandbox, server-launcher)",
+    dependsOn: [
+      "@creezio/brand-config",
+      "@creezio/platform-core",
+      "@creezio/product-hub",
+      "@creezio/search",
+    ],
+    layer: "L1-core",
+  },
+  {
     name: "@creezio/electron-shell",
     dir: "electron-shell",
-    summary: "Runtime Electron (boot, updater, tray, host stack, plugins host)",
+    summary:
+      "Desktop Electron (boot, fenêtres, updater, tray, splash) + ré-exports compat host",
     dependsOn: [
       "@creezio/brand-config",
       "@creezio/shell",
       "@creezio/platform-core",
       "@creezio/product-hub",
+      "@creezio/search",
+      "@creezio/host-runtime",
     ],
     layer: "L1-core",
   },

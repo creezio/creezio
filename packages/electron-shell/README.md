@@ -2,7 +2,17 @@
 
 ## Rôle
 
-`@creezio/electron-shell` est le runtime Electron plateforme Creezio. Il concentre le boot desktop, les fenetres, le tray, l'updater, la splash, la stack host locale, les sidecars Hermes/n8n/Meili/tunnel, le runtime plugins, les browser-tabs et les workspaces IA.
+`@creezio/electron-shell` est le **desktop Electron** plateforme Creezio : boot desktop, fenêtres, tray, updater, splash, bridge, admin-window, overlays et browser-tabs.
+
+> **P1.b (0.11.x)** : le host Node pur a été extrait vers
+> [`@creezio/host-runtime`](../host-runtime/README.md) (hermes, n8n, tunnel,
+> plugins, sandbox, ai-workspace, server-launcher, crash reporter…) et
+> [`@creezio/search`](../search/README.md) (sous-domaine Meili). Ce package
+> **ré-exporte tout** avec `@deprecated` — aucun import historique ne casse,
+> mais la surface de ré-exports est figée
+> (gate `test-phase-electron-shell-frozen-exports`) : le nouveau code host
+> s'écrit dans les nouveaux packages. `resources/vendor` et `resources/bin`
+> restent shippés ici.
 
 Ce package est volontairement brand-agnostic : les marques fournissent leur `AppManifest`, leurs chemins, leurs stores locaux, leurs prefixes d'env et leurs hooks verticaux.
 

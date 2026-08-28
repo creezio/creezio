@@ -8,8 +8,8 @@ import os from "node:os";
 import path from "node:path";
 import fs from "node:fs";
 import { closeAdminWindow, openAdminWindow } from "../admin-window.js";
-import { initLogger, log, logError, logFilePath, scoped, setOpsLineHandler } from "../logger.js";
-import { crashLogHint, crashReportsDir } from "../host/crash-reporter.js";
+import { initLogger, log, logError, logFilePath, scoped, setOpsLineHandler } from "@creezio/host-runtime";
+import { crashLogHint, crashReportsDir } from "@creezio/host-runtime";
 import {
   activateSplashStep,
   completeSplashStep,
@@ -46,7 +46,7 @@ import {
   unwrapBootProfileResult,
 } from "@creezio/platform-core";
 import { isFeatureEnabled } from "@creezio/brand-config";
-import { envForNodeScriptSpawn } from "../host/node-runtime.js";
+import { envForNodeScriptSpawn } from "@creezio/host-runtime";
 import { remoteOfflineHtml } from "./remote-offline-html.js";
 
 export type BrandDesktopHosts = {

@@ -333,11 +333,11 @@ exit 1
 
 test("source : spawn/exit ne (re)crée pas un tunnel — fail-closed #84/#86/#87 intacts", () => {
   const tunnelSrc = fs.readFileSync(
-    path.join(ROOT, "packages/electron-shell/src/host/tunnel/tunnel.ts"),
+    path.join(ROOT, "packages/host-runtime/src/tunnel/tunnel.ts"),
     "utf8",
   );
   const respawnSrc = fs.readFileSync(
-    path.join(ROOT, "packages/electron-shell/src/host/tunnel/cloudflared-respawn.ts"),
+    path.join(ROOT, "packages/host-runtime/src/tunnel/cloudflared-respawn.ts"),
     "utf8",
   );
   const factoryTunnel = fs.readFileSync(

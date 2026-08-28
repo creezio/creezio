@@ -4,7 +4,7 @@
  */
 
 import fs from "node:fs";
-import { logError } from "./logger.js";
+import { logError } from "@creezio/host-runtime";
 
 type AdminWindowState = {
   win: InstanceType<typeof import("electron").BaseWindow>;

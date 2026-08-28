@@ -11,12 +11,12 @@ import { fileURLToPath } from "node:url";
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const pluginsDir = path.join(
   root,
-  "packages/electron-shell/src/host/plugins",
+  "packages/host-runtime/src/plugins",
 );
 const idxPath = path.join(root, "packages/electron-shell/src/index.ts");
 const distPlugins = path.join(
   root,
-  "packages/electron-shell/dist/host/plugins",
+  "packages/host-runtime/dist/plugins",
 );
 
 const REQUIRED_MODULES = [

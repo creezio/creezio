@@ -28,7 +28,7 @@ test("M5.2 kit hermes bootstrap : deltas TF (install + webui deps)", () => {
   const boot = fs.readFileSync(
     path.join(
       root,
-      "packages/electron-shell/src/host/hermes/runtime-bootstrap.ts",
+      "packages/host-runtime/src/hermes/runtime-bootstrap.ts",
     ),
     "utf8",
   );
@@ -49,7 +49,7 @@ test("M5.3 kit n8n bootstrap : deltas TF (failDiskSpace + force + timeout)", () 
   const boot = fs.readFileSync(
     path.join(
       root,
-      "packages/electron-shell/src/host/n8n/runtime-bootstrap.ts",
+      "packages/host-runtime/src/n8n/runtime-bootstrap.ts",
     ),
     "utf8",
   );
@@ -61,7 +61,7 @@ test("M5.3 kit n8n bootstrap : deltas TF (failDiskSpace + force + timeout)", () 
   assert.match(boot, /n8nPackageJsonPath/);
 
   const npm = fs.readFileSync(
-    path.join(root, "packages/electron-shell/src/host/npm-cli.ts"),
+    path.join(root, "packages/host-runtime/src/npm-cli.ts"),
     "utf8",
   );
   assert.match(npm, /timeoutMs\?:/);

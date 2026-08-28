@@ -8,6 +8,8 @@
       "@creezio/shell",
       "@creezio/platform-core",
       "@creezio/product-hub",
+      "@creezio/search",
+      "@creezio/host-runtime",
       "@creezio/electron-shell",
       "@creezio/desktop-tooling",
       "@creezio/api-kernel",

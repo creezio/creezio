@@ -14,7 +14,7 @@ import type { ConnectionProfile } from "@creezio/platform-core";
 import {
   createLocalConfigStoreSync,
   type LocalConfigStore,
-} from "../host/local-config.js";
+} from "@creezio/host-runtime";
 
 export type DesktopSessionInfo = {
   brandId: string;

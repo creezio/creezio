@@ -6,10 +6,8 @@ import fs from "node:fs";
 import http from "node:http";
 import path from "node:path";
 import { Readable } from "node:stream";
-import {
-  kitBinaryPaths,
-  kitOsVendorDir,
-} from "@creezio/electron-shell";
+import { kitBinaryPaths } from "@creezio/host-runtime";
+import { kitOsVendorDir } from "@creezio/platform-core";
 import {
   findFreePort,
   generateRecoveryKey,

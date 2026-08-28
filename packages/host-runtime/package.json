@@ -1,0 +1,56 @@
+{
+  "name": "@creezio/host-runtime",
+  "version": "0.10.15",
+  "description": "Host runtime Node pur du kit Creezio (embeds Hermes/n8n/tunnel, plugins host + control plane, sandbox, ai-workspace, node/npm embarqués, launchers serveur, wiring host marque) — sans Electron statique",
+  "type": "module",
+  "main": "./dist-cjs/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist-cjs/index.js",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "dist-cjs"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@creezio/brand-config": "^0.10.15",
+    "@creezio/observability": "^0.10.15",
+    "@creezio/platform-core": "^0.10.15",
+    "@creezio/product-hub": "^0.10.15",
+    "@creezio/search": "^0.10.15"
+  },
+  "peerDependencies": {
+    "electron": ">=28"
+  },
+  "peerDependenciesMeta": {
+    "electron": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.3",
+    "typescript": "^5.8.3"
+  },
+  "license": "UNLICENSED",
+  "module": "./dist/index.js",
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/creezio/creezio.git",
+    "directory": "packages/host-runtime"
+  },
+  "engines": {
+    "node": ">=22.5"
+  }
+}

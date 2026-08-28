@@ -13,10 +13,10 @@
       "default": "./dist/index.js"
     },
     "./meili": {
-      "types": "./dist/host/meili/index.d.ts",
-      "import": "./dist/host/meili/index.js",
-      "require": "./dist-cjs/host/meili/index.js",
-      "default": "./dist/host/meili/index.js"
+      "types": "./dist/meili.d.ts",
+      "import": "./dist/meili.js",
+      "require": "./dist-cjs/meili.js",
+      "default": "./dist/meili.js"
     },
     "./browser-tabs": {
       "types": "./dist/host/browser-tabs/index.d.ts",
@@ -28,7 +28,7 @@
   "typesVersions": {
     "*": {
       "meili": [
-        "./dist/host/meili/index.d.ts"
+        "./dist/meili.d.ts"
       ],
       "browser-tabs": [
         "./dist/host/browser-tabs/index.d.ts"
@@ -51,9 +51,11 @@
   "dependencies": {
     "@creezio/brand-config": "^0.10.15",
     "@creezio/browser-host": "^0.10.15",
+    "@creezio/host-runtime": "^0.10.15",
     "@creezio/observability": "^0.10.15",
     "@creezio/platform-core": "^0.10.15",
     "@creezio/product-hub": "^0.10.15",
+    "@creezio/search": "^0.10.15",
     "@creezio/shell": "^0.10.15"
   },
   "peerDependencies": {

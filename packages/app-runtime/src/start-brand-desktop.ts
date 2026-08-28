@@ -11,16 +11,18 @@ import {
   resolvePackagedDataDir,
 } from "@creezio/platform-core";
 import {
-  initLogger,
-  initEarlyBootLogger,
-  ensureLogsDir,
-  log,
   prepareDesktopBoot,
   writeAppKindFile,
   createDesktopSessionStore,
   registerDesktopSessionIpc,
+  splashDataUrl,
+} from "@creezio/electron-shell";
+import {
+  initLogger,
+  initEarlyBootLogger,
+  ensureLogsDir,
+  log,
   listenBrandKernelHttp,
-  maybeBootBrandMeili,
   ensureKitOsBinaries,
   kitBinaryPaths,
   configureCrashReporter,
@@ -31,8 +33,8 @@ import {
   crashEndpoint,
   crashLogHint,
   crashReportsDir,
-  splashDataUrl,
-} from "@creezio/electron-shell";
+} from "@creezio/host-runtime";
+import { maybeBootBrandMeili } from "@creezio/search";
 import {
   createMcpFacade,
   discoverModuleToolsFromKernel,

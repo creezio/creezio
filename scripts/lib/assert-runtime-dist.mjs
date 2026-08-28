@@ -38,6 +38,8 @@ export const FRESHNESS_PACKAGES = [
   "observability",
   "platform-core",
   "electron-shell",
+  "host-runtime",
+  "search",
   "product-hub",
   "mails",
   "tasks",
@@ -139,10 +141,10 @@ export const CONTENT_CONTRACTS = [
     tokens: ["createUsageAnalyticsAdminRoutes", "/analytics/overview"],
   },
   {
-    id: "electron-shell-cloudflared-respawn",
-    package: "electron-shell",
-    src: "src/host/tunnel/tunnel.ts",
-    dist: "dist/host/tunnel/tunnel.js",
+    id: "host-runtime-cloudflared-respawn",
+    package: "host-runtime",
+    src: "src/tunnel/tunnel.ts",
+    dist: "dist/tunnel/tunnel.js",
     tokens: [
       "shouldRespawnCloudflared",
       "spawnCloudflaredProcess",
