@@ -420,7 +420,13 @@ export async function runFeedIndexation(opts: {
 }
 
 /**
- * Recherche multi-index Meili — retourne [] si host absent / erreur.
+ * Recherche multi-index Meili — retourne [] si q vide / host absent.
+ *
+ * Fail-closed (Meili = composant core) : seul un index ABSENT (HTTP 404,
+ * indexation initiale pas encore passée) est toléré silencieusement.
+ * Toute autre erreur (Meili down, refus connexion, timeout, 5xx) est
+ * RETHROW — l'appelant (search mount) doit la transformer en
+ * 503 `meili_unavailable`, jamais en fallback SQL silencieux.
  */
 export async function searchMeiliIndexes(opts: {
   host: string;
@@ -443,8 +449,10 @@ export async function searchMeiliIndexes(opts: {
       for (const h of res.hits || []) {
         hits.push({ ...h, _index: uid });
       }
-    } catch {
-      /* index absent */
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      if (/^Meili HTTP 404\b/.test(msg)) continue; // index pas encore créé
+      throw err;
     }
   }
   return hits;
