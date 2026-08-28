@@ -1,6 +1,6 @@
 {
   "name": "@creezio/shell",
-  "version": "0.10.11",
+  "version": "0.10.12",
   "description": "Contrats preload/IPC et interface générique DesktopBridge (window.*Desktop)",
   "type": "module",
   "main": "./dist-cjs/index.js",

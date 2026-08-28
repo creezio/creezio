@@ -1,5 +1,12 @@
 # @creezio/shell-ui
 
+## 0.10.12
+
+### Patch Changes
+
+- @creezio/brand-config@0.10.12
+- @creezio/shell@0.10.12
+
 ## 0.10.11
 
 ### Patch Changes

@@ -1,5 +1,29 @@
 # @creezio/app-demobrand
 
+## 0.1.23
+
+### Patch Changes
+
+- Updated dependencies [0823798]
+- Updated dependencies [0823798]
+  - @creezio/factory@0.7.3
+  - @creezio/api-kernel@0.10.12
+  - @creezio/electron-shell@0.10.12
+  - @creezio/app-runtime@0.10.12
+  - @creezio/brand-config@0.10.12
+  - @creezio/shell@0.10.12
+  - @creezio/platform-core@0.10.12
+  - @creezio/product-hub@0.10.12
+  - @creezio/desktop-tooling@0.10.12
+  - @creezio/mcp-facade@0.10.12
+  - @creezio/shell-ui@0.10.12
+  - @creezio/auth@0.10.12
+  - @creezio/assistant@0.10.12
+  - @creezio/tasks@0.10.12
+  - @creezio/mails@0.10.12
+  - @creezio/observability@0.10.12
+  - @creezio/automations@0.10.12
+
 ## 0.1.22
 
 ### Patch Changes
