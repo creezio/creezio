@@ -75,6 +75,21 @@ marques de l'ère vendoring — skip auto sans les repos d'époque).
   `npm test` côté TF3 ~20 min.
 - État connu : voir « État connu des suites » dans [AGENTS.md](./AGENTS.md).
 
+## Gates invariants P1.a (frontières d'architecture)
+
+Quatre gates kit gravent les invariants de l'audit d'architecture (les
+règles ne sont plus seulement de la doc) :
+
+| Gate | Invariant | Dette |
+|------|-----------|-------|
+| `test-phase-no-brand-vocab.mjs` | zéro vocabulaire marque dans `packages/*/src\|ui` (frontière n°1) | [`no-brand-vocab-allowlist.json`](./no-brand-vocab-allowlist.json) — **ratchet décroissant** : compteur par fichier×pattern + ticket audit F1.x ; maintenance `node scripts/lib/brand-vocab.mjs --write-allowlist` (rétrécit uniquement, refuse ajout/incrément) |
+| `test-phase-host-no-electron.mjs` | `electron-shell/src/host/**` chargeable en Node pur : zéro import statique d'`electron` (valeurs via `loadElectron()`, exception unique `host/load-electron.ts`) | aucune |
+| `test-phase-creezio-manifest-align.mjs` | specs `@creezio/*` identiques entre les manifests d'une app marque (scaffold factory) + doctor brand-spec `CREEZIO_MANIFEST_MISALIGNED` fail-closed (incident login 0.6.0, règle d'or [../docs/PROPAGATION.md](../docs/PROPAGATION.md)) | aucune |
+| `test-phase-build-order-imports.mjs` | graphe d'imports `@creezio/*` runtime (type-only ignorés) : zéro cycle + ordre de build respecté (`build-workspaces.mjs --list` = SoT) | aucune |
+
+Une occurrence hors allowlist est TOUJOURS rouge — on corrige le code, on
+n'agrandit jamais une allowlist P1.a.
+
 ## Organisation
 
 | Préfixe | Série |

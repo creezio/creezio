@@ -536,6 +536,7 @@ export function doctorBrandSpec(rootDir: string): DoctorResult {
   doctorBrandModuleDemos(spec.rootDir, issues);
   doctorBrandModuleOps(spec.rootDir, issues);
   doctorBrandModuleMeili(spec.rootDir, issues);
+  doctorCreezioManifestAlignment(spec.rootDir, issues);
 
   // Anti-jumeau : pas de sidecars dans brand-spec
   for (const bad of ["metier-api.mjs", "store.json", "meili-launcher.ts"]) {
@@ -552,6 +553,95 @@ export function doctorBrandSpec(rootDir: string): DoctorResult {
 
   const ok = !issues.some((i) => i.level === "error");
   return { ok, spec, issues };
+}
+
+/**
+ * Manifests d'une app marque susceptibles de porter des deps `@creezio/*`.
+ * Une marque monorepo en a plusieurs (workspace server, UI hors workspace,
+ * client thin) — un bump partiel entre eux = CI verte mais ancienne page
+ * os-ui servie (incident login 0.6.0, docs/PROPAGATION.md « Règle d'or du
+ * bump côté apps »). `package.json` racine couvre le layout plat legacy
+ * (l'orchestrateur monorepo n'a pas de deps @creezio/* → ignoré de fait).
+ */
+const CREEZIO_MANIFEST_CANDIDATES = [
+  "package.json",
+  "server/package.json",
+  "server/ui/package.json",
+  "client/package.json",
+] as const;
+
+function readCreezioDepSpecs(pkgPath: string): Record<string, string> | null {
+  try {
+    const pkg = JSON.parse(fs.readFileSync(pkgPath, "utf8")) as {
+      dependencies?: Record<string, string>;
+      devDependencies?: Record<string, string>;
+    };
+    const merged = { ...pkg.dependencies, ...pkg.devDependencies };
+    const specs: Record<string, string> = {};
+    for (const [name, spec] of Object.entries(merged)) {
+      if (name.startsWith("@creezio/") && typeof spec === "string") {
+        specs[name] = spec;
+      }
+    }
+    return specs;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Fail-closed : toute dep `@creezio/*` présente dans ≥ 2 manifests de l'app
+ * doit avoir un spec npm strictement identique partout. Politique
+ * intersection : un package présent dans un seul manifest n'est pas une
+ * erreur. Pas de gating par pin lockstep : un désalignement est un bug
+ * runtime quel que soit l'âge de la marque.
+ */
+function doctorCreezioManifestAlignment(
+  specRoot: string,
+  issues: BrandSpecIssue[],
+): void {
+  const appRoot = path.dirname(specRoot);
+  const manifests: { rel: string; specs: Record<string, string> }[] = [];
+  for (const rel of CREEZIO_MANIFEST_CANDIDATES) {
+    const pkgPath = path.join(appRoot, rel);
+    if (!fs.existsSync(pkgPath)) continue;
+    const specs = readCreezioDepSpecs(pkgPath);
+    if (specs === null) {
+      issues.push({
+        level: "error",
+        code: "CREEZIO_MANIFEST_UNREADABLE",
+        message: `${rel} illisible (JSON invalide) — alignement @creezio/* invérifiable`,
+        path: rel,
+      });
+      continue;
+    }
+    if (Object.keys(specs).length > 0) manifests.push({ rel, specs });
+  }
+  if (manifests.length < 2) return;
+
+  const byPackage = new Map<string, Map<string, string[]>>();
+  for (const { rel, specs } of manifests) {
+    for (const [name, spec] of Object.entries(specs)) {
+      const bySpec = byPackage.get(name) ?? new Map<string, string[]>();
+      bySpec.set(spec, [...(bySpec.get(spec) ?? []), rel]);
+      byPackage.set(name, bySpec);
+    }
+  }
+  for (const [name, bySpec] of [...byPackage.entries()].sort()) {
+    if (bySpec.size <= 1) continue;
+    const detail = [...bySpec.entries()]
+      .map(([spec, rels]) => rels.map((rel) => `${rel}=${spec}`).join(", "))
+      .join(" ; ");
+    issues.push({
+      level: "error",
+      code: "CREEZIO_MANIFEST_MISALIGNED",
+      message:
+        `${name}: specs divergentes entre manifests (${detail}) — bumper TOUS les manifests ensemble ` +
+        `(npm install '${name}@^X.Y.Z' --save à la racine ET --prefix server/ui, ` +
+        `voir docs/PROPAGATION.md « Règle d'or du bump côté apps », incident login 0.6.0)`,
+      path: manifests[0]!.rel,
+    });
+  }
 }
 
 /**
