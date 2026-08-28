@@ -156,15 +156,17 @@ test("meili-feed CHR : createChrCatalogMeiliFeed préservé", async () => {
   assert.match(out, /createChrCatalogMeiliFeed/);
 });
 
-test("meili-config : résolution node_modules d'abord + fixture entité réelle", async () => {
+test("meili-config : import public @creezio/search + fixture entité réelle", async () => {
   const { tests } = await loadGenerators();
   const out = tests.renderMeiliConfigSmoke(GENERIC_MODEL);
-  // Helper node_modules-first (porté de winhub) — plus de sondage monorepo
-  // kit en résolution primaire.
-  assert.match(out, /function electronShellDist\(\.\.\.segments\)/);
-  assert.match(out, /node_modules", "@creezio", "electron-shell", "dist"/);
-  assert.match(out, /electronShellDist\("host", "meili-launcher\.js"\)/);
-  assert.match(out, /electronShellDist\("host", "meili", "generic-indexer\.js"\)/);
+  // P1.b : import public bare (node_modules-first PAR CONSTRUCTION — même
+  // invariant que le helper electronShellDist porté de winhub, en plus fort :
+  // plus AUCUN sondage de dist interne, ni kit ni node_modules).
+  assert.match(out, /await import\("@creezio\/search"\)/);
+  assert.match(out, /startMeili/);
+  assert.match(out, /runFeedIndexation, searchMeiliIndexes/);
+  assert.doesNotMatch(out, /electronShellDist/);
+  assert.doesNotMatch(out, /dist\/host|dist", "host|"host", "meili/);
   assert.doesNotMatch(out, /creezioRoot \|\| path\.join\(root, "\.\.\/\.\."\)/);
   // Fixture : INSERT dans la table réelle de la première entité.
   assert.match(out, /INSERT INTO prospects \(id, created_at, updated_at, nom, email, position\)/);
