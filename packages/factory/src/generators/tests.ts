@@ -620,28 +620,10 @@ assert.equal(build.status, 0, build.stderr || build.stdout);
 const feedSrc = fs.readFileSync(path.join(root, "src/electron/meili-feed.ts"), "utf8");
 assert.doesNotMatch(feedSrc, /tf2_produits|tf2_marketplaces|tf2_all/);
 
-// Résolution du package electron-shell : node_modules npm (seule source en
-// CI depuis la migration npm) d'abord, puis racine kit de dev
-// (CREEZIO_KIT_ROOT / sibling packages/ — dev kit local uniquement).
-function electronShellDist(...segments) {
-  const candidates = [
-    // Install standalone du livrable server (node_modules local)…
-    path.join(root, "node_modules", "@creezio", "electron-shell", "dist", ...segments),
-    // …ou workspaces racine du repo (deps hoistées).
-    path.join(root, "..", "node_modules", "@creezio", "electron-shell", "dist", ...segments),
-    ...(creezioRoot
-      ? [path.join(creezioRoot, "packages/electron-shell/dist", ...segments)]
-      : []),
-    path.join(root, "../..", "packages/electron-shell/dist", ...segments),
-  ];
-  const found = candidates.find((c) => fs.existsSync(c));
-  if (!found) throw new Error(\`electron-shell/dist/\${segments.join("/")} introuvable\`);
-  return found;
-}
-
-const { startMeili } = await import(
-  pathToFileURL(electronShellDist("host", "meili-launcher.js")).href,
-);
+// P1.b kit 0.11.0 : le sous-domaine Meili vit dans @creezio/search (import
+// public bare — résolu via node_modules local/hoisté ou le symlink kit posé
+// ci-dessus). Plus JAMAIS d'import profond dans le dist interne d'electron-shell.
+const { startMeili } = await import("@creezio/search");
 const none = await startMeili({
   binaryPath: null,
   dataDir: path.join(os.tmpdir(), "${model.brandId}-meili-none"),
@@ -786,9 +768,7 @@ brand.prepare(
 ).run("smoke1", now, now${fixture.values});
 close();
 
-const { runFeedIndexation, searchMeiliIndexes } = await import(
-  pathToFileURL(electronShellDist("host", "meili", "generic-indexer.js")).href,
-);
+const { runFeedIndexation, searchMeiliIndexes } = await import("@creezio/search");
 
 const result = await runFeedIndexation({
   feed: feedMod.brandMeiliFeed,
