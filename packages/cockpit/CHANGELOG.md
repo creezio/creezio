@@ -1,5 +1,11 @@
 # @creezio/cockpit
 
+## 0.10.12
+
+### Patch Changes
+
+- @creezio/shell-ui@0.10.12
+
 ## 0.10.11
 
 ### Patch Changes

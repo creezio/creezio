@@ -1,5 +1,14 @@
 # @creezio/factory
 
+## 0.7.3
+
+### Patch Changes
+
+- 0823798: Search mount généré : 0 hit Meili reste meili (plus de piège 0-hit→SQL). Modules catalogue : meiliIndexes ou horsIndexJustification.
+  - @creezio/brand-config@0.10.12
+  - @creezio/product-hub@0.10.12
+  - @creezio/brand-spec@0.10.12
+
 ## 0.7.2
 
 ### Patch Changes
