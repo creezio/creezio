@@ -1,6 +1,6 @@
 {
   "name": "@creezio/electron-shell",
-  "version": "0.10.12",
+  "version": "0.10.13",
   "description": "Runtime Electron plateforme Creezio (updater, tray, splash, boot, launchers génériques)",
   "type": "module",
   "main": "./dist-cjs/index.js",
@@ -49,12 +49,12 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@creezio/brand-config": "^0.10.12",
-    "@creezio/browser-host": "^0.10.12",
-    "@creezio/observability": "^0.10.12",
-    "@creezio/platform-core": "^0.10.12",
-    "@creezio/product-hub": "^0.10.12",
-    "@creezio/shell": "^0.10.12"
+    "@creezio/brand-config": "^0.10.13",
+    "@creezio/browser-host": "^0.10.13",
+    "@creezio/observability": "^0.10.13",
+    "@creezio/platform-core": "^0.10.13",
+    "@creezio/product-hub": "^0.10.13",
+    "@creezio/shell": "^0.10.13"
   },
   "peerDependencies": {
     "electron": ">=28",
