@@ -1,5 +1,28 @@
 # @creezio/app-runtime
 
+## 0.10.14
+
+### Patch Changes
+
+- Updated dependencies [c0a8177]
+  - @creezio/electron-shell@0.10.14
+  - @creezio/brand-config@0.10.14
+  - @creezio/platform-core@0.10.14
+  - @creezio/product-hub@0.10.14
+  - @creezio/api-kernel@0.10.14
+  - @creezio/mcp-facade@0.10.14
+  - @creezio/shell-ui@0.10.14
+  - @creezio/auth@0.10.14
+  - @creezio/access-control@0.10.14
+  - @creezio/assistant@0.10.14
+  - @creezio/tasks@0.10.14
+  - @creezio/mails@0.10.14
+  - @creezio/observability@0.10.14
+  - @creezio/support@0.10.14
+  - @creezio/integrations@0.10.14
+  - @creezio/browser-host@0.10.14
+  - @creezio/database@0.10.14
+
 ## 0.10.13
 
 ### Patch Changes

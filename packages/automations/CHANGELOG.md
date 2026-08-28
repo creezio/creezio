@@ -1,5 +1,14 @@
 # @creezio/automations
 
+## 0.10.14
+
+### Patch Changes
+
+- @creezio/platform-core@0.10.14
+- @creezio/product-hub@0.10.14
+- @creezio/api-kernel@0.10.14
+- @creezio/observability@0.10.14
+
 ## 0.10.13
 
 ### Patch Changes
