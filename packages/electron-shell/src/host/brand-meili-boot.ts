@@ -1,7 +1,15 @@
 /**
- * Boot Meili optionnel pour marques from-prd.
- * Sans binaire → null (recherche SQL via mount /search).
- * Avec binaire → startMeili + runFeedIndexation(feed).
+ * Boot Meili des marques — composant CORE (comme SQLite), fail-closed.
+ *
+ * Contrat (décision plateforme 2026-08-28) : si le feed déclare ≥ 1 index,
+ * l'absence de binaire Meili ou un échec de démarrage = **échec de boot
+ * explicite** (throw `MEILI_REQUIRED`), comme une DB absente. Plus jamais
+ * de `engine:"sql-fallback"` silencieux pour le browse catalogue.
+ *
+ * Unique échappatoire : env `CREEZIO_ALLOW_NO_MEILI=1` (dev / tests
+ * hors-browse uniquement) — warning bruyant + `engine:"sql-fallback"`
+ * assumé (les listes indexées répondent alors en SQL visible côté
+ * entity-list, jamais en prod).
  */
 import type { BrandMeiliFeed } from "./meili/feed.js";
 import { configureMeiliBrandFeed } from "./meili/feed.js";
@@ -13,8 +21,25 @@ import {
   type MeiliCoherencePaths,
 } from "./meili/coherence.js";
 
+/** Erreur fail-closed du boot Meili (binaire absent / start KO). */
+export class MeiliRequiredError extends Error {
+  readonly code = "MEILI_REQUIRED";
+  constructor(message: string) {
+    super(message);
+    this.name = "MeiliRequiredError";
+  }
+}
+
+export function isMeiliRequiredError(err: unknown): err is MeiliRequiredError {
+  return (
+    err instanceof Error &&
+    (err as { code?: string }).code === "MEILI_REQUIRED"
+  );
+}
+
 export type BrandMeiliBootResult = {
   meili: RunningMeili | null;
+  /** `sql-fallback` n'existe plus qu'avec `CREEZIO_ALLOW_NO_MEILI=1`. */
   engine: "meili" | "sql-fallback";
   indexed?: Record<string, number>;
   /**
@@ -32,7 +57,9 @@ export type BrandMeiliBootResult = {
 };
 
 /**
- * Démarre Meili si le binaire existe, indexe le feed, pose MEILI_HOST/KEY.
+ * Démarre Meili (fail-closed si le feed déclare des index), indexe le feed,
+ * pose MEILI_HOST/KEY. Throw `MeiliRequiredError` si binaire absent / start
+ * KO sans `CREEZIO_ALLOW_NO_MEILI=1`.
  */
 export async function maybeBootBrandMeili(opts: {
   binaryPath: string | null;
@@ -66,6 +93,26 @@ export async function maybeBootBrandMeili(opts: {
   if (!meili) {
     delete process.env.MEILI_HOST;
     delete process.env.MEILI_MASTER_KEY;
+    const indexUids = (opts.feed.indexes ?? []).map((i) => i.uid);
+    if (indexUids.length > 0) {
+      if (process.env.CREEZIO_ALLOW_NO_MEILI === "1") {
+        log(
+          "⚠️ CREEZIO_ALLOW_NO_MEILI=1 — Meili absent ACCEPTÉ (dev/tests " +
+            `hors-browse uniquement). Index non servis : ${indexUids.join(", ")}. ` +
+            "INTERDIT en production : le browse catalogue répondra en SQL visible.",
+        );
+        return { meili: null, engine: "sql-fallback" };
+      }
+      throw new MeiliRequiredError(
+        `Meili est un composant core : le feed déclare ${indexUids.length} index ` +
+          `(${indexUids.join(", ")}) mais le binaire Meilisearch est absent ou n'a pas démarré ` +
+          `(binaryPath=${opts.binaryPath ?? "null"}). ` +
+          "Correctifs : installer le binaire kit (ensure-kit-binaries → " +
+          "electron-shell/resources/bin/meili), poser MEILI_BINARY sur un binaire valide " +
+          "(image Docker : /opt/creezio/bin/meilisearch), ou — dev/tests hors-browse " +
+          "UNIQUEMENT — CREEZIO_ALLOW_NO_MEILI=1.",
+      );
+    }
     return { meili: null, engine: "sql-fallback" };
   }
 
@@ -112,7 +159,8 @@ export async function maybeBootBrandMeili(opts: {
       return result.indexed;
     } catch (err) {
       log(
-        `indexation échouée — fallback SQL (${err instanceof Error ? err.message : err})`,
+        `indexation échouée — browse catalogue en erreur (meili_unavailable) ` +
+          `jusqu'à réindexation (${err instanceof Error ? err.message : err})`,
       );
       return null;
     }

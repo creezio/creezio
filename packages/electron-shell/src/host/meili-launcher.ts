@@ -56,7 +56,10 @@ export async function startMeili(
   const log = opts.log ?? ((l: string) => console.log(`[meili] ${l}`));
   const bin = opts.binaryPath;
   if (!bin || !fs.existsSync(bin)) {
-    log("binaire Meilisearch absent — recherche via fallback SQL.");
+    log(
+      "binaire Meilisearch absent — le boot fail-closed décide " +
+        "(maybeBootBrandMeili : throw si le feed déclare des index).",
+    );
     return null;
   }
   try {
@@ -145,7 +148,7 @@ export async function startMeili(
     };
   } catch (e) {
     log(
-      `démarrage Meilisearch échoué (${e instanceof Error ? e.message : e}) — fallback SQL.`,
+      `démarrage Meilisearch échoué (${e instanceof Error ? e.message : e}).`,
     );
     return null;
   }

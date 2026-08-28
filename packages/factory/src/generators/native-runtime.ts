@@ -211,6 +211,30 @@ function mapMeiliSearchHit(h: Record<string, unknown>): {
   };
 }
 
+/**
+ * Index Meili pas prêt : indexation en cours (marqueur posé par l'indexeur
+ * kit) ou fingerprint jamais écrit — sert engine:"indexing" (le client
+ * réessaie), jamais un scan SQL de secours.
+ */
+function meiliIndexNotReady(db: {
+  prepare(sql: string): { get(...args: unknown[]): unknown };
+}): boolean {
+  try {
+    const hasMeta = db.prepare(
+      "SELECT COUNT(*) AS c FROM sqlite_master WHERE type='table' AND name='meta'",
+    ).get() as { c: number };
+    if (!hasMeta || Number(hasMeta.c) === 0) return true;
+    if (db.prepare("SELECT value FROM meta WHERE key='meili_index_in_progress'").get()) {
+      return true;
+    }
+    return !db
+      .prepare("SELECT value FROM meta WHERE key='meili_index_fingerprint'")
+      .get();
+  } catch {
+    return false;
+  }
+}
+
 function createSearchMount(): ApiMount {
   return {
     dbLayer: "brand",
@@ -219,7 +243,7 @@ function createSearchMount(): ApiMount {
         id: "search",
         method: "GET",
         path: "/",
-        description: "Recherche métier (Meili ou SQL)",
+        description: "Recherche métier (Meili core fail-closed)",
       },
     ],
     handle: async ({ req, db }) => {
@@ -244,12 +268,29 @@ function createSearchMount(): ApiMount {
           // 0 hit Meili EST la réponse — jamais de fallback SQL
           // parce que la tokenisation ne matche pas.
           const mapped = hits.map((h) => mapMeiliSearchHit(h));
+          if (hits.length === 0 && meiliIndexNotReady(db)) {
+            return { status: 200, body: { engine: "indexing", items: [], hits: [] } };
+          }
           return { status: 200, body: { engine: "meili", items: hits, hits: mapped } };
-        } catch {
-          /* Meili KO = incident — SQL visible ci-dessous */
+        } catch (err) {
+          // Meili core fail-closed : Meili configuré mais injoignable =
+          // incident visible — JAMAIS de scan SQL de secours sur le catalogue.
+          if (process.env.CREEZIO_ALLOW_NO_MEILI !== "1") {
+            return {
+              status: 503,
+              body: {
+                error: "meili_unavailable",
+                reason: err instanceof Error ? err.message : String(err),
+              },
+            };
+          }
         }
+      } else if (process.env.CREEZIO_ALLOW_NO_MEILI !== "1") {
+        return { status: 503, body: { error: "meili_unavailable", reason: "unconfigured" } };
       }
 
+      // CREEZIO_ALLOW_NO_MEILI=1 UNIQUEMENT (dev/tests hors-browse) :
+      // scan SQL visible, engine:"sql" — interdit en production.
       const specs = collectEntitySpecs();
       const needle = q.toLowerCase();
       const items: Array<Record<string, unknown>> = [];

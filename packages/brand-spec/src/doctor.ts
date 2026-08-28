@@ -20,6 +20,12 @@ const DEMO_CONTRACT_SINCE = { major: 0, minor: 10, patch: 1 };
 /** Ops fail-closed depuis 0.10.6 — pins plus vieux = warn. */
 const OPS_CONTRACT_SINCE = { major: 0, minor: 10, patch: 6 };
 
+/**
+ * Schéma data + index Meili par module fail-closed depuis 0.10.13
+ * (décision « Meili = composant core ») — pins plus vieux = warn.
+ */
+const MEILI_CONTRACT_SINCE = { major: 0, minor: 10, patch: 13 };
+
 const CRUD_OP_IDS = new Set([
   "list",
   "get",
@@ -111,6 +117,11 @@ function pinIsPreDemoContract(pin: string | null): boolean {
 function pinIsPreOpsContract(pin: string | null): boolean {
   if (!pin) return false;
   return compareSemver(pin, OPS_CONTRACT_SINCE) < 0;
+}
+
+function pinIsPreMeiliContract(pin: string | null): boolean {
+  if (!pin) return false;
+  return compareSemver(pin, MEILI_CONTRACT_SINCE) < 0;
 }
 
 function extractObjectKeys(src: string, field: string): string[] {
@@ -240,6 +251,49 @@ function doctorBrandModuleOps(
         });
       }
     }
+  }
+}
+
+/**
+ * Contrat « Meili = composant core » (0.10.13, fail-closed) : chaque module
+ * métier avec une entité listable (`entitySpecs` — liste CRUD auto — ou une
+ * op `list` manuscrite) doit déclarer son schéma data + index :
+ * - `meiliIndexes` (uid `catalog_*`, settings, loadDocs/table+columns), ou
+ * - `horsIndexJustification` explicite (relevés, joins commande, écritures,
+ *   SKU EAN, agrégats…) — jamais de liste browse implicitement hors Meili.
+ * Pin < 0.10.13 = warn.
+ */
+function doctorBrandModuleMeili(
+  specRoot: string,
+  issues: BrandSpecIssue[],
+): void {
+  const modulesDir = resolveAppModulesDir(specRoot);
+  if (!modulesDir) return;
+  const preContract = pinIsPreMeiliContract(readAppLockstepPin(specRoot));
+  const level = preContract ? "warn" : "error";
+  const files = fs
+    .readdirSync(modulesDir)
+    .filter((f) => f.endsWith(".ts") && !isModuleHelperName(f))
+    .sort();
+  for (const file of files) {
+    const id = file.replace(/\.ts$/, "");
+    const filePath = path.join(modulesDir, file);
+    const src = stripModuleSourceComments(fs.readFileSync(filePath, "utf8"));
+    const rel = path.relative(specRoot, filePath);
+    const hasEntitySpecs = /\bentitySpecs\s*:/.test(src);
+    const hasListOp = extractOperationIds(src).includes("list");
+    if (!hasEntitySpecs && !hasListOp) continue;
+    const hasMeiliIndexes = /\bmeiliIndexes\s*:/.test(src);
+    const hasHorsIndex = /\bhorsIndexJustification\s*:/.test(src);
+    if (hasMeiliIndexes || hasHorsIndex) continue;
+    issues.push({
+      level,
+      code: "MODULE_MEILI_MISSING",
+      message: preContract
+        ? `module ${id}: entité listable sans meiliIndexes ni horsIndexJustification — warn (pin kit < 0.10.13) ; obligatoire depuis 0.10.13 (Meili = composant core).`
+        : `module ${id}: entité listable — déclarer meiliIndexes (schéma data + index catalog_*) OU horsIndexJustification explicite (relevés, joins, écritures…). Meili = composant core fail-closed.`,
+      path: rel,
+    });
   }
 }
 
@@ -481,6 +535,7 @@ export function doctorBrandSpec(rootDir: string): DoctorResult {
 
   doctorBrandModuleDemos(spec.rootDir, issues);
   doctorBrandModuleOps(spec.rootDir, issues);
+  doctorBrandModuleMeili(spec.rootDir, issues);
 
   // Anti-jumeau : pas de sidecars dans brand-spec
   for (const bad of ["metier-api.mjs", "store.json", "meili-launcher.ts"]) {

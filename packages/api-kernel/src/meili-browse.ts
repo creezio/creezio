@@ -1,14 +1,21 @@
 /**
- * Browse paginé Meili — `q` vide OK.
+ * Browse paginé Meili — `q` vide OK. Meili est un composant CORE
+ * (fail-closed, comme SQLite) pour le browse catalogue.
  *
  * Contrat (SoT `electron-shell/AGENTS.md` + `creezio/AGENTS.md`) :
  * - Toujours Meili pour lister/filtrer dès que les attributs sont
  *   filterable/sortable — **y compris sans texte**.
- * - Retourne `null` si Meili KO, index vide, ou filtre/sort rejeté
- *   → l'appelant bascule SQL (fallback **visible**).
+ * - Meili KO sur une entité indexée = **503 `meili_unavailable`**
+ *   (ou `engine:"indexing"` pendant l'indexation initiale) — plus jamais
+ *   de LIKE SQL de secours sur le catalogue.
+ * - SQL reste légitime UNIQUEMENT hors index : entité non indexée, filtre
+ *   hors index (`filter_not_indexable`/`filter_rejected` visibles),
+ *   agrégats, joins métier, écritures, hydratation `?ids=`.
  * - 0 hit sur un index peuplé = succès Meili (pas un fallback SQL).
  * - Interdit : `if (q) meili else sql`.
  * - Ne pas utiliser `searchMeiliIndexes` pour le browse (retourne [] si q vide).
+ * - Échappatoire dev/tests hors-browse : `CREEZIO_ALLOW_NO_MEILI=1`
+ *   (SQL visible `fallback:"meili_unavailable"`) — interdit en prod.
  *
  * Injection : `configureEntityMeili` / `configureEntityMeiliFromFeed`
  * (pas d'UID marque hardcodé dans le moteur).
@@ -126,14 +133,30 @@ function meiliHeaders(apiKey?: string): Record<string, string> {
 }
 
 /**
- * POST `/indexes/:uid/search` avec `q` éventuellement vide.
- * `null` = incident (down / index vide / filtre rejeté) → SQL.
+ * Issue détaillée d'un browse — permet au moteur entity-list de distinguer
+ * l'incident (fail-closed 503) du cas hors index (SQL visible légitime).
  */
-export async function browseMeiliIndex(
+export type MeiliBrowseOutcome =
+  | { kind: "ok"; result: MeiliBrowseResult }
+  /** Index créé mais 0 document (indexation initiale ou catalogue vide). */
+  | { kind: "empty_index" }
+  /** Index jamais créé (404) — indexation pas encore passée / misconfig. */
+  | { kind: "index_missing" }
+  /** Filtre/sort refusé par Meili (400) — cas hors index, SQL visible. */
+  | { kind: "filter_rejected" }
+  /** Meili injoignable / erreur serveur — incident (503 fail-closed). */
+  | { kind: "unavailable"; reason: string }
+  /** Pas de host/index configuré. */
+  | { kind: "unconfigured" };
+
+/**
+ * POST `/indexes/:uid/search` avec `q` éventuellement vide — issue détaillée.
+ */
+export async function browseMeiliIndexOutcome(
   req: MeiliBrowseRequest,
-): Promise<MeiliBrowseResult | null> {
+): Promise<MeiliBrowseOutcome> {
   const host = (req.host || "").replace(/\/+$/, "");
-  if (!host || !req.indexUid) return null;
+  if (!host || !req.indexUid) return { kind: "unconfigured" };
   const timeoutMs = req.timeoutMs ?? 3000;
   const headers = meiliHeaders(req.apiKey);
   try {
@@ -141,10 +164,14 @@ export async function browseMeiliIndex(
       headers,
       signal: AbortSignal.timeout(timeoutMs),
     });
-    if (statsRes.status === 404) return null;
-    if (!statsRes.ok) return null;
+    if (statsRes.status === 404) return { kind: "index_missing" };
+    if (!statsRes.ok) {
+      return { kind: "unavailable", reason: `stats_${statsRes.status}` };
+    }
     const stats = (await statsRes.json()) as { numberOfDocuments?: number };
-    if (Number(stats.numberOfDocuments || 0) <= 0) return null;
+    if (Number(stats.numberOfDocuments || 0) <= 0) {
+      return { kind: "empty_index" };
+    }
 
     const page = Math.max(1, req.page ?? 1);
     const hitsPerPage = Math.min(Math.max(req.hitsPerPage ?? 20, 1), 200);
@@ -162,7 +189,10 @@ export async function browseMeiliIndex(
       }),
       signal: AbortSignal.timeout(timeoutMs),
     });
-    if (!searchRes.ok) return null;
+    if (searchRes.status === 400) return { kind: "filter_rejected" };
+    if (!searchRes.ok) {
+      return { kind: "unavailable", reason: `search_${searchRes.status}` };
+    }
     const data = (await searchRes.json()) as {
       hits?: Array<Record<string, unknown>>;
       totalHits?: number;
@@ -171,13 +201,31 @@ export async function browseMeiliIndex(
     };
     const hits = Array.isArray(data.hits) ? data.hits : [];
     return {
-      hits,
-      total: Number(data.totalHits ?? data.estimatedTotalHits ?? hits.length),
-      facetDistribution: data.facetDistribution,
+      kind: "ok",
+      result: {
+        hits,
+        total: Number(data.totalHits ?? data.estimatedTotalHits ?? hits.length),
+        facetDistribution: data.facetDistribution,
+      },
     };
-  } catch {
-    return null;
+  } catch (err) {
+    return {
+      kind: "unavailable",
+      reason: err instanceof Error ? err.message : String(err),
+    };
   }
+}
+
+/**
+ * Compat historique : `null` = tout sauf `ok` (down / index vide ou absent /
+ * filtre rejeté). Préférer `browseMeiliIndexOutcome` pour distinguer
+ * l'incident fail-closed du cas hors index.
+ */
+export async function browseMeiliIndex(
+  req: MeiliBrowseRequest,
+): Promise<MeiliBrowseResult | null> {
+  const outcome = await browseMeiliIndexOutcome(req);
+  return outcome.kind === "ok" ? outcome.result : null;
 }
 
 export function meiliFilterEq(attr: string, raw: string): string {

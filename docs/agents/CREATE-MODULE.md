@@ -188,13 +188,19 @@ l'enforcement côté marque. Documenter chaque op dans l'interview (§5).
   (focus si onglet ouvert, nouvel onglet sinon — pas pastille-only).
 - Nav : `navItems` du module (permissions `nav.*` déclarées via
   `configureAuth` — sans quoi la sidebar owner est amputée).
-- Meili : tout module avec une **liste catalogue** (browse/filtre, même
-  sans `q`) DOIT déclarer `meiliIndexes` (UIDs `catalog_*` imposés par le
-  kit, jamais `tf2_*`) **ou** `horsIndexJustification` (relevés, joins
-  commande, écritures, SKU EAN, fiche GET by id). Le browse passe par
-  `browseMeiliIndex` / entity-list Meili — **interdit** `if (q) meili else
-  sql`. `searchMeiliIndexes` retourne [] si q vide : ne pas l'utiliser
-  pour le browse. Gate kit `test-phase-meili-browse`.
+- Meili (**composant core fail-closed**) : tout module avec une **entité
+  listable** DOIT déclarer son schéma data + index — `meiliIndexes` (UIDs
+  `catalog_*` imposés par le kit, jamais `tf2_*` : uid, settings,
+  loadDocs/table+columns) **ou** `horsIndexJustification` explicite
+  (relevés, joins commande, écritures, SKU EAN, fiche GET by id, agrégats).
+  Doctor brand-spec `MODULE_MEILI_MISSING` fail-closed (0.10.13+). Le
+  browse passe par `browseMeiliIndexOutcome` / entity-list Meili ; Meili
+  KO = **503 `meili_unavailable`** (ou `engine:"indexing"` pendant
+  l'indexation initiale) — **jamais** de LIKE SQL de secours ni
+  `if (q) meili else sql`. `searchMeiliIndexes` retourne [] si q vide :
+  ne pas l'utiliser pour le browse. Boot : binaire Meili absent avec un
+  feed indexé = échec explicite (`CREEZIO_ALLOW_NO_MEILI=1` réservé aux
+  tests hors-browse). Gate kit `test-phase-meili-browse`.
 
 ## 5. Gates métier
 

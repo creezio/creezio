@@ -593,7 +593,8 @@ export async function startBrandKernelHarness(
             else
               boot.patch("index", {
                 status: "error",
-                detail: "Indexation échouée — recherche SQL (dégradée)",
+                detail:
+                  "Indexation échouée — browse catalogue en erreur (meili_unavailable) jusqu'à réindexation",
               });
           });
         } else {
@@ -601,11 +602,13 @@ export async function startBrandKernelHarness(
         }
       }
     } else {
+      // engine "sql-fallback" n'existe plus qu'avec CREEZIO_ALLOW_NO_MEILI=1
+      // (dev/tests hors-browse) — sinon maybeBootBrandMeili a throw (fail-closed).
       boot.patch("meili", {
         status: meiliBoot.engine === "sql-fallback" ? "error" : "skip",
         detail:
           meiliBoot.engine === "sql-fallback"
-            ? "Binaire Meili indisponible — recherche SQL (dégradée)"
+            ? "Meili absent ACCEPTÉ par CREEZIO_ALLOW_NO_MEILI=1 (dev/tests) — browse indexé en SQL visible"
             : "Recherche désactivée",
       });
       if (doIndex) boot.skip("index", "Meili indisponible");

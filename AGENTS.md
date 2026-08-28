@@ -152,16 +152,22 @@ Workflow : `npm run test:kit` → première rouge → corriger →
   `test:kit`) + `server-docker publish|build`. Avant
   tout publish : `cd /opt/docker/creezio && npm run build:packages`.
   Bypass urgence uniquement : `CREEZIO_SKIP_RUNTIME_DIST_ASSERT=1` (déconseillé).
-- **Meili = recherche ET browse filtré** : dès qu'un index Meili existe
-  (`catalog_products`, …) et que les filtres/tris sont exprimables
-  (filterable/sortable), les listes catalogue **doivent** passer par Meili —
-  y compris **sans `q` texte** (ex. `/secteurs?categorie=`, liste par
-  agrégateur/fournisseur/famille, page `/produits` paginée). SQL direct =
-  fallback (Meili down / filtre hors index) ou cas hors index (agrégats
-  lourds, écritures, joins non indexés, bornes prix sur relevés…). **Interdit**
-  de re-limiter Meili au cas `q` non vide. Détail :
-  [`packages/electron-shell/AGENTS.md`](./packages/electron-shell/AGENTS.md)
-  (section Meili) + `app-runtime` (feed/boot).
+- **Meili = composant CORE fail-closed (comme SQLite)** : dès qu'un feed
+ déclare ≥ 1 index (`catalog_products`, …), le boot **échoue explicitement**
+ si le binaire Meili est absent / ne démarre pas (`MeiliRequiredError`,
+ plus de `engine:"sql-fallback"` silencieux) ; les listes catalogue
+ (browse/filtre/pagination, **y compris sans `q`**) passent par Meili, et
+ Meili KO = **503 `meili_unavailable`** (ou `engine:"indexing"` pendant
+ l'indexation initiale) — **zéro LIKE SQL de secours sur le catalogue**.
+ SQL reste légitime UNIQUEMENT hors index : entité non indexée, agrégats
+ lourds, écritures, joins non indexés, bornes prix sur relevés, EAN,
+ fiche by id, filtre rejeté (visible). Échappatoire dev/tests hors-browse
+ uniquement : `CREEZIO_ALLOW_NO_MEILI=1` (warning bruyant, interdit en
+ prod). Chaque module métier déclare son schéma data + index
+ (`meiliIndexes`) **ou** `horsIndexJustification` — doctor brand-spec
+ fail-closed `MODULE_MEILI_MISSING` (0.10.13+). Détail :
+ [`packages/electron-shell/AGENTS.md`](./packages/electron-shell/AGENTS.md)
+ (section Meili) + `app-runtime` (feed/boot).
 - **Bug générique marque → fix kit/factory d'abord** : si le défaut touche
   toute marque générée (layout, smokes, scaffold, Docker, auth harness…),
   corriger dans `@creezio/*` / `packages/factory` puis publier (changeset) —

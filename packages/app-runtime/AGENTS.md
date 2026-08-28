@@ -40,18 +40,21 @@ Toute évolution Meili / HTTP kernel / session IPC se fait **ici** (ou dans
 - Bind Docker/headless : `CREEZIO_HTTP_HOST=0.0.0.0` (ou `METIER_HOST`)
   — voir `docker/server/` + `creezio server-docker`
 
-## Meili (feed + usage UI)
+## Meili (feed + usage UI) — composant CORE fail-closed
 
 `meiliFeed` (marque) + indexer kit (`electron-shell/host/meili`) alimentent
 les index. Au boot, `configureEntityMeiliFromFeed` branche le CRUD
 entity-list (`GET /api/v1/modules/<entité>`) sur Meili dès qu'un index a
-une table + `filterableAttributes` — **y compris q vide**. **Règle
-plateforme** (voir aussi `creezio/AGENTS.md` Pièges +
-`electron-shell/AGENTS.md` section Meili) : l’UI marque doit utiliser Meili
-pour **recherche et browse filtré** dès que les attributs sont indexés —
-ne pas limiter Meili au cas `q` non vide. Helper : `browseMeiliIndex`.
+une table + `filterableAttributes` — **y compris q vide**. **Fail-closed**
+(décision 2026-08-28, voir `creezio/AGENTS.md` Pièges +
+`electron-shell/AGENTS.md` section Meili) : feed avec index + binaire
+absent/start KO = **échec de boot explicite** (`MeiliRequiredError`) ;
+entité indexée + Meili KO = **503 `meili_unavailable`** (ou
+`engine:"indexing"` pendant l'indexation initiale) — zéro LIKE SQL de
+secours. `CREEZIO_ALLOW_NO_MEILI=1` = dev/tests hors-browse uniquement.
+Helpers : `browseMeiliIndexOutcome` / `browseMeiliIndex`.
 `searchMeiliIndexes` est interdit pour le browse (retourne [] si q vide).
-SQL = fallback / hors index.
+SQL = hors index uniquement (agrégats, joins, écritures, EAN, by id).
 
 ## Ne pas faire
 

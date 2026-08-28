@@ -668,6 +668,9 @@ async function startBrandDesktopBody(args: {
         meiliStop = () => meiliBoot.meili?.stop();
       }
     } catch (err) {
+      // Meili core fail-closed : binaire absent / start KO avec un feed
+      // indexé = échec de boot explicite (comme une DB absente).
+      if ((err as { code?: string })?.code === "MEILI_REQUIRED") throw err;
       log(
         "meili",
         `boot skipped: ${err instanceof Error ? err.message : String(err)}`,

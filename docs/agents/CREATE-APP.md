@@ -48,9 +48,18 @@ npm run test:modules   # si le runner est posé (après module init)
 ```
 
 **Doctor fail-closed** sur un livrable : `NO_MODULES`, `PRODUCT_MD_MISSING`,
-`PRODUCT_MD_STUB`, `MODULE_PRD_MISSING`, `MODULE_SPEC_STUB`, leftover
+`PRODUCT_MD_STUB`, `MODULE_PRD_MISSING`, `MODULE_SPEC_STUB`,
+`MODULE_MEILI_MISSING` (entité listable sans `meiliIndexes` ni
+`horsIndexJustification` — Meili = composant core, 0.10.13+), leftover
 `notes` hors allowlist = **error**. `brand create` naît volontairement
 sans module — le doctor devient vert après `module init` + specs remplies.
+
+**Meili = composant core fail-closed** : toute app dont le feed déclare des
+index exige le binaire Meili au boot (image Docker :
+`/opt/creezio/bin/meilisearch`, desktop : `ensure-kit-binaries`) — sinon
+échec de boot explicite. Meili KO en runtime = browse catalogue en
+**503 `meili_unavailable`**, jamais de LIKE SQL de secours
+([CREATE-MODULE.md](./CREATE-MODULE.md) §4).
 
 ## 2. Legacy — brief produit TempoFlow3 (`--from-prd`)
 
