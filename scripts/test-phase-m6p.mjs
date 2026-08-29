@@ -33,11 +33,15 @@ check("n8n launcher dual-read .${prefix}-encryption-key / owner", () => {
   assert.ok(src.includes("brandLegacy") || src.includes("secretPrefix()"));
 });
 
-check("hermes ensureApiKey brand-aware + clear certivan webui password", () => {
+check("hermes ensureApiKey brand-aware + clear webui password legacy", () => {
   const src = read("packages/host-runtime/src/hermes/launcher.ts");
   assert.ok(src.includes("-api-server-key"));
   assert.ok(src.includes("secretFilePrefix") || src.includes("manifest.brandId"));
-  assert.ok(src.includes("certivan-webui-password"));
+  // H7 : plus de littéraux marque — le fichier legacy `.{marque}-webui-password`
+  // est couvert par la dérivation `.${secretPrefix}-webui-password` (les call
+  // sites passent secretFilePrefix || manifest.brandId).
+  assert.ok(src.includes("-webui-password"));
+  assert.ok(src.includes("secretPrefix"));
   assert.ok(src.includes("clearGeneratedWebuiPassword"));
 });
 
@@ -54,8 +58,10 @@ check("hermes bootstrap WEBUI_DEPS_MARKER_LEGACY_CERTIVAN + FIDU", () => {
   const idx = read("packages/electron-shell/src/index.ts");
   assert.ok(idx.includes("WEBUI_DEPS_MARKER_LEGACY_CERTIVAN"));
   assert.ok(idx.includes("WEBUI_DEPS_MARKER_LEGACY_FIDU"));
+  // H7 : le clear des passwords webui legacy passe par la dérivation
+  // secretPrefix (voir check précédent) — plus de littéral marque ici.
   const hermes = read("packages/host-runtime/src/hermes/launcher.ts");
-  assert.ok(hermes.includes("fidu-webui-password"));
+  assert.ok(hermes.includes(`-webui-password`));
 });
 
 check("PHASE-M6p.md présent", () => {

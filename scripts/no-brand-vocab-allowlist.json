@@ -374,24 +374,6 @@
       "ticket": "F1.4 — brand-config : identités marque câblées hors manifests"
     },
     {
-      "file": "packages/brand-spec/src/doctor.ts",
-      "pattern": "winhub",
-      "count": 4,
-      "ticket": "F1.5 — brand-spec : vertical chr / pins marque en dur"
-    },
-    {
-      "file": "packages/brand-spec/src/init.ts",
-      "pattern": "chr-catalog",
-      "count": 1,
-      "ticket": "F1.5 — brand-spec : vertical chr / pins marque en dur"
-    },
-    {
-      "file": "packages/brand-spec/src/types.ts",
-      "pattern": "chr-catalog",
-      "count": 1,
-      "ticket": "F1.5 — brand-spec : vertical chr / pins marque en dur"
-    },
-    {
       "file": "packages/browser-host/src/driver-scripts.ts",
       "pattern": "tf2",
       "count": 1,
@@ -640,7 +622,7 @@
     {
       "file": "packages/factory/src/generators/native-runtime.ts",
       "pattern": "tf2",
-      "count": 2,
+      "count": 1,
       "ticket": "P1.a — inventaire initial audit (héritage contractuel divers, à ventiler lors du nettoyage P1.b+)"
     },
     {
@@ -854,58 +836,34 @@
       "ticket": "P1.a — inventaire initial audit (héritage contractuel divers, à ventiler lors du nettoyage P1.b+)"
     },
     {
-      "file": "packages/host-runtime/src/hermes/crm-key.ts",
-      "pattern": "tempoflow",
-      "count": 3,
-      "ticket": "F1.3 — launcher Hermes : env/alias/chemins hérités TempoFlow"
-    },
-    {
       "file": "packages/host-runtime/src/hermes/launcher.ts",
-      "pattern": "certivan",
+      "pattern": "tempoflow",
       "count": 2,
-      "ticket": "F1.3 — launcher Hermes : env/alias/chemins hérités TempoFlow"
-    },
-    {
-      "file": "packages/host-runtime/src/hermes/launcher.ts",
-      "pattern": "fidu",
-      "count": 1,
-      "ticket": "F1.3 — launcher Hermes : env/alias/chemins hérités TempoFlow"
-    },
-    {
-      "file": "packages/host-runtime/src/hermes/launcher.ts",
-      "pattern": "tempoflow",
-      "count": 32,
-      "ticket": "F1.3 — launcher Hermes : env/alias/chemins hérités TempoFlow"
+      "ticket": "F1.3 — launcher Hermes : env/alias/chemins hérités TempoFlow (reste H7 : alias frozen clearTempoflowGeneratedWebuiPassword + fallback fichier legacy dual-read, retrait au prochain bump)"
     },
     {
       "file": "packages/host-runtime/src/hermes/launcher.ts",
       "pattern": "tf2",
       "count": 1,
-      "ticket": "F1.3 — launcher Hermes : env/alias/chemins hérités TempoFlow"
+      "ticket": "F1.3 — launcher Hermes : env/alias/chemins hérités TempoFlow (reste H7 : dual-read env remote legacy avec warning, retrait au prochain bump)"
     },
     {
       "file": "packages/host-runtime/src/hermes/runtime-bootstrap.ts",
       "pattern": "certivan",
-      "count": 7,
-      "ticket": "F1.3 — launcher Hermes : env/alias/chemins hérités TempoFlow"
+      "count": 6,
+      "ticket": "F1.3 — launcher Hermes : env/alias/chemins hérités TempoFlow (reste H7 : markers legacy frozen-exports M6p, retrait au prochain bump)"
     },
     {
       "file": "packages/host-runtime/src/hermes/runtime-bootstrap.ts",
       "pattern": "fidu",
-      "count": 7,
-      "ticket": "F1.3 — launcher Hermes : env/alias/chemins hérités TempoFlow"
+      "count": 6,
+      "ticket": "F1.3 — launcher Hermes : env/alias/chemins hérités TempoFlow (reste H7 : markers legacy frozen-exports M6p, retrait au prochain bump)"
     },
     {
       "file": "packages/host-runtime/src/hermes/runtime-bootstrap.ts",
       "pattern": "tempoflow",
-      "count": 4,
-      "ticket": "F1.3 — launcher Hermes : env/alias/chemins hérités TempoFlow"
-    },
-    {
-      "file": "packages/host-runtime/src/hermes/skills-seed.ts",
-      "pattern": "tf2",
-      "count": 1,
-      "ticket": "F1.3 — launcher Hermes : env/alias/chemins hérités TempoFlow"
+      "count": 2,
+      "ticket": "F1.3 — launcher Hermes : env/alias/chemins hérités TempoFlow (reste H7 : markers legacy frozen-exports, retrait au prochain bump)"
     },
     {
       "file": "packages/host-runtime/src/host-stack.ts",
@@ -935,12 +893,6 @@
       "file": "packages/host-runtime/src/n8n/agent-isolation.ts",
       "pattern": "tempoflow",
       "count": 2,
-      "ticket": "P1.a — inventaire initial audit (héritage contractuel divers, à ventiler lors du nettoyage P1.b+)"
-    },
-    {
-      "file": "packages/host-runtime/src/n8n/api-key.ts",
-      "pattern": "tempoflow",
-      "count": 3,
       "ticket": "P1.a — inventaire initial audit (héritage contractuel divers, à ventiler lors du nettoyage P1.b+)"
     },
     {
@@ -1018,18 +970,6 @@
     {
       "file": "packages/host-runtime/src/plugins/control-adapters.ts",
       "pattern": "tempoflow",
-      "count": 1,
-      "ticket": "P1.a — inventaire initial audit (héritage contractuel divers, à ventiler lors du nettoyage P1.b+)"
-    },
-    {
-      "file": "packages/host-runtime/src/plugins/control-extras.ts",
-      "pattern": "tempoflow",
-      "count": 1,
-      "ticket": "P1.a — inventaire initial audit (héritage contractuel divers, à ventiler lors du nettoyage P1.b+)"
-    },
-    {
-      "file": "packages/host-runtime/src/plugins/control-extras.ts",
-      "pattern": "tf2",
       "count": 1,
       "ticket": "P1.a — inventaire initial audit (héritage contractuel divers, à ventiler lors du nettoyage P1.b+)"
     },
@@ -1283,30 +1223,6 @@
       "file": "packages/observability/src/ops/types.ts",
       "pattern": "tf2",
       "count": 1,
-      "ticket": "F1.6 — observability/propagation : registre org et marques en dur"
-    },
-    {
-      "file": "packages/observability/src/request-logs/config.ts",
-      "pattern": "certivan",
-      "count": 2,
-      "ticket": "F1.6 — observability/propagation : registre org et marques en dur"
-    },
-    {
-      "file": "packages/observability/src/request-logs/config.ts",
-      "pattern": "fidu",
-      "count": 2,
-      "ticket": "F1.6 — observability/propagation : registre org et marques en dur"
-    },
-    {
-      "file": "packages/observability/src/request-logs/config.ts",
-      "pattern": "tempoflow",
-      "count": 1,
-      "ticket": "F1.6 — observability/propagation : registre org et marques en dur"
-    },
-    {
-      "file": "packages/observability/src/request-logs/config.ts",
-      "pattern": "tf2",
-      "count": 2,
       "ticket": "F1.6 — observability/propagation : registre org et marques en dur"
     },
     {
@@ -1694,24 +1610,6 @@
       "ticket": "F1.6 — observability/propagation : registre org et marques en dur"
     },
     {
-      "file": "packages/propagation/src/channels.ts",
-      "pattern": "certivan",
-      "count": 7,
-      "ticket": "F1.6 — observability/propagation : registre org et marques en dur"
-    },
-    {
-      "file": "packages/propagation/src/channels.ts",
-      "pattern": "fidu",
-      "count": 7,
-      "ticket": "F1.6 — observability/propagation : registre org et marques en dur"
-    },
-    {
-      "file": "packages/propagation/src/channels.ts",
-      "pattern": "tempoflow",
-      "count": 7,
-      "ticket": "F1.6 — observability/propagation : registre org et marques en dur"
-    },
-    {
       "file": "packages/propagation/src/impact.ts",
       "pattern": "certivan",
       "count": 1,
@@ -1746,24 +1644,6 @@
       "pattern": "tempoflow",
       "count": 4,
       "ticket": "F1.6 — observability/propagation : registre org et marques en dur"
-    },
-    {
-      "file": "packages/search/src/meili/coherence-db.ts",
-      "pattern": "fidu",
-      "count": 1,
-      "ticket": "F1.2 — schéma Meili héritage TF2 dans le module natif"
-    },
-    {
-      "file": "packages/search/src/meili/feed.ts",
-      "pattern": "tempoflow",
-      "count": 2,
-      "ticket": "F1.2 — schéma Meili héritage TF2 dans le module natif"
-    },
-    {
-      "file": "packages/search/src/meili/indexer.ts",
-      "pattern": "tempoflow",
-      "count": 1,
-      "ticket": "F1.2 — schéma Meili héritage TF2 dans le module natif"
     },
     {
       "file": "packages/shell-ui/src/brand.ts",

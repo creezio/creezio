@@ -8,7 +8,8 @@ export type InitBrandSpecOptions = {
   brandName: string;
   domain: string;
   tagline?: string;
-  vertical?: "chr" | "generic";
+  /** Vertical métier — champ libre (presets Meili résolus par la factory). */
+  vertical?: string;
   force?: boolean;
   /**
    * Parcours produit `/onboarding`. Défaut `true` (marques réelles).
@@ -139,7 +140,7 @@ Voir \`docs/agents/CREATE-BRAND.md\` à la racine du kit.
     "brandName": { "type": "string", "minLength": 2 },
     "domain": { "type": "string", "minLength": 3 },
     "tagline": { "type": "string" },
-    "vertical": { "enum": ["chr", "generic"] },
+    "vertical": { "type": "string" },
     "users": {
       "type": "array",
       "items": { "type": "string" },
@@ -435,7 +436,9 @@ export function initBrandSpec(opts: InitBrandSpecOptions): {
     domain: opts.domain,
     tagline: opts.tagline || `${opts.brandName} — métier sur OS Creezio`,
     vertical,
-    meiliPreset: vertical === "chr" ? "chr-catalog" : "none",
+    // Preset = id du registre factory (le vertical lui-même) — plus de
+    // valeur `<vertical>-catalog` câblée dans le contrat OS.
+    meiliPreset: vertical === "generic" ? "none" : vertical,
     onboardingEnabled: onboardingEnabled ? "true" : "false",
     afterCompleteHref: onboardingEnabled ? "/onboarding" : "/",
     // NB: pas de moduleId ici — les placeholders {{moduleId}} des fichiers

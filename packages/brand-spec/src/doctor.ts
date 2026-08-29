@@ -14,7 +14,7 @@ const MODULE_HELPER_FILES = new Set([
   "meili-shared.ts",
 ]);
 
-/** Démo fail-closed depuis 0.10.1 — pins plus vieux (ex. Winhub 0.9.2) = warn. */
+/** Démo fail-closed depuis 0.10.1 — pins plus vieux (ex. marques en 0.9.x) = warn. */
 const DEMO_CONTRACT_SINCE = { major: 0, minor: 10, patch: 1 };
 
 /** Ops fail-closed depuis 0.10.6 — pins plus vieux = warn. */
@@ -171,7 +171,7 @@ function stripModuleSourceComments(src: string): string {
  * internes (`KIT_INTERNAL_MODULE_MOUNT_IDS` : schema / dashboard / search /
  * interactive-demo) et les surfaces OS vivent hors `modules/*.ts` — le
  * doctor ne les scanne pas. Un BrandModuleDef métier du même nom n'est
- * PAS exempté (Winhub `dashboard` doit déclarer operations[]).
+ * PAS exempté (un module `dashboard` de marque doit déclarer operations[]).
  * EntitySpec seul : CRUD auto via `operationsFromEntitySpec` — pas d'ops
  * manuscrites exigées.
  */
@@ -318,7 +318,7 @@ function countInlineDemoSteps(src: string): number {
  * jouable. Spec seul (avant apply) : pas de modules/*.ts → no-op.
  * Helpers (`_lib`, `shared.ts`, `mcp-shared.ts`, `meili-shared.ts`,
  * `index.ts`, `types.ts`) ignorés. Démo trop pauvre = **warn** (pas
- * fail-closed). Pin kit < 0.10.1 (ex. Winhub 0.9.2) : démo absente = warn.
+ * fail-closed). Pin kit < 0.10.1 (marques en 0.9.x) : démo absente = warn.
  */
 function doctorBrandModuleDemos(
   specRoot: string,
@@ -341,7 +341,7 @@ function doctorBrandModuleDemos(
         level: preContract ? "warn" : "error",
         code: "MODULE_DEMO_MISSING",
         message: preContract
-          ? `module ${id}: demo.scenarios absent — warn (pin kit < 0.10.1, ex. Winhub 0.9.2) ; obligatoire depuis 0.10.1.`
+          ? `module ${id}: demo.scenarios absent — warn (pin kit < 0.10.1) ; obligatoire depuis 0.10.1.`
           : `module ${id}: demo.scenarios obligatoire (≥ 1 scénario jouable). Une app Creezio sans démo interactive est invalide.`,
         path: rel,
       });

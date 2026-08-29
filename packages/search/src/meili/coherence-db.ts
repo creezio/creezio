@@ -2,8 +2,8 @@
  * Accès SQLite pour la cohérence Meili — process Node vanilla uniquement
  * (better-sqlite3 ABI Node). Ne jamais importer depuis electron/main.ts.
  *
- * Compteurs alignés sur l'indexeur catalogue (tables via
- * `configureMeiliCatalogSqlTables` — défaut TF produits + fournisseurs).
+ * Compteurs alignés sur l'indexeur catalogue (tables déclarées par la
+ * marque via `configureMeiliCatalogSqlTables` / `feed.countTables`).
  */
 
 import path from "node:path";
@@ -56,29 +56,26 @@ function safeTableName(name: string): string | null {
   return /^[A-Za-z_][A-Za-z0-9_]*$/.test(name) ? name : null;
 }
 
-/** Compteurs SQL alignés sur l'indexeur catalogue (tables configurables). */
+/** Compteurs SQL alignés sur l'indexeur catalogue (tables déclarées marque). */
 export function countCatalogSql(dbPath: string): CatalogSqlCounts {
   const tables = getMeiliCatalogSqlTables();
-  const produitsTable = safeTableName(tables.produits);
-  const sitesTable = safeTableName(tables.sites);
   const db = new (loadDatabase())(dbPath, { readonly: true, fileMustExist: true });
   try {
-    const produits =
-      produitsTable && tableExists(db, produitsTable)
-        ? count(db, `SELECT COUNT(*) AS c FROM ${produitsTable}`)
-        : 0;
-    // Champ fingerprint historique `fournisseurs` = compteur table `sites`.
-    const fournisseurs =
-      sitesTable && tableExists(db, sitesTable)
-        ? count(db, `SELECT COUNT(*) AS c FROM ${sitesTable}`)
-        : 0;
-    return { produits, fournisseurs };
+    const counts: CatalogSqlCounts = {};
+    for (const [key, table] of Object.entries(tables)) {
+      const safe = safeTableName(table);
+      counts[key] =
+        safe && tableExists(db, safe)
+          ? count(db, `SELECT COUNT(*) AS c FROM ${safe}`)
+          : 0;
+    }
+    return counts;
   } finally {
     db.close();
   }
 }
 
-/** Alias historique (API Fidu GED). */
+/** @deprecated Alias historique (API cohérence GED). */
 export function countGedSql(dbPath: string): CatalogSqlCounts {
   return countCatalogSql(dbPath);
 }

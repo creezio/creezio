@@ -52,7 +52,9 @@ Exports principaux :
 - packages : `KIT_PACKAGES`, `assertKitPackage`, `directDependents`, `transitiveDependents` ;
 - semver : `parseConventionalCommit`, `bumpKindFromCommits`, `applyBump`, `compareSemver` ;
 - impact : `impactForPackageBump`, `formatImpactReport` ;
-- canaux : `UPDATE_CHANNELS`, `buildBrandPrPayload`, `buildAllBrandPrPayloads` ;
+- canaux (data-driven H7) : `listUpdateChannels`, `configureBrandChannels`,
+  `brandPrChannelId`, `buildBrandPrPayload`, `buildAllBrandPrPayloads`
+  (`UPDATE_CHANNELS` déprécié — snapshot au chargement) ;
 - registre org : `createMemoryOrgPluginRegistry`, `createFileOrgPluginRegistry`, `snapshotOrgPluginRegistry` ;
 - extension points : `EXTENSION_POINTS`, `DOWNWARD_CHAIN`, `UPWARD_CHAIN`, `createExtensionHookBus` ;
 - release notes : `entriesFromCommits`, `renderChangelogMarkdown`, `prependChangelog` ;

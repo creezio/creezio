@@ -10,7 +10,9 @@ import { emitOpsEvent } from "@creezio/observability";
 import {
   MEILI_FINGERPRINT_META_KEY,
   MEILI_INDEX_IN_PROGRESS_KEY,
+  fingerprintCountKey,
   serializeFingerprint,
+  type CatalogSqlCounts,
   type MeiliFingerprint,
 } from "./index-schema.js";
 import type { BrandMeiliFeed, BrandMeiliDocument } from "./feed.js";
@@ -334,12 +336,16 @@ export async function runFeedIndexation(opts: {
   const db = openSqlite(dbPath, { readonly: true, fileMustExist: true });
   const indexed: Record<string, number> = {};
   try {
-    const nProduits = countTable(db, feed.countTables.produits);
-    const nSites = countTable(db, feed.countTables.sites);
-    const totalDocs = feed.indexes.reduce((acc, idx) => {
-      if (idx.countKey === "produits") return acc + nProduits;
-      return acc + nSites;
-    }, 0);
+    // Compteurs génériques : clés fingerprint normalisées (alias legacy
+    // `sites` → `fournisseurs` lu une version, cf. fingerprintCountKey).
+    const sqlCounts: CatalogSqlCounts = {};
+    for (const [key, table] of Object.entries(feed.countTables)) {
+      sqlCounts[fingerprintCountKey(key)] = countTable(db, table);
+    }
+    const totalDocs = feed.indexes.reduce(
+      (acc, idx) => acc + (sqlCounts[fingerprintCountKey(idx.countKey)] ?? 0),
+      0,
+    );
     let done = 0;
     const bump = (n: number) => {
       done += n;
@@ -379,7 +385,7 @@ export async function runFeedIndexation(opts: {
     const fp: MeiliFingerprint = {
       indexSchema: feed.schemaVersion,
       sqliteSchema: readSqliteSchemaVersion(db),
-      counts: { produits: nProduits, fournisseurs: nSites },
+      counts: sqlCounts,
       builtAt: new Date().toISOString(),
       appVersion: opts.appVersion,
     };

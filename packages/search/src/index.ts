@@ -56,6 +56,7 @@ export {
   decideMeiliReady,
   expectedCountsForFeed,
   expectedMeiliCounts,
+  fingerprintCountKey,
   getMeiliBrandFeed,
   meiliCoherenceScriptPath,
   getMeiliCatalogSqlTables,

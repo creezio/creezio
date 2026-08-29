@@ -2,7 +2,8 @@
  * Générateurs runtime natif OS — SQLite + api-kernel (pas de sidecar JSON).
  */
 import type { AppManifest } from "@creezio/brand-config";
-import { isChrModel, type ProductModel } from "../product-model.js";
+import type { ProductModel } from "../product-model.js";
+import { getMeiliFeedPreset } from "./meili-feed-presets.js";
 import { renderBrandSchemaSql } from "./schema.js";
 
 export function renderBrandMigrationsTs(model: ProductModel): string {
@@ -359,7 +360,13 @@ export function registerBrandModuleApi(api: ApiKernel): void {
 }
 
 export function renderMeiliFeedTs(model: ProductModel): string {
-  if (!isChrModel(model)) {
+  // Registre de presets factory (meili-feed-presets.ts) : `meili.feedPreset`
+  // du brand.yaml prioritaire, sinon le vertical du modèle sert d'id de
+  // preset — aucun vertical énuméré dans les types.
+  const preset =
+    getMeiliFeedPreset(model.meiliFeedPreset) ??
+    getMeiliFeedPreset(model.vertical);
+  if (!preset) {
     // Première entité RÉELLE du spec — jamais un hardcode « notes » : la
     // table indexée doit exister dans le schema brand généré (sinon
     // l'indexation Meili plante sur une table absente — vécu foove2-admin).
@@ -378,7 +385,7 @@ export const brandMeiliFeed: BrandMeiliFeed = {
   id: "${model.brandId}-os",
   schemaVersion: 1,
   progressPrefix: "${model.brandId.replace(/[^A-Za-z0-9]/g, "").toUpperCase().slice(0, 24) || "BRAND"}",
-  countTables: { produits: "_none", sites: "_none" },
+  countTables: {},
   indexes: [],
   metaIndexUid: "catalog_meta",
 };
@@ -409,11 +416,11 @@ export const brandMeiliFeed: BrandMeiliFeed = {
   id: "${model.brandId}-${ent.id}",
   schemaVersion: 1,
   progressPrefix: "${model.brandId.replace(/[^A-Za-z0-9]/g, "").toUpperCase().slice(0, 24) || "BRAND"}",
-  countTables: { produits: "${ent.id}", sites: "${ent.id}" },
+  countTables: { "${ent.id}": "${ent.id}" },
   indexes: [
     {
       uid: "catalog_products",
-      countKey: "produits",
+      countKey: "${ent.id}",
       table: "${ent.id}",
       columns: ${JSON.stringify(columns)},
       docType: "${ent.id}",
@@ -433,26 +440,7 @@ export function applyBrandMeiliConfig(): void {
 `;
   }
 
-  return `/**
- * Feed Meili marque ${model.brandId} — config OS (pas de moteur maison).
- * UIDs génériques catalog_* (interdit tf2_* dans le feed marque).
- */
-import {
-  configureMeiliBrandFeed,
-  configureMeiliCatalogSqlTables,
-  createChrCatalogMeiliFeed,
-  type BrandMeiliFeed,
-} from "@creezio/electron-shell/meili";
-
-export const brandMeiliFeed: BrandMeiliFeed = createChrCatalogMeiliFeed({
-  brandId: ${JSON.stringify(model.brandId)},
-});
-
-export function applyBrandMeiliConfig(): void {
-  configureMeiliCatalogSqlTables(brandMeiliFeed.countTables);
-  configureMeiliBrandFeed(brandMeiliFeed);
-}
-`;
+  return preset(model);
 }
 
 export function renderBrandKernelHarnessMjs(

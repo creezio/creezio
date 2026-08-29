@@ -117,9 +117,8 @@ mcp.use("/mcp/*", requestLogMcpMiddleware);
 Si `getFleetStateDir` est absent, le package lit :
 
 - `CREEZIO_FLEET_STATE_DIR`
-- `TF2_FLEET_STATE_DIR`
-- `CERTIVAN_FLEET_STATE_DIR`
-- `FIDU_FLEET_STATE_DIR`
+- sinon toute variable `${envPrefix}_FLEET_STATE_DIR` dérivée du manifest
+  marque (posée par le host — aucun préfixe marque câblé dans le kit)
 
 ### Ops journal
 

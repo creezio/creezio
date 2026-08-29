@@ -150,10 +150,14 @@ test("meili-feed générique : table de la première entité (jamais « notes »
   assert.match(out, /id: "probebrand-prospects"/);
 });
 
-test("meili-feed CHR : createChrCatalogMeiliFeed préservé", async () => {
+test("meili-feed CHR : preset catalogue inliné (H7, plus d'import déprécié)", async () => {
   const { native } = await loadGenerators();
   const out = native.renderMeiliFeedTs(CHR_MODEL);
-  assert.match(out, /createChrCatalogMeiliFeed/);
+  assert.doesNotMatch(out, /createChrCatalogMeiliFeed/);
+  assert.match(out, /uid: "catalog_products"/);
+  assert.match(out, /uid: "catalog_sites"/);
+  assert.match(out, /countTables: \{ produits: "produits", fournisseurs: "fournisseurs" \}/);
+  assert.match(out, /configureMeiliBrandFeed\(brandMeiliFeed\)/);
 });
 
 test("meili-config : import public @creezio/search + fixture entité réelle", async () => {

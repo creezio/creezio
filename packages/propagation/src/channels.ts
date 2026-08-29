@@ -3,19 +3,20 @@
  *
  * Phase F livre le contrat + templates ; l'automation GitHub Actions
  * côté repos marques est Phase G (gated).
+ *
+ * H7 — canaux DATA-DRIVEN : les canaux marque sont dérivés d'une config
+ * (défaut : registre production de brand-surfaces) ou injectés via
+ * `configureBrandChannels`. Plus aucun nom de marque ni chemin absolu
+ * n'est énuméré dans ce module (ni dans ses types).
  */
 
 import type { BrandId } from "@creezio/brand-config";
+import { PRODUCTION_BRAND_GATES } from "./brand-surfaces.js";
 import type { PackageBumpImpact } from "./impact.js";
 import type { BumpKind } from "./semver-policy.js";
 
-export type UpdateChannelId =
-  | "kit-workspace"
-  | "brand-pr-certivan"
-  | "brand-pr-fidu"
-  | "brand-pr-tempoflow"
-  | "brand-pr-demobrand"
-  | "console-ops";
+/** Id de canal — libre (H7) ; canaux marque = `brand-pr-<brandId>`. */
+export type UpdateChannelId = string;
 
 export type UpdateChannel = {
   id: UpdateChannelId;
@@ -28,7 +29,57 @@ export type UpdateChannel = {
   gateDoc?: string;
 };
 
-export const UPDATE_CHANNELS: readonly UpdateChannel[] = [
+/** Canal PR d'une marque — convention `brand-pr-<brandId>`. */
+export function brandPrChannelId(brandId: string): UpdateChannelId {
+  return `brand-pr-${brandId}`;
+}
+
+/** Config d'un canal PR marque — fournie par la config, jamais câblée ici. */
+export type BrandChannelConfig = {
+  brandId: BrandId;
+  label: string;
+  /** Repo / chemin cible (hint). */
+  targetHint: string;
+  gateId?: string;
+  gateDoc?: string;
+};
+
+function defaultBrandChannelConfigs(): BrandChannelConfig[] {
+  // Dérivation du registre production (brand-surfaces) — la dette « marques
+  // en dur » restante (F1.6) est localisée là-bas, pas ici.
+  return Object.entries(PRODUCTION_BRAND_GATES).map(([brandId, g]) => ({
+    brandId: brandId as BrandId,
+    label: g.label,
+    targetHint: g.repoHint,
+    gateId: g.gateId,
+    gateDoc: `docs/archive/gates/${g.gateId}-${brandId.toUpperCase()}.md`,
+  }));
+}
+
+let brandChannelConfigs: BrandChannelConfig[] = defaultBrandChannelConfigs();
+
+/** Injecte les canaux PR marque depuis une config (data-driven, H7). */
+export function configureBrandChannels(configs: BrandChannelConfig[]): void {
+  brandChannelConfigs = [...configs];
+}
+
+export function resetBrandChannelsForTests(): void {
+  brandChannelConfigs = defaultBrandChannelConfigs();
+}
+
+function brandChannel(cfg: BrandChannelConfig): UpdateChannel {
+  return {
+    id: brandPrChannelId(cfg.brandId),
+    label: cfg.gateId ? `PR ${cfg.label} (${cfg.gateId})` : `PR ${cfg.label}`,
+    description:
+      "PR automatisable : bump deps @creezio/* + checklist gate",
+    targetHint: cfg.targetHint,
+    automatable: true,
+    gateDoc: cfg.gateDoc,
+  };
+}
+
+const BASE_CHANNELS: readonly UpdateChannel[] = [
   {
     id: "kit-workspace",
     label: "Kit creezio/creezio",
@@ -38,34 +89,7 @@ export const UPDATE_CHANNELS: readonly UpdateChannel[] = [
     automatable: true,
   },
   {
-    id: "brand-pr-certivan",
-    label: "PR Certivan (G1)",
-    description:
-      "PR automatisable : bump deps @creezio/* + checklist gate G1",
-    targetHint: "/opt/docker/certivan-app",
-    automatable: true,
-    gateDoc: "docs/archive/gates/G1-CERTIVAN.md",
-  },
-  {
-    id: "brand-pr-fidu",
-    label: "PR Fidu (G2)",
-    description:
-      "PR automatisable : bump deps @creezio/* + checklist gate G2",
-    targetHint: "/opt/docker/fidu",
-    automatable: true,
-    gateDoc: "docs/archive/gates/G2-FIDU.md",
-  },
-  {
-    id: "brand-pr-tempoflow",
-    label: "PR TempoFlow (G3)",
-    description:
-      "PR automatisable : bump deps @creezio/* + checklist gate G3",
-    targetHint: "creezio/tempoflow2",
-    automatable: true,
-    gateDoc: "docs/archive/gates/G3-TEMPOFLOW.md",
-  },
-  {
-    id: "brand-pr-demobrand",
+    id: brandPrChannelId("demobrand"),
     label: "Sandbox DemoBrand",
     description: "Mise à jour locale apps/demobrand dans le kit",
     targetHint: "apps/demobrand",
@@ -80,6 +104,18 @@ export const UPDATE_CHANNELS: readonly UpdateChannel[] = [
   },
 ] as const;
 
+/** Canaux courants : base kit + canaux marque configurés. */
+export function listUpdateChannels(): UpdateChannel[] {
+  return [...BASE_CHANNELS, ...brandChannelConfigs.map(brandChannel)];
+}
+
+/**
+ * @deprecated H7 — snapshot au chargement du module ; utiliser
+ * `listUpdateChannels()` (reflète `configureBrandChannels`). Retrait au
+ * prochain bump d'architecture.
+ */
+export const UPDATE_CHANNELS: readonly UpdateChannel[] = listUpdateChannels();
+
 export type BrandPrPayload = {
   brandId: BrandId;
   channelId: UpdateChannelId;
@@ -90,13 +126,6 @@ export type BrandPrPayload = {
   gateDoc?: string;
 };
 
-const CHANNEL_BY_BRAND: Partial<Record<BrandId, UpdateChannelId>> = {
-  certivan: "brand-pr-certivan",
-  fidu: "brand-pr-fidu",
-  tempoflow: "brand-pr-tempoflow",
-  demobrand: "brand-pr-demobrand",
-};
-
 /**
  * Génère le payload PR marque à partir d'un impact (dry-run / automation G).
  */
@@ -104,9 +133,8 @@ export function buildBrandPrPayload(
   impact: PackageBumpImpact,
   brandId: BrandId,
 ): BrandPrPayload | null {
-  const channelId = CHANNEL_BY_BRAND[brandId];
-  if (!channelId) return null;
   if (!impact.brands.includes(brandId)) return null;
+  const channelId = brandPrChannelId(brandId);
 
   const gate = impact.gates.find((g) => g.brandId === brandId);
   const bodyMarkdown = [

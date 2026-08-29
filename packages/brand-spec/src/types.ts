@@ -24,7 +24,13 @@ export type BrandMeiliIndexDecl = {
 
 export type BrandMeiliDecl = {
   enabled: boolean;
-  feedPreset?: "chr-catalog" | "none" | "custom";
+  /**
+   * `none` (pas de feed), `custom` (indexes[] déclarés ci-dessous), ou l'id
+   * d'un preset du REGISTRE FACTORY (`@creezio/factory` meili-feed-presets) —
+   * le contrat OS n'énumère aucun preset vertical. Valeur legacy
+   * `<vertical>-catalog` acceptée une version (normalisée par la factory).
+   */
+  feedPreset?: string;
   indexes?: BrandMeiliIndexDecl[];
 };
 
@@ -50,7 +56,12 @@ export type BrandYaml = {
   brandName: string;
   domain: string;
   tagline?: string;
-  vertical?: "chr" | "generic";
+  /**
+   * Vertical métier — champ LIBRE (le contrat OS n'énumère pas les
+   * verticaux ; la factory peut en connaître certains comme générateurs
+   * legacy assumés).
+   */
+  vertical?: string;
   sandbox?: boolean;
   /**
    * URL serveur pré-provisionnée dans le picker du client join-only

@@ -1,6 +1,7 @@
 /**
  * Sidecar Hermes Agent + WebUI — factory brand-agnostic.
- * SoT extrait de TempoFlow hermes-launcher.ts (R3.3) — chemins gold intacts.
+ * SoT extrait du hermes-launcher gold de la première marque (R3.3) —
+ * chemins gold intacts, identité dérivée du manifest (envPrefix/secretFilePrefix).
  */
 
 import { spawn, type ChildProcess } from "node:child_process";
@@ -141,7 +142,7 @@ export function clearGeneratedWebuiPassword(
 ): void {
   clearGeneratedWebuiPasswordImpl(home, stateDir, secretPrefix);
 }
-/** @deprecated gold marker alias */
+/** @deprecated H7 — alias gold historique, conservé UNE version (frozen export). */
 export function clearTempoflowGeneratedWebuiPassword(
   home: string,
   stateDir: string,
@@ -154,12 +155,9 @@ function clearGeneratedWebuiPasswordImpl(
   stateDir: string,
   secretPrefix?: string,
 ): void {
-  const files = [
-    path.join(home, ".tempoflow-webui-password"),
-    path.join(home, ".desktop-hermes-webui-password"),
-    path.join(home, ".certivan-webui-password"),
-    path.join(home, ".fidu-webui-password"),
-  ];
+  // Fichiers password legacy : nom générique + nom dérivé du secretFilePrefix
+  // marque (couvre les fichiers `.{marque}-webui-password` historiques).
+  const files = [path.join(home, ".desktop-hermes-webui-password")];
   if (secretPrefix) {
     files.push(path.join(home, `.${secretPrefix}-webui-password`));
   }
@@ -255,7 +253,7 @@ function pushLog(line: string): void {
 
 /**
  * Dossiers d'outils LÉGITIMES pour le PATH confiné des process Hermes :
- * venv Hermes, Node TempoFlow, MinGit embarqué. Rien du PC hôte.
+ * venv Hermes, Node embarqué marque, MinGit embarqué. Rien du PC hôte.
  */
 function hermesToolPathDirs(primaryDir: string): string[] {
   const dirs: string[] = [primaryDir];
@@ -280,7 +278,7 @@ function findHermesBinary(): string | null {
   const profile = path.join(runtime, "os-profile");
   const localApp = path.join(runtime, "bin");
   const vendorBin = path.join(hermesVendorDir(ctx), "bin");
-  // Sandbox TempoFlow d’abord — pas le profil Windows Admin.
+  // Sandbox OS marque d’abord — pas le profil Windows Admin.
   const sandLocalBin = path.join(profile, "AppData", "Local", "hermes", "bin");
   const sandHermesBin = path.join(profile, ".hermes", "bin");
   const sandAgentScripts =
@@ -317,7 +315,7 @@ function findHermesBinary(): string | null {
         typeof process.getuid === "function" ? process.getuid() : null,
       ),
     ].filter(Boolean),
-    // OS TempoFlow : jamais de `which`/`where` — sandbox uniquement.
+    // OS marque : jamais de `which`/`where` — sandbox uniquement.
     // Overrides env autorisés seulement hors build packagé (dev/tests).
     allowEnvOverride: !ctx.isPackaged,
     envPrefix: ctx.manifest.envPrefix,
@@ -336,15 +334,23 @@ function findHermesBinary(): string | null {
 function ensureApiKey(home: string): string {
   fs.mkdirSync(home, { recursive: true });
   const prefix = ctx.secretFilePrefix || ctx.manifest.brandId || "desktop";
-  /** Canon marque : `.certivan-api-server-key` / `.tempoflow-api-server-key`. */
+  /** Canon marque : `.{secretFilePrefix}-api-server-key` (dérivé du manifest). */
   const keyFile = path.join(home, `.${prefix}-api-server-key`);
+  // Fallbacks legacy lus UNE version avec warning (dual-read H7) : nom
+  // générique historique + nom gold de la première marque.
+  const legacyGold = path.join(home, ".tempoflow-api-server-key");
   const desktop = path.join(home, ".desktop-hermes-api-key");
-  const tempoflow = path.join(home, ".tempoflow-api-server-key");
-  for (const f of [keyFile, desktop, tempoflow]) {
+  for (const f of [keyFile, desktop, legacyGold]) {
     try {
       const existing = fs.readFileSync(f, "utf8").trim();
       if (existing.length >= 16) {
-        if (f !== keyFile) fs.writeFileSync(keyFile, existing, { mode: 0o600 });
+        if (f !== keyFile) {
+          pushLog(
+            `[deprecated] clé API Hermes lue depuis fichier legacy ${path.basename(f)} — ` +
+              `migrée vers ${path.basename(keyFile)} (fallback retiré au prochain bump)`,
+          );
+          fs.writeFileSync(keyFile, existing, { mode: 0o600 });
+        }
         return existing;
       }
     } catch {
@@ -527,7 +533,7 @@ async function spawnWebui(opts: {
       opts.home,
       stateDir,
       ctx.secretFilePrefix || ctx.manifest.brandId,
-    ); // clearTempoflowGeneratedWebuiPassword gold
+    ); // clear password WebUI généré (gold : loopback sans prompt)
   }
 
   opts.log(
@@ -716,7 +722,7 @@ async function startHermesImpl(
 
     const bridgeEnv =  (ctx.getHermesBridgeEnv?.(opts.crmPort != null ? { crmPort: opts.crmPort } : undefined,
     ) || {}) ;
-    // BYOK TempoFlow → process Hermes (en plus du .env écrit par writeHermesHome).
+    // BYOK marque → process Hermes (en plus du .env écrit par writeHermesHome).
     const llm = store.getLlmKeys();
     const productEnv: NodeJS.ProcessEnv = {
       HERMES_HOME: home,
@@ -743,12 +749,12 @@ async function startHermesImpl(
       },
       profileHome: sand.profileHome,
       userData: ctx.userDataDir,
-      // PATH confiné : CLI Hermes (venv) + Node/git TempoFlow + System32.
+      // PATH confiné : CLI Hermes (venv) + Node/git embarqués marque + System32.
       // Le terminal de l'agent ne résout AUCUN outil du PC hôte.
       toolDirs: hermesToolPathDirs(path.dirname(bin)),
     });
     delete gatewayEnv.HERMES_WEBUI_PASSWORD;
-    // Ne jamais laisser une clé vide / héritée écraser le BYOK TempoFlow.
+    // Ne jamais laisser une clé vide / héritée écraser le BYOK marque.
     delete gatewayEnv.OPENAI_API_KEY;
     delete gatewayEnv.ANTHROPIC_API_KEY;
     if (llm.openai) gatewayEnv.OPENAI_API_KEY = llm.openai;
@@ -919,7 +925,7 @@ async function stopHermesAndWait(timeoutMs = 5000): Promise<void> {
 }
 
 /**
- * Propage les clés BYOK TempoFlow → Hermes (.env + process).
+ * Propage les clés BYOK marque → Hermes (.env + process).
  * Appelé après Configuration → Clés IA (sinon seul Next redémarrait).
  */
 async function reapplyHermesLlmKeys(opts: {
@@ -954,7 +960,7 @@ async function reapplyHermesLlmKeys(opts: {
   return {
     restarted: Boolean(started),
     detail: started
-      ? "Hermes redémarré avec clés BYOK TempoFlow"
+      ? "Hermes redémarré avec clés BYOK"
       : "échec restart Hermes après BYOK",
   };
 }
@@ -987,43 +993,15 @@ async function reapplyHermesBridge(opts: {
   } catch {
     envBody = "";
   }
+  // H7 — contrôle GÉNÉRIQUE : chaque clé du bridge (dérivée du manifest via
+  // envPrefix : `{PREFIX}_API_KEY`, `{PREFIX}_PLUGINS_*`, N8N_*, aliases
+  // legacy…) doit être présente avec sa valeur courante dans le .env Hermes.
+  // Remplace l'ancienne liste en dur au vocabulaire de la première marque,
+  // qui ratait silencieusement les préfixes des autres marques.
   const missing: string[] = [];
-  if (bridge.N8N_API_KEY && !envBody.includes(`N8N_API_KEY=${bridge.N8N_API_KEY}`)) {
-    missing.push("N8N_API_KEY");
-  }
-  if (
-    bridge.TEMPOFLOW_API_KEY &&
-    !envBody.includes(`TEMPOFLOW_API_KEY=${bridge.TEMPOFLOW_API_KEY}`)
-  ) {
-    missing.push("TEMPOFLOW_API_KEY");
-  }
-  if (
-    bridge.TEMPOFLOW_API_URL &&
-    !envBody.includes(`TEMPOFLOW_API_URL=${bridge.TEMPOFLOW_API_URL}`)
-  ) {
-    missing.push("TEMPOFLOW_API_URL");
-  }
-  if (
-    bridge.PLUGINS_API_URL &&
-    !envBody.includes(
-      `PLUGINS_API_URL=${bridge.PLUGINS_API_URL}`,
-    )
-  ) {
-    missing.push("PLUGINS_API_URL");
-  }
-  if (
-    bridge.TEMPOFLOW_PLUGINS_API_TOKEN &&
-    !envBody.includes(
-      `TEMPOFLOW_PLUGINS_API_TOKEN=${bridge.TEMPOFLOW_PLUGINS_API_TOKEN}`,
-    )
-  ) {
-    missing.push("TEMPOFLOW_PLUGINS_API_TOKEN");
-  }
-  if (
-    bridge.TEMPOFLOW_PLUGINS_DIR &&
-    !envBody.includes(`TEMPOFLOW_PLUGINS_DIR=${bridge.TEMPOFLOW_PLUGINS_DIR}`)
-  ) {
-    missing.push("TEMPOFLOW_PLUGINS_DIR");
+  for (const [key, value] of Object.entries(bridge)) {
+    if (!value) continue;
+    if (!envBody.includes(`${key}=${value}`)) missing.push(key);
   }
   // H1 — bloc mcp_servers attendu dans config.yaml (façade MCP CRM) : s'il
   // manque ou pointe ailleurs, un restart réécrit le home (writeHermesHome).
@@ -1092,11 +1070,15 @@ function getHermesNextEnv(connectionMode: "local" | "remote"): Record<string, st
   }
 
   if (config.mode === "remote" && config.remoteApiUrl) {
-    const key = (
-      process.env.HERMES_API_SERVER_KEY ||
-      process.env.TF2_HERMES_REMOTE_KEY ||
-      ""
-    ).trim();
+    // Dual-read H7 : env legacy première marque lu UNE version avec warning.
+    const legacyRemoteKey = (process.env.TF2_HERMES_REMOTE_KEY || "").trim();
+    const key = (process.env.HERMES_API_SERVER_KEY || "").trim() || legacyRemoteKey;
+    if (key && key === legacyRemoteKey) {
+      pushLog(
+        "[deprecated] clé remote Hermes lue via l'env legacy première marque — " +
+          "utiliser HERMES_API_SERVER_KEY (retrait au prochain bump d'architecture)",
+      );
+    }
     if (!key) return {};
     return buildNextHermesEnv({
       apiUrl: config.remoteApiUrl,

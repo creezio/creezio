@@ -210,6 +210,12 @@
 | [`test-phase-v2.mjs`](../test-phase-v2.mjs) | Phase V2 — observabilité native (activité, usages plugins, control-plane). |
 | [`test-phase-v3.mjs`](../test-phase-v3.mjs) | Phase V3 — automations data-driven (triggers lifecycle / données). |
 
+## `codemods/H7/`
+
+| Fichier | Rôle |
+|---|---|
+| [`codemods/H7/h7-neutralize-brand-contracts.mjs`](../codemods/H7/h7-neutralize-brand-contracts.mjs) | (à documenter) |
+
 ## `lib/`
 
 | Fichier | Rôle |

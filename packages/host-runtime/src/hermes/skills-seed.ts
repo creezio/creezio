@@ -1,6 +1,6 @@
 /**
- * Seed des skills Hermes vers `{HERMES_HOME}/skills/` (parité TF2
- * hermes-skills-seed) — générique kit.
+ * Seed des skills Hermes vers `{HERMES_HOME}/skills/` (parité gold
+ * hermes-skills-seed première marque) — générique kit.
  *
  * Sources (dans l'ordre, les dernières écrasent les premières) :
  * 1. Skills génériques kit : `@creezio/electron-shell/resources/vendor/hermes-skills`

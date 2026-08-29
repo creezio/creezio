@@ -48,14 +48,19 @@ export type { PackageBumpImpact } from "./impact.js";
 export { formatImpactReport, impactForPackageBump } from "./impact.js";
 
 export type {
+  BrandChannelConfig,
   BrandPrPayload,
   UpdateChannel,
   UpdateChannelId,
 } from "./channels.js";
 export {
   UPDATE_CHANNELS,
+  brandPrChannelId,
   buildAllBrandPrPayloads,
   buildBrandPrPayload,
+  configureBrandChannels,
+  listUpdateChannels,
+  resetBrandChannelsForTests,
 } from "./channels.js";
 
 export type {

@@ -17,10 +17,13 @@ visible par TOUT l'écosystème standard.
 - Tous les packages publiés partagent la MÊME version (groupe `fixed` de
   changesets) — équivalent moderne de `ARCHITECTURE_VERSION` : une version
   de kit = un ensemble cohérent de packages.
-- Version courante (lockstep publié) : **0.10.8** (bootstrap initial : 0.4.0).
-- **Hors lockstep** : `@creezio/factory` **0.6.6** (CLI privé) et
-  `@creezio/propagation` 0.1.6. Le CLI s'exécute depuis
-  `CREEZIO_KIT_ROOT` (clone kit), **pas** depuis le pin `^0.10.8` d'une app
+- Version courante (lockstep publié) : voir `packages/app-runtime/package.json`
+  (SoT — tous les packages lockstep partagent cette valeur ; bootstrap
+  initial : 0.4.0).
+- **Hors lockstep** : `@creezio/factory` (CLI privé) et
+  `@creezio/propagation` ont leur propre versionnement (SoT : leurs
+  `package.json` respectifs). Le CLI s'exécute depuis
+  `CREEZIO_KIT_ROOT` (clone kit), **pas** depuis le pin d'une app
   — [RUNBOOK-AGENTS.md](./RUNBOOK-AGENTS.md) §2.
 - Outil : [changesets](https://github.com/changesets/changesets).
   Tout changement de `packages/` dans une PR doit être accompagné d'un
@@ -48,12 +51,12 @@ visible par TOUT l'écosystème standard.
   l'org creezio. En CI : secret `CREEZIO_NPM_TOKEN` exporté en env du job.
   En local : `export CREEZIO_NPM_TOKEN=…` (shell) ou token dans le
   `~/.npmrc` utilisateur.
-- `package.json` : `"@creezio/<pkg>": "^0.10.8"` (plus de `file:vendor/…`).
+- `package.json` : `"@creezio/<pkg>": "^<lockstep>"` (plus de `file:vendor/…`).
 - Vérifier la disponibilité :
   `npm view @creezio/app-runtime versions --registry=https://npm.pkg.github.com`
 - Mise à jour : `npm update "@creezio/*"` puis CI de l'app.
 
-## Packages publiés (lockstep 0.10.8)
+## Packages publiés (lockstep)
 
 `access-control`, `admin`, `api-kernel`, `app-runtime`, `assistant`, `auth`,
 `automations`, `brand-config`, `brand-spec`, `browser-host`, `cockpit`,
@@ -63,8 +66,8 @@ visible par TOUT l'écosystème standard.
 `support`, `tasks`.
 
 Restent privés (outillage interne, **hors lockstep**, non publiés) :
-`factory` **0.6.6**, `propagation` 0.1.6, apps `console` / `demobrand`.
-**CLI = `CREEZIO_KIT_ROOT`**, pas le pin app.
+`factory`, `propagation` (versions : leurs `package.json`), apps
+`console` / `demobrand`. **CLI = `CREEZIO_KIT_ROOT`**, pas le pin app.
 
 ## Migration depuis le vendoring (terminée)
 
@@ -72,6 +75,6 @@ L'ancien système (sync vendor, `SYNC.json`, `kit-compat`, `vendor-update`,
 `install-server-deps`, symlinks trackés) est **SUPPRIMÉ** du kit
 (feat/npm-deploy-tooling : Dockerfile + factory + CLI server-docker en mode
 npm). Apps migrées : **winhub**, **tempoflow3**, **foove2** et leurs
-repos admin (pin `^0.10.8`). Il n'existe plus d'app
+repos admin (pin `^<lockstep>`). Il n'existe plus d'app
 vendored maintenue : toute app consomme les packages npm. Le CLI reste
 celui du clone kit (`CREEZIO_KIT_ROOT`).

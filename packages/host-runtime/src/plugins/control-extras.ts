@@ -48,7 +48,8 @@ export function getPluginControlApi(): PluginControlApiState | null {
 }
 
 /**
- * Env bridge plugins : `${envPrefix}_PLUGINS_*` + aliases legacy (ex. TF2_*).
+ * Env bridge plugins : `${envPrefix}_PLUGINS_*` + aliases legacy déclarés
+ * par les bindings marque (`legacyEnvAliases`).
  */
 export function getPluginControlBridgeEnv(): Record<string, string> {
   if (!running) return {};
@@ -249,7 +250,7 @@ export function stopPluginControlApi(): void {
 
 /**
  * Routes extras hors kit générique (versions/git, accept-check, health, llm…).
- * Hook injectable via `bindings.handleBrandExtras` (ex. handleTempoflowExtras métier).
+ * Hook injectable via `bindings.handleBrandExtras` (handler métier marque).
  * @returns true si la requête a été traitée (y compris 401).
  */
 export async function handlePluginControlExtras(

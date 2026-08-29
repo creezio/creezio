@@ -1,6 +1,6 @@
 /**
  * Provisionnement silencieux d’une API key n8n (REST public /api/v1).
- * Gold TempoFlow — labels / fichier paramétrables par marque.
+ * Gold première marque — labels / fichier paramétrables par marque.
  */
 
 import fs from "node:fs";
@@ -36,9 +36,9 @@ export const N8N_HERMES_API_SCOPES = [
 ] as const;
 
 export type N8nApiKeyBrand = {
-  /** Label n8n, ex. `TempoFlow Hermes`. */
+  /** Label n8n, ex. `{Produit} Hermes`. */
   label: string;
-  /** Fichier sous n8n-home, ex. `.tempoflow-n8n-api-key.json`. */
+  /** Fichier sous n8n-home, ex. `.{brandId}-n8n-api-key.json`. */
   fileName: string;
 };
 
