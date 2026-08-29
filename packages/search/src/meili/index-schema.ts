@@ -6,16 +6,17 @@
  * - les clés meta fingerprint / in-progress (partagées feed ↔ cohérence) ;
  * - les UIDs génériques par défaut (`catalog_products` / `catalog_sites`)
  *   utilisés par la cohérence quand aucun feed n'est configuré ;
- * - les tables SQL comptées (`configureMeiliCatalogSqlTables`).
+ * - les tables SQL comptées (`configureMeiliCatalogSqlTables`) — mapping
+ *   LIBRE `clé de compteur → table SQL`, déclaré par la marque.
  *
- * Aucun UID marque ne vit dans le kit — une marque avec des UIDs
+ * Aucun UID ni clé marque ne vit dans le kit — une marque avec des clés
  * historiques les porte dans SON feed.
  *
  * Bumper INDEX_SCHEMA_VERSION (ou feed.schemaVersion) à chaque changement
  * d'indexes / settings / docs pour forcer une réindexation au boot.
  */
 
-/** v1 = produits / sites (descripteur générique catalog_*). */
+/** v1 = descripteur générique catalog_*. */
 export const INDEX_SCHEMA_VERSION = 1;
 
 export const MEILI_FINGERPRINT_META_KEY = "meili_index_fingerprint";
@@ -35,51 +36,75 @@ export const GED_INDEXES = CATALOG_INDEXES;
 export type GedIndexUid = CatalogIndexUid;
 
 /**
- * Tables SQL utilisées pour les compteurs de cohérence Meili.
- * Défaut = schéma CHR générique (`produits` / `fournisseurs`).
- * Marques avec un autre schéma : `configureMeiliCatalogSqlTables`.
+ * Normalise une clé de compteur vers sa clé fingerprint.
+ *
+ * H7 : les clés sont libres (`counts[countKey]`). Seul alias legacy encore
+ * lu UNE version : `sites` → `fournisseurs` (nom historique du fingerprint
+ * des marques héritées — codemod H7 réécrit `countKey: "sites"` côté
+ * marque, suppression de l'alias prévue au prochain bump).
  */
-export type MeiliCatalogSqlTables = {
-  /** Table lignes « produits » (compteur → catalog_products). */
-  produits: string;
-  /**
-   * Table lignes « sites / marketplaces » (compteur → catalog_sites).
-   * Défaut CHR : `fournisseurs`. Champ retourné dans CatalogSqlCounts.fournisseurs
-   * (nom historique du fingerprint — ne pas renommer sans bump schema).
-   */
-  sites: string;
-};
+export function fingerprintCountKey(countKey: string): string {
+  return countKey === "sites" ? "fournisseurs" : countKey;
+}
 
-const DEFAULT_CATALOG_SQL_TABLES: MeiliCatalogSqlTables = {
+/**
+ * Tables SQL utilisées pour les compteurs de cohérence Meili.
+ * Mapping LIBRE `clé de compteur → nom de table` (clés normalisées via
+ * `fingerprintCountKey` au comptage). Déclaré par la marque via
+ * `configureMeiliCatalogSqlTables` (typiquement `feed.countTables`).
+ */
+export type MeiliCatalogSqlTables = Record<string, string>;
+
+/**
+ * @deprecated H7 — défaut legacy (schéma catalogue hérité) servi UNE version
+ * quand aucune marque n'a configuré ses tables. Les marques doivent déclarer
+ * `feed.countTables` ; suppression prévue au prochain bump d'architecture.
+ */
+const LEGACY_DEFAULT_CATALOG_SQL_TABLES: MeiliCatalogSqlTables = {
   produits: "produits",
-  sites: "fournisseurs",
+  fournisseurs: "fournisseurs",
 };
 
-let catalogSqlTables: MeiliCatalogSqlTables = { ...DEFAULT_CATALOG_SQL_TABLES };
+let catalogSqlTables: MeiliCatalogSqlTables | null = null;
+let warnedLegacyDefault = false;
 
-/** Configure les tables SQL comptées pour la cohérence Meili (défaut TF). */
+/** Configure les tables SQL comptées pour la cohérence Meili. */
 export function configureMeiliCatalogSqlTables(
   next: Partial<MeiliCatalogSqlTables>,
 ): void {
-  catalogSqlTables = { ...catalogSqlTables, ...next };
+  const normalized: MeiliCatalogSqlTables = {};
+  for (const [key, table] of Object.entries(next)) {
+    if (typeof table === "string") normalized[fingerprintCountKey(key)] = table;
+  }
+  catalogSqlTables = { ...(catalogSqlTables ?? {}), ...normalized };
 }
 
 export function getMeiliCatalogSqlTables(): MeiliCatalogSqlTables {
-  return catalogSqlTables;
+  if (catalogSqlTables) return catalogSqlTables;
+  if (!warnedLegacyDefault) {
+    warnedLegacyDefault = true;
+    console.warn(
+      "[meili][deprecated] aucune table de comptage configurée — fallback " +
+        "legacy (produits/fournisseurs) servi UNE version. Déclarer " +
+        "feed.countTables (configureMeiliCatalogSqlTables).",
+    );
+  }
+  return { ...LEGACY_DEFAULT_CATALOG_SQL_TABLES };
 }
 
 /** Tests uniquement. */
 export function resetMeiliCatalogSqlTablesForTests(): void {
-  catalogSqlTables = { ...DEFAULT_CATALOG_SQL_TABLES };
+  catalogSqlTables = null;
+  warnedLegacyDefault = false;
 }
 
-export type CatalogSqlCounts = {
-  produits: number;
-  /** Compteur table `sites` (défaut TF = fournisseurs) — nom fingerprint historique. */
-  fournisseurs: number;
-};
+/**
+ * Compteurs SQL du fingerprint — record LIBRE `clé fingerprint → count`
+ * (clés déclarées par la marque via `countKey` / `countTables`).
+ */
+export type CatalogSqlCounts = Record<string, number>;
 
-/** Alias pour compat API cohérence (ex-GedSqlCounts). */
+/** @deprecated Alias pour compat API cohérence (ex-GedSqlCounts). */
 export type GedSqlCounts = CatalogSqlCounts;
 
 export type MeiliFingerprint = {
@@ -90,12 +115,17 @@ export type MeiliFingerprint = {
   appVersion?: string;
 };
 
+/**
+ * @deprecated H7 — mapping legacy servi UNE version quand aucun feed n'est
+ * configuré (UIDs génériques + clés fingerprint héritées). Les marques feed
+ * passent par `expectedCountsForFeed`.
+ */
 export function expectedMeiliCounts(
   sql: CatalogSqlCounts,
 ): Record<CatalogIndexUid, number> {
   return {
-    catalog_products: sql.produits,
-    catalog_sites: sql.fournisseurs,
+    catalog_products: sql.produits ?? 0,
+    catalog_sites: sql.fournisseurs ?? 0,
   };
 }
 

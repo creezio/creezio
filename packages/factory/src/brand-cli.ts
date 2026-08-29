@@ -32,7 +32,8 @@ export type BrandCliArgs = {
   domain?: string;
   force?: boolean;
   help?: boolean;
-  vertical?: "chr" | "generic";
+  /** Vertical métier — champ libre (défaut `generic`). */
+  vertical?: string;
   /** Dossier icônes marque (sinon `<spec>/icons`). */
   iconsDir?: string;
   /** Dossier repo admin dédié (défaut <out>-admin). */
@@ -73,11 +74,9 @@ export function parseBrandArgs(argv: string[]): BrandCliArgs {
     else if (a.startsWith("--domain=")) out.domain = a.slice("--domain=".length);
     else if (a === "--domain") out.domain = rest.shift();
     else if (a.startsWith("--vertical=")) {
-      const v = a.slice("--vertical=".length);
-      out.vertical = v === "chr" ? "chr" : "generic";
+      out.vertical = a.slice("--vertical=".length).trim() || "generic";
     } else if (a === "--vertical") {
-      const v = rest.shift();
-      out.vertical = v === "chr" ? "chr" : "generic";
+      out.vertical = (rest.shift() || "").trim() || "generic";
     } else if (a.startsWith("--icons-dir="))
       out.iconsDir = a.slice("--icons-dir=".length);
     else if (a === "--icons-dir") out.iconsDir = rest.shift();
@@ -283,6 +282,10 @@ function productModelFromSpec(specDir: string): ProductModel {
   model.domain = spec.brand.domain;
   if (spec.brand.tagline) model.tagline = spec.brand.tagline;
   if (spec.brand.vertical) model.vertical = spec.brand.vertical;
+  const feedPreset = spec.brand.meili?.feedPreset?.trim();
+  if (feedPreset && feedPreset !== "none" && feedPreset !== "custom") {
+    model.meiliFeedPreset = feedPreset;
+  }
   assertProductModel(model);
   return model;
 }

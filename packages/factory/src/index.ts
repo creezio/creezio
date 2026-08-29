@@ -27,6 +27,13 @@ export {
 } from "./product-model.js";
 export { writeFromPrdArtifacts } from "./scaffold-from-prd.js";
 export {
+  registerMeiliFeedPreset,
+  getMeiliFeedPreset,
+  listMeiliFeedPresetIds,
+  normalizeMeiliFeedPresetId,
+  type MeiliFeedPresetRenderer,
+} from "./generators/meili-feed-presets.js";
+export {
   scaffoldAdminRepo,
   type AdminRepoOptions,
   type AdminRepoResult,

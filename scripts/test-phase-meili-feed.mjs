@@ -54,14 +54,25 @@ test("C3 export package ./meili sans barrel Electron", () => {
   assert.ok(pkg.exports["./meili"]);
 });
 
-test("C4 factory génère meili-feed hors tf2_*", () => {
+test("C4 factory génère meili-feed hors tf2_* (registre de presets, H7)", () => {
   const native = fs.readFileSync(
     path.join(ROOT, "packages/factory/src/generators/native-runtime.ts"),
     "utf8",
   );
   assert.match(native, /renderMeiliFeedTs/);
-  assert.match(native, /createChrCatalogMeiliFeed/);
+  // H7 : le preset catalogue CHR est INLINÉ dans le code marque généré via
+  // le registre factory — plus de référence au créateur runtime déprécié.
+  assert.doesNotMatch(native, /createChrCatalogMeiliFeed/);
+  assert.match(native, /getMeiliFeedPreset/);
   assert.match(native, /createSearchMount/);
+  const presets = fs.readFileSync(
+    path.join(ROOT, "packages/factory/src/generators/meili-feed-presets.ts"),
+    "utf8",
+  );
+  assert.doesNotMatch(presets, /createChrCatalogMeiliFeed/);
+  assert.match(presets, /registerMeiliFeedPreset\("chr"/);
+  assert.match(presets, /countTables: \{ produits: "produits", fournisseurs: "fournisseurs" \}/);
+  assert.match(presets, /uid: "catalog_sites"/);
 });
 
 test("C5 ADR documente BrandMeiliFeed", () => {

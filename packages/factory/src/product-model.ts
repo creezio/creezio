@@ -65,8 +65,18 @@ export interface ProductModel {
   flows: ProductFlow[];
   platformNeeds: PlatformNeeds;
   sourcePrdPath?: string;
-  /** Vertical détecté — n’active PAS de templates métier riches. */
-  vertical?: "chr" | "generic";
+  /**
+   * Vertical détecté — champ LIBRE (aligné sur le contrat OS brand-spec).
+   * La factory connaît `chr` comme générateur legacy assumé (`isChrModel`),
+   * mais aucun type n'énumère les verticaux.
+   */
+  vertical?: string;
+  /**
+   * Preset de feed Meili (brand.yaml `meili.feedPreset`) — id du registre
+   * factory (`generators/meili-feed-presets.ts`) ; prioritaire sur le
+   * vertical pour le rendu du feed. `none`/`custom` = pas de preset.
+   */
+  meiliFeedPreset?: string;
 }
 
 const RESERVED_BRAND_IDS = new Set([
@@ -136,7 +146,11 @@ export function blankAppModel(opts: {
   };
 }
 
-/** CHR uniquement si `vertical: chr` est déclaré (jamais d'inférence). */
+/**
+ * CHR uniquement si `vertical: chr` est déclaré (jamais d'inférence).
+ * Générateur legacy assumé (fixture --from-prd historique) : la factory PEUT
+ * connaître ce vertical — le contrat OS (brand-spec), lui, ne l'énumère plus.
+ */
 export function isChrModel(model: ProductModel): boolean {
   return model.vertical === "chr";
 }
@@ -417,13 +431,12 @@ function pagesFromEntities(entities: ProductEntity[]): ProductPage[] {
 
 function detectExplicitVertical(
   text: string,
-  optsVertical?: "chr" | "generic",
-): "chr" | "generic" {
-  if (optsVertical === "chr" || optsVertical === "generic") return optsVertical;
-  const line = text.match(/^\s*vertical\s*:\s*(chr|generic)\s*$/im);
-  if (line?.[1] === "chr") return "chr";
-  if (line?.[1] === "generic") return "generic";
-  return "generic";
+  optsVertical?: string,
+): string {
+  const explicit = optsVertical?.trim();
+  if (explicit) return explicit;
+  const line = text.match(/^\s*vertical\s*:\s*([a-z][a-z0-9-]*)\s*$/im);
+  return line?.[1] || "generic";
 }
 
 export function parseProductPrd(
@@ -432,7 +445,7 @@ export function parseProductPrd(
     sourcePath?: string;
     brandId?: string;
     brandName?: string;
-    vertical?: "chr" | "generic";
+    vertical?: string;
   },
 ): ProductModel {
   const text = markdown.replace(/\r\n/g, "\n");

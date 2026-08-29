@@ -6,6 +6,7 @@ export {
   MEILI_INDEX_IN_PROGRESS_KEY,
   configureMeiliCatalogSqlTables,
   expectedMeiliCounts,
+  fingerprintCountKey,
   getMeiliCatalogSqlTables,
   parseFingerprint,
   resetMeiliCatalogSqlTablesForTests,

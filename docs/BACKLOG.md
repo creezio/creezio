@@ -112,6 +112,17 @@ affaibli pour la masquer. (Backlogs d'époque : `docs/archive/BACKLOG-*.md`.)
   `docs/archive/` gardent leurs liens d'époque (certains pointent vers des
   emplacements déplacés) — assumé, l'archive est un journal.
 
+## Images serveur
+
+- **`electron` (wrapper npm) + `electron-shell` dans l'arbre des images
+  serveur** : les images Docker headless embarquent encore le wrapper npm
+  `electron` et le package `electron-shell` (dépendances transitives de
+  l'arbre `npm ci -w server`), alors que le runtime serveur est Node pur.
+  Coupe prévue : déplacer `resources/vendor` (binaires Meili/cloudflared,
+  vendor hermes-agent) d'`electron-shell` vers `host-runtime`, puis exclure
+  electron/electron-shell du contexte serveur (TODO tracé dans
+  `docker/server/Dockerfile` + gate `test-phase-server-docker`).
+
 ## Divers
 
 - **`appliedLimit` dans `RunSqlResult`** (`packages/assistant/src/runtime/run-sql.ts`) :

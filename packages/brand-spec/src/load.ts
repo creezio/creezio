@@ -54,7 +54,10 @@ function loadBrandYaml(rootDir: string): BrandYaml {
     brandName: String(raw.brandName).trim(),
     domain: String(raw.domain).trim(),
     tagline: raw.tagline ? String(raw.tagline) : undefined,
-    vertical: raw.vertical === "chr" ? "chr" : raw.vertical === "generic" ? "generic" : undefined,
+    vertical:
+      typeof raw.vertical === "string" && raw.vertical.trim()
+        ? raw.vertical.trim()
+        : undefined,
     sandbox: raw.sandbox !== false,
     defaultServerUrl: raw.defaultServerUrl
       ? String(raw.defaultServerUrl).trim()

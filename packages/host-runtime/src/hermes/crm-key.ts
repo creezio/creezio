@@ -1,6 +1,7 @@
 /**
  * Clé API CRM dédiée à Hermes — fichier local + upsert SQLite via sous-process.
- * Gold TempoFlow paramétré (prefix / file / env keys / paths injectés).
+ * Gold première marque paramétré (prefix / file / env keys / paths injectés,
+ * dérivés du manifest par compose-brand-os : `{PREFIX}_API_KEY` / `{PREFIX}_API_URL`).
  */
 
 import { spawn } from "node:child_process";
@@ -16,9 +17,9 @@ export type HermesCrmKeyBrand = {
   apiKeyPrefix: string;
   fileName: string;
   keyName: string;
-  /** Env CRM key, ex. `TEMPOFLOW_API_KEY`. */
+  /** Env CRM key, dérivée du manifest : `{envPrefix}_API_KEY`. */
   apiKeyEnv: string;
-  /** Env CRM URL, ex. `TEMPOFLOW_API_URL`. */
+  /** Env CRM URL, dérivée du manifest : `{envPrefix}_API_URL`. */
   apiUrlEnv: string;
 };
 

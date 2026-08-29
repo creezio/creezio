@@ -88,7 +88,10 @@ test("P29.4 tasks : wire web_* → external_* (supplier_* alias type)", () => {
 test("P29.5 electron-shell : Meili tables configurables + driver external_*", () => {
   const schema = read("packages/search/src/meili/index-schema.ts");
   assert.match(schema, /configureMeiliCatalogSqlTables/);
-  assert.match(schema, /sites:\s*"fournisseurs"/);
+  // H7 : plus de défaut câblé `sites: "fournisseurs"` — l'alias historique
+  // `sites` est normalisé par fingerprintCountKey (dual-read une version).
+  assert.match(schema, /fingerprintCountKey/);
+  assert.match(schema, /"sites"\s*\?\s*"fournisseurs"/);
   assert.match(schema, /getMeiliCatalogSqlTables/);
 
   const coherence = read("packages/search/src/meili/coherence-db.ts");

@@ -486,10 +486,7 @@ export async function startBrandKernelHarness(
                 meiliCounts[idx.uid] = 0;
               }
             }
-            const expected = expectedCountsForFeed(feed, {
-              produits: sql.produits ?? 0,
-              fournisseurs: sql.sites ?? sql.fournisseurs ?? 0,
-            });
+            const expected = expectedCountsForFeed(feed, sql);
             const emptyWhileExpected = feed.indexes.find(
               (idx) =>
                 (expected[idx.uid] ?? 0) > 0 &&

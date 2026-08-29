@@ -11,6 +11,8 @@ import {
   GED_INDEXES,
   INDEX_SCHEMA_VERSION,
   expectedMeiliCounts,
+  fingerprintCountKey,
+  getMeiliCatalogSqlTables,
   type GedSqlCounts,
   type MeiliFingerprint,
   type GedIndexUid,
@@ -72,9 +74,18 @@ function queryDbSnapshot(dbFile: string): CoherenceDbSnapshot {
   const p = requirePaths();
   const script = p.nodeScript("meili-coherence-query.js");
   const bin = p.nodeBinary();
+  // Tables comptées : celles du feed marque si configuré, sinon la config
+  // courante (mapping générique clé fingerprint → table SQL).
+  const feed = getMeiliBrandFeed();
+  const rawTables = feed ? feed.countTables : getMeiliCatalogSqlTables();
+  const countTables: Record<string, string> = {};
+  for (const [key, table] of Object.entries(rawTables)) {
+    countTables[fingerprintCountKey(key)] = table;
+  }
   const env: NodeJS.ProcessEnv = {
     ...envForNodeScriptSpawn(bin),
     DB_PATH: dbFile,
+    CREEZIO_MEILI_COUNT_TABLES: JSON.stringify(countTables),
   };
   const nm = p.nodeModulesPathForScripts();
   if (nm) env.NODE_PATH = nm;

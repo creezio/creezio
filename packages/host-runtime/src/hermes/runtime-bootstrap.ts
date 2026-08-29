@@ -129,7 +129,7 @@ export function vendoredInstallScriptPath(
 
 /**
  * Racine userData sans espaces pour les scripts shell tiers (install.sh).
- * Ex. `…/TempoFlow Server` → `…/TempoFlow-Server` — sinon `$UV_CMD --version`
+ * Ex. `…/Acme Server` → `…/Acme-Server` — sinon `$UV_CMD --version`
  * non quoté dans l’installeur officiel sort en exit 126.
  */
 export function hermesSpaceSafeUserDataRoot(userDataDir: string): string {
@@ -381,9 +381,9 @@ function verifyInstallScriptChecksum(
 export const WEBUI_DEPS_MARKER = ".desktop-webui-deps";
 /** Legacy marque (upgrade) — lu si le marker desktop est absent. */
 export const WEBUI_DEPS_MARKER_LEGACY = ".tempoflow-webui-deps";
-/** Legacy Certivan (M6p) — installs ≤ cutover host. */
+/** @deprecated Legacy marque héritée (M6p) — installs ≤ cutover host. */
 export const WEBUI_DEPS_MARKER_LEGACY_CERTIVAN = ".certivan-webui-deps";
-/** Legacy Fidu (M6p) — installs ≤ cutover host. */
+/** @deprecated Legacy marque héritée (M6p) — installs ≤ cutover host. */
 export const WEBUI_DEPS_MARKER_LEGACY_FIDU = ".fidu-webui-deps";
 const WEBUI_PIN_FILE = ".desktop-webui-pin";
 const WEBUI_PIN_FILE_LEGACY = ".tempoflow-webui-pin";

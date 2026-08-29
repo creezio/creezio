@@ -10,10 +10,10 @@
  * (streaming SQLite → lots Meili → swap atomique `<uid>_new`) vit dans
  * `generic-indexer.ts` — aucun schéma marque hardcodé dans le kit.
  *
- * Historique : l'ancien chemin d'indexation legacy TempoFlow (UIDs marque,
- * SQL agrégateurs) a été retiré du package natif. Une marque qui en a besoin
- * porte ce descripteur chez elle (feed avec ses UIDs) — le kit n'embarque
- * plus de vocabulaire marque.
+ * Historique : l'ancien chemin d'indexation legacy de la première marque
+ * (UIDs marque, SQL agrégateurs) a été retiré du package natif. Une marque
+ * qui en a besoin porte ce descripteur chez elle (feed avec ses UIDs) — le
+ * kit n'embarque plus de vocabulaire marque.
  */
 
 export type RunIndexationOptions = {

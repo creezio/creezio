@@ -14,8 +14,14 @@ import { createDemobrandSandbox } from "../apps/demobrand/build/electron/sandbox
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
-test("I8 ARCHITECTURE_VERSION = H6", () => {
-  assert.equal(ARCHITECTURE_VERSION, "H6");
+test("I8 ARCHITECTURE_VERSION >= H6 (freeze I* signé en H6)", () => {
+  // Le freeze I1–I7 a été signé au niveau H6 ; les bumps suivants (H7+)
+  // livrent leurs codemods (gate test-phase-arch-codemod) sans casser I8.
+  const m = /^H(\d+)$/.exec(ARCHITECTURE_VERSION);
+  assert.ok(
+    m && Number(m[1]) >= 6,
+    `ARCHITECTURE_VERSION inattendue: ${ARCHITECTURE_VERSION}`,
+  );
 });
 
 test("I8 demobrand feature-parity surfaces I1–I7", () => {

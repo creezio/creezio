@@ -70,15 +70,29 @@ try {
   } catch {
     /* marqueur invalide => ignoré */
   }
+  // Tables comptées : mapping générique clé fingerprint → table SQL
+  // (CREEZIO_MEILI_COUNT_TABLES, posé par la cohérence depuis le feed).
+  // Dual-read UNE version : envs legacy PRODUCTS/SITES puis défauts hérités.
+  let countTables = null;
+  try {
+    const raw = process.env.CREEZIO_MEILI_COUNT_TABLES;
+    if (raw) countTables = JSON.parse(raw);
+  } catch {
+    /* mapping invalide => fallback legacy */
+  }
+  if (!countTables || typeof countTables !== "object") {
+    countTables = {
+      produits: process.env.CREEZIO_MEILI_PRODUCTS_TABLE || "produits",
+      fournisseurs: process.env.CREEZIO_MEILI_SITES_TABLE || "fournisseurs",
+    };
+  }
+  const sql = {};
+  for (const [key, table] of Object.entries(countTables)) {
+    if (typeof table === "string") sql[key] = count(db, table);
+  }
   process.stdout.write(
     JSON.stringify({
-      sql: {
-        produits: count(db, process.env.CREEZIO_MEILI_PRODUCTS_TABLE || "produits"),
-        fournisseurs: count(
-          db,
-          process.env.CREEZIO_MEILI_SITES_TABLE || "fournisseurs",
-        ),
-      },
+      sql,
       sqliteSchema,
       fingerprint,
       indexInProgress,
