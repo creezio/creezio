@@ -1,11 +1,6 @@
 {
   "$comment": "Allowlist DÉCROISSANTE de la gate test-phase-no-brand-vocab.mjs (P1.a). Chaque entrée = dette héritée matérialisée (fichier + pattern + compteur + ticket audit). Règles : nouvelle occurrence hors allowlist = rouge ; compteur réel < compteur listé = rouge (décrémenter ici) ; entrée sans occurrence = rouge (la retirer). Maintenance : node scripts/lib/brand-vocab.mjs --write-allowlist (rétrécit uniquement — refuse tout ajout/incrément). NE JAMAIS ajouter une entrée pour faire passer un commit.",
-  "globalExclusions": [
-    {
-      "dir": "packages/brand-config/src/manifests",
-      "ticket": "P1.d — manifests marque embarqués dans le kit (audit F1.4) : sortie du kit prévue en phase P1.d, dette couverte en bloc"
-    }
-  ],
+  "globalExclusions": [],
   "entries": [
     {
       "file": "packages/access-control/src/config.ts",
@@ -328,8 +323,50 @@
     {
       "file": "packages/brand-config/src/index.ts",
       "pattern": "tempoflow",
-      "count": 12,
+      "count": 6,
       "ticket": "F1.4 — brand-config : identités marque câblées hors manifests"
+    },
+    {
+      "file": "packages/brand-config/src/manifests/certivan.ts",
+      "pattern": "certivan",
+      "count": 38,
+      "ticket": "P1.d — manifest prod déprécié (repo marque hors de portée) : matérialisation via codemod H8, retrait au prochain bump d'architecture"
+    },
+    {
+      "file": "packages/brand-config/src/manifests/certivan.ts",
+      "pattern": "tempoflow",
+      "count": 1,
+      "ticket": "P1.d — manifest prod déprécié (repo marque hors de portée) : matérialisation via codemod H8, retrait au prochain bump d'architecture"
+    },
+    {
+      "file": "packages/brand-config/src/manifests/fidu.ts",
+      "pattern": "certivan",
+      "count": 1,
+      "ticket": "P1.d — manifest prod déprécié (repo marque hors de portée) : matérialisation via codemod H8, retrait au prochain bump d'architecture"
+    },
+    {
+      "file": "packages/brand-config/src/manifests/fidu.ts",
+      "pattern": "fidu",
+      "count": 37,
+      "ticket": "P1.d — manifest prod déprécié (repo marque hors de portée) : matérialisation via codemod H8, retrait au prochain bump d'architecture"
+    },
+    {
+      "file": "packages/brand-config/src/manifests/fidu.ts",
+      "pattern": "tempoflow",
+      "count": 2,
+      "ticket": "P1.d — manifest prod déprécié (repo marque hors de portée) : matérialisation via codemod H8, retrait au prochain bump d'architecture"
+    },
+    {
+      "file": "packages/brand-config/src/manifests/tempoflow.ts",
+      "pattern": "tempoflow",
+      "count": 36,
+      "ticket": "P1.d — manifest prod déprécié (repo marque hors de portée) : matérialisation via codemod H8, retrait au prochain bump d'architecture"
+    },
+    {
+      "file": "packages/brand-config/src/manifests/tempoflow.ts",
+      "pattern": "tf2",
+      "count": 2,
+      "ticket": "P1.d — manifest prod déprécié (repo marque hors de portée) : matérialisation via codemod H8, retrait au prochain bump d'architecture"
     },
     {
       "file": "packages/brand-config/src/nsis-guid.ts",

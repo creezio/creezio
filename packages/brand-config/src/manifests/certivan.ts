@@ -6,6 +6,9 @@ import type { AppManifest } from "../types.js";
  * electron/app-kind.ts, electron/paths.ts, electron/preload-app.ts).
  *
  * GUIDs = UUID.v5(appId, OID) hardcodés dans build-builder-config.mjs.
+ *
+ * @deprecated (P1.d — à matérialiser dans le repo marque via le codemod H8,
+ * retrait du kit au prochain bump d'architecture).
  */
 export const certivanManifest: AppManifest = {
   brandId: "certivan",

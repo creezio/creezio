@@ -10,18 +10,29 @@ import path from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
 import {
+  createAppManifest,
   renderNsisInstallerInclude,
-  tempoflow3Manifest,
   demobrandManifest,
 } from "../packages/brand-config/dist/index.js";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
-test("renderNsisInstallerInclude — TF3 segments + macros profondes", () => {
-  const nsh = renderNsisInstallerInclude(tempoflow3Manifest);
-  assert.match(nsh, /TempoFlow-Server\.exe/);
-  assert.match(nsh, /TempoFlow Server/);
-  assert.match(nsh, /tempoflow3/);
+// P1.d : plus de manifest marque dans le kit — la parité NSIS s'exerce sur
+// un manifest sandbox synthétique (mêmes macros / segments que la prod).
+const parityManifest = createAppManifest({
+  brandId: "paritybrand",
+  productName: "Parity Brand",
+  domain: "paritybrand.creez.io",
+  sandbox: true,
+  defaultAppRoot: "/tmp/paritybrand",
+});
+
+test("renderNsisInstallerInclude — segments serveur + macros profondes", () => {
+  const nsh = renderNsisInstallerInclude(parityManifest);
+  const esc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  assert.match(nsh, new RegExp(esc(`${parityManifest.server.executableName}.exe`)));
+  assert.match(nsh, new RegExp(esc(parityManifest.server.productName)));
+  assert.match(nsh, /paritybrand/);
   assert.match(nsh, /customUnWelcomePage/);
   assert.match(nsh, /czWantDeleteData/);
   assert.match(nsh, /launchAtStartup/);
@@ -32,8 +43,6 @@ test("renderNsisInstallerInclude — TF3 segments + macros profondes", () => {
   assert.match(nsh, /\$INSTDIR\\data\\logs/);
   assert.match(nsh, /\$INSTDIR\\data\\crash-reports/);
   assert.doesNotMatch(nsh, /placeholder \(custom macros marque\)/);
-  assert.doesNotMatch(nsh, /TF2-Server\.exe/);
-  assert.doesNotMatch(nsh, /tempoflow2-crm/);
 });
 
 test("renderNsisInstallerInclude — demobrand distinct", () => {

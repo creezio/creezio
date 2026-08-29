@@ -8,6 +8,9 @@ import type { AppManifest } from "../types.js";
  *
  * userDataSegment client = `Fidu` (casse productName) pour conserver
  * `%APPDATA%/Fidu` des installs existantes (docs FACTORY-RESET).
+ *
+ * @deprecated (P1.d — à matérialiser dans le repo marque via le codemod H8,
+ * retrait du kit au prochain bump d'architecture).
  */
 export const fiduManifest: AppManifest = {
   brandId: "fidu",

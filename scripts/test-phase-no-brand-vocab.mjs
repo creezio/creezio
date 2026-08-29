@@ -116,6 +116,31 @@ test("NV2 ratchet — l'allowlist décroît avec la dette (entrées mortes / com
   );
 });
 
+test("NV4 P1.d — le kit ne publie plus de manifest de marque (manifests/ figé)", () => {
+  // « Le kit ne connaît pas ses consommateurs » (docs/PROPAGATION.md).
+  // Restent UNIQUEMENT : demobrand (sandbox kit assumée) + les 3 manifests
+  // prod historiques DÉPRÉCIÉS (retrait au prochain bump d'architecture,
+  // matérialisation côté marque via le codemod H8). Tout NOUVEAU fichier
+  // manifests/<marque>.ts est un retour en arrière : le manifest d'une
+  // marque vit dans SON repo (src/electron/app-manifest.ts, factory).
+  const manifestsDir = path.join(ROOT, "packages/brand-config/src/manifests");
+  const allowed = new Set([
+    "demobrand.ts",
+    // Dépréciés P1.d — repos marque hors de portée de la migration :
+    "tempoflow.ts",
+    "certivan.ts",
+    "fidu.ts",
+  ]);
+  const actual = fs.readdirSync(manifestsDir).sort();
+  const intruders = actual.filter((f) => !allowed.has(f));
+  assert.deepEqual(
+    intruders,
+    [],
+    `packages/brand-config/src/manifests/ : fichier(s) de manifest marque NOUVEAU(x) dans le kit — ` +
+      `interdit depuis P1.d (matérialiser dans le repo marque via la factory) : ${intruders.join(", ")}`,
+  );
+});
+
 test("NV3 sanity — le scanner voit bien la dette connue (anti-scanner-cassé)", () => {
   // Si le scanner se met à tout rater (regex/exclusions cassées), NV1/NV2
   // passeraient silencieusement au vert-menteur : on ancre un plancher.

@@ -23,4 +23,3 @@
 | [`src/manifests/demobrand.ts`](../src/manifests/demobrand.ts) | _(pas de cartouche JSDoc en tête — voir le code)_ |
 | [`src/manifests/fidu.ts`](../src/manifests/fidu.ts) | _(pas de cartouche JSDoc en tête — voir le code)_ |
 | [`src/manifests/tempoflow.ts`](../src/manifests/tempoflow.ts) | _(pas de cartouche JSDoc en tête — voir le code)_ |
-| [`src/manifests/tempoflow3.ts`](../src/manifests/tempoflow3.ts) | Manifest sandbox TempoFlow3 (sonde) — SoT identité = repo marque `src/electron/app-manifest.ts`, recopie kit pour les gates. |
