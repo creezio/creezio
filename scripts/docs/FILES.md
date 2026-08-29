@@ -216,6 +216,12 @@
 |---|---|
 | [`codemods/H7/h7-neutralize-brand-contracts.mjs`](../codemods/H7/h7-neutralize-brand-contracts.mjs) | (à documenter) |
 
+## `codemods/H8/`
+
+| Fichier | Rôle |
+|---|---|
+| [`codemods/H8/h8-materialize-brand-manifest.mjs`](../codemods/H8/h8-materialize-brand-manifest.mjs) | Codemod H8 (P1.d) : build-builder-config marque en « manifest local d'abord » + matérialisation app-manifest.json depuis le registre kit déprécié. |
+
 ## `lib/`
 
 | Fichier | Rôle |

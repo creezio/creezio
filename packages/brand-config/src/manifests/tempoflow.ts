@@ -6,6 +6,9 @@ import type { AppManifest } from "../types.js";
  * electron/app-kind.ts, electron/paths.ts, electron/preload-app.ts).
  *
  * GUIDs NSIS = valeurs hardcodées production (pas le UUID.v5 recomputé).
+ *
+ * @deprecated (P1.d — à matérialiser dans le repo marque via le codemod H8,
+ * retrait du kit au prochain bump d'architecture).
  */
 export const tempoflowManifest: AppManifest = {
   brandId: "tempoflow",

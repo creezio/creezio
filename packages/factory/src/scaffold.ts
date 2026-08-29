@@ -555,7 +555,8 @@ function renderBuildBuilderConfigMjs(brandId: string): string {
   return `#!/usr/bin/env node
 /**
  * Génère electron-builder.client.json / .server.json via buildElectronBuilderConfig.
- * Préfère le registre kit ; sinon lit src/electron/app-manifest.ts via JSON export.
+ * SoT manifest = repo marque (src/electron/app-manifest.json) — le kit ne
+ * connaît pas ses consommateurs (P1.d). Fallback registre kit DÉPRÉCIÉ.
  */
 import fs from "node:fs";
 import path from "node:path";
@@ -572,15 +573,19 @@ const root = path.resolve(__dirname, "..");
 const kind = process.argv[2] === "server" ? "server" : "client";
 const brandId = process.env.CREEZIO_BRAND || "${brandId}";
 
-let manifest;
-if (listBrandIds().includes(brandId)) {
+let manifest = null;
+const genPath = path.join(root, "src/electron/app-manifest.json");
+if (fs.existsSync(genPath)) {
+  const local = JSON.parse(fs.readFileSync(genPath, "utf8"));
+  if (local.brandId === brandId) manifest = local;
+}
+if (!manifest && listBrandIds().includes(brandId)) {
+  // Fallback déprécié (P1.d) : matérialiser src/electron/app-manifest.json.
+  console.warn(\`[deprecated] manifest \${brandId} résolu via le registre kit — retrait au prochain bump d'architecture\`);
   manifest = getManifest(brandId);
-} else {
-  const genPath = path.join(root, "src/electron/app-manifest.json");
-  if (!fs.existsSync(genPath)) {
-    throw new Error(\`Manifest introuvable pour \${brandId} (registre + app-manifest.json)\`);
-  }
-  manifest = JSON.parse(fs.readFileSync(genPath, "utf8"));
+}
+if (!manifest) {
+  throw new Error(\`Manifest introuvable pour \${brandId} (app-manifest.json + registre kit)\`);
 }
 
 const base = JSON.parse(

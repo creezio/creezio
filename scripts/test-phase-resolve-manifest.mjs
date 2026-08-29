@@ -18,13 +18,17 @@ import {
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
-test("registre : tempoflow / tempoflow3 / demobrand", () => {
-  assert.ok(listBrandIds().includes("tempoflow"));
-  assert.ok(listBrandIds().includes("tempoflow3"));
-  assert.ok(listBrandIds().includes("demobrand"));
-  assert.ok(!listProductionBrandIds().includes("tempoflow3"));
+test("registre : dépréciés (tempoflow/certivan/fidu) + demobrand — tempoflow3 SORTI (P1.d)", () => {
+  // P1.d : le manifest tempoflow3 vit dans le repo marque (matérialisé) —
+  // le kit ne le publie plus. Les 3 manifests prod historiques restent UNE
+  // version (dépréciés, repos hors de portée), demobrand = sandbox kit.
+  assert.deepEqual(
+    [...listBrandIds()].sort(),
+    ["certivan", "demobrand", "fidu", "tempoflow"],
+  );
+  assert.ok(!listBrandIds().includes("tempoflow3"));
   assert.ok(!listProductionBrandIds().includes("demobrand"));
-  assert.equal(isRegisteredBrandId("tempoflow3"), true);
+  assert.equal(isRegisteredBrandId("tempoflow3"), false);
   assert.equal(isRegisteredBrandId("acme-future"), false);
 });
 
