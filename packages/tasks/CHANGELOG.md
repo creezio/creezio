@@ -1,5 +1,16 @@
 # @creezio/tasks
 
+## 0.12.0
+
+### Patch Changes
+
+- Updated dependencies [17c82b1]
+  - @creezio/platform-core@0.12.0
+  - @creezio/api-kernel@0.12.0
+  - @creezio/assistant@0.12.0
+  - @creezio/auth@0.12.0
+  - @creezio/shell-ui@0.12.0
+
 ## 0.11.0
 
 ### Patch Changes
