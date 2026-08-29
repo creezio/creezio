@@ -15,6 +15,17 @@ affaibli pour la masquer. (Backlogs d'époque : `docs/archive/BACKLOG-*.md`.)
   touche ni la rotation ni la sortie du code pour l'instant.
 - **Licence** : repos privés, pas de fichier LICENSE (décision utilisateur).
 
+## Desktop
+
+- **Compat desktop héritée gelée (P2.a)** :
+  `electron-shell/src/desktop/legacy-brand-compat.ts` porte les défauts
+  legacy des clients desktop non migrés sur `startBrandDesktop` (env
+  `TEMPOFLOW_*`, `tf2fid`, `preload-app.js`, alias `ensureTempoflowNode`).
+  Périmètre gelé fail-closed (gate `test-phase-legacy-desktop-frozen`).
+  **Retrait au prochain bump `ARCHITECTURE_VERSION` (H9)** : codemod de
+  migration des clients legacy vers des deps explicites, puis suppression
+  du module + de sa gate (ADR `docs/adr/ADR-p2a-desktop-legacy-freeze.md`).
+
 ## Navigateur IA (`browser-host`)
 
 - **Proxy résidentiel** : `CREEZIO_BROWSER_PROXY` est plombé jusqu'à

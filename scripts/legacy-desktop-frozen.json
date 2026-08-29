@@ -1,0 +1,13 @@
+{
+  "$comment": "Empreintes du périmètre desktop legacy GELÉ (P2.a) — gate test-phase-legacy-desktop-frozen.mjs. Politique : aucune feature n'entre dans ces fichiers, fixes sécurité uniquement (mise à jour volontaire de l'empreinte DANS LE MÊME commit, justifiée dans le message). Retrait prévu au bump H9 avec codemod clients legacy (docs/BACKLOG.md).",
+  "files": [
+    {
+      "file": "packages/electron-shell/src/desktop/legacy-brand-compat.ts",
+      "sha256": "e5f35296d01af98a52fe9d06c04ac4596e21a99cbb4b104c8e8f0a3a40e78b46"
+    }
+  ],
+  "allowedImporters": [
+    "packages/electron-shell/src/desktop/legacy-brand-compat.ts",
+    "packages/electron-shell/src/desktop/brand-desktop-runtime.ts"
+  ]
+}

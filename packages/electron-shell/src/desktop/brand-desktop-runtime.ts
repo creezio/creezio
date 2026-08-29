@@ -1,6 +1,13 @@
 /**
  * Runtime desktop plateforme — extrait mécanique de tempoflow2/crm/electron/main.ts (M12).
  * Comportement préservé ; la marque injecte deps (store, hosts, paths, vertical).
+ *
+ * P2.a — ce fichier est le MOTEUR DESKTOP PARTAGÉ, pas un runtime mort :
+ * le chemin moderne (`startBrandDesktop` → `installBrandOsDesktop`,
+ * app-runtime) l'appelle avec des adaptateurs kit ; les clients desktop
+ * legacy l'appellent directement avec leurs verticaux. La compat marque
+ * héritée vit dans `legacy-brand-compat.ts` (périmètre GELÉ, gate
+ * `test-phase-legacy-desktop-frozen`) — ne pas rajouter de branche marque ici.
  */
 // @ts-nocheck — types Electron/marque injectés via deps ; shim kit incomplet volontairement.
 import { spawn } from "node:child_process";
@@ -48,6 +55,13 @@ import {
 import { isFeatureEnabled } from "@creezio/brand-config";
 import { envForNodeScriptSpawn } from "@creezio/host-runtime";
 import { remoteOfflineHtml } from "./remote-offline-html.js";
+import {
+  legacyApiKeyEnvName,
+  legacyPluginsDirEnvKey,
+  legacyPreloadBasenames,
+  legacySupplierFidQueryParam,
+  resolveLegacyEnsureDesktopNode,
+} from "./legacy-brand-compat.js";
 
 export type BrandDesktopHosts = {
   catalog: () => any;
@@ -93,13 +107,13 @@ export type BrandDesktopDeps = {
   sessionCookieName: string;
   profileArgPrefix: string;
   defaultDesktopPort: number;
-  /** Env Next pour le dossier plugins (TEMPOFLOW_PLUGINS_DIR / CERTIVAN_…). */
+  /** Env Next pour le dossier plugins (défaut : legacy-brand-compat). */
   pluginsDirEnvKey?: string;
-  /** Query param SiteLink (tf2fid / certivanfid / fidufid). */
+  /** Query param SiteLink (défaut : legacy-brand-compat). */
   supplierFidQueryParam?: string;
-  /** Clé API CRM dans process.env (TEMPOFLOW_API_KEY / CERTIVAN_…). */
+  /** Clé API CRM dans process.env (défaut : legacy-brand-compat). */
   apiKeyEnvName?: string;
-  /** Libellé splash Node (ex. « Runtime Node Certivan »). */
+  /** Libellé splash Node (ex. « Runtime Node <Produit> »). */
   nodeRuntimeLabel?: string;
   appKind: string;
   bootBehavior: any;
@@ -141,16 +155,15 @@ export function installBrandDesktopRuntime(deps: BrandDesktopDeps): void {
   );
   const nodeLabel = deps.nodeRuntimeLabel || `Runtime Node ${productName}`;
   const pluginsDirEnvKey =
-    deps.pluginsDirEnvKey ||
-    (deps.envPrefix === "TF2" ? "TEMPOFLOW_PLUGINS_DIR" : `${deps.envPrefix}_PLUGINS_DIR`);
+    deps.pluginsDirEnvKey || legacyPluginsDirEnvKey(deps.envPrefix);
   const supplierFidQueryParam =
     deps.supplierFidQueryParam ||
-    (deps.envPrefix === "TF2"
-      ? "tf2fid"
-      : `${String(deps.manifest?.brandId || "app")}fid`);
+    legacySupplierFidQueryParam(
+      deps.envPrefix,
+      String(deps.manifest?.brandId || "app"),
+    );
   const apiKeyEnvName =
-    deps.apiKeyEnvName ||
-    (deps.envPrefix === "TF2" ? "TEMPOFLOW_API_KEY" : `${deps.envPrefix}_API_KEY`);
+    deps.apiKeyEnvName || legacyApiKeyEnvName(deps.envPrefix);
   const progressPrefix = `${deps.envPrefix}PROGRESS `;
 
   async function syncN8nWebhookPublicUrl(onLog?: (line: string) => void): Promise<void> {
@@ -2730,12 +2743,11 @@ export function installBrandDesktopRuntime(deps: BrandDesktopDeps): void {
     });
     const w = win;
 
-    // Preload : TF2/CV/Fidu = preload-app.js ; factory/TF3 = preload.js.
+    // Preload : ordre legacy-brand-compat (preload-app.js puis preload.js).
     // Un preload manquant/incassable = plus d'API desktop → on veut le SAVOIR.
-    const preloadCandidates = [
-      deps.paths.preloadPath("preload-app.js"),
-      deps.paths.preloadPath("preload.js"),
-    ];
+    const preloadCandidates = legacyPreloadBasenames().map((name) =>
+      deps.paths.preloadPath(name),
+    );
     const appPreload =
       preloadCandidates.find((p) => fs.existsSync(p)) || preloadCandidates[0]!;
     if (!fs.existsSync(appPreload)) {
@@ -3364,15 +3376,13 @@ export function installBrandDesktopRuntime(deps: BrandDesktopDeps): void {
         detail: "Vérification / installation du runtime Node piné",
         percent: 10,
       });
-      const nodeRt = deps.hosts.nodeRuntime() as {
-        ensureDesktopNode?: (o: unknown) => Promise<{ ok: boolean; detail?: string }>;
-        ensureTempoflowNode?: (o: unknown) => Promise<{ ok: boolean; detail?: string }>;
-      };
-      const ensureNode =
-        nodeRt.ensureDesktopNode || nodeRt.ensureTempoflowNode;
+      const nodeRt = deps.hosts.nodeRuntime() as Parameters<
+        typeof resolveLegacyEnsureDesktopNode
+      >[0];
+      const ensureNode = resolveLegacyEnsureDesktopNode(nodeRt);
       if (!ensureNode) {
         throw new Error(
-          "nodeRuntime.ensureDesktopNode/ensureTempoflowNode manquant",
+          "nodeRuntime.ensureDesktopNode manquant (alias legacy inclus)",
         );
       }
       const nodeReady = await ensureNode({
