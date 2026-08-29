@@ -1,5 +1,16 @@
 # @creezio/console
 
+## 0.1.10
+
+### Patch Changes
+
+- @creezio/brand-config@0.14.0
+- @creezio/product-hub@0.14.0
+- @creezio/desktop-tooling@0.14.0
+- @creezio/observability@0.14.0
+- @creezio/automations@0.14.0
+- @creezio/propagation@0.3.2
+
 ## 0.1.9
 
 ### Patch Changes
