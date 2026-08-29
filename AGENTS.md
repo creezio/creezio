@@ -209,6 +209,12 @@ Workflow : `npm run test:kit` → première rouge → corriger →
   [docs/PROPAGATION.md](./docs/PROPAGATION.md)). Protection : doctor
   brand-spec `CREEZIO_MANIFEST_MISALIGNED` (error) + gate
   `test-phase-creezio-manifest-align` (`test:kit`).
+- **`brand-desktop-runtime.ts` n'est PAS un runtime legacy mort** : c'est
+ le moteur desktop partagé — `startBrandDesktop` (chemin moderne) le
+ consomme via `installBrandOsDesktop`. Pas de branche marque dedans ; la
+ compat héritée vit dans `desktop/legacy-brand-compat.ts`, périmètre GELÉ
+ fail-closed (gate `test-phase-legacy-desktop-frozen`, retrait prévu H9 —
+ ADR `docs/adr/ADR-p2a-desktop-legacy-freeze.md`).
 - **Import runtime `@creezio/*` hors ordre de build** : un import runtime
   (non `import type`) vers un package construit après soi = dist
   stale/absent sur build frais ; idem cycle runtime. Gate

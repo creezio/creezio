@@ -503,56 +503,50 @@
     {
       "file": "packages/electron-shell/src/desktop/brand-desktop-runtime.ts",
       "pattern": "certivan",
-      "count": 4,
-      "ticket": "F1.7 — brand-desktop-runtime : compat desktop héritée TF"
-    },
-    {
-      "file": "packages/electron-shell/src/desktop/brand-desktop-runtime.ts",
-      "pattern": "certivanfid",
       "count": 1,
-      "ticket": "F1.7 — brand-desktop-runtime : compat desktop héritée TF"
-    },
-    {
-      "file": "packages/electron-shell/src/desktop/brand-desktop-runtime.ts",
-      "pattern": "fidu",
-      "count": 1,
-      "ticket": "F1.7 — brand-desktop-runtime : compat desktop héritée TF"
-    },
-    {
-      "file": "packages/electron-shell/src/desktop/brand-desktop-runtime.ts",
-      "pattern": "fidufid",
-      "count": 1,
-      "ticket": "F1.7 — brand-desktop-runtime : compat desktop héritée TF"
+      "ticket": "F1.7 — moteur desktop partagé : commentaires historiques résiduels (compat fonctionnelle extraite en P2.a vers legacy-brand-compat.ts, périmètre 33→21)"
     },
     {
       "file": "packages/electron-shell/src/desktop/brand-desktop-runtime.ts",
       "pattern": "tempoflow",
-      "count": 13,
-      "ticket": "F1.7 — brand-desktop-runtime : compat desktop héritée TF"
+      "count": 6,
+      "ticket": "F1.7 — moteur desktop partagé : commentaires historiques résiduels (compat fonctionnelle extraite en P2.a vers legacy-brand-compat.ts, périmètre 33→21)"
     },
     {
       "file": "packages/electron-shell/src/desktop/brand-desktop-runtime.ts",
       "pattern": "tf2",
-      "count": 9,
-      "ticket": "F1.7 — brand-desktop-runtime : compat desktop héritée TF"
-    },
-    {
-      "file": "packages/electron-shell/src/desktop/brand-desktop-runtime.ts",
-      "pattern": "tf2fid",
-      "count": 2,
-      "ticket": "F1.7 — brand-desktop-runtime : compat desktop héritée TF"
+      "count": 5,
+      "ticket": "F1.7 — moteur desktop partagé : commentaires historiques résiduels (compat fonctionnelle extraite en P2.a vers legacy-brand-compat.ts, périmètre 33→21)"
     },
     {
       "file": "packages/electron-shell/src/desktop/brand-desktop-runtime.ts",
       "pattern": "tf3",
-      "count": 2,
-      "ticket": "F1.7 — brand-desktop-runtime : compat desktop héritée TF"
+      "count": 1,
+      "ticket": "F1.7 — moteur desktop partagé : commentaires historiques résiduels (compat fonctionnelle extraite en P2.a vers legacy-brand-compat.ts, périmètre 33→21)"
     },
     {
       "file": "packages/electron-shell/src/desktop/error-page-html.ts",
       "pattern": "tempoflow",
       "count": 1,
       "ticket": "F1.7 — brand-desktop-runtime : compat desktop héritée TF"
+    },
+    {
+      "file": "packages/electron-shell/src/desktop/legacy-brand-compat.ts",
+      "pattern": "tempoflow",
+      "count": 4,
+      "ticket": "P2.a — déplacement pur F1.7 : compat desktop héritée GELÉE (gate test-phase-legacy-desktop-frozen, empreinte scripts/legacy-desktop-frozen.json) ; retrait prévu au bump H9 avec codemod clients legacy"
+    },
+    {
+      "file": "packages/electron-shell/src/desktop/legacy-brand-compat.ts",
+      "pattern": "tf2",
+      "count": 3,
+      "ticket": "P2.a — déplacement pur F1.7 : compat desktop héritée GELÉE (gate test-phase-legacy-desktop-frozen, empreinte scripts/legacy-desktop-frozen.json) ; retrait prévu au bump H9 avec codemod clients legacy"
+    },
+    {
+      "file": "packages/electron-shell/src/desktop/legacy-brand-compat.ts",
+      "pattern": "tf2fid",
+      "count": 1,
+      "ticket": "P2.a — déplacement pur F1.7 : compat desktop héritée GELÉE (gate test-phase-legacy-desktop-frozen, empreinte scripts/legacy-desktop-frozen.json) ; retrait prévu au bump H9 avec codemod clients legacy"
     },
     {
       "file": "packages/electron-shell/src/desktop/oauth-loopback.ts",

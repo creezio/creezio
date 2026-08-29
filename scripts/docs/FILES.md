@@ -109,6 +109,7 @@
 | [`test-phase-interactive-demo.mjs`](../test-phase-interactive-demo.mjs) | Gate @creezio/interactive-demo : patron hybride (migrations, merge défauts/overrides, mount scenarios/preferences), validation de scénario, scénario générique OS, surface UI |
 | [`test-phase-kit-packages-manifest.mjs`](../test-phase-kit-packages-manifest.mjs) | Gate : manifeste kit-packages.json à jour (rattrapage : generate-kit-packages.mjs) |
 | [`test-phase-landing.mjs`](../test-phase-landing.mjs) | Gate — module natif hybride « landing page » (ADR-module-natif-hybride). |
+| [`test-phase-legacy-desktop-frozen.mjs`](../test-phase-legacy-desktop-frozen.mjs) | Gate P2.a — compat desktop héritée GELÉE (empreinte SHA-256 `legacy-desktop-frozen.json` + consommateurs verrouillés) |
 | [`test-phase-m0.mjs`](../test-phase-m0.mjs) | Phase M0 — baseline vision stricte : inventaire + freeze anti-stub. |
 | [`test-phase-m1.mjs`](../test-phase-m1.mjs) | Phase M1 — cutover Database TF sans shims (vision stricte). |
 | [`test-phase-m10.mjs`](../test-phase-m10.mjs) | !usrbinenv node |

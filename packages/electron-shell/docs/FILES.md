@@ -44,6 +44,7 @@
 | [`src/desktop/brand-desktop-runtime.ts`](../src/desktop/brand-desktop-runtime.ts) | Runtime desktop plateforme — extrait mécanique de tempoflow2/crm/electron/main.ts (M12). Comportement préservé ; la marque injecte deps (store, hosts, paths, vertical). |
 | [`src/desktop/desktop-session.ts`](../src/desktop/desktop-session.ts) | Session desktop légère (first-run / login / connexion) pour les apps from-prd — store local-config + handlers IPC stables, pas de store custom marque. |
 | [`src/desktop/error-page-html.ts`](../src/desktop/error-page-html.ts) | Écran d’erreur boot / crash (hors React) — gold TempoFlow paramétré. |
+| [`src/desktop/legacy-brand-compat.ts`](../src/desktop/legacy-brand-compat.ts) | Compat marque héritée du moteur desktop — périmètre GELÉ (gate `test-phase-legacy-desktop-frozen`) |
 | [`src/desktop/oauth-loopback.ts`](../src/desktop/oauth-loopback.ts) | // @ts-nocheck — Electron shell.openExternal (shim kit mince) OAuth 2.0 RFC 8252 (native apps) Google — gold TempoFlow paramétré. Store tokens injecté ; Electron via loadElectron (pas d'import top-level). |
 | [`src/desktop/profile-picker-html.ts`](../src/desktop/profile-picker-html.ts) | Écran de profils au boot — gold TempoFlow paramétré (brand / bridge / tunnel). |
 | [`src/desktop/remote-offline-html.ts`](../src/desktop/remote-offline-html.ts) | Écran offline du client thin : retry backoff via `testConnection`, rechargement CRM, bouton « Changer de serveur » (repasse par le picker). |
