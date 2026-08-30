@@ -1,6 +1,6 @@
 {
   "name": "@creezio/os-ui",
-  "version": "0.15.0",
+  "version": "0.16.0",
   "description": "Surfaces Next OS natives (mails, tasks, setup, admin…) — matérialisées hors git dans les marques",
   "type": "module",
   "main": "./dist/index.js",
@@ -36,9 +36,9 @@
     "materialize": "node ./scripts/materialize.mjs"
   },
   "dependencies": {
-    "@creezio/interactive-demo": "^0.15.0",
-    "@creezio/mails": "^0.15.0",
-    "@creezio/shell-ui": "^0.15.0"
+    "@creezio/interactive-demo": "^0.16.0",
+    "@creezio/mails": "^0.16.0",
+    "@creezio/shell-ui": "^0.16.0"
   },
   "peerDependencies": {
     "react": "^18.0.0 || ^19.0.0"
