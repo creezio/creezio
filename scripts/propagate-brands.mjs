@@ -1,0 +1,266 @@
+#!/usr/bin/env node
+/**
+ * Rollout npm flotte-wide (P3.b) — ouvre une PR de bump `@creezio/*` chez
+ * chaque marque configurée après une publication kit.
+ *
+ * Branche ENFIN `buildAllBrandPrPayloads` (@creezio/propagation, contrat
+ * Phase F jamais exécuté) sur un flux réel : le corps de chaque PR est le
+ * rapport d'impact `kit:impact` généré par le package propagation.
+ *
+ * Déclenché par `.github/workflows/propagate.yml` (workflow_run sur Publish)
+ * — exécutable aussi à la main depuis un checkout kit :
+ *
+ *   CREEZIO_PROPAGATE_TOKEN=ghp_xxx node scripts/propagate-brands.mjs [--dry-run] [--force]
+ *
+ * Config data-driven : `.github/propagate-brands.json` (les canaux marque de
+ * P1.c — AUCUN nom de marque en dur dans packages/*, la config est la SoT).
+ *
+ * Env :
+ *   CREEZIO_PROPAGATE_TOKEN  PAT cross-repo (contents+pull_requests write sur
+ *                            les repos marque) — requis hors --dry-run.
+ *   CREEZIO_NPM_TOKEN        PAT read:packages pour la régénération lockfile
+ *                            (défaut : CREEZIO_PROPAGATE_TOKEN).
+ *   PROPAGATE_FORCE=1        bypass du garde « commit release changesets ».
+ *
+ * Garde-fous :
+ *   - ne fait rien si HEAD n'est pas un commit release changesets
+ *     (`chore(release): version packages`) sauf --force / PROPAGATE_FORCE=1 ;
+ *   - marque déjà à jour (tous manifests ^version) → skip ;
+ *   - branche de bump déjà poussée → skip (PR déjà ouverte) ;
+ *   - bump = édition manifests + `npm install --package-lock-only` par
+ *     lockfile (JAMAIS npm update) — la CI marque valide le reste.
+ */
+import { execFileSync } from "node:child_process";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+const CONFIG_PATH = path.join(ROOT, ".github/propagate-brands.json");
+const MANIFEST_DIRS = [".", "server", "server/ui", "client"];
+const RELEASE_COMMIT_PREFIX = "chore(release): version packages";
+
+const dryRun = process.argv.includes("--dry-run");
+const force = process.argv.includes("--force") || process.env.PROPAGATE_FORCE === "1";
+
+const token = process.env.CREEZIO_PROPAGATE_TOKEN || process.env.GITHUB_TOKEN || "";
+const npmToken = process.env.CREEZIO_NPM_TOKEN || token;
+
+function log(msg) {
+  console.log(msg);
+}
+
+function sh(cmd, args, opts = {}) {
+  return execFileSync(cmd, args, {
+    encoding: "utf8",
+    stdio: ["ignore", "pipe", "pipe"],
+    ...opts,
+  });
+}
+
+function readJson(p) {
+  return JSON.parse(fs.readFileSync(p, "utf8"));
+}
+
+/** Version lockstep publiée = version du kit dans ce checkout. */
+function kitVersion() {
+  return readJson(path.join(ROOT, "packages/platform-core/package.json")).version;
+}
+
+function bumpKindFor(version) {
+  const [, , patch] = version.split(".").map(Number);
+  return patch > 0 ? "patch" : "minor";
+}
+
+/** Garde : on ne propage que les commits release changesets (sinon no-op). */
+function isReleaseHead() {
+  const subject = sh("git", ["log", "-1", "--format=%s"], { cwd: ROOT }).trim();
+  return subject.startsWith(RELEASE_COMMIT_PREFIX);
+}
+
+/** Bump tous les manifests @creezio/* d'un clone marque. Retourne les chemins modifiés. */
+function bumpManifests(cloneDir, spec) {
+  const changed = [];
+  for (const dir of MANIFEST_DIRS) {
+    const p = path.join(cloneDir, dir, "package.json");
+    if (!fs.existsSync(p)) continue;
+    const pkg = readJson(p);
+    let touched = false;
+    for (const field of ["dependencies", "devDependencies", "optionalDependencies"]) {
+      const deps = pkg[field];
+      if (!deps) continue;
+      for (const name of Object.keys(deps)) {
+        if (!name.startsWith("@creezio/")) continue;
+        if (deps[name] === spec) continue;
+        deps[name] = spec;
+        touched = true;
+      }
+    }
+    if (touched) {
+      fs.writeFileSync(p, `${JSON.stringify(pkg, null, 2)}\n`);
+      changed.push(path.join(dir, "package.json").replace(/^\.\//, ""));
+    }
+  }
+  return changed;
+}
+
+/** Régénère chaque lockfile présent (racine puis secondaires) — lock-only. */
+function regenLockfiles(cloneDir) {
+  const regenerated = [];
+  for (const dir of MANIFEST_DIRS) {
+    const lock = path.join(cloneDir, dir, "package-lock.json");
+    if (!fs.existsSync(lock)) continue;
+    sh("npm", ["install", "--package-lock-only", "--no-audit", "--no-fund"], {
+      cwd: path.join(cloneDir, dir),
+      env: { ...process.env, CREEZIO_NPM_TOKEN: npmToken },
+      stdio: ["ignore", "inherit", "inherit"],
+    });
+    regenerated.push(path.join(dir, "package-lock.json").replace(/^\.\//, ""));
+  }
+  return regenerated;
+}
+
+async function githubApi(method, url, body) {
+  const res = await fetch(`https://api.github.com${url}`, {
+    method,
+    headers: {
+      authorization: `Bearer ${token}`,
+      accept: "application/vnd.github+json",
+      "content-type": "application/json",
+      "user-agent": "creezio-propagate",
+    },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  const json = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(`GitHub ${method} ${url} → ${res.status}: ${JSON.stringify(json).slice(0, 400)}`);
+  }
+  return json;
+}
+
+async function main() {
+  const config = readJson(CONFIG_PATH);
+  const brands = config.brands ?? [];
+  if (brands.length === 0) {
+    log("propagate: aucune marque configurée (.github/propagate-brands.json) — rien à faire.");
+    return;
+  }
+  if (!force && !isReleaseHead()) {
+    log(`propagate: HEAD n'est pas un commit release changesets (« ${RELEASE_COMMIT_PREFIX} … ») — no-op. (--force pour bypass)`);
+    return;
+  }
+  if (!token && !dryRun) {
+    throw new Error("CREEZIO_PROPAGATE_TOKEN manquant (requis hors --dry-run).");
+  }
+
+  const version = kitVersion();
+  const spec = `^${version}`;
+  const bumpKind = bumpKindFor(version);
+  const branch = `creezio/kit-bump-${version}`;
+  log(`propagate: kit ${version} (bump ${bumpKind}) → ${brands.length} marque(s)${dryRun ? " [dry-run]" : ""}`);
+
+  // Rapport d'impact via @creezio/propagation (contrat Phase F, branché ici).
+  const { impactForPackageBump } = await import(
+    path.join(ROOT, "packages/propagation/dist/impact.js")
+  );
+  const { configureBrandChannels, buildAllBrandPrPayloads } = await import(
+    path.join(ROOT, "packages/propagation/dist/channels.js")
+  );
+  configureBrandChannels(
+    brands.map((b) => ({
+      brandId: b.brandId,
+      label: b.label,
+      targetHint: `https://github.com/${b.repo}`,
+    })),
+  );
+  const impact = impactForPackageBump({
+    packageName: "@creezio/platform-core",
+    bumpKind,
+  });
+  const payloads = buildAllBrandPrPayloads(impact);
+
+  const results = [];
+  for (const brand of brands) {
+    const payload = payloads.find((p) => p.brandId === brand.brandId);
+    try {
+      results.push(await propagateBrand(brand, { version, spec, branch, payload }));
+    } catch (err) {
+      results.push({ brand: brand.brandId, status: "ERREUR", detail: String(err?.message || err) });
+      process.exitCode = 1;
+    }
+  }
+
+  log("\n=== propagate — récapitulatif ===");
+  for (const r of results) {
+    log(`- ${r.brand}: ${r.status}${r.detail ? ` — ${r.detail}` : ""}`);
+  }
+}
+
+async function propagateBrand(brand, { version, spec, branch, payload }) {
+  const { brandId, repo, defaultBranch = "main" } = brand;
+  log(`\n--- ${brandId} (${repo}) ---`);
+  const cloneDir = fs.mkdtempSync(path.join(os.tmpdir(), `propagate-${brandId}-`));
+  const cloneUrl = token
+    ? `https://x-access-token:${token}@github.com/${repo}.git`
+    : `https://github.com/${repo}.git`;
+  sh("git", ["clone", "--depth", "1", "--branch", defaultBranch, cloneUrl, cloneDir], {
+    stdio: ["ignore", "inherit", "inherit"],
+  });
+
+  // Branche de bump déjà poussée → une PR existe (ou a existé) pour cette version.
+  const remoteBranch = sh("git", ["ls-remote", "--heads", "origin", branch], { cwd: cloneDir }).trim();
+  if (remoteBranch) {
+    return { brand: brandId, status: "SKIP", detail: `branche ${branch} déjà poussée (PR existante)` };
+  }
+
+  const changedManifests = bumpManifests(cloneDir, spec);
+  if (changedManifests.length === 0) {
+    return { brand: brandId, status: "À JOUR", detail: `déjà en ${spec}` };
+  }
+  log(`manifests bumpés (${spec}) : ${changedManifests.join(", ")}`);
+  const locks = regenLockfiles(cloneDir);
+  log(`lockfiles régénérés : ${locks.join(", ") || "(aucun)"}`);
+
+  if (dryRun) {
+    const diff = sh("git", ["diff", "--stat"], { cwd: cloneDir }).trim();
+    log(diff);
+    return { brand: brandId, status: "DRY-RUN", detail: `${changedManifests.length} manifest(s), ${locks.length} lockfile(s)` };
+  }
+
+  sh("git", ["checkout", "-b", branch], { cwd: cloneDir });
+  sh("git", ["add", "-A"], { cwd: cloneDir });
+  sh(
+    "git",
+    [
+      "-c", "user.name=Creezio",
+      "-c", "user.email=creezio@users.noreply.github.com",
+      "commit",
+      "-m", `chore(deps): bump @creezio/* → ${version}`,
+    ],
+    { cwd: cloneDir },
+  );
+  sh("git", ["push", "origin", branch], { cwd: cloneDir, stdio: ["ignore", "inherit", "inherit"] });
+
+  const title = `chore(deps): bump @creezio/* → ${version} [${brandId}]`;
+  const bodyHeader = [
+    `Bump automatique des packages \`@creezio/*\` vers **${version}** (rollout npm flotte, workflow \`propagate.yml\` du kit).`,
+    "",
+    `Manifests : ${changedManifests.map((m) => `\`${m}\``).join(", ")} — lockfiles régénérés en \`--package-lock-only\`.`,
+    "",
+  ].join("\n");
+  const body = bodyHeader + (payload ? `\n${payload.bodyMarkdown}` : "\n_(pas de rapport d'impact disponible)_");
+  const pr = await githubApi("POST", `/repos/${repo}/pulls`, {
+    title,
+    head: branch,
+    base: defaultBranch,
+    body,
+  });
+  log(`PR ouverte : ${pr.html_url}`);
+  return { brand: brandId, status: "PR", detail: pr.html_url };
+}
+
+main().catch((err) => {
+  console.error(`propagate: ÉCHEC — ${err?.stack || err}`);
+  process.exit(1);
+});

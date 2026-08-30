@@ -37,12 +37,21 @@ Maintenir les contrats de propagation kit -> marques et terrain -> kit : semver,
 
 ## Config brand
 
-Les marques sont referencees par `BrandId`. Les canaux connus :
+Les canaux marque sont DATA-DRIVEN (`configureBrandChannels`, H7) — `brandId`
+est un id libre (P3.b), plus contraint au registre `BrandId` legacy. Canaux
+legacy par defaut (registre production brand-surfaces) :
 
 - `brand-pr-certivan` -> G1
 - `brand-pr-fidu` -> G2
 - `brand-pr-tempoflow` -> G3
 - `brand-pr-demobrand` -> sandbox
+
+**Execution reelle (P3.b)** : `buildAllBrandPrPayloads` est branche sur le
+workflow kit `.github/workflows/propagate.yml` (via
+`scripts/propagate-brands.mjs` + config `.github/propagate-brands.json`) —
+apres chaque Publish release, une PR de bump `@creezio/*` est ouverte chez
+chaque marque configuree avec le rapport d'impact en corps. Une marque avec
+canal configure est servie des que le bump impacte au moins une marque.
 
 Le registre org stocke `brandId`, `orgId`, `createdByUserId`, `visibility`, `deployedAt` et version plugin.
 
@@ -59,7 +68,7 @@ Scenarios importants :
 
 - `bumpKindFromCommits` choisit le bump maximum ;
 - `impactForPackageBump` retourne dependants, surfaces, marques et gates attendus ;
-- `buildAllBrandPrPayloads` ignore les marques non impactees ;
+- `buildAllBrandPrPayloads` sert marques impactees + canaux configures, et retourne [] si le bump n'impacte aucune marque ;
 - `createFileOrgPluginRegistry` flush apres mutation ;
 - `createExtensionHookBus` conserve l'historique borne.
 

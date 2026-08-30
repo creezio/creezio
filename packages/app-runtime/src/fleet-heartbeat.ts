@@ -26,11 +26,56 @@
 
 import crypto from "node:crypto";
 import fs from "node:fs";
+import { createRequire } from "node:module";
 import os from "node:os";
 import path from "node:path";
 import type { ApiMount, ApiRequest } from "@creezio/api-kernel";
+import { ARCHITECTURE_VERSION } from "@creezio/platform-core";
 
 type Log = (line: string) => void;
+
+/* ------------------------------------------------------------ version kit */
+
+/**
+ * Version lockstep @creezio/platform-core INSTALLÉE (P3.b) — envoyée dans le
+ * register + chaque heartbeat (`kitVersion`, avec `architectureVersion`)
+ * pour que l'admin flotte réponde « qui tourne avec quelle version du kit ».
+ * Champ ADDITIF (protocole flotte v1 dual-accept : non-breaking). Best-effort
+ * absolu : introuvable → champ omis, jamais d'échec.
+ */
+function resolveKitVersion(): string | null {
+  try {
+    const require = createRequire(import.meta.url);
+    try {
+      const pkg = require("@creezio/platform-core/package.json") as {
+        version?: string;
+      };
+      if (typeof pkg.version === "string" && pkg.version) return pkg.version;
+    } catch {
+      // Pin < 0.17 sans export ./package.json → résolution par l'entrée.
+      const entry = require.resolve("@creezio/platform-core");
+      let dir = path.dirname(entry);
+      for (let i = 0; i < 4; i++) {
+        const cand = path.join(dir, "package.json");
+        if (fs.existsSync(cand)) {
+          const pkg = JSON.parse(fs.readFileSync(cand, "utf8")) as {
+            name?: string;
+            version?: string;
+          };
+          if (pkg.name === "@creezio/platform-core" && pkg.version) {
+            return pkg.version;
+          }
+        }
+        dir = path.dirname(dir);
+      }
+    }
+  } catch {
+    /* platform-core introuvable (harness partiel) → omis */
+  }
+  return null;
+}
+
+const KIT_VERSION = resolveKitVersion();
 
 /* ------------------------------------------------------------- état local */
 
@@ -255,6 +300,8 @@ export function startFleetHeartbeat(
         cfg.containerName ?? process.env.HOSTNAME ?? undefined,
       serverUrl: cfg.getServerUrl?.() ?? undefined,
       version: cfg.getVersion(),
+      kitVersion: KIT_VERSION ?? undefined,
+      architectureVersion: ARCHITECTURE_VERSION,
       variant: cfg.variant ?? undefined,
       accessToken,
     });
@@ -293,6 +340,8 @@ export function startFleetHeartbeat(
     const r = await postJson(`${base}/heartbeat`, state.serverKey, {
       serverId: state.serverId,
       version: cfg.getVersion(),
+      kitVersion: KIT_VERSION ?? undefined,
+      architectureVersion: ARCHITECTURE_VERSION,
       health: cfg.getHealth?.() ?? undefined,
       booting: boot?.booting ?? undefined,
       bootHeadline: boot?.headline ?? undefined,

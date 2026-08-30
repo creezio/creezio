@@ -34,9 +34,15 @@ export function brandPrChannelId(brandId: string): UpdateChannelId {
   return `brand-pr-${brandId}`;
 }
 
-/** Config d'un canal PR marque — fournie par la config, jamais câblée ici. */
+/**
+ * Config d'un canal PR marque — fournie par la config, jamais câblée ici.
+ * `brandId` est un id LIBRE (P3.b) : les marques déployées vivent hors du
+ * registre kit déprécié (`BrandId` brand-config) — la config data-driven
+ * (ex. `.github/propagate-brands.json` du repo kit) est la SoT des
+ * consommateurs ciblés par le rollout npm.
+ */
 export type BrandChannelConfig = {
-  brandId: BrandId;
+  brandId: string;
   label: string;
   /** Repo / chemin cible (hint). */
   targetHint: string;
@@ -117,7 +123,7 @@ export function listUpdateChannels(): UpdateChannel[] {
 export const UPDATE_CHANNELS: readonly UpdateChannel[] = listUpdateChannels();
 
 export type BrandPrPayload = {
-  brandId: BrandId;
+  brandId: string;
   channelId: UpdateChannelId;
   title: string;
   bodyMarkdown: string;
@@ -127,13 +133,21 @@ export type BrandPrPayload = {
 };
 
 /**
- * Génère le payload PR marque à partir d'un impact (dry-run / automation G).
+ * Génère le payload PR marque à partir d'un impact (dry-run / automation
+ * P3.b — workflow `propagate.yml`). Une marque est servie si l'impact la
+ * liste (registre legacy) OU si elle a un canal configuré
+ * (`configureBrandChannels`) et que le bump touche au moins une marque —
+ * les canaux configurés SONT la liste des consommateurs déployés.
  */
 export function buildBrandPrPayload(
   impact: PackageBumpImpact,
-  brandId: BrandId,
+  brandId: string,
 ): BrandPrPayload | null {
-  if (!impact.brands.includes(brandId)) return null;
+  const viaLegacyRegistry = impact.brands.includes(brandId as BrandId);
+  const viaConfiguredChannel =
+    impact.brands.length > 0 &&
+    brandChannelConfigs.some((c) => c.brandId === brandId);
+  if (!viaLegacyRegistry && !viaConfiguredChannel) return null;
   const channelId = brandPrChannelId(brandId);
 
   const gate = impact.gates.find((g) => g.brandId === brandId);
@@ -172,10 +186,22 @@ export function buildBrandPrPayload(
   };
 }
 
+/**
+ * Payloads PR pour toutes les marques servies : union des marques impactées
+ * (registre legacy) et des canaux configurés (data-driven, P3.b). Bump sans
+ * aucune marque impactée (ex. propagation patch) → [] (personne n'est servi).
+ */
 export function buildAllBrandPrPayloads(
   impact: PackageBumpImpact,
 ): BrandPrPayload[] {
-  return impact.brands
+  const ids = new Set<string>([
+    ...impact.brands,
+    ...(impact.brands.length > 0
+      ? brandChannelConfigs.map((c) => c.brandId)
+      : []),
+  ]);
+  return [...ids]
+    .sort()
     .map((b) => buildBrandPrPayload(impact, b))
     .filter((p): p is BrandPrPayload => p !== null);
 }
