@@ -15,6 +15,7 @@
     "@creezio/database",
     "@creezio/desktop-tooling",
     "@creezio/electron-shell",
+    "@creezio/fleet",
     "@creezio/host-runtime",
     "@creezio/integrations",
     "@creezio/interactive-demo",

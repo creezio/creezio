@@ -1,9 +1,10 @@
 # syntax=docker/dockerfile:1
-# Creezio Host Agent — agent hôte flotte (VPS restaurant).
+# Creezio Host Agent — agent hôte flotte (VPS distant).
 #
-# Build context = packages/observability/fleet-collector :
-#   docker build -f docker/host-agent/Dockerfile \
-#     -t creezio-host-agent:local packages/observability/fleet-collector
+# Build context = contexte STAGÉ par `creezio server-docker agent up`
+# (stageFleetImageContext) : fleet-collector/ (wrappers compat) +
+# node_modules/@creezio/fleet (package.json + dist + public). L'agent est
+# compilé depuis packages/fleet/src (TS) — fail-closed si dist absent.
 #
 # Run (fait par `creezio server-docker agent up`) :
 #   --network host                          (serveurs 127.0.0.1:<port> + bind 172.17.0.1 pour l'ingress tunnel)
@@ -28,4 +29,4 @@ ENV NODE_ENV=production \
 
 EXPOSE 18810
 
-CMD ["node", "host-agent.mjs"]
+CMD ["node", "node_modules/@creezio/fleet/dist/bin/host-agent-main.js"]

@@ -388,9 +388,51 @@ function ensureDocker(): void {
 }
 
 /**
- * Module stack compose — SoT `instance-stack.mjs` (fleet-collector),
- * partagée avec server-lib.mjs (update stack-aware). Import dynamique : le
- * module vit dans le clone kit du VPS (pas de dist factory).
+ * Contexte de build stagé pour les images server-admin / host-agent (P2.b).
+ *
+ * Le backend flotte vit désormais compilé dans `packages/fleet/dist`
+ * (`@creezio/fleet`) ; `fleet-collector/` ne garde que des wrappers de
+ * compat + le collector télémétrie. Les Dockerfiles (CMD
+ * `node_modules/@creezio/fleet/dist/bin/*-main.js`) attendent donc un
+ * contexte = fleet-collector/ + le package fleet posé sous
+ * `node_modules/@creezio/fleet` (package.json + dist + public).
+ * Fail-closed si le dist fleet est absent/incomplet (dist stale interdit).
+ */
+function stageFleetImageContext(kit: string): string {
+  const collector = path.join(kit, "packages/observability/fleet-collector");
+  const fleetPkg = path.join(kit, "packages/fleet");
+  const fleetDist = path.join(fleetPkg, "dist");
+  for (const required of [
+    path.join(fleetDist, "bin", "server-admin-main.js"),
+    path.join(fleetDist, "bin", "host-agent-main.js"),
+    path.join(fleetPkg, "public", "admin.html"),
+  ]) {
+    if (!fs.existsSync(required)) {
+      throw new Error(
+        `@creezio/fleet dist incomplet (${required} absent) — lancer \`npm run build:packages\` dans le kit avant server-docker admin|agent up`,
+      );
+    }
+  }
+  const staged = fs.mkdtempSync(path.join(os.tmpdir(), "creezio-fleet-ctx-"));
+  fs.cpSync(collector, staged, { recursive: true });
+  const dest = path.join(staged, "node_modules", "@creezio", "fleet");
+  fs.mkdirSync(dest, { recursive: true });
+  fs.copyFileSync(
+    path.join(fleetPkg, "package.json"),
+    path.join(dest, "package.json"),
+  );
+  fs.cpSync(fleetDist, path.join(dest, "dist"), { recursive: true });
+  fs.cpSync(path.join(fleetPkg, "public"), path.join(dest, "public"), {
+    recursive: true,
+  });
+  return staged;
+}
+
+/**
+ * Module stack compose — SoT `@creezio/fleet/instance-stack`
+ * (packages/fleet/src/instance-stack.ts), consommée via le wrapper de compat
+ * `instance-stack.mjs` (fleet-collector). Import dynamique : le module vit
+ * dans le clone kit du VPS (pas de dist factory).
  */
 async function importInstanceStack(kit: string) {
   const p = path.join(
@@ -1486,18 +1528,19 @@ async function runServerAdminSubcommand(
     addBrandRoot: defaultBrandRoot,
   });
   const adminDockerfile = path.join(paths.kit, "docker/server-admin/Dockerfile");
-  const adminContext = path.join(
-    paths.kit,
-    "packages/observability/fleet-collector",
-  );
   if (!fs.existsSync(adminDockerfile)) {
     throw new Error(`Dockerfile admin introuvable: ${adminDockerfile}`);
   }
-  run(
-    "docker",
-    ["build", "-f", adminDockerfile, "-t", ADMIN_IMAGE, adminContext],
-    env,
-  );
+  const adminContext = stageFleetImageContext(paths.kit);
+  try {
+    run(
+      "docker",
+      ["build", "-f", adminDockerfile, "-t", ADMIN_IMAGE, adminContext],
+      env,
+    );
+  } finally {
+    fs.rmSync(adminContext, { recursive: true, force: true });
+  }
   const st = dockerContainerState(ADMIN_CONTAINER);
   if (st.exists) run("docker", ["rm", "-f", ADMIN_CONTAINER], env);
 
@@ -2175,18 +2218,19 @@ async function runAgentSubcommand(
 
   const state = loadOrInitAgentState(brandRoot, args);
   const agentDockerfile = path.join(paths.kit, "docker/host-agent/Dockerfile");
-  const agentContext = path.join(
-    paths.kit,
-    "packages/observability/fleet-collector",
-  );
   if (!fs.existsSync(agentDockerfile)) {
     throw new Error(`Dockerfile agent introuvable: ${agentDockerfile}`);
   }
-  run(
-    "docker",
-    ["build", "-f", agentDockerfile, "-t", AGENT_IMAGE, agentContext],
-    env,
-  );
+  const agentContext = stageFleetImageContext(paths.kit);
+  try {
+    run(
+      "docker",
+      ["build", "-f", agentDockerfile, "-t", AGENT_IMAGE, agentContext],
+      env,
+    );
+  } finally {
+    fs.rmSync(agentContext, { recursive: true, force: true });
+  }
   const st = dockerContainerState(AGENT_CONTAINER);
   if (st.exists) run("docker", ["rm", "-f", AGENT_CONTAINER], env);
 

@@ -25,6 +25,7 @@
       "@creezio/tasks",
       "@creezio/mails",
       "@creezio/observability",
+      "@creezio/fleet",
       "@creezio/landing",
       "@creezio/admin",
       "@creezio/support",

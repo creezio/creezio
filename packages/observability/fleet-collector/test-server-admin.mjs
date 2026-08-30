@@ -383,11 +383,10 @@ try {
 // ── updateServer : défaut backup=false, pas de prune des archives existantes
 {
   const { updateServer } = await import("./server-lib.mjs");
+  // P2.b : server-lib.mjs est un wrapper compat — lire la source RÉELLE
+  // (dist @creezio/fleet, résolu comme à l'exécution).
   const src = fs.readFileSync(
-    path.join(
-      path.dirname(new URL(import.meta.url).pathname),
-      "server-lib.mjs",
-    ),
+    new URL(import.meta.resolve("@creezio/fleet/server-lib")),
     "utf8",
   );
   assert.match(src, /backup = false/);

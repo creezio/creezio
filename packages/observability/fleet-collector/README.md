@@ -5,13 +5,22 @@ Services ops autonomes en Node pur (loopback HTTP + store JSON), **SoT kit**
 
 | Fichier | Service | Câblé en prod |
 |---|---|---|
-| `server.mjs` | Collector télémétrie (ingest heartbeat/crash/bundle + cockpit ops) | Service dédié (ex. TF2 `:8665`) |
-| `server-admin.mjs` (+ `server-lib.mjs`, `admin-docker.mjs`, `ops-api.mjs`, `registry-pull-proxy.mjs`) | **Backend flotte** `creezio-server-admin` (`:18800`, Basic) : gestes Docker (create/update/rollback), hôtes enrôlés, proxy registre pull-only `/v2/*` (F4) | Image `docker/server-admin` — `creezio server-docker admin up` |
-| `host-agent.mjs` (+ `agent-updates.mjs`) | **Agent hôte** (`:18810`) : gestes locaux d'un VPS + boucle d'updates en pull (F5) | Image `docker/host-agent` — `creezio server-docker agent up` |
+| `server.mjs` (+ `ops-api.mjs`, `env.mjs`) | Collector télémétrie (ingest heartbeat/crash/bundle + cockpit ops) — **SoT ici** | Service dédié (ex. legacy `:8665`) |
+| `server-admin.mjs` | **Backend flotte** `creezio-server-admin` (`:18800`, Basic) — **wrapper compat** de `@creezio/fleet` (P2.b) | Image `docker/server-admin` — `creezio server-docker admin up` |
+| `host-agent.mjs` | **Agent hôte** (`:18810`) — **wrapper compat** de `@creezio/fleet` (P2.b) | Image `docker/host-agent` — `creezio server-docker agent up` |
 
-**Piège prod** : ce code est **copié dans les images** au build — après
-toute modif de ces `.mjs`, re-runner `creezio server-docker admin up …` /
-`agent up …` (sinon nouvelles routes → 404 silencieux).
+**P2.b (0.15.0)** : la SoT du backend flotte vit dans
+[`packages/fleet`](../../fleet/README.md) (`@creezio/fleet`, TS strict). Les
+`.mjs` flotte de ce dossier (`admin-docker`, `server-lib`, `instance-stack`,
+`agent-updates`, `registry-pull-proxy`, `server-admin`, `host-agent`) sont
+des wrappers `[deprecated]` conservés UNE version (retrait au prochain
+minor). Les images embarquent `packages/fleet/dist` (CMD
+`node_modules/@creezio/fleet/dist/bin/*-main.js`, contexte stagé fail-closed).
+
+**Piège prod** : le code flotte est **copié dans les images** au build —
+après toute modif de `packages/fleet/src`, `npm run build:packages` puis
+re-runner `creezio server-docker admin up …` / `agent up …` (sinon nouvelles
+routes → 404 silencieux).
 
 ## Lancement
 

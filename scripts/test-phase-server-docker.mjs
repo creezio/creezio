@@ -221,11 +221,9 @@ test("CLI registre d'instances : create/start/stop/rm/logs/ls/update/backup + ad
   assert.match(cli, /SERVER_VARIANT/);
   assert.match(cli, /backup: !!args\.backup/);
   assert.doesNotMatch(cli, /noBackup|--no-backup/);
+  // P2.b : SoT flotte portée en TS — packages/fleet (fleet-collector = wrappers compat).
   const lib = fs.readFileSync(
-    path.join(
-      root,
-      "packages/observability/fleet-collector/server-lib.mjs",
-    ),
+    path.join(root, "packages/fleet/src/server-lib.ts"),
     "utf8",
   );
   assert.match(lib, /backup = false/);
@@ -243,10 +241,7 @@ test("CLI registre d'instances : create/start/stop/rm/logs/ls/update/backup + ad
   assert.match(lib, /chown \$\{uid\}:\$\{gid\}/);
   assert.doesNotMatch(lib, /pruneBackups\(brandRoot, inst\.name\)/);
   const admin = fs.readFileSync(
-    path.join(
-      root,
-      "packages/observability/fleet-collector/server-admin.mjs",
-    ),
+    path.join(root, "packages/fleet/src/server-admin.ts"),
     "utf8",
   );
   assert.match(admin, /body\.backup === true/);
