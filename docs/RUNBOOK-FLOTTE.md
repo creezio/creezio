@@ -35,7 +35,8 @@ Les zones Cloudflare et hostnames publics sont **ceux de la marque**
 5. **Admin flotte** — `admin up --admin-root …`, `server-admin.json` /
    `fleet-hosts.json`, Basic auth, `admin.tempoflow.fr`
 6. **Agent hôte + enrôlement VPS** — `agent up`, enrollToken one-shot,
-   `enroll --admin … --token … --slug …`, `agent.{slug}.{zone}`
+   `enroll --admin … --token … --slug …`, `agent.{slug}.{zone}` ; **règle
+   UFW obligatoire** (voir ci-dessous)
 7. **Client desktop thin** — `pack:win` / `electron:publish`, feed `/tf3/`,
    GUID dédié, `defaultServerUrl` / `TF3_DEFAULT_SERVER_URL`
 8. **Diagnostics boot** — `boot-status`, `health`, `version`, `ready`,
@@ -56,6 +57,26 @@ Les zones Cloudflare et hostnames publics sont **ceux de la marque**
     `/api/v1/platform/integrations` (CRUD owner + `resolve` par référence
     `integration://<slug>` via clé service Hermes), sync push vers le n8n
     embarqué (`creezio:<slug>`), secrets chiffrés `core.db`
+
+## Firewall hôte (UFW) — enrôlement & migration stacks compose
+
+Tout port hôte consommé **depuis les conteneurs** (18800 backend flotte,
+18810 host-agent) doit être autorisé par UFW depuis `172.16.0.0/12`
+(**tous** les réseaux Docker, y compris les stacks compose en 172.25.x),
+pas seulement `172.17.0.0/16` (docker0) :
+
+```bash
+sudo ufw allow proto tcp from 172.16.0.0/12 to 172.17.0.1 port 18810   # host-agent
+sudo ufw allow proto tcp from 172.16.0.0/12 to 172.17.0.1 port 18800   # backend flotte
+```
+
+À faire à l'enrôlement d'un hôte **et** à toute migration d'instances vers
+des stacks compose (réseaux dédiés hors docker0). Symptôme d'oubli :
+`[UFW BLOCK] … DPT=188xx` dans le journal kernel
+(`sudo journalctl -k | rg 'UFW BLOCK.*DPT=188'`), `agent.{slug}.{zone}` en
+timeout alors que le CRM répond. Vécu 10–30/08/2026 : migration compose,
+18800 élargi mais 18810 oublié → pilotage host-agent cassé 20 jours.
+Détail : skill fleet-ops §6/§8/§9.
 
 ## Protocole agent ↔ backend (P2.b / F4.4d, 0.15.0)
 

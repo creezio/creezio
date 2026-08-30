@@ -70,6 +70,13 @@ affaibli pour la masquer. (Backlogs d'époque : `docs/archive/BACKLOG-*.md`.)
 - **Registry local sans GC** : la suppression de tags (`0.2.2-broken`…)
   demande l'API delete + `registry garbage-collect` — documenté, pas
   automatisé.
+- **Automatiser les règles UFW dans les procédures compose/enrôlement
+  (`creezio server-docker`)** : la règle « tout port hôte consommé depuis
+  les conteneurs (18800 backend flotte, 18810 host-agent) autorisé depuis
+  `172.16.0.0/12`, pas seulement docker0 » est aujourd'hui doc-only (skill
+  fleet-ops §6/§9, `RUNBOOK-FLOTTE.md`) — incident du 10–30/08 (migration
+  stacks compose : 18810 resté scoped `172.17.0.0/16`, host-agent droppé
+  20 jours). Candidat gate/automatisation.
 - ~~**admin.tempoflow.fr via NPM + cert Origin**~~ **retiré** :
   `configure-admin-npm.sh` exit 1. Public admin+lp = tunnel in-process.
 - ~~**Mounts modules sans session HTTP (plateforme-wide)**~~ **fait** (garde

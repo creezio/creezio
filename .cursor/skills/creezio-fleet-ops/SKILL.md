@@ -507,6 +507,25 @@ creezio server-docker enroll --brand-root "$BRAND_ROOT" \
   --admin https://admin.tempoflow.fr --token <enrollToken> --slug <slug>
 ```
 
+**Firewall UFW obligatoire** : tout port hôte consommé depuis les conteneurs
+(18800 backend flotte, 18810 host-agent) doit être autorisé par UFW depuis
+`172.16.0.0/12` (**tous** les réseaux Docker, y compris les stacks compose
+en 172.25.x), pas seulement `172.17.0.0/16` (docker0) :
+
+```bash
+sudo ufw allow proto tcp from 172.16.0.0/12 to 172.17.0.1 port 18810   # host-agent
+sudo ufw allow proto tcp from 172.16.0.0/12 to 172.17.0.1 port 18800   # backend flotte
+```
+
+Symptôme d'oubli : `[UFW BLOCK] … DPT=188xx` dans le journal kernel
+(`sudo journalctl -k | rg 'UFW BLOCK.*DPT=188'`) et
+`https://agent.{slug}.{zone}` en **timeout** alors que le CRM
+(`https://{slug}.{zone}`) répond — le cloudflared in-process du conteneur
+qui porte l'ingress `agent.*` est droppé par UFW. Vécu 10–30/08/2026
+(migration stacks compose) : règle 18800 élargie à `172.16.0.0/12` mais
+18810 restée scoped docker0 → pilotage host-agent cassé silencieusement
+20 jours.
+
 **Vérification** : `curl -sS -u admin:… http://127.0.0.1:18800/admin/api/hosts`
 → l'hôte avec `"online":true` et son `agentUrl` `https://agent.<slug>.…`.
 
@@ -558,6 +577,10 @@ npm run crash:list --prefix "$BRAND_ROOT/server"                   # crash repor
 
 L'admin (§5) montre boot-status live, logs et ops par serveur sans SSH.
 
+Agent hôte injoignable (`https://agent.{slug}.{zone}` en timeout) alors que
+le CRM répond : vérifier UFW — `sudo journalctl -k | rg 'UFW BLOCK.*DPT=188'`
+(règle `172.16.0.0/12` → 18800/18810 manquante, voir §6).
+
 **Vérité** : `packages/app-runtime/src/listen-brand-os-http.ts` (routes os),
 `start-brand-kernel-harness.ts` (étapes boot),
 `packages/observability/src/ops/journal.ts`.
@@ -601,6 +624,7 @@ fail-closed `MODULE_MEILI_MISSING`, 0.10.13+).
 | Slugs réservés | `admin`, `mcp`, `api`, `agent`, `demo`, `test`, `registry`… (`packages/platform-core/src/tunnel-cf.ts`) — jamais pour un serveur client. |
 | Cloudflare timeouts | Toute opération longue exposée via tunnel = async (202 + route de statut), jamais une requête bloquante. |
 | Compose vs registre | Instances Compose = `server-1`, `server-2` (chiffres) ; instances registre (`create <nom>`) = libres. Projet Compose `creezio-servers`/`tf3-servers`, jamais `tempoflow`/`n8n`. |
+| UFW vs réseaux compose | Les stacks compose créent des réseaux dédiés (172.25.x) hors docker0 : une règle UFW scoped `172.17.0.0/16` cesse de couvrir les conteneurs migrés. Règle : tout port hôte consommé depuis les conteneurs (18800 backend flotte, 18810 host-agent) autorisé depuis `172.16.0.0/12` (§6). Symptôme : `[UFW BLOCK] … DPT=188xx` (journal kernel), `agent.*` en timeout alors que le CRM répond. Vécu 10–30/08 : 18800 élargi, 18810 oublié → host-agent droppé 20 jours. |
 | Résolution module packagé | Jamais de parsing de stack pour retrouver `file://` (les frames Windows `file:///C:/…` cassent tout regex naïf → crash client). SoT : `createAppRequire` (`@creezio/platform-core`) ; gate `verify-pack-runtime` refuse le pattern. |
 | UI marque = chrome kit + Tailwind | La factory génère `ui/tailwind.config.ts` (scan `node_modules/@creezio/*/ui` + routes OS), `postcss.config.js`, `globals.css` (tokens) et `components/brand-chrome.tsx` (WorkspaceRoot/configureSidebar). App qui rend du HTML brut sans sidebar = Tailwind/chrome manquant, corriger la factory (gate `test-phase-os-ui-scaffold`). |
 | Gros catalogues (85k+ skus) | Jamais une requête SQL par ligne dans un handler liste (N+1 = event loop bloqué, tout le serveur pend, même `/health`). Agréger en SQL (CTE + window), indexer (`produits(sku_id)`, `prix(produit_id)`), capper les listes génériques. |
