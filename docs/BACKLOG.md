@@ -73,6 +73,20 @@ affaibli pour la masquer. (Backlogs d'époque : `docs/archive/BACKLOG-*.md`.)
 - **Registry local sans GC** : la suppression de tags (`0.2.2-broken`…)
   demande l'API delete + `registry garbage-collect` — documenté, pas
   automatisé.
+- **Scaffold `verify-prod` factory (vérification E2E canonique de toute
+  app générée)** : le compte E2E (`CREEZIO_E2E_EMAIL/_PASSWORD`) est déjà
+  provisionné et persisté par `server-docker create|ensure-owner` dans le
+  `secrets.env` de chaque stack (kit), mais le script de vérification
+  `scripts/verify-prod.mjs` (login E2E, `auth/me`, browse
+  `engine:"meili"`, optimiser snapshot, `llm-status` — profils
+  brand/admin, exit code global) ne vit que dans le repo marque TF3
+  (PR tempoflow3#63). Moindre effort systémique : la factory
+  (`packages/factory`) matérialise un `verify-prod.mjs` générique dans le
+  scaffold de chaque app (checks plateforme : version / login /
+  `auth/me` / browse d'un module à `meiliIndexes` déclaré / `llm-status` ;
+  les checks métier — ex. optimiser TF3 — restent dans la marque), +
+  mention dans les smokes générés + gate d'inventaire scaffold. Réf :
+  skill fleet-ops §3b.
 - **Automatiser les règles UFW dans les procédures compose/enrôlement
   (`creezio server-docker`)** : la règle « tout port hôte consommé depuis
   les conteneurs (18800 backend flotte, 18810 host-agent) autorisé depuis

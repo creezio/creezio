@@ -24,6 +24,12 @@ Les zones Cloudflare et hostnames publics sont **ceux de la marque**
    core.db) ; collaborateurs via `POST /api/v1/platform/users`
 3. **Login / vérifier un compte** — `POST /api/v1/auth/login`
    (`{"email","password"}`), cookie `<brandId>_session`, `GET /api/v1/auth/me`
+3b. **Vérification E2E canonique** — compte E2E
+   `CREEZIO_E2E_EMAIL/_PASSWORD` persisté dans le `secrets.env` (600) de
+   chaque instance (posé par `create|ensure-owner`), script marque
+   `scripts/verify-prod.mjs --all` (checks par profil brand/admin) ; règle :
+   tout reset E2E se persiste dans `secrets.env`, jamais seulement dans un
+   journal
 4. **Publier une image, updater, rollback** — `server-docker publish --tag`,
    registre `127.0.0.1:5000`, update admin async (202 + `update-status`),
    backup + rollback auto

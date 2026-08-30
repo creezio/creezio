@@ -27,6 +27,7 @@ Ports : auto 18790+n, bind `127.0.0.1` (exposition = `--expose`).
 | Créer un serveur (test ou prod) | 1 |
 | Créer un compte owner/user sans UI | 2 |
 | Me connecter / vérifier un compte | 3 |
+| Vérifier une instance prod E2E (credentials canoniques + checks) | 3b |
 | Publier une image, updater, rollback | 4 |
 | Déployer sur toute la flotte (releases pull, canary, kill-switch) | 4b |
 | Lancer l'admin flotte | 5 |
@@ -208,6 +209,54 @@ toutes les routes plateforme.
 **Vérité** : `packages/auth/src/hono-routes.ts` (login kit-first),
 `session.ts` (JWT), montage `/api/v1/auth` dans
 `packages/app-runtime/src/mount-brand-platform-surface.ts`.
+
+## 3b. Vérification E2E canonique (compte E2E + verify-prod)
+
+**Objectif** : vérifier une instance prod (login, browse Meili, optimiser,
+assistant) **sans redécouvrir des identifiants** — SoT unique des
+credentials E2E, lue par tous les agents.
+
+**SoT credentials** : compte E2E `CREEZIO_E2E_EMAIL` /
+`CREEZIO_E2E_PASSWORD` dans le `secrets.env` (chmod 600) de la stack de
+CHAQUE instance — posé automatiquement par
+`server-docker create|ensure-owner` :
+
+| Instance | Fichier |
+|---|---|
+| Serveur marque (ex. restos TF3) | `{BRAND_ROOT}/docker-data/stacks/<nom>/secrets.env` |
+| App admin de la marque | `{ADMIN_ROOT}/docker-data/stacks/main/secrets.env` (ex. `/opt/docker/tempoflow-admin`) |
+
+```bash
+cd "$BRAND_ROOT" && node scripts/verify-prod.mjs --all   # ou <instance>
+# Profil brand : core/version · login E2E · auth/me (role owner) · browse
+#   produits engine:"meili" · optimiser snapshot (GET, 1re commande) ·
+#   assistant llm-status (assistantReady)
+# Profil admin : version · login · auth/me seulement (pas de LLM ni
+#   d'optimiser ; le compte E2E admin est role:"collaborator" — l'owner
+#   canonique admin reste CREEZIO_OWNER_EMAIL)
+# Sortie [OK]/[KO]/[SKIP] par check, exit ≠ 0 si au moins un KO.
+```
+
+**(Re)provisionnement du compte** : `creezio server-docker ensure-owner
+<nom> --brand-root "$BRAND_ROOT"` — génère/persiste les credentials dans
+`secrets.env` puis recreate l'app (§2). Ne JAMAIS re-POSTer
+`/api/v1/os/setup` sur une instance configurée (écrase owner + recovery
+key).
+
+**Règle flotte (obligatoire)** : tout agent qui crée ou reset un compte
+E2E **DOIT persister les nouveaux identifiants dans le `secrets.env` de
+l'instance** — jamais uniquement dans son journal de mission. Un futur
+agent lit d'abord `secrets.env`, vérifie le login (§3), et ne
+reprovisionne que si le login échoue réellement.
+
+**Vérité** : `tempoflow3/scripts/verify-prod.mjs` (repo marque) ;
+`packages/factory/src/server-docker-cli.ts` (`ensure-owner`, persistance
+`secrets.env`). Généralisation factory (scaffold `verify-prod` pour toute
+app générée) : ticket `docs/BACKLOG.md` § Flotte multi-VPS.
+
+**Pièges** : `secrets.env` est chmod 600 — lancer en user propriétaire
+(deploy) ou sudo. Compte E2E admin = collaborateur (permissions vides) :
+suffisant pour login/me, pas pour les gestes owner de l'app admin.
 
 ## 4. Publier une image, updater, rollback
 
