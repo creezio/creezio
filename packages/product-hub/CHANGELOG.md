@@ -1,5 +1,13 @@
 # @creezio/product-hub
 
+## 0.16.0
+
+### Patch Changes
+
+- Updated dependencies [5dfc286]
+  - @creezio/platform-core@0.16.0
+  - @creezio/brand-config@0.16.0
+
 ## 0.15.0
 
 ### Patch Changes

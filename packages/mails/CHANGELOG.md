@@ -1,5 +1,15 @@
 # @creezio/mails
 
+## 0.16.0
+
+### Patch Changes
+
+- Updated dependencies [5dfc286]
+  - @creezio/api-kernel@0.16.0
+  - @creezio/platform-core@0.16.0
+  - @creezio/auth@0.16.0
+  - @creezio/shell-ui@0.16.0
+
 ## 0.15.0
 
 ### Patch Changes
