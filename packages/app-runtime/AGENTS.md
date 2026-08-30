@@ -8,6 +8,15 @@ Toute évolution Meili / HTTP kernel / session IPC se fait **ici** (ou dans
 
 ## API publique
 
+- `BrandModuleDef` / `BrandNavItem` / `BrandMeiliIndex` +
+  `createBrandModuleRegistry(modules)` — **SoT du contrat de module marque**
+  (P2.c / H9, ADR `docs/adr/ADR-p2c-module-contract.md`) : le
+  `modules/types.ts` d'une marque est un simple ré-export de ce package
+  (doctor `MODULE_TYPES_DIVERGENT` fail-closed) et le `modules/index.ts`
+  généré factory délègue ses collecteurs (`collectEntitySpecs`,
+  `collectApiMounts`, `collectNavItems`, `collectMcpTools`,
+  `collectMeiliIndexes`, `collectModuleMigrations`, `collectDemoScenarios`)
+  à `createBrandModuleRegistry(BRAND_MODULES)`.
 - `startBrandDesktop(config)` — Electron main mince
 - `startBrandKernelHarness(config)` — smokes sans GUI
 - `composeBrandOs` / `listenBrandOsHttp` / `warmBrandNativeHosts` — OS natif

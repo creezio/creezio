@@ -223,6 +223,12 @@
 |---|---|
 | [`codemods/H8/h8-materialize-brand-manifest.mjs`](../codemods/H8/h8-materialize-brand-manifest.mjs) | Codemod H8 (P1.d) : build-builder-config marque en « manifest local d'abord » + matérialisation app-manifest.json depuis le registre kit déprécié. |
 
+## `codemods/H9/`
+
+| Fichier | Rôle |
+|---|---|
+| [`codemods/H9/h9-import-module-contract.mjs`](../codemods/H9/h9-import-module-contract.mjs) | Migration H9 (P2.c) : modules/types.ts → ré-export kit + accessJustification "à qualifier" sur les mounts sans permission |
+
 ## `lib/`
 
 | Fichier | Rôle |

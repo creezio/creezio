@@ -129,6 +129,15 @@ export type ApiMount = {
    */
   permission?: string;
   /**
+   * Justification explicite d'un mount SANS `permission` (règle d'or n°7,
+   * audit F3.4) : route volontairement publique / machine (webhook signé,
+   * Bearer flotte…) ou dette qualifiée (`"à qualifier"` — posée par le
+   * codemod H9, doctor warn). Un mount métier sans `permission` NI
+   * `accessJustification` = doctor `MODULE_PERMISSION_MISSING`
+   * (fail-closed pin ≥ 0.16).
+   */
+  accessJustification?: string;
+  /**
    * Si true, le handler peut recevoir des écritures cross-space
    * (défaut false = deny-by-default).
    */

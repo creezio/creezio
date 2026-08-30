@@ -8,6 +8,13 @@ export type {
   BrandKernelHarnessHandle,
 } from "./types.js";
 
+export {
+  createBrandModuleRegistry,
+  type BrandMeiliIndex,
+  type BrandModuleDef,
+  type BrandModuleRegistry,
+  type BrandNavItem,
+} from "./module-contract.js";
 export { startBrandDesktop } from "./start-brand-desktop.js";
 export { startBrandKernelHarness } from "./start-brand-kernel-harness.js";
 export {

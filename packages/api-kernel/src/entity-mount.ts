@@ -149,6 +149,13 @@ export type EntitySpec = {
   /** `ORDER BY` de la liste — `<colonne> [ASC|DESC]` validé. */
   orderBy?: string;
   hooks?: EntityHooks;
+  /**
+   * Permission requise pour le mount CRUD généré (threadée sur
+   * `ApiMount.permission`, garde `authorizeModuleAccess`).
+   */
+  permission?: string;
+  /** Justification explicite si pas de `permission` (voir `ApiMount`). */
+  accessJustification?: string;
   /** Fallback pour les subPaths métier non couverts par le moteur. */
   extraRoutes?: ApiMount["handle"];
   /**
@@ -745,6 +752,10 @@ export function createEntityApiMount(spec: EntitySpec): ApiMount {
 
   return {
     dbLayer: "brand",
+    ...(spec.permission ? { permission: spec.permission } : {}),
+    ...(spec.accessJustification
+      ? { accessJustification: spec.accessJustification }
+      : {}),
     operations: operationsFromEntitySpec(spec),
     handle: async (ctx) => {
       if (!ctx.db) return { status: 503, body: { error: "db_unavailable" } };

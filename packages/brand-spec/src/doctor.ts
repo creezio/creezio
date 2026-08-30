@@ -26,6 +26,14 @@ const OPS_CONTRACT_SINCE = { major: 0, minor: 10, patch: 6 };
  */
 const MEILI_CONTRACT_SINCE = { major: 0, minor: 10, patch: 13 };
 
+/**
+ * Contrat de module importé du kit (P2.c / H9, 0.16.0) : `modules/types.ts`
+ * = ré-export de `@creezio/app-runtime` (plus de copie locale) + chaque
+ * apiMount manuscrit déclare `permission` ou `accessJustification`.
+ * Pins plus vieux = warn.
+ */
+const MODULE_CONTRACT_SINCE = { major: 0, minor: 16, patch: 0 };
+
 const CRUD_OP_IDS = new Set([
   "list",
   "get",
@@ -122,6 +130,11 @@ function pinIsPreOpsContract(pin: string | null): boolean {
 function pinIsPreMeiliContract(pin: string | null): boolean {
   if (!pin) return false;
   return compareSemver(pin, MEILI_CONTRACT_SINCE) < 0;
+}
+
+function pinIsPreModuleContract(pin: string | null): boolean {
+  if (!pin) return false;
+  return compareSemver(pin, MODULE_CONTRACT_SINCE) < 0;
 }
 
 function extractObjectKeys(src: string, field: string): string[] {
@@ -294,6 +307,95 @@ function doctorBrandModuleMeili(
         : `module ${id}: entité listable — déclarer meiliIndexes (schéma data + index catalog_*) OU horsIndexJustification explicite (relevés, joins, écritures…). Meili = composant core fail-closed.`,
       path: rel,
     });
+  }
+}
+
+/**
+ * Contrat P2.c / H9 (0.16.0, fail-closed) : le contrat `BrandModuleDef` est
+ * IMPORTÉ du kit — le `modules/types.ts` d'une marque est un simple
+ * ré-export de `@creezio/app-runtime`. Une redéclaration locale (copie
+ * mutable du contrat) = `MODULE_TYPES_DIVERGENT`. Pin < 0.16.0 = warn.
+ * types.ts absent (registre important le kit en direct) = valide.
+ */
+function doctorBrandModuleTypesContract(
+  specRoot: string,
+  issues: BrandSpecIssue[],
+): void {
+  const modulesDir = resolveAppModulesDir(specRoot);
+  if (!modulesDir) return;
+  const typesPath = path.join(modulesDir, "types.ts");
+  if (!fs.existsSync(typesPath)) return;
+  const preContract = pinIsPreModuleContract(readAppLockstepPin(specRoot));
+  const level = preContract ? "warn" : "error";
+  const src = stripModuleSourceComments(fs.readFileSync(typesPath, "utf8"));
+  const rel = path.relative(specRoot, typesPath);
+  // Le risque audité (F3.4) = fork local du contrat. Un types.ts qui ne
+  // déclare aucun des types du contrat (helper synthétique, ré-export) est
+  // laissé au compilateur — seule une redéclaration locale rougit.
+  const declaresLocally =
+    /(?:export\s+)?type\s+(?:BrandModuleDef|BrandNavItem|BrandMeiliIndex)\s*=/.test(
+      src,
+    );
+  if (!declaresLocally) return;
+  issues.push({
+    level,
+    code: "MODULE_TYPES_DIVERGENT",
+    message: preContract
+      ? `modules/types.ts redéclare le contrat de module localement — warn (pin kit < 0.16.0) ; depuis 0.16.0 le contrat est importé du kit (codemod H9 : ré-export @creezio/app-runtime).`
+      : `modules/types.ts divergent du contrat kit — attendu : ré-export \`export type { BrandModuleDef, … } from "@creezio/app-runtime"\` sans redéclaration locale (P2.c / codemod H9).`,
+    path: rel,
+  });
+}
+
+/**
+ * Règle d'or n°7 (audit F3.4, 0.16.0, fail-closed) : chaque apiMount
+ * manuscrit déclare son contrôle d'accès — `permission` (garde
+ * `authorizeModuleAccess`) OU `accessJustification` explicite (route
+ * publique/machine assumée). `accessJustification: "à qualifier"` (posée
+ * par le codemod H9) = warn `MODULE_PERMISSION_UNQUALIFIED` — dette
+ * visible, jamais une permission inventée. EntitySpec seul : CRUD derrière
+ * la garde session de bordure (module-mount-auth) — pas exigé ici.
+ * Pin < 0.16.0 = warn.
+ */
+function doctorBrandModulePermissions(
+  specRoot: string,
+  issues: BrandSpecIssue[],
+): void {
+  const modulesDir = resolveAppModulesDir(specRoot);
+  if (!modulesDir) return;
+  const preContract = pinIsPreModuleContract(readAppLockstepPin(specRoot));
+  const level = preContract ? "warn" : "error";
+  const files = fs
+    .readdirSync(modulesDir)
+    .filter((f) => f.endsWith(".ts") && !isModuleHelperName(f))
+    .sort();
+  for (const file of files) {
+    const id = file.replace(/\.ts$/, "");
+    const filePath = path.join(modulesDir, file);
+    const src = stripModuleSourceComments(fs.readFileSync(filePath, "utf8"));
+    const rel = path.relative(specRoot, filePath);
+    if (!/\bapiMounts\s*:/.test(src)) continue;
+    const hasPermission = /\bpermission\s*:/.test(src);
+    const hasJustification = /\baccessJustification\s*:/.test(src);
+    if (!hasPermission && !hasJustification) {
+      issues.push({
+        level,
+        code: "MODULE_PERMISSION_MISSING",
+        message: preContract
+          ? `module ${id}: apiMount sans permission ni accessJustification — warn (pin kit < 0.16.0) ; obligatoire depuis 0.16.0 (règle d'or n°7).`
+          : `module ${id}: chaque apiMount déclare permission (garde authorizeModuleAccess) OU accessJustification explicite (route publique/machine assumée) — règle d'or n°7 (audit F3.4).`,
+        path: rel,
+      });
+      continue;
+    }
+    if (/\baccessJustification\s*:\s*["']à qualifier["']/.test(src)) {
+      issues.push({
+        level: "warn",
+        code: "MODULE_PERMISSION_UNQUALIFIED",
+        message: `module ${id}: accessJustification "à qualifier" (dette codemod H9) — qualifier la permission réelle ou justifier la route publique.`,
+        path: rel,
+      });
+    }
   }
 }
 
@@ -536,6 +638,8 @@ export function doctorBrandSpec(rootDir: string): DoctorResult {
   doctorBrandModuleDemos(spec.rootDir, issues);
   doctorBrandModuleOps(spec.rootDir, issues);
   doctorBrandModuleMeili(spec.rootDir, issues);
+  doctorBrandModuleTypesContract(spec.rootDir, issues);
+  doctorBrandModulePermissions(spec.rootDir, issues);
   doctorCreezioManifestAlignment(spec.rootDir, issues);
 
   // Anti-jumeau : pas de sidecars dans brand-spec

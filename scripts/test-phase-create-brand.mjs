@@ -404,20 +404,27 @@ Desktop Creezio.
     /collectModuleMigrations/,
   );
 
-  // Registre : champ `demo` des modules + collecteur collectDemoScenarios
-  // (défauts du mount interactive-demo) + dep serveur scaffoldée.
+  // Registre : collecteurs délégués au kit (P2.c / H9 — plus de copie du
+  // contrat) + types.ts = ré-export @creezio/app-runtime.
   const modulesIndex = fs.readFileSync(
     path.join(serverDir, "src/electron/modules/index.ts"),
     "utf8",
   );
   assert.match(modulesIndex, /collectDemoScenarios/);
-  assert.match(modulesIndex, /collectInteractiveDemoDefaults/);
+  assert.match(modulesIndex, /createBrandModuleRegistry/);
+  const modulesTypes = fs.readFileSync(
+    path.join(serverDir, "src/electron/modules/types.ts"),
+    "utf8",
+  );
   assert.match(
-    fs.readFileSync(
-      path.join(serverDir, "src/electron/modules/types.ts"),
-      "utf8",
-    ),
-    /demo\?: \{ scenarios: DemoScenario\[\] \}/,
+    modulesTypes,
+    /export type \{[\s\S]*BrandModuleDef[\s\S]*\} from "@creezio\/app-runtime"/,
+    "modules/types.ts doit être le ré-export du contrat kit (P2.c)",
+  );
+  assert.doesNotMatch(
+    modulesTypes,
+    /type BrandModuleDef =/,
+    "modules/types.ts ne doit plus redéclarer BrandModuleDef localement",
   );
   const scaffoldedServerPkg = JSON.parse(
     fs.readFileSync(path.join(serverDir, "package.json"), "utf8"),

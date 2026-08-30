@@ -13,57 +13,23 @@ import type {
 } from "../product-model.js";
 import { isChrModel } from "../product-model.js";
 
+/**
+ * Forme canonique du `modules/types.ts` d'une marque depuis H9 (P2.c) :
+ * simple ré-export du contrat kit — le doctor brand-spec
+ * (`MODULE_TYPES_DIVERGENT`) refuse fail-closed toute redéclaration locale.
+ */
 export const MODULES_TYPES_TS = `/**
- * creezio:owned-by-brand
+ * creezio:owned-by-brand (ré-export — ne rien redéclarer ici)
  * Contrat du registre de modules — un module métier = un fichier
  * \`modules/<id>.ts\` exportant un \`BrandModuleDef\` (standard kit
- * DOC-STANDARD-MODULE.md).
+ * DOC-STANDARD-MODULE.md). SoT du contrat : \`@creezio/app-runtime\`
+ * (P2.c / H9) — une redéclaration locale = doctor MODULE_TYPES_DIVERGENT.
  */
-import type { ApiMount, EntitySpec } from "@creezio/api-kernel";
-import type { SqliteMigration } from "@creezio/platform-core";
-import type { BrandMeiliFeed } from "@creezio/electron-shell/meili";
-import type { CoreNavItem } from "@creezio/shell-ui";
-import type { DemoScenario } from "@creezio/interactive-demo";
-
-/** Entrée de nav métier — \`order\` fixe la position dans la sidebar. */
-export type BrandNavItem = CoreNavItem & { order: number };
-
-/** Spec d'index Meili (même forme que BrandMeiliFeed.indexes[n]). */
-export type BrandMeiliIndex = BrandMeiliFeed["indexes"][number];
-
-export type BrandModuleDef = {
-  id: string;
-  /** Entités CRUD (moteur kit createEntityApiMount) — clé = mount id. */
-  entitySpecs?: Record<string, EntitySpec>;
-  /**
-   * Mounts API manuscrits — clé = id sous /api/v1/modules/<id>.
-   * Chaque mount DOIT porter \`operations[]\` (SoT HTTP + /admin/api + MCP).
-   */
-  apiMounts?: Record<string, ApiMount>;
-  /** Entrées de nav du module (fusionnées + triées par order). */
-  navItems?: BrandNavItem[];
-  /** Index Meili contribués au feed marque. */
-  meiliIndexes?: BrandMeiliIndex[];
-  /**
-   * Obligatoire si le module a une liste catalogue SANS meiliIndexes
-   * (relevés, joins commande, écritures, SKU EAN…). Une liste browse
-   * sans justification = gate factory rouge.
-   */
-  horsIndexJustification?: string;
-  /**
-   * Scénarios de démo interactive du module — **obligatoire** (≥ 1 scénario
-   * valide). Agrégés par \`collectDemoScenarios()\` (registre) et servis en
-   * défauts du mount \`interactive-demo\`. Inclure
-   * \`genericOsTourScenario({ productName })\` (id \`os-tour\` partagé).
-   * Une app Creezio sans démo interactive est invalide.
-   */
-  demo?: { scenarios: DemoScenario[] };
-  /**
-   * Migrations du module — \`mod_<module>_00N_<slug>\`, jamais renuméroter
-   * une migration appliquée ; migrations cross-module interdites.
-   */
-  migrations?: () => SqliteMigration[];
-};
+export type {
+  BrandMeiliIndex,
+  BrandModuleDef,
+  BrandNavItem,
+} from "@creezio/app-runtime";
 `;
 
 export const MODULES_INDEX_TS = `/**
@@ -71,17 +37,11 @@ export const MODULES_INDEX_TS = `/**
  * Registre des modules métier — une ligne d'import par module (périmètre
  * multi-agents : chaque agent ne touche que SA ligne + son fichier module).
  * Les consommateurs (brand-module-api, brand-migrations, vertical-slot,
- * meili-feed, brand-mcp-tools) agrègent via les collecteurs ci-dessous.
+ * meili-feed, brand-mcp-tools) agrègent via les collecteurs kit
+ * (\`createBrandModuleRegistry\`, @creezio/app-runtime — P2.c / H9).
  */
-import type { ApiKernel, ApiMount, EntitySpec } from "@creezio/api-kernel";
-import {
-  discoverModuleToolsFromBrandModules,
-  type McpRegisteredTool,
-} from "@creezio/mcp-facade";
-import type { SqliteMigration } from "@creezio/platform-core";
-import { collectInteractiveDemoDefaults } from "@creezio/interactive-demo";
-import type { DemoScenario } from "@creezio/interactive-demo";
-import type { BrandMeiliIndex, BrandModuleDef, BrandNavItem } from "./types.js";
+import { createBrandModuleRegistry } from "@creezio/app-runtime";
+import type { BrandModuleDef } from "./types.js";
 
 // <creezio:module-imports> (une ligne par module — insertion \`brand module init\`)
 // </creezio:module-imports>
@@ -91,73 +51,20 @@ export const BRAND_MODULES: BrandModuleDef[] = [
   // </creezio:module-registry>
 ];
 
-/** EntitySpecs CRUD fusionnés (clé unique par module — collision = bug). */
-export function collectEntitySpecs(): Record<string, EntitySpec> {
-  const out: Record<string, EntitySpec> = {};
-  for (const mod of BRAND_MODULES) {
-    for (const [key, spec] of Object.entries(mod.entitySpecs ?? {})) {
-      if (out[key]) {
-        throw new Error(\`entity spec en double: \${key} (module \${mod.id})\`);
-      }
-      out[key] = spec;
-    }
-  }
-  return out;
-}
-
-/** Mounts API manuscrits fusionnés (un même mount peut avoir des alias). */
-export function collectApiMounts(): Array<[string, ApiMount]> {
-  const seen = new Set<string>();
-  const out: Array<[string, ApiMount]> = [];
-  for (const mod of BRAND_MODULES) {
-    for (const [key, mount] of Object.entries(mod.apiMounts ?? {})) {
-      if (seen.has(key)) {
-        throw new Error(\`mount API en double: \${key} (module \${mod.id})\`);
-      }
-      seen.add(key);
-      out.push([key, mount]);
-    }
-  }
-  return out;
-}
-
-/** Entrées de nav métier triées par \`order\`. */
-export function collectNavItems(extra: BrandNavItem[] = []): BrandNavItem[] {
-  const items = [
-    ...extra,
-    ...BRAND_MODULES.flatMap((mod) => mod.navItems ?? []),
-  ];
-  return items.sort((a, b) => a.order - b.order);
-}
-
-/** Tools MCP métier — générés depuis api.listOperations() (ops du kernel). */
-export function collectMcpTools(api: ApiKernel): McpRegisteredTool[] {
-  return discoverModuleToolsFromBrandModules(BRAND_MODULES, api);
-}
-
-/** Index Meili contribués au feed marque. */
-export function collectMeiliIndexes(): BrandMeiliIndex[] {
-  return BRAND_MODULES.flatMap((mod) => mod.meiliIndexes ?? []);
-}
-
-/** Migrations des modules (IDs stables mod_<module>_*). */
-export function collectModuleMigrations(): SqliteMigration[] {
-  return BRAND_MODULES.flatMap((mod) => mod.migrations?.() ?? []);
-}
-
 /**
- * Scénarios démo interactive contribués par les modules (champ \`demo\`) —
- * défauts marque du mount :
- * \`createInteractiveDemoMount({ defaults: collectDemoScenarios() })\`.
- * Validation + dédup par id : \`collectInteractiveDemoDefaults\` (kit).
+ * Collecteurs du registre — délégation aux collecteurs génériques kit
+ * (collectDemoScenarios inclut validation + dédup par id, \`os-tour\`
+ * partagé : premier gagne).
  */
-export function collectDemoScenarios(): DemoScenario[] {
-  return collectInteractiveDemoDefaults(
-    BRAND_MODULES.flatMap((mod) =>
-      mod.demo ? [{ moduleId: mod.id, scenarios: mod.demo.scenarios }] : [],
-    ),
-  );
-}
+export const {
+  collectEntitySpecs,
+  collectApiMounts,
+  collectNavItems,
+  collectMcpTools,
+  collectMeiliIndexes,
+  collectModuleMigrations,
+  collectDemoScenarios,
+} = createBrandModuleRegistry(BRAND_MODULES);
 `;
 
 export function camelizeModuleId(id: string): string {
