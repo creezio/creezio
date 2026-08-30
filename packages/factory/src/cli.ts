@@ -61,7 +61,11 @@ export function parseArgs(argv: string[]): CliArgs {
   }
   out.command = rest.shift() || "";
 
-  if (out.command === "brand" || out.command === "server-docker") {
+  if (
+    out.command === "brand" ||
+    out.command === "server-docker" ||
+    out.command === "upgrade"
+  ) {
     out.rest = rest;
     if (rest.includes("--help") || rest.includes("-h")) out.help = true;
     return out;
@@ -119,6 +123,7 @@ Usage:
   creezio demo-app …   (DÉPRÉCIÉ — exit 1 : utiliser brand create)
   creezio brand init|doctor|apply|smoke …
   creezio server-docker create|start|stop|rm|logs|ls|admin|build|up|down|ps|proof --brand-root <app>
+  creezio upgrade [--brand-root <marque>] [--dry-run] [--no-install]
 
 Happy path (recommandé) :
   creezio brand create --id acme --name Acme --domain acme.local
@@ -140,6 +145,11 @@ BrandSpec (agent créateur) :
 Serveur Docker headless (multi-instances, sans Electron) :
   creezio server-docker build|up|down|proof --brand-root <marque>
   Doc : docker/server/README.md
+
+Montée de version d'un repo marque (kit → marque, P3.a) :
+  creezio upgrade --brand-root <marque> --dry-run
+  → chaîne de codemods d'architecture (idempotence prouvée), bump @creezio/*
+    de TOUS les manifests + lockfiles, rematérialisation os-ui, doctor.
 
 Overrides optionnels avec --from-prd :
   --name, --id, --domain, --out, --env-prefix, --feed-token, --sandbox/--no-sandbox, --force
@@ -253,6 +263,16 @@ export async function runCli(argv: string[]): Promise<void> {
     return;
   }
 
+  if (args.command === "upgrade") {
+    const { runUpgradeCli, printUpgradeHelp } = await import("./upgrade-cli.js");
+    if (args.help) {
+      printUpgradeHelp();
+      return;
+    }
+    await runUpgradeCli(args.rest || []);
+    return;
+  }
+
   if (args.help || !args.command) {
     printHelp();
     if (!args.command) process.exit(args.help ? 0 : 1);
@@ -269,7 +289,7 @@ export async function runCli(argv: string[]): Promise<void> {
 
   if (args.command !== "new-app") {
     throw new Error(
-      `Commande inconnue: ${args.command} (new-app | brand | server-docker). demo-app est déprécié — utiliser creezio brand create.`,
+      `Commande inconnue: ${args.command} (new-app | brand | server-docker | upgrade). demo-app est déprécié — utiliser creezio brand create.`,
     );
   }
 

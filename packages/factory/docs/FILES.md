@@ -10,6 +10,30 @@
 |---|---|
 | [`bin/creezio.js`](../bin/creezio.js) | Binaire npm |
 
+## `codemods/H7/`
+
+| Fichier | Rôle |
+|---|---|
+| [`codemods/H7/h7-neutralize-brand-contracts.mjs`](../codemods/H7/h7-neutralize-brand-contracts.mjs) | Copie build (SoT `scripts/codemods/H7/`) embarquée dans le package publié pour `creezio upgrade`. |
+
+## `codemods/H8/`
+
+| Fichier | Rôle |
+|---|---|
+| [`codemods/H8/h8-materialize-brand-manifest.mjs`](../codemods/H8/h8-materialize-brand-manifest.mjs) | Copie build (SoT `scripts/codemods/H8/`) embarquée dans le package publié pour `creezio upgrade`. |
+
+## `codemods/H9/`
+
+| Fichier | Rôle |
+|---|---|
+| [`codemods/H9/h9-import-module-contract.mjs`](../codemods/H9/h9-import-module-contract.mjs) | Copie build (SoT `scripts/codemods/H9/`) embarquée dans le package publié pour `creezio upgrade`. |
+
+## `scripts/`
+
+| Fichier | Rôle |
+|---|---|
+| [`scripts/copy-codemods.mjs`](../scripts/copy-codemods.mjs) | Copie `scripts/codemods/` du kit → `codemods/` du package au build (embarque les codemods H* dans le npm publié). |
+
 ## `src/`
 
 | Fichier | Rôle |
@@ -32,6 +56,7 @@
 | [`src/server-docker-owner.ts`](../src/server-docker-owner.ts) | Politique `server-docker create` fail-closed owner : `CREEZIO_OWNER_EMAIL` / `_PASSWORD` requis sauf `CREEZIO_TUNNEL_LOCAL=1` ; first-run `POST /api/v1/os/setup` + vérif login ; persist `secrets.env` 600 ; `ensure-owner` + `CREEZIO_E2E_*` optionnels (recette) ; après setup, `GET .../interactive-demo/scenarios` ≥ 1 (sauté si owner skip / LOCAL) ; jamais le mot de passe en log. |
 | [`src/server-docker-registry.ts`](../src/server-docker-registry.ts) | Registre d'instances serveur Docker par marque — SoT `docker-data/servers.json` (image `creezio-server-<brandId>`, containers `<brandId>-server-<nom>`). |
 | [`src/server-docker-tunnel.ts`](../src/server-docker-tunnel.ts) | Politique `server-docker create` fail-closed : contrat CF (`CREEZIO_CF_API_TOKEN` / `_ACCOUNT_ID` / `_ZONE_ID`) requis sauf `CREEZIO_TUNNEL_LOCAL=1` ; slug réservé → `<brand>-<slug>` ; secrets CF hors registre (`cf.env` 600). |
+| [`src/upgrade-cli.ts`](../src/upgrade-cli.ts) | `creezio upgrade` (P3.a) — détection version d'architecture marque, chaîne de codemods H* dans l'ordre (idempotence vérifiée), bump `@creezio/*` tous manifests (`--package-lock-only`), rematérialisation os-ui, doctor fail-closed, `--dry-run`. |
 | [`src/write-app-file.ts`](../src/write-app-file.ts) | Écriture des fichiers d'app marque — respecte le marker `creezio:owned-by-brand` même avec `--force` (merge package.json, jamais de wipe du métier enrichi). |
 
 ## `src/generators/`

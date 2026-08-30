@@ -17,15 +17,17 @@
   "files": [
     "dist",
     "bin",
-    "templates"
+    "templates",
+    "codemods"
   ],
   "scripts": {
-    "build": "tsc -p tsconfig.json",
+    "build": "tsc -p tsconfig.json && node scripts/copy-codemods.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
     "@creezio/brand-config": "^0.16.0",
     "@creezio/brand-spec": "^0.16.0",
+    "@creezio/platform-core": "^0.16.0",
     "@creezio/product-hub": "^0.16.0"
   },
   "devDependencies": {

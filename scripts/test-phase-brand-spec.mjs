@@ -326,7 +326,7 @@ test("BS8 doctor : démo trop pauvre = warn (pas fail-closed)", () => {
   fs.rmSync(work, { recursive: true, force: true });
 });
 
-test("BS9 doctor : pin 0.9.2 (Winhub) — démo absente = warn, pas fail-closed", () => {
+test("BS9 doctor : pin 0.9.2 (Winhub) — hors fenêtre N-2 = warn daté devenu ERROR", () => {
   const work = fs.mkdtempSync(path.join(os.tmpdir(), "brand-spec-winhub-"));
   const result = initBrandSpec({
     outDir: path.join(work, "brand-spec"),
@@ -352,11 +352,16 @@ test("BS9 doctor : pin 0.9.2 (Winhub) — démo absente = warn, pas fail-closed"
     `export const articlesModule = { id: "articles" };\n`,
     "utf8",
   );
+  // Politique de seuils DATÉS (P3.a / F4.4c) : un pin 0.9.x a largement plus
+  // de 2 versions lockstep de retard sur le kit courant → le warn historique
+  // (« warn éternel ») est escaladé en ERROR, avec un message actionnable.
   const doctor = doctorBrandSpec(result.outDir);
-  assert.equal(doctor.ok, true, formatDoctorReport(doctor));
+  assert.equal(doctor.ok, false, formatDoctorReport(doctor));
   const missing = doctor.issues.find((i) => i.code === "MODULE_DEMO_MISSING");
   assert.ok(missing, formatDoctorReport(doctor));
-  assert.equal(missing.level, "warn");
+  assert.equal(missing.level, "error");
+  assert.match(missing.message, /politique N-2/);
+  assert.match(missing.message, /creezio upgrade/);
   fs.rmSync(work, { recursive: true, force: true });
 });
 
@@ -555,9 +560,21 @@ export const flowModule = {
   fs.rmSync(work, { recursive: true, force: true });
 });
 
-test("BS15 doctor : pin < 0.16.0 → contrat P2.c en warn (pas fail-closed)", () => {
+test("BS15 doctor : pin < 0.16.0 → contrat P2.c warn dans la fenêtre N-2, error au-delà", () => {
   const work = fs.mkdtempSync(path.join(os.tmpdir(), "brand-spec-permpin-"));
   const { specDir, modulesDir } = scaffoldDoctorApp(work, "pindoc", "Pin Doc");
+  // Politique datée N-2 : le niveau attendu dépend du retard du pin 0.15.x
+  // sur le kit courant (warn tant que ≤ 2 versions lockstep, error après —
+  // ce test reste vert quand le kit avance).
+  const kitMinor = Number(
+    JSON.parse(
+      fs.readFileSync(
+        path.join(ROOT, "packages/brand-spec/package.json"),
+        "utf8",
+      ),
+    ).version.split(".")[1],
+  );
+  const expectedLevel = kitMinor - 15 > 2 ? "error" : "warn";
   fs.writeFileSync(
     path.join(work, "server/package.json"),
     JSON.stringify(
@@ -596,11 +613,11 @@ export const flowModule = {
     "utf8",
   );
   const doctor = doctorBrandSpec(specDir);
-  assert.equal(doctor.ok, true, formatDoctorReport(doctor));
+  assert.equal(doctor.ok, expectedLevel === "warn", formatDoctorReport(doctor));
   for (const code of ["MODULE_TYPES_DIVERGENT", "MODULE_PERMISSION_MISSING"]) {
     assert.ok(
-      doctor.issues.some((i) => i.code === code && i.level === "warn"),
-      `${code} attendu en warn (pin 0.15) : ${formatDoctorReport(doctor)}`,
+      doctor.issues.some((i) => i.code === code && i.level === expectedLevel),
+      `${code} attendu en ${expectedLevel} (pin 0.15, kit 0.${kitMinor}) : ${formatDoctorReport(doctor)}`,
     );
   }
   fs.rmSync(work, { recursive: true, force: true });
