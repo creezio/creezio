@@ -1,5 +1,30 @@
 # @creezio/app-runtime
 
+## 0.15.0
+
+### Patch Changes
+
+- Updated dependencies [1ab886b]
+  - @creezio/observability@0.15.0
+  - @creezio/electron-shell@0.15.0
+  - @creezio/host-runtime@0.15.0
+  - @creezio/search@0.15.0
+  - @creezio/brand-config@0.15.0
+  - @creezio/platform-core@0.15.0
+  - @creezio/product-hub@0.15.0
+  - @creezio/api-kernel@0.15.0
+  - @creezio/mcp-facade@0.15.0
+  - @creezio/shell-ui@0.15.0
+  - @creezio/auth@0.15.0
+  - @creezio/access-control@0.15.0
+  - @creezio/assistant@0.15.0
+  - @creezio/tasks@0.15.0
+  - @creezio/mails@0.15.0
+  - @creezio/support@0.15.0
+  - @creezio/integrations@0.15.0
+  - @creezio/browser-host@0.15.0
+  - @creezio/database@0.15.0
+
 ## 0.14.0
 
 ### Patch Changes

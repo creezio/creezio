@@ -1,5 +1,15 @@
 # @creezio/tasks
 
+## 0.15.0
+
+### Patch Changes
+
+- @creezio/platform-core@0.15.0
+- @creezio/api-kernel@0.15.0
+- @creezio/shell-ui@0.15.0
+- @creezio/auth@0.15.0
+- @creezio/assistant@0.15.0
+
 ## 0.14.0
 
 ### Patch Changes
