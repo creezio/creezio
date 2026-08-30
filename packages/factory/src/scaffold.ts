@@ -22,6 +22,7 @@ import {
   validateAppManifest,
 } from "@creezio/brand-config";
 import { initBrandSpec } from "@creezio/brand-spec";
+import { ARCHITECTURE_VERSION } from "@creezio/platform-core";
 import { MINIMAL_PNG_BASE64 } from "./minimal-png.js";
 import type { ProductModel } from "./product-model.js";
 import { writeFromPrdArtifacts } from "./scaffold-from-prd.js";
@@ -905,6 +906,9 @@ function renderRootPackageJson(
   const creezio: Record<string, unknown> = {
     brandId: m.brandId,
     layout: "monorepo",
+    // Marqueur lu par `creezio upgrade` (détection de la version courante
+    // avant chaîne de codemods) — re-stampé par le runner à chaque montée.
+    architectureVersion: ARCHITECTURE_VERSION,
   };
   if (opts.model) {
     creezio.fromPrd = true;

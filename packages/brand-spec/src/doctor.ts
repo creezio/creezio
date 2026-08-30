@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { loadBrandSpec, resolveBrandSpecDir } from "./load.js";
 import type { BrandSpecIssue, DoctorResult } from "./types.js";
 
@@ -14,15 +15,31 @@ const MODULE_HELPER_FILES = new Set([
   "meili-shared.ts",
 ]);
 
-/** Démo fail-closed depuis 0.10.1 — pins plus vieux (ex. marques en 0.9.x) = warn. */
+/**
+ * Seuils de contrat DATÉS (P3.a, F4.4c) — plus de « warn éternel ».
+ *
+ * Chaque contrat garde sa version d'introduction (`*_CONTRACT_SINCE`) :
+ *   - pin marque ≥ seuil          → error (fail-closed, comme avant) ;
+ *   - pin < seuil, retard ≤ N-2   → warn (fenêtre de grâce lockstep) ;
+ *   - pin < seuil, retard >  N-2  → **error** (marque hors fenêtre de
+ *     support — politique N-2 : une marque à plus de 2 versions lockstep
+ *     (minor) du kit courant doit monter via `creezio upgrade`).
+ *
+ * Le « kit courant » = la version de CE package @creezio/brand-spec
+ * (lockstep) — le doctor embarqué par une marque juge donc avec la version
+ * qu'elle installe, et le doctor du kit avec la tête du kit.
+ */
+const CONTRACT_STALE_LOCKSTEP_WINDOW = 2;
+
+/** Démo fail-closed depuis 0.10.1 (pins plus vieux : politique datée N-2). */
 const DEMO_CONTRACT_SINCE = { major: 0, minor: 10, patch: 1 };
 
-/** Ops fail-closed depuis 0.10.6 — pins plus vieux = warn. */
+/** Ops fail-closed depuis 0.10.6 (pins plus vieux : politique datée N-2). */
 const OPS_CONTRACT_SINCE = { major: 0, minor: 10, patch: 6 };
 
 /**
  * Schéma data + index Meili par module fail-closed depuis 0.10.13
- * (décision « Meili = composant core ») — pins plus vieux = warn.
+ * (décision « Meili = composant core ») — pins plus vieux : politique N-2.
  */
 const MEILI_CONTRACT_SINCE = { major: 0, minor: 10, patch: 13 };
 
@@ -30,7 +47,7 @@ const MEILI_CONTRACT_SINCE = { major: 0, minor: 10, patch: 13 };
  * Contrat de module importé du kit (P2.c / H9, 0.16.0) : `modules/types.ts`
  * = ré-export de `@creezio/app-runtime` (plus de copie locale) + chaque
  * apiMount manuscrit déclare `permission` ou `accessJustification`.
- * Pins plus vieux = warn.
+ * Pins plus vieux : politique datée N-2.
  */
 const MODULE_CONTRACT_SINCE = { major: 0, minor: 16, patch: 0 };
 
@@ -117,24 +134,69 @@ function readAppLockstepPin(specRoot: string): string | null {
   return null;
 }
 
-function pinIsPreDemoContract(pin: string | null): boolean {
-  if (!pin) return false;
-  return compareSemver(pin, DEMO_CONTRACT_SINCE) < 0;
+/** Version lockstep du kit « courant » = celle de CE package (SoT unique). */
+function kitLockstepVersion(): { major: number; minor: number } | null {
+  try {
+    const pkgPath = fileURLToPath(new URL("../package.json", import.meta.url));
+    const pkg = JSON.parse(fs.readFileSync(pkgPath, "utf8")) as {
+      version?: string;
+    };
+    const m = /^(\d+)\.(\d+)\.\d+/.exec(pkg.version || "");
+    return m ? { major: Number(m[1]), minor: Number(m[2]) } : null;
+  } catch {
+    return null;
+  }
 }
 
-function pinIsPreOpsContract(pin: string | null): boolean {
-  if (!pin) return false;
-  return compareSemver(pin, OPS_CONTRACT_SINCE) < 0;
+/**
+ * true si le pin marque est HORS fenêtre de support N-2 (plus de
+ * CONTRACT_STALE_LOCKSTEP_WINDOW versions lockstep minor de retard sur le
+ * kit courant, ou major plus ancien). Kit indéterminable → false (pas
+ * d'escalade aveugle).
+ */
+function pinBeyondSupportWindow(pin: string): boolean {
+  const kit = kitLockstepVersion();
+  if (!kit) return false;
+  const parts = pin.split(".").map((x) => Number(x));
+  const major = parts[0] ?? 0;
+  const minor = parts[1] ?? 0;
+  if (major !== kit.major) return major < kit.major;
+  return kit.minor - minor > CONTRACT_STALE_LOCKSTEP_WINDOW;
 }
 
-function pinIsPreMeiliContract(pin: string | null): boolean {
-  if (!pin) return false;
-  return compareSemver(pin, MEILI_CONTRACT_SINCE) < 0;
+type ContractPolicy = {
+  level: "warn" | "error";
+  /** true = pin pré-contrat (messages « warn » historiques). */
+  preContract: boolean;
+  /** true = warn daté ESCALADÉ en error (pin hors fenêtre N-2). */
+  stale: boolean;
+};
+
+/**
+ * Politique de niveau d'un contrat daté (P3.a / F4.4c) — voir le bloc de
+ * doc des `*_CONTRACT_SINCE` ci-dessus.
+ */
+function contractPolicyFor(
+  pin: string | null,
+  since: { major: number; minor: number; patch: number },
+): ContractPolicy {
+  if (!pin || compareSemver(pin, since) >= 0) {
+    return { level: "error", preContract: false, stale: false };
+  }
+  if (pinBeyondSupportWindow(pin)) {
+    return { level: "error", preContract: true, stale: true };
+  }
+  return { level: "warn", preContract: true, stale: false };
 }
 
-function pinIsPreModuleContract(pin: string | null): boolean {
-  if (!pin) return false;
-  return compareSemver(pin, MODULE_CONTRACT_SINCE) < 0;
+/** Suffixe de message quand un warn daté est escaladé (fenêtre N-2 dépassée). */
+function staleSuffix(pin: string | null): string {
+  const kit = kitLockstepVersion();
+  return (
+    ` [politique N-2 : pin kit ${pin ?? "?"} à plus de ${CONTRACT_STALE_LOCKSTEP_WINDOW} ` +
+    `versions lockstep du kit courant${kit ? ` ${kit.major}.${kit.minor}.x` : ""} — ` +
+    `warn daté devenu ERROR ; monter via \`creezio upgrade\`]`
+  );
 }
 
 function extractObjectKeys(src: string, field: string): string[] {
@@ -194,8 +256,12 @@ function doctorBrandModuleOps(
 ): void {
   const modulesDir = resolveAppModulesDir(specRoot);
   if (!modulesDir) return;
-  const preContract = pinIsPreOpsContract(readAppLockstepPin(specRoot));
-  const level = preContract ? "warn" : "error";
+  const pin = readAppLockstepPin(specRoot);
+  const { level, preContract, stale } = contractPolicyFor(
+    pin,
+    OPS_CONTRACT_SINCE,
+  );
+  const dated = stale ? staleSuffix(pin) : "";
   const files = fs
     .readdirSync(modulesDir)
     .filter((f) => f.endsWith(".ts") && !isModuleHelperName(f))
@@ -218,7 +284,7 @@ function doctorBrandModuleOps(
         level,
         code: "MODULE_OP_MISSING",
         message: preContract
-          ? `module ${id}: apiMounts sans operations[] non vide — warn (pin kit < 0.10.6) ; obligatoire depuis 0.10.6.`
+          ? `module ${id}: apiMounts sans operations[] non vide — pin kit < 0.10.6 ; obligatoire depuis 0.10.6.${dated}`
           : `module ${id}: chaque apiMount doit déclarer operations[] (non vide). EntitySpec : CRUD auto, ne pas re-déclarer.`,
         path: rel,
       });
@@ -282,8 +348,12 @@ function doctorBrandModuleMeili(
 ): void {
   const modulesDir = resolveAppModulesDir(specRoot);
   if (!modulesDir) return;
-  const preContract = pinIsPreMeiliContract(readAppLockstepPin(specRoot));
-  const level = preContract ? "warn" : "error";
+  const pin = readAppLockstepPin(specRoot);
+  const { level, preContract, stale } = contractPolicyFor(
+    pin,
+    MEILI_CONTRACT_SINCE,
+  );
+  const dated = stale ? staleSuffix(pin) : "";
   const files = fs
     .readdirSync(modulesDir)
     .filter((f) => f.endsWith(".ts") && !isModuleHelperName(f))
@@ -303,7 +373,7 @@ function doctorBrandModuleMeili(
       level,
       code: "MODULE_MEILI_MISSING",
       message: preContract
-        ? `module ${id}: entité listable sans meiliIndexes ni horsIndexJustification — warn (pin kit < 0.10.13) ; obligatoire depuis 0.10.13 (Meili = composant core).`
+        ? `module ${id}: entité listable sans meiliIndexes ni horsIndexJustification — pin kit < 0.10.13 ; obligatoire depuis 0.10.13 (Meili = composant core).${dated}`
         : `module ${id}: entité listable — déclarer meiliIndexes (schéma data + index catalog_*) OU horsIndexJustification explicite (relevés, joins, écritures…). Meili = composant core fail-closed.`,
       path: rel,
     });
@@ -325,8 +395,12 @@ function doctorBrandModuleTypesContract(
   if (!modulesDir) return;
   const typesPath = path.join(modulesDir, "types.ts");
   if (!fs.existsSync(typesPath)) return;
-  const preContract = pinIsPreModuleContract(readAppLockstepPin(specRoot));
-  const level = preContract ? "warn" : "error";
+  const pin = readAppLockstepPin(specRoot);
+  const { level, preContract, stale } = contractPolicyFor(
+    pin,
+    MODULE_CONTRACT_SINCE,
+  );
+  const dated = stale ? staleSuffix(pin) : "";
   const src = stripModuleSourceComments(fs.readFileSync(typesPath, "utf8"));
   const rel = path.relative(specRoot, typesPath);
   // Le risque audité (F3.4) = fork local du contrat. Un types.ts qui ne
@@ -341,7 +415,7 @@ function doctorBrandModuleTypesContract(
     level,
     code: "MODULE_TYPES_DIVERGENT",
     message: preContract
-      ? `modules/types.ts redéclare le contrat de module localement — warn (pin kit < 0.16.0) ; depuis 0.16.0 le contrat est importé du kit (codemod H9 : ré-export @creezio/app-runtime).`
+      ? `modules/types.ts redéclare le contrat de module localement — pin kit < 0.16.0 ; depuis 0.16.0 le contrat est importé du kit (codemod H9 : ré-export @creezio/app-runtime).${dated}`
       : `modules/types.ts divergent du contrat kit — attendu : ré-export \`export type { BrandModuleDef, … } from "@creezio/app-runtime"\` sans redéclaration locale (P2.c / codemod H9).`,
     path: rel,
   });
@@ -363,8 +437,12 @@ function doctorBrandModulePermissions(
 ): void {
   const modulesDir = resolveAppModulesDir(specRoot);
   if (!modulesDir) return;
-  const preContract = pinIsPreModuleContract(readAppLockstepPin(specRoot));
-  const level = preContract ? "warn" : "error";
+  const pin = readAppLockstepPin(specRoot);
+  const { level, preContract, stale } = contractPolicyFor(
+    pin,
+    MODULE_CONTRACT_SINCE,
+  );
+  const dated = stale ? staleSuffix(pin) : "";
   const files = fs
     .readdirSync(modulesDir)
     .filter((f) => f.endsWith(".ts") && !isModuleHelperName(f))
@@ -382,7 +460,7 @@ function doctorBrandModulePermissions(
         level,
         code: "MODULE_PERMISSION_MISSING",
         message: preContract
-          ? `module ${id}: apiMount sans permission ni accessJustification — warn (pin kit < 0.16.0) ; obligatoire depuis 0.16.0 (règle d'or n°7).`
+          ? `module ${id}: apiMount sans permission ni accessJustification — pin kit < 0.16.0 ; obligatoire depuis 0.16.0 (règle d'or n°7).${dated}`
           : `module ${id}: chaque apiMount déclare permission (garde authorizeModuleAccess) OU accessJustification explicite (route publique/machine assumée) — règle d'or n°7 (audit F3.4).`,
         path: rel,
       });
@@ -428,7 +506,12 @@ function doctorBrandModuleDemos(
 ): void {
   const modulesDir = resolveAppModulesDir(specRoot);
   if (!modulesDir) return;
-  const preContract = pinIsPreDemoContract(readAppLockstepPin(specRoot));
+  const pin = readAppLockstepPin(specRoot);
+  const { level, preContract, stale } = contractPolicyFor(
+    pin,
+    DEMO_CONTRACT_SINCE,
+  );
+  const dated = stale ? staleSuffix(pin) : "";
   const files = fs
     .readdirSync(modulesDir)
     .filter((f) => f.endsWith(".ts") && !isModuleHelperName(f))
@@ -440,10 +523,10 @@ function doctorBrandModuleDemos(
     const rel = path.relative(specRoot, filePath);
     if (!moduleWiringHasDemoScenarios(src)) {
       issues.push({
-        level: preContract ? "warn" : "error",
+        level,
         code: "MODULE_DEMO_MISSING",
         message: preContract
-          ? `module ${id}: demo.scenarios absent — warn (pin kit < 0.10.1) ; obligatoire depuis 0.10.1.`
+          ? `module ${id}: demo.scenarios absent — pin kit < 0.10.1 ; obligatoire depuis 0.10.1.${dated}`
           : `module ${id}: demo.scenarios obligatoire (≥ 1 scénario jouable). Une app Creezio sans démo interactive est invalide.`,
         path: rel,
       });

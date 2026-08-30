@@ -207,6 +207,7 @@
 | [`test-phase-stack-update-preserve.mjs`](../test-phase-stack-update-preserve.mjs) | Gate — update ne peut plus retirer un sidecar cloudflared ni changer le hostname : preserve + fail-closed + LOCAL=1 + migrate explicite. |
 | [`test-phase-tf3-chrome.mjs`](../test-phase-tf3-chrome.mjs) | (à documenter) |
 | [`test-phase-tunnel-self-provision.mjs`](../test-phase-tunnel-self-provision.mjs) | (à documenter) |
+| [`test-phase-upgrade-runner.mjs`](../test-phase-upgrade-runner.mjs) | Gate P3.a — `creezio upgrade` : dry-run no-op sur scaffold frais, chaîne multi-versions (H8→H9) dans l'ordre sur fixture en retard, application réelle idempotente. |
 | [`test-phase-v1.mjs`](../test-phase-v1.mjs) | Phase V1 — fabrique plugins conversationnelle (demobrand E2E). |
 | [`test-phase-v2.mjs`](../test-phase-v2.mjs) | Phase V2 — observabilité native (activité, usages plugins, control-plane). |
 | [`test-phase-v3.mjs`](../test-phase-v3.mjs) | Phase V3 — automations data-driven (triggers lifecycle / données). |

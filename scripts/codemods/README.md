@@ -13,21 +13,45 @@ Un dossier par **version cible** :
 ```
 scripts/codemods/
   H7/
-    manifest.json          # {"scripts": ["01-rename-x.mjs", "02-move-y.mjs"]}
+    manifest.json          # {"scripts": ["01-rename-x.mjs", …], "since": "0.12.0"}
     01-rename-x.mjs
     02-move-y.mjs
 ```
 
-- `manifest.json` : `{"scripts": [...]}` — exécutés **dans l'ordre** du
-  tableau.
+- `manifest.json` : `{"scripts": [...], "since": "<lockstep>"}` — scripts
+  exécutés **dans l'ordre** du tableau ; `since` = version lockstep
+  `@creezio/*` qui a introduit cette architecture (SoT du mapping
+  lockstep→architecture consommé par `creezio upgrade` pour détecter la
+  version courante d'une marque via son package-lock — gate
+  `test-phase-arch-codemod`).
 - Chaque script est un module Node (`.mjs`) lancé par
   `ROOT=<racine marque> node <script>` :
   - `ROOT` (env) = racine du clone marque à transformer (fichiers marque
     uniquement — jamais `node_modules/`, réinstallé au prochain `npm ci`) ;
   - **idempotent** : relancer le script sur une marque déjà migrée est un
     no-op vert ;
+  - **sortie contractuelle** : chaque fichier modifié est listé sur une
+    ligne `  ~ <chemin relatif>` (aucune ligne `~` = no-op). C'est ce qui
+    permet à `creezio upgrade` de PROUVER l'idempotence : chaque pas de la
+    chaîne est re-exécuté, un re-run qui liste encore des `~` = échec
+    explicite de la migration ;
   - exit ≠ 0 = migration impossible → la marque reste intacte (le codemod
     s'exécute AVANT le commit du lockfile bumpé).
+
+## Runner `creezio upgrade` (P3.a)
+
+Les marques n'appliquent plus la chaîne à la main : `creezio upgrade`
+(`packages/factory/src/upgrade-cli.ts`), exécuté à la racine d'un repo
+marque, détecte la version d'architecture courante (marqueur
+`creezio.architectureVersion` du package.json racine, sinon mapping
+lockstep→arch via les `since`, sinon platform-core installé), applique la
+chaîne des codemods intermédiaires dans l'ordre (idempotence prouvée à
+chaque pas), bumpe les deps `@creezio/*` de TOUS les manifests + lockfiles
+(`npm install --package-lock-only`, jamais `npm update`), rematérialise les
+pages os-ui et lance le doctor brand-spec. `--dry-run` liste le plan.
+
+Le build de `@creezio/factory` copie ce dossier dans le package publié
+(`packages/factory/codemods/`, gitignoré) — la SoT reste ICI.
 
 ## Checklist bump `ARCHITECTURE_VERSION` (docs/CONTRIBUTING-BRANDS.md)
 

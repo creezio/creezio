@@ -12,19 +12,38 @@ plateforme (YAML). SoT pour l'agent créateur ; le runtime reste dans
 - Pas de launchers OS ou sidecars JSON.
 - Pas de questionnaire utilisateur final (domaine marque) dans ce package.
 
+## Politique de seuils DATÉS (P3.a / F4.4c)
+
+Les contrats à seuil (`DEMO_CONTRACT_SINCE` 0.10.1, `OPS_CONTRACT_SINCE`
+0.10.6, `MEILI_CONTRACT_SINCE` 0.10.13, `MODULE_CONTRACT_SINCE` 0.16.0) ne
+sont **plus des warn éternels**. Mécanique générique (`contractPolicyFor`,
+`src/doctor.ts`) — le « kit courant » = la version de CE package (lockstep) :
+
+| Pin marque (`@creezio/platform-core` & co) | Niveau |
+|---|---|
+| ≥ seuil du contrat | **error** (fail-closed, inchangé) |
+| < seuil, retard ≤ 2 versions lockstep minor du kit courant | warn (fenêtre de grâce N-2) |
+| < seuil, retard > 2 versions lockstep (ou major plus ancien) | **error** — message `politique N-2`, remède `creezio upgrade` |
+
+Une marque qui ne monte pas de version voit donc ses warns datés devenir
+des errors au bout de 2 releases lockstep — le remède est TOUJOURS la
+montée outillée (`creezio upgrade`, packages/factory), jamais l'affaiblissement
+du doctor. Version kit indéterminable → pas d'escalade aveugle (warn).
+
 ## API
 
 - `loadBrandSpec` / `resolveBrandSpecDir`
 - `doctorBrandSpec` / `formatDoctorReport` — helpers modules ignorés ;
-  démo pauvre = warn ; pin < 0.10.1 (Winhub 0.9.2) : démo absente = warn
-- Contrat ops 0.10.6+ (pin ≥ 0.10.6 = error, sinon warn) :
+  démo pauvre = warn ; pin < 0.10.1 : démo absente = warn **dans la
+  fenêtre N-2**, error au-delà (politique ci-dessus)
+- Contrat ops 0.10.6+ (pin ≥ 0.10.6 = error, sinon politique datée N-2) :
   - `MODULE_OP_MISSING` — `apiMounts` sans `operations[]` non vide
   - `MODULE_OP_UNCATALOGUED` — `extraRoutes` hors `operations[]`
   - `MODULE_OP_MCP_OVERLAP` — `mcpTools()` collision de nom avec une op
   - `MODULE_MCP_TOOLS_DEPRECATED` — `mcpTools()` restant **sans** collision
     (**error** depuis 0.10.8 — `mcpTools` n'existe plus, SoT = `operations[]`)
 - Contrat de module importé du kit P2.c / H9 (pin ≥ 0.16.0 = error, sinon
-  warn — ADR `docs/adr/ADR-p2c-module-contract.md`) :
+  politique datée N-2 — ADR `docs/adr/ADR-p2c-module-contract.md`) :
   - `MODULE_TYPES_DIVERGENT` — `modules/types.ts` redéclare localement
     `BrandModuleDef`/`BrandNavItem`/`BrandMeiliIndex` (attendu : ré-export
     `@creezio/app-runtime`, codemod `scripts/codemods/H9/`)

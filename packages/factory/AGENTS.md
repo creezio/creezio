@@ -55,7 +55,17 @@ en jumeau dans `main.ts`.
 ## Points d'entrée
 
 - `bin/creezio.js` : binaire npm.
-- `src/cli.ts` : `new-app` + dispatch `brand` / `server-docker`.
+- `src/cli.ts` : `new-app` + dispatch `brand` / `server-docker` / `upgrade`.
+- `src/upgrade-cli.ts` : `creezio upgrade` (P3.a) — runner de montée de
+  version marque : détection version d'architecture (marker
+  `creezio.architectureVersion` > lockfile `platform-core` > node_modules),
+  chaîne de codemods H* dans l'ordre avec idempotence vérifiée (re-run
+  = no-op sinon échec), bump `@creezio/*` de TOUS les manifests
+  (`npm install --package-lock-only`, jamais `npm update`),
+  rematérialisation os-ui, doctor brand-spec fail-closed, `--dry-run`.
+  Les codemods sont embarqués dans le package publié
+  (`codemods/`, copiés au build par `scripts/copy-codemods.mjs` depuis
+  `scripts/codemods/` du kit — SoT). Gate : `test-phase-upgrade-runner`.
 - `src/server-docker-cli.ts` : serveurs marque headless (`docker/server`).
 - `src/server-docker-tunnel.ts` : politique create fail-closed
   (`CREEZIO_CF_API_TOKEN` / `_ACCOUNT_ID` / `_ZONE_ID` requis sauf

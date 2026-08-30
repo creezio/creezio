@@ -84,6 +84,15 @@ test("A2 manifests codemods cohérents + scripts valides", () => {
       Array.isArray(manifest.scripts) && manifest.scripts.length > 0,
       `scripts/codemods/${version}/manifest.json : "scripts" doit être un tableau non vide`,
     );
+    // `since` = version lockstep qui a introduit cette architecture — SoT du
+    // mapping lockstep→arch utilisé par `creezio upgrade` (détection via le
+    // package-lock marque quand le marqueur creezio.architectureVersion manque).
+    assert.match(
+      String(manifest.since || ""),
+      /^\d+\.\d+\.\d+$/,
+      `scripts/codemods/${version}/manifest.json : "since" (version lockstep ` +
+        `d'introduction, ex. "0.16.0") requis — consommé par creezio upgrade`,
+    );
     for (const script of manifest.scripts) {
       const file = path.join(dir, script);
       assert.ok(

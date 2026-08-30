@@ -419,6 +419,10 @@ test("MO4b doctor EntitySpec sans ops extras : pas MODULE_OP_MISSING", () => {
     `export const articlesModule = {
   id: "articles",
   entitySpecs: { notes: { table: "notes", columns: [{ name: "titre" }] } },
+  // horsIndexJustification : fixture gate MO4b — le sujet testé est
+  // MODULE_OP_MISSING, pas le contrat Meili (et le pin 0.10.6 daté passe
+  // en error sous la politique N-2, P3.a).
+  horsIndexJustification: "fixture gate",
   ${DEMO_BLOCK}
 };
 `,
