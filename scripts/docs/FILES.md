@@ -14,6 +14,7 @@
 | [`generate-files-md.mjs`](../generate-files-md.mjs) | Générateur des inventaires `docs/FILES.md` — format standard du kit. |
 | [`generate-kit-packages.mjs`](../generate-kit-packages.mjs) | Génère/vérifie packages/platform-core/kit-packages.json (manifeste des packages publiés, consommé par les apps) |
 | [`kit-version.mjs`](../kit-version.mjs) | !usrbinenv node |
+| [`propagate-brands.mjs`](../propagate-brands.mjs) | Rollout npm flotte (P3.b) — ouvre une PR de bump `@creezio/*` par marque configurée (`.github/propagate-brands.json`) avec rapport d'impact propagation en corps ; consommé par `propagate.yml`. |
 | [`propagation-impact.mjs`](../propagation-impact.mjs) | !usrbinenv node |
 | [`reset-tempoflow3.mjs`](../reset-tempoflow3.mjs) | Reset scripté TempoFlow3 : backup → brand apply --force → les fichiers creezio:owned-by-brand / creezio.ownedByBrand sont préservés. |
 | [`test-fast.mjs`](../test-fast.mjs) | Runner gates fail-fast lisible (`npm run test:kit`/`test:brands`/`test:env`) — suites auto-détectées (matrice dans README), séquentiel, stop 1re rouge, `--from`/`--only`/`--skip`, JSONL /tmp/creezio-test-fast.log |

@@ -20,6 +20,9 @@ Modules natifs des **apps admin de marque** (mode admin — ADR
   Bearer serverKey hashé ; accessToken chiffré AES-GCM via
   `@creezio/integrations`). Statut `online` DÉRIVÉ de
   `last_heartbeat_at`/`last_polled_at` (< 3× intervalle), jamais stocké.
+  Colonnes `kit_version` / `architecture_version` (migration `admin_006`,
+  P3.b) : versions annoncées par register/heartbeat — répondent à « quelle
+  version tourne où » via `/api/v1/modules/fleet/servers` (+ badge UI).
   Gate : `scripts/test-phase-admin-fleet-registry.mjs`.
 - `fleet-releases` = updates en PULL (F5, migration `admin_005` :
   `admin_fleet_releases` / `admin_fleet_update_reports` /

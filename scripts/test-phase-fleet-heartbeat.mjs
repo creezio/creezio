@@ -304,6 +304,21 @@ test("fleet-heartbeat : client kit (état 0600, rotation auto, best-effort) + fl
   assert.equal(row.brand_id, "tempoflow3");
   assert.equal(row.name, "hbgate");
   assert.equal(row.version, "0.4.2");
+  // P3.b — version kit dans le heartbeat : le register annonce la version
+  // lockstep @creezio/platform-core installée + la version d'architecture
+  // (champs ADDITIFS, protocole flotte v1 dual-accept).
+  const kitPkg = JSON.parse(
+    fs.readFileSync(
+      path.join(ROOT, "packages/platform-core/package.json"),
+      "utf8",
+    ),
+  );
+  assert.equal(row.kit_version, kitPkg.version, "kit_version annoncée au register");
+  assert.match(
+    String(row.architecture_version),
+    /^H\d+$/,
+    "architecture_version annoncée au register",
+  );
   const accessTokenClair = openIntegrationSecret(row.access_token_enc);
   assert.ok(accessTokenClair, "admin détient l'accessToken (chiffré)");
   assert.ok(
@@ -322,6 +337,11 @@ test("fleet-heartbeat : client kit (état 0600, rotation auto, best-effort) + fl
   assert.ok(rowHb.last_heartbeat_at, "heartbeat rafraîchit last_heartbeat_at");
   assert.equal(rowHb.health, "ok");
   assert.ok(rowHb.disk_bytes >= 0, "diskBytes envoyé");
+  assert.equal(
+    rowHb.kit_version,
+    kitPkg.version,
+    "kit_version portée par chaque heartbeat",
+  );
 
   // fleet-access : Bearer = accessToken (vérifié contre le hash local).
   const access = createFleetAccessMount({

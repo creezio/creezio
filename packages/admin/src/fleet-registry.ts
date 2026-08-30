@@ -89,6 +89,20 @@ CREATE INDEX IF NOT EXISTS idx_admin_fleet_events_server
   ON admin_fleet_events (server_id, created_at);
 `;
 
+/**
+ * Migration 006 (P3.b) — version kit dans le registre flotte : chaque
+ * instance annonce au register/heartbeat la version lockstep
+ * `@creezio/platform-core` installée (`kit_version`) et sa version
+ * d'architecture (`architecture_version`, ex. H9). Champs ADDITIFS
+ * (protocole flotte v1 dual-accept — les instances plus vieilles n'envoient
+ * simplement rien). Le tableau « qui est à quelle version » de l'admin est
+ * servi par `GET /api/v1/modules/fleet-registry/servers`.
+ */
+export const ADMIN_SCHEMA_006_SQL = `-- Version kit annoncée par les instances (P3.b)
+ALTER TABLE admin_fleet_servers ADD COLUMN kit_version TEXT;
+ALTER TABLE admin_fleet_servers ADD COLUMN architecture_version TEXT;
+`;
+
 /* ---------------------------------------------------------------- helpers */
 
 function nowIso(): string {
@@ -160,6 +174,10 @@ export type FleetServerStatusInput = {
   variant?: string | null;
   orphan?: boolean;
   version?: string | null;
+  /** Version lockstep @creezio/platform-core annoncée par l'instance (P3.b). */
+  kitVersion?: string | null;
+  /** Version d'architecture annoncée (ex. H9) — P3.b. */
+  architectureVersion?: string | null;
   image?: string | null;
   dockerState?: string | null;
   health?: string | null;
@@ -229,6 +247,8 @@ export function upsertFleetServerStatus(
   set("variant", s.variant);
   set("orphan", s.orphan === undefined ? undefined : s.orphan ? 1 : 0);
   set("version", s.version);
+  set("kit_version", s.kitVersion);
+  set("architecture_version", s.architectureVersion);
   set("image", s.image);
   set("docker_state", s.dockerState);
   set("health", s.health);
@@ -251,9 +271,10 @@ export function upsertFleetServerStatus(
     `INSERT INTO admin_fleet_servers
      (id, created_at, updated_at, host_id, brand_id, name,
       container_name, port, tunnel_slug, server_url, variant, orphan,
-      version, image, docker_state, health, boot_headline,
+      version, kit_version, architecture_version,
+      image, docker_state, health, boot_headline,
       last_polled_at, source)
-     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
   ).run(
     id,
     ts,
@@ -268,6 +289,8 @@ export function upsertFleetServerStatus(
     s.variant ?? null,
     s.orphan ? 1 : 0,
     s.version ?? null,
+    s.kitVersion ?? null,
+    s.architectureVersion ?? null,
     s.image ?? null,
     s.dockerState ?? null,
     s.health ?? null,
@@ -556,6 +579,12 @@ export function createFleetRegistryMount(
           serverUrl: body.serverUrl == null ? undefined : String(body.serverUrl),
           variant: body.variant == null ? undefined : String(body.variant),
           version: body.version == null ? undefined : String(body.version),
+          kitVersion:
+            body.kitVersion == null ? undefined : String(body.kitVersion),
+          architectureVersion:
+            body.architectureVersion == null
+              ? undefined
+              : String(body.architectureVersion),
           source: "register",
         });
         const existing = db
@@ -628,6 +657,22 @@ export function createFleetRegistryMount(
         setIf(
           "version",
           body.version === undefined ? undefined : String(body.version ?? ""),
+        );
+        setIf(
+          "kit_version",
+          body.kitVersion === undefined
+            ? undefined
+            : body.kitVersion == null
+              ? null
+              : String(body.kitVersion),
+        );
+        setIf(
+          "architecture_version",
+          body.architectureVersion === undefined
+            ? undefined
+            : body.architectureVersion == null
+              ? null
+              : String(body.architectureVersion),
         );
         setIf(
           "health",

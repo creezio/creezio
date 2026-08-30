@@ -27,6 +27,7 @@ import type {
 import type { SqliteMigration } from "@creezio/platform-core";
 import {
   ADMIN_SCHEMA_004_SQL,
+  ADMIN_SCHEMA_006_SQL,
   createFleetRegistryMount,
   type FleetRegistryMountOptions,
 } from "./fleet-registry.js";
@@ -38,6 +39,7 @@ import {
 
 export {
   ADMIN_SCHEMA_004_SQL,
+  ADMIN_SCHEMA_006_SQL,
   createFleetRegistryMount,
   createRateLimiter,
   deriveFleetOnline,
@@ -186,6 +188,7 @@ export function adminMigrations(): SqliteMigration[] {
     { id: "admin_003_billing_periode_fin", sql: ADMIN_SCHEMA_003_SQL },
     { id: "admin_004_fleet_registry", sql: ADMIN_SCHEMA_004_SQL },
     { id: "admin_005_fleet_releases", sql: ADMIN_SCHEMA_005_SQL },
+    { id: "admin_006_fleet_kit_version", sql: ADMIN_SCHEMA_006_SQL },
   ];
 }
 

@@ -57,6 +57,10 @@ type Server = {
   env: Record<string, string>;
   image: string | null;
   version: string | null;
+  /** Version lockstep @creezio/* annoncée par l'instance (heartbeat, P3.b). */
+  kitVersion?: string | null;
+  /** Version d'architecture annoncée (ex. H9). */
+  architectureVersion?: string | null;
   orphan: boolean;
   docker: DockerState;
   hostId?: string;
@@ -87,6 +91,8 @@ type RegistryRow = {
   server_url: string | null;
   image: string | null;
   version: string | null;
+  kit_version: string | null;
+  architecture_version: string | null;
   orphan: number;
   docker_state: string | null;
   health: string | null;
@@ -130,6 +136,8 @@ function rowToServer(r: RegistryRow, hosts: FleetHost[]): Server {
     env: r.tunnel_slug ? { CREEZIO_TUNNEL_SLUG: r.tunnel_slug } : {},
     image: r.image,
     version: r.version,
+    kitVersion: r.kit_version,
+    architectureVersion: r.architecture_version,
     orphan: Boolean(r.orphan),
     docker: {
       state: r.docker_state || "unknown",
@@ -1085,6 +1093,15 @@ export function FleetAdminClient() {
                 ) : null}
                 {s.version ? (
                   <span className="text-xs text-muted-foreground">v{s.version}</span>
+                ) : null}
+                {s.kitVersion || s.architectureVersion ? (
+                  <span
+                    className="text-xs text-muted-foreground"
+                    title="version kit @creezio/* annoncée par l'instance (heartbeat)"
+                  >
+                    kit {s.kitVersion || "?"}
+                    {s.architectureVersion ? ` · ${s.architectureVersion}` : ""}
+                  </span>
                 ) : null}
                 {s.image ? (
                   <span className="text-xs text-muted-foreground" title="image">

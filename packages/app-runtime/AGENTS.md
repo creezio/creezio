@@ -35,8 +35,10 @@ Toute évolution Meili / HTTP kernel / session IPC se fait **ici** (ou dans
   état local `{dataDir}/{brand}-fleet.json` 0600 (serverKey + hash de
   l'accessToken, jamais de clair) ; consultation admin → instance sur
   `/api/v1/platform/fleet-access/status|logs|ops` (Bearer accessToken).
-  Branché dans le harness serveur (profil full). Gate :
-  `test-phase-fleet-heartbeat.mjs`.
+  Register + heartbeat annoncent aussi `kitVersion` (version
+  `@creezio/platform-core` installée) et `architectureVersion` (P3.b,
+  champs additifs — protocole flotte v1 dual-accept intact). Branché dans
+  le harness serveur (profil full). Gate : `test-phase-fleet-heartbeat.mjs`.
 
 ## Défauts plug-and-play (kit)
 
