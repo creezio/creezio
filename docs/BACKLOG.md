@@ -22,9 +22,12 @@ affaibli pour la masquer. (Backlogs d'époque : `docs/archive/BACKLOG-*.md`.)
   legacy des clients desktop non migrés sur `startBrandDesktop` (env
   `TEMPOFLOW_*`, `tf2fid`, `preload-app.js`, alias `ensureTempoflowNode`).
   Périmètre gelé fail-closed (gate `test-phase-legacy-desktop-frozen`).
-  **Retrait au prochain bump `ARCHITECTURE_VERSION` (H9)** : codemod de
-  migration des clients legacy vers des deps explicites, puis suppression
-  du module + de sa gate (ADR `docs/adr/ADR-p2a-desktop-legacy-freeze.md`).
+  **Retrait au bump `ARCHITECTURE_VERSION` H10** : codemod de migration des
+  clients legacy vers des deps explicites, puis suppression du module + de
+  sa gate (ADR `docs/adr/ADR-p2a-desktop-legacy-freeze.md`). Note P2.c : le
+  bump H9 (contrat de module importé, `ADR-p2c-module-contract.md`) n'a PAS
+  embarqué ce retrait — non trivial (périmètre hashé + codemod clients
+  legacy dédié), reporté volontairement.
 
 ## Navigateur IA (`browser-host`)
 
@@ -127,6 +130,25 @@ affaibli pour la masquer. (Backlogs d'époque : `docs/archive/BACKLOG-*.md`.)
 - **Rôles/permissions mode admin** : rôles dédiés (community manager,
   comptable…) sur le système de comptes kit — aujourd'hui multi-comptes
   standard sans permissions par module.
+
+## Contrat de module (P2.c — suites)
+
+- **Sources assistant + contenu onboarding dans `BrandModuleDef`** (2ᵉ volet
+  F3.4) : les déclarations de sources assistant et le contenu onboarding
+  des modules restent câblés hors descripteur (fichiers dédiés marque) —
+  intégration au contrat kit à faire dans une phase dédiée (trop gros pour
+  P2.c, qui a livré le contrat importé + `permission`/`accessJustification`
+  par mount). ADR `docs/adr/ADR-p2c-module-contract.md`.
+- **Cohérence `meiliIndexes.table` ↔ migrations** : vérifier au doctor que
+  la table d'un index Meili déclaré existe dans une migration — non trivial
+  textuellement (tables créées par un autre module d'import ou par les
+  migrations historiques `fromprd_brand_*` → faux positifs) ; nécessite une
+  résolution cross-module du plan de données.
+- **Qualifier les `accessJustification: "à qualifier"` TF3** : le codemod
+  H9 pose la dette explicite sur les mounts manuscrits sans `permission` —
+  chaque module TF3 doit qualifier sa permission réelle (`nav.*`) ou
+  justifier la route publique (doctor warn `MODULE_PERMISSION_UNQUALIFIED`
+  en attendant).
 
 ## Documentation
 

@@ -21,6 +21,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
+    "@creezio/access-control": "^0.15.0",
     "@creezio/api-kernel": "^0.15.0",
     "@creezio/assistant": "^0.15.0",
     "@creezio/auth": "^0.15.0",
@@ -30,6 +31,7 @@
     "@creezio/electron-shell": "^0.15.0",
     "@creezio/host-runtime": "^0.15.0",
     "@creezio/integrations": "^0.15.0",
+    "@creezio/interactive-demo": "^0.15.0",
     "@creezio/mails": "^0.15.0",
     "@creezio/mcp-facade": "^0.15.0",
     "@creezio/observability": "^0.15.0",
@@ -39,8 +41,7 @@
     "@creezio/shell-ui": "^0.15.0",
     "@creezio/support": "^0.15.0",
     "@creezio/tasks": "^0.15.0",
-    "hono": "^4.12.33",
-    "@creezio/access-control": "^0.15.0"
+    "hono": "^4.12.33"
   },
   "peerDependencies": {
     "electron": ">=28"

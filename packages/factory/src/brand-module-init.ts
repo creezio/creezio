@@ -63,7 +63,8 @@ import type { BrandModuleDef } from "./types.js";
 export const ${camel}Module: BrandModuleDef = {
   id: "${id}",
   // entitySpecs: { ${camel}: { table: "${camel}", columns: [/* … */] } },
-  // apiMounts: { "${id}": { dbLayer: "brand", operations: [/* 1 op = 1 capacité */], handle } },
+  // apiMounts: { "${id}": { dbLayer: "brand", permission: "nav.${id}", operations: [/* 1 op = 1 capacité */], handle } },
+  // Mount sans permission : accessJustification explicite obligatoire (doctor MODULE_PERMISSION_MISSING).
   navItems: [
     { id: "brand.${id}", label: "${title}", href: "/${id}", group: "brand", order: 500 },
   ],

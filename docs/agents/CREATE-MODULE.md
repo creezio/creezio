@@ -41,7 +41,10 @@ arbitrer.
 ## Où va quoi — registre de modules
 
 Tout le wiring d'un module vit dans **son** fichier
-`server/src/electron/modules/<id>.ts`, qui exporte un `BrandModuleDef` :
+`server/src/electron/modules/<id>.ts`, qui exporte un `BrandModuleDef`.
+Le contrat `BrandModuleDef` est **importé du kit** (`@creezio/app-runtime`,
+P2.c / H9) : `modules/types.ts` est un simple ré-export — ne jamais y
+redéclarer le type (doctor `MODULE_TYPES_DIVERGENT` fail-closed) :
 
 | Élément | Champ du `BrandModuleDef` |
 |---|---|
@@ -117,8 +120,17 @@ handle } }`) reste possible pour les flux non-CRUD (à justifier dans
 l'interview).
 
 Un mount manuscrit **doit** porter `operations[]` **non vide** (doctor
-`MODULE_OP_MISSING`, fail-closed pin ≥ 0.10.6). Un `EntitySpec` sans ops
-extras est valide : le CRUD est généré par `operationsFromEntitySpec`.
+`MODULE_OP_MISSING`, fail-closed pin ≥ 0.10.6) **et** déclarer son contrôle
+d'accès (règle d'or n°7, fail-closed pin ≥ 0.16.0) : `permission` (ex.
+`"nav.<module>"`, vérifiée par la garde `authorizeModuleAccess` du kernel)
+OU `accessJustification` explicite si la route est volontairement
+publique/machine (webhook signé, Bearer flotte…) — doctor
+`MODULE_PERMISSION_MISSING`. `accessJustification: "à qualifier"` (posé par
+le codemod H9) = warn `MODULE_PERMISSION_UNQUALIFIED` : qualifier la vraie
+permission dès que possible. Sur un `EntitySpec`, `permission` /
+`accessJustification` sont threadés sur le mount CRUD généré.
+Un `EntitySpec` sans ops extras est valide : le CRUD est généré par
+`operationsFromEntitySpec`.
 Les mounts kit internes (`schema`, `dashboard`, `search`,
 `interactive-demo`) et les surfaces OS sont hors `modules/*.ts` — le
 doctor ne les exige pas ; un module métier homonyme n'est pas exempté.

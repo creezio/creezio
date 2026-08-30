@@ -433,6 +433,179 @@ test("BS11 doctor : MODULE_SPEC_STUB (à remplir) = error", () => {
   fs.rmSync(work, { recursive: true, force: true });
 });
 
+function scaffoldDoctorApp(work, brandId, brandName) {
+  const result = initBrandSpec({
+    outDir: path.join(work, "brand-spec"),
+    brandId,
+    brandName,
+    domain: `${brandId}.local`,
+    vertical: "generic",
+    force: true,
+  });
+  makeLivrableSpec(result.outDir, brandName);
+  const modulesDir = path.join(work, "server/src/electron/modules");
+  fs.mkdirSync(modulesDir, { recursive: true });
+  fs.writeFileSync(
+    path.join(modulesDir, "articles.ts"),
+    `import { genericOsTourScenario } from "@creezio/interactive-demo";
+export const articlesModule = {
+  id: "articles",
+  demo: { scenarios: [genericOsTourScenario({ productName: "${brandName}" })] },
+};
+`,
+    "utf8",
+  );
+  return { specDir: result.outDir, modulesDir };
+}
+
+test("BS13 doctor : types.ts redéclarant BrandModuleDef = MODULE_TYPES_DIVERGENT (P2.c)", () => {
+  const work = fs.mkdtempSync(path.join(os.tmpdir(), "brand-spec-types-"));
+  const { specDir, modulesDir } = scaffoldDoctorApp(work, "typdoc", "Typ Doc");
+  fs.writeFileSync(
+    path.join(modulesDir, "types.ts"),
+    `export type BrandModuleDef = {\n  id: string;\n};\n`,
+    "utf8",
+  );
+  const doctor = doctorBrandSpec(specDir);
+  assert.equal(doctor.ok, false, formatDoctorReport(doctor));
+  assert.ok(
+    doctor.issues.some(
+      (i) => i.code === "MODULE_TYPES_DIVERGENT" && i.level === "error",
+    ),
+    formatDoctorReport(doctor),
+  );
+
+  // Forme canonique H9 (ré-export kit) → vert.
+  fs.writeFileSync(
+    path.join(modulesDir, "types.ts"),
+    `export type {\n  BrandMeiliIndex,\n  BrandModuleDef,\n  BrandNavItem,\n} from "@creezio/app-runtime";\n`,
+    "utf8",
+  );
+  const ok = doctorBrandSpec(specDir);
+  assert.equal(ok.ok, true, formatDoctorReport(ok));
+  assert.ok(
+    !ok.issues.some((i) => i.code === "MODULE_TYPES_DIVERGENT"),
+    formatDoctorReport(ok),
+  );
+  fs.rmSync(work, { recursive: true, force: true });
+});
+
+test("BS14 doctor : apiMount sans permission ni accessJustification = MODULE_PERMISSION_MISSING", () => {
+  const work = fs.mkdtempSync(path.join(os.tmpdir(), "brand-spec-perm-"));
+  const { specDir, modulesDir } = scaffoldDoctorApp(work, "permdoc", "Perm Doc");
+  const moduleSrc = (accessLine) => `import { genericOsTourScenario } from "@creezio/interactive-demo";
+export const flowModule = {
+  id: "flow",
+  demo: { scenarios: [genericOsTourScenario({ productName: "Perm Doc" })] },
+  horsIndexJustification: "écritures — hors browse",
+  apiMounts: {
+    flow: {
+      dbLayer: "brand",${accessLine}
+      operations: [
+        { id: "list", method: "GET", path: "/", description: "Lister" },
+      ],
+      handle: async () => ({ status: 200, body: {} }),
+    },
+  },
+};
+`;
+  const modPath = path.join(modulesDir, "flow.ts");
+
+  fs.writeFileSync(modPath, moduleSrc(""), "utf8");
+  const missing = doctorBrandSpec(specDir);
+  assert.equal(missing.ok, false, formatDoctorReport(missing));
+  assert.ok(
+    missing.issues.some(
+      (i) => i.code === "MODULE_PERMISSION_MISSING" && i.level === "error",
+    ),
+    formatDoctorReport(missing),
+  );
+
+  // Dette codemod H9 : "à qualifier" = vert (pas fail-closed) mais warn.
+  fs.writeFileSync(
+    modPath,
+    moduleSrc(`\n      accessJustification: "à qualifier",`),
+    "utf8",
+  );
+  const unqualified = doctorBrandSpec(specDir);
+  assert.equal(unqualified.ok, true, formatDoctorReport(unqualified));
+  assert.ok(
+    unqualified.issues.some(
+      (i) => i.code === "MODULE_PERMISSION_UNQUALIFIED" && i.level === "warn",
+    ),
+    formatDoctorReport(unqualified),
+  );
+
+  // Permission déclarée → ni error ni warn.
+  fs.writeFileSync(
+    modPath,
+    moduleSrc(`\n      permission: "nav.flow",`),
+    "utf8",
+  );
+  const qualified = doctorBrandSpec(specDir);
+  assert.equal(qualified.ok, true, formatDoctorReport(qualified));
+  assert.ok(
+    !qualified.issues.some((i) =>
+      ["MODULE_PERMISSION_MISSING", "MODULE_PERMISSION_UNQUALIFIED"].includes(
+        i.code,
+      ),
+    ),
+    formatDoctorReport(qualified),
+  );
+  fs.rmSync(work, { recursive: true, force: true });
+});
+
+test("BS15 doctor : pin < 0.16.0 → contrat P2.c en warn (pas fail-closed)", () => {
+  const work = fs.mkdtempSync(path.join(os.tmpdir(), "brand-spec-permpin-"));
+  const { specDir, modulesDir } = scaffoldDoctorApp(work, "pindoc", "Pin Doc");
+  fs.writeFileSync(
+    path.join(work, "server/package.json"),
+    JSON.stringify(
+      {
+        name: "pindoc-server",
+        dependencies: { "@creezio/platform-core": "^0.15.0" },
+      },
+      null,
+      2,
+    ),
+    "utf8",
+  );
+  fs.writeFileSync(
+    path.join(modulesDir, "types.ts"),
+    `export type BrandModuleDef = {\n  id: string;\n};\n`,
+    "utf8",
+  );
+  fs.writeFileSync(
+    path.join(modulesDir, "flow.ts"),
+    `import { genericOsTourScenario } from "@creezio/interactive-demo";
+export const flowModule = {
+  id: "flow",
+  demo: { scenarios: [genericOsTourScenario({ productName: "Pin Doc" })] },
+  horsIndexJustification: "écritures — hors browse",
+  apiMounts: {
+    flow: {
+      dbLayer: "brand",
+      operations: [
+        { id: "list", method: "GET", path: "/", description: "Lister" },
+      ],
+      handle: async () => ({ status: 200, body: {} }),
+    },
+  },
+};
+`,
+    "utf8",
+  );
+  const doctor = doctorBrandSpec(specDir);
+  assert.equal(doctor.ok, true, formatDoctorReport(doctor));
+  for (const code of ["MODULE_TYPES_DIVERGENT", "MODULE_PERMISSION_MISSING"]) {
+    assert.ok(
+      doctor.issues.some((i) => i.code === code && i.level === "warn"),
+      `${code} attendu en warn (pin 0.15) : ${formatDoctorReport(doctor)}`,
+    );
+  }
+  fs.rmSync(work, { recursive: true, force: true });
+});
+
 test("BS12 doctor : product.md manquant = PRODUCT_MD_MISSING", () => {
   const out = fs.mkdtempSync(path.join(os.tmpdir(), "brand-spec-noprod-"));
   const result = initBrandSpec({
