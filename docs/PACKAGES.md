@@ -49,6 +49,7 @@ Racine : [../README.md](../README.md) · [../AGENTS.md](../AGENTS.md)
 | `@creezio/support` | [README](../packages/support/README.md) | [AGENTS](../packages/support/AGENTS.md) | [FILES](../packages/support/docs/FILES.md) |
 | `@creezio/integrations` | [README](../packages/integrations/README.md) | [AGENTS](../packages/integrations/AGENTS.md) | [FILES](../packages/integrations/docs/FILES.md) |
 | `@creezio/observability` | [README](../packages/observability/README.md) | [AGENTS](../packages/observability/AGENTS.md) | [FILES](../packages/observability/docs/FILES.md) |
+| `@creezio/fleet` | [README](../packages/fleet/README.md) | [AGENTS](../packages/fleet/AGENTS.md) | [FILES](../packages/fleet/docs/FILES.md) |
 | `@creezio/admin` | [README](../packages/admin/README.md) | [AGENTS](../packages/admin/AGENTS.md) | [FILES](../packages/admin/docs/FILES.md) |
 | `@creezio/database` | [README](../packages/database/README.md) | [AGENTS](../packages/database/AGENTS.md) | [FILES](../packages/database/docs/FILES.md) |
 

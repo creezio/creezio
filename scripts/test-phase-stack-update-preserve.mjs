@@ -24,9 +24,11 @@ const STACK = path.join(
   ROOT,
   "packages/observability/fleet-collector/instance-stack.mjs",
 );
-const SERVER_LIB = path.join(
+// P2.b : SoT flotte portée en TS — packages/fleet (fleet-collector = wrappers compat).
+const SERVER_LIB = path.join(ROOT, "packages/fleet/src/server-lib.ts");
+const INSTANCE_STACK_SRC = path.join(
   ROOT,
-  "packages/observability/fleet-collector/server-lib.mjs",
+  "packages/fleet/src/instance-stack.ts",
 );
 
 const stack = await import(pathToFileURL(STACK).href);
@@ -340,7 +342,11 @@ test("patchComposeAppImage ne touche pas l'image cloudflared", () => {
 test("updateServer : refuse fail-closed avant recreate (source)", () => {
   const src = fs.readFileSync(SERVER_LIB, "utf8");
   assert.match(src, /resolveStackUpdatePolicy/);
-  assert.match(src, /STACK_UPDATE_REFUSED/);
+  // P2.b : le code d'erreur vit dans instance-stack.ts (erreur typée),
+  // server-lib le détecte via le type guard — même contrat fail-closed.
+  assert.match(src, /isStackUpdateRefused\(e\)/);
+  const stackSrc = fs.readFileSync(INSTANCE_STACK_SRC, "utf8");
+  assert.match(stackSrc, /STACK_UPDATE_REFUSED/);
   assert.match(src, /preserve-sidecar/);
   assert.match(src, /removeOrphans: stackPolicy\?\.action !== "preserve-sidecar"/);
   assert.match(src, /sidecar \$\{stackPolicy\.sidecarServices\.join/);

@@ -78,7 +78,7 @@ Voir `package.json` script `build:packages`. Ordre typique :
 `brand-config` → `shell` → `platform-core` → `product-hub` → `api-kernel` →
 `mcp-facade` → `auth` → `shell-ui` → `os-ui` → `onboarding` →
 `interactive-demo` → `cockpit` →
-`assistant` → `tasks` → `mails` → `support` → `integrations` → `observability` → `landing` → `admin` → `automations` →
+`assistant` → `tasks` → `mails` → `support` → `integrations` → `fleet` → `observability` → `landing` → `admin` → `automations` →
 `database` → `browser-host` → `search` → `host-runtime` →
 `electron-shell` → `brand-spec` →
 `app-runtime` → `desktop-tooling` → `factory` → `propagation` → `build:cjs`.
@@ -113,6 +113,7 @@ contrats src↔dist + hash de contenu).
 | Inbox mails | `mails` |
 | Tickets support serveur marque (page `/support`) | `support` |
 | Ops / fleet / analytics / request-logs | `observability` |
+| Backend flotte typé (gestes Docker, updates, agent hôte, protocole agent↔backend) | `fleet` |
 | Modules apps admin de marque (fleet/support/prospection/roadmap/billing) | `admin` |
 | Automations lifecycle plugins/org | `automations` |
 | Intégrations / clés API tierces (`integration://<slug>`, sync n8n) | `integrations` |

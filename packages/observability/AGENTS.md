@@ -34,11 +34,20 @@ Maintenir les briques d'observabilité génériques : events store, ops journal,
 
 ## Modifier sans casser
 
-- **fleet-collector embarqué au build des images** : `fleet-collector/*.mjs`
-  est copié dans les images Docker `docker/server-admin` (backend flotte) et
-  `docker/host-agent` (agent VPS). Après toute modif de ces `.mjs`, re-runner
-  `creezio server-docker admin up …` / `creezio server-docker agent up …`
-  (rebuild + recreate), sinon les containers servent l'ancien code.
+- **Backend flotte sorti en TS (P2.b)** : la SoT des gestes flotte vit dans
+  `@creezio/fleet` (`packages/fleet/src`) — les `.mjs` flotte de
+  `fleet-collector/` (admin-docker, server-lib, instance-stack,
+  agent-updates, registry-pull-proxy, server-admin, host-agent) sont des
+  **wrappers de compat** `[deprecated]` conservés UNE version. Seuls
+  `server.mjs` / `ops-api.mjs` / `env.mjs` (collector télémétrie) restent la
+  SoT ici. Modifier la flotte = modifier `packages/fleet/src` + `npm run
+  build:packages`.
+- **fleet embarqué au build des images** : les images `docker/server-admin`
+  et `docker/host-agent` embarquent `packages/fleet/dist` (contexte stagé
+  par le CLI, CMD `node_modules/@creezio/fleet/dist/bin/*-main.js`). Après
+  toute modif flotte : `npm run build:packages` puis re-runner
+  `creezio server-docker admin up …` / `agent up …` (rebuild + recreate),
+  sinon les containers servent l'ancien code (fail-closed si dist absent).
 - Garder tous les chemins de collecte best-effort (`try/catch`) sauf raison explicite.
 - Toute donnée user/env/API doit passer par `redactSecrets` ou un équivalent.
 - Les scopes fleet doivent rester opt-in via `isScopeActive`.

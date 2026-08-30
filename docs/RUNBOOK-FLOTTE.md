@@ -57,6 +57,23 @@ Les zones Cloudflare et hostnames publics sont **ceux de la marque**
     `integration://<slug>` via clé service Hermes), sync push vers le n8n
     embarqué (`creezio:<slug>`), secrets chiffrés `core.db`
 
+## Protocole agent ↔ backend (P2.b / F4.4d, 0.15.0)
+
+Backend flotte typé : SoT [`packages/fleet`](../packages/fleet/README.md)
+(`@creezio/fleet`). Tous les échanges server-admin ↔ host-agent (+ pull
+agent → app admin) portent le header `x-creezio-fleet-protocol` (v1) :
+
+- version égale → OK ;
+- header **absent** (composant déployé ≤ 0.14) → accepté avec **warn bruyant
+  throttlé** (`… sans version de protocole flotte …` dans les logs) —
+  dual-accept UNE version seulement ;
+- version **différente** → refus explicite avec message actionnable
+  (mettre à jour via `creezio server-docker agent up` / `admin up`).
+
+Au prochain bump de protocole, l'absence de header devient un **refus
+fail-closed** (`FLEET_PROTOCOL_ACCEPT_MISSING=false`) — planifier la mise à
+jour des agents pendant la fenêtre dual-accept.
+
 ## Docs liées
 
 - [`docker/server/README.md`](../docker/server/README.md) — serveurs headless

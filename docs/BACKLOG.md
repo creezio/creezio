@@ -103,9 +103,20 @@ affaibli pour la masquer. (Backlogs d'époque : `docs/archive/BACKLOG-*.md`.)
   `test-phase-factory-two-repos.mjs`.
 - ~~Prospection kanban drag & drop~~ **fait** : `ProspectsKanbanClient`
   (`@creezio/admin/ui`, DnD HTML5 natif, PATCH colonne/position).
-- **Fleet natif TS** : porter la logique `server-lib.mjs`/`admin-docker.mjs`
-  dans `@creezio/admin` pour supprimer le hop HTTP interne (le backend
-  flotte HTTP reste pour les host-agents).
+- ~~Fleet natif TS~~ **fait autrement (P2.b, 0.15.0)** : backend flotte porté
+  en TS strict dans le NOUVEAU package `@creezio/fleet` (pas dans
+  `@creezio/admin` : l'agent hôte doit rester Node pur sans tirer admin/UI —
+  décision sur graphe de deps, voir `packages/fleet/AGENTS.md`). Les `.mjs`
+  de fleet-collector = wrappers compat `[deprecated]` une version. Reste
+  ouvert : supprimer le hop HTTP interne admin app → server-admin en faisant
+  dépendre `@creezio/admin` de `@creezio/fleet` (imports directs) — le
+  backend HTTP reste pour les host-agents.
+- **Retrait wrappers fleet-collector (0.16)** : supprimer les 7 wrappers
+  `.mjs` de `packages/observability/fleet-collector/` + le bin
+  `creezio-server-admin`, repointer le CLI factory
+  (`importInstanceStack`, imports server-lib) directement sur
+  `packages/fleet/dist`, et passer `FLEET_PROTOCOL_ACCEPT_MISSING=false`
+  au prochain bump de protocole (politique F4.4d).
 - **Rôles/permissions mode admin** : rôles dédiés (community manager,
   comptable…) sur le système de comptes kit — aujourd'hui multi-comptes
   standard sans permissions par module.
