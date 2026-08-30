@@ -1,5 +1,13 @@
 # @creezio/integrations
 
+## 0.17.0
+
+### Patch Changes
+
+- Updated dependencies [13c1d18]
+  - @creezio/platform-core@0.17.0
+  - @creezio/auth@0.17.0
+
 ## 0.16.0
 
 ### Patch Changes
