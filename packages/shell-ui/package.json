@@ -1,6 +1,6 @@
 {
   "name": "@creezio/shell-ui",
-  "version": "0.16.0",
+  "version": "0.17.0",
   "description": "Nav + slots + shell CRM UI / libs plateforme (O9)",
   "type": "module",
   "main": "./dist-cjs/index.js",
@@ -50,8 +50,8 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@creezio/brand-config": "^0.16.0",
-    "@creezio/shell": "^0.16.0",
+    "@creezio/brand-config": "^0.17.0",
+    "@creezio/shell": "^0.17.0",
     "clsx": "^2.0.0",
     "tailwind-merge": "^2.0.0"
   },

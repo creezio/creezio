@@ -1,5 +1,24 @@
 # @creezio/admin
 
+## 0.17.0
+
+### Minor Changes
+
+- b25b823: P3.b — rollout npm flotte-wide : `buildAllBrandPrPayloads` branché sur le
+  workflow réel `propagate.yml` (canaux marque data-driven, `brandId` libre,
+  PR de bump automatique avec rapport d'impact) ; heartbeat flotte enrichi
+  `kitVersion` + `architectureVersion` (champs additifs, protocole v1
+  dual-accept) ; registre admin `admin_fleet_servers` : colonnes
+  `kit_version` / `architecture_version` (migration `admin_006`) exposées via
+  l'API fleet et badge UI — « quelle version tourne où ».
+
+### Patch Changes
+
+- Updated dependencies [13c1d18]
+  - @creezio/platform-core@0.17.0
+  - @creezio/api-kernel@0.17.0
+  - @creezio/integrations@0.17.0
+
 ## 0.16.0
 
 ### Patch Changes

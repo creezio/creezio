@@ -1,6 +1,6 @@
 {
   "name": "@creezio/assistant",
-  "version": "0.16.0",
+  "version": "0.17.0",
   "description": "Chat / assistant plateforme Creezio (store + runtime + UI + chat SSE O4)",
   "type": "module",
   "main": "./dist-cjs/index.js",
@@ -28,8 +28,8 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@creezio/platform-core": "^0.16.0",
-    "@creezio/shell": "^0.16.0",
+    "@creezio/platform-core": "^0.17.0",
+    "@creezio/shell": "^0.17.0",
     "better-sqlite3": "^12.11.1",
     "hono": "^4.12.30"
   },
