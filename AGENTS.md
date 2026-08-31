@@ -290,9 +290,10 @@ Layout cloud : `/agent/repos/{creezio,tempoflow3,tempoflow3-admin}`.
 `CREEZIO_KIT_ROOT` et `creezio server-docker`.
 
 `install` = `npm ci` kit + `build:packages`, puis `npm ci` des clones
-sœurs (racine + `server/ui` + `client` si présents). Aucun serveur
-dans install/start. Harness marque : port libre + data dir isolé,
-jamais 18791/18792.
+sœurs si `CREEZIO_NPM_TOKEN` est injecté (sinon skip, pas d’échec).
+`start` pose les symlinks et complète `npm ci` marque si le token est
+là et `node_modules` absent. Aucun serveur dans install/start.
+Harness marque : port libre + data dir isolé, jamais 18791/18792.
 
 ```bash
 npm run test:kit

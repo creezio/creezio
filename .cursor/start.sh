@@ -1,12 +1,13 @@
 #!/usr/bin/env bash
-# Per-boot : chemins /opt/docker/<nom> attendus par le CLI server-docker.
+# Per-boot : chemins /opt/docker/<nom> + npm ci marques si token et modules absents.
 # Idempotent. Ne démarre aucun serveur.
 set -euo pipefail
 
 SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+# shellcheck source=lib.sh
+source "$SCRIPT_DIR/lib.sh"
 KIT_ROOT=$(cd "$SCRIPT_DIR/.." && pwd)
-
-log() { printf '%s\n' "$*"; }
+export KIT_ROOT
 
 ensure_docker_root() {
   if [ ! -d /opt/docker ]; then
@@ -41,41 +42,16 @@ ensure_link() {
   log "link $dest -> $resolved"
 }
 
-find_sibling() {
-  local name=$1
-  local candidates=()
-  local dir=$KIT_ROOT
-  local i
-  for i in 1 2 3; do
-    dir=$(dirname "$dir")
-    candidates+=("$dir/$name")
-  done
-  candidates+=(
-    "/agent/repos/$name"
-    "/workspace/$name"
-    "/workspaces/$name"
-  )
-  local c resolved
-  for c in "${candidates[@]}"; do
-    if [ -f "$c/package.json" ]; then
-      resolved=$(cd "$c" && pwd)
-      if [ "$resolved" != "$KIT_ROOT" ] && [ "$resolved" != "/opt/docker/$name" ]; then
-        printf '%s\n' "$resolved"
-        return 0
-      fi
-    fi
-  done
-  return 1
-}
-
 ensure_docker_root
 ensure_link /opt/docker/creezio "$KIT_ROOT"
 
 if tf3=$(find_sibling tempoflow3); then
   ensure_link /opt/docker/tempoflow3 "$tf3"
+  ensure_brand_modules "$tf3" tempoflow3
 fi
 if admin=$(find_sibling tempoflow3-admin); then
   ensure_link /opt/docker/tempoflow3-admin "$admin"
+  ensure_brand_modules "$admin" tempoflow3-admin
 fi
 
 log "start OK"
