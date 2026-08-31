@@ -323,13 +323,19 @@ test("link-kit : helpers kit-release + CLI + gates scaffold", async () => {
     "utf8",
   );
   assert.match(brandCli, /--link-kit/);
-  for (const [file, needle] of [
-    ["scripts/test-phase-os-ui-scaffold.mjs", "--link-kit"],
-    ["scripts/test-phase-factory-two-repos.mjs", "--link-kit"],
-    ["scripts/test-phase-factory-prd-experience.mjs", "--link-kit"],
+  // Les gates scaffold ne doivent jamais dépendre du registre npm : soit
+  // --link-kit (install depuis le worktree), soit CREEZIO_SKIP_BRAND_DIST=1
+  // (structure seule, node_modules hoisté du kit — contrat hors-ligne T12).
+  for (const file of [
+    "scripts/test-phase-os-ui-scaffold.mjs",
+    "scripts/test-phase-factory-two-repos.mjs",
+    "scripts/test-phase-factory-prd-experience.mjs",
   ]) {
     const src = fs.readFileSync(path.join(ROOT, file), "utf8");
-    assert.match(src, new RegExp(needle), `${file} doit passer --link-kit`);
+    assert.ok(
+      /--link-kit/.test(src) || /CREEZIO_SKIP_BRAND_DIST/.test(src),
+      `${file} doit passer --link-kit ou CREEZIO_SKIP_BRAND_DIST=1 (pas de registre npm)`,
+    );
   }
   const ci = fs.readFileSync(path.join(ROOT, ".github/workflows/ci.yml"), "utf8");
   assert.match(ci, /CREEZIO_LINK_KIT/);
