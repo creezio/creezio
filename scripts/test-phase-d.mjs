@@ -311,6 +311,7 @@ test("CLI creezio new-app", () => {
       "--out",
       outDir,
       "--force",
+      "--no-push",
     ],
     {
       encoding: "utf8",

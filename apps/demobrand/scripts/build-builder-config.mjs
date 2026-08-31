@@ -1,15 +1,13 @@
 #!/usr/bin/env node
 /**
  * Génère electron-builder.client.json / .server.json via buildElectronBuilderConfig.
- * Préfère le registre kit ; sinon lit src/electron/app-manifest.ts via JSON export.
+ * SoT = src/electron/app-manifest.json (H11 : plus de fallback registre kit).
  */
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import {
   buildElectronBuilderConfig,
-  getManifest,
-  listBrandIds,
   renderNsisInstallerInclude,
 } from "@creezio/brand-config";
 
@@ -18,15 +16,17 @@ const root = path.resolve(__dirname, "..");
 const kind = process.argv[2] === "server" ? "server" : "client";
 const brandId = process.env.CREEZIO_BRAND || "demobrand";
 
-let manifest;
-if (listBrandIds().includes(brandId)) {
-  manifest = getManifest(brandId);
-} else {
-  const genPath = path.join(root, "src/electron/app-manifest.json");
-  if (!fs.existsSync(genPath)) {
-    throw new Error(`Manifest introuvable pour ${brandId} (registre + app-manifest.json)`);
-  }
-  manifest = JSON.parse(fs.readFileSync(genPath, "utf8"));
+const genPath = path.join(root, "src/electron/app-manifest.json");
+if (!fs.existsSync(genPath)) {
+  throw new Error(
+    `Manifest introuvable pour ${brandId} — src/electron/app-manifest.json requis (H11)`,
+  );
+}
+const manifest = JSON.parse(fs.readFileSync(genPath, "utf8"));
+if (manifest.brandId !== brandId) {
+  throw new Error(
+    `app-manifest.json brandId=${manifest.brandId} ≠ CREEZIO_BRAND=${brandId}`,
+  );
 }
 
 const base = JSON.parse(
