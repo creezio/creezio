@@ -2,14 +2,18 @@
 
 /**
  * Page /grokbot côté serveur marque — compose les panneaux extraits :
- * - `grokbot-launch-form.tsx` (GROKBOT-1)
- * - `grokbot-usage-artifacts.tsx` (GROKBOT-1)
- * - `grokbot-agent-runs.tsx` (GROKBOT-2)
+ * - `grokbot-launch-form.tsx` (GROKBOT-1) — prompt, repos, modèle, mode, PR
+ * - `grokbot-usage-artifacts.tsx` (GROKBOT-1) — usage tokens + artefacts
+ * - `grokbot-agent-runs.tsx` (GROKBOT-2) — suivi des runs, tel quel
+ *
+ * Le poll 15 s ne touche que status / agents / runs — jamais
+ * GET /repositories (rate limit 1 req/min, cache mount 1 h).
  *
  * API : /api/v1/modules/grokbot/* (mount natif @creezio/grokbot).
  */
 
 import { useCallback, useEffect, useState } from "react";
+import { toast } from "sonner";
 import { Badge, Button, Card, Input } from "@creezio/shell-ui/ui/kit";
 import { GrokbotLaunchForm } from "./grokbot-launch-form";
 import { GrokbotUsageArtifacts } from "./grokbot-usage-artifacts";
@@ -46,8 +50,6 @@ type RunItem = {
   git?: { branches?: Array<{ repoUrl?: string; branch?: string; prUrl?: string }> };
 };
 
-type ModelItem = { id: string; displayName?: string };
-
 function statusVariant(
   status: string | null | undefined,
 ): "default" | "secondary" | "destructive" | "outline" {
@@ -73,18 +75,13 @@ function fmtDate(iso: string | null | undefined): string {
 export function GrokbotClient() {
   const [status, setStatus] = useState<StatusView | null>(null);
   const [agents, setAgents] = useState<AgentItem[]>([]);
-  const [models, setModels] = useState<ModelItem[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   const [token, setToken] = useState("");
   const [maskedToken, setMaskedToken] = useState<string | null>(null);
-
-  const [prompt, setPrompt] = useState("");
-  const [repoUrl, setRepoUrl] = useState("");
-  const [modelId, setModelId] = useState("");
-  const [autoCreatePR, setAutoCreatePR] = useState(false);
+  const [defaultRepoUrl, setDefaultRepoUrl] = useState<string | null>(null);
+  const [defaultModelId, setDefaultModelId] = useState<string | null>(null);
 
   const [openId, setOpenId] = useState<string | null>(null);
   const [runs, setRuns] = useState<RunItem[]>([]);
@@ -97,18 +94,16 @@ export function GrokbotClient() {
         fetch(`${API}/config`, { cache: "no-store" }).then((r) => r.json()),
       ]);
       if (s?.ok) setStatus(s);
-      if (c?.ok) setMaskedToken(c.config?.apiKey ?? null);
+      if (c?.ok) {
+        setMaskedToken(c.config?.apiKey ?? null);
+        setDefaultRepoUrl(c.config?.defaultRepoUrl ?? null);
+        setDefaultModelId(c.config?.defaultModelId ?? null);
+      }
       if (s?.ok && s.connected) {
         const a = await fetch(`${API}/agents?limit=50`, { cache: "no-store" }).then(
           (r) => r.json(),
         );
         if (a?.ok) setAgents(a.items || []);
-        if (models.length === 0) {
-          const m = await fetch(`${API}/models`, { cache: "no-store" }).then((r) =>
-            r.json(),
-          );
-          if (m?.ok) setModels(m.data?.items || []);
-        }
       } else {
         const a = await fetch(`${API}/agents?source=local`, {
           cache: "no-store",
@@ -119,7 +114,7 @@ export function GrokbotClient() {
     } catch {
       setError("Module GrokBot injoignable");
     }
-  }, [models.length]);
+  }, []);
 
   const loadRuns = useCallback(async (agentId: string) => {
     setOpenId(agentId);
@@ -156,41 +151,17 @@ export function GrokbotClient() {
       const j = await r.json();
       if (j?.ok) {
         setToken("");
-        setNotice("Token Cursor enregistré.");
+        toast.success("Token Cursor enregistré.");
         await refresh();
+      } else {
+        toast.error(j?.error || "Enregistrement impossible.");
       }
+    } catch {
+      toast.error("Enregistrement impossible.");
     } finally {
       setBusy(false);
     }
   }, [token, refresh]);
-
-  const launchAgent = useCallback(async () => {
-    if (!prompt.trim()) return;
-    setBusy(true);
-    setNotice(null);
-    try {
-      const body: Record<string, unknown> = { text: prompt.trim() };
-      if (repoUrl.trim()) body.repoUrl = repoUrl.trim();
-      if (modelId) body.modelId = modelId;
-      if (autoCreatePR) body.autoCreatePR = true;
-      const r = await fetch(`${API}/agents`, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify(body),
-      });
-      const j = await r.json();
-      if (j?.ok) {
-        setPrompt("");
-        setNotice(`Agent lancé : ${j.agent?.name || j.agent?.id}`);
-        await refresh();
-        if (j.agent?.id) void loadRuns(j.agent.id);
-      } else {
-        setNotice(`Échec : ${j?.error || r.status}`);
-      }
-    } finally {
-      setBusy(false);
-    }
-  }, [prompt, repoUrl, modelId, autoCreatePR, refresh, loadRuns]);
 
   const sendFollowup = useCallback(async () => {
     if (!openId || !followup.trim()) return;
@@ -206,7 +177,7 @@ export function GrokbotClient() {
         setFollowup("");
         await loadRuns(openId);
       } else {
-        setNotice(`Échec : ${j?.detail?.error?.message || j?.error || r.status}`);
+        toast.error(`Échec : ${j?.detail?.error?.message || j?.error || r.status}`);
       }
     } finally {
       setBusy(false);
@@ -253,7 +224,6 @@ export function GrokbotClient() {
           {error}
         </Card>
       ) : null}
-      {notice ? <Card className="p-4 text-sm">{notice}</Card> : null}
 
       <Card className="flex flex-col gap-3 p-4">
         <div className="flex items-center justify-between">
@@ -284,17 +254,12 @@ export function GrokbotClient() {
 
       <GrokbotLaunchForm
         connected={Boolean(status?.connected)}
-        busy={busy}
-        prompt={prompt}
-        onPromptChange={setPrompt}
-        repoUrl={repoUrl}
-        onRepoUrlChange={setRepoUrl}
-        modelId={modelId}
-        onModelIdChange={setModelId}
-        models={models}
-        autoCreatePR={autoCreatePR}
-        onAutoCreatePRChange={setAutoCreatePR}
-        onLaunch={() => void launchAgent()}
+        defaultRepoUrl={defaultRepoUrl}
+        defaultModelId={defaultModelId}
+        onLaunched={(agent) => {
+          void refresh();
+          if (agent?.id) void loadRuns(agent.id);
+        }}
       />
 
       <div className="grid gap-4 md:grid-cols-2">
