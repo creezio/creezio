@@ -42,6 +42,16 @@ export type BrandMeiliIndexSpec = {
   loadDocs?: (db: MeiliFeedSqliteDb) => Iterable<BrandMeiliDocument>;
   /** Table SQL source (mode déclaratif — ignoré si loadDocs). */
   table?: string;
+  /**
+   * Échappatoire déclarative du doctor brand-spec
+   * (`MODULE_MEILI_TABLE_UNKNOWN`) : la table n'est **pas** créée par une
+   * migration statique de l'app (provisionnée à l'exécution — import
+   * distant, matérialisation runtime, table temporaire de sync…).
+   * Texte actionnable : QUI provisionne la table, et quand.
+   * Si ce champ est posé (non vide), le check table↔migrations ne
+   * déclenche pas. **Pas** d'env de bypass.
+   */
+  tableProvisionedBy?: string;
   /** Colonnes indexées, id toujours forcé (mode déclaratif). */
   columns?: string[];
   /** Champ `type` du document Meili (mode déclaratif). */
