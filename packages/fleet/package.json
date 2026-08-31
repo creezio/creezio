@@ -36,6 +36,11 @@
       "import": "./dist/agent-updates.js",
       "default": "./dist/agent-updates.js"
     },
+    "./update-status-store": {
+      "types": "./dist/update-status-store.d.ts",
+      "import": "./dist/update-status-store.js",
+      "default": "./dist/update-status-store.js"
+    },
     "./registry-pull-proxy": {
       "types": "./dist/registry-pull-proxy.d.ts",
       "import": "./dist/registry-pull-proxy.js",

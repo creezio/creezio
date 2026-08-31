@@ -750,6 +750,7 @@ export async function updateServer({
   inst,
   image,
   audit,
+  onStep,
   waitTimeoutMs = 180_000,
   backup = false,
 }: {
@@ -758,6 +759,8 @@ export async function updateServer({
   inst: ServerInstance;
   image: string;
   audit?: AuditFn;
+  /** Hook optionnel appelé à chaque étape (suivi update-status persisté). */
+  onStep?: (step: string) => void;
   waitTimeoutMs?: number;
   backup?: boolean;
 }): Promise<UpdateResult> {
@@ -768,6 +771,11 @@ export async function updateServer({
   const log = (s: string) => {
     steps.push(s);
     audit?.(`update ${brandId}/${inst.name}: ${s}`);
+    try {
+      onStep?.(s);
+    } catch {
+      /* le suivi ne doit jamais casser l'update */
+    }
   };
 
   let stackPolicy: ReturnType<typeof resolveStackUpdatePolicy> | null = null;
