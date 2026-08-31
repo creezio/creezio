@@ -1,5 +1,19 @@
 # @creezio/factory
 
+## 0.16.1
+
+### Patch Changes
+
+- b9162e0: Factory : `tsconfig.preload.json` inclut `electron-shim.d.ts` pour compiler le preload hors ligne, sans paquet `electron` ni `npm install`.
+- 2e39bcd: Factory `--link-kit` / `CREEZIO_LINK_KIT=1` : l'install d'une app fraîche pin les `@creezio/*` sur le worktree kit (`file:`), sans dépendre d'un publish préalable. Les gates scaffold et la CI l'utilisent toujours — la PR de release n'a plus d'œuf-poule registre. Les manifests générés restent `^<lockstep>`.
+- 6e18a9f: Factory : `SERVER_CREEZIO_DEPS` est la SoT unique (kit-release.ts) consommée par scaffold et --from-prd — granola / grokbot / nav ne peuvent plus manquer du server/package.json généré.
+- 60683cf: server-docker : `CREEZIO_SERVER_DOCKER_BACKUP=0` (aussi `false`/`off`) skippe les backups (`update --backup`, one-shot, migrate-stack, API `backup:true`). Défaut on (prod-safe). L'env gagne ; warn `backup skippé (CREEZIO_SERVER_DOCKER_BACKUP=0)`.
+- Updated dependencies [ab09f4f]
+  - @creezio/brand-spec@0.21.0
+  - @creezio/brand-config@0.21.0
+  - @creezio/platform-core@0.21.0
+  - @creezio/product-hub@0.21.0
+
 ## Unreleased
 
 ### Patch Changes

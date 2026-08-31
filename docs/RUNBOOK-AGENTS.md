@@ -105,9 +105,10 @@ ce champ). Un `mcpTools()` restant = doctor error `MODULE_MCP_TOOLS_DEPRECATED`
 
 1. **Changeset** — toute PR touchant `packages/` embarque un changeset
    (`npx changeset`, commit `.changeset/*.md`). Gate PR `changeset-status`
-   (`npx changeset status --since=origin/main`) : rouge sinon — sans
+   (`node scripts/changeset-status-check.mjs`) : rouge sinon — sans
    changeset, la version ne bumpe pas et les apps ne verront JAMAIS le
-   contenu.
+   contenu. Sur `changeset-release/*` le check est « aucun changeset
+   orphelin » (les files ont été consommés par `changeset version`).
 2. **Merge sur `main`** → `publish.yml` ouvre/actualise la PR automatique
    « chore(release): version packages » (bump lockstep + CHANGELOG **+ regen
    `package-lock.json`** via `version:packages` = `changeset version && npm
@@ -169,7 +170,7 @@ opt-in).
 
 | Gate | Où | Protège | Satisfaire | Relancer seule |
 |---|---|---|---|---|
-| `changeset-status` | PR kit | tout changement `packages/` a son changeset | `npx changeset` + commit du `.changeset/*.md` | `npx changeset status --since=origin/main` |
+| `changeset-status` | PR kit | tout changement `packages/` a son changeset ; PR de version = plus aucun leftover | `npx changeset` + commit du `.changeset/*.md` | `node scripts/changeset-status-check.mjs` |
 | deps-integrity | CI apps (`server/scripts/test-deps-integrity.mjs`) | packages `@creezio/*` installés : présents, **pas de symlink**, ranges `^` satisfaits, **même version partout**, `vendor/creezio` absent | `npm ci` racine ; aligner les versions des DEUX manifests | `npm run test:deps-integrity --prefix server` |
 | docs-freshness | kit (`test-phase-docs-freshness`) | trio `README.md`/`AGENTS.md`/`docs/FILES.md` complet par zone (`packages/*`, `docker/*`, `apps/*`, `scripts`) et FILES.md exhaustif | après ajout/suppression de fichier : `node scripts/generate-files-md.mjs <cible>` — ou `--all` (vérif seule : `--all --check`) | `node --test scripts/test-phase-docs-freshness.mjs` |
 | assert-runtime-dist | kit (`test-phase-runtime-dist-freshness`) + `server-docker publish\|build` | `dist/` (gitignoré) rebuildé après modif `packages/*/src` — sinon package/image **sans les routes** (vécu Admin Database). Compare le **hash sha256 des src** au manifest `dist/.creezio-src-hash.json` écrit au build (les mtimes ne sont pas fiables : src touchés à contenu propre bloquaient les deploys) | `npm run build:packages` avant toute release/publish | `node --test scripts/test-phase-runtime-dist-freshness.mjs` ; bypass urgence `CREEZIO_SKIP_RUNTIME_DIST_ASSERT=1` (déconseillé) |

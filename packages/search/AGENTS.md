@@ -29,6 +29,16 @@ jamais dans electron-shell) que vit tout nouveau code recherche.
 - `src/brand-meili-boot.ts` — `maybeBootBrandMeili` (appelé par
   app-runtime : desktop ET harness serveur).
 
+## Contrat `tableProvisionedBy` (index Meili)
+
+Champ optionnel de `BrandMeiliIndexSpec` (`src/meili/feed.ts`) : texte
+actionnable expliquant QUI provisionne `table` à l'exécution (import
+distant, matérialisation runtime…). Le doctor brand-spec
+(`MODULE_MEILI_TABLE_UNKNOWN`) **ne déclenche pas** si ce champ est posé
+et non vide. C'est la **seule** échappatoire — pas d'env de bypass.
+Cas normal : la table existe dans une migration de l'app (même module,
+autre module, ou historique `fromprd_brand_*`).
+
 ## Comment modifier sans casser
 
 1. Tout nouveau symbole public s'exporte depuis `src/index.ts` d'ICI. Ne

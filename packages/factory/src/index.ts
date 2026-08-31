@@ -60,6 +60,7 @@ export {
 export {
   isPackageLockInSync,
   ensureBrandPackageLocks,
+  pinCreezioDepsToKitWorktree,
   type PkgJson,
 } from "./package-lock.js";
 export {

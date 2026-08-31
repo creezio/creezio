@@ -63,6 +63,10 @@ import {
   checkFleetProtocol,
   shouldWarnProtocol,
 } from "./protocol.js";
+import {
+  HOST_AGENT_UPDATES_BASENAME,
+  createUpdateStatusStore,
+} from "./update-status-store.js";
 import type { HostAgentState, UpdateEntry } from "./types.js";
 
 export function startHostAgent(): void {
@@ -147,8 +151,25 @@ export function startHostAgent(): void {
    * (pull + backup + recreate + boot) ne survit pas au proxy Cloudflare
    * (~100 s max par requête). L'admin/UI suit via GET /update-status.
    * containerName → { status, image, startedAt, finishedAt?, result? }
+   *
+   * PERSISTÉ (T8) : journal host-agent-updates.json à côté du state file —
+   * un restart de l'agent pendant un update n'efface plus le suivi (reload
+   * au boot, résolution via servers.json, flag additif `agentRestarted`,
+   * TTL 24 h sur les entrées terminées).
    */
-  const updates = new Map<string, UpdateEntry>();
+  const updates = createUpdateStatusStore({
+    file: path.join(path.dirname(STATE_FILE), HOST_AGENT_UPDATES_BASENAME),
+    resolveInstanceImage: (containerName) => {
+      for (const root of BRAND_ROOTS) {
+        const reg = loadRegistry(root);
+        const inst = reg.instances.find(
+          (i) => i.containerName === containerName,
+        );
+        if (inst) return inst.image ?? null;
+      }
+      return null;
+    },
+  });
 
   async function handleInstanceRoute(
     req: IncomingMessage,
@@ -201,6 +222,12 @@ export function startHostAgent(): void {
         inst,
         image,
         audit,
+        // Chaque étape est persistée : un restart de l'agent en plein update
+        // laisse au minimum la dernière étape connue dans le journal.
+        onStep: (step) => {
+          entry.lastStep = step;
+          updates.save();
+        },
         // Opt-in : seul backup:true crée un tar.gz frais (défaut = skip).
         backup: body.backup === true,
       })
@@ -208,11 +235,13 @@ export function startHostAgent(): void {
           entry.status = r.ok ? "done" : "error";
           entry.finishedAt = new Date().toISOString();
           entry.result = r;
+          updates.save();
         })
         .catch((e) => {
           entry.status = "error";
           entry.finishedAt = new Date().toISOString();
           entry.result = { ok: false, error: String((e as Error)?.message || e) };
+          updates.save();
           audit(`update KO brand=${brandId} name=${name}: ${(e as Error)?.message || e}`);
         });
       return send(res, 202, { ok: true, started: true, update: entry });

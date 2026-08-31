@@ -7,13 +7,19 @@
  * client/). Plus de vendor ni de clôture file: à expanser.
  *
  * Régénération via `npm install --package-lock-only` (push) ou
- * `npm install` (build host) — interroge le registre GitHub Packages :
- * CREEZIO_NPM_TOKEN doit être exporté (le .npmrc généré référence
- * ${CREEZIO_NPM_TOKEN}).
+ * `npm install` (build host). Sans `--link-kit`, interroge le registre
+ * GitHub Packages (CREEZIO_NPM_TOKEN). Avec `--link-kit` /
+ * `CREEZIO_LINK_KIT=1`, les `@creezio/*` sont pinés sur le worktree kit
+ * (`file:`) le temps de l'install — les manifests restent `^<lockstep>`.
  */
 import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
+import {
+  creezioLinkKitFileSpecs,
+  isLinkKitEnabled,
+  resolveKitRoot,
+} from "./kit-release.js";
 
 export type PkgJson = {
   dependencies?: Record<string, string>;
@@ -150,10 +156,88 @@ export function ensureBrandPackageLocks(
   opts?: {
     mode?: "lock-only" | "install";
     log?: (line: string) => void;
+    /** Racine du kit (packages/*) — requis si link-kit. */
+    kitRoot?: string;
+    /** Pin `@creezio/*` sur le worktree (sinon env `CREEZIO_LINK_KIT`). */
+    linkKit?: boolean;
   },
 ): { refreshed: string[] } {
   const log = opts?.log || ((l: string) => console.log(l));
   const mode = opts?.mode || "lock-only";
+  const linkKit = isLinkKitEnabled(opts?.linkKit);
+  const restore = linkKit
+    ? pinCreezioDepsToKitWorktree(brandRoot, opts?.kitRoot, log)
+    : () => {};
+  try {
+    return refreshBrandPackageLocks(brandRoot, mode, log, linkKit);
+  } finally {
+    restore();
+  }
+}
+
+/**
+ * Réécrit temporairement les `@creezio/*` des package.json en `file:<kit>`
+ * + overrides (transitives). Restaure le contenu original à l'appel du
+ * retour — les manifests committables restent `^<lockstep>`.
+ */
+export function pinCreezioDepsToKitWorktree(
+  brandRoot: string,
+  kitRoot: string | undefined,
+  log: (line: string) => void,
+): () => void {
+  const root = resolveKitRoot(kitRoot);
+  const fileSpecs = creezioLinkKitFileSpecs(root);
+  if (!Object.keys(fileSpecs).length) {
+    throw new Error(
+      `link-kit : aucun package @creezio/* sous ${path.join(root, "packages")} — ` +
+        "poser CREEZIO_KIT_ROOT ou lancer le CLI depuis le clone kit",
+    );
+  }
+  const backups: Array<{ pkgPath: string; original: string }> = [];
+  const seen = new Set<string>();
+  for (const target of collectTargets(brandRoot)) {
+    if (seen.has(target.pkgPath) || !fs.existsSync(target.pkgPath)) continue;
+    seen.add(target.pkgPath);
+    const original = fs.readFileSync(target.pkgPath, "utf8");
+    let pkg: PkgJson & { overrides?: Record<string, string> };
+    try {
+      pkg = JSON.parse(original) as PkgJson & {
+        overrides?: Record<string, string>;
+      };
+    } catch {
+      continue;
+    }
+    backups.push({ pkgPath: target.pkgPath, original });
+    for (const field of [
+      "dependencies",
+      "devDependencies",
+      "optionalDependencies",
+    ] as const) {
+      const deps = pkg[field];
+      if (!deps) continue;
+      for (const name of Object.keys(deps)) {
+        if (fileSpecs[name]) deps[name] = fileSpecs[name];
+      }
+    }
+    pkg.overrides = { ...pkg.overrides, ...fileSpecs };
+    fs.writeFileSync(target.pkgPath, JSON.stringify(pkg, null, 2) + "\n");
+  }
+  log(
+    `link-kit : ${Object.keys(fileSpecs).length} @creezio/* → file:${path.join(root, "packages")}/*`,
+  );
+  return () => {
+    for (const b of backups) {
+      fs.writeFileSync(b.pkgPath, b.original);
+    }
+  };
+}
+
+function refreshBrandPackageLocks(
+  brandRoot: string,
+  mode: "lock-only" | "install",
+  log: (line: string) => void,
+  linkKit: boolean,
+): { refreshed: string[] } {
   const refreshed: string[] = [];
   for (const target of collectTargets(brandRoot)) {
     if (isPackageLockInSync(target.pkgPath, target.lockPath, target.lockKey)) {
@@ -180,7 +264,9 @@ export function ensureBrandPackageLocks(
     if (r.status !== 0) {
       throw new Error(
         `npm ${args.join(" ")} exit ${r.status ?? "?"} dans ${target.rel} — ` +
-          "lock impossible (deps @creezio/* privées → exporter CREEZIO_NPM_TOKEN)",
+          (linkKit
+            ? "lock impossible en --link-kit (worktree kit ou deps publiques injoignables)"
+            : "lock impossible (deps @creezio/* privées → exporter CREEZIO_NPM_TOKEN, ou --link-kit)"),
       );
     }
     if (!isPackageLockInSync(target.pkgPath, target.lockPath, target.lockKey)) {

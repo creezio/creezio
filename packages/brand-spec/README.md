@@ -10,7 +10,7 @@ dans `@creezio/app-runtime` / `@creezio/electron-shell`.
 | Export | Rôle |
 |--------|------|
 | `loadBrandSpec` / `resolveBrandSpecDir` | Charge et résout un dossier `brand-spec/` |
-| `doctorBrandSpec` / `formatDoctorReport` | Diagnostic (`creezio brand doctor --spec brand-spec`) — helpers modules ignorés ; démo pauvre = warn ; pin < 0.10.1 (Winhub 0.9.2) : démo absente = warn. Fail-closed manifests : `CREEZIO_MANIFEST_MISALIGNED` (specs divergentes) et `OS_UI_PAGE_DEP_MISSING` (page os-ui important un `@creezio/*` absent de `server/ui/package.json` — incident 0.20.0) |
+| `doctorBrandSpec` / `formatDoctorReport` | Diagnostic (`creezio brand doctor --spec brand-spec`) — helpers modules ignorés ; démo pauvre = warn ; pin < 0.10.1 (Winhub 0.9.2) : démo absente = warn ; `MODULE_MEILI_TABLE_UNKNOWN` si `meiliIndexes.table` n'existe dans aucune migration de l'app (résolution cross-module + `fromprd_brand_*` ; échappatoire `tableProvisionedBy`). Fail-closed manifests : `CREEZIO_MANIFEST_MISALIGNED` (specs divergentes) et `OS_UI_PAGE_DEP_MISSING` (page os-ui important un `@creezio/*` absent de `server/ui/package.json` — incident 0.20.0) |
 | `initBrandSpec` | Scaffold d'un dossier `brand-spec/` neuf |
 | `resolveOnboardingDecl` / `toSetupWizardConfig` | Déclaration onboarding → config wizard |
 

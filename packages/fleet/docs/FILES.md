@@ -18,6 +18,7 @@
 | [`src/server-admin.ts`](../src/server-admin.ts) | (à documenter) |
 | [`src/server-lib.ts`](../src/server-lib.ts) | (à documenter) |
 | [`src/types.ts`](../src/types.ts) | (à documenter) |
+| [`src/update-status-store.ts`](../src/update-status-store.ts) | Persistance du suivi update-status (T8) : journal JSON atomique (tmp+rename) par process dans le répertoire d'état existant, reload au boot avec résolution via `servers.json` + flag additif `agentRestarted`, TTL 24 h sur les entrées terminées |
 
 ## `src/bin/`
 

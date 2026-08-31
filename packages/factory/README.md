@@ -104,6 +104,7 @@ que toute page os-ui a ses deps déclarées (`OS_UI_PAGE_DEP_MISSING`).
 | `--feed-token` | Token feed sandbox |
 | `--sandbox` / `--no-sandbox` | Flag sandbox (défaut oui) |
 | `--force` | Écrase les fichiers existants |
+| `--link-kit` | Installe `@creezio/*` depuis le worktree kit (`file:`), pas le registre. Équivalent : `CREEZIO_LINK_KIT=1`. Les manifests restent `^<lockstep>`. Requis en CI / PR de release (version pas encore publiée). |
 
 ## API publique
 

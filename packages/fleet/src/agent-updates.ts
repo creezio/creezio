@@ -31,6 +31,7 @@ import {
 } from "./protocol.js";
 import type { AuditFn, ServerInstance, UpdateEntry, UpdateResult } from "./types.js";
 import type { FoundInstance } from "./server-lib.js";
+import type { UpdateStatusTracker } from "./update-status-store.js";
 
 /** Référence pull par digest : repo de l'image (sans tag) + @sha256:… */
 export function imageRefWithDigest(image: string, digest: string | null | undefined): string {
@@ -69,8 +70,10 @@ export interface AgentUpdateCycleOptions {
     inst: ServerInstance;
     image: string;
     audit?: AuditFn;
+    onStep?: (step: string) => void;
   }) => Promise<UpdateResult>;
-  updates: Map<string, UpdateEntry>;
+  /** Suivi partagé avec le push manuel — Map OU store persistant (T8). */
+  updates: UpdateStatusTracker;
   audit?: AuditFn;
   fetchImpl?: typeof fetch;
   timeoutMs?: number;
@@ -252,7 +255,18 @@ export async function runAgentUpdateCycle({
     audit(`pull-update ${brandId}/${name} → ${ref} (${d.reason || "release"})`);
     let result: UpdateResult | { ok: false; error: string; rolledBack: boolean };
     try {
-      result = await updateServer({ brandRoot, registry, inst, image: ref, audit });
+      result = await updateServer({
+        brandRoot,
+        registry,
+        inst,
+        image: ref,
+        audit,
+        // Persistance fil de l'eau (no-op avec une Map en mémoire).
+        onStep: (step) => {
+          entry.lastStep = step;
+          updates.set(inst.containerName, entry);
+        },
+      });
     } catch (e) {
       result = {
         ok: false,
@@ -263,6 +277,8 @@ export async function runAgentUpdateCycle({
     entry.status = result.ok ? "done" : "error";
     entry.finishedAt = new Date().toISOString();
     entry.result = result;
+    // Re-set : déclenche la persistance du statut terminal (store T8).
+    updates.set(inst.containerName, entry);
 
     if (leaseId) {
       try {
