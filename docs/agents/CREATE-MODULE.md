@@ -54,6 +54,8 @@ redéclarer le type (doctor `MODULE_TYPES_DIVERGENT` fail-closed) :
 | Nav métier | `navItems` (avec `order`) |
 | Tools MCP métier | **générés** depuis les ops (`module.<mountId>.<op.id>`) — plus de `mcpTools()` |
 | Index Meili | `meiliIndexes` (liste catalogue) **ou** `horsIndexJustification` |
+| Sources assistant | `assistantSources` (descripteurs typés `entity` / `context` / `tool`) **ou** `assistantSourcesJustification` — doctor warn `MODULE_ASSISTANT_SOURCES_MISSING` si le module expose une API sans les deux |
+| Onboarding produit | `onboarding` (étapes / textes / mascotte) — agrégés par `collectOnboardingContent()` (`@creezio/onboarding`) |
 | Démo interactive (**obligatoire**, ≥ 1) | `demo: { scenarios }` — agrégés par `collectInteractiveDemoDefaults` (`@creezio/interactive-demo`). Inclure `genericOsTourScenario({ productName })`. Une app sans démo = invalide. |
 
 Les fichiers d'assemblage (`brand-module-api.ts`, `brand-migrations.ts`,
@@ -247,6 +249,8 @@ Branche : `module/<id>/<tache>`. Détails :
 - [ ] Tools MCP générés depuis les ops (pas de `mcpTools()` parallèle)
 - [ ] Nav + permissions `configureAuth`
 - [ ] `meiliIndexes` (browse catalogue) **ou** `horsIndexJustification`
+- [ ] `assistantSources` (descripteurs typés) **ou** `assistantSourcesJustification`
+- [ ] `onboarding` (étapes du parcours produit, optionnel)
 - [ ] Pages UI 100 % kit graphique (DOC-STANDARD-UI.md)
 - [ ] Gate métier ajoutée au `npm test` marque et verte
 - [ ] Pas de glue OS ni fetch maison vers `/api/v1/os/*` / `/api/v1/platform/*`

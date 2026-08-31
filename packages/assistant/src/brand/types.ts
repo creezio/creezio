@@ -7,6 +7,8 @@
  * `BrandTools.executeTool` = legacy mort (O4r) — ne plus brancher de métier.
  */
 
+import type { BrandModuleAssistantSource } from "./module-sources.js";
+
 export type AssistantAppPage = {
   route: string;
   titre: string;
@@ -252,6 +254,12 @@ export type AssistantBrandConfig = {
   identity: AssistantBrandIdentity;
   appMap?: AssistantAppMapConfig;
   prompts?: AssistantPromptsConfig;
+  /**
+   * Sources collectées depuis `BrandModuleDef.assistantSources`
+   * (`collectAssistantSources`). Consommées par le runtime (contexte
+   * prompt, toolDefinitions, entitySources) — pas de code libre.
+   */
+  moduleSources?: BrandModuleAssistantSource[];
   tools?: AssistantBrandTools;
   /** O4r — discovery + exécution tools métier (module.* / plugin.*). */
   mcp?: AssistantMcpConfig;

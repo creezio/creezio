@@ -44,10 +44,10 @@ backend HTTP pour les host-agents distants. Attention ordre de build
 `test-phase-build-order-imports`.
 
 ### T5 — contrat module volet 2 (F3.4)
-Sources assistant + contenu onboarding intégrés à `BrandModuleDef`
-(`packages/app-runtime/src/module-contract.ts`). Gros chantier : lire
-`docs/adr/ADR-p2c-module-contract.md` d'abord. Prévoir codemod si
-`ARCHITECTURE_VERSION` bumpe (gate `test-phase-arch-codemod`).
+~~Ouvert au handoff.~~ **Livré** : champs additifs `assistantSources` /
+`onboarding` sur `BrandModuleDef`, collecteurs + consommation
+assistant/onboarding, doctor warn `MODULE_ASSISTANT_SOURCES_MISSING`,
+pas de bump `ARCHITECTURE_VERSION`.
 
 ### T6 — doctor : cohérence `meiliIndexes.table` ↔ migrations
 Vérifier au doctor brand-spec que la table d'un index Meili déclaré existe

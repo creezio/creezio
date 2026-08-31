@@ -478,6 +478,42 @@ function doctorBrandModulePermissions(
   }
 }
 
+/**
+ * Volet 2 F3.4 (T5) : un module qui expose une surface API (`apiMounts`
+ * ou `entitySpecs` → mounts CRUD) devrait déclarer `assistantSources`
+ * (descripteurs typés) OU `assistantSourcesJustification`. **Warn
+ * uniquement** — champ additif, pas de cassure des marques existantes
+ * (même esprit que `horsIndexJustification` à son introduction).
+ */
+function doctorBrandModuleAssistantSources(
+  specRoot: string,
+  issues: BrandSpecIssue[],
+): void {
+  const modulesDir = resolveAppModulesDir(specRoot);
+  if (!modulesDir) return;
+  const files = fs
+    .readdirSync(modulesDir)
+    .filter((f) => f.endsWith(".ts") && !isModuleHelperName(f))
+    .sort();
+  for (const file of files) {
+    const id = file.replace(/\.ts$/, "");
+    const filePath = path.join(modulesDir, file);
+    const src = stripModuleSourceComments(fs.readFileSync(filePath, "utf8"));
+    const rel = path.relative(specRoot, filePath);
+    const exposesApi = /\bapiMounts\s*:/.test(src) || /\bentitySpecs\s*:/.test(src);
+    if (!exposesApi) continue;
+    const hasSources = /\bassistantSources\s*:/.test(src);
+    const hasJustification = /\bassistantSourcesJustification\s*:/.test(src);
+    if (hasSources || hasJustification) continue;
+    issues.push({
+      level: "warn",
+      code: "MODULE_ASSISTANT_SOURCES_MISSING",
+      message: `module ${id}: surface API (apiMounts / entitySpecs) sans assistantSources ni assistantSourcesJustification — déclarer les sources/outils exposés à l'assistant, ou justifier l'absence (écritures internes, webhook machine…).`,
+      path: rel,
+    });
+  }
+}
+
 function moduleWiringHasDemoScenarios(src: string): boolean {
   if (!/\bdemo\s*:/.test(src) || !/\bscenarios\s*:/.test(src)) return false;
   return (
@@ -725,6 +761,7 @@ export function doctorBrandSpec(rootDir: string): DoctorResult {
   doctorBrandModuleMeiliTables(spec.rootDir, issues);
   doctorBrandModuleTypesContract(spec.rootDir, issues);
   doctorBrandModulePermissions(spec.rootDir, issues);
+  doctorBrandModuleAssistantSources(spec.rootDir, issues);
   doctorCreezioManifestAlignment(spec.rootDir, issues);
   doctorOsUiPageDeps(spec.rootDir, issues);
 

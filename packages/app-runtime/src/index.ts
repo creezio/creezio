@@ -11,9 +11,15 @@ export type {
 export {
   createBrandModuleRegistry,
   type BrandMeiliIndex,
+  type BrandModuleAssistantContextSource,
+  type BrandModuleAssistantEntitySource,
+  type BrandModuleAssistantSource,
+  type BrandModuleAssistantToolSource,
   type BrandModuleDef,
+  type BrandModuleOnboarding,
   type BrandModuleRegistry,
   type BrandNavItem,
+  type OnboardingContent,
 } from "./module-contract.js";
 export { startBrandDesktop } from "./start-brand-desktop.js";
 export { startBrandKernelHarness } from "./start-brand-kernel-harness.js";

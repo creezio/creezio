@@ -17,7 +17,8 @@ Maintenir le runtime assistant générique : registry brand, stockage chat, mode
 
 - `src/index.ts` : surface publique.
 - `src/brand/registry.ts` : `configureAssistantBrand` et résolveurs.
-- `src/brand/types.ts` : contrat marque.
+- `src/brand/module-sources.ts` : descripteurs `BrandModuleAssistantSource` (entity / context / tool) + `applyModuleAssistantSources` — consommation réelle des sources collectées par `createBrandModuleRegistry`.
+- `src/brand/types.ts` : contrat marque (`moduleSources` additif).
 - `src/http/assistant-routes.ts` : routes Hono assistant.
 - `src/runtime/assistant-chat.ts` : orchestration SSE, tools, Chat/Work.
 - `src/runtime/chat-db.ts` : conversations/messages/profils agent.
@@ -52,6 +53,7 @@ Configuration complète fréquente :
 
 - `appMap.pages` pour le prompt de navigation ;
 - `prompts` pour base system, addendum Chat, briefs Work ;
+- `moduleSources` pour les descripteurs collectés depuis `BrandModuleDef.assistantSources` ;
 - `mcp` pour tools métier ;
 - `tasks` pour `create_task` / `list_tasks` ;
 - `db` pour SQL/explore ;

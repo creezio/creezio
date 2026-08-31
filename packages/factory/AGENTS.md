@@ -5,7 +5,8 @@
 Maintenir le CLI `creezio` :
 
 0. **Happy path** (`brand create --id/--name/--domain`) : monorepo + repo
-   admin frère + registre vide + mount interactive-demo. Guide
+   admin frère + registre vide + mount interactive-demo + collecteurs
+   assistant/onboarding (F3.4). Guide
    `docs/agents/CREATE-APP.md`. **Pas** `demo-app` (déprécié, exit 1).
    **Pas** de module notes. **Pas** de `server/crm/`.
 1. **Mode OS** (`new-app --name/--id/--domain`) : squelette Client+Serveur,

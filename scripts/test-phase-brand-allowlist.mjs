@@ -59,7 +59,10 @@ function assertAppAllowlist(appDir, label) {
     "utf8",
   );
   assert.match(brandApi, /collectDemoScenarios/, `${label}: mount collectDemoScenarios`);
+  assert.match(brandApi, /collectAssistantSources/, `${label}: collectAssistantSources`);
+  assert.match(brandApi, /collectOnboardingContent/, `${label}: collectOnboardingContent`);
   assert.match(brandApi, /createInteractiveDemoMount/, `${label}: mount interactive-demo`);
+  assert.match(brandApi, /createOnboardingContentMount/, `${label}: mount onboarding`);
   assert.doesNotMatch(brandApi, /brandDemoScenarios\s*\(/);
   const main = fs.readFileSync(path.join(server, "src/electron/main.ts"), "utf8");
   assert.doesNotMatch(main, /listenBrandKernelHttp/);

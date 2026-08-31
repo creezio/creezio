@@ -13,6 +13,12 @@ import type {
   AssistantToolDefinition,
   HermesWorkUser,
 } from "./types.js";
+import type { BrandModuleAssistantSource } from "./module-sources.js";
+import {
+  applyModuleAssistantSources,
+  composeEntitySources,
+  createEntitySourcesFromModuleSources,
+} from "./module-sources.js";
 
 let config: AssistantBrandConfig | null = null;
 
@@ -75,6 +81,9 @@ export function mergeAssistantBrandConfig(
     desktopPresence: partial.desktopPresence
       ? { ...config.desktopPresence, ...partial.desktopPresence }
       : config.desktopPresence,
+    moduleSources: partial.moduleSources
+      ? [...(config.moduleSources ?? []), ...partial.moduleSources]
+      : config.moduleSources,
   };
 }
 
@@ -104,7 +113,16 @@ export function assistantPrompts(): AssistantPromptsConfig {
 }
 
 export function assistantBrandTools(): AssistantBrandTools {
-  return config?.tools ?? {};
+  const tools = config?.tools ?? {};
+  const moduleSources = assistantModuleSources();
+  if (!moduleSources.some((s) => s.kind === "entity")) return tools;
+  return {
+    ...tools,
+    entitySources: composeEntitySources(
+      tools.entitySources,
+      createEntitySourcesFromModuleSources(moduleSources),
+    ),
+  };
 }
 
 export function assistantMcp(): AssistantMcpConfig | null {
@@ -139,7 +157,21 @@ export function assistantHermes(): AssistantHermesConfig {
 
 /** Addendum marque uniquement — merge complet via getToolDefinitions(). */
 export function assistantToolDefinitions(): AssistantToolDefinition[] {
-  return config?.prompts?.toolDefinitions ?? [];
+  const brand = config?.prompts?.toolDefinitions ?? [];
+  const fromModules = applyModuleAssistantSources(
+    assistantModuleSources(),
+  ).toolDefinitions;
+  if (!fromModules.length) return brand;
+  const seen = new Set(brand.map((t) => t.function.name));
+  return [
+    ...brand,
+    ...fromModules.filter((t) => !seen.has(t.function.name)),
+  ];
+}
+
+/** Sources collectées depuis `BrandModuleDef.assistantSources`. */
+export function assistantModuleSources(): BrandModuleAssistantSource[] {
+  return config?.moduleSources ?? [];
 }
 
 export function buildBrandHermesWorkBrief(

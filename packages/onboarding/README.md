@@ -8,7 +8,7 @@
 - `SetupWizard` desktop pour compte local, clé de récupération, tunnel et clé OpenAI ;
 - `OnboardingWizard` React, `Stepper`, interstitiels et composants "micro" ;
 - helpers type-safe pour que la marque injecte ses propres étapes (`defineOnboardingSteps`, `createOnboardingHostProps`) ;
-- contenu hybride en DB + preferences (`src/content.ts`, ADR-module-natif-hybride) : mount `/api/v1/modules/onboarding/*`, migrations `onboarding_content` / `onboarding_preferences`, merge pur défauts marque / override DB.
+- contenu hybride en DB + preferences (`src/content.ts`, ADR-module-natif-hybride) : mount `/api/v1/modules/onboarding/*`, migrations `onboarding_content` / `onboarding_preferences`, merge pur défauts marque / override DB, contributions `BrandModuleDef.onboarding` via `composeOnboardingFromModules` / `collectOnboardingContent()`.
 
 Le package ne contient pas de parcours métier marque. Il assemble une expérience générique et laisse la marque fournir les contenus, le transport et les bindings desktop.
 

@@ -1,16 +1,22 @@
 /**
- * Contrat du registre de modules marque — SoT kit (P2.c / H9, audit F3.4).
+ * Contrat du registre de modules marque — SoT kit (P2.c / H9, volet 2 F3.4).
  *
  * `BrandModuleDef` est LE contrat central d'un module métier de marque :
  * entités CRUD, mounts API + operations, nav, index Meili, démo interactive,
- * migrations. Il était historiquement matérialisé en copie owned-by-brand
- * (`modules/types.ts`) chez chaque marque — depuis H9 il est **importé** du
- * kit (le `modules/types.ts` d'une marque est un simple ré-export, doctor
- * `MODULE_TYPES_DIVERGENT` fail-closed).
+ * migrations, sources assistant, onboarding. Il était historiquement
+ * matérialisé en copie owned-by-brand (`modules/types.ts`) chez chaque
+ * marque — depuis H9 il est **importé** du kit (le `modules/types.ts`
+ * d'une marque est un simple ré-export, doctor `MODULE_TYPES_DIVERGENT`
+ * fail-closed).
  *
  * Les collecteurs génériques du registre montent aussi ici
  * (`createBrandModuleRegistry`) : le `modules/index.ts` généré factory ne
  * porte plus que la liste `BRAND_MODULES` + la délégation.
+ *
+ * Champs `assistantSources` / `onboarding` : additifs (T5) — pas de bump
+ * `ARCHITECTURE_VERSION`. Marques existantes sans ces champs restent
+ * valides ; le doctor warn `MODULE_ASSISTANT_SOURCES_MISSING` si un
+ * module expose des mounts API sans sources ni justification.
  */
 import type { ApiKernel, ApiMount, EntitySpec } from "@creezio/api-kernel";
 import type { SqliteMigration } from "@creezio/platform-core";
@@ -22,6 +28,20 @@ import {
   discoverModuleToolsFromBrandModules,
   type McpRegisteredTool,
 } from "@creezio/mcp-facade";
+import type { BrandModuleAssistantSource } from "@creezio/assistant";
+import {
+  composeOnboardingFromModules,
+  type BrandModuleOnboarding,
+  type OnboardingContent,
+} from "@creezio/onboarding";
+
+export type {
+  BrandModuleAssistantSource,
+  BrandModuleAssistantEntitySource,
+  BrandModuleAssistantContextSource,
+  BrandModuleAssistantToolSource,
+} from "@creezio/assistant";
+export type { BrandModuleOnboarding, OnboardingContent } from "@creezio/onboarding";
 
 /** Entrée de nav métier — `order` fixe la position dans la sidebar. */
 export type BrandNavItem = CoreNavItem & { order: number };
@@ -56,6 +76,28 @@ export type BrandModuleDef = {
    * sans justification = doctor `MODULE_MEILI_MISSING`.
    */
   horsIndexJustification?: string;
+  /**
+   * Sources / outils que le module expose à l'assistant — descripteurs
+   * typés uniquement (`kind: "entity" | "context" | "tool"`), pas de
+   * handler. Collectés par `collectAssistantSources()` et consommés par
+   * `@creezio/assistant` (`configureAssistantBrand({ moduleSources })`).
+   * Un module qui expose des mounts API sans ce champ ni
+   * `assistantSourcesJustification` = doctor warn
+   * `MODULE_ASSISTANT_SOURCES_MISSING`.
+   */
+  assistantSources?: BrandModuleAssistantSource[];
+  /**
+   * Justification si le module expose une API (`apiMounts` / `entitySpecs`)
+   * SANS `assistantSources` (écritures internes, webhook machine, pas de
+   * contexte LLM…). Même esprit que `horsIndexJustification`.
+   */
+  assistantSourcesJustification?: string;
+  /**
+   * Étapes / contenu d'onboarding du module (contenu hybride DB).
+   * Collecté par `collectOnboardingContent()` et consommé par
+   * `@creezio/onboarding` (`createOnboardingContentMount({ defaults })`).
+   */
+  onboarding?: BrandModuleOnboarding;
   /**
    * Scénarios de démo interactive du module — **obligatoire** (≥ 1 scénario
    * valide). Agrégés par `collectDemoScenarios()` (registre) et servis en
@@ -97,6 +139,17 @@ export type BrandModuleRegistry = {
    * `collectInteractiveDemoDefaults` (id `os-tour` partagé : premier gagne).
    */
   collectDemoScenarios: () => DemoScenario[];
+  /**
+   * Sources assistant contribuées par les modules (champ `assistantSources`)
+   * — consommé par `configureAssistantBrand({ moduleSources })`.
+   */
+  collectAssistantSources: () => BrandModuleAssistantSource[];
+  /**
+   * Contenu onboarding composé depuis `BrandModuleDef.onboarding` —
+   * défauts du mount `createOnboardingContentMount`. Dédup étapes par id
+   * (`composeOnboardingFromModules`, premier gagne).
+   */
+  collectOnboardingContent: () => OnboardingContent;
 };
 
 /**
@@ -107,6 +160,7 @@ export type BrandModuleRegistry = {
  * export const {
  *   collectEntitySpecs, collectApiMounts, collectNavItems, collectMcpTools,
  *   collectMeiliIndexes, collectModuleMigrations, collectDemoScenarios,
+ *   collectAssistantSources, collectOnboardingContent,
  * } = createBrandModuleRegistry(BRAND_MODULES);
  * ```
  */
@@ -157,6 +211,16 @@ export function createBrandModuleRegistry(
       collectInteractiveDemoDefaults(
         modules.flatMap((mod) =>
           mod.demo ? [{ moduleId: mod.id, scenarios: mod.demo.scenarios }] : [],
+        ),
+      ),
+    collectAssistantSources: () =>
+      modules.flatMap((mod) => mod.assistantSources ?? []),
+    collectOnboardingContent: () =>
+      composeOnboardingFromModules(
+        modules.flatMap((mod) =>
+          mod.onboarding
+            ? [{ moduleId: mod.id, onboarding: mod.onboarding }]
+            : [],
         ),
       ),
   };

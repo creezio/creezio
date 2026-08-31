@@ -176,12 +176,15 @@ affaibli pour la masquer. (Backlogs d'époque : `docs/archive/BACKLOG-*.md`.)
 
 ## Contrat de module (P2.c — suites)
 
-- **Sources assistant + contenu onboarding dans `BrandModuleDef`** (2ᵉ volet
-  F3.4) : les déclarations de sources assistant et le contenu onboarding
-  des modules restent câblés hors descripteur (fichiers dédiés marque) —
-  intégration au contrat kit à faire dans une phase dédiée (trop gros pour
-  P2.c, qui a livré le contrat importé + `permission`/`accessJustification`
-  par mount). ADR `docs/adr/ADR-p2c-module-contract.md`.
+- ~~**Sources assistant + contenu onboarding dans `BrandModuleDef`**~~
+  **fait (T5 / volet 2 F3.4)** : champs additifs `assistantSources` /
+  `assistantSourcesJustification` / `onboarding` sur `BrandModuleDef`,
+  collecteurs `collectAssistantSources` / `collectOnboardingContent`,
+  consommation réelle `@creezio/assistant` (`moduleSources` +
+  `applyModuleAssistantSources`) et `@creezio/onboarding`
+  (`composeOnboardingFromModules`), templates factory, doctor warn
+  `MODULE_ASSISTANT_SOURCES_MISSING`. Pas de bump `ARCHITECTURE_VERSION`.
+  ADR `docs/adr/ADR-p2c-module-contract.md`.
 - ~~**Cohérence `meiliIndexes.table` ↔ migrations**~~ **fait** : doctor
   brand-spec `MODULE_MEILI_TABLE_UNKNOWN` (error) — ensemble des tables
   `CREATE TABLE` de **toute** l'app (tous modules + historiques

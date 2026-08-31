@@ -565,11 +565,13 @@ function renderBareBrandMigrationsTs(): string {
  */
 import { composeMigrations, type SqliteMigration } from "@creezio/platform-core";
 import { interactiveDemoMigrations } from "@creezio/interactive-demo";
+import { onboardingContentMigrations } from "@creezio/onboarding";
 import { collectModuleMigrations } from "./modules/index.js";
 
 export function brandMigrations(): SqliteMigration[] {
   return composeMigrations(
     interactiveDemoMigrations(),
+    onboardingContentMigrations(),
     collectModuleMigrations(),
   );
 }
@@ -584,18 +586,31 @@ function renderBareBrandModuleApiTs(productName: string): string {
  */
 import type { ApiKernel } from "@creezio/api-kernel";
 import { registerEntityMounts } from "@creezio/api-kernel";
+import { mergeAssistantBrandConfig } from "@creezio/assistant";
 import {
   collectInteractiveDemoDefaults,
   createInteractiveDemoMount,
   genericOsTourScenario,
 } from "@creezio/interactive-demo";
-import { collectApiMounts, collectDemoScenarios, collectEntitySpecs } from "./modules/index.js";
+import { createOnboardingContentMount } from "@creezio/onboarding";
+import {
+  collectApiMounts,
+  collectAssistantSources,
+  collectDemoScenarios,
+  collectEntitySpecs,
+  collectOnboardingContent,
+} from "./modules/index.js";
 
 export function registerBrandModuleApi(api: ApiKernel): void {
+  mergeAssistantBrandConfig({ moduleSources: collectAssistantSources() });
   registerEntityMounts(api, collectEntitySpecs());
   for (const [id, mount] of collectApiMounts()) {
     api.registerModuleApi(id, mount);
   }
+  api.registerModuleApi(
+    "onboarding",
+    createOnboardingContentMount({ defaults: collectOnboardingContent() }),
+  );
   api.registerModuleApi(
     "interactive-demo",
     createInteractiveDemoMount({
