@@ -19,5 +19,5 @@
 
 | Fichier | Rôle |
 |---|---|
-| [`ui/index.ts`](../ui/index.ts) | Export `NavAdminClient`. |
+| [`ui/index.ts`](../ui/index.ts) | Export `NavAdminClient` + re-export `NavCatalogLoader` (`@creezio/shell-ui/ui`). |
 | [`ui/nav-admin-client.tsx`](../ui/nav-admin-client.tsx) | Écran admin masquer / réordonner / renommer (primitives kit, pas de DnD). Wrapper os-ui `/admin/nav`. |

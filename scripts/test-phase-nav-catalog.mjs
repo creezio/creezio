@@ -266,6 +266,7 @@ test("nav-catalog : factory chrome sans const OS_NAV ni literal /granola", async
     /href:\s*["']\/grokbot["']/,
     "générateur : plus de href /grokbot inline",
   );
+  assert.match(src, /NavCatalogLoader/);
   assert.match(src, /defaultOsPrimaryNavItems/);
   assert.match(src, /defaultOsAdminNavItems/);
 
@@ -290,7 +291,8 @@ test("nav-catalog : factory chrome sans const OS_NAV ni literal /granola", async
   assert.doesNotMatch(chrome, /const OS_NAV/);
   assert.doesNotMatch(chrome, /["']\/granola["']/);
   assert.doesNotMatch(chrome, /["']\/grokbot["']/);
-  assert.match(chrome, /\.\.\.BRAND_NAV,\s*\.\.\.defaultOsPrimaryNavItems\(\)/);
+  assert.match(chrome, /<NavCatalogLoader/);
+  assert.match(chrome, /defaultOsPrimaryNavItems\(\)/);
   assert.match(chrome, /defaultOsAdminNavItems\(\{\s*includePlugins:\s*true/);
 });
 

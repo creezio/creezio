@@ -577,34 +577,20 @@ export default function RootLayout({ children }: { children: ReactNode }) {
 `;
 }
 
-/** Icône lucide générique par kind de page (pas de vocabulaire marque). */
-const PAGE_KIND_ICONS: Record<string, string> = {
-  dashboard: "LayoutDashboard",
-  list: "List",
-  detail: "FileText",
-  form: "SquarePen",
-  flow: "Workflow",
-};
-
 /**
- * Wiring chrome kit côté marque : nav métier + nav OS native + recherche.
- * Fichier marque (personnalisable — ex. icônes par page), généré une fois.
+ * Wiring chrome kit côté marque : loader catalogue + adminItems kit.
+ * Fichier marque (personnalisable), généré une fois.
  *
- * Les pages OS (mails, tâches, admin…) sont matérialisées via @creezio/os-ui ;
- * la sidebar OS vient du catalogue kit (`defaultOsPrimaryNavItems` /
- * `defaultOsAdminNavItems`) — **interdit** de recopier un `OS_NAV` inline.
+ * Sidebar = `<NavCatalogLoader />` (GET /api/v1/modules/nav) — **interdit**
+ * de recopier un `OS_NAV` / d'écrire les hrefs granola ou grokbot en dur.
+ * Fallback premier paint : `defaultOsPrimaryNavItems()`. Admin :
+ * `defaultOsAdminNavItems` (consommé, pas recopié). Métier =
+ * `collectNavItems` via le mount auto-register app-runtime, pas une
+ * liste inline.
  * SoT : `docs/plans/PLAN-NAV-CATALOG.md`. Feature-off plugins : passer
  * `{ includePlugins: false }` à `defaultOsAdminNavItems`.
  */
 export function renderUiBrandChrome(model: ProductModel): string {
-  const icons = new Set<string>();
-  const navLines = model.pages.map((p) => {
-    const icon = PAGE_KIND_ICONS[p.kind] || "List";
-    icons.add(icon);
-    return `  { href: ${JSON.stringify(p.path)}, label: ${JSON.stringify(p.title)}, icon: ${icon} },`;
-  });
-  if (icons.size === 0) icons.add("List");
-  const iconImports = [...icons].sort().join(",\n  ");
   const storageKey = `${model.brandId}-global-search`;
   const home = defaultWorkspaceHome(model);
   const includePlugins = model.platformNeeds.pluginApi !== false;
@@ -612,16 +598,13 @@ export function renderUiBrandChrome(model: ProductModel): string {
   return `"use client";
 /**
  * creezio:owned-by-brand — wiring du chrome CRM kit (sidebar, onglets,
- * recherche). Le chrome lui-même vient de @creezio/shell-ui/ui : la marque
- * déclare sa nav métier et compose la nav OS native via
- * defaultOsPrimaryNavItems() / defaultOsAdminNavItems() (catalogue kit,
- * docs/plans/PLAN-NAV-CATALOG.md). Hermes / n8n = Admin → Outils.
+ * recherche). Le chrome lui-même vient de @creezio/shell-ui/ui : sidebar
+ * = <NavCatalogLoader /> (GET /api/v1/modules/nav) + defaultOsAdminNavItems.
+ * Interdit de recopier OS_NAV. SoT : docs/plans/PLAN-NAV-CATALOG.md.
+ * Hermes / n8n = Admin → Outils.
  */
 
 import type { ReactNode } from "react";
-import {
-  ${iconImports},
-} from "lucide-react";
 import { RequireSession, SessionProvider, useSession } from "@creezio/auth/ui";
 import { InteractiveDemoRoot } from "@creezio/interactive-demo/ui";
 import { AssistantRoot } from "@creezio/assistant/ui";
@@ -632,17 +615,13 @@ import {
   configureSidebar,
   defaultOsAdminNavItems,
   defaultOsPrimaryNavItems,
+  getSidebarHost,
+  NavCatalogLoader,
   WorkspaceRoot,
 } from "@creezio/shell-ui/ui";
 
-const BRAND_NAV = [
-${navLines.join("\n")}
-];
-
-const getNavItems = () => [...BRAND_NAV, ...defaultOsPrimaryNavItems()];
-
 configureSidebar({
-  getNavItems,
+  getNavItems: () => defaultOsPrimaryNavItems(),
   getAdminItems: () => defaultOsAdminNavItems({ includePlugins: ${includePlugins} }),
 });
 
@@ -652,7 +631,7 @@ configureGlobalSearch({
   search: async (query) => {
     const q = query.trim().toLowerCase();
     if (!q) return [];
-    return getNavItems().filter((n) => n.label.toLowerCase().includes(q)).map((n) => ({
+    return getSidebarHost().getNavItems().filter((n) => n.label.toLowerCase().includes(q)).map((n) => ({
       index: "pages",
       id: n.href,
       title: n.label,
@@ -680,6 +659,7 @@ export function BrandChrome({ children }: { children: ReactNode }) {
       {/* Contrat @creezio/auth/ui — pas un wrapper local. Sans ça, /flotte
           (admin) et le CRM marque rendent un workspace creux (APIs 401). */}
       <RequireSession>
+        <NavCatalogLoader includePlugins={${includePlugins}} />
         {/* Tracker client → POST /api/v1/analytics/events (Admin → Analytics). */}
         <SessionUsageAnalyticsProvider>
           <AssistantRoot>

@@ -354,3 +354,45 @@ const DEFAULT_OS_NAV_ENTRIES: readonly NavCatalogEntry[] = [
     available: true,
   },
 ];
+
+/**
+ * Contrat `GET /api/v1/modules/nav` — catalogue résolu session.
+ * `{ items: [{ id, href, label, order, group?, permission?, icon }] }`
+ */
+export type NavCatalogSessionItem = {
+  id: string;
+  href: string;
+  label: string;
+  order: number;
+  group?: string;
+  permission?: string;
+  icon: string;
+};
+
+/** Parse le body JSON du mount nav (tolérant : items manquants → []). */
+export function parseNavCatalogSessionItems(
+  body: unknown,
+): NavCatalogSessionItem[] {
+  if (!body || typeof body !== "object" || Array.isArray(body)) return [];
+  const raw = (body as { items?: unknown }).items;
+  if (!Array.isArray(raw)) return [];
+  const out: NavCatalogSessionItem[] = [];
+  for (const row of raw) {
+    if (!row || typeof row !== "object" || Array.isArray(row)) continue;
+    const r = row as Record<string, unknown>;
+    const id = typeof r.id === "string" ? r.id.trim() : "";
+    const href = typeof r.href === "string" ? r.href.trim() : "";
+    const label = typeof r.label === "string" ? r.label.trim() : "";
+    const icon = typeof r.icon === "string" && r.icon.trim() ? r.icon.trim() : "Circle";
+    const order =
+      typeof r.order === "number" && Number.isFinite(r.order) ? r.order : 0;
+    if (!id || !href || !label) continue;
+    const item: NavCatalogSessionItem = { id, href, label, order, icon };
+    if (typeof r.group === "string" && r.group) item.group = r.group;
+    if (typeof r.permission === "string" && r.permission) {
+      item.permission = r.permission;
+    }
+    out.push(item);
+  }
+  return out;
+}

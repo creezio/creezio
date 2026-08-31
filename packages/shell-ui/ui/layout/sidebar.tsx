@@ -39,7 +39,9 @@ import { openN8nUiInWorkspace } from "../lib/n8n-ui";
 import {
   getSidebarActionsSnapshot,
   getSidebarHost,
+  getSidebarHostVersion,
   subscribeSidebarActions,
+  subscribeSidebarHost,
   type SidebarActionItem,
   type SidebarAdminItem,
   type SidebarHost,
@@ -1042,6 +1044,12 @@ export function Sidebar({
   mobileOpen?: boolean;
   onMobileClose?: () => void;
 }) {
+  const hostVersion = useSyncExternalStore(
+    subscribeSidebarHost,
+    getSidebarHostVersion,
+    getSidebarHostVersion,
+  );
+  void hostVersion;
   const host = getSidebarHost();
   const pathname = usePathname() || "/";
   const search = useLocationSearch(pathname);

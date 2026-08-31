@@ -87,8 +87,13 @@ test("os-ui generator : RequireSession kit enveloppe WorkspaceRoot (source, sans
   );
   assert.match(
     gen,
+    /NavCatalogLoader/,
+    "générateur monte <NavCatalogLoader /> (catalogue GET /)",
+  );
+  assert.match(
+    gen,
     /defaultOsPrimaryNavItems/,
-    "générateur compose defaultOsPrimaryNavItems()",
+    "générateur fallback defaultOsPrimaryNavItems()",
   );
   assert.match(
     gen,
@@ -369,8 +374,13 @@ test("os-ui scaffold : zéro page OS versionnée, materialize + boot kit", (t) =
   );
   assert.match(
     chrome,
+    /NavCatalogLoader/,
+    "chrome monte <NavCatalogLoader /> (GET /api/v1/modules/nav)",
+  );
+  assert.match(
+    chrome,
     /defaultOsPrimaryNavItems/,
-    "chrome compose defaultOsPrimaryNavItems() (catalogue OS)",
+    "chrome fallback defaultOsPrimaryNavItems() (premier paint)",
   );
   assert.match(
     chrome,

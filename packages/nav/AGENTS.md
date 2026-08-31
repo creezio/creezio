@@ -44,6 +44,9 @@ Ne pas inverser sans mettre à jour ce fichier **et** la gate
 - `src/admin-entry.ts` : `registerOsNavAdminEntry` (`os.admin.nav`).
 - `src/map.ts` : `brandNavItemsToCatalog` (métier → catalogue).
 - `ui/nav-admin-client.tsx` : `NavAdminClient`.
+- `ui/index.ts` : re-export `<NavCatalogLoader />` depuis
+  `@creezio/shell-ui/ui` (le chrome factory n'importe **pas** `@creezio/nav`
+  tant que le package n'est pas publié).
 
 ## Câblage (prod)
 
