@@ -410,6 +410,15 @@ test("F3.0 harness généré pose AUTH_DISABLED (anti-401 notes, sans electron)"
       ),
       "scaffold --from-prd doit installer le template kit insights-assistant",
     );
+    const preloadTsconfig = fs.readFileSync(
+      path.join(result.serverDir, "tsconfig.preload.json"),
+      "utf8",
+    );
+    assert.match(
+      preloadTsconfig,
+      /electron-shim\.d\.ts/,
+      "tsconfig.preload doit inclure electron-shim.d.ts (tsc hors-ligne sans paquet electron)",
+    );
   } finally {
     fs.rmSync(outDir, { recursive: true, force: true });
   }

@@ -24,21 +24,25 @@ test("linkKitNodeModules pose un symlink vers le hoist kit", () => {
   try {
     const { linked, path: nm } = linkKitNodeModules(dir, ROOT);
     assert.equal(linked, true);
-    assert.ok(fs.lstatSync(nm).isSymbolicLink());
-    assert.equal(fs.realpathSync(nm), fs.realpathSync(path.join(ROOT, "node_modules")));
-    assert.ok(fs.existsSync(path.join(nm, "@types/node")));
+    assert.ok(fs.statSync(nm).isDirectory());
+    assert.ok(!fs.lstatSync(nm).isSymbolicLink(), "dossier réel (pas un symlink kit)");
+    assert.ok(fs.lstatSync(path.join(nm, "@types")).isSymbolicLink());
+    assert.equal(
+      fs.realpathSync(path.join(nm, "@types/node")),
+      fs.realpathSync(path.join(ROOT, "node_modules/@types/node")),
+    );
     const again = linkKitNodeModules(dir, ROOT);
-    assert.equal(again.linked, false, "ne remplace pas un lien déjà valide");
+    assert.equal(again.linked, false, "ne remplace pas un node_modules déjà utilisable");
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
   }
 });
 
-test("linkKitNodeModules ne remplace pas un node_modules réel", () => {
+test("linkKitNodeModules ne remplace pas un node_modules déjà utilisable", () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "creezio-link-nm-real-"));
   try {
     const real = path.join(dir, "node_modules");
-    fs.mkdirSync(real);
+    fs.mkdirSync(path.join(real, "@types/node"), { recursive: true });
     fs.writeFileSync(path.join(real, "sentinel"), "keep");
     const { linked } = linkKitNodeModules(dir, ROOT);
     assert.equal(linked, false);
@@ -59,6 +63,7 @@ test("linkKitNodeModules recrée un symlink cassé", () => {
     );
     const { linked, path: nm } = linkKitNodeModules(dir, ROOT);
     assert.equal(linked, true);
+    assert.ok(fs.statSync(nm).isDirectory());
     assert.ok(fs.existsSync(path.join(nm, "@types/node")));
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
@@ -74,7 +79,7 @@ test("linkKitNodeModulesForBrand cible server/ en monorepo", () => {
     const { dir, linked } = linkKitNodeModulesForBrand(brand, ROOT);
     assert.equal(dir, server);
     assert.equal(linked, true);
-    assert.ok(fs.lstatSync(path.join(server, "node_modules")).isSymbolicLink());
+    assert.ok(fs.existsSync(path.join(server, "node_modules/@types/node")));
   } finally {
     fs.rmSync(brand, { recursive: true, force: true });
   }
@@ -105,4 +110,13 @@ test("factory-prd* : hors-ligne (skip dist + npm offline + helper)", () => {
       `${name} doit forcer npm offline (pas d'install registre)`,
     );
   }
+  const scaffold = fs.readFileSync(
+    path.join(ROOT, "packages/factory/src/scaffold.ts"),
+    "utf8",
+  );
+  assert.match(
+    scaffold,
+    /include": \["src\/electron\/preload\.ts", "src\/electron\/electron-shim\.d\.ts"\]/,
+    "tsconfig.preload généré doit typer electron via le shim (pas le paquet npm)",
+  );
 });

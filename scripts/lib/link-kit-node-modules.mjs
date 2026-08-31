@@ -10,8 +10,10 @@
  * (electron, typescript, lock restent téléchargés). Ici on ne touche pas
  * aux manifests : on réutilise le hoist déjà présent dans le clone kit.
  *
- * Ne remplace jamais un `node_modules` réel (install dédiée). Recrée un
- * symlink cassé (layout historique).
+ * Pose un dossier réel dont chaque entrée est un symlink vers le hoist kit
+ * (un symlink de dossier entier ferait croire à `npm run` que l'app est un
+ * workspace du monorepo). Ne remplace jamais un `node_modules` déjà
+ * utilisable (`@types/node` présent). Recrée un symlink cassé.
  */
 import fs from "node:fs";
 import path from "node:path";
@@ -31,13 +33,23 @@ export function linkKitNodeModules(appOrServerDir, kitRoot) {
     );
   }
   const stat = fs.lstatSync(target, { throwIfNoEntry: false });
-  if (stat?.isSymbolicLink() && !fs.existsSync(target)) {
+  // Un symlink de dossier entier vers le kit fait croire à `npm run` que
+  // l'app est un workspace du monorepo (realpath → racine kit). On pose
+  // un VRAI dossier dont chaque entrée est un symlink — tsc + npm run
+  // restent ancrés sur l'app générée.
+  if (stat?.isSymbolicLink()) {
     fs.unlinkSync(target);
+  } else if (stat?.isDirectory()) {
+    if (fs.existsSync(path.join(target, "@types/node"))) {
+      return { linked: false, path: target };
+    }
   }
-  if (fs.existsSync(target)) {
-    return { linked: false, path: target };
+  fs.mkdirSync(target, { recursive: true });
+  for (const name of fs.readdirSync(kitNm)) {
+    const dest = path.join(target, name);
+    if (fs.lstatSync(dest, { throwIfNoEntry: false })) continue;
+    fs.symlinkSync(path.join(kitNm, name), dest);
   }
-  fs.symlinkSync(kitNm, target, "dir");
   return { linked: true, path: target };
 }
 
