@@ -76,9 +76,12 @@ affaibli pour la masquer. (Backlogs d'époque : `docs/archive/BACKLOG-*.md`.)
   de l'admin tolère les trous et se resynchronise). Piste propre : tunnel
   dédié agent par VPS (slug hôte réservé) au lieu de réutiliser celui d'un
   serveur applicatif.
-- **Suivi update en mémoire** : la Map `update-status` de l'agent (et de
-  l'admin local) ne survit pas à un restart de l'agent pendant un update —
-  l'update lui-même va au bout (process docker), seul le suivi est perdu.
+- ~~**Suivi update en mémoire**~~ **fait (0.20.1, T8)** : le suivi
+  `update-status` de l'agent (et de l'admin local) est persisté sur disque
+  (`@creezio/fleet` `update-status-store` — journal JSON atomique dans le
+  répertoire d'état, reload au boot avec flag additif `agentRestarted` +
+  résolution via `servers.json`, TTL 24 h). Gate
+  `test-phase-fleet-update-status-persist`.
 - **Registry local sans GC** : la suppression de tags (`0.2.2-broken`…)
   demande l'API delete + `registry garbage-collect` — documenté, pas
   automatisé.
