@@ -1,6 +1,6 @@
 {
   "name": "@creezio/grokbot",
-  "version": "0.17.1",
+  "version": "0.18.0",
   "description": "Module natif GrokBot — pilotage d'agents cloud via l'API Cursor v1 (token utilisateur, agents, runs, usage, artefacts)",
   "type": "module",
   "main": "./dist-cjs/index.js",
@@ -28,8 +28,8 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@creezio/api-kernel": "^0.17.1",
-    "@creezio/platform-core": "^0.17.1"
+    "@creezio/api-kernel": "^0.18.0",
+    "@creezio/platform-core": "^0.18.0"
   },
   "devDependencies": {
     "@types/node": "^22.15.3",
