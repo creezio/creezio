@@ -27,7 +27,8 @@ sync des notes en `brand.db`, client + proxys de l'API publique Granola
 
 - `src/index.ts` : surface publique.
 - `src/config.ts` : `GranolaModuleConfig`, `granolaMigrations()`
-  (tables `granola_settings` / `granola_events` / `granola_notes`),
+  (tables `granola_settings` / `granola_events` / `granola_notes`,
+  `granola_002_note_transcript_folder` pour `folder_id` / `transcript_json`),
   `mergeGranolaConfig`, `maskSecret`.
 - `src/signature.ts` : `verifyGranolaSignature` (HMAC-SHA256
   `{id}.{timestamp}.{body}`, tolérance rejeu 300 s) + `signGranolaPayload`
@@ -35,7 +36,8 @@ sync des notes en `brand.db`, client + proxys de l'API publique Granola
 - `src/client.ts` : `createGranolaClient` — notes / transcript / folders /
   webhook-endpoints.
 - `src/mount.ts` : `createGranolaMount` → `/api/v1/modules/granola/*`
-  (webhook, webhook-info, register-webhook, config, events, notes, remote/*).
+  (webhook, webhook-info, register-webhook, config, events, notes,
+  `GET notes/:id/transcript`, remote/*).
 - `ui/granola-client.tsx` : page `GranolaClient` — compose les deux panneaux.
 - `ui/granola-notes-panel.tsx` : workspace notes (liste + fiche) — **GRANOLA-1**.
 - `ui/granola-connect-panel.tsx` : config / webhook / livraisons — **GRANOLA-2**

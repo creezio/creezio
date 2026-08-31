@@ -8,6 +8,7 @@
  * API : /api/v1/modules/granola/* (mount natif @creezio/granola).
  */
 
+import { Toaster } from "@creezio/shell-ui/ui/kit";
 import { GranolaConnectPanel } from "./granola-connect-panel";
 import { GranolaNotesPanel } from "./granola-notes-panel";
 
@@ -25,6 +26,7 @@ export function GranolaClient() {
 
       <GranolaNotesPanel />
       <GranolaConnectPanel />
+      <Toaster />
     </div>
   );
 }

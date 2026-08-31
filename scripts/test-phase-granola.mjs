@@ -74,17 +74,28 @@ function createFakeGranolaApi() {
     }
     const noteMatch = url.match(/\/v1\/notes\/([^/?]+)(\/transcript)?/);
     if (noteMatch && !noteMatch[2]) {
-      return respond(200, {
-        id: noteMatch[1],
-        title: "Revue budget",
+      const id = decodeURIComponent(noteMatch[1]);
+      const body = {
+        id,
         summary: "La revue s'est bien passée.",
         owner: { name: "Oat", email: "oat@example.com" },
         created_at: "2026-01-27T15:30:00Z",
         updated_at: "2026-01-27T16:00:00Z",
-      });
+        folder_id: "fld_A",
+      };
+      if (id !== "not_KEEP") body.title = "Revue budget";
+      if (url.includes("include=transcript")) {
+        body.transcript = [{ speaker: "Oat", text: "bonjour (inclus)" }];
+      }
+      return respond(200, body);
     }
     if (noteMatch && noteMatch[2]) {
-      return respond(200, { transcript: [{ text: "bonjour" }], hasMore: false });
+      const hasCursor = url.includes("cursor=");
+      return respond(200, {
+        transcript: [{ text: hasCursor ? "suite" : "bonjour" }],
+        next_cursor: hasCursor ? null : "cur_2",
+        hasMore: !hasCursor,
+      });
     }
     if (url.includes("/v1/notes")) {
       return respond(200, { notes: [{ id: "not_A" }], hasMore: false });
@@ -110,11 +121,14 @@ test("granola : exports kit + migrations", async () => {
   assert.equal(mod.GRANOLA_DEFAULT_API_BASE_URL, "https://public-api.granola.ai");
 
   const migs = mod.granolaMigrations();
-  assert.equal(migs.length, 1);
+  assert.equal(migs.length, 2);
   assert.equal(migs[0].id, "granola_001_core");
+  assert.equal(migs[1].id, "granola_002_note_transcript_folder");
   assert.match(migs[0].sql, /granola_settings/);
   assert.match(migs[0].sql, /granola_events/);
   assert.match(migs[0].sql, /granola_notes/);
+  assert.match(migs[1].sql, /transcript_json/);
+  assert.match(migs[1].sql, /folder_id/);
 });
 
 test("granola : signature Standard Webhooks (valide / invalide / rejeu)", async () => {
@@ -415,4 +429,99 @@ test("granola : proxys remote/* + clé manquante → 409", async () => {
     db,
   });
   assert.equal(endpoints.status, 200);
+});
+
+test("granola : GET notes/:id/transcript 409 sans clé, 200 avec fetch injectable", async () => {
+  const mod = await loadDist();
+  const db = await createDb(mod.granolaMigrations());
+
+  const noKey = mod.createGranolaMount();
+  const denied = await call(noKey, {
+    method: "GET",
+    subPath: "notes/not_A/transcript",
+    db,
+  });
+  assert.equal(denied.status, 409);
+  assert.equal(denied.body.error, "granola_api_key_missing");
+
+  const fake = createFakeGranolaApi();
+  const mount = mod.createGranolaMount({
+    defaults: { apiKey: "grn_test" },
+    fetchImpl: fake.fetchImpl,
+  });
+  const first = await call(mount, {
+    method: "GET",
+    subPath: "notes/not_A/transcript",
+    db,
+  });
+  assert.equal(first.status, 200);
+  assert.equal(first.body.ok, true);
+  assert.equal(first.body.data.transcript[0].text, "bonjour");
+  assert.equal(first.body.data.next_cursor, "cur_2");
+  assert.match(
+    fake.calls.at(-1).url,
+    /\/v1\/notes\/not_A\/transcript$/,
+    "proxy getTranscript sans appel browser",
+  );
+
+  const page2 = await call(mount, {
+    method: "GET",
+    subPath: "notes/not_A/transcript",
+    db,
+    query: { cursor: "cur_2" },
+  });
+  assert.equal(page2.status, 200);
+  assert.equal(page2.body.data.transcript[0].text, "suite");
+  assert.equal(page2.body.data.next_cursor, null);
+  assert.match(fake.calls.at(-1).url, /[?&]cursor=cur_2/);
+});
+
+test("granola : sync note conserve le titre", async () => {
+  const mod = await loadDist();
+  const db = await createDb(mod.granolaMigrations());
+  const fake = createFakeGranolaApi();
+  const mount = mod.createGranolaMount({
+    defaults: { apiKey: "grn_test" },
+    fetchImpl: fake.fetchImpl,
+  });
+
+  const first = await call(mount, {
+    method: "POST",
+    subPath: "notes/not_KEEP/sync",
+    db,
+  });
+  assert.equal(first.status, 200);
+  db.prepare(
+    `UPDATE granola_notes SET title = ? WHERE id = ?`,
+  ).run("Titre local", "not_KEEP");
+
+  const again = await call(mount, {
+    method: "POST",
+    subPath: "notes/not_KEEP/sync",
+    db,
+  });
+  assert.equal(again.status, 200);
+  const listed = await call(mount, { method: "GET", subPath: "notes", db });
+  const row = listed.body.items.find((n) => n.id === "not_KEEP");
+  assert.ok(row, "note syncée présente");
+  assert.equal(row.title, "Titre local", "titre local conservé si l'API omet title");
+
+  const titled = await call(mount, {
+    method: "POST",
+    subPath: "notes/not_BUDGET/sync",
+    db,
+  });
+  assert.equal(titled.status, 200);
+  const after = await call(mount, {
+    method: "GET",
+    subPath: "notes/not_BUDGET",
+    db,
+  });
+  assert.equal(after.status, 200);
+  assert.equal(after.body.note.title, "Revue budget");
+  assert.ok(
+    Array.isArray(after.body.note.transcript),
+    "transcript persisté via include=transcript",
+  );
+  assert.equal(after.body.note.folder_id, "fld_A");
 });
