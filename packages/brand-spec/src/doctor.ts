@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { loadBrandSpec, resolveBrandSpecDir } from "./load.js";
+import { doctorBrandModuleMeiliTables } from "./meili-table-coherence.js";
 import type { BrandSpecIssue, DoctorResult } from "./types.js";
 
 const BRAND_ID_RE = /^[a-z][a-z0-9]{1,31}$/;
@@ -721,6 +722,7 @@ export function doctorBrandSpec(rootDir: string): DoctorResult {
   doctorBrandModuleDemos(spec.rootDir, issues);
   doctorBrandModuleOps(spec.rootDir, issues);
   doctorBrandModuleMeili(spec.rootDir, issues);
+  doctorBrandModuleMeiliTables(spec.rootDir, issues);
   doctorBrandModuleTypesContract(spec.rootDir, issues);
   doctorBrandModulePermissions(spec.rootDir, issues);
   doctorCreezioManifestAlignment(spec.rootDir, issues);

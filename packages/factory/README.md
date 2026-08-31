@@ -87,6 +87,7 @@ sans cet appel le repo marque part à 0 plugins. Gate E2E :
 | `--feed-token` | Token feed sandbox |
 | `--sandbox` / `--no-sandbox` | Flag sandbox (défaut oui) |
 | `--force` | Écrase les fichiers existants |
+| `--link-kit` | Installe `@creezio/*` depuis le worktree kit (`file:`), pas le registre. Équivalent : `CREEZIO_LINK_KIT=1`. Les manifests restent `^<lockstep>`. Requis en CI / PR de release (version pas encore publiée). |
 
 ## API publique
 

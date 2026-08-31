@@ -25,6 +25,7 @@ ils décrivent le chantier, pas l'état courant.
 | `lib/brand-roots.mjs` | Résolution chemins brands + kit |
 | `lib/intention-twins.mjs` | Scanner jumeaux intention (P0) |
 | `lib/assert-runtime-dist.mjs` | Fail-closed dist runtime (contrats + hash de contenu src↔dist) — publish / gate ADR.1b-gen |
+| `lib/link-kit-node-modules.mjs` | Lien `node_modules` kit → app générée (gates factory-prd hors ligne, pas de npm install) |
 | `test-phase-*.mjs` | Gates — une phase / un contrat |
 
 ## Ajouter une gate
@@ -57,9 +58,10 @@ ils décrivent le chantier, pas l'état courant.
   (sans la logique de skip du runner) est **rouge sur C7.2** — préexistant,
   le repo `tempoflow2` local est resté en état pré-cutover ; ne pas
   « corriger » cette gate en l'affaiblissant.
-- `test:env` : exige un binaire Electron dans les `node_modules` du kit —
-  absent sur ce VPS. Contournement utilisé : smokes de l'app générée avec les
-  `node_modules` de TF3 (`/opt/docker/tempoflow3`).
+- `test:env` : `factory-prd*` lie le `node_modules` du kit (tsc via
+  `electron-shim.d.ts` + `@types/node`, pas de binaire Electron ni npm
+  install). `cold-warm` / `factory-docker-parity` / binaires natifs restent
+  opt-in lourds (réseau, Docker, embeds).
 
 ## Dist runtime stale (fail-closed)
 

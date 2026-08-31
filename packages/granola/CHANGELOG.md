@@ -1,5 +1,12 @@
 # @creezio/granola
 
+## 0.21.0
+
+### Patch Changes
+
+- @creezio/platform-core@0.21.0
+- @creezio/api-kernel@0.21.0
+
 ## 0.20.0
 
 ### Patch Changes

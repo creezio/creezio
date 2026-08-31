@@ -49,6 +49,12 @@ en jumeau dans `main.ts`.
   (registre @creezio → GitHub Packages, token via `CREEZIO_NPM_TOKEN`) +
   matérialise `scripts/ensure-server-lock.mjs` (SoT `docker/server/`).
   Plus de vendor ni de symlinks trackés.
+- `--link-kit` / `CREEZIO_LINK_KIT=1` : `ensureBrandPackageLocks` pin les
+  `@creezio/*` sur `<kit>/packages/*` (`file:`) le temps du `npm install`,
+  puis restaure les manifests `^<lockstep>`. Les gates scaffold
+  (`os-ui-scaffold`, `factory-two-repos`, …) passent toujours `--link-kit`
+  — une PR `changeset-release/*` (version pas encore sur le registre) reste
+  verte. Une marque production (clone GitHub) n'utilise PAS ce flag.
 - Smokes `test:metier-parcours` : `AUTH_DISABLED=1` dans `harnessPrelude`
   (garde mounts F3 — sinon 401 notes).
 - Smokes « créé puis listé » : cohérence éventuelle Meili (contrat kit —
@@ -60,6 +66,9 @@ en jumeau dans `main.ts`.
   échec explicite si `engine:"meili"` sans le doc). **Jamais** d'assertion
   naïve « GET liste immédiat post-create » sur une entité indexable —
   gate `test-phase-meili-smoke-polling`.
+- `tsconfig.preload.json` inclut `electron-shim.d.ts` : le preload compile
+  hors ligne sans paquet `electron` (gates `factory-prd*`, lien
+  `node_modules` kit — pas `--link-kit` / npm install).
 
 ## Points d'entrée
 

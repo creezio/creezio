@@ -14,4 +14,5 @@ export * from "./docker.js";
 export * from "./server-lib.js";
 export * from "./instance-stack.js";
 export * from "./agent-updates.js";
+export * from "./update-status-store.js";
 export * from "./registry-pull-proxy.js";

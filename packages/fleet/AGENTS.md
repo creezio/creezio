@@ -60,14 +60,26 @@ restent la SoT observability, hors périmètre fleet.
 
 - `updateServer` : ne pas toucher l'ordre pull → (backup opt-in) → stop →
   rm → recreate → health → rollback auto ; refus stack fail-closed AVANT
-  recreate (`isStackUpdateRefused`).
+  recreate (`isStackUpdateRefused`). Le hook optionnel `onStep` (suivi
+  persisté) ne doit JAMAIS pouvoir casser l'update (déjà try/catché dans
+  `log`).
+- `update-status-store` : le suivi update-status (host-agent + plan local
+  server-admin) est PERSISTÉ (T8) — journal JSON atomique par process dans
+  le répertoire d'état existant (`host-agent-updates.json` à côté du state
+  file agent, `server-admin-updates.json` dans le docker-data admin),
+  reload au boot (résolution via `servers.json`, flag additif
+  `agentRestarted`), TTL 24 h sur les entrées terminées
+  (`DEFAULT_UPDATE_STATUS_TTL_MS`). Protocole v1 strict : `lastStep` /
+  `agentRestarted` sont additifs, ne pas changer les statuts existants
+  (`running|done|error`) ni retirer un champ. Toute transition d'entrée
+  doit repasser par `set()`/`save()` sinon elle n'est pas persistée.
 - `instance-stack` : politique `resolveStackUpdatePolicy` (préserver le
   sidecar cloudflared, refuser tout update qui casserait un hostname public).
 - Gates : `test-phase-server-docker` (contenu server-lib/server-admin),
   `test-phase-instance-stack`, `test-phase-stack-update-preserve`,
-  `test-phase-fleet-agent`, `test-phase-fleet-releases`,
-  `test-phase-registry-pull-proxy` — via `packages/fleet/dist` (build requis)
-  ou source TS.
+  `test-phase-fleet-agent`, `test-phase-fleet-update-status-persist`,
+  `test-phase-fleet-releases`, `test-phase-registry-pull-proxy` — via
+  `packages/fleet/dist` (build requis) ou source TS.
 - Images : tout renommage de `dist/bin/*` doit suivre dans les Dockerfiles
   (`docker/server-admin`, `docker/host-agent`) ET `stageFleetImageContext`
   (factory).
