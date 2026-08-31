@@ -35,7 +35,17 @@ stocké côté serveur. Générique : zéro domaine marque.
   Agents v1 (hors streaming SSE).
 - `src/mount.ts` : `createGrokbotMount` → `/api/v1/modules/grokbot/*`
   (config, status, models, repositories, agents, runs, usage, artifacts).
-- `ui/grokbot-client.tsx` : page `GrokbotClient` (design system shell-ui).
+- `ui/grokbot-client.tsx` : compose la page (`GrokbotClient`).
+- `ui/grokbot-launch-form.tsx` : lancer un agent (Select modèle / repo /
+  mode, refresh repos `?refresh=1`, checkbox PR). **GROKBOT-1**.
+- `ui/grokbot-usage-artifacts.tsx` : usage tokens + artefacts + download
+  présigné + lien PR. **GROKBOT-1**.
+- `ui/grokbot-agent-runs.tsx` : panneau runs (follow-up, cancel, archive).
+  **GROKBOT-2** — ne pas l'enrichir depuis GROKBOT-1.
+
+`GET /models` et `GET /repositories` se chargent **une fois** dans le
+formulaire de lancement, jamais depuis le poll 15 s (rate limit repos
+1 req/min). Hors scope v1 : streaming SSE (`GET …/runs/{runId}/stream`).
 
 ## Modifier sans casser
 
