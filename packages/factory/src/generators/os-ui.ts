@@ -219,8 +219,10 @@ import { RequestLogsClient } from "@creezio/observability/ui";`,
 }
 
 export function renderUiPackageJson(_manifest: AppManifest): string {
-  // Spec npm lockstep des packages @creezio/* publiés (GitHub Packages) —
-  // plus de file:vendor. Résolu depuis le kit courant (fallback bootstrap).
+  // Spec npm lockstep des packages @creezio/* **déjà publiés**
+  // (GitHub Packages) — plus de file:vendor. Un module OS nouveau
+  // (catalogue nav) n'entre ici qu'après merge `main` → publish.yml.
+  // SoT : docs/plans/PLAN-NAV-CATALOG.md (factory deps ≠ catalogue).
   const spec = creezioDepSpec();
   return (
     JSON.stringify(
@@ -239,8 +241,6 @@ export function renderUiPackageJson(_manifest: AppManifest): string {
           "@creezio/os-ui": spec,
           "@creezio/shell-ui": spec,
           "@creezio/support": spec,
-          "@creezio/granola": spec,
-          "@creezio/grokbot": spec,
           "@creezio/assistant": spec,
           "@creezio/mails": spec,
           "@creezio/tasks": spec,
@@ -251,7 +251,6 @@ export function renderUiPackageJson(_manifest: AppManifest): string {
           "@creezio/cockpit": spec,
           "@creezio/database": spec,
           "@creezio/access-control": spec,
-          "@creezio/nav": spec,
           "@creezio/observability": spec,
           "@creezio/interactive-demo": spec,
           "@radix-ui/react-avatar": "^1.1.10",
@@ -485,9 +484,6 @@ const nextConfig = {
     "@creezio/observability",
     "@creezio/interactive-demo",
     "@creezio/access-control",
-    "@creezio/nav",
-    "@creezio/granola",
-    "@creezio/grokbot",
   ],
   async rewrites() {
     return [
