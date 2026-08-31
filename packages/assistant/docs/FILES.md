@@ -54,6 +54,7 @@
 | [`src/runtime/meili-rag.ts`](../src/runtime/meili-rag.ts) | Recherche keyword Meilisearch (générique). Indexes + mapHit + enrichHits via configureAssistantBrand({ meili }). |
 | [`src/runtime/models.ts`](../src/runtime/models.ts) | Modèles chat exposés dans le select UI (configurable via env). export type ModelTier = "reasoning" \| "standard" \| "fast"; export type ModelOption = { id: string; tier: ModelTier; Libellé UI, ex. "o4-mini · Reasoning" |
 | [`src/runtime/modes.ts`](../src/runtime/modes.ts) | Modes assistant : Chat (guide) vs Work (délégation Hermes). Briefs métier → configureAssistantBrand({ prompts }). |
+| [`src/runtime/openai-tool-payload.ts`](../src/runtime/openai-tool-payload.ts) | Payload tools Chat Completions OpenAI — `openaiSafeToolName`, plafond `OPENAI_CHAT_MAX_TOOLS` (128), `selectOpenAiToolDefinitions` (fusion multi-listes, dédup premier gagnant, troncature). |
 | [`src/runtime/platform-tool-definitions.ts`](../src/runtime/platform-tool-definitions.ts) | Définitions d'outils plateforme (SoT kit) — explore / SQL / Meili / surface / UI / supplier. Métier (module.*) = discovery MCP. Tasks = PLATFORM_TASK_TOOL_DEFINITIONS + adapter tasks. Phase O4r — remplace la duplication ×3 dans prompts.ts marques. |
 | [`src/runtime/routing.ts`](../src/runtime/routing.ts) | Routage premier outil assistant (Meili vs SQL vs UI / surface). Module sans alias @/ — importable par les tests Node. |
 | [`src/runtime/run-sql.ts`](../src/runtime/run-sql.ts) | _(pas de cartouche JSDoc en tête — voir le code)_ |
