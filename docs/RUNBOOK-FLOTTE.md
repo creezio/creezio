@@ -26,8 +26,11 @@ Les zones Cloudflare et hostnames publics sont **ceux de la marque**
    (`{"email","password"}`), cookie `<brandId>_session`, `GET /api/v1/auth/me`
 3b. **Vérification E2E canonique** — compte E2E
    `CREEZIO_E2E_EMAIL/_PASSWORD` persisté dans le `secrets.env` (600) de
-   chaque instance (posé par `create|ensure-owner`), script marque
-   `scripts/verify-prod.mjs --all` (checks par profil brand/admin) ; règle :
+   chaque instance (posé par `create|ensure-owner`), script
+   `scripts/verify-prod.mjs --all` **matérialisé par la factory dans toute
+   app générée** (checks plateforme par profil brand/admin ; checks métier
+   dans `scripts/verify-prod.local.mjs`, jamais régénéré — gate
+   `test-phase-factory-two-repos`) ; règle :
    tout reset E2E se persiste dans `secrets.env`, jamais seulement dans un
    journal
 4. **Publier une image, updater, rollback** — `server-docker publish --tag`,
@@ -69,19 +72,26 @@ Les zones Cloudflare et hostnames publics sont **ceux de la marque**
 Tout port hôte consommé **depuis les conteneurs** (18800 backend flotte,
 18810 host-agent) doit être autorisé par UFW depuis `172.16.0.0/12`
 (**tous** les réseaux Docker, y compris les stacks compose en 172.25.x),
-pas seulement `172.17.0.0/16` (docker0) :
+pas seulement `172.17.0.0/16` (docker0).
+
+**Posée automatiquement** (0.18.0+) : `creezio server-docker agent up`,
+`admin up` et `enroll` embarquent un préflight UFW fail-closed
+(`packages/factory/src/server-docker-ufw.ts`, gate
+`test-phase-server-docker-ufw`) — UFW actif + règle absente → la règle est
+posée (droits root / `sudo -n`), sinon le geste **échoue** avec la commande
+exacte ; jamais silencieux. La commande manuelle reste le fallback :
 
 ```bash
 sudo ufw allow proto tcp from 172.16.0.0/12 to 172.17.0.1 port 18810   # host-agent
 sudo ufw allow proto tcp from 172.16.0.0/12 to 172.17.0.1 port 18800   # backend flotte
 ```
 
-À faire à l'enrôlement d'un hôte **et** à toute migration d'instances vers
-des stacks compose (réseaux dédiés hors docker0). Symptôme d'oubli :
+Symptôme historique (kits < 0.18.0 ou geste manuel raté) :
 `[UFW BLOCK] … DPT=188xx` dans le journal kernel
 (`sudo journalctl -k | rg 'UFW BLOCK.*DPT=188'`), `agent.{slug}.{zone}` en
 timeout alors que le CRM répond. Vécu 10–30/08/2026 : migration compose,
-18800 élargi mais 18810 oublié → pilotage host-agent cassé 20 jours.
+18800 élargi mais 18810 oublié → pilotage host-agent cassé 20 jours —
+c'est l'incident qui a motivé l'automatisation.
 Détail : skill fleet-ops §6/§8/§9.
 
 ## Protocole agent ↔ backend (P2.b / F4.4d, 0.15.0)
