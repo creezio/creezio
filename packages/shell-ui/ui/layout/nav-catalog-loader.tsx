@@ -4,9 +4,10 @@
  * Loader unique du catalogue sidebar — fetch `GET /api/v1/modules/nav`,
  * bump `configureSidebar`, alimente `getNavItems`.
  *
- * Vit dans `@creezio/shell-ui/ui` (déjà dans le graphe npm publié) pour
- * que la factory n'impose pas `@creezio/nav` à `npm install` d'une app
- * neuve. `@creezio/nav/ui` re-exporte le même composant.
+ * Vit dans `@creezio/shell-ui/ui` pour que le chrome factory n'importe
+ * pas `@creezio/nav` au runtime UI. La factory **installe** quand même
+ * `@creezio/nav` (même vague publish) pour `/admin/nav` et le mount
+ * auto-register. `@creezio/nav/ui` re-exporte le même composant.
  *
  * Contrat items : `{ id, href, label, order, group?, permission?, icon }`.
  */

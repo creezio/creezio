@@ -76,6 +76,39 @@ test("os-ui generator : RequireSession kit enveloppe WorkspaceRoot (source, sans
   );
 });
 
+test("os-ui generator : factory installe granola, grokbot et nav", () => {
+  const scaffold = fs.readFileSync(
+    path.join(ROOT, "packages/factory/src/scaffold.ts"),
+    "utf8",
+  );
+  const gen = fs.readFileSync(
+    path.join(ROOT, "packages/factory/src/generators/os-ui.ts"),
+    "utf8",
+  );
+  for (const name of ["granola", "grokbot", "nav"]) {
+    assert.match(
+      scaffold,
+      new RegExp(`SERVER_CREEZIO_DEPS[\\s\\S]*"${name}"`),
+      `SERVER_CREEZIO_DEPS contient ${name}`,
+    );
+    assert.match(
+      scaffold,
+      new RegExp(`CLIENT_CREEZIO_DEPS[\\s\\S]*"${name}"`),
+      `CLIENT_CREEZIO_DEPS contient ${name}`,
+    );
+    assert.match(
+      gen,
+      new RegExp(`"@creezio/${name}"`),
+      `package.json UI généré déclare @creezio/${name}`,
+    );
+    assert.match(
+      gen,
+      new RegExp(`"@creezio/${name}"`),
+      `transpilePackages déclare @creezio/${name}`,
+    );
+  }
+});
+
 test("os-ui scaffold : zéro page OS versionnée, materialize + boot kit", () => {
   assert.ok(fs.existsSync(CLI), "factory CLI");
   assert.ok(fs.existsSync(PRD), "PRD produit");
@@ -127,7 +160,35 @@ test("os-ui scaffold : zéro page OS versionnée, materialize + boot kit", () =>
     fs.readFileSync(path.join(srv, "ui/package.json"), "utf8"),
   );
   assert.ok(uiPkg.dependencies["@creezio/os-ui"]);
+  assert.ok(
+    uiPkg.dependencies["@creezio/granola"],
+    "dep UI @creezio/granola (jamais retirer — attend publish si E404 npm)",
+  );
+  assert.ok(
+    uiPkg.dependencies["@creezio/grokbot"],
+    "dep UI @creezio/grokbot (jamais retirer — attend publish si E404 npm)",
+  );
+  assert.ok(
+    uiPkg.dependencies["@creezio/nav"],
+    "dep UI @creezio/nav (même vague publish que granola/grokbot)",
+  );
   assert.ok(uiPkg.scripts.prebuild);
+
+  const srvPkg = JSON.parse(
+    fs.readFileSync(path.join(srv, "package.json"), "utf8"),
+  );
+  assert.ok(
+    srvPkg.dependencies["@creezio/granola"],
+    "dep serveur @creezio/granola (SERVER_CREEZIO_DEPS)",
+  );
+  assert.ok(
+    srvPkg.dependencies["@creezio/grokbot"],
+    "dep serveur @creezio/grokbot (SERVER_CREEZIO_DEPS)",
+  );
+  assert.ok(
+    srvPkg.dependencies["@creezio/nav"],
+    "dep serveur @creezio/nav (SERVER_CREEZIO_DEPS)",
+  );
 
   const layout = fs.readFileSync(path.join(srv, "ui/app/layout.tsx"), "utf8");
   assert.match(layout, /@creezio\/os-ui\/boot/);

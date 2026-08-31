@@ -183,7 +183,7 @@
 | [`test-phase-o9.mjs`](../test-phase-o9.mjs) | !usrbinenv node |
 | [`test-phase-onboarding-hybride.mjs`](../test-phase-onboarding-hybride.mjs) | Gate : @creezio/onboarding conforme au patron « module natif hybride » (docs/adr/ADR-module-natif-hybride.md). |
 | [`test-phase-os-nav-catalog.mjs`](../test-phase-os-nav-catalog.mjs) | Gate NAV-3 — chaque `OS_UI_ROUTE_SEGMENTS` primaire ∈ catalogue ou `horsNavJustification` ; factory chrome = `NavCatalogLoader` sans literal `"/granola"` / `"/grokbot"`. |
-| [`test-phase-os-ui-scaffold.mjs`](../test-phase-os-ui-scaffold.mjs) | Gate : factory --from-prd ne versionne PLUS de pages OS dans ui/app/ ; deps générées incluent `@creezio/granola` / `@creezio/grokbot` (vagues publish). |
+| [`test-phase-os-ui-scaffold.mjs`](../test-phase-os-ui-scaffold.mjs) | Gate : factory --from-prd ne versionne PLUS de pages OS dans ui/app/ ; deps générées incluent `@creezio/granola` / `@creezio/grokbot` / `@creezio/nav` (vagues publish). |
 | [`test-phase-p-cockpit.mjs`](../test-phase-p-cockpit.mjs) | !usrbinenv node |
 | [`test-phase-p-onboarding.mjs`](../test-phase-p-onboarding.mjs) | !usrbinenv node |
 | [`test-phase-p-shell-ui.mjs`](../test-phase-p-shell-ui.mjs) | !usrbinenv node |

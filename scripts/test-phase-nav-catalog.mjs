@@ -296,6 +296,26 @@ test("nav-catalog : factory chrome sans const OS_NAV ni literal /granola", async
   assert.match(chrome, /defaultOsAdminNavItems\(\{\s*includePlugins:\s*true/);
 });
 
+test("nav-catalog : factory installe granola, grokbot et nav (jamais retirer)", () => {
+  const scaffold = fs.readFileSync(
+    path.join(ROOT, "packages/factory/src/scaffold.ts"),
+    "utf8",
+  );
+  const gen = fs.readFileSync(FACTORY_OS_UI, "utf8");
+  for (const name of ["granola", "grokbot", "nav"]) {
+    assert.match(
+      scaffold,
+      new RegExp(`"${name}"`),
+      `scaffold.ts liste ${name} (SERVER/CLIENT_CREEZIO_DEPS)`,
+    );
+    assert.match(
+      gen,
+      new RegExp(`"@creezio/${name}"`),
+      `os-ui.ts installe @creezio/${name} (deps + transpilePackages)`,
+    );
+  }
+});
+
 test("nav-catalog : enregistré dans le script test racine", () => {
   const pkg = JSON.parse(fs.readFileSync(path.join(ROOT, "package.json"), "utf8"));
   assert.match(
