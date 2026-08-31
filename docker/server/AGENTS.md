@@ -51,7 +51,7 @@ CRM web Next) via Docker, multi-instances, sans AppImage/Electron.
   JSON), JSONL par étape dans `docker logs`, ops journal `/data/ops/`.
 - First-run : UI HTTP `/setup` (pas de tray/NSIS) ; seed via env `CREEZIO_*`.
 - Recherche : Meili embarqué (`MEILI_BINARY=/opt/creezio/bin/meilisearch`).
-- n8n/Hermes : opt-in `CREEZIO_NATIVE_WARM=1` (`create --warm`).
+- Hermes VPS : `create`/`update` (pas tunnel-local) pose `CREEZIO_NATIVE_WARM=1` + `CREEZIO_NATIVE_WARM_HERMES=1`. n8n : `CREEZIO_NATIVE_WARM_N8N=0` si disque tendu — **jamais** un skip n8n pour démarrer Work.
 - Raccourcis compose : `{Product}-Server-{N}.desktop` → `~/bin/open-creezio-server-N`
   (**jamais** `Exec=xdg-open` seul — souvent absent hors desktop).
 
@@ -60,7 +60,7 @@ CRM web Next) via Docker, multi-instances, sans AppImage/Electron.
 1. Bind HTTP : `CREEZIO_HTTP_HOST` géré dans `listenBrandOsHttp` /
    `listenBrandKernelHttp` — ne pas forcer `127.0.0.1` dans l'image
    (le loopback se fait au publish côté hôte).
-2. Warm natif off par défaut (`CREEZIO_NATIVE_WARM=0`) pour image légère.
+2. Compose local : `CREEZIO_NATIVE_WARM=0` (image légère / CI). VPS create/update : WARM=1 + Hermes on. n8n optionnel via `CREEZIO_NATIVE_WARM_N8N`.
 3. Après changement runtime consommé : `npm run build -w @creezio/app-runtime`
    (+ electron-shell si besoin), changeset → publication npm, puis
    `npm update "@creezio/*"` côté marque.

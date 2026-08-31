@@ -44,7 +44,7 @@ Toute évolution Meili / HTTP kernel / session IPC se fait **ici** (ou dans
 
 - `desktopProfile=full`, `desktopShell=runtime`
 - `ensureKitOsBinaries()` au boot (Meili/cloudflared sous `electron-shell/resources/bin`)
-- Warm n8n (skip : `CREEZIO_NATIVE_WARM=0`) ; Hermes warm : `CREEZIO_NATIVE_WARM_HERMES=1`
+- Warm n8n : `CREEZIO_NATIVE_WARM=0` ou `CREEZIO_NATIVE_WARM_N8N=0` (skip n8n **seulement** — Hermes continue). Hermes : on sauf `CREEZIO_NATIVE_WARM_HERMES=0` ; `HERMES=1` démarre Hermes même si `WARM=0`. Work n'exige pas n8n.
 - Surface MCP locale : `CREEZIO_TUNNEL_LOCAL` (défaut on)
 - Sonde agrégée : `GET /api/v1/os/ready`
 - Opt-out shell : `CREEZIO_DESKTOP_SHELL=window`

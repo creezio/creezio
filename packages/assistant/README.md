@@ -185,7 +185,7 @@ Endpoints principaux sous `/assistant` :
 
 - `POST /chat` : SSE assistant.
 - `GET|PUT /agent-profile` : agent entreprise/personnel.
-- `GET /plugin-approvals` : cartes Product Hub si `pluginProductHub`.
+- `GET /plugin-approvals` : cartes Product Hub ; sans hub → 200 `{ approvals, clarifications, qa: [] }` (l'UI poll sans 404).
 - `POST /ui-actions/:id/result` : résultat d'action UI.
 - `GET /desktop-actions/stream` et alias `GET /supplier-actions/stream`.
 - `POST /transcribe` : audio vers texte.

@@ -93,7 +93,7 @@ export type AssistantRoutesFeatures = {
   hermesControls?: boolean;
   /** ACL conversations + adopt orphans owner. Défaut: true si getSession. */
   conversationAcl?: boolean;
-  /** Cartes Product Hub (approvals/QA). Défaut: true si pluginProductHub. */
+  /** Cartes Product Hub (approvals/QA). Défaut: true (200 [] sans hub). */
   pluginApprovals?: boolean;
 };
 
@@ -158,8 +158,7 @@ export function createAssistantRoutes(deps: AssistantRoutesDeps = {}): Hono {
     agentProfile: deps.features?.agentProfile ?? hasSession,
     hermesControls: deps.features?.hermesControls ?? true,
     conversationAcl: deps.features?.conversationAcl ?? hasSession,
-    pluginApprovals:
-      deps.features?.pluginApprovals ?? Boolean(deps.pluginProductHub),
+    pluginApprovals: deps.features?.pluginApprovals ?? true,
   };
   const desktopStreamAuth = deps.desktopStreamAuth ?? "query";
 
@@ -253,9 +252,12 @@ export function createAssistantRoutes(deps: AssistantRoutesDeps = {}): Hono {
     });
   }
 
-  if (features.pluginApprovals && deps.pluginProductHub) {
+  if (features.pluginApprovals) {
     const hub = deps.pluginProductHub;
     app.get("/plugin-approvals", async (c) => {
+      if (!hub) {
+        return c.json({ approvals: [], clarifications: [], qa: [] });
+      }
       const conversationId = String(c.req.query("conversationId") || "").trim();
       if (!conversationId) {
         return c.json({ approvals: [], clarifications: [], qa: [] });

@@ -1,8 +1,36 @@
 /**
  * Ensure + start hosts OS natifs (n8n, Hermes) pour une marque.
  * Les manifests/scripts viennent du kit `@creezio/electron-shell` — pas de la marque.
+ *
+ * Flags (indépendants — skip n8n ne doit JAMAIS empêcher Hermes) :
+ *   CREEZIO_NATIVE_WARM=0        → skip n8n ; Hermes aussi sauf HERMES=1
+ *   CREEZIO_NATIVE_WARM_N8N=0    → skip n8n seulement (disque / first-run ~2,6 Go)
+ *   CREEZIO_NATIVE_WARM_HERMES=0 → skip Hermes seulement
+ *   CREEZIO_NATIVE_WARM_HERMES=1 → Hermes ON même si WARM=0
  */
 import type { BrandOsComposition } from "./compose-brand-os.js";
+
+export type NativeWarmFlags = {
+  n8n: boolean;
+  hermes: boolean;
+};
+
+/**
+ * Contrat warm natif : n8n et Hermes sont deux leviers distincts.
+ * Hermes n'est jamais gated par le skip n8n.
+ */
+export function resolveNativeWarmFlags(
+  env: NodeJS.ProcessEnv = process.env,
+): NativeWarmFlags {
+  const master = (env.CREEZIO_NATIVE_WARM || "").trim();
+  const n8nFlag = (env.CREEZIO_NATIVE_WARM_N8N || "").trim();
+  const hermesFlag = (env.CREEZIO_NATIVE_WARM_HERMES || "").trim();
+  const masterOn = master !== "0";
+  return {
+    n8n: masterOn && n8nFlag !== "0",
+    hermes: hermesFlag === "0" ? false : masterOn || hermesFlag === "1",
+  };
+}
 
 export type WarmNativeHostsResult = {
   n8n: {

@@ -57,6 +57,24 @@ import {
 } from "./server-docker-owner.js";
 import { assertUfwFleetRule } from "./server-docker-ufw.js";
 
+/**
+ * VPS (pas tunnel-local) : Hermes TOUJOURS on sauf opt-out explicite.
+ * n8n reste un levier séparé (`CREEZIO_NATIVE_WARM_N8N=0` si disque tendu).
+ * Ne jamais se servir du skip n8n pour démarrer Work/Hermes.
+ */
+export function applyVpsNativeWarmDefaults(
+  env: Record<string, string>,
+): Record<string, string> {
+  const out = { ...env };
+  if (!Object.prototype.hasOwnProperty.call(out, "CREEZIO_NATIVE_WARM")) {
+    out.CREEZIO_NATIVE_WARM = "1";
+  }
+  if (!Object.prototype.hasOwnProperty.call(out, "CREEZIO_NATIVE_WARM_HERMES")) {
+    out.CREEZIO_NATIVE_WARM_HERMES = "1";
+  }
+  return out;
+}
+
 export type ServerDockerArgs = {
   sub: string;
   brandRoot?: string;
@@ -276,7 +294,7 @@ Instances nommées (registre docker-data/servers.json — recommandé) :
   creezio server-docker create <nom> --brand-root <app> [--port N] [--expose] [--warm] [--browser] [--profile prod] [--env K=V]…
     --browser : image variant browser (Chromium+Xvfb, sidecar navigateur IA,
                 profils /data/browser, shm 1 Go)
-    --profile prod : serveur flotte — CREEZIO_NATIVE_WARM=1 + CREEZIO_CATALOG=1
+    --profile prod : serveur flotte — CREEZIO_NATIVE_WARM=1 + Hermes + CREEZIO_CATALOG=1
                 + fail-closed tunnel (CREEZIO_CF_API_TOKEN/_ACCOUNT_ID/_ZONE_ID
                 → cf.env 600, auto-provision au boot) + fail-closed owner
                 (CREEZIO_OWNER_EMAIL/_PASSWORD) + forward env hôte
@@ -2781,6 +2799,13 @@ async function runRegistrySubcommand(
     } else {
       extraEnv.CREEZIO_TUNNEL_LOCAL = "0";
       extraEnv.CREEZIO_TUNNEL_SLUG = tunnelPolicy.slug;
+      Object.assign(extraEnv, applyVpsNativeWarmDefaults(extraEnv));
+      console.log(
+        `CREEZIO_NATIVE_WARM=${extraEnv.CREEZIO_NATIVE_WARM} CREEZIO_NATIVE_WARM_HERMES=${extraEnv.CREEZIO_NATIVE_WARM_HERMES}` +
+          (extraEnv.CREEZIO_NATIVE_WARM_N8N === "0"
+            ? " CREEZIO_NATIVE_WARM_N8N=0 (n8n skip — Hermes continue)"
+            : " (Hermes on, n8n suit WARM sauf N8N=0)"),
+      );
       if (tunnelPolicy.derived) {
         console.log(formatDerivedSlugLog(tunnelPolicy));
       }
@@ -3420,6 +3445,14 @@ async function runRegistrySubcommand(
         steps?: string[];
       }>;
     };
+    if ((inst.env?.CREEZIO_TUNNEL_LOCAL || "") !== "1") {
+      inst.env = applyVpsNativeWarmDefaults(inst.env || {});
+      saveServerRegistry(paths.brandRoot, registry);
+      console.log(
+        `VPS warm : CREEZIO_NATIVE_WARM=${inst.env.CREEZIO_NATIVE_WARM} HERMES=${inst.env.CREEZIO_NATIVE_WARM_HERMES}` +
+          (inst.env.CREEZIO_NATIVE_WARM_N8N === "0" ? " N8N=0" : ""),
+      );
+    }
     console.log(
       `update ${name} → ${image}${args.backup ? " (--backup)" : " (sans nouveau backup)"}…`,
     );

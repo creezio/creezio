@@ -58,7 +58,10 @@ import {
 } from "./mount-brand-mcp-surface.js";
 import { startBrandUiPlane } from "./start-brand-ui-plane.js";
 import { installBrandOsDesktop } from "./install-brand-os-desktop.js";
-import { warmBrandNativeHosts } from "./warm-brand-native-hosts.js";
+import {
+  resolveNativeWarmFlags,
+  warmBrandNativeHosts,
+} from "./warm-brand-native-hosts.js";
 import { createPluginAclMcpWiring } from "./plugin-acl-wiring.js";
 import {
   createApiKeyBearerActorResolver,
@@ -809,21 +812,22 @@ async function startBrandDesktopBody(args: {
     );
   }
 
-  // Fullstack natif kit (n8n + Hermes) — CREEZIO_NATIVE_WARM=0 pour skip.
+  // Fullstack natif kit (n8n + Hermes) — flags indépendants.
   // shell=runtime : le splash (installBrandOsDesktop) ensure/start n8n+Hermes
   // avec UI — un warm bloquant ICI laisse l'utilisateur sans fenêtre ("rien").
   const skipWarmForRuntimeShell =
     desktopShell === "runtime" && process.env.CREEZIO_NATIVE_WARM !== "1";
+  const warmFlags = resolveNativeWarmFlags();
   if (
     os &&
     desktopProfile === "full" &&
-    process.env.CREEZIO_NATIVE_WARM !== "0" &&
+    (warmFlags.n8n || warmFlags.hermes) &&
     !skipWarmForRuntimeShell
   ) {
     const warm = await warmBrandNativeHosts(os, {
       start: process.env.CREEZIO_NATIVE_START !== "0",
-      n8n: true,
-      hermes: process.env.CREEZIO_NATIVE_WARM_HERMES !== "0",
+      n8n: warmFlags.n8n,
+      hermes: warmFlags.hermes,
     });
     log(
       "native",
