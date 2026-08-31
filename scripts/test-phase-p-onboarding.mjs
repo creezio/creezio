@@ -306,7 +306,7 @@ test("P.6 workspace wiring + package publié npm", () => {
   );
   assert.equal(
     onb.publishConfig?.registry,
-    "https://npm.pkg.github.com",
+    "https://registry.npmjs.org",
     "onboarding non publiable npm",
   );
 
