@@ -37,24 +37,39 @@ function walkFactorySrc(dir, acc = []) {
   return acc;
 }
 
-test("os-nav-catalog : OS_PRIMARY_NAV_SEGMENTS + horsNavJustification couvrent OS_UI_ROUTE_SEGMENTS", async () => {
-  const osUiDist = path.join(ROOT, "packages/os-ui/dist/index.js");
-  assert.ok(
-    fs.existsSync(osUiDist),
-    "dist @creezio/os-ui manquant — lancer npm run build -w @creezio/os-ui",
+function extractQuotedList(src, constName) {
+  const m = src.match(
+    new RegExp(`export const ${constName} = \\[([\\s\\S]*?)\\](?: as const)?;`),
   );
-  const osUi = await import(osUiDist);
-  assert.ok(Array.isArray(osUi.OS_UI_ROUTE_SEGMENTS));
-  assert.deepEqual([...osUi.OS_PRIMARY_NAV_SEGMENTS], PRIMARY);
-  const justifications = osUi.OS_UI_HORS_NAV_JUSTIFICATIONS;
-  assert.equal(typeof justifications, "object");
+  assert.ok(m, `${constName} introuvable dans os-ui/src/index.ts`);
+  return [...m[1].matchAll(/"([^"]+)"/g)].map((x) => x[1]);
+}
+
+function extractJustificationMap(src) {
+  const m = src.match(
+    /export const OS_UI_HORS_NAV_JUSTIFICATIONS: Record<string, string> = \{([\s\S]*?)\n\};/,
+  );
+  assert.ok(m, "OS_UI_HORS_NAV_JUSTIFICATIONS introuvable");
+  const out = {};
+  for (const row of m[1].matchAll(
+    /(?:"([^"]+)"|([A-Za-z0-9_-]+))\s*:\s*"((?:\\.|[^"\\])*)"/g,
+  )) {
+    out[row[1] || row[2]] = row[3];
+  }
+  return out;
+}
+
+test("os-nav-catalog : OS_PRIMARY_NAV_SEGMENTS + horsNavJustification couvrent OS_UI_ROUTE_SEGMENTS", () => {
+  const src = fs.readFileSync(OS_UI_SRC, "utf8");
+  const segments = extractQuotedList(src, "OS_UI_ROUTE_SEGMENTS");
+  const primary = extractQuotedList(src, "OS_PRIMARY_NAV_SEGMENTS");
+  const justifications = extractJustificationMap(src);
+  assert.ok(segments.length > 0);
+  assert.deepEqual(primary, PRIMARY);
 
   const covered = new Set();
-  for (const seg of osUi.OS_PRIMARY_NAV_SEGMENTS) {
-    assert.ok(
-      osUi.OS_UI_ROUTE_SEGMENTS.includes(seg),
-      `primaire ${seg} doit être dans OS_UI_ROUTE_SEGMENTS`,
-    );
+  for (const seg of primary) {
+    assert.ok(segments.includes(seg), `primaire ${seg} doit être dans OS_UI_ROUTE_SEGMENTS`);
     assert.equal(
       justifications[seg],
       undefined,
@@ -63,26 +78,19 @@ test("os-nav-catalog : OS_PRIMARY_NAV_SEGMENTS + horsNavJustification couvrent O
     covered.add(seg);
   }
   for (const [seg, reason] of Object.entries(justifications)) {
-    assert.ok(
-      osUi.OS_UI_ROUTE_SEGMENTS.includes(seg),
-      `horsNavJustification ${seg} : segment inconnu`,
-    );
+    assert.ok(segments.includes(seg), `horsNavJustification ${seg} : segment inconnu`);
     assert.ok(
       typeof reason === "string" && reason.trim().length > 8,
       `horsNavJustification ${seg} trop courte`,
     );
     covered.add(seg);
   }
-  for (const seg of osUi.OS_UI_ROUTE_SEGMENTS) {
+  for (const seg of segments) {
     assert.ok(
       covered.has(seg),
       `segment OS ${seg} : entrée catalogue (OS_PRIMARY_NAV_SEGMENTS) ou OS_UI_HORS_NAV_JUSTIFICATIONS`,
     );
   }
-
-  const src = fs.readFileSync(OS_UI_SRC, "utf8");
-  assert.match(src, /OS_UI_HORS_NAV_JUSTIFICATIONS/);
-  assert.match(src, /OS_PRIMARY_NAV_SEGMENTS/);
 });
 
 test("os-nav-catalog : chaque primaire a une entrée defaultOsCatalogEntries", async () => {
