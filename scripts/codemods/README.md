@@ -46,7 +46,9 @@ marque, détecte la version d'architecture courante (marqueur
 `creezio.architectureVersion` du package.json racine, sinon mapping
 lockstep→arch via les `since`, sinon platform-core installé), applique la
 chaîne des codemods intermédiaires dans l'ordre (idempotence prouvée à
-chaque pas), bumpe les deps `@creezio/*` de TOUS les manifests + lockfiles
+chaque pas), synchronise les deps `@creezio/*` de TOUS les manifests avec
+la SoT du kit (`planCreezioManifestSync` — bump des existantes + AJOUT des
+deps requises manquantes, jamais de suppression silencieuse) + lockfiles
 (`npm install --package-lock-only`, jamais `npm update`), rematérialise les
 pages os-ui et lance le doctor brand-spec. `--dry-run` liste le plan.
 

@@ -57,10 +57,13 @@ apps dans la CI kit. La propagation est à l'initiative de CHAQUE app
    montée de version — **runner outillé (P3.a)** : `creezio upgrade`
    (package factory) détecte la version d'architecture de la marque,
    applique LA CHAÎNE des codemods intermédiaires dans l'ordre (idempotence
-   vérifiée à chaque pas), bumpe tous les manifests `@creezio/*`
-   (`npm install --package-lock-only`, jamais `npm update`), rematérialise
-   os-ui et lance le doctor. `--dry-run` pour lister sans écrire. Gate :
-   `test-phase-upgrade-runner`.
+   vérifiée à chaque pas), synchronise tous les manifests `@creezio/*` avec
+   la SoT du kit — bump des deps existantes ET ajout des deps requises
+   manquantes (`SERVER/UI/CLIENT_CREEZIO_DEPS` ; une dep hors SoT n'est
+   jamais supprimée, elle est listée en warning) — puis régénère les
+   lockfiles (`npm install --package-lock-only`, jamais `npm update`),
+   rematérialise os-ui et lance le doctor. `--dry-run` pour lister sans
+   écrire. Gate : `test-phase-upgrade-runner`.
 
 `node_modules/` côté app est GÉNÉRÉ — jamais de patch manuel d'un package
 `@creezio/*` installé (écrasé au prochain `npm ci`).
@@ -167,7 +170,10 @@ pour chaque marque de `.github/propagate-brands.json` :
 
 1. no-op si le HEAD n'est pas un commit release changesets ;
 2. clone le repo marque, skip si déjà à jour ou branche de bump déjà poussée ;
-3. bumpe tous les manifests `@creezio/*` + régénère chaque lockfile en
+3. synchronise tous les manifests `@creezio/*` avec la SoT kit via
+   `planCreezioManifestSync` (logique partagée `@creezio/factory` — bump des
+   existantes + ajout des deps requises manquantes, extras hors SoT listés
+   en warning dans la PR, jamais supprimés) + régénère chaque lockfile en
    `--package-lock-only` ;
 4. pousse `creezio/kit-bump-<version>` et ouvre la PR avec le rapport
    d'impact `@creezio/propagation` en corps.
