@@ -14,19 +14,19 @@
 
 | Fichier | Rôle |
 |---|---|
-| [`codemods/H7/h7-neutralize-brand-contracts.mjs`](../codemods/H7/h7-neutralize-brand-contracts.mjs) | (à documenter) |
+| [`codemods/H7/h7-neutralize-brand-contracts.mjs`](../codemods/H7/h7-neutralize-brand-contracts.mjs) | Copie embarquée du codemod H7 (neutralise contrats marque) publiée avec `@creezio/factory`. |
 
 ## `codemods/H8/`
 
 | Fichier | Rôle |
 |---|---|
-| [`codemods/H8/h8-materialize-brand-manifest.mjs`](../codemods/H8/h8-materialize-brand-manifest.mjs) | (à documenter) |
+| [`codemods/H8/h8-materialize-brand-manifest.mjs`](../codemods/H8/h8-materialize-brand-manifest.mjs) | Copie embarquée du codemod H8 — manifest local d'abord + matérialise `app-manifest.json` depuis le registre kit déprécié. |
 
 ## `codemods/H9/`
 
 | Fichier | Rôle |
 |---|---|
-| [`codemods/H9/h9-import-module-contract.mjs`](../codemods/H9/h9-import-module-contract.mjs) | (à documenter) |
+| [`codemods/H9/h9-import-module-contract.mjs`](../codemods/H9/h9-import-module-contract.mjs) | Copie embarquée du codemod H9 — `types.ts` → ré-export kit + `accessJustification` sur mounts sans permission. |
 
 ## `scripts/`
 
@@ -40,7 +40,7 @@
 |---|---|
 | [`src/admin-repo.ts`](../src/admin-repo.ts) | Scaffold du repo ADMIN dédié `<brand>-admin` (app OS complète en mode admin : modules @creezio/admin, landing, compose) — layout 2 repos. |
 | [`src/brand-cli.ts`](../src/brand-cli.ts) | CLI `creezio brand` — create (happy path) / init / doctor / apply / smoke. |
-| [`src/brand-module-init.ts`](../src/brand-module-init.ts) | (à documenter) |
+| [`src/brand-module-init.ts`](../src/brand-module-init.ts) | CLI `creezio brand module init` — spec 5 fichiers, stub `BrandModuleDef`, registre, runner de gates colocalisées. |
 | [`src/cli.ts`](../src/cli.ts) | CLI `new-app`, `--from-prd` ; `demo-app` déprécié (exit 1). |
 | [`src/github-repos.ts`](../src/github-repos.ts) | Création + push des 2 repos GitHub privés d'une marque (monorepo + `<brand>-admin`) ; token env `GITHUB_TOKEN`/`CREEZIO_GITHUB_TOKEN` ou `.github-token`, vendor + package-lock synchronisés AVANT push. |
 | [`src/index.ts`](../src/index.ts) | Exports publics |
@@ -65,11 +65,11 @@
 | Fichier | Rôle |
 |---|---|
 | [`src/generators/api.ts`](../src/generators/api.ts) | API métier HTTP |
-| [`src/generators/brand-workflows.ts`](../src/generators/brand-workflows.ts) | (à documenter) |
+| [`src/generators/brand-workflows.ts`](../src/generators/brand-workflows.ts) | Génère `ci.yml` (anti-régression) + `deploy.yml` (CD self-hosted) pour chaque marque npm — plus de workflows vendor. |
 | [`src/generators/index.ts`](../src/generators/index.ts) | Re-exports |
 | [`src/generators/linux-e2e.ts`](../src/generators/linux-e2e.ts) | Artefacts pack Linux / E2E / env pour `--from-prd` (wrappers minces vers desktop-tooling, metier-base, `.env.example`). |
-| [`src/generators/meili-feed-presets.ts`](../src/generators/meili-feed-presets.ts) | (à documenter) |
-| [`src/generators/modules-registry.ts`](../src/generators/modules-registry.ts) | (à documenter) |
+| [`src/generators/meili-feed-presets.ts`](../src/generators/meili-feed-presets.ts) | Registre factory des presets Meili (id libre côté OS) — inline `meili-feed.ts` dans la marque, pas de preset runtime kit. |
+| [`src/generators/modules-registry.ts`](../src/generators/modules-registry.ts) | Socle registre modules (types H9, index, stubs, collecteurs) partagé scaffold + `brand module init`. |
 | [`src/generators/native-runtime.ts`](../src/generators/native-runtime.ts) | Générateurs du runtime natif OS d'une marque — SQLite + api-kernel (EntitySpec CRUD), pas de sidecar JSON. |
 | [`src/generators/nav.ts`](../src/generators/nav.ts) | Nav shell-ui |
 | [`src/generators/os-ui.ts`](../src/generators/os-ui.ts) | Catalogue des pages OS Next (SoT `@creezio/os-ui/routes`) — matérialisées sous `ui/app/(creezio-os)/` (gitignoré), plus versionnées dans la marque. |

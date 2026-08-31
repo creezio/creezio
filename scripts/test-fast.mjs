@@ -22,8 +22,8 @@
  *            `crm/vendor/creezio` absent (oracle pré-cutover / lecture seule).
  *   env    — gates coûteuses/environnementales (liste ENV_GATES, documentée
  *            dans scripts/README.md) : cold-warm (réseau embeds + ~4 Go /tmp),
- *            factory-prd (npm install d'une app générée, binaire Electron
- *            téléchargeable). Opt-in par variable d'env, sinon skip explicite.
+ *            factory-prd (scaffold --from-prd + smoke, lien node_modules kit,
+ *            pas de npm install). Opt-in par variable d'env, sinon skip explicite.
  *
  * AUCUN assert n'est affaibli : une gate skippée l'est pour un prérequis
  * d'environnement affiché en clair, jamais silencieusement.
@@ -65,14 +65,14 @@ const ENV_GATES = new Map([
     "test-phase-factory-prd.mjs",
     {
       optIn: "CREEZIO_FACTORY_PRD",
-      why: "npm install d'une app générée (binaire Electron téléchargeable)",
+      why: "scaffold --from-prd + smoke harness (lien node_modules kit, pas de npm install)",
     },
   ],
   [
     "test-phase-factory-prd-experience.mjs",
     {
       optIn: "CREEZIO_FACTORY_PRD",
-      why: "npm install d'une app générée (binaire Electron téléchargeable)",
+      why: "scaffold --from-prd + smoke harness (lien node_modules kit, pas de npm install)",
     },
   ],
   [

@@ -57,6 +57,9 @@ en jumeau dans `main.ts`.
   verte. Une marque production (clone GitHub) n'utilise PAS ce flag.
 - Smokes `test:metier-parcours` : `AUTH_DISABLED=1` dans `harnessPrelude`
   (garde mounts F3 — sinon 401 notes).
+- `tsconfig.preload.json` inclut `electron-shim.d.ts` : le preload compile
+  hors ligne sans paquet `electron` (gates `factory-prd*`, lien
+  `node_modules` kit — pas `--link-kit` / npm install).
 
 ## Points d'entrée
 

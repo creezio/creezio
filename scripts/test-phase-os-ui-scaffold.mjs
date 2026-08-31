@@ -149,12 +149,17 @@ test("os-ui scaffold : zéro page OS versionnée, materialize + boot kit", () =>
   );
 
   const out = fs.mkdtempSync(path.join(os.tmpdir(), "creezio-os-ui-"));
-  // 240s : le scaffold régénère les package-locks. --link-kit pin les
-  // @creezio/* sur le worktree (PR de release : version pas encore publiée).
+  // Structure seule : pas de npm install / lock (registre). Même contrat
+  // hors-ligne que factory-prd (CREEZIO_SKIP_BRAND_DIST + lien kit si smoke).
   const r = spawnSync(
     process.execPath,
-    [CLI, "new-app", "--from-prd", PRD, "--out", out, "--force", "--link-kit"],
-    { encoding: "utf8", cwd: ROOT, timeout: 240_000 },
+    [CLI, "new-app", "--from-prd", PRD, "--out", out, "--force"],
+    {
+      encoding: "utf8",
+      cwd: ROOT,
+      timeout: 60_000,
+      env: { ...process.env, CREEZIO_SKIP_BRAND_DIST: "1" },
+    },
   );
   assert.equal(r.status, 0, r.stderr || r.stdout);
 
@@ -185,11 +190,11 @@ test("os-ui scaffold : zéro page OS versionnée, materialize + boot kit", () =>
   assert.ok(uiPkg.dependencies["@creezio/os-ui"]);
   assert.ok(
     uiPkg.dependencies["@creezio/granola"],
-    "dep UI @creezio/granola (jamais retirer — install via --link-kit en CI)",
+    "dep UI @creezio/granola (jamais retirer — attend publish si E404 npm)",
   );
   assert.ok(
     uiPkg.dependencies["@creezio/grokbot"],
-    "dep UI @creezio/grokbot (jamais retirer — install via --link-kit en CI)",
+    "dep UI @creezio/grokbot (jamais retirer — attend publish si E404 npm)",
   );
   assert.ok(
     uiPkg.dependencies["@creezio/nav"],

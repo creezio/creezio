@@ -9,6 +9,7 @@ import os from "node:os";
 import path from "node:path";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
+import { linkKitNodeModules } from "./lib/link-kit-node-modules.mjs";
 import {
   parseProductPrd,
   safeBrandId,
@@ -79,6 +80,9 @@ const SMOKE_ENV = {
   CREEZIO_ROOT: ROOT, // legacy compat (Q8)
   // Gates structurelles : pas de vendor/lock Docker (layout node_modules tmp).
   CREEZIO_SKIP_BRAND_DIST: "1",
+  // Hors-ligne : aucun npm install (le lien kit suffit pour tsc + @creezio/*).
+  npm_config_offline: "true",
+  npm_config_prefer_offline: "true",
   NODE_PATH: path.join(ROOT, "node_modules"),
   PATH: [
     path.join(ROOT, "node_modules", ".bin"),
@@ -407,19 +411,29 @@ test("F3.0 harness généré pose AUTH_DISABLED (anti-401 notes, sans electron)"
       ),
       "scaffold --from-prd doit installer le template kit insights-assistant",
     );
+    const preloadTsconfig = fs.readFileSync(
+      path.join(result.serverDir, "tsconfig.preload.json"),
+      "utf8",
+    );
+    assert.match(
+      preloadTsconfig,
+      /electron-shim\.d\.ts/,
+      "tsconfig.preload doit inclure electron-shim.d.ts (tsc hors-ligne sans paquet electron)",
+    );
   } finally {
     fs.rmSync(outDir, { recursive: true, force: true });
   }
 });
 
-test("F3 smoke kernel natif sur app générée", (t) => {
-  // Le smoke build:runtime de l'app générée compile preload.ts (types
-  // electron). Sur un hôte headless sans devDependency electron installée
-  // (VPS serveur), skip EXPLICITE — le smoke complet tourne sur les postes
-  // dev/CI où electron est présent. F3.0 ci-dessus reste obligatoire.
-  if (!fs.existsSync(path.join(ROOT, "node_modules/electron/package.json"))) {
-    t.skip("electron absent de node_modules kit (hôte headless) — smoke build impossible");
-    return;
+test("F3 smoke kernel natif sur app générée", () => {
+  // Compile via electron-shim.d.ts + @types/node du kit (lien node_modules).
+  // Pas de npm install : --link-kit (PR #172) exigerait encore le registre
+  // pour electron/typescript/lock — hors-ligne impossible. F3.0 reste
+  // obligatoire même si ce smoke échoue.
+  if (!fs.existsSync(path.join(ROOT, "node_modules"))) {
+    throw new Error(
+      "node_modules kit absent — impossible de lier l'app générée pour tsc",
+    );
   }
   const outDir = fs.mkdtempSync(path.join(os.tmpdir(), "creezio-metier-"));
   const model = parseProductPrd(fs.readFileSync(PRD, "utf8"));
@@ -433,6 +447,11 @@ test("F3 smoke kernel natif sur app générée", (t) => {
     productModel: model,
   });
   const server = result.serverDir;
+  const link = linkKitNodeModules(server, ROOT);
+  assert.ok(
+    fs.existsSync(path.join(link.path, "@types/node")),
+    "lien kit : @types/node introuvable (tsc hors-ligne impossible)",
+  );
 
   const smoke = spawnSync(
     process.execPath,
