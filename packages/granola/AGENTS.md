@@ -27,7 +27,8 @@ sync des notes en `brand.db`, client + proxys de l'API publique Granola
 
 - `src/index.ts` : surface publique.
 - `src/config.ts` : `GranolaModuleConfig`, `granolaMigrations()`
-  (tables `granola_settings` / `granola_events` / `granola_notes`),
+  (tables `granola_settings` / `granola_events` / `granola_notes`,
+  `granola_002_note_transcript_folder` pour `folder_id` / `transcript_json`),
   `mergeGranolaConfig`, `maskSecret`.
 - `src/signature.ts` : `verifyGranolaSignature` (HMAC-SHA256
   `{id}.{timestamp}.{body}`, tolérance rejeu 300 s) + `signGranolaPayload`
@@ -35,8 +36,28 @@ sync des notes en `brand.db`, client + proxys de l'API publique Granola
 - `src/client.ts` : `createGranolaClient` — notes / transcript / folders /
   webhook-endpoints.
 - `src/mount.ts` : `createGranolaMount` → `/api/v1/modules/granola/*`
-  (webhook, webhook-info, register-webhook, config, events, notes, remote/*).
-- `ui/granola-client.tsx` : page `GranolaClient` (design system shell-ui).
+  (webhook, webhook-info, register-webhook, config, events, notes,
+  `GET notes/:id/transcript`, remote/*).
+- `ui/granola-client.tsx` : page `GranolaClient` — compose les deux panneaux
+  + `Toaster`. Clic livraison → `onSelectNote` (scroll `#granola-notes-workspace`,
+  hash `#note-<id>`) **sans** ouvrir la fiche (GRANOLA-1 possède le Sheet).
+- `ui/granola-notes-panel.tsx` : workspace notes (liste + fiche) — **GRANOLA-1**.
+  Ne pas réécrire depuis GRANOLA-2.
+- `ui/granola-connect-panel.tsx` : connecteur opérable — **GRANOLA-2**
+  (santé, endpoints distants list/patch/delete, livraisons filtrées,
+  empty/error). Ne pas enrichir depuis GRANOLA-1.
+
+## Split UI (GRANOLA-1 / GRANOLA-2)
+
+| Fichier | Owner | Contenu |
+|---|---|---|
+| `ui/granola-notes-panel.tsx` | GRANOLA-1 | liste, fiche Sheet, transcript, sync |
+| `ui/granola-connect-panel.tsx` | GRANOLA-2 | badges santé, `publicBaseUrl` (placeholder origine), table endpoints (`AlertDialog` = `Dialog` kit `role="alertdialog"`), filtre livraisons, toasts `j.error` |
+| `ui/granola-client.tsx` | partagé (compose) | layout + `Toaster` + callback `onSelectNote` |
+
+Erreurs connect : `db_unavailable` (503) et module non monté (404 HTML / fetch
+jeté) → *« Le module Granola n'est pas enregistré sur ce serveur »*, jamais
+« injoignable ». `signing_secret` jamais renvoyé au browser (`secretStored: true`).
 
 ## Modifier sans casser
 

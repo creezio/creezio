@@ -16,6 +16,7 @@
       "@creezio/mcp-facade",
       "@creezio/os-ui",
       "@creezio/shell-ui",
+      "@creezio/nav",
       "@creezio/onboarding",
       "@creezio/interactive-demo",
       "@creezio/cockpit",

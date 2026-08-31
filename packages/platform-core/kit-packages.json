@@ -24,6 +24,7 @@
     "@creezio/landing",
     "@creezio/mails",
     "@creezio/mcp-facade",
+    "@creezio/nav",
     "@creezio/observability",
     "@creezio/onboarding",
     "@creezio/os-ui",

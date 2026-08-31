@@ -84,6 +84,12 @@ en jumeau dans `main.ts`.
 - `src/product-model.ts` : `ProductModel`, `parseProductPrd`, `safeBrandId`.
 - `src/scaffold.ts` / `scaffold-from-prd.ts` : artefacts.
 - `src/generators/*` : schema, api, ui, **os-ui** (réf. + layout métier-only), nav, wiring, tests.
+  Chrome : `<NavCatalogLoader />` (`@creezio/shell-ui/ui`) +
+  `defaultOsAdminNavItems()` — **interdit** de régénérer une constante
+  `OS_NAV` inline. `@creezio/nav` est dans SERVER/CLIENT_CREEZIO_DEPS +
+  transpilePackages (même vague publish que granola/grokbot). Le loader
+  reste importé depuis `@creezio/shell-ui/ui`. Plan
+  `docs/plans/PLAN-NAV-CATALOG.md`.
 - Pages OS (`/mails`, `/taches`, `/setup`…) vivent dans **`@creezio/os-ui`** ;
   matérialisées sous `ui/app/(creezio-os)/` (gitignoré). **Interdit** de les
   versionner dans `ui/app/` d'une marque.

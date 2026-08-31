@@ -11,6 +11,8 @@
  * - `GET/PUT/DELETE config`         → config module (secrets masqués en GET).
  * - `GET    events`                 → livraisons webhook reçues (locales).
  * - `GET    notes` / `notes/:id`    → notes synchronisées (locales).
+ * - `GET    notes/:id/transcript`   → proxy `client.getTranscript` (jamais
+ *   d'appel Granola depuis le browser).
  * - `POST   notes/:id/sync`         → re-fetch d'une note via l'API.
  * - `GET    remote/notes[...]`, `remote/folders`,
  *   `GET/DELETE/PATCH remote/webhook-endpoints[...]` → proxys API Granola.
@@ -109,30 +111,56 @@ function webhookUrlFor(cfg: GranolaModuleConfig, req: ApiRequest): string | null
 
 type NoteRecord = Record<string, unknown>;
 
+function noteFolderId(note: NoteRecord): string | null {
+  if (typeof note.folder_id === "string" && note.folder_id) return note.folder_id;
+  const folder = note.folder;
+  if (folder && typeof folder === "object" && !Array.isArray(folder)) {
+    const id = (folder as Record<string, unknown>).id;
+    if (typeof id === "string" && id) return id;
+  }
+  return null;
+}
+
+function noteTranscriptJson(note: NoteRecord): string | null {
+  if (note.transcript == null) return null;
+  try {
+    return JSON.stringify(note.transcript);
+  } catch {
+    return null;
+  }
+}
+
 function upsertNote(db: Db, note: NoteRecord): void {
   const id = typeof note.id === "string" ? note.id : "";
   if (!id) return;
+  const title = typeof note.title === "string" && note.title ? note.title : null;
+  const summary =
+    typeof note.summary === "string" && note.summary ? note.summary : null;
   db.prepare(
     `INSERT INTO granola_notes
-       (id, title, summary, owner_json, note_created_at, note_updated_at, synced_at, payload_json)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+       (id, title, summary, owner_json, note_created_at, note_updated_at, synced_at, payload_json, folder_id, transcript_json)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
      ON CONFLICT(id) DO UPDATE SET
-       title = excluded.title,
-       summary = excluded.summary,
+       title = COALESCE(excluded.title, granola_notes.title),
+       summary = COALESCE(excluded.summary, granola_notes.summary),
        owner_json = excluded.owner_json,
        note_created_at = excluded.note_created_at,
        note_updated_at = excluded.note_updated_at,
        synced_at = excluded.synced_at,
-       payload_json = excluded.payload_json`,
+       payload_json = excluded.payload_json,
+       folder_id = COALESCE(excluded.folder_id, granola_notes.folder_id),
+       transcript_json = COALESCE(excluded.transcript_json, granola_notes.transcript_json)`,
   ).run(
     id,
-    typeof note.title === "string" ? note.title : null,
-    typeof note.summary === "string" ? note.summary : null,
+    title,
+    summary,
     note.owner ? JSON.stringify(note.owner) : null,
     typeof note.created_at === "string" ? note.created_at : null,
     typeof note.updated_at === "string" ? note.updated_at : null,
     nowIso(),
     JSON.stringify(note),
+    noteFolderId(note),
+    noteTranscriptJson(note),
   );
 }
 
@@ -148,6 +176,42 @@ export type GranolaMountOptions = {
    */
   awaitWebhookSync?: boolean;
 };
+
+function stripWebhookEndpointSecrets(value: unknown): unknown {
+  if (Array.isArray(value)) {
+    return value.map(stripWebhookEndpointSecrets);
+  }
+  if (!value || typeof value !== "object") return value;
+  const rec = { ...(value as Record<string, unknown>) };
+  delete rec.signing_secret;
+  if (rec.webhook_endpoints !== undefined) {
+    rec.webhook_endpoints = stripWebhookEndpointSecrets(rec.webhook_endpoints);
+  }
+  if (rec.data !== undefined) {
+    rec.data = stripWebhookEndpointSecrets(rec.data);
+  }
+  return rec;
+}
+
+function webhookEndpointPatch(
+  body: Record<string, unknown>,
+): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  if (typeof body.enabled === "boolean") out.enabled = body.enabled;
+  if (typeof body.url === "string" && body.url.trim()) {
+    out.url = body.url.trim();
+  }
+  if (Array.isArray(body.scopes)) {
+    out.scopes = body.scopes.filter((s) => typeof s === "string");
+  }
+  if (Array.isArray(body.events)) {
+    out.events = body.events.filter((s) => typeof s === "string");
+  }
+  if (Array.isArray(body.folder_ids)) {
+    out.folder_ids = body.folder_ids.filter((s) => typeof s === "string");
+  }
+  return out;
+}
 
 function jsonBody(req: ApiRequest): Record<string, unknown> | null {
   if (req.body && typeof req.body === "object" && !Array.isArray(req.body)) {
@@ -190,7 +254,7 @@ export function createGranolaMount(opts?: GranolaMountOptions): ApiMount {
         body: { ok: false, error: "granola_api_key_missing" },
       };
     }
-    const res = await client.getNote(noteId);
+    const res = await client.getNote(noteId, { include: "transcript" });
     if (!res.ok || !res.body || typeof res.body !== "object") {
       return {
         status: res.status === 502 ? 502 : res.status,
@@ -270,6 +334,13 @@ export function createGranolaMount(opts?: GranolaMountOptions): ApiMount {
         description: "Note synchronisée (payload complet)",
       },
       {
+        id: "get-note-transcript",
+        method: "GET",
+        path: "/notes/:id/transcript",
+        description:
+          "Proxy GET /v1/notes/{id}/transcript (pagination curseur) — jamais d'appel Granola depuis le browser",
+      },
+      {
         id: "sync-note",
         method: "POST",
         path: "/notes/:id/sync",
@@ -292,6 +363,19 @@ export function createGranolaMount(opts?: GranolaMountOptions): ApiMount {
         method: "GET",
         path: "/remote/webhook-endpoints",
         description: "Proxy GET /v1/webhook-endpoints de l'API Granola",
+      },
+      {
+        id: "patch-remote-webhook-endpoint",
+        method: "PATCH",
+        path: "/remote/webhook-endpoints/:id",
+        description:
+          "Proxy PATCH /v1/webhook-endpoints/{id} (enabled, url, scopes, events)",
+      },
+      {
+        id: "delete-remote-webhook-endpoint",
+        method: "DELETE",
+        path: "/remote/webhook-endpoints/:id",
+        description: "Proxy DELETE /v1/webhook-endpoints/{id}",
       },
     ],
     handle: async ({ req, subPath, db }) => {
@@ -558,7 +642,7 @@ export function createGranolaMount(opts?: GranolaMountOptions): ApiMount {
             : 50;
           const rows = (db as Db)
             .prepare(
-              `SELECT id, title, summary, note_created_at, note_updated_at, synced_at
+              `SELECT id, title, summary, note_created_at, note_updated_at, synced_at, folder_id
                FROM granola_notes ORDER BY synced_at DESC LIMIT ?`,
             )
             .all(limit);
@@ -566,9 +650,17 @@ export function createGranolaMount(opts?: GranolaMountOptions): ApiMount {
         }
         if (parts.length === 2 && method === "GET") {
           const row = (db as Db)
-            .prepare(`SELECT payload_json, synced_at FROM granola_notes WHERE id = ?`)
+            .prepare(
+              `SELECT payload_json, synced_at, folder_id, transcript_json
+               FROM granola_notes WHERE id = ?`,
+            )
             .get(parts[1]) as
-            | { payload_json?: string; synced_at?: string }
+            | {
+                payload_json?: string;
+                synced_at?: string;
+                folder_id?: string | null;
+                transcript_json?: string | null;
+              }
             | undefined;
           if (!row?.payload_json) {
             return { status: 404, body: { ok: false, error: "not_found" } };
@@ -579,10 +671,63 @@ export function createGranolaMount(opts?: GranolaMountOptions): ApiMount {
           } catch {
             note = null;
           }
+          if (note && typeof note === "object" && !Array.isArray(note)) {
+            const rec = note as Record<string, unknown>;
+            if (rec.transcript == null && row.transcript_json) {
+              try {
+                rec.transcript = JSON.parse(row.transcript_json);
+              } catch {
+                /* payload transcript illisible — ignorer */
+              }
+            }
+            if (rec.folder_id == null && row.folder_id) {
+              rec.folder_id = row.folder_id;
+            }
+          }
           return {
             status: 200,
             body: { ok: true, note, syncedAt: row.synced_at ?? null },
           };
+        }
+        if (parts.length === 3 && parts[2] === "transcript" && method === "GET") {
+          const client = clientFor(cfg);
+          if (!client) {
+            return {
+              status: 409,
+              body: { ok: false, error: "granola_api_key_missing" },
+            };
+          }
+          const noteId = parts[1] ?? "";
+          const res = await client.getTranscript(noteId, queryToObject(req));
+          if (!res.ok || res.body == null) {
+            return {
+              status: res.status === 502 ? 502 : res.status,
+              body: {
+                ok: false,
+                error: "granola_api_error",
+                status: res.status,
+                detail: res.body,
+              },
+            };
+          }
+          if (res.body && typeof res.body === "object") {
+            try {
+              const transcriptValue =
+                typeof res.body === "object" &&
+                !Array.isArray(res.body) &&
+                (res.body as Record<string, unknown>).transcript != null
+                  ? (res.body as Record<string, unknown>).transcript
+                  : res.body;
+              (db as Db)
+                .prepare(
+                  `UPDATE granola_notes SET transcript_json = ? WHERE id = ?`,
+                )
+                .run(JSON.stringify(transcriptValue), noteId);
+            } catch {
+              /* persist best-effort */
+            }
+          }
+          return { status: 200, body: { ok: true, data: res.body } };
         }
         if (parts.length === 3 && parts[2] === "sync" && method === "POST") {
           return syncNote(db as Db, cfg, parts[1] ?? "");
@@ -635,15 +780,42 @@ export function createGranolaMount(opts?: GranolaMountOptions): ApiMount {
         }
         if (parts[1] === "webhook-endpoints") {
           const endpointId = parts[2] ?? "";
+          const proxyEndpoints = (res: {
+            ok: boolean;
+            status: number;
+            body: unknown;
+          }): ApiResponse => {
+            const next = proxy({
+              ...res,
+              body: stripWebhookEndpointSecrets(res.body),
+            });
+            return next;
+          };
           if (parts.length === 2 && method === "GET") {
-            return proxy(await client.listWebhookEndpoints());
+            return proxyEndpoints(await client.listWebhookEndpoints());
           }
           if (parts.length === 3 && method === "PATCH") {
-            const body = jsonBody(req) ?? {};
-            return proxy(await client.updateWebhookEndpoint(endpointId, body));
+            if (!endpointId) {
+              return { status: 400, body: { ok: false, error: "invalid_id" } };
+            }
+            const patch = webhookEndpointPatch(jsonBody(req) ?? {});
+            if (Object.keys(patch).length === 0) {
+              return {
+                status: 400,
+                body: { ok: false, error: "invalid_body" },
+              };
+            }
+            return proxyEndpoints(
+              await client.updateWebhookEndpoint(endpointId, patch),
+            );
           }
           if (parts.length === 3 && method === "DELETE") {
-            return proxy(await client.deleteWebhookEndpoint(endpointId));
+            if (!endpointId) {
+              return { status: 400, body: { ok: false, error: "invalid_id" } };
+            }
+            return proxyEndpoints(
+              await client.deleteWebhookEndpoint(endpointId),
+            );
           }
         }
         return { status: 404, body: { ok: false, error: "not_found" } };

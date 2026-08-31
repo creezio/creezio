@@ -49,6 +49,64 @@ test("os-ui generator : RequireSession kit enveloppe WorkspaceRoot (source, sans
   );
   assert.match(gen, /jwtVerify/, "middleware généré : garde JWT");
   assert.match(gen, /host\.startsWith\("lp\."\)/, "middleware généré : rewrite lp.");
+  assert.doesNotMatch(
+    gen,
+    /const OS_NAV/,
+    "générateur : plus de constante OS_NAV recopiée",
+  );
+  assert.match(
+    gen,
+    /NavCatalogLoader/,
+    "générateur monte <NavCatalogLoader /> (catalogue GET /)",
+  );
+  assert.match(
+    gen,
+    /defaultOsPrimaryNavItems/,
+    "générateur fallback defaultOsPrimaryNavItems()",
+  );
+  assert.match(
+    gen,
+    /defaultOsAdminNavItems/,
+    "générateur appelle defaultOsAdminNavItems()",
+  );
+  assert.doesNotMatch(
+    gen,
+    /href:\s*["']\/granola["']/,
+    "générateur : pas de href /granola inline",
+  );
+});
+
+test("os-ui generator : factory installe granola, grokbot et nav", () => {
+  const scaffold = fs.readFileSync(
+    path.join(ROOT, "packages/factory/src/scaffold.ts"),
+    "utf8",
+  );
+  const gen = fs.readFileSync(
+    path.join(ROOT, "packages/factory/src/generators/os-ui.ts"),
+    "utf8",
+  );
+  for (const name of ["granola", "grokbot", "nav"]) {
+    assert.match(
+      scaffold,
+      new RegExp(`SERVER_CREEZIO_DEPS[\\s\\S]*"${name}"`),
+      `SERVER_CREEZIO_DEPS contient ${name}`,
+    );
+    assert.match(
+      scaffold,
+      new RegExp(`CLIENT_CREEZIO_DEPS[\\s\\S]*"${name}"`),
+      `CLIENT_CREEZIO_DEPS contient ${name}`,
+    );
+    assert.match(
+      gen,
+      new RegExp(`"@creezio/${name}"`),
+      `package.json UI généré déclare @creezio/${name}`,
+    );
+    assert.match(
+      gen,
+      new RegExp(`"@creezio/${name}"`),
+      `transpilePackages déclare @creezio/${name}`,
+    );
+  }
 });
 
 test("os-ui scaffold : zéro page OS versionnée, materialize + boot kit", () => {
@@ -102,7 +160,35 @@ test("os-ui scaffold : zéro page OS versionnée, materialize + boot kit", () =>
     fs.readFileSync(path.join(srv, "ui/package.json"), "utf8"),
   );
   assert.ok(uiPkg.dependencies["@creezio/os-ui"]);
+  assert.ok(
+    uiPkg.dependencies["@creezio/granola"],
+    "dep UI @creezio/granola (jamais retirer — attend publish si E404 npm)",
+  );
+  assert.ok(
+    uiPkg.dependencies["@creezio/grokbot"],
+    "dep UI @creezio/grokbot (jamais retirer — attend publish si E404 npm)",
+  );
+  assert.ok(
+    uiPkg.dependencies["@creezio/nav"],
+    "dep UI @creezio/nav (même vague publish que granola/grokbot)",
+  );
   assert.ok(uiPkg.scripts.prebuild);
+
+  const srvPkg = JSON.parse(
+    fs.readFileSync(path.join(srv, "package.json"), "utf8"),
+  );
+  assert.ok(
+    srvPkg.dependencies["@creezio/granola"],
+    "dep serveur @creezio/granola (SERVER_CREEZIO_DEPS)",
+  );
+  assert.ok(
+    srvPkg.dependencies["@creezio/grokbot"],
+    "dep serveur @creezio/grokbot (SERVER_CREEZIO_DEPS)",
+  );
+  assert.ok(
+    srvPkg.dependencies["@creezio/nav"],
+    "dep serveur @creezio/nav (SERVER_CREEZIO_DEPS)",
+  );
 
   const layout = fs.readFileSync(path.join(srv, "ui/app/layout.tsx"), "utf8");
   assert.match(layout, /@creezio\/os-ui\/boot/);
@@ -193,13 +279,41 @@ test("os-ui scaffold : zéro page OS versionnée, materialize + boot kit", () =>
     "chrome monte le tracker analytics (sinon Admin → Analytics reste à 0)",
   );
   assert.match(chrome, /@creezio\/observability\/ui/);
-  assert.match(chrome, /OS_NAV/, "chrome déclare la nav OS native");
-  assert.match(chrome, /\/taches/, "chrome lie /taches");
-  assert.match(chrome, /\/mails/, "chrome lie /mails");
-  assert.match(chrome, /\/granola/, "chrome lie /granola");
-  assert.match(chrome, /\/grokbot/, "chrome lie /grokbot");
-  assert.match(chrome, /\/admin\/mcp/, "chrome lie admin MCP");
-  assert.match(chrome, /\/admin\/plugins/, "chrome lie admin plugins (défaut ON)");
+  assert.doesNotMatch(
+    chrome,
+    /const OS_NAV/,
+    "chrome ne recopie plus une constante OS_NAV",
+  );
+  assert.doesNotMatch(
+    chrome,
+    /["']\/granola["']/,
+    "chrome n'embed plus /granola en dur — catalogue kit",
+  );
+  assert.doesNotMatch(
+    chrome,
+    /["']\/grokbot["']/,
+    "chrome n'embed plus /grokbot en dur — catalogue kit",
+  );
+  assert.match(
+    chrome,
+    /NavCatalogLoader/,
+    "chrome monte <NavCatalogLoader /> (GET /api/v1/modules/nav)",
+  );
+  assert.match(
+    chrome,
+    /defaultOsPrimaryNavItems/,
+    "chrome fallback defaultOsPrimaryNavItems() (premier paint)",
+  );
+  assert.match(
+    chrome,
+    /defaultOsAdminNavItems/,
+    "chrome appelle defaultOsAdminNavItems (pas de liste admin recopiée)",
+  );
+  assert.match(
+    chrome,
+    /includePlugins:\s*true/,
+    "chrome passe includePlugins: true (défaut ON)",
+  );
 
   const tailwind = fs.readFileSync(
     path.join(srv, "ui/tailwind.config.ts"),

@@ -13,8 +13,8 @@ Next de la marque au build, dans le groupe App Router `(creezio-os)`
 
 | Zone | Contenu |
 |------|---------|
-| `routes/` | Pages Next OS (wrappers minces sur `@creezio/<pkg>/ui`) — 14 segments |
-| `src/index.ts` | `OS_UI_ROUTE_SEGMENTS` (segments interdits dans `ui/app` versionné marque), `OS_UI_ROUTE_GROUP`, export `CreezioUiBoot` |
+| `routes/` | Pages Next OS (wrappers minces sur `@creezio/<pkg>/ui`) — dont `/admin/nav` |
+| `src/index.ts` | `OS_UI_ROUTE_SEGMENTS`, `OS_PRIMARY_NAV_SEGMENTS`, `OS_UI_HORS_NAV_JUSTIFICATIONS`, `OS_UI_ROUTE_GROUP`, export `CreezioUiBoot` |
 | `src/boot.tsx` | `CreezioUiBoot` — boot client OS (identité desktop + tokens shell-ui + `InteractiveDemoRoot` natif) |
 | `scripts/materialize.mjs` | CLI `creezio-materialize-os-ui` — copie `routes/` → `ui/app/(creezio-os)/` de la marque |
 
@@ -43,7 +43,7 @@ Le layout racine de la marque enveloppe l'app avec `CreezioUiBoot`
   d'une marque (gates kit).
 - Une page OS de ce package est un wrapper mince : la logique vit dans le
   package plateforme correspondant (`@creezio/mails/ui`, `@creezio/tasks/ui`,
-  `@creezio/onboarding/ui`, …).
+  `@creezio/onboarding/ui`, `@creezio/nav/ui`, …).
 
 ## Liens
 

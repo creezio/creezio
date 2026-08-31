@@ -115,6 +115,26 @@ electron-builder), `shell` (preload/main), `platform-core` (SqliteRuntime,
 boot), `os-ui` (pages OS à rematérialiser), `desktop-tooling` (publish),
 `factory` / `propagation` (outillage).
 
+## Sidebar = catalogue (interdiction `OS_NAV`)
+
+Depuis NAV-3 (`docs/plans/PLAN-NAV-CATALOG.md` Phase C) la sidebar d'une
+marque **consomme** `GET /api/v1/modules/nav` via `<NavCatalogLoader />`
+exporté par `@creezio/shell-ui/ui` (re-export `@creezio/nav/ui` après
+publish — **ne pas** ajouter `@creezio/nav` aux deps d'une app tant que
+le package n'est pas sur GitHub Packages).
+
+**Interdit** :
+
+- recopier une constante `OS_NAV` / `NAV` avec des hrefs OS
+  (`/taches`, `/mails`, granola, grokbot…) ;
+- lister `@creezio/granola` / `@creezio/grokbot` / `@creezio/nav` dans
+  le `package.json` d'une marque **avant** publication lockstep ;
+- patcher le chrome owned-by-brand pour « ajouter » un module OS.
+
+Après `npm update "@creezio/*"` : monter le loader, retirer les listes
+OS inline, `os-ui:materialize` (page `/admin/nav`). Snippets complets :
+`docs/plans/PLAN-NAV-CATALOG.md` §7.
+
 ## Règle d'or du bump côté apps
 
 Toujours bumper **les deux** manifests en même temps :

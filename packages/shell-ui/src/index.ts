@@ -5,6 +5,29 @@
 
 export type { CoreNavItem, NavItem, NavSlot, NavSlotId } from "./types.js";
 export { CORE_NAV_ITEMS, coreNavItems } from "./core-nav.js";
+export type {
+  NavCatalogEntry,
+  NavCatalogError,
+  NavCatalogFeatures,
+  NavCatalogGroup,
+  NavCatalogSessionItem,
+  NavCatalogSource,
+  NavIconName,
+  NavOverride,
+  ResolveNavCatalogInput,
+  ResolveNavCatalogResult,
+} from "./nav-catalog.js";
+export {
+  NAV_ICON_ALLOWLIST,
+  defaultOsCatalogEntries,
+  isKnownNavIcon,
+  listOsNavEntries,
+  parseNavCatalogSessionItems,
+  registerDefaultOsNavEntries,
+  registerOsNavEntry,
+  resetOsNavRegistryForTests,
+  resolveNavCatalog,
+} from "./nav-catalog.js";
 export type { NavRegistry } from "./registry.js";
 export { createNavRegistry, mergeNav } from "./registry.js";
 export type {

@@ -76,7 +76,7 @@ Packagé (`app.isPackaged`) : **toutes** les données runtime vivent sous
 Voir `package.json` script `build:packages`. Ordre typique :
 
 `brand-config` → `shell` → `platform-core` → `product-hub` → `api-kernel` →
-`mcp-facade` → `auth` → `shell-ui` → `os-ui` → `onboarding` →
+`mcp-facade` → `auth` → `shell-ui` → `nav` → `os-ui` → `onboarding` →
 `interactive-demo` → `cockpit` →
 `assistant` → `tasks` → `mails` → `support` → `integrations` → `granola` → `grokbot` → `fleet` → `observability` → `landing` → `admin` → `automations` →
 `database` → `browser-host` → `search` → `host-runtime` →
@@ -103,7 +103,7 @@ contrats src↔dist + hash de contenu).
 | MCP unifié / OAuth / host tools | `mcp-facade` |
 | Session / login / recovery | `auth` |
 | Nav + chrome CRM UI | `shell-ui` |
-| Catalogue sidebar (masquer / réordonner en admin) | **pas encore un module** — plan [docs/plans/PLAN-NAV-CATALOG.md](./docs/plans/PLAN-NAV-CATALOG.md) · briefs [docs/agents/BRIEFS-NAV-GRANOLA-GROKBOT.md](./docs/agents/BRIEFS-NAV-GRANOLA-GROKBOT.md) |
+| Catalogue sidebar + overrides admin (`/admin/nav`, `brand.db`) | `nav` |
 | Pages Next OS (mails/tâches/setup/admin…) matérialisées dans les marques | `os-ui` |
 | First-run setup + onboarding produit hybride (contenu DB + preferences) | `onboarding` |
 | Démo interactive native (product tour live, faux curseur, scénarios DB) | `interactive-demo` |

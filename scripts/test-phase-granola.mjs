@@ -7,7 +7,8 @@
  * schéma granola_settings / granola_events / granola_notes, vérification
  * HMAC fail-closed (signature valide / invalide / rejeu), dédup par
  * event_id, sync note via fetch injecté, config masquée, capture du
- * signing_secret par register-webhook, proxys remote/*.
+ * signing_secret par register-webhook (jamais leaké au client HTTP),
+ * proxys remote/* + list/patch/delete webhook-endpoints.
  */
 import assert from "node:assert/strict";
 import fs from "node:fs";
@@ -59,32 +60,78 @@ function createFakeGranolaApi() {
       status,
       json: async () => body,
     });
-    if (url.includes("/v1/webhook-endpoints") && init.method === "POST") {
-      return respond(201, {
-        id: "whe_TESTENDPOINT01",
-        object: "webhook_endpoint",
-        url: JSON.parse(init.body).url,
-        scopes: JSON.parse(init.body).scopes,
-        enabled: true,
-        signing_secret: "whsec_c2VjcmV0LXRlc3QtZ3Jhbm9sYQ==",
-      });
-    }
-    if (url.includes("/v1/webhook-endpoints") && init.method === "GET") {
-      return respond(200, { webhook_endpoints: [{ id: "whe_TESTENDPOINT01" }] });
+    if (url.includes("/v1/webhook-endpoints")) {
+      const idMatch = url.match(/\/v1\/webhook-endpoints\/([^/?]+)/);
+      const method = init?.method || "GET";
+      if (method === "POST") {
+        return respond(201, {
+          id: "whe_TESTENDPOINT01",
+          object: "webhook_endpoint",
+          url: JSON.parse(init.body).url,
+          scopes: JSON.parse(init.body).scopes,
+          enabled: true,
+          signing_secret: "whsec_c2VjcmV0LXRlc3QtZ3Jhbm9sYQ==",
+        });
+      }
+      if (method === "PATCH" && idMatch) {
+        const patch = init.body ? JSON.parse(init.body) : {};
+        return respond(200, {
+          id: decodeURIComponent(idMatch[1]),
+          object: "webhook_endpoint",
+          enabled: patch.enabled ?? true,
+          url:
+            patch.url ??
+            "https://crm.exemple.fr/api/v1/modules/granola/webhook",
+          scopes: patch.scopes ?? ["personal", "public"],
+          events: patch.events ?? ["note.generated"],
+          signing_secret: "whsec_SHOULD_NOT_LEAK",
+        });
+      }
+      if (method === "DELETE" && idMatch) {
+        return respond(200, {
+          deleted: true,
+          id: decodeURIComponent(idMatch[1]),
+        });
+      }
+      if (method === "GET") {
+        return respond(200, {
+          webhook_endpoints: [
+            {
+              id: "whe_TESTENDPOINT01",
+              url: "https://crm.exemple.fr/api/v1/modules/granola/webhook",
+              scopes: ["personal", "public"],
+              events: ["note.generated", "note.edited"],
+              enabled: true,
+              signing_secret: "whsec_SHOULD_NOT_LEAK",
+            },
+          ],
+        });
+      }
     }
     const noteMatch = url.match(/\/v1\/notes\/([^/?]+)(\/transcript)?/);
     if (noteMatch && !noteMatch[2]) {
-      return respond(200, {
-        id: noteMatch[1],
-        title: "Revue budget",
+      const id = decodeURIComponent(noteMatch[1]);
+      const body = {
+        id,
         summary: "La revue s'est bien passée.",
         owner: { name: "Oat", email: "oat@example.com" },
         created_at: "2026-01-27T15:30:00Z",
         updated_at: "2026-01-27T16:00:00Z",
-      });
+        folder_id: "fld_A",
+      };
+      if (id !== "not_KEEP") body.title = "Revue budget";
+      if (url.includes("include=transcript")) {
+        body.transcript = [{ speaker: "Oat", text: "bonjour (inclus)" }];
+      }
+      return respond(200, body);
     }
     if (noteMatch && noteMatch[2]) {
-      return respond(200, { transcript: [{ text: "bonjour" }], hasMore: false });
+      const hasCursor = url.includes("cursor=");
+      return respond(200, {
+        transcript: [{ text: hasCursor ? "suite" : "bonjour" }],
+        next_cursor: hasCursor ? null : "cur_2",
+        hasMore: !hasCursor,
+      });
     }
     if (url.includes("/v1/notes")) {
       return respond(200, { notes: [{ id: "not_A" }], hasMore: false });
@@ -110,11 +157,14 @@ test("granola : exports kit + migrations", async () => {
   assert.equal(mod.GRANOLA_DEFAULT_API_BASE_URL, "https://public-api.granola.ai");
 
   const migs = mod.granolaMigrations();
-  assert.equal(migs.length, 1);
+  assert.equal(migs.length, 2);
   assert.equal(migs[0].id, "granola_001_core");
+  assert.equal(migs[1].id, "granola_002_note_transcript_folder");
   assert.match(migs[0].sql, /granola_settings/);
   assert.match(migs[0].sql, /granola_events/);
   assert.match(migs[0].sql, /granola_notes/);
+  assert.match(migs[1].sql, /transcript_json/);
+  assert.match(migs[1].sql, /folder_id/);
 });
 
 test("granola : signature Standard Webhooks (valide / invalide / rejeu)", async () => {
@@ -353,8 +403,19 @@ test("granola : register-webhook capture le signing_secret (jamais renvoyé)", a
   assert.equal(res.status, 200);
   assert.equal(res.body.secretStored, true);
   assert.equal(res.body.endpoint.id, "whe_TESTENDPOINT01");
-  // Le secret n'est PAS renvoyé au client HTTP…
+  // Le secret n'est PAS renvoyé au client HTTP (ni la clé, ni la valeur).
   assert.equal(res.body.endpoint.signing_secret, undefined);
+  const clientBody = JSON.stringify(res.body);
+  assert.equal(
+    clientBody.includes("signing_secret"),
+    false,
+    "register-webhook ne leak pas signing_secret dans le body HTTP client",
+  );
+  assert.equal(
+    clientBody.includes("whsec_"),
+    false,
+    "register-webhook ne leak pas une valeur whsec_ au client",
+  );
   // …mais il est stocké : la config le montre configuré (masqué).
   const info = await call(mount, { method: "GET", subPath: "webhook-info", db });
   assert.equal(info.body.signingSecretConfigured, true);
@@ -363,10 +424,81 @@ test("granola : register-webhook capture le signing_secret (jamais renvoyé)", a
   const post = fake.calls.find((c) => c.init.method === "POST");
   assert.match(post.url, /\/v1\/webhook-endpoints$/);
   assert.equal(post.init.headers.authorization, "Bearer grn_test");
+  const outgoing = JSON.parse(post.init.body);
   assert.equal(
-    JSON.parse(post.init.body).url,
+    outgoing.url,
     "https://crm.exemple.fr/api/v1/modules/granola/webhook",
   );
+  assert.equal(
+    outgoing.signing_secret,
+    undefined,
+    "le body envoyé à Granola ne porte pas signing_secret",
+  );
+});
+
+test("granola : remote webhook-endpoints list / patch / delete (fetch injectable)", async () => {
+  const mod = await loadDist();
+  const db = await createDb(mod.granolaMigrations());
+  const fake = createFakeGranolaApi();
+  const mount = mod.createGranolaMount({
+    defaults: { apiKey: "grn_test", publicBaseUrl: "https://crm.exemple.fr" },
+    fetchImpl: fake.fetchImpl,
+  });
+
+  const listed = await call(mount, {
+    method: "GET",
+    subPath: "remote/webhook-endpoints",
+    db,
+  });
+  assert.equal(listed.status, 200);
+  assert.equal(listed.body.ok, true);
+  assert.equal(listed.body.data.webhook_endpoints[0].id, "whe_TESTENDPOINT01");
+  assert.equal(
+    listed.body.data.webhook_endpoints[0].signing_secret,
+    undefined,
+    "GET endpoints ne leak pas signing_secret",
+  );
+  assert.match(fake.calls.at(-1).url, /\/v1\/webhook-endpoints$/);
+  assert.equal(fake.calls.at(-1).init.method, "GET");
+
+  const patched = await call(mount, {
+    method: "PATCH",
+    subPath: "remote/webhook-endpoints/whe_TESTENDPOINT01",
+    db,
+    body: { enabled: false, signing_secret: "whsec_injected", extra: "drop" },
+  });
+  assert.equal(patched.status, 200);
+  assert.equal(patched.body.ok, true);
+  assert.equal(patched.body.data.enabled, false);
+  assert.equal(patched.body.data.signing_secret, undefined);
+  const patchCall = fake.calls.at(-1);
+  assert.match(patchCall.url, /\/v1\/webhook-endpoints\/whe_TESTENDPOINT01$/);
+  assert.equal(patchCall.init.method, "PATCH");
+  const patchBody = JSON.parse(patchCall.init.body);
+  assert.deepEqual(patchBody, { enabled: false });
+  assert.equal(patchBody.signing_secret, undefined);
+  assert.equal(patchBody.extra, undefined);
+
+  const emptyPatch = await call(mount, {
+    method: "PATCH",
+    subPath: "remote/webhook-endpoints/whe_TESTENDPOINT01",
+    db,
+    body: { signing_secret: "whsec_nope" },
+  });
+  assert.equal(emptyPatch.status, 400);
+  assert.equal(emptyPatch.body.error, "invalid_body");
+
+  const deleted = await call(mount, {
+    method: "DELETE",
+    subPath: "remote/webhook-endpoints/whe_TESTENDPOINT01",
+    db,
+  });
+  assert.equal(deleted.status, 200);
+  assert.equal(deleted.body.ok, true);
+  assert.equal(deleted.body.data.id, "whe_TESTENDPOINT01");
+  const delCall = fake.calls.at(-1);
+  assert.equal(delCall.init.method, "DELETE");
+  assert.match(delCall.url, /\/v1\/webhook-endpoints\/whe_TESTENDPOINT01$/);
 });
 
 test("granola : proxys remote/* + clé manquante → 409", async () => {
@@ -415,4 +547,99 @@ test("granola : proxys remote/* + clé manquante → 409", async () => {
     db,
   });
   assert.equal(endpoints.status, 200);
+});
+
+test("granola : GET notes/:id/transcript 409 sans clé, 200 avec fetch injectable", async () => {
+  const mod = await loadDist();
+  const db = await createDb(mod.granolaMigrations());
+
+  const noKey = mod.createGranolaMount();
+  const denied = await call(noKey, {
+    method: "GET",
+    subPath: "notes/not_A/transcript",
+    db,
+  });
+  assert.equal(denied.status, 409);
+  assert.equal(denied.body.error, "granola_api_key_missing");
+
+  const fake = createFakeGranolaApi();
+  const mount = mod.createGranolaMount({
+    defaults: { apiKey: "grn_test" },
+    fetchImpl: fake.fetchImpl,
+  });
+  const first = await call(mount, {
+    method: "GET",
+    subPath: "notes/not_A/transcript",
+    db,
+  });
+  assert.equal(first.status, 200);
+  assert.equal(first.body.ok, true);
+  assert.equal(first.body.data.transcript[0].text, "bonjour");
+  assert.equal(first.body.data.next_cursor, "cur_2");
+  assert.match(
+    fake.calls.at(-1).url,
+    /\/v1\/notes\/not_A\/transcript$/,
+    "proxy getTranscript sans appel browser",
+  );
+
+  const page2 = await call(mount, {
+    method: "GET",
+    subPath: "notes/not_A/transcript",
+    db,
+    query: { cursor: "cur_2" },
+  });
+  assert.equal(page2.status, 200);
+  assert.equal(page2.body.data.transcript[0].text, "suite");
+  assert.equal(page2.body.data.next_cursor, null);
+  assert.match(fake.calls.at(-1).url, /[?&]cursor=cur_2/);
+});
+
+test("granola : sync note conserve le titre", async () => {
+  const mod = await loadDist();
+  const db = await createDb(mod.granolaMigrations());
+  const fake = createFakeGranolaApi();
+  const mount = mod.createGranolaMount({
+    defaults: { apiKey: "grn_test" },
+    fetchImpl: fake.fetchImpl,
+  });
+
+  const first = await call(mount, {
+    method: "POST",
+    subPath: "notes/not_KEEP/sync",
+    db,
+  });
+  assert.equal(first.status, 200);
+  db.prepare(
+    `UPDATE granola_notes SET title = ? WHERE id = ?`,
+  ).run("Titre local", "not_KEEP");
+
+  const again = await call(mount, {
+    method: "POST",
+    subPath: "notes/not_KEEP/sync",
+    db,
+  });
+  assert.equal(again.status, 200);
+  const listed = await call(mount, { method: "GET", subPath: "notes", db });
+  const row = listed.body.items.find((n) => n.id === "not_KEEP");
+  assert.ok(row, "note syncée présente");
+  assert.equal(row.title, "Titre local", "titre local conservé si l'API omet title");
+
+  const titled = await call(mount, {
+    method: "POST",
+    subPath: "notes/not_BUDGET/sync",
+    db,
+  });
+  assert.equal(titled.status, 200);
+  const after = await call(mount, {
+    method: "GET",
+    subPath: "notes/not_BUDGET",
+    db,
+  });
+  assert.equal(after.status, 200);
+  assert.equal(after.body.note.title, "Revue budget");
+  assert.ok(
+    Array.isArray(after.body.note.transcript),
+    "transcript persisté via include=transcript",
+  );
+  assert.equal(after.body.note.folder_id, "fld_A");
 });

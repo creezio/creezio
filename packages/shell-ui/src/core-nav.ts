@@ -3,6 +3,14 @@ import type { CoreNavItem } from "./types.js";
 /**
  * Entrées nav natives Creezio — aucune entrée métier marque
  * (panier, dispatch, GED, RTI…).
+ *
+ * Liste historique (home / assistant / setup / login / about…) consommée
+ * par `createNavShellAdapter` — **pas** la sidebar CRM. La sidebar OS
+ * primaire (taches, mails, granola, grokbot…) vit dans le catalogue
+ * `defaultOsCatalogEntries()` / `registerOsNavEntry`
+ * (`nav-catalog.ts`, plan `docs/plans/PLAN-NAV-CATALOG.md`). Ne pas
+ * recopier granola/grokbot ici pour « aligner » : Phase D dérivera
+ * `CORE_NAV_ITEMS` du catalogue, ou documentera l'écart à vie.
  */
 export const CORE_NAV_ITEMS: readonly CoreNavItem[] = [
   { id: "core.home", label: "Accueil", href: "/", group: "core" },

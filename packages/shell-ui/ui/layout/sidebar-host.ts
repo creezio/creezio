@@ -56,9 +56,17 @@ export type SidebarHost = {
 };
 
 let host: SidebarHost | null = null;
+let hostVersion = 0;
+const hostListeners = new Set<() => void>();
+
+function bumpSidebarHost(): void {
+  hostVersion += 1;
+  for (const listener of hostListeners) listener();
+}
 
 export function configureSidebar(next: SidebarHost): void {
   host = next;
+  bumpSidebarHost();
 }
 
 export function getSidebarHost(): SidebarHost {
@@ -68,6 +76,18 @@ export function getSidebarHost(): SidebarHost {
 
 export function getSidebarHostOptional(): SidebarHost | null {
   return host;
+}
+
+/** Abonnement aux reconfigurations (`NavCatalogLoader` bump après GET /). */
+export function subscribeSidebarHost(listener: () => void): () => void {
+  hostListeners.add(listener);
+  return () => {
+    hostListeners.delete(listener);
+  };
+}
+
+export function getSidebarHostVersion(): number {
+  return hostVersion;
 }
 
 /**

@@ -69,6 +69,13 @@ import {
   isAccessControlConfigured,
   resolvePermissions,
 } from "@creezio/access-control";
+import {
+  brandNavItemsToCatalog,
+  createNavMount,
+  navMigrations,
+  registerOsNavAdminEntry,
+} from "@creezio/nav";
+import type { CoreNavItem } from "@creezio/shell-ui";
 
 export type CreateBrandKernelOptions = {
   manifest: AppManifest;
@@ -83,6 +90,11 @@ export type CreateBrandKernelOptions = {
    * Désactiver uniquement pour tests isolation schéma cœur.
    */
   enablePlatformServices?: boolean;
+  /**
+   * Items nav métier (slot vertical / `collectNavItems`) — alimentent le
+   * mount kit `@creezio/nav` (source `module`).
+   */
+  navItems?: readonly CoreNavItem[];
 };
 
 export type BrandKernelBoot = BrandKernelHandle & {
@@ -165,7 +177,7 @@ export function createBrandKernel(
     coreMigrations: platformCoreMigrations({
       extras: enablePlatform ? platformExtras() : [],
     }),
-    brandMigrations: opts.brandMigrations,
+    brandMigrations: [...opts.brandMigrations, ...navMigrations()],
     touchBrand: true,
   });
   // Version embarquée par l'image Docker versionnée (publish --tag X) —
@@ -318,6 +330,36 @@ export function createBrandKernel(
   }
 
   opts.registerModuleApi(api);
+
+  // Chrome OS : mount nav auto (contrairement à granola/grokbot).
+  // Si la marque a déjà monté `nav` (mount owned-by-brand), on ne l'écrase pas.
+  registerOsNavAdminEntry();
+  const navAlreadyMounted = api
+    .listMounts()
+    .some((m) => m.space === "module" && m.id === "nav");
+  if (!navAlreadyMounted) {
+    const navItems = opts.navItems;
+    api.registerModuleApi(
+      "nav",
+      createNavMount({
+        collectModuleEntries: () => brandNavItemsToCatalog(navItems),
+        features: {
+          plugins: opts.manifest.features?.plugins,
+          fleet: opts.manifest.features?.fleet,
+        },
+        getSession: async (req) => {
+          const session = await sessionFromNodeHeaders(req.headers || {});
+          if (!session) return null;
+          return {
+            role: session.role,
+            permissions: session.permissions,
+            impersonating: sessionIsImpersonating(session),
+            sub: session.sub,
+          };
+        },
+      }),
+    );
+  }
 
   return {
     api,

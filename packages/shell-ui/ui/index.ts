@@ -76,6 +76,34 @@ export * from "./layout/desktop-update-banner";
 export * from "./layout/sidebar";
 export * from "./layout/sidebar-host";
 export * from "./layout/native-os-nav";
+export { resolveNavIcon } from "./layout/nav-icons";
+export {
+  NAV_ICON_ALLOWLIST,
+  defaultOsCatalogEntries,
+  isKnownNavIcon,
+  listOsNavEntries,
+  parseNavCatalogSessionItems,
+  registerDefaultOsNavEntries,
+  registerOsNavEntry,
+  resetOsNavRegistryForTests,
+  resolveNavCatalog,
+  type NavCatalogEntry,
+  type NavCatalogError,
+  type NavCatalogFeatures,
+  type NavCatalogGroup,
+  type NavCatalogSessionItem,
+  type NavCatalogSource,
+  type NavIconName,
+  type NavOverride,
+  type ResolveNavCatalogInput,
+  type ResolveNavCatalogResult,
+} from "../dist/nav-catalog.js";
+export {
+  NAV_CATALOG_ENDPOINT,
+  NavCatalogLoader,
+  applyNavCatalogItemsToSidebar,
+  mapNavCatalogSessionToSidebar,
+} from "./layout/nav-catalog-loader";
 
 /* ── Workspace ── */
 export * from "./workspace/types";

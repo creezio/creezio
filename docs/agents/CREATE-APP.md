@@ -110,6 +110,21 @@ createInteractiveDemoMount({
 Un seul `InteractiveDemoRoot`, **dans** `SessionProvider` (BrandChrome
 factory). Pas de `brandDemoScenarios()`.
 
+## 4b. Sidebar = catalogue (interdiction `OS_NAV`)
+
+Le chrome généré monte `<NavCatalogLoader />` (`@creezio/shell-ui/ui`) :
+`GET /api/v1/modules/nav` alimente `configureSidebar({ getNavItems })`.
+Les pages OS (mails, tâches, Granola, GrokBot, préférences,
+collaborateurs) apparaissent **via le catalogue kit**, pas une liste
+inline. Le métier vient de `collectNavItems()` (mount nav auto-register
+dans `app-runtime`).
+
+**Interdit** de recopier `const OS_NAV = […]` / d'écrire des hrefs
+granola/grokbot dans le chrome / d'ajouter `@creezio/nav` (ou granola /
+grokbot) aux deps npm d'une app neuve tant que ces packages ne sont pas
+publiés. Admin : `defaultOsAdminNavItems({ includePlugins })` — consommé,
+pas recopié. Plan : [PLAN-NAV-CATALOG.md](../plans/PLAN-NAV-CATALOG.md).
+
 ## 5. Secrets (jamais commités, jamais dumpés)
 
 VPS fail-closed (`server-docker create`, sauf `CREEZIO_TUNNEL_LOCAL=1`) :

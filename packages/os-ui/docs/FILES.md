@@ -40,6 +40,12 @@
 |---|---|
 | [`routes/admin/mcp/page.tsx`](../routes/admin/mcp/page.tsx) | Admin MCP (`McpAdminClient` + `logsSlot` RequestLogsClient) |
 
+## `routes/admin/nav/`
+
+| Fichier | Rôle |
+|---|---|
+| [`routes/admin/nav/page.tsx`](../routes/admin/nav/page.tsx) | Page admin « Navigation » (wrapper NavAdminClient @creezio/nav/ui) |
+
 ## `routes/admin/plugins/`
 
 | Fichier | Rôle |
@@ -166,4 +172,4 @@
 |---|---|
 | [`src/boot-types.ts`](../src/boot-types.ts) | Types `CreezioUiBoot` pour le barrel `@creezio/os-ui` (tsc NodeNext) — l'implémentation React + `InteractiveDemoRoot` reste `boot.tsx` (export `./boot`, source Next) |
 | [`src/boot.tsx`](../src/boot.tsx) | `CreezioUiBoot` — boot client OS : identité desktop (`desktopApiGlobal`, `productName`, `publicHostSuffix`) + `configureShellUiBrand` + `InteractiveDemoRoot` (démo interactive native, lanceur sidebar) |
-| [`src/index.ts`](../src/index.ts) | Exports : `CreezioUiBoot`, `OS_UI_ROUTE_SEGMENTS` (segments OS interdits dans le `ui/app` versionné marque), `OS_UI_ROUTE_GROUP` (`(creezio-os)`) |
+| [`src/index.ts`](../src/index.ts) | Exports : `CreezioUiBoot`, `OS_UI_ROUTE_SEGMENTS`, `OS_PRIMARY_NAV_SEGMENTS`, `OS_UI_HORS_NAV_JUSTIFICATIONS`, `OS_UI_ROUTE_GROUP` (`(creezio-os)`) |

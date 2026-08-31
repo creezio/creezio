@@ -19,8 +19,12 @@ mirrorés en `brand.db`.
 - **MCP** : les opérations clés (`list-agents`, `create-agent`, `get-agent`,
   `create-run`, `get-run`) sont déclarées `mcpPublishDefault: true` →
   l'assistant peut piloter les agents via les tools générés.
-- **UI** : `@creezio/grokbot/ui` → `GrokbotClient` (token, lancement,
-  runs, prompts de suivi, annulation, archivage).
+- **UI** : `@creezio/grokbot/ui` → `GrokbotClient` compose
+  `grokbot-launch-form` (Select repos/modèles/mode, refresh cache 1 h),
+  `grokbot-usage-artifacts` (usage + download présigné) et
+  `grokbot-agent-runs` (liste + timeline, poll ciblé, unarchive). Token
+  jamais affiché en clair. SSE (`GET …/runs/{runId}/stream`) hors scope
+  v1 — le suivi est un poll HTTP de l'agent ouvert.
 
 ## API mount (câblé par la marque)
 

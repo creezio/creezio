@@ -11,6 +11,7 @@
 | [`src/brand.ts`](../src/brand.ts) | O9 — tokens marque pour shell-ui (desktop API, hosts, titlebar). |
 | [`src/core-nav.ts`](../src/core-nav.ts) | _(pas de cartouche JSDoc en tête — voir le code)_ |
 | [`src/index.ts`](../src/index.ts) | @creezio/shell-ui — nav + slots (H1.4 / I7) + libs plateforme (O9). UI React : `@creezio/shell-ui/ui`. |
+| [`src/nav-catalog.ts`](../src/nav-catalog.ts) | Catalogue de nav OS (Phase A) : types `NavCatalogEntry` / `NavOverride`, merge pur `resolveNavCatalog`, registre `registerOsNavEntry` / `defaultOsCatalogEntries`. Node-safe, zéro React. Plan `docs/plans/PLAN-NAV-CATALOG.md`. |
 | [`src/registry.ts`](../src/registry.ts) | _(pas de cartouche JSDoc en tête — voir le code)_ |
 | [`src/types.ts`](../src/types.ts) | _(pas de cartouche JSDoc en tête — voir le code)_ |
 
@@ -74,7 +75,9 @@
 | [`ui/layout/app-shell.tsx`](../ui/layout/app-shell.tsx) | _(pas de cartouche JSDoc en tête — voir le code)_ |
 | [`ui/layout/desktop-update-banner.tsx`](../ui/layout/desktop-update-banner.tsx) | _(pas de cartouche JSDoc en tête — voir le code)_ |
 | [`ui/layout/entity-header.tsx`](../ui/layout/entity-header.tsx) | _(pas de cartouche JSDoc en tête — voir le code)_ |
-| [`ui/layout/native-os-nav.ts`](../ui/layout/native-os-nav.ts) | (à documenter) |
+| [`ui/layout/native-os-nav.ts`](../ui/layout/native-os-nav.ts) | Adaptateur sidebar : `defaultOsCatalogEntries()` → `SidebarNavItem[]` (icônes via `resolveNavIcon`). Fallback hors mount. `defaultOsAdminNavItems({ includePlugins })`. Chrome = `NavCatalogLoader`, pas un `OS_NAV` recopié. |
+| [`ui/layout/nav-catalog-loader.tsx`](../ui/layout/nav-catalog-loader.tsx) | `<NavCatalogLoader />` — fetch `GET /api/v1/modules/nav`, bump `configureSidebar({ getNavItems })`. API publique chrome (factory importe d'ici, pas `@creezio/nav`). |
+| [`ui/layout/nav-icons.ts`](../ui/layout/nav-icons.ts) | `resolveNavIcon(name)` — allowlist lucide (sidebar OS + Bot / NotebookPen). Inconnu → `Circle` + warning, pas de throw UI. |
 | [`ui/layout/page-chrome.tsx`](../ui/layout/page-chrome.tsx) | _(pas de cartouche JSDoc en tête — voir le code)_ |
 | [`ui/layout/page-toolbar-context.tsx`](../ui/layout/page-toolbar-context.tsx) | _(pas de cartouche JSDoc en tête — voir le code)_ |
 | [`ui/layout/sandbox-banner.tsx`](../ui/layout/sandbox-banner.tsx) | Bandeau permanent en environnement sandbox (clone restaurant). Activé via APP_ENV=sandbox — jamais en prod / client. Lecture dynamique de process.env pour éviter l'inlining Next au build. |

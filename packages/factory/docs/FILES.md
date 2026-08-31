@@ -10,24 +10,6 @@
 |---|---|
 | [`bin/creezio.js`](../bin/creezio.js) | Binaire npm |
 
-## `codemods/H7/`
-
-| Fichier | Rôle |
-|---|---|
-| [`codemods/H7/h7-neutralize-brand-contracts.mjs`](../codemods/H7/h7-neutralize-brand-contracts.mjs) | Copie build (SoT `scripts/codemods/H7/`) embarquée dans le package publié pour `creezio upgrade`. |
-
-## `codemods/H8/`
-
-| Fichier | Rôle |
-|---|---|
-| [`codemods/H8/h8-materialize-brand-manifest.mjs`](../codemods/H8/h8-materialize-brand-manifest.mjs) | Copie build (SoT `scripts/codemods/H8/`) embarquée dans le package publié pour `creezio upgrade`. |
-
-## `codemods/H9/`
-
-| Fichier | Rôle |
-|---|---|
-| [`codemods/H9/h9-import-module-contract.mjs`](../codemods/H9/h9-import-module-contract.mjs) | Copie build (SoT `scripts/codemods/H9/`) embarquée dans le package publié pour `creezio upgrade`. |
-
 ## `scripts/`
 
 | Fichier | Rôle |
