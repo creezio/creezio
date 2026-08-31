@@ -24,7 +24,8 @@ reçoit toutes les livraisons (`note.generated`, `note.edited`,
   secrets **masqués** en `GET config`.
 - **UI** : `@creezio/granola/ui` → `GranolaClient` compose
   `GranolaNotesPanel` (workspace notes : liste filtrable, fiche résumé /
-  transcript) et `GranolaConnectPanel` (config / webhook).
+  transcript — GRANOLA-1) et `GranolaConnectPanel` (santé, endpoints
+  distants, livraisons — GRANOLA-2).
 
 ## API mount (câblé par la marque)
 
