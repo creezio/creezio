@@ -149,12 +149,17 @@ test("os-ui scaffold : zéro page OS versionnée, materialize + boot kit", () =>
   );
 
   const out = fs.mkdtempSync(path.join(os.tmpdir(), "creezio-os-ui-"));
-  // 240s : le scaffold régénère les package-locks via le registre npm privé
-  // (réseau) — ~110s observé sur VPS, le budget 120s historique flakait.
+  // Structure seule : pas de npm install / lock (registre). Même contrat
+  // hors-ligne que factory-prd (CREEZIO_SKIP_BRAND_DIST + lien kit si smoke).
   const r = spawnSync(
     process.execPath,
     [CLI, "new-app", "--from-prd", PRD, "--out", out, "--force"],
-    { encoding: "utf8", cwd: ROOT, timeout: 240_000 },
+    {
+      encoding: "utf8",
+      cwd: ROOT,
+      timeout: 60_000,
+      env: { ...process.env, CREEZIO_SKIP_BRAND_DIST: "1" },
+    },
   );
   assert.equal(r.status, 0, r.stderr || r.stdout);
 
