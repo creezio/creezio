@@ -8,4 +8,4 @@
 
 | Fichier | Rôle |
 |---|---|
-| [`Dockerfile`](../Dockerfile) | Image agent hôte flotte (VPS restaurant) — Node slim + tar/gzip (backups /data), CMD `host-agent.mjs` (contexte de build = packages/observability/fleet-collector). Lancée par `creezio server-docker agent up`. |
+| [`Dockerfile`](../Dockerfile) | Image agent hôte flotte (VPS restaurant) — Node slim + tar/gzip (backups /data), CMD `@creezio/fleet dist/bin/host-agent-main.js` (contexte stagé : fleet-collector télémétrie + node_modules/@creezio/fleet). Lancée par `creezio server-docker agent up`. |

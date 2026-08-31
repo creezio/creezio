@@ -421,7 +421,7 @@ Stack compose autonome (modèle standard — cloudflared in-process) :
   creezio server-docker rm <nom> : déprovisionne aussi le tunnel Cloudflare
     (DNS + tunnel via API CF directe, best-effort) si CREEZIO_CF_* posés.
 
-Admin web multi-serveurs / multi-VPS (fleet-collector étendu) :
+Admin web multi-serveurs / multi-VPS (backend @creezio/fleet) :
   creezio server-docker admin up|down|status --brand-root <app> [--port 18800]
   creezio server-docker admin up --admin-root <repo-admin> [--brand-root <app>]
     (repo admin dédié : config server-admin.json + fleet-hosts.json à la racine)
@@ -499,12 +499,12 @@ function ensureDocker(): void {
 /**
  * Contexte de build stagé pour les images server-admin / host-agent (P2.b).
  *
- * Le backend flotte vit désormais compilé dans `packages/fleet/dist`
- * (`@creezio/fleet`) ; `fleet-collector/` ne garde que des wrappers de
- * compat + le collector télémétrie. Les Dockerfiles (CMD
- * `node_modules/@creezio/fleet/dist/bin/*-main.js`) attendent donc un
- * contexte = fleet-collector/ + le package fleet posé sous
- * `node_modules/@creezio/fleet` (package.json + dist + public).
+ * Le backend flotte vit compilé dans `packages/fleet/dist`
+ * (`@creezio/fleet`) ; `fleet-collector/` ne garde que le collector
+ * télémétrie (les wrappers de compat ont été retirés en 0.19). Les
+ * Dockerfiles (CMD `node_modules/@creezio/fleet/dist/bin/*-main.js`)
+ * attendent donc un contexte = fleet-collector/ + le package fleet posé
+ * sous `node_modules/@creezio/fleet` (package.json + dist + public).
  * Fail-closed si le dist fleet est absent/incomplet (dist stale interdit).
  */
 function stageFleetImageContext(kit: string): string {
@@ -539,17 +539,17 @@ function stageFleetImageContext(kit: string): string {
 
 /**
  * Module stack compose — SoT `@creezio/fleet/instance-stack`
- * (packages/fleet/src/instance-stack.ts), consommée via le wrapper de compat
- * `instance-stack.mjs` (fleet-collector). Import dynamique : le module vit
- * dans le clone kit du VPS (pas de dist factory).
+ * (packages/fleet/src/instance-stack.ts), consommée directement depuis le
+ * dist du clone kit (les wrappers fleet-collector ont été retirés en 0.19).
+ * Import dynamique : le module vit dans le clone kit du VPS (pas de dist
+ * factory).
  */
 async function importInstanceStack(kit: string) {
-  const p = path.join(
-    kit,
-    "packages/observability/fleet-collector/instance-stack.mjs",
-  );
+  const p = path.join(kit, "packages/fleet/dist/instance-stack.js");
   if (!fs.existsSync(p)) {
-    throw new Error(`instance-stack introuvable: ${p}`);
+    throw new Error(
+      `instance-stack introuvable: ${p} — lancer \`npm run build:packages\` dans le kit`,
+    );
   }
   return (await import(pathToFileURL(p).href)) as {
     STACK_APP_PORT: number;
@@ -1368,7 +1368,7 @@ async function curlHealth(
   }
 }
 
-/** Admin web multi-serveurs — container fleet-collector étendu (docker.sock). */
+/** Admin web multi-serveurs — container backend @creezio/fleet (docker.sock). */
 const ADMIN_IMAGE = "creezio-server-admin:local";
 const ADMIN_CONTAINER = "creezio-server-admin";
 const ADMIN_DEFAULT_PORT = 18800;
@@ -3137,7 +3137,7 @@ async function runRegistrySubcommand(
 
     const serverLibPath = path.join(
       paths.kit,
-      "packages/observability/fleet-collector/server-lib.mjs",
+      "packages/fleet/dist/server-lib.js",
     );
     const { backupInstanceData } = (await import(
       pathToFileURL(serverLibPath).href
@@ -3441,10 +3441,12 @@ async function runRegistrySubcommand(
   if (args.sub === "backup") {
     const serverLibPath = path.join(
       paths.kit,
-      "packages/observability/fleet-collector/server-lib.mjs",
+      "packages/fleet/dist/server-lib.js",
     );
     if (!fs.existsSync(serverLibPath)) {
-      throw new Error(`server-lib introuvable: ${serverLibPath}`);
+      throw new Error(
+        `server-lib introuvable: ${serverLibPath} — lancer \`npm run build:packages\` dans le kit`,
+      );
     }
     const { backupInstanceData } = (await import(
       pathToFileURL(serverLibPath).href
@@ -3485,10 +3487,12 @@ async function runRegistrySubcommand(
     }
     const serverLibPath = path.join(
       paths.kit,
-      "packages/observability/fleet-collector/server-lib.mjs",
+      "packages/fleet/dist/server-lib.js",
     );
     if (!fs.existsSync(serverLibPath)) {
-      throw new Error(`server-lib introuvable: ${serverLibPath}`);
+      throw new Error(
+        `server-lib introuvable: ${serverLibPath} — lancer \`npm run build:packages\` dans le kit`,
+      );
     }
     const { updateServer } = (await import(
       pathToFileURL(serverLibPath).href

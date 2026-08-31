@@ -258,7 +258,6 @@ const SERVER_CREEZIO_DEPS = [
   "cockpit",
   "database",
   "desktop-tooling",
-  "electron-shell",
   "host-runtime",
   "granola",
   "grokbot",

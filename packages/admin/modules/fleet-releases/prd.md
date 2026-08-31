@@ -20,7 +20,7 @@ disponible.
   actifs) ; démarre un rollout (canary %), promeut par vagues, met en
   pause/reprend, kill-switch STOP (aborted), termine (done), supprime
   (draft/aborted) ; par serveur : hold / pin / bascule de canal.
-- **Agent hôte** (`host-agent.mjs`, machine) : boucle
+- **Agent hôte** (`@creezio/fleet` host-agent, machine) : boucle
   `GET next` → `POST slots` → pull → update local → `DELETE slots/<lease>`
   → `POST report`, toutes les ~5 min.
 - **Poller de fond de l'app admin** : appelle `POST maintenance` (janitor)
@@ -216,7 +216,7 @@ idempotent).
 
 - Boucle agent (`runAgentUpdateCycle`, mutex avec update manuel, pull par
   digest, backup/recreate/rollback) : SoT
-  `packages/observability/fleet-collector/agent-updates.mjs` (couverte par
+  `packages/fleet/src/agent-updates.ts` (couverte par
   la même gate releases).
 - Registre d'images pull-only (F4) et `publish` : `packages/factory`
   (`server-docker-cli`).

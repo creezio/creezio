@@ -54,18 +54,13 @@ WORKDIR /app
 # dans l'image.)
 COPY package.json package-lock.json .npmrc ./
 COPY ${SERVER_DIR}/package.json ./${SERVER_DIR}/package.json
-# electron atterrit dans l arbre PROD via le lockfile (dev=false) malgre
-# omit=dev : devDependency du serveur marque qui satisfait le peer OPTIONNEL
-# des packages kit → npm le marque dev=false. Son postinstall telecharge le
-# binaire (~100 Mo, CDN GitHub flaky — vecu tempoflow 2026-08-12, socket hang
-# up). Le serveur headless n en a jamais besoin → skip dans TOUS les stages.
-# P1.b : le harness serveur importe @creezio/host-runtime + @creezio/search
-# (plus de dependance FONCTIONNELLE a electron-shell), mais electron-shell
-# reste dans l arbre : il ship resources/vendor (hermes-agent, n8n) resolus
-# par kitOsResourcesRoot, et le serveur marque le garde en dependency pour
-# le build desktop-server. TODO (suivi P1.c) : deplacer resources/vendor
-# vers @creezio/host-runtime pour couper electron-shell — et alors seulement
-# asserter « pas de node_modules/electron » dans la gate d image.
+# P1.c : resources/vendor+scripts+bin vivent dans @creezio/host-runtime.
+# Le harness headless n a plus besoin de @creezio/electron-shell ni du
+# wrapper npm `electron` (peer optionnel). ELECTRON_SKIP_BINARY_DOWNLOAD
+# reste pose (lock marque historique peut encore lister electron en
+# dev=false — vecu tempoflow 2026-08-12, ~100 Mo, CDN flaky). Apres
+# npm ci on PURGE electron / electron-shell / electron-updater de l arbre
+# runtime (fail-closed : l image ne les embarque plus).
 ENV ELECTRON_SKIP_BINARY_DOWNLOAD=1
 # Resilience registre : reset TLS transitoire sous charge (2 npm ci
 # concurrents — vecu idem). Retries npm via env, identique partout.
@@ -84,6 +79,9 @@ RUN --mount=type=secret,id=CREEZIO_NPM_TOKEN \
      else \
        npm ci --omit=dev --workspace="${SERVER_DIR}" --no-audit --no-fund; \
      fi \
+  && rm -rf node_modules/electron \
+            node_modules/electron-updater \
+            node_modules/@creezio/electron-shell \
   && npm rebuild better-sqlite3
 
 # Meilisearch Linux embarqué — recherche réelle (plus de sql-fallback).

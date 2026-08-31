@@ -3,15 +3,16 @@
 ## Mission
 
 Image de l'admin web multi-serveurs (backend flotte). Le code vit dans
-`packages/observability/fleet-collector/server-admin.mjs` (+ `admin-docker.mjs`,
-`registry-pull-proxy.mjs`, `server-lib.mjs`) — ce dossier contient le
-`Dockerfile`. `configure-admin-npm.sh` refuse (exit 1) : plus de NPM.
+`@creezio/fleet` (`packages/fleet/src/server-admin.ts` + `docker.ts`,
+`registry-pull-proxy.ts`, `server-lib.ts` — les wrappers fleet-collector ont
+été retirés en 0.19.0) — ce dossier contient le `Dockerfile`.
+`configure-admin-npm.sh` refuse (exit 1) : plus de NPM.
 
 ## Ne pas faire
 
 - Ajouter des dépendances npm (Node pur, même esprit que le fleet-collector).
 - Toucher `server.mjs` (fleet-collector prod) pour un besoin admin : le point
-  d'entrée admin est séparé (`server-admin.mjs`).
+  d'entrée admin est séparé (`packages/fleet/dist/bin/server-admin-main.js`).
 - Binder hors `127.0.0.1` par défaut : le socket Docker monté équivaut à root
   sur l'hôte. Le backend flotte reste loopback. Le public `admin.` / `lp.`
   est le tunnel in-process de l'app OS — jamais NPM.
@@ -21,8 +22,9 @@ Image de l'admin web multi-serveurs (backend flotte). Le code vit dans
 ## Piège connu
 
 Le code est **embarqué au build de l'image** : après toute modif de
-`fleet-collector/*.mjs`, re-runner `creezio server-docker admin up`
-(rebuild + recreate), sinon l'admin continue de servir l'ancien code.
+`packages/fleet/src`, `npm run build:packages` puis re-runner
+`creezio server-docker admin up` (rebuild + recreate), sinon l'admin
+continue de servir l'ancien code.
 
 ## Tests / gates
 
@@ -30,7 +32,7 @@ Le code est **embarqué au build de l'image** : après toute modif de
 cd /opt/docker/creezio
 node --test scripts/test-phase-registry-pull-proxy.mjs
 node --test scripts/test-phase-fleet-releases.mjs
-node packages/observability/fleet-collector/test-server-admin.mjs
+node packages/observability/fleet-collector/test-server-admin.mjs  # dist fleet requis
 ```
 
 ## Liens

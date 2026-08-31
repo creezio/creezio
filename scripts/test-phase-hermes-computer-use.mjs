@@ -402,7 +402,7 @@ test("CU.4 skill creezio-site-skills seedé (format imposé + règle d'entretien
   const skill = fs.readFileSync(
     path.join(
       ROOT,
-      "packages/electron-shell/resources/vendor/hermes-skills/creezio-site-skills/SKILL.md",
+      "packages/host-runtime/resources/vendor/hermes-skills/creezio-site-skills/SKILL.md",
     ),
     "utf8",
   );

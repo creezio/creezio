@@ -37,7 +37,7 @@ test("AR2 composeBrandOs assemble host stack (sandbox)", () => {
   fs.mkdirSync(electronDir, { recursive: true });
   const resourcesRoot = path.join(
     ROOT,
-    "packages/electron-shell/resources",
+    "packages/host-runtime/resources",
   );
   const manifest = createAppManifest({
     brandId: "acmeprobe",

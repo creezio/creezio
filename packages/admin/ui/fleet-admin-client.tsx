@@ -4,7 +4,7 @@
  * Module Flotte — UI de l'app admin (design system kit).
  *
  * Parité fonctionnelle avec l'ancienne console `admin.html` (backend flotte
- * server-admin.mjs) : hôtes VPS enrôlés + token d'enrôlement, création de
+ * backend flotte @creezio/fleet) : hôtes VPS enrôlés + token d'enrôlement, création de
  * serveur, start/stop/update (async 202 + poll), update en masse, logs
  * docker, ops JSONL, boot-status live, disque, suppression (+purge).
  *

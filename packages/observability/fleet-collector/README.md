@@ -1,21 +1,18 @@
 # Fleet Collector — `@creezio/observability`
 
-Services ops autonomes en Node pur (loopback HTTP + store JSON), **SoT kit**
-— 0 domaine marque hardcodé. Le dossier porte trois serveurs :
+Service ops autonome en Node pur (loopback HTTP + store JSON), **SoT kit**
+— 0 domaine marque hardcodé. Le dossier porte le collector télémétrie :
 
 | Fichier | Service | Câblé en prod |
 |---|---|---|
 | `server.mjs` (+ `ops-api.mjs`, `env.mjs`) | Collector télémétrie (ingest heartbeat/crash/bundle + cockpit ops) — **SoT ici** | Service dédié (ex. legacy `:8665`) |
-| `server-admin.mjs` | **Backend flotte** `creezio-server-admin` (`:18800`, Basic) — **wrapper compat** de `@creezio/fleet` (P2.b) | Image `docker/server-admin` — `creezio server-docker admin up` |
-| `host-agent.mjs` | **Agent hôte** (`:18810`) — **wrapper compat** de `@creezio/fleet` (P2.b) | Image `docker/host-agent` — `creezio server-docker agent up` |
 
-**P2.b (0.15.0)** : la SoT du backend flotte vit dans
-[`packages/fleet`](../../fleet/README.md) (`@creezio/fleet`, TS strict). Les
-`.mjs` flotte de ce dossier (`admin-docker`, `server-lib`, `instance-stack`,
-`agent-updates`, `registry-pull-proxy`, `server-admin`, `host-agent`) sont
-des wrappers `[deprecated]` conservés UNE version (retrait au prochain
-minor). Les images embarquent `packages/fleet/dist` (CMD
-`node_modules/@creezio/fleet/dist/bin/*-main.js`, contexte stagé fail-closed).
+**Backend flotte / agent hôte** : la SoT vit dans
+[`packages/fleet`](../../fleet/README.md) (`@creezio/fleet`, TS strict —
+P2.b 0.15.0). Les 7 wrappers `.mjs` de compat de ce dossier et le bin npm
+`creezio-server-admin` ont été **retirés en 0.19.0**. Les images embarquent
+`packages/fleet/dist` (CMD `node_modules/@creezio/fleet/dist/bin/*-main.js`,
+contexte stagé fail-closed).
 
 **Piège prod** : le code flotte est **copié dans les images** au build —
 après toute modif de `packages/fleet/src`, `npm run build:packages` puis

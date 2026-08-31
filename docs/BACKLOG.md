@@ -139,12 +139,14 @@ affaibli pour la masquer. (Backlogs d'époque : `docs/archive/BACKLOG-*.md`.)
   ouvert : supprimer le hop HTTP interne admin app → server-admin en faisant
   dépendre `@creezio/admin` de `@creezio/fleet` (imports directs) — le
   backend HTTP reste pour les host-agents.
-- **Retrait wrappers fleet-collector (0.16)** : supprimer les 7 wrappers
-  `.mjs` de `packages/observability/fleet-collector/` + le bin
-  `creezio-server-admin`, repointer le CLI factory
-  (`importInstanceStack`, imports server-lib) directement sur
-  `packages/fleet/dist`, et passer `FLEET_PROTOCOL_ACCEPT_MISSING=false`
-  au prochain bump de protocole (politique F4.4d).
+- ~~Retrait wrappers fleet-collector (0.16)~~ **fait (0.19.0)** : les 7
+  wrappers `.mjs` + le bin `creezio-server-admin` supprimés, CLI factory et
+  gates repointés sur `packages/fleet/dist`.
+  `FLEET_PROTOCOL_ACCEPT_MISSING=false` (strict) SANS bump v2 : le format
+  filaire n'a pas changé et l'API flotte a confirmé (2026-08-31) que tous
+  les composants déployés (host-agents enrôlés inclus) annoncent v1 ;
+  l'app admin pose désormais aussi le header sur les réponses
+  `fleet-releases` (`@creezio/admin` → dép `@creezio/fleet`).
 - **Rôles/permissions mode admin — LIVRÉ (0.18.0, P4)** : permissions PAR
   MODULE sur les comptes des apps admin via `@creezio/access-control`
   (overrides par compte `access_user_overrides`, UI « Rôles & accès »
@@ -192,14 +194,13 @@ affaibli pour la masquer. (Backlogs d'époque : `docs/archive/BACKLOG-*.md`.)
 
 ## Images serveur
 
-- **`electron` (wrapper npm) + `electron-shell` dans l'arbre des images
-  serveur** : les images Docker headless embarquent encore le wrapper npm
-  `electron` et le package `electron-shell` (dépendances transitives de
-  l'arbre `npm ci -w server`), alors que le runtime serveur est Node pur.
-  Coupe prévue : déplacer `resources/vendor` (binaires Meili/cloudflared,
-  vendor hermes-agent) d'`electron-shell` vers `host-runtime`, puis exclure
-  electron/electron-shell du contexte serveur (TODO tracé dans
-  `docker/server/Dockerfile` + gate `test-phase-server-docker`).
+- **`electron` / `electron-shell` dans l'image serveur** : **clos P1.c
+  (0.20)** — `resources/{vendor,scripts,bin}` vivent dans
+  `@creezio/host-runtime` ; le Dockerfile PURGE `electron`,
+  `electron-updater` et `@creezio/electron-shell` après `npm ci` (gate
+  `test-phase-server-docker`). Les marques existantes peuvent encore lister
+  `electron-shell` en dep serveur (desktop pack) : la purge image les
+  retire du runtime headless.
 
 ## Divers
 

@@ -3,8 +3,9 @@
 ## Mission
 
 Image de l'agent hôte flotte (VPS restaurant). Le code vit dans
-`packages/observability/fleet-collector/` (`host-agent.mjs`,
-`agent-updates.mjs`) — ce dossier ne contient que le `Dockerfile`.
+`@creezio/fleet` (`packages/fleet/src/host-agent.ts`, `agent-updates.ts` —
+wrappers fleet-collector retirés en 0.19.0) — ce dossier ne contient que le
+`Dockerfile`.
 
 ## Ne pas faire
 
@@ -17,8 +18,9 @@ Image de l'agent hôte flotte (VPS restaurant). Le code vit dans
 ## Piège connu
 
 Le code de l'agent est **embarqué au build de l'image** : après toute modif
-de `fleet-collector/*.mjs`, re-runner `creezio server-docker agent up`
-(rebuild + recreate), sinon le container continue de servir l'ancien code.
+de `packages/fleet/src`, `npm run build:packages` puis re-runner
+`creezio server-docker agent up` (rebuild + recreate), sinon le container
+continue de servir l'ancien code.
 
 ## Tests / gates
 

@@ -6,7 +6,7 @@
  * admins de marques :
  *
  *   - fleet       : pilotage flotte (proxy vers le backend flotte
- *                   `server-admin.mjs` — hôtes, serveurs, updates, logs…)
+ *                   backend flotte @creezio/fleet — hôtes, serveurs, updates, logs…)
  *   - prospects   : CRM prospection kanban générique (la marque nomme)
  *   - roadmap     : roadmap produit de la marque
  *   - support     : tickets clients agrégés depuis les serveurs marque
@@ -332,7 +332,7 @@ const CRUD_OPS = (permission: string): ModuleOperation[] => [
 /* --------------------------------------------------------- module fleet */
 
 export type FleetAdminMountOptions = {
-  /** URL du backend flotte (server-admin.mjs). Défaut env CREEZIO_FLEET_BACKEND_URL puis http://127.0.0.1:18800 */
+  /** URL du backend flotte (@creezio/fleet server-admin). Défaut env CREEZIO_FLEET_BACKEND_URL puis http://127.0.0.1:18800 */
   backendUrl?: string;
   /** Credentials Basic `user:pass`. Défaut env CREEZIO_FLEET_BACKEND_BASIC. */
   basic?: string;

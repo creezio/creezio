@@ -5,8 +5,10 @@ marque : il expose les gestes locaux (update avec backup/rollback, logs,
 status) au backend flotte et **polle** les releases (updates en pull, F5 —
 aucun push admin → agent).
 
-Le code servi est `packages/observability/fleet-collector/host-agent.mjs`
-(+ `agent-updates.mjs`) : le contexte de build est ce dossier-là.
+Le code servi est `@creezio/fleet`
+(`packages/fleet/dist/bin/host-agent-main.js` + `agent-updates.js`) ; le
+contexte de build est stagé par le CLI (fleet-collector télémétrie +
+`node_modules/@creezio/fleet`).
 
 ## Build & run
 

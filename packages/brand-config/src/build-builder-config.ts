@@ -180,7 +180,7 @@ export const WIN_SERVER_BIN_FILTER = [
 ] as const;
 
 /** Exclusion asar : bins kit ne doivent jamais être emballés dans app.asar. */
-export const ASAR_EXCLUDE_KIT_BINS = "!**/electron-shell/resources/bin/**";
+export const ASAR_EXCLUDE_KIT_BINS = "!**/host-runtime/resources/bin/**";
 
 /**
  * Stage relatif marque pour bins Win (cross-compile Linux → Windows).
@@ -580,6 +580,7 @@ export function isKitBinExtraResource(entry: unknown): boolean {
   const to = entryTo(entry);
   if (to === "bin" || to.endsWith("/bin")) return true;
   return (
+    from.includes("host-runtime/resources/bin") ||
     from.includes("electron-shell/resources/bin") ||
     from.includes("/resources/bin") ||
     from.includes("win-bin-stage") ||
@@ -595,6 +596,7 @@ function hasKitOsVendor(extra: unknown[]): boolean {
   return extra.some((entry) => {
     const f = entryFrom(entry);
     return (
+      f.includes("host-runtime/resources/vendor") ||
       f.includes("electron-shell/resources/vendor") ||
       f.endsWith("/resources/vendor")
     );
@@ -752,10 +754,10 @@ export function buildElectronBuilderConfig(
 
 /**
  * Vendor OS natif (Hermes/n8n manifests + install scripts) depuis le package
- * npm `@creezio/electron-shell/resources/vendor` — jamais depuis la marque.
+ * npm `@creezio/host-runtime/resources/vendor` — jamais depuis la marque.
  * Résolu walk-up (workspaces : `../node_modules/…` depuis le livrable).
  *
- * Bins : **jamais** le dossier kit `electron-shell/resources/bin` en bloc
+ * Bins : **jamais** le dossier kit `host-runtime/resources/bin` en bloc
  * (Linux+Win → double packing asar + extraResources ≈ +450 Mo). Client slim
  * = zéro bin. Serveur = `win.extraResources` filtré depuis un stage Win.
  */
@@ -763,12 +765,12 @@ function ensureKitOsVendorExtraResources(
   base: JsonRecord,
   opts: { includeBin: boolean; winBinStage: string; appRoot?: string },
 ): void {
-  const shellRel = opts.appRoot
-    ? resolveInstalledRel(opts.appRoot, "@creezio/electron-shell")
+  const hostRel = opts.appRoot
+    ? resolveInstalledRel(opts.appRoot, "@creezio/host-runtime")
     : null;
-  const shellFrom = shellRel ?? "node_modules/@creezio/electron-shell";
-  const vendorFrom = `${shellFrom}/resources/vendor`;
-  const scriptsFrom = `${shellFrom}/resources/scripts`;
+  const hostFrom = hostRel ?? "node_modules/@creezio/host-runtime";
+  const vendorFrom = `${hostFrom}/resources/vendor`;
+  const scriptsFrom = `${hostFrom}/resources/scripts`;
   let extra = Array.isArray(base.extraResources)
     ? ([...base.extraResources] as unknown[])
     : [];
@@ -785,6 +787,7 @@ function ensureKitOsVendorExtraResources(
   if (
     !extra.some(
       (entry) =>
+        entryFrom(entry).includes("host-runtime/resources/scripts") ||
         entryFrom(entry).includes("electron-shell/resources/scripts") ||
         entryTo(entry) === "scripts",
     )

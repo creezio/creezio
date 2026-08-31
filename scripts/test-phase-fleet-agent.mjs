@@ -1,10 +1,12 @@
 #!/usr/bin/env node
 /**
- * Gate FLOTTE — agent hôte + server-admin multi-VPS (fleet-collector).
+ * Gate FLOTTE — agent hôte + server-admin multi-VPS (@creezio/fleet).
  *
  * Sans docker : CREEZIO_DOCKER_SOCK inexistant → états "unknown" acceptés.
  * Vérifie le contrat sécurité de l'agent : ping public, API refusée sans
- * Bearer, acceptée avec un token dont seul le hash est stocké.
+ * Bearer, acceptée avec un token dont seul le hash est stocké + header
+ * `x-creezio-fleet-protocol` (409 fail-closed si le header est absent —
+ * contrat strict 0.19.0). Dist `@creezio/fleet` requis.
  */
 import assert from "node:assert/strict";
 import { spawn, spawnSync } from "node:child_process";
@@ -17,7 +19,9 @@ import { test } from "node:test";
 import { fileURLToPath } from "node:url";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const FLEET = path.join(ROOT, "packages/observability/fleet-collector");
+const FLEET_BIN = path.join(ROOT, "packages/fleet/dist/bin");
+const FLEET_PROTOCOL_HEADER = "x-creezio-fleet-protocol";
+const FLEET_PROTOCOL_VERSION = "1";
 
 function ephemeralPort() {
   return new Promise((resolve, reject) => {
@@ -43,10 +47,16 @@ async function waitHttp(url, timeoutMs = 10000) {
   }
 }
 
-test("server-admin : suite locale fleet-collector verte", () => {
+test("server-admin : suite locale @creezio/fleet verte", () => {
   const r = spawnSync(
     process.execPath,
-    ["--test", path.join(FLEET, "test-server-admin.mjs")],
+    [
+      "--test",
+      path.join(
+        ROOT,
+        "packages/observability/fleet-collector/test-server-admin.mjs",
+      ),
+    ],
     { encoding: "utf8" },
   );
   assert.equal(r.status, 0, r.stderr + "\n" + r.stdout);
@@ -91,7 +101,7 @@ test("agent hôte : ping public, API Bearer only, token hashé", async () => {
   const port = await ephemeralPort();
   const child = spawn(
     process.execPath,
-    [path.join(FLEET, "host-agent.mjs")],
+    [path.join(FLEET_BIN, "host-agent-main.js")],
     {
       env: {
         ...process.env,
@@ -121,10 +131,33 @@ test("agent hôte : ping public, API Bearer only, token hashé", async () => {
     });
     assert.equal(revoked.status, 401, "token révoqué doit être refusé");
 
-    const ok = await fetch(`http://127.0.0.1:${port}/agent/api/servers`, {
+    const noProto = await fetch(`http://127.0.0.1:${port}/agent/api/servers`, {
       headers: { authorization: `Bearer ${token}` },
     });
+    assert.equal(
+      noProto.status,
+      409,
+      "API autorisée sans header protocole doit être refusée (strict 0.19)",
+    );
+    const noProtoBody = await noProto.json();
+    assert.equal(noProtoBody.error, "protocol_mismatch");
+
+    const badProto = await fetch(`http://127.0.0.1:${port}/agent/api/servers`, {
+      headers: {
+        authorization: `Bearer ${token}`,
+        [FLEET_PROTOCOL_HEADER]: "99",
+      },
+    });
+    assert.equal(badProto.status, 409, "version de protocole ≠ v1 → 409");
+
+    const ok = await fetch(`http://127.0.0.1:${port}/agent/api/servers`, {
+      headers: {
+        authorization: `Bearer ${token}`,
+        [FLEET_PROTOCOL_HEADER]: FLEET_PROTOCOL_VERSION,
+      },
+    });
     assert.equal(ok.status, 200);
+    assert.equal(ok.headers.get(FLEET_PROTOCOL_HEADER), FLEET_PROTOCOL_VERSION);
     const body = await ok.json();
     assert.equal(body.ok, true);
     assert.ok(Array.isArray(body.servers));

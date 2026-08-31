@@ -39,11 +39,13 @@ const { slugCheckLocal, isZoneLevelKind, buildTunnelIngressRules } =
   await import(
     path.join(COLLECTOR, "../../platform-core/dist/tunnel-cf.js")
   );
+// SoT @creezio/fleet (wrappers fleet-collector retirés en 0.19) — dist requis.
+const FLEET_DIST = path.join(ROOT, "packages/fleet/dist");
 const {
   isPullMethod,
   isRegistryPath,
   registryPullAuthDecision,
-} = await import(path.join(COLLECTOR, "registry-pull-proxy.mjs"));
+} = await import(path.join(FLEET_DIST, "registry-pull-proxy.js"));
 
 function ephemeralPort() {
   return new Promise((resolve, reject) => {
@@ -172,7 +174,7 @@ test("proxy /v2 E2E : pull authentifié OK, anonyme 401, push 405", async () => 
   const ADMIN_PORT = await ephemeralPort();
   const child = spawn(
     process.execPath,
-    [path.join(COLLECTOR, "server-admin.mjs")],
+    [path.join(FLEET_DIST, "bin/server-admin-main.js")],
     {
       env: {
         ...process.env,

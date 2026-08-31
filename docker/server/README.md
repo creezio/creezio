@@ -218,7 +218,7 @@ racine du **repo admin dédié** (`{ADMIN_ROOT}/server-admin.json`, ex.
 `{ADMIN_ROOT}/docker-data/server-admin.json` (gitignoré). Le chemin legacy
 `{BRAND_ROOT}/admin/server-admin.json` reste lu mais n'est plus généré.
 
-Container `creezio-server-admin` (fleet-collector étendu, `--network host`,
+Container `creezio-server-admin` (backend `@creezio/fleet`, `--network host`,
 `/var/run/docker.sock` monté) : liste des serveurs, create/start/stop/rm,
 barre de boot-status live (rendu splash), health/version, logs docker +
 ops JSONL, disque. Voir `docker/server-admin/README.md`.

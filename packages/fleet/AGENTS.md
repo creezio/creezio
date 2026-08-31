@@ -28,11 +28,14 @@ déploiement (voir skill `creezio-fleet-ops`).
 
 - Header `x-creezio-fleet-protocol` porté dans les DEUX sens
   (server-admin↔host-agent) + boucle pull (agent-updates → app admin).
-- v identique → ok ; header absent (déployés ≤ 0.14) → warn bruyant throttlé
-  (`shouldWarnProtocol`, 1/10 min) accepté UNE version ; v différente → refus
-  explicite message actionnable (jamais silencieux).
-- **Au bump de `FLEET_PROTOCOL_VERSION`** : passer
-  `FLEET_PROTOCOL_ACCEPT_MISSING=false` (absence de header = refus).
+- v identique → ok ; header absent → **refus fail-closed** depuis 0.19.0
+  (`FLEET_PROTOCOL_ACCEPT_MISSING=false` — dual-accept 0.15→0.18 terminé,
+  versions réelles vérifiées via l'API flotte : tous les composants déployés
+  annoncent v1) ; v différente → refus explicite message actionnable (jamais
+  silencieux).
+- Pas de bump v2 au passage strict : le format filaire n'a pas changé.
+  L'app admin pose aussi le header sur les réponses du mount
+  `fleet-releases` (`@creezio/admin` dépend de `@creezio/fleet`).
 
 ## Points d'entrée
 
@@ -44,12 +47,13 @@ déploiement (voir skill `creezio-fleet-ops`).
   (`node_modules/@creezio/fleet/dist/bin/*-main.js`).
 - `public/admin.html` — UI admin mono-fichier (servie sur `/admin`).
 
-## Wrappers de compat (une version)
+## Wrappers de compat (historique)
 
-`packages/observability/fleet-collector/{admin-docker,server-lib,
-instance-stack,agent-updates,registry-pull-proxy,server-admin,host-agent}.mjs`
-re-exportent ce package avec warning `[deprecated]` — retrait au prochain
-minor. `server.mjs` / `ops-api.mjs` / `env.mjs` (collector télémétrie)
+RETIRÉS en 0.19.0 : les 7 wrappers `.mjs` de
+`packages/observability/fleet-collector/` (+ le bin npm
+`creezio-server-admin`) ont été supprimés — tous les consommateurs (CLI
+factory, gates, images) pointent directement sur `packages/fleet/dist`.
+`server.mjs` / `ops-api.mjs` / `env.mjs` (collector télémétrie)
 restent la SoT observability, hors périmètre fleet.
 
 ## Modifier sans casser
@@ -62,7 +66,8 @@ restent la SoT observability, hors périmètre fleet.
 - Gates : `test-phase-server-docker` (contenu server-lib/server-admin),
   `test-phase-instance-stack`, `test-phase-stack-update-preserve`,
   `test-phase-fleet-agent`, `test-phase-fleet-releases`,
-  `test-phase-registry-pull-proxy` — via wrappers ou source TS.
+  `test-phase-registry-pull-proxy` — via `packages/fleet/dist` (build requis)
+  ou source TS.
 - Images : tout renommage de `dist/bin/*` doit suivre dans les Dockerfiles
   (`docker/server-admin`, `docker/host-agent`) ET `stageFleetImageContext`
   (factory).

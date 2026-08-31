@@ -1,5 +1,14 @@
 # @creezio/os-ui
 
+## 0.20.0
+
+### Patch Changes
+
+- @creezio/interactive-demo@0.20.0
+- @creezio/mails@0.20.0
+- @creezio/nav@0.20.0
+- @creezio/shell-ui@0.20.0
+
 ## 0.19.0
 
 ### Minor Changes
