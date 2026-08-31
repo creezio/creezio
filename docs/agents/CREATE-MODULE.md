@@ -205,7 +205,11 @@ l'enforcement côté marque. Documenter chaque op dans l'interview (§5).
   `catalog_*` imposés par le kit, jamais `tf2_*` : uid, settings,
   loadDocs/table+columns) **ou** `horsIndexJustification` explicite
   (relevés, joins commande, écritures, SKU EAN, fiche GET by id, agrégats).
-  Doctor brand-spec `MODULE_MEILI_MISSING` fail-closed (0.10.13+). Le
+  Doctor brand-spec `MODULE_MEILI_MISSING` fail-closed (0.10.13+).
+  `meiliIndexes.table` doit exister dans **une** migration de l'app
+  (même module, autre module, ou historique `fromprd_brand_*`) — sinon
+  `MODULE_MEILI_TABLE_UNKNOWN`. Table créée à l'exécution uniquement :
+  déclarer `tableProvisionedBy` (pas d'env de bypass). Le
   browse passe par `browseMeiliIndexOutcome` / entity-list Meili ; Meili
   KO = **503 `meili_unavailable`** (ou `engine:"indexing"` pendant
   l'indexation initiale) — **jamais** de LIKE SQL de secours ni

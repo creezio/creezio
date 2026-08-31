@@ -20,7 +20,7 @@
 | [`src/meili/coherence-db.ts`](../src/meili/coherence-db.ts) | (à documenter) |
 | [`src/meili/coherence-query.ts`](../src/meili/coherence-query.ts) | (à documenter) |
 | [`src/meili/coherence.ts`](../src/meili/coherence.ts) | (à documenter) |
-| [`src/meili/feed.ts`](../src/meili/feed.ts) | (à documenter) |
+| [`src/meili/feed.ts`](../src/meili/feed.ts) | Feed marque générique (`BrandMeiliFeed`, `BrandMeiliIndexSpec`) — `table` + échappatoire déclarative `tableProvisionedBy` (doctor `MODULE_MEILI_TABLE_UNKNOWN`, pas d'env de bypass). |
 | [`src/meili/generic-indexer.ts`](../src/meili/generic-indexer.ts) | (à documenter) |
 | [`src/meili/index-schema.ts`](../src/meili/index-schema.ts) | (à documenter) |
 | [`src/meili/index.ts`](../src/meili/index.ts) | (à documenter) |
