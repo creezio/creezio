@@ -108,6 +108,20 @@ test("os-ui generator : factory installe granola, grokbot et nav", () => {
     /creezioNpmDeps\(\[/,
     "from-prd : interdit une liste inline (dérive de la SoT → granola manquant)",
   );
+  // Le package.json UI généré consomme la SoT UI_CREEZIO_DEPS — plus de
+  // liste inline parallèle (c'est elle qui a laissé passer l'incident
+  // prod 0.20.0 côté upgrade : la liste UI n'existait que dans le
+  // générateur, jamais dans le runner).
+  assert.match(
+    gen,
+    /creezioNpmDeps\(UI_CREEZIO_DEPS\)/,
+    "renderUiPackageJson consomme UI_CREEZIO_DEPS (pas de liste parallèle)",
+  );
+  assert.doesNotMatch(
+    gen,
+    /"@creezio\/[a-z-]+":\s*spec/,
+    "renderUiPackageJson : interdit un spec @creezio/* inline (dérive de la SoT)",
+  );
   for (const name of ["granola", "grokbot", "nav"]) {
     assert.match(
       sot,
@@ -120,14 +134,24 @@ test("os-ui generator : factory installe granola, grokbot et nav", () => {
       `CLIENT_CREEZIO_DEPS (kit-release.ts) contient ${name}`,
     );
     assert.match(
-      gen,
-      new RegExp(`"@creezio/${name}"`),
-      `package.json UI généré déclare @creezio/${name}`,
+      sot,
+      new RegExp(`UI_CREEZIO_DEPS[\\s\\S]*"${name}"`),
+      `UI_CREEZIO_DEPS (kit-release.ts) contient ${name}`,
     );
     assert.match(
       gen,
       new RegExp(`"@creezio/${name}"`),
       `transpilePackages déclare @creezio/${name}`,
+    );
+  }
+  // Les peers kit déclarés en dependencies de l'UI (résolution déterministe
+  // hors workspace) font partie de la SoT UI — sinon `creezio upgrade` les
+  // signalerait à tort « hors SoT » sur chaque marque.
+  for (const name of ["platform-core", "brand-config", "shell", "api-kernel", "integrations"]) {
+    assert.match(
+      sot,
+      new RegExp(`UI_CREEZIO_DEPS[\\s\\S]*"${name}"`),
+      `UI_CREEZIO_DEPS (kit-release.ts) contient le peer ${name}`,
     );
   }
 });
