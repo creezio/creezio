@@ -35,6 +35,7 @@ import {
 import {
   callAssistantMcpTool,
   ensureMcpToolCache,
+  sessionAuthFromRequest,
   summarizeMcpResult,
 } from "./mcp-tools.js";
 import { executeTaskTool } from "./tasks-tools.js";
@@ -388,6 +389,7 @@ async function executeTool(
   trace?: { runId: string; conversationId: string; round: number },
   emit?: ((event: string, data: unknown) => void) | null,
   activeSurface?: ActiveSurface | null,
+  sessionAuth?: { bearerToken: string | null; headers: Record<string, string> } | null,
 ): Promise<{ content: string; sources: AssistantSource[]; uiSummary: string; resultOk: boolean }> {
   const started = Date.now();
   let args: Record<string, unknown> = {};
@@ -501,6 +503,12 @@ async function executeTool(
           activeSurface: activeSurface || null,
           emit: emit || null,
           phase: "supplier",
+          ...(sessionAuth?.bearerToken
+            ? { bearerToken: sessionAuth.bearerToken }
+            : {}),
+          ...(sessionAuth?.headers && Object.keys(sessionAuth.headers).length
+            ? { sessionHeaders: sessionAuth.headers }
+            : {}),
         };
         const mcpResult = await callAssistantMcpTool(name, args, brandCtx);
         if (mcpResult != null) {
@@ -780,6 +788,12 @@ async function executeTool(
         runId: trace?.runId || null,
         activeSurface: activeSurface || null,
         emit: emit || null,
+        ...(sessionAuth?.bearerToken
+          ? { bearerToken: sessionAuth.bearerToken }
+          : {}),
+        ...(sessionAuth?.headers && Object.keys(sessionAuth.headers).length
+          ? { sessionHeaders: sessionAuth.headers }
+          : {}),
       };
       const mcpResult = await callAssistantMcpTool(name, args, brandCtx);
       if (mcpResult != null) {
@@ -1138,6 +1152,7 @@ export async function handleAssistantChat(
       : await requireSession();
   if (sessionOrRes instanceof Response) return sessionOrRes;
   const session = sessionOrRes;
+  const sessionAuth = sessionAuthFromRequest(req);
 
   // O4r : rafraîchir discovery MCP avant getToolDefinitions()
   try {
@@ -1525,6 +1540,7 @@ export async function handleAssistantChat(
           { runId: activeRunId, conversationId, round },
           emit,
           activeSurface,
+          sessionAuth,
         );
         pushSources(sources);
         emit?.("tool_result", {
@@ -1723,6 +1739,7 @@ export async function handleAssistantChat(
           { runId: activeRunId, conversationId, round },
           emit,
           activeSurface,
+          sessionAuth,
         );
         pushSources(sources);
         emit?.("tool_result", {

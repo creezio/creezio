@@ -1,5 +1,11 @@
 # @creezio/assistant
 
+## 0.18.1
+
+### Patch Changes
+
+- Chat OS : extraire cookie / JWT de la requête et les passer à `callTool` (tools `module.*` voient la session utilisateur, plus de 401 `requireSession` in-process).
+
 ## 0.18.0
 
 ### Patch Changes

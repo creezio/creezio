@@ -21,6 +21,7 @@ import type {
   DiscoverToolsBySpaceFn,
   DiscoverToolsFn,
   McpAuthorizeToolCallFn,
+  McpCallToolOpts,
   McpFacadeOptions,
   McpListToolsResult,
   McpPublicSurfaceMode,
@@ -47,7 +48,7 @@ export type McpFacade = {
   callTool(
     name: string,
     args?: Record<string, unknown>,
-    opts?: { bearerToken?: string | null },
+    opts?: McpCallToolOpts,
   ): Promise<McpToolCallResult>;
   /** Réenregistre / remplace le discoverer plat. */
   setDiscoverTools(fn: DiscoverToolsFn): void;
@@ -380,10 +381,16 @@ export function createMcpFacade(options: McpFacadeOptions = {}): McpFacade {
       }
 
       // Acteur transmis aux handlers (2ᵉ argument optionnel, rétro-compat).
+      // Bearer + headers d'origine : tools `module.*` les recopient sur la
+      // ApiRequest synthétique (requireSession cookie/JWT).
       return tool.handler(args, {
         ...(a.subject ? { subject: a.subject } : {}),
         ...(a.orgId ? { orgId: a.orgId } : {}),
         ...(a.claims ? { claims: a.claims } : {}),
+        ...(opts?.bearerToken ? { bearerToken: opts.bearerToken } : {}),
+        ...(opts?.headers && Object.keys(opts.headers).length
+          ? { headers: opts.headers }
+          : {}),
       });
     },
   };
