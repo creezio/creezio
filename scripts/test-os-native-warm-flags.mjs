@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
- * Contrat warm natif : n8n et Hermes sont indépendants.
- * Skip n8n (disque) ne doit jamais empêcher Hermes / Work.
+ * Contrat warm natif : n8n et Hermes sont indépendants en local.
+ * VPS create/update : skip n8n/Hermes ignoré (les deux requis).
  * GET /plugin-approvals : 200 liste vide sans Product Hub.
  */
 import assert from "node:assert/strict";
@@ -56,18 +56,15 @@ test("warm flags : n8n skip ne coupe pas Hermes", () => {
   );
 });
 
-test("VPS defaults : Hermes on même si WARM déjà à 0", () => {
+test("VPS defaults : n8n+Hermes forcés, skip ignoré", () => {
   assert.deepEqual(applyVpsNativeWarmDefaults({}), {
     CREEZIO_NATIVE_WARM: "1",
     CREEZIO_NATIVE_WARM_HERMES: "1",
   });
-  assert.deepEqual(
-    applyVpsNativeWarmDefaults({ CREEZIO_NATIVE_WARM: "0" }),
-    {
-      CREEZIO_NATIVE_WARM: "0",
-      CREEZIO_NATIVE_WARM_HERMES: "1",
-    },
-  );
+  assert.deepEqual(applyVpsNativeWarmDefaults({ CREEZIO_NATIVE_WARM: "0" }), {
+    CREEZIO_NATIVE_WARM: "1",
+    CREEZIO_NATIVE_WARM_HERMES: "1",
+  });
   assert.deepEqual(
     applyVpsNativeWarmDefaults({
       CREEZIO_NATIVE_WARM: "1",
@@ -75,7 +72,6 @@ test("VPS defaults : Hermes on même si WARM déjà à 0", () => {
     }),
     {
       CREEZIO_NATIVE_WARM: "1",
-      CREEZIO_NATIVE_WARM_N8N: "0",
       CREEZIO_NATIVE_WARM_HERMES: "1",
     },
   );
@@ -83,8 +79,13 @@ test("VPS defaults : Hermes on même si WARM déjà à 0", () => {
     applyVpsNativeWarmDefaults({ CREEZIO_NATIVE_WARM_HERMES: "0" }),
     {
       CREEZIO_NATIVE_WARM: "1",
-      CREEZIO_NATIVE_WARM_HERMES: "0",
+      CREEZIO_NATIVE_WARM_HERMES: "1",
     },
+  );
+  assert.equal(
+    applyVpsNativeWarmDefaults({ CREEZIO_NATIVE_WARM_N8N: "0" })
+      .CREEZIO_NATIVE_WARM_N8N,
+    undefined,
   );
 });
 
