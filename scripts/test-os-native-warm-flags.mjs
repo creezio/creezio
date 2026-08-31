@@ -57,35 +57,26 @@ test("warm flags : n8n skip ne coupe pas Hermes", () => {
 });
 
 test("VPS defaults : n8n+Hermes forcés, skip ignoré", () => {
-  assert.deepEqual(applyVpsNativeWarmDefaults({}), {
+  const forced = {
     CREEZIO_NATIVE_WARM: "1",
+    CREEZIO_NATIVE_WARM_N8N: "1",
     CREEZIO_NATIVE_WARM_HERMES: "1",
-  });
-  assert.deepEqual(applyVpsNativeWarmDefaults({ CREEZIO_NATIVE_WARM: "0" }), {
-    CREEZIO_NATIVE_WARM: "1",
-    CREEZIO_NATIVE_WARM_HERMES: "1",
-  });
+  };
+  assert.deepEqual(applyVpsNativeWarmDefaults({}), forced);
+  assert.deepEqual(
+    applyVpsNativeWarmDefaults({ CREEZIO_NATIVE_WARM: "0" }),
+    forced,
+  );
   assert.deepEqual(
     applyVpsNativeWarmDefaults({
       CREEZIO_NATIVE_WARM: "1",
       CREEZIO_NATIVE_WARM_N8N: "0",
     }),
-    {
-      CREEZIO_NATIVE_WARM: "1",
-      CREEZIO_NATIVE_WARM_HERMES: "1",
-    },
+    forced,
   );
   assert.deepEqual(
     applyVpsNativeWarmDefaults({ CREEZIO_NATIVE_WARM_HERMES: "0" }),
-    {
-      CREEZIO_NATIVE_WARM: "1",
-      CREEZIO_NATIVE_WARM_HERMES: "1",
-    },
-  );
-  assert.equal(
-    applyVpsNativeWarmDefaults({ CREEZIO_NATIVE_WARM_N8N: "0" })
-      .CREEZIO_NATIVE_WARM_N8N,
-    undefined,
+    forced,
   );
 });
 

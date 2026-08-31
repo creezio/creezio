@@ -80,7 +80,9 @@ export function applyVpsNativeWarmDefaults(
   }
   out.CREEZIO_NATIVE_WARM = "1";
   out.CREEZIO_NATIVE_WARM_HERMES = "1";
-  delete out.CREEZIO_NATIVE_WARM_N8N;
+  // Forcer =1 (pas seulement retirer =0) : l'image Docker peut avoir
+  // CREEZIO_NATIVE_WARM_N8N=0 en ENV — un compose sans la clé hériterait du skip.
+  out.CREEZIO_NATIVE_WARM_N8N = "1";
   return out;
 }
 
