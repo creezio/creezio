@@ -24,9 +24,8 @@ Ce package **ré-exporte tout** avec `@deprecated` (compat des imports
 historiques kit/marques/factory). Cette surface est **FIGÉE** — gate
 `test-phase-electron-shell-frozen-exports` (snapshot
 `scripts/electron-shell-frozen-exports.json`) : tout NOUVEAU symbole host
-s'exporte depuis son package SoT, jamais d'ici. `resources/vendor` et
-`resources/bin` (hermes-agent, n8n, binaires kit) restent shippés ICI
-(résolus par `kitOsResourcesRoot`) — TODO P1.c pour les déménager.
+s'exporte depuis son package SoT, jamais d'ici. `resources/{vendor,scripts,bin}` ont déménagé dans
+`@creezio/host-runtime` (P1.c) — résolus par `kitOsResourcesRoot`.
 
 ## P2.a — moteur desktop partagé + compat legacy gelée
 
@@ -174,8 +173,8 @@ Si la modification touche Electron reel, completer par un smoke de marque :
 - `src/host/browser-tabs/browser-tab-driver.ts` : CDP trusted input.
 - `src/index.ts` + `src/meili.ts` : surface de ré-exports FIGÉE (gate
   `test-phase-electron-shell-frozen-exports`).
-- `resources/vendor` + `resources/bin` : vendor hermes/n8n + binaires kit
-  shippés par CE package (résolution `kitOsResourcesRoot`).
+- Vendor / scripts / bins kit : `@creezio/host-runtime/resources`
+  (résolution `kitOsResourcesRoot`).
 - Le reste (plugins, hermes, n8n, tunnel, sandbox, ai-workspace) : voir
   `packages/host-runtime/AGENTS.md`.
 

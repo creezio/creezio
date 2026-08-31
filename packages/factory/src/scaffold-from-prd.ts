@@ -133,7 +133,6 @@ function renderPackageJsonFromPrd(m: AppManifest, model: ProductModel): string {
             "cockpit",
             "database",
             "desktop-tooling",
-            "electron-shell",
             "granola",
             "grokbot",
             "host-runtime",

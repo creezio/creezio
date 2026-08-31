@@ -9,7 +9,10 @@ import https from "node:https";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+const root = path.resolve(
+  path.dirname(fileURLToPath(import.meta.url)),
+  "../../host-runtime",
+);
 const bin = path.join(root, "resources", "bin");
 fs.mkdirSync(bin, { recursive: true });
 

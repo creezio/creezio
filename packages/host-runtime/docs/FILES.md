@@ -4,6 +4,18 @@
 > `node scripts/generate-files-md.mjs host-runtime` (gate `test-phase-docs-freshness`).
 > Colonne « Rôle » éditable à la main : la régénération la préserve.
 
+## `resources/scripts/`
+
+| Fichier | Rôle |
+|---|---|
+| [`resources/scripts/meili-coherence-query.cjs`](../resources/scripts/meili-coherence-query.cjs) | (à documenter) |
+
+## `resources/vendor/hermes-agent/`
+
+| Fichier | Rôle |
+|---|---|
+| [`resources/vendor/hermes-agent/install.sh`](../resources/vendor/hermes-agent/install.sh) | (à documenter) |
+
 ## `src/`
 
 | Fichier | Rôle |

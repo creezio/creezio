@@ -16,7 +16,7 @@ import {
 import { composeBrandOs } from "../packages/app-runtime/dist/index.js";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const resourcesRoot = path.join(ROOT, "packages/electron-shell/resources");
+const resourcesRoot = path.join(ROOT, "packages/host-runtime/resources");
 
 function compose(manifest) {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "os-fleet-"));

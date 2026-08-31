@@ -191,7 +191,7 @@ Desktop Creezio natif.
     typeof e === "string" ? e : String(e.from || ""),
   );
   assert.ok(
-    clientFroms.some((f) => f.includes("electron-shell/resources/vendor")),
+    clientFroms.some((f) => f.includes("host-runtime/resources/vendor")),
     `extraResources vendor kit manquant: ${JSON.stringify(clientFroms)}`,
   );
   assert.ok(
@@ -208,9 +208,9 @@ Desktop Creezio natif.
   assert.ok(
     (clientCfg.files || []).some(
       (e) =>
-        typeof e === "string" && e.includes("electron-shell/resources/bin"),
+        typeof e === "string" && e.includes("host-runtime/resources/bin"),
     ),
-    "asar doit exclure electron-shell/resources/bin",
+    "asar doit exclure host-runtime/resources/bin",
   );
   const winExtra = serverCfg.win?.extraResources || [];
   assert.ok(
@@ -229,6 +229,7 @@ Desktop Creezio natif.
       (e) =>
         typeof e === "object" &&
         e &&
+        String(e.from || "").includes("host-runtime/resources/bin") ||
         String(e.from || "").includes("electron-shell/resources/bin"),
     ),
     "server : pas de bin kit unfiltered en top-level extraResources",

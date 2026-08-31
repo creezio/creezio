@@ -194,14 +194,13 @@ affaibli pour la masquer. (Backlogs d'époque : `docs/archive/BACKLOG-*.md`.)
 
 ## Images serveur
 
-- **`electron` (wrapper npm) + `electron-shell` dans l'arbre des images
-  serveur** : les images Docker headless embarquent encore le wrapper npm
-  `electron` et le package `electron-shell` (dépendances transitives de
-  l'arbre `npm ci -w server`), alors que le runtime serveur est Node pur.
-  Coupe prévue : déplacer `resources/vendor` (binaires Meili/cloudflared,
-  vendor hermes-agent) d'`electron-shell` vers `host-runtime`, puis exclure
-  electron/electron-shell du contexte serveur (TODO tracé dans
-  `docker/server/Dockerfile` + gate `test-phase-server-docker`).
+- **`electron` / `electron-shell` dans l'image serveur** : **clos P1.c
+  (0.20)** — `resources/{vendor,scripts,bin}` vivent dans
+  `@creezio/host-runtime` ; le Dockerfile PURGE `electron`,
+  `electron-updater` et `@creezio/electron-shell` après `npm ci` (gate
+  `test-phase-server-docker`). Les marques existantes peuvent encore lister
+  `electron-shell` en dep serveur (desktop pack) : la purge image les
+  retire du runtime headless.
 
 ## Divers
 

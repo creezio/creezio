@@ -3,7 +3,7 @@
  * hermes-skills-seed première marque) — générique kit.
  *
  * Sources (dans l'ordre, les dernières écrasent les premières) :
- * 1. Skills génériques kit : `@creezio/electron-shell/resources/vendor/hermes-skills`
+ * 1. Skills génériques kit : `@creezio/host-runtime/resources/vendor/hermes-skills`
  *    (creezio-n8n, creezio-plugins…).
  * 2. Skills marque : `{resourcesRoot}/vendor/hermes-skills` (packagé) ou
  *    `{appRoot}/vendor/hermes-skills` (dev/harness).

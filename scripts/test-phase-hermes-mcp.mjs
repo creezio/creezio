@@ -422,7 +422,7 @@ test("HM.4 câblage launcher/desktop/harness + skill creezio-computer-use", () =
   const skill = fs.readFileSync(
     path.join(
       ROOT,
-      "packages/electron-shell/resources/vendor/hermes-skills/creezio-computer-use/SKILL.md",
+      "packages/host-runtime/resources/vendor/hermes-skills/creezio-computer-use/SKILL.md",
     ),
     "utf8",
   );

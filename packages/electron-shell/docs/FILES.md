@@ -4,18 +4,6 @@
 > `node scripts/generate-files-md.mjs electron-shell` (gate `test-phase-docs-freshness`).
 > Colonne « Rôle » éditable à la main : la régénération la préserve.
 
-## `resources/scripts/`
-
-| Fichier | Rôle |
-|---|---|
-| [`resources/scripts/meili-coherence-query.cjs`](../resources/scripts/meili-coherence-query.cjs) | Lecteur SQLite autonome pour le contrôle de cohérence Meili — copié hors app.asar, exécutable par le Node embarqué, zéro dépendance marque. |
-
-## `resources/vendor/hermes-agent/`
-
-| Fichier | Rôle |
-|---|---|
-| [`resources/vendor/hermes-agent/install.sh`](../resources/vendor/hermes-agent/install.sh) | Installeur amont Hermes Agent (Linux/macOS/Termux) vendorisé — piloté par le launcher avec `HERMES_INSTALL_DIR` (verrou anti-layout FHS root). |
-
 ## `scripts/`
 
 | Fichier | Rôle |
