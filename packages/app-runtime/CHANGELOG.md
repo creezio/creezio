@@ -1,5 +1,97 @@
 # @creezio/app-runtime
 
+## 0.19.0
+
+### Minor Changes
+
+- 9324b6c: Deux nouveaux modules natifs hybrides (ADR-module-natif-hybride) :
+
+  - `@creezio/granola` — connecteur Granola (AI meeting notes) : mount
+    `/api/v1/modules/granola/*` avec récepteur webhook signé
+    (Standard Webhooks, fail-closed dès qu'un `signingSecret` est configuré,
+    dédup par `event_id`), sync des notes en brand.db via l'API publique
+    (`grn_…`), `register-webhook` qui crée l'endpoint côté Granola et capture
+    le `signing_secret` (retourné une seule fois), proxys
+    notes/transcript/folders/webhook-endpoints, UI `GranolaClient`
+    (URL webhook à copier, livraisons, notes).
+  - `@creezio/grokbot` — pilotage d'agents cloud via l'API Cursor v1 :
+    client REST complet (agents, runs, usage, artefacts, models,
+    repositories), mount `/api/v1/modules/grokbot/*` avec token stocké côté
+    serveur (masqué en GET), miroir local des agents en brand.db, cache DB
+    1 h sur `repositories` (rate limit amont), ops clés publiées MCP
+    (`create-agent`, `create-run`, `get-run`…), UI `GrokbotClient`
+    (lancement, suivi des runs, prompts de suivi, annulation).
+
+  UI OS : pages `/granola` et `/grokbot` (wrappers `@creezio/os-ui`) +
+  entrées sidebar natives (`defaultOsPrimaryNavItems` + chrome factory
+  `OS_NAV`). Après publish : `os-ui:materialize` rematérialise les pages ;
+  les marques qui inlinent la nav (chrome owned-by-brand) doivent ajouter
+  les deux hrefs.
+
+  Câblage API marque : composer `granolaMigrations()` / `grokbotMigrations()`
+  dans les migrations brand et enregistrer `createGranolaMount({ defaults })`
+  / `createGrokbotMount({ defaults })` via `registerModuleApi`.
+
+- cc2724a: Vague unique granola + grokbot + catalogue sidebar :
+
+  - Factory **installe** `@creezio/granola`, `@creezio/grokbot` et
+    `@creezio/nav` (SERVER_CREEZIO_DEPS / CLIENT_CREEZIO_DEPS /
+    transpilePackages / package.json UI). Jamais les retirer pour un
+    E404 pré-publish — le spawn `npm install` d'une app neuve est
+    attendu KO jusqu'à `changeset publish` (publish.yml), pas un skip
+    de gate.
+  - Chrome factory : `<NavCatalogLoader />` depuis `@creezio/shell-ui/ui`
+    (GET `/api/v1/modules/nav`) — plus de `const OS_NAV`.
+  - UI Granola (notes + transcript + dossiers + santé webhook) et
+    GrokBot (repos/usage/artefacts + runs live) sur cette même ligne.
+
+- 9af500e: Module hybride `@creezio/nav` (BRIEF NAV-2 / Phase B) :
+
+  - Persist des overrides sidebar en `brand.db` (`nav_overrides`) — jamais le
+    catalogue entier ni `core.db`.
+  - Mount `/api/v1/modules/nav` auto-enregistré par `startBrandDesktop` /
+    `createBrandKernel` (`createNavMount`).
+  - Admin `/admin/nav` (`NavAdminClient` + wrapper os-ui) : masquer,
+    réordonner, renommer. Entrée `os.admin.nav` via `registerOsNavEntry`
+    **et** `defaultOsAdminNavItems()` — pas un 3ᵉ `ADMIN_NAV`.
+  - Owner : voit tout ce qui est `available` ; `hidden` s'applique quand même
+    (documenté dans `packages/nav/AGENTS.md`).
+
+  Gate : `scripts/test-phase-nav-module.mjs`. Plan :
+  `docs/plans/PLAN-NAV-CATALOG.md`.
+
+### Patch Changes
+
+- bf7a973: Hermes warm indépendant de n8n : `CREEZIO_NATIVE_WARM_N8N=0` ne coupe plus Work. `GET /plugin-approvals` répond 200 `[]` sans Product Hub.
+- Updated dependencies [9324b6c]
+- Updated dependencies [cc2724a]
+- Updated dependencies [7254406]
+- Updated dependencies [bf7a973]
+- Updated dependencies [fe20ca7]
+- Updated dependencies [02927c6]
+- Updated dependencies [9af500e]
+  - @creezio/shell-ui@0.19.0
+  - @creezio/nav@0.19.0
+  - @creezio/mails@0.19.0
+  - @creezio/assistant@0.19.0
+  - @creezio/access-control@0.19.0
+  - @creezio/auth@0.19.0
+  - @creezio/interactive-demo@0.19.0
+  - @creezio/tasks@0.19.0
+  - @creezio/brand-config@0.19.0
+  - @creezio/platform-core@0.19.0
+  - @creezio/product-hub@0.19.0
+  - @creezio/search@0.19.0
+  - @creezio/host-runtime@0.19.0
+  - @creezio/electron-shell@0.19.0
+  - @creezio/api-kernel@0.19.0
+  - @creezio/mcp-facade@0.19.0
+  - @creezio/observability@0.19.0
+  - @creezio/support@0.19.0
+  - @creezio/integrations@0.19.0
+  - @creezio/browser-host@0.19.0
+  - @creezio/database@0.19.0
+
 ## 0.18.0
 
 ### Patch Changes
