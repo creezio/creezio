@@ -75,11 +75,21 @@ restent la SoT observability, hors périmètre fleet.
   doit repasser par `set()`/`save()` sinon elle n'est pas persistée.
 - `instance-stack` : politique `resolveStackUpdatePolicy` (préserver le
   sidecar cloudflared, refuser tout update qui casserait un hostname public).
+- `agent-tunnel` (T7) : le container cloudflared DÉDIÉ agent
+  (`creezio-agent-tunnel`) est provisionné par `creezio server-docker
+  enroll` (factory) — le watch d'ici ne fait QUE redémarrer un container
+  existant (backoff borné, miroir de `cloudflared-respawn.ts`
+  host-runtime : ne pas faire diverger les défauts sans raison). Jamais
+  d'appel API Cloudflare dans ce module (pas de POST `cfd_tunnel`) ; le
+  token du connecteur vit dans `docker-data/agent-tunnel.env` (600),
+  jamais dans `host-agent.json` ni les logs. Champ `agentTunnel` du
+  health : additif (protocole v1 intact).
 - Gates : `test-phase-server-docker` (contenu server-lib/server-admin),
   `test-phase-instance-stack`, `test-phase-stack-update-preserve`,
   `test-phase-fleet-agent`, `test-phase-fleet-update-status-persist`,
-  `test-phase-fleet-releases`, `test-phase-registry-pull-proxy` — via
-  `packages/fleet/dist` (build requis) ou source TS.
+  `test-phase-fleet-releases`, `test-phase-registry-pull-proxy`,
+  `test-phase-agent-tunnel` (T7 : politique + watch + contrats source) —
+  via `packages/fleet/dist` (build requis) ou source TS.
 - Images : tout renommage de `dist/bin/*` doit suivre dans les Dockerfiles
   (`docker/server-admin`, `docker/host-agent`) ET `stageFleetImageContext`
   (factory).

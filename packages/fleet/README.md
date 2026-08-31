@@ -10,6 +10,7 @@ C'est la brique qui pilote les serveurs marque headless (`docker/server`) :
 | `server-lib` | Logique partagée admin/agent : registre `servers.json`, allocation ports, collecte d'état, `createServer`, `updateServer` (pull → backup opt-in → recreate → health → rollback auto), backups tar en conteneur éphémère, rapport disque, snapshot poller |
 | `instance-stack` | Stacks compose autonomes par instance : rendu `compose.yml`, sidecar `cloudflared`, `cf.env`/`secrets.env`, politique d'update fail-closed (`STACK_UPDATE_REFUSED`, `preserve-sidecar`) |
 | `agent-updates` | Boucle pull des updates agent → app admin (directives fleet-releases, slots, statuts) |
+| `agent-tunnel` | T7 — surveillance respawn (bornée, miroir cloudflared-respawn) du container cloudflared **dédié** agent `creezio-agent-tunnel` ; jamais de (re)création de tunnel CF ici |
 | `update-status-store` | Persistance du suivi `update-status` (host-agent + plan local admin) : journal JSON atomique dans le répertoire d'état, reload au boot, flag `agentRestarted`, TTL 24 h |
 | `registry-pull-proxy` | Proxy pull-only du registre d'images (`/v2/*`, Basic `hostId:agentToken` ou admin, push 405) |
 | `server-admin` | Backend flotte admin (`startServerAdmin`) : plan local (socket) + plan flotte (agents tunnelisés), enrôlement, proxys |
@@ -50,6 +51,30 @@ au lieu d'un trou, et le mutex « update déjà en cours » ne reste jamais
 coincé. Les entrées terminées sont purgées après un **TTL de 24 h**
 (`DEFAULT_UPDATE_STATUS_TTL_MS`). Protocole v1 intact : champs additifs
 seulement. Gate : `test-phase-fleet-update-status-persist`.
+
+## Tunnel dédié agent (T7)
+
+L'ingress public du host-agent (`agent.{slug}.{zone}` /
+`agent-{slug}.{zone}`) passait par le cloudflared **in-process d'un serveur
+applicatif** du VPS : serveur down/recréé = agent injoignable. Depuis
+0.21.x, `creezio server-docker enroll` provisionne un tunnel Cloudflare
+**propre à l'agent** (nom CF `creezio-agent-<slug>`, un seul ingress →
+`127.0.0.1:<port agent>`) dont le connecteur tourne dans un container dédié
+`creezio-agent-tunnel` (network host, `--restart unless-stopped`, token
+dans `docker-data/agent-tunnel.env` 600). Migration douce : au premier
+enroll d'un hôte legacy, le CNAME agent est re-pointé vers le tunnel dédié
+**après** le démarrage du connecteur, puis la règle agent du tunnel partagé
+est retirée (best-effort) — pas de coupure, URL publique inchangée.
+
+Côté agent, `startHostAgent()` **surveille** ce container (module
+`agent-tunnel`) : mort → `docker start` avec backoff borné (mêmes défauts
+que la politique cloudflared in-process : 8 essais, 1 s → 30 s, reset après
+60 s d'uptime sain), abandon loggué actionnable, container absent = idle
+silencieux (hôte pas encore ré-enrôlé). Kill-switch :
+`CREEZIO_AGENT_TUNNEL_WATCH=0` ; overrides
+`CREEZIO_AGENT_TUNNEL_RESPAWN_{MAX,DELAY_MS,MAX_DELAY_MS,HEALTHY_MS}` ;
+état exposé (champ additif `agentTunnel`) dans `GET /agent/api/health`.
+Gates : `test-phase-agent-tunnel`, `test-phase-tunnel-self-provision` (§10).
 
 ## Consommation
 
