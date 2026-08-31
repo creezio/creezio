@@ -10,7 +10,7 @@
 |---|---|
 | [`build-cjs.mjs`](../build-cjs.mjs) | !usrbinenv node |
 | [`build-workspaces.mjs`](../build-workspaces.mjs) | Build unifié des workspaces (tsc + dual CJS) — SoT du script npm build:packages. |
-| [`clean.mjs`](../clean.mjs) | (à documenter) |
+| [`clean.mjs`](../clean.mjs) | Supprime les `dist/` des packages et les caches `apps/console/.next` + `apps/demobrand/build` (équivalent Windows-safe de `rm -rf`). |
 | [`generate-files-md.mjs`](../generate-files-md.mjs) | Générateur des inventaires `docs/FILES.md` — format standard du kit. |
 | [`generate-kit-packages.mjs`](../generate-kit-packages.mjs) | Génère/vérifie packages/platform-core/kit-packages.json (manifeste des packages publiés, consommé par les apps) |
 | [`kit-version.mjs`](../kit-version.mjs) | !usrbinenv node |
@@ -31,7 +31,7 @@
 | [`test-os-mails-config.mjs`](../test-os-mails-config.mjs) | Gate OS — configureMails + file-sink send + schéma inbox prêt. |
 | [`test-os-mcp-oauth.mjs`](../test-os-mcp-oauth.mjs) | MCP OAuth + admin — prouvable en local (sans Cloudflare). Harness si probe brand résolu hors monorepo kit. |
 | [`test-os-native-pnp.mjs`](../test-os-native-pnp.mjs) | Gate OS native plug-and-play — multi-marques : prouve qu'une app neuve (brand apply) démarre avec embeds, DB et surfaces OS sans wiring manuel. |
-| [`test-os-native-warm-flags.mjs`](../test-os-native-warm-flags.mjs) | (à documenter) |
+| [`test-os-native-warm-flags.mjs`](../test-os-native-warm-flags.mjs) | Contrat warm n8n/Hermes indépendants en local ; VPS create/update ignore les skips ; GET `/plugin-approvals` 200 liste vide sans Product Hub. |
 | [`test-os-open-external-tab.mjs`](../test-os-open-external-tab.mjs) | Gate OS — onglets externes + tool MCP `open_external_tab`. Unit-style (tab-url, preload path, contrats MCP) — pas de GUI Electron. |
 | [`test-os-owned-by-brand.mjs`](../test-os-owned-by-brand.mjs) | brand apply --force ne doit pas wipe les fichiers creezio:owned-by-brand. |
 | [`test-os-plugins.mjs`](../test-os-plugins.mjs) | Plugins control plane via compose OS — actifs par défaut, kill-switch CREEZIO_PLUGINS=0 (l'ancien opt-in =1 reste un no-op). |
@@ -44,12 +44,12 @@
 | [`test-phase-admin-billing.mjs`](../test-phase-admin-billing.mjs) | Gate — module billing admin (@creezio/admin) : webhook + réconciliation. |
 | [`test-phase-admin-database-runtime.mjs`](../test-phase-admin-database-runtime.mjs) | Gate Admin Database runtime : stores `core`+`brand` auto-enregistrés + `GET /database/dbs` |
 | [`test-phase-admin-fleet-registry.mjs`](../test-phase-admin-fleet-registry.mjs) | Gate — module fleet-registry (@creezio/admin) : DB flotte centrale (F2). |
-| [`test-phase-admin-prospects.mjs`](../test-phase-admin-prospects.mjs) | (à documenter) |
-| [`test-phase-admin-roadmap.mjs`](../test-phase-admin-roadmap.mjs) | (à documenter) |
+| [`test-phase-admin-prospects.mjs`](../test-phase-admin-prospects.mjs) | Gate CRUD prospects admin (PROSP-5) + validation nom requis (PROSP-3) sur `createAdminCrudMount`. |
+| [`test-phase-admin-roadmap.mjs`](../test-phase-admin-roadmap.mjs) | Gate CRUD roadmap admin (ROAD-4) + validation titre requis (ROAD-3) + tri par position. |
 | [`test-phase-api-entity-mount.mjs`](../test-phase-api-entity-mount.mjs) | Gate entity mounts — moteur CRUD déclaratif `@creezio/api-kernel` (`createEntityApiMount` / `registerEntityMounts`). |
-| [`test-phase-api-fallthrough-loop.mjs`](../test-phase-api-fallthrough-loop.mjs) | (à documenter) |
+| [`test-phase-api-fallthrough-loop.mjs`](../test-phase-api-fallthrough-loop.mjs) | Coupe-circuit anti-boucle 404 kernel→Next→kernel (`x-creezio-kernel-fallthrough` / `inflightApiFallthrough`). |
 | [`test-phase-app-runtime.mjs`](../test-phase-app-runtime.mjs) | Gate app-runtime — façade exports + composeBrandOs smoke (sans apps/tempoflow3). |
-| [`test-phase-arch-codemod.mjs`](../test-phase-arch-codemod.mjs) | (à documenter) |
+| [`test-phase-arch-codemod.mjs`](../test-phase-arch-codemod.mjs) | Un bump `ARCHITECTURE_VERSION` livre ses codemods (`scripts/codemods/<ver>/manifest.json` + scripts présents + `node --check`). |
 | [`test-phase-assistant-openai-tools.mjs`](../test-phase-assistant-openai-tools.mjs) | Gate assistant — payload tools OpenAI : dédup nom safe + plafond 128 (`selectOpenAiToolDefinitions`), pas d'alias Hermes dans `mcpFacadeToAssistantConfig`. |
 | [`test-phase-auth-brand-role.mjs`](../test-phase-auth-brand-role.mjs) | Gate rôle métier en session — configureAuth.resolveBrandRole : absent→null, résolu via db brand, impersonation→rôle de la cible, resolver en échec→null (jamais de 500 sur /me). |
 | [`test-phase-auth-secret.mjs`](../test-phase-auth-secret.mjs) | Gate sécurité AUTH_SECRET serveur (fix trou : serveurs Docker headless signaient les sessions avec le fallback dev public). |
@@ -71,17 +71,17 @@
 | [`test-phase-create-brand.mjs`](../test-phase-create-brand.mjs) | Sonde E2E CREATE-BRAND — init → doctor → apply → smoke façade. |
 | [`test-phase-creezio-manifest-align.mjs`](../test-phase-creezio-manifest-align.mjs) | Gate P1.a — manifests marque alignés : scaffold factory (specs `@creezio/*` identiques dans server / server/ui / client) + doctor brand-spec `CREEZIO_MANIFEST_MISALIGNED` (incident login 0.6.0). |
 | [`test-phase-d.mjs`](../test-phase-d.mjs) | !usrbinenv node |
-| [`test-phase-data-changed.mjs`](../test-phase-data-changed.mjs) | (à documenter) |
+| [`test-phase-data-changed.mjs`](../test-phase-data-changed.mjs) | Bus réactivité `x-creezio-data-changed` (constantes shell-ui/api-kernel, parse header, infer tool, keep-alive, liens assistant navigate). |
 | [`test-phase-desktop-server-parity.mjs`](../test-phase-desktop-server-parity.mjs) | Gate parité desktop Serveur TF2 0.10.26 : NSIS (démarrage auto, désinstall profonde), UI Configuration (tray / launchAtStartup / factory-reset), runtime. |
 | [`test-phase-docs-freshness.mjs`](../test-phase-docs-freshness.mjs) | Gate D0 — fraîcheur documentaire (docs/DOC-STANDARD.md). Vérifie, pour chaque cible du périmètre (packages/*, docker/*, apps/*, scripts/) : 1. |
 | [`test-phase-e.mjs`](../test-phase-e.mjs) | !usrbinenv node |
-| [`test-phase-electron-shell-frozen-exports.mjs`](../test-phase-electron-shell-frozen-exports.mjs) | (à documenter) |
+| [`test-phase-electron-shell-frozen-exports.mjs`](../test-phase-electron-shell-frozen-exports.mjs) | Surface de ré-exports `@deprecated` d'electron-shell figée (snapshot JSON, interdiction `export *` depuis host-runtime/search). |
 | [`test-phase-f.mjs`](../test-phase-f.mjs) | !usrbinenv node |
 | [`test-phase-factory-docker-parity.mjs`](../test-phase-factory-docker-parity.mjs) | Gate héritage factory → Docker (env, opt-in CREEZIO_FACTORY_DOCKER=1). |
-| [`test-phase-factory-lockfile.mjs`](../test-phase-factory-lockfile.mjs) | (à documenter) |
-| [`test-phase-factory-prd-experience.mjs`](../test-phase-factory-prd-experience.mjs) | Gate expérience F5 — simulation agent « un prompt produit ». Input = PROMPT-PRODUIT + PRD uniquement ; assert fichiers métier + smoke. |
-| [`test-phase-factory-prd.mjs`](../test-phase-factory-prd.mjs) | Gate F0–F5 — factory --from-prd natif (api-kernel + SQLite). |
-| [`test-phase-factory-templates.mjs`](../test-phase-factory-templates.mjs) | (à documenter) |
+| [`test-phase-factory-lockfile.mjs`](../test-phase-factory-lockfile.mjs) | Cohérence `package-lock` marque (`isPackageLockInSync`) pour que `npm ci` Docker ne casse pas le layout `node_modules`. |
+| [`test-phase-factory-prd-experience.mjs`](../test-phase-factory-prd-experience.mjs) | Gate expérience F5 — brief produit → `new-app --from-prd` (layout monorepo) + smoke, hors-ligne via lien `node_modules` kit. |
+| [`test-phase-factory-prd.mjs`](../test-phase-factory-prd.mjs) | Gate F0–F5 — factory `--from-prd` natif (api-kernel + SQLite) ; smoke F3 hors-ligne via lien `node_modules` kit. |
+| [`test-phase-factory-templates.mjs`](../test-phase-factory-templates.mjs) | Templates factory substituent les entités réelles du spec (pas de notes fantômes, pas de feed sur table absente, pas de chemin monorepo kit). |
 | [`test-phase-factory-two-repos.mjs`](../test-phase-factory-two-repos.mjs) | Gate FLOTTE — factory 2-repos : chaque marque = monorepo (server/ client/) + repo ADMIN dédié `<brand>-admin` (pilotage flotte multi-VPS, sans secret). |
 | [`test-phase-fleet-agent.mjs`](../test-phase-fleet-agent.mjs) | Gate FLOTTE — agent hôte + server-admin multi-VPS (`@creezio/fleet`, 409 sans header protocole). |
 | [`test-phase-fleet-heartbeat.mjs`](../test-phase-fleet-heartbeat.mjs) | Gate — auto-inscription flotte + heartbeat (F3). Prouve, avec un VRAI serveur HTTP admin (mount fleet-registry @creezio/admin sur DB better-sqlite3) et le client kit (@creezio/app-runtime) : 1. |
@@ -109,12 +109,13 @@
 | [`test-phase-i6.mjs`](../test-phase-i6.mjs) | Phase I6 — createFileOrgPluginRegistry persisté + reopen. |
 | [`test-phase-i7.mjs`](../test-phase-i7.mjs) | Phase I7 — createNavShellAdapter + demobrand conso. |
 | [`test-phase-i8.mjs`](../test-phase-i8.mjs) | Phase I8 — freeze H6 : ARCHITECTURE_VERSION + factory scaffold + parity doc. |
-| [`test-phase-instance-stack.mjs`](../test-phase-instance-stack.mjs) | (à documenter) |
+| [`test-phase-instance-stack.mjs`](../test-phase-instance-stack.mjs) | Stack compose M2 autonome : port interne 18791, cloudflared in-process, secrets en `env_file` 600, labels fleet. |
 | [`test-phase-integrations.mjs`](../test-phase-integrations.mjs) | Gate — intégrations / clés API tierces (ADR-integrations-store). |
 | [`test-phase-interactive-demo.mjs`](../test-phase-interactive-demo.mjs) | Gate @creezio/interactive-demo : patron hybride (migrations, merge défauts/overrides, mount scenarios/preferences), validation de scénario, scénario générique OS, surface UI |
 | [`test-phase-kit-packages-manifest.mjs`](../test-phase-kit-packages-manifest.mjs) | Gate : manifeste kit-packages.json à jour (rattrapage : generate-kit-packages.mjs) |
 | [`test-phase-landing.mjs`](../test-phase-landing.mjs) | Gate — module natif hybride « landing page » (ADR-module-natif-hybride). |
 | [`test-phase-legacy-desktop-frozen.mjs`](../test-phase-legacy-desktop-frozen.mjs) | Gate P2.a — compat desktop héritée GELÉE (empreinte SHA-256 `legacy-desktop-frozen.json` + consommateurs verrouillés) |
+| [`test-phase-link-kit-node-modules.mjs`](../test-phase-link-kit-node-modules.mjs) | Contrat lien `node_modules` kit → app générée (symlink, pas d'écrasement, recréation cassé) + factory-prd* hors-ligne. |
 | [`test-phase-m0.mjs`](../test-phase-m0.mjs) | Phase M0 — baseline vision stricte : inventaire + freeze anti-stub. |
 | [`test-phase-m1.mjs`](../test-phase-m1.mjs) | Phase M1 — cutover Database TF sans shims (vision stricte). |
 | [`test-phase-m10.mjs`](../test-phase-m10.mjs) | !usrbinenv node |
@@ -145,8 +146,8 @@
 | [`test-phase-mcp-tool-policy-guard.mjs`](../test-phase-mcp-tool-policy-guard.mjs) | Gate M1-M2 — garde d'enforcement réutilisable des policies MCP admin (`packages/mcp-facade/src/admin/tool-policy-guard.ts`). |
 | [`test-phase-meili-browse.mjs`](../test-phase-meili-browse.mjs) | Gate Meili browse : q vide = Meili, 0 hit = meili, filtre rejeté = SQL visible ; factory sans piège 0-hit→SQL ; modules catalogue meiliIndexes ou horsIndexJustification. |
 | [`test-phase-meili-feed.mjs`](../test-phase-meili-feed.mjs) | Gate Phase C — BrandMeiliFeed générique (pas de tf2_* dans le chemin feed). |
-| [`test-phase-module-docs.mjs`](../test-phase-module-docs.mjs) | (à documenter) |
-| [`test-phase-module-mount-session.mjs`](../test-phase-module-mount-session.mjs) | (à documenter) |
+| [`test-phase-module-docs.mjs`](../test-phase-module-docs.mjs) | Standard module (prd/interview/TODO/CHANGELOG + `gate.mjs` si colocated) sur kit admin, marque sonde et admin-spec. |
+| [`test-phase-module-mount-session.mjs`](../test-phase-module-mount-session.mjs) | Garde session HTTP sur `/api/v1/modules/*` et `/api/v1/admin/*` (401 anonyme, JWT, clé machine, allowlist public). |
 | [`test-phase-module-ops.mjs`](../test-phase-module-ops.mjs) | Gate contrat 0.10.6 — ops EntitySpec auto, listTools `module.test.from-panier` via handle(), catalogue kernel, doctor MODULE_OP_*. |
 | [`test-phase-n0.mjs`](../test-phase-n0.mjs) | !usrbinenv node |
 | [`test-phase-n1.mjs`](../test-phase-n1.mjs) | !usrbinenv node |
@@ -165,7 +166,7 @@
 | [`test-phase-n9.mjs`](../test-phase-n9.mjs) | !usrbinenv node |
 | [`test-phase-nav-catalog.mjs`](../test-phase-nav-catalog.mjs) | Gate NAV-1 — catalogue nav OS : merge pur, collision id/href, feature-off, seed registre, factory chrome sans `const OS_NAV` ni literal `/granola`. |
 | [`test-phase-nav-module.mjs`](../test-phase-nav-module.mjs) | Gate NAV-2 — module hybride `@creezio/nav` : migrations brand.db, GET/PUT overrides, feature-off, 403 sans permission, owner + hidden. |
-| [`test-phase-no-brand-vocab.mjs`](../test-phase-no-brand-vocab.mjs) | (à documenter) |
+| [`test-phase-no-brand-vocab.mjs`](../test-phase-no-brand-vocab.mjs) | Vocabulaire marque interdit dans `packages/*/src\|ui` — allowlist ratchetée décroissante (`brand-vocab.mjs`). |
 | [`test-phase-o1.mjs`](../test-phase-o1.mjs) | !usrbinenv node |
 | [`test-phase-o2.mjs`](../test-phase-o2.mjs) | !usrbinenv node |
 | [`test-phase-o3.mjs`](../test-phase-o3.mjs) | !usrbinenv node |
@@ -193,7 +194,7 @@
 | [`test-phase-p29.mjs`](../test-phase-p29.mjs) | !usrbinenv node |
 | [`test-phase-pack-runtime-deps.mjs`](../test-phase-pack-runtime-deps.mjs) | Gate : config electron-builder embarque la clôture npm runtime (hono, better-sqlite3, …) + asarUnpack natifs. |
 | [`test-phase-platform-native-mounts.mjs`](../test-phase-platform-native-mounts.mjs) | Gate montages natifs kit : Tasks autoconfig, Analytics admin, stub OpenAPI `/api/v1/openapi.json` |
-| [`test-phase-platform-user-admin.mjs`](../test-phase-platform-user-admin.mjs) | (à documenter) |
+| [`test-phase-platform-user-admin.mjs`](../test-phase-platform-user-admin.mjs) | `configureAuth({ userAdminPermission })` — collaborateurs POST/PATCH `/platform/users`, anti-escalade, owner inchangé. |
 | [`test-phase-platform-users.mjs`](../test-phase-platform-users.mjs) | Gate — référentiel utilisateurs UNIQUE (API plateforme users). |
 | [`test-phase-plugin-insights.mjs`](../test-phase-plugin-insights.mjs) | Gate P4 plugins natifs — plugin démo kit « insights-assistant ». |
 | [`test-phase-plugin-tools.mjs`](../test-phase-plugin-tools.mjs) | Gate P2/P3 plugins natifs — tools MCP plugins + mounts API kernel. |
@@ -211,11 +212,11 @@
 | [`test-phase-server-docker-ufw.mjs`](../test-phase-server-docker-ufw.mjs) | Gate — préflight UFW flotte : parsing `ufw status` (172.16.0.0/12, jamais docker0 seul), pose auto avec re-vérification via `sudo -n`, fail-closed actionnable si pose impossible, ancrage des 3 appels CLI (`agent up`/`admin up`/`enroll`). |
 | [`test-phase-server-docker.mjs`](../test-phase-server-docker.mjs) | Gate — artefacts docker/server + CLI creezio server-docker. |
 | [`test-phase-shell-desktop-api.mjs`](../test-phase-shell-desktop-api.mjs) | Gate — `getShellDesktopApi` uniquement (pas de `window.*Desktop` hardcodé) + import obligatoire ; scan kit UI + TF3 si présent. |
-| [`test-phase-single-data-plane.mjs`](../test-phase-single-data-plane.mjs) | (à documenter) |
-| [`test-phase-sqlite-wal-resilience.mjs`](../test-phase-sqlite-wal-resilience.mjs) | (à documenter) |
+| [`test-phase-single-data-plane.mjs`](../test-phase-single-data-plane.mjs) | Un seul plan de données métier `brand.db` — UI générée sans client SQLite, scan marque sonde + allowlist datée. |
+| [`test-phase-sqlite-wal-resilience.mjs`](../test-phase-sqlite-wal-resilience.mjs) | Quarantaine WAL/SHM à l'open + checkpoint `close` + harness `closeKernel` avant sidecars (anti boot-loop SIGKILL). |
 | [`test-phase-stack-update-preserve.mjs`](../test-phase-stack-update-preserve.mjs) | Gate — update ne peut plus retirer un sidecar cloudflared ni changer le hostname : preserve + fail-closed + LOCAL=1 + migrate explicite. |
-| [`test-phase-tf3-chrome.mjs`](../test-phase-tf3-chrome.mjs) | (à documenter) |
-| [`test-phase-tunnel-self-provision.mjs`](../test-phase-tunnel-self-provision.mjs) | (à documenter) |
+| [`test-phase-tf3-chrome.mjs`](../test-phase-tf3-chrome.mjs) | Cutover chrome marque sonde (jumeaux layout/assistant absents + `configureSidebar`) — skip si repo absent. |
+| [`test-phase-tunnel-self-provision.mjs`](../test-phase-tunnel-self-provision.mjs) | Auto-provisioning tunnel CF mocké (verify token, create/idempotence/404, DNS, deprovision) — zéro réseau réel. |
 | [`test-phase-upgrade-runner.mjs`](../test-phase-upgrade-runner.mjs) | Gate P3.a — `creezio upgrade` : dry-run no-op sur scaffold frais, chaîne multi-versions (H8→H9) dans l'ordre sur fixture en retard, application réelle idempotente. |
 | [`test-phase-v1.mjs`](../test-phase-v1.mjs) | Phase V1 — fabrique plugins conversationnelle (demobrand E2E). |
 | [`test-phase-v2.mjs`](../test-phase-v2.mjs) | Phase V2 — observabilité native (activité, usages plugins, control-plane). |
@@ -225,7 +226,7 @@
 
 | Fichier | Rôle |
 |---|---|
-| [`codemods/H7/h7-neutralize-brand-contracts.mjs`](../codemods/H7/h7-neutralize-brand-contracts.mjs) | (à documenter) |
+| [`codemods/H7/h7-neutralize-brand-contracts.mjs`](../codemods/H7/h7-neutralize-brand-contracts.mjs) | Codemod H7 — neutralise les contrats marque (feedPreset, enum vertical, alias H6, env `TEMPOFLOW_*` → préfixe manifeste). |
 
 ## `codemods/H8/`
 
@@ -246,4 +247,5 @@
 | [`lib/assert-runtime-dist.mjs`](../lib/assert-runtime-dist.mjs) | Assert fail-closed dist runtime (contrats src↔dist + mtime) — CLI + import gate/sync/publish. |
 | [`lib/brand-roots.mjs`](../lib/brand-roots.mjs) | Resolve brand CRM roots across VPS (/opt/docker/…) and sibling layouts (e.g. |
 | [`lib/brand-vocab.mjs`](../lib/brand-vocab.mjs) | Scanner vocabulaire marque (SoT patterns + allowlist) — CLI `--print` / `--write-allowlist` (rétrécit uniquement, refuse ajout/incrément). |
+| [`lib/link-kit-node-modules.mjs`](../lib/link-kit-node-modules.mjs) | Pose un symlink `node_modules` kit → app générée (tsc hors ligne, sans npm install ni `--link-kit`). |
 | [`lib/resolve-probe-brand.mjs`](../lib/resolve-probe-brand.mjs) | Résout la marque sonde TempoFlow3 hors monorepo kit. Layout nominal : 2 repos — monorepo marque (`server/`, `client/`) + repo admin dédié `<brand>-admin`. |
