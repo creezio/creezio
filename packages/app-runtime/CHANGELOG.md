@@ -1,5 +1,59 @@
 # @creezio/app-runtime
 
+## 0.22.0
+
+### Patch Changes
+
+- @creezio/brand-config@0.22.0
+- @creezio/platform-core@0.22.0
+- @creezio/product-hub@0.22.0
+- @creezio/search@0.22.0
+- @creezio/host-runtime@0.22.0
+- @creezio/electron-shell@0.22.0
+- @creezio/api-kernel@0.22.0
+- @creezio/mcp-facade@0.22.0
+- @creezio/shell-ui@0.22.0
+- @creezio/nav@0.22.0
+- @creezio/interactive-demo@0.22.0
+- @creezio/auth@0.22.0
+- @creezio/access-control@0.22.0
+- @creezio/assistant@0.22.0
+- @creezio/tasks@0.22.0
+- @creezio/mails@0.22.0
+- @creezio/observability@0.22.0
+- @creezio/support@0.22.0
+- @creezio/integrations@0.22.0
+- @creezio/browser-host@0.22.0
+- @creezio/database@0.22.0
+
+## 0.21.0
+
+### Patch Changes
+
+- Updated dependencies [b264d59]
+- Updated dependencies [ab09f4f]
+  - @creezio/mcp-facade@0.21.0
+  - @creezio/search@0.21.0
+  - @creezio/electron-shell@0.21.0
+  - @creezio/host-runtime@0.21.0
+  - @creezio/brand-config@0.21.0
+  - @creezio/platform-core@0.21.0
+  - @creezio/product-hub@0.21.0
+  - @creezio/api-kernel@0.21.0
+  - @creezio/shell-ui@0.21.0
+  - @creezio/nav@0.21.0
+  - @creezio/interactive-demo@0.21.0
+  - @creezio/auth@0.21.0
+  - @creezio/access-control@0.21.0
+  - @creezio/assistant@0.21.0
+  - @creezio/tasks@0.21.0
+  - @creezio/mails@0.21.0
+  - @creezio/observability@0.21.0
+  - @creezio/support@0.21.0
+  - @creezio/integrations@0.21.0
+  - @creezio/browser-host@0.21.0
+  - @creezio/database@0.21.0
+
 ## 0.20.0
 
 ### Patch Changes

@@ -36,10 +36,12 @@ test("docker/server artefacts présents", () => {
   assert.match(df, /brand-kernel-harness/);
   assert.match(df, /CREEZIO_HTTP_HOST/);
   // P1.c : vendor+scripts+bin dans @creezio/host-runtime ; l'image PURGE
-  // electron / electron-shell / electron-updater après npm ci (stage deps).
+  // electron + electron-updater (binaire fat). electron-shell JS reste
+  // (splash/boot-progress encore importés par app-runtime).
   assert.match(df, /ELECTRON_SKIP_BINARY_DOWNLOAD=1/);
   assert.match(df, /rm -rf node_modules\/electron/);
-  assert.match(df, /node_modules\/@creezio\/electron-shell/);
+  assert.match(df, /electron-updater/);
+  assert.doesNotMatch(df, /node_modules\/@creezio\/electron-shell \\/);
   assert.doesNotMatch(df, /TODO \(suivi P1\.c\)/);
   // Chantier embeds : Meili Linux embarqué dans l'image (plus de sql-fallback).
   assert.match(df, /meilisearch-linux-amd64/);

@@ -108,6 +108,20 @@ test("os-ui generator : factory installe granola, grokbot et nav", () => {
     /creezioNpmDeps\(\[/,
     "from-prd : interdit une liste inline (dérive de la SoT → granola manquant)",
   );
+  // Le package.json UI généré consomme la SoT UI_CREEZIO_DEPS — plus de
+  // liste inline parallèle (c'est elle qui a laissé passer l'incident
+  // prod 0.20.0 côté upgrade : la liste UI n'existait que dans le
+  // générateur, jamais dans le runner).
+  assert.match(
+    gen,
+    /creezioNpmDeps\(UI_CREEZIO_DEPS\)/,
+    "renderUiPackageJson consomme UI_CREEZIO_DEPS (pas de liste parallèle)",
+  );
+  assert.doesNotMatch(
+    gen,
+    /"@creezio\/[a-z-]+":\s*spec/,
+    "renderUiPackageJson : interdit un spec @creezio/* inline (dérive de la SoT)",
+  );
   for (const name of ["granola", "grokbot", "nav"]) {
     assert.match(
       sot,
@@ -120,14 +134,24 @@ test("os-ui generator : factory installe granola, grokbot et nav", () => {
       `CLIENT_CREEZIO_DEPS (kit-release.ts) contient ${name}`,
     );
     assert.match(
-      gen,
-      new RegExp(`"@creezio/${name}"`),
-      `package.json UI généré déclare @creezio/${name}`,
+      sot,
+      new RegExp(`UI_CREEZIO_DEPS[\\s\\S]*"${name}"`),
+      `UI_CREEZIO_DEPS (kit-release.ts) contient ${name}`,
     );
     assert.match(
       gen,
       new RegExp(`"@creezio/${name}"`),
       `transpilePackages déclare @creezio/${name}`,
+    );
+  }
+  // Les peers kit déclarés en dependencies de l'UI (résolution déterministe
+  // hors workspace) font partie de la SoT UI — sinon `creezio upgrade` les
+  // signalerait à tort « hors SoT » sur chaque marque.
+  for (const name of ["platform-core", "brand-config", "shell", "api-kernel", "integrations"]) {
+    assert.match(
+      sot,
+      new RegExp(`UI_CREEZIO_DEPS[\\s\\S]*"${name}"`),
+      `UI_CREEZIO_DEPS (kit-release.ts) contient le peer ${name}`,
     );
   }
 });
@@ -149,12 +173,17 @@ test("os-ui scaffold : zéro page OS versionnée, materialize + boot kit", () =>
   );
 
   const out = fs.mkdtempSync(path.join(os.tmpdir(), "creezio-os-ui-"));
-  // 240s : le scaffold régénère les package-locks via le registre npm privé
-  // (réseau) — ~110s observé sur VPS, le budget 120s historique flakait.
+  // Structure seule : pas de npm install / lock (registre). Même contrat
+  // hors-ligne que factory-prd (CREEZIO_SKIP_BRAND_DIST + lien kit si smoke).
   const r = spawnSync(
     process.execPath,
     [CLI, "new-app", "--from-prd", PRD, "--out", out, "--force"],
-    { encoding: "utf8", cwd: ROOT, timeout: 240_000 },
+    {
+      encoding: "utf8",
+      cwd: ROOT,
+      timeout: 60_000,
+      env: { ...process.env, CREEZIO_SKIP_BRAND_DIST: "1" },
+    },
   );
   assert.equal(r.status, 0, r.stderr || r.stdout);
 

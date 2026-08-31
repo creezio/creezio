@@ -29,6 +29,13 @@ creezio new-app \
 3. Génère OS shell + métier marque (schéma, API HTTP, pages, nav, wiring).
 4. Fournit `npm run test:metier-parcours` (fournisseurs → panier → commande).
 
+Les smokes générés respectent la cohérence éventuelle Meili (contrat kit :
+pas de write-through, liste servie `engine:"indexing"` pendant l'indexation
+initiale) : read-after-write déterministe par `GET ?ids=<id>` (hydratation
+PK, chemin SQL légitime) puis polling borné (60 s) jusqu'à visibilité dans
+la liste, avec échec explicite si `engine:"meili"` sans le doc — helper SoT
+`@creezio/desktop-tooling/scripts/meili-list-poll.mjs`.
+
 ### Mode technique — flags
 
 ```bash
@@ -76,6 +83,30 @@ sans cet appel le repo marque part à 0 plugins. Gate E2E :
 `scripts/test-phase-plugin-insights.mjs`. Guide auteur :
 [CREATE-PLUGIN](../../docs/agents/CREATE-PLUGIN.md).
 
+## Monter de version — `creezio upgrade`
+
+```bash
+creezio upgrade [--brand-root <dir>] [--dry-run] [--no-install]
+```
+
+Rejoue la montée de version d'un repo marque : chaîne de codemods
+d'architecture (idempotence prouvée à chaque pas), puis **synchronisation
+des deps `@creezio/*`** de tous les manifests (racine, `server`,
+`server/ui`, `client`) avec la SoT du kit installé
+(`SERVER/UI/CLIENT_CREEZIO_DEPS`, `src/kit-release.ts`) :
+
+- deps existantes → bump vers `^<lockstep kit>` ;
+- deps requises manquantes → **ajoutées** (le trou historique : os-ui
+  0.20.0 matérialise `/granola` et `/grokbot` sur une marque sans ces deps
+  → build cassé) ;
+- dep `@creezio/*` hors SoT → **jamais supprimée**, warning listé ;
+- lockfiles régénérés via `npm install --package-lock-only` (jamais
+  `npm update`) ; `--dry-run` liste bumps et ajouts sans rien écrire.
+
+Le même moteur (`src/sync-creezio-deps.ts`) alimente le rollout flotte
+`scripts/propagate-brands.mjs`. Le doctor brand-spec vérifie en fail-closed
+que toute page os-ui a ses deps déclarées (`OS_UI_PAGE_DEP_MISSING`).
+
 ## Options
 
 | Option | Description |
@@ -87,6 +118,7 @@ sans cet appel le repo marque part à 0 plugins. Gate E2E :
 | `--feed-token` | Token feed sandbox |
 | `--sandbox` / `--no-sandbox` | Flag sandbox (défaut oui) |
 | `--force` | Écrase les fichiers existants |
+| `--link-kit` | Installe `@creezio/*` depuis le worktree kit (`file:`), pas le registre. Équivalent : `CREEZIO_LINK_KIT=1`. Les manifests restent `^<lockstep>`. Requis en CI / PR de release (version pas encore publiée). |
 
 ## API publique
 

@@ -25,10 +25,15 @@
  * Garde-fous :
  *   - ne fait rien si HEAD n'est pas un commit release changesets
  *     (`chore(release): version packages`) sauf --force / PROPAGATE_FORCE=1 ;
- *   - marque déjà à jour (tous manifests ^version) → skip ;
+ *   - marque déjà à jour (tous manifests ^version ET deps SoT présentes) → skip ;
  *   - branche de bump déjà poussée → skip (PR déjà ouverte) ;
- *   - bump = édition manifests + `npm install --package-lock-only` par
- *     lockfile (JAMAIS npm update) — la CI marque valide le reste.
+ *   - sync = logique PARTAGÉE `planCreezioManifestSync` (@creezio/factory,
+ *     packages/factory/src/sync-creezio-deps.ts) : bump des deps existantes
+ *     + AJOUT des deps requises par la SoT kit (SERVER/UI/CLIENT_CREEZIO_DEPS)
+ *     — le trou historique « bump seul » a cassé des builds marque (os-ui
+ *     0.20.0) ; jamais de suppression (dep hors SoT = warning listé dans la
+ *     PR) ; puis `npm install --package-lock-only` par lockfile (JAMAIS
+ *     npm update) — la CI marque valide le reste.
  */
 import { execFileSync } from "node:child_process";
 import fs from "node:fs";
@@ -79,30 +84,29 @@ function isReleaseHead() {
   return subject.startsWith(RELEASE_COMMIT_PREFIX);
 }
 
-/** Bump tous les manifests @creezio/* d'un clone marque. Retourne les chemins modifiés. */
-function bumpManifests(cloneDir, spec) {
-  const changed = [];
-  for (const dir of MANIFEST_DIRS) {
-    const p = path.join(cloneDir, dir, "package.json");
-    if (!fs.existsSync(p)) continue;
-    const pkg = readJson(p);
-    let touched = false;
-    for (const field of ["dependencies", "devDependencies", "optionalDependencies"]) {
-      const deps = pkg[field];
-      if (!deps) continue;
-      for (const name of Object.keys(deps)) {
-        if (!name.startsWith("@creezio/")) continue;
-        if (deps[name] === spec) continue;
-        deps[name] = spec;
-        touched = true;
-      }
-    }
-    if (touched) {
-      fs.writeFileSync(p, `${JSON.stringify(pkg, null, 2)}\n`);
-      changed.push(path.join(dir, "package.json").replace(/^\.\//, ""));
-    }
-  }
-  return changed;
+/**
+ * Sync des manifests @creezio/* d'un clone marque via la logique PARTAGÉE du
+ * package factory (SoT SERVER/UI/CLIENT_CREEZIO_DEPS) : bump des existantes
+ * + ajout des requises manquantes. Retourne { changed, added, extras }.
+ */
+async function syncManifests(cloneDir, spec) {
+  const {
+    planCreezioManifestSync,
+    applyCreezioManifestSync,
+    creezioSyncPlanHasChanges,
+  } = await import(path.join(ROOT, "packages/factory/dist/sync-creezio-deps.js"));
+  const plans = planCreezioManifestSync(cloneDir, spec);
+  const changedPlans = plans.filter(creezioSyncPlanHasChanges);
+  for (const plan of changedPlans) applyCreezioManifestSync(plan);
+  return {
+    changed: changedPlans.map((p) => p.rel),
+    added: changedPlans.flatMap((p) =>
+      Object.keys(p.adds).map((name) => `${name} (${p.rel})`),
+    ),
+    extras: plans.flatMap((p) =>
+      p.extras.map((name) => `${name} (${p.rel})`),
+    ),
+  };
 }
 
 /** Régénère chaque lockfile présent (racine puis secondaires) — lock-only. */
@@ -214,11 +218,18 @@ async function propagateBrand(brand, { version, spec, branch, payload }) {
     return { brand: brandId, status: "SKIP", detail: `branche ${branch} déjà poussée (PR existante)` };
   }
 
-  const changedManifests = bumpManifests(cloneDir, spec);
-  if (changedManifests.length === 0) {
-    return { brand: brandId, status: "À JOUR", detail: `déjà en ${spec}` };
+  const sync = await syncManifests(cloneDir, spec);
+  const changedManifests = sync.changed;
+  if (sync.extras.length > 0) {
+    log(`⚠ deps @creezio/* hors SoT kit (conservées) : ${sync.extras.join(", ")}`);
   }
-  log(`manifests bumpés (${spec}) : ${changedManifests.join(", ")}`);
+  if (changedManifests.length === 0) {
+    return { brand: brandId, status: "À JOUR", detail: `déjà en ${spec} (deps SoT présentes)` };
+  }
+  log(`manifests synchronisés (${spec}) : ${changedManifests.join(", ")}`);
+  if (sync.added.length > 0) {
+    log(`deps ajoutées (SoT kit) : ${sync.added.join(", ")}`);
+  }
   const locks = regenLockfiles(cloneDir);
   log(`lockfiles régénérés : ${locks.join(", ") || "(aucun)"}`);
 
@@ -248,6 +259,18 @@ async function propagateBrand(brand, { version, spec, branch, payload }) {
     "",
     `Manifests : ${changedManifests.map((m) => `\`${m}\``).join(", ")} — lockfiles régénérés en \`--package-lock-only\`.`,
     "",
+    ...(sync.added.length > 0
+      ? [
+          `**Deps ajoutées** (requises par la SoT du kit, manquantes chez la marque) : ${sync.added.map((a) => `\`${a}\``).join(", ")}.`,
+          "",
+        ]
+      : []),
+    ...(sync.extras.length > 0
+      ? [
+          `⚠️ **Deps \`@creezio/*\` hors SoT kit** (conservées, à vérifier) : ${sync.extras.map((a) => `\`${a}\``).join(", ")}.`,
+          "",
+        ]
+      : []),
   ].join("\n");
   const body = bodyHeader + (payload ? `\n${payload.bodyMarkdown}` : "\n_(pas de rapport d'impact disponible)_");
   const pr = await githubApi("POST", `/repos/${repo}/pulls`, {

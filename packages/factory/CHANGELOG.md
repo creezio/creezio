@@ -1,5 +1,31 @@
 # @creezio/factory
 
+## 0.16.2
+
+### Patch Changes
+
+- e11ba99: Smokes compatibles cohérence éventuelle Meili (contrat kit : pas de write-through, liste servie `engine:"indexing"` + 0 item pendant l'indexation initiale). Nouveau helper SoT `@creezio/desktop-tooling/scripts/meili-list-poll.mjs` (`assertModuleRowHydratedById` via `GET ?ids=<id>` — hydratation PK, chemin SQL légitime — + `pollModuleListUntilVisible` : polling borné 60 s, échec explicite immédiat si `engine:"meili"` sans le doc). `e2e-browser-parcours.mjs` l'utilise (fini l'assertion naïve GET liste immédiat post-create) et indexe par défaut (`MEILI_SKIP_INDEX` passe de `"1"` à `"0"` — sinon la liste d'une entité indexée reste `engine:"indexing"` indéfiniment). Templates factory (`renderMetierParcoursSmoke` générique + CHR, `renderMiniPrdCoreSmoke`) régénérés sur le même pattern ; assertions d'origine conservées. Gate : `test-phase-meili-smoke-polling`.
+- 9f0580d: `creezio upgrade` synchronise désormais la LISTE des deps `@creezio/*` des manifests marque avec la SoT du kit (`SERVER/UI/CLIENT_CREEZIO_DEPS`) : les deps requises manquantes sont ajoutées en `^<lockstep>` (trou systémique — os-ui@0.20.0 matérialise `/granola` et `/grokbot` sur une marque sans ces deps → build cassé), jamais de suppression (dep hors SoT = warning listé). Nouveau module partagé `sync-creezio-deps.ts` (`planCreezioManifestSync` / `applyCreezioManifestSync`) consommé aussi par `scripts/propagate-brands.mjs` ; `renderUiPackageJson` consomme la nouvelle SoT `UI_CREEZIO_DEPS` (plus de liste inline parallèle).
+- Updated dependencies [5bbd5ba]
+  - @creezio/brand-spec@0.22.0
+  - @creezio/brand-config@0.22.0
+  - @creezio/platform-core@0.22.0
+  - @creezio/product-hub@0.22.0
+
+## 0.16.1
+
+### Patch Changes
+
+- b9162e0: Factory : `tsconfig.preload.json` inclut `electron-shim.d.ts` pour compiler le preload hors ligne, sans paquet `electron` ni `npm install`.
+- 2e39bcd: Factory `--link-kit` / `CREEZIO_LINK_KIT=1` : l'install d'une app fraîche pin les `@creezio/*` sur le worktree kit (`file:`), sans dépendre d'un publish préalable. Les gates scaffold et la CI l'utilisent toujours — la PR de release n'a plus d'œuf-poule registre. Les manifests générés restent `^<lockstep>`.
+- 6e18a9f: Factory : `SERVER_CREEZIO_DEPS` est la SoT unique (kit-release.ts) consommée par scaffold et --from-prd — granola / grokbot / nav ne peuvent plus manquer du server/package.json généré.
+- 60683cf: server-docker : `CREEZIO_SERVER_DOCKER_BACKUP=0` (aussi `false`/`off`) skippe les backups (`update --backup`, one-shot, migrate-stack, API `backup:true`). Défaut on (prod-safe). L'env gagne ; warn `backup skippé (CREEZIO_SERVER_DOCKER_BACKUP=0)`.
+- Updated dependencies [ab09f4f]
+  - @creezio/brand-spec@0.21.0
+  - @creezio/brand-config@0.21.0
+  - @creezio/platform-core@0.21.0
+  - @creezio/product-hub@0.21.0
+
 ## Unreleased
 
 ### Patch Changes

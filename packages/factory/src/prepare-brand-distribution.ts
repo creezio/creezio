@@ -4,7 +4,8 @@
  *
  * Doit tourner APRÈS chaque scaffold (brand create / new-app / brand apply),
  * pas seulement au push — sinon une marque locale part sans lock et
- * `npm ci` Docker échoue. Requiert CREEZIO_NPM_TOKEN (registre privé).
+ * `npm ci` Docker échoue. Sans `--link-kit` : CREEZIO_NPM_TOKEN (registre).
+ * Avec `--link-kit` / `CREEZIO_LINK_KIT=1` : packages du worktree kit.
  */
 import { ensureBrandPackageLocks } from "./package-lock.js";
 
@@ -15,6 +16,8 @@ export function prepareBrandDistribution(
     log?: (line: string) => void;
     /** Défaut lock-only (pas de node_modules commité). */
     lockMode?: "lock-only" | "install";
+    /** Pin `@creezio/*` sur le kit local (sinon env `CREEZIO_LINK_KIT`). */
+    linkKit?: boolean;
   },
 ): { locksRefreshed: string[] } {
   const log = opts?.log || ((l: string) => console.log(l));
@@ -25,6 +28,8 @@ export function prepareBrandDistribution(
   }
   const locks = ensureBrandPackageLocks(brandRoot, {
     mode: opts?.lockMode || "lock-only",
+    kitRoot: opts?.kitRoot,
+    linkKit: opts?.linkKit,
     log,
   });
   if (locks.refreshed.length) {

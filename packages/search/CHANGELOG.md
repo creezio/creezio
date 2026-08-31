@@ -1,5 +1,23 @@
 # @creezio/search
 
+## 0.22.0
+
+### Patch Changes
+
+- @creezio/platform-core@0.22.0
+- @creezio/observability@0.22.0
+
+## 0.21.0
+
+### Minor Changes
+
+- ab09f4f: Doctor brand-spec : cohérence `meiliIndexes.table` ↔ migrations (résolution cross-module + historiques `fromprd_brand_*`). Nouveau check `MODULE_MEILI_TABLE_UNKNOWN`. Champ déclaratif `tableProvisionedBy` sur `BrandMeiliIndexSpec` (table provisionnée à l'exécution — pas d'env de bypass).
+
+### Patch Changes
+
+- @creezio/platform-core@0.21.0
+- @creezio/observability@0.21.0
+
 ## 0.20.0
 
 ### Patch Changes

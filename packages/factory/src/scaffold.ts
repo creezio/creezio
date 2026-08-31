@@ -369,7 +369,7 @@ function renderTsconfigPreload(): string {
     "declaration": false,
     "declarationMap": false
   },
-  "include": ["src/electron/preload.ts"]
+  "include": ["src/electron/preload.ts", "src/electron/electron-shim.d.ts"]
 }
 `;
 }

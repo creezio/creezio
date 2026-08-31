@@ -18,16 +18,110 @@ import {
   entityOperationsFromSpec,
   resolveOperationHttpPath,
 } from "@creezio/api-kernel";
+import { dynImport } from "./dyn-import.js";
+import { verifyAccessToken } from "./oauth/store.js";
 import type {
   McpRegisteredTool,
   McpToolCallActor,
   McpToolCallResult,
 } from "./types.js";
 
+/**
+ * Access token OAuth MCP (HS256 MCP_JWT_SECRET — ChatGPT & co) → session
+ * plateforme mintée pour le user du consentement (`uid`). Les gardes marque
+ * (`requireSession`) ne connaissent que les JWT session AUTH_SECRET : sans
+ * cette conversion, tout tool `module.*` répond 401 malgré un OAuth valide.
+ * Fail-closed : uid absent/inconnu ou stores indisponibles → null (le 401
+ * métier reste la réponse).
+ */
+async function mintSessionFromMcpAccessToken(
+  token: string,
+): Promise<string | null> {
+  let userId = "";
+  try {
+    const payload = await verifyAccessToken(token);
+    userId = (payload?.user_id || "").trim();
+  } catch {
+    return null; // adapters OAuth non configurés (façade standalone)
+  }
+  if (!userId) return null;
+  try {
+    type CrmUser = {
+      id: string;
+      username: string;
+      role?: string;
+      permissions?: string[];
+      active?: boolean;
+    };
+    const [authMod, tasksMod] = await Promise.all([
+      dynImport("@creezio/auth") as Promise<{
+        createSessionToken?: (input: {
+          user: {
+            id: string;
+            username: string;
+            role: string;
+            permissions: string[];
+          };
+        }) => Promise<string>;
+      }>,
+      dynImport("@creezio/tasks") as Promise<{
+        getTasksBrandConfig?: () => {
+          users: {
+            list: () => CrmUser[];
+            getOwner?: () => CrmUser | null;
+          };
+        } | null;
+      }>,
+    ]);
+    if (!authMod.createSessionToken) return null;
+    const users = tasksMod.getTasksBrandConfig?.()?.users;
+    let user: {
+      id: string;
+      username: string;
+      role: string;
+      permissions: string[];
+    } | null = null;
+    try {
+      const found =
+        users?.list().find((u) => u.id === userId && u.active !== false) ??
+        null;
+      if (found) {
+        user = {
+          id: found.id,
+          username: found.username,
+          role: found.role === "owner" ? "owner" : found.role || "collaborator",
+          permissions: [...(found.permissions || [])],
+        };
+      }
+    } catch {
+      /* store users indisponible → fallback owner ci-dessous */
+    }
+    if (!user) {
+      try {
+        const owner = users?.getOwner?.() ?? null;
+        if (owner && owner.id === userId) {
+          user = {
+            id: owner.id,
+            username: owner.username,
+            role: "owner",
+            permissions: [...(owner.permissions || [])],
+          };
+        }
+      } catch {
+        /* fail-closed */
+      }
+    }
+    if (!user) return null;
+    return await authMod.createSessionToken({ user });
+  } catch {
+    return null;
+  }
+}
+
 /** Cookie + Authorization pour `requireSession` sur la req synthétique. */
-function headersFromActor(
+async function headersFromActor(
   actor?: McpToolCallActor,
-): Record<string, string> | undefined {
+): Promise<Record<string, string> | undefined> {
   const headers: Record<string, string> = {};
   if (actor?.headers) {
     for (const [key, value] of Object.entries(actor.headers)) {
@@ -41,6 +135,15 @@ function headersFromActor(
     if (token && !headers.authorization) {
       headers.authorization = `Bearer ${token}`;
     }
+  }
+  // Bearer JWT : si c'est un access token OAuth MCP, le convertir en
+  // session plateforme mintée (sinon inchangé — JWT session déjà valide).
+  const authz = (headers.authorization || "")
+    .replace(/^Bearer\s+/i, "")
+    .trim();
+  if (authz && authz.split(".").length === 3) {
+    const minted = await mintSessionFromMcpAccessToken(authz);
+    if (minted) headers.authorization = `Bearer ${minted}`;
   }
   return Object.keys(headers).length ? headers : undefined;
 }
@@ -164,7 +267,7 @@ export function generateModuleToolsFromOperations(
         const { path, used } = interpolatePath(template, args);
         const rest = restArgs(args, used);
         const method = op.method;
-        const headers = headersFromActor(actor);
+        const headers = await headersFromActor(actor);
         const req: ApiRequest = {
           method,
           path,

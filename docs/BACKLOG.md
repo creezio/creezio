@@ -50,9 +50,13 @@ affaibli pour la masquer. (Backlogs d'époque : `docs/archive/BACKLOG-*.md`.)
   téléchargeable) et `test-phase-factory-docker-parity` (app neuve factory →
   image Docker, preuve d'héritage parité TF2) sont opt-in
   (`CREEZIO_COLD_WARM=1` / `CREEZIO_FACTORY_PRD=1` / `CREEZIO_FACTORY_DOCKER=1`).
-  Les gates factory-prd échouent aujourd'hui hors ligne car l'app générée n'a
-  pas de `node_modules` (types `electron` introuvables au `tsc`) — piste :
-  lien vers le `node_modules` du kit ou install dédiée dans la gate.
+  ~~Les gates factory-prd échouent hors ligne (app générée sans
+  `node_modules`, types introuvables au `tsc`)~~ **fait** : les gates
+  lient le `node_modules` du kit (`scripts/lib/link-kit-node-modules.mjs`)
+  + `CREEZIO_SKIP_BRAND_DIST=1` + `npm_config_offline=true`. `--link-kit`
+  (PR #172) pinne les `@creezio/*` en `file:` pour un install registre —
+  ça ne règle pas le hors-ligne (electron / typescript / lock restent
+  téléchargés). Compile via `electron-shim.d.ts` + `@types/node` du kit.
 
 ## Flotte multi-VPS
 
@@ -72,9 +76,12 @@ affaibli pour la masquer. (Backlogs d'époque : `docs/archive/BACKLOG-*.md`.)
   de l'admin tolère les trous et se resynchronise). Piste propre : tunnel
   dédié agent par VPS (slug hôte réservé) au lieu de réutiliser celui d'un
   serveur applicatif.
-- **Suivi update en mémoire** : la Map `update-status` de l'agent (et de
-  l'admin local) ne survit pas à un restart de l'agent pendant un update —
-  l'update lui-même va au bout (process docker), seul le suivi est perdu.
+- ~~**Suivi update en mémoire**~~ **fait (0.20.1, T8)** : le suivi
+  `update-status` de l'agent (et de l'admin local) est persisté sur disque
+  (`@creezio/fleet` `update-status-store` — journal JSON atomique dans le
+  répertoire d'état, reload au boot avec flag additif `agentRestarted` +
+  résolution via `servers.json`, TTL 24 h). Gate
+  `test-phase-fleet-update-status-persist`.
 - ~~**Registry local sans GC**~~ **fait (T11)** : `creezio server-docker
   registry-gc` (`packages/factory/src/server-docker-registry-gc.ts`) —
   API v2 list/delete + `registry garbage-collect` dans `creezio-registry`,
@@ -171,11 +178,13 @@ affaibli pour la masquer. (Backlogs d'époque : `docs/archive/BACKLOG-*.md`.)
   intégration au contrat kit à faire dans une phase dédiée (trop gros pour
   P2.c, qui a livré le contrat importé + `permission`/`accessJustification`
   par mount). ADR `docs/adr/ADR-p2c-module-contract.md`.
-- **Cohérence `meiliIndexes.table` ↔ migrations** : vérifier au doctor que
-  la table d'un index Meili déclaré existe dans une migration — non trivial
-  textuellement (tables créées par un autre module d'import ou par les
-  migrations historiques `fromprd_brand_*` → faux positifs) ; nécessite une
-  résolution cross-module du plan de données.
+- ~~**Cohérence `meiliIndexes.table` ↔ migrations**~~ **fait** : doctor
+  brand-spec `MODULE_MEILI_TABLE_UNKNOWN` (error) — ensemble des tables
+  `CREATE TABLE` de **toute** l'app (tous modules + historiques
+  `fromprd_brand_*` / `brand-migrations.ts`), parse robuste (`IF NOT
+  EXISTS`, quotes). Échappatoire déclarative `tableProvisionedBy` sur
+  `BrandMeiliIndexSpec` (`@creezio/search`) si la table est provisionnée
+  à l'exécution — pas d'env de bypass.
 - **Qualifier les `accessJustification: "à qualifier"` TF3** : le codemod
   H9 pose la dette explicite sur les mounts manuscrits sans `permission` —
   chaque module TF3 doit qualifier sa permission réelle (`nav.*`) ou
@@ -187,10 +196,9 @@ affaibli pour la masquer. (Backlogs d'époque : `docs/archive/BACKLOG-*.md`.)
 - ~~`@creezio/brand-spec` sans `README.md` / `docs/FILES.md`~~ **fait** :
   trio complet, couvert par la gate `test-phase-docs-freshness`
   (standard : `docs/DOC-STANDARD.md`).
-- **Rôles `(à documenter)` dans les FILES.md** : la gate de fraîcheur garantit
-  l'exhaustivité des inventaires, pas la qualité des rôles — les entrées
-  marquées `(à documenter)` (surtout `scripts/`, `factory`, `desktop-tooling`)
-  se remplissent au fil des chantiers (régénération = colonne préservée).
+- ~~**Rôles `(à documenter)` dans les FILES.md**~~ **fait** pour
+  `scripts/`, `factory`, `desktop-tooling` (régénération = colonne
+  préservée). Les autres packages se remplissent au fil des chantiers.
 - **Liens internes des docs archivées** : les documents de
   `docs/archive/` gardent leurs liens d'époque (certains pointent vers des
   emplacements déplacés) — assumé, l'archive est un journal.

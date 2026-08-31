@@ -56,6 +56,7 @@ import {
   fetchJson,
   findInstance,
   instanceDataDirAbs,
+  loadRegistry,
   newToken,
   proxyInstanceSupport,
   readJson,
@@ -66,6 +67,10 @@ import {
   updateServer,
   writeJson,
 } from "./server-lib.js";
+import {
+  SERVER_ADMIN_UPDATES_BASENAME,
+  createUpdateStatusStore,
+} from "./update-status-store.js";
 import { createRegistryPullProxy } from "./registry-pull-proxy.js";
 import {
   FLEET_PROTOCOL_HEADER,
@@ -426,8 +431,24 @@ export function startServerAdmin(): void {
   /**
    * Updates locaux par container — mutex + suivi asynchrone (même contrat que
    * l'agent hôte : POST → 202, suivi via GET /update-status).
+   *
+   * PERSISTÉ (T8) : journal server-admin-updates.json dans le docker-data de
+   * l'admin — même sémantique que l'agent (reload au boot, résolution via
+   * servers.json, flag additif `agentRestarted`, TTL 24 h).
    */
-  const localUpdates = new Map<string, UpdateEntry>();
+  const localUpdates = createUpdateStatusStore({
+    file: path.join(ADMIN_ROOT, "docker-data", SERVER_ADMIN_UPDATES_BASENAME),
+    resolveInstanceImage: (containerName) => {
+      for (const root of BRAND_ROOTS) {
+        const reg = loadRegistry(root);
+        const inst = reg.instances.find(
+          (i) => i.containerName === containerName,
+        );
+        if (inst) return inst.image ?? null;
+      }
+      return null;
+    },
+  });
 
   async function handleInstanceRoute(
     req: IncomingMessage,
@@ -481,6 +502,11 @@ export function startServerAdmin(): void {
         inst: found.inst,
         image,
         audit,
+        // Chaque étape est persistée (suivi retrouvable après restart).
+        onStep: (step) => {
+          entry.lastStep = step;
+          localUpdates.save();
+        },
         // Opt-in : seul backup:true crée un tar.gz frais (défaut = skip).
         backup: body.backup === true,
       })
@@ -488,12 +514,14 @@ export function startServerAdmin(): void {
           entry.status = r.ok ? "done" : "error";
           entry.finishedAt = new Date().toISOString();
           entry.result = r;
+          localUpdates.save();
           requestSnapshotRefresh();
         })
         .catch((e) => {
           entry.status = "error";
           entry.finishedAt = new Date().toISOString();
           entry.result = { ok: false, error: String((e as Error)?.message || e) };
+          localUpdates.save();
           audit(`update KO brand=${brandId} name=${name}: ${(e as Error)?.message || e}`);
         });
       return send(res, 202, { ok: true, started: true, update: entry });

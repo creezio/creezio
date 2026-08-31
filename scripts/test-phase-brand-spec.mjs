@@ -17,6 +17,9 @@ import {
   resolveOnboardingDecl,
   toSetupWizardConfig,
 } from "../packages/brand-spec/dist/index.js";
+import {
+  collectCreatedTablesFromSql,
+} from "../packages/brand-spec/dist/meili-table-coherence.js";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -620,6 +623,179 @@ export const flowModule = {
       `${code} attendu en ${expectedLevel} (pin 0.15, kit 0.${kitMinor}) : ${formatDoctorReport(doctor)}`,
     );
   }
+  fs.rmSync(work, { recursive: true, force: true });
+});
+
+function writeMeiliModule(modulesDir, file, opts) {
+  const {
+    id,
+    table,
+    tableProvisionedBy,
+    migrationSql,
+    extra = "",
+  } = opts;
+  const provisioned = tableProvisionedBy
+    ? `\n      tableProvisionedBy: ${JSON.stringify(tableProvisionedBy)},`
+    : "";
+  const migrations = migrationSql
+    ? `
+  migrations: () => [
+    { id: "mod_${id}_001_init", sql: ${JSON.stringify(migrationSql)} },
+  ],`
+    : "";
+  fs.writeFileSync(
+    path.join(modulesDir, file),
+    `import { genericOsTourScenario } from "@creezio/interactive-demo";
+export const ${id}Module = {
+  id: "${id}",
+  demo: { scenarios: [genericOsTourScenario({ productName: "${id}" })] },
+  entitySpecs: { ${id}: { table: "${table ?? id}", columns: [{ name: "nom" }] } },
+  meiliIndexes: [
+    {
+      uid: "catalog_${id}",
+      countKey: "${id}",
+      table: ${JSON.stringify(table)},
+      columns: ["id", "nom"],${provisioned}
+      settings: { searchableAttributes: ["nom"], filterableAttributes: ["id"] },
+    },
+  ],${migrations}${extra}
+};
+`,
+    "utf8",
+  );
+}
+
+test("BS16 parse CREATE TABLE : IF NOT EXISTS + quotes + identifiant nu", () => {
+  const names = collectCreatedTablesFromSql(`
+    -- ignoré : CREATE TABLE ghost_comment (id TEXT);
+    CREATE TABLE IF NOT EXISTS articles (id TEXT);
+    CREATE TABLE "quoted_items" (id TEXT);
+    CREATE TABLE \`backtick_items\` (id TEXT);
+    CREATE TABLE [bracket_items] (id TEXT);
+    CREATE TABLE main.schema_items (id TEXT);
+    CREATE TEMP TABLE temp_only (id TEXT);
+    CREATE TEMPORARY TABLE temp_only_2 (id TEXT);
+    /* CREATE TABLE block_commented (id TEXT); */
+  `);
+  assert.deepEqual(
+    [...names].sort(),
+    ["articles", "backtick_items", "bracket_items", "quoted_items", "schema_items"].sort(),
+  );
+});
+
+test("BS17 doctor : meiliIndexes.table OK même module", () => {
+  const work = fs.mkdtempSync(path.join(os.tmpdir(), "brand-spec-meili-same-"));
+  const { specDir, modulesDir } = scaffoldDoctorApp(work, "meilisame", "Meili Same");
+  writeMeiliModule(modulesDir, "articles.ts", {
+    id: "articles",
+    table: "articles",
+    migrationSql: "CREATE TABLE IF NOT EXISTS articles (id TEXT PRIMARY KEY, nom TEXT);",
+  });
+  const doctor = doctorBrandSpec(specDir);
+  assert.equal(doctor.ok, true, formatDoctorReport(doctor));
+  assert.ok(
+    !doctor.issues.some((i) => i.code === "MODULE_MEILI_TABLE_UNKNOWN"),
+    formatDoctorReport(doctor),
+  );
+  fs.rmSync(work, { recursive: true, force: true });
+});
+
+test("BS18 doctor : meiliIndexes.table OK autre module (cross-module)", () => {
+  const work = fs.mkdtempSync(path.join(os.tmpdir(), "brand-spec-meili-xmod-"));
+  const { specDir, modulesDir } = scaffoldDoctorApp(work, "meilixmod", "Meili Xmod");
+  writeMeiliModule(modulesDir, "articles.ts", {
+    id: "articles",
+    table: "catalog_items",
+  });
+  fs.writeFileSync(
+    path.join(modulesDir, "catalog.ts"),
+    `import { genericOsTourScenario } from "@creezio/interactive-demo";
+export const catalogModule = {
+  id: "catalog",
+  demo: { scenarios: [genericOsTourScenario({ productName: "catalog" })] },
+  horsIndexJustification: "écritures — hors browse",
+  migrations: () => [
+    {
+      id: "mod_catalog_001_init",
+      sql: "CREATE TABLE IF NOT EXISTS catalog_items (id TEXT PRIMARY KEY, nom TEXT);",
+    },
+  ],
+};
+`,
+    "utf8",
+  );
+  const doctor = doctorBrandSpec(specDir);
+  assert.equal(doctor.ok, true, formatDoctorReport(doctor));
+  assert.ok(
+    !doctor.issues.some((i) => i.code === "MODULE_MEILI_TABLE_UNKNOWN"),
+    formatDoctorReport(doctor),
+  );
+  fs.rmSync(work, { recursive: true, force: true });
+});
+
+test("BS19 doctor : meiliIndexes.table OK historique fromprd_brand_*", () => {
+  const work = fs.mkdtempSync(path.join(os.tmpdir(), "brand-spec-meili-prd-"));
+  const { specDir, modulesDir } = scaffoldDoctorApp(work, "meiliprd", "Meili Prd");
+  writeMeiliModule(modulesDir, "articles.ts", {
+    id: "articles",
+    table: "legacy_items",
+  });
+  fs.writeFileSync(
+    path.join(work, "server/src/electron/brand-migrations.ts"),
+    `import { composeMigrations, type SqliteMigration } from "@creezio/platform-core";
+export const BRAND_SCHEMA_SQL = \`
+CREATE TABLE IF NOT EXISTS [legacy_items] (
+  id TEXT PRIMARY KEY,
+  nom TEXT
+);
+\`;
+export function brandMigrations(): SqliteMigration[] {
+  return composeMigrations({
+    id: "fromprd_brand_001_schema",
+    sql: BRAND_SCHEMA_SQL,
+  });
+}
+`,
+    "utf8",
+  );
+  const doctor = doctorBrandSpec(specDir);
+  assert.equal(doctor.ok, true, formatDoctorReport(doctor));
+  assert.ok(
+    !doctor.issues.some((i) => i.code === "MODULE_MEILI_TABLE_UNKNOWN"),
+    formatDoctorReport(doctor),
+  );
+  fs.rmSync(work, { recursive: true, force: true });
+});
+
+test("BS20 doctor : meiliIndexes.table inconnue = MODULE_MEILI_TABLE_UNKNOWN", () => {
+  const work = fs.mkdtempSync(path.join(os.tmpdir(), "brand-spec-meili-unk-"));
+  const { specDir, modulesDir } = scaffoldDoctorApp(work, "meiliunk", "Meili Unk");
+  writeMeiliModule(modulesDir, "articles.ts", {
+    id: "articles",
+    table: "ghost_items",
+  });
+  const doctor = doctorBrandSpec(specDir);
+  assert.equal(doctor.ok, false, formatDoctorReport(doctor));
+  const unknown = doctor.issues.find(
+    (i) => i.code === "MODULE_MEILI_TABLE_UNKNOWN" && i.level === "error",
+  );
+  assert.ok(unknown, formatDoctorReport(doctor));
+  assert.match(unknown.message, /ghost_items/);
+  assert.match(unknown.message, /articles/);
+  assert.match(unknown.message, /cross-module|fromprd_brand_/);
+  assert.match(unknown.message, /tableProvisionedBy/);
+
+  writeMeiliModule(modulesDir, "articles.ts", {
+    id: "articles",
+    table: "ghost_items",
+    tableProvisionedBy: "sync distant au boot (table créée à l'exécution)",
+  });
+  const justified = doctorBrandSpec(specDir);
+  assert.equal(justified.ok, true, formatDoctorReport(justified));
+  assert.ok(
+    !justified.issues.some((i) => i.code === "MODULE_MEILI_TABLE_UNKNOWN"),
+    formatDoctorReport(justified),
+  );
   fs.rmSync(work, { recursive: true, force: true });
 });
 

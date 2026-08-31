@@ -47,6 +47,11 @@ export type CliArgs = {
   noPush?: boolean;
   /** Org/owner GitHub des repos créés (défaut creezio). */
   githubOrg?: string;
+  /**
+   * Pin `@creezio/*` sur le worktree kit pour `npm install` (gates CI,
+   * PR de release). Sinon env `CREEZIO_LINK_KIT=1`.
+   */
+  linkKit?: boolean;
   /** Args restants pour sous-commandes (brand … / server-docker …). */
   rest?: string[];
 };
@@ -105,6 +110,7 @@ export function parseArgs(argv: string[]): CliArgs {
     else if (a === "--admin-out") out.adminOut = rest.shift();
     else if (a === "--push") out.push = true;
     else if (a === "--no-push") out.noPush = true;
+    else if (a === "--link-kit") out.linkKit = true;
     else if (a.startsWith("--github-org="))
       out.githubOrg = a.slice("--github-org=".length);
     else if (a === "--github-org") out.githubOrg = rest.shift();
@@ -152,14 +158,14 @@ Montée de version d'un repo marque (kit → marque, P3.a) :
     de TOUS les manifests + lockfiles, rematérialisation os-ui, doctor.
 
 Overrides optionnels avec --from-prd :
-  --name, --id, --domain, --out, --env-prefix, --feed-token, --sandbox/--no-sandbox, --force
+  --name, --id, --domain, --out, --env-prefix, --feed-token, --sandbox/--no-sandbox, --force, --link-kit
   --icons-dir   Dossier marque : client.png + server.png (+ tray-icon.png)
                 (sinon brand-spec/icons/ si présent ; sinon placeholder 1×1)
   --default-server-url  URL pré-remplie dans le picker du client join-only
                 (installateur cabinet — l'humain confirme au premier lancement)
 
 Mode technique (squelette OS vide) :
-  --name, --id, --domain, --out, --env-prefix, --feed-token, --sandbox, --force
+  --name, --id, --domain, --out, --env-prefix, --feed-token, --sandbox, --force, --link-kit
   --icons-dir, -h, --help
 
 Factory 2 repos (marque + admin flotte) :
@@ -167,6 +173,9 @@ Factory 2 repos (marque + admin flotte) :
   --push / --no-push  Création + push des 2 repos GitHub privés
                       (défaut : si token GITHUB_TOKEN / .github-token dispo)
   --github-org <org>  Org GitHub (défaut creezio)
+  --link-kit          Installer @creezio/* depuis le worktree kit (file:),
+                      pas le registre — requis en CI / PR de release
+                      (équivalent : CREEZIO_LINK_KIT=1)
 
 Exemples:
   creezio new-app --from-prd docs/experiences/tempoflow3/PRD-PRODUIT.md --out /tmp/tempoflow3 \\
@@ -328,6 +337,8 @@ export async function runCli(argv: string[]): Promise<void> {
     args.out || path.join(root, "apps", brandId.trim().toLowerCase()),
   );
 
+  if (args.linkKit) process.env.CREEZIO_LINK_KIT = "1";
+
   const opts: NewAppOptions = {
     brandId,
     productName,
@@ -371,8 +382,12 @@ export async function runCli(argv: string[]): Promise<void> {
   );
   prepareBrandDistribution(result.outDir, {
     kitRoot: root,
+    linkKit: args.linkKit,
     log: (line) => console.log(`  dist         ${line}`),
   });
+  if (args.linkKit || process.env.CREEZIO_LINK_KIT === "1") {
+    console.log(`  link-kit     ${root}`);
+  }
 
   await maybeCreateGithubRepos(args, result);
   console.log("");

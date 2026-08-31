@@ -1,6 +1,6 @@
 {
   "name": "@creezio/fleet",
-  "version": "0.20.0",
+  "version": "0.22.0",
   "description": "Backend flotte typé — gestes Docker (Engine API), registre serveurs, updates pull/rollback, agent hôte, proxy registre pull-only, protocole agent↔backend versionné (ex fleet-collector .mjs)",
   "type": "module",
   "main": "./dist/index.js",
@@ -35,6 +35,11 @@
       "types": "./dist/agent-updates.d.ts",
       "import": "./dist/agent-updates.js",
       "default": "./dist/agent-updates.js"
+    },
+    "./update-status-store": {
+      "types": "./dist/update-status-store.d.ts",
+      "import": "./dist/update-status-store.js",
+      "default": "./dist/update-status-store.js"
     },
     "./registry-pull-proxy": {
       "types": "./dist/registry-pull-proxy.d.ts",
