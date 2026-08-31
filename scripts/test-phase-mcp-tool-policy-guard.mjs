@@ -44,6 +44,22 @@ const REGISTRY = [
     requiredScope: "crm:write",
     defaultRoles: ["owner"],
   },
+  // Parité brand-facade : op module sans opt-in publish (mcpPublishDefault
+  // absent → generateModuleToolsFromOperations pose false) — seed enabled=0.
+  {
+    name: "module.catalog.status",
+    category: "catalog",
+    access: "read",
+    requiredScope: "crm:read",
+    mcpPublishDefault: false,
+  },
+  {
+    name: "module.catalog.probe",
+    category: "catalog",
+    access: "read",
+    requiredScope: "crm:read",
+    mcpPublishDefault: false,
+  },
 ];
 
 const db = new DatabaseSync(":memory:");
@@ -427,4 +443,79 @@ test("listTools masque enabled=0 ; callTool reste joignable", async () => {
   assert.equal(viaAlias.content.lignes, 1);
 
   updateMcpToolPolicy("get_panier", { enabled: true });
+});
+
+test("listTools : seed par défaut enabled=0 ≠ désactivation admin (régression 0.17.1 TF3 catalog-import)", async () => {
+  ensureMcpAdminSchema();
+  seedMcpToolPolicies(REGISTRY);
+
+  // Sémantique du seed verrouillée : mcpPublishDefault=false → enabled=0,
+  // SANS admin_override (ce n'est pas une désactivation admin).
+  const seeded = getStoredMcpToolPolicy("module.catalog.status");
+  assert.ok(seeded, "policy seedée");
+  assert.equal(seeded.enabled, false, "seed mcpPublishDefault=false → enabled=0");
+
+  const mcp = createMcpFacade({
+    allowUnauthenticated: true,
+    discoverToolsBySpace: async () => ({
+      module: [
+        {
+          name: "module.catalog.status",
+          description: "Statut du catalogue distant",
+          space: "module",
+          ownerId: "catalog",
+          mcpPublishDefault: false,
+          handler: async () => ({ ok: true, content: { source_products: 42 } }),
+        },
+        {
+          name: "module.catalog.probe",
+          description: "Sonde catalogue",
+          space: "module",
+          ownerId: "catalog",
+          mcpPublishDefault: false,
+          handler: async () => ({ ok: true, content: {} }),
+        },
+      ],
+    }),
+  });
+
+  // Régression 0.17.1 : ces tools disparaissaient de listTools/GET /mcp.
+  const listed = await mcp.listTools();
+  const names = listed.tools.map((t) => t.name);
+  assert.ok(
+    names.includes("module.catalog.status"),
+    "tool à policy seedée par défaut listé",
+  );
+  const bySpace = await mcp.listToolsBySpace();
+  assert.ok(
+    bySpace.module.some((t) => t.name === "module.catalog.status"),
+    "présent aussi via listToolsBySpace",
+  );
+
+  // … et exécutable au niveau façade.
+  const res = await mcp.callTool("module.catalog.status", {});
+  assert.equal(res.ok, true);
+  assert.equal(res.content.source_products, 42);
+
+  // Une édition rôles/scopes ne requalifie PAS le seed en désactivation admin.
+  updateMcpToolPolicy("module.catalog.probe", { allowedRoles: ["owner"] });
+  const afterRoles = await mcp.listTools();
+  assert.ok(
+    afterRoles.tools.some((t) => t.name === "module.catalog.probe"),
+    "édition rôles seule → toujours listé",
+  );
+
+  // Désactivation admin EXPLICITE → masqué ; ré-activation → re-listé.
+  updateMcpToolPolicy("module.catalog.status", { enabled: false });
+  const afterDisable = await mcp.listTools();
+  assert.ok(
+    !afterDisable.tools.some((t) => t.name === "module.catalog.status"),
+    "désactivation admin explicite masquée",
+  );
+  updateMcpToolPolicy("module.catalog.status", { enabled: true });
+  const afterEnable = await mcp.listTools();
+  assert.ok(
+    afterEnable.tools.some((t) => t.name === "module.catalog.status"),
+    "ré-activation admin re-liste",
+  );
 });
