@@ -1,6 +1,6 @@
 {
   "name": "@creezio/console",
-  "version": "0.1.16",
+  "version": "0.1.17",
   "private": true,
   "description": "Console ops Creezio — pilotage parc desktop (feeds, versions, builds)",
   "scripts": {
@@ -10,12 +10,12 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@creezio/automations": "^0.20.0",
-    "@creezio/brand-config": "^0.20.0",
-    "@creezio/desktop-tooling": "^0.20.0",
-    "@creezio/observability": "^0.20.0",
-    "@creezio/product-hub": "^0.20.0",
-    "@creezio/propagation": "0.4.3",
+    "@creezio/automations": "^0.21.0",
+    "@creezio/brand-config": "^0.21.0",
+    "@creezio/desktop-tooling": "^0.21.0",
+    "@creezio/observability": "^0.21.0",
+    "@creezio/product-hub": "^0.21.0",
+    "@creezio/propagation": "0.4.4",
     "next": "^15.3.2",
     "react": "^19.1.0",
     "react-dom": "^19.1.0"

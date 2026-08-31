@@ -1,6 +1,6 @@
 {
   "name": "@creezio/nav",
-  "version": "0.20.0",
+  "version": "0.21.0",
   "description": "Module natif hybride — catalogue de nav sidebar, overrides brand.db, admin masquer/réordonner/renommer",
   "type": "module",
   "main": "./dist-cjs/index.js",
@@ -28,9 +28,9 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@creezio/api-kernel": "^0.20.0",
-    "@creezio/platform-core": "^0.20.0",
-    "@creezio/shell-ui": "^0.20.0"
+    "@creezio/api-kernel": "^0.21.0",
+    "@creezio/platform-core": "^0.21.0",
+    "@creezio/shell-ui": "^0.21.0"
   },
   "devDependencies": {
     "@types/node": "^22.15.3",
