@@ -13,7 +13,7 @@ C'est la brique qui pilote les serveurs marque headless (`docker/server`) :
 | `registry-pull-proxy` | Proxy pull-only du registre d'images (`/v2/*`, Basic `hostId:agentToken` ou admin, push 405) |
 | `server-admin` | Backend flotte admin (`startServerAdmin`) : plan local (socket) + plan flotte (agents tunnelisés), enrôlement, proxys |
 | `host-agent` | Agent hôte (`startHostAgent`) : gestes locaux Bearer-only + boucle pull updates |
-| `protocol` | Contrat de version agent↔backend (header `x-creezio-fleet-protocol`, dual-accept, refus explicite) |
+| `protocol` | Contrat de version agent↔backend (header `x-creezio-fleet-protocol`, refus fail-closed si absent ou ≠ v1) |
 
 ## Protocole agent ↔ backend (F4.4d)
 
@@ -21,12 +21,10 @@ Tous les échanges server-admin ↔ host-agent (et pull agent → app admin)
 portent le header `x-creezio-fleet-protocol` (v1 depuis 0.15.0) :
 
 - version égale → OK ;
-- header **absent** (composant ≤ 0.14) → accepté avec **warn bruyant**
-  throttlé (dual-accept UNE version, `FLEET_PROTOCOL_ACCEPT_MISSING`) ;
-- version **différente** → refus explicite avec message actionnable.
-
-Au prochain bump (v2), `FLEET_PROTOCOL_ACCEPT_MISSING` passe à `false` :
-l'absence de header devient un refus fail-closed.
+- header **absent** ou version **différente** → refus fail-closed (409)
+  avec message actionnable (`FLEET_PROTOCOL_ACCEPT_MISSING=false` depuis
+  0.19.0 — dual-accept 0.15→0.18 terminé ; pas de bump v2 : le format
+  filaire n'a pas changé).
 
 ## Consommation
 
@@ -34,9 +32,8 @@ l'absence de header devient un refus fail-closed.
   `node node_modules/@creezio/fleet/dist/bin/{server-admin,host-agent}-main.js` —
   contexte stagé par `creezio server-docker admin|agent up`
   (`stageFleetImageContext`, fail-closed si dist absent).
-- CLI `creezio server-docker` : via les wrappers de compat
-  `packages/observability/fleet-collector/*.mjs` (une version, warning
-  `[deprecated]`).
+- CLI `creezio server-docker` : import direct `packages/fleet/dist`
+  (`importInstanceStack`, `server-lib`).
 - `public/admin.html` : UI mono-fichier servie par server-admin sur `/admin`.
 
 Package ESM-only (comme `factory`) — pas de dual CJS : consommé par

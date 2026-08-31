@@ -221,7 +221,7 @@ test("CLI registre d'instances : create/start/stop/rm/logs/ls/update/backup + ad
   assert.match(cli, /SERVER_VARIANT/);
   assert.match(cli, /backup: !!args\.backup/);
   assert.doesNotMatch(cli, /noBackup|--no-backup/);
-  // P2.b : SoT flotte portée en TS — packages/fleet (fleet-collector = wrappers compat).
+  // P2.b : SoT flotte portée en TS — packages/fleet (wrappers compat retirés).
   const lib = fs.readFileSync(
     path.join(root, "packages/fleet/src/server-lib.ts"),
     "utf8",

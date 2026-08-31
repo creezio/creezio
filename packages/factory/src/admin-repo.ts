@@ -107,7 +107,7 @@ CREEZIO_TUNNEL_EXTRA_HOSTNAMES=lp.${o.domain}
 
 function renderComposeYml(o: AdminRepoOptions): string {
   return `# Admin web multi-serveurs / multi-VPS ${o.productName}
-# Image kit \`creezio-server-admin:local\` (fleet-collector étendu,
+# Image kit \`creezio-server-admin:local\` (backend @creezio/fleet,
 # packagée depuis $CREEZIO_KIT_ROOT/docker/server-admin).
 #
 # Chemin nominal (build + run + config runtime docker-data/) :
@@ -335,7 +335,7 @@ CREEZIO_TUNNEL_EXTRA_HOSTNAMES=lp.${o.domain}
 # CREEZIO_CF_ZONE_ID=
 # CREEZIO_CF_ZONE_NAME=${o.domain}
 
-# Backend flotte (server-admin.mjs) consommé par le module Flotte
+# Backend flotte (@creezio/fleet server-admin) consommé par le module Flotte
 # CREEZIO_FLEET_BACKEND_URL=http://127.0.0.1:18800
 # CREEZIO_FLEET_BACKEND_BASIC=admin:…
 
@@ -375,7 +375,7 @@ assistant, tâches, mails, admin database… et les modules admin natifs :
 1. **App admin** (ce repo, \`server/\`) — OS Creezio headless (image Docker
    \`creezio-server-${adminBrandId}\`).
 2. **Backend flotte** (\`creezio server-docker admin up --admin-root .\`) —
-   \`server-admin.mjs\` + host-agents : socket Docker, registres d'instances.
+   \`@creezio/fleet\` (server-admin) + host-agents : socket Docker, registres d'instances.
    L'app admin le consomme via \`CREEZIO_FLEET_BACKEND_URL/BASIC\`.
 
 Public : tunnel in-process uniquement — \`admin.${o.domain}\` (OS) +
@@ -488,7 +488,7 @@ import { createLandingMount } from "@creezio/landing";`,
     `  api.registerModuleApi("search", createSearchMount());`,
     `  api.registerModuleApi("search", createSearchMount());
   // Modules admin natifs (@creezio/admin — ADR-admin-app-os) : flotte
-  // (proxy backend server-admin.mjs), support agrégé (sync pull + réponse),
+  // (proxy backend flotte @creezio/fleet), support agrégé (sync pull + réponse),
   // billing Stripe (webhook signé → projections admin_billing_*).
   // Permissions par module (nav.fleet / nav.support / nav.billing…) :
   // déclarées par les mounts kit, gardées par authorizeModuleAccess

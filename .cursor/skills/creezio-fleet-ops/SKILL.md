@@ -393,8 +393,8 @@ creezio server-docker start <nom> --brand-root "$BRAND_ROOT"
 `pas de nouveau backup (défaut)` sauf si `--backup`.
 
 **Vérité** : `packages/factory/src/server-docker-cli.ts` (`update`, `backup`),
-`server-admin.mjs` / `host-agent.mjs` (`body.backup === true`),
-`server-lib.mjs` (`updateServer`, défaut `backup=false`). Env :
+`@creezio/fleet` `server-admin.ts` / `host-agent.ts` (`body.backup === true`),
+`server-lib.ts` (`updateServer`, défaut `backup=false`). Env :
 `CREEZIO_REGISTRY`, `CREEZIO_REGISTRY_BASIC`.
 
 **Pièges** : update synchrone interdit côté admin/agent — Cloudflare coupe
@@ -463,8 +463,8 @@ aucun nouveau cycle de vie). Les VPS distants pullent
 manuel (§4) reste le seul geste.
 
 **Vérité** : `packages/admin/src/fleet-releases.ts` (module, tables
-`admin_005`), `packages/observability/fleet-collector/agent-updates.mjs`
-(boucle agent), `registry-pull-proxy.mjs` (F4),
+`admin_005`), `packages/fleet/src/agent-updates.ts`
+(boucle agent), `registry-pull-proxy.ts` (F4),
 `packages/factory/src/server-docker-cli.ts` (`publish --release`). Gates :
 `test-phase-fleet-releases.mjs`, `test-phase-fleet-rollout.mjs`,
 `test-phase-registry-pull-proxy.mjs`.
@@ -504,7 +504,7 @@ Config **sans secrets** versionnée : `{ADMIN_ROOT}/server-admin.json`
 admin qui fait foi (pas un éventuel `docker-data/server-admin.json` de la
 marque).
 
-**Vérité** : `packages/observability/fleet-collector/server-admin.mjs`,
+**Vérité** : `packages/fleet/src/server-admin.ts` (`@creezio/fleet`),
 `docker/server-admin/README.md`, repo `creezio/tempoflow3-admin`.
 
 ### 5b. Support E2E (serveur marque → admin → réponse)
@@ -532,8 +532,8 @@ Prouvé E2E (2026-08-06, prod TF3) : ticket UI `/support` resto-marseille →
 sync app admin `/tickets` → réponse admin → visible côté restaurateur
 (« Équipe support », statut `repondu`). **Piège** : les containers
 `creezio-host-agent` et `creezio-server-admin` embarquent le code
-fleet-collector au build — après toute modif kit de `host-agent.mjs` /
-`server-admin.mjs` / `server-lib.mjs`, re-builder via
+le code flotte au build — après toute modif kit de `packages/fleet/src` (`host-agent.ts` /
+`server-admin.ts` / `server-lib.ts`), `npm run build:packages` puis re-builder via
 `creezio server-docker agent up` + `admin up` (sinon nouvelles routes → 404
 et sync `tickets:0` sans erreur).
 
@@ -627,7 +627,7 @@ qui porte l'ingress `agent.*` est droppé par UFW. Vécu 10–30/08/2026
 → l'hôte avec `"online":true` et son `agentUrl` `https://agent.<slug>.…`.
 
 **Vérité** : `packages/factory/src/server-docker-cli.ts` (agent/enroll),
-`server-admin.mjs` (`/admin/api/enroll` — auth par enrollToken, pas Basic),
+`packages/fleet/src/server-admin.ts` (`/admin/api/enroll` — auth par enrollToken, pas Basic),
 tokens agent : `docker-data/host-agent.json` (hashés, `agent token new|revoke`).
 
 ## 7. Client desktop thin (remote-only)
@@ -737,7 +737,7 @@ fail-closed `MODULE_MEILI_MISSING`, 0.10.13+).
 | E2E parité marque | `tempoflow3/server/scripts/test-e2e-parite.mjs` (env `TF3_BASE` — pas `TF3_BASE_URL` —, `TF3_OWNER_USER/PASS`, `TF3_STAFF_USER/PASS`, `--full` pour le volet mutant étude→optimiser→dispatch). CDP : les sleeps fixes flakent à froid post-update — toujours des attentes actives (`waitEv` sur sélecteur) + retry de page ; `document.body` peut être null pendant une transition. La sidebar SSR est NON filtrée (le filtre ACL est client après `/auth/me`) : attendre l'hydratation avant d'asserter. |
 | Owner n8n = setup VÉRIFIÉ | n8n vierge répond **200 à `/rest/login` SANS cookie** (shell user) et monte `/rest/*` AVANT la fin de l'init DB : un `POST /rest/owner/setup` trop tôt renvoie 200 mais l'écriture est **perdue** (vécu : « owner: login OK »/« setup OK » sur instance demo/proof vierges, DB sans owner, login 401 ensuite). Règles kit (`n8n/launcher.ts`) : login réussi = 2xx **ET** cookie `n8n-auth` (`n8nLoginSucceeded`) ; readiness = `/rest/settings` avec `userManagement.showSetupOnFirstLoad` présent ; setup conclu seulement après login vérifié (retries). Gate : `test-os-embeds` (prédicats). |
 | Install Hermes root Linux = FHS | L'`install.sh` amont récent en **root Linux** (containers server-docker) installe en layout FHS `/usr/local/lib/hermes-agent` + `/usr/local/bin/hermes` — hors sandbox, le launcher ne trouve jamais le CLI (« CLI toujours introuvable après install », vécu demo). Verrou kit : `HERMES_INSTALL_DIR={profile}/.hermes/hermes-agent` dans l'env d'install (`hermesInstallLayoutEnv`) + fallback lecture FHS root-only (`hermesFhsFallbackDirs`) pour les instances installées avant le verrou. Les instances FHS existantes (demo) retrouvent leur CLI au prochain boot d'une image à jour. |
-| Backup update = tar exit 1 OK | GNU tar sur un volume `/data` **vivant** sort en exit 1 (« file changed as we read it ») avec une archive complète et valide — ne JAMAIS traiter exit 1 comme échec (vécu : « backup indisponible (tar) » avec .tar.gz de 2,4 Go pourtant intègre). SoT `server-lib.mjs backupInstanceData` : exit 0/1 acceptés, `gzip -t` vérifie l'archive, log `backup … (N Mo, gzip vérifié)` ; si le backup demandé est réellement impossible, l'update **échoue proprement AVANT recreate** (plus de warning silencieux). Le fix vit dans les images `creezio-server-admin:local`/`creezio-host-agent:local` → re-runner `admin up` + `agent up` après un pull kit pour l'embarquer. |
+| Backup update = tar exit 1 OK | GNU tar sur un volume `/data` **vivant** sort en exit 1 (« file changed as we read it ») avec une archive complète et valide — ne JAMAIS traiter exit 1 comme échec (vécu : « backup indisponible (tar) » avec .tar.gz de 2,4 Go pourtant intègre). SoT `@creezio/fleet` `server-lib.ts` `backupInstanceData` : exit 0/1 acceptés, `gzip -t` vérifie l'archive, log `backup … (N Mo, gzip vérifié)` ; si le backup demandé est réellement impossible, l'update **échoue proprement AVANT recreate** (plus de warning silencieux). Le fix vit dans les images `creezio-server-admin:local`/`creezio-host-agent:local` → re-runner `admin up` + `agent up` après un pull kit pour l'embarquer. |
 | Backup ≠ GitHub | Le tar.gz sauve les **données** `/data` (sqlite…), pas le code. Défaut update = **pas** de nouveau backup (opt-in `--backup` / `backup:true`). One-shot : `server-docker backup <nom>`. Archives dans `docker-data/backups/` conservées. |
 | Onglet workspace ≠ refetch RSC | Réactiver un onglet workspace (`router.replace` vers une route déjà visitée) ne refetch **JAMAIS** le payload RSC en Next 14 — cache client de session resservi tel quel, zéro requête réseau (prouvé CDP, même après 35 s). Une page RSC en pane keep-alive mutée depuis une autre page reste figée jusqu'au reload dur. Toute mutation hors page doit être couplée à une invalidation : compteur de mutations module-scope + `router.refresh()` quand la pane est/redevient visible (pattern TF3 `panier-live-refresh.tsx` + `notifyPanierChanged`, bug panier 0.3.6). Vaut pour le workspace marque TF verbatim ET la copie kit `shell-ui/ui/workspace`. |
 | Lockfile Docker marque neuve | Empêché structurellement : `prepareBrandDistribution` (locks npm) tourne à chaque `new-app`/`brand apply`/push ; `docker:build` appelle `ensure-server-lock.mjs` avant `docker build` ; Dockerfile `npm ci \|\| npm install --omit=dev` ; `server-docker create\|build` régénère si stale. **Interdit** de régénérer le lock Docker à la main hors `ensure-server-lock` / `ensureBrandPackageLocks`. Clone hôte : `npm ci` racine (workspace — layout = Docker). Gate : `test-phase-factory-lockfile` + `test-phase-clone-autonomy`. |

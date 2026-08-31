@@ -2,8 +2,8 @@
 # Creezio Server Admin — admin web multi-serveurs Docker (@creezio/fleet).
 #
 # Build context = contexte STAGÉ par `creezio server-docker admin up`
-# (stageFleetImageContext) : fleet-collector/ (wrappers compat + collector
-# télémétrie) + node_modules/@creezio/fleet (package.json + dist + public).
+# (stageFleetImageContext) : fleet-collector/ (collector télémétrie) +
+# node_modules/@creezio/fleet (package.json + dist + public).
 # Le backend est compilé depuis packages/fleet/src (TS) — fail-closed si
 # le dist est absent (npm run build:packages).
 #

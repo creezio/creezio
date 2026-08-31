@@ -274,7 +274,7 @@ journal ops `/data/ops/*.jsonl`.
 > Ce que `server-docker` et l'auto-provisioning tunnel font sous le
 > capot. Lu une fois ici = jamais redécouvert en pleine mission. SoT code :
 > `docker/server/Dockerfile`, `packages/factory/src/server-docker-cli.ts`,
-> `packages/observability/fleet-collector/instance-stack.mjs`,
+> `packages/fleet/src/instance-stack.ts`,
 > `packages/platform-core/src/tunnel-cf{,-client}.ts` (client API CF +
 > fonctions pures, zéro dépendance).
 

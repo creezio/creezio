@@ -122,8 +122,8 @@ scripts et par l'admin.
 ## Admin multi-serveurs
 
 `creezio server-docker admin up` lance une console web
-(`docker/server-admin`, servie par
-`packages/observability/fleet-collector/server-admin.mjs`, Node pur) qui
+(`docker/server-admin`, servie par `@creezio/fleet` —
+`packages/fleet/dist/bin/server-admin-main.js`, Node pur) qui
 pilote plusieurs serveurs Docker de plusieurs marques : état, boot-status,
 start/stop, logs. La config versionnable (SANS secrets : `port`, `user`,
 `brandRoots[]`) vit à la racine du **repo admin dédié** (`--admin-root`,

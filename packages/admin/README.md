@@ -7,7 +7,7 @@ Câblé en prod dans l'app admin TempoFlow (repo `tempoflow3-admin`,
 
 | Module | Route | Rôle |
 |--------|-------|------|
-| `fleet` | `/api/v1/modules/fleet/*` | Pilotage flotte (proxy vers le backend `server-admin.mjs`) |
+| `fleet` | `/api/v1/modules/fleet/*` | Pilotage flotte (proxy vers le backend flotte @creezio/fleet) |
 | `fleet-registry` | `/api/v1/modules/fleet-registry/*` | DB centrale de la flotte (`admin_fleet_servers`) — sync, poller, auto-inscription + heartbeat des serveurs |
 | `fleet-releases` | `/api/v1/modules/fleet-releases/*` | Updates en **pull** : releases, directives par serveur, slots de téléchargement, rapports |
 | `prospects` | `/api/v1/modules/prospects` | CRM prospection kanban générique |

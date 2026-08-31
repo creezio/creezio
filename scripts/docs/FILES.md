@@ -83,7 +83,7 @@
 | [`test-phase-factory-prd.mjs`](../test-phase-factory-prd.mjs) | Gate F0–F5 — factory --from-prd natif (api-kernel + SQLite). |
 | [`test-phase-factory-templates.mjs`](../test-phase-factory-templates.mjs) | (à documenter) |
 | [`test-phase-factory-two-repos.mjs`](../test-phase-factory-two-repos.mjs) | Gate FLOTTE — factory 2-repos : chaque marque = monorepo (server/ client/) + repo ADMIN dédié `<brand>-admin` (pilotage flotte multi-VPS, sans secret). |
-| [`test-phase-fleet-agent.mjs`](../test-phase-fleet-agent.mjs) | Gate FLOTTE — agent hôte + server-admin multi-VPS (fleet-collector). |
+| [`test-phase-fleet-agent.mjs`](../test-phase-fleet-agent.mjs) | Gate FLOTTE — agent hôte + server-admin multi-VPS (`@creezio/fleet`, 409 sans header protocole). |
 | [`test-phase-fleet-heartbeat.mjs`](../test-phase-fleet-heartbeat.mjs) | Gate — auto-inscription flotte + heartbeat (F3). Prouve, avec un VRAI serveur HTTP admin (mount fleet-registry @creezio/admin sur DB better-sqlite3) et le client kit (@creezio/app-runtime) : 1. |
 | [`test-phase-fleet-releases.mjs`](../test-phase-fleet-releases.mjs) | Gate — updates en PULL de la flotte (F5). Prouve, sur DB brand réelle (better-sqlite3, migrations admin) + mocks admin/registre : 1. |
 | [`test-phase-fleet-rollout.mjs`](../test-phase-fleet-rollout.mjs) | Gate — rollout piloté de la flotte (F6). Prouve, sur DB brand réelle (better-sqlite3, migrations admin) : 1. |

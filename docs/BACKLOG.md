@@ -139,12 +139,14 @@ affaibli pour la masquer. (Backlogs d'époque : `docs/archive/BACKLOG-*.md`.)
   ouvert : supprimer le hop HTTP interne admin app → server-admin en faisant
   dépendre `@creezio/admin` de `@creezio/fleet` (imports directs) — le
   backend HTTP reste pour les host-agents.
-- **Retrait wrappers fleet-collector (0.16)** : supprimer les 7 wrappers
-  `.mjs` de `packages/observability/fleet-collector/` + le bin
-  `creezio-server-admin`, repointer le CLI factory
-  (`importInstanceStack`, imports server-lib) directement sur
-  `packages/fleet/dist`, et passer `FLEET_PROTOCOL_ACCEPT_MISSING=false`
-  au prochain bump de protocole (politique F4.4d).
+- ~~Retrait wrappers fleet-collector (0.16)~~ **fait (0.19.0)** : les 7
+  wrappers `.mjs` + le bin `creezio-server-admin` supprimés, CLI factory et
+  gates repointés sur `packages/fleet/dist`.
+  `FLEET_PROTOCOL_ACCEPT_MISSING=false` (strict) SANS bump v2 : le format
+  filaire n'a pas changé et l'API flotte a confirmé (2026-08-31) que tous
+  les composants déployés (host-agents enrôlés inclus) annoncent v1 ;
+  l'app admin pose désormais aussi le header sur les réponses
+  `fleet-releases` (`@creezio/admin` → dép `@creezio/fleet`).
 - **Rôles/permissions mode admin — LIVRÉ (0.18.0, P4)** : permissions PAR
   MODULE sur les comptes des apps admin via `@creezio/access-control`
   (overrides par compte `access_user_overrides`, UI « Rôles & accès »

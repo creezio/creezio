@@ -8,16 +8,9 @@
 
 | Fichier | Rôle |
 |---|---|
-| [`fleet-collector/admin-docker.mjs`](../fleet-collector/admin-docker.mjs) | Client Docker Engine API via socket unix (zéro dépendance npm) pour server-admin — best-effort, env `CREEZIO_DOCKER_SOCK`. |
-| [`fleet-collector/agent-updates.mjs`](../fleet-collector/agent-updates.mjs) | Boucle d'updates en PULL de l'agent hôte (F5) : poll `fleet-releases/next`, slot de téléchargement, pull par digest, `updateServer` local, report — opt-in `CREEZIO_AGENT_ADMIN_URL`+`CREEZIO_AGENT_FLEET_KEY` (posés par `enroll`). |
 | [`fleet-collector/configure-fleet-npm.sh`](../fleet-collector/configure-fleet-npm.sh) | Provisionnement DNS + proxy host nginx-proxy-manager du collector (`FLEET_PUBLIC_DOMAIN`, secrets Cloudflare `CF_ENV`). |
 | [`fleet-collector/env.mjs`](../fleet-collector/env.mjs) | Résolution env fleet-collector — defaults neutres `CREEZIO_*` / `FLEET_*` + dual-read legacy marques (`TF2_*`, `CERTIVAN_*`). Aucun domaine marque hardcodé : suffix tunnel / titres UI via injection. |
-| [`fleet-collector/host-agent.mjs`](../fleet-collector/host-agent.mjs) | Agent hôte flotte (VPS distant, `:18810`) : gestes locaux create/update/logs/status via socket Docker, exposé par l'ingress `agent.{slug}.{zone}` ; embarqué dans l'image `docker/host-agent`. |
-| [`fleet-collector/instance-stack.mjs`](../fleet-collector/instance-stack.mjs) | Stack compose par instance : rendu app (+ cf.env 0.10) ; `secrets.env` fusionné (owner/e2e jamais droppés à l'update) ; update **préserve** un sidecar `cloudflared*` (patch image seule) et **refuse** si hostname public persisté sans tunnel (fail-closed 0.10.3). |
 | [`fleet-collector/ops-api.mjs`](../fleet-collector/ops-api.mjs) | Agrégation flotte pour l’UI ops (slug → users → activité). Suffixe tunnel / hostnames : opts.tunnelSuffix (injection marque). |
-| [`fleet-collector/registry-pull-proxy.mjs`](../fleet-collector/registry-pull-proxy.mjs) | Proxy PULL-ONLY du registre d'images (F4) : `/v2/*` GET/HEAD (push → 405), auth Basic `hostId:agentToken`, blobs streamés — ingress `registry.{zone}`. |
-| [`fleet-collector/server-admin.mjs`](../fleet-collector/server-admin.mjs) | Backend flotte `creezio-server-admin` (`:18800`, Basic) : API `/admin/api/*` (serveurs, updates 202+status, hôtes/enroll, registry tags, support relay), UI legacy `/admin` ; embarqué dans l'image `docker/server-admin`. |
-| [`fleet-collector/server-lib.mjs`](../fleet-collector/server-lib.mjs) | Logique serveurs Docker partagée admin ↔ agent : `updateServer` (pull → recreate → healthcheck → rollback auto ; backup `/data` opt-in `backup:true`, défaut off, pas de prune ; sidecar cloudflared / hostname public **préservés ou refus** — jamais un compose sans tunnel sur un site live), `backupInstanceData`, registre `servers.json`. |
 | [`fleet-collector/server.mjs`](../fleet-collector/server.mjs) | _(pas de cartouche JSDoc en tête — voir le code)_ |
 | [`fleet-collector/test-fleet-collector.mjs`](../fleet-collector/test-fleet-collector.mjs) | Tests locaux du fleet-collector kit (spawn serveur éphémère). Env neutre CREEZIO_* — pas de domaine marque. |
 | [`fleet-collector/test-server-admin.mjs`](../fleet-collector/test-server-admin.mjs) | Tests du backend flotte (routes admin, enroll, update async). |

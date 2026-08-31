@@ -1,9 +1,10 @@
 # Creezio Server Admin — admin web multi-serveurs Docker
 
 Admin web des serveurs marque headless (`docker/server`), servi par
-`packages/observability/fleet-collector/server-admin.mjs` (Node pur, zéro
-dépendance npm — même esprit que le fleet collector). Point d'entrée
-**séparé** de `server.mjs` : le service fleet-collector prod n'est pas touché.
+`@creezio/fleet` (`packages/fleet/dist/bin/server-admin-main.js`, Node pur,
+zéro dépendance npm runtime — même esprit que le fleet collector). Point
+d'entrée **séparé** de `server.mjs` : le service fleet-collector prod n'est
+pas touché.
 
 ## Usage
 
@@ -40,8 +41,9 @@ Lancement direct sans Docker (dev) :
 ```bash
 CREEZIO_ADMIN_PASS=secret \
 CREEZIO_ADMIN_BRAND_ROOTS=<brandRoot> \
-node packages/observability/fleet-collector/server-admin.mjs
-# ou via le bin npm : creezio-server-admin
+node packages/fleet/dist/bin/server-admin-main.js
+# (dist requis : npm run build:packages — les wrappers .mjs et le bin npm
+#  creezio-server-admin ont été retirés en 0.19.0)
 ```
 
 ## Env
@@ -84,7 +86,7 @@ via le client `@creezio/platform-core` — zone-level, pull-only) :
   puis `docker pull registry.{zone}/creezio-server-<brand>:<tag>`.
 - Côté publish, `creezio server-docker publish --public-host registry.{zone}`
   (ou env `CREEZIO_REGISTRY_PUBLIC_HOST`) tague en plus la référence publique.
-- Module : `packages/observability/fleet-collector/registry-pull-proxy.mjs`
+- Module : `packages/fleet/src/registry-pull-proxy.ts`
   (gate `scripts/test-phase-registry-pull-proxy.mjs`).
 
 ## Updates en pull (F5)
@@ -92,7 +94,7 @@ via le client `@creezio/platform-core` — zone-level, pull-only) :
 Le backend expose aussi `POST /admin/api/hosts/verify` (Basic) : vérification
 d'un credential `hostId:agentToken` pour le module `fleet-releases` de l'app
 admin (`@creezio/admin`). La boucle de pull vit dans l'agent hôte
-(`host-agent.mjs` + `agent-updates.mjs`) : opt-in via
+(`packages/fleet/src/host-agent.ts` + `agent-updates.ts`) : opt-in via
 `CREEZIO_AGENT_ADMIN_URL` / `CREEZIO_AGENT_FLEET_KEY` (posés par
 `creezio server-docker enroll [--admin-app <url>]` puis `agent up`).
 Gate : `scripts/test-phase-fleet-releases.mjs`.

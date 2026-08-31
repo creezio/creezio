@@ -23,10 +23,8 @@ import { test } from "node:test";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const STACK = path.join(
-  ROOT,
-  "packages/observability/fleet-collector/instance-stack.mjs",
-);
+// SoT @creezio/fleet (wrappers fleet-collector retirés en 0.19) — dist requis.
+const STACK = path.join(ROOT, "packages/fleet/dist/instance-stack.js");
 
 const stack = await import(pathToFileURL(STACK).href);
 
