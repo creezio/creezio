@@ -40,6 +40,7 @@ test("factory 2-repos : monorepo + repo admin dédié (sans réseau)", () => {
       appDir,
       "--no-push",
       "--force",
+      "--link-kit",
     ]);
     assert.equal(r.status, 0, r.stderr + "\n" + r.stdout);
     assert.match(r.stdout, /--no-push/, "no-push doit être explicite");
@@ -294,6 +295,7 @@ Gestion simple pour test gate factory 2-repos.
       adminDir,
       "--no-push",
       "--force",
+      "--link-kit",
     ]);
     assert.equal(apply.status, 0, apply.stderr + "\n" + apply.stdout);
     assert.ok(fs.existsSync(path.join(adminDir, "server-admin.json")));

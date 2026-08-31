@@ -34,7 +34,7 @@ test("expérience: dry-run agent = new-app --from-prd seulement", () => {
   const outDir = fs.mkdtempSync(path.join(os.tmpdir(), "tf3-experience-"));
   const r = spawnSync(
     process.execPath,
-    [CLI, "new-app", "--from-prd", PRD, "--out", outDir, "--force"],
+    [CLI, "new-app", "--from-prd", PRD, "--out", outDir, "--force", "--link-kit"],
     { encoding: "utf8", cwd: ROOT },
   );
   assert.equal(r.status, 0, r.stderr);
