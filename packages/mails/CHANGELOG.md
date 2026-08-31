@@ -1,5 +1,19 @@
 # @creezio/mails
 
+## Unreleased
+
+- Token / `secret_ref` renseigné : les réglages restent enregistrables si le probe send échoue (550, domaine non onboardé). `POST /settings/verify` renvoie `ok: true` + `send.state=unavailable` au lieu d'invalider les identifiants. Bandeau `/parametres/email` et file d'attente : « Email Sending non configuré » vs « Token présent, envoi réel indisponible ». `nodemailer_absent` et l'absence de token ne sont pas masqués.
+
+## 0.18.0
+
+### Patch Changes
+
+- Updated dependencies [7c40c12]
+  - @creezio/shell-ui@0.18.0
+  - @creezio/auth@0.18.0
+  - @creezio/platform-core@0.18.0
+  - @creezio/api-kernel@0.18.0
+
 ## 0.17.1
 
 ### Patch Changes

@@ -25,6 +25,15 @@ export interface ProductEntity {
   labelPlural: string;
   fields: ProductField[];
   archivable?: boolean;
+  /**
+   * Permission par module (opt-in) — threadée sur l'EntitySpec généré
+   * (`spec.permission`, garde `authorizeModuleAccess`) ET l'entrée de nav
+   * du module (`BrandNavItem.permission`, sidebar filtrée). Utilisée par
+   * les apps admin (`adminProductModel` — permissions ADMIN_MODULE_PERMISSIONS
+   * de @creezio/admin) ; absente = comportement historique (garde session
+   * de bordure seule).
+   */
+  permission?: string;
 }
 
 export interface ProductPage {
@@ -33,6 +42,8 @@ export interface ProductPage {
   title: string;
   entityId?: string;
   kind: "list" | "detail" | "form" | "flow" | "dashboard";
+  /** Permission de l'entrée de nav de la page (voir ProductEntity.permission). */
+  permission?: string;
 }
 
 export interface ProductFlow {

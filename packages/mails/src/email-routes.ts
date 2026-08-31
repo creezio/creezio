@@ -26,6 +26,15 @@ import {
   resolveMailTransport,
 } from "./transport-resolve.js";
 import {
+  hasMailCredentials,
+  isHardTransportError,
+  persistMailSendStatus,
+  probeMailSend,
+  publicMailSettings,
+  resolveMailSendStatus,
+  type MailSendStatus,
+} from "./send-status.js";
+import {
   applyResendWebhookEvent,
   resolveResendWebhookSecret,
   verifySvixSignature,
@@ -197,6 +206,31 @@ export type EmailInboxRouteDeps = {
 
 const OWNER_HEADER = "x-creezio-mail-owner";
 
+function effectiveTransportPayload(
+  store: SqliteMailsStore | null,
+  resolved: ReturnType<typeof resolveMailTransport>,
+  send?: MailSendStatus,
+) {
+  const sendStatus =
+    send ??
+    resolveMailSendStatus({
+      resolved,
+      store,
+    });
+  return {
+    kind: resolved.kind,
+    source: resolved.source,
+    preset: resolved.preset,
+    from: resolved.from,
+    configured: Boolean(resolved.transport),
+    credentialsPresent: hasMailCredentials({ resolved, store }),
+    error: resolved.transport
+      ? null
+      : resolved.error ?? null,
+    send: sendStatus,
+  };
+}
+
 function headerActor(c: {
   req: { header: (name: string) => string | undefined };
 }): MailRouteActor {
@@ -347,6 +381,7 @@ export function createEmailInboxRoutes(deps: EmailInboxRouteDeps = {}): Hono {
           ? null
           : describeMailTransportError(resolved.error),
         errorCode: resolved.transport ? null : resolved.error || "transport_unconfigured",
+        send: resolveMailSendStatus({ resolved, store }),
       },
     });
   });
@@ -548,18 +583,13 @@ export function createEmailInboxRoutes(deps: EmailInboxRouteDeps = {}): Hono {
     if (!actor.owner) return c.json({ error: "Réservé au owner" }, 403);
     const gate = requireStore(c);
     if (!gate.ok) return gate.res;
-    const settings = gate.store.getAllSettings();
+    const settings = publicMailSettings(gate.store.getAllSettings());
     const resolved = resolveMailTransport({ store: gate.store });
+    const effective = effectiveTransportPayload(gate.store, resolved);
     return c.json({
       settings,
-      effective: {
-        kind: resolved.kind,
-        source: resolved.source,
-        preset: resolved.preset,
-        from: resolved.from,
-        configured: Boolean(resolved.transport),
-        error: resolved.error ?? null,
-      },
+      effective,
+      send: effective.send,
     });
   });
 
@@ -584,17 +614,16 @@ export function createEmailInboxRoutes(deps: EmailInboxRouteDeps = {}): Hono {
       );
     }
     const resolved = resolveMailTransport({ store: gate.store });
+    const send = resolveMailSendStatus({ resolved, store: gate.store });
+    if (!hasMailCredentials({ resolved, store: gate.store })) {
+      persistMailSendStatus(gate.store, send);
+    }
+    const effective = effectiveTransportPayload(gate.store, resolved, send);
     return c.json({
       ok: true,
-      settings: gate.store.getAllSettings(),
-      effective: {
-        kind: resolved.kind,
-        source: resolved.source,
-        preset: resolved.preset,
-        from: resolved.from,
-        configured: Boolean(resolved.transport),
-        error: resolved.error ?? null,
-      },
+      settings: publicMailSettings(gate.store.getAllSettings()),
+      effective,
+      send: effective.send,
     });
   });
 
@@ -604,20 +633,110 @@ export function createEmailInboxRoutes(deps: EmailInboxRouteDeps = {}): Hono {
     const gate = requireStore(c);
     if (!gate.ok) return gate.res;
     const resolved = resolveMailTransport({ store: gate.store });
+    const credentials = hasMailCredentials({
+      resolved,
+      store: gate.store,
+    });
+
     if (!resolved.transport) {
+      const send = resolveMailSendStatus({
+        resolved,
+        store: gate.store,
+        liveProbe: {
+          ok: false,
+          error: resolved.error || "transport_unconfigured",
+        },
+      });
+      persistMailSendStatus(gate.store, send);
       return c.json({
         ok: false,
+        configured: false,
+        credentialsPresent: credentials,
         error: resolved.error || "transport_unconfigured",
+        send,
         kind: resolved.kind,
         source: resolved.source,
       });
     }
+
     const verify = resolved.transport.verify
       ? await resolved.transport.verify()
       : { ok: true as const };
-    return c.json({
+
+    if (isHardTransportError(verify.error)) {
+      const send = resolveMailSendStatus({
+        resolved,
+        store: gate.store,
+        liveProbe: { ok: false, error: verify.error },
+      });
+      persistMailSendStatus(gate.store, send);
+      return c.json({
+        ok: false,
+        configured: true,
+        credentialsPresent: credentials,
+        error: verify.error,
+        send,
+        kind: resolved.kind,
+        source: resolved.source,
+        preset: resolved.preset,
+      });
+    }
+
+    let probe: { ok: boolean; error?: string } = {
       ok: verify.ok,
-      error: verify.ok ? null : verify.error || "verification échouée",
+      error: verify.error,
+    };
+    if (credentials) {
+      const sent = await probeMailSend(resolved);
+      if (!sent.ok) {
+        probe = sent;
+      } else if (verify.ok) {
+        probe = sent;
+      }
+    }
+
+    const send = resolveMailSendStatus({
+      resolved,
+      store: gate.store,
+      liveProbe: probe,
+    });
+    persistMailSendStatus(gate.store, send);
+
+    if (isHardTransportError(send.error)) {
+      return c.json({
+        ok: false,
+        configured: true,
+        credentialsPresent: credentials,
+        error: send.error,
+        send,
+        kind: resolved.kind,
+        source: resolved.source,
+        preset: resolved.preset,
+      });
+    }
+
+    // Token / secret présent : la config est OK même si le send est KO.
+    if (credentials) {
+      return c.json({
+        ok: true,
+        configured: true,
+        credentialsPresent: true,
+        sendOk: send.sendOk === true,
+        error: send.sendOk ? null : send.error,
+        send,
+        kind: resolved.kind,
+        source: resolved.source,
+        preset: resolved.preset,
+      });
+    }
+
+    return c.json({
+      ok: probe.ok,
+      configured: Boolean(resolved.transport),
+      credentialsPresent: false,
+      sendOk: probe.ok,
+      error: probe.ok ? null : probe.error || "verification échouée",
+      send,
       kind: resolved.kind,
       source: resolved.source,
       preset: resolved.preset,

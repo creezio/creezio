@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import {
+  AlertTriangle,
   CheckCircle2,
   Loader2,
   Plus,
@@ -10,6 +11,7 @@ import {
   Trash2,
   XCircle,
 } from "lucide-react";
+import type { MailSendStatus } from "./mail-types";
 import {
   Button,
   Card,
@@ -27,7 +29,9 @@ type EffectiveTransport = {
   preset: string | null;
   from: string | null;
   configured: boolean;
+  credentialsPresent?: boolean;
   error: string | null;
+  send?: MailSendStatus | null;
 };
 
 type ImapAccount = {
@@ -85,8 +89,10 @@ export function MailSettings(props: MailSettingsProps = {}) {
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<{
     ok: boolean;
+    tone?: "ok" | "warn" | "error";
     message: string;
   } | null>(null);
+  const [sendStatus, setSendStatus] = useState<MailSendStatus | null>(null);
   const [testTo, setTestTo] = useState("");
 
   const [accounts, setAccounts] = useState<ImapAccount[]>([]);
@@ -111,6 +117,7 @@ export function MailSettings(props: MailSettingsProps = {}) {
       const j = await r.json();
       setSettings(j.settings || {});
       setEffective(j.effective || null);
+      setSendStatus(j.send || j.effective?.send || null);
       const a = await fetch(`${apiBase}/accounts`);
       if (a.ok) setAccounts((await a.json()).rows || []);
     } finally {
@@ -139,6 +146,7 @@ export function MailSettings(props: MailSettingsProps = {}) {
       if (!r.ok) throw new Error(j.error || "sauvegarde échouée");
       setSettings(j.settings || {});
       setEffective(j.effective || null);
+      setSendStatus(j.send || j.effective?.send || null);
       setNotice({ ok: true, message: "Réglages enregistrés." });
     } catch (e) {
       setNotice({
@@ -156,11 +164,41 @@ export function MailSettings(props: MailSettingsProps = {}) {
     try {
       const r = await fetch(`${apiBase}/settings/verify`, { method: "POST" });
       const j = await r.json().catch(() => ({}));
-      setNotice(
-        j.ok
-          ? { ok: true, message: `Transport ${j.kind} opérationnel.` }
-          : { ok: false, message: `Vérification échouée : ${j.error}` },
-      );
+      if (j.send) setSendStatus(j.send);
+      const send = j.send as MailSendStatus | undefined;
+      if (send?.code === "nodemailer_absent" || (!j.ok && !j.credentialsPresent)) {
+        setNotice({
+          ok: false,
+          tone: "error",
+          message: send?.message || `Vérification échouée : ${j.error}`,
+        });
+      } else if (send?.state === "unavailable") {
+        setNotice({
+          ok: true,
+          tone: "warn",
+          message:
+            send.message ||
+            "Réglages OK — l'envoi réel ne fonctionne pas (domaine non onboardé / 550).",
+        });
+      } else if (j.ok && send?.state === "ok") {
+        setNotice({
+          ok: true,
+          tone: "ok",
+          message: `Transport ${j.kind || "mail"} opérationnel — envoi réel OK.`,
+        });
+      } else if (j.ok) {
+        setNotice({
+          ok: true,
+          tone: "ok",
+          message: `Réglages enregistrés (${j.kind || "mail"}).`,
+        });
+      } else {
+        setNotice({
+          ok: false,
+          tone: "error",
+          message: `Vérification échouée : ${j.error}`,
+        });
+      }
     } finally {
       setBusy(false);
     }
@@ -277,9 +315,25 @@ export function MailSettings(props: MailSettingsProps = {}) {
   const transport = settings.transport || "";
   const preset =
     transport === "cloudflare" ? "cloudflare" : settings.preset || "";
+  const banner = sendStatus || effective?.send || null;
 
   return (
     <div className="mx-auto flex max-w-3xl flex-col gap-4 p-1">
+      {banner && banner.state === "unconfigured" && (
+        <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm text-amber-950">
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+          <p>Email Sending non configuré</p>
+        </div>
+      )}
+      {banner && banner.state === "unavailable" && (
+        <div className="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-950">
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+          <p>
+            {banner.message ||
+              "Token présent, envoi réel indisponible (domaine non onboardé / 550)."}
+          </p>
+        </div>
+      )}
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Transport d'envoi</CardTitle>
@@ -425,11 +479,17 @@ export function MailSettings(props: MailSettingsProps = {}) {
             <p
               className={cn(
                 "flex items-center gap-1.5 text-xs",
-                notice.ok ? "text-emerald-700" : "text-red-700",
+                (notice.tone || (notice.ok ? "ok" : "error")) === "ok"
+                  ? "text-emerald-700"
+                  : (notice.tone || "error") === "warn"
+                    ? "text-amber-800"
+                    : "text-red-700",
               )}
             >
-              {notice.ok ? (
+              {(notice.tone || (notice.ok ? "ok" : "error")) === "ok" ? (
                 <CheckCircle2 className="h-3.5 w-3.5" />
+              ) : (notice.tone || "error") === "warn" ? (
+                <AlertTriangle className="h-3.5 w-3.5" />
               ) : (
                 <XCircle className="h-3.5 w-3.5" />
               )}

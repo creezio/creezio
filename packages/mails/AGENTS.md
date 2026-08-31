@@ -43,6 +43,7 @@ template ou transport marque hardcodé.
 - `src/inbound-resend.ts` : ingestion Receiving API (opt-in).
 - `src/imap/sync.ts` / `src/imap/accounts.ts` : sync incrémentale + CRUD.
 - `src/inbox-queries.ts` : inbox, threads, PJ, insertion inbound, migration v1→v2.
+- `src/send-status.ts` : classify/persist send (token OK vs send 550).
 - `src/email-routes.ts` : routes Hono `/email` (public/session/owner).
 - `src/api-mount.ts` : surface platform-core drafts/send.
 - `src/migrate-brand-emails.ts` : migration vers le kit.

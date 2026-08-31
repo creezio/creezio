@@ -69,12 +69,24 @@ export function ensureMcpAdminSchema(): void {
       db.exec(`ALTER TABLE mcp_oauth_clients ADD COLUMN last_used_at TEXT`);
     }
   }
+  if (
+    tableExists("mcp_tool_policies") &&
+    !hasColumn("mcp_tool_policies", "admin_override")
+  ) {
+    db.exec(
+      `ALTER TABLE mcp_tool_policies ADD COLUMN admin_override INTEGER NOT NULL DEFAULT 0`,
+    );
+  }
   db.exec(`
     CREATE TABLE IF NOT EXISTS mcp_tool_policies (
       tool_name TEXT PRIMARY KEY,
       enabled INTEGER NOT NULL DEFAULT 1,
       allowed_roles TEXT NOT NULL DEFAULT 'owner,collaborator',
       allowed_scopes TEXT NOT NULL DEFAULT '',
+      -- 1 si l'admin a explicitement fixé enabled (updateMcpToolPolicy) —
+      -- distingue une désactivation admin du seed par défaut
+      -- (mcpPublishDefault=false → enabled=0 « non publié par défaut »).
+      admin_override INTEGER NOT NULL DEFAULT 0,
       updated_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
     CREATE TABLE IF NOT EXISTS mcp_audit_logs (
@@ -184,14 +196,24 @@ export function getMcpToolPolicy(name: string): McpToolPolicy | null {
 }
 
 /**
- * Noms explicitement `enabled=0` dans `mcp_tool_policies` (lignes SQL).
- * Admin non câblé / erreur DB → ensemble vide (pas de filtre).
+ * Noms désactivés PAR L'ADMIN (`enabled=0` ET `admin_override=1`).
+ *
+ * Les lignes `enabled=0` seedées par défaut (`mcpPublishDefault=false` —
+ * ex. toute op module sans opt-in publish, cf.
+ * `generateModuleToolsFromOperations`) ne comptent PAS : elles signifient
+ * « non publié par défaut aux clients MCP externes », pas « désactivé » —
+ * les masquer vidait `listTools`/`GET /mcp` des tools métier (régression
+ * 0.17.1, vue par les gates module des marques). Admin non câblé / erreur
+ * DB → ensemble vide (pas de filtre).
  */
 export function disabledMcpToolPolicyNames(): Set<string> {
   try {
     ensureMcpAdminSchema();
     const rows = getDb()
-      .prepare(`SELECT tool_name FROM mcp_tool_policies WHERE enabled = 0`)
+      .prepare(
+        `SELECT tool_name FROM mcp_tool_policies
+         WHERE enabled = 0 AND admin_override = 1`,
+      )
       .all() as Array<{ tool_name: string }>;
     return new Set(rows.map((row) => row.tool_name));
   } catch {
@@ -231,13 +253,24 @@ export function updateMcpToolPolicy(
   const scopes = (input.allowedScopes || current.allowedScopes).filter((scope) =>
     policyScopeNames().includes(scope),
   );
+  // `admin_override` ne se pose QUE sur une action explicite sur `enabled`
+  // (une édition rôles/scopes ne requalifie pas un seed par défaut en
+  // désactivation admin) — consommé par disabledMcpToolPolicyNames().
   getWriteDb()
     .prepare(
       `UPDATE mcp_tool_policies
-       SET enabled = ?, allowed_roles = ?, allowed_scopes = ?, updated_at = datetime('now')
+       SET enabled = ?, allowed_roles = ?, allowed_scopes = ?,
+           admin_override = MAX(admin_override, ?),
+           updated_at = datetime('now')
        WHERE tool_name = ?`,
     )
-    .run(input.enabled ?? current.enabled ? 1 : 0, roles.join(","), scopes.join(","), name);
+    .run(
+      (input.enabled ?? current.enabled) ? 1 : 0,
+      roles.join(","),
+      scopes.join(","),
+      input.enabled === undefined ? 0 : 1,
+      name,
+    );
   auditMcpAdmin("tool_policy_updated", {
     toolName: name,
     detail: { enabled: input.enabled ?? current.enabled, roles, scopes },

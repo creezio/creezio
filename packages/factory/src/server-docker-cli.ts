@@ -50,11 +50,41 @@ import {
   generateOwnerPassword,
   resolveCreateOwnerPolicy,
   resolveEnsureOwnerCreds,
+  applyAccessOverridesViaContainer,
   seedKitUserViaContainer,
   verifyOwnerLogin,
   type CreateOwnerPolicy,
 } from "./server-docker-owner.js";
 import { assertUfwFleetRule } from "./server-docker-ufw.js";
+
+/**
+ * VPS (pas tunnel-local) : n8n ET Hermes sont requis (kit Creezio).
+ * `CREEZIO_NATIVE_WARM=0` / `CREEZIO_NATIVE_WARM_N8N=0` /
+ * `CREEZIO_NATIVE_WARM_HERMES=0` sont ignorés (no-op) avec un warn.
+ * Le skip reste possible uniquement en `CREEZIO_TUNNEL_LOCAL=1` (dev).
+ */
+export function applyVpsNativeWarmDefaults(
+  env: Record<string, string>,
+): Record<string, string> {
+  const out = { ...env };
+  const ignored: string[] = [];
+  if (out.CREEZIO_NATIVE_WARM === "0") ignored.push("CREEZIO_NATIVE_WARM=0");
+  if (out.CREEZIO_NATIVE_WARM_N8N === "0") {
+    ignored.push("CREEZIO_NATIVE_WARM_N8N=0");
+  }
+  if (out.CREEZIO_NATIVE_WARM_HERMES === "0") {
+    ignored.push("CREEZIO_NATIVE_WARM_HERMES=0");
+  }
+  if (ignored.length) {
+    console.warn(`ignoré, n8n/hermes requis : ${ignored.join(", ")}`);
+  }
+  out.CREEZIO_NATIVE_WARM = "1";
+  out.CREEZIO_NATIVE_WARM_HERMES = "1";
+  // Forcer =1 (pas seulement retirer =0) : l'image Docker peut avoir
+  // CREEZIO_NATIVE_WARM_N8N=0 en ENV — un compose sans la clé hériterait du skip.
+  out.CREEZIO_NATIVE_WARM_N8N = "1";
+  return out;
+}
 
 export type ServerDockerArgs = {
   sub: string;
@@ -142,6 +172,16 @@ export type ServerDockerArgs = {
   noStack?: boolean;
   /** create/migrate-stack : port hôte loopback FIXE (défaut 0 = auto). */
   hostPort?: number;
+  /** access : e-mail du compte cible. */
+  user?: string;
+  /** access : permissions à accorder (liste séparée par virgules). */
+  grant?: string;
+  /** access : permissions à refuser (liste séparée par virgules). */
+  revoke?: string;
+  /** access : effacer tous les overrides du compte avant grant/revoke. */
+  reset?: boolean;
+  /** access : rôle access-control à poser (`none` = rôle plateforme). */
+  role?: string;
   rest: string[];
 };
 
@@ -227,6 +267,15 @@ export function parseServerDockerArgs(argv: string[]): ServerDockerArgs {
     else if (a === "--bind") out.bind = rest.shift();
     else if (a.startsWith("--tail=")) out.tail = Number(a.slice(7));
     else if (a === "--tail") out.tail = Number(rest.shift());
+    else if (a.startsWith("--user=")) out.user = a.slice(7);
+    else if (a === "--user") out.user = rest.shift();
+    else if (a.startsWith("--grant=")) out.grant = a.slice(8);
+    else if (a === "--grant") out.grant = rest.shift();
+    else if (a.startsWith("--revoke=")) out.revoke = a.slice(9);
+    else if (a === "--revoke") out.revoke = rest.shift();
+    else if (a === "--reset") out.reset = true;
+    else if (a.startsWith("--role=")) out.role = a.slice(7);
+    else if (a === "--role") out.role = rest.shift();
     else if (a.startsWith("--env=")) {
       const kv = a.slice(6);
       const i = kv.indexOf("=");
@@ -256,7 +305,7 @@ Instances nommées (registre docker-data/servers.json — recommandé) :
   creezio server-docker create <nom> --brand-root <app> [--port N] [--expose] [--warm] [--browser] [--profile prod] [--env K=V]…
     --browser : image variant browser (Chromium+Xvfb, sidecar navigateur IA,
                 profils /data/browser, shm 1 Go)
-    --profile prod : serveur flotte — CREEZIO_NATIVE_WARM=1 + CREEZIO_CATALOG=1
+    --profile prod : serveur flotte — CREEZIO_NATIVE_WARM=1 + n8n + Hermes + CREEZIO_CATALOG=1
                 + fail-closed tunnel (CREEZIO_CF_API_TOKEN/_ACCOUNT_ID/_ZONE_ID
                 → cf.env 600, auto-provision au boot) + fail-closed owner
                 (CREEZIO_OWNER_EMAIL/_PASSWORD) + forward env hôte
@@ -293,6 +342,15 @@ Instances nommées (registre docker-data/servers.json — recommandé) :
      secrets.env 600 — jamais dans le registre ni les logs. Recrée
      uniquement le service app pour injecter l'env, sidecar intact.
      Fail-closed create VPS inchangé : owner toujours requis au create.)
+  creezio server-docker access <nom> --brand-root <app> --user <email>
+    [--grant nav.billing,nav.clients] [--revoke nav.fleet] [--reset]
+    [--role <id>|none]
+    (permissions PAR MODULE d'un compte — bootstrap sans UI du système
+     « Rôles & accès » (@creezio/access-control) : overrides par compte
+     écrits dans core.db (audit actor server-docker-cli), effet ≤ 30 s.
+     Sans --grant/--revoke/--reset/--role : affiche l'état du compte.
+     Owner = bypass kit, non concerné. UI équivalente : OS → Admin →
+     Rôles & accès, onglet Comptes.)
 
 Stack compose autonome (modèle standard — cloudflared in-process) :
   create génère par défaut un stack compose par instance : app seule (port
@@ -2752,6 +2810,10 @@ async function runRegistrySubcommand(
     } else {
       extraEnv.CREEZIO_TUNNEL_LOCAL = "0";
       extraEnv.CREEZIO_TUNNEL_SLUG = tunnelPolicy.slug;
+      Object.assign(extraEnv, applyVpsNativeWarmDefaults(extraEnv));
+      console.log(
+        `CREEZIO_NATIVE_WARM=${extraEnv.CREEZIO_NATIVE_WARM} CREEZIO_NATIVE_WARM_HERMES=${extraEnv.CREEZIO_NATIVE_WARM_HERMES} (n8n+Hermes requis VPS)`,
+      );
       if (tunnelPolicy.derived) {
         console.log(formatDerivedSlugLog(tunnelPolicy));
       }
@@ -2924,6 +2986,41 @@ async function runRegistrySubcommand(
       inst,
       args,
     });
+    return;
+  }
+
+  if (args.sub === "access") {
+    // Permissions par module (access-control) — bootstrap sans UI, cohérent
+    // ensure-owner : écriture directe core.db via docker exec (+ audit).
+    if (!args.user) {
+      throw new Error(
+        [
+          `access ${inst.name} : --user <email> requis.`,
+          "Ex. : creezio server-docker access main --brand-root <admin> \\",
+          "        --user compta@marque.fr --reset --grant nav.billing,nav.clients",
+        ].join("\n"),
+      );
+    }
+    const grant = (args.grant || "").split(",").map((s) => s.trim()).filter(Boolean);
+    const revoke = (args.revoke || "").split(",").map((s) => s.trim()).filter(Boolean);
+    const result = applyAccessOverridesViaContainer({
+      containerName: inst.containerName,
+      email: args.user,
+      grant,
+      revoke,
+      reset: args.reset,
+      role: args.role,
+    });
+    console.log(`✓ access ${inst.name} — ${result.email} (${result.userId})`);
+    console.log(`  rôle access-control : ${result.role || "(rôle plateforme)"}`);
+    if (result.overrides.length) {
+      for (const o of result.overrides) {
+        console.log(`  ${o.effect === "allow" ? "+" : "−"} ${o.permission} (${o.effect})`);
+      }
+    } else {
+      console.log("  aucun override par compte (permissions = défauts du rôle)");
+    }
+    console.log("  effet ≤ 30 s (cache resolvePermissions) — audit access_audit_log (actor server-docker-cli)");
     return;
   }
 
@@ -3356,6 +3453,13 @@ async function runRegistrySubcommand(
         steps?: string[];
       }>;
     };
+    if ((inst.env?.CREEZIO_TUNNEL_LOCAL || "") !== "1") {
+      inst.env = applyVpsNativeWarmDefaults(inst.env || {});
+      saveServerRegistry(paths.brandRoot, registry);
+      console.log(
+        `VPS warm : CREEZIO_NATIVE_WARM=${inst.env.CREEZIO_NATIVE_WARM} HERMES=${inst.env.CREEZIO_NATIVE_WARM_HERMES} (n8n+Hermes requis)`,
+      );
+    }
     console.log(
       `update ${name} → ${image}${args.backup ? " (--backup)" : " (sans nouveau backup)"}…`,
     );
@@ -3419,6 +3523,7 @@ export async function runServerDockerCli(argv: string[]): Promise<void> {
     "backup",
     "migrate-stack",
     "ensure-owner",
+    "access",
   ]);
   if (registrySubs.has(args.sub)) {
     await runRegistrySubcommand(args, paths, env);
@@ -3569,6 +3674,6 @@ export async function runServerDockerCli(argv: string[]): Promise<void> {
   }
 
   throw new Error(
-    `Sous-commande inconnue: ${args.sub} (create|start|stop|rm|logs|ls|update|backup|ensure-owner|admin|publish|agent|enroll|build|up|down|ps|proof)`,
+    `Sous-commande inconnue: ${args.sub} (create|start|stop|rm|logs|ls|update|backup|ensure-owner|access|admin|publish|agent|enroll|build|up|down|ps|proof)`,
   );
 }

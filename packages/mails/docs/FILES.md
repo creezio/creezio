@@ -25,6 +25,7 @@
 | [`src/index.ts`](../src/index.ts) | @creezio/mails — mails plateforme (SoT inbox + providers + UI). Pas de templates TempoFlow/Fidu. |
 | [`src/migrate-brand-emails.ts`](../src/migrate-brand-emails.ts) | Migration one-shot tables marque `emails` / `email_attachments` → kit SoT. Idempotent via message_id / brand_email_id. |
 | [`src/outbox.ts`](../src/outbox.ts) | Worker outbox durable : drain, claim atomique, retries backoff, journal. |
+| [`src/send-status.ts`](../src/send-status.ts) | Statut d'envoi réel (send) distinct des identifiants : token présent + 550 → config OK, send KO. |
 | [`src/sqlite-driver.ts`](../src/sqlite-driver.ts) | Driver SQLite minimal — @creezio/mails (I3 + inbox). import { createRequire } from "node:module"; import path from "node:path"; export type SqliteStatement = { run(...params: unknown[]): { changes?: number; lastInsertRowid?: number \| bigint }; get(...params: unknown[]): unknown; all(...params: unknown[]): unknown[]; }; export type SqliteDatabase = { exec(sql: string): unknown; |
 | [`src/sqlite-store.ts`](../src/sqlite-store.ts) | Store mails plateforme — sqlite **core** (I3 + inbox SoT complète). |
 | [`src/transport-resolve.ts`](../src/transport-resolve.ts) | Résolution du transport actif (settings > env > inférence) + bridge secrets `integration://`. |

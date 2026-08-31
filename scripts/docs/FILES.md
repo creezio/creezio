@@ -31,6 +31,7 @@
 | [`test-os-mails-config.mjs`](../test-os-mails-config.mjs) | Gate OS — configureMails + file-sink send + schéma inbox prêt. |
 | [`test-os-mcp-oauth.mjs`](../test-os-mcp-oauth.mjs) | MCP OAuth + admin — prouvable en local (sans Cloudflare). Harness si probe brand résolu hors monorepo kit. |
 | [`test-os-native-pnp.mjs`](../test-os-native-pnp.mjs) | Gate OS native plug-and-play — multi-marques : prouve qu'une app neuve (brand apply) démarre avec embeds, DB et surfaces OS sans wiring manuel. |
+| [`test-os-native-warm-flags.mjs`](../test-os-native-warm-flags.mjs) | (à documenter) |
 | [`test-os-open-external-tab.mjs`](../test-os-open-external-tab.mjs) | Gate OS — onglets externes + tool MCP `open_external_tab`. Unit-style (tab-url, preload path, contrats MCP) — pas de GUI Electron. |
 | [`test-os-owned-by-brand.mjs`](../test-os-owned-by-brand.mjs) | brand apply --force ne doit pas wipe les fichiers creezio:owned-by-brand. |
 | [`test-os-plugins.mjs`](../test-os-plugins.mjs) | Plugins control plane via compose OS — actifs par défaut, kill-switch CREEZIO_PLUGINS=0 (l'ancien opt-in =1 reste un no-op). |

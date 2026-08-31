@@ -77,6 +77,10 @@ export function createBootProgressReporter(opts: {
   appVersion?: string;
   headline?: string;
   warmNative?: boolean;
+  /** Override Hermes (défaut = warmNative). n8n et Hermes sont indépendants. */
+  warmHermes?: boolean;
+  /** Override n8n (défaut = warmNative). */
+  warmN8n?: boolean;
   needIndex?: boolean;
   needTunnel?: boolean;
   catalogLabel?: string;
@@ -101,8 +105,8 @@ export function createBootProgressReporter(opts: {
   const steps = createLocalSplashSteps({
     needIndex: opts.needIndex !== false,
     needNode: false,
-    needHermes: Boolean(opts.warmNative),
-    needN8n: Boolean(opts.warmNative),
+    needHermes: opts.warmHermes ?? Boolean(opts.warmNative),
+    needN8n: opts.warmN8n ?? Boolean(opts.warmNative),
     needTunnel: Boolean(opts.needTunnel),
     catalogLabel: opts.catalogLabel,
   });

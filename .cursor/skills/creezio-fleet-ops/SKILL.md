@@ -123,6 +123,20 @@ creezio server-docker ensure-owner <nom> --brand-root "$BRAND_ROOT"
 génère `owner@<nom>.<marque>.local` et le stocke uniquement dans
 `secrets.env`. `AUTH_DISABLED=1` = harness local — **interdit** en prod.
 
+**Permissions par module d'un compte (apps admin)** — bootstrap sans UI du
+système « Rôles & accès » (`@creezio/access-control`) :
+
+```bash
+# État du compte (rôle + overrides) :
+creezio server-docker access <nom> --brand-root "$ADMIN_ROOT" --user compta@marque.fr
+# Restreindre un comptable à billing+clients (reset efface les overrides avant) :
+creezio server-docker access <nom> --brand-root "$ADMIN_ROOT" \
+  --user compta@marque.fr --reset --grant nav.billing,nav.clients --revoke nav.fleet
+# → écrit core.db (access_user_overrides) via docker exec + audit
+#   (actor server-docker-cli) ; effet ≤ 30 s (cache). Owner = bypass kit.
+# UI équivalente : OS → Admin → Rôles & accès → Comptes.
+```
+
 Le curl ci-dessous reste le rattrapage pour une instance **déjà** créée
 (LOCAL, ou create antérieur au fail-closed owner).
 

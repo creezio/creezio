@@ -100,7 +100,9 @@ export {
   type InstallBrandOsDesktopOptions,
 } from "./install-brand-os-desktop.js";
 export {
+  resolveNativeWarmFlags,
   warmBrandNativeHosts,
+  type NativeWarmFlags,
   type WarmNativeHostsResult,
 } from "./warm-brand-native-hosts.js";
 export {

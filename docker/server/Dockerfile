@@ -143,6 +143,19 @@ RUN --mount=type=secret,id=CREEZIO_NPM_TOKEN \
      fi
 # Sources marque (filtrées par brand.dockerignore v5 : aucun artefact hôte).
 COPY . .
+# Overlay kit local optionnel (démo VPS sans bump pin) :
+#   <brand>/.creezio-kit-overlay/<pkg> → node_modules/@creezio/<pkg>
+# avant tsc / next build. Dossier gitignoré côté marque.
+RUN if [ -d .creezio-kit-overlay ]; then \
+      mkdir -p node_modules/@creezio; \
+      for d in .creezio-kit-overlay/*; do \
+        [ -d "$d" ] || continue; \
+        name="$(basename "$d")"; \
+        rm -rf "node_modules/@creezio/$name"; \
+        cp -a "$d" "node_modules/@creezio/$name"; \
+        echo "kit overlay (build): @creezio/$name"; \
+      done; \
+    fi
 # UI Next : projet npm indépendant (lockfile propre) — install + builds.
 #   build:runtime = tsc → <SERVER_DIR>/build/electron (requis par le harness :
 #   app-manifest, migrations, API métier). build:ui = materialize os-ui (lit
@@ -185,6 +198,16 @@ COPY . .
 # node_modules à la RACINE : résolution standard par walk-up depuis
 # /app/${SERVER_DIR} (packages npm réels — plus de vendor ni de symlink).
 COPY --from=deps /app/node_modules ./node_modules
+RUN if [ -d .creezio-kit-overlay ]; then \
+      mkdir -p node_modules/@creezio; \
+      for d in .creezio-kit-overlay/*; do \
+        [ -d "$d" ] || continue; \
+        name="$(basename "$d")"; \
+        rm -rf "node_modules/@creezio/$name"; \
+        cp -a "$d" "node_modules/@creezio/$name"; \
+        echo "kit overlay (runtime): @creezio/$name"; \
+      done; \
+    fi
 
 # Artefacts de build produits IN-IMAGE (stage brand-build) :
 #   build/electron  — harness : app-manifest, migrations, API métier

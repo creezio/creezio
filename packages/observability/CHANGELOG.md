@@ -1,5 +1,13 @@
 # @creezio/observability
 
+## 0.18.0
+
+### Patch Changes
+
+- @creezio/platform-core@0.18.0
+- @creezio/api-kernel@0.18.0
+- @creezio/fleet@0.18.0
+
 ## 0.17.1
 
 ### Patch Changes

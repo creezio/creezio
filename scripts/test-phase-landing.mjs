@@ -343,7 +343,13 @@ test("landing.factory — câblage repo admin (migrations, mount, pages, middlew
   );
   assert.match(src, /landingMigrations\(/);
   assert.match(src, /defaultLandingSeed\(/);
-  assert.match(src, /registerModuleApi\("landing", createLandingMount\(\)\)/);
+  // P4 permissions admin : le mount landing du repo admin est gardé par la
+  // permission module (édition seulement — GET /public reste anonyme).
+  assert.match(
+    src,
+    /createLandingMount\(\{ permission: ADMIN_MODULE_PERMISSIONS\.landing \}\)/,
+    "admin : mount landing gardé par la permission module (nav.landing)",
+  );
   assert.match(src, /ui\/app\/landing\/page\.tsx/);
   assert.match(src, /ui\/app\/lp\/page\.tsx/);
   assert.match(src, /ui\/app\/lp-media\/\[file\]\/route\.ts/);

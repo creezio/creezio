@@ -6,7 +6,7 @@
  * des comptes et journal d'audit. Consomme /api/v1/access/* (module natif
  * monté par app-runtime ; garde platform.access.manage côté serveur).
  */
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import {
   Check,
   Loader2,
@@ -76,6 +76,10 @@ type AccessUser = {
   kitRole: "owner" | "collaborator";
   role: string | null;
   permissions: string[];
+  /** Permissions issues du rôle seul (sans overrides du compte). */
+  roleBaseline: string[];
+  /** Ajustements par compte (allow/deny) — priment sur le rôle. */
+  overrides: Array<{ permission: string; effect: "allow" | "deny" }>;
 };
 
 type UsersPayload = {
@@ -103,6 +107,8 @@ const ACTION_LABELS: Record<string, string> = {
   "override.set": "Permission ajustée",
   "override.clear": "Override retiré",
   "user.role": "Rôle modifié",
+  "user.override.set": "Permission de compte ajustée",
+  "user.override.clear": "Permission de compte réinitialisée",
 };
 
 function actionLabel(action: string): string {
@@ -366,9 +372,205 @@ function GroupRows({
   );
 }
 
-/** Comptes — changement de rôle immédiat. */
-function UsersPanel({ data, onChanged }: { data: UsersPayload; onChanged: () => void }) {
+/**
+ * Éditeur des permissions d'UN compte — toggles tri-état vs le rôle :
+ * inherit (suit le rôle) / allow / deny. Sauvegarde groupée par compte.
+ */
+function UserPermissionsEditor({
+  user,
+  groups,
+  onSaved,
+}: {
+  user: AccessUser;
+  groups: MatrixGroup[];
+  onSaved: () => void;
+}) {
+  const initialDraft = useMemo(() => {
+    const map = new Map<string, Effect>();
+    for (const o of user.overrides) map.set(o.permission, o.effect);
+    return map;
+  }, [user.overrides]);
+  const [draft, setDraft] = useState<Map<string, Effect>>(initialDraft);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => setDraft(initialDraft), [initialDraft]);
+
+  const baseline = useMemo(() => new Set(user.roleBaseline), [user.roleBaseline]);
+
+  const effectiveOf = useCallback(
+    (permissionId: string): boolean => {
+      const effect = draft.get(permissionId) ?? "inherit";
+      if (effect === "allow") return true;
+      if (effect === "deny") return false;
+      return baseline.has(permissionId);
+    },
+    [draft, baseline],
+  );
+
+  const dirty =
+    [...draft.entries()].some(
+      ([key, effect]) => effect !== (initialDraft.get(key) ?? "inherit"),
+    ) || draft.size !== initialDraft.size;
+
+  function toggle(permissionId: string) {
+    const nextEffective = !effectiveOf(permissionId);
+    const fromRole = baseline.has(permissionId);
+    const effect: Effect =
+      nextEffective === fromRole ? "inherit" : nextEffective ? "allow" : "deny";
+    setDraft((prev) => {
+      const next = new Map(prev);
+      if (effect === "inherit") next.delete(permissionId);
+      else next.set(permissionId, effect);
+      return next;
+    });
+  }
+
+  function resetCell(permissionId: string) {
+    setDraft((prev) => {
+      const next = new Map(prev);
+      next.delete(permissionId);
+      return next;
+    });
+  }
+
+  async function save() {
+    setSaving(true);
+    try {
+      const changes: Array<{ permission: string; effect: Effect }> = [];
+      const keys = new Set([...draft.keys(), ...initialDraft.keys()]);
+      for (const key of keys) {
+        const next = draft.get(key) ?? "inherit";
+        const prev = initialDraft.get(key) ?? "inherit";
+        if (next === prev) continue;
+        changes.push({ permission: key, effect: next });
+      }
+      const res = await fetch(
+        `/api/v1/access/users/${encodeURIComponent(user.id)}/permissions`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ changes }),
+        },
+      );
+      const body = (await res.json().catch(() => ({}))) as { error?: string };
+      if (!res.ok) {
+        toast.error(body.error || "Échec de la sauvegarde");
+        return;
+      }
+      toast.success(
+        changes.length > 0
+          ? `Permissions de ${user.username} mises à jour`
+          : "Aucun changement",
+      );
+      onSaved();
+    } catch {
+      toast.error("Échec de la sauvegarde");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="rounded-md border border-slate-200 bg-slate-50/60 p-3">
+      <div className="mb-2 flex items-center justify-between">
+        <p className="text-[12px] text-slate-500">
+          Permissions du compte <strong>{user.username}</strong> — un point
+          orange marque un écart au rôle (réinitialisable).
+        </p>
+        <Button
+          size="sm"
+          onClick={() => void save()}
+          disabled={!dirty || saving}
+          data-creezio-aid={`access-user-perms-save-${user.username}`}
+        >
+          {saving ? (
+            <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
+          ) : (
+            <Save className="mr-2 h-3.5 w-3.5" />
+          )}
+          Enregistrer
+        </Button>
+      </div>
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        {groups.map((group) => (
+          <div key={group.id} className="rounded border border-slate-200 bg-white p-2">
+            <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+              {group.label}
+            </p>
+            <div className="space-y-1">
+              {group.permissions.map((permission) => {
+                const on = effectiveOf(permission.id);
+                const overridden = draft.has(permission.id);
+                return (
+                  <div
+                    key={permission.id}
+                    className="flex items-center justify-between gap-2"
+                  >
+                    <span className="truncate text-[12px] text-slate-700" title={permission.id}>
+                      {permission.label}
+                    </span>
+                    <span className="relative inline-flex shrink-0 items-center">
+                      <button
+                        type="button"
+                        onClick={() => toggle(permission.id)}
+                        title={
+                          on
+                            ? "Autorisé — cliquer pour refuser"
+                            : "Refusé — cliquer pour autoriser"
+                        }
+                        data-creezio-aid={`access-user-cell-${user.username}-${permission.id}`}
+                        className={cn(
+                          "inline-flex h-5 w-9 items-center rounded-full transition-colors hover:opacity-90",
+                          on ? "bg-emerald-500" : "bg-slate-200",
+                        )}
+                      >
+                        <span
+                          className={cn(
+                            "inline-flex h-4 w-4 transform items-center justify-center rounded-full bg-white shadow transition-transform",
+                            on ? "translate-x-[18px]" : "translate-x-[2px]",
+                          )}
+                        >
+                          {on ? (
+                            <Check className="h-2.5 w-2.5 text-emerald-600" />
+                          ) : (
+                            <Minus className="h-2.5 w-2.5 text-slate-400" />
+                          )}
+                        </span>
+                      </button>
+                      {overridden ? (
+                        <button
+                          type="button"
+                          onClick={() => resetCell(permission.id)}
+                          title="Revenir au rôle"
+                          className="absolute -right-4 text-amber-500 hover:text-amber-600"
+                        >
+                          <RotateCcw className="h-2.5 w-2.5" />
+                        </button>
+                      ) : null}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/** Comptes — changement de rôle immédiat + permissions par compte. */
+function UsersPanel({
+  data,
+  groups,
+  onChanged,
+}: {
+  data: UsersPayload;
+  groups: MatrixGroup[];
+  onChanged: () => void;
+}) {
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
 
   async function setRole(userId: string, role: string | null) {
     setBusyId(userId);
@@ -400,8 +602,9 @@ function UsersPanel({ data, onChanged }: { data: UsersPayload; onChanged: () => 
       <CardHeader>
         <CardTitle className="text-base">Comptes</CardTitle>
         <CardDescription>
-          Rôle de chaque compte. Les permissions suivent immédiatement
-          (sidebar et API) — sans réinitialiser de mot de passe.
+          Rôle de chaque compte + permissions par compte (cliquer sur le
+          compteur pour ajuster module par module). Les changements suivent
+          immédiatement (sidebar et API) — sans réinitialiser de mot de passe.
         </CardDescription>
       </CardHeader>
       <CardContent className="overflow-x-auto">
@@ -424,60 +627,95 @@ function UsersPanel({ data, onChanged }: { data: UsersPayload; onChanged: () => 
           </thead>
           <tbody>
             {data.users.map((user) => (
-              <tr
-                key={user.id}
-                className="border-b border-slate-100 last:border-0"
-              >
-                <td className="py-2 pr-4">
-                  <span className="flex items-center gap-2 text-[13px] text-slate-800">
-                    <UserRound className="h-3.5 w-3.5 text-slate-400" />
-                    {user.username}
-                    {!user.active ? (
-                      <Badge variant="outline" className="text-[10px]">
-                        inactif
-                      </Badge>
-                    ) : null}
-                  </span>
-                </td>
-                <td className="py-2 pr-4 text-[12px] text-slate-500">
-                  {user.kind === "ai" ? "Agent IA" : "Humain"}
-                </td>
-                <td className="py-2 pr-4">
-                  {user.kitRole === "owner" ? (
-                    <Badge variant="secondary">Propriétaire</Badge>
-                  ) : (
-                    <Select
-                      value={user.role ?? ""}
-                      onValueChange={(value) =>
-                        void setRole(user.id, value === "" ? null : value)
-                      }
-                      disabled={busyId === user.id}
-                    >
-                      <SelectTrigger className="h-8 w-[180px]">
-                        <SelectValue placeholder="—" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {data.defaultRole !== null ? (
-                          <SelectItem value="">
-                            Par défaut ({data.defaultRole})
-                          </SelectItem>
+              <Fragment key={user.id}>
+                <tr className="border-b border-slate-100 last:border-0">
+                  <td className="py-2 pr-4">
+                    <span className="flex items-center gap-2 text-[13px] text-slate-800">
+                      <UserRound className="h-3.5 w-3.5 text-slate-400" />
+                      {user.username}
+                      {!user.active ? (
+                        <Badge variant="outline" className="text-[10px]">
+                          inactif
+                        </Badge>
+                      ) : null}
+                    </span>
+                  </td>
+                  <td className="py-2 pr-4 text-[12px] text-slate-500">
+                    {user.kind === "ai" ? "Agent IA" : "Humain"}
+                  </td>
+                  <td className="py-2 pr-4">
+                    {user.kitRole === "owner" ? (
+                      <Badge variant="secondary">Propriétaire</Badge>
+                    ) : (
+                      <Select
+                        value={user.role ?? ""}
+                        onValueChange={(value) =>
+                          void setRole(user.id, value === "" ? null : value)
+                        }
+                        disabled={busyId === user.id}
+                      >
+                        <SelectTrigger className="h-8 w-[180px]">
+                          <SelectValue placeholder="—" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {data.defaultRole !== null ? (
+                            <SelectItem value="">
+                              Par défaut ({data.defaultRole})
+                            </SelectItem>
+                          ) : null}
+                          {data.roles.map((role) => (
+                            <SelectItem key={role.id} value={role.id}>
+                              {role.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
+                  </td>
+                  <td className="py-2 text-[12px] text-slate-500">
+                    {user.kitRole === "owner" ? (
+                      <span title={user.permissions.join("\n")}>
+                        toutes (propriétaire)
+                      </span>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setExpandedId((cur) =>
+                            cur === user.id ? null : user.id,
+                          )
+                        }
+                        data-creezio-aid={`access-user-perms-${user.username}`}
+                        className="inline-flex items-center gap-1 rounded border border-slate-200 px-2 py-1 text-[12px] text-slate-600 hover:bg-slate-50"
+                        title={user.permissions.join("\n")}
+                      >
+                        {user.permissions.length} permission
+                        {user.permissions.length > 1 ? "s" : ""}
+                        {user.overrides.length > 0 ? (
+                          <span className="text-amber-500">
+                            ({user.overrides.length} écart
+                            {user.overrides.length > 1 ? "s" : ""})
+                          </span>
                         ) : null}
-                        {data.roles.map((role) => (
-                          <SelectItem key={role.id} value={role.id}>
-                            {role.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  )}
-                </td>
-                <td className="py-2 text-[12px] text-slate-500">
-                  <span title={user.permissions.join("\n")}>
-                    {user.permissions.length} permission
-                    {user.permissions.length > 1 ? "s" : ""}
-                  </span>
-                </td>
-              </tr>
+                        <span className="text-slate-400">
+                          {expandedId === user.id ? "▲" : "▼"}
+                        </span>
+                      </button>
+                    )}
+                  </td>
+                </tr>
+                {expandedId === user.id && user.kitRole !== "owner" ? (
+                  <tr className="border-b border-slate-100 last:border-0">
+                    <td colSpan={4} className="py-2">
+                      <UserPermissionsEditor
+                        user={user}
+                        groups={groups}
+                        onSaved={onChanged}
+                      />
+                    </td>
+                  </tr>
+                ) : null}
+              </Fragment>
             ))}
           </tbody>
         </table>
@@ -540,9 +778,13 @@ function AuditPanel({ entries }: { entries: AuditEntry[] }) {
                   <td className="py-1.5 font-mono text-[11px] text-slate-500">
                     {entry.action === "user.role"
                       ? `${String(entry.detail?.username ?? entry.targetUserId ?? "")} : ${String(entry.detail?.from ?? "—")} → ${entry.role ?? "—"}`
-                      : `${entry.role ?? ""} · ${entry.permission ?? ""}${
-                          entry.effect ? ` → ${entry.effect}` : ""
-                        }`}
+                      : entry.action.startsWith("user.override")
+                        ? `${String(entry.detail?.username ?? entry.targetUserId ?? "")} · ${entry.permission ?? ""}${
+                            entry.effect ? ` → ${entry.effect}` : " → rôle"
+                          }`
+                        : `${entry.role ?? ""} · ${entry.permission ?? ""}${
+                            entry.effect ? ` → ${entry.effect}` : ""
+                          }`}
                   </td>
                 </tr>
               ))}
@@ -645,7 +887,11 @@ export function AccessAdminClient() {
         </TabsContent>
         <TabsContent value="users" className="pt-4">
           {users ? (
-            <UsersPanel data={users} onChanged={() => void load()} />
+            <UsersPanel
+              data={users}
+              groups={matrix?.groups ?? []}
+              onChanged={() => void load()}
+            />
           ) : null}
         </TabsContent>
         <TabsContent value="audit" className="pt-4">

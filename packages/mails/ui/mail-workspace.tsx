@@ -202,15 +202,28 @@ export function MailWorkspace(props: MailWorkspaceProps = {}) {
           ? "Les envois en cours ou en échec restent ici jusqu'à succès."
           : undefined;
 
-  const transportOk = meta?.transport?.configured !== false;
-  const transportHint =
-    meta?.transport?.error ||
-    "Aucun transport d'envoi configuré. Configurez SMTP, Resend ou Cloudflare pour que les messages quittent la file d'attente.";
+  const send = meta?.transport?.send;
+  const sendBroken = send?.state === "unavailable";
+  const transportOk =
+    !sendBroken &&
+    send?.state !== "unconfigured" &&
+    meta?.transport?.configured !== false;
+  const transportHint = sendBroken
+    ? send?.message ||
+      "Token présent, envoi réel indisponible (domaine non onboardé / 550)."
+    : meta?.transport?.error ||
+      "Email Sending non configuré. Configurez SMTP, Resend ou Cloudflare pour que les messages quittent la file d'attente.";
 
   return (
     <div className="flex h-[calc(100vh-8.5rem)] min-h-[420px] flex-col overflow-hidden rounded-2xl border border-[#e6e0d4] bg-white/80 shadow-sm">
       {meta && !transportOk && (
-        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-amber-200 bg-amber-50 px-4 py-2.5 text-sm text-amber-950">
+        <div
+          className={
+            sendBroken
+              ? "flex flex-wrap items-center justify-between gap-2 border-b border-red-200 bg-red-50 px-4 py-2.5 text-sm text-red-950"
+              : "flex flex-wrap items-center justify-between gap-2 border-b border-amber-200 bg-amber-50 px-4 py-2.5 text-sm text-amber-950"
+          }
+        >
           <p className="min-w-0 flex-1">{transportHint}</p>
           <a
             href="/parametres/email"

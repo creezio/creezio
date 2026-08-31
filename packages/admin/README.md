@@ -41,6 +41,38 @@ dans les pages Next de l'app admin (labels/naming côté marque).
 Env backend flotte : `CREEZIO_FLEET_BACKEND_URL` (défaut
 `http://127.0.0.1:18800`), `CREEZIO_FLEET_BACKEND_BASIC` (`user:pass`).
 
+## Permissions par module (P4)
+
+Chaque mount déclare sa permission (`ADMIN_MODULE_PERMISSIONS` : `nav.fleet`,
+`nav.support`, `nav.prospects`, `nav.roadmap`, `nav.clients`, `nav.billing`,
+`nav.landing`) — gardée fail-closed par `authorizeModuleAccess`
+(app-runtime) : un compte sans la permission reçoit **403**, l'owner passe
+toujours. Les routes machine (webhook Stripe signé, `register`/`heartbeat`
+serveurs, `next`/`slots`/`report`/`maintenance` agents) gardent leur propre
+auth, sans permission session.
+
+L'attribution par compte passe par `@creezio/access-control` :
+
+```ts
+// server/src/electron/brand-platform-bindings.ts (généré par la factory)
+import { configureAccessControl } from "@creezio/access-control";
+import { adminAccessControlPreset } from "@creezio/admin";
+
+export function applyBrandPlatformBindings(): void {
+  configureAccessControl(adminAccessControlPreset());
+}
+```
+
+Politique de migration **sans lockout** : le rôle `collaborator` reçoit tous
+les modules par défaut — l'owner restreint ensuite compte par compte
+(OS → Admin → Rôles & accès → Comptes) ou pour tout le rôle (matrice).
+Bootstrap sans UI : `creezio server-docker access <nom> --brand-root <admin>
+--user <email> --reset --grant nav.billing,nav.clients`.
+
+Côté pages, `AdminModuleGate` (export `@creezio/admin/ui`) affiche un état
+explicite « Accès refusé » en accès URL direct sans la permission (la
+sidebar kit filtre déjà les entrées de nav sur `me.permissions`).
+
 ## Registre central de flotte (`fleet-registry`, F2/F3)
 
 La table `admin_fleet_servers` est une **vue matérialisée** : les JSON

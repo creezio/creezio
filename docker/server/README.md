@@ -103,7 +103,7 @@ le layout plat legacy reste détecté automatiquement. L'admin flotte vit dans
 le repo dédié `<brand>-admin`, voir `--admin-root`).
 
 Options `create` : `--port N`, `--expose` (bind 0.0.0.0 — sinon loopback),
-`--warm` (n8n/Hermes dans le container), `--env K=V` (répétable),
+`--warm` (n8n+Hermes ; VPS create pose déjà Hermes), `--env K=V` (répétable),
 `--profile prod` (voir ci-dessous).
 
 ## Profil « serveur de flotte prod » (`--profile prod`)
@@ -111,7 +111,7 @@ Options `create` : `--port N`, `--expose` (bind 0.0.0.0 — sinon loopback),
 `creezio server-docker create <nom> --profile prod` active en une commande la
 parité TF2 desktop complète, sans polluer les défauts test/CI :
 
-- `CREEZIO_NATIVE_WARM=1` (n8n + Hermes dans le container)
+- `CREEZIO_NATIVE_WARM=1` + `CREEZIO_NATIVE_WARM_HERMES=1` (n8n **et** Hermes dans le container ; un `CREEZIO_NATIVE_WARM_N8N=0` est ignoré)
 - `CREEZIO_CATALOG=1` (téléchargement + **import** du catalogue après le listen)
 - **fail-closed tunnel** : `CREEZIO_CF_API_TOKEN` + `_ACCOUNT_ID` + `_ZONE_ID`
   **requis** (hostname public `{slug}.crm.foove.io` / `{slug}.{zone}`,
@@ -295,7 +295,9 @@ Pas de lettres (`server-a` / `server-b` interdit).
 | `METIER_PORT` / `PORT` | `18791` | Port dans le container |
 | `METIER_DATA_DIR` | `/data` | Volume SQLite (`core`/`brand`) |
 | `CREEZIO_HTTP_HOST` | `0.0.0.0` | Bind Docker (obligatoire) |
-| `CREEZIO_NATIVE_WARM` | `0` | Skip n8n/Hermes au boot |
+| `CREEZIO_NATIVE_WARM` | `0` (compose local / `TUNNEL_LOCAL=1`) ; **forcé `1`** sur VPS create/update | Master n8n+Hermes. `=0` ignoré en VPS |
+| `CREEZIO_NATIVE_WARM_N8N` | suit WARM | `0` = skip n8n en local seulement — **ignoré** sur VPS create/update |
+| `CREEZIO_NATIVE_WARM_HERMES` | `1` sur VPS | `0` = skip Hermes en local seulement — **forcé `1`** sur VPS |
 | `CREEZIO_CATALOG` | `0` | Catalogue : présence + import post-listen |
 | `CREEZIO_PLUGINS` | `1` (défaut ON — `0` = kill-switch) | Plugins host + control API |
 | `CREEZIO_CF_API_TOKEN` / `_ACCOUNT_ID` / `_ZONE_ID` (/`_ZONE_NAME` / `_UNIVERSAL_SSL`) + `CREEZIO_TUNNEL_SLUG` / `CREEZIO_DOMAIN` | — | Tunnel Cloudflare auto-provisionné au boot (via `cf.env` 600) |

@@ -145,9 +145,18 @@ affaibli pour la masquer. (Backlogs d'époque : `docs/archive/BACKLOG-*.md`.)
   (`importInstanceStack`, imports server-lib) directement sur
   `packages/fleet/dist`, et passer `FLEET_PROTOCOL_ACCEPT_MISSING=false`
   au prochain bump de protocole (politique F4.4d).
-- **Rôles/permissions mode admin** : rôles dédiés (community manager,
-  comptable…) sur le système de comptes kit — aujourd'hui multi-comptes
-  standard sans permissions par module.
+- **Rôles/permissions mode admin — LIVRÉ (0.18.0, P4)** : permissions PAR
+  MODULE sur les comptes des apps admin via `@creezio/access-control`
+  (overrides par compte `access_user_overrides`, UI « Rôles & accès »
+  onglet Comptes) + mounts `@creezio/admin` gardés (`nav.fleet`,
+  `nav.support`, `nav.billing`…), preset `adminAccessControlPreset`
+  (migration sans lockout : collaborateur = tous les modules par défaut,
+  l'owner restreint ensuite), geste CLI `server-docker access`, pages
+  générées avec `AdminModuleGate`. Reste ouvert : rôles nommés prêts à
+  l'emploi (« comptable », « community manager ») = simples presets de
+  rôles supplémentaires à ajouter dans `adminAccessControlPreset` si le
+  besoin réel apparaît (aujourd'hui rôle unique collaborator + overrides
+  par compte suffisent).
 
 ## Contrat de module (P2.c — suites)
 

@@ -47,7 +47,7 @@ await startBrandDesktop({
 - **Fleet** : sans `CREEZIO_FLEET_ENDPOINT`, l'endpoint par défaut est la
   sentinelle `…/ingest-disabled` — l'agent fleet ne fait alors **aucun**
   appel réseau.
-- **Env utiles** : `CREEZIO_HTTP_HOST=0.0.0.0` (Docker), `CREEZIO_NATIVE_WARM=0`,
+- **Env utiles** : `CREEZIO_HTTP_HOST=0.0.0.0` (Docker), `CREEZIO_NATIVE_WARM` / `_N8N` / `_HERMES` (n8n et Hermes découplés en local ; VPS create/update force les deux ON),
   `CREEZIO_DESKTOP_SHELL=window`, `CREEZIO_BROWSER_PROXY`.
 
 ## Hermes « cerveau unique » — endpoint `/mcp` (câblé prod)

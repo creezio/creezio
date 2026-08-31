@@ -11,6 +11,12 @@
 import type { MailTransport } from "./transport.js";
 import type { SqliteMailsStore } from "./sqlite-store.js";
 import { resolveMailTransport } from "./transport-resolve.js";
+import {
+  isHardTransportError,
+  isSendUnavailableError,
+  persistMailSendStatus,
+  resolveMailSendStatus,
+} from "./send-status.js";
 
 export const MAIL_OUTBOX_DEFAULT_INTERVAL_MS = 15_000;
 export const MAIL_OUTBOX_MAX_ATTEMPTS = 8;
@@ -88,6 +94,14 @@ export function startMailOutboxWorker(
           store.recordEvent(mail.id, "failed", {
             detail: "transport_unconfigured",
           });
+          persistMailSendStatus(
+            store,
+            resolveMailSendStatus({
+              resolved: resolveMailTransport({ store }),
+              store,
+              liveProbe: { ok: false, error: "transport_unconfigured" },
+            }),
+          );
           log(`outbox: ${mail.id} → failed_permanent (transport_unconfigured)`);
           continue;
         }
@@ -118,6 +132,14 @@ export function startMailOutboxWorker(
               : null,
             provider: transport.id,
           });
+          persistMailSendStatus(
+            store,
+            resolveMailSendStatus({
+              resolved: resolveMailTransport({ store }),
+              store,
+              liveProbe: { ok: true },
+            }),
+          );
           log(`outbox: ${mail.id} → sent (${transport.id})`);
           continue;
         }
@@ -139,6 +161,20 @@ export function startMailOutboxWorker(
             detail: `${result.error} — abandon après ${attempts} tentative(s)`,
             provider: transport.id,
           });
+          if (
+            isHardTransportError(result.error) ||
+            isSendUnavailableError(result.error) ||
+            !result.retryable
+          ) {
+            persistMailSendStatus(
+              store,
+              resolveMailSendStatus({
+                resolved: resolveMailTransport({ store }),
+                store,
+                liveProbe: { ok: false, error: result.error },
+              }),
+            );
+          }
           log(`outbox: ${mail.id} → failed_permanent (${result.error})`);
         }
       }
