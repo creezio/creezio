@@ -531,24 +531,6 @@
       "ticket": "F1.7 — brand-desktop-runtime : compat desktop héritée TF"
     },
     {
-      "file": "packages/electron-shell/src/desktop/legacy-brand-compat.ts",
-      "pattern": "tempoflow",
-      "count": 4,
-      "ticket": "P2.a — déplacement pur F1.7 : compat desktop héritée GELÉE (gate test-phase-legacy-desktop-frozen, empreinte scripts/legacy-desktop-frozen.json) ; retrait prévu au bump H9 avec codemod clients legacy"
-    },
-    {
-      "file": "packages/electron-shell/src/desktop/legacy-brand-compat.ts",
-      "pattern": "tf2",
-      "count": 3,
-      "ticket": "P2.a — déplacement pur F1.7 : compat desktop héritée GELÉE (gate test-phase-legacy-desktop-frozen, empreinte scripts/legacy-desktop-frozen.json) ; retrait prévu au bump H9 avec codemod clients legacy"
-    },
-    {
-      "file": "packages/electron-shell/src/desktop/legacy-brand-compat.ts",
-      "pattern": "tf2fid",
-      "count": 1,
-      "ticket": "P2.a — déplacement pur F1.7 : compat desktop héritée GELÉE (gate test-phase-legacy-desktop-frozen, empreinte scripts/legacy-desktop-frozen.json) ; retrait prévu au bump H9 avec codemod clients legacy"
-    },
-    {
       "file": "packages/electron-shell/src/desktop/oauth-loopback.ts",
       "pattern": "tempoflow",
       "count": 1,
