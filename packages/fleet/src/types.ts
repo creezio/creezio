@@ -91,6 +91,17 @@ export interface UpdateEntry {
   result?: UpdateResult | { ok: false; error: string; rolledBack?: boolean };
   /** "pull" quand l'update vient de la boucle fleet-releases. */
   source?: string;
+  /**
+   * Champ ADDITIF (protocole v1 intact) : dernière étape connue de
+   * updateServer, persistée au fil de l'eau (update-status-store).
+   */
+  lastStep?: string;
+  /**
+   * Champ ADDITIF : true si le process (agent/admin) a redémarré pendant cet
+   * update — le statut terminal a été résolu au reload (registre) ou, à
+   * défaut, marqué "error" avec issue réelle inconnue.
+   */
+  agentRestarted?: boolean;
 }
 
 /** Hôte enrôlé (fleet-hosts.json runtime — agentToken en clair, 0600). */
