@@ -323,6 +323,24 @@ curl -sS -u "admin:$ADMPASS" \
 # Hôte distant enrôlé : mêmes chemins sous /admin/api/hosts/<hostId>/servers/…
 ```
 
+**GHCR (registre distant — E2E prouvé 2026-08-31, prod TF3)** : mêmes gestes
+avec `--registry ghcr.io/creezio`. Credentials canoniques (SoT, hors de tout
+repo git, **ne jamais committer ni logger la valeur**) :
+`/opt/docker/creezio-secrets/ghcr.env` (root, chmod 600) — contient
+`CREEZIO_REGISTRY=ghcr.io/creezio`, `CREEZIO_GHCR_USER`, `GHCR_TOKEN`
+(PAT compte `creezio`, scope `write:packages`), `CREEZIO_REGISTRY_AUTH`
+(base64 de `{"username","password","serveraddress"}` — consommé par
+`registryAuthB64()` pour les pulls update/agent, header `X-Registry-Auth`)
+et `CREEZIO_NPM_TOKEN` (requis par le `npm ci` des `@creezio/*` privés
+pendant le build Docker). Le publish se loggue seul via `.github-token`
+(gitignoré — miroir du même PAT à la racine du kit ET de la marque).
+Chargement : `set -a; . /opt/docker/creezio-secrets/ghcr.env; set +a`.
+Preuve E2E : publish `creezio-server-tempoflow3:auto.202608310248.674051e`
+(1,04 Go compressés, build+push 318 s depuis le VPS) → pull GHCR → update
+`resto-lyon`/`resto-marseille` `--backup` → `verify-prod` 7/7. La rétention
+post-publish (§10) vise le registre local — utiliser `--no-retention` avec
+GHCR (rétention distante à la main / à outiller).
+
 Update = pull → recreate même volume/env → health → **rollback auto image**
 si KO. **Pas de nouveau tar.gz par défaut.** Les archives déjà présentes
 dans `{BRAND_ROOT}/docker-data/backups/` sont **conservées** (pas de prune

@@ -56,11 +56,16 @@ affaibli pour la masquer. (Backlogs d'époque : `docs/archive/BACKLOG-*.md`.)
 
 ## Flotte multi-VPS
 
-- **GHCR non branché** : le flux versionné (`server-docker publish` → pull →
-  update) est prouvé sur un registry local `registry:2` (`127.0.0.1:5000`,
-  image ~3,7 Go impraticable en push GHCR depuis ce VPS). Bascule GHCR =
-  `CREEZIO_REGISTRY=ghcr.io/creezio` + `CREEZIO_REGISTRY_AUTH` (token PAT) —
-  le code est agnostique, seul l'E2E GHCR manque.
+- ~~GHCR non branché~~ **FAIT (E2E prouvé 2026-08-31, prod TF3)** :
+  `server-docker publish --registry ghcr.io/creezio` → push
+  `creezio-server-tempoflow3:auto.202608310248.674051e` (1,04 Go compressés,
+  build+push 318 s depuis le VPS — l'hypothèse « ~3,7 Go impraticable »
+  était périmée) → pull GHCR → `update resto-lyon|resto-marseille --backup`
+  → `verify-prod` 7/7 sur les deux instances. Credentials canoniques :
+  `/opt/docker/creezio-secrets/ghcr.env` (root/600, hors git) + miroirs
+  `.github-token` gitignorés kit/marque — voir skill fleet-ops §4. Reste
+  ouvert : rétention post-publish côté GHCR (publish lancé en
+  `--no-retention` ; la rétention actuelle vise le registre local).
 - **Ingress agent porté par le tunnel d'un serveur** : `agent.{slug}` passe
   par le cloudflared du container serveur `{slug}` — pendant l'update de CE
   serveur, l'agent est injoignable de l'extérieur (le poll `update-status`

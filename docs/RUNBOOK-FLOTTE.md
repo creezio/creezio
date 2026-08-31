@@ -34,7 +34,10 @@ Les zones Cloudflare et hostnames publics sont **ceux de la marque**
    tout reset E2E se persiste dans `secrets.env`, jamais seulement dans un
    journal
 4. **Publier une image, updater, rollback** — `server-docker publish --tag`,
-   registre `127.0.0.1:5000`, update admin async (202 + `update-status`),
+   registre `127.0.0.1:5000` ou GHCR `ghcr.io/creezio` (E2E prouvé
+   2026-08-31 ; credentials root/600 dans
+   `/opt/docker/creezio-secrets/ghcr.env`, hors git — jamais la valeur en
+   clair ailleurs), update admin async (202 + `update-status`),
    backup + rollback auto
 4b. **Déployer sur toute la flotte (releases pull)** — `publish --release`
    (draft), registre pull-only `registry.{zone}`, cycle
