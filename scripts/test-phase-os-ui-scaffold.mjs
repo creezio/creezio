@@ -77,24 +77,47 @@ test("os-ui generator : RequireSession kit enveloppe WorkspaceRoot (source, sans
 });
 
 test("os-ui generator : factory installe granola, grokbot et nav", () => {
+  const sot = fs.readFileSync(
+    path.join(ROOT, "packages/factory/src/kit-release.ts"),
+    "utf8",
+  );
   const scaffold = fs.readFileSync(
     path.join(ROOT, "packages/factory/src/scaffold.ts"),
+    "utf8",
+  );
+  const fromPrd = fs.readFileSync(
+    path.join(ROOT, "packages/factory/src/scaffold-from-prd.ts"),
     "utf8",
   );
   const gen = fs.readFileSync(
     path.join(ROOT, "packages/factory/src/generators/os-ui.ts"),
     "utf8",
   );
+  assert.match(
+    scaffold,
+    /creezioNpmDeps\(SERVER_CREEZIO_DEPS\)/,
+    "scaffold.ts consomme SERVER_CREEZIO_DEPS (pas de liste parallèle)",
+  );
+  assert.match(
+    fromPrd,
+    /creezioNpmDeps\(SERVER_CREEZIO_DEPS\)/,
+    "scaffold-from-prd.ts consomme SERVER_CREEZIO_DEPS (pas de liste parallèle)",
+  );
+  assert.doesNotMatch(
+    fromPrd,
+    /creezioNpmDeps\(\[/,
+    "from-prd : interdit une liste inline (dérive de la SoT → granola manquant)",
+  );
   for (const name of ["granola", "grokbot", "nav"]) {
     assert.match(
-      scaffold,
+      sot,
       new RegExp(`SERVER_CREEZIO_DEPS[\\s\\S]*"${name}"`),
-      `SERVER_CREEZIO_DEPS contient ${name}`,
+      `SERVER_CREEZIO_DEPS (kit-release.ts) contient ${name}`,
     );
     assert.match(
-      scaffold,
+      sot,
       new RegExp(`CLIENT_CREEZIO_DEPS[\\s\\S]*"${name}"`),
-      `CLIENT_CREEZIO_DEPS contient ${name}`,
+      `CLIENT_CREEZIO_DEPS (kit-release.ts) contient ${name}`,
     );
     assert.match(
       gen,

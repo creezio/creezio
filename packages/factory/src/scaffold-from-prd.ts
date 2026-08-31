@@ -3,7 +3,11 @@
  * Chemin natif OS : SQLite + api-kernel (pas de sidecar JSON métier).
  */
 import fs from "node:fs";
-import { creezioNpmDeps, renderCreezioNpmrc } from "./kit-release.js";
+import {
+  SERVER_CREEZIO_DEPS,
+  creezioNpmDeps,
+  renderCreezioNpmrc,
+} from "./kit-release.js";
 import path from "node:path";
 import type { AppManifest } from "@creezio/brand-config";
 import { renderModuleSpecFiles } from "@creezio/brand-spec";
@@ -121,37 +125,8 @@ function renderPackageJsonFromPrd(m: AppManifest, model: ProductModel): string {
         scripts,
         dependencies: {
           // Deps npm publiées (GitHub Packages, lockstep ^<version>) —
-          // aligné SERVER_CREEZIO_DEPS (scaffold.ts). Plus de file:vendor.
-          ...creezioNpmDeps([
-            "api-kernel",
-            "app-runtime",
-            "assistant",
-            "auth",
-            "brand-config",
-            "brand-spec",
-            "browser-host",
-            "cockpit",
-            "database",
-            "desktop-tooling",
-            "granola",
-            "grokbot",
-            "host-runtime",
-            "integrations",
-            "interactive-demo",
-            "mails",
-            "mcp-facade",
-            "nav",
-            "observability",
-            "onboarding",
-            "os-ui",
-            "platform-core",
-            "product-hub",
-            "search",
-            "shell",
-            "shell-ui",
-            "support",
-            "tasks",
-          ]),
+          // SoT unique : SERVER_CREEZIO_DEPS (kit-release.ts). Plus de file:vendor.
+          ...creezioNpmDeps(SERVER_CREEZIO_DEPS),
           "electron-updater": "^6.3.9",
           // Deps npm runtime main (asar FileSets kit) — pas seulement transitifs
           "hono": "^4.12.30",
