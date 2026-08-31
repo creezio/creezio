@@ -1,6 +1,6 @@
 {
   "name": "@creezio/granola",
-  "version": "0.21.0",
+  "version": "0.22.0",
   "description": "Module natif Granola — réception webhook signée (Standard Webhooks), sync notes/transcripts et proxy API Granola",
   "type": "module",
   "main": "./dist-cjs/index.js",
@@ -28,8 +28,8 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@creezio/api-kernel": "^0.21.0",
-    "@creezio/platform-core": "^0.21.0"
+    "@creezio/api-kernel": "^0.22.0",
+    "@creezio/platform-core": "^0.22.0"
   },
   "devDependencies": {
     "@types/node": "^22.15.3",

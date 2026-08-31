@@ -1,5 +1,17 @@
 # @creezio/console
 
+## 0.1.18
+
+### Patch Changes
+
+- Updated dependencies [e11ba99]
+  - @creezio/desktop-tooling@0.22.0
+  - @creezio/brand-config@0.22.0
+  - @creezio/product-hub@0.22.0
+  - @creezio/observability@0.22.0
+  - @creezio/automations@0.22.0
+  - @creezio/propagation@0.4.5
+
 ## 0.1.17
 
 ### Patch Changes
