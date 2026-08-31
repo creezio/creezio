@@ -89,6 +89,20 @@ export {
   resolveMailSecret,
   resolveMailTransport,
 } from "./transport-resolve.js";
+export type { MailSendState, MailSendStatus } from "./send-status.js";
+export {
+  MAIL_SEND_STATUS_SETTING_KEYS,
+  classifyMailSendError,
+  describeMailSendStatus,
+  hasMailCredentials,
+  isHardTransportError,
+  isSendUnavailableError,
+  persistMailSendStatus,
+  probeMailSend,
+  publicMailSettings,
+  resolveMailSendStatus,
+  summarizeMailSendError,
+} from "./send-status.js";
 
 export type {
   MailOutboxWorker,

@@ -130,7 +130,8 @@ app-runtime **côté kernel uniquement** (`CREEZIO_MAIL_OUTBOX=0` pour couper).
   `GET /threads/:threadId`, `PATCH /:id` (lu / dossier), `DELETE /:id`,
   `POST /send`, `POST /drafts`, `PUT /drafts/:id`, `POST /drafts/:id/send`,
   `POST /attachments`.
-- Owner : `GET|PUT /settings`, `POST /settings/verify`,
+- Owner : `GET|PUT /settings`, `POST /settings/verify`
+  (`ok: true` si identifiants présents même si le send est KO — voir `send.state`).
   `GET|POST /accounts`, `PATCH|DELETE /accounts/:id`,
   `POST /accounts/:id/verify`, `POST /accounts/:id/sync`.
 

@@ -486,3 +486,137 @@ test("transports.http-send — 503 sans transport, 202 avec file-sink", async ()
       fs.rmSync(tmp, { recursive: true, force: true });
     }
   }));
+
+/* ── 6. Send status : token OK / send KO (550) vs non configuré ───────── */
+
+test("transports.send-status — classification 550 vs nodemailer_absent", () => {
+  const cf550 =
+    "Can't send mail - all recipients were rejected: 550 Email sending is not configured for domain `demo.mail.crm.foove.io`";
+  const c550 = mails.classifyMailSendError(cf550);
+  assert.equal(c550.kind, "unavailable");
+  assert.equal(c550.code, "send_unavailable");
+  assert.equal(mails.isSendUnavailableError(cf550), true);
+  assert.equal(mails.isHardTransportError(cf550), false);
+  assert.match(mails.summarizeMailSendError(cf550), /domaine non onboardé/);
+
+  const hard = mails.classifyMailSendError(
+    "nodemailer_absent — npm i nodemailer côté app ou utiliser file-sink",
+  );
+  assert.equal(hard.kind, "hard");
+  assert.equal(hard.code, "nodemailer_absent");
+  assert.equal(mails.isHardTransportError(hard.code), true);
+
+  const none = mails.classifyMailSendError("transport_unconfigured");
+  assert.equal(none.kind, "unconfigured");
+});
+
+test("transports.send-status — verify bypass 550, save OK, meta expose send", async () =>
+  withCleanMailEnv(async () => {
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "creezio-gate-send-status-"));
+    const store = mails.createSqliteMailsStore({
+      coreDbPath: path.join(tmp, "core.db"),
+    });
+    const { server, port } = await startEphemeralSmtp550();
+    try {
+      const owner = { "x-creezio-mail-owner": "1" };
+      const routes = mails.createEmailInboxRoutes({ getStore: () => store });
+
+      const empty = await routes.request("/settings", { headers: owner });
+      assert.equal(empty.status, 200);
+      const emptyBody = await empty.json();
+      assert.equal(emptyBody.send.state, "unconfigured");
+      assert.match(emptyBody.send.message, /Email Sending non configuré/);
+
+      const saved = await routes.request("/settings", {
+        method: "PUT",
+        headers: { ...owner, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          transport: "smtp",
+          from: "noreply@brand.test",
+          smtp_host: "127.0.0.1",
+          smtp_port: String(port),
+          smtp_secure: "0",
+          smtp_user: "api_token",
+          secret_ref: "cfat_test_token_not_a_real_secret",
+        }),
+      });
+      assert.equal(saved.status, 200);
+      const savedBody = await saved.json();
+      assert.equal(savedBody.ok, true);
+      assert.equal(savedBody.effective.credentialsPresent, true);
+      assert.ok(!savedBody.settings.send_status, "clés internes absentes du form");
+
+      const verified = await routes.request("/settings/verify", {
+        method: "POST",
+        headers: owner,
+      });
+      assert.equal(verified.status, 200);
+      const v = await verified.json();
+      assert.equal(v.ok, true, `verify doit bypasser le 550: ${v.error}`);
+      assert.equal(v.credentialsPresent, true);
+      assert.equal(v.sendOk, false);
+      assert.equal(v.send.state, "unavailable");
+      assert.match(v.send.message, /envoi réel indisponible/);
+
+      const meta = await routes.request("/meta");
+      assert.equal(meta.status, 200);
+      const metaBody = await meta.json();
+      assert.equal(metaBody.transport.send.state, "unavailable");
+      assert.match(metaBody.transport.send.message, /envoi réel indisponible/);
+
+      const reget = await routes.request("/settings", { headers: owner });
+      const regetBody = await reget.json();
+      assert.equal(regetBody.send.state, "unavailable");
+    } finally {
+      server.close();
+      store.close();
+      fs.rmSync(tmp, { recursive: true, force: true });
+    }
+  }));
+
+function startEphemeralSmtp550() {
+  const server = net.createServer((socket) => {
+    let inData = false;
+    let buffer = "";
+    socket.write("220 creezio-gate ESMTP\r\n");
+    socket.on("data", (chunk) => {
+      buffer += chunk.toString("utf8");
+      if (inData) {
+        const end = buffer.indexOf("\r\n.\r\n");
+        if (end === -1) return;
+        buffer = buffer.slice(end + 5);
+        inData = false;
+        socket.write(
+          "550 Email sending is not configured for domain brand.test\r\n",
+        );
+      }
+      let idx;
+      while (!inData && (idx = buffer.indexOf("\r\n")) !== -1) {
+        const line = buffer.slice(0, idx);
+        buffer = buffer.slice(idx + 2);
+        const upper = line.toUpperCase();
+        if (upper.startsWith("EHLO") || upper.startsWith("HELO")) {
+          socket.write("250 creezio-gate\r\n");
+        } else if (upper.startsWith("MAIL FROM:")) {
+          socket.write(
+            "550 Email sending is not configured for domain brand.test\r\n",
+          );
+        } else if (upper.startsWith("DATA")) {
+          inData = true;
+          socket.write("354 go ahead\r\n");
+        } else if (upper.startsWith("QUIT")) {
+          socket.write("221 bye\r\n");
+          socket.end();
+        } else {
+          socket.write("250 OK\r\n");
+        }
+      }
+    });
+  });
+  return new Promise((resolve, reject) => {
+    server.on("error", reject);
+    server.listen(0, "127.0.0.1", () => {
+      resolve({ server, port: server.address().port });
+    });
+  });
+}
