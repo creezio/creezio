@@ -226,6 +226,7 @@ export function adminProductModel(o: {
         id: "prospects",
         label: "Prospect",
         labelPlural: "Prospects",
+        permission: "nav.prospects",
         archivable: true,
         fields: [
           { name: "nom", type: "text", required: true, label: "Nom" },
@@ -243,6 +244,7 @@ export function adminProductModel(o: {
         id: "roadmap",
         label: "Élément roadmap",
         labelPlural: "Roadmap",
+        permission: "nav.roadmap",
         fields: [
           { name: "titre", type: "text", required: true, label: "Titre" },
           { name: "description", type: "text", label: "Description" },
@@ -254,6 +256,7 @@ export function adminProductModel(o: {
         id: "clients",
         label: "Client",
         labelPlural: "Clients",
+        permission: "nav.clients",
         archivable: true,
         fields: [
           { name: "nom", type: "text", required: true, label: "Nom" },
@@ -267,15 +270,16 @@ export function adminProductModel(o: {
       },
     ],
     pages: [
-      { id: "flotte", path: "/flotte", title: "Flotte", kind: "list" },
-      { id: "tickets", path: "/tickets", title: "Tickets support", kind: "list" },
-      { id: "landing", path: "/landing", title: "Landing page", kind: "list" },
+      { id: "flotte", path: "/flotte", title: "Flotte", kind: "list", permission: "nav.fleet" },
+      { id: "tickets", path: "/tickets", title: "Tickets support", kind: "list", permission: "nav.support" },
+      { id: "landing", path: "/landing", title: "Landing page", kind: "list", permission: "nav.landing" },
       {
         id: "prospects",
         path: "/prospects",
         title: "Prospects",
         entityId: "prospects",
         kind: "list",
+        permission: "nav.prospects",
       },
       {
         id: "roadmap",
@@ -283,6 +287,7 @@ export function adminProductModel(o: {
         title: "Roadmap",
         entityId: "roadmap",
         kind: "list",
+        permission: "nav.roadmap",
       },
       {
         id: "clients",
@@ -290,6 +295,7 @@ export function adminProductModel(o: {
         title: "Clients",
         entityId: "clients",
         kind: "list",
+        permission: "nav.clients",
       },
     ],
     flows: [],
@@ -469,6 +475,7 @@ export function scaffoldAdminApp(o: AdminRepoOptions): AdminRepoResult {
     `import { registerEntityMounts } from "@creezio/api-kernel";`,
     `import { registerEntityMounts } from "@creezio/api-kernel";
 import {
+  ADMIN_MODULE_PERMISSIONS,
   createAdminCrudMount,
   createBillingWebhookMount,
   createFleetAdminMount,
@@ -483,6 +490,9 @@ import { createLandingMount } from "@creezio/landing";`,
   // Modules admin natifs (@creezio/admin — ADR-admin-app-os) : flotte
   // (proxy backend server-admin.mjs), support agrégé (sync pull + réponse),
   // billing Stripe (webhook signé → projections admin_billing_*).
+  // Permissions par module (nav.fleet / nav.support / nav.billing…) :
+  // déclarées par les mounts kit, gardées par authorizeModuleAccess
+  // (owner bypass) — attribution par compte : OS → Admin → Rôles & accès.
   api.registerModuleApi("fleet", createFleetAdminMount());
   api.registerModuleApi("support", createSupportAdminMount());
   api.registerModuleApi("billing-webhook", createBillingWebhookMount());
@@ -495,8 +505,62 @@ import { createLandingMount } from "@creezio/landing";`,
     createAdminCrudMount("billing-subscriptions"),
   );
   // Landing page hybride (@creezio/landing — ADR-module-natif-hybride) :
-  // contenu en DB brand, édition /landing (admin), rendu public /lp.
-  api.registerModuleApi("landing", createLandingMount());`,
+  // contenu en DB brand, édition /landing (admin, permission nav.landing),
+  // rendu public /lp (GET public sans permission).
+  api.registerModuleApi(
+    "landing",
+    createLandingMount({ permission: ADMIN_MODULE_PERMISSIONS.landing }),
+  );`,
+  );
+
+  // 2bis. Access-control : permissions PAR MODULE administrables (« Rôles &
+  // accès ») — preset kit : collaborateur = tous les modules par défaut
+  // (pas de lockout), restriction par compte via access_user_overrides.
+  forceWrite(
+    path.join(serverDir, "src/electron/brand-platform-bindings.ts"),
+    `import { configureAccessControl } from "@creezio/access-control";
+import { adminAccessControlPreset } from "@creezio/admin";
+
+/**
+ * App admin : permissions par module (preset kit @creezio/admin).
+ * Rôle unique « collaborator » avec TOUS les modules par défaut — l'owner
+ * restreint compte par compte (OS → Admin → Rôles & accès, onglet Comptes)
+ * ou pour tout le rôle (matrice). Owner = toujours tout (bypass kit).
+ * Chargé par brand-kernel-harness (serveur) et main.ts (desktop).
+ */
+export function applyBrandPlatformBindings(): void {
+  configureAccessControl(adminAccessControlPreset());
+}
+`,
+    written,
+  );
+  patchFile(
+    path.join(serverDir, "src/electron/main.ts"),
+    `import { brandMeiliFeed, applyBrandMeiliConfig } from "./meili-feed.js";`,
+    `import { brandMeiliFeed, applyBrandMeiliConfig } from "./meili-feed.js";
+import { applyBrandPlatformBindings } from "./brand-platform-bindings.js";`,
+  );
+  patchFile(
+    path.join(serverDir, "src/electron/main.ts"),
+    `  beforeBoot: applyBrandMeiliConfig,`,
+    `  beforeBoot: (...beforeBootArgs) => {
+    applyBrandPlatformBindings();
+    return applyBrandMeiliConfig(...beforeBootArgs);
+  },`,
+  );
+
+  // 2ter. Nav des modules kit (flotte / tickets / landing) avec leurs
+  // permissions — filtrée par la sidebar selon les permissions du compte.
+  patchFile(
+    path.join(serverDir, "src/electron/vertical-slot.ts"),
+    `const BRAND_NAV: CoreNavItem[] = collectNavItems().map(
+  ({ order: _order, ...item }) => item,
+);`,
+    `const BRAND_NAV: CoreNavItem[] = collectNavItems([
+  { id: "brand.flotte", label: "Flotte", href: "/flotte", group: "brand", order: 10, permission: "nav.fleet" },
+  { id: "brand.tickets", label: "Tickets support", href: "/tickets", group: "brand", order: 20, permission: "nav.support" },
+  { id: "brand.landing", label: "Landing page", href: "/landing", group: "brand", order: 130, permission: "nav.landing" },
+]).map(({ order: _order, ...item }) => item);`,
   );
 
   // 3. Dépendances @creezio/admin (mounts serveur + UI React des modules).
@@ -517,14 +581,20 @@ import { createLandingMount } from "@creezio/landing";`,
   );
 
   // 4. Pages des modules natifs (remplacent les stubs générés).
+  // AdminModuleGate = état explicite « Accès refusé » en URL directe sans
+  // la permission du module (la sidebar cache, l'API 403 — la page dit).
   forceWrite(
     path.join(serverDir, "ui/app/flotte/page.tsx"),
     `"use client";
 
-import { FleetAdminClient } from "@creezio/admin/ui";
+import { AdminModuleGate, FleetAdminClient } from "@creezio/admin/ui";
 
 export default function Page() {
-  return <FleetAdminClient />;
+  return (
+    <AdminModuleGate permission="nav.fleet" label="Flotte">
+      <FleetAdminClient />
+    </AdminModuleGate>
+  );
 }
 `,
     written,
@@ -533,10 +603,14 @@ export default function Page() {
     path.join(serverDir, "ui/app/tickets/page.tsx"),
     `"use client";
 
-import { TicketsAdminClient } from "@creezio/admin/ui";
+import { AdminModuleGate, TicketsAdminClient } from "@creezio/admin/ui";
 
 export default function Page() {
-  return <TicketsAdminClient />;
+  return (
+    <AdminModuleGate permission="nav.support" label="Tickets support">
+      <TicketsAdminClient />
+    </AdminModuleGate>
+  );
 }
 `,
     written,
@@ -545,10 +619,14 @@ export default function Page() {
     path.join(serverDir, "ui/app/prospects/page.tsx"),
     `"use client";
 
-import { ProspectsKanbanClient } from "@creezio/admin/ui";
+import { AdminModuleGate, ProspectsKanbanClient } from "@creezio/admin/ui";
 
 export default function Page() {
-  return <ProspectsKanbanClient />;
+  return (
+    <AdminModuleGate permission="nav.prospects" label="Prospects">
+      <ProspectsKanbanClient />
+    </AdminModuleGate>
+  );
 }
 `,
     written,
@@ -561,10 +639,15 @@ export default function Page() {
     path.join(serverDir, "ui/app/landing/page.tsx"),
     `"use client";
 
+import { AdminModuleGate } from "@creezio/admin/ui";
 import { LandingAdminClient } from "@creezio/landing/ui";
 
 export default function Page() {
-  return <LandingAdminClient />;
+  return (
+    <AdminModuleGate permission="nav.landing" label="Landing page">
+      <LandingAdminClient />
+    </AdminModuleGate>
+  );
 }
 `,
     written,

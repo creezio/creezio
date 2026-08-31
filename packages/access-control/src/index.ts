@@ -34,5 +34,6 @@ export type {
   AccessPermissionGroup,
   AccessRoleDef,
   AccessRouteUser,
+  AccessUserOverride,
   AccessUserRole,
 } from "./types.js";

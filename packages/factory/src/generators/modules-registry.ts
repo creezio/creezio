@@ -549,6 +549,11 @@ export function renderEntityModuleTs(
     `  ${JSON.stringify(entity.id)}: {`,
     `    table: ${JSON.stringify(entity.id)},`,
   ];
+  if (entity.permission) {
+    // Permission par module (apps admin) : garde authorizeModuleAccess sur
+    // le mount CRUD généré + filtrage sidebar (navItems ci-dessous).
+    specLines.push(`    permission: ${JSON.stringify(entity.permission)},`);
+  }
   if (entity.archivable) specLines.push(`    archivable: true,`);
   specLines.push(`    columns: [`, columns, `    ],`);
   if (hooks.length) {
@@ -594,7 +599,11 @@ export const ${camel}Module: BrandModuleDef = {
       label: ${JSON.stringify(navLabel)},
       href: ${JSON.stringify(navHref)},
       group: "brand",
-      order: ${order},
+      order: ${order},${
+        entity.permission
+          ? `\n      permission: ${JSON.stringify(entity.permission)},`
+          : ""
+      }
     },
   ],
 ${renderPlayableDemoBlock({

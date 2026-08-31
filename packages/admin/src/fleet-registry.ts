@@ -487,8 +487,26 @@ export function createFleetRegistryMount(
     opts?.registerRatePerMinute ?? 10,
     60_000,
   );
+  const fleetPermission = "nav.fleet";
   return {
     dbLayer: "brand",
+    // Pas de permission mount-level : register/heartbeat sont des routes
+    // MACHINE (Bearer register secret / serverKey, vérifiés par le handler,
+    // allowlist bordure) et `sync` est appelé in-process par le poller de
+    // fond (pas de session). Les ops session sont gardées op par op.
+    accessJustification:
+      "routes machine register/heartbeat (Bearer vérifié handler) + sync poller in-process — ops session gardées op par op (nav.fleet)",
+    operations: [
+      { id: "list-servers", method: "GET", path: "/servers", description: "Lister les serveurs du registre", permission: fleetPermission },
+      { id: "list-events", method: "GET", path: "/events", description: "Journal des événements flotte", permission: fleetPermission },
+      { id: "sync", method: "POST", path: "/sync", description: "Backfill depuis le backend flotte" },
+      { id: "register", method: "POST", path: "/register", description: "Auto-inscription serveur" },
+      { id: "heartbeat", method: "POST", path: "/heartbeat", description: "Heartbeat serveur" },
+      { id: "delete-server", method: "DELETE", path: "/servers/:id", description: "Retirer un serveur du registre", permission: fleetPermission },
+      // fleetServerId = host/brand/name : variante id NON encodé (3 segments)
+      // — sans cette op, la garde par op ne matcherait pas (fail-open).
+      { id: "delete-server-path", method: "DELETE", path: "/servers/:host/:brand/:name", description: "Retirer un serveur (id non encodé)", permission: fleetPermission },
+    ],
     handle: async ({ req, subPath, db }) => {
       if (!db) {
         return { status: 503, body: { ok: false, error: "db_unavailable" } };

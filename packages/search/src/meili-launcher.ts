@@ -37,11 +37,14 @@ function ensureMasterKey(dataDir: string): string {
   const keyFile = path.join(dataDir, ".master-key");
   try {
     const existing = fs.readFileSync(keyFile, "utf8").trim();
-    if (existing.length >= 16) return existing;
+    // Une clé base64url historique commençant par `-` casse le parsing CLI
+    // de Meili (`--master-key -xxx` → « unexpected argument ») : régénérer.
+    if (existing.length >= 16 && !existing.startsWith("-")) return existing;
   } catch {
     /* première exécution */
   }
-  const key = crypto.randomBytes(24).toString("base64url");
+  // hex (jamais de tiret) — une clé à tiret initial est illisible en argv.
+  const key = crypto.randomBytes(24).toString("hex");
   fs.writeFileSync(keyFile, key, { mode: 0o600 });
   return key;
 }

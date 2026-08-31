@@ -17,7 +17,17 @@
  *  6. GET /users + PUT /users/:id/role (table interne ET adaptateurs métier),
  *     owner figé → 400, compte inconnu → 404 ;
  *  7. GET /audit paginé, plus récent d'abord ;
- *  8. module non configuré → 404 propre.
+ *  8. module non configuré → 404 propre ;
+ * P4 permissions par module (mode admin) :
+ *  10. overrides PAR COMPTE (access_user_overrides) : allow ajoute, deny
+ *      retire, priorité sur le rôle ET ses overrides ;
+ *  11. PUT /users/:id/permissions : set/clear + audit user.override.*,
+ *      owner figé → 400, permission inconnue → 400 ; GET /users expose
+ *      roleBaseline + overrides ;
+ *  12. @creezio/admin : mounts gardés (permission par module), routes
+ *      machine préservées (webhook Stripe, register/heartbeat, agent
+ *      releases), preset adminAccessControlPreset = migration sans lockout
+ *      (collaborateur → tous les modules par défaut).
  */
 import fs from "node:fs";
 import os from "node:os";
@@ -473,4 +483,212 @@ test("9. module non configuré → 404 propre ; validations de config", async ()
     }),
   );
   resetAccessControlForTests();
+});
+
+// ---------------------------------------------------------------------------
+// P4 — permissions par module (mode admin) : overrides par compte
+// ---------------------------------------------------------------------------
+
+test("10. overrides PAR COMPTE : allow ajoute, deny retire, priorité sur le rôle", async () => {
+  const { store, cleanup } = setup();
+  try {
+    // Baseline backoffice : crm + catalogue + panier.
+    assert.deepEqual(await resolvePermissions("u-solo", "backoffice"), ROLE_DEFAULTS.backoffice);
+
+    // deny compte : retire une permission du rôle — les autres comptes gardent tout.
+    store.setUserOverride("u-solo", "nav.panier", "deny", "patron");
+    invalidateAccessControlCaches("u-solo");
+    assert.deepEqual(await resolvePermissions("u-solo", "backoffice"), ["nav.crm", "nav.catalogue"]);
+    assert.deepEqual(await resolvePermissions("u-autre", "backoffice"), ROLE_DEFAULTS.backoffice);
+
+    // allow compte : ajoute une permission absente du rôle (vitrine = []).
+    store.setUserOverride("u-solo2", "nav.crm", "allow", "patron");
+    invalidateAccessControlCaches("u-solo2");
+    assert.deepEqual(await resolvePermissions("u-solo2", "vitrine"), ["nav.crm"]);
+
+    // priorité : allow compte l'emporte sur un deny du RÔLE.
+    store.setOverride("backoffice", "nav.catalogue", "deny", "patron");
+    store.setUserOverride("u-solo3", "nav.catalogue", "allow", "patron");
+    invalidateAccessControlCaches();
+    assert.equal((await resolvePermissions("u-solo3", "backoffice")).includes("nav.catalogue"), true);
+    assert.equal((await resolvePermissions("u-autre", "backoffice")).includes("nav.catalogue"), false);
+
+    // clear : retour au rôle.
+    store.clearUserOverride("u-solo", "nav.panier");
+    invalidateAccessControlCaches("u-solo");
+    assert.equal((await resolvePermissions("u-solo", "backoffice")).includes("nav.panier"), true);
+  } finally {
+    cleanup();
+  }
+});
+
+test("11. PUT /users/:id/permissions : set/clear + audit ; GET /users expose roleBaseline/overrides", async () => {
+  const { store, cleanup } = setup();
+  try {
+    const app = createAccessControlRoutes(routeDeps(ownerSession));
+
+    const put = await call(app, "/users/u-collab/permissions", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        changes: [
+          { permission: "nav.crm", effect: "allow" },
+          { permission: "nav.panier", effect: "deny" },
+        ],
+      }),
+    });
+    assert.equal(put.status, 200);
+    assert.deepEqual(put.body.user.permissions, ["nav.crm"]); // vitrine=[] + allow crm (deny panier sans effet visible)
+    assert.deepEqual(
+      put.body.user.overrides,
+      [
+        { permission: "nav.crm", effect: "allow" },
+        { permission: "nav.panier", effect: "deny" },
+      ],
+    );
+
+    const list = await call(app, "/users");
+    const vendeur = list.body.users.find((u) => u.id === "u-collab");
+    assert.deepEqual(vendeur.permissions, ["nav.crm"]);
+    assert.deepEqual(vendeur.roleBaseline, []); // défauts du rôle vitrine
+    assert.equal(vendeur.overrides.length, 2);
+
+    // inherit : retour au rôle + audit clear.
+    const back = await call(app, "/users/u-collab/permissions", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ changes: [{ permission: "nav.crm", effect: "inherit" }] }),
+    });
+    assert.equal(back.status, 200);
+    assert.deepEqual(back.body.user.permissions, []);
+
+    const actions = store.listAudit(10).map((a) => a.action);
+    assert.deepEqual(actions, ["user.override.clear", "user.override.set", "user.override.set"]);
+
+    // Validations : owner figé, permission inconnue, compte inconnu, anonyme.
+    assert.equal(
+      (await call(app, "/users/u-owner/permissions", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ changes: [{ permission: "nav.crm", effect: "allow" }] }),
+      })).status,
+      400,
+    );
+    assert.equal(
+      (await call(app, "/users/u-collab/permissions", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ changes: [{ permission: "nav.nope", effect: "allow" }] }),
+      })).status,
+      400,
+    );
+    assert.equal(
+      (await call(app, "/users/u-ghost/permissions", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ changes: [] }),
+      })).status,
+      404,
+    );
+    const anonymous = createAccessControlRoutes(routeDeps(null));
+    assert.equal(
+      (await call(anonymous, "/users/u-collab/permissions", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ changes: [] }),
+      })).status,
+      401,
+    );
+  } finally {
+    cleanup();
+  }
+});
+
+test("12. @creezio/admin : mounts gardés par module, routes machine préservées, preset sans lockout", async () => {
+  const {
+    ADMIN_MODULE_PERMISSIONS,
+    adminAccessControlPreset,
+    createFleetAdminMount,
+    createSupportAdminMount,
+    createBillingAdminMount,
+    createBillingWebhookMount,
+    createAdminCrudMount,
+    createFleetRegistryMount,
+    createFleetReleasesMount,
+  } = await import("../packages/admin/dist/index.js");
+
+  // Mounts session : permission par module déclarée (garde authorizeModuleAccess).
+  assert.equal(createFleetAdminMount().permission, ADMIN_MODULE_PERMISSIONS.fleet);
+  assert.equal(createSupportAdminMount().permission, ADMIN_MODULE_PERMISSIONS.support);
+  assert.equal(createBillingAdminMount().permission, ADMIN_MODULE_PERMISSIONS.billing);
+  // billing-* = projections Stripe du module billing (nav.clients est la
+  // permission du module `clients` scaffoldé côté app admin, pas ce mount).
+  assert.equal(
+    createAdminCrudMount("billing-customers").permission,
+    ADMIN_MODULE_PERMISSIONS.billing,
+  );
+  assert.equal(
+    createAdminCrudMount("billing-subscriptions").permission,
+    ADMIN_MODULE_PERMISSIONS.billing,
+  );
+  assert.equal(
+    createAdminCrudMount("prospects").permission,
+    ADMIN_MODULE_PERMISSIONS.prospects,
+  );
+  assert.equal(
+    createAdminCrudMount("roadmap").permission,
+    ADMIN_MODULE_PERMISSIONS.roadmap,
+  );
+
+  // Webhook Stripe : PAS de permission session (signature = auth) — justifié.
+  const webhook = createBillingWebhookMount();
+  assert.equal(webhook.permission, undefined);
+  assert.ok(String(webhook.accessJustification || "").length > 10);
+
+  // Registry/releases : ops session gardées, routes machine (host-agent v1)
+  // SANS permission — register/heartbeat/next/slots/report/maintenance
+  // gardent leur propre auth (Bearer/HMAC), alignées PUBLIC_MODULE_PATHS.
+  const registry = createFleetRegistryMount();
+  const regOps = new Map(registry.operations.map((o) => [o.id, o]));
+  assert.equal(regOps.get("list-servers").permission, ADMIN_MODULE_PERMISSIONS.fleet);
+  assert.equal(regOps.get("register").permission, undefined);
+  assert.equal(regOps.get("heartbeat").permission, undefined);
+
+  const releases = createFleetReleasesMount();
+  const relOps = new Map(releases.operations.map((o) => [o.id, o]));
+  assert.equal(relOps.get("list-releases").permission, ADMIN_MODULE_PERMISSIONS.fleet);
+  for (const machineOp of ["next", "create-slot", "delete-slot", "report", "maintenance"]) {
+    assert.equal(relOps.get(machineOp).permission, undefined, machineOp);
+  }
+
+  // Preset : migration sans lockout — collaborateur = TOUS les modules par
+  // défaut ; l'owner restreint ensuite par compte (overrides) ou par rôle.
+  const preset = adminAccessControlPreset();
+  const collab = preset.roles.find((r) => r.id === "collaborator");
+  assert.ok(collab, "rôle collaborator présent");
+  assert.equal(preset.defaultRole, "collaborator");
+  for (const perm of Object.values(ADMIN_MODULE_PERMISSIONS)) {
+    assert.ok(
+      collab.defaultPermissions.includes(perm),
+      `défaut collaborateur inclut ${perm}`,
+    );
+  }
+  const groupPerms = preset.permissionGroups.flatMap((g) =>
+    g.permissions.map((p) => p.id),
+  );
+  for (const perm of Object.values(ADMIN_MODULE_PERMISSIONS)) {
+    assert.ok(groupPerms.includes(perm), `catalogue expose ${perm}`);
+  }
+
+  // Extension marque : groupes + permissions additionnels fusionnés.
+  const extended = adminAccessControlPreset({
+    extraGroups: [
+      { id: "metier", label: "Métier", permissions: [{ id: "nav.metier", label: "Métier" }] },
+    ],
+    extraCollaboratorPermissions: ["nav.metier"],
+  });
+  assert.ok(
+    extended.roles.find((r) => r.id === "collaborator").defaultPermissions.includes("nav.metier"),
+  );
+  assert.ok(extended.permissionGroups.some((g) => g.id === "metier"));
 });

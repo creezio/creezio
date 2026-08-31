@@ -1,6 +1,8 @@
 /**
  * Store SQL access-control (core.db de la marque) :
  * - `access_role_overrides` — ajustements allow/deny par rôle ;
+ * - `access_user_overrides` — ajustements allow/deny PAR COMPTE (attribution
+ *   de permissions de modules à un compte précis, prime sur le rôle) ;
  * - `access_user_roles` — assignation rôle ↔ compte (quand la marque n'a pas
  *   de SoT métier via configureAccessControl.getUserRole) ;
  * - `access_audit_log` — journal des changements (qui, quoi, quand).
@@ -12,6 +14,7 @@ import type {
   AccessAuditEntry,
   AccessEffect,
   AccessOverride,
+  AccessUserOverride,
   AccessUserRole,
 } from "./types.js";
 
@@ -33,6 +36,15 @@ CREATE TABLE IF NOT EXISTS access_role_overrides (
   updated_by  TEXT,
   updated_at  TEXT NOT NULL DEFAULT (datetime('now')),
   PRIMARY KEY (role, permission)
+);
+
+CREATE TABLE IF NOT EXISTS access_user_overrides (
+  user_id     TEXT NOT NULL,
+  permission  TEXT NOT NULL,
+  effect      TEXT NOT NULL CHECK (effect IN ('allow','deny')),
+  updated_by  TEXT,
+  updated_at  TEXT NOT NULL DEFAULT (datetime('now')),
+  PRIMARY KEY (user_id, permission)
 );
 
 CREATE TABLE IF NOT EXISTS access_user_roles (
@@ -67,6 +79,15 @@ export type AccessControlStore = {
     actor: string,
   ) => void;
   clearOverride: (role: string, permission: string) => void;
+  listUserOverrides: (userId: string) => AccessUserOverride[];
+  listAllUserOverrides: () => AccessUserOverride[];
+  setUserOverride: (
+    userId: string,
+    permission: string,
+    effect: AccessEffect,
+    actor: string,
+  ) => void;
+  clearUserOverride: (userId: string, permission: string) => void;
   getUserRole: (userId: string) => string | null;
   setUserRole: (userId: string, role: string | null, actor: string) => void;
   listUserRoles: () => AccessUserRole[];
@@ -146,6 +167,66 @@ export function createSqliteAccessStore(opts: {
     db.prepare(
       `DELETE FROM access_role_overrides WHERE role = ? AND permission = ?`,
     ).run(role, permission);
+  }
+
+  type UserOverrideSqlRow = {
+    user_id: string;
+    permission: string;
+    effect: string;
+    updated_by: string | null;
+    updated_at: string;
+  };
+
+  function toUserOverride(row: UserOverrideSqlRow): AccessUserOverride {
+    return {
+      userId: String(row.user_id),
+      permission: String(row.permission),
+      effect: row.effect === "deny" ? "deny" : "allow",
+      updatedBy: row.updated_by ? String(row.updated_by) : null,
+      updatedAt: String(row.updated_at),
+    };
+  }
+
+  function listUserOverrides(userId: string): AccessUserOverride[] {
+    const rows = db
+      .prepare(
+        `SELECT user_id, permission, effect, updated_by, updated_at
+         FROM access_user_overrides WHERE user_id = ? ORDER BY permission`,
+      )
+      .all(userId) as UserOverrideSqlRow[];
+    return rows.map(toUserOverride);
+  }
+
+  function listAllUserOverrides(): AccessUserOverride[] {
+    const rows = db
+      .prepare(
+        `SELECT user_id, permission, effect, updated_by, updated_at
+         FROM access_user_overrides ORDER BY user_id, permission`,
+      )
+      .all() as UserOverrideSqlRow[];
+    return rows.map(toUserOverride);
+  }
+
+  function setUserOverride(
+    userId: string,
+    permission: string,
+    effect: AccessEffect,
+    actor: string,
+  ): void {
+    db.prepare(
+      `INSERT INTO access_user_overrides (user_id, permission, effect, updated_by, updated_at)
+       VALUES (?, ?, ?, ?, datetime('now'))
+       ON CONFLICT(user_id, permission) DO UPDATE SET
+         effect = excluded.effect,
+         updated_by = excluded.updated_by,
+         updated_at = excluded.updated_at`,
+    ).run(userId, permission, effect, actor);
+  }
+
+  function clearUserOverride(userId: string, permission: string): void {
+    db.prepare(
+      `DELETE FROM access_user_overrides WHERE user_id = ? AND permission = ?`,
+    ).run(userId, permission);
   }
 
   function getUserRole(userId: string): string | null {
@@ -263,6 +344,10 @@ export function createSqliteAccessStore(opts: {
     listOverridesByRole,
     setOverride,
     clearOverride,
+    listUserOverrides,
+    listAllUserOverrides,
+    setUserOverride,
+    clearUserOverride,
     getUserRole,
     setUserRole,
     listUserRoles,
