@@ -1,15 +1,19 @@
 "use client";
 
 /**
- * Page /grokbot côté serveur marque — pilotage des agents cloud (API
- * Cursor v1) : token, lancement d'agents, suivi des runs, prompts de
- * suivi, annulation, archivage.
+ * Page /grokbot côté serveur marque — compose les panneaux extraits :
+ * - `grokbot-launch-form.tsx` (GROKBOT-1)
+ * - `grokbot-usage-artifacts.tsx` (GROKBOT-1)
+ * - `grokbot-agent-runs.tsx` (GROKBOT-2)
  *
  * API : /api/v1/modules/grokbot/* (mount natif @creezio/grokbot).
  */
 
 import { useCallback, useEffect, useState } from "react";
 import { Badge, Button, Card, Input } from "@creezio/shell-ui/ui/kit";
+import { GrokbotLaunchForm } from "./grokbot-launch-form";
+import { GrokbotUsageArtifacts } from "./grokbot-usage-artifacts";
+import { GrokbotAgentRuns } from "./grokbot-agent-runs";
 
 const API = "/api/v1/modules/grokbot";
 
@@ -278,50 +282,20 @@ export function GrokbotClient() {
         </div>
       </Card>
 
-      <Card className="flex flex-col gap-3 p-4">
-        <h2 className="text-base font-semibold">Lancer un agent</h2>
-        <textarea
-          className="min-h-24 w-full rounded-md border bg-transparent p-3 text-sm outline-none"
-          placeholder="Décrivez la mission de l'agent…"
-          value={prompt}
-          onChange={(e) => setPrompt(e.target.value)}
-        />
-        <div className="grid gap-3 md:grid-cols-3">
-          <Input
-            placeholder="https://github.com/org/repo (optionnel)"
-            value={repoUrl}
-            onChange={(e) => setRepoUrl(e.target.value)}
-          />
-          <select
-            className="rounded-md border bg-transparent p-2 text-sm"
-            value={modelId}
-            onChange={(e) => setModelId(e.target.value)}
-          >
-            <option value="">Modèle par défaut</option>
-            {models.map((m) => (
-              <option key={m.id} value={m.id}>
-                {m.displayName || m.id}
-              </option>
-            ))}
-          </select>
-          <label className="flex items-center gap-2 text-sm">
-            <input
-              type="checkbox"
-              checked={autoCreatePR}
-              onChange={(e) => setAutoCreatePR(e.target.checked)}
-            />
-            Ouvrir une PR à la fin
-          </label>
-        </div>
-        <div>
-          <Button
-            onClick={launchAgent}
-            disabled={busy || !prompt.trim() || !status?.connected}
-          >
-            Lancer l'agent
-          </Button>
-        </div>
-      </Card>
+      <GrokbotLaunchForm
+        connected={Boolean(status?.connected)}
+        busy={busy}
+        prompt={prompt}
+        onPromptChange={setPrompt}
+        repoUrl={repoUrl}
+        onRepoUrlChange={setRepoUrl}
+        modelId={modelId}
+        onModelIdChange={setModelId}
+        models={models}
+        autoCreatePR={autoCreatePR}
+        onAutoCreatePRChange={setAutoCreatePR}
+        onLaunch={() => void launchAgent()}
+      />
 
       <div className="grid gap-4 md:grid-cols-2">
         <div className="flex flex-col gap-2">
@@ -357,97 +331,20 @@ export function GrokbotClient() {
           ))}
         </div>
 
-        <div>
+        <div className="flex flex-col gap-3">
           {open ? (
-            <Card className="flex flex-col gap-3 p-4">
-              <div className="flex items-center justify-between gap-2">
-                <h2 className="truncate text-base font-semibold">
-                  {open.name || open.id}
-                </h2>
-                <div className="flex items-center gap-2">
-                  {open.url ? (
-                    <a
-                      className="text-xs underline"
-                      href={open.url}
-                      target="_blank"
-                      rel="noreferrer"
-                    >
-                      Ouvrir dans Cursor
-                    </a>
-                  ) : null}
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => void archiveAgent(open.id)}
-                  >
-                    Archiver
-                  </Button>
-                </div>
-              </div>
-              <div className="flex max-h-96 flex-col gap-2 overflow-y-auto">
-                {runs.map((r) => (
-                  <div key={r.id} className="rounded-md bg-muted p-2 text-sm">
-                    <div className="flex items-center justify-between">
-                      <Badge variant={statusVariant(r.status)}>{r.status}</Badge>
-                      <div className="flex items-center gap-2">
-                        <span className="text-[11px] text-muted-foreground">
-                          {fmtDate(r.createdAt)}
-                        </span>
-                        {r.status === "RUNNING" || r.status === "CREATING" ? (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => void cancelRun(r.id)}
-                          >
-                            Annuler
-                          </Button>
-                        ) : null}
-                      </div>
-                    </div>
-                    {r.result ? (
-                      <div className="mt-2 whitespace-pre-wrap text-xs">
-                        {r.result}
-                      </div>
-                    ) : null}
-                    {r.git?.branches?.length ? (
-                      <div className="mt-1 text-[11px] text-muted-foreground">
-                        {r.git.branches
-                          .map((b) => b.prUrl || b.branch)
-                          .filter(Boolean)
-                          .join(" · ")}
-                      </div>
-                    ) : null}
-                  </div>
-                ))}
-                {runs.length === 0 ? (
-                  <div className="text-sm text-muted-foreground">
-                    Aucun run chargé.
-                  </div>
-                ) : null}
-              </div>
-              <div className="flex flex-col gap-2">
-                <textarea
-                  className="min-h-16 w-full rounded-md border bg-transparent p-2 text-sm outline-none"
-                  placeholder="Prompt de suivi…"
-                  value={followup}
-                  onChange={(e) => setFollowup(e.target.value)}
-                />
-                <div>
-                  <Button
-                    size="sm"
-                    onClick={sendFollowup}
-                    disabled={busy || !followup.trim()}
-                  >
-                    Envoyer
-                  </Button>
-                </div>
-              </div>
-            </Card>
-          ) : (
-            <Card className="p-4 text-sm text-muted-foreground">
-              Sélectionnez un agent pour voir ses runs.
-            </Card>
-          )}
+            <GrokbotUsageArtifacts agentId={open.id} prUrl={open.pr_url} />
+          ) : null}
+          <GrokbotAgentRuns
+            open={open}
+            runs={runs}
+            followup={followup}
+            onFollowupChange={setFollowup}
+            onSendFollowup={() => void sendFollowup()}
+            onCancelRun={(id) => void cancelRun(id)}
+            onArchive={(id) => void archiveAgent(id)}
+            busy={busy}
+          />
         </div>
       </div>
     </div>
