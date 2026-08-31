@@ -253,6 +253,8 @@ export {
   RESERVED_SLUGS,
   SLUG_RE,
   TUNNEL_DEFAULT_PORTS,
+  agentTunnelCfName,
+  buildAgentTunnelIngressRules,
   buildTunnelIngressRules,
   isZoneLevelKind,
   normalizeSlug,
@@ -267,6 +269,8 @@ export {
 } from "./tunnel-cf.js";
 
 export type {
+  CfAgentTunnelEnsureOpts,
+  CfAgentTunnelEnsureResult,
   CfDnsRecord,
   CfTunnelEnsureOpts,
   CfTunnelEnsureResult,
@@ -280,11 +284,14 @@ export {
   createCfTunnel,
   deleteCfTunnel,
   deprovisionCfSlug,
+  ensureCfAgentTunnel,
+  ensureCfAgentTunnelDns,
   ensureCfCnameRecord,
   ensureCfEmailDns,
   ensureCfTunnel,
   ensureCfTunnelDns,
   extractAgentRule,
+  removeCfTunnelAgentRule,
   getCfTunnel,
   getCfTunnelConfig,
   listCfDnsRecords,

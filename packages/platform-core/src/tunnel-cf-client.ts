@@ -22,6 +22,8 @@
  */
 
 import {
+  agentTunnelCfName,
+  buildAgentTunnelIngressRules,
   buildTunnelIngressRules,
   normalizeTunnelPorts,
   slugCheckLocal,
@@ -631,4 +633,155 @@ export async function ensureCfTunnel(
     emailDomain,
     recreated,
   };
+}
+
+/* ────────────────────────── Tunnel dédié agent (T7) ────────────────────────── */
+
+export type CfAgentTunnelEnsureOpts = {
+  /** Slug de l'instance porteuse du hostname CRM (nom CF `creezio-agent-<slug>`). */
+  slug: string;
+  /** Hostname CRM du serveur (ex. `resto-a.zone.fr`) — l'hostname agent en dérive. */
+  serverHostname: string;
+  /** Port hôte du host-agent (l'origin du connecteur network-host). */
+  agentPort: number;
+  hostMode?: TunnelHostMode | null;
+  /** Origin du service — défaut `127.0.0.1` (container cloudflared en network host). */
+  originHost?: string;
+  /**
+   * false → le CNAME agent n'est PAS touché ici : l'appelant bascule le DNS
+   * séparément (`ensureCfAgentTunnelDns`) APRÈS le démarrage du connecteur —
+   * migration douce depuis un tunnel legacy partagé, pas de coupure.
+   */
+  dns?: boolean;
+  /** État persisté (host-agent.json + agent-tunnel.env) — réutilisé si le tunnel existe. */
+  stored?: { tunnelId?: string; tunnelToken?: string } | null;
+  log?: (line: string) => void;
+};
+
+export type CfAgentTunnelEnsureResult = {
+  ok: true;
+  slug: string;
+  /** Hostname public de l'agent (`agent-{slug}.{zone}` flat / `agent.{slug}.{zone}` nested). */
+  hostname: string;
+  hostMode: TunnelHostMode;
+  tunnelId: string;
+  tunnelToken: string;
+  agentUrl: string;
+  /** true si le tunnel dédié a été (re)créé à ce tour (premier enroll / 404 CF). */
+  recreated: boolean;
+};
+
+/**
+ * Ensure idempotent du tunnel Cloudflare DÉDIÉ au host-agent (T7) — même
+ * modèle que `ensureCfTunnel` pour les serveurs (tunnel-self-provision),
+ * mais un seul ingress : `agent.{slug}.{zone}` → `http://127.0.0.1:<port>`.
+ *
+ * L'agent ne partage plus le cloudflared d'un serveur applicatif : un
+ * update/down/recreate du serveur ne coupe plus le pilotage de l'hôte.
+ *
+ * 1. `stored.tunnelId` + token → GET : 200 = réutilisé ; 404 = recréation.
+ * 2. `PUT configurations` — ingress agent seul (jamais d'embeds/email).
+ * 3. DNS (sauf `dns: false`) : CNAME agent → `<tunnelId>.cfargotunnel.com`
+ *    (upsert idempotent — un CNAME legacy pointant le tunnel partagé d'un
+ *    serveur est MIS À JOUR vers le tunnel dédié).
+ */
+export async function ensureCfAgentTunnel(
+  env: CfTunnelEnv,
+  opts: CfAgentTunnelEnsureOpts,
+): Promise<CfAgentTunnelEnsureResult> {
+  const slug = String(opts.slug || "").trim().toLowerCase();
+  const serverHostname = String(opts.serverHostname || "")
+    .trim()
+    .toLowerCase();
+  if (!slug || !serverHostname) {
+    throw new Error("ensureCfAgentTunnel: slug et serverHostname requis");
+  }
+  if (!Number.isInteger(opts.agentPort) || opts.agentPort <= 0) {
+    throw new Error("ensureCfAgentTunnel: agentPort invalide");
+  }
+  const hostMode = resolveTunnelHostMode(opts.hostMode);
+  const hostname = tunnelAgentHostname(serverHostname, hostMode);
+
+  let tunnelId = "";
+  let tunnelToken = "";
+  let recreated = false;
+  const storedId = (opts.stored?.tunnelId || "").trim();
+  const storedToken = (opts.stored?.tunnelToken || "").trim();
+  if (storedId && storedToken) {
+    const existing = await getCfTunnel(env, storedId);
+    if (existing) {
+      tunnelId = storedId;
+      tunnelToken = storedToken;
+      opts.log?.(
+        `tunnel agent ${slug} existant (${tunnelId}) — ré-ensure ingress`,
+      );
+    } else {
+      opts.log?.(
+        `tunnel agent ${slug} introuvable côté Cloudflare (404) — recréation`,
+      );
+    }
+  }
+  if (!tunnelId) {
+    const created = await createCfTunnel(env, agentTunnelCfName(slug));
+    tunnelId = created.id;
+    tunnelToken = created.token;
+    recreated = true;
+  }
+
+  await putCfTunnelIngress(
+    env,
+    tunnelId,
+    buildAgentTunnelIngressRules(hostname, opts.agentPort, {
+      originHost: opts.originHost,
+    }),
+  );
+  if (opts.dns !== false) {
+    await ensureCfAgentTunnelDns(env, { hostname, tunnelId, slug });
+  }
+
+  return {
+    ok: true,
+    slug,
+    hostname,
+    hostMode,
+    tunnelId,
+    tunnelToken,
+    agentUrl: `https://${hostname}`,
+    recreated,
+  };
+}
+
+/**
+ * Bascule/upsert du CNAME agent vers le tunnel dédié. Séparé de l'ensure
+ * pour permettre l'ordre sans coupure : provision tunnel → démarrage du
+ * container cloudflared → bascule DNS (le chemin legacy partagé sert le
+ * hostname jusqu'à cette bascule).
+ */
+export async function ensureCfAgentTunnelDns(
+  env: CfTunnelEnv,
+  opts: { hostname: string; tunnelId: string; slug?: string },
+): Promise<"exists" | "updated" | "created"> {
+  return ensureCfCnameRecord(env, {
+    name: opts.hostname,
+    target: `${opts.tunnelId}.cfargotunnel.com`,
+    comment: `Creezio agent ${opts.slug || opts.hostname}`,
+  });
+}
+
+/**
+ * Migration douce (T7) : retire la règle agent legacy de l'ingress d'un
+ * tunnel PARTAGÉ (celui du serveur applicatif). À appeler APRÈS la bascule
+ * DNS vers le tunnel dédié — la règle est alors inerte. Best-effort côté
+ * appelant : un échec ici ne casse jamais l'enroll.
+ */
+export async function removeCfTunnelAgentRule(
+  env: CfTunnelEnv,
+  opts: { tunnelId: string; agentHostname: string },
+): Promise<boolean> {
+  const ingress = await getCfTunnelConfig(env, opts.tunnelId);
+  if (!ingress) return false;
+  const next = ingress.filter((r) => r.hostname !== opts.agentHostname);
+  if (next.length === ingress.length) return false;
+  await putCfTunnelIngress(env, opts.tunnelId, next);
+  return true;
 }

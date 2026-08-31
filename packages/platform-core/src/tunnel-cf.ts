@@ -336,6 +336,37 @@ export function tunnelAgentHostname(
 }
 
 /**
+ * Nom Cloudflare du tunnel DÉDIÉ agent d'un hôte (T7 — cosmétique console CF).
+ * Distinct du préfixe serveur `creezio-server-` : un opérateur voit d'un
+ * coup d'œil quel tunnel porte l'ingress agent du VPS.
+ */
+export function agentTunnelCfName(slug: string): string {
+  return `creezio-agent-${slug}`.slice(0, 100);
+}
+
+/**
+ * Ingress du tunnel dédié agent (T7) : UN seul service HTTP local + 404.
+ * cloudflared tourne dans son propre container (`creezio-agent-tunnel`,
+ * network host) — l'agent écoute en loopback, origin défaut `127.0.0.1`.
+ */
+export function buildAgentTunnelIngressRules(
+  agentHostname: string,
+  agentPort: number,
+  opts?: { originHost?: string },
+): TunnelIngressRule[] {
+  const originHost =
+    String(opts?.originHost || "127.0.0.1").trim() || "127.0.0.1";
+  return [
+    {
+      hostname: agentHostname,
+      service: `http://${originHost}:${agentPort}`,
+      originRequest: { noTLSVerify: false, httpHostHeader: agentHostname },
+    },
+    { service: "http_status:404" },
+  ];
+}
+
+/**
  * URLs publiques d'un hostname CRM. `embeds: false` (zone-level) → CRM seul.
  */
 export function tunnelPublicUrls(
