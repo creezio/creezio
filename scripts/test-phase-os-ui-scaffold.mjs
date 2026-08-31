@@ -193,13 +193,36 @@ test("os-ui scaffold : zéro page OS versionnée, materialize + boot kit", () =>
     "chrome monte le tracker analytics (sinon Admin → Analytics reste à 0)",
   );
   assert.match(chrome, /@creezio\/observability\/ui/);
-  assert.match(chrome, /OS_NAV/, "chrome déclare la nav OS native");
-  assert.match(chrome, /\/taches/, "chrome lie /taches");
-  assert.match(chrome, /\/mails/, "chrome lie /mails");
-  assert.match(chrome, /\/granola/, "chrome lie /granola");
-  assert.match(chrome, /\/grokbot/, "chrome lie /grokbot");
-  assert.match(chrome, /\/admin\/mcp/, "chrome lie admin MCP");
-  assert.match(chrome, /\/admin\/plugins/, "chrome lie admin plugins (défaut ON)");
+  assert.doesNotMatch(
+    chrome,
+    /const OS_NAV/,
+    "chrome ne recopie plus une constante OS_NAV",
+  );
+  assert.doesNotMatch(
+    chrome,
+    /["']\/granola["']/,
+    "chrome n'embed plus /granola en dur — catalogue kit",
+  );
+  assert.doesNotMatch(
+    chrome,
+    /["']\/grokbot["']/,
+    "chrome n'embed plus /grokbot en dur — catalogue kit",
+  );
+  assert.match(
+    chrome,
+    /defaultOsPrimaryNavItems/,
+    "chrome compose defaultOsPrimaryNavItems() (catalogue OS)",
+  );
+  assert.match(
+    chrome,
+    /defaultOsAdminNavItems/,
+    "chrome appelle defaultOsAdminNavItems (pas de liste admin recopiée)",
+  );
+  assert.match(
+    chrome,
+    /includePlugins:\s*true/,
+    "chrome passe includePlugins: true (défaut ON)",
+  );
 
   const tailwind = fs.readFileSync(
     path.join(srv, "ui/tailwind.config.ts"),
