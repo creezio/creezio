@@ -244,8 +244,13 @@ function renderPackageJson(m: AppManifest): string {
 }
 
 /**
- * Clôture @creezio serveur (deps directes npm publiées) — explicite pour un
- * lock lisible et des updates ciblables (`npm update "@creezio/*"`).
+ * Clôture @creezio serveur (deps directes npm **déjà publiées**) — explicite
+ * pour un lock lisible et des updates ciblables (`npm update "@creezio/*"`).
+ *
+ * Règle : un module OS nouveau s'enregistre au **catalogue nav** (shell-ui)
+ * sans entrer ici tant que `publish.yml` n'a pas tourné. Ajouter
+ * `@creezio/<nouveau>` avant publication = `npm install` E404 sur
+ * `new-app`. SoT : `docs/plans/PLAN-NAV-CATALOG.md` (factory deps ≠ catalogue).
  */
 const SERVER_CREEZIO_DEPS = [
   "api-kernel",
@@ -260,8 +265,6 @@ const SERVER_CREEZIO_DEPS = [
   "desktop-tooling",
   "electron-shell",
   "host-runtime",
-  "granola",
-  "grokbot",
   "integrations",
   "interactive-demo",
   "mails",
@@ -291,8 +294,6 @@ const CLIENT_CREEZIO_DEPS = [
   "database",
   "desktop-tooling",
   "electron-shell",
-  "granola",
-  "grokbot",
   "integrations",
   "mails",
   "mcp-facade",

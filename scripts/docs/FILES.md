@@ -162,7 +162,7 @@
 | [`test-phase-n7.mjs`](../test-phase-n7.mjs) | !usrbinenv node |
 | [`test-phase-n8.mjs`](../test-phase-n8.mjs) | !usrbinenv node |
 | [`test-phase-n9.mjs`](../test-phase-n9.mjs) | !usrbinenv node |
-| [`test-phase-nav-catalog.mjs`](../test-phase-nav-catalog.mjs) | Gate NAV-1 — catalogue nav OS : merge pur, collision id/href, feature-off, seed registre, factory chrome sans `const OS_NAV` ni literal `/granola`. |
+| [`test-phase-nav-catalog.mjs`](../test-phase-nav-catalog.mjs) | Gate NAV-1 — catalogue nav OS : merge pur, collision id/href, feature-off, seed registre, factory chrome sans `const OS_NAV` ni literal `/granola`, factory deps sans `@creezio/granola` / `@creezio/grokbot` (non publiés). |
 | [`test-phase-no-brand-vocab.mjs`](../test-phase-no-brand-vocab.mjs) | (à documenter) |
 | [`test-phase-o1.mjs`](../test-phase-o1.mjs) | !usrbinenv node |
 | [`test-phase-o2.mjs`](../test-phase-o2.mjs) | !usrbinenv node |
@@ -180,7 +180,7 @@
 | [`test-phase-o8.mjs`](../test-phase-o8.mjs) | !usrbinenv node |
 | [`test-phase-o9.mjs`](../test-phase-o9.mjs) | !usrbinenv node |
 | [`test-phase-onboarding-hybride.mjs`](../test-phase-onboarding-hybride.mjs) | Gate : @creezio/onboarding conforme au patron « module natif hybride » (docs/adr/ADR-module-natif-hybride.md). |
-| [`test-phase-os-ui-scaffold.mjs`](../test-phase-os-ui-scaffold.mjs) | Gate : factory --from-prd ne versionne PLUS de pages OS dans ui/app/. |
+| [`test-phase-os-ui-scaffold.mjs`](../test-phase-os-ui-scaffold.mjs) | Gate : factory --from-prd ne versionne PLUS de pages OS dans ui/app/ ; deps générées sans `@creezio/granola` / `@creezio/grokbot` (non publiés). |
 | [`test-phase-p-cockpit.mjs`](../test-phase-p-cockpit.mjs) | !usrbinenv node |
 | [`test-phase-p-onboarding.mjs`](../test-phase-p-onboarding.mjs) | !usrbinenv node |
 | [`test-phase-p-shell-ui.mjs`](../test-phase-p-shell-ui.mjs) | !usrbinenv node |

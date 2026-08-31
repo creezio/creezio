@@ -294,6 +294,57 @@ test("nav-catalog : factory chrome sans const OS_NAV ni literal /granola", async
   assert.match(chrome, /defaultOsAdminNavItems\(\{\s*includePlugins:\s*true/);
 });
 
+test("nav-catalog : factory deps générées sans @creezio/granola ni @creezio/grokbot", async () => {
+  const src = fs.readFileSync(FACTORY_OS_UI, "utf8");
+  assert.doesNotMatch(
+    src,
+    /["']@creezio\/granola["']\s*:/,
+    "générateur UI : pas de dep npm @creezio/granola (non publié)",
+  );
+  assert.doesNotMatch(
+    src,
+    /["']@creezio\/grokbot["']\s*:/,
+    "générateur UI : pas de dep npm @creezio/grokbot (non publié)",
+  );
+  assert.doesNotMatch(
+    src,
+    /transpilePackages:[\s\S]*["']@creezio\/granola["']/,
+    "générateur UI : pas de transpilePackages @creezio/granola",
+  );
+  assert.doesNotMatch(
+    src,
+    /transpilePackages:[\s\S]*["']@creezio\/grokbot["']/,
+    "générateur UI : pas de transpilePackages @creezio/grokbot",
+  );
+
+  const scaffold = fs.readFileSync(
+    path.join(ROOT, "packages/factory/src/scaffold.ts"),
+    "utf8",
+  );
+  for (const listName of ["SERVER_CREEZIO_DEPS", "CLIENT_CREEZIO_DEPS"]) {
+    const m = scaffold.match(
+      new RegExp(`const ${listName} = \\[([\\s\\S]*?)\\];`),
+    );
+    assert.ok(m, `${listName} introuvable`);
+    const names = [...m[1].matchAll(/"([^"]+)"/g)].map((x) => x[1]);
+    assert.ok(!names.includes("granola"), `${listName} : pas de granola`);
+    assert.ok(!names.includes("grokbot"), `${listName} : pas de grokbot`);
+  }
+
+  const factoryDist = path.join(
+    ROOT,
+    "packages/factory/dist/generators/os-ui.js",
+  );
+  assert.ok(fs.existsSync(factoryDist), "dist factory manquant");
+  const { renderUiPackageJson, renderUiNextConfig } = await import(factoryDist);
+  const uiPkg = JSON.parse(renderUiPackageJson({ brandId: "acme" }));
+  assert.equal(uiPkg.dependencies["@creezio/granola"], undefined);
+  assert.equal(uiPkg.dependencies["@creezio/grokbot"], undefined);
+  const nextCfg = renderUiNextConfig();
+  assert.doesNotMatch(nextCfg, /["']@creezio\/granola["']/);
+  assert.doesNotMatch(nextCfg, /["']@creezio\/grokbot["']/);
+});
+
 test("nav-catalog : enregistré dans le script test racine", () => {
   const pkg = JSON.parse(fs.readFileSync(path.join(ROOT, "package.json"), "utf8"));
   assert.match(

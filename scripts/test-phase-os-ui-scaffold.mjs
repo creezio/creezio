@@ -26,6 +26,33 @@ const FORBIDDEN_OS_DIRS = [
   "mcp",
 ];
 
+/** Packages kit non encore publiés — interdits dans les deps npm factory. */
+const UNPUBLISHED_FACTORY_PKGS = ["@creezio/granola", "@creezio/grokbot"];
+
+function extractQuotedList(src, constName) {
+  const m = src.match(new RegExp(`const ${constName} = \\[([\\s\\S]*?)\\];`));
+  assert.ok(m, `${constName} introuvable dans le générateur`);
+  return [...m[1].matchAll(/"([^"]+)"/g)].map((x) => x[1]);
+}
+
+function assertNoUnpublishedFactoryDeps(label, pkg) {
+  const buckets = [
+    pkg.dependencies,
+    pkg.devDependencies,
+    pkg.peerDependencies,
+    pkg.optionalDependencies,
+  ];
+  for (const name of UNPUBLISHED_FACTORY_PKGS) {
+    for (const bucket of buckets) {
+      assert.equal(
+        bucket?.[name],
+        undefined,
+        `${label} ne doit pas installer ${name} (non publié — factory deps ≠ catalogue)`,
+      );
+    }
+  }
+}
+
 test("os-ui generator : RequireSession kit enveloppe WorkspaceRoot (source, sans spawn)", () => {
   const gen = fs.readFileSync(
     path.join(ROOT, "packages/factory/src/generators/os-ui.ts"),
@@ -69,9 +96,59 @@ test("os-ui generator : RequireSession kit enveloppe WorkspaceRoot (source, sans
     /href:\s*["']\/granola["']/,
     "générateur : pas de href /granola inline",
   );
+  assert.doesNotMatch(
+    gen,
+    /["']@creezio\/granola["']\s*:/,
+    "générateur UI : pas de dep npm @creezio/granola (non publié)",
+  );
+  assert.doesNotMatch(
+    gen,
+    /["']@creezio\/grokbot["']\s*:/,
+    "générateur UI : pas de dep npm @creezio/grokbot (non publié)",
+  );
+  assert.doesNotMatch(
+    gen,
+    /transpilePackages:[\s\S]*["']@creezio\/granola["']/,
+    "générateur UI : pas de transpilePackages @creezio/granola",
+  );
+  assert.doesNotMatch(
+    gen,
+    /transpilePackages:[\s\S]*["']@creezio\/grokbot["']/,
+    "générateur UI : pas de transpilePackages @creezio/grokbot",
+  );
+
+  const scaffold = fs.readFileSync(
+    path.join(ROOT, "packages/factory/src/scaffold.ts"),
+    "utf8",
+  );
+  for (const listName of ["SERVER_CREEZIO_DEPS", "CLIENT_CREEZIO_DEPS"]) {
+    const names = extractQuotedList(scaffold, listName);
+    assert.ok(
+      !names.includes("granola"),
+      `${listName} : pas de granola avant publish npm`,
+    );
+    assert.ok(
+      !names.includes("grokbot"),
+      `${listName} : pas de grokbot avant publish npm`,
+    );
+  }
+  const fromPrd = fs.readFileSync(
+    path.join(ROOT, "packages/factory/src/scaffold-from-prd.ts"),
+    "utf8",
+  );
+  assert.doesNotMatch(
+    fromPrd,
+    /creezioNpmDeps\(\[[\s\S]*?["']granola["']/,
+    "scaffold-from-prd : pas de granola dans creezioNpmDeps",
+  );
+  assert.doesNotMatch(
+    fromPrd,
+    /creezioNpmDeps\(\[[\s\S]*?["']grokbot["']/,
+    "scaffold-from-prd : pas de grokbot dans creezioNpmDeps",
+  );
 });
 
-test("os-ui scaffold : zéro page OS versionnée, materialize + boot kit", () => {
+test("os-ui scaffold : zéro page OS versionnée, materialize + boot kit", (t) => {
   assert.ok(fs.existsSync(CLI), "factory CLI");
   assert.ok(fs.existsSync(PRD), "PRD produit");
   assert.ok(
@@ -87,13 +164,24 @@ test("os-ui scaffold : zéro page OS versionnée, materialize + boot kit", () =>
     "wrapper OS /grokbot",
   );
 
+  const hasRegistryToken = Boolean(
+    String(process.env.CREEZIO_NPM_TOKEN || "").trim(),
+  );
+  const spawnEnv = { ...process.env };
+  if (!hasRegistryToken) {
+    // Skip uniquement le `npm install` registre — les asserts générateur
+    // (test précédent) restent fail-closed. Jamais un skip « E404 granola ».
+    spawnEnv.CREEZIO_SKIP_BRAND_DIST = "1";
+    t.diagnostic("skip npm install : token registre manquant");
+  }
+
   const out = fs.mkdtempSync(path.join(os.tmpdir(), "creezio-os-ui-"));
   // 240s : le scaffold régénère les package-locks via le registre npm privé
   // (réseau) — ~110s observé sur VPS, le budget 120s historique flakait.
   const r = spawnSync(
     process.execPath,
     [CLI, "new-app", "--from-prd", PRD, "--out", out, "--force"],
-    { encoding: "utf8", cwd: ROOT, timeout: 240_000 },
+    { encoding: "utf8", cwd: ROOT, timeout: 240_000, env: spawnEnv },
   );
   assert.equal(r.status, 0, r.stderr || r.stdout);
 
@@ -123,6 +211,29 @@ test("os-ui scaffold : zéro page OS versionnée, materialize + boot kit", () =>
   );
   assert.ok(uiPkg.dependencies["@creezio/os-ui"]);
   assert.ok(uiPkg.scripts.prebuild);
+  assertNoUnpublishedFactoryDeps("server/ui/package.json généré", uiPkg);
+  const serverPkg = JSON.parse(
+    fs.readFileSync(path.join(srv, "package.json"), "utf8"),
+  );
+  assertNoUnpublishedFactoryDeps("server/package.json généré", serverPkg);
+  const clientPkg = JSON.parse(
+    fs.readFileSync(path.join(out, "client/package.json"), "utf8"),
+  );
+  assertNoUnpublishedFactoryDeps("client/package.json généré", clientPkg);
+  const nextCfg = fs.readFileSync(
+    path.join(srv, "ui/next.config.mjs"),
+    "utf8",
+  );
+  assert.doesNotMatch(
+    nextCfg,
+    /["']@creezio\/granola["']/,
+    "next.config généré : pas de transpilePackages @creezio/granola",
+  );
+  assert.doesNotMatch(
+    nextCfg,
+    /["']@creezio\/grokbot["']/,
+    "next.config généré : pas de transpilePackages @creezio/grokbot",
+  );
 
   const layout = fs.readFileSync(path.join(srv, "ui/app/layout.tsx"), "utf8");
   assert.match(layout, /@creezio\/os-ui\/boot/);

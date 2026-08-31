@@ -243,6 +243,24 @@ explicite (recommandée pour le Node/harness) : `app-runtime`
 `test-phase-os-nav-catalog` (chaque `OS_UI_ROUTE_SEGMENTS` primaire a une
 entrée, ou `horsNavJustification`).
 
+### 3.9 Factory deps ≠ catalogue
+
+Enregistrer une entrée (`registerOsNavEntry` / wrapper `@creezio/os-ui`)
+**n’ajoute pas** le package au `package.json` d’une marque générée.
+
+- `SERVER_CREEZIO_DEPS` / `CLIENT_CREEZIO_DEPS` / `renderUiPackageJson` /
+  `transpilePackages` ne listent que des `@creezio/*` **déjà publiés**
+  sur GitHub Packages.
+- Pas de `@creezio/<nouveau>` dans ces listes **avant** merge `main` →
+  `publish.yml`. Un module OS nouveau vit dans le catalogue (code kit)
+  tant qu’il n’est pas publié ; l’ajouter en dep factory trop tôt =
+  `new-app` + `npm install` **E404**.
+- Après publication lockstep : alors seulement on ajoute la dep factory.
+- Gate : `test-phase-os-ui-scaffold` + `test-phase-nav-catalog` — le
+  chrome / `package.json` généré ne contient pas `"@creezio/granola"` ni
+  `"@creezio/grokbot"` comme dependency (les hrefs `/granola` via le
+  catalogue restent OK).
+
 ---
 
 ## 4. Phases d’implémentation (kit)
@@ -363,3 +381,4 @@ même ce workaround disparaît au profit du loader.
 | Où déclarer une entrée OS ? | `registerOsNavEntry` au câblage `os.<id>` / export du package OS. |
 | Overrides | `brand.db` `nav_overrides`, jamais `core.db`. |
 | Qui filtre par rôle ? | Sidebar existante + access-control. Le catalogue n’invente pas d’ACL. |
+| Factory deps ≠ catalogue | Pas de `@creezio/<nouveau>` dans `SERVER_CREEZIO_DEPS` avant publish npm. |
