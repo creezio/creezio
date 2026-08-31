@@ -20,6 +20,16 @@ Maintenir les outils desktop generiques de publication, build distant Windows, r
 - `scripts/publish-desktop.sh` : publication feed.
 - `scripts/remote-build-win.sh` : build distant Windows.
 - `scripts/resolve-config.mjs` et `scripts/desktop-build-status.mjs` : wrappers CLI.
+- `scripts/e2e-browser-parcours.mjs` : E2E navigateur generique (harness +
+  UI plane + parcours API) — les assertions « cree puis liste » passent par
+  `scripts/meili-list-poll.mjs` (coherence eventuelle Meili : `?ids=`
+  deterministe + polling borne, echec explicite si `engine:"meili"` sans le
+  doc). `MEILI_SKIP_INDEX` vaut `"0"` par defaut ici (l'indexation doit
+  tourner pour que la visibilite liste soit testable).
+- `scripts/meili-list-poll.mjs` : helper SoT des smokes kit/marques —
+  `assertModuleRowHydratedById` / `pollModuleListUntilVisible`. Importe
+  aussi par les smokes generes factory (subpath `./scripts/*`). Gate :
+  `scripts/test-phase-meili-smoke-polling.mjs`.
 
 ## Modifier sans casser
 

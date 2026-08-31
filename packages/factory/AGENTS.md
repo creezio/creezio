@@ -60,6 +60,15 @@ en jumeau dans `main.ts`.
 - `tsconfig.preload.json` inclut `electron-shim.d.ts` : le preload compile
   hors ligne sans paquet `electron` (gates `factory-prd*`, lien
   `node_modules` kit — pas `--link-kit` / npm install).
+- Smokes « créé puis listé » : cohérence éventuelle Meili (contrat kit —
+  pas de write-through, `engine:"indexing"` + 0 item pendant l'indexation
+  initiale). Les templates (`renderMetierParcoursSmoke`,
+  `renderMiniPrdCoreSmoke`) assertent le read-after-write via `?ids=`
+  (hydratation PK = SQL légitime) puis pollent la liste via le helper SoT
+  `@creezio/desktop-tooling/scripts/meili-list-poll.mjs` (borné 60 s,
+  échec explicite si `engine:"meili"` sans le doc). **Jamais** d'assertion
+  naïve « GET liste immédiat post-create » sur une entité indexable —
+  gate `test-phase-meili-smoke-polling`.
 
 ## Points d'entrée
 

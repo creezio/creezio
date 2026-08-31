@@ -149,6 +149,7 @@
 | [`test-phase-mcp-tool-policy-guard.mjs`](../test-phase-mcp-tool-policy-guard.mjs) | Gate M1-M2 — garde d'enforcement réutilisable des policies MCP admin (`packages/mcp-facade/src/admin/tool-policy-guard.ts`). |
 | [`test-phase-meili-browse.mjs`](../test-phase-meili-browse.mjs) | Gate Meili browse : q vide = Meili, 0 hit = meili, filtre rejeté = SQL visible ; factory sans piège 0-hit→SQL ; modules catalogue meiliIndexes ou horsIndexJustification. |
 | [`test-phase-meili-feed.mjs`](../test-phase-meili-feed.mjs) | Gate Phase C — BrandMeiliFeed générique (pas de tf2_* dans le chemin feed). |
+| [`test-phase-meili-smoke-polling.mjs`](../test-phase-meili-smoke-polling.mjs) | Gate — smokes compatibles cohérence éventuelle Meili : comportement du helper `meili-list-poll.mjs` (polling borné, fail-fast `engine:"meili"`, hydratation `?ids=`) + branchement dans e2e-browser-parcours et les templates factory. |
 | [`test-phase-module-docs.mjs`](../test-phase-module-docs.mjs) | Standard module (prd/interview/TODO/CHANGELOG + `gate.mjs` si colocated) sur kit admin, marque sonde et admin-spec. |
 | [`test-phase-module-mount-session.mjs`](../test-phase-module-mount-session.mjs) | Garde session HTTP sur `/api/v1/modules/*` et `/api/v1/admin/*` (401 anonyme, JWT, clé machine, allowlist public). |
 | [`test-phase-module-ops.mjs`](../test-phase-module-ops.mjs) | Gate contrat 0.10.6 — ops EntitySpec auto, listTools `module.test.from-panier` via handle(), catalogue kernel, doctor MODULE_OP_*. |
