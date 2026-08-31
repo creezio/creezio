@@ -71,6 +71,7 @@ test("mails-ui.3 workspace 3 panneaux resizable + dossiers + threads", () => {
   assert.match(ws, /MailComposer/);
   assert.match(ws, /parametres\/email/, "bandeau → réglages transport");
   assert.match(ws, /setFolder\("outbox"\)/, "après envoi → file d'attente");
+  assert.match(ws, /sendBroken|envoi réel indisponible/, "bandeau send KO");
 
   const types = read("packages/mails/ui/mail-types.ts");
   for (const folder of ["inbox", "sent", "drafts", "outbox", "archive", "trash"]) {
@@ -110,6 +111,8 @@ test("mails-ui.5 page paramètres : transport + test d'envoi + comptes IMAP", ()
   assert.match(settings, /file-sink/);
   assert.match(settings, /accounts/, "gestion comptes IMAP");
   assert.match(settings, /integration:\/\//, "secret par référence");
+  assert.match(settings, /Email Sending non configuré/);
+  assert.match(settings, /envoi réel indisponible/);
 });
 
 test("mails-ui.6 wrappers os-ui + factory alignés MailWorkspace/MailSettings", () => {

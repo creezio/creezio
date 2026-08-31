@@ -67,7 +67,24 @@ export type MailMeta = {
     configured: boolean;
     error?: string | null;
     errorCode?: string | null;
+    send?: MailSendStatus;
   };
+};
+
+export type MailSendState =
+  | "unconfigured"
+  | "unavailable"
+  | "ok"
+  | "unknown";
+
+export type MailSendStatus = {
+  state: MailSendState;
+  credentialsPresent: boolean;
+  configured: boolean;
+  sendOk: boolean | null;
+  code: string | null;
+  error: string | null;
+  message: string;
 };
 
 /** Libellé FR pour les codes d'erreur transport / outbox. */
@@ -85,6 +102,12 @@ export function describeMailError(code: string | null | undefined): string {
   }
   if (c.startsWith("smtp_unconfigured")) {
     return "SMTP incomplet.";
+  }
+  if (c.includes("nodemailer_absent")) {
+    return "nodemailer_absent — installez nodemailer ou utilisez file-sink.";
+  }
+  if (c === "send_unavailable") {
+    return "Token présent, envoi réel indisponible (domaine non onboardé / 550).";
   }
   return c;
 }

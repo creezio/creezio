@@ -394,6 +394,12 @@ export function describeMailTransportError(
   if (c === "smtp_unconfigured" || c.startsWith("smtp_unconfigured")) {
     return "SMTP incomplet (SMTP_URL ou SMTP_HOST requis).";
   }
+  if (c.includes("nodemailer_absent")) {
+    return "nodemailer_absent — installez nodemailer côté app ou utilisez file-sink.";
+  }
+  if (c === "send_unavailable") {
+    return "Token présent, envoi réel indisponible (domaine non onboardé / 550).";
+  }
   return c;
 }
 
