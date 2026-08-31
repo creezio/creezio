@@ -52,6 +52,15 @@ du doctor. Version kit indéterminable → pas d'escalade aveugle (warn).
   - `MODULE_PERMISSION_UNQUALIFIED` — **warn** : `accessJustification:
     "à qualifier"` (dette posée par le codemod H9, jamais une permission
     inventée)
+- Cohérence `meiliIndexes.table` ↔ migrations (T6, toujours **error**,
+  pas de pin / pas d'env de bypass) :
+  - `MODULE_MEILI_TABLE_UNKNOWN` — table d'un index introuvable dans le
+    plan de données **cross-module** (tous `modules/*.ts` + historiques
+    `fromprd_brand_*` / `brand-migrations.ts`). Un check *par module*
+    est interdit (faux positifs). Parse `CREATE TABLE` : `IF NOT EXISTS`,
+    quotes (`"`, backticks, `[]`), identifiant nu. Échappatoire déclarative uniquement :
+    `tableProvisionedBy` sur la spec d'index (`@creezio/search`) si la
+    table est provisionnée à l'exécution.
 - `initBrandSpec`
 - `resolveOnboardingDecl` / `toSetupWizardConfig`
 
