@@ -453,6 +453,7 @@ export function scaffoldAdminApp(o: AdminRepoOptions): AdminRepoResult {
       sql: BRAND_API_KEYS_SQL,
     },
     interactiveDemoMigrations(),
+    onboardingContentMigrations(),
     collectModuleMigrations(),
   );`,
     `    {
@@ -460,6 +461,7 @@ export function scaffoldAdminApp(o: AdminRepoOptions): AdminRepoResult {
       sql: BRAND_API_KEYS_SQL,
     },
     interactiveDemoMigrations(),
+    onboardingContentMigrations(),
     // Tables des modules admin natifs (@creezio/admin — ADR-admin-app-os).
     adminMigrations(),
     // Landing page hybride (@creezio/landing — ADR-module-natif-hybride) :
