@@ -64,7 +64,17 @@ function runUpgrade(brandRoot, extra = []) {
   return spawnSync(
     process.execPath,
     [CLI, "upgrade", "--brand-root", brandRoot, ...extra],
-    { encoding: "utf8", cwd: ROOT, timeout: 120_000 },
+    {
+      encoding: "utf8",
+      cwd: ROOT,
+      timeout: 120_000,
+      // CREEZIO_LINK_KIT (posé par la CI kit pour les gates scaffold) est
+      // neutralisé : un upgrade réel de marque produit un lock REGISTRE
+      // (committable), jamais file:<worktree>. Sans ça, le pin link-kit
+      // désynchronise manifest/lock des fixtures offline (U4/U5) et
+      // ensureBrandPackageLocks part sur le réseau (contrat gate : zéro npm).
+      env: { ...process.env, CREEZIO_LINK_KIT: "0" },
+    },
   );
 }
 
