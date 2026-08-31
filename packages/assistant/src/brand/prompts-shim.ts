@@ -17,20 +17,14 @@ import {
 import { loadSchemaCatalog } from "../runtime/schema-catalog.js";
 import { PLATFORM_TOOL_DEFINITIONS } from "../runtime/platform-tool-definitions.js";
 import { cachedMcpToolDefinitions } from "../runtime/mcp-tools.js";
+import { selectOpenAiToolDefinitions } from "../runtime/openai-tool-payload.js";
 import { taskToolDefinitions } from "../runtime/tasks-tools.js";
 import type { AssistantToolDefinition } from "./types.js";
 
-function mergeToolDefinitions(
-  ...lists: AssistantToolDefinition[][]
-): AssistantToolDefinition[] {
-  const byName = new Map<string, AssistantToolDefinition>();
-  for (const list of lists) {
-    for (const t of list) {
-      byName.set(t.function.name, t);
-    }
-  }
-  return [...byName.values()];
-}
+export {
+  OPENAI_CHAT_MAX_TOOLS,
+  selectOpenAiToolDefinitions,
+} from "../runtime/openai-tool-payload.js";
 
 export {
   looksLikeUiCommand,
@@ -137,16 +131,16 @@ Pour une dimension texte, normalise-la par \`LOWER(TRIM(colonne))\`. N'annonce p
 export const ASSISTANT_SYSTEM_PROMPT = GENERIC_BASE;
 
 /**
- * Outils LLM = platform kit ∪ tasks ∪ MCP découverts ∪ addendum marque.
- * Cache MCP rafraîchi via ensureMcpToolCache() en tête de chat.
+ * Outils LLM = platform kit ∪ tasks ∪ addendum marque ∪ MCP découverts.
+ * Dédup nom OpenAI-safe + plafond 128. Cache MCP via ensureMcpToolCache().
  */
 export function getToolDefinitions(): AssistantToolDefinition[] {
-  return mergeToolDefinitions(
+  return selectOpenAiToolDefinitions([
     PLATFORM_TOOL_DEFINITIONS,
     taskToolDefinitions(),
-    cachedMcpToolDefinitions(),
     assistantToolDefinitions(),
-  );
+    cachedMcpToolDefinitions(),
+  ]);
 }
 
 /** @deprecated préférer getToolDefinitions() — tableau live via getter. */

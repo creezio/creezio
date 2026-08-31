@@ -8,16 +8,9 @@ import type {
   AssistantMcpToolDef,
   AssistantToolDefinition,
 } from "../brand/types.js";
+import { openaiSafeToolName } from "./openai-tool-payload.js";
 
-/**
- * OpenAI Chat Completions n'accepte que `^[a-zA-Z0-9_-]+$` pour
- * `tools[].function.name`. Les tools MCP canoniques utilisent des points
- * (`module.panier.add`) — on expose une forme safe au LLM et on reverse
- * mappe à l'appel.
- */
-export function openaiSafeToolName(name: string): string {
-  return name.replace(/[^a-zA-Z0-9_-]/g, "_");
-}
+export { openaiSafeToolName } from "./openai-tool-payload.js";
 
 let cache: {
   at: number;
@@ -215,30 +208,14 @@ export function mcpFacadeToAssistantConfig(facade: {
       const tools = (res.tools || []).filter(
         (t) => t.space === "module" || t.space === "plugin" || !t.space,
       );
-      // Inclure aussi les alias legacy utiles (add_to_panier) en mode both pour
-      // rétrocompat prompts — mais publicSurface canonical les exclut.
-      // On expose uniquement module/plugin.
-      const aliases = facade.listAliases?.() || {};
-      const out: AssistantMcpToolDef[] = tools.map((t) => ({
+      // Canonique seul : ne pas réinjecter les alias Hermes (add_to_panier, …)
+      // dans le payload chat OS — ça doublait la liste et dépassait le plafond
+      // OpenAI 128. callTool résout encore les alias via la façade.
+      return tools.map((t) => ({
         name: t.name,
         description: t.description,
         inputSchema: t.inputSchema,
       }));
-      // Ajouter alias → même schema que canonique (LLM peut encore dire add_to_panier)
-      const byName = new Map(tools.map((t) => [t.name, t]));
-      for (const [alias, canonical] of Object.entries(aliases)) {
-        const target = byName.get(canonical);
-        if (!target) continue;
-        if (out.some((t) => t.name === alias)) continue;
-        // Ne pas ré-exposer add_to_cart (mort) ; alias MCP legacy OK
-        if (alias === "add_to_cart") continue;
-        out.push({
-          name: alias,
-          description: `${target.description} (alias → ${canonical})`,
-          inputSchema: target.inputSchema,
-        });
-      }
-      return out;
     },
     async callTool(name, args, opts) {
       return facade.callTool(name, args, {

@@ -15,6 +15,8 @@ import {
   denyCrossLayerToolCall,
 } from "./policy.js";
 import { createCoreMcpTools } from "./core-tools.js";
+import { isMcpAdminConfigured } from "./admin/adapters.js";
+import { filterListedToolsByEnabledPolicy } from "./admin/mcp-admin.js";
 import type {
   DiscoverToolsBySpaceFn,
   DiscoverToolsFn,
@@ -318,6 +320,12 @@ export function createMcpFacade(options: McpFacadeOptions = {}): McpFacade {
           claims: a.claims,
         });
       }
+      if (isMcpAdminConfigured()) {
+        defs = filterListedToolsByEnabledPolicy(
+          defs,
+          Object.fromEntries(aliases),
+        );
+      }
       return { tools: defs };
     },
 
@@ -335,6 +343,12 @@ export function createMcpFacade(options: McpFacadeOptions = {}): McpFacade {
           orgId: a.orgId,
           claims: a.claims,
         });
+      }
+      if (isMcpAdminConfigured()) {
+        defs = filterListedToolsByEnabledPolicy(
+          defs,
+          Object.fromEntries(aliases),
+        );
       }
       return groupBySpace(defs);
     },

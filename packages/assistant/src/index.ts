@@ -77,11 +77,13 @@ export {
 export {
   ASSISTANT_SYSTEM_PROMPT,
   DEFAULT_MAX_TOOL_ROUNDS,
+  OPENAI_CHAT_MAX_TOOLS,
   TOOL_DEFINITIONS,
   buildSystemPrompt,
   formatNowParis,
   getToolDefinitions,
   maxToolRounds,
+  selectOpenAiToolDefinitions,
   shouldAuditDistribution,
 } from "./brand/prompts-shim.js";
 export type {
