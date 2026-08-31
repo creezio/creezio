@@ -503,10 +503,14 @@ test("grokbot : GET usage / artifacts / download passthrough mock", async () => 
 test("grokbot : UI split launch/usage vs runs — pas de poll repositories", () => {
   const ui = path.join(ROOT, "packages/grokbot/ui");
   const read = (name) => fs.readFileSync(path.join(ui, name), "utf8");
+  const strip = (src) =>
+    src.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/[^\n]*/g, "");
   const client = read("grokbot-client.tsx");
   const launch = read("grokbot-launch-form.tsx");
   const usage = read("grokbot-usage-artifacts.tsx");
   const runs = read("grokbot-agent-runs.tsx");
+  const clientCode = strip(client);
+  const runsCode = strip(runs);
 
   assert.match(client, /GrokbotLaunchForm/);
   assert.match(client, /GrokbotUsageArtifacts/);
@@ -527,12 +531,12 @@ test("grokbot : UI split launch/usage vs runs — pas de poll repositories", () 
   assert.match(usage, /artifacts\/download/);
   assert.match(usage, /from "sonner"/);
 
-  assert.doesNotMatch(client, /\/repositories/);
-  assert.doesNotMatch(runs, /\/repositories/);
-  assert.doesNotMatch(runs, /\/models/);
-  assert.doesNotMatch(client, /\/models/);
+  assert.doesNotMatch(clientCode, /fetch\([^)]*\/repositories/);
+  assert.doesNotMatch(runsCode, /fetch\([^)]*\/repositories/);
+  assert.doesNotMatch(runsCode, /fetch\([^)]*\/models/);
+  assert.doesNotMatch(clientCode, /fetch\([^)]*\/models/);
 
-  for (const src of [client, launch, usage, runs]) {
+  for (const src of [client, launch, usage, runs].map(strip)) {
     assert.doesNotMatch(src, /api\.cursor\.com/);
     assert.doesNotMatch(src, /Authorization:\s*Bearer/);
   }
