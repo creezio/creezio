@@ -52,6 +52,19 @@ Modules natifs des **apps admin de marque** (mode admin — ADR
 - Zéro domaine marque ici : naming (« restaurants »…) = config app admin.
 - UI : `@creezio/admin/ui` (TS brut compilé par l'app Next consommatrice).
 - Migrations : `adminMigrations()` à passer en `brandMigrations` de l'app admin.
+- **Permissions par module (P4)** : chaque mount admin déclare sa
+  `permission` (`ADMIN_MODULE_PERMISSIONS` — `nav.fleet`, `nav.support`,
+  `nav.billing`…) gardée par `authorizeModuleAccess` (owner bypass) ; les
+  routes machine (webhook Stripe signé, `register`/`heartbeat`,
+  `next`/`slots`/`report`/`maintenance` agents) restent SANS permission
+  session (auth propre — ne pas les gater). Attribution par compte :
+  `@creezio/access-control` (overrides `access_user_overrides`, UI « Rôles
+  & accès » onglet Comptes, CLI `server-docker access`). Preset app admin :
+  `adminAccessControlPreset()` → `configureAccessControl` dans
+  `brand-platform-bindings.ts` (généré factory) — **politique de migration
+  sans lockout** : rôle `collaborator` = tous les modules par défaut,
+  l'owner restreint ensuite. Pages : `AdminModuleGate` (état explicite en
+  URL directe). Gate : `scripts/test-phase-access-control.mjs` (test 12).
 
 ## Ne pas faire
 

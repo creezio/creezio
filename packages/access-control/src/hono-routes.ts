@@ -248,26 +248,41 @@ export function createAccessControlRoutes(
     return c.json({ ok: true, overrides: store.listOverrides() });
   });
 
-  /** Comptes + rôle effectif + permissions résolues. */
+  /**
+   * Comptes + rôle effectif + permissions résolues. Pour chaque compte non
+   * owner : `roleBaseline` (permissions du rôle SEUL) + `overrides` (les
+   * ajustements par compte) — l'UI en déduit l'écart compte ↔ rôle.
+   */
   app.get("/users", async (c) => {
     const guard = await managerSession(c);
     if (guard instanceof Response) return guard;
     const ctx = configured();
     if ("error" in ctx) return c.json({ error: ctx.error }, ctx.status);
-    const { config } = ctx;
+    const { config, store } = ctx;
     const users = [];
     for (const user of deps.listUsers()) {
       const isOwner = user.role === "owner";
+      const role = isOwner ? "owner" : await resolveUserRole(user.id, null);
       users.push({
         id: user.id,
         username: user.username,
         kind: user.kind ?? "human",
         active: user.active !== false,
         kitRole: user.role,
-        role: isOwner ? "owner" : await resolveUserRole(user.id, null),
+        role,
         permissions: isOwner
           ? [...deps.ownerPermissions()]
           : await resolvePermissions(user.id, null),
+        roleBaseline: isOwner
+          ? [...deps.ownerPermissions()]
+          : role
+            ? resolveRoleEffectivePermissions(role, store)
+            : [],
+        overrides: isOwner
+          ? []
+          : store
+              .listUserOverrides(user.id)
+              .map((o) => ({ permission: o.permission, effect: o.effect })),
       });
     }
     return c.json({
@@ -275,6 +290,102 @@ export function createAccessControlRoutes(
       users,
       roles: config.roles.map((r) => ({ id: r.id, label: r.label })),
       defaultRole: config.defaultRole ?? null,
+    });
+  });
+
+  /**
+   * Attribution de permissions PAR COMPTE (overrides utilisateur) —
+   * `{ changes: [{ permission, effect: allow|deny|inherit }] }`.
+   * `inherit` = retour au rôle. Owner figé (a déjà tout).
+   */
+  app.put("/users/:id/permissions", async (c) => {
+    const guard = await managerSession(c);
+    if (guard instanceof Response) return guard;
+    const ctx = configured();
+    if ("error" in ctx) return c.json({ error: ctx.error }, ctx.status);
+    const { config, store } = ctx;
+    const actor = String(guard.session.email || guard.session.sub);
+    const target = deps.getUserById(c.req.param("id"));
+    if (!target) return c.json({ error: "Compte introuvable" }, 404);
+    if (target.role === "owner") {
+      return c.json(
+        { error: "Le propriétaire a toutes les permissions (figé)" },
+        400,
+      );
+    }
+    const body = (await c.req.json().catch(() => ({}))) as {
+      changes?: Array<{ permission?: unknown; effect?: unknown }>;
+    };
+    if (!Array.isArray(body.changes)) {
+      return c.json({ error: "changes[] requis" }, 400);
+    }
+    if (body.changes.length > MAX_MATRIX_CHANGES) {
+      return c.json({ error: "trop de changements" }, 400);
+    }
+    const catalog = catalogPermissionIds(config, deps);
+    const changes: Array<{
+      permission: string;
+      effect: "allow" | "deny" | "inherit";
+    }> = [];
+    for (const raw of body.changes) {
+      const permission = String(raw.permission || "");
+      const effect = String(raw.effect || "");
+      if (!catalog.has(permission)) {
+        return c.json({ error: `permission inconnue: ${permission}` }, 400);
+      }
+      if (effect !== "allow" && effect !== "deny" && effect !== "inherit") {
+        return c.json({ error: `effect invalide: ${effect}` }, 400);
+      }
+      changes.push({ permission, effect });
+    }
+    const current = new Map(
+      store
+        .listUserOverrides(target.id)
+        .map((o) => [o.permission, o.effect] as const),
+    );
+    for (const change of changes) {
+      const before = current.get(change.permission) ?? null;
+      if (change.effect === "inherit") {
+        if (before !== null) {
+          store.clearUserOverride(target.id, change.permission);
+          store.logAudit({
+            actor,
+            action: "user.override.clear",
+            permission: change.permission,
+            targetUserId: target.id,
+            detail: { username: target.username, from: before },
+          });
+        }
+        continue;
+      }
+      if (before !== change.effect) {
+        store.setUserOverride(
+          target.id,
+          change.permission,
+          change.effect,
+          actor,
+        );
+        store.logAudit({
+          actor,
+          action: "user.override.set",
+          permission: change.permission,
+          effect: change.effect,
+          targetUserId: target.id,
+          detail: { username: target.username, from: before, to: change.effect },
+        });
+      }
+    }
+    invalidateAccessControlCaches(target.id);
+    return c.json({
+      ok: true,
+      user: {
+        id: target.id,
+        username: target.username,
+        permissions: await resolvePermissions(target.id, null),
+        overrides: store
+          .listUserOverrides(target.id)
+          .map((o) => ({ permission: o.permission, effect: o.effect })),
+      },
     });
   });
 

@@ -50,6 +50,7 @@ import {
   generateOwnerPassword,
   resolveCreateOwnerPolicy,
   resolveEnsureOwnerCreds,
+  applyAccessOverridesViaContainer,
   seedKitUserViaContainer,
   verifyOwnerLogin,
   type CreateOwnerPolicy,
@@ -142,6 +143,16 @@ export type ServerDockerArgs = {
   noStack?: boolean;
   /** create/migrate-stack : port hôte loopback FIXE (défaut 0 = auto). */
   hostPort?: number;
+  /** access : e-mail du compte cible. */
+  user?: string;
+  /** access : permissions à accorder (liste séparée par virgules). */
+  grant?: string;
+  /** access : permissions à refuser (liste séparée par virgules). */
+  revoke?: string;
+  /** access : effacer tous les overrides du compte avant grant/revoke. */
+  reset?: boolean;
+  /** access : rôle access-control à poser (`none` = rôle plateforme). */
+  role?: string;
   rest: string[];
 };
 
@@ -227,6 +238,15 @@ export function parseServerDockerArgs(argv: string[]): ServerDockerArgs {
     else if (a === "--bind") out.bind = rest.shift();
     else if (a.startsWith("--tail=")) out.tail = Number(a.slice(7));
     else if (a === "--tail") out.tail = Number(rest.shift());
+    else if (a.startsWith("--user=")) out.user = a.slice(7);
+    else if (a === "--user") out.user = rest.shift();
+    else if (a.startsWith("--grant=")) out.grant = a.slice(8);
+    else if (a === "--grant") out.grant = rest.shift();
+    else if (a.startsWith("--revoke=")) out.revoke = a.slice(9);
+    else if (a === "--revoke") out.revoke = rest.shift();
+    else if (a === "--reset") out.reset = true;
+    else if (a.startsWith("--role=")) out.role = a.slice(7);
+    else if (a === "--role") out.role = rest.shift();
     else if (a.startsWith("--env=")) {
       const kv = a.slice(6);
       const i = kv.indexOf("=");
@@ -293,6 +313,15 @@ Instances nommées (registre docker-data/servers.json — recommandé) :
      secrets.env 600 — jamais dans le registre ni les logs. Recrée
      uniquement le service app pour injecter l'env, sidecar intact.
      Fail-closed create VPS inchangé : owner toujours requis au create.)
+  creezio server-docker access <nom> --brand-root <app> --user <email>
+    [--grant nav.billing,nav.clients] [--revoke nav.fleet] [--reset]
+    [--role <id>|none]
+    (permissions PAR MODULE d'un compte — bootstrap sans UI du système
+     « Rôles & accès » (@creezio/access-control) : overrides par compte
+     écrits dans core.db (audit actor server-docker-cli), effet ≤ 30 s.
+     Sans --grant/--revoke/--reset/--role : affiche l'état du compte.
+     Owner = bypass kit, non concerné. UI équivalente : OS → Admin →
+     Rôles & accès, onglet Comptes.)
 
 Stack compose autonome (modèle standard — cloudflared in-process) :
   create génère par défaut un stack compose par instance : app seule (port
@@ -2927,6 +2956,41 @@ async function runRegistrySubcommand(
     return;
   }
 
+  if (args.sub === "access") {
+    // Permissions par module (access-control) — bootstrap sans UI, cohérent
+    // ensure-owner : écriture directe core.db via docker exec (+ audit).
+    if (!args.user) {
+      throw new Error(
+        [
+          `access ${inst.name} : --user <email> requis.`,
+          "Ex. : creezio server-docker access main --brand-root <admin> \\",
+          "        --user compta@marque.fr --reset --grant nav.billing,nav.clients",
+        ].join("\n"),
+      );
+    }
+    const grant = (args.grant || "").split(",").map((s) => s.trim()).filter(Boolean);
+    const revoke = (args.revoke || "").split(",").map((s) => s.trim()).filter(Boolean);
+    const result = applyAccessOverridesViaContainer({
+      containerName: inst.containerName,
+      email: args.user,
+      grant,
+      revoke,
+      reset: args.reset,
+      role: args.role,
+    });
+    console.log(`✓ access ${inst.name} — ${result.email} (${result.userId})`);
+    console.log(`  rôle access-control : ${result.role || "(rôle plateforme)"}`);
+    if (result.overrides.length) {
+      for (const o of result.overrides) {
+        console.log(`  ${o.effect === "allow" ? "+" : "−"} ${o.permission} (${o.effect})`);
+      }
+    } else {
+      console.log("  aucun override par compte (permissions = défauts du rôle)");
+    }
+    console.log("  effet ≤ 30 s (cache resolvePermissions) — audit access_audit_log (actor server-docker-cli)");
+    return;
+  }
+
   if (args.sub === "migrate-stack") {
     // Migration vers le modèle in-process (0.10.0) :
     //  - stack sidecar (cloudflared compose) → stack app seule + cf.env ;
@@ -3419,6 +3483,7 @@ export async function runServerDockerCli(argv: string[]): Promise<void> {
     "backup",
     "migrate-stack",
     "ensure-owner",
+    "access",
   ]);
   if (registrySubs.has(args.sub)) {
     await runRegistrySubcommand(args, paths, env);
@@ -3569,6 +3634,6 @@ export async function runServerDockerCli(argv: string[]): Promise<void> {
   }
 
   throw new Error(
-    `Sous-commande inconnue: ${args.sub} (create|start|stop|rm|logs|ls|update|backup|ensure-owner|admin|publish|agent|enroll|build|up|down|ps|proof)`,
+    `Sous-commande inconnue: ${args.sub} (create|start|stop|rm|logs|ls|update|backup|ensure-owner|access|admin|publish|agent|enroll|build|up|down|ps|proof)`,
   );
 }

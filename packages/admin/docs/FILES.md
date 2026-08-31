@@ -19,5 +19,6 @@
 | [`ui/billing-admin-client.tsx`](../ui/billing-admin-client.tsx) | Module Billing (admin) — projections `admin_billing_*` alimentées par webhooks Stripe signés : abonnements, factures, rapprochement client ↔ serveur. |
 | [`ui/fleet-admin-client.tsx`](../ui/fleet-admin-client.tsx) | Module Flotte — UI admin (design system kit) : hôtes VPS enrôlés, création serveur, start/stop/update (202 + poll), update en masse, logs. |
 | [`ui/index.ts`](../ui/index.ts) | Export des clients React des modules admin natifs (Fleet, Tickets, Prospects, Billing…). |
+| [`ui/module-gate.tsx`](../ui/module-gate.tsx) | `AdminModuleGate` — état explicite « Accès refusé » en URL directe sans la permission du module (même règle que la sidebar : owner bypass, sinon `me.permissions`) |
 | [`ui/prospects-kanban-client.tsx`](../ui/prospects-kanban-client.tsx) | Module Prospection — kanban drag & drop générique (colonnes = champ `colonne` de `admin_prospects`, DnD HTML5 natif sans dépendance). |
 | [`ui/tickets-admin-client.tsx`](../ui/tickets-admin-client.tsx) | Module Support (admin) — tickets agrégés de toute la flotte : sync pull, fil de messages, réponse relayée au serveur marque (/support). |

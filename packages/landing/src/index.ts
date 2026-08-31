@@ -352,23 +352,59 @@ export type CreateLandingMountOptions = {
   mediaDir?: string;
   /** Taille max upload base64 décodé (défaut 8 Mo). */
   maxUploadBytes?: number;
+  /**
+   * Permission requise pour l'ÉDITION (settings, sections, media, kinds) —
+   * gardée par `authorizeModuleAccess` (owner bypass). `GET public` reste
+   * toujours sans permission (page publique, allowlist bordure). Opt-in :
+   * sans cette option, comportement historique inchangé (garde session de
+   * bordure seule) — les apps admin passent `nav.landing`.
+   */
+  permission?: string;
 };
 
 /**
  * Mount du module landing — enregistrer côté app :
  *
  *   api.registerModuleApi("landing", createLandingMount());
+ *   // app admin (permission par module) :
+ *   api.registerModuleApi("landing", createLandingMount({ permission: "nav.landing" }));
  *
  * Lecture publique : `GET public` (la page rendue est publique).
  * Édition : posture ADR-admin-app-os (app admin derrière auth OS /
- * isolation réseau) — comme les autres modules admin.
+ * isolation réseau) — + permission opt-in par module (apps admin).
  */
 export function createLandingMount(
   opts?: CreateLandingMountOptions,
 ): ApiMount {
   const maxUpload = opts?.maxUploadBytes ?? DEFAULT_MAX_UPLOAD_BYTES;
+  const perm = opts?.permission;
+  const editOp = (op: {
+    id: string;
+    method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
+    path: string;
+    description: string;
+  }) => ({ ...op, ...(perm ? { permission: perm } : {}) });
   return {
     dbLayer: "brand",
+    // `GET public` volontairement SANS permission (rendu lp.{zone} anonyme,
+    // allowlist bordure) — l'édition est gardée op par op si `permission`.
+    accessJustification:
+      "GET public = page publique anonyme (allowlist bordure) — édition gardée op par op via l'option permission (apps admin)",
+    operations: [
+      { id: "public", method: "GET", path: "/public", description: "Contenu landing public" },
+      editOp({ id: "get-settings", method: "GET", path: "/settings", description: "Lire les settings landing" }),
+      editOp({ id: "put-settings", method: "PUT", path: "/settings", description: "Mettre à jour les settings" }),
+      editOp({ id: "list-sections", method: "GET", path: "/sections", description: "Lister les sections" }),
+      editOp({ id: "create-section", method: "POST", path: "/sections", description: "Créer une section" }),
+      editOp({ id: "reorder-sections", method: "POST", path: "/sections/reorder", description: "Réordonner les sections" }),
+      editOp({ id: "get-section", method: "GET", path: "/sections/:id", description: "Lire une section" }),
+      editOp({ id: "update-section", method: "PATCH", path: "/sections/:id", description: "Mettre à jour une section" }),
+      editOp({ id: "delete-section", method: "DELETE", path: "/sections/:id", description: "Supprimer une section" }),
+      editOp({ id: "list-media", method: "GET", path: "/media", description: "Lister les médias" }),
+      editOp({ id: "upload-media", method: "POST", path: "/media", description: "Uploader un média" }),
+      editOp({ id: "delete-media", method: "DELETE", path: "/media/:id", description: "Supprimer un média" }),
+      editOp({ id: "kinds", method: "GET", path: "/kinds", description: "Kinds de sections préfabriqués" }),
+    ],
     handle: async ({ req, subPath, db }) => {
       if (!db) return { status: 503, body: { ok: false, error: "db_unavailable" } };
       const method = req.method.toUpperCase();

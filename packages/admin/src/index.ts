@@ -22,6 +22,7 @@ import type {
   ApiKernel,
   ApiMount,
   ApiRequest,
+  ModuleOperation,
   ScopedDbAccess,
 } from "@creezio/api-kernel";
 import type { SqliteMigration } from "@creezio/platform-core";
@@ -192,6 +193,142 @@ export function adminMigrations(): SqliteMigration[] {
   ];
 }
 
+/* ------------------------------------ permissions des modules admin (P4) */
+
+/**
+ * Permission canonique de chaque module admin natif — SoT kit : gardée par
+ * `authorizeModuleAccess` (mounts ci-dessous), filtrée par la sidebar
+ * (`BrandNavItem.permission`) et administrable dans « Rôles & accès »
+ * (@creezio/access-control). Owner = bypass systématique (kit).
+ * `clients` / `landing` sont des modules scaffoldés côté app admin (entité
+ * factory / @creezio/landing) — la constante vit ici pour que toute app
+ * admin générée partage le même vocabulaire.
+ */
+export const ADMIN_MODULE_PERMISSIONS = {
+  fleet: "nav.fleet",
+  support: "nav.support",
+  prospects: "nav.prospects",
+  roadmap: "nav.roadmap",
+  clients: "nav.clients",
+  billing: "nav.billing",
+  landing: "nav.landing",
+} as const;
+
+export type AdminModulePermissionId =
+  (typeof ADMIN_MODULE_PERMISSIONS)[keyof typeof ADMIN_MODULE_PERMISSIONS];
+
+type AdminAccessPermissionGroup = {
+  id: string;
+  label: string;
+  permissions: Array<{ id: string; label: string }>;
+};
+
+/** Catalogue « un module = un groupe » pour la matrice Rôles & accès. */
+export function adminAccessPermissionGroups(): AdminAccessPermissionGroup[] {
+  return [
+    {
+      id: "fleet",
+      label: "Flotte",
+      permissions: [
+        { id: ADMIN_MODULE_PERMISSIONS.fleet, label: "Flotte (serveurs, releases, updates)" },
+      ],
+    },
+    {
+      id: "support",
+      label: "Support",
+      permissions: [
+        { id: ADMIN_MODULE_PERMISSIONS.support, label: "Tickets support" },
+      ],
+    },
+    {
+      id: "prospection",
+      label: "Prospection",
+      permissions: [
+        { id: ADMIN_MODULE_PERMISSIONS.prospects, label: "Prospects (kanban)" },
+      ],
+    },
+    {
+      id: "roadmap",
+      label: "Roadmap",
+      permissions: [
+        { id: ADMIN_MODULE_PERMISSIONS.roadmap, label: "Roadmap produit" },
+      ],
+    },
+    {
+      id: "billing",
+      label: "Facturation",
+      permissions: [
+        { id: ADMIN_MODULE_PERMISSIONS.clients, label: "Clients" },
+        { id: ADMIN_MODULE_PERMISSIONS.billing, label: "Billing (abonnements, factures, Stripe)" },
+      ],
+    },
+    {
+      id: "landing",
+      label: "Landing page",
+      permissions: [
+        { id: ADMIN_MODULE_PERMISSIONS.landing, label: "Landing page (édition)" },
+      ],
+    },
+  ];
+}
+
+export type AdminAccessControlPresetOptions = {
+  /** Groupes additionnels (modules admin métier de la marque). */
+  extraGroups?: AdminAccessPermissionGroup[];
+  /** Permissions additionnelles du rôle collaborateur par défaut. */
+  extraCollaboratorPermissions?: string[];
+};
+
+/**
+ * Preset access-control des apps admin (à passer à `configureAccessControl`
+ * dans brand-platform-bindings) — politique de migration EXPLICITE :
+ * le rôle `collaborator` reçoit PAR DÉFAUT toutes les permissions de
+ * modules (aucun compte existant ne perd d'accès au déploiement) ; l'owner
+ * restreint ensuite compte par compte (onglet Comptes de « Rôles & accès »,
+ * overrides `access_user_overrides`) ou pour tout le rôle (matrice).
+ * `platform.access.manage` reste owner-only par défaut.
+ */
+export function adminAccessControlPreset(
+  opts?: AdminAccessControlPresetOptions,
+): {
+  roles: Array<{ id: string; label: string; defaultPermissions: string[] }>;
+  defaultRole: string;
+  permissionGroups: AdminAccessPermissionGroup[];
+} {
+  const groups = [
+    ...adminAccessPermissionGroups(),
+    ...(opts?.extraGroups ?? []),
+  ];
+  const allModulePermissions = [
+    ...new Set([
+      ...groups.flatMap((g) => g.permissions.map((p) => p.id)),
+      ...(opts?.extraCollaboratorPermissions ?? []),
+    ]),
+  ];
+  return {
+    roles: [
+      {
+        id: "collaborator",
+        label: "Collaborateur",
+        defaultPermissions: allModulePermissions,
+      },
+    ],
+    defaultRole: "collaborator",
+    permissionGroups: groups,
+  };
+}
+
+/* ---------------------------------- opérations déclarées (SoT HTTP/MCP) */
+
+const CRUD_OPS = (permission: string): ModuleOperation[] => [
+  { id: "list", method: "GET", path: "/", description: "Lister", permission },
+  { id: "create", method: "POST", path: "/", description: "Créer", permission },
+  { id: "get", method: "GET", path: "/:id", description: "Lire", permission },
+  { id: "update", method: "PATCH", path: "/:id", description: "Mettre à jour", permission },
+  { id: "replace", method: "PUT", path: "/:id", description: "Remplacer", permission },
+  { id: "delete", method: "DELETE", path: "/:id", description: "Supprimer", permission },
+];
+
 /* --------------------------------------------------------- module fleet */
 
 export type FleetAdminMountOptions = {
@@ -221,13 +358,23 @@ function fleetBasic(opts?: FleetAdminMountOptions): string {
  * Module `fleet` — proxy authentifié vers le backend flotte.
  *
  * `/api/v1/modules/fleet/<sub>` → `{backend}/admin/api/<sub>` (Basic).
- * La session OS protège déjà le mount ; le Basic reste interne au serveur
- * admin (jamais exposé au client).
+ * Garde : session + permission `nav.fleet` (owner bypass) — le Basic reste
+ * interne au serveur admin (jamais exposé au client).
  */
 export function createFleetAdminMount(opts?: FleetAdminMountOptions): ApiMount {
   const timeoutMs = opts?.timeoutMs ?? 30_000;
   return {
     dbLayer: "brand",
+    permission: ADMIN_MODULE_PERMISSIONS.fleet,
+    operations: [
+      { id: "proxy-get", method: "GET", path: "/", description: "Proxy GET backend flotte" },
+      { id: "proxy-get-sub", method: "GET", path: "/:sub", description: "Proxy GET sous-chemin flotte" },
+      { id: "proxy-post", method: "POST", path: "/", description: "Proxy POST backend flotte" },
+      { id: "proxy-post-sub", method: "POST", path: "/:sub", description: "Proxy POST sous-chemin flotte" },
+      { id: "proxy-put", method: "PUT", path: "/:sub", description: "Proxy PUT flotte" },
+      { id: "proxy-patch", method: "PATCH", path: "/:sub", description: "Proxy PATCH flotte" },
+      { id: "proxy-delete", method: "DELETE", path: "/:sub", description: "Proxy DELETE flotte" },
+    ],
     handle: async ({ req, subPath }) => {
       const base = fleetBackendUrl(opts);
       const basic = fleetBasic(opts);
@@ -350,11 +497,23 @@ function newId(): string {
  * Mount CRUD générique sur brand.db de l'app admin.
  * GET '' → liste ; POST '' → create ; GET/PUT/DELETE '<id>'.
  */
+/** Permission module d'un mount CRUD admin (billing-* → nav.billing). */
+const CRUD_PERMISSION: Record<keyof typeof CRUD_SQL_TABLE, string> = {
+  prospects: ADMIN_MODULE_PERMISSIONS.prospects,
+  roadmap: ADMIN_MODULE_PERMISSIONS.roadmap,
+  "billing-customers": ADMIN_MODULE_PERMISSIONS.billing,
+  "billing-subscriptions": ADMIN_MODULE_PERMISSIONS.billing,
+};
+
 export function createAdminCrudMount(kind: keyof typeof CRUD_SQL_TABLE): ApiMount {
   const table = CRUD_SQL_TABLE[kind];
   const cols = CRUD_TABLES[kind] || [];
+  const permission =
+    CRUD_PERMISSION[kind] ?? ADMIN_MODULE_PERMISSIONS.billing;
   return {
     dbLayer: "brand",
+    permission,
+    operations: CRUD_OPS(permission),
     handle: async ({ req, subPath, db }) => {
       if (!db) return { status: 503, body: { ok: false, error: "db_unavailable" } };
       const method = req.method.toUpperCase();
@@ -514,6 +673,15 @@ export function createSupportAdminMount(
 ): ApiMount {
   return {
     dbLayer: "brand",
+    permission: ADMIN_MODULE_PERMISSIONS.support,
+    operations: [
+      { id: "list", method: "GET", path: "/", description: "Lister les tickets agrégés" },
+      { id: "sync", method: "POST", path: "/sync", description: "Pull tickets depuis la flotte" },
+      { id: "ingest", method: "POST", path: "/ingest", description: "Upsert ticket (tests / imports)" },
+      { id: "get", method: "GET", path: "/:id", description: "Ticket + fil de messages" },
+      { id: "reply", method: "POST", path: "/:id/reply", description: "Répondre à un ticket" },
+      { id: "statut", method: "POST", path: "/:id/statut", description: "Changer le statut d'un ticket" },
+    ],
     handle: async ({ req, subPath, db }) => {
       if (!db) return { status: 503, body: { ok: false, error: "db_unavailable" } };
       const method = req.method.toUpperCase();
@@ -1062,6 +1230,14 @@ export function createBillingWebhookMount(
 ): ApiMount {
   return {
     dbLayer: "brand",
+    // JAMAIS de permission ici : Stripe appelle sans session — l'auth est
+    // la signature HMAC vérifiée par le handler (verifyStripeSignature) et
+    // la bordure allowliste ce chemin (PUBLIC_MODULE_PATHS).
+    accessJustification:
+      "webhook Stripe signé (stripe-signature HMAC-SHA256 vérifiée par le mount) — route machine sans session",
+    operations: [
+      { id: "stripe", method: "POST", path: "/stripe", description: "Webhook Stripe signé" },
+    ],
     handle: async ({ req, subPath, db }) => {
       if (!db) return { status: 503, body: { ok: false, error: "db_unavailable" } };
       if (subPath !== "stripe" || req.method.toUpperCase() !== "POST") {
@@ -1210,6 +1386,11 @@ export function createBillingAdminMount(
   const timeoutMs = opts?.timeoutMs ?? 20_000;
   return {
     dbLayer: "brand",
+    permission: ADMIN_MODULE_PERMISSIONS.billing,
+    operations: [
+      { id: "overview", method: "GET", path: "/overview", description: "Vue d'ensemble facturation" },
+      { id: "reconcile", method: "POST", path: "/reconcile", description: "Réconciliation Stripe active" },
+    ],
     handle: async ({ req, subPath, db }) => {
       if (!db) return { status: 503, body: { ok: false, error: "db_unavailable" } };
       const method = req.method.toUpperCase();

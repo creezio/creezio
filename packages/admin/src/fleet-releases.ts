@@ -426,8 +426,32 @@ export function createFleetReleasesMount(
     return { ok, hostId };
   }
 
+  const fleetPermission = "nav.fleet";
   return {
     dbLayer: "brand",
+    // Pas de permission mount-level : next/slots/report sont des routes
+    // AGENT (Bearer hostId:agentToken vérifié par le handler, allowlist
+    // bordure) et maintenance est appelée in-process par le poller. Les ops
+    // session (CRUD releases, rollout) sont gardées op par op.
+    accessJustification:
+      "routes agent next/slots/report (Bearer hostId:agentToken vérifié handler) + maintenance poller in-process — ops session gardées op par op (nav.fleet)",
+    operations: [
+      { id: "next", method: "GET", path: "/next", description: "Prochaines directives d'update" },
+      { id: "create-slot", method: "POST", path: "/slots", description: "Créer un slot de téléchargement" },
+      { id: "delete-slot", method: "DELETE", path: "/slots/:id", description: "Supprimer un slot" },
+      { id: "report", method: "POST", path: "/report", description: "Rapport d'update agent" },
+      { id: "maintenance", method: "POST", path: "/maintenance", description: "Maintenance releases" },
+      { id: "list-releases", method: "GET", path: "/releases", description: "Lister les releases", permission: fleetPermission },
+      { id: "create-release", method: "POST", path: "/releases", description: "Créer une release", permission: fleetPermission },
+      { id: "update-release", method: "PATCH", path: "/releases/:id", description: "Mettre à jour une release", permission: fleetPermission },
+      { id: "replace-release", method: "PUT", path: "/releases/:id", description: "Mettre à jour une release (PUT)", permission: fleetPermission },
+      { id: "delete-release", method: "DELETE", path: "/releases/:id", description: "Supprimer une release", permission: fleetPermission },
+      { id: "rollout", method: "PATCH", path: "/servers/:id/rollout", description: "Pin / hold / channel d'un serveur", permission: fleetPermission },
+      // serverId = host/brand/name : variantes id NON encodé (fail-closed).
+      { id: "rollout-put", method: "PUT", path: "/servers/:id/rollout", description: "Pin / hold / channel (PUT)", permission: fleetPermission },
+      { id: "rollout-path", method: "PATCH", path: "/servers/:host/:brand/:name/rollout", description: "Rollout (id non encodé)", permission: fleetPermission },
+      { id: "rollout-path-put", method: "PUT", path: "/servers/:host/:brand/:name/rollout", description: "Rollout (id non encodé, PUT)", permission: fleetPermission },
+    ],
     handle: async ({ req, subPath, db }) => {
       if (!db) {
         return { status: 503, body: { ok: false, error: "db_unavailable" } };

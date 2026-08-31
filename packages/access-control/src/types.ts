@@ -32,6 +32,19 @@ export type AccessOverride = {
   updatedAt: string;
 };
 
+/**
+ * Override DB par COMPTE : attribution/refus d'une permission à un compte
+ * précis — prime sur le rôle (deny > allow > rôle). C'est la brique
+ * « donner à un compte l'accès à certains modules seulement ».
+ */
+export type AccessUserOverride = {
+  userId: string;
+  permission: string;
+  effect: AccessEffect;
+  updatedBy: string | null;
+  updatedAt: string;
+};
+
 /** Assignation explicite rôle ↔ compte (table interne, si pas de SoT métier). */
 export type AccessUserRole = {
   userId: string;

@@ -1,6 +1,8 @@
 /**
  * Résolution dynamique des permissions :
- *   défauts déclaratifs du rôle (configureAccessControl) + overrides DB.
+ *   défauts déclaratifs du rôle (configureAccessControl) + overrides DB de
+ *   rôle + overrides DB par COMPTE (access_user_overrides — deny > allow >
+ *   rôle : c'est l'attribution de permissions de modules à un compte précis).
  *
  * Cache mémoire court (30 s) — invalidé à chaque écriture (matrice / rôle).
  * Le rôle d'un compte vient du SoT métier (getUserRole marque) ou de la table
@@ -45,7 +47,8 @@ export async function resolveUserRole(
 }
 
 /**
- * Permissions effectives d'un compte : défauts du rôle + overrides DB.
+ * Permissions effectives d'un compte : défauts du rôle + overrides DB de
+ * rôle + overrides DB du compte (deny > allow > rôle).
  * Le owner kit ne passe PAS par ici (court-circuit ownerPermissions côté
  * appelant — auth /me, garde API).
  */
@@ -62,9 +65,17 @@ export async function resolvePermissions(
     return [...hit.permissions];
   }
   const role = await resolveUserRole(userId, brandRole, storeOverride);
-  const permissions = role
-    ? resolveRoleEffectivePermissions(role, storeOverride)
-    : [];
+  const effective = new Set<string>(
+    role ? resolveRoleEffectivePermissions(role, storeOverride) : [],
+  );
+  const store = storeOverride ?? getAccessControlStore();
+  if (store) {
+    for (const override of store.listUserOverrides(userId)) {
+      if (override.effect === "allow") effective.add(override.permission);
+      else effective.delete(override.permission);
+    }
+  }
+  const permissions = [...effective];
   permissionsCache.set(userId, { at: Date.now(), brandRole: key, permissions });
   return [...permissions];
 }

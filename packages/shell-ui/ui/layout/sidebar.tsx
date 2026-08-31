@@ -74,6 +74,10 @@ function hasItemPermission(
 ): boolean {
   if (!item.permission) return true;
   if (!me) return true;
+  // Owner non impersonné : tout voir — même bypass que la garde API kernel
+  // (authorizeModuleAccess). Les ownerPermissions configurées restent la
+  // source pour le reste (impersonation = permissions de la cible).
+  if (me.role === "owner" && me.impersonating !== true) return true;
   const permissions = Array.isArray(me.permissions) ? me.permissions : [];
   return permissions.includes(item.permission);
 }

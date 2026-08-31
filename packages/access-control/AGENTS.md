@@ -10,8 +10,9 @@ résolution dynamique des permissions, API `/api/v1/access/*`, UI admin
 
 - **Aucun fallback** vers l'ancien système de permissions figées : les marques
   migrées ne doivent plus avoir de mécanisme local de filtrage de sidebar.
-- Le store vit dans **`core.db`** (`access_role_overrides`, `access_user_roles`,
-  `access_audit_log`) — jamais dans la base métier.
+- Le store vit dans **`core.db`** (`access_role_overrides`,
+  `access_user_overrides`, `access_user_roles`, `access_audit_log`) — jamais
+  dans la base métier.
 - `resolvePermissions` est la SEULE source de vérité des permissions
   effectives. Ne jamais lire `creezio_platform_users.permissions` pour les
   marques configurées.
@@ -22,6 +23,13 @@ résolution dynamique des permissions, API `/api/v1/access/*`, UI admin
 - Si la marque a une source de vérité métier pour les rôles, utiliser les
   adaptateurs `getUserRole`/`setUserRole` — ne pas dupliquer dans
   `access_user_roles`.
+- **Overrides PAR COMPTE (P4)** : `access_user_overrides` ajuste un compte
+  précis par-dessus son rôle (`allow` ajoute, `deny` retire, priorité sur
+  les overrides de rôle). Routes `PUT /users/:id/permissions`
+  (`{ changes: [{ permission, effect: allow|deny|inherit }] }`), UI onglet
+  « Comptes », audit `user.override.set|clear`. C'est le mécanisme des
+  permissions par module des apps admin (`adminAccessControlPreset` de
+  `@creezio/admin`) — bootstrap sans UI : `creezio server-docker access`.
 
 ## Fichiers
 

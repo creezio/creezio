@@ -464,3 +464,148 @@ export function seedKitUserViaContainer(opts: {
     email: String(parsed.email || email),
   };
 }
+
+/* ------------------------------------------ access : bootstrap sans UI */
+
+export type AccessCliResult = {
+  ok: true;
+  userId: string;
+  email: string;
+  role: string | null;
+  overrides: Array<{ permission: string; effect: "allow" | "deny" }>;
+};
+
+const ACCESS_PERMISSION_RE = /^[a-z0-9._-]+$/i;
+
+/**
+ * Geste `server-docker access` — attribution de permissions de modules à un
+ * compte SANS UI ni login owner (bootstrap, cohérent `ensure-owner`) :
+ * `docker exec` + écriture directe `core.db` (tables access_* de
+ * @creezio/access-control, DDL idempotent identique au store kit) + ligne
+ * d'audit `actor=server-docker-cli`. Le serveur voit le changement au plus
+ * tard après le cache 30 s de resolvePermissions (pas de restart requis).
+ */
+export function applyAccessOverridesViaContainer(opts: {
+  containerName: string;
+  email: string;
+  grant?: string[];
+  revoke?: string[];
+  reset?: boolean;
+  /** Rôle access-control à poser (`none` = revenir au rôle plateforme). */
+  role?: string;
+}): AccessCliResult {
+  const email = String(opts.email || "").trim();
+  if (!email) throw new Error("access : --user <email> requis.");
+  const grant = (opts.grant ?? []).map((p) => p.trim()).filter(Boolean);
+  const revoke = (opts.revoke ?? []).map((p) => p.trim()).filter(Boolean);
+  for (const p of [...grant, ...revoke]) {
+    if (!ACCESS_PERMISSION_RE.test(p)) {
+      throw new Error(`access : permission invalide « ${p} » (attendu ex. nav.billing).`);
+    }
+  }
+  const payload = JSON.stringify({
+    email,
+    grant,
+    revoke,
+    reset: Boolean(opts.reset),
+    role: opts.role ?? null,
+  });
+  const script = [
+    "import { DatabaseSync } from 'node:sqlite';",
+    "const req = JSON.parse(process.env.CREEZIO_ACCESS_REQUEST || '{}');",
+    "const db = new DatabaseSync('/data/sqlite/core.db');",
+    // DDL idempotent — même schéma que ACCESS_CONTROL_CORE_SQL (@creezio/access-control).
+    "db.exec(`CREATE TABLE IF NOT EXISTS access_user_overrides (",
+    "  user_id TEXT NOT NULL, permission TEXT NOT NULL,",
+    "  effect TEXT NOT NULL CHECK (effect IN ('allow','deny')),",
+    "  updated_by TEXT, updated_at TEXT NOT NULL DEFAULT (datetime('now')),",
+    "  PRIMARY KEY (user_id, permission));`);",
+    "db.exec(`CREATE TABLE IF NOT EXISTS access_user_roles (",
+    "  user_id TEXT PRIMARY KEY, role TEXT NOT NULL,",
+    "  updated_by TEXT, updated_at TEXT NOT NULL DEFAULT (datetime('now')));`);",
+    "db.exec(`CREATE TABLE IF NOT EXISTS access_audit_log (",
+    "  id INTEGER PRIMARY KEY AUTOINCREMENT, actor TEXT NOT NULL,",
+    "  action TEXT NOT NULL, role TEXT, permission TEXT, effect TEXT,",
+    "  target_user_id TEXT, detail_json TEXT,",
+    "  created_at TEXT NOT NULL DEFAULT (datetime('now')));`);",
+    "const user = db.prepare(",
+    "  \"SELECT id, username, role FROM creezio_platform_users WHERE username = ? AND active = 1\"",
+    ").get(req.email);",
+    "if (!user) {",
+    "  console.log(JSON.stringify({ ok: false, error: 'compte introuvable ou inactif : ' + req.email }));",
+    "} else {",
+    "  const audit = db.prepare(",
+    "    \"INSERT INTO access_audit_log (actor, action, role, permission, effect, target_user_id) VALUES ('server-docker-cli', ?, ?, ?, ?, ?)\"",
+    "  );",
+    "  if (req.reset) {",
+    "    db.prepare('DELETE FROM access_user_overrides WHERE user_id = ?').run(user.id);",
+    "    audit.run('user.override.clear', null, null, null, user.id);",
+    "  }",
+    "  const put = db.prepare(",
+    "    \"INSERT INTO access_user_overrides (user_id, permission, effect, updated_by) VALUES (?, ?, ?, 'server-docker-cli') \" +",
+    "    \"ON CONFLICT(user_id, permission) DO UPDATE SET effect = excluded.effect, updated_by = excluded.updated_by, updated_at = datetime('now')\"",
+    "  );",
+    "  for (const p of req.grant) { put.run(user.id, p, 'allow'); audit.run('user.override.set', null, p, 'allow', user.id); }",
+    "  for (const p of req.revoke) { put.run(user.id, p, 'deny'); audit.run('user.override.set', null, p, 'deny', user.id); }",
+    "  if (req.role === 'none') {",
+    "    db.prepare('DELETE FROM access_user_roles WHERE user_id = ?').run(user.id);",
+    "    audit.run('user.role', null, null, null, user.id);",
+    "  } else if (req.role) {",
+    "    db.prepare(",
+    "      \"INSERT INTO access_user_roles (user_id, role, updated_by) VALUES (?, ?, 'server-docker-cli') \" +",
+    "      \"ON CONFLICT(user_id) DO UPDATE SET role = excluded.role, updated_by = excluded.updated_by, updated_at = datetime('now')\"",
+    "    ).run(user.id, req.role);",
+    "    audit.run('user.role', req.role, null, null, user.id);",
+    "  }",
+    "  const roleRow = db.prepare('SELECT role FROM access_user_roles WHERE user_id = ?').get(user.id);",
+    "  const overrides = db.prepare(",
+    "    'SELECT permission, effect FROM access_user_overrides WHERE user_id = ? ORDER BY permission'",
+    "  ).all(user.id);",
+    "  console.log(JSON.stringify({ ok: true, userId: user.id, email: user.username, role: roleRow ? roleRow.role : null, overrides }));",
+    "}",
+  ].join("");
+  const r = spawnSync(
+    "docker",
+    [
+      "exec",
+      "-w",
+      "/app",
+      "-e",
+      `CREEZIO_ACCESS_REQUEST=${payload}`,
+      opts.containerName,
+      "node",
+      "--input-type=module",
+      "-e",
+      script,
+    ],
+    { encoding: "utf8" },
+  );
+  if (r.status !== 0) {
+    throw new Error(
+      `access via container : ${String(r.stderr || r.stdout || `docker exec exit ${r.status}`).slice(0, 240)}`,
+    );
+  }
+  let parsed: {
+    ok?: boolean;
+    error?: string;
+    userId?: string;
+    email?: string;
+    role?: string | null;
+    overrides?: Array<{ permission: string; effect: "allow" | "deny" }>;
+  };
+  try {
+    parsed = JSON.parse(String(r.stdout || "").trim()) as typeof parsed;
+  } catch {
+    throw new Error("access via container : réponse illisible.");
+  }
+  if (!parsed?.ok) {
+    throw new Error(`access via container : ${parsed?.error || "échec"}`);
+  }
+  return {
+    ok: true,
+    userId: String(parsed.userId || ""),
+    email: String(parsed.email || email),
+    role: parsed.role ?? null,
+    overrides: parsed.overrides ?? [],
+  };
+}
