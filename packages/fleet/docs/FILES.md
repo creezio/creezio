@@ -15,6 +15,7 @@
 | [`src/instance-stack.ts`](../src/instance-stack.ts) | (à documenter) |
 | [`src/protocol.ts`](../src/protocol.ts) | (à documenter) |
 | [`src/registry-pull-proxy.ts`](../src/registry-pull-proxy.ts) | (à documenter) |
+| [`src/server-admin-client.ts`](../src/server-admin-client.ts) | Client typé du backend flotte pour l'app admin (T4) : résolution env `CREEZIO_FLEET_BACKEND_URL`/`_BASIC`, `fleetBackendFetch` (Basic, timeout), helpers `fetchFleetBackendServers` / `verifyFleetHostCredential` — transport HTTP loopback conservé (backend = container séparé, seul détenteur du socket Docker) |
 | [`src/server-admin.ts`](../src/server-admin.ts) | (à documenter) |
 | [`src/server-lib.ts`](../src/server-lib.ts) | (à documenter) |
 | [`src/types.ts`](../src/types.ts) | (à documenter) |

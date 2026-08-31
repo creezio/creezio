@@ -40,7 +40,14 @@ déploiement (voir skill `creezio-fleet-ops`).
 ## Points d'entrée
 
 - `src/index.ts` — barrel (protocol, types, docker, server-lib,
-  instance-stack, agent-updates, registry-pull-proxy).
+  server-admin-client, instance-stack, agent-updates, registry-pull-proxy).
+- `src/server-admin-client.ts` — client typé du backend flotte (T4) consommé
+  par `@creezio/admin` (imports directs) : `fleetBackendFetch`,
+  `fetchFleetBackendServers`, `verifyFleetHostCredential`, résolution env
+  `CREEZIO_FLEET_BACKEND_URL`/`_BASIC`. Transport HTTP Basic loopback
+  conservé (backend = container séparé, seul détenteur du socket Docker) ;
+  cette surface Basic ne porte PAS le header protocole (v1 réservé
+  agent↔backend).
 - `src/server-admin.ts` / `src/host-agent.ts` — `startServerAdmin()` /
   `startHostAgent()` (sous-chemins exports dédiés).
 - `src/bin/*-main.ts` — CMD des images Docker
@@ -75,6 +82,10 @@ restent la SoT observability, hors périmètre fleet.
   doit repasser par `set()`/`save()` sinon elle n'est pas persistée.
 - `instance-stack` : politique `resolveStackUpdatePolicy` (préserver le
   sidecar cloudflared, refuser tout update qui casserait un hostname public).
+- `server-admin-client` : tout changement de route/format côté
+  `server-admin.ts` (`/admin/api/servers`, `/admin/api/hosts/verify`) doit
+  suivre dans le client typé — les modules admin (`fleet-registry`,
+  `fleet-releases`) n'ont plus de fetch artisanal (T4).
 - Gates : `test-phase-server-docker` (contenu server-lib/server-admin),
   `test-phase-instance-stack`, `test-phase-stack-update-preserve`,
   `test-phase-fleet-agent`, `test-phase-fleet-update-status-persist`,

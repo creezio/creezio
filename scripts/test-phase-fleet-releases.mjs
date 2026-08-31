@@ -21,7 +21,11 @@
  *     report done ; échec avec rollback → report rolled_back ; mutex
  *     update manuel respecté ;
  *  7. publish --release : declareFleetRelease poste la release (draft,
- *     digest, référence publique) — idempotent.
+ *     digest, référence publique) — idempotent ;
+ *  8. vérificateur par défaut (T4) : createBackendFleetCredentialVerifier
+ *     délègue au client typé @creezio/fleet (POST /admin/api/hosts/verify,
+ *     Basic) — valid/invalid + cache mémoire (pas de re-hit backend) +
+ *     Basic manquant → refus local sans appel réseau.
  */
 import http from "node:http";
 import assert from "node:assert/strict";
@@ -30,6 +34,7 @@ import { test } from "node:test";
 const {
   adminMigrations,
   computeFleetUpdateDirectives,
+  createBackendFleetCredentialVerifier,
   createFleetReleasesMount,
   fleetWaveBucket,
   fleetWaveIncludes,
@@ -496,4 +501,58 @@ test("publish --release : declareFleetRelease poste la release draft (idempotent
   const rows2 = db.prepare(`SELECT * FROM admin_fleet_releases`).all();
   assert.equal(rows2.length, 1, "idempotent par (brand, tag, variant)");
   assert.equal(rows2[0].digest, `sha256:${"d".repeat(64)}`);
+});
+
+test("T4 : vérificateur par défaut via client typé @creezio/fleet (verify + cache + Basic manquant)", async (t) => {
+  // Mock backend flotte : POST /admin/api/hosts/verify (Basic obligatoire).
+  const BASIC = "admin:motdepasse";
+  let hits = 0;
+  const backend = http.createServer((req, res) => {
+    let raw = "";
+    req.on("data", (c) => (raw += c));
+    req.on("end", () => {
+      hits++;
+      const expected = `Basic ${Buffer.from(BASIC).toString("base64")}`;
+      if (req.headers.authorization !== expected) {
+        res.writeHead(401, { "content-type": "application/json" });
+        return res.end(JSON.stringify({ ok: false, error: "unauthorized" }));
+      }
+      if (req.method !== "POST" || req.url !== "/admin/api/hosts/verify") {
+        res.writeHead(404, { "content-type": "application/json" });
+        return res.end(JSON.stringify({ ok: false }));
+      }
+      const body = JSON.parse(raw || "{}");
+      const valid = body.hostId === "host-a" && body.token === GOOD_KEY;
+      res.writeHead(200, { "content-type": "application/json" });
+      res.end(JSON.stringify({ ok: true, valid }));
+    });
+  });
+  await new Promise((r) => backend.listen(0, "127.0.0.1", r));
+  t.after(() => backend.close());
+  const backendUrl = `http://127.0.0.1:${backend.address().port}`;
+
+  const verify = createBackendFleetCredentialVerifier(
+    { backendUrl, basic: BASIC },
+    { cacheTtlMs: 60_000, negativeTtlMs: 60_000 },
+  );
+  assert.equal(await verify("host-a", GOOD_KEY), true, "credential valide → true");
+  assert.equal(await verify("host-a", "mauvais"), false, "credential invalide → false");
+  assert.equal(await verify("", GOOD_KEY), false, "hostId vide → refus local");
+  const hitsAvant = hits;
+  assert.equal(await verify("host-a", GOOD_KEY), true, "hit cache positif");
+  assert.equal(await verify("host-a", "mauvais"), false, "hit cache négatif");
+  assert.equal(hits, hitsAvant, "cache mémoire : pas de re-hit backend");
+
+  // Basic manquant → 503 local fleet_basic_missing, AUCUN appel réseau.
+  const envBasic = process.env.CREEZIO_FLEET_BACKEND_BASIC;
+  delete process.env.CREEZIO_FLEET_BACKEND_BASIC;
+  try {
+    const noBasic = createBackendFleetCredentialVerifier({ backendUrl });
+    assert.equal(await noBasic("host-a", GOOD_KEY), false, "Basic manquant → refus");
+    assert.equal(hits, hitsAvant, "Basic manquant : zéro appel backend");
+  } finally {
+    if (envBasic !== undefined) {
+      process.env.CREEZIO_FLEET_BACKEND_BASIC = envBasic;
+    }
+  }
 });

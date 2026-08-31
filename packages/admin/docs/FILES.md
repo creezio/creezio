@@ -8,8 +8,8 @@
 
 | Fichier | Rôle |
 |---|---|
-| [`src/fleet-registry.ts`](../src/fleet-registry.ts) | Module `fleet-registry` — DB centrale de la flotte (table `admin_fleet_servers`, vue matérialisée ; les JSON `servers.json`/`fleet-hosts.json` restent la SoT des gestes Docker). Sources : sync manuel, poller, auto-inscription. |
-| [`src/fleet-releases.ts`](../src/fleet-releases.ts) | Module `fleet-releases` — updates en PULL de la flotte (F5) : releases déclarées côté admin, pollées par les host-agents via le registre pull-only (F4). |
+| [`src/fleet-registry.ts`](../src/fleet-registry.ts) | Module `fleet-registry` — DB centrale de la flotte (table `admin_fleet_servers`, vue matérialisée ; les JSON `servers.json`/`fleet-hosts.json` restent la SoT des gestes Docker). Sources : sync manuel, poller, auto-inscription. Sync via le client typé `fetchFleetBackendServers` de `@creezio/fleet` (T4). |
+| [`src/fleet-releases.ts`](../src/fleet-releases.ts) | Module `fleet-releases` — updates en PULL de la flotte (F5) : releases déclarées côté admin, pollées par les host-agents via le registre pull-only (F4). Vérif credential agents via `verifyFleetHostCredential` de `@creezio/fleet` (T4). |
 | [`src/index.ts`](../src/index.ts) | Export public @creezio/admin — modules natifs des apps admin de marque (fleet, support, prospection, roadmap, billing). ADR-admin-app-os. |
 
 ## `ui/`
