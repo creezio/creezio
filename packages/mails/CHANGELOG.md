@@ -1,5 +1,14 @@
 # @creezio/mails
 
+## 0.17.1
+
+### Patch Changes
+
+- @creezio/platform-core@0.17.1
+- @creezio/api-kernel@0.17.1
+- @creezio/shell-ui@0.17.1
+- @creezio/auth@0.17.1
+
 ## 0.17.0
 
 ### Patch Changes
