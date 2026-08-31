@@ -15,12 +15,18 @@ wrappers fleet-collector retirés en 0.19.0) — ce dossier ne contient que le
 - Implémenter un push admin → agent : les updates sont en **pull**
   (gate `scripts/test-phase-fleet-releases.mjs`).
 
-## Piège connu
+## Pièges connus
 
-Le code de l'agent est **embarqué au build de l'image** : après toute modif
-de `packages/fleet/src`, `npm run build:packages` puis re-runner
-`creezio server-docker agent up` (rebuild + recreate), sinon le container
-continue de servir l'ancien code.
+- Le code de l'agent est **embarqué au build de l'image** : après toute
+  modif de `packages/fleet/src`, `npm run build:packages` puis re-runner
+  `creezio server-docker agent up` (rebuild + recreate), sinon le container
+  continue de servir l'ancien code.
+- T7 : l'ingress `agent.{slug}.{zone}` vit sur un tunnel **dédié**
+  (container frère `creezio-agent-tunnel`, provisionné par `enroll`) — ne
+  pas reposer la règle agent sur le tunnel d'un serveur applicatif
+  (`ensureCfTunnel({ agent: … })` à l'enroll = régression T7, gate
+  `test-phase-agent-tunnel`). Token connecteur :
+  `docker-data/agent-tunnel.env` (600) uniquement.
 
 ## Tests / gates
 
@@ -29,6 +35,7 @@ cd /opt/docker/creezio
 node --test scripts/test-phase-fleet-agent.mjs
 node --test scripts/test-phase-fleet-releases.mjs
 node --test scripts/test-phase-fleet-heartbeat.mjs
+node --test scripts/test-phase-agent-tunnel.mjs
 ```
 
 ## Liens

@@ -48,7 +48,14 @@ Les zones Cloudflare et hostnames publics sont **ceux de la marque**
    `fleet-hosts.json`, Basic auth, `admin.tempoflow.fr`
 6. **Agent hôte + enrôlement VPS** — `agent up`, enrollToken one-shot,
    `enroll --admin … --token … --slug …`, `agent.{slug}.{zone}` ; **règle
-   UFW obligatoire** (voir ci-dessous)
+   UFW obligatoire** (voir ci-dessous) ; **tunnel dédié agent (T7,
+   0.21.x+)** : l'enroll provisionne un tunnel Cloudflare propre à l'agent
+   (container `creezio-agent-tunnel`, token `docker-data/agent-tunnel.env`
+   600) au lieu de partager le cloudflared d'un serveur applicatif —
+   migration douce au prochain enroll (bascule DNS après démarrage du
+   connecteur, retrait de la règle legacy), respawn surveillé par le
+   host-agent (gates `test-phase-agent-tunnel`,
+   `test-phase-tunnel-self-provision` §10)
 7. **Client desktop thin** — `pack:win` / `electron:publish`, feed `/tf3/`,
    GUID dédié, `defaultServerUrl` / `TF3_DEFAULT_SERVER_URL`
 8. **Diagnostics boot** — `boot-status`, `health`, `version`, `ready`,
