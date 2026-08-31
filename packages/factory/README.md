@@ -29,6 +29,13 @@ creezio new-app \
 3. Génère OS shell + métier marque (schéma, API HTTP, pages, nav, wiring).
 4. Fournit `npm run test:metier-parcours` (fournisseurs → panier → commande).
 
+Les smokes générés respectent la cohérence éventuelle Meili (contrat kit :
+pas de write-through, liste servie `engine:"indexing"` pendant l'indexation
+initiale) : read-after-write déterministe par `GET ?ids=<id>` (hydratation
+PK, chemin SQL légitime) puis polling borné (60 s) jusqu'à visibilité dans
+la liste, avec échec explicite si `engine:"meili"` sans le doc — helper SoT
+`@creezio/desktop-tooling/scripts/meili-list-poll.mjs`.
+
 ### Mode technique — flags
 
 ```bash

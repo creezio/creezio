@@ -51,6 +51,15 @@ en jumeau dans `main.ts`.
   Plus de vendor ni de symlinks trackés.
 - Smokes `test:metier-parcours` : `AUTH_DISABLED=1` dans `harnessPrelude`
   (garde mounts F3 — sinon 401 notes).
+- Smokes « créé puis listé » : cohérence éventuelle Meili (contrat kit —
+  pas de write-through, `engine:"indexing"` + 0 item pendant l'indexation
+  initiale). Les templates (`renderMetierParcoursSmoke`,
+  `renderMiniPrdCoreSmoke`) assertent le read-after-write via `?ids=`
+  (hydratation PK = SQL légitime) puis pollent la liste via le helper SoT
+  `@creezio/desktop-tooling/scripts/meili-list-poll.mjs` (borné 60 s,
+  échec explicite si `engine:"meili"` sans le doc). **Jamais** d'assertion
+  naïve « GET liste immédiat post-create » sur une entité indexable —
+  gate `test-phase-meili-smoke-polling`.
 
 ## Points d'entrée
 

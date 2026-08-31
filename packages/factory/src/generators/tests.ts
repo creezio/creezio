@@ -206,14 +206,33 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import {
+  assertModuleRowHydratedById,
+  pollModuleListUntilVisible,
+} from "@creezio/desktop-tooling/scripts/meili-list-poll.mjs";
 ${harnessPrelude(model)}
 
 async function main() {
   await waitHealth();
   const create = await json("POST", "/api/v1/modules/${entity.id}", ${payload});
   assert.ok(create.id);
-  const list = await json("GET", "/api/v1/modules/${entity.id}");
-  assert.ok(list.items.length >= 1);
+  // Read-after-write déterministe : hydratation par PK (\`?ids=\` = chemin
+  // SQL légitime du contrat kit, jamais Meili).
+  await assertModuleRowHydratedById(
+    json,
+    "/api/v1/modules/${entity.id}",
+    create.id,
+    "${entity.id}",
+  );
+  // Cohérence éventuelle Meili : la liste d'une entité indexée répond
+  // \`engine:"indexing"\` + 0 item pendant l'indexation initiale (le client
+  // réessaie) — polling borné, échec explicite si engine:"meili" sans le doc.
+  await pollModuleListUntilVisible(
+    json,
+    "/api/v1/modules/${entity.id}",
+    (items) => items.length >= 1,
+    { label: "${entity.id}" },
+  );
   assert.ok(!fs.existsSync(path.join(dataDir, "store.json")));
   console.log("OK test:metier-parcours (${entity.id} / api-kernel)");
   console.log("prod : npm run verify:prod (E2E canonique — scripts/verify-prod.mjs)");
@@ -239,6 +258,9 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import {
+  pollModuleListUntilVisible,
+} from "@creezio/desktop-tooling/scripts/meili-list-poll.mjs";
 ${harnessPrelude(model)}
 
 async function main() {
@@ -286,7 +308,15 @@ async function main() {
   const commandes = await json("GET", "/api/v1/modules/commandes");
   assert.equal(commandes.items.length, 1);
 
-  const search = await json("GET", "/api/v1/modules/search?q=tom");
+  // Cohérence éventuelle Meili : la recherche répond \`engine:"indexing"\`
+  // tant que l'indexation initiale n'a pas passé le produit créé — polling
+  // borné (échec explicite si engine:"meili" sans hit : doc hors fenêtre).
+  const search = await pollModuleListUntilVisible(
+    json,
+    "/api/v1/modules/search?q=tom",
+    (items, list) => list.engine !== "indexing" && items.length >= 1,
+    { label: "search?q=tom" },
+  );
   assert.ok(search.engine === "sql" || search.engine === "meili");
   assert.ok(Array.isArray(search.items) && search.items.length >= 1);
 
@@ -807,6 +837,9 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import {
+  pollModuleListUntilVisible,
+} from "@creezio/desktop-tooling/scripts/meili-list-poll.mjs";
 ${harnessPrelude(model)}
 
 async function main() {
@@ -815,11 +848,25 @@ async function main() {
   const f1 = await json("POST", "/api/v1/modules/fournisseurs", { nom: "Metro" });
   const f2 = await json("POST", "/api/v1/modules/fournisseurs", { nom: "Promocash" });
   await json("POST", \`/api/v1/modules/fournisseurs/\${f2.id}/archive\`, {});
-  const actifs = await json("GET", "/api/v1/modules/fournisseurs?archived=0");
+  // Cohérence éventuelle Meili (fournisseurs indexé) : \`?archived=0\` et la
+  // recherche texte passent par Meili — polling borné pendant l'indexation
+  // initiale, échec explicite si engine:"meili" sans le compte attendu.
+  // \`?archived=1\` reste du SQL déterministe (hors index par contrat).
+  const actifs = await pollModuleListUntilVisible(
+    json,
+    "/api/v1/modules/fournisseurs?archived=0",
+    (items) => items.length === 1,
+    { label: "fournisseurs?archived=0" },
+  );
   assert.equal(actifs.items.length, 1);
   const archives = await json("GET", "/api/v1/modules/fournisseurs?archived=1");
   assert.equal(archives.items.length, 1);
-  const search = await json("GET", "/api/v1/modules/fournisseurs?q=metro&archived=0");
+  const search = await pollModuleListUntilVisible(
+    json,
+    "/api/v1/modules/fournisseurs?q=metro&archived=0",
+    (items) => items.length === 1,
+    { label: "fournisseurs?q=metro&archived=0" },
+  );
   assert.equal(search.items.length, 1);
 
   const p = await json("POST", "/api/v1/modules/produits", {
