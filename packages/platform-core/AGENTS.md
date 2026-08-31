@@ -76,7 +76,8 @@ Missions principales :
    - helpers transverses.
 2. Pour les chemins :
    - garder les overrides env désactivés en packagé ;
-   - dériver les noms avec `envKey(manifest, suffix)` ;
+   - dériver les noms avec `envKey(manifest, suffix)` (H11 : plus de
+     dual-read env première marque — clé canonique uniquement) ;
    - préserver la compat de `resolveBrandDbPath` avec `DB_PATH_OVERRIDE`.
 3. Pour SQLite :
    - ne jamais renommer une migration déjà appliquée ;
@@ -125,7 +126,7 @@ import {
   type PathsContext,
 } from "@creezio/platform-core";
 
-const manifest = getManifest("certivan");
+const manifest = getManifest("demobrand");
 const ctx: PathsContext = {
   manifest,
   userDataRoot,

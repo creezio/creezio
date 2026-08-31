@@ -232,6 +232,12 @@
 |---|---|
 | [`codemods/H10/h10-explicit-desktop-deps.mjs`](../codemods/H10/h10-explicit-desktop-deps.mjs) | Codemod H10 (P2.a clôturé, T9) : clients desktop legacy → deps explicites au point d'appel `installBrandDesktopRuntime` (valeurs d'env historiques), renommage `ensureTempoflowNode` → `ensureDesktopNode`, rebascule preload historique → `preload.js`. Idempotent, fail-closed. |
 
+## `codemods/H11/`
+
+| Fichier | Rôle |
+|---|---|
+| [`codemods/H11/h11-purge-tf2-compat.mjs`](../codemods/H11/h11-purge-tf2-compat.mjs) | Codemod H11 : purge compat TF2-era — `TEMPOFLOW_*` → préfixe manifeste, asserts feed CHR, `countKey: "sites"`, retire fallback builder. Fail-closed si appel runtime `createChrCatalogMeiliFeed` ou import `*Manifest` prod. Idempotent. |
+
 ## `codemods/H7/`
 
 | Fichier | Rôle |

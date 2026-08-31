@@ -336,8 +336,7 @@ export async function runFeedIndexation(opts: {
   const db = openSqlite(dbPath, { readonly: true, fileMustExist: true });
   const indexed: Record<string, number> = {};
   try {
-    // Compteurs génériques : clés fingerprint normalisées (alias legacy
-    // `sites` → `fournisseurs` lu une version, cf. fingerprintCountKey).
+    // Compteurs génériques : clés fingerprint = countKey déclaré par la marque.
     const sqlCounts: CatalogSqlCounts = {};
     for (const [key, table] of Object.entries(feed.countTables)) {
       sqlCounts[fingerprintCountKey(key)] = countTable(db, table);

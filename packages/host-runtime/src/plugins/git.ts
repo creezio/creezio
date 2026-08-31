@@ -40,7 +40,6 @@ function pluginGitignore(bindings: PluginHostBindings): string {
   return `# ${bindings.productName} plugin — ne pas versionner secrets / runtime
 .enabled
 ${keyFile}
-.tempoflow-plugin-api-key.json
 os-home/
 node_modules/
 *.log
@@ -57,8 +56,7 @@ export function resetGitBinaryCache(): void {
 
 function forceEmbeddedGitEnvKey(bindings: PluginHostBindings): string {
   if (bindings.forceEmbeddedGitEnvKey) return bindings.forceEmbeddedGitEnvKey;
-  const alias = bindings.legacyEnvAliases?.[0];
-  return `${alias || bindings.envPrefix}_FORCE_EMBEDDED_GIT`;
+  return `${bindings.envPrefix}_FORCE_EMBEDDED_GIT`;
 }
 
 /**

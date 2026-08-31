@@ -131,7 +131,7 @@ configurePluginHost({
 });
 ```
 
-Les variables plugins sont posees sur `${envPrefix}_*` et, si configure, sur les aliases legacy (`legacyEnvAliases`). Les permissions du manifest plugin pilotent l'injection CRM, n8n et LLM.
+Les variables plugins sont posees sur `${envPrefix}_*` uniquement (H11 : plus d'aliases historiques). Les permissions du manifest plugin pilotent l'injection CRM, n8n et LLM.
 
 ### Bindings ai-workspace
 

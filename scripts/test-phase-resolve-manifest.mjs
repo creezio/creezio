@@ -18,24 +18,21 @@ import {
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
-test("registre : dépréciés (tempoflow/certivan/fidu) + demobrand — tempoflow3 SORTI (P1.d)", () => {
-  // P1.d : le manifest tempoflow3 vit dans le repo marque (matérialisé) —
-  // le kit ne le publie plus. Les 3 manifests prod historiques restent UNE
-  // version (dépréciés, repos hors de portée), demobrand = sandbox kit.
-  assert.deepEqual(
-    [...listBrandIds()].sort(),
-    ["certivan", "demobrand", "fidu", "tempoflow"],
-  );
-  assert.ok(!listBrandIds().includes("tempoflow3"));
+test("registre : demobrand seule (sandbox kit) — manifests prod SORTIS (H11)", () => {
+  assert.deepEqual([...listBrandIds()].sort(), ["demobrand"]);
+  assert.ok(!listBrandIds().includes("tempoflow"));
+  assert.ok(!listBrandIds().includes("certivan"));
+  assert.ok(!listBrandIds().includes("fidu"));
   assert.ok(!listProductionBrandIds().includes("demobrand"));
-  assert.equal(isRegisteredBrandId("tempoflow3"), false);
+  assert.deepEqual(listProductionBrandIds(), []);
+  assert.equal(isRegisteredBrandId("tempoflow"), false);
   assert.equal(isRegisteredBrandId("acme-future"), false);
 });
 
 test("resolveManifest registre", () => {
-  const m = resolveManifest("tempoflow");
-  assert.equal(m.brandId, "tempoflow");
-  assert.ok(m.client.feedUrl.includes("tempoflow"));
+  const m = resolveManifest("demobrand");
+  assert.equal(m.brandId, "demobrand");
+  assert.ok(m.client.feedUrl.includes("demobrand"));
 });
 
 test("resolveManifest from-prd via app-manifest.json", () => {

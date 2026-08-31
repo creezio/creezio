@@ -7,7 +7,7 @@ import os from "node:os";
 import path from "node:path";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
-import { tempoflowManifest } from "../packages/brand-config/dist/index.js";
+import { demobrandManifest } from "../packages/brand-config/dist/index.js";
 import { resolveBrandCrmRoot } from "./lib/brand-roots.mjs";
 
 import {
@@ -55,7 +55,7 @@ test("M4.2 kit : fleetTelemetry + configPath getter + electron sync", () => {
   let active = dir;
   const store = createLocalConfigStoreSync({
     configPath: () => path.join(active, "tempoflow-config.json"),
-    manifest: tempoflowManifest,
+    manifest: demobrandManifest,
     encryption: "plain",
   });
   store.setFleetTelemetry({ preset: "basic" });

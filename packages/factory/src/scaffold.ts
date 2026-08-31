@@ -500,15 +500,13 @@ function renderBuildBuilderConfigMjs(brandId: string): string {
 /**
  * Génère electron-builder.client.json / .server.json via buildElectronBuilderConfig.
  * SoT manifest = repo marque (src/electron/app-manifest.json) — le kit ne
- * connaît pas ses consommateurs (P1.d). Fallback registre kit DÉPRÉCIÉ.
+ * connaît pas ses consommateurs (H11 : plus de fallback registre kit).
  */
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import {
   buildElectronBuilderConfig,
-  getManifest,
-  listBrandIds,
   renderNsisInstallerInclude,
 } from "@creezio/brand-config";
 
@@ -517,19 +515,17 @@ const root = path.resolve(__dirname, "..");
 const kind = process.argv[2] === "server" ? "server" : "client";
 const brandId = process.env.CREEZIO_BRAND || "${brandId}";
 
-let manifest = null;
 const genPath = path.join(root, "src/electron/app-manifest.json");
-if (fs.existsSync(genPath)) {
-  const local = JSON.parse(fs.readFileSync(genPath, "utf8"));
-  if (local.brandId === brandId) manifest = local;
+if (!fs.existsSync(genPath)) {
+  throw new Error(
+    \`Manifest introuvable pour \${brandId} — src/electron/app-manifest.json requis (H11)\`,
+  );
 }
-if (!manifest && listBrandIds().includes(brandId)) {
-  // Fallback déprécié (P1.d) : matérialiser src/electron/app-manifest.json.
-  console.warn(\`[deprecated] manifest \${brandId} résolu via le registre kit — retrait au prochain bump d'architecture\`);
-  manifest = getManifest(brandId);
-}
-if (!manifest) {
-  throw new Error(\`Manifest introuvable pour \${brandId} (app-manifest.json + registre kit)\`);
+const manifest = JSON.parse(fs.readFileSync(genPath, "utf8"));
+if (manifest.brandId !== brandId) {
+  throw new Error(
+    \`app-manifest.json brandId=\${manifest.brandId} ≠ CREEZIO_BRAND=\${brandId}\`,
+  );
 }
 
 const base = JSON.parse(
@@ -540,7 +536,7 @@ const out = path.join(root, \`electron-builder.\${kind}.json\`);
 fs.writeFileSync(out, JSON.stringify(cfg, null, 2) + "\\n");
 console.log("wrote", out);
 
-// Parité TF2 : options install (démarrage auto) + désinstall profonde.
+// Options install (démarrage auto) + désinstall profonde.
 const nsh = path.join(root, "installer.nsh");
 fs.writeFileSync(nsh, renderNsisInstallerInclude(manifest));
 console.log("wrote", nsh);

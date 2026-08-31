@@ -53,6 +53,8 @@ autre module, ou historique `fromprd_brand_*`).
 4. Comportement runtime durci en 0.10.13/0.10.14 — toute modification de
    `decideMeiliReady` / browse passe par les gates
    `test-phase-meili-feed` / `test-phase-meili-browse` / `test-phase-p29`.
+   H11 : `createChrCatalogMeiliFeed` et l'alias `sites` → `fournisseurs`
+   sont **retirés** (feed inliné factory, `countKey` tel que déclaré).
 
 ## Tests / gates liés
 

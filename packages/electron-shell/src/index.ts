@@ -360,7 +360,6 @@ export type {
 } from "@creezio/host-runtime";
 export {
   clearGeneratedWebuiPassword,
-  clearTempoflowGeneratedWebuiPassword,
   createHermesHost,
   serverWebuiPassword,
 } from "@creezio/host-runtime";
@@ -821,7 +820,6 @@ export {
   configureMeiliCoherencePaths,
   countCatalogSql,
   countGedSql,
-  createChrCatalogMeiliFeed,
   decideMeiliReady,
   expectedCountsForFeed,
   expectedMeiliCounts,

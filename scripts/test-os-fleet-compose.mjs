@@ -10,8 +10,7 @@ import { test } from "node:test";
 import { fileURLToPath } from "node:url";
 import {
   createAppManifest,
-  fiduManifest,
-  tempoflowManifest,
+  demobrandManifest,
 } from "../packages/brand-config/dist/index.js";
 import { composeBrandOs } from "../packages/app-runtime/dist/index.js";
 
@@ -32,8 +31,8 @@ function compose(manifest) {
   return { handle, tmp };
 }
 
-test("fleet.compose — TF features.fleet=true → agent runtime", () => {
-  const { handle } = compose(tempoflowManifest);
+test("fleet.compose — sandbox features.fleet défaut → agent runtime", () => {
+  const { handle } = compose(demobrandManifest);
   try {
     const st = handle.status();
     assert.equal(st.hosts.fleet, "enabled");
@@ -46,8 +45,15 @@ test("fleet.compose — TF features.fleet=true → agent runtime", () => {
   }
 });
 
-test("fleet.compose — Fidu features.fleet=false → feature-off", () => {
-  const { handle } = compose(fiduManifest);
+test("fleet.compose — features.fleet=false → feature-off", () => {
+  const off = createAppManifest({
+    brandId: "offbrand",
+    productName: "OffBrand",
+    domain: "offbrand.example.test",
+    sandbox: true,
+    features: { plugins: false, fleet: false },
+  });
+  const { handle } = compose(off);
   try {
     const st = handle.status();
     assert.equal(st.hosts.fleet, "feature-off");

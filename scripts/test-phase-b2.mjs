@@ -7,7 +7,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { test } from "node:test";
-import { tempoflowManifest, fiduManifest, envKey } from "../packages/brand-config/dist/index.js";
+import { demobrandManifest, envKey } from "../packages/brand-config/dist/index.js";
 import {
   shouldSpawnEmbeddedHermes,
   shouldSpawnEmbeddedN8n,
@@ -153,7 +153,7 @@ test("local-config store plain encryption", () => {
   const configPath = path.join(dir, "tempoflow-config.json");
   const store = createLocalConfigStoreSync({
     configPath,
-    manifest: tempoflowManifest,
+    manifest: demobrandManifest,
     encryption: "plain",
   });
   assert.equal(store.encryptionAvailable(), false);
@@ -186,7 +186,7 @@ test("local-config configPath getter (userData dynamique)", () => {
   let active = dir1;
   const store = createLocalConfigStoreSync({
     configPath: () => path.join(active, "tempoflow-config.json"),
-    manifest: tempoflowManifest,
+    manifest: demobrandManifest,
     encryption: "plain",
   });
   store.ensureAuthSecret();
@@ -261,10 +261,10 @@ test("plugins contracts", () => {
 });
 
 test("brand env + sandbox helpers", () => {
-  const env = buildEmbedHostEnv(fiduManifest, { DESKTOP: "1" });
-  assert.equal(env.FIDU_DESKTOP, "1");
-  assert.equal(env.FIDU_BRAND_ID, "fidu");
-  assert.equal(envKey(tempoflowManifest, "HERMES_BIN"), "TF2_HERMES_BIN");
+  const env = buildEmbedHostEnv(demobrandManifest, { DESKTOP: "1" });
+  assert.equal(env.DEMOBRAND_DESKTOP, "1");
+  assert.equal(env.DEMOBRAND_BRAND_ID, "demobrand");
+  assert.equal(envKey(demobrandManifest, "HERMES_BIN"), "DEMOBRAND_HERMES_BIN");
   assert.equal(overridesAllowed(true), false);
   assert.equal(overridesAllowed(false), true);
   const p = buildConfinedPath({

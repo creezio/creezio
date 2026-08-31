@@ -69,10 +69,10 @@ Il n'a pas de dépendance runtime externe. Sa seule dépendance de développemen
 `envKey(manifest, suffix)` concatène le préfixe de marque et un suffixe :
 
 ```ts
-import { envKey, tempoflowManifest } from "@creezio/brand-config";
+import { envKey, demobrandManifest } from "@creezio/brand-config";
 
-const key = envKey(tempoflowManifest, "USER_DATA_OVERRIDE");
-// "TF2_USER_DATA_OVERRIDE"
+const key = envKey(demobrandManifest, "USER_DATA_OVERRIDE");
+// "DEMOBRAND_USER_DATA_OVERRIDE"
 ```
 
 Helpers spécialisés :
@@ -81,11 +81,11 @@ Helpers spécialisés :
 import {
   appKindEnvKey,
   serverPlatformEnvKey,
-  tempoflowManifest,
+  demobrandManifest,
 } from "@creezio/brand-config";
 
-appKindEnvKey(tempoflowManifest);        // "TF2_APP_KIND"
-serverPlatformEnvKey(tempoflowManifest); // "TF2_SERVER_PLATFORM"
+appKindEnvKey(demobrandManifest);        // "DEMOBRAND_APP_KIND"
+serverPlatformEnvKey(demobrandManifest); // "DEMOBRAND_SERVER_PLATFORM"
 ```
 
 Les packages comme `@creezio/platform-core` utilisent ces clés pour résoudre les overrides hors build packagé (`USER_DATA_OVERRIDE`, `DB_PATH_OVERRIDE`, `CORE_DB_PATH_OVERRIDE`, etc.).
@@ -97,8 +97,8 @@ Le nom du bridge preload vient du manifest :
 ```ts
 import { getManifest } from "@creezio/brand-config";
 
-const manifest = getManifest("certivan");
-manifest.bridgeName; // "certivanDesktop"
+const manifest = getManifest("demobrand");
+manifest.bridgeName; // "demobrandDesktop"
 ```
 
 Ce nom est consommé par `@creezio/shell` et par les preloads de marque pour exposer l'API sous `window[manifest.bridgeName]`.
@@ -110,11 +110,11 @@ Ce nom est consommé par `@creezio/shell` et par les preloads de marque pour exp
 ```ts
 import {
   buildElectronBuilderConfig,
-  tempoflowManifest,
+  demobrandManifest,
 } from "@creezio/brand-config";
 
 const serverConfig = buildElectronBuilderConfig(
-  tempoflowManifest,
+  demobrandManifest,
   "server",
   baseElectronBuilderYaml,
   {
@@ -158,32 +158,29 @@ import {
 } from "@creezio/brand-config";
 
 const all: BrandId[] = listBrandIds();
-// ["tempoflow", "certivan", "fidu", "demobrand"]
+// ["demobrand"] — sandbox kit seule (H11 : manifests prod hors kit)
 
 const prod = listProductionBrandIds();
-// demobrand est exclu car sandbox: true
+// [] — demobrand est exclu car sandbox: true
 
-const fidu = getManifest("fidu");
+const demo = getManifest("demobrand");
 const sandbox = isSandboxBrand("demobrand"); // true
 
-manifests.tempoflow.client.productName; // "TempoFlow"
+manifests.demobrand.client.productName; // "DemoBrand"
 ```
 
 ### Manifests nommés
 
 ```ts
-import {
-  certivanManifest,
-  demobrandManifest,
-  fiduManifest,
-  tempoflowManifest,
-} from "@creezio/brand-config";
+import { demobrandManifest } from "@creezio/brand-config";
 
-tempoflowManifest.envPrefix; // "TF2"
-certivanManifest.deepLinkProtocol; // "certivan"
-fiduManifest.features?.plugins; // false
+demobrandManifest.envPrefix; // "DEMOBRAND"
 demobrandManifest.sandbox; // true
 ```
+
+Les manifests prod (`tempoflow` / `certivan` / `fidu`) ne sont plus
+publiés par le kit (H11). Une marque les porte dans
+`src/electron/app-manifest.json`, résolu via `resolveManifest`.
 
 ### Helpers d'identité et de feed
 
@@ -197,28 +194,28 @@ import {
   profileArgPrefix,
   resolveArtifactFileName,
   resolveLatestAlias,
-  tempoflowManifest,
+  demobrandManifest,
 } from "@creezio/brand-config";
 
-const serverExe = exeForKind(tempoflowManifest, "server");
+const serverExe = exeForKind(demobrandManifest, "server");
 
 resolveArtifactFileName(serverExe, "0.10.26");
-// "TempoFlow-Server-Setup-0.10.26.exe"
+// "DemoBrand-Server-Setup-0.10.26.exe"
 
-resolveLatestAlias(tempoflowManifest.client);
-// "TempoFlow-Setup-latest.exe"
+resolveLatestAlias(demobrandManifest.client);
+// "DemoBrand-Setup-latest.exe"
 
-feedBaseUrl(tempoflowManifest.client);
-// "https://crm.tempoflow.fr/dl-e660352fb04dbd5e2519f0e60897c548"
+feedBaseUrl(demobrandManifest.client);
+// "https://demobrand.creez.io/dl-sandbox…"
 
-latestYmlUrl(tempoflowManifest, "server");
+latestYmlUrl(demobrandManifest, "server");
 // ".../server/latest.yml"
 
-appSessionPartition(tempoflowManifest);
-// "persist:tempoflow-app"
+appSessionPartition(demobrandManifest);
+// "persist:demobrand-app"
 
-profileArgPrefix(tempoflowManifest);
-// "--tf2-profile="
+profileArgPrefix(demobrandManifest);
+// "--demobrand-profile="
 
 distDirForKind("server");
 // "dist-electron-server"
@@ -227,10 +224,17 @@ distDirForKind("server");
 ### Features optionnelles
 
 ```ts
-import { fiduManifest, isFeatureEnabled } from "@creezio/brand-config";
+import { createAppManifest, isFeatureEnabled } from "@creezio/brand-config";
 
-isFeatureEnabled(fiduManifest, "plugins"); // false
-isFeatureEnabled(fiduManifest, "fleet");   // false
+const off = createAppManifest({
+  brandId: "offbrand",
+  productName: "Off",
+  domain: "off.example.test",
+  sandbox: true,
+  features: { plugins: false, fleet: false },
+});
+isFeatureEnabled(off, "plugins"); // false
+isFeatureEnabled(off, "fleet");   // false
 ```
 
 Un champ absent ou `true` signifie activé. Seul `false` désactive explicitement la capacité.
@@ -270,7 +274,7 @@ const guid = nsisGuidFromAppId("fr.fidu.desktop.server");
 
 ## Flux / fonctionnement
 
-1. Une app ou un script choisit un manifest (`getManifest("tempoflow")` ou import direct).
+1. Une app ou un script choisit un manifest (`getManifest("demobrand")` pour la sandbox kit, `resolveManifest(brandId, { appRoot })` pour une marque).
 2. Les packages consommateurs dérivent leurs clés et chemins :
    - `@creezio/platform-core` résout `userData`, `db`, `local-config`, feeds et ressources ;
    - `@creezio/shell` utilise `bridgeName` pour exposer `window.*Desktop` ;
@@ -287,69 +291,12 @@ Les invariants critiques sont :
 - pas de réutilisation de feed token production dans un manifest sandbox ;
 - `userDataSegment` stable pour préserver les données et upgrades existants.
 
-## Intégration marques (TempoFlow, Certivan, Fidu, DemoBrand)
+## Intégration — DemoBrand (sandbox kit)
 
-### TempoFlow
-
-- `brandId`: `tempoflow`
-- `envPrefix`: `TF2`
-- `bridgeName`: `tempoflowDesktop`
-- DB: `tempoflow2.db`
-- config locale: `tempoflow-config.json`
-- protocole deep-link: `tempoflow`
-- tunnel root: `tempoflow.fr`
-- client:
-  - `appId`: `fr.tempoflow.desktop`
-  - `productName`: `TempoFlow`
-  - `packageName`: `tempoflow2-crm`
-  - feed: `https://crm.tempoflow.fr/dl-e660352fb04dbd5e2519f0e60897c548/`
-- serveur:
-  - `appId`: `fr.tempoflow.desktop.server`
-  - `productName`: `TempoFlow Server`
-  - `packageName`: `tempoflow2-crm-server`
-  - feed: `https://crm.tempoflow.fr/dl-e660352fb04dbd5e2519f0e60897c548/server/`
-- features: `plugins: true`, `fleet: true`
-
-### Certivan
-
-- `brandId`: `certivan`
-- `envPrefix`: `CERTIVAN`
-- `bridgeName`: `certivanDesktop`
-- DB: `certivan.db`
-- config locale: `certivan-config.json`
-- protocole deep-link: `certivan`
-- tunnel root: `certivan.creez.io`
-- client:
-  - `appId`: `fr.certivan.desktop`
-  - `productName`: `Certivan`
-  - feed: `https://certivan.creez.io/dl-3c94d486b0efa7618fad5bdfff410c49/`
-- serveur:
-  - `appId`: `fr.certivan.desktop.server`
-  - `productName`: `Certivan Server`
-  - feed: `https://certivan.creez.io/dl-3c94d486b0efa7618fad5bdfff410c49/server/`
-- publish: `legacyClientAlias` vaut `Certivan-Setup-0.1.0.exe`
-- features: `plugins: true`, `fleet: true`
-
-### Fidu
-
-- `brandId`: `fidu`
-- `envPrefix`: `FIDU`
-- `bridgeName`: `fiduDesktop`
-- DB: `fidu.db`
-- config locale: `fidu-config.json`
-- protocole deep-link: `fidu`
-- tunnel root: `fidu.creez.io`
-- client:
-  - `appId`: `fr.fidu.desktop`
-  - `productName`: `Fidu`
-  - `packageName`: `fidu`
-  - `userDataSegment`: `Fidu` pour conserver `%APPDATA%/Fidu`
-- serveur:
-  - `appId`: `fr.fidu.desktop.server`
-  - `productName`: `Fidu Server`
-- features: `plugins: false`, `fleet: false`
-
-Fidu est feature-off pour plugins/flotte : les hôtes doivent brancher une surface désactivée, pas supposer les handlers plugin ou fleet disponibles.
+H11 : les manifests prod (`tempoflow` / `certivan` / `fidu`) ne sont plus
+publiés par `@creezio/brand-config`. Chaque marque porte son
+`src/electron/app-manifest.json`. Feature-off (`plugins` / `fleet` =
+`false`) se déclare dans ce JSON via `createAppManifest({ features })`.
 
 ### DemoBrand
 

@@ -12,12 +12,9 @@ import { fileURLToPath } from "node:url";
 import {
   createAppManifest,
   demobrandManifest,
-  fiduManifest,
   listProductionBrandIds,
   nsisGuidFromAppId,
-  tempoflowManifest,
   validateAppManifest,
-  certivanManifest,
 } from "../packages/brand-config/dist/index.js";
 import { scaffoldNewApp } from "../packages/factory/dist/index.js";
 import { buildElectronBuilderConfig } from "../packages/brand-config/dist/index.js";
@@ -89,27 +86,18 @@ test("demobrand sandbox distinct des feeds/GUID prod", () => {
       `feed ne doit pas contenir ${tok}`,
     );
   }
-  const prodGuids = new Set([
-    tempoflowManifest.client.nsisGuid,
-    tempoflowManifest.server.nsisGuid,
-    certivanManifest.client.nsisGuid,
-    certivanManifest.server.nsisGuid,
-    fiduManifest.client.nsisGuid,
-    fiduManifest.server.nsisGuid,
-  ]);
-  assert.ok(!prodGuids.has(demobrandManifest.client.nsisGuid));
-  assert.ok(!prodGuids.has(demobrandManifest.server.nsisGuid));
   assert.equal(demobrandManifest.publish.dockerDlName, "dl-demobrand");
-  assert.notEqual(demobrandManifest.publish.dockerDlName, "dl-tempoflow");
-  assert.notEqual(demobrandManifest.publish.dockerDlName, "dl-fidu");
-  assert.notEqual(demobrandManifest.publish.dockerDlName, "dl-certivan");
+  for (const tok of PROD_FEED_TOKENS) {
+    assert.ok(
+      !demobrandManifest.server.feedUrl.includes(tok),
+      `feed serveur ne doit pas contenir ${tok}`,
+    );
+  }
 });
 
-test("listProductionBrandIds exclut demobrand", () => {
+test("listProductionBrandIds exclut demobrand (registre kit = sandbox seule)", () => {
   const prod = listProductionBrandIds();
-  assert.ok(prod.includes("tempoflow"));
-  assert.ok(prod.includes("certivan"));
-  assert.ok(prod.includes("fidu"));
+  assert.deepEqual(prod, []);
   assert.ok(!prod.includes("demobrand"));
 });
 

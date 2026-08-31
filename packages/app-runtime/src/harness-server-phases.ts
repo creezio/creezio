@@ -1,5 +1,5 @@
 /**
- * Phases serveur post-boot du harness Docker headless — parité TF2.
+ * Phases serveur post-boot du harness Docker headless — parité desktop.
  *
  * Tout ce que le desktop rejouait APRÈS le démarrage de Next (import
  * catalogue, clé CRM Hermes + seed contexte + bridge n8n, plugins, tunnel
@@ -412,7 +412,7 @@ export function applyNativeEmbedNextEnv(
 
 /**
  * Étape hermes-bridge : clé CRM Hermes → seed contexte (si la marque en
- * fournit un) → reapplyHermesBridge. Parité TF2 phase 5a/5a3 desktop.
+ * fournit un) → reapplyHermesBridge. Parité desktop phase 5a/5a3.
  */
 export async function runHarnessHermesBridgePhase(opts: {
   boot: BootProgressReporter;
@@ -437,8 +437,8 @@ export async function runHarnessHermesBridgePhase(opts: {
       );
     }
     if (apiKey) {
-      // Bridge env in-process (assistant / tools kernel) — parité TF2
-      // TEMPOFLOW_API_KEY / TEMPOFLOW_API_URL injectés dans Next.
+      // Bridge env in-process (assistant / tools kernel) — clés
+      // `${envPrefix}_API_KEY` / `${envPrefix}_API_URL` injectées dans Next.
       const prefix = manifest.envPrefix;
       process.env[`${prefix}_API_KEY`] = apiKey;
       process.env[`${prefix}_API_URL`] = `http://127.0.0.1:${port}`;

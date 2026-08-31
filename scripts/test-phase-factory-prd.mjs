@@ -310,7 +310,8 @@ test("F1–F4 scaffold --from-prd génère 2 repos (monorepo + admin dédié, ru
     path.join(server, "src/electron/meili-feed.ts"),
     "utf8",
   );
-  assert.match(feed, /createChrCatalogMeiliFeed|brandMeiliFeed/);
+  assert.match(feed, /brandMeiliFeed/);
+  assert.doesNotMatch(feed, /createChrCatalogMeiliFeed/);
   assert.doesNotMatch(feed, /tf2_produits|tf2_marketplaces/);
 
   const rootPkg = JSON.parse(

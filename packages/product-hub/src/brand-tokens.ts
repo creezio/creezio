@@ -1,5 +1,5 @@
 /**
- * Jetons Product Hub dérivés de AppManifest — zéro hardcode TEMPOFLOW_/CERTIVAN_.
+ * Jetons Product Hub dérivés de AppManifest (`envKey` / envPrefix).
  */
 
 import type { AppManifest } from "@creezio/brand-config";

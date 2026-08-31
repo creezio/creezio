@@ -30,7 +30,6 @@ export type {
 export {
   GENERIC_CATALOG_INDEXES,
   configureMeiliBrandFeed,
-  createChrCatalogMeiliFeed,
   expectedCountsForFeed,
   getMeiliBrandFeed,
   resetMeiliBrandFeedForTests,

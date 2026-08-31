@@ -21,7 +21,10 @@ le serveur Docker headless — sans jamais importer Electron statiquement.
 - `src/tunnel/` — cloudflared in-process + respawn.
 - `src/sandbox/` — sandbox OS + embeds.
 - `src/ai-workspace/` — workspace navigateur IA (manager, actions,
-  screencast, profil).
+  screencast, profil). H11 : `preload.js` obligatoire, pas de fallback
+  `preload-app.js`.
+- `src/plugins/brand-bindings.ts` — clés env plugins = préfixe manifeste
+  uniquement (H11 : plus d'alias `TEMPOFLOW_*`).
 - `src/node-runtime.ts`, `src/npm-cli.ts`, `src/ensure-kit-binaries.ts` —
   outillage Node/npm/binaires kit (Meili, cloudflared).
 - `src/crash-reporter.ts`, `src/bridge-client.ts`, `src/contracts.ts`,

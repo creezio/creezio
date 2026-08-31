@@ -1,5 +1,5 @@
 /**
- * Routes Hono Product Hub `/plugin-products` — SoT kit (gold TempoFlow).
+ * Routes Hono Product Hub `/plugin-products` — SoT kit.
  * Auth outer (session/API key) reste côté marque au montage.
  */
 
@@ -61,7 +61,7 @@ export type PluginProductsRouteDeps = {
   documentsDir: () => string;
   /** Contexte Hermes optionnel (copie docs contextEnabled). */
   hermesContextDir?: () => string | null;
-  /** Hint URL API dans messages d'erreur (ex. `$TEMPOFLOW_API_URL`). */
+  /** Hint URL API dans messages d'erreur (ex. `$CRM_API_URL`). */
   apiUrlEnvHint?: string;
   /** Module n8n provisioning (createPluginN8nProvisioning). */
   n8n: Pick<

@@ -140,21 +140,6 @@ export function clearGeneratedWebuiPassword(
   stateDir: string,
   secretPrefix?: string,
 ): void {
-  clearGeneratedWebuiPasswordImpl(home, stateDir, secretPrefix);
-}
-/** @deprecated H7 — alias gold historique, conservé UNE version (frozen export). */
-export function clearTempoflowGeneratedWebuiPassword(
-  home: string,
-  stateDir: string,
-  secretPrefix?: string,
-): void {
-  clearGeneratedWebuiPasswordImpl(home, stateDir, secretPrefix);
-}
-function clearGeneratedWebuiPasswordImpl(
-  home: string,
-  stateDir: string,
-  secretPrefix?: string,
-): void {
   // Fichiers password legacy : nom générique + nom dérivé du secretFilePrefix
   // marque (couvre les fichiers `.{marque}-webui-password` historiques).
   const files = [path.join(home, ".desktop-hermes-webui-password")];
@@ -336,26 +321,11 @@ function ensureApiKey(home: string): string {
   const prefix = ctx.secretFilePrefix || ctx.manifest.brandId || "desktop";
   /** Canon marque : `.{secretFilePrefix}-api-server-key` (dérivé du manifest). */
   const keyFile = path.join(home, `.${prefix}-api-server-key`);
-  // Fallbacks legacy lus UNE version avec warning (dual-read H7) : nom
-  // générique historique + nom gold de la première marque.
-  const legacyGold = path.join(home, ".tempoflow-api-server-key");
-  const desktop = path.join(home, ".desktop-hermes-api-key");
-  for (const f of [keyFile, desktop, legacyGold]) {
-    try {
-      const existing = fs.readFileSync(f, "utf8").trim();
-      if (existing.length >= 16) {
-        if (f !== keyFile) {
-          pushLog(
-            `[deprecated] clé API Hermes lue depuis fichier legacy ${path.basename(f)} — ` +
-              `migrée vers ${path.basename(keyFile)} (fallback retiré au prochain bump)`,
-          );
-          fs.writeFileSync(keyFile, existing, { mode: 0o600 });
-        }
-        return existing;
-      }
-    } catch {
-      /* */
-    }
+  try {
+    const existing = fs.readFileSync(keyFile, "utf8").trim();
+    if (existing.length >= 16) return existing;
+  } catch {
+    /* absent */
   }
   const key = crypto.randomBytes(24).toString("base64url");
   fs.writeFileSync(keyFile, key, { mode: 0o600 });
@@ -1070,15 +1040,7 @@ function getHermesNextEnv(connectionMode: "local" | "remote"): Record<string, st
   }
 
   if (config.mode === "remote" && config.remoteApiUrl) {
-    // Dual-read H7 : env legacy première marque lu UNE version avec warning.
-    const legacyRemoteKey = (process.env.TF2_HERMES_REMOTE_KEY || "").trim();
-    const key = (process.env.HERMES_API_SERVER_KEY || "").trim() || legacyRemoteKey;
-    if (key && key === legacyRemoteKey) {
-      pushLog(
-        "[deprecated] clé remote Hermes lue via l'env legacy première marque — " +
-          "utiliser HERMES_API_SERVER_KEY (retrait au prochain bump d'architecture)",
-      );
-    }
+    const key = (process.env.HERMES_API_SERVER_KEY || "").trim();
     if (!key) return {};
     return buildNextHermesEnv({
       apiUrl: config.remoteApiUrl,
