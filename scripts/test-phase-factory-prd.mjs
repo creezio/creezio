@@ -143,7 +143,7 @@ test("F1–F4 scaffold --from-prd génère 2 repos (monorepo + admin dédié, ru
   const adminDir = `${outDir}-admin`;
   const r = spawnSync(
     process.execPath,
-    [CLI, "new-app", "--from-prd", PRD, "--out", outDir, "--force"],
+    [CLI, "new-app", "--from-prd", PRD, "--out", outDir, "--force", "--no-push"],
     { encoding: "utf8", cwd: ROOT, env: SMOKE_ENV },
   );
   assert.equal(r.status, 0, r.stderr + "\n" + r.stdout);

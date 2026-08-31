@@ -265,6 +265,7 @@ test("CB-apply-stub product.md stub = error (plus notes)", () => {
     "--out",
     path.join(work, "app"),
     "--force",
+    "--no-push",
   ]);
   assert.notEqual(apply.status, 0, "apply sur stub doit error");
   const out = `${apply.stdout}\n${apply.stderr}`;
@@ -336,6 +337,7 @@ Desktop Creezio.
     "--out",
     appDir,
     "--force",
+    "--no-push",
   ]);
   assert.equal(apply.status, 0, apply.stderr + "\n" + apply.stdout);
   // Layout monorepo : métier sous server/, client thin sous client/ ;
