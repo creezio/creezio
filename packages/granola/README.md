@@ -22,8 +22,9 @@ reçoit toutes les livraisons (`note.generated`, `note.edited`,
 - **Config** : défauts marque via `createGranolaMount({ defaults })`,
   override à chaud `PUT config` (clé API, signing secret, origine publique),
   secrets **masqués** en `GET config`.
-- **UI** : `@creezio/granola/ui` → `GranolaClient` (config, URL webhook à
-  copier, livraisons, notes synchronisées) — page à câbler par la marque.
+- **UI** : `@creezio/granola/ui` → `GranolaClient` compose
+  `GranolaNotesPanel` (workspace notes : liste filtrable, fiche résumé /
+  transcript) et `GranolaConnectPanel` (config / webhook).
 
 ## API mount (câblé par la marque)
 
@@ -35,6 +36,7 @@ reçoit toutes les livraisons (`note.generated`, `note.edited`,
 | GET/PUT/DELETE | `config` | config module (secrets masqués en GET) |
 | GET | `events` | livraisons reçues (dédupliquées, `verified`) |
 | GET | `notes` / `notes/<id>` | notes synchronisées localement |
+| GET | `notes/<id>/transcript` | proxy transcript paginé (`next_cursor`) |
 | POST | `notes/<id>/sync` | re-fetch d'une note via l'API |
 | GET | `remote/notes[?…]` | proxy `GET /v1/notes` (pagination, filtres) |
 | GET | `remote/notes/<id>[?include=transcript]` | proxy `GET /v1/notes/{id}` |

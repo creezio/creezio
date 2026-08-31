@@ -81,9 +81,20 @@ CREATE INDEX IF NOT EXISTS idx_granola_notes_synced
   ON granola_notes (synced_at DESC);
 `;
 
+/** Colonnes dossier + transcript local (jamais renuméroter granola_001). */
+export const GRANOLA_NOTES_TRANSCRIPT_SQL = `
+ALTER TABLE granola_notes ADD COLUMN folder_id TEXT;
+ALTER TABLE granola_notes ADD COLUMN transcript_json TEXT;
+CREATE INDEX IF NOT EXISTS idx_granola_notes_folder
+  ON granola_notes (folder_id);
+`;
+
 /** Migrations brand.db du module (à composer dans `brand-migrations.ts`). */
 export function granolaMigrations(): SqliteMigration[] {
-  return [{ id: "granola_001_core", sql: GRANOLA_SCHEMA_SQL }];
+  return [
+    { id: "granola_001_core", sql: GRANOLA_SCHEMA_SQL },
+    { id: "granola_002_note_transcript_folder", sql: GRANOLA_NOTES_TRANSCRIPT_SQL },
+  ];
 }
 
 /** Merge pur défauts marque + override DB (les champs override priment). */

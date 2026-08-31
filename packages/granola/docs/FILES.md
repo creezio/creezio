@@ -9,9 +9,9 @@
 | Fichier | Rôle |
 |---|---|
 | [`src/client.ts`](../src/client.ts) | Client REST API publique Granola (notes, transcript, folders, webhook-endpoints) — `fetchImpl` injectable. **Câblé en prod** via le mount. |
-| [`src/config.ts`](../src/config.ts) | `GranolaModuleConfig`, schéma SQL (`granola_settings`/`granola_events`/`granola_notes`), `granolaMigrations()`, merge défauts/override, masquage secrets. |
+| [`src/config.ts`](../src/config.ts) | `GranolaModuleConfig`, schéma SQL (`granola_settings`/`granola_events`/`granola_notes`), `granola_002_note_transcript_folder`, `granolaMigrations()`, merge défauts/override, masquage secrets. |
 | [`src/index.ts`](../src/index.ts) | Surface publique du package (toute l'API passe par ici). |
-| [`src/mount.ts`](../src/mount.ts) | `createGranolaMount` → `/api/v1/modules/granola/*` : webhook signé, webhook-info, register-webhook, config, events, notes, proxys remote/*. **Câblé par la marque** (`registerModuleApi`). |
+| [`src/mount.ts`](../src/mount.ts) | `createGranolaMount` → `/api/v1/modules/granola/*` : webhook signé, webhook-info, register-webhook, config, events, notes, `GET notes/:id/transcript`, proxys remote/*. **Câblé par la marque** (`registerModuleApi`). |
 | [`src/signature.ts`](../src/signature.ts) | Vérification Standard Webhooks (HMAC-SHA256, tolérance rejeu) + `signGranolaPayload` (tests/simulateur). |
 
 ## `ui/`
