@@ -43,8 +43,10 @@ jobs:
     env:
       CREEZIO_SKIP_KIT_BINARIES: "1"
       CREEZIO_NATIVE_WARM: "0"
-      # Gates scaffold/factory : les apps generees resolvent @creezio/* sur
-      # GitHub Packages (E401 sans token). GITHUB_TOKEN a packages:read ici.
+      # Gates scaffold/factory : --link-kit pin @creezio/* sur le worktree
+      # (PR de release : version pas encore sur GitHub Packages).
+      CREEZIO_LINK_KIT: "1"
+      # Token encore utile hors --link-kit (deps publiques + nightly).
       CREEZIO_NPM_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
       - uses: actions/checkout@v4
@@ -81,6 +83,7 @@ jobs:
       packages: read
     env:
       CREEZIO_NATIVE_WARM: "0"
+      CREEZIO_LINK_KIT: "1"
       CREEZIO_NPM_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       # App sonde : clone de dev du VPS (le checkout runner n'a pas de
       # sibling tempoflow3).

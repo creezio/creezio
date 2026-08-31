@@ -21,4 +21,10 @@ jobs:
         with:
           node-version: 22
       - run: npm ci --no-audit --no-fund
-      - run: npx changeset status --since=origin/${{ github.base_ref }}
+      # PR de version : « pas de changeset orphelin » (les files ont été
+      # consommés). Autres PR : `changeset status --since=base`.
+      - name: Changeset status
+        env:
+          GITHUB_HEAD_REF: ${{ github.head_ref }}
+          CHANGESET_SINCE: origin/${{ github.base_ref }}
+        run: node scripts/changeset-status-check.mjs

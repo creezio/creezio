@@ -10,6 +10,7 @@
 |---|---|
 | [`build-cjs.mjs`](../build-cjs.mjs) | !usrbinenv node |
 | [`build-workspaces.mjs`](../build-workspaces.mjs) | Build unifié des workspaces (tsc + dual CJS) — SoT du script npm build:packages. |
+| [`changeset-status-check.mjs`](../changeset-status-check.mjs) | Gate PR changesets : leftover interdit sur `changeset-release/*`, sinon `changeset status --since`. |
 | [`clean.mjs`](../clean.mjs) | Supprime les `dist/` des packages et les caches `apps/console/.next` + `apps/demobrand/build` (équivalent Windows-safe de `rm -rf`). |
 | [`generate-files-md.mjs`](../generate-files-md.mjs) | Générateur des inventaires `docs/FILES.md` — format standard du kit. |
 | [`generate-kit-packages.mjs`](../generate-kit-packages.mjs) | Génère/vérifie packages/platform-core/kit-packages.json (manifeste des packages publiés, consommé par les apps) |
@@ -65,6 +66,7 @@
 | [`test-phase-c3.mjs`](../test-phase-c3.mjs) | Phase C3 — fabrique V1 réelle : scaffold riche, console SQLite, PrdDrafter. |
 | [`test-phase-c4.mjs`](../test-phase-c4.mjs) | Phase C4 — V2/V3 prod-ready : SQLite obs/automations + console + docs. |
 | [`test-phase-c7.mjs`](../test-phase-c7.mjs) | Phase C7 — startHostPluginControlPlane unifié (4 boots + ACL). |
+| [`test-phase-changeset-status.mjs`](../test-phase-changeset-status.mjs) | (à documenter) |
 | [`test-phase-clone-autonomy.mjs`](../test-phase-clone-autonomy.mjs) | Gate — clone autonome des repos marque (distribution sans kit). |
 | [`test-phase-cloudflared-respawn.mjs`](../test-phase-cloudflared-respawn.mjs) | Gate — superviseur cloudflared in-process : politique backoff/abandon, respawn même token/id, stop annule le timer, spawn sans POST cfd_tunnel. |
 | [`test-phase-crash-reporter.mjs`](../test-phase-crash-reporter.mjs) | Gate crash-reporter kit — upload configurable + brandId + pending queue. |

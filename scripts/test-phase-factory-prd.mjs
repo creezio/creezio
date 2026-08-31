@@ -135,6 +135,7 @@ test("F1.4 CLI accepte --from-prd", () => {
   });
   assert.equal(r.status, 0, r.stderr);
   assert.match(r.stdout, /--from-prd/);
+  assert.match(r.stdout, /--link-kit/);
 });
 
 test("F1–F4 scaffold --from-prd génère 2 repos (monorepo + admin dédié, runtime natif)", () => {

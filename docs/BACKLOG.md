@@ -172,11 +172,13 @@ affaibli pour la masquer. (Backlogs d'époque : `docs/archive/BACKLOG-*.md`.)
   intégration au contrat kit à faire dans une phase dédiée (trop gros pour
   P2.c, qui a livré le contrat importé + `permission`/`accessJustification`
   par mount). ADR `docs/adr/ADR-p2c-module-contract.md`.
-- **Cohérence `meiliIndexes.table` ↔ migrations** : vérifier au doctor que
-  la table d'un index Meili déclaré existe dans une migration — non trivial
-  textuellement (tables créées par un autre module d'import ou par les
-  migrations historiques `fromprd_brand_*` → faux positifs) ; nécessite une
-  résolution cross-module du plan de données.
+- ~~**Cohérence `meiliIndexes.table` ↔ migrations**~~ **fait** : doctor
+  brand-spec `MODULE_MEILI_TABLE_UNKNOWN` (error) — ensemble des tables
+  `CREATE TABLE` de **toute** l'app (tous modules + historiques
+  `fromprd_brand_*` / `brand-migrations.ts`), parse robuste (`IF NOT
+  EXISTS`, quotes). Échappatoire déclarative `tableProvisionedBy` sur
+  `BrandMeiliIndexSpec` (`@creezio/search`) si la table est provisionnée
+  à l'exécution — pas d'env de bypass.
 - **Qualifier les `accessJustification: "à qualifier"` TF3** : le codemod
   H9 pose la dette explicite sur les mounts manuscrits sans `permission` —
   chaque module TF3 doit qualifier sa permission réelle (`nav.*`) ou

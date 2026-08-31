@@ -51,6 +51,61 @@ export function creezioNpmDeps(
   return deps;
 }
 
+const LINK_KIT_TRUTHY = new Set(["1", "true", "yes", "on"]);
+
+/**
+ * Mode `--link-kit` / `CREEZIO_LINK_KIT=1` : l'install d'une app fraîche
+ * consomme les packages du worktree kit (`file:`) au lieu du registre.
+ * Les manifests générés restent `^<lockstep>` (contrat clone autonome).
+ */
+export function isLinkKitEnabled(explicit?: boolean): boolean {
+  if (explicit === true) return true;
+  if (explicit === false) return false;
+  const raw = (process.env.CREEZIO_LINK_KIT || "").trim().toLowerCase();
+  return LINK_KIT_TRUTHY.has(raw);
+}
+
+/** Racine kit : option, `CREEZIO_KIT_ROOT`, ou monorepo autour de factory. */
+export function resolveKitRoot(kitRoot?: string): string {
+  return path.resolve(
+    kitRoot || process.env.CREEZIO_KIT_ROOT || defaultKitRoot(),
+  );
+}
+
+export type CreezioPackageRef = { name: string; dir: string };
+
+/** Packages `@creezio/*` présents sous `<kit>/packages/*`. */
+export function listCreezioPackageRefs(kitRoot?: string): CreezioPackageRef[] {
+  const packagesDir = path.join(resolveKitRoot(kitRoot), "packages");
+  if (!fs.existsSync(packagesDir)) return [];
+  const out: CreezioPackageRef[] = [];
+  for (const name of fs.readdirSync(packagesDir)) {
+    const dir = path.join(packagesDir, name);
+    const pj = path.join(dir, "package.json");
+    if (!fs.existsSync(pj)) continue;
+    try {
+      const pkg = JSON.parse(fs.readFileSync(pj, "utf8")) as { name?: string };
+      if (typeof pkg.name === "string" && pkg.name.startsWith("@creezio/")) {
+        out.push({ name: pkg.name, dir: path.resolve(dir) });
+      }
+    } catch {
+      /* package.json illisible */
+    }
+  }
+  return out.sort((a, b) => a.name.localeCompare(b.name));
+}
+
+/** Specs `file:<abs>` pour chaque package `@creezio/*` du kit. */
+export function creezioLinkKitFileSpecs(
+  kitRoot?: string,
+): Record<string, string> {
+  const specs: Record<string, string> = {};
+  for (const ref of listCreezioPackageRefs(kitRoot)) {
+    specs[ref.name] = `file:${ref.dir}`;
+  }
+  return specs;
+}
+
 /**
  * Clôture @creezio serveur (deps directes npm publiées) — SoT unique pour
  * `scaffold.ts` et `scaffold-from-prd.ts`. Toute page OS qui importe un
