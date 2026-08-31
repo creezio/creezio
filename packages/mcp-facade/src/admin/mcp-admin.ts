@@ -183,6 +183,39 @@ export function getMcpToolPolicy(name: string): McpToolPolicy | null {
   return listMcpToolPolicies().find((tool) => tool.name === name) || null;
 }
 
+/**
+ * Noms explicitement `enabled=0` dans `mcp_tool_policies` (lignes SQL).
+ * Admin non câblé / erreur DB → ensemble vide (pas de filtre).
+ */
+export function disabledMcpToolPolicyNames(): Set<string> {
+  try {
+    ensureMcpAdminSchema();
+    const rows = getDb()
+      .prepare(`SELECT tool_name FROM mcp_tool_policies WHERE enabled = 0`)
+      .all() as Array<{ tool_name: string }>;
+    return new Set(rows.map((row) => row.tool_name));
+  } catch {
+    return new Set();
+  }
+}
+
+/** Retire de `listTools` les tools (et alias) désactivés en admin MCP. */
+export function filterListedToolsByEnabledPolicy<
+  T extends { name: string; aliasOf?: string },
+>(tools: T[], aliases: Record<string, string> = {}): T[] {
+  const disabled = disabledMcpToolPolicyNames();
+  if (disabled.size === 0) return tools;
+  for (const [alias, canonical] of Object.entries(aliases)) {
+    if (disabled.has(alias)) disabled.add(canonical);
+    if (disabled.has(canonical)) disabled.add(alias);
+  }
+  return tools.filter(
+    (tool) =>
+      !disabled.has(tool.name) &&
+      !(tool.aliasOf && disabled.has(tool.aliasOf)),
+  );
+}
+
 export function updateMcpToolPolicy(
   name: string,
   input: { enabled?: boolean; allowedRoles?: string[]; allowedScopes?: string[] },

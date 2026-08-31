@@ -27,6 +27,8 @@ export {
   seedMcpToolPolicies,
   listMcpToolPolicies,
   getMcpToolPolicy,
+  disabledMcpToolPolicyNames,
+  filterListedToolsByEnabledPolicy,
   updateMcpToolPolicy,
   listMcpClients,
   setMcpClientEnabled,

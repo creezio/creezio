@@ -18,6 +18,7 @@ import {
   checkToolPolicy,
   composeToolPolicies,
   configureMcpAdmin,
+  createMcpFacade,
   createToolPolicyAuthorize,
   denyCrossLayerToolCall,
   ensureMcpAdminSchema,
@@ -378,4 +379,52 @@ test("updateMcpToolPolicy : rôles/scopes dé-hardcodés via adapters", () => {
     allowedRoles: ["owner", "collaborator"],
     allowedScopes: ["crm:read"],
   });
+});
+
+test("listTools masque enabled=0 ; callTool reste joignable", async () => {
+  ensureMcpAdminSchema();
+  seedMcpToolPolicies(REGISTRY);
+  updateMcpToolPolicy("get_panier", { enabled: false });
+
+  const mcp = createMcpFacade({
+    allowUnauthenticated: true,
+    aliases: { get_panier: "module.panier.get" },
+    discoverToolsBySpace: async () => ({
+      module: [
+        {
+          name: "module.panier.get",
+          description: "État panier",
+          space: "module",
+          ownerId: "panier",
+          handler: async () => ({ ok: true, content: { lignes: 1 } }),
+        },
+        {
+          name: "module.panier.add_ligne",
+          description: "Ajoute",
+          space: "module",
+          ownerId: "panier",
+          handler: async () => ({ ok: true, content: {} }),
+        },
+      ],
+    }),
+  });
+
+  const canon = await mcp.listTools({ publicSurface: "canonical" });
+  const canonNames = canon.tools.map((t) => t.name);
+  assert.ok(
+    !canonNames.includes("module.panier.get"),
+    "canonique masqué via alias disabled",
+  );
+  assert.ok(canonNames.includes("module.panier.add_ligne"));
+
+  const both = await mcp.listTools({ publicSurface: "both" });
+  const bothNames = both.tools.map((t) => t.name);
+  assert.ok(!bothNames.includes("get_panier"), "alias disabled masqué");
+  assert.ok(!bothNames.includes("module.panier.get"));
+
+  const viaAlias = await mcp.callTool("get_panier", {});
+  assert.equal(viaAlias.ok, true);
+  assert.equal(viaAlias.content.lignes, 1);
+
+  updateMcpToolPolicy("get_panier", { enabled: true });
 });
