@@ -36,7 +36,10 @@ sync des notes en `brand.db`, client + proxys de l'API publique Granola
   webhook-endpoints.
 - `src/mount.ts` : `createGranolaMount` → `/api/v1/modules/granola/*`
   (webhook, webhook-info, register-webhook, config, events, notes, remote/*).
-- `ui/granola-client.tsx` : page `GranolaClient` (design system shell-ui).
+- `ui/granola-client.tsx` : page `GranolaClient` — compose les deux panneaux.
+- `ui/granola-notes-panel.tsx` : workspace notes (liste + fiche) — **GRANOLA-1**.
+- `ui/granola-connect-panel.tsx` : config / webhook / livraisons — **GRANOLA-2**
+  (ne pas enrichir depuis GRANOLA-1).
 
 ## Modifier sans casser
 
