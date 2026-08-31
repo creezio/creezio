@@ -28,7 +28,10 @@ Root :
 
 - `src/index.ts` : exports publics root.
 - `src/types.ts` : `CoreNavItem`, `NavSlotId`, `NavSlot`.
-- `src/core-nav.ts` : navigation core.
+- `src/core-nav.ts` : navigation core historique (home/setup/login — pas la sidebar).
+- `src/nav-catalog.ts` : SoT catalogue OS (`NavCatalogEntry`, `resolveNavCatalog`,
+  `registerOsNavEntry`, `defaultOsCatalogEntries`). Plan
+  `docs/plans/PLAN-NAV-CATALOG.md`.
 - `src/registry.ts` : registry et merge nav.
 - `src/adapters/nav-shell.ts` : adapter nav UI-agnostique.
 - `src/brand.ts` : tokens marque et desktop API.
@@ -38,10 +41,12 @@ UI :
 
 - `ui/index.ts` : exports React publics.
 - `ui/layout/sidebar-host.ts` : injection sidebar marque.
-- `ui/layout/native-os-nav.ts` : SoT entrées OS primaires / admin — les
-  marques doivent **appeler** `defaultOsPrimaryNavItems()`, pas recopier.
-  Catalogue éditable admin = pas encore là
-  (`docs/plans/PLAN-NAV-CATALOG.md`).
+- `ui/layout/nav-icons.ts` : `resolveNavIcon(name)` — allowlist lucide,
+  inconnu → `Circle` + warning.
+- `ui/layout/native-os-nav.ts` : adaptateur `listOsNavEntries()` →
+  `SidebarNavItem[]`. Les marques doivent **appeler**
+  `defaultOsPrimaryNavItems()`, pas recopier un `OS_NAV`.
+  Plan : `docs/plans/PLAN-NAV-CATALOG.md`.
 - `ui/layout/sidebar.tsx` : sidebar CRM.
 - `ui/workspace/tab-workspace-context.tsx` : workspace onglets principal.
 - `ui/workspace/tab-workspace-host.ts` : host workspace historique.

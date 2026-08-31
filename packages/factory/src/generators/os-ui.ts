@@ -593,51 +593,31 @@ const PAGE_KIND_ICONS: Record<string, string> = {
  * Fichier marque (personnalisable — ex. icônes par page), généré une fois.
  *
  * Les pages OS (mails, tâches, admin…) sont matérialisées via @creezio/os-ui ;
- * sans les lister ici, la sidebar n'afficherait que le métier. Feature-off
- * plugins (Fidu) : retirer la ligne
- * `/admin/plugins` dans le chrome owned-by-brand — ne pas toucher au kit.
- *
- * Les listes OS sont inlinées (pas d'import barrel shell-ui) pour rester
- * robustes sous Next transpilePackages ; miroir logique de
- * `@creezio/shell-ui/ui` → `defaultOsPrimaryNavItems` / `defaultOsAdminNavItems`.
+ * la sidebar OS vient du catalogue kit (`defaultOsPrimaryNavItems` /
+ * `defaultOsAdminNavItems`) — **interdit** de recopier un `OS_NAV` inline.
+ * SoT : `docs/plans/PLAN-NAV-CATALOG.md`. Feature-off plugins : passer
+ * `{ includePlugins: false }` à `defaultOsAdminNavItems`.
  */
 export function renderUiBrandChrome(model: ProductModel): string {
-  const icons = new Set<string>([
-    "Activity",
-    "Braces",
-    "Cable",
-    "Database",
-    "KeyRound",
-    "Bot",
-    "ListTodo",
-    "Mail",
-    "NotebookPen",
-    "Package",
-    "ScrollText",
-    "Settings",
-    "Shield",
-    "ShieldCheck",
-    "SlidersHorizontal",
-  ]);
+  const icons = new Set<string>();
   const navLines = model.pages.map((p) => {
     const icon = PAGE_KIND_ICONS[p.kind] || "List";
     icons.add(icon);
     return `  { href: ${JSON.stringify(p.path)}, label: ${JSON.stringify(p.title)}, icon: ${icon} },`;
   });
+  if (icons.size === 0) icons.add("List");
   const iconImports = [...icons].sort().join(",\n  ");
   const storageKey = `${model.brandId}-global-search`;
   const home = defaultWorkspaceHome(model);
   const includePlugins = model.platformNeeds.pluginApi !== false;
-  const pluginsAdminLine = includePlugins
-    ? `    { href: "/admin/plugins", label: "Plugins", icon: Package },\n`
-    : "";
 
   return `"use client";
 /**
  * creezio:owned-by-brand — wiring du chrome CRM kit (sidebar, onglets,
  * recherche). Le chrome lui-même vient de @creezio/shell-ui/ui : la marque
- * déclare sa nav métier et compose la nav OS native (mails, tâches, admin…).
- * Hermes / n8n = Admin → Outils (injectés par la sidebar kit).
+ * déclare sa nav métier et compose la nav OS native via
+ * defaultOsPrimaryNavItems() / defaultOsAdminNavItems() (catalogue kit,
+ * docs/plans/PLAN-NAV-CATALOG.md). Hermes / n8n = Admin → Outils.
  */
 
 import type { ReactNode } from "react";
@@ -652,6 +632,8 @@ import {
   configureDefaultNewTabHref,
   configureGlobalSearch,
   configureSidebar,
+  defaultOsAdminNavItems,
+  defaultOsPrimaryNavItems,
   WorkspaceRoot,
 } from "@creezio/shell-ui/ui";
 
@@ -659,32 +641,11 @@ const BRAND_NAV = [
 ${navLines.join("\n")}
 ];
 
-/** Nav OS native — DETTE : recopier defaultOsPrimaryNavItems.
- * Un nouveau module OS n'apparaît pas sur les marques déjà générées.
- * Cible : docs/plans/PLAN-NAV-CATALOG.md (supprimer cette constante). */
-const OS_NAV = [
-  { href: "/taches", label: "Tâches", icon: ListTodo },
-  { href: "/mails", label: "Mails", icon: Mail },
-  { href: "/granola", label: "Granola", icon: NotebookPen },
-  { href: "/grokbot", label: "GrokBot", icon: Bot },
-  { href: "/parametres", label: "Préférences", icon: SlidersHorizontal },
-  { href: "/collaborateurs", label: "Collaborateurs", icon: Shield },
-];
-
-const NAV = [...BRAND_NAV, ...OS_NAV];
+const getNavItems = () => [...BRAND_NAV, ...defaultOsPrimaryNavItems()];
 
 configureSidebar({
-  getNavItems: () => NAV,
-  getAdminItems: () => [
-    { href: "/configuration", label: "Configuration", icon: Settings },
-    { href: "/admin/analytics", label: "Analytics", icon: Activity },
-${pluginsAdminLine}    { href: "/admin/access", label: "Rôles & accès", icon: ShieldCheck, permission: "platform.access.manage" },
-    { href: "/admin/database", label: "Database", icon: Database },
-    { href: "/admin/integrations", label: "Intégrations", icon: KeyRound },
-    { href: "/admin/api", label: "API", icon: Braces },
-    { href: "/admin/mcp", label: "MCP", icon: Cable },
-    { href: "/admin/request-logs", label: "Logs API / MCP", icon: ScrollText },
-  ],
+  getNavItems,
+  getAdminItems: () => defaultOsAdminNavItems({ includePlugins: ${includePlugins} }),
 });
 
 configureGlobalSearch({
@@ -693,7 +654,7 @@ configureGlobalSearch({
   search: async (query) => {
     const q = query.trim().toLowerCase();
     if (!q) return [];
-    return NAV.filter((n) => n.label.toLowerCase().includes(q)).map((n) => ({
+    return getNavItems().filter((n) => n.label.toLowerCase().includes(q)).map((n) => ({
       index: "pages",
       id: n.href,
       title: n.label,

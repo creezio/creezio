@@ -658,12 +658,6 @@
     },
     {
       "file": "packages/factory/src/generators/os-ui.ts",
-      "pattern": "fidu",
-      "count": 1,
-      "ticket": "P1.a — inventaire initial audit (héritage contractuel divers, à ventiler lors du nettoyage P1.b+)"
-    },
-    {
-      "file": "packages/factory/src/generators/os-ui.ts",
       "pattern": "tempoflow",
       "count": 2,
       "ticket": "P1.a — inventaire initial audit (héritage contractuel divers, à ventiler lors du nettoyage P1.b+)"
@@ -1715,12 +1709,6 @@
     {
       "file": "packages/shell-ui/ui/desktop/site-link.tsx",
       "pattern": "tf2",
-      "count": 2,
-      "ticket": "P1.a — inventaire initial audit (héritage contractuel divers, à ventiler lors du nettoyage P1.b+)"
-    },
-    {
-      "file": "packages/shell-ui/ui/layout/native-os-nav.ts",
-      "pattern": "fidu",
       "count": 2,
       "ticket": "P1.a — inventaire initial audit (héritage contractuel divers, à ventiler lors du nettoyage P1.b+)"
     },

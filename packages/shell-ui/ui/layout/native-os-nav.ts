@@ -1,63 +1,65 @@
 "use client";
 
 /**
- * Nav OS native Creezio — entrées sidebar partagées (mails, tâches, admin…).
+ * Nav OS native Creezio — adaptateur sidebar du catalogue unique.
  *
- * La marque déclare sa nav métier ; elle DOIT composer avec ces listes via
+ * SoT = `registerOsNavEntry` / `defaultOsCatalogEntries()`
+ * (`@creezio/shell-ui`, `src/nav-catalog.ts`). Cette fonction ne fait
+ * que projeter le registre vers `SidebarNavItem[]` (icônes résolues).
+ *
+ * La marque DOIT composer, plus recopier un `OS_NAV` inline :
  * `configureSidebar({ getNavItems: () => [...brand, ...defaultOsPrimaryNavItems()] })`.
- * Recopier un `OS_NAV` inline (factory historique, TempoFlow3, Foove) est
- * une dette : un nouveau module OS n'apparaît pas, et l'admin ne peut pas
- * masquer/réordonner. Cible : `docs/plans/PLAN-NAV-CATALOG.md`.
+ * Cible : `docs/plans/PLAN-NAV-CATALOG.md` (Phase A).
  * Hermes / n8n restent injectés par la sidebar kit (Admin → Outils).
  *
- * Feature-off plugins (Fidu) : passer `{ includePlugins: false }` à
+ * Feature-off plugins : passer `{ includePlugins: false }` à
  * `defaultOsAdminNavItems` — ne pas lister `/admin/plugins`.
  */
 import {
   Activity,
-  Bot,
   Braces,
   Cable,
   Database,
   KeyRound,
-  ListTodo,
-  Mail,
-  NotebookPen,
   Package,
   ScrollText,
   Settings,
-  Shield,
   ShieldCheck,
-  SlidersHorizontal,
 } from "lucide-react";
+import {
+  defaultOsCatalogEntries,
+  type NavCatalogEntry,
+} from "../../dist/nav-catalog.js";
+import { resolveNavIcon } from "./nav-icons";
 import type { SidebarAdminItem, SidebarNavItem } from "./sidebar-host";
 
-/** Pages OS utilisateur (hors métier marque). */
+function toSidebarNavItem(entry: NavCatalogEntry): SidebarNavItem {
+  return {
+    href: entry.href,
+    label: entry.label,
+    icon: resolveNavIcon(entry.icon),
+    fromShell: true,
+    permission: entry.permission,
+  };
+}
+
+/** Pages OS utilisateur (hors métier marque) — dérivé du registre. */
 export function defaultOsPrimaryNavItems(): SidebarNavItem[] {
-  return [
-    { href: "/taches", label: "Tâches", icon: ListTodo, fromShell: true },
-    { href: "/mails", label: "Mails", icon: Mail, fromShell: true },
-    { href: "/granola", label: "Granola", icon: NotebookPen, fromShell: true },
-    { href: "/grokbot", label: "GrokBot", icon: Bot, fromShell: true },
-    {
-      href: "/parametres",
-      label: "Préférences",
-      icon: SlidersHorizontal,
-      fromShell: true,
-    },
-    {
-      href: "/collaborateurs",
-      label: "Collaborateurs",
-      icon: Shield,
-      fromShell: true,
-    },
-  ];
+  return defaultOsCatalogEntries()
+    .filter(
+      (e) =>
+        e.available &&
+        e.defaultVisible &&
+        e.group !== "admin" &&
+        e.group !== "plugin",
+    )
+    .map(toSidebarNavItem);
 }
 
 export type OsAdminNavOptions = {
   /**
    * Inclure `/admin/plugins`. Défaut `true`.
-   * Mettre `false` si `manifest.features.plugins === false` (Fidu).
+   * Mettre `false` si `manifest.features.plugins === false`.
    */
   includePlugins?: boolean;
 };
