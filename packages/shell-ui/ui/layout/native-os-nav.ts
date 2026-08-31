@@ -3,8 +3,11 @@
 /**
  * Nav OS native Creezio — entrées sidebar partagées (mails, tâches, admin…).
  *
- * La marque déclare sa nav métier ; elle compose avec ces listes via
+ * La marque déclare sa nav métier ; elle DOIT composer avec ces listes via
  * `configureSidebar({ getNavItems: () => [...brand, ...defaultOsPrimaryNavItems()] })`.
+ * Recopier un `OS_NAV` inline (factory historique, TempoFlow3, Foove) est
+ * une dette : un nouveau module OS n'apparaît pas, et l'admin ne peut pas
+ * masquer/réordonner. Cible : `docs/plans/PLAN-NAV-CATALOG.md`.
  * Hermes / n8n restent injectés par la sidebar kit (Admin → Outils).
  *
  * Feature-off plugins (Fidu) : passer `{ includePlugins: false }` à
@@ -12,12 +15,14 @@
  */
 import {
   Activity,
+  Bot,
   Braces,
   Cable,
   Database,
   KeyRound,
   ListTodo,
   Mail,
+  NotebookPen,
   Package,
   ScrollText,
   Settings,
@@ -32,6 +37,8 @@ export function defaultOsPrimaryNavItems(): SidebarNavItem[] {
   return [
     { href: "/taches", label: "Tâches", icon: ListTodo, fromShell: true },
     { href: "/mails", label: "Mails", icon: Mail, fromShell: true },
+    { href: "/granola", label: "Granola", icon: NotebookPen, fromShell: true },
+    { href: "/grokbot", label: "GrokBot", icon: Bot, fromShell: true },
     {
       href: "/parametres",
       label: "Préférences",

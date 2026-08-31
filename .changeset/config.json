@@ -30,6 +30,8 @@
       "@creezio/admin",
       "@creezio/support",
       "@creezio/integrations",
+      "@creezio/granola",
+      "@creezio/grokbot",
       "@creezio/browser-host",
       "@creezio/automations",
       "@creezio/database",

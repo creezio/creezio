@@ -35,6 +35,8 @@ const PACKAGES = [
   "admin",
   "support",
   "integrations",
+  "granola",
+  "grokbot",
   "automations",
   "database",
   "browser-host",

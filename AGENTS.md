@@ -78,7 +78,7 @@ Voir `package.json` script `build:packages`. Ordre typique :
 `brand-config` → `shell` → `platform-core` → `product-hub` → `api-kernel` →
 `mcp-facade` → `auth` → `shell-ui` → `os-ui` → `onboarding` →
 `interactive-demo` → `cockpit` →
-`assistant` → `tasks` → `mails` → `support` → `integrations` → `fleet` → `observability` → `landing` → `admin` → `automations` →
+`assistant` → `tasks` → `mails` → `support` → `integrations` → `granola` → `grokbot` → `fleet` → `observability` → `landing` → `admin` → `automations` →
 `database` → `browser-host` → `search` → `host-runtime` →
 `electron-shell` → `brand-spec` →
 `app-runtime` → `desktop-tooling` → `factory` → `propagation` → `build:cjs`.
@@ -103,6 +103,7 @@ contrats src↔dist + hash de contenu).
 | MCP unifié / OAuth / host tools | `mcp-facade` |
 | Session / login / recovery | `auth` |
 | Nav + chrome CRM UI | `shell-ui` |
+| Catalogue sidebar (masquer / réordonner en admin) | **pas encore un module** — plan [docs/plans/PLAN-NAV-CATALOG.md](./docs/plans/PLAN-NAV-CATALOG.md) · briefs [docs/agents/BRIEFS-NAV-GRANOLA-GROKBOT.md](./docs/agents/BRIEFS-NAV-GRANOLA-GROKBOT.md) |
 | Pages Next OS (mails/tâches/setup/admin…) matérialisées dans les marques | `os-ui` |
 | First-run setup + onboarding produit hybride (contenu DB + preferences) | `onboarding` |
 | Démo interactive native (product tour live, faux curseur, scénarios DB) | `interactive-demo` |
@@ -117,6 +118,8 @@ contrats src↔dist + hash de contenu).
 | Modules apps admin de marque (fleet/support/prospection/roadmap/billing) | `admin` |
 | Automations lifecycle plugins/org | `automations` |
 | Intégrations / clés API tierces (`integration://<slug>`, sync n8n) | `integrations` |
+| Webhook + sync notes Granola (meeting notes) | `granola` |
+| Pilotage d'agents cloud via l'API Cursor v1 (token, runs) | `grokbot` |
 | Admin Database CRUD | `database` |
 | Recherche Meili (feed, indexation, browse, cohérence) | `search` |
 | Host runtime Node pur (hermes, n8n, tunnel, plugins, sandbox, server-launcher) | `host-runtime` |

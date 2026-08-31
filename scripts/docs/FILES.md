@@ -87,6 +87,8 @@
 | [`test-phase-fleet-heartbeat.mjs`](../test-phase-fleet-heartbeat.mjs) | Gate — auto-inscription flotte + heartbeat (F3). Prouve, avec un VRAI serveur HTTP admin (mount fleet-registry @creezio/admin sur DB better-sqlite3) et le client kit (@creezio/app-runtime) : 1. |
 | [`test-phase-fleet-releases.mjs`](../test-phase-fleet-releases.mjs) | Gate — updates en PULL de la flotte (F5). Prouve, sur DB brand réelle (better-sqlite3, migrations admin) + mocks admin/registre : 1. |
 | [`test-phase-fleet-rollout.mjs`](../test-phase-fleet-rollout.mjs) | Gate — rollout piloté de la flotte (F6). Prouve, sur DB brand réelle (better-sqlite3, migrations admin) : 1. |
+| [`test-phase-granola.mjs`](../test-phase-granola.mjs) | Gate — module natif hybride Granola (webhook Standard Webhooks, sync notes, proxys API). |
+| [`test-phase-grokbot.mjs`](../test-phase-grokbot.mjs) | Gate — module natif hybride GrokBot (API Cursor v1, token masqué, miroir agents). |
 | [`test-phase-h1.mjs`](../test-phase-h1.mjs) | !usrbinenv node |
 | [`test-phase-h2.mjs`](../test-phase-h2.mjs) | !usrbinenv node |
 | [`test-phase-h3.mjs`](../test-phase-h3.mjs) | Tests Phase H3 — cadre kit (métier reste dans tempoflow2). |

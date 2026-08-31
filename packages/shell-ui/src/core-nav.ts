@@ -15,6 +15,8 @@ export const CORE_NAV_ITEMS: readonly CoreNavItem[] = [
   },
   { id: "core.tasks", label: "Tâches", href: "/taches", group: "core" },
   { id: "core.mails", label: "Mails", href: "/mails", group: "core" },
+  { id: "core.granola", label: "Granola", href: "/granola", group: "core" },
+  { id: "core.grokbot", label: "GrokBot", href: "/grokbot", group: "core" },
   { id: "core.setup", label: "Setup", href: "/setup", group: "core" },
   { id: "core.login", label: "Login", href: "/login", group: "core" },
   {

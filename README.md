@@ -22,7 +22,7 @@ sans réécrire le socle.
 ```
                       ┌──────────────────────────────┐
                       │        kit creezio           │
-                      │  packages/@creezio/* (30)    │
+                      │  packages/@creezio/* (32)    │
                       └──────────────┬───────────────┘
                                      │  packages npm @creezio/* (GitHub Packages)
         ┌────────────────────────────┼────────────────────────────┐
@@ -88,9 +88,9 @@ Docker, `client/` desktop thin remote-only, `brand-spec/` à la racine)
 (app admin de la marque : flotte, support, billing…) — voir
 [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md).
 
-## Les 30 packages
+## Les 32 packages
 
-28 publiés en **lockstep 0.10.8** + `@creezio/factory` **0.6.6** (CLI,
+30 publiés en **lockstep 0.10.8** + `@creezio/factory` **0.6.6** (CLI,
 privé, hors lockstep) + `@creezio/propagation` 0.1.6. **CLI =
 `CREEZIO_KIT_ROOT`**, pas le pin app — [docs/README.md](./docs/README.md).
 
@@ -114,6 +114,8 @@ privé, hors lockstep) + `@creezio/propagation` 0.1.6. **CLI =
 | `mails` | Inbox mails |
 | `support` | Tickets support serveur marque (page `/support` + export admin) |
 | `integrations` | Clés API tierces (`integration://<slug>`, secret-box, sync n8n) |
+| `granola` | Module Granola : webhook signé (Standard Webhooks) + sync notes/transcripts via API |
+| `grokbot` | Pilotage d'agents cloud via l'API Cursor v1 (token, agents, runs, usage, artefacts) |
 | `observability` | Ops, fleet, analytics, request-logs |
 | `landing` | Landing page publique de marque (`lp.{zone}`, contenu DB éditable admin) |
 | `admin` | Modules natifs des apps admin de marque (fleet, support, prospection, roadmap, billing) |

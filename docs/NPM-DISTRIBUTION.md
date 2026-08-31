@@ -60,10 +60,10 @@ visible par TOUT l'écosystème standard.
 
 `access-control`, `admin`, `api-kernel`, `app-runtime`, `assistant`, `auth`,
 `automations`, `brand-config`, `brand-spec`, `browser-host`, `cockpit`,
-`database`, `desktop-tooling`, `electron-shell`, `integrations`,
-`interactive-demo`, `landing`, `mails`, `mcp-facade`, `observability`,
-`onboarding`, `os-ui`, `platform-core`, `product-hub`, `shell`, `shell-ui`,
-`support`, `tasks`.
+`database`, `desktop-tooling`, `electron-shell`, `fleet`, `granola`, `grokbot`,
+`host-runtime`, `integrations`, `interactive-demo`, `landing`, `mails`,
+`mcp-facade`, `observability`, `onboarding`, `os-ui`, `platform-core`,
+`product-hub`, `search`, `shell`, `shell-ui`, `support`, `tasks`.
 
 Restent privés (outillage interne, **hors lockstep**, non publiés) :
 `factory`, `propagation` (versions : leurs `package.json`), apps

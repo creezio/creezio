@@ -20,6 +20,8 @@ export const FORBIDDEN_BRAND_OS_UI_SEGMENTS = [
   "collaborateurs",
   "configuration",
   "developers",
+  "granola",
+  "grokbot",
   "login",
   "mails",
   "mcp",
@@ -237,6 +239,8 @@ export function renderUiPackageJson(_manifest: AppManifest): string {
           "@creezio/os-ui": spec,
           "@creezio/shell-ui": spec,
           "@creezio/support": spec,
+          "@creezio/granola": spec,
+          "@creezio/grokbot": spec,
           "@creezio/assistant": spec,
           "@creezio/mails": spec,
           "@creezio/tasks": spec,
@@ -480,6 +484,8 @@ const nextConfig = {
     "@creezio/observability",
     "@creezio/interactive-demo",
     "@creezio/access-control",
+    "@creezio/granola",
+    "@creezio/grokbot",
   ],
   async rewrites() {
     return [
@@ -602,8 +608,10 @@ export function renderUiBrandChrome(model: ProductModel): string {
     "Cable",
     "Database",
     "KeyRound",
+    "Bot",
     "ListTodo",
     "Mail",
+    "NotebookPen",
     "Package",
     "ScrollText",
     "Settings",
@@ -651,10 +659,14 @@ const BRAND_NAV = [
 ${navLines.join("\n")}
 ];
 
-/** Nav OS native — miroir defaultOsPrimaryNavItems (@creezio/shell-ui). */
+/** Nav OS native — DETTE : recopier defaultOsPrimaryNavItems.
+ * Un nouveau module OS n'apparaît pas sur les marques déjà générées.
+ * Cible : docs/plans/PLAN-NAV-CATALOG.md (supprimer cette constante). */
 const OS_NAV = [
   { href: "/taches", label: "Tâches", icon: ListTodo },
   { href: "/mails", label: "Mails", icon: Mail },
+  { href: "/granola", label: "Granola", icon: NotebookPen },
+  { href: "/grokbot", label: "GrokBot", icon: Bot },
   { href: "/parametres", label: "Préférences", icon: SlidersHorizontal },
   { href: "/collaborateurs", label: "Collaborateurs", icon: Shield },
 ];

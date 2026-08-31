@@ -7,6 +7,8 @@ export const OS_UI_ROUTE_SEGMENTS = [
   "collaborateurs",
   "configuration",
   "developers",
+  "granola",
+  "grokbot",
   "login",
   "mails",
   "mcp",
