@@ -53,7 +53,10 @@ import {
   startBrandUiPlane,
   type BrandUiPlaneHandle,
 } from "./start-brand-ui-plane.js";
-import { warmBrandNativeHosts } from "./warm-brand-native-hosts.js";
+import {
+  resolveNativeWarmFlags,
+  warmBrandNativeHosts,
+} from "./warm-brand-native-hosts.js";
 import {
   applyStoredEmailEnv,
   applyStoredLlmEnv,
@@ -144,8 +147,11 @@ export async function startBrandKernelHarness(
     process.env.METIER_DATA_DIR ||
     fs.mkdtempSync(path.join(os.tmpdir(), `${config.brandId}-kernel-`));
   const desktopProfile = config.desktopProfile || "full";
-  const warmNative =
-    desktopProfile === "full" && process.env.CREEZIO_NATIVE_WARM !== "0";
+  const warmFlags =
+    desktopProfile === "full"
+      ? resolveNativeWarmFlags()
+      : { n8n: false, hermes: false };
+  const warmNative = warmFlags.n8n || warmFlags.hermes;
   // Plugins ON par défaut (parité composeBrandOs) — OFF si
   // features.plugins=false (Fidu) ou kill-switch CREEZIO_PLUGINS=0.
   const pluginsOn =
@@ -162,6 +168,8 @@ export async function startBrandKernelHarness(
     dataDir,
     appVersion: readAppVersion(config.appRoot),
     warmNative,
+    warmHermes: warmFlags.hermes,
+    warmN8n: warmFlags.n8n,
     needTunnel: tunnelRequested,
     needIndex:
       Boolean(config.meiliFeed) &&
@@ -250,8 +258,7 @@ export async function startBrandKernelHarness(
   // assistant ne doivent jamais signer avec le fallback dev.
   const resourcesRoot = path.join(config.appRoot, "resources");
   let brandOs = null as ReturnType<typeof composeBrandOs> | null;
-  const warmHermes =
-    warmNative && process.env.CREEZIO_NATIVE_WARM_HERMES !== "0";
+  const warmHermes = warmFlags.hermes;
   // Host plugins actif (compose) — utilisé par la découverte MCP + mounts.
   const pluginsHostGetter = (): PluginToolsHostLike | null => {
     if (!pluginsOn || !brandOs) return null;
@@ -925,10 +932,20 @@ export async function startBrandKernelHarness(
   }
 
   // Fullstack OS ready : ensure/start natifs depuis le kit (pas la marque).
-  // CREEZIO_NATIVE_WARM=0 pour skip (défaut image Docker) ; =1 → n8n/Hermes
-  // dans le même container, visibles dans boot-status.
+  // n8n et Hermes sont découplés : CREEZIO_NATIVE_WARM_N8N=0 ne skippe
+  // JAMAIS Hermes. VPS create pose WARM=1 + HERMES=1 (pas tunnel-local).
   if (brandOs && warmNative) {
-    boot.go("n8n", { detail: "Warm n8n…", parallel: true });
+    if (warmFlags.n8n) {
+      boot.go("n8n", { detail: "Warm n8n…", parallel: true });
+    } else {
+      boot.skip(
+        "n8n",
+        "n8n skip (CREEZIO_NATIVE_WARM_N8N=0 ou CREEZIO_NATIVE_WARM=0) — Hermes indépendant",
+      );
+      console.log(
+        "brand-kernel-harness native : n8n skip — Hermes continue (Work n'exige pas n8n)",
+      );
+    }
     if (warmHermes) {
       boot.go("hermes", { detail: "Warm Hermes…", parallel: true });
     }
@@ -944,17 +961,19 @@ export async function startBrandKernelHarness(
     }
     const warm = await warmBrandNativeHosts(brandOs, {
       start: process.env.CREEZIO_NATIVE_START !== "0",
-      n8n: true,
+      n8n: warmFlags.n8n,
       hermes: warmHermes,
       n8nPublicBaseUrl,
     });
-    boot.patch("n8n", {
-      status: warm.n8n.started ? "done" : "error",
-      detail:
-        warm.n8n.detail ||
-        (warm.n8n.started ? "n8n démarré" : "n8n indisponible"),
-      percent: 100,
-    });
+    if (warmFlags.n8n) {
+      boot.patch("n8n", {
+        status: warm.n8n.started ? "done" : "error",
+        detail:
+          warm.n8n.detail ||
+          (warm.n8n.started ? "n8n démarré" : "n8n indisponible"),
+        percent: 100,
+      });
+    }
     if (warmHermes) {
       boot.patch("hermes", {
         status: warm.hermes.started ? "done" : "error",

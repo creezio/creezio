@@ -24,6 +24,7 @@ import {
 } from "../packages/electron-shell/dist/index.js";
 import {
   composeBrandOs,
+  resolveNativeWarmFlags,
   warmBrandNativeHosts,
 } from "../packages/app-runtime/dist/index.js";
 
@@ -96,6 +97,7 @@ test("shell.vendors+bin — kit P&P", async () => {
 
 test("shell.warm API exportée", () => {
   assert.equal(typeof warmBrandNativeHosts, "function");
+  assert.equal(typeof resolveNativeWarmFlags, "function");
   assert.equal(typeof composeBrandOs, "function");
 });
 
