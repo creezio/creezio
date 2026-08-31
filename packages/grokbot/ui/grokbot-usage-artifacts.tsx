@@ -4,8 +4,8 @@
  * Blocs Usage + Artefacts de l'agent ouvert — possédé par GROKBOT-1.
  *
  * GET agents/:id/usage et GET artifacts (+ download présigné via le
- * mount). Jamais d'appel à api.cursor.com depuis le browser ; le token
- * Cursor reste côté serveur.
+ * mount). Jamais d'appel amont Cursor depuis le browser ; le token
+ * reste côté serveur.
  */
 
 import { useCallback, useEffect, useState } from "react";
