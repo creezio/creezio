@@ -217,9 +217,38 @@ export function createMcpFacade(options: McpFacadeOptions = {}): McpFacade {
         }
       }
     }
-    return verifyMcpBearer(bearer, options.jwtSecret, {
+    const viaMcp = verifyMcpBearer(bearer, options.jwtSecret, {
       allowUnauthenticated: options.allowUnauthenticated,
     });
+    if (viaMcp.ok) return viaMcp;
+    // Fallback : Bearer JWT session plateforme (chat OS, clients CRM).
+    // Un JWT signé AUTH_SECRET n'est pas un JWT MCP (invalid_signature) —
+    // on le valide via @creezio/auth, résolu au runtime de l'app (pas de
+    // dépendance de build : façade utilisable hors app → verdict inchangé).
+    const token = String(bearer || "")
+      .replace(/^Bearer\s+/i, "")
+      .trim();
+    if (token && token.split(".").length === 3) {
+      try {
+        const authMod = (await import("@creezio/auth")) as {
+          verifySessionToken?: (
+            t: string,
+          ) => Promise<Record<string, unknown> | null>;
+        };
+        const session = await authMod.verifySessionToken?.(token);
+        const sub = session && typeof session.sub === "string" ? session.sub : "";
+        if (sub) {
+          return {
+            ok: true as const,
+            subject: sub,
+            claims: session as Record<string, unknown>,
+          };
+        }
+      } catch {
+        // @creezio/auth absent (façade standalone) → verdict MCP inchangé.
+      }
+    }
+    return viaMcp;
   }
 
   async function discoveredTools(): Promise<McpRegisteredTool[]> {
