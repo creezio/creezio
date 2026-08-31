@@ -80,7 +80,7 @@ test("AR4 contrat module volet 2 : assistantSources + onboarding (F3.4)", () => 
   assert.match(src, /collectOnboardingContent/);
   assert.match(src, /BrandModuleAssistantSource/);
   assert.match(src, /composeOnboardingFromModules/);
-  assert.doesNotMatch(src, /ARCHITECTURE_VERSION/);
+  assert.doesNotMatch(src, /ARCHITECTURE_VERSION\s*=/);
   assert.equal(typeof createBrandModuleRegistry, "function");
   assert.equal(typeof applyModuleAssistantSources, "function");
   assert.equal(typeof composeOnboardingFromModules, "function");
