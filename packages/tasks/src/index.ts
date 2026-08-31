@@ -151,6 +151,7 @@ export {
   recoverInterruptedRuns,
   resolveHostTargetUserId,
   retryFailedRun,
+  stopAiRunnerLoop,
 } from "./ai-task-runner.js";
 
 /* --- HTTP + assistant --- */

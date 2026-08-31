@@ -54,6 +54,7 @@ import {
   createAssistantTasksAdapter,
   createTasksHonoRoutes,
   getTasksBrandConfig,
+  stopAiRunnerLoop,
   type TasksBrandConfig,
   type TasksSession,
   type TasksWorkspaceAdapter,
@@ -1592,7 +1593,15 @@ export function mountBrandPlatformSurface(opts: {
       sidecar?.syncAiExecutors();
     },
     close: () => {
-      if (runtimeSlot().current === runtime) runtimeSlot().current = null;
+      if (runtimeSlot().current === runtime) {
+        runtimeSlot().current = null;
+        // La boucle runner IA (ensureAiRunnerLoop, posée par la première
+        // requête tasks) référence CE runtime via les adapters lazy : un
+        // tick post-close jette requireTasksBrand en unhandledRejection
+        // (flake gate PNM.2). Teardown fail-closed : on arrête les timers ;
+        // une nouvelle surface les relancera à sa première requête tasks.
+        stopAiRunnerLoop();
+      }
       integrationsStore.close();
       store.close();
     },
