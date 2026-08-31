@@ -4,7 +4,7 @@
 
 ### Patch Changes
 
-- VPS `create`/`update` (pas tunnel-local) : n8n et Hermes sont requis. `CREEZIO_NATIVE_WARM=0` / `CREEZIO_NATIVE_WARM_N8N=0` / `CREEZIO_NATIVE_WARM_HERMES=0` sont ignorés (warn « ignoré, n8n/hermes requis »).
+- VPS `create`/`update` (pas tunnel-local) : n8n et Hermes sont requis. `CREEZIO_NATIVE_WARM=0` / `CREEZIO_NATIVE_WARM_N8N=0` / `CREEZIO_NATIVE_WARM_HERMES=0` sont ignorés (warn « ignoré, n8n/hermes requis »). `CREEZIO_NATIVE_WARM_N8N=1` est posé explicitement (l'image Docker peut avoir `=0` en ENV).
 
 ## 0.14.0
 
