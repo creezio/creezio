@@ -54,6 +54,7 @@ import {
   verifyOwnerLogin,
   type CreateOwnerPolicy,
 } from "./server-docker-owner.js";
+import { assertUfwFleetRule } from "./server-docker-ufw.js";
 
 export type ServerDockerArgs = {
   sub: string;
@@ -1527,6 +1528,10 @@ async function runServerAdminSubcommand(
     port: args.port,
     addBrandRoot: defaultBrandRoot,
   });
+  // Préflight UFW fail-closed (incident 10–30/08/2026) : le backend flotte
+  // est consommé depuis les conteneurs (172.16.0.0/12) — règle posée
+  // automatiquement si absente, sinon erreur avec la commande exacte.
+  assertUfwFleetRule({ port: cfg.port, label: "backend flotte" });
   const adminDockerfile = path.join(paths.kit, "docker/server-admin/Dockerfile");
   if (!fs.existsSync(adminDockerfile)) {
     throw new Error(`Dockerfile admin introuvable: ${adminDockerfile}`);
@@ -2217,6 +2222,12 @@ async function runAgentSubcommand(
   }
 
   const state = loadOrInitAgentState(brandRoot, args);
+  // Préflight UFW fail-closed (incident 10–30/08/2026 : 18810 scoped docker0
+  // → host-agent droppé 20 jours) : le tunnel `agent.{slug}` du conteneur
+  // serveur joint l'agent via 172.17.0.1:<port> depuis les réseaux compose
+  // (172.16.0.0/12) — règle posée automatiquement si absente, sinon erreur
+  // avec la commande exacte.
+  assertUfwFleetRule({ port: state.port, label: "host-agent" });
   const agentDockerfile = path.join(paths.kit, "docker/host-agent/Dockerfile");
   if (!fs.existsSync(agentDockerfile)) {
     throw new Error(`Dockerfile agent introuvable: ${agentDockerfile}`);
@@ -2307,6 +2318,10 @@ async function runEnrollSubcommand(
   }
   const brandRoot = paths.brandRoot;
   const state = loadOrInitAgentState(brandRoot, args);
+  // Préflight UFW fail-closed : l'ingress agent.{slug} réservé ci-dessous
+  // pointe sur 172.17.0.1:<port> depuis le conteneur serveur — sans la
+  // règle 172.16.0.0/12, l'hôte est enrôlé mais injoignable (silencieux).
+  assertUfwFleetRule({ port: state.port, label: "host-agent" });
   const agentRunning = dockerContainerState(AGENT_CONTAINER).running;
   if (!agentRunning) {
     console.log(
@@ -2697,6 +2712,23 @@ async function runRegistrySubcommand(
       ]) {
         const v = (env[key] || "").trim() || (brandDotEnv[key] || "").trim();
         if (v) extraEnv[key] = v;
+      }
+      // App admin de marque : la DB flotte (module fleet-registry) est
+      // SERVIE par cette instance — sans CREEZIO_FLEET_ADMIN_URL explicite,
+      // elle s'annonce à ELLE-MÊME en loopback in-container (:18791, port
+      // app des stacks) pour apparaître au tableau /flotte avec son propre
+      // kitVersion (P3.b — écart constaté sur la première flotte : l'admin
+      // ne heartbeatait pas vers lui-même).
+      if (
+        extraEnv.CREEZIO_FLEET_REGISTER_SECRET &&
+        !extraEnv.CREEZIO_FLEET_ADMIN_URL &&
+        !args.noStack &&
+        isAdminBrandRoot(paths.brandRoot, brandId)
+      ) {
+        extraEnv.CREEZIO_FLEET_ADMIN_URL = "http://127.0.0.1:18791";
+        console.log(
+          "CREEZIO_FLEET_ADMIN_URL=http://127.0.0.1:18791 (app admin : heartbeat flotte vers elle-même)",
+        );
       }
     }
     Object.assign(extraEnv, args.env);

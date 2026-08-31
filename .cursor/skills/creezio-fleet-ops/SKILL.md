@@ -228,14 +228,25 @@ CHAQUE instance — posé automatiquement par
 
 ```bash
 cd "$BRAND_ROOT" && node scripts/verify-prod.mjs --all   # ou <instance>
+cd "$ADMIN_ROOT" && node scripts/verify-prod.mjs --all   # app admin (profil admin)
 # Profil brand : core/version · login E2E · auth/me (role owner) · browse
-#   produits engine:"meili" · optimiser snapshot (GET, 1re commande) ·
-#   assistant llm-status (assistantReady)
-# Profil admin : version · login · auth/me seulement (pas de LLM ni
-#   d'optimiser ; le compte E2E admin est role:"collaborator" — l'owner
+#   d'un module à meiliIndexes engine:"meili" · assistant llm-status
+#   (assistantReady) · checks MÉTIER du repo (verify-prod.local.mjs —
+#   ex. TF3 : optimiser snapshot)
+# Profil admin : version · login · auth/me seulement (pas de LLM ;
+#   le compte E2E admin est role:"collaborator" — l'owner
 #   canonique admin reste CREEZIO_OWNER_EMAIL)
 # Sortie [OK]/[KO]/[SKIP] par check, exit ≠ 0 si au moins un KO.
 ```
+
+**Généralisé (0.18.0)** : `scripts/verify-prod.mjs` est **matérialisé par la
+factory dans toute app générée** (marque profil brand, repo admin profil
+admin — générateur `packages/factory/src/generators/verify-prod.ts`, script
+npm `verify:prod`, gate `test-phase-factory-two-repos`). `--all` découvre
+les instances via `docker-data/stacks/`. Les checks métier vivent dans
+`scripts/verify-prod.local.mjs` (export `localChecks(ctx)`, jamais régénéré
+par la factory). Module Meili browsable : scaffoldé (`CONFIG.meiliModule`) ou
+override env `CREEZIO_VERIFY_MEILI_MODULE`.
 
 **(Re)provisionnement du compte** : `creezio server-docker ensure-owner
 <nom> --brand-root "$BRAND_ROOT"` — génère/persiste les credentials dans
@@ -249,10 +260,10 @@ l'instance** — jamais uniquement dans son journal de mission. Un futur
 agent lit d'abord `secrets.env`, vérifie le login (§3), et ne
 reprovisionne que si le login échoue réellement.
 
-**Vérité** : `tempoflow3/scripts/verify-prod.mjs` (repo marque) ;
-`packages/factory/src/server-docker-cli.ts` (`ensure-owner`, persistance
-`secrets.env`). Généralisation factory (scaffold `verify-prod` pour toute
-app générée) : ticket `docs/BACKLOG.md` § Flotte multi-VPS.
+**Vérité** : `packages/factory/src/generators/verify-prod.ts` (générateur —
+SoT du script matérialisé) ; `packages/factory/src/server-docker-cli.ts`
+(`ensure-owner`, persistance `secrets.env`) ; checks métier :
+`scripts/verify-prod.local.mjs` du repo (ex. `tempoflow3`).
 
 **Pièges** : `secrets.env` est chmod 600 — lancer en user propriétaire
 (deploy) ou sudo. Compte E2E admin = collaborateur (permissions vides) :
@@ -556,24 +567,29 @@ creezio server-docker enroll --brand-root "$BRAND_ROOT" \
   --admin https://admin.tempoflow.fr --token <enrollToken> --slug <slug>
 ```
 
-**Firewall UFW obligatoire** : tout port hôte consommé depuis les conteneurs
-(18800 backend flotte, 18810 host-agent) doit être autorisé par UFW depuis
-`172.16.0.0/12` (**tous** les réseaux Docker, y compris les stacks compose
-en 172.25.x), pas seulement `172.17.0.0/16` (docker0) :
+**Firewall UFW — posé automatiquement (0.18.0+)** : tout port hôte consommé
+depuis les conteneurs (18800 backend flotte, 18810 host-agent) doit être
+autorisé par UFW depuis `172.16.0.0/12` (**tous** les réseaux Docker, y
+compris les stacks compose en 172.25.x), pas seulement `172.17.0.0/16`
+(docker0). `agent up`, `admin up` et `enroll` embarquent un **préflight UFW
+fail-closed** (`packages/factory/src/server-docker-ufw.ts`, gate
+`test-phase-server-docker-ufw`) : UFW actif + règle absente → règle posée
+(droits root / `sudo -n`), sinon le geste **échoue** avec la commande exacte
+(jamais silencieux ; UFW absent/inactif = OK loggé). Fallback manuel :
 
 ```bash
 sudo ufw allow proto tcp from 172.16.0.0/12 to 172.17.0.1 port 18810   # host-agent
 sudo ufw allow proto tcp from 172.16.0.0/12 to 172.17.0.1 port 18800   # backend flotte
 ```
 
-Symptôme d'oubli : `[UFW BLOCK] … DPT=188xx` dans le journal kernel
-(`sudo journalctl -k | rg 'UFW BLOCK.*DPT=188'`) et
+Symptôme historique (kits < 0.18.0) : `[UFW BLOCK] … DPT=188xx` dans le
+journal kernel (`sudo journalctl -k | rg 'UFW BLOCK.*DPT=188'`) et
 `https://agent.{slug}.{zone}` en **timeout** alors que le CRM
 (`https://{slug}.{zone}`) répond — le cloudflared in-process du conteneur
 qui porte l'ingress `agent.*` est droppé par UFW. Vécu 10–30/08/2026
 (migration stacks compose) : règle 18800 élargie à `172.16.0.0/12` mais
 18810 restée scoped docker0 → pilotage host-agent cassé silencieusement
-20 jours.
+20 jours — incident qui a motivé l'automatisation.
 
 **Vérification** : `curl -sS -u admin:… http://127.0.0.1:18800/admin/api/hosts`
 → l'hôte avec `"online":true` et son `agentUrl` `https://agent.<slug>.…`.
@@ -673,7 +689,7 @@ fail-closed `MODULE_MEILI_MISSING`, 0.10.13+).
 | Slugs réservés | `admin`, `mcp`, `api`, `agent`, `demo`, `test`, `registry`… (`packages/platform-core/src/tunnel-cf.ts`) — jamais pour un serveur client. |
 | Cloudflare timeouts | Toute opération longue exposée via tunnel = async (202 + route de statut), jamais une requête bloquante. |
 | Compose vs registre | Instances Compose = `server-1`, `server-2` (chiffres) ; instances registre (`create <nom>`) = libres. Projet Compose `creezio-servers`/`tf3-servers`, jamais `tempoflow`/`n8n`. |
-| UFW vs réseaux compose | Les stacks compose créent des réseaux dédiés (172.25.x) hors docker0 : une règle UFW scoped `172.17.0.0/16` cesse de couvrir les conteneurs migrés. Règle : tout port hôte consommé depuis les conteneurs (18800 backend flotte, 18810 host-agent) autorisé depuis `172.16.0.0/12` (§6). Symptôme : `[UFW BLOCK] … DPT=188xx` (journal kernel), `agent.*` en timeout alors que le CRM répond. Vécu 10–30/08 : 18800 élargi, 18810 oublié → host-agent droppé 20 jours. |
+| UFW vs réseaux compose | Les stacks compose créent des réseaux dédiés (172.25.x) hors docker0 : une règle UFW scoped `172.17.0.0/16` cesse de couvrir les conteneurs migrés. Règle : tout port hôte consommé depuis les conteneurs (18800 backend flotte, 18810 host-agent) autorisé depuis `172.16.0.0/12` — **posée automatiquement par le préflight fail-closed de `agent up`/`admin up`/`enroll` (0.18.0+, §6)**. Symptôme (kits < 0.18.0) : `[UFW BLOCK] … DPT=188xx` (journal kernel), `agent.*` en timeout alors que le CRM répond. Vécu 10–30/08 : 18800 élargi, 18810 oublié → host-agent droppé 20 jours. |
 | Résolution module packagé | Jamais de parsing de stack pour retrouver `file://` (les frames Windows `file:///C:/…` cassent tout regex naïf → crash client). SoT : `createAppRequire` (`@creezio/platform-core`) ; gate `verify-pack-runtime` refuse le pattern. |
 | UI marque = chrome kit + Tailwind | La factory génère `ui/tailwind.config.ts` (scan `node_modules/@creezio/*/ui` + routes OS), `postcss.config.js`, `globals.css` (tokens) et `components/brand-chrome.tsx` (WorkspaceRoot/configureSidebar). App qui rend du HTML brut sans sidebar = Tailwind/chrome manquant, corriger la factory (gate `test-phase-os-ui-scaffold`). |
 | Gros catalogues (85k+ skus) | Jamais une requête SQL par ligne dans un handler liste (N+1 = event loop bloqué, tout le serveur pend, même `/health`). Agréger en SQL (CTE + window), indexer (`produits(sku_id)`, `prix(produit_id)`), capper les listes génériques. |

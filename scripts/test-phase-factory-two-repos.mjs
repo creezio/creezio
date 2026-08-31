@@ -193,6 +193,41 @@ test("factory 2-repos : monorepo + repo admin dédié (sans réseau)", () => {
       "utf8",
     );
     assert.match(prospectsPage, /ProspectsKanbanClient/);
+
+    // Vérification E2E canonique (BACKLOG « Scaffold verify-prod factory ») :
+    // toute app générée (marque ET admin) matérialise scripts/verify-prod.mjs
+    // bien formé (node --check), avec le bon profil + extension locale.
+    for (const [repoDir, profile, brand] of [
+      [appDir, "brand", "proofbrand"],
+      [adminDir, "admin", "proofbrandadmin"],
+    ]) {
+      const vp = path.join(repoDir, "scripts/verify-prod.mjs");
+      assert.ok(fs.existsSync(vp), `verify-prod.mjs manquant: ${repoDir}`);
+      const parsed = spawnSync(process.execPath, ["--check", vp], {
+        encoding: "utf8",
+      });
+      assert.equal(parsed.status, 0, `verify-prod mal formé: ${parsed.stderr}`);
+      const body = fs.readFileSync(vp, "utf8");
+      assert.match(body, new RegExp(`profile: "${profile}"`));
+      assert.match(body, new RegExp(`brandId: "${brand}"`));
+      assert.match(body, /CREEZIO_E2E_EMAIL/, "SoT credentials secrets.env");
+      assert.match(body, /verify-prod\.local\.mjs/, "extension métier locale");
+      const pkg = JSON.parse(
+        fs.readFileSync(path.join(repoDir, "package.json"), "utf8"),
+      );
+      assert.equal(
+        pkg.scripts["verify:prod"],
+        "node scripts/verify-prod.mjs --all",
+        `script npm verify:prod manquant: ${repoDir}`,
+      );
+    }
+    // Profil brand : browse Meili + assistant présents dans les checks.
+    const brandVp = fs.readFileSync(
+      path.join(appDir, "scripts/verify-prod.mjs"),
+      "utf8",
+    );
+    assert.match(brandVp, /engine:"meili"/);
+    assert.match(brandVp, /llm-status/);
   } finally {
     fs.rmSync(tmp, { recursive: true, force: true });
     fs.rmSync(`${appDir}-admin`, { recursive: true, force: true });
@@ -277,6 +312,10 @@ Gestion simple pour test gate factory 2-repos.
       assert.ok(
         fs.existsSync(path.join(repoDir, ".cursor", "environment.json")),
         `.cursor/environment.json manquant: ${repoDir}`,
+      );
+      assert.ok(
+        fs.existsSync(path.join(repoDir, "scripts", "verify-prod.mjs")),
+        `scripts/verify-prod.mjs manquant: ${repoDir}`,
       );
     }
   } finally {

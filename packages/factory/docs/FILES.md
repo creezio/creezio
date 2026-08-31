@@ -56,6 +56,7 @@
 | [`src/server-docker-owner.ts`](../src/server-docker-owner.ts) | Politique `server-docker create` fail-closed owner : `CREEZIO_OWNER_EMAIL` / `_PASSWORD` requis sauf `CREEZIO_TUNNEL_LOCAL=1` ; first-run `POST /api/v1/os/setup` + vérif login ; persist `secrets.env` 600 ; `ensure-owner` + `CREEZIO_E2E_*` optionnels (recette) ; après setup, `GET .../interactive-demo/scenarios` ≥ 1 (sauté si owner skip / LOCAL) ; jamais le mot de passe en log. |
 | [`src/server-docker-registry.ts`](../src/server-docker-registry.ts) | Registre d'instances serveur Docker par marque — SoT `docker-data/servers.json` (image `creezio-server-<brandId>`, containers `<brandId>-server-<nom>`). |
 | [`src/server-docker-tunnel.ts`](../src/server-docker-tunnel.ts) | Politique `server-docker create` fail-closed : contrat CF (`CREEZIO_CF_API_TOKEN` / `_ACCOUNT_ID` / `_ZONE_ID`) requis sauf `CREEZIO_TUNNEL_LOCAL=1` ; slug réservé → `<brand>-<slug>` ; secrets CF hors registre (`cf.env` 600). |
+| [`src/server-docker-ufw.ts`](../src/server-docker-ufw.ts) | Préflight UFW fail-closed des ports flotte consommés depuis les conteneurs (18800 backend, 18810 host-agent) : règle `172.16.0.0/12 → 172.17.0.1:<port>` détectée/posée (root ou `sudo -n`, re-vérifiée) à `agent up`/`admin up`/`enroll`, sinon erreur avec la commande exacte — incident 10–30/08/2026. |
 | [`src/upgrade-cli.ts`](../src/upgrade-cli.ts) | `creezio upgrade` (P3.a) — détection version d'architecture marque, chaîne de codemods H* dans l'ordre (idempotence vérifiée), bump `@creezio/*` tous manifests (`--package-lock-only`), rematérialisation os-ui, doctor fail-closed, `--dry-run`. |
 | [`src/write-app-file.ts`](../src/write-app-file.ts) | Écriture des fichiers d'app marque — respecte le marker `creezio:owned-by-brand` même avec `--force` (merge package.json, jamais de wipe du métier enrichi). |
 
@@ -76,6 +77,7 @@
 | [`src/generators/server-docker-scripts.ts`](../src/generators/server-docker-scripts.ts) | Scripts npm `server-docker:*` + résolveur CLI kit générés dans chaque app (héritage du serveur Docker sans copie). |
 | [`src/generators/tests.ts`](../src/generators/tests.ts) | Smokes générés |
 | [`src/generators/ui.ts`](../src/generators/ui.ts) | Pages Next + SPA |
+| [`src/generators/verify-prod.ts`](../src/generators/verify-prod.ts) | Générateur `scripts/verify-prod.mjs` (vérification E2E canonique, skill fleet-ops §3b) matérialisé dans toute app générée : checks plateforme par profil brand/admin (version, login E2E via `secrets.env`, auth/me, browse `engine:"meili"`, llm-status), extension métier `verify-prod.local.mjs`. |
 | [`src/generators/wiring.ts`](../src/generators/wiring.ts) | Twins paths/host-stack/boot |
 
 ## `templates/plugins/insights-assistant/`

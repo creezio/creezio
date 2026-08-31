@@ -183,6 +183,7 @@ async function main() {
   await waitHealth();
   assert.ok(!fs.existsSync(path.join(dataDir, "store.json")));
   console.log("OK test:metier-parcours (OS shell, 0 entité)");
+  console.log("prod : npm run verify:prod (E2E canonique — scripts/verify-prod.mjs)");
   child.kill("SIGTERM");
   process.exit(0);
 }
@@ -215,6 +216,7 @@ async function main() {
   assert.ok(list.items.length >= 1);
   assert.ok(!fs.existsSync(path.join(dataDir, "store.json")));
   console.log("OK test:metier-parcours (${entity.id} / api-kernel)");
+  console.log("prod : npm run verify:prod (E2E canonique — scripts/verify-prod.mjs)");
   child.kill("SIGTERM");
   process.exit(0);
 }
@@ -295,6 +297,7 @@ async function main() {
   );
 
   console.log("OK test:metier-parcours api-kernel fournisseurs→commande");
+  console.log("prod : npm run verify:prod (E2E canonique — scripts/verify-prod.mjs)");
   child.kill("SIGTERM");
   process.exit(0);
 }

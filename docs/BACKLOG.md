@@ -73,27 +73,26 @@ affaibli pour la masquer. (Backlogs d'époque : `docs/archive/BACKLOG-*.md`.)
 - **Registry local sans GC** : la suppression de tags (`0.2.2-broken`…)
   demande l'API delete + `registry garbage-collect` — documenté, pas
   automatisé.
-- **Scaffold `verify-prod` factory (vérification E2E canonique de toute
-  app générée)** : le compte E2E (`CREEZIO_E2E_EMAIL/_PASSWORD`) est déjà
-  provisionné et persisté par `server-docker create|ensure-owner` dans le
-  `secrets.env` de chaque stack (kit), mais le script de vérification
-  `scripts/verify-prod.mjs` (login E2E, `auth/me`, browse
-  `engine:"meili"`, optimiser snapshot, `llm-status` — profils
-  brand/admin, exit code global) ne vit que dans le repo marque TF3
-  (PR tempoflow3#63). Moindre effort systémique : la factory
-  (`packages/factory`) matérialise un `verify-prod.mjs` générique dans le
-  scaffold de chaque app (checks plateforme : version / login /
-  `auth/me` / browse d'un module à `meiliIndexes` déclaré / `llm-status` ;
-  les checks métier — ex. optimiser TF3 — restent dans la marque), +
-  mention dans les smokes générés + gate d'inventaire scaffold. Réf :
-  skill fleet-ops §3b.
-- **Automatiser les règles UFW dans les procédures compose/enrôlement
-  (`creezio server-docker`)** : la règle « tout port hôte consommé depuis
-  les conteneurs (18800 backend flotte, 18810 host-agent) autorisé depuis
-  `172.16.0.0/12`, pas seulement docker0 » est aujourd'hui doc-only (skill
-  fleet-ops §6/§9, `RUNBOOK-FLOTTE.md`) — incident du 10–30/08 (migration
-  stacks compose : 18810 resté scoped `172.17.0.0/16`, host-agent droppé
-  20 jours). Candidat gate/automatisation.
+- ~~**Scaffold `verify-prod` factory (vérification E2E canonique de toute
+  app générée)**~~ **fait (0.18.0)** : la factory matérialise
+  `scripts/verify-prod.mjs` dans toute app générée (générateur
+  `packages/factory/src/generators/verify-prod.ts` — profil brand :
+  version / login E2E / `auth/me` role owner / browse d'un module à
+  `meiliIndexes` `engine:"meili"` / `llm-status` ; profil admin :
+  version / login / me), script npm `verify:prod`, mention dans les smokes
+  générés, extension métier `scripts/verify-prod.local.mjs`
+  (`localChecks(ctx)`, jamais régénéré — ex. optimiser TF3). Gate
+  d'inventaire : `test-phase-factory-two-repos` (existence + `node --check`
+  + profils dans les 2 repos). Réf : skill fleet-ops §3b.
+- ~~**Automatiser les règles UFW dans les procédures compose/enrôlement
+  (`creezio server-docker`)**~~ **fait (0.18.0)** : préflight UFW
+  fail-closed dans `agent up`, `admin up` et `enroll`
+  (`packages/factory/src/server-docker-ufw.ts`) — UFW actif + règle
+  `172.16.0.0/12 → 172.17.0.1:<port>` absente → règle posée (root /
+  `sudo -n`) avec re-vérification, sinon échec explicite avec la commande
+  exacte (jamais silencieux). Gate : `test-phase-server-docker-ufw`.
+  Incident d'origine : 10–30/08 (18810 resté scoped `172.17.0.0/16`,
+  host-agent droppé 20 jours).
 - ~~**admin.tempoflow.fr via NPM + cert Origin**~~ **retiré** :
   `configure-admin-npm.sh` exit 1. Public admin+lp = tunnel in-process.
 - ~~**Mounts modules sans session HTTP (plateforme-wide)**~~ **fait** (garde

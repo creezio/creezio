@@ -45,6 +45,7 @@ import {
   renderBrandWorkflowFiles,
 } from "./generators/index.js";
 import { scaffoldAdminApp } from "./admin-repo.js";
+import { renderVerifyProdMjs } from "./generators/verify-prod.js";
 import { installKitPluginTemplate } from "./plugin-templates.js";
 
 export type NewAppOptions = {
@@ -902,6 +903,8 @@ function renderRootPackageJson(
   scripts["stop"] = "node scripts/creezio-dev.mjs stop";
   scripts["status"] = "node scripts/creezio-dev.mjs status";
   scripts["setup"] = "node scripts/creezio-dev.mjs setup";
+  // Vérification E2E canonique des instances prod (skill fleet-ops §3b).
+  scripts["verify:prod"] = "node scripts/verify-prod.mjs --all";
 
   const creezio: Record<string, unknown> = {
     brandId: m.brandId,
@@ -1022,6 +1025,10 @@ CREEZIO_TUNNEL_LOCAL=1 npm run server-docker:create -- demo   # local
 # VPS : .env CREEZIO_CF_API_TOKEN/_ACCOUNT_ID/_ZONE_ID + CREEZIO_OWNER_EMAIL/_PASSWORD + npm run server-docker:create -- acme -- --profile prod
 npm run pack:linux              # client desktop (délègue client/)
 npm run server-docker:admin     # admin web flotte (repo ${m.brandId}-admin)
+npm run verify:prod             # vérification E2E canonique des instances
+                                #   (scripts/verify-prod.mjs — login E2E,
+                                #    auth/me, browse Meili, llm-status ;
+                                #    checks métier : verify-prod.local.mjs)
 \`\`\`
 
 Docs : \`server/README.md\`, repo admin \`${m.brandId}-admin/README.md\`,
@@ -1826,6 +1833,25 @@ export function scaffoldNewApp(opts: NewAppOptions): ScaffoldResult {
   writeFile(
     path.join(outDir, "scripts/creezio-dev.mjs"),
     renderCreezioDevProxyMjs(),
+    force,
+    written,
+  );
+  // Vérification E2E canonique de prod (skill fleet-ops §3b) : checks
+  // plateforme générés (version/login/me/browse Meili/llm-status) ; les
+  // checks métier vivent dans scripts/verify-prod.local.mjs (jamais généré).
+  writeFile(
+    path.join(outDir, "scripts/verify-prod.mjs"),
+    renderVerifyProdMjs({
+      brandId: manifest.brandId,
+      profile: opts.adminApp ? "admin" : "brand",
+      meiliModule:
+        !opts.adminApp && opts.productModel?.vertical === "chr"
+          ? "produits"
+          : null,
+      assistant: opts.productModel
+        ? opts.productModel.platformNeeds?.chat !== false
+        : true,
+    }),
     force,
     written,
   );
