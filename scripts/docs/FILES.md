@@ -164,6 +164,7 @@
 | [`test-phase-n8.mjs`](../test-phase-n8.mjs) | !usrbinenv node |
 | [`test-phase-n9.mjs`](../test-phase-n9.mjs) | !usrbinenv node |
 | [`test-phase-nav-catalog.mjs`](../test-phase-nav-catalog.mjs) | Gate NAV-1 — catalogue nav OS : merge pur, collision id/href, feature-off, seed registre, factory chrome sans `const OS_NAV` ni literal `/granola`. |
+| [`test-phase-nav-module.mjs`](../test-phase-nav-module.mjs) | Gate NAV-2 — module hybride `@creezio/nav` : migrations brand.db, GET/PUT overrides, feature-off, 403 sans permission, owner + hidden. |
 | [`test-phase-no-brand-vocab.mjs`](../test-phase-no-brand-vocab.mjs) | (à documenter) |
 | [`test-phase-o1.mjs`](../test-phase-o1.mjs) | !usrbinenv node |
 | [`test-phase-o2.mjs`](../test-phase-o2.mjs) | !usrbinenv node |

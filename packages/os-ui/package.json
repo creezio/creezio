@@ -38,6 +38,7 @@
   "dependencies": {
     "@creezio/interactive-demo": "^0.18.0",
     "@creezio/mails": "^0.18.0",
+    "@creezio/nav": "^0.18.0",
     "@creezio/shell-ui": "^0.18.0"
   },
   "peerDependencies": {

@@ -24,6 +24,7 @@ const PACKAGES = [
   "auth",
   "access-control",
   "shell-ui",
+  "nav",
   "onboarding",
   "interactive-demo",
   "cockpit",

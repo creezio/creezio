@@ -40,6 +40,12 @@
 |---|---|
 | [`routes/admin/mcp/page.tsx`](../routes/admin/mcp/page.tsx) | Admin MCP (`McpAdminClient` + `logsSlot` RequestLogsClient) |
 
+## `routes/admin/nav/`
+
+| Fichier | Rôle |
+|---|---|
+| [`routes/admin/nav/page.tsx`](../routes/admin/nav/page.tsx) | Page admin « Navigation » (wrapper NavAdminClient @creezio/nav/ui) |
+
 ## `routes/admin/plugins/`
 
 | Fichier | Rôle |

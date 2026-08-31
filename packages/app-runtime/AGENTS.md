@@ -72,6 +72,10 @@ SQL = hors index uniquement (agrégats, joins, écritures, EAN, by id).
 - Pas de domaine métier (CHR, GED…) dans ce package.
 - Pas de vendor Hermes/n8n/binaires dans `apps/<marque>/resources`.
 - La marque ne doit fournir que : `manifest`, migrations/API métier, `meiliFeed?`, `navItems?`.
+- Le mount `@creezio/nav` est **auto-enregistré** dans `createBrandKernel`
+  (migrations `nav_overrides` + `registerModuleApi("nav", …)`). Ne pas
+  remonter un second mount `nav` sauf absorption Phase C d'un mount
+  owned-by-brand (le kit skip si `nav` est déjà monté).
 
 ## Consommation marque
 

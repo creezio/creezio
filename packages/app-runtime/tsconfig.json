@@ -15,6 +15,7 @@
     { "path": "../assistant" },
     { "path": "../tasks" },
     { "path": "../mails" },
+    { "path": "../nav" },
     { "path": "../support" },
     { "path": "../integrations" },
     { "path": "../api-kernel" },
