@@ -14,10 +14,12 @@
  *     absent = idle loggé une fois, mort → restart borné, abandon après N,
  *     stop() annule, container redevenu sain → compteur remis à zéro ;
  *  3. contrats source : helpers factory (container/run-args/env-file 600,
- *     token JAMAIS en argv), ordre de migration douce de l'enroll
- *     (provision → connecteur → bascule DNS → retrait règle legacy),
- *     host-agent démarre le watch, jamais de POST cfd_tunnel côté watch,
- *     noms de container alignés fleet ↔ factory.
+ *     token JAMAIS en argv), ordre de migration (provision → connecteur
+ *     → bascule DNS → retrait règle résiduelle) porté par
+ *     provisionDedicatedAgentTunnel (enroll ET agent up), host-agent
+ *     démarre le watch (pas de kill-switch), jamais de POST cfd_tunnel
+ *     côté watch, noms de container alignés fleet ↔ factory,
+ *     instance rm ne touche jamais un DNS agent.
  */
 import assert from "node:assert/strict";
 import fs from "node:fs";
@@ -366,35 +368,37 @@ test("factory : run-args du connecteur (network host, restart, token via env-fil
   );
 });
 
-/* ── 4. contrats source (enroll / host-agent / fail-closed) ── */
+/* ── 4. contrats source (enroll / agent up / host-agent / fail-closed) ── */
 
-test("source : enroll = provision → connecteur → bascule DNS → retrait règle legacy (migration douce)", () => {
+test("source : provisionDedicatedAgentTunnel = ensure → connecteur → DNS → retrait résiduel", () => {
   const cli = fs.readFileSync(
     path.join(ROOT, "packages/factory/src/server-docker-cli.ts"),
     "utf8",
   );
-  const iEnsure = cli.indexOf("cf.ensureCfAgentTunnel(");
+  const iFn = cli.indexOf("async function provisionDedicatedAgentTunnel");
+  const iEnsure = cli.indexOf("cf.ensureCfAgentTunnel(", iFn);
   const iContainer = cli.indexOf(
     "ensureAgentTunnelContainer({ env: process.env, envFile, recreate: true })",
+    iFn,
   );
-  const iDns = cli.indexOf("cf.ensureCfAgentTunnelDns(");
-  const iLegacy = cli.indexOf("cf.removeCfTunnelAgentRule(");
-  assert.ok(iEnsure > 0, "enroll provisionne le tunnel dédié (ensureCfAgentTunnel)");
+  const iDns = cli.indexOf("cf.ensureCfAgentTunnelDns(", iFn);
+  const iLegacy = cli.indexOf("cf.removeCfTunnelAgentRule(", iFn);
+  assert.ok(iFn > 0, "provisionDedicatedAgentTunnel extraite (enroll + agent up)");
+  assert.ok(iEnsure > iFn, "ensureCfAgentTunnel dans le geste partagé");
   assert.ok(
     iEnsure < iContainer && iContainer < iDns && iDns < iLegacy,
-    `ordre migration douce cassé (ensure=${iEnsure}, container=${iContainer}, dns=${iDns}, legacy=${iLegacy})`,
+    `ordre migration cassé (ensure=${iEnsure}, container=${iContainer}, dns=${iDns}, legacy=${iLegacy})`,
   );
-  // La bascule DNS est différée (dns: false à l'ensure) — pas de coupure.
-  const enrollSlice = cli.slice(iEnsure, iDns);
-  assert.match(enrollSlice, /dns: false/);
-  // Plus JAMAIS d'ingress agent posé sur le tunnel du serveur à l'enroll.
+  const slice = cli.slice(iEnsure, iDns);
+  assert.match(slice, /dns: false/);
   assert.ok(
     !/agent:\s*\{\s*host:\s*"host\.docker\.internal"/.test(cli),
-    "l'enroll ne pose plus la règle agent sur le tunnel partagé du serveur",
+    "aucun chemin ne pose la règle agent sur le tunnel d'une instance",
   );
-  // agent up relance le connecteur si l'env file existe (reprise sans re-enroll).
+  assert.match(cli, /needsDedicatedAgentTunnelMigration/);
+  assert.match(cli, /deprovisionCfAgentTunnel/);
+  assert.match(cli, /action === "rm"/);
   assert.match(cli, /recreate: false/);
-  // Token connecteur : env file 600 uniquement.
   assert.match(cli, /writeAgentTunnelEnv/);
 
   const helper = fs.readFileSync(
@@ -402,21 +406,110 @@ test("source : enroll = provision → connecteur → bascule DNS → retrait rè
     "utf8",
   );
   assert.match(helper, /mode: 0o600|chmod|600/);
+  assert.match(helper, /export function needsDedicatedAgentTunnelMigration/);
+  assert.match(helper, /export function parseAgentPublicUrl/);
 });
 
-test("source : host-agent démarre le watch ; le watch ne (re)crée JAMAIS de tunnel CF", () => {
+test("helpers : needsDedicatedAgentTunnelMigration + parseAgentPublicUrl", () => {
+  assert.equal(
+    factory.needsDedicatedAgentTunnelMigration({
+      adminUrl: "https://admin.example",
+      agentUrl: "https://agent-resto.example.test",
+      envFileExists: false,
+    }),
+    true,
+    "enrôlé sans tunnel dédié → migration",
+  );
+  assert.equal(
+    factory.needsDedicatedAgentTunnelMigration({
+      adminUrl: "https://admin.example",
+      agentUrl: "https://agent-resto.example.test",
+      agentTunnel: { tunnelId: "t-1" },
+      envFileExists: false,
+    }),
+    false,
+    "déjà dédié (state) → pas de migration",
+  );
+  assert.equal(
+    factory.needsDedicatedAgentTunnelMigration({
+      adminUrl: "https://admin.example",
+      envFileExists: true,
+    }),
+    false,
+    "env file dédié présent → pas de migration",
+  );
+  assert.equal(
+    factory.needsDedicatedAgentTunnelMigration({
+      envFileExists: false,
+    }),
+    false,
+    "pas enrôlé → pas de migration",
+  );
+  assert.deepEqual(
+    factory.parseAgentPublicUrl("https://agent.resto-lyon.tempoflow.fr"),
+    {
+      hostname: "agent.resto-lyon.tempoflow.fr",
+      serverHostname: "resto-lyon.tempoflow.fr",
+      slugGuess: "resto-lyon",
+      hostMode: "nested",
+    },
+  );
+  assert.deepEqual(
+    factory.parseAgentPublicUrl("https://agent-resto-lyon.tempoflow.fr/"),
+    {
+      hostname: "agent-resto-lyon.tempoflow.fr",
+      serverHostname: "resto-lyon.tempoflow.fr",
+      slugGuess: "resto-lyon",
+      hostMode: "flat",
+    },
+  );
+  assert.equal(factory.parseAgentPublicUrl("http://127.0.0.1:18810"), null);
+});
+
+test("source : agent up migre ; instance rm n'appelle jamais deprovisionCfAgentTunnel", () => {
+  const cli = fs.readFileSync(
+    path.join(ROOT, "packages/factory/src/server-docker-cli.ts"),
+    "utf8",
+  );
+  const iUp = cli.indexOf("if (action !== \"up\")");
+  const iDeprovInst = cli.indexOf("async function deprovisionInstanceTunnelCf");
+  const iDeprovInstEnd = cli.indexOf("Marqueur de version du template", iDeprovInst);
+  const instFn = cli.slice(iDeprovInst, iDeprovInstEnd);
+  assert.match(
+    instFn,
+    /deprovisionCfSlug/,
+    "rm instance = deprovisionCfSlug uniquement",
+  );
+  assert.doesNotMatch(
+    instFn,
+    /deprovisionCfAgentTunnel|agentTunnelDeprovisionDnsHosts|agent-\$\{/,
+    "rm instance ne mentionne aucun DNS/tunnel agent",
+  );
+  const upSlice = cli.slice(iUp);
+  assert.match(upSlice, /needsDedicatedAgentTunnelMigration/);
+  assert.match(upSlice, /provisionDedicatedAgentTunnel/);
+  assert.match(
+    upSlice,
+    /contrat Cloudflare incomplet/,
+    "migration fail-closed si CF manque",
+  );
+});
+
+test("source : host-agent démarre le watch ; pas de kill-switch ; watch sans API CF", () => {
   const hostAgent = fs.readFileSync(
     path.join(ROOT, "packages/fleet/src/host-agent.ts"),
     "utf8",
   );
   assert.match(hostAgent, /startAgentTunnelWatch/);
-  assert.match(hostAgent, /CREEZIO_AGENT_TUNNEL_WATCH/);
+  assert.doesNotMatch(
+    hostAgent,
+    /CREEZIO_AGENT_TUNNEL_WATCH/,
+    "kill-switch CREEZIO_AGENT_TUNNEL_WATCH retiré",
+  );
   const agentTunnel = fs.readFileSync(
     path.join(ROOT, "packages/fleet/src/agent-tunnel.ts"),
     "utf8",
   );
-  // Fail-closed #84/#86/#87 (même règle que cloudflared-respawn) : la
-  // surveillance redémarre un container existant, elle ne touche pas l'API CF.
   assert.match(agentTunnel, /jamais de POST/);
   assert.doesNotMatch(agentTunnel, /ensureCfTunnel\(|createCfTunnel\(|cfApi\(/);
   assert.doesNotMatch(

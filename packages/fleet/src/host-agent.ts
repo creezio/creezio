@@ -28,7 +28,6 @@
  *                              défaut state.fleetKey posé par enroll)
  *   CREEZIO_AGENT_TUNNEL_CONTAINER (T7 : container cloudflared dédié agent —
  *                              défaut creezio-agent-tunnel)
- *   CREEZIO_AGENT_TUNNEL_WATCH (T7 : `0` désactive la surveillance respawn)
  *
  * 0 domaine marque hardcodé — injection env uniquement.
  */
@@ -98,7 +97,7 @@ export function startHostAgent(): void {
 
   // T7 : surveillance respawn du container cloudflared dédié agent —
   // best-effort absolu (jamais d'impact sur le service HTTP), démarrée
-  // plus bas après le listen. `null` si désactivée (CREEZIO_AGENT_TUNNEL_WATCH=0).
+  // plus bas après le listen.
   let tunnelWatch: ReturnType<typeof startAgentTunnelWatch> | null = null;
 
   if (!BRAND_ROOTS.length) {
@@ -539,34 +538,30 @@ export function startHostAgent(): void {
 
   // T7 : respawn surveillé du container cloudflared dédié agent
   // (`creezio-agent-tunnel`) — même politique bornée que les autres
-  // cloudflared (miroir host-runtime). Container absent = idle silencieux
-  // (hôte legacy / enroll pas encore fait). Kill-switch : _WATCH=0.
-  if (String(process.env.CREEZIO_AGENT_TUNNEL_WATCH || "1").trim() !== "0") {
-    const container =
-      String(process.env.CREEZIO_AGENT_TUNNEL_CONTAINER || "").trim() ||
-      AGENT_TUNNEL_CONTAINER;
-    tunnelWatch = startAgentTunnelWatch({
-      container,
-      policy: resolveAgentTunnelRespawnPolicy(process.env),
-      deps: {
-        inspect: async (name) => {
-          const i = await inspectContainer(name);
-          if (!i) return null;
-          const startedRaw = i.State?.StartedAt || "";
-          const startedMs = Date.parse(startedRaw);
-          return {
-            exists: true,
-            running: i.State?.Status === "running",
-            status: i.State?.Status || "unknown",
-            startedAtMs: Number.isFinite(startedMs) && startedMs > 0 ? startedMs : null,
-          };
-        },
-        start: (name) => startContainer(name),
-        log: audit,
+  // cloudflared (miroir host-runtime). Container absent = idle (pas encore
+  // provisionné).
+  const container =
+    String(process.env.CREEZIO_AGENT_TUNNEL_CONTAINER || "").trim() ||
+    AGENT_TUNNEL_CONTAINER;
+  tunnelWatch = startAgentTunnelWatch({
+    container,
+    policy: resolveAgentTunnelRespawnPolicy(process.env),
+    deps: {
+      inspect: async (name) => {
+        const i = await inspectContainer(name);
+        if (!i) return null;
+        const startedRaw = i.State?.StartedAt || "";
+        const startedMs = Date.parse(startedRaw);
+        return {
+          exists: true,
+          running: i.State?.Status === "running",
+          status: i.State?.Status || "unknown",
+          startedAtMs: Number.isFinite(startedMs) && startedMs > 0 ? startedMs : null,
+        };
       },
-    });
-    audit(`tunnel agent dédié : surveillance respawn active (${container})`);
-  } else {
-    audit("tunnel agent dédié : surveillance respawn désactivée (CREEZIO_AGENT_TUNNEL_WATCH=0)");
-  }
+      start: (name) => startContainer(name),
+      log: audit,
+    },
+  });
+  audit(`tunnel agent dédié : surveillance respawn active (${container})`);
 }

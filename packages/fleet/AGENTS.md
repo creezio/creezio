@@ -77,13 +77,13 @@ restent la SoT observability, hors périmètre fleet.
   sidecar cloudflared, refuser tout update qui casserait un hostname public).
 - `agent-tunnel` (T7) : le container cloudflared DÉDIÉ agent
   (`creezio-agent-tunnel`) est provisionné par `creezio server-docker
-  enroll` (factory) — le watch d'ici ne fait QUE redémarrer un container
-  existant (backoff borné, miroir de `cloudflared-respawn.ts`
+  enroll` / `agent up` (factory) — le watch d'ici ne fait QUE redémarrer
+  un container existant (backoff borné, miroir de `cloudflared-respawn.ts`
   host-runtime : ne pas faire diverger les défauts sans raison). Jamais
   d'appel API Cloudflare dans ce module (pas de POST `cfd_tunnel`) ; le
   token du connecteur vit dans `docker-data/agent-tunnel.env` (600),
   jamais dans `host-agent.json` ni les logs. Champ `agentTunnel` du
-  health : additif (protocole v1 intact).
+  health : additif (protocole v1 intact). Pas de kill-switch env.
 - Gates : `test-phase-server-docker` (contenu server-lib/server-admin),
   `test-phase-instance-stack`, `test-phase-stack-update-preserve`,
   `test-phase-fleet-agent`, `test-phase-fleet-update-status-persist`,

@@ -599,23 +599,25 @@ creezio server-docker enroll --brand-root "$BRAND_ROOT" \
   --admin https://admin.tempoflow.fr --token <enrollToken> --slug <slug>
 ```
 
-**Tunnel dédié agent (T7, 0.21.x+)** : `enroll --slug` ne pose plus
-l'ingress `agent.{slug}` sur le tunnel du serveur applicatif — il
-provisionne un tunnel Cloudflare **propre à l'agent** (nom CF
-`creezio-agent-<slug>`) et lance son connecteur dans le container dédié
-**`creezio-agent-tunnel`** (image officielle cloudflared, network host,
-`--restart unless-stopped`, `--protocol http2`, token dans
-`{BRAND_ROOT}/docker-data/agent-tunnel.env` chmod 600 — jamais en argv ni
-en log). Un update/down/recreate du serveur ne coupe donc plus le pilotage
-de l'hôte. **Migration douce** : sur un hôte legacy (ingress partagé), le
-prochain `enroll` bascule le CNAME agent vers le tunnel dédié APRÈS le
-démarrage du connecteur puis retire la règle agent du tunnel partagé
-(best-effort) — URL publique inchangée, pas de coupure. Respawn : Docker
-`unless-stopped` + surveillance bornée par le host-agent
-(`@creezio/fleet` `agent-tunnel.ts`, mêmes défauts que les cloudflared
-in-process ; kill-switch `CREEZIO_AGENT_TUNNEL_WATCH=0`) ; `agent up`
-relance le connecteur si le container manque ; état visible dans
-`agent status` et `GET /agent/api/health` (champ `agentTunnel`).
+**Tunnel dédié agent (T7)** : l'ingress public `agent.{slug}.{zone}` /
+`agent-{slug}.{zone}` vit exclusivement sur un tunnel Cloudflare propre à
+l'agent (nom CF `creezio-agent-<slug>`, container
+**`creezio-agent-tunnel`**, token `{BRAND_ROOT}/docker-data/agent-tunnel.env`
+chmod 600). `enroll --slug` le provisionne ; **`agent up` (chaque update
+de l'agent) détecte un hôte déjà enrôlé sans tunnel dédié et exécute
+lui-même la migration** (provision → connecteur → bascule CNAME → retrait
+d'une règle résiduelle sur un tunnel d'instance). Idempotent. Sans
+`CREEZIO_CF_*` : refus fail-closed avec la liste des clés manquantes.
+Respawn : Docker `unless-stopped` + surveillance bornée par le host-agent
+(`@creezio/fleet` `agent-tunnel.ts`). État : `agent status` et
+`GET /agent/api/health` (champ `agentTunnel`).
+
+**Ownership DNS** : `server-docker rm <instance>` ne touche jamais
+`agent.*` / `agent-*`. Le seul geste qui les retire :
+
+```bash
+creezio server-docker agent rm --brand-root "$BRAND_ROOT" [--slug <slug>]
+```
 
 **Firewall UFW — posé automatiquement (0.18.0+)** : tout port hôte consommé
 depuis les conteneurs (18800 backend flotte, 18810 host-agent) doit être
@@ -646,18 +648,13 @@ qui porte l'ingress `agent.*` est droppé par UFW. Vécu 10–30/08/2026
 
 **Vérité** : `packages/factory/src/server-docker-cli.ts` (agent/enroll) +
 `server-docker-agent-tunnel.ts` (container tunnel dédié),
-`packages/platform-core/src/tunnel-cf-client.ts` (`ensureCfAgentTunnel`),
+`packages/platform-core/src/tunnel-cf-client.ts` (`ensureCfAgentTunnel`,
+`deprovisionCfAgentTunnel`),
 `packages/fleet/src/agent-tunnel.ts` (surveillance respawn),
 `packages/fleet/src/server-admin.ts` (`/admin/api/enroll` — auth par enrollToken, pas Basic),
 tokens agent : `docker-data/host-agent.json` (hashés, `agent token new|revoke`).
-Gates : `test-phase-agent-tunnel`, `test-phase-tunnel-self-provision` (§10).
-
-**Pièges** : le tunnel dédié dérive son hostname du hostname CRM de
-l'instance porteuse du slug — un `server-docker rm <slug>` déprovisionne
-aussi les DNS `agent-{slug}`/`agent.{slug}` (nettoyage large historique) :
-re-enroller l'hôte avec un autre slug AVANT de supprimer l'instance
-porteuse. Ne jamais reposer la règle agent sur le tunnel d'un serveur
-(`ensureCfTunnel({ agent: … })`) : régression T7, refusée par la gate.
+Gates : `test-phase-agent-tunnel`, `test-phase-tunnel-self-provision` (§10),
+`test-phase-server-docker` (rm instance ≠ DNS agent).
 
 ## 7. Client desktop thin (remote-only)
 

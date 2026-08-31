@@ -303,11 +303,13 @@ test("landing.tunnel — mode flat aplatit embeds + DNS sans wildcard", async ()
   const ports = { crmPort: 18791, n8nPort: 15678, hermesPort: 18797 };
   const rules = buildRules("resto.winhub.fr", ports, {
     hostMode: "flat",
-    agent: { host: "172.17.0.1", port: 18810 },
   });
   assert.equal(rules[1].hostname, "n8n-resto.winhub.fr");
   assert.equal(rules[2].hostname, "hermes-resto.winhub.fr");
-  assert.equal(rules[3].hostname, "agent-resto.winhub.fr");
+  assert.ok(
+    !rules.some((r) => String(r.hostname || "").startsWith("agent")),
+    "ingress instance : aucune règle agent",
+  );
   const pub = buildUrls("resto.winhub.fr", { hostMode: "flat" });
   assert.equal(pub.n8n, "https://n8n-resto.winhub.fr");
   const dns = dnsRecordSpecs("resto", "resto.winhub.fr", "winhub.fr", {

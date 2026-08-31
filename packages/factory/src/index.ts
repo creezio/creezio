@@ -114,6 +114,8 @@ export {
   AGENT_TUNNEL_IMAGE_DEFAULT,
   agentTunnelEnvPath,
   buildAgentTunnelRunArgs,
+  needsDedicatedAgentTunnelMigration,
+  parseAgentPublicUrl,
   renderAgentTunnelEnvFile,
   resolveAgentTunnelImage,
 } from "./server-docker-agent-tunnel.js";

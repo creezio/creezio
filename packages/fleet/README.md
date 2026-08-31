@@ -55,23 +55,20 @@ seulement. Gate : `test-phase-fleet-update-status-persist`.
 ## Tunnel dédié agent (T7)
 
 L'ingress public du host-agent (`agent.{slug}.{zone}` /
-`agent-{slug}.{zone}`) passait par le cloudflared **in-process d'un serveur
-applicatif** du VPS : serveur down/recréé = agent injoignable. Depuis
-0.21.x, `creezio server-docker enroll` provisionne un tunnel Cloudflare
-**propre à l'agent** (nom CF `creezio-agent-<slug>`, un seul ingress →
-`127.0.0.1:<port agent>`) dont le connecteur tourne dans un container dédié
-`creezio-agent-tunnel` (network host, `--restart unless-stopped`, token
-dans `docker-data/agent-tunnel.env` 600). Migration douce : au premier
-enroll d'un hôte legacy, le CNAME agent est re-pointé vers le tunnel dédié
-**après** le démarrage du connecteur, puis la règle agent du tunnel partagé
-est retirée (best-effort) — pas de coupure, URL publique inchangée.
+`agent-{slug}.{zone}`) vit sur un tunnel Cloudflare **propre à l'agent**
+(nom CF `creezio-agent-<slug>`, un seul ingress → `127.0.0.1:<port agent>`)
+dont le connecteur tourne dans un container dédié `creezio-agent-tunnel`
+(network host, `--restart unless-stopped`, token dans
+`docker-data/agent-tunnel.env` 600). `creezio server-docker enroll` et
+`agent up` le provisionnent ; `agent up` migre automatiquement un hôte
+déjà enrôlé sans tunnel dédié. `agent rm` est le seul geste qui retire
+DNS agent + tunnel dédié.
 
 Côté agent, `startHostAgent()` **surveille** ce container (module
 `agent-tunnel`) : mort → `docker start` avec backoff borné (mêmes défauts
 que la politique cloudflared in-process : 8 essais, 1 s → 30 s, reset après
-60 s d'uptime sain), abandon loggué actionnable, container absent = idle
-silencieux (hôte pas encore ré-enrôlé). Kill-switch :
-`CREEZIO_AGENT_TUNNEL_WATCH=0` ; overrides
+60 s d'uptime sain), abandon loggué actionnable, container absent = idle.
+Overrides
 `CREEZIO_AGENT_TUNNEL_RESPAWN_{MAX,DELAY_MS,MAX_DELAY_MS,HEALTHY_MS}` ;
 état exposé (champ additif `agentTunnel`) dans `GET /agent/api/health`.
 Gates : `test-phase-agent-tunnel`, `test-phase-tunnel-self-provision` (§10).

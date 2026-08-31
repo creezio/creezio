@@ -84,3 +84,61 @@ export function buildAgentTunnelRunArgs(opts: {
     "run",
   ];
 }
+
+/**
+ * Hôte déjà enrôlé (credentials enroll présents) mais encore sans tunnel
+ * dédié — `agent up` doit migrer tout seul (fail-closed si CF manque).
+ */
+export function needsDedicatedAgentTunnelMigration(opts: {
+  adminUrl?: string | null;
+  agentUrl?: string | null;
+  fleetKey?: string | null;
+  agentTunnel?: { tunnelId?: string } | null;
+  envFileExists: boolean;
+}): boolean {
+  const enrolled = Boolean(
+    String(opts.adminUrl || "").trim() ||
+      String(opts.fleetKey || "").trim() ||
+      String(opts.agentUrl || "").trim(),
+  );
+  const dedicated =
+    Boolean(String(opts.agentTunnel?.tunnelId || "").trim()) ||
+    opts.envFileExists;
+  return enrolled && !dedicated;
+}
+
+export type ParsedAgentPublicUrl = {
+  hostname: string;
+  serverHostname: string;
+  slugGuess: string;
+  hostMode: "nested" | "flat";
+};
+
+/**
+ * Décode `https://agent.{slug}.{zone}` (nested) ou
+ * `https://agent-{slug}.{zone}` (flat). Null si ce n'est pas un hostname
+ * agent Creezio (ex. `--agent-url` custom).
+ */
+export function parseAgentPublicUrl(
+  agentUrl: string,
+): ParsedAgentPublicUrl | null {
+  let host = "";
+  try {
+    host = new URL(String(agentUrl || "").trim()).hostname.toLowerCase();
+  } catch {
+    return null;
+  }
+  if (host.startsWith("agent.")) {
+    const serverHostname = host.slice("agent.".length);
+    const slugGuess = serverHostname.split(".")[0] || "";
+    if (!serverHostname || !slugGuess) return null;
+    return { hostname: host, serverHostname, slugGuess, hostMode: "nested" };
+  }
+  if (host.startsWith("agent-")) {
+    const serverHostname = host.slice("agent-".length);
+    const slugGuess = serverHostname.split(".")[0] || "";
+    if (!serverHostname || !slugGuess) return null;
+    return { hostname: host, serverHostname, slugGuess, hostMode: "flat" };
+  }
+  return null;
+}

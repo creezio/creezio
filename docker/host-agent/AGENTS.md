@@ -22,11 +22,9 @@ wrappers fleet-collector retirés en 0.19.0) — ce dossier ne contient que le
   `creezio server-docker agent up` (rebuild + recreate), sinon le container
   continue de servir l'ancien code.
 - T7 : l'ingress `agent.{slug}.{zone}` vit sur un tunnel **dédié**
-  (container frère `creezio-agent-tunnel`, provisionné par `enroll`) — ne
-  pas reposer la règle agent sur le tunnel d'un serveur applicatif
-  (`ensureCfTunnel({ agent: … })` à l'enroll = régression T7, gate
-  `test-phase-agent-tunnel`). Token connecteur :
-  `docker-data/agent-tunnel.env` (600) uniquement.
+  (container frère `creezio-agent-tunnel`, provisionné par `enroll` /
+  `agent up`). Token connecteur : `docker-data/agent-tunnel.env` (600)
+  uniquement. `agent rm` est le seul geste qui retire ces ressources.
 
 ## Tests / gates
 

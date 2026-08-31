@@ -99,10 +99,14 @@ en jumeau dans `main.ts`.
 - `src/server-docker-agent-tunnel.ts` : helpers purs du tunnel cloudflared
   DÉDIÉ agent (T7) — container `creezio-agent-tunnel` (network host,
   restart unless-stopped), env file `docker-data/agent-tunnel.env` 600
-  (`TUNNEL_TOKEN`, jamais en argv). L'enroll provisionne (API CF
-  `ensureCfAgentTunnel`), démarre le connecteur, bascule le CNAME puis
-  retire la règle agent legacy du tunnel partagé — respecter cet ordre
-  (gate `test-phase-agent-tunnel`).
+  (`TUNNEL_TOKEN`, jamais en argv), détection
+  `needsDedicatedAgentTunnelMigration` / `parseAgentPublicUrl`.
+  `provisionDedicatedAgentTunnel` (CLI) : enroll **et** `agent up`
+  (migration auto si hôte déjà enrôlé sans tunnel dédié) — ordre
+  ensure → connecteur → DNS → retrait résiduel (gate
+  `test-phase-agent-tunnel`). `agent rm` = seul geste qui retire DNS
+  `agent.*` / tunnel dédié ; `server-docker rm` d'une instance ne les
+  touche jamais.
 - `src/server-docker-owner.ts` : politique create fail-closed owner
   (`CREEZIO_OWNER_EMAIL` / `_PASSWORD` requis en VPS/prod ; optionnel si
   `CREEZIO_TUNNEL_LOCAL=1`) — first-run `POST /api/v1/os/setup`, persist

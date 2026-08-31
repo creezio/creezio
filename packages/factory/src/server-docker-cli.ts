@@ -59,6 +59,8 @@ import { assertUfwFleetRule } from "./server-docker-ufw.js";
 import {
   AGENT_TUNNEL_CONTAINER,
   agentTunnelEnvPath,
+  needsDedicatedAgentTunnelMigration,
+  parseAgentPublicUrl,
   buildAgentTunnelRunArgs,
   renderAgentTunnelEnvFile,
   resolveAgentTunnelImage,
@@ -455,10 +457,12 @@ Registry d'images versionnées (update de flotte) :
 
 Agent hôte flotte (VPS restaurant — exposé via agent.{slug}.{zone}) :
   creezio server-docker agent up --brand-root <app> [--port 18810]
-    [--bind-hosts 127.0.0.1,172.17.0.1]
-    (relance aussi le connecteur du tunnel dédié agent — container
-     creezio-agent-tunnel — si docker-data/agent-tunnel.env existe)
-  creezio server-docker agent down|status --brand-root <app>
+    [--bind-hosts 127.0.0.1,172.17.0.1] [--slug <slug>]
+    (relance le connecteur du tunnel dédié si agent-tunnel.env existe ;
+     si l'hôte est déjà enrôlé sans tunnel dédié, migre automatiquement)
+  creezio server-docker agent down|status|rm --brand-root <app>
+    (rm = déprovisionne le tunnel dédié + DNS agent.* / agent-* ;
+     server-docker rm d'une instance ne les touche JAMAIS)
   creezio server-docker agent token new [--label admin] --brand-root <app>
   creezio server-docker agent token revoke <id> --brand-root <app>
   creezio server-docker enroll --brand-root <app> --admin <url-admin>
@@ -468,10 +472,8 @@ Agent hôte flotte (VPS restaurant — exposé via agent.{slug}.{zone}) :
     (T7 : provisionne un tunnel Cloudflare DÉDIÉ agent — nom CF
      creezio-agent-<slug>, container creezio-agent-tunnel network host,
      token dans docker-data/agent-tunnel.env 600 — puis bascule le CNAME
-     agent.{slug}/agent-{slug} dessus et retire la règle agent legacy du
-     tunnel partagé du serveur (migration douce, pas de coupure). Respawn
-     surveillé par le host-agent. + enregistre l'hôte auprès de l'admin —
-     token agent hashé, révocable)
+     agent.{slug}/agent-{slug}. Respawn surveillé par le host-agent.
+     + enregistre l'hôte auprès de l'admin — token agent hashé, révocable)
 
 Compose legacy (server-1 / server-2) :
   creezio server-docker build  --brand-root <app> [--kit-root <kit>]
@@ -713,7 +715,6 @@ async function importTunnelCf(kit: string) {
         ports?: { crmPort: number; n8nPort?: number; hermesPort?: number };
         hostMode?: "nested" | "flat" | null;
         extraHostnames?: string[];
-        agent?: { host?: string; port: number } | null;
         stored?: { tunnelId?: string; tunnelToken?: string } | null;
         log?: (line: string) => void;
       },
@@ -758,6 +759,20 @@ async function importTunnelCf(kit: string) {
       slug: string;
       removed: { dns: string[]; tunnel: string | null };
     }>;
+    deprovisionCfAgentTunnel: (
+      env: CfTunnelEnv,
+      opts: {
+        slug: string;
+        hostname?: string;
+        tunnelId?: string;
+        extraHostnames?: string[];
+        log?: (line: string) => void;
+      },
+    ) => Promise<{
+      ok: true;
+      slug: string;
+      removed: { dns: string[]; tunnel: string | null };
+    }>;
   };
   const pure = (await import(pathToFileURL(purePath).href)) as {
     tunnelAgentHostname: (
@@ -772,7 +787,6 @@ async function importTunnelCf(kit: string) {
         hostMode?: "nested" | "flat" | null;
         originHost?: string;
         extraHostnames?: string[];
-        agent?: { host?: string; port: number } | null;
       },
     ) => Array<{ hostname?: string; service: string }>;
   };
@@ -806,9 +820,11 @@ function cfEnvFromMerged(
 
 /**
  * Déprovisionnement Cloudflare d'une instance (rm) : DNS (nested + flat +
- * mail + extras) puis tunnel. Best-effort — un résidu est signalé, jamais
- * bloquant pour la suppression locale. Lu AVANT la suppression du stack dir
- * (cf.env contient CREEZIO_DOMAIN / CREEZIO_TUNNEL_EXTRA_HOSTNAMES).
+ * mail + extras) puis tunnel. Jamais les DNS `agent.*` / `agent-*` —
+ * propriétaire exclusif de `agent rm`. Best-effort — un résidu est
+ * signalé, jamais bloquant pour la suppression locale. Lu AVANT la
+ * suppression du stack dir (cf.env contient CREEZIO_DOMAIN /
+ * CREEZIO_TUNNEL_EXTRA_HOSTNAMES).
  */
 async function deprovisionInstanceTunnelCf(
   kit: string,
@@ -2337,9 +2353,168 @@ function writeAgentTunnelEnv(brandRoot: string, tunnelToken: string): string {
 }
 
 /**
+ * Résout le hostname CRM + tunnel d'instance pour un slug agent
+ * (kernel /data si l'instance existe encore — sinon null).
+ */
+async function lookupKernelTunnelForSlug(
+  kit: string,
+  brandRoot: string,
+  slug: string,
+  brandId: string,
+): Promise<{
+  hostname: string;
+  tunnelId: string;
+  tunnelToken: string;
+  slug: string;
+} | null> {
+  const stack = await importInstanceStack(kit);
+  const registry = loadServerRegistry(brandRoot, brandId);
+  let kc: ReturnType<typeof stack.readKernelTunnelConfig> = null;
+  for (const i of registry.instances) {
+    if (i.name !== slug) continue;
+    kc = stack.readKernelTunnelConfig(brandRoot, i, brandId);
+    break;
+  }
+  if (!kc) {
+    for (const i of registry.instances) {
+      const c = stack.readKernelTunnelConfig(brandRoot, i, brandId);
+      if (c && c.slug === slug) {
+        kc = c;
+        break;
+      }
+    }
+  }
+  if (!kc?.hostname) return null;
+  return {
+    hostname: kc.hostname,
+    tunnelId: kc.tunnelId || "",
+    tunnelToken: kc.tunnelToken || "",
+    slug: kc.slug || slug,
+  };
+}
+
+type DedicatedAgentTunnelResult = {
+  agentUrl: string;
+  hostname: string;
+  tunnelId: string;
+};
+
+/**
+ * Provision idempotent du tunnel dédié agent : ensure CF (ingress seul) →
+ * env file 600 → connecteur up → bascule DNS → retrait d'une règle agent
+ * résiduelle sur un tunnel d'instance (si encore présent).
+ */
+async function provisionDedicatedAgentTunnel(opts: {
+  kit: string;
+  brandRoot: string;
+  brandId: string;
+  state: AgentState;
+  slug: string;
+  serverHostname?: string;
+  sharedTunnelId?: string | null;
+}): Promise<DedicatedAgentTunnelResult> {
+  const cf = await importTunnelCf(opts.kit);
+  const cfVars = resolveCliCfEnv(opts.brandRoot);
+  const cfEnv = cfEnvFromMerged(cf, cfVars);
+  if (!cfEnv) {
+    const missing = cf.missingCfTunnelEnvKeys({
+      ...process.env,
+      ...cfVars,
+    } as NodeJS.ProcessEnv);
+    throw new Error(
+      `hôte enrôlé sans tunnel dédié — migration automatique impossible : ` +
+        `contrat Cloudflare incomplet (${missing.join(", ")} requis). ` +
+        `Poser CREEZIO_CF_API_TOKEN / CREEZIO_CF_ACCOUNT_ID / CREEZIO_CF_ZONE_ID ` +
+        `dans l'env ou le .env marque, puis relancer \`creezio server-docker agent up\`.`,
+    );
+  }
+  let serverHostname = (opts.serverHostname || "").trim().toLowerCase();
+  let sharedTunnelId = (opts.sharedTunnelId || "").trim();
+  if (!serverHostname || !sharedTunnelId) {
+    const kc = await lookupKernelTunnelForSlug(
+      opts.kit,
+      opts.brandRoot,
+      opts.slug,
+      opts.brandId,
+    );
+    if (kc) {
+      if (!serverHostname) serverHostname = kc.hostname;
+      if (!sharedTunnelId) sharedTunnelId = kc.tunnelId;
+    }
+  }
+  if (!serverHostname) {
+    const zoneName = (cfVars.CREEZIO_CF_ZONE_NAME || "").trim().toLowerCase();
+    if (zoneName) serverHostname = `${opts.slug}.${zoneName}`;
+  }
+  if (!serverHostname) {
+    throw new Error(
+      `tunnel agent dédié ${opts.slug} : hostname CRM introuvable — ` +
+        `passer --slug <slug> (instance encore présente) ou poser ` +
+        `CREEZIO_CF_ZONE_NAME pour dériver {slug}.{zone}`,
+    );
+  }
+  console.log(
+    `tunnel agent dédié ${opts.slug} → 127.0.0.1:${opts.state.port} ` +
+      `(API Cloudflare, container ${AGENT_TUNNEL_CONTAINER})…`,
+  );
+  const storedToken = readEnvFileValues(agentTunnelEnvPath(opts.brandRoot))
+    .TUNNEL_TOKEN;
+  const ensured = await cf.ensureCfAgentTunnel(cfEnv, {
+    slug: opts.slug,
+    serverHostname,
+    agentPort: opts.state.port,
+    originHost: "127.0.0.1",
+    dns: false,
+    stored: {
+      tunnelId: opts.state.agentTunnel?.tunnelId,
+      tunnelToken: storedToken,
+    },
+    log: (s) => console.log(`  ${s}`),
+  });
+  const envFile = writeAgentTunnelEnv(opts.brandRoot, ensured.tunnelToken);
+  ensureAgentTunnelContainer({ env: process.env, envFile, recreate: true });
+  const dns = await cf.ensureCfAgentTunnelDns(cfEnv, {
+    hostname: ensured.hostname,
+    tunnelId: ensured.tunnelId,
+    slug: opts.slug,
+  });
+  console.log(`  DNS agent ${ensured.hostname} → tunnel dédié (${dns})`);
+  if (sharedTunnelId) {
+    try {
+      const removed = await cf.removeCfTunnelAgentRule(cfEnv, {
+        tunnelId: sharedTunnelId,
+        agentHostname: ensured.hostname,
+      });
+      if (removed) {
+        console.log(
+          "✓ règle agent résiduelle retirée du tunnel de l'instance",
+        );
+      }
+    } catch (e) {
+      console.log(
+        `⚠ retrait règle agent résiduelle (best-effort) : ${(e as Error)?.message || e}`,
+      );
+    }
+  }
+  opts.state.agentTunnel = {
+    tunnelId: ensured.tunnelId,
+    hostname: ensured.hostname,
+    container: AGENT_TUNNEL_CONTAINER,
+    provisionedAt: new Date().toISOString(),
+  };
+  saveAgentState(opts.brandRoot, opts.state);
+  console.log(`✓ tunnel agent dédié : ${ensured.agentUrl}`);
+  return {
+    agentUrl: ensured.agentUrl,
+    hostname: ensured.hostname,
+    tunnelId: ensured.tunnelId,
+  };
+}
+
+/**
  * (Re)démarre le container cloudflared dédié agent (T7 — network host,
  * restart unless-stopped, token via --env-file 600 uniquement).
- * `recreate: true` (enroll — token potentiellement neuf) → rm -f + run ;
+ * `recreate: true` (enroll / migration — token potentiellement neuf) → rm -f + run ;
  * `recreate: false` (agent up — reprise) → start si arrêté, run si absent.
  */
 function ensureAgentTunnelContainer(opts: {
@@ -2426,15 +2601,83 @@ async function runAgentSubcommand(
             : ""),
       );
     } else {
-      console.log(
-        "  tunnel : dédié non provisionné (legacy partagé ? relancer enroll --slug …)",
-      );
+      console.log("  tunnel : dédié non provisionné");
     }
     return;
   }
 
+  if (action === "rm") {
+    const state = loadOrInitAgentState(brandRoot);
+    const tun = dockerContainerState(AGENT_TUNNEL_CONTAINER);
+    if (tun.exists) run("docker", ["rm", "-f", AGENT_TUNNEL_CONTAINER], env);
+    const parsed = parseAgentPublicUrl(state.agentUrl || "");
+    const slug = (
+      args.slug ||
+      parsed?.slugGuess ||
+      ""
+    )
+      .trim()
+      .toLowerCase();
+    const hostname = (state.agentTunnel?.hostname || parsed?.hostname || "").trim();
+    if (state.agentTunnel?.tunnelId || hostname || slug) {
+      if (!slug) {
+        throw new Error(
+          "agent rm : --slug <slug> requis (impossible de dériver le slug depuis l'URL agent)",
+        );
+      }
+      const cf = await importTunnelCf(paths.kit);
+      const cfVars = resolveCliCfEnv(brandRoot);
+      const cfEnv = cfEnvFromMerged(cf, cfVars);
+      if (!cfEnv) {
+        const missing = cf.missingCfTunnelEnvKeys({
+          ...process.env,
+          ...cfVars,
+        } as NodeJS.ProcessEnv);
+        throw new Error(
+          `agent rm : contrat Cloudflare incomplet (${missing.join(", ")} requis) ` +
+            `pour retirer le tunnel/DNS agent de ${slug}. Poser CREEZIO_CF_* ` +
+            `dans l'env ou le .env marque, puis relancer \`creezio server-docker agent rm --slug ${slug}\`.`,
+        );
+      }
+      const brandId = String(composeEnv(paths).BRAND_ID);
+      const kc = await lookupKernelTunnelForSlug(
+        paths.kit,
+        brandRoot,
+        slug,
+        brandId,
+      );
+      if (kc?.tunnelId && hostname) {
+        try {
+          await cf.removeCfTunnelAgentRule(cfEnv, {
+            tunnelId: kc.tunnelId,
+            agentHostname: hostname,
+          });
+        } catch (e) {
+          console.log(
+            `⚠ retrait règle agent résiduelle (best-effort) : ${(e as Error)?.message || e}`,
+          );
+        }
+      }
+      const r = await cf.deprovisionCfAgentTunnel(cfEnv, {
+        slug,
+        hostname: hostname || undefined,
+        tunnelId: state.agentTunnel?.tunnelId || undefined,
+        log: (s) => console.log(`  ${s}`),
+      });
+      console.log(
+        `✓ Cloudflare agent nettoyé — dns: ${r.removed.dns.length} enregistrement(s), tunnel: ${r.removed.tunnel || "aucun"}`,
+      );
+    }
+    const envFile = agentTunnelEnvPath(brandRoot);
+    if (fs.existsSync(envFile)) fs.rmSync(envFile, { force: true });
+    state.agentTunnel = null;
+    saveAgentState(brandRoot, state);
+    console.log("✓ ressources tunnel agent retirées (host-agent inchangé — agent down pour l'arrêter)");
+    return;
+  }
+
   if (action !== "up") {
-    throw new Error(`agent ${action} inconnu (up|down|status|token)`);
+    throw new Error(`agent ${action} inconnu (up|down|status|rm|token)`);
   }
 
   const state = loadOrInitAgentState(brandRoot, args);
@@ -2510,27 +2753,54 @@ async function runAgentSubcommand(
   console.log(
     `✓ agent hôte flotte : http://127.0.0.1:${state.port}/agent/ping (hostId ${state.hostId})`,
   );
-  // T7 : si le tunnel dédié a déjà été provisionné (enroll), s'assurer que
-  // son connecteur tourne — reprise après reboot/rm sans re-enroll.
   const tunnelEnvFile = agentTunnelEnvPath(brandRoot);
-  if (fs.existsSync(tunnelEnvFile)) {
+  const envFileExists = fs.existsSync(tunnelEnvFile);
+  if (
+    needsDedicatedAgentTunnelMigration({
+      adminUrl: state.adminUrl,
+      agentUrl: state.agentUrl,
+      fleetKey: state.fleetKey,
+      agentTunnel: state.agentTunnel,
+      envFileExists,
+    })
+  ) {
+    const parsed = parseAgentPublicUrl(state.agentUrl || "");
+    const slug = (args.slug || parsed?.slugGuess || "").trim().toLowerCase();
+    if (!slug) {
+      throw new Error(
+        "hôte enrôlé sans tunnel dédié — --slug <slug> requis pour migrer " +
+          "(impossible de dériver le slug depuis l'URL agent). " +
+          "Relancer `creezio server-docker agent up --slug <slug>`.",
+      );
+    }
+    const brandId = String(composeEnv(paths).BRAND_ID);
+    await provisionDedicatedAgentTunnel({
+      kit: paths.kit,
+      brandRoot,
+      brandId,
+      state,
+      slug,
+      serverHostname: parsed?.serverHostname,
+    });
+  } else if (envFileExists) {
     ensureAgentTunnelContainer({ env, envFile: tunnelEnvFile, recreate: false });
     console.log(
       `✓ tunnel agent dédié : container ${AGENT_TUNNEL_CONTAINER} up` +
         (state.agentTunnel ? ` (${state.agentTunnel.hostname})` : ""),
     );
   }
-  console.log(
-    "  enrôler auprès de l'admin : creezio server-docker enroll --admin <url> --token <enrollToken> --slug <slug>",
-  );
+  if (!state.adminUrl) {
+    console.log(
+      "  enrôler auprès de l'admin : creezio server-docker enroll --admin <url> --token <enrollToken> --slug <slug>",
+    );
+  }
 }
 
 /**
  * Enrôlement du VPS auprès de l'admin flotte :
  *   1. token agent dédié à l'admin (hashé localement, révocable)
- *   2. tunnel cloudflared DÉDIÉ agent (T7 — container creezio-agent-tunnel,
- *      API Cloudflare directe, si --slug) : provision → connecteur up →
- *      bascule DNS → retrait de la règle legacy partagée (best-effort)
+ *   2. tunnel cloudflared DÉDIÉ agent (T7) si --slug : même geste que
+ *      `agent up` (provision → connecteur → bascule DNS)
  *   3. POST {admin}/admin/api/enroll (authentifié par enrollToken)
  */
 async function runEnrollSubcommand(
@@ -2546,9 +2816,10 @@ async function runEnrollSubcommand(
   }
   const brandRoot = paths.brandRoot;
   const state = loadOrInitAgentState(brandRoot, args);
-  // Préflight UFW fail-closed : l'ingress agent.{slug} réservé ci-dessous
-  // pointe sur 172.17.0.1:<port> depuis le conteneur serveur — sans la
-  // règle 172.16.0.0/12, l'hôte est enrôlé mais injoignable (silencieux).
+  // Préflight UFW fail-closed : le connecteur dédié (network host) joint
+  // l'agent en loopback ; les stacks compose joignent 172.17.0.1:<port>
+  // depuis 172.16.0.0/12 — sans la règle, l'hôte est enrôlé mais
+  // injoignable (silencieux).
   assertUfwFleetRule({ port: state.port, label: "host-agent" });
   const agentRunning = dockerContainerState(AGENT_CONTAINER).running;
   if (!agentRunning) {
@@ -2569,99 +2840,15 @@ async function runEnrollSubcommand(
         "--slug <slug> (tunnel agent dédié via API Cloudflare) ou --agent-url <url> requis",
       );
     }
-    const cf = await importTunnelCf(paths.kit);
-    const cfVars = resolveCliCfEnv(brandRoot);
-    const cfEnv = cfEnvFromMerged(cf, cfVars);
-    if (!cfEnv) {
-      throw new Error(
-        `contrat Cloudflare incomplet (${cf.missingCfTunnelEnvKeys({ ...process.env, ...cfVars } as NodeJS.ProcessEnv).join(", ")} requis) pour le tunnel agent de ${slug}`,
-      );
-    }
-    // Hostname CRM de l'instance porteuse du slug (store kernel /data —
-    // l'instance a déjà auto-provisionné son tunnel au boot) : l'hostname
-    // agent en dérive (URL publique inchangée vs legacy partagé).
-    const stack = await importInstanceStack(paths.kit);
     const brandId = String(composeEnv(paths).BRAND_ID);
-    const registry = loadServerRegistry(brandRoot, brandId);
-    let kc: ReturnType<typeof stack.readKernelTunnelConfig> = null;
-    for (const i of registry.instances) {
-      if (i.name !== slug) continue;
-      kc = stack.readKernelTunnelConfig(brandRoot, i, brandId);
-      break;
-    }
-    if (!kc) {
-      // Repli : slug stocké différent du nom d'instance — scan complet.
-      for (const i of registry.instances) {
-        const c = stack.readKernelTunnelConfig(brandRoot, i, brandId);
-        if (c && c.slug === slug) {
-          kc = c;
-          break;
-        }
-      }
-    }
-    if (!kc?.tunnelId || !kc.tunnelToken) {
-      throw new Error(
-        `tunnel kernel introuvable pour slug ${slug} — l'instance a-t-elle booté avec cf.env (CREEZIO_CF_*) ?`,
-      );
-    }
-    console.log(
-      `tunnel agent dédié ${slug} → 127.0.0.1:${state.port} (API Cloudflare, container ${AGENT_TUNNEL_CONTAINER})…`,
-    );
-    // 1. Provision du tunnel dédié (ingress seul — la bascule DNS attend le
-    //    connecteur : le chemin legacy partagé sert le hostname sans coupure).
-    const storedToken = readEnvFileValues(agentTunnelEnvPath(brandRoot))
-      .TUNNEL_TOKEN;
-    const ensured = await cf.ensureCfAgentTunnel(cfEnv, {
-      slug,
-      serverHostname: kc.hostname,
-      agentPort: state.port,
-      originHost: "127.0.0.1",
-      dns: false,
-      stored: {
-        tunnelId: state.agentTunnel?.tunnelId,
-        tunnelToken: storedToken,
-      },
-      log: (s) => console.log(`  ${s}`),
-    });
-    // 2. Token → env file 600, connecteur dédié (network host, restart
-    //    unless-stopped ; respawn surveillé ensuite par le host-agent).
-    const envFile = writeAgentTunnelEnv(brandRoot, ensured.tunnelToken);
-    ensureAgentTunnelContainer({ env: process.env, envFile, recreate: true });
-    // 3. Bascule DNS : CNAME agent → tunnel dédié (upsert idempotent — met à
-    //    jour un CNAME legacy pointant le tunnel partagé du serveur).
-    const dns = await cf.ensureCfAgentTunnelDns(cfEnv, {
-      hostname: ensured.hostname,
-      tunnelId: ensured.tunnelId,
+    const provisioned = await provisionDedicatedAgentTunnel({
+      kit: paths.kit,
+      brandRoot,
+      brandId,
+      state,
       slug,
     });
-    console.log(`  DNS agent ${ensured.hostname} → tunnel dédié (${dns})`);
-    // 4. Migration douce : retirer la règle agent legacy du tunnel PARTAGÉ
-    //    du serveur (inerte après la bascule DNS) — best-effort, jamais
-    //    bloquant pour l'enroll.
-    try {
-      const removed = await cf.removeCfTunnelAgentRule(cfEnv, {
-        tunnelId: kc.tunnelId,
-        agentHostname: ensured.hostname,
-      });
-      if (removed) {
-        console.log(
-          "✓ règle agent legacy retirée du tunnel du serveur (remplacée par le tunnel dédié)",
-        );
-      }
-    } catch (e) {
-      console.log(
-        `⚠ retrait règle agent legacy (best-effort) : ${(e as Error)?.message || e}`,
-      );
-    }
-    state.agentTunnel = {
-      tunnelId: ensured.tunnelId,
-      hostname: ensured.hostname,
-      container: AGENT_TUNNEL_CONTAINER,
-      provisionedAt: new Date().toISOString(),
-    };
-    saveAgentState(brandRoot, state);
-    agentUrl = ensured.agentUrl;
-    console.log(`✓ tunnel agent dédié : ${agentUrl}`);
+    agentUrl = provisioned.agentUrl;
   }
 
   const { id, token: agentToken } = issueAgentToken(

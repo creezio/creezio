@@ -34,15 +34,13 @@ creezio server-docker enroll --admin <url> --token <enrollToken> --slug <slug>
 
 ## Tunnel dédié agent (T7)
 
-L'ingress public `agent.{slug}.{zone}` ne passe plus par le cloudflared
-d'un serveur applicatif : `enroll` provisionne un tunnel Cloudflare dédié
-et lance son connecteur dans un container frère **`creezio-agent-tunnel`**
+L'ingress public `agent.{slug}.{zone}` vit sur un tunnel Cloudflare dédié
+dont le connecteur tourne dans un container frère **`creezio-agent-tunnel`**
 (image officielle cloudflared, network host, `--restart unless-stopped`,
-token dans `{brandRoot}/docker-data/agent-tunnel.env` chmod 600). L'agent
-surveille ce container (respawn borné — `@creezio/fleet` `agent-tunnel.ts`)
-et `agent up` le relance s'il manque. Un hôte legacy (ingress partagé) est
-migré en douceur au prochain `enroll` : bascule DNS après démarrage du
-connecteur, puis retrait de la règle agent du tunnel partagé.
+token dans `{brandRoot}/docker-data/agent-tunnel.env` chmod 600). `enroll`
+et `agent up` le provisionnent ; `agent up` migre un hôte déjà enrôlé
+sans tunnel dédié. L'agent surveille ce container (respawn borné —
+`@creezio/fleet` `agent-tunnel.ts`). `agent rm` retire tunnel + DNS agent.
 
 ## Env principales
 
@@ -53,7 +51,6 @@ connecteur, puis retrait de la règle agent du tunnel partagé.
 | `CREEZIO_AGENT_BRAND_ROOTS` | — | Racines marque séparées par `:` |
 | `CREEZIO_AGENT_ADMIN_URL` / `CREEZIO_AGENT_FLEET_KEY` | — | Opt-in updates en pull (posés par `enroll`) |
 | `CREEZIO_AGENT_TUNNEL_CONTAINER` | `creezio-agent-tunnel` | Container cloudflared dédié agent surveillé (T7) |
-| `CREEZIO_AGENT_TUNNEL_WATCH` | `1` | `0` = désactive la surveillance respawn du tunnel dédié |
 
 ## Liens
 
