@@ -48,7 +48,7 @@ function bootServer(dataDir) {
     manifest,
     userDataDir: dataDir,
     isPackaged: false,
-    resourcesRoot: path.join(ROOT, "packages/electron-shell/resources"),
+    resourcesRoot: path.join(ROOT, "packages/host-runtime/resources"),
     electronDirname: electronDir,
   });
   const secret = process.env.AUTH_SECRET || "";

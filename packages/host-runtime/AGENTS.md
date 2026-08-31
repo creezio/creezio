@@ -41,8 +41,8 @@ jamais dans electron-shell.
    `test-phase-electron-shell-frozen-exports` = rouge).
 2. Chemins ressources : `kitOsResourcesRoot()` / `kitOsVendorDir()` vivent
    dans `@creezio/platform-core` et résolvent le package
-   `@creezio/electron-shell` (qui ship `resources/vendor`). Ne pas
-   dupliquer cette résolution.
+  `@creezio/host-runtime` (qui ship `resources/vendor`). Ne pas
+  dupliquer cette résolution.
 3. `envForNodeScriptSpawn` vit dans `@creezio/platform-core`
    (`node-spawn-env.ts`) — ré-exporté ici pour compat.
 4. Zéro changement de comportement runtime sans gate : hermes

@@ -36,7 +36,7 @@ jamais dans electron-shell) que vit tout nouveau code recherche.
    `test-phase-electron-shell-frozen-exports` = rouge).
 2. Le chemin du script de cohérence (`meiliCoherenceScriptPath`) résout
    `kitOsResourcesRoot()` (platform-core) → `resources/scripts` du package
-   electron-shell. Ne pas changer sans mettre à jour la résolution ET les
+   host-runtime. Ne pas changer sans mettre à jour la résolution ET les
    images Docker.
 3. Versionner `INDEX_SCHEMA_VERSION` à chaque changement de schéma d'index
    (déclenche la réindexation par fingerprint).

@@ -11,8 +11,8 @@
 > **ré-exporte tout** avec `@deprecated` — aucun import historique ne casse,
 > mais la surface de ré-exports est figée
 > (gate `test-phase-electron-shell-frozen-exports`) : le nouveau code host
-> s'écrit dans les nouveaux packages. `resources/vendor` et `resources/bin`
-> restent shippés ici.
+> s'écrit dans les nouveaux packages. `resources/{vendor,scripts,bin}`
+> vivent dans `@creezio/host-runtime` (P1.c).
 
 Ce package est volontairement brand-agnostic : les marques fournissent leur `AppManifest`, leurs chemins, leurs stores locaux, leurs prefixes d'env et leurs hooks verticaux.
 

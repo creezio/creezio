@@ -19,15 +19,15 @@ var/
 apps/*/ui/node_modules/
 apps/*/ui/.next/
 
-# Binaires OS kit (téléchargés via electron-shell/scripts/ensure-kit-binaries.mjs)
-# Jamais versionnés (packaging client slim).
-packages/electron-shell/resources/bin/meili
-packages/electron-shell/resources/bin/meili.exe
-packages/electron-shell/resources/bin/meilisearch
-packages/electron-shell/resources/bin/meilisearch-linux
-packages/electron-shell/resources/bin/meilisearch-win.exe
-packages/electron-shell/resources/bin/cloudflared
-packages/electron-shell/resources/bin/cloudflared.exe
+# Binaires OS kit (ensure-kit-binaries — host-runtime/resources/bin).
+# Jamais versionnés (packaging client slim + image serveur les télécharge).
+packages/host-runtime/resources/bin/meili
+packages/host-runtime/resources/bin/meili.exe
+packages/host-runtime/resources/bin/meilisearch
+packages/host-runtime/resources/bin/meilisearch-linux
+packages/host-runtime/resources/bin/meilisearch-win.exe
+packages/host-runtime/resources/bin/cloudflared
+packages/host-runtime/resources/bin/cloudflared.exe
 
 
 .github-token

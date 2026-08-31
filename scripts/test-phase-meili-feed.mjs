@@ -131,7 +131,7 @@ test("D2 boot Meili saute la réindexation quand le fingerprint est à jour", ()
   const probeSrc = fs.readFileSync(
     path.join(
       ROOT,
-      "packages/electron-shell/resources/scripts/meili-coherence-query.cjs",
+      "packages/host-runtime/resources/scripts/meili-coherence-query.cjs",
     ),
     "utf8",
   );

@@ -255,9 +255,9 @@ test("updater reduce + builder config", () => {
   assert.ok(
     (clientCfg.files || []).some(
       (e) =>
-        typeof e === "string" && e.includes("electron-shell/resources/bin"),
+        typeof e === "string" && e.includes("host-runtime/resources/bin"),
     ),
-    "asar exclut electron-shell/resources/bin",
+    "asar exclut host-runtime/resources/bin",
   );
   assert.ok(
     !extras.some(

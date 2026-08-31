@@ -35,17 +35,12 @@ test("docker/server artefacts présents", () => {
   const df = fs.readFileSync(path.join(dockerServer, "Dockerfile"), "utf8");
   assert.match(df, /brand-kernel-harness/);
   assert.match(df, /CREEZIO_HTTP_HOST/);
-  // P1.b : le harness serveur consomme @creezio/host-runtime + @creezio/search
-  // (plus de dépendance fonctionnelle à electron-shell). MAIS l'image garde
-  // electron-shell dans son arbre (il ship resources/vendor hermes/n8n résolus
-  // par kitOsResourcesRoot) et le paquet npm `electron` y atterrit encore via
-  // le lockfile marque (devDependency serveur qui satisfait le peer optionnel
-  // des packages kit → dev=false). Le skip binaire reste donc requis.
-  // TODO(P1.c) : déplacer resources/vendor vers @creezio/host-runtime, couper
-  // electron-shell de l'arbre serveur, puis asserter ici l'ABSENCE de
-  // node_modules/electron dans l'image (ne PAS poser l'assertion avant —
-  // elle serait fausse, voir docker/server/Dockerfile stage deps).
+  // P1.c : vendor+scripts+bin dans @creezio/host-runtime ; l'image PURGE
+  // electron / electron-shell / electron-updater après npm ci (stage deps).
   assert.match(df, /ELECTRON_SKIP_BINARY_DOWNLOAD=1/);
+  assert.match(df, /rm -rf node_modules\/electron/);
+  assert.match(df, /node_modules\/@creezio\/electron-shell/);
+  assert.doesNotMatch(df, /TODO \(suivi P1\.c\)/);
   // Chantier embeds : Meili Linux embarqué dans l'image (plus de sql-fallback).
   assert.match(df, /meilisearch-linux-amd64/);
   assert.match(df, /MEILI_BINARY=\/opt\/creezio\/bin\/meilisearch/);

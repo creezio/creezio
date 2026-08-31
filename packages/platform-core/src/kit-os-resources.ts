@@ -1,7 +1,11 @@
 /**
- * Ressources OS natives shippées par le kit (@creezio/electron-shell),
+ * Ressources OS natives shippées par le kit (@creezio/host-runtime),
  * pas par la marque. Toute app Creezio résout Hermes/n8n via ce chemin
  * si `resourcesRoot` marque n’embarque pas de vendor.
+ *
+ * P1.c (0.20) : `resources/{vendor,scripts,bin}` a quitté electron-shell
+ * pour que l’image serveur headless n’embarque plus `@creezio/electron-shell`
+ * ni le wrapper npm `electron`.
  */
 import fs from "node:fs";
 import path from "node:path";
@@ -9,7 +13,8 @@ import { createRequire } from "node:module";
 import { createAppRequire } from "./app-require.js";
 import { fileURLToPath } from "node:url";
 
-let cachedRoot: string | null = null;
+let cachedShellRoot: string | null = null;
+let cachedHostRoot: string | null = null;
 
 /**
  * Dossier du module compilé (dist/host ou dist-cjs/host).
@@ -46,46 +51,46 @@ function resolveFromEntry(entry: string): string | null {
   return fs.existsSync(path.join(root, "package.json")) ? root : null;
 }
 
-/** Racine package electron-shell (…/packages/electron-shell). */
-export function electronShellPackageRoot(): string {
-  if (cachedRoot && fs.existsSync(cachedRoot)) return cachedRoot;
-
-  // 1) Depuis ce module (fiable en asar ESM + CJS)
+function resolvePackageRoot(
+  spec: "@creezio/electron-shell" | "@creezio/host-runtime",
+): string | null {
   try {
     const req = createRequire(path.join(compiledHostDir(), "kit-os-resources.js"));
-    const entry = req.resolve("@creezio/electron-shell");
-    const root = resolveFromEntry(entry);
-    if (root) {
-      cachedRoot = root;
-      return cachedRoot;
-    }
+    const root = resolveFromEntry(req.resolve(spec));
+    if (root) return root;
   } catch {
     /* fallthrough */
   }
-
-  // 2) Depuis cwd (dev / harness)
   try {
     const req = createAppRequire();
-    const entry = req.resolve("@creezio/electron-shell");
-    const root = resolveFromEntry(entry);
-    if (root) {
-      cachedRoot = root;
-      return cachedRoot;
-    }
+    const root = resolveFromEntry(req.resolve(spec));
+    if (root) return root;
   } catch {
     /* fallthrough */
   }
-
-  // 3) Fallback : package frère (node_modules/@creezio/* ou packages/* —
-  // ce module vit désormais dans platform-core, remonter de 2 pointe sur
-  // le dossier parent commun, puis electron-shell).
-  cachedRoot = path.resolve(compiledHostDir(), "../../electron-shell");
-  return cachedRoot;
+  return null;
 }
 
-/** `packages/electron-shell/resources` — vendor Hermes/n8n du kit. */
+/** Racine package electron-shell (…/packages/electron-shell). */
+export function electronShellPackageRoot(): string {
+  if (cachedShellRoot && fs.existsSync(cachedShellRoot)) return cachedShellRoot;
+  const resolved = resolvePackageRoot("@creezio/electron-shell");
+  cachedShellRoot =
+    resolved ?? path.resolve(compiledHostDir(), "../../electron-shell");
+  return cachedShellRoot;
+}
+
+function hostRuntimePackageRoot(): string {
+  if (cachedHostRoot && fs.existsSync(cachedHostRoot)) return cachedHostRoot;
+  const resolved = resolvePackageRoot("@creezio/host-runtime");
+  cachedHostRoot =
+    resolved ?? path.resolve(compiledHostDir(), "../../host-runtime");
+  return cachedHostRoot;
+}
+
+/** `packages/host-runtime/resources` — vendor Hermes/n8n + scripts + bin kit. */
 export function kitOsResourcesRoot(): string {
-  return path.join(electronShellPackageRoot(), "resources");
+  return path.join(hostRuntimePackageRoot(), "resources");
 }
 
 export function kitOsVendorDir(name: "hermes-agent" | "n8n"): string {

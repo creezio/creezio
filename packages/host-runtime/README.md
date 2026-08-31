@@ -36,9 +36,9 @@ le serveur Docker headless — sans jamais importer Electron statiquement.
   `@creezio/product-hub`, `@creezio/brand-config`, `@creezio/observability`,
   `@creezio/browser-host`. `@creezio/electron-shell` dépend de ce package —
   jamais l'inverse.
-- Les binaires/vendor kit (`resources/vendor`, `resources/bin`) restent
-  shippés par `@creezio/electron-shell` et résolus par
-  `kitOsResourcesRoot()` (platform-core) — TODO P1.c : les déménager ici.
+- Les binaires/vendor kit (`resources/vendor`, `resources/scripts`,
+  `resources/bin`) sont shippés ICI et résolus par
+  `kitOsResourcesRoot()` (platform-core).
 
 ## Compat
 
