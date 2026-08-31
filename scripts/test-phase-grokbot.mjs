@@ -6,9 +6,9 @@
  * Verrouille : exports kit (migrations + client + mount), schéma
  * grokbot_settings / grokbot_agents, token masqué (jamais en clair),
  * création d'agent (normalisation prompt/repo/modèle + Bearer), miroir
- * local, runs (follow-up, cancel), cache repositories (rate limit,
- * refresh, 429), usage / artifacts passthrough, split UI launch/usage
- * vs runs (pas de poll GET /repositories).
+ * local, runs (follow-up, cancel, unarchive), cache repositories
+ * (rate limit, refresh, 429), usage / artifacts passthrough, split UI
+ * launch/usage vs runs (poll ciblé agent ouvert, pas GET /repositories).
  */
 import assert from "node:assert/strict";
 import fs from "node:fs";
@@ -163,6 +163,9 @@ function createFakeCursorApi() {
       });
     }
     if (p === `/v1/agents/${AGENT_ID}/archive`) {
+      return respond(200, { id: AGENT_ID });
+    }
+    if (p === `/v1/agents/${AGENT_ID}/unarchive`) {
       return respond(200, { id: AGENT_ID });
     }
     return respond(404, { error: "not_found" });
@@ -500,6 +503,76 @@ test("grokbot : GET usage / artifacts / download passthrough mock", async () => 
   assert.equal(missingPath.body.error, "path_required");
 });
 
+test("grokbot : POST unarchive + POST cancel (mock)", async () => {
+  const mod = await loadDist();
+  const db = await createDb(mod.grokbotMigrations());
+  const fake = createFakeCursorApi();
+  const mount = mod.createGrokbotMount({
+    defaults: { apiKey: "key_test" },
+    fetchImpl: fake.fetchImpl,
+  });
+
+  const created = await call(mount, {
+    method: "POST",
+    subPath: "agents",
+    db,
+    body: { text: "Ajouter un README", repoUrl: "https://github.com/exemple/depot" },
+  });
+  assert.equal(created.status, 200);
+
+  const archive = await call(mount, {
+    method: "POST",
+    subPath: `agents/${AGENT_ID}/archive`,
+    db,
+  });
+  assert.equal(archive.status, 200);
+  const afterArchive = await call(mount, {
+    method: "GET",
+    subPath: "agents",
+    db,
+    query: { source: "local" },
+  });
+  assert.equal(afterArchive.body.items[0].status, "ARCHIVED");
+
+  const unarchive = await call(mount, {
+    method: "POST",
+    subPath: `agents/${AGENT_ID}/unarchive`,
+    db,
+  });
+  assert.equal(unarchive.status, 200);
+  assert.equal(unarchive.body.ok, true);
+  assert.equal(unarchive.body.id, AGENT_ID);
+  const unarchiveCall = fake.calls.find((c) =>
+    String(c.url).includes(`/v1/agents/${AGENT_ID}/unarchive`),
+  );
+  assert.ok(unarchiveCall, "POST unarchive doit atteindre l'amont");
+  assert.equal(unarchiveCall.init.method, "POST");
+  const afterUnarchive = await call(mount, {
+    method: "GET",
+    subPath: "agents",
+    db,
+    query: { source: "local" },
+  });
+  assert.equal(afterUnarchive.body.items[0].status, "IDLE");
+
+  const cancel = await call(mount, {
+    method: "POST",
+    subPath: `agents/${AGENT_ID}/runs/${RUN_ID}/cancel`,
+    db,
+  });
+  assert.equal(cancel.status, 200);
+  assert.equal(cancel.body.ok, true);
+  const cancelCall = fake.calls.find((c) =>
+    String(c.url).includes(`/v1/agents/${AGENT_ID}/runs/${RUN_ID}/cancel`),
+  );
+  assert.ok(cancelCall, "POST cancel doit atteindre l'amont");
+  assert.equal(cancelCall.init.method, "POST");
+  assert.ok(
+    !JSON.stringify(cancel.body).includes("key_test"),
+    "le token Cursor ne doit pas fuiter dans le body cancel",
+  );
+});
+
 test("grokbot : UI split launch/usage vs runs — pas de poll repositories", () => {
   const ui = path.join(ROOT, "packages/grokbot/ui");
   const read = (name) => fs.readFileSync(path.join(ui, name), "utf8");
@@ -535,6 +608,23 @@ test("grokbot : UI split launch/usage vs runs — pas de poll repositories", () 
   assert.doesNotMatch(runsCode, /fetch\([^)]*\/repositories/);
   assert.doesNotMatch(runsCode, /fetch\([^)]*\/models/);
   assert.doesNotMatch(clientCode, /fetch\([^)]*\/models/);
+
+  assert.match(runs, /AlertDialog/);
+  assert.match(runs, /Skeleton/);
+  assert.match(runs, /Textarea/);
+  assert.match(runs, /asChild/);
+  assert.match(runs, /unarchive|Désarchiver|onUnarchive/);
+  assert.doesNotMatch(runsCode, /<textarea[\s>]/);
+
+  assert.match(client, /GrokbotAgentList/);
+  assert.match(client, /LIVE_POLL_MS/);
+  assert.match(client, /IDLE_POLL_MS/);
+  assert.match(client, /agents\/\$\{encodeURIComponent\(agentId\)\}/);
+  assert.match(client, /n'est pas enregistré sur ce serveur/);
+  assert.match(client, /cursor_api_key_missing/);
+  assert.match(client, /cursor_api_error/);
+  assert.doesNotMatch(client, /EventSource|text\/event-stream|\/stream/);
+  assert.doesNotMatch(runs, /EventSource|text\/event-stream|\/stream/);
 
   for (const src of [client, launch, usage, runs].map(strip)) {
     assert.doesNotMatch(src, /api\.cursor\.com/);
