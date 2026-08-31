@@ -28,19 +28,22 @@ test("factory 2-repos : monorepo + repo admin dédié (sans réseau)", () => {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "creezio-two-repos-"));
   const appDir = path.join(tmp, "proofbrand");
   try {
-    const r = runCli([
-      "new-app",
-      "--name",
-      "ProofBrand",
-      "--id",
-      "proofbrand",
-      "--domain",
-      "proofbrand.example",
-      "--out",
-      appDir,
-      "--no-push",
-      "--force",
-    ]);
+    const r = runCli(
+      [
+        "new-app",
+        "--name",
+        "ProofBrand",
+        "--id",
+        "proofbrand",
+        "--domain",
+        "proofbrand.example",
+        "--out",
+        appDir,
+        "--no-push",
+        "--force",
+      ],
+      { env: { ...process.env, CREEZIO_SKIP_BRAND_DIST: "1" } },
+    );
     assert.equal(r.status, 0, r.stderr + "\n" + r.stdout);
     assert.match(r.stdout, /--no-push/, "no-push doit être explicite");
 
@@ -283,18 +286,21 @@ Gestion simple pour test gate factory 2-repos.
     );
     const appDir = path.join(tmp, "twobrand");
     const adminDir = path.join(tmp, "custom-admin");
-    const apply = runCli([
-      "brand",
-      "apply",
-      "--spec",
-      specDir,
-      "--out",
-      appDir,
-      "--admin-out",
-      adminDir,
-      "--no-push",
-      "--force",
-    ]);
+    const apply = runCli(
+      [
+        "brand",
+        "apply",
+        "--spec",
+        specDir,
+        "--out",
+        appDir,
+        "--admin-out",
+        adminDir,
+        "--no-push",
+        "--force",
+      ],
+      { env: { ...process.env, CREEZIO_SKIP_BRAND_DIST: "1" } },
+    );
     assert.equal(apply.status, 0, apply.stderr + "\n" + apply.stdout);
     assert.ok(fs.existsSync(path.join(adminDir, "server-admin.json")));
     assert.ok(!fs.existsSync(path.join(appDir, "admin")));

@@ -12,7 +12,10 @@ Inclus :
 - scripts binaires `publish-desktop`, `remote-build-win`, `desktop-build-status`, `resolve-config` ;
 - parsing `latest.yml` ;
 - lecture des feeds client/serveur ;
-- agregat de statut local, remote, logs, artefacts et feed.
+- agregat de statut local, remote, logs, artefacts et feed ;
+- smokes/embarques generiques (`scripts/e2e-browser-parcours.mjs`,
+  `scripts/smoke-tunnel*.mjs`) et helper `scripts/meili-list-poll.mjs`
+  (assertions « cree puis liste » compatibles coherence eventuelle Meili).
 
 Hors perimetre :
 
@@ -116,6 +119,26 @@ creezio-remote-build-win --brand=certivan --publish
 ### Build status
 
 `collectDesktopBuildStatus` combine package version, artefacts locaux, `latest.yml`, feed public, logs `/tmp`, processus locaux et option `--remote`.
+
+### Smokes et coherence eventuelle Meili
+
+`scripts/e2e-browser-parcours.mjs` (consomme par les marques via un wrapper
+genere) asserte « cree puis liste » sur l'entite primaire configuree. Contrat
+kit delibere : pas de write-through — la liste d'une entite indexee repond
+`engine:"indexing"` + 0 item pendant l'indexation initiale et le client
+reessaie. Le script utilise `scripts/meili-list-poll.mjs` :
+
+1. `assertModuleRowHydratedById` — read-after-write deterministe via
+   `GET ?ids=<id>` (hydratation PK = chemin SQL legitime, jamais Meili) ;
+2. `pollModuleListUntilVisible` — polling borne (60 s / 250 ms) jusqu'a
+   visibilite dans la liste ; echec explicite immediat si `engine:"meili"`
+   (index fige) sans le doc, echec borne explicite sinon.
+
+L'indexation doit tourner pour que la visibilite liste soit testable :
+`MEILI_SKIP_INDEX` vaut desormais `"0"` par defaut dans l'e2e (opt-out
+possible pour une entite primaire volontairement hors index). Les smokes
+generes par la factory (`test:metier-parcours`, `test:mini-prd-core`)
+importent le meme helper. Gate : `scripts/test-phase-meili-smoke-polling.mjs`.
 
 ## Intégration marques
 

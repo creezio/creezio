@@ -1,5 +1,32 @@
 # @creezio/electron-shell
 
+## 0.22.0
+
+### Patch Changes
+
+- @creezio/brand-config@0.22.0
+- @creezio/shell@0.22.0
+- @creezio/platform-core@0.22.0
+- @creezio/product-hub@0.22.0
+- @creezio/search@0.22.0
+- @creezio/host-runtime@0.22.0
+- @creezio/observability@0.22.0
+- @creezio/browser-host@0.22.0
+
+## 0.21.0
+
+### Patch Changes
+
+- Updated dependencies [ab09f4f]
+  - @creezio/search@0.21.0
+  - @creezio/host-runtime@0.21.0
+  - @creezio/brand-config@0.21.0
+  - @creezio/shell@0.21.0
+  - @creezio/platform-core@0.21.0
+  - @creezio/product-hub@0.21.0
+  - @creezio/observability@0.21.0
+  - @creezio/browser-host@0.21.0
+
 ## 0.20.0
 
 ### Minor Changes

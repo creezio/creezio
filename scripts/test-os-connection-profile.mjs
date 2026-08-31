@@ -111,6 +111,7 @@ test("connection + setup HTTP sur harness probe brand", async () => {
   );
 
   process.env.CREEZIO_NATIVE_WARM = "0";
+  process.env.CREEZIO_ALLOW_NO_MEILI = "1";
   const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "os-conn-"));
   const handle = await startBrandKernelHarness({
     brandId: "tempoflow3",

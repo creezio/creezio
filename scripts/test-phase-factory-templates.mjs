@@ -121,10 +121,64 @@ test("metier-parcours générique : première entité du spec, jamais « notes �
   const { tests } = await loadGenerators();
   const out = tests.renderMetierParcoursSmoke(GENERIC_MODEL);
   assert.match(out, /POST", "\/api\/v1\/modules\/prospects"/);
-  assert.match(out, /GET", "\/api\/v1\/modules\/prospects"/);
+  // La liste prospects est bien requêtée — via le helper de polling
+  // (cohérence éventuelle Meili), plus par un GET immédiat naïf.
+  assert.match(
+    out,
+    /pollModuleListUntilVisible\(\s*\n\s*json,\s*\n\s*"\/api\/v1\/modules\/prospects"/,
+  );
   assert.doesNotMatch(out, /modules\/notes/);
   // Payload issu des champs déclarés (nom requis, email texte, position).
   assert.match(out, /\{"nom":"Hello","email":"world"\}/);
+});
+
+test("metier-parcours générique : cohérence éventuelle Meili (?ids= + polling borné)", async () => {
+  const { tests } = await loadGenerators();
+  const out = tests.renderMetierParcoursSmoke(GENERIC_MODEL);
+  // Helper SoT publié (subpath ./scripts/* autorisé par exports).
+  assert.match(
+    out,
+    /from "@creezio\/desktop-tooling\/scripts\/meili-list-poll\.mjs"/,
+  );
+  // Read-after-write déterministe par hydratation PK (chemin SQL légitime).
+  assert.match(out, /assertModuleRowHydratedById\(/);
+  // Visibilité liste : polling borné (engine:"indexing" → retry), jamais
+  // d'assertion naïve « GET immédiat post-create ».
+  assert.match(out, /pollModuleListUntilVisible\(/);
+  assert.doesNotMatch(
+    out,
+    /const list = await json\("GET", "\/api\/v1\/modules\/prospects"\);/,
+    "assertion naïve GET liste immédiat encore générée",
+  );
+});
+
+test("metier-parcours CHR : recherche « tom » pollée jusqu'à sortie d'indexation", async () => {
+  const { tests } = await loadGenerators();
+  const out = tests.renderMetierParcoursSmoke(CHR_MODEL);
+  assert.match(
+    out,
+    /from "@creezio\/desktop-tooling\/scripts\/meili-list-poll\.mjs"/,
+  );
+  assert.match(out, /pollModuleListUntilVisible\(\s*\n\s*json,\s*\n\s*"\/api\/v1\/modules\/search\?q=tom"/);
+  // Assertions d'origine conservées (engine sql|meili + ≥ 1 hit).
+  assert.match(out, /assert\.ok\(search\.engine === "sql" \|\| search\.engine === "meili"\)/);
+  assert.match(out, /assert\.ok\(Array\.isArray\(search\.items\) && search\.items\.length >= 1\)/);
+});
+
+test("mini-prd-core CHR : listes fournisseurs Meili-bound pollées, archived=1 reste SQL", async () => {
+  const { tests } = await loadGenerators();
+  const out = tests.renderMiniPrdCoreSmoke(CHR_MODEL);
+  assert.match(
+    out,
+    /from "@creezio\/desktop-tooling\/scripts\/meili-list-poll\.mjs"/,
+  );
+  assert.match(out, /"\/api\/v1\/modules\/fournisseurs\?archived=0",\s*\n\s*\(items\)/);
+  assert.match(out, /"\/api\/v1\/modules\/fournisseurs\?q=metro&archived=0",\s*\n\s*\(items\)/);
+  // archived=1 = hors index par contrat → GET direct conservé (SQL).
+  assert.match(out, /const archives = await json\("GET", "\/api\/v1\/modules\/fournisseurs\?archived=1"\);/);
+  // Assertions d'origine conservées.
+  assert.match(out, /assert\.equal\(actifs\.items\.length, 1\)/);
+  assert.match(out, /assert\.equal\(search\.items\.length, 1\)/);
 });
 
 test("metier-parcours : notes en première entité → notes conservé", async () => {

@@ -21,6 +21,10 @@ import net from "node:net";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { portHolderLabel } from "./port-guard.mjs";
+import {
+  assertModuleRowHydratedById,
+  pollModuleListUntilVisible,
+} from "./meili-list-poll.mjs";
 
 const root = path.resolve(process.env.CREEZIO_APP_ROOT || process.cwd());
 const keep = process.argv.includes("--keep");
@@ -210,7 +214,12 @@ async function main() {
         ...toolEnv,
         METIER_DATA_DIR: dataDir,
         METIER_PORT: String(apiPort),
-        MEILI_SKIP_INDEX: process.env.MEILI_SKIP_INDEX || "1",
+        // Indexation Meili ON par défaut : l'assertion « créé puis listé »
+        // (polling borné plus bas) exige que l'indexeur tourne — avec
+        // MEILI_SKIP_INDEX=1 la liste d'une entité indexée resterait
+        // engine:"indexing" indéfiniment (contrat, pas un bug). L'opt-out
+        // reste possible pour une entité primaire volontairement hors index.
+        MEILI_SKIP_INDEX: process.env.MEILI_SKIP_INDEX || "0",
         CREEZIO_NATIVE_WARM: process.env.CREEZIO_NATIVE_WARM || "0",
       },
       stdio: ["ignore", "pipe", "pipe"],
@@ -289,12 +298,29 @@ async function main() {
       assert.ok(id, `${primary} id`);
       created[primary] = id;
       steps.push({ step: `api.${primary}.create`, ok: true, detail: id });
-      const list = await json("GET", `/api/v1/modules/${primary}`);
-      assert.ok(
-        (list.items || []).some((x) => x.id === id),
-        `${primary} listé`,
+      // Read-after-write déterministe : hydratation par PK (`?ids=`),
+      // chemin SQL légitime du contrat kit (jamais Meili).
+      await assertModuleRowHydratedById(
+        json,
+        `/api/v1/modules/${primary}`,
+        id,
+        primary,
       );
-      steps.push({ step: `api.${primary}.listed`, ok: true, detail: "yes" });
+      // Cohérence éventuelle (contrat kit : la liste d'une entité indexée
+      // passe par Meili) — `engine:"indexing"` + 0 item pendant l'indexation
+      // initiale, le client réessaie. Polling borné = comportement client
+      // nominal ; échec explicite immédiat si engine:"meili" sans le doc.
+      const list = await pollModuleListUntilVisible(
+        json,
+        `/api/v1/modules/${primary}`,
+        (items) => items.some((x) => x.id === id),
+        { label: primary },
+      );
+      steps.push({
+        step: `api.${primary}.listed`,
+        ok: true,
+        detail: `engine=${list.engine || "sql"}`,
+      });
     } else {
       steps.push({
         step: "api.entities",

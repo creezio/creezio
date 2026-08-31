@@ -12,6 +12,7 @@ import path from "node:path";
 import { test } from "node:test";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { startBrandKernelHarness } from "../packages/app-runtime/dist/index.js";
+import { linkKitNodeModules } from "./lib/link-kit-node-modules.mjs";
 import { resolveProbeBrandServerDir } from "./lib/resolve-probe-brand.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -35,6 +36,8 @@ async function bootProbe(envExtra = {}) {
     k.endsWith("Manifest"),
   );
   const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "os-plugins-"));
+  // Hors-browse : Meili volontairement absent (download kit bloqué / offline).
+  process.env.CREEZIO_ALLOW_NO_MEILI = "1";
   for (const [k, v] of Object.entries(envExtra)) {
     if (v === undefined) delete process.env[k];
     else process.env[k] = v;
@@ -55,6 +58,9 @@ async function bootProbe(envExtra = {}) {
 function ensureBuilt() {
   if (!TF3 || !fs.existsSync(path.join(TF3, "src/electron/brand-migrations.ts"))) {
     return false;
+  }
+  if (fs.existsSync(path.join(ROOT, "node_modules"))) {
+    linkKitNodeModules(TF3, ROOT);
   }
   const build = spawnSync(
     process.execPath,

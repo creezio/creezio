@@ -10,6 +10,7 @@ comportement runtime).
   master key, healthcheck.
 - `src/meili/` — le sous-domaine complet :
   - `feed.ts` — feed marque générique (`BrandMeiliFeed`,
+    `BrandMeiliIndexSpec` + `tableProvisionedBy`,
     `configureMeiliBrandFeed`, `GENERIC_CATALOG_INDEXES`) ;
   - `generic-indexer.ts` — indexation pilotée par le feed
     (`runFeedIndexation`, `searchMeiliIndexes`) ;

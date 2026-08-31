@@ -68,10 +68,9 @@
 
 - **Sources assistant + contenu onboarding dans le descripteur** (2ᵉ volet
   F3.4) : trop gros pour cette phase — ticket BACKLOG P2.c-suite.
-- **Cohérence `meiliIndexes.table` ↔ migrations** : les tables d'un index
-  peuvent être créées par un autre module d'import ou des migrations
-  historiques (`fromprd_brand_*`) — un check textuel par fichier
-  produirait des faux positifs. Ticket BACKLOG.
+- ~~**Cohérence `meiliIndexes.table` ↔ migrations**~~ **fait** : doctor
+  `MODULE_MEILI_TABLE_UNKNOWN`, résolution cross-module (tous modules +
+  `fromprd_brand_*`), échappatoire `tableProvisionedBy`.
 - **Retrait `legacy-brand-compat`** (candidat H9 noté en P2.a) : le
   périmètre est gelé fail-closed par hash
   (`test-phase-legacy-desktop-frozen`) et le retrait exige un codemod de

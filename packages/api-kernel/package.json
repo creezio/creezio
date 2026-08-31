@@ -1,6 +1,6 @@
 {
   "name": "@creezio/api-kernel",
-  "version": "0.20.0",
+  "version": "0.22.0",
   "description": "Façade HTTP unique Creezio — core/platform/modules/plugins (deny-by-default)",
   "type": "module",
   "main": "./dist-cjs/index.js",
@@ -23,8 +23,8 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@creezio/brand-config": "^0.20.0",
-    "@creezio/platform-core": "^0.20.0",
+    "@creezio/brand-config": "^0.22.0",
+    "@creezio/platform-core": "^0.22.0",
     "hono": "^4.12.32"
   },
   "devDependencies": {

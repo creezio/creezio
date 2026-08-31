@@ -45,6 +45,8 @@ export type BrandCliArgs = {
   /** `brand module <action> <id>` — action (init) + id du module. */
   moduleAction?: string;
   moduleId?: string;
+  /** Pin `@creezio/*` sur le worktree kit (`CREEZIO_LINK_KIT=1`). */
+  linkKit?: boolean;
 };
 
 export function parseBrandArgs(argv: string[]): BrandCliArgs {
@@ -85,6 +87,7 @@ export function parseBrandArgs(argv: string[]): BrandCliArgs {
     else if (a === "--admin-out") out.adminOut = rest.shift();
     else if (a === "--push") out.push = true;
     else if (a === "--no-push") out.noPush = true;
+    else if (a === "--link-kit") out.linkKit = true;
     else if (a.startsWith("--github-org="))
       out.githubOrg = a.slice("--github-org=".length);
     else if (a === "--github-org") out.githubOrg = rest.shift();
@@ -100,11 +103,12 @@ export function printBrandHelp(): void {
 
 Usage:
   creezio brand create --id <id> --name <Name> --domain <host> [--out <dir>]
-                       [--force] [--no-push] [--admin-out <dir>]
+                       [--force] [--no-push] [--admin-out <dir>] [--link-kit]
   creezio brand init --id <id> --name <Name> --domain <host> [--out <dir>]
   creezio brand doctor [--spec <brand-spec-dir>]
   creezio brand apply --spec <brand-spec-dir> --out <app-dir> [--force] [--icons-dir <dir>]
                       [--admin-out <dir>] [--push|--no-push] [--github-org <org>]
+                      [--link-kit]
   creezio brand apply-modules --spec <brand-spec-dir> --out <app-dir>
   creezio brand module init <id> [--app <app-dir>] [--force]
   creezio brand smoke --app <app-dir>
@@ -324,6 +328,7 @@ export async function runBrandCli(argv: string[]): Promise<void> {
   }
 
   const root = kitRoot();
+  if (args.linkKit) process.env.CREEZIO_LINK_KIT = "1";
 
   if (args.sub === "create") {
     if (!args.id || !args.name || !args.domain) {
@@ -367,6 +372,7 @@ export async function runBrandCli(argv: string[]): Promise<void> {
     );
     prepareBrandDistribution(result.outDir, {
       kitRoot: root,
+      linkKit: args.linkKit,
       log: (line) => console.log(`  dist    ${line}`),
     });
     const { maybePushBrandRepos } = await import("./github-repos.js");
@@ -491,6 +497,7 @@ export async function runBrandCli(argv: string[]): Promise<void> {
     );
     prepareBrandDistribution(result.outDir, {
       kitRoot: root,
+      linkKit: args.linkKit,
       log: (line) => console.log(`  dist    ${line}`),
     });
     const { maybePushBrandRepos } = await import("./github-repos.js");

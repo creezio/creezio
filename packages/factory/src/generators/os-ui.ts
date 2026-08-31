@@ -4,7 +4,7 @@
  * elles sont matérialisées localement sous `ui/app/(creezio-os)/` (gitignoré).
  */
 import type { AppManifest } from "@creezio/brand-config";
-import { creezioDepSpec } from "../kit-release.js";
+import { creezioNpmDeps, UI_CREEZIO_DEPS } from "../kit-release.js";
 import type { ProductModel } from "../product-model.js";
 
 export type OsUiPageSpec = {
@@ -219,9 +219,10 @@ import { RequestLogsClient } from "@creezio/observability/ui";`,
 }
 
 export function renderUiPackageJson(_manifest: AppManifest): string {
-  // Spec npm lockstep des packages @creezio/* publiés (GitHub Packages) —
-  // plus de file:vendor. Résolu depuis le kit courant (fallback bootstrap).
-  const spec = creezioDepSpec();
+  // Deps @creezio/* de l'UI : SoT unique UI_CREEZIO_DEPS (kit-release.ts) —
+  // la même liste que consomme `creezio upgrade` pour synchroniser les
+  // marques existantes. JAMAIS de liste inline parallèle (incident prod
+  // 0.20.0 : /granola + /grokbot matérialisés sans les deps).
   return (
     JSON.stringify(
       {
@@ -236,24 +237,9 @@ export function renderUiPackageJson(_manifest: AppManifest): string {
           start: "node .next/standalone/server.js",
         },
         dependencies: {
-          "@creezio/os-ui": spec,
-          "@creezio/shell-ui": spec,
-          "@creezio/support": spec,
-          "@creezio/granola": spec,
-          "@creezio/grokbot": spec,
-          "@creezio/assistant": spec,
-          "@creezio/mails": spec,
-          "@creezio/tasks": spec,
-          "@creezio/auth": spec,
-          "@creezio/onboarding": spec,
-          "@creezio/mcp-facade": spec,
-          "@creezio/product-hub": spec,
-          "@creezio/cockpit": spec,
-          "@creezio/database": spec,
-          "@creezio/access-control": spec,
-          "@creezio/nav": spec,
-          "@creezio/observability": spec,
-          "@creezio/interactive-demo": spec,
+          // Clôture @creezio UI (pages os-ui + composants kit + peers kit
+          // déclarés pour une résolution déterministe hors workspace).
+          ...creezioNpmDeps(UI_CREEZIO_DEPS),
           "@radix-ui/react-avatar": "^1.1.10",
           "@radix-ui/react-dialog": "^1.1.14",
           "@radix-ui/react-dropdown-menu": "^2.1.15",
@@ -283,14 +269,6 @@ export function renderUiPackageJson(_manifest: AppManifest): string {
           "class-variance-authority": "^0.7.1",
           clsx: "^2.1.1",
           "tailwind-merge": "^3.3.0",
-
-          // Peers @creezio déclarés explicitement (lock lisible, résolution
-          // déterministe hors workspace — install UI indépendante).
-          "@creezio/platform-core": spec,
-          "@creezio/brand-config": spec,
-          "@creezio/shell": spec,
-          "@creezio/api-kernel": spec,
-          "@creezio/integrations": spec,
         },
         devDependencies: {
           "@types/node": "^22.15.3",
