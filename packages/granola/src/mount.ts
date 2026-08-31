@@ -177,6 +177,42 @@ export type GranolaMountOptions = {
   awaitWebhookSync?: boolean;
 };
 
+function stripWebhookEndpointSecrets(value: unknown): unknown {
+  if (Array.isArray(value)) {
+    return value.map(stripWebhookEndpointSecrets);
+  }
+  if (!value || typeof value !== "object") return value;
+  const rec = { ...(value as Record<string, unknown>) };
+  delete rec.signing_secret;
+  if (rec.webhook_endpoints !== undefined) {
+    rec.webhook_endpoints = stripWebhookEndpointSecrets(rec.webhook_endpoints);
+  }
+  if (rec.data !== undefined) {
+    rec.data = stripWebhookEndpointSecrets(rec.data);
+  }
+  return rec;
+}
+
+function webhookEndpointPatch(
+  body: Record<string, unknown>,
+): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  if (typeof body.enabled === "boolean") out.enabled = body.enabled;
+  if (typeof body.url === "string" && body.url.trim()) {
+    out.url = body.url.trim();
+  }
+  if (Array.isArray(body.scopes)) {
+    out.scopes = body.scopes.filter((s) => typeof s === "string");
+  }
+  if (Array.isArray(body.events)) {
+    out.events = body.events.filter((s) => typeof s === "string");
+  }
+  if (Array.isArray(body.folder_ids)) {
+    out.folder_ids = body.folder_ids.filter((s) => typeof s === "string");
+  }
+  return out;
+}
+
 function jsonBody(req: ApiRequest): Record<string, unknown> | null {
   if (req.body && typeof req.body === "object" && !Array.isArray(req.body)) {
     return req.body as Record<string, unknown>;
@@ -327,6 +363,19 @@ export function createGranolaMount(opts?: GranolaMountOptions): ApiMount {
         method: "GET",
         path: "/remote/webhook-endpoints",
         description: "Proxy GET /v1/webhook-endpoints de l'API Granola",
+      },
+      {
+        id: "patch-remote-webhook-endpoint",
+        method: "PATCH",
+        path: "/remote/webhook-endpoints/:id",
+        description:
+          "Proxy PATCH /v1/webhook-endpoints/{id} (enabled, url, scopes, events)",
+      },
+      {
+        id: "delete-remote-webhook-endpoint",
+        method: "DELETE",
+        path: "/remote/webhook-endpoints/:id",
+        description: "Proxy DELETE /v1/webhook-endpoints/{id}",
       },
     ],
     handle: async ({ req, subPath, db }) => {
@@ -731,15 +780,42 @@ export function createGranolaMount(opts?: GranolaMountOptions): ApiMount {
         }
         if (parts[1] === "webhook-endpoints") {
           const endpointId = parts[2] ?? "";
+          const proxyEndpoints = (res: {
+            ok: boolean;
+            status: number;
+            body: unknown;
+          }): ApiResponse => {
+            const next = proxy({
+              ...res,
+              body: stripWebhookEndpointSecrets(res.body),
+            });
+            return next;
+          };
           if (parts.length === 2 && method === "GET") {
-            return proxy(await client.listWebhookEndpoints());
+            return proxyEndpoints(await client.listWebhookEndpoints());
           }
           if (parts.length === 3 && method === "PATCH") {
-            const body = jsonBody(req) ?? {};
-            return proxy(await client.updateWebhookEndpoint(endpointId, body));
+            if (!endpointId) {
+              return { status: 400, body: { ok: false, error: "invalid_id" } };
+            }
+            const patch = webhookEndpointPatch(jsonBody(req) ?? {});
+            if (Object.keys(patch).length === 0) {
+              return {
+                status: 400,
+                body: { ok: false, error: "invalid_body" },
+              };
+            }
+            return proxyEndpoints(
+              await client.updateWebhookEndpoint(endpointId, patch),
+            );
           }
           if (parts.length === 3 && method === "DELETE") {
-            return proxy(await client.deleteWebhookEndpoint(endpointId));
+            if (!endpointId) {
+              return { status: 400, body: { ok: false, error: "invalid_id" } };
+            }
+            return proxyEndpoints(
+              await client.deleteWebhookEndpoint(endpointId),
+            );
           }
         }
         return { status: 404, body: { ok: false, error: "not_found" } };

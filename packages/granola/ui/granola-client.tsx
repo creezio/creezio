@@ -8,11 +8,27 @@
  * API : /api/v1/modules/granola/* (mount natif @creezio/granola).
  */
 
+import { useCallback } from "react";
 import { Toaster } from "@creezio/shell-ui/ui/kit";
 import { GranolaConnectPanel } from "./granola-connect-panel";
 import { GranolaNotesPanel } from "./granola-notes-panel";
 
 export function GranolaClient() {
+  const onSelectNote = useCallback((noteId: string) => {
+    document
+      .getElementById("granola-notes-workspace")
+      ?.scrollIntoView({ behavior: "smooth", block: "start" });
+    try {
+      window.history.replaceState(
+        null,
+        "",
+        `#note-${encodeURIComponent(noteId)}`,
+      );
+    } catch {
+      /* hash optionnel */
+    }
+  }, []);
+
   return (
     <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 p-6">
       <div>
@@ -24,8 +40,10 @@ export function GranolaClient() {
         </p>
       </div>
 
-      <GranolaNotesPanel />
-      <GranolaConnectPanel />
+      <div id="granola-notes-workspace">
+        <GranolaNotesPanel />
+      </div>
+      <GranolaConnectPanel onSelectNote={onSelectNote} />
       <Toaster />
     </div>
   );

@@ -19,6 +19,6 @@
 | Fichier | Rôle |
 |---|---|
 | [`ui/granola-client.tsx`](../ui/granola-client.tsx) | Page `GranolaClient` : compose `GranolaNotesPanel` + `GranolaConnectPanel`. **Câblée** via `@creezio/os-ui` (`/granola`) + sidebar OS (`defaultOsPrimaryNavItems`). |
-| [`ui/granola-connect-panel.tsx`](../ui/granola-connect-panel.tsx) | Panneau config / webhook / livraisons — **GRANOLA-2** (extrait tel quel, ne pas enrichir ici). |
+| [`ui/granola-connect-panel.tsx`](../ui/granola-connect-panel.tsx) | Connecteur opérable — **GRANOLA-2** : santé (badges + bandeau signature), endpoints distants (list / PATCH / DELETE), livraisons filtrables, empty/error. |
 | [`ui/granola-notes-panel.tsx`](../ui/granola-notes-panel.tsx) | Workspace notes (liste + fiche résumé/transcript) — **GRANOLA-1**. |
 | [`ui/index.ts`](../ui/index.ts) | Export UI public (`GranolaClient`). |
