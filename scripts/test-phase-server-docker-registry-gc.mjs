@@ -781,13 +781,17 @@ test(
       started = true;
       await waitHttpOk(`http://${registry}/v2/`, 30_000);
 
+      // Chaque version doit avoir son PROPRE digest (comme un vrai publish) :
+      // retagger la même image donnerait un digest partagé par les 4 tags,
+      // que le GC refuse — à juste titre — de supprimer (skipShared).
       const srcImage = "registry:2";
       for (const tag of ["0.1.0", "0.2.0", "0.3.0", "0.4.0"]) {
         const ref = `${registry}/${repo}:${tag}`;
-        const tagR = spawnSync("docker", ["tag", srcImage, ref], {
+        const build = spawnSync("docker", ["build", "-q", "-t", ref, "-"], {
+          input: `FROM ${srcImage}\nLABEL creezio.gc.probe="${tag}"\n`,
           encoding: "utf8",
         });
-        assert.equal(tagR.status, 0, tagR.stderr);
+        assert.equal(build.status, 0, build.stderr || build.stdout);
         const push = spawnSync("docker", ["push", ref], { encoding: "utf8" });
         assert.equal(push.status, 0, push.stderr || push.stdout);
       }
@@ -841,6 +845,11 @@ test(
       }
     } finally {
       spawnSync("docker", ["rm", "-f", usedName], { encoding: "utf8" });
+      for (const tag of ["0.1.0", "0.2.0", "0.3.0", "0.4.0"]) {
+        spawnSync("docker", ["rmi", "-f", `${registry}/${repo}:${tag}`], {
+          encoding: "utf8",
+        });
+      }
       if (started) {
         spawnSync("docker", ["rm", "-f", name], { encoding: "utf8" });
       }
