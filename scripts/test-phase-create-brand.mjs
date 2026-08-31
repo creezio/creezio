@@ -340,6 +340,7 @@ Desktop Creezio.
     "--out",
     appDir,
     "--force",
+    "--no-push",
   ]);
   assert.equal(apply.status, 0, apply.stderr + "\n" + apply.stdout);
   // Layout monorepo : métier sous server/, client thin sous client/ ;
