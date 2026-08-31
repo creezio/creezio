@@ -1,3 +1,10 @@
 {
-  "install": "npm install --no-audit --no-fund"
+  "name": "Creezio flotte (kit + marques)",
+  "install": "bash scripts/cloud-agent-install.sh",
+  "repositoryDependencies": [
+    "github.com/creezio/foove2",
+    "github.com/creezio/foove2-admin",
+    "github.com/creezio/tempoflow3",
+    "github.com/creezio/tempoflow3-admin"
+  ]
 }

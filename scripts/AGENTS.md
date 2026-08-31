@@ -25,6 +25,7 @@ ils décrivent le chantier, pas l'état courant.
 | `lib/brand-roots.mjs` | Résolution chemins brands + kit |
 | `lib/intention-twins.mjs` | Scanner jumeaux intention (P0) |
 | `lib/assert-runtime-dist.mjs` | Fail-closed dist runtime (contrats + hash de contenu src↔dist) — publish / gate ADR.1b-gen |
+| `cloud-agent-install.sh` | Install Cloud Agent multi-repos : kit `npm ci` + `build:packages`, puis `npm run setup` des marques sœurs (`CREEZIO_NPM_TOKEN` requis) |
 | `test-phase-*.mjs` | Gates — une phase / un contrat |
 
 ## Ajouter une gate

@@ -278,6 +278,37 @@ creezio new-app \
 
 ADR : [`docs/adr/ADR-factory-from-prd.md`](./docs/adr/ADR-factory-from-prd.md).
 
+## Cursor Cloud specific instructions
+
+Environnement multi-repos : `creezio` (kit, SoT `.cursor/environment.json`) +
+`foove2`, `foove2-admin`, `tempoflow3`, `tempoflow3-admin`. Checkout typique :
+`/agent/repos/<repo>` (siblings). Le script
+[`scripts/cloud-agent-install.sh`](./scripts/cloud-agent-install.sh) pose
+`CREEZIO_KIT_ROOT` et un symlink `/opt/docker/<repo>` quand c’est possible.
+
+Secret **obligatoire** pour installer les marques : `CREEZIO_NPM_TOKEN`
+(PAT org `read:packages`). Le token GitHub de checkout n’a pas ce droit
+(403 GitHub Packages). Sans ce secret, l’install fail-closed dès qu’une
+marque sœur est présente.
+
+Install (Builds) : `bash scripts/cloud-agent-install.sh` — `npm ci` +
+`build:packages` du kit, puis `npm run setup` de chaque marque trouvée.
+**Ne pas** lancer `npm test` / `test:kit` / `metier:api` dans l’install
+(`metier:api` est persistant).
+
+Vérifs utiles après boot :
+
+```bash
+node -v   # >= 22.5
+test -d packages/app-runtime/dist && echo kit-dist-ok
+# marque (après token) :
+#   test -d ../foove2/node_modules/@creezio/app-runtime
+```
+
+Harness marque : ports libres (`METIER_PORT` ≠ 18791/18792) +
+`METIER_DATA_DIR` isolé + `CREEZIO_SKIP_KIT_BINARIES=1` si pas besoin
+Meili/cloudflared.
+
 ## Ne pas faire
 
 - Committer des secrets / PAT.

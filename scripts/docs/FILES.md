@@ -11,6 +11,7 @@
 | [`build-cjs.mjs`](../build-cjs.mjs) | !usrbinenv node |
 | [`build-workspaces.mjs`](../build-workspaces.mjs) | Build unifié des workspaces (tsc + dual CJS) — SoT du script npm build:packages. |
 | [`clean.mjs`](../clean.mjs) | (à documenter) |
+| [`cloud-agent-install.sh`](../cloud-agent-install.sh) | Install Cloud Agent multi-repos : kit npm ci + build:packages, puis npm run setup des marques sœurs (CREEZIO_NPM_TOKEN requis). |
 | [`generate-files-md.mjs`](../generate-files-md.mjs) | Générateur des inventaires `docs/FILES.md` — format standard du kit. |
 | [`generate-kit-packages.mjs`](../generate-kit-packages.mjs) | Génère/vérifie packages/platform-core/kit-packages.json (manifeste des packages publiés, consommé par les apps) |
 | [`kit-version.mjs`](../kit-version.mjs) | !usrbinenv node |
