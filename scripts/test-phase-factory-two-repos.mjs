@@ -12,7 +12,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { test } from "node:test";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const CLI = path.join(ROOT, "packages/factory/bin/creezio.js");
@@ -39,13 +39,16 @@ test("factory 2-repos : monorepo + repo admin dédié (sans réseau)", () => {
         "proofbrand.example",
         "--out",
         appDir,
-        "--no-push",
         "--force",
       ],
       { env: { ...process.env, CREEZIO_SKIP_BRAND_DIST: "1" } },
     );
     assert.equal(r.status, 0, r.stderr + "\n" + r.stdout);
-    assert.match(r.stdout, /--no-push/, "no-push doit être explicite");
+    assert.match(
+      r.stdout,
+      /repos GitHub non créés \(--push pour les créer\)/,
+      "sans --push : aucun repo GitHub (défaut)",
+    );
 
     // Monorepo marque : plus de admin/ embarqué.
     assert.ok(fs.existsSync(path.join(appDir, "server/package.json")));
@@ -296,7 +299,6 @@ Gestion simple pour test gate factory 2-repos.
         appDir,
         "--admin-out",
         adminDir,
-        "--no-push",
         "--force",
       ],
       { env: { ...process.env, CREEZIO_SKIP_BRAND_DIST: "1" } },
@@ -304,7 +306,10 @@ Gestion simple pour test gate factory 2-repos.
     assert.equal(apply.status, 0, apply.stderr + "\n" + apply.stdout);
     assert.ok(fs.existsSync(path.join(adminDir, "server-admin.json")));
     assert.ok(!fs.existsSync(path.join(appDir, "admin")));
-    assert.match(apply.stdout, /--no-push/);
+    assert.match(
+      apply.stdout,
+      /repos GitHub non créés \(--push pour les créer\)/,
+    );
     const applyAdminChrome = fs.readFileSync(
       path.join(adminDir, "server/ui/components/brand-chrome.tsx"),
       "utf8",
@@ -326,6 +331,196 @@ Gestion simple pour test gate factory 2-repos.
     }
   } finally {
     fs.rmSync(tmp, { recursive: true, force: true });
+  }
+});
+
+const GITHUB_NET_PRELOAD = `import fs from "node:fs";
+import http from "node:http";
+import https from "node:https";
+import childProcess from "node:child_process";
+
+const logPath = process.env.CREEZIO_GITHUB_NET_LOG;
+function record(kind, url) {
+  const line = kind + " " + url + "\\n";
+  if (logPath) fs.appendFileSync(logPath, line);
+  throw new Error("FAIL-CLOSED: requête GitHub interdite (" + kind + " " + url + ")");
+}
+function isGithub(url) {
+  return /github\\.com/i.test(String(url));
+}
+
+const origFetch = globalThis.fetch;
+globalThis.fetch = async (input, init) => {
+  const url = typeof input === "string" ? input : input && input.url ? input.url : String(input);
+  if (isGithub(url)) record("fetch", url);
+  return origFetch(input, init);
+};
+
+function patchRequest(mod, name) {
+  const orig = mod.request;
+  mod.request = function (options, cb) {
+    const url =
+      typeof options === "string"
+        ? options
+        : (options.protocol || "") +
+          "//" +
+          (options.host || options.hostname || "") +
+          (options.path || "");
+    if (isGithub(url)) record(name, url);
+    return orig.call(this, options, cb);
+  };
+}
+patchRequest(https, "https.request");
+patchRequest(http, "http.request");
+
+const origSpawnSync = childProcess.spawnSync;
+childProcess.spawnSync = function (cmd, args, opts) {
+  const all = [cmd, ...(Array.isArray(args) ? args : [])].join(" ");
+  if (isGithub(all)) record("spawnSync", all);
+  return origSpawnSync.apply(this, arguments);
+};
+`;
+
+test("scaffold SANS --push + token en env : zéro requête GitHub (compteur réseau)", () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "creezio-two-repos-nopush-"));
+  const logFile = path.join(tmp, "github-net.log");
+  const preload = path.join(tmp, "intercept-github-net.mjs");
+  fs.writeFileSync(preload, GITHUB_NET_PRELOAD, "utf8");
+  const appDir = path.join(tmp, "silentbrand");
+  try {
+    assert.ok(
+      (process.env.GITHUB_TOKEN || process.env.CREEZIO_GITHUB_TOKEN || "").trim(),
+      "ce cas exige un token GitHub en env (preuve : on ne le désarme pas)",
+    );
+    const r = runCli(
+      [
+        "new-app",
+        "--name",
+        "SilentBrand",
+        "--id",
+        "silentbrand",
+        "--domain",
+        "silentbrand.example",
+        "--out",
+        appDir,
+        "--force",
+      ],
+      {
+        env: {
+          ...process.env,
+          CREEZIO_SKIP_BRAND_DIST: "1",
+          CREEZIO_GITHUB_NET_LOG: logFile,
+          NODE_OPTIONS: [
+            process.env.NODE_OPTIONS || "",
+            `--import ${pathToFileURL(preload).href}`,
+          ]
+            .filter(Boolean)
+            .join(" ")
+            .trim(),
+        },
+      },
+    );
+    assert.equal(r.status, 0, r.stderr + "\n" + r.stdout);
+    assert.match(
+      r.stdout,
+      /repos GitHub non créés \(--push pour les créer\)/,
+    );
+    const log = fs.existsSync(logFile) ? fs.readFileSync(logFile, "utf8") : "";
+    assert.equal(log, "", `requêtes GitHub interdites:\n${log}`);
+  } finally {
+    fs.rmSync(tmp, { recursive: true, force: true });
+    fs.rmSync(`${appDir}-admin`, { recursive: true, force: true });
+  }
+});
+
+test("maybePushBrandRepos sans push:true : fetch GitHub jamais appelé (token en env)", async () => {
+  const { maybePushBrandRepos, GITHUB_REPOS_SKIPPED_MSG } = await import(
+    "../packages/factory/dist/github-repos.js"
+  );
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "creezio-maybe-push-"));
+  const outDir = path.join(tmp, "brandx");
+  const adminDir = path.join(tmp, "brandx-admin");
+  fs.mkdirSync(outDir, { recursive: true });
+  fs.mkdirSync(adminDir, { recursive: true });
+  let githubFetches = 0;
+  const origFetch = globalThis.fetch;
+  globalThis.fetch = async (input, init) => {
+    const url =
+      typeof input === "string"
+        ? input
+        : input && typeof input === "object" && "url" in input
+          ? String(input.url)
+          : String(input);
+    if (/github\.com/i.test(url)) {
+      githubFetches += 1;
+      throw new Error(`FAIL-CLOSED fetch GitHub: ${url}`);
+    }
+    return origFetch(input, init);
+  };
+  const prevSkip = process.env.CREEZIO_SKIP_BRAND_DIST;
+  process.env.CREEZIO_SKIP_BRAND_DIST = "1";
+  const lines = [];
+  try {
+    assert.ok(
+      (process.env.GITHUB_TOKEN || process.env.CREEZIO_GITHUB_TOKEN || "").trim(),
+      "token GitHub doit rester en env",
+    );
+    const res = await maybePushBrandRepos({
+      outDir,
+      adminDir,
+      brandId: "brandx",
+      productName: "BrandX",
+      log: (l) => lines.push(l),
+    });
+    assert.equal(res, null);
+    assert.equal(githubFetches, 0, "aucune requête GitHub");
+    assert.ok(
+      lines.some((l) => l.includes(GITHUB_REPOS_SKIPPED_MSG)),
+      lines.join("\n"),
+    );
+  } finally {
+    globalThis.fetch = origFetch;
+    if (prevSkip === undefined) delete process.env.CREEZIO_SKIP_BRAND_DIST;
+    else process.env.CREEZIO_SKIP_BRAND_DIST = prevSkip;
+    fs.rmSync(tmp, { recursive: true, force: true });
+  }
+});
+
+test("--push sans token = erreur explicite", () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "creezio-two-repos-push-"));
+  const appDir = path.join(tmp, "needtoken");
+  try {
+    const r = runCli(
+      [
+        "new-app",
+        "--name",
+        "NeedToken",
+        "--id",
+        "needtoken",
+        "--domain",
+        "needtoken.example",
+        "--out",
+        appDir,
+        "--force",
+        "--push",
+      ],
+      {
+        env: {
+          ...process.env,
+          CREEZIO_SKIP_BRAND_DIST: "1",
+          GITHUB_TOKEN: "",
+          CREEZIO_GITHUB_TOKEN: "",
+        },
+      },
+    );
+    assert.notEqual(r.status, 0, " --push sans token doit échouer");
+    assert.match(
+      `${r.stdout}\n${r.stderr}`,
+      /token GitHub requis/,
+    );
+  } finally {
+    fs.rmSync(tmp, { recursive: true, force: true });
+    fs.rmSync(`${appDir}-admin`, { recursive: true, force: true });
   }
 });
 

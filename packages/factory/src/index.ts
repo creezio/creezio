@@ -54,6 +54,7 @@ export {
   pushInitialCommit,
   createBrandGithubRepos,
   maybePushBrandRepos,
+  GITHUB_REPOS_SKIPPED_MSG,
   type GithubRepoSpec,
   type CreateRepoResult,
 } from "./github-repos.js";
@@ -79,6 +80,12 @@ export {
   isServerDockerBackupEnabled,
   resolveServerDockerBackupEnabled,
   SERVER_DOCKER_BACKUP_ENV,
+  OCI_IMAGE_SOURCE_LABEL,
+  parseGithubHttpsSource,
+  resolveBrandGithubSourceUrl,
+  requireImageSourceForRegistry,
+  ociImageSourceBuildArgs,
+  collectDockerBuildArgs,
 } from "./server-docker-cli.js";
 export {
   loadServerRegistry,

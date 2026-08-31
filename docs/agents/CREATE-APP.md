@@ -8,6 +8,10 @@ dès le jour 1. Aussi clair que [CREATE-MODULE.md](./CREATE-MODULE.md).
 
 ```bash
 creezio brand create --id acme --name Acme --domain acme.local
+# local uniquement — aucun repo GitHub
+
+creezio brand create --id acme --name Acme --domain acme.local --push
+# crée creezio/acme + creezio/acme-admin (token GITHUB_TOKEN requis)
 ```
 
 Pose :
@@ -38,7 +42,10 @@ Ensuite **un module à la fois** : [CREATE-MODULE.md](./CREATE-MODULE.md).
 ```bash
 # Depuis le kit (ou npx creezio une fois le package factory installé)
 creezio brand create --id acme --name Acme --domain acme.local \
-  --out /tmp/acme --force --no-push
+  --out /tmp/acme --force
+# Repos GitHub : ajouter --push (exige GITHUB_TOKEN / CREEZIO_GITHUB_TOKEN
+# ou .github-token). Sans --push : zéro appel réseau, même si un token
+# est présent dans l'environnement.
 
 cd /tmp/acme
 creezio brand module init articles --app .

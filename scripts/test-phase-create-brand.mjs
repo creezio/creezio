@@ -150,6 +150,7 @@ test("CB0b help déprécie demo-app et documente brand create", () => {
   const brand = runCli(["brand", "--help"]);
   assert.equal(brand.status, 0, brand.stderr);
   assert.match(brand.stdout, /brand create/);
+  assert.match(brand.stdout, /--push/);
 });
 
 test("CB1 help brand documente init/doctor/apply/smoke", () => {
@@ -177,9 +178,12 @@ test("CB-create brand create --id acme (pas notes, pas crm, admin frère)", () =
     "--out",
     appDir,
     "--force",
-    "--no-push",
   ]);
   assert.equal(created.status, 0, created.stderr + "\n" + created.stdout);
+  assert.match(
+    created.stdout,
+    /repos GitHub non créés \(--push pour les créer\)/,
+  );
   const serverDir = path.join(appDir, "server");
   assert.ok(fs.existsSync(path.join(serverDir, "src/electron/modules/index.ts")));
   assert.ok(!fs.existsSync(path.join(serverDir, "src/electron/modules/notes.ts")));
@@ -338,6 +342,10 @@ Desktop Creezio.
     "--force",
   ]);
   assert.equal(apply.status, 0, apply.stderr + "\n" + apply.stdout);
+  assert.match(
+    apply.stdout,
+    /repos GitHub non créés \(--push pour les créer\)/,
+  );
   // Layout monorepo : métier sous server/, client thin sous client/ ;
   // admin flotte = repo dédié frère `<app>-admin` (factory 2-repos).
   const serverDir = path.join(appDir, "server");

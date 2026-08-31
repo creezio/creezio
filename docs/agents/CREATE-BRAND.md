@@ -64,12 +64,15 @@ creezio brand init --id acme --name Acme --domain acme.local --vertical generic
 # Après remplissage product.md + modules/
 creezio brand doctor --spec apps/acme/brand-spec
 creezio brand apply --spec apps/acme/brand-spec --out apps/acme --force
+# Repos GitHub : creezio brand apply … --push (token requis)
 creezio brand smoke --app apps/acme
 ```
 
 ## 2b. Layout généré — 2 repos (LA norme)
 
-`creezio brand create` / `brand apply` / `new-app` génèrent **2 repos** :
+`creezio brand create` / `brand apply` / `new-app` génèrent **2 arbres
+locaux**. Les repos GitHub ne sont créés **que** avec `--push` (token
+requis) ; le défaut est local, même si `GITHUB_TOKEN` est posé.
 
 ```text
 <app>/                  # monorepo marque (client + server)
@@ -138,7 +141,7 @@ Reset clean-room TF3 : `node scripts/reset-tempoflow3.mjs` (backup + apply + bui
 ## 5. Premier serveur Docker (marque neuve) vs clone hôte
 
 `brand apply` / `new-app` préparent **automatiquement** les lockfiles npm
-(`package-lock.json`, même sans `--push`). Ensuite :
+(`package-lock.json`, même sans `--push` — le défaut). Ensuite :
 
 ```bash
 cd <app>

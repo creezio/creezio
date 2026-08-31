@@ -173,6 +173,7 @@ RUN --mount=type=secret,id=CREEZIO_NPM_TOKEN \
 FROM node:22-bookworm-slim AS runtime-base
 ARG SERVER_DIR
 ARG SERVER_VERSION
+ARG IMAGE_SOURCE
 # xz-utils : l'install Hermes (warm natif) extrait un node runtime .tar.xz.
 RUN apt-get update \
   && apt-get install -y --no-install-recommends ca-certificates curl xz-utils \
@@ -180,8 +181,10 @@ RUN apt-get update \
 WORKDIR /app
 
 # Version image = version applicative (GET /api/v1/core/version — SoT flotte).
+# IMAGE_SOURCE = remote git marque (publish → GHCR rattache le package au repo).
 ENV CREEZIO_APP_VERSION=${SERVER_VERSION}
 LABEL org.opencontainers.image.version=${SERVER_VERSION}
+LABEL org.opencontainers.image.source=${IMAGE_SOURCE}
 
 COPY --from=meili /usr/local/bin/meilisearch /opt/creezio/bin/meilisearch
 COPY --from=cloudflared /usr/local/bin/cloudflared /opt/creezio/bin/cloudflared
