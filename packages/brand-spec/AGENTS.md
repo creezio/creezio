@@ -52,6 +52,19 @@ du doctor. Version kit indéterminable → pas d'escalade aveugle (warn).
   - `MODULE_PERMISSION_UNQUALIFIED` — **warn** : `accessJustification:
     "à qualifier"` (dette posée par le codemod H9, jamais une permission
     inventée)
+- Checks manifests `@creezio/*` (**error** immédiate, sans gating par pin —
+  un manifest cassé est un bug runtime/build quel que soit l'âge de la
+  marque) :
+  - `CREEZIO_MANIFEST_MISALIGNED` — une dep `@creezio/*` présente dans ≥ 2
+    manifests avec des specs divergentes (règle d'or du bump, incident
+    login 0.6.0)
+  - `OS_UI_PAGE_DEP_MISSING` — un package `@creezio/*` importé par une page
+    os-ui (matérialisée sous `server/ui/app/(creezio-os)/` ou embarquée dans
+    le `@creezio/os-ui` installé) est absent de `server/ui/package.json`
+    (incident prod 0.20.0 : /granola + /grokbot matérialisés sans les deps).
+    Remède : `creezio upgrade` (sync SoT kit), jamais un retrait de page.
+    Ni pages matérialisées ni os-ui installé → `OS_UI_DEPS_UNCHECKED`
+    (**info**, skip explicite).
 - Cohérence `meiliIndexes.table` ↔ migrations (T6, toujours **error**,
   pas de pin / pas d'env de bypass) :
   - `MODULE_MEILI_TABLE_UNKNOWN` — table d'un index introuvable dans le
