@@ -71,7 +71,7 @@ check("tarball npm observability embarque fleet-collector", () => {
   assert.ok(pkg.files?.includes("fleet-collector"), "files sans fleet-collector");
   assert.equal(
     pkg.publishConfig?.registry,
-    "https://npm.pkg.github.com",
+    "https://registry.npmjs.org",
     "observability non publiable npm",
   );
 });
