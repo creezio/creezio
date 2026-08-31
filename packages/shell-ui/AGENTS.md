@@ -38,6 +38,10 @@ UI :
 
 - `ui/index.ts` : exports React publics.
 - `ui/layout/sidebar-host.ts` : injection sidebar marque.
+- `ui/layout/native-os-nav.ts` : SoT entrées OS primaires / admin — les
+  marques doivent **appeler** `defaultOsPrimaryNavItems()`, pas recopier.
+  Catalogue éditable admin = pas encore là
+  (`docs/plans/PLAN-NAV-CATALOG.md`).
 - `ui/layout/sidebar.tsx` : sidebar CRM.
 - `ui/workspace/tab-workspace-context.tsx` : workspace onglets principal.
 - `ui/workspace/tab-workspace-host.ts` : host workspace historique.

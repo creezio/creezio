@@ -219,6 +219,12 @@ Visibilité des modules et de la sidebar **par rôle**, administrable en UI
   admin filtrée par la permission `platform.access.manage`) : matrice
   rôles × permissions groupées par module, gestion des rôles des comptes,
   journal d'audit. Le rôle owner est figé (tous les accès, toujours).
+- **Pas un catalogue de sidebar** — access-control **cache** une entrée
+  déjà listée dans le chrome marque (`permission` + `me.permissions`).
+  Il ne l’ajoute pas, ne la réordonne pas, n’active pas un module OS.
+  Les chrome actuels recopient une constante `OS_NAV` au lieu d’appeler
+  `defaultOsPrimaryNavItems()`. Cible : module hybride `@creezio/nav`
+  ([plans/PLAN-NAV-CATALOG.md](./plans/PLAN-NAV-CATALOG.md)).
 
 Sans `configureAccessControl` au boot marque, le module est inerte :
 comportement historique (permissions figées) inchangé.

@@ -103,6 +103,7 @@ contrats src↔dist + hash de contenu).
 | MCP unifié / OAuth / host tools | `mcp-facade` |
 | Session / login / recovery | `auth` |
 | Nav + chrome CRM UI | `shell-ui` |
+| Catalogue sidebar (masquer / réordonner en admin) | **pas encore un module** — plan [docs/plans/PLAN-NAV-CATALOG.md](./docs/plans/PLAN-NAV-CATALOG.md) · briefs [docs/agents/BRIEFS-NAV-GRANOLA-GROKBOT.md](./docs/agents/BRIEFS-NAV-GRANOLA-GROKBOT.md) |
 | Pages Next OS (mails/tâches/setup/admin…) matérialisées dans les marques | `os-ui` |
 | First-run setup + onboarding produit hybride (contenu DB + preferences) | `onboarding` |
 | Démo interactive native (product tour live, faux curseur, scénarios DB) | `interactive-demo` |

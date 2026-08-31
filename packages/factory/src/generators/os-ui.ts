@@ -659,7 +659,9 @@ const BRAND_NAV = [
 ${navLines.join("\n")}
 ];
 
-/** Nav OS native — miroir defaultOsPrimaryNavItems (@creezio/shell-ui). */
+/** Nav OS native — DETTE : recopier defaultOsPrimaryNavItems.
+ * Un nouveau module OS n'apparaît pas sur les marques déjà générées.
+ * Cible : docs/plans/PLAN-NAV-CATALOG.md (supprimer cette constante). */
 const OS_NAV = [
   { href: "/taches", label: "Tâches", icon: ListTodo },
   { href: "/mails", label: "Mails", icon: Mail },
