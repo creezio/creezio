@@ -10,11 +10,9 @@
  * Auth : Bearer tokens HASHÉS (sha256) + révocables — state file
  * docker-data/host-agent.json (généré par `creezio server-docker agent`).
  *
- * Protocole (F4.4d) : toutes les réponses portent le header
- * `x-creezio-fleet-protocol` ; une requête admin avec version explicite
- * différente est REFUSÉE (409, message actionnable) ; une requête sans
- * header (backend ≤ 0.14) est acceptée avec warn throttlé (dual-accept
- * une version).
+ * Protocole (F4.4d, strict depuis 0.19.0) : toutes les réponses portent
+ * le header `x-creezio-fleet-protocol` ; une requête admin sans header
+ * ou avec une version ≠ v1 est REFUSÉE (409, message actionnable).
  *
  * Env :
  *   CREEZIO_AGENT_PORT        (défaut 18810)
@@ -325,8 +323,7 @@ export function startHostAgent(): void {
       return send(res, 401, { ok: false, error: "unauthorized" });
     }
 
-    // Protocole flotte : refus explicite sur écart de version, warn throttlé
-    // sur absence (backend ≤ 0.14 — dual-accept une version).
+    // Protocole flotte : refus fail-closed (409) si header absent ou ≠ v1.
     const proto = checkFleetProtocol(
       req.headers[FLEET_PROTOCOL_HEADER] as string | undefined,
       "backend flotte appelant",

@@ -34,11 +34,10 @@ Maintenir les briques d'observabilité génériques : events store, ops journal,
 
 ## Modifier sans casser
 
-- **Backend flotte sorti en TS (P2.b)** : la SoT des gestes flotte vit dans
-  `@creezio/fleet` (`packages/fleet/src`) — les `.mjs` flotte de
-  `fleet-collector/` (admin-docker, server-lib, instance-stack,
-  agent-updates, registry-pull-proxy, server-admin, host-agent) sont des
-  **wrappers de compat** `[deprecated]` conservés UNE version. Seuls
+- **Backend flotte sorti en TS (P2.b, wrappers retirés en 0.19)** : la SoT
+  des gestes flotte vit dans `@creezio/fleet` (`packages/fleet/src`) — les
+  7 wrappers `.mjs` de compat de `fleet-collector/` et le bin npm
+  `creezio-server-admin` ont été SUPPRIMÉS (0.19.0). Seuls
   `server.mjs` / `ops-api.mjs` / `env.mjs` (collector télémétrie) restent la
   SoT ici. Modifier la flotte = modifier `packages/fleet/src` + `npm run
   build:packages`.

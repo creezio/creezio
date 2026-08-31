@@ -104,15 +104,10 @@ Backend flotte typé : SoT [`packages/fleet`](../packages/fleet/README.md)
 agent → app admin) portent le header `x-creezio-fleet-protocol` (v1) :
 
 - version égale → OK ;
-- header **absent** (composant déployé ≤ 0.14) → accepté avec **warn bruyant
-  throttlé** (`… sans version de protocole flotte …` dans les logs) —
-  dual-accept UNE version seulement ;
-- version **différente** → refus explicite avec message actionnable
-  (mettre à jour via `creezio server-docker agent up` / `admin up`).
-
-Au prochain bump de protocole, l'absence de header devient un **refus
-fail-closed** (`FLEET_PROTOCOL_ACCEPT_MISSING=false`) — planifier la mise à
-jour des agents pendant la fenêtre dual-accept.
+- header **absent** ou version **différente** → **refus fail-closed** (409)
+  (`FLEET_PROTOCOL_ACCEPT_MISSING=false` depuis 0.19.0 — dual-accept
+  0.15→0.18 terminé ; pas de bump v2). Mettre à jour via
+  `creezio server-docker agent up` / `admin up`.
 
 ## Docs liées
 

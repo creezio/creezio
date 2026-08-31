@@ -79,7 +79,7 @@ La page de l'app admin (`server/ui/app/<route>/page.tsx` du repo
 - **Zéro domaine marque** dans `@creezio/admin` (« restaurants » = config
   de l'app admin, pas du kit).
 - Ne pas recréer la logique Docker/flotte : la SoT des gestes reste le
-  backend flotte (`packages/observability/fleet-collector/server-admin.mjs`)
+  backend flotte (`@creezio/fleet`, `packages/fleet/src/server-admin.ts`)
   — un module admin le **consomme** (proxy `fleet`) ou matérialise une vue
   (`fleet-registry` : la DB est une vue, les JSON restent la SoT).
 - Ne pas exposer les secrets backend (Basic flotte) au client : proxys

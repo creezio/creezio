@@ -8,9 +8,9 @@ Modules natifs des **apps admin de marque** (mode admin — ADR
 - `registerAdminModules(api)` monte `fleet`, `fleet-registry`,
   `fleet-releases`, `prospects`, `roadmap`, `support`, `billing-*` sous
   `/api/v1/modules/*`.
-- `fleet` = proxy vers le backend flotte (`server-admin.mjs`, Basic interne
+- `fleet` = proxy vers le backend flotte (`@creezio/fleet` server-admin, Basic interne
   via `CREEZIO_FLEET_BACKEND_URL` / `CREEZIO_FLEET_BACKEND_BASIC`) — la
-  logique flotte reste dans `packages/observability/fleet-collector`.
+  logique flotte reste dans `@creezio/fleet` (`packages/fleet`).
 - `fleet-registry` = DB centrale de la flotte (`admin_fleet_servers` /
   `admin_fleet_events`, migration `admin_004`) — VUE matérialisée : les JSON
   (`servers.json`, `fleet-hosts.json`) restent la SoT des gestes Docker.
@@ -68,6 +68,6 @@ Modules natifs des **apps admin de marque** (mode admin — ADR
 
 ## Ne pas faire
 
-- Recréer une logique docker/flotte ici (SoT = fleet-collector).
+- Recréer une logique docker/flotte ici (SoT = @creezio/fleet).
 - Exposer le Basic backend flotte au client (le proxy est server-side).
 - Coupler au métier d'une marque.

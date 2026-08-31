@@ -3,7 +3,7 @@
 ## Vision
 
 Donner à l'app admin de marque un accès HTTP authentifié au **backend flotte**
-(`server-admin.mjs`, loopback `:18800`, Basic) sans jamais exposer les
+(backend @creezio/fleet, loopback `:18800`, Basic) sans jamais exposer les
 credentials Basic au navigateur. Le module est un **proxy pur, server-side** :
 la logique flotte (Docker, hôtes, updates, logs, ops) reste dans
 `packages/observability/fleet-collector` — interdiction absolue de la

@@ -20,11 +20,8 @@ import { test } from "node:test";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const STACK = path.join(
-  ROOT,
-  "packages/observability/fleet-collector/instance-stack.mjs",
-);
-// P2.b : SoT flotte portée en TS — packages/fleet (fleet-collector = wrappers compat).
+// SoT @creezio/fleet (wrappers fleet-collector retirés en 0.19) — dist requis.
+const STACK = path.join(ROOT, "packages/fleet/dist/instance-stack.js");
 const SERVER_LIB = path.join(ROOT, "packages/fleet/src/server-lib.ts");
 const INSTANCE_STACK_SRC = path.join(
   ROOT,

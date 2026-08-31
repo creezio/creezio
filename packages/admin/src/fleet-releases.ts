@@ -2,7 +2,7 @@
  * Module `fleet-releases` — updates en PULL de la flotte (F5).
  *
  * L'admin déclare des releases (image versionnée poussée par `publish`) ;
- * chaque agent hôte (host-agent.mjs) POLLE ce module, télécharge l'image via
+ * chaque agent hôte (@creezio/fleet host-agent) POLLE ce module, télécharge l'image via
  * le registre pull-only (F4) et applique l'update via son `updateServer`
  * local (backup/recreate/rollback intacts). AUCUN push admin → agent : le
  * geste manuel existant (POST /agent/api/…/update) reste disponible.
@@ -29,6 +29,10 @@
 
 import crypto from "node:crypto";
 import type { ApiMount, ApiRequest, ScopedDbAccess } from "@creezio/api-kernel";
+import {
+  FLEET_PROTOCOL_HEADER,
+  FLEET_PROTOCOL_VERSION,
+} from "@creezio/fleet";
 import type { FleetAdminMountOptions } from "./index.js";
 import { fleetFetch } from "./index.js";
 import { recordFleetEvent } from "./fleet-registry.js";
@@ -452,7 +456,35 @@ export function createFleetReleasesMount(
       { id: "rollout-path", method: "PATCH", path: "/servers/:host/:brand/:name/rollout", description: "Rollout (id non encodé)", permission: fleetPermission },
       { id: "rollout-path-put", method: "PUT", path: "/servers/:host/:brand/:name/rollout", description: "Rollout (id non encodé, PUT)", permission: fleetPermission },
     ],
-    handle: async ({ req, subPath, db }) => {
+    // Le protocole flotte est porté dans les DEUX sens : les agents (boucle
+    // pull agent-updates) vérifient le header des réponses de ce mount —
+    // strict depuis 0.19.0 (FLEET_PROTOCOL_ACCEPT_MISSING=false).
+    handle: async (ctx) => {
+      const res = await handleFleetReleases(ctx);
+      return {
+        ...res,
+        headers: {
+          ...(res.headers || {}),
+          [FLEET_PROTOCOL_HEADER]: String(FLEET_PROTOCOL_VERSION),
+        },
+      };
+    },
+  };
+
+  async function handleFleetReleases({
+    req,
+    subPath,
+    db,
+  }: {
+    req: ApiRequest;
+    subPath: string;
+    db?: ScopedDbAccess;
+  }): Promise<{
+    status: number;
+    headers?: Record<string, string>;
+    body?: unknown;
+  }> {
+    {
       if (!db) {
         return { status: 503, body: { ok: false, error: "db_unavailable" } };
       }
@@ -835,6 +867,6 @@ export function createFleetReleasesMount(
       }
 
       return { status: 404, body: { ok: false } };
-    },
-  };
+    }
+  }
 }

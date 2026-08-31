@@ -2,7 +2,7 @@
 # Creezio Host Agent — agent hôte flotte (VPS distant).
 #
 # Build context = contexte STAGÉ par `creezio server-docker agent up`
-# (stageFleetImageContext) : fleet-collector/ (wrappers compat) +
+# (stageFleetImageContext) : fleet-collector/ (collector télémétrie) +
 # node_modules/@creezio/fleet (package.json + dist + public). L'agent est
 # compilé depuis packages/fleet/src (TS) — fail-closed si dist absent.
 #

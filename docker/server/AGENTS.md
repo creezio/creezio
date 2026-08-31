@@ -40,7 +40,7 @@ CRM web Next) via Docker, multi-instances, sans AppImage/Electron.
 | `README.md` | Doc humaine (registre, admin, sécurité, boot-status) |
 | `REMOTE-ACCESS.md` | Reverse proxy nginx-proxy-manager |
 | CLI `creezio server-docker` | `create/start/stop/rm/logs/ls/admin` + `build/up/down/ps/proof` |
-| `../server-admin/` | Image admin web (fleet-collector étendu) |
+| `../server-admin/` | Image admin web (backend `@creezio/fleet`) |
 
 ## Config
 

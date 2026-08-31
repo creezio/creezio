@@ -36,8 +36,9 @@ const {
   purgeExpiredFleetSlots,
   upsertFleetServerStatus,
 } = await import("../packages/admin/dist/index.js");
+// SoT @creezio/fleet (wrappers fleet-collector retirés en 0.19) — dist requis.
 const { runAgentUpdateCycle, imageRefWithDigest } = await import(
-  "../packages/observability/fleet-collector/agent-updates.mjs"
+  "../packages/fleet/dist/agent-updates.js"
 );
 const { declareFleetRelease } = await import(
   "../packages/factory/dist/server-docker-cli.js"
@@ -333,7 +334,10 @@ test("fleet-releases : boucle agent pull (mock admin + mock updateServer)", asyn
       subPath: m[1],
       db,
     });
-    nodeRes.writeHead(out.status, { "content-type": "application/json" });
+    nodeRes.writeHead(out.status, {
+      "content-type": "application/json",
+      ...(out.headers || {}),
+    });
     nodeRes.end(JSON.stringify(out.body));
   });
   await new Promise((r) => srv.listen(0, "127.0.0.1", r));

@@ -126,7 +126,14 @@ function req(method, urlPath, body, headers = {}) {
 
 const child = spawn(
   process.execPath,
-  [path.join(__dirname, "server-admin.mjs")],
+  // SoT @creezio/fleet (les wrappers .mjs de compat ont été retirés en 0.19) —
+  // exige le dist construit : npm run build -w @creezio/fleet.
+  [
+    path.join(
+      __dirname,
+      "../../fleet/dist/bin/server-admin-main.js",
+    ),
+  ],
   {
     env: {
       ...process.env,
@@ -326,11 +333,12 @@ try {
   );
   assert.equal(bs.status, 504);
 
-  // 0 domaine marque hardcodé dans les nouveaux fichiers.
+  // 0 domaine marque hardcodé dans l'UI admin servie (SoT fleet + collector).
   const src =
-    fs.readFileSync(path.join(__dirname, "server-admin.mjs"), "utf8") +
-    fs.readFileSync(path.join(__dirname, "admin-docker.mjs"), "utf8") +
-    fs.readFileSync(path.join(__dirname, "public", "admin.html"), "utf8");
+    fs.readFileSync(
+      path.join(__dirname, "../../fleet/public/admin.html"),
+      "utf8",
+    ) + fs.readFileSync(path.join(__dirname, "public", "admin.html"), "utf8");
   assert.ok(!/tempoflow\.fr|certivan\.creez\.io/i.test(src));
 
   console.log("OK — server-admin (@creezio/observability)");
