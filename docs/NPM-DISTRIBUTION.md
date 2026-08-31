@@ -35,6 +35,9 @@ visible par TOUT l'écosystème standard.
    + description). Committer le fichier `.changeset/*.md` avec la PR.
 2. Merge sur `main` → workflow `publish.yml` ouvre/actualise la PR
    « chore(release): version packages » (bump lockstep + CHANGELOG).
+   La CI de cette PR est verte : les gates scaffold passent `--link-kit`
+   (install depuis le worktree, pas le registre qui n'a pas encore la
+   version) et `changeset-status` vérifie l'absence de leftover.
 3. Merge de cette PR → `publish.yml` publie automatiquement sur
    GitHub Packages (auth `GITHUB_TOKEN`, aucun secret à gérer).
 
