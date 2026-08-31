@@ -60,7 +60,9 @@ Les zones Cloudflare et hostnames publics sont **ceux de la marque**
 10. **Entretien disque Docker (VPS)** — GC BuildKit native (`daemon.json`
     `builder.gc`), timer `docker-disk-maintenance` quotidien (prune sans
     `-a` + `--keep-storage` + rétention registre 5 tags + alerte ≥ 85 %),
-    rétention auto post-publish (`--keep-tags` / `--no-retention`)
+    rétention auto post-publish (`--keep-tags` / `--no-retention`),
+    **`creezio server-docker registry-gc`** (delete tags + `garbage-collect`,
+    `--keep 2`, `--dry-run`, jamais un tag en usage)
 11. **n8n & Hermes embarqués** — superadmin flotte
     (`CREEZIO_SUPERADMIN_EMAIL/_PASSWORD`), owner n8n silencieux, clé API n8n
     (`.{brand}-n8n-api-key.json` → env Hermes), webhooks publics, MCP, skills

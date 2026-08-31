@@ -75,9 +75,12 @@ affaibli pour la masquer. (Backlogs d'époque : `docs/archive/BACKLOG-*.md`.)
 - **Suivi update en mémoire** : la Map `update-status` de l'agent (et de
   l'admin local) ne survit pas à un restart de l'agent pendant un update —
   l'update lui-même va au bout (process docker), seul le suivi est perdu.
-- **Registry local sans GC** : la suppression de tags (`0.2.2-broken`…)
-  demande l'API delete + `registry garbage-collect` — documenté, pas
-  automatisé.
+- ~~**Registry local sans GC**~~ **fait (T11)** : `creezio server-docker
+  registry-gc` (`packages/factory/src/server-docker-registry-gc.ts`) —
+  API v2 list/delete + `registry garbage-collect` dans `creezio-registry`,
+  `--keep N` (défaut 2), tags des conteneurs en cours toujours conservés,
+  `--dry-run`. Gate : `test-phase-server-docker-registry-gc`. Doc : skill
+  fleet-ops §10.
 - ~~**Scaffold `verify-prod` factory (vérification E2E canonique de toute
   app générée)**~~ **fait (0.18.0)** : la factory matérialise
   `scripts/verify-prod.mjs` dans toute app générée (générateur

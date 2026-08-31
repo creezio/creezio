@@ -56,6 +56,12 @@ import {
   type CreateOwnerPolicy,
 } from "./server-docker-owner.js";
 import { assertUfwFleetRule } from "./server-docker-ufw.js";
+import {
+  runRegistryGcCommand,
+  selectTagsToPrune,
+} from "./server-docker-registry-gc.js";
+
+export { compareVersionTags, selectTagsToPrune } from "./server-docker-registry-gc.js";
 
 /**
  * VPS (pas tunnel-local) : n8n ET Hermes sont requis (kit Creezio).
@@ -206,6 +212,12 @@ export type ServerDockerArgs = {
   slug?: string;
   /** enroll / agent : label lisible (hôte, token). */
   label?: string;
+  /** registry-gc : container `registry:2` (défaut creezio-registry). */
+  container?: string;
+  /** registry-gc : limiter à un repository. */
+  repo?: string;
+  /** registry-gc : plan uniquement, aucune mutation. */
+  dryRun?: boolean;
   /** enroll : URL agent explicite (sinon ingress agent posée via API CF). */
   agentUrl?: string;
   /** agent up : hôtes d'écoute (défaut 127.0.0.1,172.17.0.1). */
@@ -284,6 +296,13 @@ export function parseServerDockerArgs(argv: string[]): ServerDockerArgs {
     else if (a === "--image") out.image = rest.shift();
     else if (a.startsWith("--keep-tags=")) out.keepTags = Number(a.slice(12));
     else if (a === "--keep-tags") out.keepTags = Number(rest.shift());
+    else if (a.startsWith("--keep=")) out.keepTags = Number(a.slice(7));
+    else if (a === "--keep") out.keepTags = Number(rest.shift());
+    else if (a === "--dry-run") out.dryRun = true;
+    else if (a.startsWith("--container=")) out.container = a.slice(12);
+    else if (a === "--container") out.container = rest.shift();
+    else if (a.startsWith("--repo=")) out.repo = a.slice(7);
+    else if (a === "--repo") out.repo = rest.shift();
     else if (a.startsWith("--tag=")) out.tag = a.slice(6);
     else if (a === "--tag") out.tag = rest.shift();
     else if (a.startsWith("--registry=")) out.registry = a.slice(11);
@@ -444,7 +463,16 @@ Registry d'images versionnées (update de flotte) :
     Rétention après push réussi : garde les N derniers tags (défaut 2,
     env CREEZIO_PUBLISH_KEEP_TAGS) côté daemon local ET registre privé,
     + docker builder prune --max-used-space (env CREEZIO_PUBLISH_KEEP_STORAGE,
-    défaut 5GB). Les blobs registre sont balayés par la GC planifiée hôte.
+    défaut 5GB). Les blobs registre sont balayés par registry-gc / timer hôte.
+  creezio server-docker registry-gc [--registry 127.0.0.1:5000] [--keep 2]
+    [--container creezio-registry] [--repo <name>] [--dry-run]
+    (GC fail-closed du registre Docker local registry:2 : liste les tags
+     par repo via API v2, garde les N plus récents — défaut 2, env
+     CREEZIO_REGISTRY_GC_KEEP — ET tout tag référencé par un conteneur
+     en cours (docker ps), DELETE des manifests non retenus, puis
+     registry garbage-collect dans le container. --dry-run liste sans
+     mutation. Jamais de suppression d'un tag en usage. Erreurs
+     explicites : docker absent, registre down, DELETE KO, GC KO.)
 
 Agent hôte flotte (VPS restaurant — exposé via agent.{slug}.{zone}) :
   creezio server-docker agent up --brand-root <app> [--port 18810]
@@ -1956,34 +1984,6 @@ async function runPublishSubcommand(
 // 2 tags = version courante + rollback 1 cran ; cache builder plafonné 5GB.
 const PUBLISH_KEEP_TAGS_DEFAULT = 2;
 const PUBLISH_KEEP_STORAGE_DEFAULT = "5GB";
-
-/**
- * Compare deux tags version segment par segment (0.3.10 > 0.3.9 > 0.3.9-rc1).
- * Segments numériques comparés en nombre, sinon lexicographique.
- */
-export function compareVersionTags(a: string, b: string): number {
-  const pa = a.split(/[.\-_]/);
-  const pb = b.split(/[.\-_]/);
-  const len = Math.max(pa.length, pb.length);
-  for (let i = 0; i < len; i++) {
-    const sa = pa[i] ?? "";
-    const sb = pb[i] ?? "";
-    const na = /^\d+$/.test(sa) ? Number(sa) : NaN;
-    const nb = /^\d+$/.test(sb) ? Number(sb) : NaN;
-    if (!Number.isNaN(na) && !Number.isNaN(nb)) {
-      if (na !== nb) return na - nb;
-    } else if (sa !== sb) {
-      return sa < sb ? -1 : 1;
-    }
-  }
-  return 0;
-}
-
-/** Tags à supprimer : tout sauf les `keep` plus récents (tri version). */
-export function selectTagsToPrune(tags: string[], keep: number): string[] {
-  const sorted = [...tags].sort(compareVersionTags);
-  return keep >= sorted.length ? [] : sorted.slice(0, sorted.length - keep);
-}
 
 function resolvePublishKeepTags(
   args: ServerDockerArgs,
@@ -3560,6 +3560,11 @@ export async function runServerDockerCli(argv: string[]): Promise<void> {
     return;
   }
 
+  if (args.sub === "registry-gc") {
+    await runRegistryGcCommand(args);
+    return;
+  }
+
   ensureDocker();
 
   if (args.sub === "ps") {
@@ -3739,6 +3744,6 @@ export async function runServerDockerCli(argv: string[]): Promise<void> {
   }
 
   throw new Error(
-    `Sous-commande inconnue: ${args.sub} (create|start|stop|rm|logs|ls|update|backup|ensure-owner|access|admin|publish|agent|enroll|build|up|down|ps|proof)`,
+    `Sous-commande inconnue: ${args.sub} (create|start|stop|rm|logs|ls|update|backup|ensure-owner|access|admin|publish|registry-gc|agent|enroll|build|up|down|ps|proof)`,
   );
 }

@@ -67,6 +67,11 @@ en jumeau dans `main.ts`.
   (`codemods/`, copiés au build par `scripts/copy-codemods.mjs` depuis
   `scripts/codemods/` du kit — SoT). Gate : `test-phase-upgrade-runner`.
 - `src/server-docker-cli.ts` : serveurs marque headless (`docker/server`).
+- `src/server-docker-registry-gc.ts` : `creezio server-docker registry-gc`
+  — GC fail-closed du registre Docker local (`registry:2`, `127.0.0.1:5000`) :
+  API v2 list/delete + `docker exec … garbage-collect`, `--keep N` (défaut 2),
+  tags des conteneurs en cours toujours conservés, `--dry-run`.
+  Gate : `scripts/test-phase-server-docker-registry-gc.mjs`.
 - `src/server-docker-tunnel.ts` : politique create fail-closed
   (`CREEZIO_CF_API_TOKEN` / `_ACCOUNT_ID` / `_ZONE_ID` requis sauf
   `CREEZIO_TUNNEL_LOCAL=1`) + dérivation slug réservé.
@@ -114,6 +119,7 @@ npm run build -w @creezio/factory
 node --test scripts/test-phase-factory-prd.mjs
 node --test scripts/test-phase-factory-prd-experience.mjs
 node --test scripts/test-phase-os-ui-scaffold.mjs
+node --test scripts/test-phase-server-docker-registry-gc.mjs
 ```
 
 Smoke manuel :

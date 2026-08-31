@@ -820,16 +820,44 @@ créés à chaque update (défaut skip) — les archives de référence dans
 `df -h /` < 85 %, `curl -s http://127.0.0.1:5000/v2/<repo>/tags/list` ≤ 2 tags,
 archives de référence intactes sous `docker-data/backups/`.
 
-**Vérité** : `packages/factory/src/server-docker-cli.ts`
+**GC registre à la demande (T11)** — geste CLI fail-closed, indépendant du
+timer. À lancer **hors push** (même garde-fou que le timer) :
+
+```bash
+# Plan (aucune mutation) :
+creezio server-docker registry-gc --dry-run
+# Défaut : registre 127.0.0.1:5000, container creezio-registry, --keep 2
+# (env CREEZIO_REGISTRY_GC_KEEP / CREEZIO_PUBLISH_KEEP_TAGS / --keep N)
+
+# Purge réelle : DELETE des manifests hors rétention, puis
+# `registry garbage-collect` dans le container.
+creezio server-docker registry-gc --keep 2
+# Options : --registry 127.0.0.1:5000 --container creezio-registry --repo <name>
+```
+
+Politique : garde les N tags les plus récents **par repository** (tri
+version) **et** tout tag référencé par un conteneur en cours (`docker ps` /
+images utilisées). Jamais de suppression d'un tag en usage. Digest partagé
+avec un tag conservé → skip (pas de DELETE). `--dry-run` liste KEEP/DELETE
+sans mutation ni GC.
+
+Fail-closed (exit ≠ 0, message actionnable) : docker absent, registre down
+(`/v2/` KO), DELETE manifeste KO (`REGISTRY_STORAGE_DELETE_ENABLED=true`
+requis), container registry arrêté, `garbage-collect` KO.
+
+**Vérité** : `packages/factory/src/server-docker-registry-gc.ts` (geste
+`registry-gc`) ; `packages/factory/src/server-docker-cli.ts`
 (`runPublishRetention`, `selectTagsToPrune`) ; hôte : `/etc/docker/daemon.json`,
 `/usr/local/sbin/docker-disk-maintenance.sh`,
 `/etc/systemd/system/docker-disk-maintenance.{service,timer}`.
+Gate : `scripts/test-phase-server-docker-registry-gc.mjs`.
 
 **Pièges** : `daemon.json` exige un **restart** de `docker.service` (pas un
 reload) → jamais pendant un build/publish ; re-vérifier ensuite la santé des
 containers prod (restos, TF2 `crm.tempoflow.fr`, collector :8665). Ne jamais
 lancer `registry garbage-collect` pendant un push (risque de blobs
-manquants) — le timer s'en garde via son garde-fou. `docker system prune -a`
+manquants) — le timer s'en garde via son garde-fou ; `registry-gc` non plus
+pendant un push. `docker system prune -a`
 interdit en cron : il supprimerait les images des serveurs arrêtés.
 
 ## 11. n8n & Hermes embarqués (superadmin, clé API, webhooks, MCP, skills)

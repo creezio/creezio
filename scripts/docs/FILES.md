@@ -207,6 +207,7 @@
 | [`test-phase-resolve-manifest.mjs`](../test-phase-resolve-manifest.mjs) | Gate resolveManifest — registre + fallback app-manifest.json (from-prd). |
 | [`test-phase-runtime-dist-freshness.mjs`](../test-phase-runtime-dist-freshness.mjs) | Gate ADR.1b généralisée — dist runtime = câblage src (content + mtime) ; fail-closed sync/publish. |
 | [`test-phase-server-docker-owner.mjs`](../test-phase-server-docker-owner.mjs) | Gate — create VPS fail-closed sans `CREEZIO_OWNER_EMAIL`/`_PASSWORD` ; persist `secrets.env` ; `ensure-owner` + `CREEZIO_E2E_*` optionnels ; LOCAL=1 owner optionnel ; setup + login mockés ; jamais le mot de passe en log. |
+| [`test-phase-server-docker-registry-gc.mjs`](../test-phase-server-docker-registry-gc.mjs) | Gate T11 — `server-docker registry-gc` : plan/rétention/in-use + mock HTTP fail-closed ; live `registry:2` éphémère ou skip explicite si Docker absent. |
 | [`test-phase-server-docker-tunnel.mjs`](../test-phase-server-docker-tunnel.mjs) | Gate — create VPS fail-closed sans contrat CF (`CREEZIO_CF_*`) + mapping slug réservé `demo` → `<brand>-demo`. |
 | [`test-phase-server-docker-ufw.mjs`](../test-phase-server-docker-ufw.mjs) | Gate — préflight UFW flotte : parsing `ufw status` (172.16.0.0/12, jamais docker0 seul), pose auto avec re-vérification via `sudo -n`, fail-closed actionnable si pose impossible, ancrage des 3 appels CLI (`agent up`/`admin up`/`enroll`). |
 | [`test-phase-server-docker.mjs`](../test-phase-server-docker.mjs) | Gate — artefacts docker/server + CLI creezio server-docker. |
