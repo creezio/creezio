@@ -1309,8 +1309,10 @@ export function parseGithubHttpsSource(remote: string): string | null {
   const m = cleaned.match(/github\.com[/:]([^/]+)\/([^/\s]+)/i);
   if (!m) return null;
   const org = m[1];
-  const repo = m[2].replace(/\.git$/i, "");
-  if (!org || !repo) return null;
+  const repoRaw = m[2];
+  if (!org || !repoRaw) return null;
+  const repo = repoRaw.replace(/\.git$/i, "");
+  if (!repo) return null;
   return `https://github.com/${org}/${repo}`;
 }
 
