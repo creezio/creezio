@@ -55,12 +55,11 @@ WORKDIR /app
 COPY package.json package-lock.json .npmrc ./
 COPY ${SERVER_DIR}/package.json ./${SERVER_DIR}/package.json
 # P1.c : resources/vendor+scripts+bin vivent dans @creezio/host-runtime.
-# Le harness headless n a plus besoin de @creezio/electron-shell ni du
-# wrapper npm `electron` (peer optionnel). ELECTRON_SKIP_BINARY_DOWNLOAD
-# reste pose (lock marque historique peut encore lister electron en
-# dev=false — vecu tempoflow 2026-08-12, ~100 Mo, CDN flaky). Apres
-# npm ci on PURGE electron / electron-shell / electron-updater de l arbre
-# runtime (fail-closed : l image ne les embarque plus).
+# On PURGE le wrapper npm `electron` + `electron-updater` (binaire fat).
+# `@creezio/electron-shell` RESTE : app-runtime (compose/boot-progress/
+# start-brand-desktop barrel) importe encore splash-ui / createLocalSplashSteps
+# (JS pur, zéro binaire Electron). ELECTRON_SKIP_BINARY_DOWNLOAD reste
+# posé (lock marque historique peut lister electron en dev=false).
 ENV ELECTRON_SKIP_BINARY_DOWNLOAD=1
 # Resilience registre : reset TLS transitoire sous charge (2 npm ci
 # concurrents — vecu idem). Retries npm via env, identique partout.
@@ -81,7 +80,6 @@ RUN --mount=type=secret,id=CREEZIO_NPM_TOKEN \
      fi \
   && rm -rf node_modules/electron \
             node_modules/electron-updater \
-            node_modules/@creezio/electron-shell \
   && npm rebuild better-sqlite3
 
 # Meilisearch Linux embarqué — recherche réelle (plus de sql-fallback).
