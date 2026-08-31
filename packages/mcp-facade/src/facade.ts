@@ -8,6 +8,7 @@
  */
 
 import { ARCHITECTURE_VERSION } from "@creezio/platform-core";
+import { dynImport } from "./dyn-import.js";
 import { verifyMcpBearer } from "./jwt.js";
 import { assertNamespacedToolName, isLegacyAliasName } from "./namespace.js";
 import {
@@ -230,7 +231,7 @@ export function createMcpFacade(options: McpFacadeOptions = {}): McpFacade {
       .trim();
     if (token && token.split(".").length === 3) {
       try {
-        const authMod = (await import("@creezio/auth")) as {
+        const authMod = (await dynImport("@creezio/auth")) as {
           verifySessionToken?: (
             t: string,
           ) => Promise<Record<string, unknown> | null>;

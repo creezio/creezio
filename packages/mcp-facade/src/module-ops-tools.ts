@@ -18,6 +18,7 @@ import {
   entityOperationsFromSpec,
   resolveOperationHttpPath,
 } from "@creezio/api-kernel";
+import { dynImport } from "./dyn-import.js";
 import { verifyAccessToken } from "./oauth/store.js";
 import type {
   McpRegisteredTool,
@@ -53,7 +54,7 @@ async function mintSessionFromMcpAccessToken(
       active?: boolean;
     };
     const [authMod, tasksMod] = await Promise.all([
-      import("@creezio/auth") as Promise<{
+      dynImport("@creezio/auth") as Promise<{
         createSessionToken?: (input: {
           user: {
             id: string;
@@ -63,7 +64,7 @@ async function mintSessionFromMcpAccessToken(
           };
         }) => Promise<string>;
       }>,
-      import("@creezio/tasks") as Promise<{
+      dynImport("@creezio/tasks") as Promise<{
         getTasksBrandConfig?: () => {
           users: {
             list: () => CrmUser[];
