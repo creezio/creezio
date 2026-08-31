@@ -43,12 +43,17 @@ ensure_link() {
 
 find_sibling() {
   local name=$1
-  local parent
-  parent=$(dirname "$KIT_ROOT")
-  local candidates=(
-    "$parent/$name"
+  local candidates=()
+  local dir=$KIT_ROOT
+  local i
+  for i in 1 2 3; do
+    dir=$(dirname "$dir")
+    candidates+=("$dir/$name")
+  done
+  candidates+=(
     "/agent/repos/$name"
-    "/opt/docker/$name"
+    "/workspace/$name"
+    "/workspaces/$name"
   )
   local c resolved
   for c in "${candidates[@]}"; do
