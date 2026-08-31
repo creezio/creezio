@@ -76,6 +76,18 @@
 |---|---|
 | [`routes/developers/page.tsx`](../routes/developers/page.tsx) | Espace développeurs / MCP (`McpAdminClient` + `logsSlot` RequestLogsClient) |
 
+## `routes/granola/`
+
+| Fichier | Rôle |
+|---|---|
+| [`routes/granola/page.tsx`](../routes/granola/page.tsx) | Wrapper page OS `/granola` → `GranolaClient` (`@creezio/granola/ui`). |
+
+## `routes/grokbot/`
+
+| Fichier | Rôle |
+|---|---|
+| [`routes/grokbot/page.tsx`](../routes/grokbot/page.tsx) | Wrapper page OS `/grokbot` → `GrokbotClient` (`@creezio/grokbot/ui`). |
+
 ## `routes/login/`
 
 | Fichier | Rôle |

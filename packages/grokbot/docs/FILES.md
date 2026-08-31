@@ -17,5 +17,5 @@
 
 | Fichier | Rôle |
 |---|---|
-| [`ui/grokbot-client.tsx`](../ui/grokbot-client.tsx) | Page `GrokbotClient` : token, lancement d'agents, runs, prompts de suivi, annulation, archivage. **Disponible** — page à câbler par la marque. |
+| [`ui/grokbot-client.tsx`](../ui/grokbot-client.tsx) | Page `GrokbotClient` : token, lancement d'agents, runs, prompts de suivi, annulation, archivage. **Câblée** via `@creezio/os-ui` (`/grokbot`) + sidebar OS (`defaultOsPrimaryNavItems`). |
 | [`ui/index.ts`](../ui/index.ts) | Export UI public (`GrokbotClient`). |

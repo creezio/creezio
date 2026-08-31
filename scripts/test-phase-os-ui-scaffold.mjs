@@ -58,6 +58,14 @@ test("os-ui scaffold : zéro page OS versionnée, materialize + boot kit", () =>
     fs.existsSync(path.join(ROOT, "packages/os-ui/routes/mails/page.tsx")),
     "@creezio/os-ui routes",
   );
+  assert.ok(
+    fs.existsSync(path.join(ROOT, "packages/os-ui/routes/granola/page.tsx")),
+    "wrapper OS /granola",
+  );
+  assert.ok(
+    fs.existsSync(path.join(ROOT, "packages/os-ui/routes/grokbot/page.tsx")),
+    "wrapper OS /grokbot",
+  );
 
   const out = fs.mkdtempSync(path.join(os.tmpdir(), "creezio-os-ui-"));
   // 240s : le scaffold régénère les package-locks via le registre npm privé
@@ -188,6 +196,8 @@ test("os-ui scaffold : zéro page OS versionnée, materialize + boot kit", () =>
   assert.match(chrome, /OS_NAV/, "chrome déclare la nav OS native");
   assert.match(chrome, /\/taches/, "chrome lie /taches");
   assert.match(chrome, /\/mails/, "chrome lie /mails");
+  assert.match(chrome, /\/granola/, "chrome lie /granola");
+  assert.match(chrome, /\/grokbot/, "chrome lie /grokbot");
   assert.match(chrome, /\/admin\/mcp/, "chrome lie admin MCP");
   assert.match(chrome, /\/admin\/plugins/, "chrome lie admin plugins (défaut ON)");
 

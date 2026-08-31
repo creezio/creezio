@@ -12,12 +12,14 @@
  */
 import {
   Activity,
+  Bot,
   Braces,
   Cable,
   Database,
   KeyRound,
   ListTodo,
   Mail,
+  NotebookPen,
   Package,
   ScrollText,
   Settings,
@@ -32,6 +34,8 @@ export function defaultOsPrimaryNavItems(): SidebarNavItem[] {
   return [
     { href: "/taches", label: "Tâches", icon: ListTodo, fromShell: true },
     { href: "/mails", label: "Mails", icon: Mail, fromShell: true },
+    { href: "/granola", label: "Granola", icon: NotebookPen, fromShell: true },
+    { href: "/grokbot", label: "GrokBot", icon: Bot, fromShell: true },
     {
       href: "/parametres",
       label: "Préférences",

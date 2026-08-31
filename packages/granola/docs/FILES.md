@@ -18,5 +18,5 @@
 
 | Fichier | Rôle |
 |---|---|
-| [`ui/granola-client.tsx`](../ui/granola-client.tsx) | Page `GranolaClient` : config, URL webhook à copier, enregistrement API, livraisons, notes synchronisées. **Disponible** — page à câbler par la marque. |
+| [`ui/granola-client.tsx`](../ui/granola-client.tsx) | Page `GranolaClient` : config, URL webhook à copier, enregistrement API, livraisons, notes synchronisées. **Câblée** via `@creezio/os-ui` (`/granola`) + sidebar OS (`defaultOsPrimaryNavItems`). |
 | [`ui/index.ts`](../ui/index.ts) | Export UI public (`GranolaClient`). |

@@ -859,6 +859,8 @@ async function startBrandDesktopBody(args: {
     { id: "os.login", label: "Login", href: "/login", group: "core" },
     { id: "os.taches", label: "Tâches", href: "/taches", group: "core" },
     { id: "os.mails", label: "Mails", href: "/mails", group: "core" },
+    { id: "os.granola", label: "Granola", href: "/granola", group: "core" },
+    { id: "os.grokbot", label: "GrokBot", href: "/grokbot", group: "core" },
     {
       id: "os.developers",
       label: "Developers",

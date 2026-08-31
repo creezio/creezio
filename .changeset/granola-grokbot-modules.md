@@ -1,6 +1,10 @@
 ---
 "@creezio/granola": minor
 "@creezio/grokbot": minor
+"@creezio/os-ui": minor
+"@creezio/shell-ui": minor
+"@creezio/factory": minor
+"@creezio/app-runtime": minor
 ---
 
 Deux nouveaux modules natifs hybrides (ADR-module-natif-hybride) :
@@ -21,6 +25,12 @@ Deux nouveaux modules natifs hybrides (ADR-module-natif-hybride) :
   (`create-agent`, `create-run`, `get-run`…), UI `GrokbotClient`
   (lancement, suivi des runs, prompts de suivi, annulation).
 
-Câblage marque : composer `granolaMigrations()` / `grokbotMigrations()`
+UI OS : pages `/granola` et `/grokbot` (wrappers `@creezio/os-ui`) +
+entrées sidebar natives (`defaultOsPrimaryNavItems` + chrome factory
+`OS_NAV`). Après publish : `os-ui:materialize` rematérialise les pages ;
+les marques qui inlinent la nav (chrome owned-by-brand) doivent ajouter
+les deux hrefs.
+
+Câblage API marque : composer `granolaMigrations()` / `grokbotMigrations()`
 dans les migrations brand et enregistrer `createGranolaMount({ defaults })`
 / `createGrokbotMount({ defaults })` via `registerModuleApi`.
