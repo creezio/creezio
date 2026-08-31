@@ -1,5 +1,13 @@
 # @creezio/product-hub
 
+## 0.20.0
+
+### Patch Changes
+
+- Updated dependencies [e6303bb]
+  - @creezio/platform-core@0.20.0
+  - @creezio/brand-config@0.20.0
+
 ## 0.19.0
 
 ### Patch Changes

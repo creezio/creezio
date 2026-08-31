@@ -1,5 +1,14 @@
 # @creezio/assistant
 
+## 0.20.0
+
+### Patch Changes
+
+- b7d12cc: Propager cookie / Bearer de la session chat OS dans la requête synthétique des tools `module.*` — plus de 401 `requireSession` in-process.
+- Updated dependencies [e6303bb]
+  - @creezio/platform-core@0.20.0
+  - @creezio/shell@0.20.0
+
 ## 0.19.1
 
 ### Patch Changes
