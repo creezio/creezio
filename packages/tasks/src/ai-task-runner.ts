@@ -657,6 +657,24 @@ function unrefTimer(timer: ReturnType<typeof setInterval> | null): void {
   }
 }
 
+/**
+ * Arrête les boucles runner + récurrence (teardown). Sans cet arrêt, le
+ * setInterval process-global continue de tick après la fermeture de la
+ * surface plateforme : le tick suivant jette `requireTasksBrand()` en
+ * unhandledRejection (config brand désormais absente) — vécu gate PNM.2.
+ * Un prochain appel à `ensureAiRunnerLoop` (requête tasks) relance tout.
+ */
+export function stopAiRunnerLoop(): void {
+  if (g.__creezioTasksAiRunnerTimer) {
+    clearInterval(g.__creezioTasksAiRunnerTimer);
+    g.__creezioTasksAiRunnerTimer = null;
+  }
+  if (g.__creezioTasksAiRecurrenceTimer) {
+    clearInterval(g.__creezioTasksAiRecurrenceTimer);
+    g.__creezioTasksAiRecurrenceTimer = null;
+  }
+}
+
 /** Démarre un poll léger du runner (idempotent, process-local). */
 export function ensureAiRunnerLoop(intervalMs = 2000): void {
   if (!aiRunnerEnabled()) return;
