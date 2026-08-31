@@ -17,5 +17,8 @@
 
 | Fichier | Rôle |
 |---|---|
-| [`ui/grokbot-client.tsx`](../ui/grokbot-client.tsx) | Page `GrokbotClient` : token, lancement d'agents, runs, prompts de suivi, annulation, archivage. **Câblée** via `@creezio/os-ui` (`/grokbot`) + sidebar OS (`defaultOsPrimaryNavItems`). |
+| [`ui/grokbot-agent-runs.tsx`](../ui/grokbot-agent-runs.tsx) | Panneau runs (follow-up, cancel, archive) extrait tel quel — **possédé par GROKBOT-2**. |
+| [`ui/grokbot-client.tsx`](../ui/grokbot-client.tsx) | Compose token + liste agents + les 3 panneaux. Poll 15 s sans `GET /repositories`. **Câblée** via `@creezio/os-ui` (`/grokbot`). |
+| [`ui/grokbot-launch-form.tsx`](../ui/grokbot-launch-form.tsx) | Formulaire lancement : Select kit modèle / repo / mode, refresh repos, checkbox PR. **GROKBOT-1**. |
+| [`ui/grokbot-usage-artifacts.tsx`](../ui/grokbot-usage-artifacts.tsx) | Usage tokens + artefacts + download présigné + lien PR. **GROKBOT-1**. |
 | [`ui/index.ts`](../ui/index.ts) | Export UI public (`GrokbotClient`). |

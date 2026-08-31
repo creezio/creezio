@@ -6,8 +6,9 @@
  * Verrouille : exports kit (migrations + client + mount), schéma
  * grokbot_settings / grokbot_agents, token masqué (jamais en clair),
  * création d'agent (normalisation prompt/repo/modèle + Bearer), miroir
- * local, runs (follow-up, cancel), cache repositories (rate limit),
- * passthrough des erreurs amont (409 agent_busy).
+ * local, runs (follow-up, cancel), cache repositories (rate limit,
+ * refresh, 429), usage / artifacts passthrough, split UI launch/usage
+ * vs runs (pas de poll GET /repositories).
  */
 import assert from "node:assert/strict";
 import fs from "node:fs";
@@ -55,6 +56,7 @@ const RUN_ID = "run-00000000-0000-0000-0000-000000000001";
 function createFakeCursorApi() {
   const calls = [];
   let busy = false;
+  let reposStatus = 200;
   const agent = {
     id: AGENT_ID,
     name: "Ajouter un README",
@@ -82,7 +84,18 @@ function createFakeCursorApi() {
       return respond(200, { items: [{ id: "composer-2", displayName: "Composer 2" }] });
     }
     if (p === "/v1/repositories") {
-      return respond(200, { items: [{ url: "https://github.com/exemple/depot" }] });
+      if (reposStatus !== 200) {
+        return respond(reposStatus, { error: "rate_limited" });
+      }
+      return respond(200, {
+        items: [
+          {
+            url: "https://github.com/exemple/depot",
+            owner: "exemple",
+            name: "depot",
+          },
+        ],
+      });
     }
     if (p === "/v1/agents" && init.method === "POST") {
       return respond(200, {
@@ -154,7 +167,14 @@ function createFakeCursorApi() {
     }
     return respond(404, { error: "not_found" });
   };
-  return { calls, fetchImpl, setBusy: (v) => (busy = v) };
+  return {
+    calls,
+    fetchImpl,
+    setBusy: (v) => (busy = v),
+    setReposStatus: (s) => {
+      reposStatus = s;
+    },
+  };
 }
 
 test("grokbot : exports kit + migrations", async () => {
@@ -251,6 +271,7 @@ test("grokbot : create agent → miroir local → runs / cancel / usage / artifa
       repoUrl: "https://github.com/exemple/depot",
       ref: "main",
       autoCreatePR: true,
+      mode: "plan",
     },
   });
   assert.equal(created.status, 200);
@@ -266,6 +287,7 @@ test("grokbot : create agent → miroir local → runs / cancel / usage / artifa
   ]);
   assert.equal(sent.model.id, "composer-2", "defaultModelId appliqué");
   assert.equal(sent.autoCreatePR, true);
+  assert.equal(sent.mode, "plan");
 
   // Miroir local : prompt conservé.
   const local = await call(mount, {
@@ -376,6 +398,8 @@ test("grokbot : cache repositories (rate limit amont 1 req/min)", async () => {
   const r1 = await call(mount, { method: "GET", subPath: "repositories", db });
   assert.equal(r1.status, 200);
   assert.equal(r1.body.cached, false);
+  assert.equal(r1.body.data.items[0].owner, "exemple");
+  assert.equal(r1.body.data.items[0].name, "depot");
   const upstreamCalls = () =>
     fake.calls.filter((c) => c.url.includes("/v1/repositories")).length;
   assert.equal(upstreamCalls(), 1);
@@ -383,6 +407,7 @@ test("grokbot : cache repositories (rate limit amont 1 req/min)", async () => {
   // Deuxième appel : servi depuis le cache DB, zéro appel amont.
   const r2 = await call(mount, { method: "GET", subPath: "repositories", db });
   assert.equal(r2.body.cached, true);
+  assert.equal(r2.body.data.items[0].url, "https://github.com/exemple/depot");
   assert.equal(upstreamCalls(), 1);
 
   // ?refresh=1 force l'appel amont.
@@ -394,4 +419,121 @@ test("grokbot : cache repositories (rate limit amont 1 req/min)", async () => {
   });
   assert.equal(r3.body.cached, false);
   assert.equal(upstreamCalls(), 2);
+
+  // Amont 429 + cache : on sert le cache (stale), sans perdre la liste.
+  fake.setReposStatus(429);
+  const r4 = await call(mount, {
+    method: "GET",
+    subPath: "repositories",
+    db,
+    query: { refresh: "1" },
+  });
+  assert.equal(r4.status, 200);
+  assert.equal(r4.body.cached, true);
+  assert.equal(r4.body.stale, true);
+  assert.equal(r4.body.data.items[0].name, "depot");
+});
+
+test("grokbot : GET repositories 429 sans cache = passthrough", async () => {
+  const mod = await loadDist();
+  const db = await createDb(mod.grokbotMigrations());
+  const fake = createFakeCursorApi();
+  fake.setReposStatus(429);
+  const mount = mod.createGrokbotMount({
+    defaults: { apiKey: "key_test" },
+    fetchImpl: fake.fetchImpl,
+  });
+  const res = await call(mount, { method: "GET", subPath: "repositories", db });
+  assert.equal(res.status, 429);
+  assert.equal(res.body.error, "cursor_api_error");
+});
+
+test("grokbot : GET usage / artifacts / download passthrough mock", async () => {
+  const mod = await loadDist();
+  const db = await createDb(mod.grokbotMigrations());
+  const fake = createFakeCursorApi();
+  const mount = mod.createGrokbotMount({
+    defaults: { apiKey: "key_test" },
+    fetchImpl: fake.fetchImpl,
+  });
+
+  const usage = await call(mount, {
+    method: "GET",
+    subPath: `agents/${AGENT_ID}/usage`,
+    db,
+  });
+  assert.equal(usage.status, 200);
+  assert.equal(usage.body.ok, true);
+  assert.equal(usage.body.data.totalUsage.totalTokens, 76390);
+  assert.equal(usage.body.data.runs[0].id, RUN_ID);
+
+  const artifacts = await call(mount, {
+    method: "GET",
+    subPath: `agents/${AGENT_ID}/artifacts`,
+    db,
+  });
+  assert.equal(artifacts.status, 200);
+  assert.equal(artifacts.body.data.items[0].path, "artifacts/capture.png");
+  assert.equal(artifacts.body.data.items[0].sizeBytes, 12345);
+
+  const dl = await call(mount, {
+    method: "GET",
+    subPath: `agents/${AGENT_ID}/artifacts/download`,
+    db,
+    query: { path: "artifacts/capture.png" },
+  });
+  assert.equal(dl.status, 200);
+  assert.equal(dl.body.data.url, "https://exemple-s3/presigned");
+  const dlCall = fake.calls.find((c) => c.url.includes("/artifacts/download"));
+  assert.ok(dlCall.url.includes("path=artifacts%2Fcapture.png"));
+  assert.ok(
+    !JSON.stringify(dl.body).includes("key_test"),
+    "le token Cursor ne doit pas fuiter dans le body download",
+  );
+
+  const missingPath = await call(mount, {
+    method: "GET",
+    subPath: `agents/${AGENT_ID}/artifacts/download`,
+    db,
+  });
+  assert.equal(missingPath.status, 400);
+  assert.equal(missingPath.body.error, "path_required");
+});
+
+test("grokbot : UI split launch/usage vs runs — pas de poll repositories", () => {
+  const ui = path.join(ROOT, "packages/grokbot/ui");
+  const read = (name) => fs.readFileSync(path.join(ui, name), "utf8");
+  const client = read("grokbot-client.tsx");
+  const launch = read("grokbot-launch-form.tsx");
+  const usage = read("grokbot-usage-artifacts.tsx");
+  const runs = read("grokbot-agent-runs.tsx");
+
+  assert.match(client, /GrokbotLaunchForm/);
+  assert.match(client, /GrokbotUsageArtifacts/);
+  assert.match(client, /GrokbotAgentRuns/);
+
+  assert.match(launch, /SelectItem/);
+  assert.match(launch, /Textarea/);
+  assert.doesNotMatch(launch, /<select[\s>]/);
+  assert.doesNotMatch(launch, /<textarea[\s>]/);
+  assert.match(launch, /\/repositories/);
+  assert.match(launch, /refresh=1/);
+  assert.match(launch, /from "sonner"/);
+  assert.match(launch, /mode/);
+  assert.match(launch, /Rafraîchir les repos/);
+
+  assert.match(usage, /\/usage/);
+  assert.match(usage, /\/artifacts/);
+  assert.match(usage, /artifacts\/download/);
+  assert.match(usage, /from "sonner"/);
+
+  assert.doesNotMatch(client, /\/repositories/);
+  assert.doesNotMatch(runs, /\/repositories/);
+  assert.doesNotMatch(runs, /\/models/);
+  assert.doesNotMatch(client, /\/models/);
+
+  for (const src of [client, launch, usage, runs]) {
+    assert.doesNotMatch(src, /api\.cursor\.com/);
+    assert.doesNotMatch(src, /Authorization:\s*Bearer/);
+  }
 });
