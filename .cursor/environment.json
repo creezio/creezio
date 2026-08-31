@@ -1,3 +1,9 @@
 {
-  "install": "npm install --no-audit --no-fund"
+  "name": "Creezio + TempoFlow3",
+  "install": "bash .cursor/install.sh",
+  "start": "bash .cursor/start.sh",
+  "repositoryDependencies": [
+    "github.com/creezio/tempoflow3",
+    "github.com/creezio/tempoflow3-admin"
+  ]
 }

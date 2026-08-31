@@ -278,6 +278,28 @@ creezio new-app \
 
 ADR : [`docs/adr/ADR-factory-from-prd.md`](./docs/adr/ADR-factory-from-prd.md).
 
+## Cursor Cloud specific instructions
+
+Environnement **repo-géré** : `.cursor/environment.json` (install/start).
+Secret requis pour les marques : `CREEZIO_NPM_TOKEN` (PAT org
+`read:packages`) — le kit s'installe sans, `tempoflow3` /
+`tempoflow3-admin` échouent en 401 sinon.
+
+Layout cloud : `/agent/repos/{creezio,tempoflow3,tempoflow3-admin}`.
+`start` pose les symlinks `/opt/docker/<nom>` attendus par
+`CREEZIO_KIT_ROOT` et `creezio server-docker`.
+
+`install` = `npm ci` kit + `build:packages`, puis `npm ci` des clones
+sœurs (racine + `server/ui` + `client` si présents). Aucun serveur
+dans install/start. Harness marque : port libre + data dir isolé,
+jamais 18791/18792.
+
+```bash
+npm run test:kit
+# marques (token requis) :
+cd /opt/docker/tempoflow3 && npm test
+```
+
 ## Ne pas faire
 
 - Committer des secrets / PAT.
