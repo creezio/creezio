@@ -1,5 +1,19 @@
 # @creezio/mails
 
+## 0.19.0
+
+### Patch Changes
+
+- 7254406: Token renseigné mais send 550 : la config reste OK ; l'UI affiche clairement que l'envoi réel est indisponible (domaine non onboardé).
+- Updated dependencies [9324b6c]
+- Updated dependencies [cc2724a]
+- Updated dependencies [fe20ca7]
+- Updated dependencies [02927c6]
+  - @creezio/shell-ui@0.19.0
+  - @creezio/auth@0.19.0
+  - @creezio/platform-core@0.19.0
+  - @creezio/api-kernel@0.19.0
+
 ## Unreleased
 
 - Token / `secret_ref` renseigné : les réglages restent enregistrables si le probe send échoue (550, domaine non onboardé). `POST /settings/verify` renvoie `ok: true` + `send.state=unavailable` au lieu d'invalider les identifiants. Bandeau `/parametres/email` et file d'attente : « Email Sending non configuré » vs « Token présent, envoi réel indisponible ». `nodemailer_absent` et l'absence de token ne sont pas masqués.
