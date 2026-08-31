@@ -44,7 +44,7 @@
 | [`src/cli.ts`](../src/cli.ts) | CLI `new-app`, `--from-prd` ; `demo-app` déprécié (exit 1). |
 | [`src/github-repos.ts`](../src/github-repos.ts) | Création + push des 2 repos GitHub privés d'une marque (monorepo + `<brand>-admin`) ; token env `GITHUB_TOKEN`/`CREEZIO_GITHUB_TOKEN` ou `.github-token`, vendor + package-lock synchronisés AVANT push. |
 | [`src/index.ts`](../src/index.ts) | Exports publics |
-| [`src/kit-release.ts`](../src/kit-release.ts) | Version lockstep + SoT `SERVER_CREEZIO_DEPS` / `CLIENT_CREEZIO_DEPS` (granola, grokbot, nav inclus) + `creezioNpmDeps` / `.npmrc` généré. |
+| [`src/kit-release.ts`](../src/kit-release.ts) | Version lockstep + SoT `SERVER_CREEZIO_DEPS` / `UI_CREEZIO_DEPS` / `CLIENT_CREEZIO_DEPS` (granola, grokbot, nav inclus) + `creezioNpmDeps` / `.npmrc` généré. |
 | [`src/minimal-png.ts`](../src/minimal-png.ts) | Icône placeholder |
 | [`src/package-lock.ts`](../src/package-lock.ts) | Cohérence package.json ↔ package-lock (npm ci Docker) — régénération lock-only / install. |
 | [`src/plugin-templates.ts`](../src/plugin-templates.ts) | Installation des templates de plugins kit (`templates/plugins/<id>/`) dans le répertoire plugins d'une app (`<userData>/plugins/<id>/` + `.enabled`). |
@@ -57,7 +57,8 @@
 | [`src/server-docker-registry.ts`](../src/server-docker-registry.ts) | Registre d'instances serveur Docker par marque — SoT `docker-data/servers.json` (image `creezio-server-<brandId>`, containers `<brandId>-server-<nom>`). |
 | [`src/server-docker-tunnel.ts`](../src/server-docker-tunnel.ts) | Politique `server-docker create` fail-closed : contrat CF (`CREEZIO_CF_API_TOKEN` / `_ACCOUNT_ID` / `_ZONE_ID`) requis sauf `CREEZIO_TUNNEL_LOCAL=1` ; slug réservé → `<brand>-<slug>` ; secrets CF hors registre (`cf.env` 600). |
 | [`src/server-docker-ufw.ts`](../src/server-docker-ufw.ts) | Préflight UFW fail-closed des ports flotte consommés depuis les conteneurs (18800 backend, 18810 host-agent) : règle `172.16.0.0/12 → 172.17.0.1:<port>` détectée/posée (root ou `sudo -n`, re-vérifiée) à `agent up`/`admin up`/`enroll`, sinon erreur avec la commande exacte — incident 10–30/08/2026. |
-| [`src/upgrade-cli.ts`](../src/upgrade-cli.ts) | `creezio upgrade` (P3.a) — détection version d'architecture marque, chaîne de codemods H* dans l'ordre (idempotence vérifiée), bump `@creezio/*` tous manifests (`--package-lock-only`), rematérialisation os-ui, doctor fail-closed, `--dry-run`. |
+| [`src/sync-creezio-deps.ts`](../src/sync-creezio-deps.ts) | Sync des deps `@creezio/*` d'une marque avec la SoT kit (rôles root/server/server-ui/client ↔ `SERVER/UI/CLIENT_CREEZIO_DEPS`) : bump + ajout des manquantes, jamais de suppression (extras = warning). Partagé entre `creezio upgrade` et `scripts/propagate-brands.mjs`. |
+| [`src/upgrade-cli.ts`](../src/upgrade-cli.ts) | `creezio upgrade` (P3.a) — détection version d'architecture marque, chaîne de codemods H* dans l'ordre (idempotence vérifiée), sync `@creezio/*` tous manifests via `sync-creezio-deps.ts` (bump + ajouts SoT, `--package-lock-only`), rematérialisation os-ui, doctor fail-closed, `--dry-run`. |
 | [`src/write-app-file.ts`](../src/write-app-file.ts) | Écriture des fichiers d'app marque — respecte le marker `creezio:owned-by-brand` même avec `--force` (merge package.json, jamais de wipe du métier enrichi). |
 
 ## `src/generators/`

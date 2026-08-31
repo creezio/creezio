@@ -60,12 +60,20 @@ en jumeau dans `main.ts`.
   version marque : détection version d'architecture (marker
   `creezio.architectureVersion` > lockfile `platform-core` > node_modules),
   chaîne de codemods H* dans l'ordre avec idempotence vérifiée (re-run
-  = no-op sinon échec), bump `@creezio/*` de TOUS les manifests
-  (`npm install --package-lock-only`, jamais `npm update`),
-  rematérialisation os-ui, doctor brand-spec fail-closed, `--dry-run`.
-  Les codemods sont embarqués dans le package publié
+  = no-op sinon échec), **sync** `@creezio/*` de TOUS les manifests via
+  `planCreezioManifestSync` (bump + AJOUT des deps SoT manquantes —
+  trou prod 0.20.0 — jamais de suppression : dep hors SoT = warning
+  listé), lockfiles régénérés (`npm install --package-lock-only`, jamais
+  `npm update`), rematérialisation os-ui, doctor brand-spec fail-closed,
+  `--dry-run` (liste les ajouts). Les codemods sont embarqués dans le
+  package publié
   (`codemods/`, copiés au build par `scripts/copy-codemods.mjs` depuis
   `scripts/codemods/` du kit — SoT). Gate : `test-phase-upgrade-runner`.
+- `src/sync-creezio-deps.ts` : logique PARTAGÉE de sync des manifests
+  marque (rôles root/server/server-ui/client ↔ SoT
+  `SERVER/UI/CLIENT_CREEZIO_DEPS`) — consommée par `upgrade-cli.ts` ET par
+  `scripts/propagate-brands.mjs` (import du dist) ; jamais de boucle de
+  bump parallèle.
 - `src/server-docker-cli.ts` : serveurs marque headless (`docker/server`).
 - `src/server-docker-tunnel.ts` : politique create fail-closed
   (`CREEZIO_CF_API_TOKEN` / `_ACCOUNT_ID` / `_ZONE_ID` requis sauf
@@ -82,9 +90,10 @@ en jumeau dans `main.ts`.
   `npm install --no-audit --no-fund`) — cloud agents Cursor prêts.
 - `src/brand-cli.ts` : BrandSpec init/doctor/apply/smoke.
 - `src/product-model.ts` : `ProductModel`, `parseProductPrd`, `safeBrandId`.
-- `src/kit-release.ts` : SoT `SERVER_CREEZIO_DEPS` / `CLIENT_CREEZIO_DEPS`
-  (granola, grokbot, nav inclus) — les deux chemins scaffold / --from-prd
-  consomment cette liste, jamais une copie inline.
+- `src/kit-release.ts` : SoT `SERVER_CREEZIO_DEPS` / `CLIENT_CREEZIO_DEPS` /
+  `UI_CREEZIO_DEPS` (granola, grokbot, nav inclus) — les chemins scaffold /
+  --from-prd / `renderUiPackageJson` / `creezio upgrade` / propagate
+  consomment ces listes, jamais une copie inline.
 - `src/scaffold.ts` / `scaffold-from-prd.ts` : artefacts.
 - `src/generators/*` : schema, api, ui, **os-ui** (réf. + layout métier-only), nav, wiring, tests.
   Chrome : `<NavCatalogLoader />` (`@creezio/shell-ui/ui`) +

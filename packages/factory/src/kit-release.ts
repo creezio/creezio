@@ -89,6 +89,43 @@ export const SERVER_CREEZIO_DEPS = [
   "tasks",
 ] as const;
 
+/**
+ * Clôture @creezio du projet UI (`server/ui/package.json`) — SoT unique pour
+ * `renderUiPackageJson` (generators/os-ui.ts) ET pour la synchronisation
+ * d'upgrade (`sync-creezio-deps.ts`). Toute page os-ui / composant kit
+ * importé par l'UI (`@creezio/<pkg>/ui`) exige `<pkg>` ici — une liste
+ * parallèle inline a déjà cassé le build marque (os-ui@0.20.0 matérialise
+ * /granola et /grokbot sur une marque sans ces deps, incident prod 0.20.0).
+ * Les peers kit déclarés en `dependencies` (résolution déterministe hors
+ * workspace) figurent aussi ici : platform-core, brand-config, shell,
+ * api-kernel, integrations.
+ */
+export const UI_CREEZIO_DEPS = [
+  "access-control",
+  "api-kernel",
+  "assistant",
+  "auth",
+  "brand-config",
+  "cockpit",
+  "database",
+  "granola",
+  "grokbot",
+  "integrations",
+  "interactive-demo",
+  "mails",
+  "mcp-facade",
+  "nav",
+  "observability",
+  "onboarding",
+  "os-ui",
+  "platform-core",
+  "product-hub",
+  "shell",
+  "shell-ui",
+  "support",
+  "tasks",
+] as const;
+
 /** Clôture @creezio requise par le client thin (startBrandDesktop remote-only). */
 export const CLIENT_CREEZIO_DEPS = [
   "api-kernel",

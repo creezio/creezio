@@ -69,6 +69,30 @@ sans cet appel le repo marque part à 0 plugins. Gate E2E :
 `scripts/test-phase-plugin-insights.mjs`. Guide auteur :
 [CREATE-PLUGIN](../../docs/agents/CREATE-PLUGIN.md).
 
+## Monter de version — `creezio upgrade`
+
+```bash
+creezio upgrade [--brand-root <dir>] [--dry-run] [--no-install]
+```
+
+Rejoue la montée de version d'un repo marque : chaîne de codemods
+d'architecture (idempotence prouvée à chaque pas), puis **synchronisation
+des deps `@creezio/*`** de tous les manifests (racine, `server`,
+`server/ui`, `client`) avec la SoT du kit installé
+(`SERVER/UI/CLIENT_CREEZIO_DEPS`, `src/kit-release.ts`) :
+
+- deps existantes → bump vers `^<lockstep kit>` ;
+- deps requises manquantes → **ajoutées** (le trou historique : os-ui
+  0.20.0 matérialise `/granola` et `/grokbot` sur une marque sans ces deps
+  → build cassé) ;
+- dep `@creezio/*` hors SoT → **jamais supprimée**, warning listé ;
+- lockfiles régénérés via `npm install --package-lock-only` (jamais
+  `npm update`) ; `--dry-run` liste bumps et ajouts sans rien écrire.
+
+Le même moteur (`src/sync-creezio-deps.ts`) alimente le rollout flotte
+`scripts/propagate-brands.mjs`. Le doctor brand-spec vérifie en fail-closed
+que toute page os-ui a ses deps déclarées (`OS_UI_PAGE_DEP_MISSING`).
+
 ## Options
 
 | Option | Description |
