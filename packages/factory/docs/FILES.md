@@ -10,6 +10,12 @@
 |---|---|
 | [`bin/creezio.js`](../bin/creezio.js) | Binaire npm |
 
+## `codemods/H10/`
+
+| Fichier | Rôle |
+|---|---|
+| [`codemods/H10/h10-explicit-desktop-deps.mjs`](../codemods/H10/h10-explicit-desktop-deps.mjs) | Copie build (gitignorée) du codemod H10 — SoT `scripts/codemods/H10/` du kit : clients desktop legacy → deps explicites + `ensureDesktopNode` + preload `preload.js`. |
+
 ## `codemods/H7/`
 
 | Fichier | Rôle |
