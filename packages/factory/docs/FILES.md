@@ -20,7 +20,7 @@
 
 | Fichier | Rôle |
 |---|---|
-| [`codemods/H11/h11-purge-tf2-compat.mjs`](../codemods/H11/h11-purge-tf2-compat.mjs) | (à documenter) |
+| [`codemods/H11/h11-purge-tf2-compat.mjs`](../codemods/H11/h11-purge-tf2-compat.mjs) | Copie build (gitignorée) du codemod H11 — SoT `scripts/codemods/H11/` : purge `TEMPOFLOW_*`, asserts feed CHR, `countKey: "sites"`, fallback builder. |
 
 ## `codemods/H7/`
 
