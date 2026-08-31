@@ -107,6 +107,74 @@ export function creezioLinkKitFileSpecs(
 }
 
 /**
+ * Clôture @creezio serveur (deps directes npm publiées) — SoT unique pour
+ * `scaffold.ts` et `scaffold-from-prd.ts`. Toute page OS qui importe un
+ * `@creezio/*` côté serveur (granola, grokbot, nav, …) doit figurer ici
+ * — une liste parallèle dans --from-prd a déjà fait rater la gate
+ * os-ui-scaffold (PR #154/#166).
+ */
+export const SERVER_CREEZIO_DEPS = [
+  "api-kernel",
+  "app-runtime",
+  "assistant",
+  "auth",
+  "brand-config",
+  "brand-spec",
+  "browser-host",
+  "cockpit",
+  "database",
+  "desktop-tooling",
+  "host-runtime",
+  "granola",
+  "grokbot",
+  "integrations",
+  "interactive-demo",
+  "mails",
+  "mcp-facade",
+  "nav",
+  "observability",
+  "onboarding",
+  "os-ui",
+  "platform-core",
+  "product-hub",
+  "search",
+  "shell",
+  "shell-ui",
+  "support",
+  "tasks",
+] as const;
+
+/** Clôture @creezio requise par le client thin (startBrandDesktop remote-only). */
+export const CLIENT_CREEZIO_DEPS = [
+  "api-kernel",
+  "app-runtime",
+  "assistant",
+  "auth",
+  "brand-config",
+  "brand-spec",
+  "browser-host",
+  "cockpit",
+  "database",
+  "desktop-tooling",
+  "electron-shell",
+  "granola",
+  "grokbot",
+  "integrations",
+  "mails",
+  "mcp-facade",
+  "nav",
+  "observability",
+  "onboarding",
+  "os-ui",
+  "platform-core",
+  "product-hub",
+  "shell",
+  "shell-ui",
+  "support",
+  "tasks",
+] as const;
+
+/**
  * Contenu des `.npmrc` générés (racine + livrables hors workspace) :
  * registre GitHub Packages pour @creezio/*, token via env — JAMAIS commité.
  */

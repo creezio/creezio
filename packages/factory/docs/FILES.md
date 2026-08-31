@@ -44,7 +44,7 @@
 | [`src/cli.ts`](../src/cli.ts) | CLI `new-app`, `--from-prd` ; `demo-app` déprécié (exit 1). |
 | [`src/github-repos.ts`](../src/github-repos.ts) | Création + push des 2 repos GitHub privés d'une marque (monorepo + `<brand>-admin`) ; token env `GITHUB_TOKEN`/`CREEZIO_GITHUB_TOKEN` ou `.github-token`, vendor + package-lock synchronisés AVANT push. |
 | [`src/index.ts`](../src/index.ts) | Exports publics |
-| [`src/kit-release.ts`](../src/kit-release.ts) | Version lockstep, specs `^<version>`, `.npmrc` généré, `--link-kit` (`file:` worktree). |
+| [`src/kit-release.ts`](../src/kit-release.ts) | Version lockstep + SoT `SERVER_CREEZIO_DEPS` / `CLIENT_CREEZIO_DEPS` (granola, grokbot, nav inclus) + `creezioNpmDeps` / `.npmrc` généré ; `--link-kit` (`file:` worktree). |
 | [`src/minimal-png.ts`](../src/minimal-png.ts) | Icône placeholder |
 | [`src/package-lock.ts`](../src/package-lock.ts) | Cohérence package.json ↔ package-lock (npm ci Docker) — régénération lock-only / install ; `--link-kit` pin worktree. |
 | [`src/plugin-templates.ts`](../src/plugin-templates.ts) | Installation des templates de plugins kit (`templates/plugins/<id>/`) dans le répertoire plugins d'une app (`<userData>/plugins/<id>/` + `.enabled`). |

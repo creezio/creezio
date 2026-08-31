@@ -33,6 +33,8 @@ import {
   renderCreezioDevProxyMjs,
 } from "./generators/server-docker-scripts.js";
 import {
+  CLIENT_CREEZIO_DEPS,
+  SERVER_CREEZIO_DEPS,
   creezioNpmDeps,
   renderCreezioNpmrc,
 } from "./kit-release.js";
@@ -242,71 +244,6 @@ function renderPackageJson(m: AppManifest): string {
     ) + "\n"
   );
 }
-
-/**
- * Clôture @creezio serveur (deps directes npm publiées) — explicite pour un
- * lock lisible et des updates ciblables (`npm update "@creezio/*"`).
- */
-const SERVER_CREEZIO_DEPS = [
-  "api-kernel",
-  "app-runtime",
-  "assistant",
-  "auth",
-  "brand-config",
-  "brand-spec",
-  "browser-host",
-  "cockpit",
-  "database",
-  "desktop-tooling",
-  "host-runtime",
-  "granola",
-  "grokbot",
-  "integrations",
-  "interactive-demo",
-  "mails",
-  "mcp-facade",
-  "nav",
-  "observability",
-  "onboarding",
-  "os-ui",
-  "platform-core",
-  "product-hub",
-  "search",
-  "shell",
-  "shell-ui",
-  "support",
-  "tasks",
-];
-
-/** Clôture @creezio requise par le client thin (startBrandDesktop remote-only). */
-const CLIENT_CREEZIO_DEPS = [
-  "api-kernel",
-  "app-runtime",
-  "assistant",
-  "auth",
-  "brand-config",
-  "brand-spec",
-  "browser-host",
-  "cockpit",
-  "database",
-  "desktop-tooling",
-  "electron-shell",
-  "granola",
-  "grokbot",
-  "integrations",
-  "mails",
-  "mcp-facade",
-  "nav",
-  "observability",
-  "onboarding",
-  "os-ui",
-  "platform-core",
-  "product-hub",
-  "shell",
-  "shell-ui",
-  "support",
-  "tasks",
-];
 
 function renderClientPackageJson(m: AppManifest): string {
   return (

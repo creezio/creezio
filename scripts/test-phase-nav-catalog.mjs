@@ -297,16 +297,16 @@ test("nav-catalog : factory chrome sans const OS_NAV ni literal /granola", async
 });
 
 test("nav-catalog : factory installe granola, grokbot et nav (jamais retirer)", () => {
-  const scaffold = fs.readFileSync(
-    path.join(ROOT, "packages/factory/src/scaffold.ts"),
+  const sot = fs.readFileSync(
+    path.join(ROOT, "packages/factory/src/kit-release.ts"),
     "utf8",
   );
   const gen = fs.readFileSync(FACTORY_OS_UI, "utf8");
   for (const name of ["granola", "grokbot", "nav"]) {
     assert.match(
-      scaffold,
+      sot,
       new RegExp(`"${name}"`),
-      `scaffold.ts liste ${name} (SERVER/CLIENT_CREEZIO_DEPS)`,
+      `kit-release.ts liste ${name} (SERVER/CLIENT_CREEZIO_DEPS)`,
     );
     assert.match(
       gen,
