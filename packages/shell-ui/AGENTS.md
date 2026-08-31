@@ -44,8 +44,10 @@ UI :
 - `ui/layout/nav-icons.ts` : `resolveNavIcon(name)` — allowlist lucide,
   inconnu → `Circle` + warning.
 - `ui/layout/native-os-nav.ts` : adaptateur `listOsNavEntries()` →
-  `SidebarNavItem[]`. Les marques doivent **appeler**
-  `defaultOsPrimaryNavItems()`, pas recopier un `OS_NAV`.
+  `SidebarNavItem[]` (fallback hors mount).
+- `ui/layout/nav-catalog-loader.tsx` : `<NavCatalogLoader />` — fetch
+  `GET /api/v1/modules/nav`, bump `configureSidebar`. Chrome factory /
+  marques : monter le loader, **interdit** de recopier un `OS_NAV`.
   Plan : `docs/plans/PLAN-NAV-CATALOG.md`.
 - `ui/layout/sidebar.tsx` : sidebar CRM.
 - `ui/workspace/tab-workspace-context.tsx` : workspace onglets principal.

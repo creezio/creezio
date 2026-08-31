@@ -75,7 +75,8 @@
 | [`ui/layout/app-shell.tsx`](../ui/layout/app-shell.tsx) | _(pas de cartouche JSDoc en tête — voir le code)_ |
 | [`ui/layout/desktop-update-banner.tsx`](../ui/layout/desktop-update-banner.tsx) | _(pas de cartouche JSDoc en tête — voir le code)_ |
 | [`ui/layout/entity-header.tsx`](../ui/layout/entity-header.tsx) | _(pas de cartouche JSDoc en tête — voir le code)_ |
-| [`ui/layout/native-os-nav.ts`](../ui/layout/native-os-nav.ts) | Adaptateur sidebar : `defaultOsCatalogEntries()` → `SidebarNavItem[]` (icônes via `resolveNavIcon`). `defaultOsAdminNavItems({ includePlugins })`. Les marques composent, ne recopient plus. |
+| [`ui/layout/native-os-nav.ts`](../ui/layout/native-os-nav.ts) | Adaptateur sidebar : `defaultOsCatalogEntries()` → `SidebarNavItem[]` (icônes via `resolveNavIcon`). Fallback hors mount. `defaultOsAdminNavItems({ includePlugins })`. Chrome = `NavCatalogLoader`, pas un `OS_NAV` recopié. |
+| [`ui/layout/nav-catalog-loader.tsx`](../ui/layout/nav-catalog-loader.tsx) | `<NavCatalogLoader />` — fetch `GET /api/v1/modules/nav`, bump `configureSidebar({ getNavItems })`. API publique chrome (factory importe d'ici, pas `@creezio/nav`). |
 | [`ui/layout/nav-icons.ts`](../ui/layout/nav-icons.ts) | `resolveNavIcon(name)` — allowlist lucide (sidebar OS + Bot / NotebookPen). Inconnu → `Circle` + warning, pas de throw UI. |
 | [`ui/layout/page-chrome.tsx`](../ui/layout/page-chrome.tsx) | _(pas de cartouche JSDoc en tête — voir le code)_ |
 | [`ui/layout/page-toolbar-context.tsx`](../ui/layout/page-toolbar-context.tsx) | _(pas de cartouche JSDoc en tête — voir le code)_ |

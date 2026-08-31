@@ -330,15 +330,55 @@ d’admin masquer**.
 
 1. Merge kit `main` → publish `@creezio/nav` + bump shell-ui / os-ui / factory.
 2. Marque : `npm update "@creezio/*"` (racine + `server/ui` + `client`).
-3. Remplacer le chrome :
-   - Foove : retirer `OS_NAV` + `createNavMount` local ; monter le loader kit.
-   - TempoFlow3 : retirer les lignes OS de `NAV` ; garder uniquement le
-     métier **ou** basculer métier sur `collectNavItems` (préféré).
+3. Remplacer le chrome (snippets ci-dessous). **Ne pas** ajouter
+   `@creezio/nav` aux deps tant que le package n'est pas publié — le
+   loader s'importe depuis `@creezio/shell-ui/ui`.
 4. `os-ui:materialize` pour `/admin/nav`.
 5. Gates marque.
 
-Workaround **temporaire** (jusqu’à Phase A consommée) — **déconseillé**,
-à n’utiliser que si un ship marque ne peut pas attendre le catalogue :
+### Foove — supprimer `OS_NAV` + `createNavMount` owned-by-brand
+
+Dans `server/ui/components/brand-chrome.tsx` (ou équivalent) :
+
+```tsx
+import {
+  configureSidebar,
+  defaultOsAdminNavItems,
+  defaultOsPrimaryNavItems,
+  NavCatalogLoader,
+} from "@creezio/shell-ui/ui";
+
+configureSidebar({
+  getNavItems: () => defaultOsPrimaryNavItems(),
+  getAdminItems: () => defaultOsAdminNavItems({ includePlugins: true }),
+});
+
+export function BrandChrome({ children }) {
+  return (
+    <SessionProvider>
+      <RequireSession>
+        <NavCatalogLoader />
+        <WorkspaceRoot>{children}</WorkspaceRoot>
+      </RequireSession>
+    </SessionProvider>
+  );
+}
+```
+
+Dans `server/src/electron/brand-module-api.ts` : **supprimer**
+`createNavMount` local et `api.registerModuleApi("nav", …)`. Le kit
+auto-register le mount dans `createBrandKernel` (`collectNavItems` /
+`navItems` → source `module`). Garder le registre modules.
+
+### TempoFlow3 — retirer les lignes OS de `NAV`
+
+Dans `server/ui/lib/shell-ui/configure-shell-ui-client.tsx` : supprimer
+les entrées `/taches`, `/mails`, `/parametres`, `/collaborateurs` (et
+toute ligne OS). **Préféré** : ne plus lister le métier non plus —
+`collectNavItems()` alimente déjà `GET /api/v1/modules/nav`. Monter le
+même `<NavCatalogLoader />` que Foove (import `@creezio/shell-ui/ui`).
+
+Workaround **temporaire** (hors factory-neuve — **déconseillé**) :
 
 ```ts
 import { defaultOsPrimaryNavItems } from "@creezio/shell-ui/ui";
@@ -348,8 +388,8 @@ configureSidebar({
 });
 ```
 
-**Pas** recopier granola/grokbot en dur. Dès que Phase A est publiée,
-même ce workaround disparaît au profit du loader.
+**Pas** recopier granola/grokbot en dur. Une marque `creezio brand create`
+neuve n'a plus ce workaround : chrome = loader.
 
 ---
 

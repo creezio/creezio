@@ -17,7 +17,8 @@ wrappers minces sur les UI des packages plateforme, boot client
 
 ## Points d'entrée
 
-- `src/index.ts` : `OS_UI_ROUTE_SEGMENTS`, `OS_UI_ROUTE_GROUP`, exports.
+- `src/index.ts` : `OS_UI_ROUTE_SEGMENTS`, `OS_PRIMARY_NAV_SEGMENTS`,
+  `OS_UI_HORS_NAV_JUSTIFICATIONS`, `OS_UI_ROUTE_GROUP`, exports.
 - `src/boot.tsx` : `CreezioUiBoot` (configureShellUiBrand + `InteractiveDemoRoot`
   natif — une app sans démo est invalide ; le chrome marque ne peut pas l'oublier).
 - `scripts/materialize.mjs` : copie `routes/` → `ui/app/(creezio-os)/`.
@@ -26,7 +27,9 @@ wrappers minces sur les UI des packages plateforme, boot client
 ## Modifier sans casser
 
 - Nouvelle page OS : ajouter le wrapper dans `routes/`, le segment dans
-  `OS_UI_ROUTE_SEGMENTS`, puis rematérialiser dans les marques.
+  `OS_UI_ROUTE_SEGMENTS`, **et** une entrée `registerOsNavEntry` **ou**
+  une `horsNavJustification` (gate `test-phase-os-nav-catalog`), puis
+  rematérialiser dans les marques.
 - Changement de contrat d'une UI plateforme : corriger le package source,
   puis vérifier que le wrapper compile dans une marque (`npm test` marque).
 

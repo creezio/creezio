@@ -7,9 +7,9 @@
  * (`@creezio/shell-ui`, `src/nav-catalog.ts`). Cette fonction ne fait
  * que projeter le registre vers `SidebarNavItem[]` (icônes résolues).
  *
- * La marque DOIT composer, plus recopier un `OS_NAV` inline :
- * `configureSidebar({ getNavItems: () => [...brand, ...defaultOsPrimaryNavItems()] })`.
- * Cible : `docs/plans/PLAN-NAV-CATALOG.md` (Phase A).
+ * La marque DOIT monter `<NavCatalogLoader />` (Phase C) — **interdit**
+ * de recopier un `OS_NAV` inline. Fallback hors mount :
+ * `defaultOsPrimaryNavItems()`. Cible : `docs/plans/PLAN-NAV-CATALOG.md`.
  * Hermes / n8n restent injectés par la sidebar kit (Admin → Outils).
  *
  * Feature-off plugins : passer `{ includePlugins: false }` à

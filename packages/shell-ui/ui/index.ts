@@ -82,6 +82,7 @@ export {
   defaultOsCatalogEntries,
   isKnownNavIcon,
   listOsNavEntries,
+  parseNavCatalogSessionItems,
   registerDefaultOsNavEntries,
   registerOsNavEntry,
   resetOsNavRegistryForTests,
@@ -90,12 +91,19 @@ export {
   type NavCatalogError,
   type NavCatalogFeatures,
   type NavCatalogGroup,
+  type NavCatalogSessionItem,
   type NavCatalogSource,
   type NavIconName,
   type NavOverride,
   type ResolveNavCatalogInput,
   type ResolveNavCatalogResult,
 } from "../dist/nav-catalog.js";
+export {
+  NAV_CATALOG_ENDPOINT,
+  NavCatalogLoader,
+  applyNavCatalogItemsToSidebar,
+  mapNavCatalogSessionToSidebar,
+} from "./layout/nav-catalog-loader";
 
 /* ── Workspace ── */
 export * from "./workspace/types";
