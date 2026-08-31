@@ -27,7 +27,7 @@ historiques kit/marques/factory). Cette surface est **FIGÉE** — gate
 s'exporte depuis son package SoT, jamais d'ici. `resources/{vendor,scripts,bin}` ont déménagé dans
 `@creezio/host-runtime` (P1.c) — résolus par `kitOsResourcesRoot`.
 
-## P2.a — moteur desktop partagé + compat legacy gelée
+## P2.a — moteur desktop partagé (compat legacy retirée en H10)
 
 `src/desktop/brand-desktop-runtime.ts` (`installBrandDesktopRuntime`)
 n'est **PAS** un runtime legacy mort : c'est le **moteur desktop unique**,
@@ -41,16 +41,16 @@ geler le fichier gèlerait le desktop des marques modernes
 Règles :
 
 - **Features desktop** : dans le moteur, via deps injectées génériques
-  (`BrandDesktopDeps`) — jamais de branche marque (`envPrefix === "TF2"`…).
-- **Compat marque héritée** : intégralement dans
-  `src/desktop/legacy-brand-compat.ts`, périmètre **GELÉ** fail-closed —
-  gate `test-phase-legacy-desktop-frozen` (empreinte SHA-256 dans
-  `scripts/legacy-desktop-frozen.json`, consommateurs verrouillés).
-  Aucune feature n'y entre ; fixes sécurité uniquement (bump d'empreinte
-  volontaire dans le même commit, justifié).
-- **Retrait H9** : au prochain bump `ARCHITECTURE_VERSION`, codemod de
-  migration des clients legacy vers des deps explicites puis suppression
-  du module (voir `docs/BACKLOG.md`).
+  (`BrandDesktopDeps`) — jamais de branche marque.
+- **Compat marque héritée : RETIRÉE en H10** (T9). Le module gelé
+  `src/desktop/legacy-brand-compat.ts`, sa gate
+  `test-phase-legacy-desktop-frozen` et l'empreinte
+  `scripts/legacy-desktop-frozen.json` n'existent plus. Les défauts sont
+  génériques : `<envPrefix>_PLUGINS_DIR`, `<brandId>fid`,
+  `<envPrefix>_API_KEY`, preload unique `preload.js`, contrat host
+  `ensureDesktopNode` (sans alias). Les clients legacy migrent via le
+  codemod `scripts/codemods/H10/` (deps explicites), appliqué par
+  `creezio upgrade`.
 
 ## Meili — composant CORE fail-closed (contrat marques)
 
@@ -108,8 +108,6 @@ dans la marque mais **doit** respecter ce contrat.
   `@deprecated` figés).
 - `src/desktop/brand-desktop-runtime.ts` : moteur desktop partagé complet
   (chemin moderne app-runtime + clients legacy — voir section P2.a).
-- `src/desktop/legacy-brand-compat.ts` : compat marque héritée, périmètre
-  GELÉ (gate `test-phase-legacy-desktop-frozen`).
 - `src/host/browser-tabs/index.ts` : sous-export browser-tabs
   (`@creezio/electron-shell/browser-tabs` — reste ICI, Electron via
   `loadElectron`).

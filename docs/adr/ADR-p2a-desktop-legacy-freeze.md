@@ -1,6 +1,7 @@
 # ADR P2.a — gel partiel du desktop legacy (pas de package `@creezio/legacy-desktop`)
 
-Statut : accepté (2026-08-29). Phase P2.a du plan de correction
+Statut : accepté (2026-08-29), **clôturé par le retrait H10**
+(2026-08-31 — voir « Clôture » en fin). Phase P2.a du plan de correction
 d'architecture.
 
 ## Contexte
@@ -72,3 +73,30 @@ du module gelé : migration des clients legacy vers des deps explicites
 - Les gates historiques pointant `desktop/brand-desktop-runtime.ts`
   (M12…N9, hybrid, desktop-server-parity, crash-reporter) restent valides —
   le fichier n'a pas bougé.
+
+## Clôture (H10, 2026-08-31 — T9)
+
+Le retrait prévu est exécuté au bump `ARCHITECTURE_VERSION` H9 → **H10** :
+
+- `electron-shell/src/desktop/legacy-brand-compat.ts` **supprimé**, ainsi
+  que la gate `test-phase-legacy-desktop-frozen` et son empreinte
+  `scripts/legacy-desktop-frozen.json` (retirée de la ligne `test` du
+  `package.json` racine).
+- Le moteur `brand-desktop-runtime.ts` applique désormais les défauts
+  génériques inline : `<PREFIX>_PLUGINS_DIR`, `<brandId>fid`,
+  `<PREFIX>_API_KEY`, preload unique `preload.js` (vue CRM + fenêtre
+  admin), contrat host `ensureDesktopNode` sans alias. Aucune branche
+  marque ne subsiste.
+- Les clients desktop legacy (repos hors kit appelant
+  `installBrandDesktopRuntime` directement) migrent via le codemod
+  `scripts/codemods/H10/h10-explicit-desktop-deps.mjs` (deps explicites
+  aux valeurs historiques, renommage `ensureTempoflowNode` →
+  `ensureDesktopNode`, rebascule `preload-app.js` → `preload.js`),
+  appliqué par `creezio upgrade` — idempotent, fail-closed sur divergence
+  non prouvable.
+- L'allowlist vocab F1.7 décroît : les 8 occurrences du module gelé
+  (tempoflow ×4, tf2 ×3, tf2fid ×1) sortent de
+  `scripts/no-brand-vocab-allowlist.json`.
+- Hors périmètre gelé d'origine : le fallback inline `preload-app.js` de
+  `host-runtime/src/ai-workspace/manager.ts` (préload du workspace IA, kit
+  moderne) est conservé — noté en BACKLOG comme nettoyage ultérieur.
