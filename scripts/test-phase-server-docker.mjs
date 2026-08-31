@@ -6,7 +6,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
 import test from "node:test";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const dockerServer = path.join(root, "docker/server");
@@ -214,7 +214,10 @@ test("CLI registre d'instances : create/start/stop/rm/logs/ls/update/backup + ad
   );
   assert.match(cli, /--browser/);
   assert.match(cli, /SERVER_VARIANT/);
-  assert.match(cli, /backup: !!args\.backup/);
+  assert.match(cli, /wantBackup = backupEnabled && !!args\.backup/);
+  assert.match(cli, /backup: wantBackup/);
+  assert.match(cli, /CREEZIO_SERVER_DOCKER_BACKUP/);
+  assert.match(cli, /backup skippé \(CREEZIO_SERVER_DOCKER_BACKUP=0\)/);
   assert.doesNotMatch(cli, /noBackup|--no-backup/);
   // P2.b : SoT flotte portée en TS — packages/fleet (wrappers compat retirés).
   const lib = fs.readFileSync(
@@ -223,6 +226,9 @@ test("CLI registre d'instances : create/start/stop/rm/logs/ls/update/backup + ad
   );
   assert.match(lib, /backup = false/);
   assert.match(lib, /pas de nouveau backup \(défaut\)/);
+  assert.match(lib, /CREEZIO_SERVER_DOCKER_BACKUP/);
+  assert.match(lib, /backup skippé \(CREEZIO_SERVER_DOCKER_BACKUP=0\)/);
+  assert.match(lib, /export function isServerDockerBackupEnabled/);
   // 0.10.3 : update ne droppe plus un sidecar / hostname public.
   assert.match(lib, /resolveStackUpdatePolicy/);
   assert.match(lib, /preserve-sidecar/);
@@ -277,4 +283,49 @@ test("boot progress headless : reporter + early-listen + boot-status", () => {
   assert.match(harness, /createBootProgressReporter/);
   assert.match(harness, /listenBrandBootHttp/);
   assert.match(harness, /startBrandUiPlane/);
+});
+
+test("CREEZIO_SERVER_DOCKER_BACKUP : défaut on, 0/false/off skip", async () => {
+  const dist = path.join(root, "packages/factory/dist/server-docker-cli.js");
+  assert.ok(
+    fs.existsSync(dist),
+    "packages/factory/dist/server-docker-cli.js absent — npm run build -w @creezio/factory",
+  );
+  const {
+    isServerDockerBackupEnabled,
+    resolveServerDockerBackupEnabled,
+    SERVER_DOCKER_BACKUP_ENV,
+  } = await import(pathToFileURL(dist).href);
+  assert.equal(SERVER_DOCKER_BACKUP_ENV, "CREEZIO_SERVER_DOCKER_BACKUP");
+  assert.equal(isServerDockerBackupEnabled(undefined), true);
+  assert.equal(isServerDockerBackupEnabled(""), true);
+  assert.equal(isServerDockerBackupEnabled("1"), true);
+  assert.equal(isServerDockerBackupEnabled("true"), true);
+  assert.equal(isServerDockerBackupEnabled("0"), false);
+  assert.equal(isServerDockerBackupEnabled("false"), false);
+  assert.equal(isServerDockerBackupEnabled("OFF"), false);
+  assert.equal(
+    resolveServerDockerBackupEnabled({
+      processValue: "0",
+      fileValue: "1",
+    }),
+    false,
+    "process.env gagne sur le .env marque",
+  );
+  assert.equal(
+    resolveServerDockerBackupEnabled({
+      processValue: "",
+      fileValue: "0",
+    }),
+    false,
+    ".env marque lu si process unset",
+  );
+  assert.equal(
+    resolveServerDockerBackupEnabled({
+      processValue: undefined,
+      fileValue: undefined,
+    }),
+    true,
+    "unset = on (prod-safe)",
+  );
 });

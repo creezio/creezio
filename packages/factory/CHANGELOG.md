@@ -1,5 +1,13 @@
 # @creezio/factory
 
+## Unreleased
+
+### Patch Changes
+
+- server-docker : `CREEZIO_SERVER_DOCKER_BACKUP=0` (aussi `false`/`off`)
+  ignore `--backup` et les backups automatiques (update, backup one-shot,
+  migrate-stack). Défaut on (prod-safe). Warn : `backup skippé (…)`.
+
 ## 0.16.0
 
 ### Minor Changes

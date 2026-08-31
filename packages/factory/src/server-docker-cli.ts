@@ -86,6 +86,54 @@ export function applyVpsNativeWarmDefaults(
   return out;
 }
 
+/** Kill-switch backups `server-docker` (update --backup, backup one-shot, migrate-stack). */
+export const SERVER_DOCKER_BACKUP_ENV = "CREEZIO_SERVER_DOCKER_BACKUP";
+
+const BACKUP_SKIPPED_WARN = "backup skippé (CREEZIO_SERVER_DOCKER_BACKUP=0)";
+
+/**
+ * Défaut **on** (prod-safe). `0` / `false` / `off` = skip.
+ * L'env gagne sur `--backup` (phase dev sans données client).
+ */
+export function isServerDockerBackupEnabled(
+  raw: string | undefined | null = process.env.CREEZIO_SERVER_DOCKER_BACKUP,
+): boolean {
+  const v = String(raw ?? "")
+    .trim()
+    .toLowerCase();
+  if (v === "0" || v === "false" || v === "off") return false;
+  return true;
+}
+
+/**
+ * process.env gagne sur le `.env` marque. Unset des deux côtés = on.
+ */
+export function resolveServerDockerBackupEnabled(opts?: {
+  processValue?: string | undefined;
+  fileValue?: string | undefined;
+}): boolean {
+  const processValue =
+    opts && "processValue" in opts
+      ? opts.processValue
+      : process.env.CREEZIO_SERVER_DOCKER_BACKUP;
+  const fileValue = opts?.fileValue;
+  const raw =
+    String(processValue ?? "").trim() || String(fileValue ?? "").trim();
+  return isServerDockerBackupEnabled(raw);
+}
+
+function warnBackupSkipped(): void {
+  console.warn(BACKUP_SKIPPED_WARN);
+}
+
+function brandServerDockerBackupEnabled(brandRoot: string): boolean {
+  const file = readEnvFileValues(path.join(brandRoot, ".env"));
+  return resolveServerDockerBackupEnabled({
+    processValue: process.env.CREEZIO_SERVER_DOCKER_BACKUP,
+    fileValue: file.CREEZIO_SERVER_DOCKER_BACKUP,
+  });
+}
+
 export type ServerDockerArgs = {
   sub: string;
   brandRoot?: string;
@@ -328,6 +376,8 @@ Instances nommées (registre docker-data/servers.json — recommandé) :
     [--backup] [--registry 127.0.0.1:5000]
     (recreate même volume /data ; défaut = PAS de nouveau tar.gz.
      --backup : snapshot frais avant recreate — prod critique seulement.
+     CREEZIO_SERVER_DOCKER_BACKUP=0 (aussi false/off) : ignore --backup
+     et skip backup one-shot / migrate-stack (dev ; défaut on).
      Archives déjà dans docker-data/backups/ sont conservées.
      Sidecar cloudflared historique : CONSERVÉ (même tunnel, même adresse
      publique). Adresse publique persistée sans sidecar → REFUS (rien
@@ -3097,12 +3147,16 @@ async function runRegistrySubcommand(
         inst: ServerRegistryInstance,
       ) => Promise<{ ok: boolean; file: string | null; detail: string }>;
     };
-    console.log("backup /data avant bascule…");
-    const b = await backupInstanceData(paths.brandRoot, inst);
-    if (!b.ok) {
-      throw new Error(`backup KO: ${b.detail} — migration annulée (rien touché)`);
+    if (!brandServerDockerBackupEnabled(paths.brandRoot)) {
+      warnBackupSkipped();
+    } else {
+      console.log("backup /data avant bascule…");
+      const b = await backupInstanceData(paths.brandRoot, inst);
+      if (!b.ok) {
+        throw new Error(`backup KO: ${b.detail} — migration annulée (rien touché)`);
+      }
+      console.log(`✓ backup ${b.detail}`);
     }
-    console.log(`✓ backup ${b.detail}`);
 
     const kc = stack.readKernelTunnelConfig(paths.brandRoot, inst, brandId);
     let cf: Record<string, string> | undefined;
@@ -3402,6 +3456,10 @@ async function runRegistrySubcommand(
         inst: ServerRegistryInstance,
       ) => Promise<{ ok: boolean; file: string | null; detail: string }>;
     };
+    if (!brandServerDockerBackupEnabled(paths.brandRoot)) {
+      warnBackupSkipped();
+      return;
+    }
     console.log(`backup one-shot ${name} (/data → docker-data/backups/)…`);
     const b = await backupInstanceData(paths.brandRoot, inst);
     if (!b.ok) {
@@ -3464,15 +3522,18 @@ async function runRegistrySubcommand(
         `VPS warm : CREEZIO_NATIVE_WARM=${inst.env.CREEZIO_NATIVE_WARM} HERMES=${inst.env.CREEZIO_NATIVE_WARM_HERMES} (n8n+Hermes requis)`,
       );
     }
+    const backupEnabled = brandServerDockerBackupEnabled(paths.brandRoot);
+    if (args.backup && !backupEnabled) warnBackupSkipped();
+    const wantBackup = backupEnabled && !!args.backup;
     console.log(
-      `update ${name} → ${image}${args.backup ? " (--backup)" : " (sans nouveau backup)"}…`,
+      `update ${name} → ${image}${wantBackup ? " (--backup)" : " (sans nouveau backup)"}…`,
     );
     const result = await updateServer({
       brandRoot: paths.brandRoot,
       registry,
       inst,
       image,
-      backup: !!args.backup,
+      backup: wantBackup,
       audit: (s) => console.log(`  ${s}`),
     });
     if (!result.ok) {
