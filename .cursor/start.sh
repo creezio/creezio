@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Per-boot : chemins /opt/docker/<nom> + npm ci marques si token et modules absents.
-# Idempotent. Ne démarre aucun serveur.
+# Per-boot : chemins /opt/docker/<nom> attendus par le CLI server-docker.
+# Idempotent. Ne démarre aucun serveur. Pas de npm ci ici (install.sh).
 set -euo pipefail
 
 SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
@@ -47,11 +47,9 @@ ensure_link /opt/docker/creezio "$KIT_ROOT"
 
 if tf3=$(find_sibling tempoflow3); then
   ensure_link /opt/docker/tempoflow3 "$tf3"
-  ensure_brand_modules "$tf3" tempoflow3
 fi
 if admin=$(find_sibling tempoflow3-admin); then
   ensure_link /opt/docker/tempoflow3-admin "$admin"
-  ensure_brand_modules "$admin" tempoflow3-admin
 fi
 
 log "start OK"

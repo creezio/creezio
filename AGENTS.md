@@ -282,18 +282,20 @@ ADR : [`docs/adr/ADR-factory-from-prd.md`](./docs/adr/ADR-factory-from-prd.md).
 
 Environnement **repo-géré** : `.cursor/environment.json` (install/start).
 Secret requis pour les marques : `CREEZIO_NPM_TOKEN` (PAT org
-`read:packages`) — le kit s'installe sans, `tempoflow3` /
-`tempoflow3-admin` échouent en 401 sinon.
+`read:packages`). Les **draft builds** reçoivent les secrets **team**
+et **environment** (pas les user secrets) — le poser comme secret
+d'environnement, jamais dans le repo. Pas de skip si le token manque.
 
 Layout cloud : `/agent/repos/{creezio,tempoflow3,tempoflow3-admin}`.
 `start` pose les symlinks `/opt/docker/<nom>` attendus par
 `CREEZIO_KIT_ROOT` et `creezio server-docker`.
 
 `install` = `npm ci` kit + `build:packages`, puis `npm ci` des clones
-sœurs si `CREEZIO_NPM_TOKEN` est injecté (sinon skip, pas d’échec).
-`start` pose les symlinks et complète `npm ci` marque si le token est
-là et `node_modules` absent. Aucun serveur dans install/start.
-Harness marque : port libre + data dir isolé, jamais 18791/18792.
+sœurs (racine + `server/ui` + `client` si présents). Fail-closed si
+un clone sœur est présent et `CREEZIO_NPM_TOKEN` est vide — pas de skip.
+`start` pose uniquement les symlinks `/opt/docker/<nom>` (pas de npm ci).
+Aucun serveur dans install/start. Harness marque : port libre + data dir
+isolé, jamais 18791/18792.
 
 ```bash
 npm run test:kit

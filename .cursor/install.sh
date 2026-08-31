@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Cloud Agent install — kit Creezio + repos marque sœurs s'ils sont checkoutés.
 # Idempotent. Ne démarre aucun serveur. Ne lance pas les tests.
+# Fail-closed : clone sœur présent + CREEZIO_NPM_TOKEN vide = échec.
 set -euo pipefail
 
 SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
@@ -20,19 +21,29 @@ install_kit() {
 }
 
 require_node
-if has_npm_token; then
-  log "CREEZIO_NPM_TOKEN présent"
-else
-  log "CREEZIO_NPM_TOKEN absent — kit seulement ; marques au start si le secret est injecté"
+
+tf3=""
+admin=""
+if tf3=$(find_sibling tempoflow3); then
+  :
 fi
+if admin=$(find_sibling tempoflow3-admin); then
+  :
+fi
+
+if [ -n "$tf3" ] || [ -n "$admin" ]; then
+  require_npm_token "tempoflow3 / tempoflow3-admin"
+  log "CREEZIO_NPM_TOKEN présent"
+fi
+
 install_kit
 
 installed_brands=()
-if tf3=$(find_sibling tempoflow3); then
+if [ -n "$tf3" ]; then
   install_brand "$tf3" tempoflow3
   installed_brands+=("tempoflow3")
 fi
-if admin=$(find_sibling tempoflow3-admin); then
+if [ -n "$admin" ]; then
   install_brand "$admin" tempoflow3-admin
   installed_brands+=("tempoflow3-admin")
 fi

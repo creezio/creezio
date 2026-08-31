@@ -53,18 +53,19 @@ find_sibling() {
   return 1
 }
 
-has_npm_token() {
-  [ -n "${CREEZIO_NPM_TOKEN:-}" ]
+require_npm_token() {
+  local label=$1
+  if [ -z "${CREEZIO_NPM_TOKEN:-}" ]; then
+    log "ERREUR: CREEZIO_NPM_TOKEN requis pour $label (GitHub Packages @creezio/*)."
+    return 1
+  fi
 }
 
 install_brand() {
   local root=$1
   local label=$2
   log "install $label — $root"
-  if ! has_npm_token; then
-    log "skip $label : CREEZIO_NPM_TOKEN absent (GitHub Packages @creezio/*)."
-    return 0
-  fi
+  require_npm_token "$label"
   npm_ci "$root"
   if [ -f "$root/server/ui/package-lock.json" ]; then
     npm_ci "$root/server/ui"
@@ -72,18 +73,4 @@ install_brand() {
   if [ -f "$root/client/package-lock.json" ]; then
     npm_ci "$root/client"
   fi
-}
-
-# npm ci marques seulement si le token est là et node_modules absent.
-ensure_brand_modules() {
-  local root=$1
-  local label=$2
-  if [ ! -d "$root" ]; then
-    return 0
-  fi
-  if [ -d "$root/node_modules" ]; then
-    log "ok $label node_modules"
-    return 0
-  fi
-  install_brand "$root" "$label"
 }
