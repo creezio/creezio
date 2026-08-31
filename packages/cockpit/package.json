@@ -1,6 +1,6 @@
 {
   "name": "@creezio/cockpit",
-  "version": "0.17.1",
+  "version": "0.18.0",
   "description": "UI server-cockpit plateforme (shell autonome + client CRM) — Phase P",
   "type": "module",
   "main": "./dist-cjs/index.js",
@@ -28,7 +28,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@creezio/shell-ui": "^0.17.1"
+    "@creezio/shell-ui": "^0.18.0"
   },
   "devDependencies": {
     "@types/node": "^22.15.3",
