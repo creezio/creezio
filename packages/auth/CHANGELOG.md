@@ -1,5 +1,17 @@
 # @creezio/auth
 
+## 0.19.0
+
+### Patch Changes
+
+- Updated dependencies [9324b6c]
+- Updated dependencies [cc2724a]
+- Updated dependencies [fe20ca7]
+- Updated dependencies [02927c6]
+  - @creezio/shell-ui@0.19.0
+  - @creezio/shell@0.19.0
+  - @creezio/platform-core@0.19.0
+
 ## 0.18.0
 
 ### Patch Changes

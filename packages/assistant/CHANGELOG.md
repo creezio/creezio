@@ -1,5 +1,13 @@
 # @creezio/assistant
 
+## 0.19.0
+
+### Patch Changes
+
+- bf7a973: Hermes warm indépendant de n8n : `CREEZIO_NATIVE_WARM_N8N=0` ne coupe plus Work. `GET /plugin-approvals` répond 200 `[]` sans Product Hub.
+  - @creezio/shell@0.19.0
+  - @creezio/platform-core@0.19.0
+
 ## 0.18.0
 
 ### Patch Changes

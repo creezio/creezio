@@ -1,5 +1,12 @@
 # @creezio/integrations
 
+## 0.19.0
+
+### Patch Changes
+
+- @creezio/auth@0.19.0
+- @creezio/platform-core@0.19.0
+
 ## 0.18.0
 
 ### Patch Changes
