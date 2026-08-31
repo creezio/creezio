@@ -12,6 +12,7 @@ C'est la brique qui pilote les serveurs marque headless (`docker/server`) :
 | `agent-updates` | Boucle pull des updates agent → app admin (directives fleet-releases, slots, statuts) |
 | `update-status-store` | Persistance du suivi `update-status` (host-agent + plan local admin) : journal JSON atomique dans le répertoire d'état, reload au boot, flag `agentRestarted`, TTL 24 h |
 | `registry-pull-proxy` | Proxy pull-only du registre d'images (`/v2/*`, Basic `hostId:agentToken` ou admin, push 405) |
+| `server-admin-client` | Client typé du backend flotte pour l'app admin (T4) : `fleetBackendFetch` (Basic, env `CREEZIO_FLEET_BACKEND_URL`/`_BASIC`), `fetchFleetBackendServers`, `verifyFleetHostCredential` |
 | `server-admin` | Backend flotte admin (`startServerAdmin`) : plan local (socket) + plan flotte (agents tunnelisés), enrôlement, proxys |
 | `host-agent` | Agent hôte (`startHostAgent`) : gestes locaux Bearer-only + boucle pull updates |
 | `protocol` | Contrat de version agent↔backend (header `x-creezio-fleet-protocol`, refus fail-closed si absent ou ≠ v1) |
@@ -51,12 +52,28 @@ coincé. Les entrées terminées sont purgées après un **TTL de 24 h**
 (`DEFAULT_UPDATE_STATUS_TTL_MS`). Protocole v1 intact : champs additifs
 seulement. Gate : `test-phase-fleet-update-status-persist`.
 
+## Client typé du backend (T4)
+
+L'app admin (`@creezio/admin`) consommait le backend flotte via un fetch
+HTTP artisanal (endpoints, Basic et formats re-déclarés à la main). Depuis
+T4, le contrat client vit ici (`server-admin-client.ts`) et l'admin
+l'**importe directement** : `fleetBackendFetch` (Basic + timeout),
+`fetchFleetBackendServers` (vue `GET /admin/api/servers` typée
+`CollectedServer & {hostId, hostLabel}`), `verifyFleetHostCredential`
+(`POST /admin/api/hosts/verify`). Le transport HTTP Basic loopback demeure
+(l'app admin et le backend sont deux containers du VPS — seul le backend a
+le socket Docker et `fleet-hosts.json`), et le serveur HTTP `server-admin`
+reste intact pour les host-agents distants (protocole v1 inchangé : cette
+surface Basic ne porte pas `x-creezio-fleet-protocol`).
+
 ## Consommation
 
 - Images Docker (`docker/server-admin`, `docker/host-agent`) : CMD
   `node node_modules/@creezio/fleet/dist/bin/{server-admin,host-agent}-main.js` —
   contexte stagé par `creezio server-docker admin|agent up`
   (`stageFleetImageContext`, fail-closed si dist absent).
+- App admin (`@creezio/admin`) : client typé `server-admin-client`
+  (imports directs — T4).
 - CLI `creezio server-docker` : import direct `packages/fleet/dist`
   (`importInstanceStack`, `server-lib`).
 - `public/admin.html` : UI mono-fichier servie par server-admin sur `/admin`.

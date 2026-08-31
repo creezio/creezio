@@ -25,6 +25,16 @@ import type {
   ModuleOperation,
   ScopedDbAccess,
 } from "@creezio/api-kernel";
+// T4 : le contrat client du backend flotte (URL/Basic env, fetch Basic,
+// helpers typés) est importé directement de @creezio/fleet — plus de hop
+// HTTP artisanal re-déclaré ici. Le transport Basic loopback demeure
+// (backend flotte = container séparé, seul détenteur du socket Docker).
+import {
+  fleetBackendFetch,
+  resolveFleetBackendBasic,
+  resolveFleetBackendUrl,
+  type FleetBackendClientOptions,
+} from "@creezio/fleet";
 import type { SqliteMigration } from "@creezio/platform-core";
 import {
   ADMIN_SCHEMA_004_SQL,
@@ -331,28 +341,14 @@ const CRUD_OPS = (permission: string): ModuleOperation[] => [
 
 /* --------------------------------------------------------- module fleet */
 
-export type FleetAdminMountOptions = {
-  /** URL du backend flotte (@creezio/fleet server-admin). Défaut env CREEZIO_FLEET_BACKEND_URL puis http://127.0.0.1:18800 */
-  backendUrl?: string;
-  /** Credentials Basic `user:pass`. Défaut env CREEZIO_FLEET_BACKEND_BASIC. */
-  basic?: string;
+/**
+ * Options backend flotte des mounts admin — `backendUrl`/`basic` viennent du
+ * client typé @creezio/fleet (`FleetBackendClientOptions`, T4).
+ */
+export type FleetAdminMountOptions = FleetBackendClientOptions & {
   /** Timeout par requête proxy (ms). */
   timeoutMs?: number;
 };
-
-function fleetBackendUrl(opts?: FleetAdminMountOptions): string {
-  return (
-    opts?.backendUrl ||
-    (process.env.CREEZIO_FLEET_BACKEND_URL || "").trim() ||
-    "http://127.0.0.1:18800"
-  ).replace(/\/$/, "");
-}
-
-function fleetBasic(opts?: FleetAdminMountOptions): string {
-  return (
-    opts?.basic || (process.env.CREEZIO_FLEET_BACKEND_BASIC || "").trim()
-  );
-}
 
 /**
  * Module `fleet` — proxy authentifié vers le backend flotte.
@@ -376,8 +372,8 @@ export function createFleetAdminMount(opts?: FleetAdminMountOptions): ApiMount {
       { id: "proxy-delete", method: "DELETE", path: "/:sub", description: "Proxy DELETE flotte" },
     ],
     handle: async ({ req, subPath }) => {
-      const base = fleetBackendUrl(opts);
-      const basic = fleetBasic(opts);
+      const base = resolveFleetBackendUrl(opts);
+      const basic = resolveFleetBackendBasic(opts);
       if (!basic) {
         return {
           status: 503,
@@ -605,7 +601,11 @@ export function createAdminCrudMount(kind: keyof typeof CRUD_SQL_TABLE): ApiMoun
 
 /* -------------------------------------------------------- module support */
 
-/** Appel authentifié (Basic) vers le backend flotte. */
+/**
+ * Appel authentifié (Basic) vers le backend flotte — délègue au client typé
+ * `fleetBackendFetch` de @creezio/fleet (T4). Export conservé (module
+ * support + consommateurs existants).
+ */
 export async function fleetFetch(
   opts: FleetAdminMountOptions | undefined,
   method: string,
@@ -613,31 +613,7 @@ export async function fleetFetch(
   body?: unknown,
   timeoutMs = 8000,
 ): Promise<{ status: number; json: Record<string, unknown> | null }> {
-  const base = fleetBackendUrl(opts);
-  const basic = fleetBasic(opts);
-  if (!basic) return { status: 503, json: { ok: false, error: "fleet_basic_missing" } };
-  const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), timeoutMs);
-  try {
-    const res = await fetch(`${base}${subPath}`, {
-      method,
-      signal: ctrl.signal,
-      headers: {
-        Authorization: `Basic ${Buffer.from(basic).toString("base64")}`,
-        ...(body !== undefined ? { "Content-Type": "application/json" } : {}),
-      },
-      ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
-    });
-    let json: Record<string, unknown> | null = null;
-    try {
-      json = (await res.json()) as Record<string, unknown>;
-    } catch {
-      /* non JSON */
-    }
-    return { status: res.status, json };
-  } finally {
-    clearTimeout(timer);
-  }
+  return fleetBackendFetch(opts, method, subPath, body, timeoutMs);
 }
 
 /** Chemin backend flotte du mount support d'un serveur (local ou hôte). */
