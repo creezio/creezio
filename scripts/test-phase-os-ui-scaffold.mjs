@@ -49,6 +49,26 @@ test("os-ui generator : RequireSession kit enveloppe WorkspaceRoot (source, sans
   );
   assert.match(gen, /jwtVerify/, "middleware généré : garde JWT");
   assert.match(gen, /host\.startsWith\("lp\."\)/, "middleware généré : rewrite lp.");
+  assert.doesNotMatch(
+    gen,
+    /const OS_NAV/,
+    "générateur : plus de constante OS_NAV recopiée",
+  );
+  assert.match(
+    gen,
+    /defaultOsPrimaryNavItems/,
+    "générateur compose defaultOsPrimaryNavItems()",
+  );
+  assert.match(
+    gen,
+    /defaultOsAdminNavItems/,
+    "générateur appelle defaultOsAdminNavItems()",
+  );
+  assert.doesNotMatch(
+    gen,
+    /href:\s*["']\/granola["']/,
+    "générateur : pas de href /granola inline",
+  );
 });
 
 test("os-ui scaffold : zéro page OS versionnée, materialize + boot kit", () => {
