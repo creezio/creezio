@@ -85,6 +85,9 @@ function resolveBootKernel(config: StartBrandDesktopConfig): BootBrandKernelFn {
       registerModuleApi: config.registerModuleApi,
       beforeBoot: config.beforeBoot,
       enablePlatformServices: config.enablePlatformServices,
+      // Mount `@creezio/nav` auto-enregistré dans createBrandKernel
+      // (migrations brand.db + registerModuleApi("nav", …)).
+      navItems: config.navItems,
     });
   }
   throw new Error(

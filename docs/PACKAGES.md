@@ -39,6 +39,7 @@ Racine : [../README.md](../README.md) · [../AGENTS.md](../AGENTS.md)
 | `@creezio/access-control` | [README](../packages/access-control/README.md) | [AGENTS](../packages/access-control/AGENTS.md) | [FILES](../packages/access-control/docs/FILES.md) |
 | `@creezio/shell-ui` | [README](../packages/shell-ui/README.md) | [AGENTS](../packages/shell-ui/AGENTS.md) | [FILES](../packages/shell-ui/docs/FILES.md) |
 | `@creezio/os-ui` | [README](../packages/os-ui/README.md) | [AGENTS](../packages/os-ui/AGENTS.md) | [FILES](../packages/os-ui/docs/FILES.md) |
+| `@creezio/nav` | [README](../packages/nav/README.md) | [AGENTS](../packages/nav/AGENTS.md) | [FILES](../packages/nav/docs/FILES.md) |
 | `@creezio/onboarding` | [README](../packages/onboarding/README.md) | [AGENTS](../packages/onboarding/AGENTS.md) | [FILES](../packages/onboarding/docs/FILES.md) |
 | `@creezio/interactive-demo` | [README](../packages/interactive-demo/README.md) | [AGENTS](../packages/interactive-demo/AGENTS.md) | [FILES](../packages/interactive-demo/docs/FILES.md) |
 | `@creezio/landing` | [README](../packages/landing/README.md) | [AGENTS](../packages/landing/AGENTS.md) | [FILES](../packages/landing/docs/FILES.md) |
@@ -100,7 +101,7 @@ brand-config
           └── platform-core
                 ├── product-hub ──► automations
                 ├── api-kernel ──► mcp-facade
-                ├── auth ──► shell-ui ──► os-ui / onboarding / cockpit
+                ├── auth ──► shell-ui ──► nav / os-ui / onboarding / cockpit
                 ├── assistant ──► tasks
                 ├── mails
                 ├── observability ──► automations

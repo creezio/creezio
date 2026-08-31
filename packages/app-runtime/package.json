@@ -34,6 +34,7 @@
     "@creezio/interactive-demo": "^0.17.1",
     "@creezio/mails": "^0.17.1",
     "@creezio/mcp-facade": "^0.17.1",
+    "@creezio/nav": "^0.17.1",
     "@creezio/observability": "^0.17.1",
     "@creezio/platform-core": "^0.17.1",
     "@creezio/product-hub": "^0.17.1",

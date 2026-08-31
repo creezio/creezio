@@ -22,7 +22,7 @@ sans réécrire le socle.
 ```
                       ┌──────────────────────────────┐
                       │        kit creezio           │
-                      │  packages/@creezio/* (32)    │
+                      │  packages/@creezio/* (36)    │
                       └──────────────┬───────────────┘
                                      │  packages npm @creezio/* (GitHub Packages)
         ┌────────────────────────────┼────────────────────────────┐

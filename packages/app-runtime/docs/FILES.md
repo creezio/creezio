@@ -19,7 +19,7 @@
 | [`src/brand-platform-store.ts`](../src/brand-platform-store.ts) | Store plateforme marque |
 | [`src/cockpit-health.ts`](../src/cockpit-health.ts) | (à documenter) |
 | [`src/compose-brand-os.ts`](../src/compose-brand-os.ts) | Composition OS natif : kernel, stores, auth, fleet (sentinelle `ingest-disabled` par défaut), surfaces |
-| [`src/create-brand-kernel.ts`](../src/create-brand-kernel.ts) | Création du kernel API (espaces core/platform/modules/plugins) |
+| [`src/create-brand-kernel.ts`](../src/create-brand-kernel.ts) | Création du kernel API + auto-register mount `@creezio/nav` (migrations brand.db + `registerModuleApi("nav")`) |
 | [`src/fleet-heartbeat.ts`](../src/fleet-heartbeat.ts) | Auto-inscription flotte + heartbeat (~90 s) d'un serveur marque vers le module `fleet-registry` de l'app admin (F3) — Bearer secret partagé au register, serverKey ensuite. Câblé harness + desktop serveur. |
 | [`src/harness-server-phases.ts`](../src/harness-server-phases.ts) | Phases serveur post-boot du harness Docker (parité TF2 desktop) : catalogue, clé CRM Hermes + bridge n8n, plugins, tunnel, fleet — flags/env explicites, étape boot-status par phase, no-op propre si non configuré. |
 | [`src/hermes-mcp-host-tools.ts`](../src/hermes-mcp-host-tools.ts) | Branche les tools host tasks (`create_ai_task`…) + workspace (`workspace.*`, `platform.ask_human`) sur la façade MCP (H1/H4) ; résolution Bearer clé service Hermes (`user_id NULL`+`full` → owner, fail-closed sinon). Câblé desktop + harness. |
