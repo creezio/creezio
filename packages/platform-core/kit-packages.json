@@ -16,6 +16,8 @@
     "@creezio/desktop-tooling",
     "@creezio/electron-shell",
     "@creezio/fleet",
+    "@creezio/granola",
+    "@creezio/grokbot",
     "@creezio/host-runtime",
     "@creezio/integrations",
     "@creezio/interactive-demo",
