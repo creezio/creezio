@@ -1,5 +1,29 @@
 # @creezio/host-runtime
 
+## 0.20.0
+
+### Minor Changes
+
+- e6303bb: P1.c — coupe `electron` / `electron-shell` de l'image serveur :
+
+  - `resources/{vendor,scripts,bin}` (Hermes, n8n, skills, sonde Meili)
+    déménagent de `@creezio/electron-shell` vers `@creezio/host-runtime`.
+  - `kitOsResourcesRoot()` résout `@creezio/host-runtime`.
+  - Factory : plus d'`electron-shell` dans `SERVER_CREEZIO_DEPS` (le client
+    thin le garde).
+  - Dockerfile : après `npm ci`, purge `electron`, `electron-updater` et
+    `@creezio/electron-shell` du stage deps (runtime headless Node pur).
+
+### Patch Changes
+
+- Updated dependencies [ac7035c]
+- Updated dependencies [e6303bb]
+  - @creezio/observability@0.20.0
+  - @creezio/platform-core@0.20.0
+  - @creezio/brand-config@0.20.0
+  - @creezio/search@0.20.0
+  - @creezio/product-hub@0.20.0
+
 ## 0.19.0
 
 ### Patch Changes

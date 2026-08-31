@@ -1,5 +1,12 @@
 # @creezio/access-control
 
+## 0.20.0
+
+### Patch Changes
+
+- @creezio/auth@0.20.0
+- @creezio/shell-ui@0.20.0
+
 ## 0.19.0
 
 ### Patch Changes

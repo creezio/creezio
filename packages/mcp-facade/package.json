@@ -1,6 +1,6 @@
 {
   "name": "@creezio/mcp-facade",
-  "version": "0.19.0",
+  "version": "0.20.0",
   "description": "MCP proxy unifié H4 + admin policies/clients/UI (N6)",
   "type": "module",
   "main": "./dist-cjs/index.js",
@@ -28,8 +28,8 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@creezio/api-kernel": "^0.19.0",
-    "@creezio/platform-core": "^0.19.0",
+    "@creezio/api-kernel": "^0.20.0",
+    "@creezio/platform-core": "^0.20.0",
     "hono": "^4.12.32",
     "jose": "^6.2.5",
     "zod": "^4.4.3"

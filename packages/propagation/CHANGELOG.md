@@ -1,5 +1,12 @@
 # @creezio/propagation
 
+## 0.4.3
+
+### Patch Changes
+
+- Updated dependencies [e6303bb]
+  - @creezio/brand-config@0.20.0
+
 ## 0.4.2
 
 ### Patch Changes

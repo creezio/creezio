@@ -1,5 +1,13 @@
 # @creezio/shell-ui
 
+## 0.20.0
+
+### Patch Changes
+
+- Updated dependencies [e6303bb]
+  - @creezio/brand-config@0.20.0
+  - @creezio/shell@0.20.0
+
 ## 0.19.0
 
 ### Minor Changes
