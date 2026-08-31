@@ -3,13 +3,18 @@
  *
  * Geste : `creezio server-docker registry-gc`
  *   1. catalogue + tags via API Distribution v2 ;
- *   2. rétention `--keep N` (défaut 2) + tags des conteneurs en cours ;
- *   3. DELETE des manifests non retenus (jamais un tag en usage) ;
+ *   2. rétention `--keep N` (défaut 2) par famille de tags (`auto.*` d'un
+ *      côté, tags manuels de l'autre) + tags PROTÉGÉS : conteneurs en cours
+ *      (docker ps), `docker-data/servers.json` (instances déclarées, même
+ *      arrêtées) et releases fleet déclarées dans l'app admin ;
+ *   3. DELETE des manifests non retenus (jamais un tag en usage/référencé) ;
  *   4. `registry garbage-collect` dans le container (`docker exec`).
  *
- * `--dry-run` : plan uniquement, zéro mutation.
+ * DRY-RUN PAR DÉFAUT : plan uniquement, zéro mutation — `--apply` exécute.
  */
 import { spawnSync } from "node:child_process";
+import fs from "node:fs";
+import path from "node:path";
 
 export const REGISTRY_GC_KEEP_DEFAULT = 2;
 export const REGISTRY_GC_DEFAULT_HOST = "127.0.0.1:5000";
@@ -17,6 +22,8 @@ export const REGISTRY_GC_DEFAULT_CONTAINER = "creezio-registry";
 export const REGISTRY_GC_CONFIG = "/etc/docker/registry/config.yml";
 
 export const REGISTRY_TAG_RE = /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/;
+/** Tags auto-publiés par la CI (`auto.YYYYMMDDHHMM.<sha>`). */
+export const REGISTRY_AUTO_TAG_RE = /^auto\./;
 
 const MANIFEST_ACCEPT =
   "application/vnd.docker.distribution.manifest.v2+json, " +
@@ -49,6 +56,12 @@ export type RegistryGcDocker = {
     container: string,
     configPath: string,
   ): { status: number; stdout: string; stderr: string };
+  /**
+   * Brand roots découverts via les labels `creezio.brand-root` de TOUS les
+   * conteneurs (`docker ps -a`) — pour charger les `docker-data/servers.json`
+   * même quand une instance est arrêtée. Optionnel (mocks de tests).
+   */
+  listBrandRoots?(): string[];
 };
 
 export type ParsedImageRef = {
@@ -60,7 +73,17 @@ export type ParsedImageRef = {
 
 export type TagInfo = { tag: string; digest: string };
 
-export type RepoGcKeepReason = "recent" | "in-use";
+export type RepoGcKeepReason = "recent" | "in-use" | "referenced";
+
+/** Release fleet lue depuis l'app admin (module fleet-releases). */
+export type FleetReleaseRef = {
+  brandId?: string;
+  tag?: string;
+  image?: string;
+  digest?: string | null;
+  variant?: string;
+  status?: string;
+};
 
 export type RepoGcPlan = {
   repo: string;
@@ -84,9 +107,16 @@ export type RegistryGcResult = {
 export type RegistryGcArgs = {
   registry?: string;
   keepTags?: number;
+  /** Exécuter les mutations (défaut : dry-run, plan uniquement). */
+  apply?: boolean;
+  /** Dry-run explicite — exclusif avec `--apply`. */
   dryRun?: boolean;
   container?: string;
   repo?: string;
+  /** Charge `<brandRoot>/docker-data/servers.json` (tags protégés). */
+  brandRoot?: string;
+  /** App admin (module fleet-releases) — releases protégées. */
+  adminApp?: string;
 };
 
 export type RegistryGcOpts = {
@@ -95,6 +125,18 @@ export type RegistryGcOpts = {
   dryRun: boolean;
   container: string;
   repo?: string;
+  /**
+   * Fichiers `docker-data/servers.json` à protéger (image du registre +
+   * image de chaque instance, même arrêtée). Un fichier ILLISIBLE (JSON
+   * invalide) = erreur fail-closed ; un fichier absent = ignoré (loggé).
+   */
+  serversFiles?: string[];
+  /**
+   * URL de l'app admin (module fleet-releases). Si posée, les releases
+   * déclarées (tous statuts) sont protégées — admin injoignable = erreur
+   * fail-closed, jamais de GC « en aveugle ».
+   */
+  adminApp?: string;
   http?: RegistryGcHttp;
   docker?: RegistryGcDocker;
   log?: (line: string) => void;
@@ -193,12 +235,109 @@ export function collectInUseKeys(images: InUseImage[]): {
   return { tags, digests };
 }
 
+/**
+ * Réfs image d'un `docker-data/servers.json` : `image` du registre + `image`
+ * de CHAQUE instance déclarée (une instance arrêtée reste protégée).
+ * Fichier absent → `null` (l'appelant logge) ; JSON invalide → erreur
+ * fail-closed (on ne GC jamais avec une SoT illisible).
+ */
+export function serversFileImageRefs(file: string): string[] | null {
+  if (!fs.existsSync(file)) return null;
+  let raw: unknown;
+  try {
+    raw = JSON.parse(fs.readFileSync(file, "utf8"));
+  } catch (err) {
+    const why = err instanceof Error ? err.message : String(err);
+    throw new Error(
+      `servers.json illisible (${file}) — ${why} ; GC refusé (fail-closed)`,
+    );
+  }
+  const reg = raw as {
+    image?: unknown;
+    instances?: Array<{ image?: unknown }>;
+  } | null;
+  const refs: string[] = [];
+  if (reg && typeof reg.image === "string" && reg.image.trim()) {
+    refs.push(reg.image.trim());
+  }
+  for (const inst of reg?.instances || []) {
+    if (inst && typeof inst.image === "string" && inst.image.trim()) {
+      refs.push(inst.image.trim());
+    }
+  }
+  return refs;
+}
+
+/**
+ * Releases fleet déclarées dans l'app admin (module fleet-releases) —
+ * `GET /api/v1/modules/fleet-releases/releases`. TOUS les statuts sont
+ * protégés (un draft peut passer rolling à tout moment). Admin injoignable
+ * ou réponse invalide = erreur fail-closed.
+ */
+export async function fetchFleetReleaseRefs(
+  http: RegistryGcHttp,
+  adminApp: string,
+): Promise<FleetReleaseRef[]> {
+  const base = adminApp.trim().replace(/\/+$/, "");
+  const url = `${base}/api/v1/modules/fleet-releases/releases`;
+  const res = await http.request(url, { method: "GET" });
+  if (!res.ok) {
+    throw new Error(
+      `releases fleet illisibles (${url} HTTP ${res.status}) — GC refusé (fail-closed)`,
+    );
+  }
+  const body = (await res.json()) as {
+    ok?: boolean;
+    releases?: Array<Record<string, unknown>>;
+  };
+  if (!body || body.ok !== true || !Array.isArray(body.releases)) {
+    throw new Error(
+      `releases fleet : réponse invalide (${url}) — GC refusé (fail-closed)`,
+    );
+  }
+  return body.releases.map((r) => ({
+    brandId: typeof r.brand_id === "string" ? r.brand_id : undefined,
+    tag: typeof r.tag === "string" ? r.tag : undefined,
+    image: typeof r.image === "string" ? r.image : undefined,
+    digest: typeof r.digest === "string" ? r.digest : undefined,
+    variant: typeof r.variant === "string" ? r.variant : undefined,
+    status: typeof r.status === "string" ? r.status : undefined,
+  }));
+}
+
+/** Clés protégées (repo:tag + digests) dérivées des releases fleet. */
+export function collectReleaseKeys(releases: FleetReleaseRef[]): {
+  tags: Set<string>;
+  digests: Set<string>;
+} {
+  const tags = new Set<string>();
+  const digests = new Set<string>();
+  for (const rel of releases) {
+    if (rel.digest && /^sha256:[0-9a-f]{64}$/i.test(rel.digest)) {
+      digests.add(rel.digest.toLowerCase());
+    }
+    const parsed = rel.image ? parseImageRef(rel.image) : null;
+    if (parsed?.repo && parsed.tag) tags.add(`${parsed.repo}:${parsed.tag}`);
+    if (parsed?.digest) digests.add(parsed.digest);
+    // Ceinture + bretelles : la convention de nommage publish reste
+    // protégée même si `image` pointe l'hôte public (registry.{zone}/…).
+    if (rel.brandId && rel.tag) {
+      const suffix = rel.variant === "browser" ? "-browser" : "";
+      tags.add(`creezio-server-${rel.brandId}${suffix}:${rel.tag}`);
+    }
+  }
+  return { tags, digests };
+}
+
 export function planRepoGc(opts: {
   repo: string;
   tags: TagInfo[];
   keep: number;
   inUseTags: Set<string>;
   inUseDigests: Set<string>;
+  /** Tags/digests référencés (servers.json, releases fleet) — jamais supprimés. */
+  referencedTags?: Set<string>;
+  referencedDigests?: Set<string>;
 }): RepoGcPlan {
   const { repo, keep } = opts;
   if (!Number.isFinite(keep) || keep < 1) {
@@ -210,20 +349,31 @@ export function planRepoGc(opts: {
     unique.set(t.tag, t);
   }
   const list = [...unique.values()];
-  const recent = new Set(
-    [...list]
-      .map((t) => t.tag)
-      .sort(compareVersionTags)
-      .slice(-Math.floor(keep)),
-  );
+  // Rétention PAR FAMILLE : les N derniers tags auto.* (auto-publish CI)
+  // ET les N derniers tags manuels (semver…) — une rafale d'auto-publish ne
+  // doit jamais évincer la fenêtre de rollback des tags manuels, et vice
+  // versa. Les tags protégés (in-use/référencés) s'ajoutent par-dessus.
+  const lastOf = (tags: string[]): string[] =>
+    tags.sort(compareVersionTags).slice(-Math.floor(keep));
+  const recent = new Set([
+    ...lastOf(list.map((t) => t.tag).filter((t) => REGISTRY_AUTO_TAG_RE.test(t))),
+    ...lastOf(list.map((t) => t.tag).filter((t) => !REGISTRY_AUTO_TAG_RE.test(t))),
+  ]);
+  const referencedTags = opts.referencedTags || new Set<string>();
+  const referencedDigests = opts.referencedDigests || new Set<string>();
   const keepItems: RepoGcPlan["keep"] = [];
   const candidates: TagInfo[] = [];
   for (const t of list) {
     const inUse =
       opts.inUseTags.has(`${repo}:${t.tag}`) ||
       opts.inUseDigests.has(t.digest.toLowerCase());
+    const referenced =
+      referencedTags.has(`${repo}:${t.tag}`) ||
+      referencedDigests.has(t.digest.toLowerCase());
     if (inUse) {
       keepItems.push({ ...t, reason: "in-use" });
+    } else if (referenced) {
+      keepItems.push({ ...t, reason: "referenced" });
     } else if (recent.has(t.tag)) {
       keepItems.push({ ...t, reason: "recent" });
     } else {
@@ -342,6 +492,28 @@ export function createDefaultRegistryDocker(): RegistryGcDocker {
         }
       }
       return out;
+    },
+    listBrandRoots() {
+      // Labels `creezio.brand-root` de TOUS les conteneurs (même arrêtés) :
+      // chaque brand root porte un docker-data/servers.json à protéger.
+      const r = spawnSync(
+        "docker",
+        ["ps", "-a", "--format", '{{.Label "creezio.brand-root"}}'],
+        { encoding: "utf8" },
+      );
+      if (r.status !== 0) {
+        throw new Error(
+          `docker ps -a KO : ${(r.stderr || "").trim() || "docker absent"}`,
+        );
+      }
+      return [
+        ...new Set(
+          (r.stdout || "")
+            .split("\n")
+            .map((l) => l.trim())
+            .filter(Boolean),
+        ),
+      ];
     },
     containerRunning(name) {
       const r = spawnSync(
@@ -488,6 +660,38 @@ export async function runRegistryGc(
     : await listCatalog(http, base);
 
   const inUse = collectInUseKeys(docker.listInUseImages());
+
+  // Tags PROTÉGÉS (jamais supprimés, même hors fenêtre de rétention) :
+  // 1. docker-data/servers.json — image du registre + image de chaque
+  //    instance déclarée (une instance ARRÊTÉE reste protégée) ;
+  // 2. releases fleet déclarées dans l'app admin (tous statuts).
+  const referenced = { tags: new Set<string>(), digests: new Set<string>() };
+  const serversFiles = [...new Set(opts.serversFiles || [])];
+  for (const file of serversFiles) {
+    const refs = serversFileImageRefs(file);
+    if (refs === null) {
+      log(`  servers.json absent (${file}) — aucune instance à protéger`);
+      continue;
+    }
+    const keys = collectInUseKeys(refs.map((ref) => ({ ref })));
+    for (const t of keys.tags) referenced.tags.add(t);
+    for (const d of keys.digests) referenced.digests.add(d);
+    log(`  servers.json ${file} : ${refs.length} réf(s) image protégée(s)`);
+  }
+  if (opts.adminApp) {
+    const releases = await fetchFleetReleaseRefs(http, opts.adminApp);
+    const keys = collectReleaseKeys(releases);
+    for (const t of keys.tags) referenced.tags.add(t);
+    for (const d of keys.digests) referenced.digests.add(d);
+    log(
+      `  releases fleet (${opts.adminApp}) : ${releases.length} release(s) protégée(s)`,
+    );
+  } else {
+    log(
+      "  ⚠ pas d'app admin (--admin-app / CREEZIO_FLEET_ADMIN_URL) — releases fleet non vérifiées",
+    );
+  }
+
   const result: RegistryGcResult = {
     dryRun: opts.dryRun,
     keep,
@@ -521,13 +725,18 @@ export async function runRegistryGc(
       keep,
       inUseTags: inUse.tags,
       inUseDigests: inUse.digests,
+      referencedTags: referenced.tags,
+      referencedDigests: referenced.digests,
     });
     log(`  ${repo}: ${infos.length} tag(s)`);
+    const keepWhy: Record<RepoGcKeepReason, string> = {
+      "in-use": "conteneur en cours",
+      referenced: "référencé (servers.json / release fleet)",
+      recent: "récent",
+    };
     for (const k of plan.keep) {
       result.kept.push({ repo, tag: k.tag, reason: k.reason });
-      log(
-        `    KEEP   ${k.tag} (${k.reason === "in-use" ? "conteneur en cours" : "récent"})`,
-      );
+      log(`    KEEP   ${k.tag} (${keepWhy[k.reason]})`);
     }
     for (const s of plan.skipShared) {
       result.skippedShared.push({ repo, tag: s.tag, digest: s.digest });
@@ -543,7 +752,7 @@ export async function runRegistryGc(
 
   if (opts.dryRun) {
     log(
-      `[dry-run] ${toDelete.length} manifeste(s) seraient supprimé(s) — aucune mutation, garbage-collect non lancé`,
+      `[dry-run] ${toDelete.length} manifeste(s) seraient supprimé(s) — aucune mutation, garbage-collect non lancé (exécuter : --apply)`,
     );
     return result;
   }
@@ -571,21 +780,59 @@ export async function runRegistryGc(
   return result;
 }
 
+/**
+ * Fichiers `servers.json` à protéger : `--brand-root` explicite + découverte
+ * automatique via les labels `creezio.brand-root` des conteneurs.
+ */
+export function resolveRegistryGcServersFiles(
+  args: { brandRoot?: string },
+  docker: RegistryGcDocker,
+  env: NodeJS.ProcessEnv = process.env,
+): string[] {
+  const roots = new Set<string>();
+  const explicit = (args.brandRoot || (env.BRAND_ROOT || "").trim() || "").trim();
+  if (explicit) roots.add(path.resolve(explicit));
+  // Découverte via docker seulement si le daemon répond — sinon on laisse
+  // runRegistryGc échouer avec son erreur canonique « docker introuvable ».
+  if (docker.listBrandRoots && docker.available()) {
+    for (const root of docker.listBrandRoots()) {
+      if (root) roots.add(path.resolve(root));
+    }
+  }
+  return [...roots].map((root) => path.join(root, "docker-data", "servers.json"));
+}
+
 export async function runRegistryGcCommand(
   args: RegistryGcArgs,
   env: NodeJS.ProcessEnv = process.env,
+  overrides: Pick<RegistryGcOpts, "http" | "docker" | "log"> = {},
 ): Promise<RegistryGcResult> {
+  if (args.apply && args.dryRun) {
+    throw new Error(
+      "--apply et --dry-run sont exclusifs — dry-run est déjà le défaut",
+    );
+  }
+  const docker = overrides.docker || createDefaultRegistryDocker();
   return runRegistryGc({
     registry:
       args.registry ||
       (env.CREEZIO_REGISTRY || "").trim() ||
       REGISTRY_GC_DEFAULT_HOST,
     keep: resolveRegistryGcKeep(args, env),
-    dryRun: !!args.dryRun,
+    // DRY-RUN PAR DÉFAUT : seul `--apply` mute (delete + garbage-collect).
+    dryRun: !args.apply,
     container:
       args.container ||
       (env.CREEZIO_REGISTRY_CONTAINER || "").trim() ||
       REGISTRY_GC_DEFAULT_CONTAINER,
     repo: args.repo,
+    serversFiles: resolveRegistryGcServersFiles(args, docker, env),
+    adminApp:
+      (args.adminApp || "").trim() ||
+      (env.CREEZIO_FLEET_ADMIN_URL || "").trim() ||
+      undefined,
+    docker,
+    http: overrides.http,
+    log: overrides.log,
   });
 }

@@ -824,26 +824,39 @@ archives de référence intactes sous `docker-data/backups/`.
 timer. À lancer **hors push** (même garde-fou que le timer) :
 
 ```bash
-# Plan (aucune mutation) :
-creezio server-docker registry-gc --dry-run
+# Plan (DÉFAUT — aucune mutation) :
+creezio server-docker registry-gc
 # Défaut : registre 127.0.0.1:5000, container creezio-registry, --keep 2
 # (env CREEZIO_REGISTRY_GC_KEEP / CREEZIO_PUBLISH_KEEP_TAGS / --keep N)
 
-# Purge réelle : DELETE des manifests hors rétention, puis
+# Purge réelle (--apply) : DELETE des manifests hors rétention, puis
 # `registry garbage-collect` dans le container.
-creezio server-docker registry-gc --keep 2
+creezio server-docker registry-gc --apply --keep 2 \
+  --brand-root /opt/docker/tempoflow3 --admin-app https://admin.<zone>
 # Options : --registry 127.0.0.1:5000 --container creezio-registry --repo <name>
 ```
 
-Politique : garde les N tags les plus récents **par repository** (tri
-version) **et** tout tag référencé par un conteneur en cours (`docker ps` /
-images utilisées). Jamais de suppression d'un tag en usage. Digest partagé
-avec un tag conservé → skip (pas de DELETE). `--dry-run` liste KEEP/DELETE
-sans mutation ni GC.
+Politique : garde les N tags les plus récents **par repository et par
+famille** (tri version — les tags `auto.*` de l'auto-publish CI d'un côté,
+les tags manuels de l'autre : une rafale d'auto-publish n'évince jamais la
+fenêtre de rollback des tags manuels) **et** tout tag PROTÉGÉ :
+
+- conteneur en cours (`docker ps` / images utilisées) ;
+- `docker-data/servers.json` (`--brand-root` explicite + découverte
+  automatique via les labels `creezio.brand-root` de tous les conteneurs,
+  même arrêtés) — image du registre + image de chaque instance déclarée ;
+- releases fleet déclarées dans l'app admin, tous statuts (`--admin-app`
+  ou env `CREEZIO_FLEET_ADMIN_URL`) — admin posée mais injoignable =
+  **refus** (jamais de GC en aveugle).
+
+Jamais de suppression d'un tag en usage ou référencé. Digest partagé avec
+un tag conservé → skip (pas de DELETE). **Dry-run par défaut** : liste
+KEEP/DELETE sans mutation ni GC — seul `--apply` exécute.
 
 Fail-closed (exit ≠ 0, message actionnable) : docker absent, registre down
-(`/v2/` KO), DELETE manifeste KO (`REGISTRY_STORAGE_DELETE_ENABLED=true`
-requis), container registry arrêté, `garbage-collect` KO.
+(`/v2/` KO), `servers.json` illisible, app admin posée mais injoignable,
+DELETE manifeste KO (`REGISTRY_STORAGE_DELETE_ENABLED=true` requis),
+container registry arrêté, `garbage-collect` KO.
 
 **Vérité** : `packages/factory/src/server-docker-registry-gc.ts` (geste
 `registry-gc`) ; `packages/factory/src/server-docker-cli.ts`

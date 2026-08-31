@@ -48,18 +48,24 @@ function mockRes(status, body = {}, headers = {}) {
   };
 }
 
-function createMemoryRegistry(initial) {
+function createMemoryRegistry(initial, opts = {}) {
   const repos = structuredClone(initial);
   const deleted = [];
   const http = {
     down: false,
     deleteStatus: 202,
+    /** null = pas d'app admin ; {status, body} = réponse GET releases. */
+    adminReleases: opts.adminReleases ?? null,
     async request(url, init) {
       if (http.down) {
         throw new Error("registre injoignable (http://127.0.0.1:9/v2/) — ECONNREFUSED");
       }
       const u = new URL(url);
       const method = (init?.method || "GET").toUpperCase();
+      if (u.pathname === "/api/v1/modules/fleet-releases/releases") {
+        if (!http.adminReleases) return mockRes(503, { ok: false });
+        return mockRes(http.adminReleases.status ?? 200, http.adminReleases.body);
+      }
       if (u.pathname === "/v2/" && method === "GET") return mockRes(200, {});
       if (u.pathname === "/v2/_catalog") {
         return mockRes(200, { repositories: Object.keys(repos) });
@@ -129,15 +135,17 @@ test("CLI help + dispatch registry-gc (source)", () => {
   const src = fs.readFileSync(CLI, "utf8");
   assert.match(src, /registry-gc/);
   assert.match(src, /runRegistryGcCommand/);
-  assert.match(src, /--dry-run/);
+  assert.match(src, /--apply/);
   assert.match(src, /CREEZIO_REGISTRY_GC_KEEP/);
   const help = spawnSync(process.execPath, [BIN, "server-docker", "--help"], {
     encoding: "utf8",
   });
   assert.equal(help.status, 0, help.stderr || help.stdout);
   assert.match(help.stdout, /registry-gc/);
-  assert.match(help.stdout, /--dry-run/);
+  assert.match(help.stdout, /--apply/);
+  assert.match(help.stdout, /DRY-RUN PAR DÉFAUT/);
   assert.match(help.stdout, /garbage-collect/);
+  assert.match(help.stdout, /servers\.json/);
 });
 
 test("parseImageRef + collectInUseKeys", () => {
@@ -233,6 +241,151 @@ test("compareVersionTags + selectTagsToPrune + planRepoGc", () => {
   );
 });
 
+test("rétention par famille : auto.* et tags manuels indépendants", () => {
+  const plan = gc.planRepoGc({
+    repo: "creezio-server-probe",
+    tags: [
+      { tag: "0.1.0", digest: "sha256:m1" },
+      { tag: "0.2.0", digest: "sha256:m2" },
+      { tag: "0.3.0", digest: "sha256:m3" },
+      { tag: "auto.202601010000.aaa", digest: "sha256:a1" },
+      { tag: "auto.202601020000.bbb", digest: "sha256:a2" },
+      { tag: "auto.202601030000.ccc", digest: "sha256:a3" },
+    ],
+    keep: 2,
+    inUseTags: new Set(),
+    inUseDigests: new Set(),
+  });
+  const kept = plan.keep.map((k) => k.tag).sort();
+  assert.deepEqual(kept, [
+    "0.2.0",
+    "0.3.0",
+    "auto.202601020000.bbb",
+    "auto.202601030000.ccc",
+  ]);
+  assert.deepEqual(
+    plan.delete.map((d) => d.tag).sort(),
+    ["0.1.0", "auto.202601010000.aaa"],
+    "une rafale auto.* n'évince jamais la fenêtre des tags manuels (et vice versa)",
+  );
+});
+
+test("tags référencés (servers.json / release fleet) : reason=referenced, jamais supprimés", () => {
+  const plan = gc.planRepoGc({
+    repo: "creezio-server-probe",
+    tags: [
+      { tag: "0.1.0", digest: "sha256:1" },
+      { tag: "0.2.0", digest: "sha256:2" },
+      { tag: "0.3.0", digest: "sha256:3" },
+      { tag: "0.4.0", digest: "sha256:4" },
+    ],
+    keep: 1,
+    inUseTags: new Set(),
+    inUseDigests: new Set(),
+    referencedTags: new Set(["creezio-server-probe:0.1.0"]),
+    referencedDigests: new Set(["sha256:2"]),
+  });
+  const byTag = Object.fromEntries(plan.keep.map((k) => [k.tag, k.reason]));
+  assert.equal(byTag["0.1.0"], "referenced");
+  assert.equal(byTag["0.2.0"], "referenced");
+  assert.equal(byTag["0.4.0"], "recent");
+  assert.deepEqual(
+    plan.delete.map((d) => d.tag),
+    ["0.3.0"],
+  );
+});
+
+test("serversFileImageRefs : refs, absent → null, JSON invalide → fail-closed", () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "creezio-gc-servers-"));
+  try {
+    const file = path.join(dir, "servers.json");
+    fs.writeFileSync(
+      file,
+      JSON.stringify({
+        version: 1,
+        brandId: "probe",
+        image: "127.0.0.1:5000/creezio-server-probe:0.1.0",
+        instances: [
+          { name: "a", image: "127.0.0.1:5000/creezio-server-probe:0.2.0" },
+          { name: "b" },
+        ],
+      }),
+    );
+    assert.deepEqual(gc.serversFileImageRefs(file), [
+      "127.0.0.1:5000/creezio-server-probe:0.1.0",
+      "127.0.0.1:5000/creezio-server-probe:0.2.0",
+    ]);
+    assert.equal(gc.serversFileImageRefs(path.join(dir, "absent.json")), null);
+    const broken = path.join(dir, "broken.json");
+    fs.writeFileSync(broken, "{pas du json");
+    assert.throws(() => gc.serversFileImageRefs(broken), /servers\.json illisible.*fail-closed/);
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("collectReleaseKeys + fetchFleetReleaseRefs (mock admin)", async () => {
+  const keys = gc.collectReleaseKeys([
+    {
+      brandId: "probe",
+      tag: "0.9.0",
+      image: "registry.example.com/creezio-server-probe:0.9.0",
+      digest:
+        "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+      variant: "base",
+      status: "rolling",
+    },
+    { brandId: "probe", tag: "0.8.0", variant: "browser" },
+  ]);
+  assert.ok(keys.tags.has("creezio-server-probe:0.9.0"));
+  assert.ok(keys.tags.has("creezio-server-probe-browser:0.8.0"));
+  assert.ok(
+    keys.digests.has(
+      "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+    ),
+  );
+
+  const mem = createMemoryRegistry(
+    {},
+    {
+      adminReleases: {
+        status: 200,
+        body: {
+          ok: true,
+          releases: [
+            {
+              brand_id: "probe",
+              tag: "0.9.0",
+              image: "registry.example.com/creezio-server-probe:0.9.0",
+              digest: null,
+              variant: "base",
+              status: "draft",
+            },
+          ],
+        },
+      },
+    },
+  );
+  const releases = await gc.fetchFleetReleaseRefs(mem.http, "http://admin.local/");
+  assert.equal(releases.length, 1);
+  assert.equal(releases[0].brandId, "probe");
+  assert.equal(releases[0].tag, "0.9.0");
+
+  const ko = createMemoryRegistry({}, { adminReleases: { status: 500, body: {} } });
+  await assert.rejects(
+    () => gc.fetchFleetReleaseRefs(ko.http, "http://admin.local"),
+    /releases fleet illisibles.*fail-closed/,
+  );
+  const invalid = createMemoryRegistry(
+    {},
+    { adminReleases: { status: 200, body: { nope: 1 } } },
+  );
+  await assert.rejects(
+    () => gc.fetchFleetReleaseRefs(invalid.http, "http://admin.local"),
+    /réponse invalide.*fail-closed/,
+  );
+});
+
 test("mock HTTP : dry-run ne mute pas + garde le tag en usage", async () => {
   const mem = createMemoryRegistry({
     "creezio-server-probe": {
@@ -299,6 +452,148 @@ test("mock HTTP : DELETE hors rétention + GC, jamais le tag en usage", async ()
   assert.deepEqual(
     Object.keys(mem.repos["creezio-server-probe"]).sort(),
     ["0.1.0", "0.3.0", "0.4.0"],
+  );
+});
+
+test("protection servers.json + releases fleet dans runRegistryGc", async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "creezio-gc-protect-"));
+  try {
+    const serversFile = path.join(dir, "docker-data", "servers.json");
+    fs.mkdirSync(path.dirname(serversFile), { recursive: true });
+    fs.writeFileSync(
+      serversFile,
+      JSON.stringify({
+        version: 1,
+        brandId: "probe",
+        image: "creezio-server-probe:local",
+        instances: [
+          // Instance ARRÊTÉE (pas dans docker ps) : son tag reste protégé.
+          { name: "stopped", image: "127.0.0.1:5000/creezio-server-probe:0.1.0" },
+        ],
+      }),
+    );
+    const mem = createMemoryRegistry(
+      {
+        "creezio-server-probe": {
+          "0.1.0": "sha256:aaa",
+          "0.2.0": "sha256:bbb",
+          "0.3.0": "sha256:ccc",
+          "0.4.0": "sha256:ddd",
+          "0.5.0": "sha256:eee",
+        },
+      },
+      {
+        adminReleases: {
+          status: 200,
+          body: {
+            ok: true,
+            releases: [
+              {
+                brand_id: "probe",
+                tag: "0.2.0",
+                image: "registry.example.com/creezio-server-probe:0.2.0",
+                status: "rolling",
+                variant: "base",
+              },
+            ],
+          },
+        },
+      },
+    );
+    const out = await gc.runRegistryGc({
+      registry: "127.0.0.1:5000",
+      keep: 1,
+      dryRun: false,
+      container: "creezio-registry",
+      serversFiles: [serversFile, path.join(dir, "absent", "servers.json")],
+      adminApp: "http://admin.local",
+      http: mem.http,
+      docker: createMockDocker(),
+      log: () => {},
+    });
+    const reasons = Object.fromEntries(out.kept.map((k) => [k.tag, k.reason]));
+    assert.equal(reasons["0.1.0"], "referenced", "tag servers.json (instance arrêtée)");
+    assert.equal(reasons["0.2.0"], "referenced", "tag release fleet");
+    assert.equal(reasons["0.5.0"], "recent");
+    assert.deepEqual(
+      out.deleted.map((d) => d.tag).sort(),
+      ["0.3.0", "0.4.0"],
+    );
+    assert.deepEqual(
+      Object.keys(mem.repos["creezio-server-probe"]).sort(),
+      ["0.1.0", "0.2.0", "0.5.0"],
+    );
+
+    // Admin posée mais injoignable → refus fail-closed AVANT toute mutation.
+    const memKo = createMemoryRegistry({
+      "creezio-server-probe": { "0.1.0": "sha256:aaa", "0.2.0": "sha256:bbb" },
+    });
+    await assert.rejects(
+      () =>
+        gc.runRegistryGc({
+          registry: "127.0.0.1:5000",
+          keep: 1,
+          dryRun: false,
+          container: "creezio-registry",
+          adminApp: "http://admin.local",
+          http: memKo.http,
+          docker: createMockDocker(),
+          log: () => {},
+        }),
+      /releases fleet illisibles.*fail-closed/,
+    );
+    assert.equal(memKo.deleted.length, 0, "aucune mutation quand l'admin est injoignable");
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("runRegistryGcCommand : dry-run PAR DÉFAUT, --apply exécute, conflit --apply/--dry-run", async () => {
+  const initial = {
+    "creezio-server-probe": {
+      "0.1.0": "sha256:aaa",
+      "0.2.0": "sha256:bbb",
+      "0.3.0": "sha256:ccc",
+      "0.4.0": "sha256:ddd",
+    },
+  };
+  const env = { CREEZIO_REGISTRY: "127.0.0.1:5000", CREEZIO_FLEET_ADMIN_URL: "" };
+
+  const mem = createMemoryRegistry(initial);
+  const dockerDry = createMockDocker();
+  const dry = await gc.runRegistryGcCommand(
+    { keepTags: 2 },
+    env,
+    { http: mem.http, docker: dockerDry, log: () => {} },
+  );
+  assert.equal(dry.dryRun, true, "sans --apply : dry-run");
+  assert.equal(dry.gcRan, false);
+  assert.equal(dockerDry.state.gcCalls, 0);
+  assert.equal(mem.deleted.length, 0, "défaut = zéro mutation");
+
+  const mem2 = createMemoryRegistry(initial);
+  const dockerApply = createMockDocker();
+  const applied = await gc.runRegistryGcCommand(
+    { keepTags: 2, apply: true },
+    env,
+    { http: mem2.http, docker: dockerApply, log: () => {} },
+  );
+  assert.equal(applied.dryRun, false);
+  assert.equal(applied.gcRan, true);
+  assert.equal(dockerApply.state.gcCalls, 1);
+  assert.deepEqual(
+    applied.deleted.map((d) => d.tag).sort(),
+    ["0.1.0", "0.2.0"],
+  );
+
+  await assert.rejects(
+    () =>
+      gc.runRegistryGcCommand({ apply: true, dryRun: true }, env, {
+        http: createMemoryRegistry(initial).http,
+        docker: createMockDocker(),
+        log: () => {},
+      }),
+    /--apply et --dry-run sont exclusifs/,
   );
 });
 

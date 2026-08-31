@@ -216,7 +216,9 @@ export type ServerDockerArgs = {
   container?: string;
   /** registry-gc : limiter à un repository. */
   repo?: string;
-  /** registry-gc : plan uniquement, aucune mutation. */
+  /** registry-gc : exécuter les mutations (défaut : dry-run). */
+  apply?: boolean;
+  /** registry-gc : dry-run explicite (déjà le défaut — exclusif avec --apply). */
   dryRun?: boolean;
   /** enroll : URL agent explicite (sinon ingress agent posée via API CF). */
   agentUrl?: string;
@@ -298,6 +300,7 @@ export function parseServerDockerArgs(argv: string[]): ServerDockerArgs {
     else if (a === "--keep-tags") out.keepTags = Number(rest.shift());
     else if (a.startsWith("--keep=")) out.keepTags = Number(a.slice(7));
     else if (a === "--keep") out.keepTags = Number(rest.shift());
+    else if (a === "--apply") out.apply = true;
     else if (a === "--dry-run") out.dryRun = true;
     else if (a.startsWith("--container=")) out.container = a.slice(12);
     else if (a === "--container") out.container = rest.shift();
@@ -465,14 +468,21 @@ Registry d'images versionnées (update de flotte) :
     + docker builder prune --max-used-space (env CREEZIO_PUBLISH_KEEP_STORAGE,
     défaut 5GB). Les blobs registre sont balayés par registry-gc / timer hôte.
   creezio server-docker registry-gc [--registry 127.0.0.1:5000] [--keep 2]
-    [--container creezio-registry] [--repo <name>] [--dry-run]
+    [--container creezio-registry] [--repo <name>] [--brand-root <app>]
+    [--admin-app <url>] [--apply]
     (GC fail-closed du registre Docker local registry:2 : liste les tags
-     par repo via API v2, garde les N plus récents — défaut 2, env
-     CREEZIO_REGISTRY_GC_KEEP — ET tout tag référencé par un conteneur
-     en cours (docker ps), DELETE des manifests non retenus, puis
-     registry garbage-collect dans le container. --dry-run liste sans
-     mutation. Jamais de suppression d'un tag en usage. Erreurs
-     explicites : docker absent, registre down, DELETE KO, GC KO.)
+     par repo via API v2, garde les N plus récents PAR FAMILLE — auto.*
+     d'un côté, tags manuels de l'autre ; défaut 2, env
+     CREEZIO_REGISTRY_GC_KEEP — ET tout tag PROTÉGÉ : conteneur en cours
+     (docker ps), docker-data/servers.json (--brand-root + découverte
+     labels creezio.brand-root, instances arrêtées incluses), releases
+     fleet de l'app admin (--admin-app / env CREEZIO_FLEET_ADMIN_URL,
+     admin injoignable = refus). DELETE des manifests non retenus puis
+     registry garbage-collect dans le container.
+     DRY-RUN PAR DÉFAUT : plan seulement — --apply exécute. Jamais de
+     suppression d'un tag en usage ou référencé. Erreurs explicites :
+     docker absent, registre down, servers.json illisible, DELETE KO,
+     GC KO.)
 
 Agent hôte flotte (VPS restaurant — exposé via agent.{slug}.{zone}) :
   creezio server-docker agent up --brand-root <app> [--port 18810]

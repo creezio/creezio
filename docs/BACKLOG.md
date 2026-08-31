@@ -85,9 +85,11 @@ affaibli pour la masquer. (Backlogs d'époque : `docs/archive/BACKLOG-*.md`.)
 - ~~**Registry local sans GC**~~ **fait (T11)** : `creezio server-docker
   registry-gc` (`packages/factory/src/server-docker-registry-gc.ts`) —
   API v2 list/delete + `registry garbage-collect` dans `creezio-registry`,
-  `--keep N` (défaut 2), tags des conteneurs en cours toujours conservés,
-  `--dry-run`. Gate : `test-phase-server-docker-registry-gc`. Doc : skill
-  fleet-ops §10.
+  rétention `--keep N` (défaut 2) par famille `auto.*`/manuels, tags
+  protégés jamais supprimés (conteneurs en cours, `docker-data/servers.json`
+  — instances arrêtées incluses —, releases fleet de l'app admin), dry-run
+  par défaut + `--apply`. Gate : `test-phase-server-docker-registry-gc`.
+  Doc : skill fleet-ops §10.
 - ~~**Scaffold `verify-prod` factory (vérification E2E canonique de toute
   app générée)**~~ **fait (0.18.0)** : la factory matérialise
   `scripts/verify-prod.mjs` dans toute app générée (générateur

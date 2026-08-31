@@ -95,9 +95,13 @@ en jumeau dans `main.ts`.
 - `src/server-docker-cli.ts` : serveurs marque headless (`docker/server`).
 - `src/server-docker-registry-gc.ts` : `creezio server-docker registry-gc`
   — GC fail-closed du registre Docker local (`registry:2`, `127.0.0.1:5000`) :
-  API v2 list/delete + `docker exec … garbage-collect`, `--keep N` (défaut 2),
-  tags des conteneurs en cours toujours conservés, `--dry-run`.
-  Gate : `scripts/test-phase-server-docker-registry-gc.mjs`.
+  API v2 list/delete + `docker exec … garbage-collect`, rétention `--keep N`
+  (défaut 2) **par famille** de tags (`auto.*` / manuels), tags PROTÉGÉS
+  jamais supprimés : conteneurs en cours, `docker-data/servers.json`
+  (`--brand-root` + labels `creezio.brand-root`, instances arrêtées
+  incluses), releases fleet de l'app admin (`--admin-app` /
+  `CREEZIO_FLEET_ADMIN_URL`, injoignable = refus). **Dry-run par défaut**,
+  `--apply` exécute. Gate : `scripts/test-phase-server-docker-registry-gc.mjs`.
 - `src/server-docker-tunnel.ts` : politique create fail-closed
   (`CREEZIO_CF_API_TOKEN` / `_ACCOUNT_ID` / `_ZONE_ID` requis sauf
   `CREEZIO_TUNNEL_LOCAL=1`) + dérivation slug réservé.
