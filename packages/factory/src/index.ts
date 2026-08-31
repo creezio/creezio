@@ -60,8 +60,19 @@ export {
 export {
   isPackageLockInSync,
   ensureBrandPackageLocks,
+  pinCreezioDepsToKitWorktree,
   type PkgJson,
 } from "./package-lock.js";
+export {
+  CREEZIO_MANIFEST_CANDIDATES,
+  applyCreezioManifestSync,
+  creezioManifestRole,
+  creezioSyncPlanHasChanges,
+  planCreezioManifestSync,
+  requiredCreezioDepsForRole,
+  type CreezioManifestRole,
+  type CreezioManifestSyncPlan,
+} from "./sync-creezio-deps.js";
 export { prepareBrandDistribution } from "./prepare-brand-distribution.js";
 export {
   applyVpsNativeWarmDefaults,

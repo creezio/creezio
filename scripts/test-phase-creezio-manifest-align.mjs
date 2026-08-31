@@ -169,4 +169,104 @@ test("MA3 source — le check est câblé dans doctorBrandSpec (anti-régression
     /doctorCreezioManifestAlignment\(spec\.rootDir, issues\)/,
     "doctorCreezioManifestAlignment n'est plus appelé par doctorBrandSpec",
   );
+  assert.match(
+    src,
+    /doctorOsUiPageDeps\(spec\.rootDir, issues\)/,
+    "doctorOsUiPageDeps n'est plus appelé par doctorBrandSpec",
+  );
+});
+
+/**
+ * Fixture app minimale pour les checks deps des pages os-ui : brand-spec +
+ * server/ui/package.json. `uiDeps` = deps @creezio/* déclarées côté UI.
+ */
+function makeOsUiDepsFixture(work, uiDeps, appName = "acme") {
+  const appDir = path.join(work, appName);
+  fs.mkdirSync(path.join(appDir, "brand-spec/modules"), { recursive: true });
+  fs.writeFileSync(
+    path.join(appDir, "brand-spec/brand.yaml"),
+    "brandId: acme\nbrandName: Acme\ndomain: acme.local\n",
+  );
+  fs.writeFileSync(path.join(appDir, "brand-spec/product.md"), "# Acme\nProduit.\n");
+  fs.mkdirSync(path.join(appDir, "server/ui"), { recursive: true });
+  fs.writeFileSync(
+    path.join(appDir, "server/ui/package.json"),
+    JSON.stringify({ name: "@creezio/brand-ui", dependencies: uiDeps }, null, 2),
+  );
+  return appDir;
+}
+
+test("MA4 doctor — page os-ui matérialisée sans la dep dans server/ui = ERROR", async () => {
+  const { doctorAppBrandSpec } = await import(
+    "../packages/brand-spec/dist/index.js"
+  );
+  const work = fs.mkdtempSync(path.join(os.tmpdir(), "creezio-os-ui-deps-"));
+  // Incident prod 0.20.0 rejoué : la page /granola est matérialisée (importe
+  // @creezio/granola/ui) mais server/ui/package.json ne déclare pas la dep.
+  const appDir = makeOsUiDepsFixture(work, { "@creezio/os-ui": "^0.20.0" });
+  const pageDir = path.join(appDir, "server/ui/app/(creezio-os)/granola");
+  fs.mkdirSync(pageDir, { recursive: true });
+  fs.writeFileSync(
+    path.join(pageDir, "page.tsx"),
+    '"use client";\nimport { GranolaClient } from "@creezio/granola/ui";\nexport default function Page() { return <GranolaClient />; }\n',
+  );
+
+  const bad = doctorAppBrandSpec(appDir);
+  const missing = bad.issues.filter((i) => i.code === "OS_UI_PAGE_DEP_MISSING");
+  assert.equal(
+    missing.length,
+    1,
+    `doctor devait rapporter OS_UI_PAGE_DEP_MISSING : ${JSON.stringify(bad.issues)}`,
+  );
+  assert.equal(missing[0].level, "error", "dep de page os-ui absente = error, pas warn");
+  assert.match(missing[0].message, /@creezio\/granola/);
+  assert.match(missing[0].message, /creezio upgrade/);
+  assert.equal(bad.ok, false, "doctor.ok doit être false (build UI cassé)");
+
+  // Dep déclarée → l'erreur disparaît.
+  const good = makeOsUiDepsFixture(work, {
+    "@creezio/os-ui": "^0.20.0",
+    "@creezio/granola": "^0.20.0",
+  });
+  fs.mkdirSync(path.join(good, "server/ui/app/(creezio-os)/granola"), { recursive: true });
+  fs.writeFileSync(
+    path.join(good, "server/ui/app/(creezio-os)/granola/page.tsx"),
+    '"use client";\nimport { GranolaClient } from "@creezio/granola/ui";\nexport default function Page() { return <GranolaClient />; }\n',
+  );
+  const goodRes = doctorAppBrandSpec(good);
+  assert.equal(
+    goodRes.issues.filter((i) => i.code === "OS_UI_PAGE_DEP_MISSING").length,
+    0,
+    `faux positif après ajout de la dep : ${JSON.stringify(goodRes.issues)}`,
+  );
+  fs.rmSync(work, { recursive: true, force: true });
+});
+
+test("MA5 doctor — source = @creezio/os-ui INSTALLÉ (avant matérialisation) + skip explicite", async () => {
+  const { doctorAppBrandSpec } = await import(
+    "../packages/brand-spec/dist/index.js"
+  );
+  const work = fs.mkdtempSync(path.join(os.tmpdir(), "creezio-os-ui-inst-"));
+  // Pas de pages matérialisées, mais le package os-ui installé embarque une
+  // route /grokbot : c'est ce que la PROCHAINE matérialisation produira —
+  // le check mord avant le build (c'est ce qui aurait attrapé l'incident).
+  const appDir = makeOsUiDepsFixture(work, { "@creezio/os-ui": "^0.20.0" });
+  const routesDir = path.join(appDir, "server/ui/node_modules/@creezio/os-ui/routes/grokbot");
+  fs.mkdirSync(routesDir, { recursive: true });
+  fs.writeFileSync(
+    path.join(routesDir, "page.tsx"),
+    '"use client";\nimport { GrokbotClient } from "@creezio/grokbot/ui";\nexport default function Page() { return <GrokbotClient />; }\n',
+  );
+  const bad = doctorAppBrandSpec(appDir);
+  const missing = bad.issues.filter((i) => i.code === "OS_UI_PAGE_DEP_MISSING");
+  assert.equal(missing.length, 1, JSON.stringify(bad.issues));
+  assert.match(missing[0].message, /@creezio\/grokbot/);
+
+  // Ni pages matérialisées ni os-ui installé → skip EXPLICITE (info), jamais silencieux.
+  const bare = makeOsUiDepsFixture(work, { "@creezio/os-ui": "^0.20.0" }, "acmebare");
+  const bareRes = doctorAppBrandSpec(bare);
+  const skip = bareRes.issues.filter((i) => i.code === "OS_UI_DEPS_UNCHECKED");
+  assert.equal(skip.length, 1, JSON.stringify(bareRes.issues));
+  assert.equal(skip[0].level, "info", "skip = info explicite, pas error");
+  fs.rmSync(work, { recursive: true, force: true });
 });

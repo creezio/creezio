@@ -12,8 +12,14 @@
  *   2. applique LA CHAÎNE des codemods intermédiaires dans l'ordre
  *      (ex. H7→H9 = H8 puis H9) — chaque pas est re-exécuté pour PROUVER
  *      l'idempotence (re-run = no-op, sinon échec explicite) ;
- *   3. bumpe les deps `@creezio/*` de TOUS les manifests présents (racine,
- *      server, server/ui, client) vers `^<lockstep kit>` puis régénère les
+ *   3. synchronise les deps `@creezio/*` de TOUS les manifests présents
+ *      (racine, server, server/ui, client) avec la SoT du kit
+ *      (`planCreezioManifestSync` — sync-creezio-deps.ts) : bump des
+ *      existantes vers `^<lockstep kit>` + AJOUT des deps requises
+ *      manquantes (SERVER/UI/CLIENT_CREEZIO_DEPS — le trou historique :
+ *      os-ui@0.20.0 matérialise /granola et /grokbot sur une marque sans
+ *      ces deps → build cassé) ; une dep `@creezio/*` hors SoT n'est
+ *      JAMAIS supprimée, elle est listée en warning. Puis régénère les
  *      lockfiles via `npm install --package-lock-only` + locks secondaires
  *      (`ensureBrandPackageLocks` — JAMAIS `npm update`, spin infini connu) ;
  *   4. rematérialise les pages os-ui (mécanisme existant
@@ -37,6 +43,12 @@ import {
 } from "@creezio/brand-spec";
 import { kitPublishedVersion } from "./kit-release.js";
 import { ensureBrandPackageLocks } from "./package-lock.js";
+import {
+  applyCreezioManifestSync,
+  creezioSyncPlanHasChanges,
+  planCreezioManifestSync,
+  type CreezioManifestSyncPlan,
+} from "./sync-creezio-deps.js";
 
 type Log = (line: string) => void;
 
@@ -47,15 +59,6 @@ export type UpgradeCliArgs = {
   noInstall: boolean;
   help: boolean;
 };
-
-/** Manifests d'une marque susceptibles de porter des deps @creezio/* (SoT
- * partagée avec le doctor CREEZIO_MANIFEST_MISALIGNED — bump TOUS ensemble). */
-const CREEZIO_MANIFEST_CANDIDATES = [
-  "package.json",
-  "server/package.json",
-  "server/ui/package.json",
-  "client/package.json",
-] as const;
 
 export function parseUpgradeArgs(argv: string[]): UpgradeCliArgs {
   const out: UpgradeCliArgs = {
@@ -87,10 +90,12 @@ Usage:
 À la racine d'un clone marque, applique dans l'ordre :
   1. chaîne des codemods d'architecture intermédiaires (ex. H7→H9 = H8 puis H9),
      idempotence PROUVÉE à chaque pas (re-run = no-op sinon échec) ;
-  2. bump des deps @creezio/* de TOUS les manifests (racine, server,
-     server/ui, client) vers la version lockstep du kit installé, puis
-     régénération des lockfiles (npm install --package-lock-only + locks
-     secondaires — jamais npm update) ;
+  2. sync des deps @creezio/* de TOUS les manifests (racine, server,
+     server/ui, client) avec la SoT du kit installé : bump vers la version
+     lockstep + AJOUT des deps requises manquantes (jamais de suppression —
+     une dep hors SoT est listée en warning), puis régénération des
+     lockfiles (npm install --package-lock-only + locks secondaires —
+     jamais npm update) ;
   3. rematérialisation des pages os-ui (npm run os-ui:materialize) si
      node_modules est présent (sinon skip explicite — le prebuild marque la
      refait) ;
@@ -283,60 +288,18 @@ export function targetLockstepVersion(): string {
 
 /* ------------------------------------------------------------------- plan */
 
-type ManifestBumpPlan = {
-  rel: string;
-  abs: string;
-  /** name → { from, to } (uniquement les specs à changer). */
-  changes: Record<string, { from: string; to: string }>;
-};
-
-type DepsSections = "dependencies" | "devDependencies" | "optionalDependencies";
-const DEP_SECTIONS: DepsSections[] = [
-  "dependencies",
-  "devDependencies",
-  "optionalDependencies",
-];
-
-function planManifestBumps(
-  brandRoot: string,
-  targetSpec: string,
-): ManifestBumpPlan[] {
-  const plans: ManifestBumpPlan[] = [];
-  for (const rel of CREEZIO_MANIFEST_CANDIDATES) {
-    const abs = path.join(brandRoot, rel);
-    if (!fs.existsSync(abs)) continue;
-    const pkg = JSON.parse(fs.readFileSync(abs, "utf8")) as Record<
-      DepsSections,
-      Record<string, string> | undefined
-    >;
-    const changes: ManifestBumpPlan["changes"] = {};
-    for (const section of DEP_SECTIONS) {
-      for (const [name, spec] of Object.entries(pkg[section] || {})) {
-        if (!name.startsWith("@creezio/")) continue;
-        // Seuls les specs semver sont bumpés (file:/link:/workspace: intacts).
-        if (!/^[\^~]?\d+\.\d+\.\d+/.test(spec.trim())) continue;
-        if (spec.trim() === targetSpec) continue;
-        changes[name] = { from: spec, to: targetSpec };
-      }
-    }
-    if (Object.keys(changes).length > 0) plans.push({ rel, abs, changes });
+/** Warning listé (jamais de suppression silencieuse) des deps hors SoT. */
+function logExtrasWarnings(
+  plans: CreezioManifestSyncPlan[],
+  log: Log,
+): void {
+  for (const plan of plans) {
+    if (plan.extras.length === 0) continue;
+    log(
+      `  ⚠ ${plan.rel} : deps @creezio/* hors SoT kit (CONSERVÉES — vérifier ` +
+        `qu'elles sont encore voulues) : ${plan.extras.join(", ")}`,
+    );
   }
-  return plans;
-}
-
-function applyManifestBump(plan: ManifestBumpPlan): void {
-  const pkg = JSON.parse(fs.readFileSync(plan.abs, "utf8")) as Record<
-    string,
-    unknown
-  >;
-  for (const section of DEP_SECTIONS) {
-    const deps = pkg[section] as Record<string, string> | undefined;
-    if (!deps) continue;
-    for (const [name, change] of Object.entries(plan.changes)) {
-      if (deps[name] !== undefined) deps[name] = change.to;
-    }
-  }
-  fs.writeFileSync(plan.abs, JSON.stringify(pkg, null, 2) + "\n", "utf8");
 }
 
 function stampArchitectureVersion(brandRoot: string, arch: string): void {
@@ -469,7 +432,8 @@ export async function runUpgradeCli(argv: string[]): Promise<void> {
   }
 
   const chain = codemodChain(codemodsDir, currentArch, targetArch);
-  const bumps = planManifestBumps(brandRoot, targetSpec);
+  const syncPlans = planCreezioManifestSync(brandRoot, targetSpec);
+  const changedPlans = syncPlans.filter(creezioSyncPlanHasChanges);
   const rootPkg = JSON.parse(
     fs.readFileSync(path.join(brandRoot, "package.json"), "utf8"),
   ) as { scripts?: Record<string, string>; creezio?: { architectureVersion?: string } };
@@ -492,14 +456,17 @@ export async function runUpgradeCli(argv: string[]): Promise<void> {
   const hasNodeModules = fs.existsSync(path.join(brandRoot, "node_modules"));
   const needsStamp = rootPkg.creezio?.architectureVersion !== targetArch;
 
-  // No-op = rien à migrer NI à bumper. Le marqueur seul ne déclenche pas
-  // d'écriture (une marque à jour sans marqueur reste no-op — détection lock).
-  const noop = chain.length === 0 && bumps.length === 0;
+  // No-op = rien à migrer, NI à bumper, NI à ajouter. Le marqueur seul ne
+  // déclenche pas d'écriture (une marque à jour sans marqueur reste no-op —
+  // détection lock). Les deps hors SoT (extras) ne bloquent pas le no-op :
+  // elles sont des warnings, pas des changements.
+  const noop = chain.length === 0 && changedPlans.length === 0;
 
   if (args.dryRun) {
     log("  mode         : DRY-RUN (rien n'est écrit)");
     if (noop) {
       log(`✓ no-op — marque déjà en ${targetArch} / ${targetSpec}`);
+      logExtrasWarnings(syncPlans, log);
       return;
     }
     if (chain.length) {
@@ -508,16 +475,27 @@ export async function runUpgradeCli(argv: string[]): Promise<void> {
     } else {
       log("  codemods     : aucun (architecture déjà à la cible)");
     }
-    if (bumps.length) {
-      log(`  manifests    : ${bumps.length} à bumper (puis lockfiles --package-lock-only)`);
-      for (const plan of bumps) {
-        const n = Object.keys(plan.changes).length;
-        const sample = Object.entries(plan.changes)[0]!;
-        log(`    ~ ${plan.rel} (${n} deps, ex. ${sample[0]}: ${sample[1].from} → ${sample[1].to})`);
+    if (changedPlans.length) {
+      log(`  manifests    : ${changedPlans.length} à synchroniser (puis lockfiles --package-lock-only)`);
+      for (const plan of changedPlans) {
+        const nBump = Object.keys(plan.bumps).length;
+        const addNames = Object.keys(plan.adds);
+        const parts: string[] = [];
+        if (nBump > 0) {
+          const sample = Object.entries(plan.bumps)[0]!;
+          parts.push(
+            `${nBump} bumps, ex. ${sample[0]}: ${sample[1].from} → ${sample[1].to}`,
+          );
+        }
+        if (addNames.length > 0) {
+          parts.push(`${addNames.length} ajouts : ${addNames.join(", ")}`);
+        }
+        log(`    ~ ${plan.rel} (${parts.join(" ; ")})`);
       }
     } else {
-      log("  manifests    : déjà alignés (aucun bump)");
+      log("  manifests    : déjà synchronisés avec la SoT kit (aucun bump/ajout)");
     }
+    logExtrasWarnings(syncPlans, log);
     if (needsStamp) {
       log(`  marqueur     : creezio.architectureVersion → ${targetArch} (package.json racine)`);
     }
@@ -544,6 +522,7 @@ export async function runUpgradeCli(argv: string[]): Promise<void> {
 
   if (noop) {
     log(`✓ no-op — marque déjà en ${targetArch} / ${targetSpec}`);
+    logExtrasWarnings(syncPlans, log);
     return;
   }
 
@@ -562,11 +541,19 @@ export async function runUpgradeCli(argv: string[]): Promise<void> {
     }
   }
 
-  // 2. Bump des manifests + lockfiles (--package-lock-only + locks secondaires).
-  if (bumps.length) {
-    for (const plan of bumps) {
-      applyManifestBump(plan);
-      log(`  bump ${plan.rel} (${Object.keys(plan.changes).length} deps → ${targetSpec})`);
+  // 2. Sync des manifests (bumps + ajouts SoT) + lockfiles
+  //    (--package-lock-only + locks secondaires).
+  if (changedPlans.length) {
+    for (const plan of changedPlans) {
+      applyCreezioManifestSync(plan);
+      const nBump = Object.keys(plan.bumps).length;
+      const addNames = Object.keys(plan.adds);
+      if (nBump > 0) {
+        log(`  bump ${plan.rel} (${nBump} deps → ${targetSpec})`);
+      }
+      for (const name of addNames) {
+        log(`  ajout ${name} → ${plan.adds[name]} (${plan.rel}) — requis par la SoT kit`);
+      }
     }
     const { refreshed } = ensureBrandPackageLocks(brandRoot, {
       mode: "lock-only",
@@ -574,6 +561,7 @@ export async function runUpgradeCli(argv: string[]): Promise<void> {
     });
     for (const rel of refreshed) log(`  lock régénéré : ${rel}`);
   }
+  logExtrasWarnings(syncPlans, log);
 
   // 3. Marqueur d'architecture (source de détection des prochains upgrades).
   stampArchitectureVersion(brandRoot, targetArch);

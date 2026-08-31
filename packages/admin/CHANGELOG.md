@@ -1,5 +1,16 @@
 # @creezio/admin
 
+## 0.21.0
+
+### Patch Changes
+
+- Updated dependencies [247aa2b]
+- Updated dependencies [60683cf]
+  - @creezio/fleet@0.21.0
+  - @creezio/platform-core@0.21.0
+  - @creezio/api-kernel@0.21.0
+  - @creezio/integrations@0.21.0
+
 ## 0.20.0
 
 ### Minor Changes

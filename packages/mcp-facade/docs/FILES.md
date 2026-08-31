@@ -10,6 +10,7 @@
 |---|---|
 | [`src/brand-facade.ts`](../src/brand-facade.ts) | DX factory marque — remplace le boilerplate create*BrandMcp ×3. Tools `module.*` générés depuis `api.listOperations()` ; `discoverModuleTools` = hook apps optionnel (extras / JWT). `mcpTools` n'existe plus. |
 | [`src/core-tools.ts`](../src/core-tools.ts) | Tools MCP cœur (`creezio.*`) — SoT kit (H1/H4 → M9). Les marques importent les noms / factories ; handlers Hono peuvent rester brand-specific tant que les noms restent alignés. |
+| [`src/dyn-import.ts`](../src/dyn-import.ts) | (à documenter) |
 | [`src/facade.ts`](../src/facade.ts) | Façade / proxy MCP unique — tools cœur + discoverTools modules/plugins. H2.3 : discovery / listage scindés par couche (core / module / plugin). H4 : registry dynamique, namespacing, aliases legacy, policies deny cross-layer, surface publique sans double exposition. Pas de MCP « produit Creezio » séparé du MCP de l'app. |
 | [`src/hono-bind.ts`](../src/hono-bind.ts) | O4r3 — bind Hono `/mcp` (SDK McpServer) → façade `create*BrandMcp`. Un seul SoT handlers : `facade.callTool`. Hono ne garde que transport, auth Bearer, policies admin — pas de second registre métier. |
 | [`src/hono-proxy.ts`](../src/hono-proxy.ts) | Proxy façade Electron → Hono `/mcp` (D1/C2 → M9 SoT kit). Parle le transport Streamable HTTP JSON (même shape que test-mcp-oauth). Si l'upstream est absent ou en erreur et `fallbackLocal`, délègue à la façade locale (brand mounts) — zéro perte offline / tests. |

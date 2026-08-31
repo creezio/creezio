@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { loadBrandSpec, resolveBrandSpecDir } from "./load.js";
+import { doctorBrandModuleMeiliTables } from "./meili-table-coherence.js";
 import type { BrandSpecIssue, DoctorResult } from "./types.js";
 
 const BRAND_ID_RE = /^[a-z][a-z0-9]{1,31}$/;
@@ -721,9 +722,11 @@ export function doctorBrandSpec(rootDir: string): DoctorResult {
   doctorBrandModuleDemos(spec.rootDir, issues);
   doctorBrandModuleOps(spec.rootDir, issues);
   doctorBrandModuleMeili(spec.rootDir, issues);
+  doctorBrandModuleMeiliTables(spec.rootDir, issues);
   doctorBrandModuleTypesContract(spec.rootDir, issues);
   doctorBrandModulePermissions(spec.rootDir, issues);
   doctorCreezioManifestAlignment(spec.rootDir, issues);
+  doctorOsUiPageDeps(spec.rootDir, issues);
 
   // Anti-jumeau : pas de sidecars dans brand-spec
   for (const bad of ["metier-api.mjs", "store.json", "meili-launcher.ts"]) {
@@ -827,6 +830,148 @@ function doctorCreezioManifestAlignment(
         `(npm install '${name}@^X.Y.Z' --save à la racine ET --prefix server/ui, ` +
         `voir docs/PROPAGATION.md « Règle d'or du bump côté apps », incident login 0.6.0)`,
       path: manifests[0]!.rel,
+    });
+  }
+}
+
+/* ------------------------------------------- deps des pages os-ui (UI) */
+
+/** Groupe de routes matérialisé par @creezio/os-ui (scripts/materialize.mjs). */
+const OS_UI_ROUTE_GROUP = "(creezio-os)";
+
+function walkUiSourceFiles(dir: string, out: string[] = []): string[] {
+  if (!fs.existsSync(dir)) return out;
+  for (const ent of fs.readdirSync(dir, { withFileTypes: true })) {
+    const abs = path.join(dir, ent.name);
+    if (ent.isDirectory()) walkUiSourceFiles(abs, out);
+    else if (/\.(?:tsx?|jsx?|mjs|cjs)$/.test(ent.name)) out.push(abs);
+  }
+  return out;
+}
+
+/** Packages `@creezio/<name>` importés par une source UI (commentaires ignorés). */
+function extractCreezioUiImports(src: string): string[] {
+  const clean = stripModuleSourceComments(src);
+  const names = new Set<string>();
+  for (const m of clean.matchAll(
+    /["'`](@creezio\/[a-z0-9-]+)(?:\/[a-z0-9./_-]*)?["'`]/g,
+  )) {
+    names.add(m[1]!);
+  }
+  return [...names];
+}
+
+/**
+ * routes/ du package `@creezio/os-ui` INSTALLÉ (walk-up node_modules depuis
+ * server/ui — même résolution que le runtime Next et que le script
+ * materialize de la marque). null = os-ui non installé.
+ */
+function resolveInstalledOsUiRoutes(appRoot: string): string | null {
+  let dir = path.join(appRoot, "server", "ui");
+  for (;;) {
+    const cand = path.join(dir, "node_modules", "@creezio", "os-ui", "routes");
+    if (fs.existsSync(cand) && fs.statSync(cand).isDirectory()) return cand;
+    const parent = path.dirname(dir);
+    if (parent === dir) return null;
+    dir = parent;
+  }
+}
+
+/**
+ * Fail-closed (incident prod 0.20.0 : os-ui@0.20.0 matérialise /granola et
+ * /grokbot, build marque cassé — deps absentes de server/ui/package.json) :
+ * tout package `@creezio/*` importé par une page os-ui — matérialisée sous
+ * `server/ui/app/(creezio-os)/` ou embarquée dans le `@creezio/os-ui`
+ * installé (ce que la prochaine matérialisation produira) — doit être
+ * DÉCLARÉ dans `server/ui/package.json`. Error, pas warn : une dep absente
+ * = build UI cassé, quel que soit l'âge de la marque (même politique que
+ * CREEZIO_MANIFEST_MISALIGNED). Le correctif canonique est
+ * `creezio upgrade` (sync SoT kit), jamais un retrait de page.
+ *
+ * Ni pages matérialisées ni os-ui installé (clone frais sans npm install)
+ * → skip explicite en info, jamais silencieux.
+ */
+function doctorOsUiPageDeps(
+  specRoot: string,
+  issues: BrandSpecIssue[],
+): void {
+  const appRoot = path.dirname(specRoot);
+  const uiPkgRel = path.join("server", "ui", "package.json");
+  const uiPkgPath = path.join(appRoot, uiPkgRel);
+  if (!fs.existsSync(uiPkgPath)) return;
+  let declared: Record<string, string>;
+  try {
+    const pkg = JSON.parse(fs.readFileSync(uiPkgPath, "utf8")) as {
+      dependencies?: Record<string, string>;
+      devDependencies?: Record<string, string>;
+      optionalDependencies?: Record<string, string>;
+    };
+    declared = {
+      ...pkg.dependencies,
+      ...pkg.devDependencies,
+      ...pkg.optionalDependencies,
+    };
+  } catch {
+    // JSON illisible : déjà remonté en CREEZIO_MANIFEST_UNREADABLE.
+    return;
+  }
+
+  const sources: { origin: string; root: string; files: string[] }[] = [];
+  const materialized = path.join(appRoot, "server", "ui", "app", OS_UI_ROUTE_GROUP);
+  if (fs.existsSync(materialized) && fs.statSync(materialized).isDirectory()) {
+    sources.push({
+      origin: `pages matérialisées ${path.join("server", "ui", "app", OS_UI_ROUTE_GROUP)}`,
+      root: materialized,
+      files: walkUiSourceFiles(materialized),
+    });
+  }
+  const installedRoutes = resolveInstalledOsUiRoutes(appRoot);
+  if (installedRoutes) {
+    sources.push({
+      origin: `routes du @creezio/os-ui installé (${path.relative(appRoot, installedRoutes)})`,
+      root: installedRoutes,
+      files: walkUiSourceFiles(installedRoutes),
+    });
+  }
+  if (sources.length === 0) {
+    issues.push({
+      level: "info",
+      code: "OS_UI_DEPS_UNCHECKED",
+      message:
+        "deps des pages os-ui non vérifiables (ni pages matérialisées ni @creezio/os-ui installé — npm install d'abord)",
+      path: uiPkgRel,
+    });
+    return;
+  }
+
+  const requiredBy = new Map<string, Set<string>>();
+  for (const source of sources) {
+    for (const file of source.files) {
+      let src: string;
+      try {
+        src = fs.readFileSync(file, "utf8");
+      } catch {
+        continue;
+      }
+      const relPage = path.relative(source.root, file);
+      for (const name of extractCreezioUiImports(src)) {
+        const pages = requiredBy.get(name) ?? new Set<string>();
+        if (pages.size < 3) pages.add(relPage);
+        requiredBy.set(name, pages);
+      }
+    }
+  }
+
+  for (const name of [...requiredBy.keys()].sort()) {
+    if (declared[name] !== undefined) continue;
+    const pages = [...requiredBy.get(name)!].sort();
+    issues.push({
+      level: "error",
+      code: "OS_UI_PAGE_DEP_MISSING",
+      message:
+        `${name} est importé par les pages os-ui (${pages.join(", ")}) mais absent de server/ui/package.json — ` +
+        `build UI cassé (incident 0.20.0). Correctif : \`creezio upgrade\` (sync SoT kit) ou ajouter la dep au pin lockstep.`,
+      path: uiPkgRel,
     });
   }
 }
