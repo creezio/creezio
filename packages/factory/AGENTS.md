@@ -82,6 +82,9 @@ en jumeau dans `main.ts`.
   `npm install --no-audit --no-fund`) — cloud agents Cursor prêts.
 - `src/brand-cli.ts` : BrandSpec init/doctor/apply/smoke.
 - `src/product-model.ts` : `ProductModel`, `parseProductPrd`, `safeBrandId`.
+- `src/kit-release.ts` : SoT `SERVER_CREEZIO_DEPS` / `CLIENT_CREEZIO_DEPS`
+  (granola, grokbot, nav inclus) — les deux chemins scaffold / --from-prd
+  consomment cette liste, jamais une copie inline.
 - `src/scaffold.ts` / `scaffold-from-prd.ts` : artefacts.
 - `src/generators/*` : schema, api, ui, **os-ui** (réf. + layout métier-only), nav, wiring, tests.
   Chrome : `<NavCatalogLoader />` (`@creezio/shell-ui/ui`) +
