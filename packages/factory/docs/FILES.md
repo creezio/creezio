@@ -10,6 +10,24 @@
 |---|---|
 | [`bin/creezio.js`](../bin/creezio.js) | Binaire npm |
 
+## `codemods/H7/`
+
+| Fichier | Rôle |
+|---|---|
+| [`codemods/H7/h7-neutralize-brand-contracts.mjs`](../codemods/H7/h7-neutralize-brand-contracts.mjs) | (à documenter) |
+
+## `codemods/H8/`
+
+| Fichier | Rôle |
+|---|---|
+| [`codemods/H8/h8-materialize-brand-manifest.mjs`](../codemods/H8/h8-materialize-brand-manifest.mjs) | (à documenter) |
+
+## `codemods/H9/`
+
+| Fichier | Rôle |
+|---|---|
+| [`codemods/H9/h9-import-module-contract.mjs`](../codemods/H9/h9-import-module-contract.mjs) | (à documenter) |
+
 ## `scripts/`
 
 | Fichier | Rôle |
