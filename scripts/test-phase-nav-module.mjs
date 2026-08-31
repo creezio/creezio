@@ -105,13 +105,14 @@ test("nav-module : exports publics + migrations", async () => {
 test("nav-module : GET / + PUT override hidden retire os.granola", async () => {
   const nav = await loadNav();
   const db = await createDb(nav.navMigrations());
+  let actor = {
+    role: "collaborator",
+    permissions: ["nav.mails"],
+    sub: "user-1",
+  };
   const mount = nav.createNavMount({
     osEntries: [granolaOs, mailsOs],
-    getSession: () => ({
-      role: "collaborator",
-      permissions: ["nav.mails"],
-      sub: "user-1",
-    }),
+    getSession: () => actor,
   });
 
   const before = await call(mount, { method: "GET", db });
@@ -120,6 +121,7 @@ test("nav-module : GET / + PUT override hidden retire os.granola", async () => {
   assert.ok(idsBefore.includes("os.granola"));
   assert.ok(idsBefore.includes("os.mails"));
 
+  actor = { role: "owner", permissions: [], impersonating: false, sub: "owner-1" };
   const put = await call(mount, {
     method: "PUT",
     subPath: "overrides",
@@ -129,6 +131,11 @@ test("nav-module : GET / + PUT override hidden retire os.granola", async () => {
   assert.equal(put.status, 200, JSON.stringify(put.body));
   assert.equal(put.body.override.hidden, true);
 
+  actor = {
+    role: "collaborator",
+    permissions: ["nav.mails"],
+    sub: "user-1",
+  };
   const after = await call(mount, { method: "GET", db });
   assert.equal(after.status, 200);
   const idsAfter = after.body.items.map((i) => i.id);
