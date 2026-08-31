@@ -63,7 +63,12 @@ export {
   type PkgJson,
 } from "./package-lock.js";
 export { prepareBrandDistribution } from "./prepare-brand-distribution.js";
-export { applyVpsNativeWarmDefaults } from "./server-docker-cli.js";
+export {
+  applyVpsNativeWarmDefaults,
+  isServerDockerBackupEnabled,
+  resolveServerDockerBackupEnabled,
+  SERVER_DOCKER_BACKUP_ENV,
+} from "./server-docker-cli.js";
 export {
   loadServerRegistry,
   saveServerRegistry,

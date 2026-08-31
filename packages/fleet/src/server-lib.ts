@@ -519,6 +519,23 @@ export async function createServer(
 
 /* --------------------------------------------------------------- backups */
 
+/** Kill-switch backups (CLI `--backup`, API `backup:true`, one-shot). Défaut on. */
+export const SERVER_DOCKER_BACKUP_ENV = "CREEZIO_SERVER_DOCKER_BACKUP";
+
+/**
+ * Défaut **on** (prod-safe). `0` / `false` / `off` = skip.
+ * L'env gagne sur `--backup` / `{"backup":true}`.
+ */
+export function isServerDockerBackupEnabled(
+  raw: string | undefined | null = process.env.CREEZIO_SERVER_DOCKER_BACKUP,
+): boolean {
+  const v = String(raw ?? "")
+    .trim()
+    .toLowerCase();
+  if (v === "0" || v === "false" || v === "off") return false;
+  return true;
+}
+
 export function backupsDir(brandRoot: string): string {
   return path.join(brandRoot, "docker-data", "backups");
 }
@@ -552,6 +569,13 @@ export function backupInstanceData(
       child.on("exit", (code) => resolve({ code: code ?? -1, stdout, stderr }));
     });
   return (async (): Promise<BackupResult> => {
+    if (!isServerDockerBackupEnabled()) {
+      return {
+        ok: true,
+        file: null,
+        detail: "backup skippé (CREEZIO_SERVER_DOCKER_BACKUP=0)",
+      };
+    }
     const dataAbs = instanceDataDirAbs(brandRoot, inst);
     if (!fs.existsSync(dataAbs)) {
       return { ok: false, file: null, detail: `volume introuvable: ${dataAbs}` };
@@ -713,6 +737,8 @@ export async function waitBootReady(port: number, timeoutMs = 180_000): Promise<
  * Les archives déjà dans `docker-data/backups/` sont **conservées** (pas de
  * prune ici). Opt-in : CLI `--backup` / API `{"backup":true}` / one-shot
  * `creezio server-docker backup <nom>`.
+ * `CREEZIO_SERVER_DOCKER_BACKUP=0` (aussi `false`/`off`) gagne : skip
+ * même si `--backup` / `backup:true` (warn CLI / log update).
  *
  * Stack compose : un sidecar `cloudflared*` est **préservé** (même tunnel,
  * même hostname). Un hostname public persisté sans sidecar → refus
@@ -774,6 +800,10 @@ export async function updateServer({
   }
 
   let backupFile: string | null = null;
+  if (backup && !isServerDockerBackupEnabled()) {
+    log("backup skippé (CREEZIO_SERVER_DOCKER_BACKUP=0)");
+    backup = false;
+  }
   if (backup) {
     const b = await backupInstanceData(brandRoot, inst);
     if (!b.ok) {
