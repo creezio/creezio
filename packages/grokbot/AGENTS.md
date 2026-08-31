@@ -35,17 +35,23 @@ stocké côté serveur. Générique : zéro domaine marque.
   Agents v1 (hors streaming SSE).
 - `src/mount.ts` : `createGrokbotMount` → `/api/v1/modules/grokbot/*`
   (config, status, models, repositories, agents, runs, usage, artifacts).
-- `ui/grokbot-client.tsx` : compose la page (`GrokbotClient`).
+- `ui/grokbot-client.tsx` : compose la page (`GrokbotClient`) + poll ciblé.
 - `ui/grokbot-launch-form.tsx` : lancer un agent (Select modèle / repo /
   mode, refresh repos `?refresh=1`, checkbox PR). **GROKBOT-1**.
 - `ui/grokbot-usage-artifacts.tsx` : usage tokens + artefacts + download
   présigné + lien PR. **GROKBOT-1**.
-- `ui/grokbot-agent-runs.tsx` : panneau runs (follow-up, cancel, archive).
-  **GROKBOT-2** — ne pas l'enrichir depuis GROKBOT-1.
+- `ui/grokbot-agent-runs.tsx` : liste agents (filtre archivés, unarchive)
+  + timeline runs (durée, result, PR, follow-up, cancel confirm).
+  **GROKBOT-2**.
 
 `GET /models` et `GET /repositories` se chargent **une fois** dans le
-formulaire de lancement, jamais depuis le poll 15 s (rate limit repos
-1 req/min). Hors scope v1 : streaming SSE (`GET …/runs/{runId}/stream`).
+formulaire de lancement, jamais depuis le poll. Poll **uniquement**
+l'agent ouvert : `GET agents/:id` + `GET …/runs` toutes les 4 s si un
+run est `RUNNING`/`CREATING`, sinon 15 s.
+
+Hors scope v1 : streaming SSE (`GET …/runs/{runId}/stream`). Le suivi
+est un poll HTTP ciblé — ne pas ajouter d'`EventSource` ni de route
+stream dans cette surface.
 
 ## Modifier sans casser
 

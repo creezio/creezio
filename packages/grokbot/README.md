@@ -22,7 +22,9 @@ mirrorés en `brand.db`.
 - **UI** : `@creezio/grokbot/ui` → `GrokbotClient` compose
   `grokbot-launch-form` (Select repos/modèles/mode, refresh cache 1 h),
   `grokbot-usage-artifacts` (usage + download présigné) et
-  `grokbot-agent-runs` (suivi). Token jamais affiché en clair.
+  `grokbot-agent-runs` (liste + timeline, poll ciblé, unarchive). Token
+  jamais affiché en clair. SSE (`GET …/runs/{runId}/stream`) hors scope
+  v1 — le suivi est un poll HTTP de l'agent ouvert.
 
 ## API mount (câblé par la marque)
 

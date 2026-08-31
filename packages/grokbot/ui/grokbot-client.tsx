@@ -4,10 +4,11 @@
  * Page /grokbot côté serveur marque — compose les panneaux extraits :
  * - `grokbot-launch-form.tsx` (GROKBOT-1) — prompt, repos, modèle, mode, PR
  * - `grokbot-usage-artifacts.tsx` (GROKBOT-1) — usage tokens + artefacts
- * - `grokbot-agent-runs.tsx` (GROKBOT-2) — suivi des runs, tel quel
+ * - `grokbot-agent-runs.tsx` (GROKBOT-2) — liste, timeline, follow-up
  *
- * Le poll 15 s ne touche que status / agents / runs — jamais
- * GET /repositories (rate limit 1 req/min, cache mount 1 h).
+ * Poll ciblé : uniquement l'agent ouvert — GET agents/:id + GET …/runs
+ * toutes les 4 s si un run est RUNNING/CREATING, sinon 15 s.
+ * Jamais GET /models ni GET /repositories dans ce poll.
  *
  * API : /api/v1/modules/grokbot/* (mount natif @creezio/grokbot).
  */
@@ -17,9 +18,19 @@ import { toast } from "sonner";
 import { Badge, Button, Card, Input } from "@creezio/shell-ui/ui/kit";
 import { GrokbotLaunchForm } from "./grokbot-launch-form";
 import { GrokbotUsageArtifacts } from "./grokbot-usage-artifacts";
-import { GrokbotAgentRuns } from "./grokbot-agent-runs";
+import {
+  GrokbotAgentList,
+  GrokbotAgentRuns,
+  isLiveRunStatus,
+  type GrokbotAgentItem,
+  type GrokbotRunItem,
+} from "./grokbot-agent-runs";
 
 const API = "/api/v1/modules/grokbot";
+const LIVE_POLL_MS = 4000;
+const IDLE_POLL_MS = 15000;
+const MODULE_UNMOUNTED =
+  "Le module GrokBot n'est pas enregistré sur ce serveur";
 
 type StatusView = {
   connected: boolean;
@@ -28,53 +39,95 @@ type StatusView = {
   reason?: string;
 };
 
-type AgentItem = {
-  id: string;
-  name?: string | null;
-  status?: string | null;
-  url?: string | null;
-  createdAt?: string | null;
-  created_at?: string | null;
-  latestRunId?: string | null;
-  latest_run_id?: string | null;
-  repo_url?: string | null;
-  pr_url?: string | null;
-};
-
-type RunItem = {
-  id: string;
-  status: string;
-  createdAt?: string;
-  durationMs?: number;
-  result?: string;
-  git?: { branches?: Array<{ repoUrl?: string; branch?: string; prUrl?: string }> };
-};
-
-function statusVariant(
-  status: string | null | undefined,
-): "default" | "secondary" | "destructive" | "outline" {
-  const s = (status || "").toUpperCase();
-  if (s === "RUNNING" || s === "CREATING" || s === "ACTIVE") return "default";
-  if (s === "FINISHED" || s === "IDLE") return "secondary";
-  if (s === "ERROR" || s === "EXPIRED") return "destructive";
-  return "outline";
+function asRecord(value: unknown): Record<string, unknown> | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  return value as Record<string, unknown>;
 }
 
-function fmtDate(iso: string | null | undefined): string {
-  if (!iso) return "—";
-  try {
-    return new Date(iso).toLocaleString("fr-FR", {
-      dateStyle: "short",
-      timeStyle: "short",
-    });
-  } catch {
-    return iso;
+function upstreamMessage(body: unknown, fallback: string): string {
+  const rec = asRecord(body);
+  if (!rec) return fallback;
+  if (rec.error === "cursor_api_key_missing") {
+    return "Clé API Cursor manquante. Enregistrez un token pour suivre les agents.";
   }
+  if (rec.error === "cursor_api_error") {
+    const detail = asRecord(rec.detail);
+    if (detail) {
+      const err = detail.error;
+      if (typeof err === "string") return err;
+      const nested = asRecord(err);
+      if (typeof nested?.message === "string") return nested.message;
+      if (typeof detail.message === "string") return detail.message;
+    }
+  }
+  if (typeof rec.error === "string") return rec.error;
+  return fallback;
+}
+
+async function parseJsonResponse(
+  r: Response,
+): Promise<{ status: number; body: unknown; json: boolean }> {
+  const ct = r.headers.get("content-type") || "";
+  if (!ct.includes("json")) {
+    return { status: r.status, body: null, json: false };
+  }
+  try {
+    return { status: r.status, body: await r.json(), json: true };
+  } catch {
+    return { status: r.status, body: null, json: false };
+  }
+}
+
+function isModuleUnmounted(status: number, json: boolean): boolean {
+  return status === 404 || (status === 200 && !json);
+}
+
+function normalizeAgent(
+  raw: unknown,
+  fallback?: GrokbotAgentItem | null,
+): GrokbotAgentItem | null {
+  const rec = asRecord(raw);
+  if (!rec) return fallback ?? null;
+  const id = typeof rec.id === "string" ? rec.id : fallback?.id;
+  if (!id) return fallback ?? null;
+  const repos = Array.isArray(rec.repos) ? rec.repos : [];
+  const first = asRecord(repos[0]);
+  const repoFromRemote = typeof first?.url === "string" ? first.url : null;
+  return {
+    id,
+    name:
+      typeof rec.name === "string"
+        ? rec.name
+        : (fallback?.name ?? null),
+    status:
+      typeof rec.status === "string"
+        ? rec.status
+        : (fallback?.status ?? null),
+    url: typeof rec.url === "string" ? rec.url : (fallback?.url ?? null),
+    createdAt:
+      typeof rec.createdAt === "string"
+        ? rec.createdAt
+        : typeof rec.created_at === "string"
+          ? rec.created_at
+          : (fallback?.createdAt ?? fallback?.created_at ?? null),
+    latestRunId:
+      typeof rec.latestRunId === "string"
+        ? rec.latestRunId
+        : typeof rec.latest_run_id === "string"
+          ? rec.latest_run_id
+          : (fallback?.latestRunId ?? fallback?.latest_run_id ?? null),
+    repo_url:
+      typeof rec.repo_url === "string"
+        ? rec.repo_url
+        : (fallback?.repo_url ?? repoFromRemote),
+    pr_url:
+      typeof rec.pr_url === "string" ? rec.pr_url : (fallback?.pr_url ?? null),
+  };
 }
 
 export function GrokbotClient() {
   const [status, setStatus] = useState<StatusView | null>(null);
-  const [agents, setAgents] = useState<AgentItem[]>([]);
+  const [agents, setAgents] = useState<GrokbotAgentItem[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -84,60 +137,168 @@ export function GrokbotClient() {
   const [defaultModelId, setDefaultModelId] = useState<string | null>(null);
 
   const [openId, setOpenId] = useState<string | null>(null);
-  const [runs, setRuns] = useState<RunItem[]>([]);
+  const [openAgent, setOpenAgent] = useState<GrokbotAgentItem | null>(null);
+  const [runs, setRuns] = useState<GrokbotRunItem[]>([]);
+  const [runsLoading, setRunsLoading] = useState(false);
   const [followup, setFollowup] = useState("");
+  const [showArchived, setShowArchived] = useState(false);
 
   const refresh = useCallback(async () => {
     try {
-      const [s, c] = await Promise.all([
-        fetch(`${API}/status`, { cache: "no-store" }).then((r) => r.json()),
-        fetch(`${API}/config`, { cache: "no-store" }).then((r) => r.json()),
+      const [sRes, cRes] = await Promise.all([
+        fetch(`${API}/status`, { cache: "no-store" }),
+        fetch(`${API}/config`, { cache: "no-store" }),
       ]);
-      if (s?.ok) setStatus(s);
-      if (c?.ok) {
-        setMaskedToken(c.config?.apiKey ?? null);
-        setDefaultRepoUrl(c.config?.defaultRepoUrl ?? null);
-        setDefaultModelId(c.config?.defaultModelId ?? null);
+      const s = await parseJsonResponse(sRes);
+      const c = await parseJsonResponse(cRes);
+      if (isModuleUnmounted(s.status, s.json) || isModuleUnmounted(c.status, c.json)) {
+        setError(MODULE_UNMOUNTED);
+        return;
       }
-      if (s?.ok && s.connected) {
-        const a = await fetch(`${API}/agents?limit=50`, { cache: "no-store" }).then(
-          (r) => r.json(),
+      if (s.status === 409 || c.status === 409) {
+        setError(upstreamMessage(s.body ?? c.body, "Erreur API Cursor."));
+        return;
+      }
+      const sBody = asRecord(s.body);
+      const cBody = asRecord(c.body);
+      if (sBody?.ok) {
+        setStatus({
+          connected: Boolean(sBody.connected),
+          apiKeyName:
+            typeof sBody.apiKeyName === "string" ? sBody.apiKeyName : null,
+          userEmail: typeof sBody.userEmail === "string" ? sBody.userEmail : null,
+          reason: typeof sBody.reason === "string" ? sBody.reason : undefined,
+        });
+      }
+      if (cBody?.ok) {
+        const cfg = asRecord(cBody.config);
+        setMaskedToken(typeof cfg?.apiKey === "string" ? cfg.apiKey : null);
+        setDefaultRepoUrl(
+          typeof cfg?.defaultRepoUrl === "string" ? cfg.defaultRepoUrl : null,
         );
-        if (a?.ok) setAgents(a.items || []);
-      } else {
-        const a = await fetch(`${API}/agents?source=local`, {
-          cache: "no-store",
-        }).then((r) => r.json());
-        if (a?.ok) setAgents(a.items || []);
+        setDefaultModelId(
+          typeof cfg?.defaultModelId === "string" ? cfg.defaultModelId : null,
+        );
       }
-      setError(null);
+      const connected = Boolean(sBody?.ok && sBody.connected);
+      const agentsPath = connected
+        ? `${API}/agents?limit=50`
+        : `${API}/agents?source=local`;
+      const aRes = await fetch(agentsPath, { cache: "no-store" });
+      const a = await parseJsonResponse(aRes);
+      if (isModuleUnmounted(a.status, a.json)) {
+        setError(MODULE_UNMOUNTED);
+        return;
+      }
+      if (a.status === 409) {
+        setError(upstreamMessage(a.body, "Erreur API Cursor."));
+        return;
+      }
+      const aBody = asRecord(a.body);
+      if (aBody?.ok && Array.isArray(aBody.items)) {
+        setAgents(aBody.items as GrokbotAgentItem[]);
+      }
+      if (sBody?.ok && !sBody.connected && sBody.reason === "cursor_api_error") {
+        setError("Erreur API Cursor. Vérifiez le token enregistré.");
+      } else {
+        setError(null);
+      }
     } catch {
       setError("Module GrokBot injoignable");
     }
   }, []);
 
-  const loadRuns = useCallback(async (agentId: string) => {
-    setOpenId(agentId);
-    setRuns([]);
+  const pollOpenAgent = useCallback(async (agentId: string) => {
     try {
-      const r = await fetch(`${API}/agents/${encodeURIComponent(agentId)}/runs`, {
-        cache: "no-store",
-      });
-      const j = await r.json();
-      if (j?.ok) setRuns(j.data?.items || []);
+      const [agentRes, runsRes] = await Promise.all([
+        fetch(`${API}/agents/${encodeURIComponent(agentId)}`, {
+          cache: "no-store",
+        }),
+        fetch(`${API}/agents/${encodeURIComponent(agentId)}/runs`, {
+          cache: "no-store",
+        }),
+      ]);
+      const agentParsed = await parseJsonResponse(agentRes);
+      const runsParsed = await parseJsonResponse(runsRes);
+      if (
+        isModuleUnmounted(agentParsed.status, agentParsed.json) ||
+        isModuleUnmounted(runsParsed.status, runsParsed.json)
+      ) {
+        setError(MODULE_UNMOUNTED);
+        return;
+      }
+      if (agentParsed.status === 409 || runsParsed.status === 409) {
+        setError(
+          upstreamMessage(
+            agentParsed.status === 409 ? agentParsed.body : runsParsed.body,
+            "Erreur API Cursor.",
+          ),
+        );
+        return;
+      }
+      const agentBody = asRecord(agentParsed.body);
+      if (agentBody?.ok && agentBody.agent) {
+        const next = normalizeAgent(agentBody.agent, null);
+        if (next) {
+          setOpenAgent((prev) => normalizeAgent(agentBody.agent, prev) ?? next);
+          setAgents((list) =>
+            list.map((item) =>
+              item.id === next.id ? { ...item, ...next } : item,
+            ),
+          );
+        }
+      }
+      const runsBody = asRecord(runsParsed.body);
+      if (runsBody?.ok) {
+        const data = asRecord(runsBody.data);
+        const items = Array.isArray(data?.items)
+          ? data.items
+          : Array.isArray(runsBody.items)
+            ? runsBody.items
+            : [];
+        setRuns(items as GrokbotRunItem[]);
+      }
     } catch {
-      /* refresh au prochain poll */
+      /* prochain tick */
+    } finally {
+      setRunsLoading(false);
     }
   }, []);
 
+  const selectAgent = useCallback(
+    (agentId: string) => {
+      const fromList = agents.find((a) => a.id === agentId) || null;
+      setOpenId(agentId);
+      setOpenAgent(fromList);
+      setRuns([]);
+      setRunsLoading(true);
+    },
+    [agents],
+  );
+
+  const livePoll =
+    runsLoading || runs.some((r) => isLiveRunStatus(r.status));
+
   useEffect(() => {
     void refresh();
+  }, [refresh]);
+
+  useEffect(() => {
+    if (!openId) return;
+    let cancelled = false;
+    const tick = async () => {
+      if (cancelled) return;
+      await pollOpenAgent(openId);
+    };
+    void tick();
     const t = setInterval(() => {
-      void refresh();
-      if (openId) void loadRuns(openId);
-    }, 15000);
-    return () => clearInterval(t);
-  }, [refresh, openId, loadRuns]);
+      void tick();
+    }, livePoll ? LIVE_POLL_MS : IDLE_POLL_MS);
+    return () => {
+      cancelled = true;
+      clearInterval(t);
+    };
+  }, [openId, livePoll, pollOpenAgent]);
 
   const saveToken = useCallback(async () => {
     if (!token.trim()) return;
@@ -148,13 +309,18 @@ export function GrokbotClient() {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ apiKey: token.trim() }),
       });
-      const j = await r.json();
+      const parsed = await parseJsonResponse(r);
+      if (isModuleUnmounted(parsed.status, parsed.json)) {
+        setError(MODULE_UNMOUNTED);
+        return;
+      }
+      const j = asRecord(parsed.body);
       if (j?.ok) {
         setToken("");
         toast.success("Token Cursor enregistré.");
         await refresh();
       } else {
-        toast.error(j?.error || "Enregistrement impossible.");
+        toast.error(upstreamMessage(parsed.body, "Enregistrement impossible."));
       }
     } catch {
       toast.error("Enregistrement impossible.");
@@ -172,28 +338,36 @@ export function GrokbotClient() {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ text: followup.trim() }),
       });
-      const j = await r.json();
+      const parsed = await parseJsonResponse(r);
+      const j = asRecord(parsed.body);
       if (j?.ok) {
         setFollowup("");
-        await loadRuns(openId);
+        setRunsLoading(true);
+        await pollOpenAgent(openId);
+      } else if (parsed.status === 409) {
+        toast.error(upstreamMessage(parsed.body, "Échec du follow-up."));
       } else {
-        toast.error(`Échec : ${j?.detail?.error?.message || j?.error || r.status}`);
+        toast.error(upstreamMessage(parsed.body, `Échec : ${parsed.status}`));
       }
     } finally {
       setBusy(false);
     }
-  }, [openId, followup, loadRuns]);
+  }, [openId, followup, pollOpenAgent]);
 
   const cancelRun = useCallback(
     async (runId: string) => {
       if (!openId) return;
-      await fetch(
+      const r = await fetch(
         `${API}/agents/${encodeURIComponent(openId)}/runs/${encodeURIComponent(runId)}/cancel`,
         { method: "POST" },
       );
-      await loadRuns(openId);
+      const parsed = await parseJsonResponse(r);
+      if (parsed.status === 409) {
+        toast.error(upstreamMessage(parsed.body, "Annulation impossible."));
+      }
+      await pollOpenAgent(openId);
     },
-    [openId, loadRuns],
+    [openId, pollOpenAgent],
   );
 
   const archiveAgent = useCallback(
@@ -201,13 +375,62 @@ export function GrokbotClient() {
       await fetch(`${API}/agents/${encodeURIComponent(agentId)}/archive`, {
         method: "POST",
       });
-      if (openId === agentId) setOpenId(null);
+      if (openId === agentId) {
+        setOpenId(null);
+        setOpenAgent(null);
+        setRuns([]);
+      }
       await refresh();
     },
     [openId, refresh],
   );
 
-  const open = agents.find((a) => a.id === openId) || null;
+  const unarchiveAgent = useCallback(
+    async (agentId: string) => {
+      const r = await fetch(
+        `${API}/agents/${encodeURIComponent(agentId)}/unarchive`,
+        { method: "POST" },
+      );
+      const parsed = await parseJsonResponse(r);
+      const j = asRecord(parsed.body);
+      if (j?.ok) {
+        toast.success("Agent désarchivé.");
+        if (openId === agentId) {
+          setOpenAgent((prev) =>
+            prev ? { ...prev, status: "IDLE" } : prev,
+          );
+        }
+        await refresh();
+        if (openId === agentId) await pollOpenAgent(agentId);
+      } else if (parsed.status === 409) {
+        toast.error(upstreamMessage(parsed.body, "Désarchivage impossible."));
+      } else {
+        toast.error(upstreamMessage(parsed.body, "Désarchivage impossible."));
+      }
+    },
+    [openId, refresh, pollOpenAgent],
+  );
+
+  const tokenMissing = !status?.connected;
+  const open =
+    openAgent || agents.find((a) => a.id === openId) || null;
+
+  if (error === MODULE_UNMOUNTED) {
+    return (
+      <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 p-6">
+        <div>
+          <h1 className="text-2xl font-semibold">GrokBot</h1>
+          <p className="text-sm text-muted-foreground">
+            Pilotez vos agents cloud depuis l'app : lancez un agent sur un
+            dépôt, suivez ses runs, envoyez des prompts de suivi.
+          </p>
+        </div>
+        <Card className="border-destructive p-4 text-sm text-destructive">
+          {MODULE_UNMOUNTED}
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 p-6">
@@ -245,6 +468,7 @@ export function GrokbotClient() {
             }
             value={token}
             onChange={(e) => setToken(e.target.value)}
+            aria-label="Token API Cursor"
           />
           <Button size="sm" onClick={saveToken} disabled={busy || !token.trim()}>
             Enregistrer
@@ -258,43 +482,21 @@ export function GrokbotClient() {
         defaultModelId={defaultModelId}
         onLaunched={(agent) => {
           void refresh();
-          if (agent?.id) void loadRuns(agent.id);
+          if (agent?.id) selectAgent(agent.id);
         }}
       />
 
       <div className="grid gap-4 md:grid-cols-2">
-        <div className="flex flex-col gap-2">
-          <h2 className="text-sm font-medium text-muted-foreground">
-            Agents ({agents.length})
-          </h2>
-          {agents.length === 0 ? (
-            <Card className="p-4 text-sm text-muted-foreground">
-              Aucun agent pour l'instant.
-            </Card>
-          ) : null}
-          {agents.map((a) => (
-            <Card
-              key={a.id}
-              className={`cursor-pointer p-3 transition-colors hover:bg-accent ${
-                openId === a.id ? "border-primary" : ""
-              }`}
-              onClick={() => void loadRuns(a.id)}
-            >
-              <div className="flex items-center justify-between gap-2">
-                <span className="truncate text-sm font-medium">
-                  {a.name || a.id}
-                </span>
-                <Badge variant={statusVariant(a.status)}>{a.status || "?"}</Badge>
-              </div>
-              <div className="mt-1 truncate text-xs text-muted-foreground">
-                {a.repo_url || "—"}
-              </div>
-              <div className="mt-1 text-[11px] text-muted-foreground">
-                {fmtDate(a.createdAt || a.created_at)}
-              </div>
-            </Card>
-          ))}
-        </div>
+        <GrokbotAgentList
+          agents={agents}
+          openId={openId}
+          showArchived={showArchived}
+          onShowArchivedChange={setShowArchived}
+          onSelect={selectAgent}
+          onUnarchive={(id) => void unarchiveAgent(id)}
+          tokenMissing={tokenMissing}
+          busy={busy}
+        />
 
         <div className="flex flex-col gap-3">
           {open ? (
@@ -303,11 +505,13 @@ export function GrokbotClient() {
           <GrokbotAgentRuns
             open={open}
             runs={runs}
+            runsLoading={runsLoading}
             followup={followup}
             onFollowupChange={setFollowup}
             onSendFollowup={() => void sendFollowup()}
             onCancelRun={(id) => void cancelRun(id)}
             onArchive={(id) => void archiveAgent(id)}
+            onUnarchive={(id) => void unarchiveAgent(id)}
             busy={busy}
           />
         </div>
