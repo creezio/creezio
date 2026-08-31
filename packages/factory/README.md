@@ -63,6 +63,18 @@ SoT dans `docker/server/` (sans Electron/AppImage). Voir `docker/server/README.m
 déploiement flotte en pull — voir la skill
 [creezio-fleet-ops §4b](../../.cursor/skills/creezio-fleet-ops/SKILL.md).
 
+`server-docker registry-gc` purge le registre Docker local (`registry:2`,
+`127.0.0.1:5000`) : garde les N tags les plus récents **par famille**
+(`auto.*` d'un côté, tags manuels de l'autre — défaut 2, `--keep`, env
+`CREEZIO_REGISTRY_GC_KEEP`) **et** tout tag protégé : conteneur en cours,
+`docker-data/servers.json` (`--brand-root` + découverte via les labels
+`creezio.brand-root`, instances arrêtées incluses), releases fleet de l'app
+admin (`--admin-app` / env `CREEZIO_FLEET_ADMIN_URL` — admin injoignable =
+refus). DELETE des manifests non retenus, puis `registry garbage-collect`.
+**Dry-run par défaut** — `--apply` exécute. Fail-closed (docker absent,
+registre down, `servers.json` illisible, DELETE KO, GC KO). Voir skill
+fleet-ops §10.
+
 ### Templates plugins (`templates/plugins/`)
 
 Plugins **génériques kit** prêts à installer dans toute marque (seed

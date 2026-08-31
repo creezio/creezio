@@ -123,6 +123,28 @@ export {
   type CreateOwnerPolicyInput,
 } from "./server-docker-owner.js";
 export {
+  compareVersionTags,
+  selectTagsToPrune,
+  parseImageRef,
+  collectInUseKeys,
+  collectReleaseKeys,
+  serversFileImageRefs,
+  fetchFleetReleaseRefs,
+  planRepoGc,
+  resolveRegistryGcKeep,
+  resolveRegistryGcServersFiles,
+  runRegistryGc,
+  runRegistryGcCommand,
+  REGISTRY_GC_KEEP_DEFAULT,
+  REGISTRY_GC_DEFAULT_HOST,
+  REGISTRY_GC_DEFAULT_CONTAINER,
+  REGISTRY_AUTO_TAG_RE,
+  type FleetReleaseRef,
+  type RegistryGcResult,
+  type RegistryGcOpts,
+  type RepoGcPlan,
+} from "./server-docker-registry-gc.js";
+export {
   writeAppFile,
   isOwnedByBrand,
   OWNED_BY_BRAND_MARKER,

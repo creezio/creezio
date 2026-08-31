@@ -185,6 +185,7 @@ test("CLI registre d'instances : create/start/stop/rm/logs/ls/update/backup + ad
     "update",
     "backup",
     "admin",
+    "registry-gc",
   ]) {
     assert.match(r.stdout, new RegExp(`\\b${sub}\\b`), `help sans ${sub}`);
   }

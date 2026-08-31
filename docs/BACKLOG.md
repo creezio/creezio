@@ -84,9 +84,14 @@ affaibli pour la masquer. (Backlogs d'époque : `docs/archive/BACKLOG-*.md`.)
   répertoire d'état, reload au boot avec flag additif `agentRestarted` +
   résolution via `servers.json`, TTL 24 h). Gate
   `test-phase-fleet-update-status-persist`.
-- **Registry local sans GC** : la suppression de tags (`0.2.2-broken`…)
-  demande l'API delete + `registry garbage-collect` — documenté, pas
-  automatisé.
+- ~~**Registry local sans GC**~~ **fait (T11)** : `creezio server-docker
+  registry-gc` (`packages/factory/src/server-docker-registry-gc.ts`) —
+  API v2 list/delete + `registry garbage-collect` dans `creezio-registry`,
+  rétention `--keep N` (défaut 2) par famille `auto.*`/manuels, tags
+  protégés jamais supprimés (conteneurs en cours, `docker-data/servers.json`
+  — instances arrêtées incluses —, releases fleet de l'app admin), dry-run
+  par défaut + `--apply`. Gate : `test-phase-server-docker-registry-gc`.
+  Doc : skill fleet-ops §10.
 - ~~**Scaffold `verify-prod` factory (vérification E2E canonique de toute
   app générée)**~~ **fait (0.18.0)** : la factory matérialise
   `scripts/verify-prod.mjs` dans toute app générée (générateur
