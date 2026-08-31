@@ -7,6 +7,7 @@
 "@creezio/product-hub": major
 "@creezio/app-runtime": major
 "@creezio/factory": major
+"@creezio/propagation": minor
 ---
 
 H11 — purge de la compat TF2-era (`ARCHITECTURE_VERSION` H10 → **H11**,

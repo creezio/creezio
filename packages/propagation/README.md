@@ -174,7 +174,8 @@ Les gates de production restent ordonnees :
 
 ## Dépendances
 
-- `@creezio/brand-config` pour `BrandId` et manifests ;
+- `@creezio/brand-config` n'est plus la SoT des ids production (H11 :
+  `BrandId` kit = sandbox ; gates G1–G3 = `ProductionBrandGate` local) ;
 - Node `fs`/`path` pour inventaire et registre fichier.
 
 ## Voir aussi

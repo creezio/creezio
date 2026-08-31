@@ -10,8 +10,8 @@
  * n'est énuméré dans ce module (ni dans ses types).
  */
 
-import type { BrandId } from "@creezio/brand-config";
 import { PRODUCTION_BRAND_GATES } from "./brand-surfaces.js";
+import type { ImpactBrandId } from "./brand-surfaces.js";
 import type { PackageBumpImpact } from "./impact.js";
 import type { BumpKind } from "./semver-policy.js";
 
@@ -54,7 +54,7 @@ function defaultBrandChannelConfigs(): BrandChannelConfig[] {
   // Dérivation du registre production (brand-surfaces) — la dette « marques
   // en dur » restante (F1.6) est localisée là-bas, pas ici.
   return Object.entries(PRODUCTION_BRAND_GATES).map(([brandId, g]) => ({
-    brandId: brandId as BrandId,
+    brandId,
     label: g.label,
     targetHint: g.repoHint,
     gateId: g.gateId,
@@ -143,7 +143,7 @@ export function buildBrandPrPayload(
   impact: PackageBumpImpact,
   brandId: string,
 ): BrandPrPayload | null {
-  const viaLegacyRegistry = impact.brands.includes(brandId as BrandId);
+  const viaLegacyRegistry = impact.brands.includes(brandId as ImpactBrandId);
   const viaConfiguredChannel =
     impact.brands.length > 0 &&
     brandChannelConfigs.some((c) => c.brandId === brandId);

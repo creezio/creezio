@@ -16,6 +16,12 @@
 |---|---|
 | [`codemods/H10/h10-explicit-desktop-deps.mjs`](../codemods/H10/h10-explicit-desktop-deps.mjs) | Copie build (gitignorée) du codemod H10 — SoT `scripts/codemods/H10/` du kit : clients desktop legacy → deps explicites + `ensureDesktopNode` + preload `preload.js`. |
 
+## `codemods/H11/`
+
+| Fichier | Rôle |
+|---|---|
+| [`codemods/H11/h11-purge-tf2-compat.mjs`](../codemods/H11/h11-purge-tf2-compat.mjs) | (à documenter) |
+
 ## `codemods/H7/`
 
 | Fichier | Rôle |
