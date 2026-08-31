@@ -175,6 +175,55 @@ test("MO2 listTools module.test.from-panier passe par handle()", async () => {
   assert.equal(viaOps[0].name, "module.test.from-panier");
 });
 
+test("MO2-session callTool propage Bearer/cookie sur la req synthétique", async () => {
+  /** @type {{ headers?: Record<string, string | string[] | undefined> } | null} */
+  let lastReq = null;
+  const api = createApiKernel({ brandId: "demobrand" });
+  api.registerModuleApi("strategie", {
+    dbLayer: "brand",
+    operations: [
+      {
+        id: "update",
+        method: "POST",
+        path: "/update",
+        description: "Mettre à jour",
+        mcpPublishDefault: true,
+      },
+    ],
+    handle: async ({ req }) => {
+      lastReq = req;
+      const auth = req.headers?.authorization || req.headers?.Authorization;
+      if (!auth) return { status: 401, body: { error: "session_requise" } };
+      return { status: 200, body: { ok: true } };
+    },
+  });
+  const mcp = createMcpFacade({
+    brandId: "demobrand",
+    allowUnauthenticated: true,
+    publicSurface: "canonical",
+    discoverToolsBySpace: async () => ({
+      module: generateModuleToolsFromListedOps(api),
+    }),
+  });
+  const denied = await mcp.callTool("module.strategie.update", { zone: "x" });
+  assert.equal(denied.ok, false);
+  assert.equal(denied.error, "session_requise");
+
+  const jwt = "aaa.bbb.ccc";
+  const ok = await mcp.callTool(
+    "module.strategie.update",
+    { zone: "Normandie" },
+    {
+      bearerToken: jwt,
+      headers: { cookie: `creezio_session=${jwt}` },
+    },
+  );
+  assert.equal(ok.ok, true);
+  assert.ok(lastReq?.headers);
+  assert.equal(lastReq.headers.authorization, `Bearer ${jwt}`);
+  assert.equal(lastReq.headers.cookie, `creezio_session=${jwt}`);
+});
+
 test("MO2b seed mcp_tool_policies depuis tools générés (mcpPublishDefault → enabled)", () => {
   const db = new DatabaseSync(":memory:");
   resetMcpAdminAdaptersForTests();

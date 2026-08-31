@@ -1,5 +1,11 @@
 # @creezio/mcp-facade
 
+## 0.19.1
+
+### Patch Changes
+
+- Propager cookie / Bearer de l'acteur `callTool` sur la requête synthétique des tools `module.*` (`generateModuleToolsFromOperations`) — `requireSession` des handlers marque ne renvoie plus 401 quand le chat OS est authentifié.
+
 ## 0.19.0
 
 ### Patch Changes

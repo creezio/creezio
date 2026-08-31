@@ -18,7 +18,32 @@ import {
   entityOperationsFromSpec,
   resolveOperationHttpPath,
 } from "@creezio/api-kernel";
-import type { McpRegisteredTool, McpToolCallResult } from "./types.js";
+import type {
+  McpRegisteredTool,
+  McpToolCallActor,
+  McpToolCallResult,
+} from "./types.js";
+
+/** Cookie + Authorization pour `requireSession` sur la req synthétique. */
+function headersFromActor(
+  actor?: McpToolCallActor,
+): Record<string, string> | undefined {
+  const headers: Record<string, string> = {};
+  if (actor?.headers) {
+    for (const [key, value] of Object.entries(actor.headers)) {
+      if (value == null || value === "") continue;
+      headers[key.toLowerCase()] = String(value);
+    }
+  }
+  const raw = (actor?.bearerToken || "").trim();
+  if (raw) {
+    const token = raw.replace(/^Bearer\s+/i, "").trim();
+    if (token && !headers.authorization) {
+      headers.authorization = `Bearer ${token}`;
+    }
+  }
+  return Object.keys(headers).length ? headers : undefined;
+}
 
 export type GenerateModuleToolsInvoke = (
   req: ApiRequest,
@@ -135,13 +160,15 @@ export function generateModuleToolsFromOperations(
       mcpPublishDefault: op.mcpPublishDefault === true,
       requiredScope:
         op.method === "GET" ? "crm:read" : op.permission || "crm:write",
-      handler: async (args) => {
+      handler: async (args, actor) => {
         const { path, used } = interpolatePath(template, args);
         const rest = restArgs(args, used);
         const method = op.method;
+        const headers = headersFromActor(actor);
         const req: ApiRequest = {
           method,
           path,
+          ...(headers ? { headers } : {}),
           ...(method === "GET"
             ? { query: asQuery(rest) }
             : { body: rest }),

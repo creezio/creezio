@@ -208,6 +208,7 @@ export {
   openaiSafeToolName,
   refreshMcpToolCache,
   resolveMcpToolName,
+  sessionAuthFromRequest,
 } from "./runtime/mcp-tools.js";
 export { executeTaskTool, taskToolDefinitions } from "./runtime/tasks-tools.js";
 export {

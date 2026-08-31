@@ -44,6 +44,20 @@ export type McpToolCallActor = {
   subject?: string;
   orgId?: string;
   claims?: Record<string, unknown>;
+  /**
+   * Bearer (JWT session ou clé service) du call — à poser sur la requête
+   * synthétique `module.*` pour que `requireSession` / cookie+Authorization
+   * voient le même acteur que le chat OS.
+   */
+  bearerToken?: string | null;
+  /** Headers HTTP d'origine (Cookie, Authorization) à propager. */
+  headers?: Record<string, string>;
+};
+
+/** Options de `callTool` — Bearer + headers de la requête chat. */
+export type McpCallToolOpts = {
+  bearerToken?: string | null;
+  headers?: Record<string, string>;
 };
 
 export type McpToolHandler = (

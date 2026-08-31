@@ -86,7 +86,11 @@ export type AssistantMcpConfig = {
   callTool: (
     name: string,
     args: Record<string, unknown>,
-    opts?: { bearerToken?: string | null; ctx?: Record<string, unknown> },
+    opts?: {
+      bearerToken?: string | null;
+      headers?: Record<string, string>;
+      ctx?: Record<string, unknown>;
+    },
   ) => Promise<AssistantMcpCallResult>;
   /** Bearer optionnel (ACL plugin). */
   bearerToken?: () => string | null | Promise<string | null>;

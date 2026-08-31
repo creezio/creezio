@@ -9,6 +9,7 @@ export type {
   McpAuthorizeContext,
   McpAuthorizeToolCallFn,
   McpBearerActor,
+  McpCallToolOpts,
   McpFacadeOptions,
   McpListToolsResult,
   McpPublicSurfaceMode,

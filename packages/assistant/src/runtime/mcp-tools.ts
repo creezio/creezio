@@ -125,6 +125,39 @@ export function mcpOwnsToolName(name: string): boolean {
   return looksLikeMcpToolName(name);
 }
 
+/** JWT session depuis Cookie / Authorization de la requête chat OS. */
+export function sessionAuthFromRequest(req: Request): {
+  bearerToken: string | null;
+  headers: Record<string, string>;
+} {
+  const cookie = req.headers.get("cookie") || "";
+  const authorization = req.headers.get("authorization") || "";
+  const headers: Record<string, string> = {};
+  if (cookie) headers.cookie = cookie;
+  if (authorization) headers.authorization = authorization;
+  let bearer = "";
+  const m = authorization.match(/^Bearer\s+(.+)$/i);
+  if (m?.[1] && m[1].trim().split(".").length === 3) {
+    bearer = m[1].trim();
+  }
+  if (!bearer && cookie) {
+    for (const part of cookie.split(";")) {
+      const val = part.split("=").slice(1).join("=").trim();
+      if (!val || val.split(".").length !== 3) continue;
+      try {
+        bearer = decodeURIComponent(val);
+      } catch {
+        bearer = val;
+      }
+      break;
+    }
+  }
+  if (bearer && !headers.authorization) {
+    headers.authorization = `Bearer ${bearer}`;
+  }
+  return { bearerToken: bearer || null, headers };
+}
+
 export async function callAssistantMcpTool(
   name: string,
   args: Record<string, unknown>,
@@ -135,10 +168,24 @@ export async function callAssistantMcpTool(
   await ensureMcpToolCache();
   if (!mcpOwnsToolName(name)) return null;
   const canonical = resolveMcpToolName(name);
-  const bearer = mcp.bearerToken ? await mcp.bearerToken() : null;
+  const ctxBearer =
+    typeof ctx.bearerToken === "string" && ctx.bearerToken.trim()
+      ? ctx.bearerToken.trim()
+      : null;
+  const ctxHeaders =
+    ctx.sessionHeaders &&
+    typeof ctx.sessionHeaders === "object" &&
+    !Array.isArray(ctx.sessionHeaders)
+      ? (ctx.sessionHeaders as Record<string, string>)
+      : undefined;
+  const serviceBearer = mcp.bearerToken ? await mcp.bearerToken() : null;
+  const bearer = ctxBearer || serviceBearer;
   try {
     const result = await mcp.callTool(canonical, args, {
       bearerToken: bearer,
+      ...(ctxHeaders && Object.keys(ctxHeaders).length
+        ? { headers: ctxHeaders }
+        : {}),
       ctx,
     });
     // tool_not_found → laisser tomber vers « outil inconnu » (pas d’erreur opaque)
@@ -193,7 +240,7 @@ export function mcpFacadeToAssistantConfig(facade: {
   callTool: (
     name: string,
     args?: Record<string, unknown>,
-    opts?: { bearerToken?: string | null },
+    opts?: { bearerToken?: string | null; headers?: Record<string, string> },
   ) => Promise<AssistantMcpCallResult>;
   listAliases?: () => Record<string, string>;
 }): import("../brand/types.js").AssistantMcpConfig {
@@ -220,6 +267,7 @@ export function mcpFacadeToAssistantConfig(facade: {
     async callTool(name, args, opts) {
       return facade.callTool(name, args, {
         bearerToken: opts?.bearerToken,
+        ...(opts?.headers ? { headers: opts.headers } : {}),
       });
     },
   };
