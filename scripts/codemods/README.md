@@ -27,7 +27,9 @@ scripts/codemods/
 - Chaque script est un module Node (`.mjs`) lancé par
   `ROOT=<racine marque> node <script>` :
   - `ROOT` (env) = racine du clone marque à transformer (fichiers marque
-    uniquement — jamais `node_modules/`, réinstallé au prochain `npm ci`) ;
+    uniquement — jamais `node_modules/`, `dist/`, `dist-electron-server/`,
+    `win-unpacked/`, `release/`, `out/` : SoT partagée
+    `scripts/codemods/lib/skip-dirs.mjs`, réinstallé au prochain `npm ci`) ;
   - **idempotent** : relancer le script sur une marque déjà migrée est un
     no-op vert ;
   - **sortie contractuelle** : chaque fichier modifié est listé sur une

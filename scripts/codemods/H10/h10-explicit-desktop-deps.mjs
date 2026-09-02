@@ -40,6 +40,7 @@
  */
 import fs from "node:fs";
 import path from "node:path";
+import { shouldSkipDir } from "../lib/skip-dirs.mjs";
 
 const ROOT = path.resolve(process.env.ROOT || ".");
 if (!fs.existsSync(ROOT)) {
@@ -55,16 +56,6 @@ const LEGACY_DEP_DEFAULTS = [
   ["apiKeyEnvName", "TEMPOFLOW_API_KEY"],
 ];
 
-const SKIP_DIRS = new Set([
-  "node_modules",
-  "dist",
-  "dist-cjs",
-  ".next",
-  ".git",
-  "docker-data",
-  "out",
-  "release",
-]);
 const CODE_EXT_RE = /\.(ts|tsx|mts|cts|js|mjs|cjs)$/;
 const CONFIG_EXT_RE = /\.(ts|tsx|mts|cts|js|mjs|cjs|json|ya?ml|toml)$/;
 const LOCKFILE_RE = /(^|\/)(package-lock\.json|yarn\.lock|pnpm-lock\.yaml)$/;
@@ -75,7 +66,7 @@ function walk(dir, acc = []) {
     const p = path.join(dir, name);
     const st = fs.statSync(p);
     if (st.isDirectory()) {
-      if (SKIP_DIRS.has(name)) continue;
+      if (shouldSkipDir(name)) continue;
       walk(p, acc);
     } else {
       acc.push(p);

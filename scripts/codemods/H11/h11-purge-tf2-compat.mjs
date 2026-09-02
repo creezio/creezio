@@ -25,27 +25,18 @@
  *
  * Idempotent : relancer sur une marque déjà migrée = no-op (exit 0, zéro
  * diff). Ne touche jamais node_modules/, dist/, dist-cjs/, .next/,
- * docker-data/, .git/ ni les lockfiles (régénérés par le runner upgrade).
+ * docker-data/, .git/, dist-electron-server/, win-unpacked/, release/,
+ * out/ ni les lockfiles (régénérés par le runner upgrade).
  */
 import fs from "node:fs";
 import path from "node:path";
+import { shouldSkipDir } from "../lib/skip-dirs.mjs";
 
 const ROOT = path.resolve(process.env.ROOT || ".");
 if (!fs.existsSync(ROOT)) {
   console.error(`ROOT introuvable : ${ROOT}`);
   process.exit(1);
 }
-
-const SKIP_DIRS = new Set([
-  "node_modules",
-  "dist",
-  "dist-cjs",
-  ".next",
-  ".git",
-  "docker-data",
-  "out",
-  "release",
-]);
 const CODE_EXT_RE = /\.(ts|tsx|mts|cts|js|mjs|cjs)$/;
 const CONFIG_EXT_RE = /\.(ts|tsx|mts|cts|js|mjs|cjs|json|ya?ml|toml|env)$/;
 const ENV_BASENAME_RE = /^\.env(\..+)?$/;
@@ -61,7 +52,7 @@ function walk(dir, acc = []) {
     const p = path.join(dir, name);
     const st = fs.statSync(p);
     if (st.isDirectory()) {
-      if (SKIP_DIRS.has(name)) continue;
+      if (shouldSkipDir(name)) continue;
       walk(p, acc);
     } else {
       acc.push(p);

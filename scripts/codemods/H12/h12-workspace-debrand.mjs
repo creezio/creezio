@@ -36,6 +36,7 @@
  */
 import fs from "node:fs";
 import path from "node:path";
+import { shouldSkipDir } from "../lib/skip-dirs.mjs";
 
 const ROOT = path.resolve(process.env.ROOT || ".");
 if (!fs.existsSync(ROOT)) {
@@ -43,16 +44,6 @@ if (!fs.existsSync(ROOT)) {
   process.exit(1);
 }
 
-const SKIP_DIRS = new Set([
-  "node_modules",
-  "dist",
-  "dist-cjs",
-  ".next",
-  ".git",
-  "docker-data",
-  "out",
-  "release",
-]);
 const CODE_EXT_RE = /\.(ts|tsx|mts|cts|js|mjs|cjs)$/;
 
 const RENAMES = [
@@ -79,7 +70,7 @@ function walk(dir, acc = []) {
     const p = path.join(dir, name);
     const st = fs.statSync(p);
     if (st.isDirectory()) {
-      if (SKIP_DIRS.has(name)) continue;
+      if (shouldSkipDir(name)) continue;
       walk(p, acc);
     } else {
       acc.push(p);

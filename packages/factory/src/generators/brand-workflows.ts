@@ -9,14 +9,11 @@
  *     runner self-hosted du serveur de la marque.
  *
  * Distribution npm (docs/NPM-DISTRIBUTION.md du kit) : les deps @creezio/*
- * sont des packages publiés sur GitHub Packages. Plus de vendor pinné →
+ * sont des packages publics sur npmjs.org. Plus de vendor pinné →
  * plus de kit-compat.yml / vendor-update.yml / test-vendor-integrity :
  * l'intégrité est garantie par `npm ci` (lockfile commité + registre), la
  * fraîcheur kit par un bump de version (`npm update "@creezio/*"`).
- *
- * Auth registre : le .npmrc commité référence ${CREEZIO_NPM_TOKEN} ; la CI
- * l'alimente via le secret repo CREEZIO_NPM_TOKEN (PAT read:packages org
- * creezio — `gh secret set CREEZIO_NPM_TOKEN -R <owner/marque>`).
+ * Aucun token npm requis (`.npmrc` → registry.npmjs.org).
  *
  * Les tests NATIFS Creezio restent dans le repo kit : la CI de marque ne
  * prouve que le métier (gates colocalisées) et l'intégration (gates
@@ -36,8 +33,8 @@ function labels(opts: BrandWorkflowsOptions): string {
 export function renderBrandCiWorkflow(opts: BrandWorkflowsOptions): string {
   return `# CI ${opts.brandId} — anti-régression sur chaque push/PR (contrat flotte
 # Creezio : les tests natifs vivent dans le repo kit ; ici, gates métier
-# colocalisées + intégration). Deps @creezio/* = packages npm versionnés
-# (GitHub Packages) — installation standard workspaces racine, zéro vendor.
+# colocalisées + intégration). Deps @creezio/* = packages npm publics
+# (npmjs.org) — installation standard workspaces racine, zéro vendor.
 name: CI
 
 on:
@@ -60,10 +57,6 @@ jobs:
       # Les gates browse doivent poser un vrai binaire (test:meili-enforced).
       CREEZIO_ALLOW_NO_MEILI: "1"
       CREEZIO_APP_ROOT: \${{ github.workspace }}
-      # Secret repo (PAT read:packages sur l'org creezio) — consommé par le
-      # .npmrc commité (jamais de token en clair dans le repo).
-      # Poser le secret : gh secret set CREEZIO_NPM_TOKEN -R <owner/marque>.
-      CREEZIO_NPM_TOKEN: \${{ secrets.CREEZIO_NPM_TOKEN }}
     steps:
       - uses: actions/checkout@v4
 
@@ -97,9 +90,8 @@ export function renderBrandDeployWorkflow(
 # À adapter à l'infra de la marque (server-docker publish + update
 # --backup, healthcheck domaine). Requiert le runner self-hosted du SERVEUR
 # DE LA MARQUE (chaque app a son serveur + son runner — installer via
-# docs/CONTRIBUTING-BRANDS.md du kit). Le token registre npm passe en
-# secret BuildKit au build (creezio server-docker publish le transmet —
-# exporter CREEZIO_NPM_TOKEN sur le runner, PAT read:packages).
+# docs/CONTRIBUTING-BRANDS.md du kit). Deps @creezio/* = npmjs.org
+# (publics — aucun token npm requis).
 name: Deploy
 
 on:

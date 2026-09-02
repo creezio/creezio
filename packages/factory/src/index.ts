@@ -11,6 +11,7 @@ export {
   resolveCodemodsDir,
   targetLockstepVersion,
 } from "./upgrade-cli.js";
+export { spawnNpmAt, npmEnvForProject } from "./npm-isolated.js";
 export type {
   ProductModel,
   ProductEntity,
@@ -163,9 +164,13 @@ export {
   runRegistryGc,
   runRegistryGcCommand,
   REGISTRY_GC_KEEP_DEFAULT,
+  REGISTRY_SEMVER_KEEP_MIN,
   REGISTRY_GC_DEFAULT_HOST,
   REGISTRY_GC_DEFAULT_CONTAINER,
   REGISTRY_AUTO_TAG_RE,
+  REGISTRY_SEMVER_TAG_RE,
+  registryTagFamily,
+  resolveSemverKeep,
   type FleetReleaseRef,
   type RegistryGcResult,
   type RegistryGcOpts,

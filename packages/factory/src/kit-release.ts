@@ -213,13 +213,11 @@ export const CLIENT_CREEZIO_DEPS = [
 
 /**
  * Contenu des `.npmrc` générés (racine + livrables hors workspace) :
- * registre GitHub Packages pour @creezio/*, token via env — JAMAIS commité.
+ * registre npmjs.org pour @creezio/* — packages publics, aucun token.
  */
 export function renderCreezioNpmrc(): string {
-  return `# Registre npm des packages du kit Creezio (GitHub Packages, org creezio).
-# Le token n'est JAMAIS commite : il vient de l'env CREEZIO_NPM_TOKEN
-# (PAT scope read:packages - exporte en local, secret CI, secret BuildKit Docker).
-@creezio:registry=https://npm.pkg.github.com
-//npm.pkg.github.com/:_authToken=\${CREEZIO_NPM_TOKEN}
+  return `# Registre npm des packages du kit Creezio (npmjs.org, org creezio).
+# Packages publics — aucun token requis (plus de GitHub Packages).
+@creezio:registry=https://registry.npmjs.org
 `;
 }

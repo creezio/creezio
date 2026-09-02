@@ -47,6 +47,12 @@
 |---|---|
 | [`codemods/H9/h9-import-module-contract.mjs`](../codemods/H9/h9-import-module-contract.mjs) | Copie embarquée du codemod H9 — `types.ts` → ré-export kit + `accessJustification` sur mounts sans permission. |
 
+## `codemods/lib/`
+
+| Fichier | Rôle |
+|---|---|
+| [`codemods/lib/skip-dirs.mjs`](../codemods/lib/skip-dirs.mjs) | Copie build (gitignorée) du helper SKIP_DIRS partagé — SoT `scripts/codemods/lib/skip-dirs.mjs`. |
+
 ## `scripts/`
 
 | Fichier | Rôle |
@@ -63,8 +69,9 @@
 | [`src/cli.ts`](../src/cli.ts) | CLI `new-app`, `--from-prd` ; `demo-app` déprécié (exit 1). |
 | [`src/github-repos.ts`](../src/github-repos.ts) | Création + push des 2 repos GitHub privés d'une marque (monorepo + `<brand>-admin`) — **opt-in `--push` uniquement** (sans ce flag : zéro réseau, zéro résolution de token) ; token env `GITHUB_TOKEN`/`CREEZIO_GITHUB_TOKEN` ou `.github-token` seulement si `--push` ; vendor + package-lock synchronisés AVANT push. |
 | [`src/index.ts`](../src/index.ts) | Exports publics |
-| [`src/kit-release.ts`](../src/kit-release.ts) | Version lockstep + SoT `SERVER_CREEZIO_DEPS` / `UI_CREEZIO_DEPS` / `CLIENT_CREEZIO_DEPS` (granola, grokbot, nav inclus) + `creezioNpmDeps` / `.npmrc` généré ; `--link-kit` (`file:` worktree). |
+| [`src/kit-release.ts`](../src/kit-release.ts) | Version lockstep + SoT `SERVER_CREEZIO_DEPS` / `UI_CREEZIO_DEPS` / `CLIENT_CREEZIO_DEPS` (granola, grokbot, nav inclus) + `creezioNpmDeps` / `.npmrc` généré (npmjs.org, aucun token) ; `--link-kit` (`file:` worktree). |
 | [`src/minimal-png.ts`](../src/minimal-png.ts) | Icône placeholder |
+| [`src/npm-isolated.ts`](../src/npm-isolated.ts) | Spawn npm isolé au projet marque (`--prefix` + env prefix/workspace stripé) — `creezio upgrade` / `ensureBrandPackageLocks` ne touchent jamais le `node_modules` du kit. |
 | [`src/package-lock.ts`](../src/package-lock.ts) | Cohérence package.json ↔ package-lock (npm ci Docker) — régénération lock-only / install ; `--link-kit` pin worktree. |
 | [`src/plugin-templates.ts`](../src/plugin-templates.ts) | Installation des templates de plugins kit (`templates/plugins/<id>/`) dans le répertoire plugins d'une app (`<userData>/plugins/<id>/` + `.enabled`). |
 | [`src/prepare-brand-distribution.ts`](../src/prepare-brand-distribution.ts) | Locks après chaque scaffold (brand create / new-app / brand apply). |
@@ -74,7 +81,7 @@
 | [`src/server-docker-agent-tunnel.ts`](../src/server-docker-agent-tunnel.ts) | T7 — helpers purs du tunnel cloudflared DÉDIÉ agent : container `creezio-agent-tunnel`, env file 600, run-args `--protocol http2`, `needsDedicatedAgentTunnelMigration` / `parseAgentPublicUrl` (migration auto à `agent up`), persist `agentUrl` dans `fleet-hosts.json` (direct / `sudo -n` / EACCES → POST admin). |
 | [`src/server-docker-cli.ts`](../src/server-docker-cli.ts) | CLI `creezio server-docker` — create/start/stop/rm/logs/ls, build/up/down/proof, `publish` (+ rétention, label OCI `org.opencontainers.image.source` dérivé du remote git marque — fail-closed si `ghcr.io` et remote introuvable, `--release` = déclaration draft dans l'app admin), `registry-gc` (GC registre local), `admin up`, `agent up` (migration auto tunnel dédié si hôte déjà enrôlé), `agent rm` (seul geste qui retire DNS agent), `enroll` (`provisionDedicatedAgentTunnel`), `ensure-owner` (seed + persist `secrets.env` 600). `update` préserve un sidecar cloudflared / refuse si hostname public sans tunnel ; `migrate-stack` seul retire le sidecar (même tunnel). `rm` d'instance = `deprovisionCfSlug` sans DNS agent. |
 | [`src/server-docker-owner.ts`](../src/server-docker-owner.ts) | Politique `server-docker create` fail-closed owner : `CREEZIO_OWNER_EMAIL` / `_PASSWORD` requis sauf `CREEZIO_TUNNEL_LOCAL=1` ; first-run `POST /api/v1/os/setup` + vérif login ; persist `secrets.env` 600 ; `ensure-owner` + `CREEZIO_E2E_*` optionnels (recette) ; après setup, `GET .../interactive-demo/scenarios` ≥ 1 (sauté si owner skip / LOCAL) ; jamais le mot de passe en log. |
-| [`src/server-docker-registry-gc.ts`](../src/server-docker-registry-gc.ts) | `creezio server-docker registry-gc` — GC fail-closed du registre Docker local (`registry:2`) : API v2 catalogue/tags/delete, rétention `--keep N` (défaut 2) par famille (`auto.*` / manuels), tags protégés (conteneurs en cours, `docker-data/servers.json`, releases fleet), `registry garbage-collect`. Dry-run par défaut, `--apply` exécute. |
+| [`src/server-docker-registry-gc.ts`](../src/server-docker-registry-gc.ts) | `creezio server-docker registry-gc` — GC fail-closed du registre Docker local (`registry:2`) : API v2 catalogue/tags/delete, rétention `--keep N` (défaut 2) par famille (`auto.*` / semver ≥ 3 indépendants), tags protégés (conteneurs en cours, `docker-data/servers.json`, releases fleet), `registry garbage-collect`. Dry-run par défaut, `--apply` exécute. Même politique sur `publish`. |
 | [`src/server-docker-registry.ts`](../src/server-docker-registry.ts) | Registre d'instances serveur Docker par marque — SoT `docker-data/servers.json` (image `creezio-server-<brandId>`, containers `<brandId>-server-<nom>`). |
 | [`src/server-docker-tunnel.ts`](../src/server-docker-tunnel.ts) | Politique `server-docker create` fail-closed : contrat CF (`CREEZIO_CF_API_TOKEN` / `_ACCOUNT_ID` / `_ZONE_ID`) requis sauf `CREEZIO_TUNNEL_LOCAL=1` ; slug réservé → `<brand>-<slug>` ; secrets CF hors registre (`cf.env` 600). |
 | [`src/server-docker-ufw.ts`](../src/server-docker-ufw.ts) | Préflight UFW fail-closed des ports flotte consommés depuis les conteneurs (18800 backend, 18810 host-agent) : règle `172.16.0.0/12 → 172.17.0.1:<port>` détectée/posée (root ou `sudo -n`, re-vérifiée) à `agent up`/`admin up`/`enroll`, sinon erreur avec la commande exacte — incident 10–30/08/2026. |

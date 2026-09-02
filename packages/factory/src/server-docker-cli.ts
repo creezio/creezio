@@ -71,8 +71,10 @@ import {
   resolveAgentTunnelImage,
 } from "./server-docker-agent-tunnel.js";
 import {
+  parseImageRef,
   runRegistryGcCommand,
   selectTagsToPrune,
+  serversFileImageRefs,
 } from "./server-docker-registry-gc.js";
 
 export { compareVersionTags, selectTagsToPrune } from "./server-docker-registry-gc.js";
@@ -479,17 +481,19 @@ Registry d'images versionnées (update de flotte) :
     --release (F5) : déclare la release (status draft) dans l'app admin
     (--admin-app ou env CREEZIO_FLEET_ADMIN_URL) — les agents en pull
     l'appliquent quand elle passe rolling (pilotage /flotte).
-    Rétention après push réussi : garde les N derniers tags (défaut 2,
-    env CREEZIO_PUBLISH_KEEP_TAGS) côté daemon local ET registre privé,
-    + docker builder prune --max-used-space (env CREEZIO_PUBLISH_KEEP_STORAGE,
-    défaut 5GB). Les blobs registre sont balayés par registry-gc / timer hôte.
+    Rétention après push réussi : PAR FAMILLE — N derniers auto.* (défaut 2,
+    env CREEZIO_PUBLISH_KEEP_TAGS) ET au moins les 3 derniers semver
+    (indépendants : une rafale auto.* n'évince jamais un semver). Jamais le
+    tag référencé par docker-data/servers.json / instances. Daemon local ET
+    registre privé + docker builder prune --max-used-space
+    (env CREEZIO_PUBLISH_KEEP_STORAGE, défaut 5GB). Blobs : registry-gc / timer.
   creezio server-docker registry-gc [--registry 127.0.0.1:5000] [--keep 2]
     [--container creezio-registry] [--repo <name>] [--brand-root <app>]
     [--admin-app <url>] [--apply]
     (GC fail-closed du registre Docker local registry:2 : liste les tags
      par repo via API v2, garde les N plus récents PAR FAMILLE — auto.*
-     d'un côté, tags manuels de l'autre ; défaut 2, env
-     CREEZIO_REGISTRY_GC_KEEP — ET tout tag PROTÉGÉ : conteneur en cours
+     d'un côté (défaut 2, env CREEZIO_REGISTRY_GC_KEEP), semver de l'autre
+     (fenêtre indépendante ≥ 3) — ET tout tag PROTÉGÉ : conteneur en cours
      (docker ps), docker-data/servers.json (--brand-root + découverte
      labels creezio.brand-root, instances arrêtées incluses), releases
      fleet de l'app admin (--admin-app / env CREEZIO_FLEET_ADMIN_URL,
@@ -1303,8 +1307,8 @@ export function writeServerDesktopShortcuts(opts: {
  * App standalone dockerisable (mode npm) — garantit les package-lock alignés
  * (lock racine workspace = SoT, entrées `""` + `server` ; locks autonomes
  * ui/client) avant le `npm ci` de l'image. Les deps `@creezio/*` sont des
- * packages npm publiés (GitHub Packages) : plus de vendor à sync, mais la
- * régénération du lock interroge le registre → CREEZIO_NPM_TOKEN requis.
+ * packages npm publiés (npmjs.org) : plus de vendor à sync ; la
+ * régénération du lock interroge le registre public (aucun token).
  *
  * Ne PAS « corriger » un lock Docker à la main : passer par cette fonction
  * (via `creezio server-docker build|create`).
@@ -2171,6 +2175,7 @@ async function runPublishSubcommand(
     repo: publishRepoName(brandId, variant),
     justPushedTag: tag,
     keepTags: resolvePublishKeepTags(args, env),
+    brandRoot: paths.brandRoot,
     env,
   });
 }
@@ -2238,15 +2243,41 @@ const MANIFEST_ACCEPT =
  * 3. registre privé : DELETE des manifests des vieux tags (blobs balayés par
  *    la GC registre planifiée côté hôte — `registry garbage-collect`).
  */
+function publishProtectedTags(opts: {
+  repo: string;
+  justPushedTag: string;
+  brandRoot?: string;
+}): string[] {
+  const protect = new Set<string>([opts.justPushedTag]);
+  const root = (opts.brandRoot || "").trim();
+  if (root) {
+    const file = path.join(root, "docker-data", "servers.json");
+    const refs = serversFileImageRefs(file);
+    if (refs) {
+      for (const ref of refs) {
+        const parsed = parseImageRef(ref);
+        if (parsed?.repo === opts.repo && parsed.tag) protect.add(parsed.tag);
+      }
+    }
+  }
+  return [...protect];
+}
+
 async function runPublishRetention(opts: {
   registry: string;
   repo: string;
   justPushedTag: string;
   keepTags: number;
+  brandRoot?: string;
   env: NodeJS.ProcessEnv;
 }): Promise<void> {
   const { registry, repo, justPushedTag, keepTags } = opts;
   const imageRef = `${registry.replace(/\/+$/, "")}/${repo}`;
+  const protect = publishProtectedTags({
+    repo,
+    justPushedTag,
+    brandRoot: opts.brandRoot,
+  });
 
   // 1. Vieilles images du daemon local.
   const localTags = dockerCapture([
@@ -2259,8 +2290,7 @@ async function runPublishRetention(opts: {
     .split("\n")
     .map((t) => t.trim())
     .filter((t) => t && t !== "<none>" && TAG_RE.test(t));
-  for (const t of selectTagsToPrune(localTags, keepTags)) {
-    if (t === justPushedTag) continue;
+  for (const t of selectTagsToPrune(localTags, keepTags, protect)) {
     const r = spawnSync("docker", ["rmi", `${imageRef}:${t}`], {
       encoding: "utf8",
     });
@@ -2314,9 +2344,7 @@ async function runPublishRetention(opts: {
   const remoteTags = (
     ((await tagsRes.json()) as { tags?: string[] }).tags || []
   ).filter((t) => TAG_RE.test(t));
-  const prune = selectTagsToPrune(remoteTags, keepTags).filter(
-    (t) => t !== justPushedTag,
-  );
+  const prune = selectTagsToPrune(remoteTags, keepTags, protect);
   if (!prune.length) return;
 
   const digestOf = async (t: string): Promise<string> => {

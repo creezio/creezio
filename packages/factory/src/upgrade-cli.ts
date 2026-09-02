@@ -42,6 +42,7 @@ import {
   resolveBrandSpecDir,
 } from "@creezio/brand-spec";
 import { kitPublishedVersion } from "./kit-release.js";
+import { spawnNpmAt } from "./npm-isolated.js";
 import { ensureBrandPackageLocks } from "./package-lock.js";
 import {
   applyCreezioManifestSync,
@@ -377,7 +378,7 @@ function codemodChangedFiles(output: string): string[] {
 
 function runNpm(args: string[], cwd: string, log: Log): void {
   log(`  $ npm ${args.join(" ")}`);
-  const r = spawnSync("npm", args, { cwd, stdio: "inherit", env: process.env });
+  const r = spawnNpmAt(cwd, args, { stdio: "inherit" });
   if (r.status !== 0) {
     throw new Error(`npm ${args.join(" ")} exit ${r.status ?? "?"} dans ${cwd}`);
   }

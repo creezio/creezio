@@ -27,10 +27,11 @@ fs.rmSync(dest, { recursive: true, force: true });
 fs.mkdirSync(dest, { recursive: true });
 let copied = 0;
 for (const entry of fs.readdirSync(source, { withFileTypes: true })) {
-  if (!entry.isDirectory() || !/^H\d+$/.test(entry.name)) continue;
+  if (!entry.isDirectory()) continue;
+  if (!/^H\d+$/.test(entry.name) && entry.name !== "lib") continue;
   fs.cpSync(path.join(source, entry.name), path.join(dest, entry.name), {
     recursive: true,
   });
   copied++;
 }
-console.log(`copy-codemods: ${copied} version(s) copiée(s) → packages/factory/codemods/`);
+console.log(`copy-codemods: ${copied} entrée(s) copiée(s) → packages/factory/codemods/`);

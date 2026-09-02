@@ -73,8 +73,8 @@ Les zones Cloudflare et hostnames publics sont **ceux de la marque**
     `-a` + `--keep-storage` + rétention registre 5 tags + alerte ≥ 85 %),
     rétention auto post-publish (`--keep-tags` / `--no-retention`),
     **`creezio server-docker registry-gc`** (delete tags + `garbage-collect`,
-    `--keep 2` par famille `auto.*`/manuels, dry-run par défaut + `--apply`,
-    jamais un tag en usage / `servers.json` / release fleet)
+    `--keep 2` pour `auto.*` + ≥ 3 semver indépendants, dry-run par défaut
+    + `--apply`, jamais un tag en usage / `servers.json` / release fleet)
 11. **n8n & Hermes embarqués** — superadmin flotte
     (`CREEZIO_SUPERADMIN_EMAIL/_PASSWORD`), owner n8n silencieux, clé API n8n
     (`.{brand}-n8n-api-key.json` → env Hermes), webhooks publics, MCP, skills
