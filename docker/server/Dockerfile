@@ -48,7 +48,8 @@ RUN apt-get update \
   && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 # Deps du livrable serveur = workspace npm racine (lockfile racine SoT).
-# .npmrc commité sans secret : @creezio → npm.pkg.github.com, token via env.
+# .npmrc commité sans secret : @creezio → registry.npmjs.org (public, sans token).
+# Le secret CREEZIO_NPM_TOKEN reste accepté (marques pas encore migrées).
 # (server/ui reste un projet npm indépendant avec son propre lockfile :
 # l'UI Next est servie en standalone self-contained, ses deps ne vont pas
 # dans l'image.)
@@ -72,7 +73,7 @@ ENV NPM_CONFIG_FETCH_RETRIES=5 \
 # livrable). npm ci strict : le lock commité est garanti frais par les
 # gates (test-clone-autonomy + CI marque) — pas de fallback silencieux.
 RUN --mount=type=secret,id=CREEZIO_NPM_TOKEN \
-    export CREEZIO_NPM_TOKEN="$(cat /run/secrets/CREEZIO_NPM_TOKEN)" \
+    export CREEZIO_NPM_TOKEN="$(cat /run/secrets/CREEZIO_NPM_TOKEN 2>/dev/null || true)" \
   && if [ "${SERVER_DIR}" = "." ]; then \
        npm ci --omit=dev --no-audit --no-fund; \
      else \
@@ -131,7 +132,7 @@ ENV NPM_CONFIG_FETCH_RETRIES=5 \
     NPM_CONFIG_FETCH_RETRY_MINTIMEOUT=15000 \
     NPM_CONFIG_FETCH_RETRY_MAXTIMEOUT=120000
 RUN --mount=type=secret,id=CREEZIO_NPM_TOKEN \
-    export CREEZIO_NPM_TOKEN="$(cat /run/secrets/CREEZIO_NPM_TOKEN)" \
+    export CREEZIO_NPM_TOKEN="$(cat /run/secrets/CREEZIO_NPM_TOKEN 2>/dev/null || true)" \
   && if [ "${SERVER_DIR}" = "." ]; then \
        npm ci --no-audit --no-fund; \
      else \
@@ -158,7 +159,7 @@ RUN if [ -d .creezio-kit-overlay ]; then \
 #   @creezio/os-ui hoisté racine) + next build → ui/.next/standalone.
 #   App sans ui/ : stage vide garanti par mkdir, runtime = API seule.
 RUN --mount=type=secret,id=CREEZIO_NPM_TOKEN \
-    export CREEZIO_NPM_TOKEN="$(cat /run/secrets/CREEZIO_NPM_TOKEN)" \
+    export CREEZIO_NPM_TOKEN="$(cat /run/secrets/CREEZIO_NPM_TOKEN 2>/dev/null || true)" \
   && P="./${SERVER_DIR}" \
   && if [ -f "$P/ui/package.json" ]; then \
        npm ci --prefix "$P/ui" --no-audit --no-fund; \
@@ -172,6 +173,7 @@ RUN --mount=type=secret,id=CREEZIO_NPM_TOKEN \
 FROM node:22-bookworm-slim AS runtime-base
 ARG SERVER_DIR
 ARG SERVER_VERSION
+ARG IMAGE_SOURCE
 # xz-utils : l'install Hermes (warm natif) extrait un node runtime .tar.xz.
 RUN apt-get update \
   && apt-get install -y --no-install-recommends ca-certificates curl xz-utils \
@@ -179,8 +181,10 @@ RUN apt-get update \
 WORKDIR /app
 
 # Version image = version applicative (GET /api/v1/core/version — SoT flotte).
+# IMAGE_SOURCE = remote git marque (publish → GHCR rattache le package au repo).
 ENV CREEZIO_APP_VERSION=${SERVER_VERSION}
 LABEL org.opencontainers.image.version=${SERVER_VERSION}
+LABEL org.opencontainers.image.source=${IMAGE_SOURCE}
 
 COPY --from=meili /usr/local/bin/meilisearch /opt/creezio/bin/meilisearch
 COPY --from=cloudflared /usr/local/bin/cloudflared /opt/creezio/bin/cloudflared

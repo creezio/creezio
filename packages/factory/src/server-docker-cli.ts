@@ -65,6 +65,12 @@ import {
   renderAgentTunnelEnvFile,
   resolveAgentTunnelImage,
 } from "./server-docker-agent-tunnel.js";
+import {
+  runRegistryGcCommand,
+  selectTagsToPrune,
+} from "./server-docker-registry-gc.js";
+
+export { compareVersionTags, selectTagsToPrune } from "./server-docker-registry-gc.js";
 
 /**
  * VPS (pas tunnel-local) : n8n ET Hermes sont requis (kit Creezio).
@@ -215,6 +221,14 @@ export type ServerDockerArgs = {
   slug?: string;
   /** enroll / agent : label lisible (hôte, token). */
   label?: string;
+  /** registry-gc : container `registry:2` (défaut creezio-registry). */
+  container?: string;
+  /** registry-gc : limiter à un repository. */
+  repo?: string;
+  /** registry-gc : exécuter les mutations (défaut : dry-run). */
+  apply?: boolean;
+  /** registry-gc : dry-run explicite (déjà le défaut — exclusif avec --apply). */
+  dryRun?: boolean;
   /** enroll : URL agent explicite (sinon ingress agent posée via API CF). */
   agentUrl?: string;
   /** agent up : hôtes d'écoute (défaut 127.0.0.1,172.17.0.1). */
@@ -293,6 +307,14 @@ export function parseServerDockerArgs(argv: string[]): ServerDockerArgs {
     else if (a === "--image") out.image = rest.shift();
     else if (a.startsWith("--keep-tags=")) out.keepTags = Number(a.slice(12));
     else if (a === "--keep-tags") out.keepTags = Number(rest.shift());
+    else if (a.startsWith("--keep=")) out.keepTags = Number(a.slice(7));
+    else if (a === "--keep") out.keepTags = Number(rest.shift());
+    else if (a === "--apply") out.apply = true;
+    else if (a === "--dry-run") out.dryRun = true;
+    else if (a.startsWith("--container=")) out.container = a.slice(12);
+    else if (a === "--container") out.container = rest.shift();
+    else if (a.startsWith("--repo=")) out.repo = a.slice(7);
+    else if (a === "--repo") out.repo = rest.shift();
     else if (a.startsWith("--tag=")) out.tag = a.slice(6);
     else if (a === "--tag") out.tag = rest.shift();
     else if (a.startsWith("--registry=")) out.registry = a.slice(11);
@@ -443,7 +465,9 @@ Registry d'images versionnées (update de flotte) :
     [--keep-tags 5] [--no-retention] [--public-host registry.<zone>]
     [--release [--admin-app <url>] [--channel stable]]
     (build image versionnée <registry>/creezio-server-<brand>:<tag>
-     + label/env version — /api/v1/core/version affiche <version>)
+     + label/env version — /api/v1/core/version affiche <version> ;
+     + org.opencontainers.image.source dérivé du remote git origin
+     du brand-root — fail-closed si registre ghcr.io et remote introuvable)
     --public-host (ou env CREEZIO_REGISTRY_PUBLIC_HOST) : tague en plus la
     référence publique pull-only registry.<zone>/… (F4) — le push reste
     loopback-only, les VPS distants pullent via l'ingress authentifié.
@@ -453,7 +477,23 @@ Registry d'images versionnées (update de flotte) :
     Rétention après push réussi : garde les N derniers tags (défaut 2,
     env CREEZIO_PUBLISH_KEEP_TAGS) côté daemon local ET registre privé,
     + docker builder prune --max-used-space (env CREEZIO_PUBLISH_KEEP_STORAGE,
-    défaut 5GB). Les blobs registre sont balayés par la GC planifiée hôte.
+    défaut 5GB). Les blobs registre sont balayés par registry-gc / timer hôte.
+  creezio server-docker registry-gc [--registry 127.0.0.1:5000] [--keep 2]
+    [--container creezio-registry] [--repo <name>] [--brand-root <app>]
+    [--admin-app <url>] [--apply]
+    (GC fail-closed du registre Docker local registry:2 : liste les tags
+     par repo via API v2, garde les N plus récents PAR FAMILLE — auto.*
+     d'un côté, tags manuels de l'autre ; défaut 2, env
+     CREEZIO_REGISTRY_GC_KEEP — ET tout tag PROTÉGÉ : conteneur en cours
+     (docker ps), docker-data/servers.json (--brand-root + découverte
+     labels creezio.brand-root, instances arrêtées incluses), releases
+     fleet de l'app admin (--admin-app / env CREEZIO_FLEET_ADMIN_URL,
+     admin injoignable = refus). DELETE des manifests non retenus puis
+     registry garbage-collect dans le container.
+     DRY-RUN PAR DÉFAUT : plan seulement — --apply exécute. Jamais de
+     suppression d'un tag en usage ou référencé. Erreurs explicites :
+     docker absent, registre down, servers.json illisible, DELETE KO,
+     GC KO.)
 
 Agent hôte flotte (VPS restaurant — exposé via agent.{slug}.{zone}) :
   creezio server-docker agent up --brand-root <app> [--port 18810]
@@ -1315,6 +1355,103 @@ function assertKitRuntimeDistFresh(kit: string): void {
   run("node", [script, kit], process.env);
 }
 
+/** Label OCI qui rattache un package GHCR au repo GitHub de la marque. */
+export const OCI_IMAGE_SOURCE_LABEL = "org.opencontainers.image.source";
+
+/**
+ * Normalise un remote git en URL HTTPS `https://github.com/<org>/<repo>`.
+ * Accepte HTTPS, SSH (`git@github.com:org/repo.git`) et remotes avec token.
+ */
+export function parseGithubHttpsSource(remote: string): string | null {
+  const cleaned = remote
+    .trim()
+    .replace(/^[a-zA-Z]+:\/\/[^@/]+@/, "https://")
+    .replace(/^git@/i, "");
+  const m = cleaned.match(/github\.com[/:]([^/]+)\/([^/\s]+)/i);
+  if (!m) return null;
+  const org = m[1];
+  const repoRaw = m[2];
+  if (!org || !repoRaw) return null;
+  const repo = repoRaw.replace(/\.git$/i, "");
+  if (!repo) return null;
+  return `https://github.com/${org}/${repo}`;
+}
+
+/** Remote `origin` du brand-root → URL source GitHub, ou null si absent. */
+export function resolveBrandGithubSourceUrl(brandRoot: string): string | null {
+  const r = spawnSync("git", ["-C", brandRoot, "remote", "get-url", "origin"], {
+    encoding: "utf8",
+  });
+  if (r.status !== 0) return null;
+  return parseGithubHttpsSource(r.stdout || "");
+}
+
+/**
+ * ghcr.io exige un source GitHub (sinon le package reste orphelin au compte).
+ * Autres registres : source optionnel (posé s'il est résolvable).
+ */
+export function requireImageSourceForRegistry(
+  registry: string,
+  source: string | null,
+): string | undefined {
+  const isGhcr = /^ghcr\.io(\/|$)/i.test(registry);
+  if (isGhcr && !source) {
+    throw new Error(
+      "ghcr.io : org.opencontainers.image.source introuvable — le brand-root " +
+        "doit avoir un remote git origin GitHub (https://github.com/<org>/<repo>) " +
+        "pour rattacher le package GHCR au repo marque",
+    );
+  }
+  return source || undefined;
+}
+
+/** `--label` + `--build-arg IMAGE_SOURCE` pour `docker build`. */
+export function ociImageSourceBuildArgs(source: string | undefined): string[] {
+  if (!source) return [];
+  return [
+    "--label",
+    `${OCI_IMAGE_SOURCE_LABEL}=${source}`,
+    "--build-arg",
+    `IMAGE_SOURCE=${source}`,
+  ];
+}
+
+export type DockerBuildArgsOpts = {
+  dockerfile: string;
+  serverVariant: "base" | "browser";
+  serverDirRel: string;
+  image: string;
+  extraTags?: string[];
+  version?: string;
+  imageSource?: string;
+  brandRoot: string;
+};
+
+/** Args `docker build` (testable sans daemon) — SoT consommée par publish. */
+export function collectDockerBuildArgs(opts: DockerBuildArgsOpts): string[] {
+  const args = [
+    "build",
+    "--secret",
+    "id=CREEZIO_NPM_TOKEN,env=CREEZIO_NPM_TOKEN",
+    "-f",
+    opts.dockerfile,
+    "--build-arg",
+    `SERVER_VARIANT=${opts.serverVariant}`,
+    "--build-arg",
+    `SERVER_DIR=${opts.serverDirRel}`,
+  ];
+  if (opts.version) {
+    args.push("--build-arg", `SERVER_VERSION=${opts.version}`);
+  }
+  args.push(...ociImageSourceBuildArgs(opts.imageSource));
+  args.push("-t", opts.image);
+  for (const t of opts.extraTags || []) {
+    args.push("-t", t);
+  }
+  args.push(opts.brandRoot);
+  return args;
+}
+
 function dockerBuildImage(
   paths: ReturnType<typeof resolvePaths>,
   env: NodeJS.ProcessEnv,
@@ -1325,6 +1462,8 @@ function dockerBuildImage(
     extraTags?: string[];
     /** Version embarquée (ENV CREEZIO_APP_VERSION + label OCI). */
     version?: string;
+    /** Label OCI `org.opencontainers.image.source` (publish / GHCR). */
+    imageSource?: string;
   },
 ): void {
   const variant = opts?.variant || "base";
@@ -1345,25 +1484,16 @@ function dockerBuildImage(
         "l'environnement ou le .env marque).",
     );
   }
-  const args = [
-    "build",
-    "--secret",
-    "id=CREEZIO_NPM_TOKEN,env=CREEZIO_NPM_TOKEN",
-    "-f",
-    paths.dockerfile,
-    "--build-arg",
-    `SERVER_VARIANT=${variant}`,
-    "--build-arg",
-    `SERVER_DIR=${paths.serverDirRel}`,
-  ];
-  if (opts?.version) {
-    args.push("--build-arg", `SERVER_VERSION=${opts.version}`);
-  }
-  args.push("-t", opts?.image || String(env.SERVER_IMAGE));
-  for (const t of opts?.extraTags || []) {
-    args.push("-t", t);
-  }
-  args.push(paths.brandRoot);
+  const args = collectDockerBuildArgs({
+    dockerfile: paths.dockerfile,
+    serverVariant: variant,
+    serverDirRel: paths.serverDirRel,
+    image: opts?.image || String(env.SERVER_IMAGE),
+    extraTags: opts?.extraTags,
+    version: opts?.version,
+    imageSource: opts?.imageSource,
+    brandRoot: paths.brandRoot,
+  });
   run("docker", args, {
     ...env,
     DOCKER_BUILDKIT: "1",
@@ -1917,12 +2047,20 @@ async function runPublishSubcommand(
   const variant = args.browser ? ("browser" as const) : ("base" as const);
   const image = publishImageName(registry, brandId, tag, variant);
   const localImage = serverImageName(brandId, variant);
+  const imageSource = requireImageSourceForRegistry(
+    registry,
+    resolveBrandGithubSourceUrl(paths.brandRoot),
+  );
+  if (imageSource) {
+    console.log(`  ${OCI_IMAGE_SOURCE_LABEL}=${imageSource}`);
+  }
   console.log(`build image versionnée ${image} (variant ${variant})…`);
   dockerBuildImage(paths, env, {
     variant,
     image,
     extraTags: [localImage],
     version: tag,
+    imageSource,
   });
   console.log(`✓ image construite : ${image} (alias local ${localImage})`);
   if (args.noPush) {
@@ -2017,34 +2155,6 @@ async function runPublishSubcommand(
 // 2 tags = version courante + rollback 1 cran ; cache builder plafonné 5GB.
 const PUBLISH_KEEP_TAGS_DEFAULT = 2;
 const PUBLISH_KEEP_STORAGE_DEFAULT = "5GB";
-
-/**
- * Compare deux tags version segment par segment (0.3.10 > 0.3.9 > 0.3.9-rc1).
- * Segments numériques comparés en nombre, sinon lexicographique.
- */
-export function compareVersionTags(a: string, b: string): number {
-  const pa = a.split(/[.\-_]/);
-  const pb = b.split(/[.\-_]/);
-  const len = Math.max(pa.length, pb.length);
-  for (let i = 0; i < len; i++) {
-    const sa = pa[i] ?? "";
-    const sb = pb[i] ?? "";
-    const na = /^\d+$/.test(sa) ? Number(sa) : NaN;
-    const nb = /^\d+$/.test(sb) ? Number(sb) : NaN;
-    if (!Number.isNaN(na) && !Number.isNaN(nb)) {
-      if (na !== nb) return na - nb;
-    } else if (sa !== sb) {
-      return sa < sb ? -1 : 1;
-    }
-  }
-  return 0;
-}
-
-/** Tags à supprimer : tout sauf les `keep` plus récents (tri version). */
-export function selectTagsToPrune(tags: string[], keep: number): string[] {
-  const sorted = [...tags].sort(compareVersionTags);
-  return keep >= sorted.length ? [] : sorted.slice(0, sorted.length - keep);
-}
 
 function resolvePublishKeepTags(
   args: ServerDockerArgs,
@@ -3914,6 +4024,11 @@ export async function runServerDockerCli(argv: string[]): Promise<void> {
     return;
   }
 
+  if (args.sub === "registry-gc") {
+    await runRegistryGcCommand(args);
+    return;
+  }
+
   ensureDocker();
 
   if (args.sub === "ps") {
@@ -4093,6 +4208,6 @@ export async function runServerDockerCli(argv: string[]): Promise<void> {
   }
 
   throw new Error(
-    `Sous-commande inconnue: ${args.sub} (create|start|stop|rm|logs|ls|update|backup|ensure-owner|access|admin|publish|agent|enroll|build|up|down|ps|proof)`,
+    `Sous-commande inconnue: ${args.sub} (create|start|stop|rm|logs|ls|update|backup|ensure-owner|access|admin|publish|registry-gc|agent|enroll|build|up|down|ps|proof)`,
   );
 }

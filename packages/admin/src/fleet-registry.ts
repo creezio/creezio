@@ -31,12 +31,17 @@ import type {
   ApiRequest,
   ScopedDbAccess,
 } from "@creezio/api-kernel";
+// T4 : plus de fetch HTTP artisanal vers le backend flotte — le contrat
+// client (endpoints, Basic, types) est importé directement de @creezio/fleet.
+import {
+  fetchFleetBackendServers,
+  type FleetBackendServer,
+} from "@creezio/fleet";
 import {
   openIntegrationSecret,
   sealIntegrationSecret,
 } from "@creezio/integrations";
 import type { FleetAdminMountOptions } from "./index.js";
-import { fleetFetch } from "./index.js";
 
 /* ------------------------------------------------------------- migration */
 
@@ -409,15 +414,16 @@ function publicRow(
 
 /** Mapping serveur backend flotte → statut registre. */
 function backendServerToStatus(
-  s: Record<string, unknown>,
+  s: FleetBackendServer,
   source: string,
 ): FleetServerStatusInput | null {
   const brandId = String(s.brandId || "").trim();
   const name = String(s.name || "").trim();
   if (!brandId || !name) return null;
-  const docker = (s.docker || {}) as Record<string, unknown>;
-  const boot = (s.bootStatus || {}) as Record<string, unknown>;
-  const env = (s.env || {}) as Record<string, unknown>;
+  // Coercions défensives conservées : la vue vient du backend en JSON.
+  const docker = s.docker || null;
+  const boot = s.bootStatus || null;
+  const env = s.env || {};
   const hostId = String(s.hostId || "local");
   const port = s.port == null ? null : Number(s.port);
   return {
@@ -435,33 +441,33 @@ function backendServerToStatus(
     orphan: s.orphan === true,
     version: s.version == null ? null : String(s.version),
     image: s.image == null ? null : String(s.image),
-    dockerState: docker.state == null ? null : String(docker.state),
-    health: docker.health == null ? null : String(docker.health),
-    bootHeadline: boot.headline == null ? null : String(boot.headline),
+    dockerState: docker?.state == null ? null : String(docker.state),
+    health: docker?.health == null ? null : String(docker.health),
+    bootHeadline: boot?.headline == null ? null : String(boot.headline),
     source,
   };
 }
 
 /**
- * Sync (backfill) : lit `/admin/api/servers` du backend flotte et upsert le
- * registre. Utilisé par `POST sync` (session admin) et par le poller de fond.
+ * Sync (backfill) : lit la vue consolidée du backend flotte (client typé
+ * `fetchFleetBackendServers` de @creezio/fleet — T4) et upsert le registre.
+ * Utilisé par `POST sync` (session admin) et par le poller de fond.
  */
 export async function syncFleetRegistryFromBackend(
   db: ScopedDbAccess,
   opts: FleetRegistryMountOptions | undefined,
   source: string,
 ): Promise<{ ok: boolean; upserted: number; error?: string }> {
-  const list = await fleetFetch(opts?.fleet, "GET", "/admin/api/servers");
-  if (list.status !== 200 || !list.json?.ok) {
+  const list = await fetchFleetBackendServers(opts?.fleet);
+  if (!list.ok) {
     return {
       ok: false,
       upserted: 0,
-      error: `backend flotte → ${list.status}${list.json?.error ? ` (${list.json.error})` : ""}`,
+      error: `backend flotte → ${list.status}${list.error ? ` (${list.error})` : ""}`,
     };
   }
-  const servers = (list.json.servers || []) as Array<Record<string, unknown>>;
   let upserted = 0;
-  for (const s of servers) {
+  for (const s of list.servers) {
     const status = backendServerToStatus(s, source);
     if (!status) continue;
     upsertFleetServerStatus(db, status);

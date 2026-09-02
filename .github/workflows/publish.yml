@@ -1,4 +1,7 @@
-# Publication npm des packages @creezio/* — GitHub Packages (npm.pkg.github.com).
+# Publication npm des packages @creezio/* — npmjs.org (registre public officiel).
+# Migration depuis GitHub Packages le 2026-08-31 (compte GitHub verrouillé
+# facturation + packages publics → npmjs est gratuit et sans token à l'install).
+# Secret requis : NPM_TOKEN (token Automation npmjs, org creezio).
 #
 # Flux nominal (docs/NPM-DISTRIBUTION.md) :
 #   dev kit → `npx changeset` (intention de bump, lockstep) → merge main →
@@ -36,7 +39,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-          registry-url: "https://npm.pkg.github.com"
+          registry-url: "https://registry.npmjs.org"
           scope: "@creezio"
       - run: npm ci --no-audit --no-fund
       - run: npm run build:packages
@@ -49,4 +52,4 @@ jobs:
           commit: "chore(release): version packages"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

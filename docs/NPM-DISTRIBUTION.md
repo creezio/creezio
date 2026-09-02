@@ -1,9 +1,15 @@
-# Distribution npm — GitHub Packages (en vigueur)
+# Distribution npm — npmjs.org (en vigueur)
 
 Les packages `@creezio/*` sont publiés en **versions semver** sur
-**GitHub Packages** (`https://npm.pkg.github.com`, owner `creezio`).
-Les apps les consomment comme n'importe quelle dépendance npm :
+**npmjs.org** (`https://registry.npmjs.org`, org `creezio`, packages
+publics). Les apps les consomment comme n'importe quelle dépendance npm :
 `npm update @creezio/<pkg>` remplace le vendoring.
+
+> Migration 2026-08-31 : GitHub Packages → npmjs.org (compte GitHub
+> verrouillé facturation ; les packages étant publics, npmjs est gratuit
+> et supprime le besoin de token à l'installation). Les versions ≤ 0.21.0
+> restent lisibles sur `npm.pkg.github.com` mais n'y seront plus mises à
+> jour.
 
 **Pourquoi** : le vendoring copiait du contenu sans changer de version —
 invisible pour npm (copies `file:` jamais rafraîchies), pour le cache
@@ -39,24 +45,25 @@ visible par TOUT l'écosystème standard.
    (install depuis le worktree, pas le registre qui n'a pas encore la
    version) et `changeset-status` vérifie l'absence de leftover.
 3. Merge de cette PR → `publish.yml` publie automatiquement sur
-   GitHub Packages (auth `GITHUB_TOKEN`, aucun secret à gérer).
+   npmjs.org (secret `NPM_TOKEN` — token Automation npmjs de l'org
+   creezio). Publication manuelle de secours depuis un clone kit :
+   `npx changeset publish` (token dans `~/.npmrc`).
 
 ## Consommation côté app
 
-`.npmrc` à la racine de l'app (le token N'EST PAS committé) :
+`.npmrc` à la racine de l'app :
 
 ```ini
-@creezio:registry=https://npm.pkg.github.com
-//npm.pkg.github.com/:_authToken=${CREEZIO_NPM_TOKEN}
+@creezio:registry=https://registry.npmjs.org
 ```
 
-- **Token** : PAT (classic) avec scope `read:packages` d'un membre de
-  l'org creezio. En CI : secret `CREEZIO_NPM_TOKEN` exporté en env du job.
-  En local : `export CREEZIO_NPM_TOKEN=…` (shell) ou token dans le
-  `~/.npmrc` utilisateur.
+- **Aucun token requis** : les packages sont publics sur npmjs. (La ligne
+  scope est même optionnelle — npmjs est le registre par défaut de npm —
+  mais on la garde explicite.) L'env `CREEZIO_NPM_TOKEN` et les secrets
+  CI/BuildKit associés sont obsolètes et peuvent être retirés.
 - `package.json` : `"@creezio/<pkg>": "^<lockstep>"` (plus de `file:vendor/…`).
 - Vérifier la disponibilité :
-  `npm view @creezio/app-runtime versions --registry=https://npm.pkg.github.com`
+  `npm view @creezio/app-runtime versions`
 - Mise à jour : `npm update "@creezio/*"` puis CI de l'app.
 
 ## Packages publiés (lockstep)

@@ -11,10 +11,13 @@ déprécié (exit 1). `--from-prd` reste le legacy TempoFlow3.
 
 ```bash
 creezio brand create --id acme --name Acme --domain acme.local --out /tmp/acme
+# Repos GitHub : ajouter --push (token GITHUB_TOKEN requis).
 ```
 
-Squelette OS + registre vide + mount interactive-demo + repo `<id>-admin`.
-Zéro notes, zéro `server/crm/`.
+Squelette OS + registre vide + mount interactive-demo + arbre `<id>-admin`
+**locaux**. Zéro notes, zéro `server/crm/`. `--push` crée les 2 repos
+GitHub privés ; sans ce flag : aucun appel réseau, même si un token est
+présent (env / `.github-token`). `--no-push` est le défaut (redondant).
 
 ## Mode produit — `--from-prd` (legacy)
 
@@ -56,12 +59,28 @@ creezio server-docker proof --brand-root "$BRAND_ROOT"
 Image générique + Compose multi-instances (`server-1` / `server-2`) —
 SoT dans `docker/server/` (sans Electron/AppImage). Voir `docker/server/README.md`.
 
-`server-docker publish` pousse une image versionnée au registre privé
-(rétention auto) ; `publish --release` déclare en plus la release (status
-`draft`) dans l'app admin de la marque (`--admin-app <url>` ou env
-`CREEZIO_FLEET_ADMIN_URL`, `--channel stable` par défaut) pour le
-déploiement flotte en pull — voir la skill
+`server-docker publish` pousse une image versionnée au registre
+(rétention auto) et pose le label OCI
+`org.opencontainers.image.source=https://github.com/<org>/<repo-marque>`
+dérivé du remote git `origin` du brand-root (fail-closed si le registre
+est `ghcr.io` et que le remote est introuvable). `publish --release`
+déclare en plus la release (status `draft`) dans l'app admin de la
+marque (`--admin-app <url>` ou env `CREEZIO_FLEET_ADMIN_URL`,
+`--channel stable` par défaut) pour le déploiement flotte en pull —
+voir la skill
 [creezio-fleet-ops §4b](../../.cursor/skills/creezio-fleet-ops/SKILL.md).
+
+`server-docker registry-gc` purge le registre Docker local (`registry:2`,
+`127.0.0.1:5000`) : garde les N tags les plus récents **par famille**
+(`auto.*` d'un côté, tags manuels de l'autre — défaut 2, `--keep`, env
+`CREEZIO_REGISTRY_GC_KEEP`) **et** tout tag protégé : conteneur en cours,
+`docker-data/servers.json` (`--brand-root` + découverte via les labels
+`creezio.brand-root`, instances arrêtées incluses), releases fleet de l'app
+admin (`--admin-app` / env `CREEZIO_FLEET_ADMIN_URL` — admin injoignable =
+refus). DELETE des manifests non retenus, puis `registry garbage-collect`.
+**Dry-run par défaut** — `--apply` exécute. Fail-closed (docker absent,
+registre down, `servers.json` illisible, DELETE KO, GC KO). Voir skill
+fleet-ops §10.
 
 ### Templates plugins (`templates/plugins/`)
 
@@ -111,6 +130,8 @@ que toute page os-ui a ses deps déclarées (`OS_UI_PAGE_DEP_MISSING`).
 | `--feed-token` | Token feed sandbox |
 | `--sandbox` / `--no-sandbox` | Flag sandbox (défaut oui) |
 | `--force` | Écrase les fichiers existants |
+| `--push` | Crée + pousse les 2 repos GitHub privés (opt-in ; token requis). Défaut = local. |
+| `--no-push` | Défaut (redondant) : aucun appel GitHub. |
 | `--link-kit` | Installe `@creezio/*` depuis le worktree kit (`file:`), pas le registre. Équivalent : `CREEZIO_LINK_KIT=1`. Les manifests restent `^<lockstep>`. Requis en CI / PR de release (version pas encore publiée). |
 
 ## API publique

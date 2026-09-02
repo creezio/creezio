@@ -5,9 +5,12 @@
  * P2.a — ce fichier est le MOTEUR DESKTOP PARTAGÉ, pas un runtime mort :
  * le chemin moderne (`startBrandDesktop` → `installBrandOsDesktop`,
  * app-runtime) l'appelle avec des adaptateurs kit ; les clients desktop
- * legacy l'appellent directement avec leurs verticaux. La compat marque
- * héritée vit dans `legacy-brand-compat.ts` (périmètre GELÉ, gate
- * `test-phase-legacy-desktop-frozen`) — ne pas rajouter de branche marque ici.
+ * legacy l'appellent directement avec leurs verticaux. H10 : la compat
+ * marque héritée (`legacy-brand-compat.ts`) a été RETIRÉE — les défauts
+ * sont génériques (`<PREFIX>_PLUGINS_DIR`, `<brandId>fid`,
+ * `<PREFIX>_API_KEY`, preload `preload.js`, `ensureDesktopNode`) et les
+ * clients legacy migrent via le codemod `scripts/codemods/H10/`. Ne pas
+ * rajouter de branche marque ici.
  */
 // @ts-nocheck — types Electron/marque injectés via deps ; shim kit incomplet volontairement.
 import { spawn } from "node:child_process";
@@ -55,13 +58,6 @@ import {
 import { isFeatureEnabled } from "@creezio/brand-config";
 import { envForNodeScriptSpawn } from "@creezio/host-runtime";
 import { remoteOfflineHtml } from "./remote-offline-html.js";
-import {
-  legacyApiKeyEnvName,
-  legacyPluginsDirEnvKey,
-  legacyPreloadBasenames,
-  legacySupplierFidQueryParam,
-  resolveLegacyEnsureDesktopNode,
-} from "./legacy-brand-compat.js";
 
 export type BrandDesktopHosts = {
   catalog: () => any;
@@ -107,11 +103,11 @@ export type BrandDesktopDeps = {
   sessionCookieName: string;
   profileArgPrefix: string;
   defaultDesktopPort: number;
-  /** Env Next pour le dossier plugins (défaut : legacy-brand-compat). */
+  /** Env Next pour le dossier plugins (défaut : `<envPrefix>_PLUGINS_DIR`). */
   pluginsDirEnvKey?: string;
-  /** Query param SiteLink (défaut : legacy-brand-compat). */
+  /** Query param SiteLink (défaut : `<brandId>fid`). */
   supplierFidQueryParam?: string;
-  /** Clé API CRM dans process.env (défaut : legacy-brand-compat). */
+  /** Clé API CRM dans process.env (défaut : `<envPrefix>_API_KEY`). */
   apiKeyEnvName?: string;
   /** Libellé splash Node (ex. « Runtime Node <Produit> »). */
   nodeRuntimeLabel?: string;
@@ -155,15 +151,11 @@ export function installBrandDesktopRuntime(deps: BrandDesktopDeps): void {
   );
   const nodeLabel = deps.nodeRuntimeLabel || `Runtime Node ${productName}`;
   const pluginsDirEnvKey =
-    deps.pluginsDirEnvKey || legacyPluginsDirEnvKey(deps.envPrefix);
+    deps.pluginsDirEnvKey || `${deps.envPrefix}_PLUGINS_DIR`;
   const supplierFidQueryParam =
     deps.supplierFidQueryParam ||
-    legacySupplierFidQueryParam(
-      deps.envPrefix,
-      String(deps.manifest?.brandId || "app"),
-    );
-  const apiKeyEnvName =
-    deps.apiKeyEnvName || legacyApiKeyEnvName(deps.envPrefix);
+    `${String(deps.manifest?.brandId || "app")}fid`;
+  const apiKeyEnvName = deps.apiKeyEnvName || `${deps.envPrefix}_API_KEY`;
   const progressPrefix = `${deps.envPrefix}PROGRESS `;
 
   async function syncN8nWebhookPublicUrl(onLog?: (line: string) => void): Promise<void> {
@@ -1734,13 +1726,7 @@ export function installBrandDesktopRuntime(deps: BrandDesktopDeps): void {
       }
       const baseUrl = crmBaseUrl() || server?.baseUrl || "";
       if (!baseUrl) return { ok: false as const, error: "serveur non démarré" };
-      const adminPreloadCandidates = [
-        deps.paths.preloadPath("preload-app.js"),
-        deps.paths.preloadPath("preload.js"),
-      ];
-      const adminPreload =
-        adminPreloadCandidates.find((p) => fs.existsSync(p)) ||
-        adminPreloadCandidates[0]!;
+      const adminPreload = deps.paths.preloadPath("preload.js");
       return openAdminWindow({
         baseUrl,
         partition: deps.sessionPartition,
@@ -2743,13 +2729,10 @@ export function installBrandDesktopRuntime(deps: BrandDesktopDeps): void {
     });
     const w = win;
 
-    // Preload : ordre legacy-brand-compat (preload-app.js puis preload.js).
+    // Preload unique `preload.js` (H10 — le basename historique des clients
+    // legacy n'est plus sonde ; migration via codemod scripts/codemods/H10).
     // Un preload manquant/incassable = plus d'API desktop → on veut le SAVOIR.
-    const preloadCandidates = legacyPreloadBasenames().map((name) =>
-      deps.paths.preloadPath(name),
-    );
-    const appPreload =
-      preloadCandidates.find((p) => fs.existsSync(p)) || preloadCandidates[0]!;
+    const appPreload = deps.paths.preloadPath("preload.js");
     if (!fs.existsSync(appPreload)) {
       deps.vertical.reportCrash("web-event", { view: "crm", event: "preload-missing", preloadPath: appPreload });
     }
@@ -3376,14 +3359,14 @@ export function installBrandDesktopRuntime(deps: BrandDesktopDeps): void {
         detail: "Vérification / installation du runtime Node piné",
         percent: 10,
       });
-      const nodeRt = deps.hosts.nodeRuntime() as Parameters<
-        typeof resolveLegacyEnsureDesktopNode
-      >[0];
-      const ensureNode = resolveLegacyEnsureDesktopNode(nodeRt);
+      const nodeRt = deps.hosts.nodeRuntime() as {
+        ensureDesktopNode?: (
+          o: unknown,
+        ) => Promise<{ ok: boolean; detail?: string }>;
+      };
+      const ensureNode = nodeRt.ensureDesktopNode;
       if (!ensureNode) {
-        throw new Error(
-          "nodeRuntime.ensureDesktopNode manquant (alias legacy inclus)",
-        );
+        throw new Error("nodeRuntime.ensureDesktopNode manquant");
       }
       const nodeReady = await ensureNode({
         onLog: (line: string) => {

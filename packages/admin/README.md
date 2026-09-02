@@ -39,7 +39,12 @@ UI : `import { FleetAdminClient, TicketsAdminClient, ProspectsKanbanClient, Bill
 dans les pages Next de l'app admin (labels/naming côté marque).
 
 Env backend flotte : `CREEZIO_FLEET_BACKEND_URL` (défaut
-`http://127.0.0.1:18800`), `CREEZIO_FLEET_BACKEND_BASIC` (`user:pass`).
+`http://127.0.0.1:18800`), `CREEZIO_FLEET_BACKEND_BASIC` (`user:pass`) —
+résolus par le client typé de `@creezio/fleet` (`server-admin-client`, T4) :
+les modules `fleet-registry` / `fleet-releases` importent directement
+`fetchFleetBackendServers` / `verifyFleetHostCredential` au lieu d'un fetch
+HTTP artisanal (le transport Basic loopback demeure, backend = container
+séparé).
 
 ## Permissions par module (P4)
 

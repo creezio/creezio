@@ -29,12 +29,14 @@
 
 import crypto from "node:crypto";
 import type { ApiMount, ApiRequest, ScopedDbAccess } from "@creezio/api-kernel";
+// T4 : vérification credential agents via le client typé de @creezio/fleet
+// (plus de fetch HTTP artisanal — le contrat vit à côté du backend).
 import {
   FLEET_PROTOCOL_HEADER,
   FLEET_PROTOCOL_VERSION,
+  verifyFleetHostCredential,
 } from "@creezio/fleet";
 import type { FleetAdminMountOptions } from "./index.js";
-import { fleetFetch } from "./index.js";
 import { recordFleetEvent } from "./fleet-registry.js";
 
 /* ------------------------------------------------------------- migration */
@@ -159,10 +161,11 @@ export type FleetCredentialVerifier = (
 ) => Promise<boolean>;
 
 /**
- * Vérificateur par défaut : délègue au backend flotte
- * (`POST /admin/api/hosts/verify`, Basic) — fleet-hosts.json reste la SoT
- * des credentials. Cache mémoire court (défaut 60 s, négatif 15 s) pour ne
- * pas marteler le backend à chaque poll.
+ * Vérificateur par défaut : délègue au backend flotte via le client typé
+ * `verifyFleetHostCredential` (@creezio/fleet — `POST /admin/api/hosts/verify`,
+ * Basic) — fleet-hosts.json reste la SoT des credentials. Cache mémoire
+ * court (défaut 60 s, négatif 15 s) pour ne pas marteler le backend à
+ * chaque poll.
  */
 export function createBackendFleetCredentialVerifier(
   fleet?: FleetAdminMountOptions,
@@ -182,11 +185,7 @@ export function createBackendFleetCredentialVerifier(
     if (hit && hit.until > now) return hit.ok;
     let ok = false;
     try {
-      const r = await fleetFetch(fleet, "POST", "/admin/api/hosts/verify", {
-        hostId,
-        token,
-      });
-      ok = r.status === 200 && r.json?.ok === true && r.json?.valid === true;
+      ok = await verifyFleetHostCredential(fleet, hostId, token);
     } catch {
       ok = false;
     }

@@ -216,9 +216,10 @@ Workflow : `npm run test:kit` → première rouge → corriger →
 - **`brand-desktop-runtime.ts` n'est PAS un runtime legacy mort** : c'est
  le moteur desktop partagé — `startBrandDesktop` (chemin moderne) le
  consomme via `installBrandOsDesktop`. Pas de branche marque dedans ; la
- compat héritée vit dans `desktop/legacy-brand-compat.ts`, périmètre GELÉ
- fail-closed (gate `test-phase-legacy-desktop-frozen`, retrait prévu H9 —
- ADR `docs/adr/ADR-p2a-desktop-legacy-freeze.md`).
+ compat héritée (`desktop/legacy-brand-compat.ts`) a été **retirée en H10**
+ — défauts génériques inline, clients legacy migrés par le codemod
+ `scripts/codemods/H10/` (ADR
+ `docs/adr/ADR-p2a-desktop-legacy-freeze.md`, note de clôture).
 - **Import runtime `@creezio/*` hors ordre de build** : un import runtime
   (non `import type`) vers un package construit après soi = dist
   stale/absent sur build frais ; idem cycle runtime. Gate

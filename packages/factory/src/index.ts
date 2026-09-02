@@ -54,6 +54,7 @@ export {
   pushInitialCommit,
   createBrandGithubRepos,
   maybePushBrandRepos,
+  GITHUB_REPOS_SKIPPED_MSG,
   type GithubRepoSpec,
   type CreateRepoResult,
 } from "./github-repos.js";
@@ -79,6 +80,12 @@ export {
   isServerDockerBackupEnabled,
   resolveServerDockerBackupEnabled,
   SERVER_DOCKER_BACKUP_ENV,
+  OCI_IMAGE_SOURCE_LABEL,
+  parseGithubHttpsSource,
+  resolveBrandGithubSourceUrl,
+  requireImageSourceForRegistry,
+  ociImageSourceBuildArgs,
+  collectDockerBuildArgs,
 } from "./server-docker-cli.js";
 export {
   loadServerRegistry,
@@ -132,6 +139,28 @@ export {
   type CreateOwnerPolicy,
   type CreateOwnerPolicyInput,
 } from "./server-docker-owner.js";
+export {
+  compareVersionTags,
+  selectTagsToPrune,
+  parseImageRef,
+  collectInUseKeys,
+  collectReleaseKeys,
+  serversFileImageRefs,
+  fetchFleetReleaseRefs,
+  planRepoGc,
+  resolveRegistryGcKeep,
+  resolveRegistryGcServersFiles,
+  runRegistryGc,
+  runRegistryGcCommand,
+  REGISTRY_GC_KEEP_DEFAULT,
+  REGISTRY_GC_DEFAULT_HOST,
+  REGISTRY_GC_DEFAULT_CONTAINER,
+  REGISTRY_AUTO_TAG_RE,
+  type FleetReleaseRef,
+  type RegistryGcResult,
+  type RegistryGcOpts,
+  type RepoGcPlan,
+} from "./server-docker-registry-gc.js";
 export {
   writeAppFile,
   isOwnedByBrand,

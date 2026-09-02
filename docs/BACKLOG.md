@@ -17,17 +17,19 @@ affaibli pour la masquer. (Backlogs d'époque : `docs/archive/BACKLOG-*.md`.)
 
 ## Desktop
 
-- **Compat desktop héritée gelée (P2.a)** :
-  `electron-shell/src/desktop/legacy-brand-compat.ts` porte les défauts
-  legacy des clients desktop non migrés sur `startBrandDesktop` (env
-  `TEMPOFLOW_*`, `tf2fid`, `preload-app.js`, alias `ensureTempoflowNode`).
-  Périmètre gelé fail-closed (gate `test-phase-legacy-desktop-frozen`).
-  **Retrait au bump `ARCHITECTURE_VERSION` H10** : codemod de migration des
-  clients legacy vers des deps explicites, puis suppression du module + de
-  sa gate (ADR `docs/adr/ADR-p2a-desktop-legacy-freeze.md`). Note P2.c : le
-  bump H9 (contrat de module importé, `ADR-p2c-module-contract.md`) n'a PAS
-  embarqué ce retrait — non trivial (périmètre hashé + codemod clients
-  legacy dédié), reporté volontairement.
+- ~~**Compat desktop héritée gelée (P2.a)**~~ **FAIT (H10, T9)** : le module
+  `electron-shell/src/desktop/legacy-brand-compat.ts`, sa gate
+  `test-phase-legacy-desktop-frozen` et le snapshot
+  `scripts/legacy-desktop-frozen.json` sont supprimés. Les défauts du moteur
+  desktop sont génériques (`<PREFIX>_PLUGINS_DIR`, `<brandId>fid`,
+  `<PREFIX>_API_KEY`, preload `preload.js`, `ensureDesktopNode`) ; les
+  clients desktop legacy migrent via le codemod `scripts/codemods/H10/`
+  (deps explicites), appliqué par `creezio upgrade` lors du bump
+  `ARCHITECTURE_VERSION` H9 → H10 (ADR
+  `docs/adr/ADR-p2a-desktop-legacy-freeze.md`, note de clôture). Reste hors
+  périmètre gelé : un fallback inline `preload-app.js` → `preload.js` dans
+  `host-runtime/src/ai-workspace/manager.ts` (sans effet pour les marques
+  migrées — candidat nettoyage ultérieur).
 
 ## Navigateur IA (`browser-host`)
 
@@ -82,9 +84,14 @@ affaibli pour la masquer. (Backlogs d'époque : `docs/archive/BACKLOG-*.md`.)
   répertoire d'état, reload au boot avec flag additif `agentRestarted` +
   résolution via `servers.json`, TTL 24 h). Gate
   `test-phase-fleet-update-status-persist`.
-- **Registry local sans GC** : la suppression de tags (`0.2.2-broken`…)
-  demande l'API delete + `registry garbage-collect` — documenté, pas
-  automatisé.
+- ~~**Registry local sans GC**~~ **fait (T11)** : `creezio server-docker
+  registry-gc` (`packages/factory/src/server-docker-registry-gc.ts`) —
+  API v2 list/delete + `registry garbage-collect` dans `creezio-registry`,
+  rétention `--keep N` (défaut 2) par famille `auto.*`/manuels, tags
+  protégés jamais supprimés (conteneurs en cours, `docker-data/servers.json`
+  — instances arrêtées incluses —, releases fleet de l'app admin), dry-run
+  par défaut + `--apply`. Gate : `test-phase-server-docker-registry-gc`.
+  Doc : skill fleet-ops §10.
 - ~~**Scaffold `verify-prod` factory (vérification E2E canonique de toute
   app générée)**~~ **fait (0.18.0)** : la factory matérialise
   `scripts/verify-prod.mjs` dans toute app générée (générateur
