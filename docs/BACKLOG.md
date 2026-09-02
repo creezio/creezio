@@ -67,11 +67,23 @@ affaibli pour la masquer. (Backlogs d'époque : `docs/archive/BACKLOG-*.md`.)
   `creezio-server-tempoflow3:auto.202608310248.674051e` (1,04 Go compressés,
   build+push 318 s depuis le VPS — l'hypothèse « ~3,7 Go impraticable »
   était périmée) → pull GHCR → `update resto-lyon|resto-marseille --backup`
-  → `verify-prod` 7/7 sur les deux instances. Credentials canoniques :
+  → `verify-prod` 7/7 sur les deux instances.   Credentials canoniques :
   `/opt/docker/creezio-secrets/ghcr.env` (root/600, hors git) + miroirs
-  `.github-token` gitignorés kit/marque — voir skill fleet-ops §4. Reste
-  ouvert : rétention post-publish côté GHCR (publish lancé en
-  `--no-retention` ; la rétention actuelle vise le registre local).
+  `.github-token` gitignorés kit/marque — voir skill fleet-ops §4.
+  ~~Rétention post-publish GHCR~~ **fait (D5)** : `publish` vers
+  `ghcr.io` appelle l'API GitHub Packages (versions) — garde ≥ 3 semver
+  + tout tag in-use / `servers.json` / instances ; auth manquante =
+  fail-closed (`GHCR_TOKEN` / `GITHUB_TOKEN` / `.github-token`).
+  `registry-gc --registry ghcr.io/<owner>` suit la même politique
+  (dry-run par défaut, `--apply`). Le registre de prod TempoFlow peut
+  rester loopback (`127.0.0.1:5000`) : le chemin GHCR s'active seulement
+  quand la cible EST `ghcr.io`.
+- ~~**Propagate PR doublon (D7)**~~ **fait** : avant d'ouvrir une PR de
+  bump, `scripts/propagate-brands.mjs` GET les PR ouvertes (même titre /
+  même head / `package.json` déjà au pin) et skip si `main` est déjà au
+  pin ; POST `/pulls` HTTP 422 = skip (plus de TF3 #73 après #72 mergée).
+  Helper `scripts/lib/propagate-pr-guard.mjs`, gate
+  `test-phase-propagate-pr-guard`.
 - **Ingress agent porté par le tunnel d'un serveur** : `agent.{slug}` passe
   par le cloudflared du container serveur `{slug}` — pendant l'update de CE
   serveur, l'agent est injoignable de l'extérieur (le poll `update-status`
