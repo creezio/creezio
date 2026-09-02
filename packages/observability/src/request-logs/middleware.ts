@@ -1,7 +1,7 @@
 /**
  * Middlewares de collecte des logs API / MCP → ring buffer mémoire.
  * Ne doit jamais faire échouer la requête (tout est try/catch).
- * O5 — extrait TempoFlow (gold).
+ * O5 — gold.
  */
 import type { Context, MiddlewareHandler } from "hono";
 import {

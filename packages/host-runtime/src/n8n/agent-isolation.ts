@@ -1,5 +1,5 @@
 /**
- * Étanchéité par collaborateur IA (Q2 multi-profils) — gold TempoFlow paramétré.
+ * Étanchéité par collaborateur IA (Q2 multi-profils) — gold kit paramétré.
  */
 
 import fs from "node:fs";

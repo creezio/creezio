@@ -1,7 +1,7 @@
 /**
  * Générateur de config electron-builder Client / Serveur à partir d'un AppManifest.
  *
- * Port brand-agnostic de `crm/scripts/electron/build-builder-config.mjs` (TF2 0.10.26).
+ * Port brand-agnostic de `crm/scripts/electron/build-builder-config.mjs`.
  * L'appelant fournit la config de base (YAML/JSON parsé) et reçoit les overrides.
  *
  * Usage typique dans une app marque :
@@ -172,7 +172,7 @@ export const DEFAULT_HOST_ONLY_ELECTRON_MODULES = [
 
 /**
  * Binaires Windows serveur via `win.extraResources` (filtre) — jamais dans l'asar.
- * Parité TF2 : uniquement `meilisearch-win.exe` + `cloudflared.exe` (pas d'alias meili.exe).
+ * Uniquement `meilisearch-win.exe` + `cloudflared.exe` (pas d'alias meili.exe).
  */
 export const WIN_SERVER_BIN_FILTER = [
   "cloudflared.exe",
@@ -189,12 +189,12 @@ export const ASAR_EXCLUDE_KIT_BINS = "!**/host-runtime/resources/bin/**";
 export const DEFAULT_WIN_BIN_STAGE = ".creezio/win-bin-stage";
 
 export type BuildBuilderConfigOptions = {
-  /** Modules host-only à exclure du paquet Client (défaut = liste TF2). */
+  /** Modules host-only à exclure du paquet Client (défaut = liste kit). */
   hostOnlyModules?: readonly string[];
   /**
    * Si `false`, n'applique pas `applyClientSlim` (apps sans host-stack lazy,
-   * ex. Fidu G2 : Client et Serveur embarquent encore la stack locale).
-   * Défaut `true` (comportement TF2 / Certivan).
+   * Client et Serveur embarquent encore la stack locale).
+   * Défaut `true` (client slim).
    */
   clientSlim?: boolean;
   /** Chemin include NSIS (défaut `installer.nsh`). `false` = ne pas forcer. */
@@ -507,7 +507,7 @@ function stripLegacyNpmRuntimeGlobs(files: unknown[]): unknown[] {
     if (!norm.startsWith("node_modules/") || !norm.endsWith("/**/*")) {
       return true;
     }
-    // Conserver les includes electron-updater (base TF2) — retirer seulement
+    // Conserver les includes electron-updater (base kit) — retirer seulement
     // les globs seeds runtime qu'on remplace par des FileSets.
     const pkg = norm.slice("node_modules/".length, -"/**/*".length);
     return !(CREEZIO_ASAR_NPM_RUNTIME_PACKAGES as readonly string[]).includes(
@@ -518,7 +518,7 @@ function stripLegacyNpmRuntimeGlobs(files: unknown[]): unknown[] {
 
 /**
  * Ré-inclut les packages runtime @creezio/* + deps npm (clôture) dans l'asar
- * quand la config exclut `node_modules/**` (pattern TF2 / Certivan / Fidu / TF3).
+ * quand la config exclut `node_modules/**` (pattern historique des apps).
  * Idempotent : n'ajoute que les filesets manquants (dedup sur la cible asar).
  */
 function ensureCreezioVendorInAsar(
@@ -614,7 +614,7 @@ function resolveWinBinStage(options: BuildBuilderConfigOptions): string {
 /**
  * Normalise le glob build/electron en fileset objet {from,to,filter}.
  * Les négations plates (!node_modules) cassent sinon la collecte asar
- * (main.js absent) — piège TF2 / electron-builder.
+ * (main.js absent) — piège electron-builder.
  */
 function normalizeBuildElectronFileset(
   base: JsonRecord,
@@ -713,7 +713,7 @@ export function buildElectronBuilderConfig(
   ensureAsarUnpackNative(base);
   ensureAsarExcludesKitBins(base);
 
-  // Parité TF2 : better-sqlite3 / natifs via prebuild win (ensure-win-native),
+  // better-sqlite3 / natifs via prebuild win (ensure-win-native),
   // jamais rebuild ABI Electron hôte Linux pendant cross-pack.
   if (base.npmRebuild === undefined) {
     base.npmRebuild = false;
@@ -737,7 +737,7 @@ export function buildElectronBuilderConfig(
     base.afterPack = resolved || fallback;
   }
 
-  // Client slim (TF2) : PAS de bins. Serveur / client fat (Fidu) : bins Win only.
+  // Client slim : PAS de bins. Serveur / client fat : bins Win only.
   const includeBin = kind === "server" || (kind === "client" && !clientSlim);
   ensureKitOsVendorExtraResources(base, {
     includeBin,

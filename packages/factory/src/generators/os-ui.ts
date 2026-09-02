@@ -289,7 +289,7 @@ export function renderUiPackageJson(_manifest: AppManifest): string {
 }
 
 /**
- * Middleware auth pages — parité TempoFlow3 pour les marques factory.
+ * Middleware auth pages — parité kit3 pour les marques factory.
  * Cookie = `${brandId}_session` (aligné mountBrandPlatformSurface).
  * Les routes /api/v1 restent gérées par le kernel Hono (rewrites).
  */

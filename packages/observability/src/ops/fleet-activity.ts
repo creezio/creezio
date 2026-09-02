@@ -1,7 +1,7 @@
 /**
  * Journal d’événements produit flotte (ring mémoire).
  * Schema FleetProductEvent v1 — attribution session + dwell.
- * Extrait TempoFlow fleet-activity.ts (M7).
+ * Buffer actions flotte (M7).
  */
 
 export type FleetSurface =

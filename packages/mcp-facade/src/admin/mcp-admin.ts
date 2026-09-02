@@ -246,7 +246,7 @@ export function updateMcpToolPolicy(
   if (!MCP_TOOL_REGISTRY().some((tool) => tool.name === name)) return null;
   const current = getMcpToolPolicy(name)!;
   // Rôles/scopes acceptés : injectés par la marque via les adapters
-  // (défauts = comportement historique TempoFlow, zéro breaking change).
+  // (défauts = comportement historique, zéro breaking change).
   const roles = (input.allowedRoles || current.allowedRoles).filter((role) =>
     policyRoleNames().includes(role),
   );

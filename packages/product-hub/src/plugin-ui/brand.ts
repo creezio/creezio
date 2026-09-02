@@ -3,7 +3,7 @@
  */
 
 export type ProductHubUiBrand = {
-  /** Nom global window.*Desktop (ex. tempoflowDesktop). */
+  /** Nom global window.*Desktop (ex. acmeDesktop). */
   desktopApiGlobal: string;
   /** Nom produit pour toasts / messages. */
   productName: string;

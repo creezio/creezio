@@ -1,6 +1,6 @@
 /**
  * @creezio/observability — activité / usages / CP (V2 SQLite) + boîte noire
- * desktop ops/fleet (R4, extrait TempoFlow).
+ * desktop ops/fleet (R4).
  */
 
 export type {
@@ -109,7 +109,7 @@ export {
 export type { FleetSamples, FleetSamplesPaths } from "./ops/fleet-samples.js";
 export { createFleetSamples } from "./ops/fleet-samples.js";
 
-/* ── N6 : usage analytics (port TempoFlow) ── */
+/* ── N6 : usage analytics ── */
 
 export {
   configureUsageAnalytics,
@@ -164,7 +164,7 @@ export type {
   UsageAnalyticsRouteDeps,
 } from "./usage/index.js";
 
-/* ── O5 : request-logs admin (port TempoFlow) ── */
+/* ── O5 : request-logs admin ── */
 
 export {
   configureRequestLogs,

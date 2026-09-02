@@ -1,5 +1,5 @@
 /**
- * Runtime Node propriété de la marque — port brand-agnostic TF2 node-runtime.ts.
+ * Runtime Node propriété de la marque — port brand-agnostic kit node-runtime.ts.
  */
 
 import { spawnSync } from "node:child_process";

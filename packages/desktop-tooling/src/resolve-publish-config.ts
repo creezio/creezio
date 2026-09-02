@@ -76,8 +76,8 @@ function readAppVersion(appRoot: string): string {
 
 /**
  * Chemin conteneur NPM aligné sur `hostDlDirDefault`.
- * Ex. host `…/dl-tempoflow/tf3` + dockerDlName `dl-tempoflow`
- * → `/data/dl-tempoflow/tf3` (pas la racine TF2).
+ * Ex. host `…/dl-acme/tf3` + dockerDlName `dl-acme`
+ * → `/data/dl-acme/tf3` (pas la racine TF2).
  */
 export function resolveDockerDlDir(
   dockerDlName: string,
@@ -142,8 +142,8 @@ export function resolvePublishConfig(
     process.env[`${manifest.envPrefix}_DL_DIR`] ||
     process.env.CREEZIO_DL_DIR ||
     manifest.publish.hostDlDirDefault;
-  // Aligner docker path sur hostDlDirDefault (ex. TF3 : …/dl-tempoflow/tf3 →
-  // /data/dl-tempoflow/tf3). Sans ça, SSH publish écrase le feed TF2 racine
+  // Aligner docker path sur hostDlDirDefault (ex. factory : …/dl-acme/tf3 →
+  // /data/dl-acme/tf3). Sans ça, SSH publish écrase le feed kit racine
   // et le public /tf3/ reste stale.
   const dockerDlDir = resolveDockerDlDir(
     manifest.publish.dockerDlName,

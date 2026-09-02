@@ -81,7 +81,7 @@ export type BrandHostRuntimeConfig = {
   fleet?: BrandFleetInput;
   npmUserDataSegment: string;
   secretFilePrefix: string;
-  /** `full` = Hermes+n8n bridge ; `crm-only` = Fidu. */
+  /** `full` = Hermes+n8n bridge ; `crm-only` =. */
   hermesBridge: "full" | "crm-only";
   nodeEnsure: "desktop";
   /** Chemin absolu script ensure-crm-key-db.js (marque). */

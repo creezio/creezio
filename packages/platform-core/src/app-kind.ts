@@ -1,6 +1,6 @@
 /**
  * Split Serveur / Client — logique PURE, testable depuis Node.
- * Port brand-agnostic de electron/app-kind.ts (TF2 0.10.26).
+ * Port brand-agnostic de electron/app-kind.ts (kit).
  */
 
 import fs from "node:fs";

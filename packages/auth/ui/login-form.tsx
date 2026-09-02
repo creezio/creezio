@@ -15,7 +15,7 @@ export type LoginFormProps = {
   loginPath?: string;
   /**
    * Masquer recovery/factory sur client distant (défaut true).
-   * Fidu historique montrait toujours si bridge présent — préférer true.
+   * feature-off historique montrait toujours si bridge présent — préférer true.
    */
   hideLocalRecoveryOnRemote?: boolean;
 };

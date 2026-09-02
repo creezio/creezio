@@ -1,7 +1,7 @@
 /**
  * Ring buffer en mémoire des appels API v1 + MCP (diagnostic desktop).
  * Pas de persistance SQLite pour le MVP — process-local, max ~1000 entrées.
- * O5 — extrait TempoFlow (gold), marque-agnostique.
+ * O5 — gold, marque-agnostique.
  */
 
 import fs from "node:fs";

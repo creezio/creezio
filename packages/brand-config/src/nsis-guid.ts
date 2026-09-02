@@ -3,7 +3,7 @@
  * (`UUID.v5(appId, NAMESPACE_OID)`).
  *
  * NAMESPACE_OID = `6ba7b812-9dad-11d1-80b4-00c04fd430c8`
- * (vérifié contre les GUID Fidu kit).
+ * (vérifié contre les GUID kit de référence).
  */
 
 import { createHash } from "node:crypto";

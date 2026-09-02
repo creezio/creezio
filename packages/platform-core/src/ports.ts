@@ -1,6 +1,6 @@
 /**
  * Helpers ports / health — purs Node (utilisés par launchers hôte).
- * Extrait de electron/server-launcher.ts (TF2 0.10.26).
+ * Extrait de electron/server-launcher.ts (kit).
  */
 
 import http from "node:http";

@@ -1,6 +1,6 @@
 /**
  * Boîte noire desktop — journal d'événements structurés (JSONL / boot).
- * Extrait de TempoFlow ops-journal.ts (R4). Hooks marque pour log + anomaly.
+ * Hooks marque pour log + anomaly.
  *
  * Best-effort intégral : le journal ne doit JAMAIS être une source de crash.
  */
@@ -236,7 +236,7 @@ export function trackCrashMirror(
 }
 
 /**
- * Ligne stdout d'un sous-process : consommée si `TF2EVENT {json}`.
+ * Ligne stdout d'un sous-process : consommée si préfixe ops + JSON.
  * Renvoie true si la ligne était un événement (à ne pas logger en texte).
  */
 export function consumeOpsLine(source: string, line: string): boolean {

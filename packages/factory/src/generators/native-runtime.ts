@@ -60,7 +60,7 @@ import { collectModuleMigrations } from "./modules/index.js";
 export const BRAND_SCHEMA_SQL = \`${sql}\`;
 
 /**
- * Clés API service (portable TF2 020+025) — requis par le kit : clé CRM
+ * Clés API service (portable kit 020+025) — requis par le kit : clé CRM
  * Hermes (ensure-crm-key-db) et résolution d'intégrations plateforme
  * (@creezio/integrations, canal clé service).
  */

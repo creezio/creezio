@@ -1,5 +1,5 @@
 /**
- * Routes Hono Admin MCP (port TempoFlow — N6).
+ * Routes Hono Admin MCP (port kit — N6).
  * Auth owner reste côté marque (montage sous /admin).
  */
 import { Hono } from "hono";

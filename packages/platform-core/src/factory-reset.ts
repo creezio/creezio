@@ -2,7 +2,7 @@
  * Cibles factory-reset — logique PURE (chemins).
  * Le wipe Electron (sessions) reste dans @creezio/electron-shell.
  *
- * Port paramétré de electron/factory-reset.ts (TF2 0.10.26).
+ * Port paramétré de electron/factory-reset.ts (kit).
  */
 
 import path from "node:path";
@@ -23,7 +23,7 @@ import {
 
 /**
  * Liste des chemins userData ciblés (hors logs / install-id).
- * Les préfixes marque (`tempoflow-node`, `.tempoflow-…`) sont dérivés de brandId.
+ * Les préfixes marque (`{brandId}-node`, `.{brandId}-…`) sont dérivés de brandId.
  */
 export function factoryResetTargets(
   ctx: PathsContext,

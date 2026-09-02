@@ -57,7 +57,7 @@ export type AuthRouteAdapters = {
   getSessionFromContext: (c: Context) => Promise<SessionPayload | null>;
   /**
    * Kit-first login (TF/CV). Défaut true.
-   * Fidu peut forcer true après cutover.
+   * feature-off peut forcer true après cutover.
    */
   kitFirst?: boolean;
   /**
@@ -167,7 +167,7 @@ async function resolveLoginUser(
     return user ?? null;
   }
 
-  // Brand-only (legacy Fidu) — migrate one-shot si succès
+  // Brand-only (legacy) — migrate one-shot si succès
   let user = adapters.authenticateUser(email, password);
   if (!user && validate(email, password)) {
     user = adapters.ensureOwnerSynced();

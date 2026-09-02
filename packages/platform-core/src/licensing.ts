@@ -1,5 +1,5 @@
 /**
- * Licence desktop hors-ligne (Ed25519) — gold TempoFlow paramétré.
+ * Licence desktop hors-ligne (Ed25519) — gold kit paramétré.
  *
  * Format clé : `{keyPrefix}-<payload base64url>-<signature base64url>`
  * où payload = { email, plan, exp }. Vérification avec clé publique PEM
@@ -19,7 +19,7 @@ export type LicenseStatus =
 export type LicensingOptions = {
   /** Racine userData (déjà résolue). */
   userDataRoot: string;
-  /** Préfixe clé, ex. `TF2`, `CV`, `FIDU`. */
+  /** Préfixe clé, ex. `kit`, `CV`, `FIDU`. */
   keyPrefix: string;
   /** PEM Ed25519 publique ; vide = mode permissif unlicensed. */
   publicKeyPem?: string;

@@ -11,7 +11,6 @@
  */
 
 import { PRODUCTION_BRAND_GATES } from "./brand-surfaces.js";
-import type { ImpactBrandId } from "./brand-surfaces.js";
 import type { PackageBumpImpact } from "./impact.js";
 import type { BumpKind } from "./semver-policy.js";
 
@@ -51,14 +50,14 @@ export type BrandChannelConfig = {
 };
 
 function defaultBrandChannelConfigs(): BrandChannelConfig[] {
-  // Dérivation du registre production (brand-surfaces) — la dette « marques
-  // en dur » restante (F1.6) est localisée là-bas, pas ici.
+  // Vide par défaut — SoT = `.github/propagate-brands.json` via
+  // `configureBrandChannels` (le kit ne connaît pas ses consommateurs).
   return Object.entries(PRODUCTION_BRAND_GATES).map(([brandId, g]) => ({
     brandId,
     label: g.label,
     targetHint: g.repoHint,
     gateId: g.gateId,
-    gateDoc: `docs/archive/gates/${g.gateId}-${brandId.toUpperCase()}.md`,
+    gateDoc: g.gateId ? `docs/archive/PHASE-F.md` : undefined,
   }));
 }
 
@@ -143,11 +142,15 @@ export function buildBrandPrPayload(
   impact: PackageBumpImpact,
   brandId: string,
 ): BrandPrPayload | null {
-  const viaLegacyRegistry = impact.brands.includes(brandId as ImpactBrandId);
+  const factoryOnly =
+    impact.surfaces.length > 0 &&
+    impact.surfaces.every((s) => s === "factory-scaffold");
+  const viaSandbox = impact.brands.includes(brandId);
   const viaConfiguredChannel =
-    impact.brands.length > 0 &&
+    impact.surfaces.length > 0 &&
+    !factoryOnly &&
     brandChannelConfigs.some((c) => c.brandId === brandId);
-  if (!viaLegacyRegistry && !viaConfiguredChannel) return null;
+  if (!viaSandbox && !viaConfiguredChannel) return null;
   const channelId = brandPrChannelId(brandId);
 
   const gate = impact.gates.find((g) => g.brandId === brandId);
@@ -194,11 +197,11 @@ export function buildBrandPrPayload(
 export function buildAllBrandPrPayloads(
   impact: PackageBumpImpact,
 ): BrandPrPayload[] {
+  if (impact.surfaces.length === 0) return [];
+  const factoryOnly = impact.surfaces.every((s) => s === "factory-scaffold");
   const ids = new Set<string>([
     ...impact.brands,
-    ...(impact.brands.length > 0
-      ? brandChannelConfigs.map((c) => c.brandId)
-      : []),
+    ...(factoryOnly ? [] : brandChannelConfigs.map((c) => c.brandId)),
   ]);
   return [...ids]
     .sort()

@@ -24,11 +24,13 @@ import {
   bumpKindFromCommits,
   collectKitInventory,
   compareSemver,
+  configureBrandChannels,
   createExtensionHookBus,
   createMemoryOrgPluginRegistry,
   formatImpactReport,
   impactForPackageBump,
   publishedHintsFromInventory,
+  resetBrandChannelsForTests,
   snapshotOrgPluginRegistry,
   transitiveDependents,
 } from "../packages/propagation/dist/index.js";
@@ -67,13 +69,8 @@ test("impact bump platform-core → surfaces + gates G1-G3", () => {
   });
   assert.ok(impact.rebuildPackages.includes("@creezio/electron-shell"));
   assert.ok(impact.surfaces.includes("electron-main"));
-  assert.ok(impact.brands.includes("certivan"));
-  assert.ok(impact.brands.includes("fidu"));
-  assert.ok(impact.brands.includes("tempoflow"));
-  assert.deepEqual(
-    impact.gates.map((g) => g.gateId),
-    ["G1", "G2", "G3"],
-  );
+  assert.deepEqual(impact.brands, []);
+  assert.equal(impact.gates.length, 0);
   const report = formatImpactReport(impact);
   assert.match(report, /platform-core/);
   assert.match(report, /G1/);
@@ -97,25 +94,30 @@ test("impact propagation → aucune surface marque", () => {
   assert.equal(impact.brands.length, 0);
 });
 
-test("canaux PR marques générés", () => {
-  const impact = impactForPackageBump({
-    packageName: "@creezio/electron-shell",
-    bumpKind: "minor",
-  });
-  const prs = buildAllBrandPrPayloads(impact);
-  assert.ok(prs.some((p) => p.brandId === "certivan"));
-  assert.ok(prs.some((p) => p.brandId === "fidu"));
-  assert.ok(prs.some((p) => p.brandId === "tempoflow"));
-  const cert = prs.find((p) => p.brandId === "certivan");
-  assert.match(cert.bodyMarkdown, /Gate/);
-  assert.ok(UPDATE_CHANNELS.length >= 5);
+test("canaux PR marques — data-driven (configureBrandChannels)", () => {
+  try {
+    configureBrandChannels([
+      { brandId: "acme", label: "Acme", targetHint: "acme/acme" },
+    ]);
+    const impact = impactForPackageBump({
+      packageName: "@creezio/electron-shell",
+      bumpKind: "minor",
+    });
+    const prs = buildAllBrandPrPayloads(impact);
+    assert.ok(prs.some((p) => p.brandId === "acme"));
+    const acme = prs.find((p) => p.brandId === "acme");
+    assert.match(acme.bodyMarkdown, /Surfaces/);
+    assert.ok(UPDATE_CHANNELS.length >= 3);
+  } finally {
+    resetBrandChannelsForTests();
+  }
 });
 
 test("registre plugins org L3 + remontée", () => {
   const reg = createMemoryOrgPluginRegistry([
     {
       pluginId: "plg-meteo",
-      brandId: "tempoflow",
+      brandId: "acme",
       orgId: "org-resto-1",
       createdByUserId: "user-42",
       name: "Météo cuisine",

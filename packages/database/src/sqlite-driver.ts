@@ -1,6 +1,6 @@
 /**
  * Driver SQLite minimal — compatible better-sqlite3 / node:sqlite.
- * Port Database TempoFlow → @creezio/database (R1).
+ * Port Database kit → @creezio/database (R1).
  */
 import { createAppRequire } from "@creezio/platform-core";
 

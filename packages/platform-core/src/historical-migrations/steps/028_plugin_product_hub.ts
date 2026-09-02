@@ -5,7 +5,7 @@ import type { Migration } from "../types.js";
  *
  * SoT runtime = `@creezio/product-hub` + `core.db` (`PRODUCT_HUB_CORE_SQL` +
  * `PRODUCT_HUB_RUNTIME_SQL`). Cette migration peut encore s'appliquer sur
- * tempoflow2.db pour compat historique ; Next n'y écrit plus `plugin_*`.
+ * brand.db pour compat historique ; Next n'y écrit plus `plugin_*`.
  */
 const migration: Migration = {
   version: 28,

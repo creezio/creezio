@@ -11,7 +11,7 @@ import "@creezio/interactive-demo/ui/interactive-demo.css";
 
 export type CreezioUiBootProps = {
   children: ReactNode;
-  /** Global bridge Electron (ex. tempoflowDesktop). */
+  /** Global bridge Electron (ex. acmeDesktop). */
   desktopApiGlobal: string;
   productName: string;
   publicHostSuffix: string;

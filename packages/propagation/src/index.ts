@@ -2,7 +2,7 @@
  * @creezio/propagation — Phase F
  *
  * Semver / impacts / canaux PR / registre plugins org (L3) / extension points.
- * Aucune écriture dans les repos marques (fidu, certivan-app, tempoflow2).
+ * Aucune écriture dans les repos marques.
  */
 
 export type { CreezioPackageName, KitPackageMeta } from "./packages.js";
@@ -119,23 +119,23 @@ export {
 export const PHASE_G_GATES = [
   {
     id: "G1",
-    brandId: "certivan",
-    label: "Certivan",
-    doc: "docs/archive/gates/G1-CERTIVAN.md",
+    brandId: "g1",
+    label: "Gate G1",
+    doc: "docs/archive/PHASE-F.md",
     order: 1,
   },
   {
     id: "G2",
-    brandId: "fidu",
-    label: "Fidu",
-    doc: "docs/archive/gates/G2-FIDU.md",
+    brandId: "g2",
+    label: "Gate G2",
+    doc: "docs/archive/PHASE-F.md",
     order: 2,
   },
   {
     id: "G3",
-    brandId: "tempoflow",
-    label: "TempoFlow",
-    doc: "docs/archive/gates/G3-TEMPOFLOW.md",
+    brandId: "g3",
+    label: "Gate G3",
+    doc: "docs/archive/PHASE-F.md",
     order: 3,
   },
 ] as const;

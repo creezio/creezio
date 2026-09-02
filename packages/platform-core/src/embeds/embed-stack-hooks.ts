@@ -1,6 +1,6 @@
 /**
  * Hooks partagés — stack d'outils embarqués (Hermes, n8n).
- * Port brand-agnostic de electron/embed-stack-hooks.ts (TF2 0.10.26).
+ * Port brand-agnostic de electron/embed-stack-hooks.ts (kit).
  */
 
 export type EmbedToolMode = "embedded" | "remote" | "off";

@@ -266,7 +266,7 @@ test("scaffoldNewApp génère structure + builder configs", () => {
     path.join(outDir, "server/src/electron/nav-core.ts"),
     "utf8",
   );
-  assert.match(nav, /PAS de catalogue TempoFlow/);
+  assert.match(nav, /PAS de catalogue kit ni d'entrées métier marque/);
 
   const clientCfg = JSON.parse(
     fs.readFileSync(

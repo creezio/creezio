@@ -16,7 +16,7 @@ export type AccessControlConfig = {
   /** Catalogue des permissions administrables, groupées par module. */
   permissionGroups?: readonly AccessPermissionGroup[];
   /**
-   * SoT métier du rôle d'un compte (ex. winhub brand.db user_roles).
+   * SoT métier du rôle d'un compte (ex. brand.db user_roles).
    * Absent = table interne `access_user_roles` (core.db).
    */
   getUserRole?: (userId: string) => string | null | Promise<string | null>;

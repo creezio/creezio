@@ -1,7 +1,7 @@
 /**
  * Canaux IPC communs aux shells desktop Creezio.
  *
- * Extraits des preload-app.ts (TF2 0.10.26, Certivan, Fidu) — contrat
+ * Extraits des preload-app.ts (kit, Certivan, Fidu) — contrat
  * de nommage partagé. Le runtime Electron (handlers) sera porté en Phase B.
  */
 
@@ -59,7 +59,7 @@ export const IpcChannels = {
     generateRecoveryKey: "auth:generate-recovery-key",
   },
   update: {
-    /** Alias historique TF2 (`update:get-status`) — préférer `status`. */
+    /** Alias historique kit (`update:get-status`) — préférer `status`. */
     status: "update:status",
     getStatus: "update:get-status",
     check: "update:check",

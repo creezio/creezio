@@ -1,6 +1,6 @@
 /**
  * Logger process principal — paramétré par logBasename (manifest).
- * Port de electron/logger.ts (TF2), sans hardcode TempoFlow.
+ * Port de electron/logger.ts (historique), sans hardcode.
  */
 
 import fs from "node:fs";

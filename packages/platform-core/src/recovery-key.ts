@@ -1,5 +1,5 @@
 /**
- * Clé de récupération locale — port TF2 recovery-key.ts (pur crypto).
+ * Clé de récupération locale — port kit recovery-key.ts (pur crypto).
  */
 
 import crypto from "node:crypto";

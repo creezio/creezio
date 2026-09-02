@@ -181,8 +181,8 @@ function clampRect(rect: ContentRect, winW: number, winH: number): ContentRect |
 
 export type SupplierTabManagerOptions = {
   /**
-   * Préfixe de partition supplier (ex. `tempoflow-ai-<userId>` →
-   * `persist:tempoflow-ai-<userId>-extsite-<key>`). Vide = comportement historique
+   * Préfixe de partition supplier (ex. `brand-ai-<userId>` →
+   * `persist:brand-ai-<userId>-extsite-<key>`). Vide = comportement historique
    * `persist:fournisseur-<key>` (workspace owner Tempo).
    */
   partitionPrefix?: string;
@@ -318,7 +318,7 @@ export class SupplierTabManager {
      * Embeds (Hermes/n8n, siteId ≥ 900000) : `persist:extsite-<id>`
      * — aligné cookie injection (`prepareN8nUiSession`).
      * Fournisseurs catalogue : `persist:fournisseur-<id>` (historique Tempo).
-     * Workspace IA : préfixe `tempoflow-ai-<userId>-extsite-<id>`.
+     * Workspace IA : préfixe `brand-ai-<userId>-extsite-<id>`.
      */
     const isEmbedTool = partitionKey >= 900_000;
     const name = this.partitionPrefix

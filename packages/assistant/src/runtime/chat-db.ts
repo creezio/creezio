@@ -578,7 +578,7 @@ export function ensureConversation(
 }
 
 /* ── Profils d'agents (D3) ─────────────────────────────────────────────
- * `company` (défaut) : Hermes embarqué de l'app Serveur, skills tempoflow2-*.
+ * `company` (défaut) : Hermes embarqué de l'app Serveur, skills skills-*.
  * `personal` : endpoint Hermes propre à l'utilisateur (URL + clé API),
  * utilisé par le mode Work à la place du moteur entreprise. */
 
