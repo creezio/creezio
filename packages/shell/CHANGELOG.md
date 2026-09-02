@@ -1,5 +1,16 @@
 # @creezio/shell
 
+## 0.26.0
+
+### Minor Changes
+
+- 2f5b6ea: H13 — résidu allowlist runtime (ARCHITECTURE_VERSION H12 → H13, convention 0.x : minor comme H10/H11/H12).
+
+  - Crash env : plus de dual-read `TF2_*` / `CERTIVAN_*` / `FIDU_*` / `TEMPOFLOW3_*` — `CREEZIO_*` + scan `envKey`.
+  - `envForNodeScriptSpawn` : plus d'heuristique packagée nommée marque.
+  - UI kit : `creezio-fake-cursor`, `creezio-titlebar-*`, cache SW `creezio-shell-*`.
+  - Codemods `scripts/codemods/H13/` (`since: 0.26.0`), appliqués par `creezio upgrade`.
+
 ## 0.25.0
 
 ## 0.24.1

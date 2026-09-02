@@ -1,5 +1,11 @@
 # @creezio/fleet
 
+## 0.26.0
+
+### Patch Changes
+
+- cff3d24: `server-docker update` persiste et réutilise le `hostPort` loopback (2ᵉ update = même port) et lit/écrit les fichiers stack root:root 600 (`cf.env`, `secrets.env`) via `sudo -n` / wrapper `/usr/local/sbin/creezio-server-docker priv-io` — fail-closed actionnable, plus de chmod one-shot.
+
 ## 0.25.0
 
 ## 0.24.1
