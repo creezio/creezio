@@ -29,8 +29,7 @@ export type BrandMeiliIndexSpec = {
   settings: Record<string, unknown>;
   /**
    * Clé de compteur fingerprint — LIBRE, déclarée par la marque, doit
-   * correspondre à une clé de `countTables`. Alias legacy lu UNE version :
-   * `sites` (normalisé en `fournisseurs`, voir `fingerprintCountKey`).
+   * correspondre à une clé de `countTables`.
    */
   countKey: string;
   /**
@@ -68,7 +67,7 @@ export type BrandMeiliFeed = {
   /**
    * Tables SQL pour compteurs cohérence — mapping LIBRE
    * `clé de compteur → nom de table` (clés alignées sur les `countKey`
-   * des indexes ; alias legacy `sites` lu une version).
+   * des indexes).
    */
   countTables: Record<string, string>;
   indexes: readonly BrandMeiliIndexSpec[];
@@ -101,77 +100,8 @@ export function resetMeiliBrandFeedForTests(): void {
 }
 
 /**
- * @deprecated H7 — le preset catalogue CHR vit désormais dans le générateur
- * factory (`renderMeiliFeedTs`, feed inliné dans le code de la marque). Cet
- * export est conservé UNE version pour les marques qui l'importent encore
- * (codemod H7 : inliner le feed côté marque) ; suppression au prochain bump.
- */
-export function createChrCatalogMeiliFeed(opts: {
-  brandId: string;
-  progressPrefix?: string;
-  schemaVersion?: number;
-}): BrandMeiliFeed {
-  const prefix = (
-    opts.progressPrefix ||
-    opts.brandId.replace(/[^A-Za-z0-9]/g, "").toUpperCase()
-  ).slice(0, 32);
-  return {
-    id: `${opts.brandId}-catalog`,
-    schemaVersion: opts.schemaVersion ?? 1,
-    progressPrefix: prefix,
-    countTables: { produits: "produits", fournisseurs: "fournisseurs" },
-    indexes: [
-      {
-        uid: "catalog_products",
-        countKey: "produits",
-        table: "produits",
-        columns: ["id", "nom", "categorie", "fournisseur_id", "unite"],
-        docType: "product",
-        excludeArchived: true,
-        settings: {
-          searchableAttributes: ["nom", "categorie", "unite"],
-          filterableAttributes: ["type", "fournisseur_id", "categorie"],
-          displayedAttributes: [
-            "id",
-            "type",
-            "nom",
-            "categorie",
-            "fournisseur_id",
-            "unite",
-          ],
-        },
-      },
-      {
-        uid: "catalog_sites",
-        countKey: "fournisseurs",
-        table: "fournisseurs",
-        columns: ["id", "nom", "contact", "email", "telephone", "site_web"],
-        docType: "site",
-        excludeArchived: true,
-        settings: {
-          searchableAttributes: ["nom", "contact", "email"],
-          filterableAttributes: ["type"],
-          displayedAttributes: [
-            "id",
-            "type",
-            "nom",
-            "contact",
-            "email",
-            "telephone",
-            "site_web",
-          ],
-        },
-      },
-    ],
-    obsoleteIndexUids: [],
-    metaIndexUid: "catalog_meta",
-  };
-}
-
-/**
  * Compteurs attendus par UID depuis counts SQL fingerprint.
- * Lookup générique : `countKey` brut puis clé fingerprint normalisée
- * (alias legacy `sites` → `fournisseurs`, une version).
+ * Lookup strict : `countKey` tel que déclaré par la marque.
  */
 export function expectedCountsForFeed(
   feed: BrandMeiliFeed,
@@ -179,8 +109,7 @@ export function expectedCountsForFeed(
 ): Record<string, number> {
   const out: Record<string, number> = {};
   for (const idx of feed.indexes) {
-    out[idx.uid] =
-      sql[idx.countKey] ?? sql[fingerprintCountKey(idx.countKey)] ?? 0;
+    out[idx.uid] = sql[idx.countKey] ?? sql[fingerprintCountKey(idx.countKey)] ?? 0;
   }
   return out;
 }

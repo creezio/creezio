@@ -10,6 +10,7 @@ Objectif principal : fournir un SoT commun pour les flux plugins natifs tout en 
 
 - Ne pas ajouter de logique metier marque (panier, GED, VASP, catalogue specifique, libelles produit).
 - Ne pas hardcoder de chemins locaux, variables `TEMPOFLOW_*`, `CERTIVAN_*`, `FIDU_*`, noms de cookies ou prefixes API key.
+- H11 : plus de dual-read `TEMPOFLOW_*` — tokens / routes plugins = `envKey` du manifest uniquement.
 - Ne pas importer `better-sqlite3` directement dans le kit ; passer par `OpenSqliteDatabase`.
 - Ne pas deplacer les modules encore verticaux de `PRODUCT_HUB_VERTICAL_REMAINING` sans plan explicite.
 - Ne pas rendre l'auth interne aux routes `/plugin-products` : la marque protege le prefixe et injecte `getActor` / `getSession`.

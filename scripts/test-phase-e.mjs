@@ -10,9 +10,8 @@ import path from "node:path";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
 import {
-  certivanManifest,
+  createAppManifest,
   demobrandManifest,
-  tempoflowManifest,
 } from "../packages/brand-config/dist/index.js";
 import {
   PLUGIN_ACL_LEVEL_ORG,
@@ -46,41 +45,52 @@ import {
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
-test("brand tokens — zéro hardcode TEMPOFLOW_/CERTIVAN_", () => {
-  const tf = productHubTokensFromManifest(tempoflowManifest);
-  const cv = productHubTokensFromManifest(certivanManifest);
+test("brand tokens — dérivés du manifest (envPrefix), zéro hardcode historique", () => {
+  const other = productHubTokensFromManifest(
+    createAppManifest({
+      brandId: "acmehub",
+      productName: "Acme Hub",
+      domain: "acmehub.example.test",
+      envPrefix: "ACME",
+      sandbox: true,
+    }),
+  );
   const db = productHubTokensFromManifest(demobrandManifest);
 
-  assert.equal(tf.n8nTagPrefix, "tempoflow-plugin:");
-  assert.equal(cv.n8nTagPrefix, "certivan-plugin:");
+  assert.equal(other.n8nTagPrefix, "acmehub-plugin:");
   assert.equal(db.n8nTagPrefix, "demobrand-plugin:");
 
-  assert.equal(tf.grantTokenPrefix, "tf2_exec_");
-  assert.equal(cv.grantTokenPrefix, "certivan_exec_");
+  assert.equal(other.grantTokenPrefix, "acme_exec_");
   assert.equal(db.grantTokenPrefix, "demobrand_exec_");
 
-  assert.equal(tf.executionGrantHeader, "x-tempoflow-execution-grant");
-  assert.equal(cv.executionGrantHeader, "x-certivan-execution-grant");
+  assert.equal(other.executionGrantHeader, "x-acmehub-execution-grant");
   assert.equal(db.grantBypassEnvKey, "DEMOBRAND_PLUGIN_GRANT_BYPASS");
-  assert.equal(tf.grantBypassEnvKey, "TF2_PLUGIN_GRANT_BYPASS");
-  assert.equal(cv.controlPlaneServiceName, "certivan-plugins-api");
+  assert.equal(other.grantBypassEnvKey, "ACME_PLUGIN_GRANT_BYPASS");
+  assert.equal(other.controlPlaneServiceName, "acmehub-plugins-api");
 
-  assert.ok(tf.pluginsApiTokenEnvKeys.includes("TF2_PLUGINS_API_TOKEN"));
-  assert.ok(!tf.pluginsApiTokenEnvKeys.includes("TEMPOFLOW_PLUGINS_API_TOKEN"));
-  assert.ok(cv.pluginsDirEnvKeys.includes("CERTIVAN_PLUGINS_DIR"));
+  assert.ok(other.pluginsApiTokenEnvKeys.includes("ACME_PLUGINS_API_TOKEN"));
+  assert.ok(!other.pluginsApiTokenEnvKeys.includes("TEMPOFLOW_PLUGINS_API_TOKEN"));
+  assert.ok(other.pluginsDirEnvKeys.includes("ACME_PLUGINS_DIR"));
 });
 
 test("n8n tags génériques + troncature 24 car.", () => {
-  const cv = productHubTokensFromManifest(certivanManifest);
+  const cv = productHubTokensFromManifest(
+    createAppManifest({
+      brandId: "acmehub",
+      productName: "Acme Hub",
+      domain: "acmehub.example.test",
+      sandbox: true,
+    }),
+  );
   const shortId = "abcd";
   const short = pluginN8nTag(shortId, cv);
-  assert.equal(short, "certivan-plugin:abcd");
+  assert.equal(short, "acmehub-plugin:abcd");
   assert.ok(short.length <= 24);
 
   const longId = "01234567-89ab-cdef-0123-456789abcdef";
   const long = pluginN8nTag(longId, cv);
-  assert.ok(long.startsWith("certivan-plugin:"));
-  assert.equal(long.length, "certivan-plugin:".length + 7);
+  assert.ok(long.startsWith("acmehub-plugin:"));
+  assert.equal(long.length, "acmehub-plugin:".length + 7);
   assert.ok(long.length <= 24);
 
   const db = pluginN8nTag(longId, demobrandManifest);
@@ -360,7 +370,7 @@ test("host control plane + plugins host integration", async () => {
 });
 
 test("grant bypass headers brandés", () => {
-  const tokens = productHubTokensFromManifest(certivanManifest);
+  const tokens = productHubTokensFromManifest(demobrandManifest);
   const issued = issuePluginExecutionGrant({
     secret: "secret-secret-16chars",
     productId: "p1",
@@ -411,7 +421,7 @@ test("vertical remaining + demobrand stub files", () => {
 });
 
 test("requirePluginExecutionGrant refuse sans token", () => {
-  const tokens = productHubTokensFromManifest(tempoflowManifest);
+  const tokens = productHubTokensFromManifest(demobrandManifest);
   const denied = requirePluginExecutionGrant({
     tokens,
     secret: "secret-secret-16chars",

@@ -52,7 +52,6 @@ export {
   configureMeiliCoherencePaths,
   countCatalogSql,
   countGedSql,
-  createChrCatalogMeiliFeed,
   decideMeiliReady,
   expectedCountsForFeed,
   expectedMeiliCounts,

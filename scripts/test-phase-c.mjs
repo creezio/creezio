@@ -13,17 +13,13 @@ import path from "node:path";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
 import {
-  certivanManifest,
-  fiduManifest,
+  demobrandManifest,
   latestYmlUrl,
   listProductionBrandIds,
   resolveArtifactFileName,
   resolveLatestAlias,
-  tempoflowManifest,
 } from "../packages/brand-config/dist/index.js";
 import {
-  fetchBrandFeeds,
-  fetchFeedSnapshot,
   parseLatestYml,
   resolvePublishConfig,
   toShellExports,
@@ -32,58 +28,52 @@ import {
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
 test("manifests exposent publish Client+Serveur", () => {
-  for (const m of [tempoflowManifest, certivanManifest, fiduManifest]) {
-    assert.ok(m.publish?.dockerDlName, `${m.brandId} dockerDlName`);
-    assert.ok(m.publish?.remoteBuildHost, `${m.brandId} remoteBuildHost`);
-    assert.ok(m.publish?.statusFile, `${m.brandId} statusFile`);
-    assert.ok(m.publish?.defaultAppRoot, `${m.brandId} defaultAppRoot`);
-    assert.equal(typeof m.publish.buildServerArtifact, "boolean");
-    assert.ok(m.client.feedUrl.endsWith("/"));
-    assert.ok(m.server.feedUrl.includes("/server/"));
-  }
-  assert.equal(fiduManifest.publish.buildServerArtifact, true);
-  assert.equal(certivanManifest.publish.buildServerArtifact, true);
-  assert.equal(certivanManifest.publish.legacyClientAlias, "Certivan-Setup-0.1.0.exe");
+  const m = demobrandManifest;
+  assert.ok(m.publish?.dockerDlName, `${m.brandId} dockerDlName`);
+  assert.ok(m.publish?.remoteBuildHost, `${m.brandId} remoteBuildHost`);
+  assert.ok(m.publish?.statusFile, `${m.brandId} statusFile`);
+  assert.ok(m.publish?.defaultAppRoot, `${m.brandId} defaultAppRoot`);
+  assert.equal(m.publish.buildServerArtifact, true);
+  assert.ok(m.client.feedUrl.endsWith("/"));
+  assert.ok(m.server.feedUrl.includes("/server/"));
 });
 
 test("resolveArtifactFileName / latest alias", () => {
   assert.equal(
-    resolveArtifactFileName(tempoflowManifest.client, "0.10.26"),
-    "TempoFlow-Setup-0.10.26.exe",
+    resolveArtifactFileName(demobrandManifest.client, "0.10.26"),
+    "DemoBrand-Setup-0.10.26.exe",
   );
   assert.equal(
-    resolveLatestAlias(tempoflowManifest.server),
-    "TempoFlow-Server-Setup-latest.exe",
+    resolveLatestAlias(demobrandManifest.server),
+    "DemoBrand-Server-Setup-latest.exe",
   );
-  assert.equal(
-    latestYmlUrl(fiduManifest, "client"),
-    "https://fidu.creez.io/dl-e660352fb04dbd5e2519f0e60897c548/latest.yml",
-  );
+  assert.ok(latestYmlUrl(demobrandManifest, "client").endsWith("/latest.yml"));
+  assert.ok(latestYmlUrl(demobrandManifest, "client").includes("demobrand.creez.io"));
 });
 
-test("resolvePublishConfig tempoflow client", () => {
+test("resolvePublishConfig demobrand client", () => {
   const cfg = resolvePublishConfig({
-    brandId: "tempoflow",
+    brandId: "demobrand",
     kind: "client",
     version: "0.10.26",
-    appRoot: tempoflowManifest.publish.defaultAppRoot,
+    appRoot: demobrandManifest.publish.defaultAppRoot,
   });
-  assert.equal(cfg.exeFileName, "TempoFlow-Setup-0.10.26.exe");
-  assert.equal(cfg.dockerDlName, "dl-tempoflow");
+  assert.equal(cfg.exeFileName, "DemoBrand-Setup-0.10.26.exe");
+  assert.equal(cfg.dockerDlName, "dl-demobrand");
   assert.equal(cfg.kind, "client");
-  assert.ok(cfg.feedUrl.includes("crm.tempoflow.fr"));
+  assert.ok(cfg.feedUrl.includes("demobrand.creez.io"));
   const sh = toShellExports(cfg);
-  assert.match(sh, /CREEZIO_BRAND='tempoflow'/);
-  assert.match(sh, /CREEZIO_EXE='TempoFlow-Setup-0.10.26.exe'/);
+  assert.match(sh, /CREEZIO_BRAND='demobrand'/);
+  assert.match(sh, /CREEZIO_EXE='DemoBrand-Setup-0.10.26.exe'/);
 });
 
-test("resolvePublishConfig certivan server", () => {
+test("resolvePublishConfig demobrand server", () => {
   const cfg = resolvePublishConfig({
-    brandId: "certivan",
+    brandId: "demobrand",
     kind: "server",
     version: "0.1.10",
   });
-  assert.equal(cfg.exeFileName, "Certivan-Server-Setup-0.1.10.exe");
+  assert.equal(cfg.exeFileName, "DemoBrand-Server-Setup-0.1.10.exe");
   assert.equal(cfg.distDir, "dist-electron-server");
   assert.ok(cfg.dockerDlDir.endsWith("/server"));
   assert.equal(cfg.legacyAlias, null);
@@ -125,7 +115,7 @@ test("resolve-config.mjs CLI --export-shell", () => {
     "node",
     [
       path.join(ROOT, "packages/desktop-tooling/scripts/resolve-config.mjs"),
-      "--brand=fidu",
+      "--brand=demobrand",
       "--kind=client",
       "--version=0.1.51",
       "--export-shell",
@@ -133,8 +123,8 @@ test("resolve-config.mjs CLI --export-shell", () => {
     { encoding: "utf8" },
   );
   assert.equal(res.status, 0, res.stderr);
-  assert.match(res.stdout, /CREEZIO_EXE='Fidu-Setup-0.1.51.exe'/);
-  assert.match(res.stdout, /CREEZIO_DOCKER_DL_NAME='dl-fidu'/);
+  assert.match(res.stdout, /CREEZIO_EXE='DemoBrand-Setup-0.1.51.exe'/);
+  assert.match(res.stdout, /CREEZIO_DOCKER_DL_NAME='dl-demobrand'/);
 });
 
 test("publish-desktop --dry-run sans artefacts → exit 1 attendu ou dry avant check", () => {
@@ -143,10 +133,10 @@ test("publish-desktop --dry-run sans artefacts → exit 1 attendu ou dry avant c
     "bash",
     [
       path.join(ROOT, "packages/desktop-tooling/scripts/publish-desktop.sh"),
-      "--brand=tempoflow",
+      "--brand=demobrand",
       "--kind=client",
       "--app-root",
-      tempoflowManifest.publish.defaultAppRoot,
+      demobrandManifest.publish.defaultAppRoot,
       "--dry-run",
     ],
     { encoding: "utf8" },
@@ -162,18 +152,9 @@ test(
   "feeds live client (réseau) — marques prod uniquement",
   { skip: process.env.CREEZIO_LIVE_FEEDS !== "1" },
   () => {
-    for (const brandId of listProductionBrandIds()) {
-      const snap = fetchFeedSnapshot(brandId, "client");
-      assert.equal(snap.httpStatus, 200, `${brandId} client latest.yml`);
-      assert.ok(snap.meta.version, `${brandId} version`);
-      assert.ok(snap.downloadUrl, `${brandId} downloadUrl`);
-    }
-    const fiduServer = fetchFeedSnapshot("fidu", "server");
-    assert.equal(fiduServer.httpStatus, 200, "fidu server latest.yml");
-    assert.ok(fiduServer.ok, "fidu server feed");
-    const all = fetchBrandFeeds("certivan");
-    assert.ok(all.client.ok);
-    assert.ok(all.server.ok);
+    // H11 : le kit ne publie plus de manifest prod — la sonde live
+    // n'itère que les marques encore enregistrées (liste vide hors sandbox).
+    assert.deepEqual(listProductionBrandIds(), []);
   },
 );
 

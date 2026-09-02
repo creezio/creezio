@@ -21,12 +21,6 @@ export {
   serverPlatformEnvKey,
 } from "./types.js";
 
-/** @deprecated (P1.d — à matérialiser dans le repo marque via le codemod H8) */
-export { tempoflowManifest } from "./manifests/tempoflow.js";
-/** @deprecated (P1.d — à matérialiser dans le repo marque via le codemod H8) */
-export { certivanManifest } from "./manifests/certivan.js";
-/** @deprecated (P1.d — à matérialiser dans le repo marque via le codemod H8) */
-export { fiduManifest } from "./manifests/fidu.js";
 export { demobrandManifest } from "./manifests/demobrand.js";
 
 export {
@@ -61,9 +55,6 @@ export type { AppManifestSpec } from "./create-manifest.js";
 
 import fs from "node:fs";
 import path from "node:path";
-import { tempoflowManifest } from "./manifests/tempoflow.js";
-import { certivanManifest } from "./manifests/certivan.js";
-import { fiduManifest } from "./manifests/fidu.js";
 import { demobrandManifest } from "./manifests/demobrand.js";
 import { validateAppManifest } from "./create-manifest.js";
 import type { AppManifest } from "./types.js";
@@ -71,21 +62,12 @@ import type { AppManifest } from "./types.js";
 /**
  * Registre des manifests connus par le kit.
  *
- * P1.d — « le kit ne connaît pas ses consommateurs » (docs/PROPAGATION.md) :
+ * H11 — « le kit ne connaît pas ses consommateurs » (docs/PROPAGATION.md) :
  * le manifest d'une marque vit dans SON repo (`src/electron/app-manifest.ts`
  * + `.json`, généré par la factory) et se résout via `resolveManifest`
- * (fallback disque). La sonde sandbox historique est sortie du registre
- * (matérialisée dans son repo). Les trois manifests prod historiques restent
- * UNE version (repos hors de portée de la migration P1.d) :
- *
- * @deprecated entrées prod historiques (P1.d — à matérialiser dans le repo
- * marque via le codemod H8, retrait au prochain bump d'architecture).
- * `demobrand` (sandbox kit) reste.
+ * (fallback disque). Seul `demobrand` (sandbox kit) reste enregistré.
  */
 export const manifests = {
-  tempoflow: tempoflowManifest,
-  certivan: certivanManifest,
-  fidu: fiduManifest,
   demobrand: demobrandManifest,
 } as const;
 

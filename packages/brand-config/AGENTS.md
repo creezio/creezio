@@ -7,10 +7,10 @@
 La mission concrète du package :
 
 - définir le contrat `AppManifest` Client + Serveur ;
-- exposer `demobrandManifest` (sandbox kit) et, **dépréciés une version**
-  (P1.d — le kit ne publie plus les manifests de ses marques, codemod H8),
-  `tempoflowManifest`, `certivanManifest`, `fiduManifest` ;
-- fournir un registre typé (`manifests`, `BrandId`, `getManifest`, `listBrandIds`, `listProductionBrandIds`, `isSandboxBrand`) — entrées prod dépréciées (P1.d) ; le manifest d'une marque vit dans SON repo (`src/electron/app-manifest.{ts,json}`, résolu via `resolveManifest`) ;
+- exposer `demobrandManifest` (sandbox kit) — **H11 : plus aucun manifest
+  prod** (`tempoflow` / `certivan` / `fidu` retirés, ADR
+  `docs/adr/ADR-h11-purge-tf2-compat.md`) ;
+- fournir un registre typé (`manifests`, `BrandId`, `getManifest`, `listBrandIds`, `listProductionBrandIds`, `isSandboxBrand`) — seul `demobrand` ; le manifest d'une marque vit dans SON repo (`src/electron/app-manifest.{ts,json}`, résolu via `resolveManifest`) ;
 - dériver les noms d'env, partitions Chromium, feeds, aliases d'artifacts et dossiers de build ;
 - produire des manifests sandbox pour la factory via `createAppManifest` ;
 - générer les overrides `electron-builder` via `buildElectronBuilderConfig`.
@@ -39,13 +39,8 @@ Le package est un socle : une erreur ici peut casser les upgrades, les feeds, le
   - contient `AppManifestSpec`, `defaultFeedToken`, `createAppManifest`, `validateAppManifest` ;
   - réservé aux marques sandbox/factory.
 - `src/manifests/demobrand.ts`
-  - manifest sandbox kit (seul manifest non déprécié — `apps/demobrand`).
-- `src/manifests/tempoflow.ts`
-- `src/manifests/certivan.ts`
-- `src/manifests/fidu.ts`
-  - manifests prod historiques **dépréciés** (P1.d — à matérialiser dans le
-    repo marque via le codemod H8, retrait au prochain bump d'architecture).
-    Gate `test-phase-no-brand-vocab` NV4 : tout NOUVEAU fichier
+  - manifest sandbox kit (seul fichier de `manifests/` — `apps/demobrand`).
+    Gate `test-phase-no-brand-vocab` NV4 : tout autre
     `manifests/<marque>.ts` est rouge.
 - `src/build-builder-config.ts`
   - contient `buildElectronBuilderConfig`, `CREEZIO_ASAR_RUNTIME_PACKAGES`, `DEFAULT_HOST_ONLY_ELECTRON_MODULES`.
@@ -79,7 +74,7 @@ Les apps de marque doivent utiliser les helpers au lieu de reconstituer les cha�
 ```ts
 import { envKey, getManifest, latestYmlUrl } from "@creezio/brand-config";
 
-const manifest = getManifest("tempoflow");
+const manifest = getManifest("demobrand");
 const dbOverrideKey = envKey(manifest, "DB_PATH_OVERRIDE");
 const serverLatest = latestYmlUrl(manifest, "server");
 ```
@@ -108,10 +103,8 @@ Points à vérifier après modification :
 
 ## Fichiers sensibles
 
-- `src/manifests/tempoflow.ts` : feed production TempoFlow, GUIDs et segments historiques.
-- `src/manifests/certivan.ts` : feed production Certivan, alias legacy client.
-- `src/manifests/fidu.ts` : compat `%APPDATA%/Fidu`, features plugins/flotte désactivées.
-- `src/create-manifest.ts` : garde-fous factory, tokens sandbox, validation des manifests.
+- `src/manifests/demobrand.ts` : seul manifest encore publié (sandbox kit).
+- `src/create-manifest.ts` : garde-fous factory, tokens sandbox, validation des manifests, `brandId` réservés.
 - `src/build-builder-config.ts` : packaging asar et exclusion des modules host-only.
 - `src/nsis-guid.ts` : algorithme GUID compatible electron-builder.
 - `src/types.ts` : contrat public utilisé par plusieurs packages.

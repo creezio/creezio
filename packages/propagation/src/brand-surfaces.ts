@@ -5,7 +5,6 @@
  * Phase G : les PR automatisables consomment ce mapping.
  */
 
-import type { BrandId } from "@creezio/brand-config";
 import type { CreezioPackageName } from "./packages.js";
 
 /** Surfaces code dans une app marque susceptibles d'être touchées par un bump kit. */
@@ -84,8 +83,14 @@ export const BRAND_SURFACES: readonly BrandSurface[] = [
   },
 ] as const;
 
-/** Marques production ciblées par les gates G1–G3. */
+/**
+ * Marques production ciblées par les gates G1–G3.
+ * Ids de repos marque (hors registre kit — H11 : `BrandId` kit = sandbox).
+ */
 export type ProductionBrandGate = "certivan" | "fidu" | "tempoflow";
+
+/** Id dans un rapport d'impact : gates G1–G3 + sandbox kit. */
+export type ImpactBrandId = ProductionBrandGate | "demobrand";
 
 export const PRODUCTION_BRAND_GATES: Record<
   ProductionBrandGate,
@@ -160,12 +165,12 @@ export const PACKAGE_SURFACE_MAP: Record<
 /** Marques concernées par défaut pour un bump (hors factory-only). */
 export function brandsImpactedBySurfaces(
   surfaces: BrandSurfaceId[],
-): BrandId[] {
+): ImpactBrandId[] {
   if (surfaces.length === 0) return [];
   if (surfaces.every((s) => s === "factory-scaffold")) {
     return ["demobrand"];
   }
-  const prod: BrandId[] = ["certivan", "fidu", "tempoflow"];
+  const prod: ProductionBrandGate[] = ["certivan", "fidu", "tempoflow"];
   if (surfaces.includes("factory-scaffold")) {
     return [...prod, "demobrand"];
   }

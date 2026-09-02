@@ -51,6 +51,8 @@ Toute évolution Meili / HTTP kernel / session IPC se fait **ici** (ou dans
 - `ensureKitOsBinaries()` au boot (Meili/cloudflared sous `electron-shell/resources/bin`)
 - Warm n8n / Hermes (local, `CREEZIO_TUNNEL_LOCAL=1`) : `CREEZIO_NATIVE_WARM=0` ou `CREEZIO_NATIVE_WARM_N8N=0` skippe n8n seulement ; Hermes on sauf `CREEZIO_NATIVE_WARM_HERMES=0`. **VPS create/update** : les deux sont forcés ON — les flags `=0` sont ignorés.
 - Surface MCP locale : `CREEZIO_TUNNEL_LOCAL` (défaut on)
+- Harness serveur (H11) : injection `${envPrefix}_API_*` uniquement —
+  plus de dual-read `TEMPOFLOW_*`.
 - Sonde agrégée : `GET /api/v1/os/ready`
 - Opt-out shell : `CREEZIO_DESKTOP_SHELL=window`
 - Bind Docker/headless : `CREEZIO_HTTP_HOST=0.0.0.0` (ou `METIER_HOST`)

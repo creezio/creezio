@@ -76,6 +76,7 @@ test("FDP factory → Docker : app neuve = même architecture serveur que TF3", 
         "--out",
         outDir,
         "--force",
+        "--no-push",
       ],
       { cwd: ROOT },
     );

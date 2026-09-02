@@ -10,14 +10,14 @@ import { fileURLToPath } from "node:url";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
-test("C1 feed.ts expose BrandMeiliFeed + createChrCatalogMeiliFeed", () => {
+test("C1 feed.ts expose BrandMeiliFeed (plus de createChrCatalogMeiliFeed)", () => {
   const feed = fs.readFileSync(
     path.join(ROOT, "packages/search/src/meili/feed.ts"),
     "utf8",
   );
   assert.match(feed, /export type BrandMeiliFeed/);
   assert.match(feed, /export function configureMeiliBrandFeed/);
-  assert.match(feed, /export function createChrCatalogMeiliFeed/);
+  assert.doesNotMatch(feed, /createChrCatalogMeiliFeed/);
   assert.match(feed, /catalog_products/);
   assert.match(feed, /catalog_sites/);
   assert.doesNotMatch(feed, /tf2_produits/);

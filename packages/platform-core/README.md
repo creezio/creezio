@@ -83,12 +83,12 @@ Dépendances :
 La plupart des helpers de chemins reçoivent un `PathsContext` :
 
 ```ts
-import { tempoflowManifest } from "@creezio/brand-config";
+import { demobrandManifest } from "@creezio/brand-config";
 import type { PathsContext } from "@creezio/platform-core";
 
 const ctx: PathsContext = {
-  manifest: tempoflowManifest,
-  userDataRoot: "/home/me/.config/tempoflow2-crm",
+  manifest: demobrandManifest,
+  userDataRoot: "/home/me/.config/demobrand",
   isPackaged: false,
   env: process.env,
   resourcesRoot: process.cwd(),
@@ -188,7 +188,7 @@ const brandDb = resolveBrandDbPath(ctx);
 const coreDb = resolveCoreDbPath(ctx);
 const config = resolveLocalConfigPath(ctx);
 const log = resolveMainLogPath(ctx);
-const preload = resolvePreloadPath(ctx, "preload-app.js");
+const preload = resolvePreloadPath(ctx, "preload.js");
 
 const serverUserData = userDataDirForKind(manifest, "server", userData);
 const feed = feedUrlForKind(manifest, "client");
@@ -493,39 +493,13 @@ Ces helpers restent purs ou Node-only, et ne doivent pas dépendre d'Electron.
 2. Côté Next, `resolveCoreDbPathFromEnv` permet de retrouver `core.db`.
 3. Les routes plateforme consomment `core.db` ; le métier marque vit dans `brand.db`.
 
-## Intégration marques (TempoFlow, Certivan, Fidu, DemoBrand)
+## Intégration marques (H11)
 
-### TempoFlow
-
-- Manifest : `tempoflowManifest`.
-- Préfixe env : `TF2`.
-- DB brand : `tempoflow2.db`.
-- Config : `tempoflow-config.json`.
-- Logs : `tempoflow-main.log`.
-- `userData` client : segment `tempoflow2-crm`.
-- `userData` serveur : segment `TempoFlow Server`.
-- Plugins et fleet activés.
-- Les helpers `brandEnv` et `buildNextHostEnv` remplacent les hardcodes historiques `TEMPOFLOW_*` / `TF2_*`.
-
-### Certivan
-
-- Manifest : `certivanManifest`.
-- Préfixe env : `CERTIVAN`.
-- DB brand : `certivan.db`.
-- Config : `certivan-config.json`.
-- Logs : `certivan-main.log`.
-- Client/Serveur split aligné sur les feeds Certivan.
-- Plugins et fleet activés.
-
-### Fidu
-
-- Manifest : `fiduManifest`.
-- Préfixe env : `FIDU`.
-- DB brand : `fidu.db`.
-- Config : `fidu-config.json`.
-- Client `userDataSegment`: `Fidu` pour compatibilité des installs existantes.
-- Plugins et fleet désactivés (`features.plugins: false`, `features.fleet: false`).
-- Les intégrations doivent brancher des hôtes feature-off plutôt que supposer les runtimes plugins/flotte.
+Le kit ne publie plus les manifests prod. Une marque fournit son
+`AppManifest` (JSON local / `resolveManifest`). `brandEnv` /
+`buildNextHostEnv` n'injectent que `${envPrefix}_*`. Feature-off
+(`plugins` / `fleet` = `false`) se déclare sur le manifest, pas via un
+export kit.
 
 ### DemoBrand
 

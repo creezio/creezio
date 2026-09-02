@@ -45,18 +45,6 @@
       "ticket": "P1.a — inventaire initial audit (héritage contractuel divers, à ventiler lors du nettoyage P1.b+)"
     },
     {
-      "file": "packages/app-runtime/src/harness-server-phases.ts",
-      "pattern": "tempoflow",
-      "count": 2,
-      "ticket": "P1.a — inventaire initial audit (héritage contractuel divers, à ventiler lors du nettoyage P1.b+)"
-    },
-    {
-      "file": "packages/app-runtime/src/harness-server-phases.ts",
-      "pattern": "tf2",
-      "count": 3,
-      "ticket": "P1.a — inventaire initial audit (héritage contractuel divers, à ventiler lors du nettoyage P1.b+)"
-    },
-    {
       "file": "packages/app-runtime/src/hermes-mcp-host-tools.ts",
       "pattern": "certivan",
       "count": 1,
@@ -274,12 +262,6 @@
     },
     {
       "file": "packages/brand-config/src/build-builder-config.ts",
-      "pattern": "tempoflow",
-      "count": 2,
-      "ticket": "F1.4 — brand-config : identités marque câblées hors manifests"
-    },
-    {
-      "file": "packages/brand-config/src/build-builder-config.ts",
       "pattern": "tf2",
       "count": 9,
       "ticket": "F1.4 — brand-config : identités marque câblées hors manifests"
@@ -307,66 +289,6 @@
       "pattern": "tempoflow",
       "count": 2,
       "ticket": "F1.4 — brand-config : identités marque câblées hors manifests"
-    },
-    {
-      "file": "packages/brand-config/src/index.ts",
-      "pattern": "certivan",
-      "count": 6,
-      "ticket": "F1.4 — brand-config : identités marque câblées hors manifests"
-    },
-    {
-      "file": "packages/brand-config/src/index.ts",
-      "pattern": "fidu",
-      "count": 3,
-      "ticket": "F1.4 — brand-config : identités marque câblées hors manifests"
-    },
-    {
-      "file": "packages/brand-config/src/index.ts",
-      "pattern": "tempoflow",
-      "count": 6,
-      "ticket": "F1.4 — brand-config : identités marque câblées hors manifests"
-    },
-    {
-      "file": "packages/brand-config/src/manifests/certivan.ts",
-      "pattern": "certivan",
-      "count": 38,
-      "ticket": "P1.d — manifest prod déprécié (repo marque hors de portée) : matérialisation via codemod H8, retrait au prochain bump d'architecture"
-    },
-    {
-      "file": "packages/brand-config/src/manifests/certivan.ts",
-      "pattern": "tempoflow",
-      "count": 1,
-      "ticket": "P1.d — manifest prod déprécié (repo marque hors de portée) : matérialisation via codemod H8, retrait au prochain bump d'architecture"
-    },
-    {
-      "file": "packages/brand-config/src/manifests/fidu.ts",
-      "pattern": "certivan",
-      "count": 1,
-      "ticket": "P1.d — manifest prod déprécié (repo marque hors de portée) : matérialisation via codemod H8, retrait au prochain bump d'architecture"
-    },
-    {
-      "file": "packages/brand-config/src/manifests/fidu.ts",
-      "pattern": "fidu",
-      "count": 37,
-      "ticket": "P1.d — manifest prod déprécié (repo marque hors de portée) : matérialisation via codemod H8, retrait au prochain bump d'architecture"
-    },
-    {
-      "file": "packages/brand-config/src/manifests/fidu.ts",
-      "pattern": "tempoflow",
-      "count": 2,
-      "ticket": "P1.d — manifest prod déprécié (repo marque hors de portée) : matérialisation via codemod H8, retrait au prochain bump d'architecture"
-    },
-    {
-      "file": "packages/brand-config/src/manifests/tempoflow.ts",
-      "pattern": "tempoflow",
-      "count": 36,
-      "ticket": "P1.d — manifest prod déprécié (repo marque hors de portée) : matérialisation via codemod H8, retrait au prochain bump d'architecture"
-    },
-    {
-      "file": "packages/brand-config/src/manifests/tempoflow.ts",
-      "pattern": "tf2",
-      "count": 2,
-      "ticket": "P1.d — manifest prod déprécié (repo marque hors de portée) : matérialisation via codemod H8, retrait au prochain bump d'architecture"
     },
     {
       "file": "packages/brand-config/src/nsis-guid.ts",
@@ -563,7 +485,7 @@
     {
       "file": "packages/electron-shell/src/index.ts",
       "pattern": "tempoflow",
-      "count": 4,
+      "count": 3,
       "ticket": "P1.a — inventaire initial audit (héritage contractuel divers, à ventiler lors du nettoyage P1.b+)"
     },
     {
@@ -725,7 +647,7 @@
     {
       "file": "packages/factory/src/scaffold.ts",
       "pattern": "tf2",
-      "count": 2,
+      "count": 1,
       "ticket": "P1.a — inventaire initial audit (héritage contractuel divers, à ventiler lors du nettoyage P1.b+)"
     },
     {
@@ -843,18 +765,6 @@
       "ticket": "P1.a — inventaire initial audit (héritage contractuel divers, à ventiler lors du nettoyage P1.b+)"
     },
     {
-      "file": "packages/host-runtime/src/hermes/launcher.ts",
-      "pattern": "tempoflow",
-      "count": 2,
-      "ticket": "F1.3 — launcher Hermes : env/alias/chemins hérités TempoFlow (reste H7 : alias frozen clearTempoflowGeneratedWebuiPassword + fallback fichier legacy dual-read, retrait au prochain bump)"
-    },
-    {
-      "file": "packages/host-runtime/src/hermes/launcher.ts",
-      "pattern": "tf2",
-      "count": 1,
-      "ticket": "F1.3 — launcher Hermes : env/alias/chemins hérités TempoFlow (reste H7 : dual-read env remote legacy avec warning, retrait au prochain bump)"
-    },
-    {
       "file": "packages/host-runtime/src/hermes/runtime-bootstrap.ts",
       "pattern": "certivan",
       "count": 6,
@@ -951,30 +861,6 @@
       "ticket": "P1.a — inventaire initial audit (héritage contractuel divers, à ventiler lors du nettoyage P1.b+)"
     },
     {
-      "file": "packages/host-runtime/src/plugins/brand-bindings.ts",
-      "pattern": "certivan",
-      "count": 2,
-      "ticket": "P1.a — inventaire initial audit (héritage contractuel divers, à ventiler lors du nettoyage P1.b+)"
-    },
-    {
-      "file": "packages/host-runtime/src/plugins/brand-bindings.ts",
-      "pattern": "fidu",
-      "count": 1,
-      "ticket": "P1.a — inventaire initial audit (héritage contractuel divers, à ventiler lors du nettoyage P1.b+)"
-    },
-    {
-      "file": "packages/host-runtime/src/plugins/brand-bindings.ts",
-      "pattern": "tempoflow",
-      "count": 5,
-      "ticket": "P1.a — inventaire initial audit (héritage contractuel divers, à ventiler lors du nettoyage P1.b+)"
-    },
-    {
-      "file": "packages/host-runtime/src/plugins/brand-bindings.ts",
-      "pattern": "tf2",
-      "count": 6,
-      "ticket": "P1.a — inventaire initial audit (héritage contractuel divers, à ventiler lors du nettoyage P1.b+)"
-    },
-    {
       "file": "packages/host-runtime/src/plugins/control-adapters.ts",
       "pattern": "tempoflow",
       "count": 1,
@@ -993,25 +879,7 @@
       "ticket": "P1.a — inventaire initial audit (héritage contractuel divers, à ventiler lors du nettoyage P1.b+)"
     },
     {
-      "file": "packages/host-runtime/src/plugins/control-token.ts",
-      "pattern": "tempoflow",
-      "count": 1,
-      "ticket": "P1.a — inventaire initial audit (héritage contractuel divers, à ventiler lors du nettoyage P1.b+)"
-    },
-    {
-      "file": "packages/host-runtime/src/plugins/control-token.ts",
-      "pattern": "tf2",
-      "count": 1,
-      "ticket": "P1.a — inventaire initial audit (héritage contractuel divers, à ventiler lors du nettoyage P1.b+)"
-    },
-    {
       "file": "packages/host-runtime/src/plugins/crm-key.ts",
-      "pattern": "tempoflow",
-      "count": 1,
-      "ticket": "P1.a — inventaire initial audit (héritage contractuel divers, à ventiler lors du nettoyage P1.b+)"
-    },
-    {
-      "file": "packages/host-runtime/src/plugins/git.ts",
       "pattern": "tempoflow",
       "count": 1,
       "ticket": "P1.a — inventaire initial audit (héritage contractuel divers, à ventiler lors du nettoyage P1.b+)"
@@ -1287,18 +1155,6 @@
       "ticket": "P1.a — inventaire initial audit (héritage contractuel divers, à ventiler lors du nettoyage P1.b+)"
     },
     {
-      "file": "packages/platform-core/src/embeds/embed-env-catalog.ts",
-      "pattern": "tempoflow",
-      "count": 5,
-      "ticket": "P1.a — inventaire initial audit (héritage contractuel divers, à ventiler lors du nettoyage P1.b+)"
-    },
-    {
-      "file": "packages/platform-core/src/embeds/embed-env-catalog.ts",
-      "pattern": "tf2",
-      "count": 2,
-      "ticket": "P1.a — inventaire initial audit (héritage contractuel divers, à ventiler lors du nettoyage P1.b+)"
-    },
-    {
       "file": "packages/platform-core/src/embeds/embed-stack-hooks.ts",
       "pattern": "tf2",
       "count": 1,
@@ -1312,18 +1168,6 @@
     },
     {
       "file": "packages/platform-core/src/embeds/n8n-embed.ts",
-      "pattern": "tf2",
-      "count": 1,
-      "ticket": "P1.a — inventaire initial audit (héritage contractuel divers, à ventiler lors du nettoyage P1.b+)"
-    },
-    {
-      "file": "packages/platform-core/src/env-brand.ts",
-      "pattern": "tempoflow",
-      "count": 1,
-      "ticket": "P1.a — inventaire initial audit (héritage contractuel divers, à ventiler lors du nettoyage P1.b+)"
-    },
-    {
-      "file": "packages/platform-core/src/env-brand.ts",
       "pattern": "tf2",
       "count": 1,
       "ticket": "P1.a — inventaire initial audit (héritage contractuel divers, à ventiler lors du nettoyage P1.b+)"
@@ -1491,18 +1335,6 @@
       "ticket": "P1.a — inventaire initial audit (héritage contractuel divers, à ventiler lors du nettoyage P1.b+)"
     },
     {
-      "file": "packages/product-hub/src/brand-tokens.ts",
-      "pattern": "certivan",
-      "count": 1,
-      "ticket": "P1.a — inventaire initial audit (héritage contractuel divers, à ventiler lors du nettoyage P1.b+)"
-    },
-    {
-      "file": "packages/product-hub/src/brand-tokens.ts",
-      "pattern": "tempoflow",
-      "count": 1,
-      "ticket": "P1.a — inventaire initial audit (héritage contractuel divers, à ventiler lors du nettoyage P1.b+)"
-    },
-    {
       "file": "packages/product-hub/src/control-plane/handler.ts",
       "pattern": "certivan",
       "count": 1,
@@ -1518,12 +1350,6 @@
       "file": "packages/product-hub/src/control-plane/types.ts",
       "pattern": "certivan",
       "count": 1,
-      "ticket": "P1.a — inventaire initial audit (héritage contractuel divers, à ventiler lors du nettoyage P1.b+)"
-    },
-    {
-      "file": "packages/product-hub/src/http/plugin-products-routes.ts",
-      "pattern": "tempoflow",
-      "count": 2,
       "ticket": "P1.a — inventaire initial audit (héritage contractuel divers, à ventiler lors du nettoyage P1.b+)"
     },
     {

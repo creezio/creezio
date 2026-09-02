@@ -48,8 +48,7 @@ export function getPluginControlApi(): PluginControlApiState | null {
 }
 
 /**
- * Env bridge plugins : `${envPrefix}_PLUGINS_*` + aliases legacy déclarés
- * par les bindings marque (`legacyEnvAliases`).
+ * Env bridge plugins : `${envPrefix}_PLUGINS_*` dérivé du manifest.
  */
 export function getPluginControlBridgeEnv(): Record<string, string> {
   if (!running) return {};

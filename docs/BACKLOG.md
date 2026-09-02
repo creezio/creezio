@@ -26,10 +26,10 @@ affaibli pour la masquer. (Backlogs d'époque : `docs/archive/BACKLOG-*.md`.)
   clients desktop legacy migrent via le codemod `scripts/codemods/H10/`
   (deps explicites), appliqué par `creezio upgrade` lors du bump
   `ARCHITECTURE_VERSION` H9 → H10 (ADR
-  `docs/adr/ADR-p2a-desktop-legacy-freeze.md`, note de clôture). Reste hors
-  périmètre gelé : un fallback inline `preload-app.js` → `preload.js` dans
-  `host-runtime/src/ai-workspace/manager.ts` (sans effet pour les marques
-  migrées — candidat nettoyage ultérieur).
+  `docs/adr/ADR-p2a-desktop-legacy-freeze.md`, note de clôture). Le
+  fallback inline `preload-app.js` du workspace IA a été retiré en H11
+  (`host-runtime/src/ai-workspace/manager.ts` : `preload.js` obligatoire,
+  échec explicite si absent — ADR `docs/adr/ADR-h11-purge-tf2-compat.md`).
 
 ## Navigateur IA (`browser-host`)
 

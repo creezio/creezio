@@ -1,5 +1,5 @@
 /**
- * Catalogue env embeds (n8n / Hermes) — port brand-agnostic TF2 0.10.26.
+ * Catalogue env embeds (n8n / Hermes) — port brand-agnostic desktop 0.10.26.
  * Les libellés UI restent génériques ; le productName est injecté à l'affichage.
  */
 
@@ -93,12 +93,6 @@ export const HERMES_LOCKED_KEYS = [
   "N8N_BASE_URL",
   "N8N_API_URL",
   "N8N_API_KEY",
-  // Compat TF2 historique + générique kit
-  "TEMPOFLOW_API_URL",
-  "TEMPOFLOW_API_KEY",
-  "TEMPOFLOW_PLUGINS_API_URL",
-  "TEMPOFLOW_PLUGINS_API_TOKEN",
-  "TEMPOFLOW_PLUGINS_DIR",
   "CRM_API_URL",
   "CRM_API_KEY",
   "PLUGINS_API_URL",

@@ -81,17 +81,22 @@ test("N5.2 createFeatureOffHost exporté + signatures", async () => {
   );
 });
 
-test("N5.3 brand-config features.plugins=false Fidu", async () => {
+test("N5.3 brand-config features.plugins=false via createAppManifest", async () => {
   const bcDist = path.join(root, "packages/brand-config/dist/index.js");
   assert.ok(fs.existsSync(bcDist), "brand-config dist manquant — build?");
   const bc = await import(pathToFileURL(bcDist).href);
-  assert.equal(bc.fiduManifest.features?.plugins, false);
-  assert.equal(bc.fiduManifest.features?.fleet, false);
-  assert.equal(bc.isFeatureEnabled(bc.fiduManifest, "plugins"), false);
-  assert.equal(bc.isFeatureEnabled(bc.fiduManifest, "fleet"), false);
-  assert.equal(bc.tempoflowManifest.features?.plugins, true);
-  assert.equal(bc.certivanManifest.features?.plugins, true);
-  assert.equal(bc.isFeatureEnabled(bc.tempoflowManifest, "plugins"), true);
+  const off = bc.createAppManifest({
+    brandId: "offbrand",
+    productName: "OffBrand",
+    domain: "offbrand.example.test",
+    sandbox: true,
+    features: { plugins: false, fleet: false },
+  });
+  assert.equal(off.features?.plugins, false);
+  assert.equal(off.features?.fleet, false);
+  assert.equal(bc.isFeatureEnabled(off, "plugins"), false);
+  assert.equal(bc.isFeatureEnabled(off, "fleet"), false);
+  assert.equal(bc.isFeatureEnabled(bc.demobrandManifest, "plugins"), true);
 });
 
 test("N5.4 Fidu : host-na-stubs absent + host-stack kit", () => {

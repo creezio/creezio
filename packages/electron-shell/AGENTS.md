@@ -128,7 +128,7 @@ Déménagés en P1.b (voir leurs AGENTS) :
 
 - Preserver les types publics exportes par `src/index.ts`.
 - Garder les modules host-only lazy : ne pas charger Electron/sidecars au simple import si evitable.
-- Pour les plugins, toute nouvelle env doit passer par `assignPluginEnv` afin de couvrir prefixe primaire et aliases legacy.
+- Pour les plugins, toute nouvelle env doit passer par `assignPluginEnv` (clé `${envPrefix}_*` uniquement — plus d'aliases TF2).
 - `restartPlugin` doit rester race-safe : un ancien child ne doit pas effacer un process plus recent.
 - Les preloads et partitions browser-tabs/IA doivent rester isoles.
 - Les launchers doivent retourner des payloads de statut stables meme en mode remote ou feature-off.

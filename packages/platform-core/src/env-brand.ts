@@ -1,6 +1,6 @@
 /**
  * Helpers env marque pour launchers (Next / Meili / Hermes / n8n).
- * Remplace les hardcodes TEMPOFLOW_* / TF2_* dans le runtime kit.
+ * Clés uniquement via `envKey(manifest, suffix)` — zéro dual-read historique.
  */
 
 import type { AppManifest } from "@creezio/brand-config";

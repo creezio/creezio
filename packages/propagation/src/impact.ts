@@ -2,13 +2,13 @@
  * Dry-run d'impact : bump package → packages dépendants + surfaces + marques.
  */
 
-import type { BrandId } from "@creezio/brand-config";
 import {
   brandsImpactedBySurfaces,
   PACKAGE_SURFACE_MAP,
   PRODUCTION_BRAND_GATES,
   surfaceMeta,
   type BrandSurfaceId,
+  type ImpactBrandId,
   type ProductionBrandGate,
 } from "./brand-surfaces.js";
 import {
@@ -32,7 +32,7 @@ export type PackageBumpImpact = {
     typicalPaths: string[];
   }>;
   /** Marques concernées */
-  brands: BrandId[];
+  brands: ImpactBrandId[];
   /** Gates Phase G à préparer si bascule */
   gates: Array<{
     gateId: "G1" | "G2" | "G3";

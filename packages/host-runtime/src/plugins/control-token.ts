@@ -1,6 +1,6 @@
 /**
- * Token Bearer control plane plugins — brand-agnostic (TF2 plugin-control-token).
- * Env bridge : clés génériques + `{ENV_PREFIX}_*` (plus de hardcode TEMPOFLOW_).
+ * Token Bearer control plane plugins — brand-agnostic.
+ * Env bridge : clés génériques + `{ENV_PREFIX}_*` dérivées du manifest.
  */
 
 import crypto from "node:crypto";

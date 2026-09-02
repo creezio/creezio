@@ -6,8 +6,8 @@
  *
  * Usage typique dans une app marque :
  * ```ts
- * import { buildElectronBuilderConfig, tempoflowManifest } from "@creezio/brand-config";
- * const cfg = buildElectronBuilderConfig(tempoflowManifest, "server", baseYaml);
+ * import { buildElectronBuilderConfig, demobrandManifest } from "@creezio/brand-config";
+ * const cfg = buildElectronBuilderConfig(demobrandManifest, "server", baseYaml);
  * ```
  */
 

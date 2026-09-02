@@ -38,8 +38,10 @@ Maintenir les contrats de propagation kit -> marques et terrain -> kit : semver,
 ## Config brand
 
 Les canaux marque sont DATA-DRIVEN (`configureBrandChannels`, H7) — `brandId`
-est un id libre (P3.b), plus contraint au registre `BrandId` legacy. Canaux
-legacy par defaut (registre production brand-surfaces) :
+est un id libre (P3.b), plus le registre kit `BrandId` (H11 : sandbox
+`demobrand` seulement). Gates G1–G3 = `ProductionBrandGate` local
+(`ImpactBrandId`), pas le registre brand-config. Canaux
+legacy par defaut (repos marque, hors kit) :
 
 - `brand-pr-certivan` -> G1
 - `brand-pr-fidu` -> G2

@@ -1,12 +1,8 @@
 /**
  * Injection marque pour le runtime plugins kit (N1).
  *
- * Les modules sous `host/plugins/*` ne hardcodent plus TEMPOFLOW_/TF2_ :
- * la marque appelle `configurePluginHost(bindings)` au boot (cutover N1p).
- *
- * Aliases documentés :
- * - primaire : `${envPrefix}_*` (ex. TEMPOFLOW_PLUGIN_ID, CERTIVAN_API_URL)
- * - legacy optionnels : `legacyEnvAliases` (ex. TF2_* pour TempoFlow)
+ * Les modules sous `host/plugins/*` dérivent les env du manifest
+ * (`${envPrefix}_*`) via `configurePluginHost(bindings)` au boot.
  */
 
 import type { IncomingMessage, ServerResponse } from "node:http";
@@ -30,15 +26,10 @@ export type PluginLlmKeys = {
 };
 
 export type PluginHostBindings = {
-  /** Préfixe env plugins (ex. TEMPOFLOW, CERTIVAN, FIDU). */
+  /** Préfixe env plugins (dérivé du manifest, ex. ACME). */
   envPrefix: string;
   productName: string;
   brandId: string;
-  /**
-   * Alias legacy additionnels (ex. `["TF2"]` → TF2_PLUGIN_ID, TF2_PLUGINS_*).
-   * Documenté pour TempoFlow gold ; autres marques : omettre.
-   */
-  legacyEnvAliases?: string[];
 
   userDataDir: () => string;
   isPackaged: () => boolean;
@@ -88,7 +79,7 @@ export type PluginHostBindings = {
     token: string,
   ) => boolean | Promise<boolean>;
 
-  /** Préfixe clés API CRM (ex. `tf2_live_`). */
+  /** Préfixe clés API CRM (ex. `acme_live_`). */
   apiKeyPrefix: string;
   /** Fichier clé plugin sous pluginDir — défaut `.${brandId}-plugin-api-key.json`. */
   crmKeyFileName?: string;
@@ -102,7 +93,7 @@ export type PluginHostBindings = {
 
   gitAuthorName?: string;
   gitAuthorEmail?: string;
-  /** Env force MinGit même hors win32 — défaut `${legacy|envPrefix}_FORCE_EMBEDDED_GIT`. */
+  /** Env force MinGit même hors win32 — défaut `${envPrefix}_FORCE_EMBEDDED_GIT`. */
   forceEmbeddedGitEnvKey?: string;
 };
 
@@ -134,15 +125,10 @@ export function pluginEnvKeys(
   bindings: PluginHostBindings,
   suffix: string,
 ): string[] {
-  const keys = [`${bindings.envPrefix}_${suffix}`];
-  for (const alias of bindings.legacyEnvAliases || []) {
-    const k = `${alias}_${suffix}`;
-    if (!keys.includes(k)) keys.push(k);
-  }
-  return keys;
+  return [`${bindings.envPrefix}_${suffix}`];
 }
 
-/** Pose la même valeur sur préfixe primaire + aliases legacy. */
+/** Pose la valeur sur la clé `${envPrefix}_${suffix}` dérivée du manifest. */
 export function assignPluginEnv(
   env: Record<string, string | undefined>,
   bindings: PluginHostBindings,

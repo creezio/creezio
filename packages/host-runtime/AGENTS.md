@@ -50,6 +50,10 @@ jamais dans electron-shell.
    tunnel (`test-phase-cloudflared-respawn`,
    `test-phase-tunnel-self-provision`), crash
    (`test-phase-crash-reporter`).
+5. H11 — plus de dual-read env première marque ni alias password WebUI :
+   `pluginEnvKeys` = `${envPrefix}_${suffix}` uniquement ; secret Hermes
+   = `.{secretFilePrefix}-api-server-key` ; `AiWorkspaceManager` exige
+   `preload.js` (échec explicite si absent). Ne pas réintroduire d'alias.
 
 ## Tests / gates liés
 

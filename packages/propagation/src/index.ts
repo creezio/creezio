@@ -34,6 +34,7 @@ export {
 export type {
   BrandSurface,
   BrandSurfaceId,
+  ImpactBrandId,
   ProductionBrandGate,
 } from "./brand-surfaces.js";
 export {

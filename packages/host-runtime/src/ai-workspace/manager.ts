@@ -460,24 +460,23 @@ export class AiWorkspaceManager {
   ): Promise<AiWorkspace> {
     const partition = aiPartitionName(userId);
     const b = getAiWorkspaceHostBindings();
-    const preloadCandidates = [
-      b.preloadPath("preload-app.js"),
-      b.preloadPath("preload.js"),
-    ];
-    const appPreload =
-      preloadCandidates.find((p) => fs.existsSync(p)) || preloadCandidates[0]!;
+    const appPreload = b.preloadPath("preload.js");
     if (!fs.existsSync(appPreload)) {
       b.reportCrash("web-event", {
         view: "ai-crm",
         event: "preload-missing",
         preloadPath: appPreload,
       });
+      throw new Error(
+        `preload.js introuvable (${appPreload}) — le workspace IA exige le ` +
+          `preload moderne (H11, plus de fallback preload-app.js).`,
+      );
     }
     const { WebContentsView, session } = loadElectron();
     const view = new WebContentsView({
       webPreferences: {
         partition,
-        ...(fs.existsSync(appPreload) ? { preload: appPreload } : {}),
+        preload: appPreload,
         contextIsolation: true,
         sandbox: true,
         nodeIntegration: false,

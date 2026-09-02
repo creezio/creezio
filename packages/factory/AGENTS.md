@@ -41,6 +41,9 @@ en jumeau dans `main.ts`.
   `meili-feed.ts` avec `catalog_*` + `configureMeiliBrandFeed`.
 - Desktop from-prd : `startBrandDesktop` / `startBrandKernelHarness`
   (`@creezio/app-runtime`) — pas le monolithe `installBrandDesktopRuntime`.
+- H11 : `build-builder-config.mjs` généré exige
+  `src/electron/app-manifest.json` — plus de fallback `getManifest` /
+  `listBrandIds` sur le registre kit.
 - Ne pas écraser des fichiers existants sans `--force`.
 - Ne pas exiger des flags techniques si `--from-prd` suffit.
 - `docs/FILES.md` est maintenu via `node scripts/generate-files-md.mjs factory` (gate `test-phase-docs-freshness`) — la colonne Rôle s'édite à la main, ne pas inventer d'autre format.

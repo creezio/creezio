@@ -5,9 +5,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
-  tempoflowManifest,
-  certivanManifest,
-  fiduManifest,
+  demobrandManifest,
   buildElectronBuilderConfig,
   collectCreezioRuntimePackages,
   CREEZIO_ASAR_RUNTIME_PACKAGES,
@@ -77,11 +75,11 @@ test("app-kind : résolution + boot behavior", () => {
   assert.equal(isAllowedServerCockpitPath("/dashboard"), false);
 
   const ud = userDataDirForAppKind(
-    tempoflowManifest,
+    demobrandManifest,
     "server",
-    "/home/u/.config/tempoflow2-crm",
+    "/home/u/.config/demobrand",
   );
-  assert.ok(ud?.endsWith("TempoFlow Server"));
+  assert.ok(ud?.endsWith("DemoBrand Server"));
 });
 
 test("connection + profile + tunnel", () => {
@@ -94,14 +92,14 @@ test("connection + profile + tunnel", () => {
   assert.equal(p.remoteUrl, "https://x.test");
 
   const join = parseJoinDeepLink(
-    "tempoflow://join/cabinet.tempoflow.fr",
-    "tempoflow",
+    "demobrand://join/cabinet.example.test",
+    "demobrand",
   );
-  assert.equal(join, "https://cabinet.tempoflow.fr");
+  assert.equal(join, "https://cabinet.example.test");
 
   const launch = parseProfileArgv(
-    ["node", "main", "--tf2-profile=join:http://127.0.0.1:3456"],
-    tempoflowManifest,
+    ["node", "main", "--demobrand-profile=join:http://127.0.0.1:3456"],
+    demobrandManifest,
   );
   assert.equal(launch.mode, "join");
   assert.equal(launch.serverUrl, "http://127.0.0.1:3456");
@@ -150,10 +148,10 @@ test("updater reduce + builder config", () => {
     extraResources: [{ from: "vendor/meili", to: "vendor/meili" }, { from: "build/electron" }],
     win: {},
   };
-  const serverCfg = buildElectronBuilderConfig(tempoflowManifest, "server", base);
-  assert.equal(serverCfg.appId, tempoflowManifest.server.appId);
-  assert.equal(serverCfg.executableName, "TF2-Server");
-  assert.equal(serverCfg.publish.url, tempoflowManifest.server.feedUrl);
+  const serverCfg = buildElectronBuilderConfig(demobrandManifest, "server", base);
+  assert.equal(serverCfg.appId, demobrandManifest.server.appId);
+  assert.equal(serverCfg.executableName, demobrandManifest.server.executableName);
+  assert.equal(serverCfg.publish.url, demobrandManifest.server.feedUrl);
   const serverFiles = serverCfg.files || [];
   assert.ok(
     serverFiles.some(
@@ -238,8 +236,8 @@ test("updater reduce + builder config", () => {
     "server : asarUnpack *.node (natifs)",
   );
 
-  const clientCfg = buildElectronBuilderConfig(certivanManifest, "client", base);
-  assert.equal(clientCfg.appId, certivanManifest.client.appId);
+  const clientCfg = buildElectronBuilderConfig(demobrandManifest, "client", base);
+  assert.equal(clientCfg.appId, demobrandManifest.client.appId);
   const extras = clientCfg.extraResources;
   assert.ok(Array.isArray(extras));
   assert.ok(!extras.some((e) => String(e.from || e).startsWith("vendor/")));
@@ -294,13 +292,13 @@ test("updater reduce + builder config", () => {
 });
 
 test("paths / env brand / factory targets", () => {
-  assert.equal(envKey(fiduManifest, "APP_KIND"), "FIDU_APP_KIND");
+  assert.equal(envKey(demobrandManifest, "APP_KIND"), "DEMOBRAND_APP_KIND");
   assert.equal(
-    feedUrlForKind(fiduManifest, "client"),
-    fiduManifest.client.feedUrl,
+    feedUrlForKind(demobrandManifest, "client"),
+    demobrandManifest.client.feedUrl,
   );
   const env = buildNextHostEnv({
-    manifest: tempoflowManifest,
+    manifest: demobrandManifest,
     port: 3000,
     hostname: "127.0.0.1",
     dbPath: "/tmp/x.db",
@@ -308,15 +306,14 @@ test("paths / env brand / factory targets", () => {
     uploadsDir: "/tmp/u",
   });
   assert.equal(env.PORT, "3000");
-  assert.equal(env.TF2_BRAND_ID, "tempoflow");
+  assert.equal(env.DEMOBRAND_BRAND_ID, "demobrand");
 
   const targets = factoryResetTargets({
-    manifest: tempoflowManifest,
+    manifest: demobrandManifest,
     userDataRoot: "/tmp/ud",
     isPackaged: true,
   });
-  assert.ok(targets.some((t) => t.endsWith("tempoflow-config.json")));
-  assert.ok(targets.some((t) => t.includes("tempoflow-node")));
+  assert.ok(targets.some((t) => t.endsWith("demobrand-config.json")));
 });
 
 test("shell createDesktopApi + IPC", () => {
@@ -357,6 +354,6 @@ test("splash model", () => {
 });
 
 test("exeForKind", () => {
-  assert.equal(exeForKind(tempoflowManifest, "client").productName, "TempoFlow");
-  assert.equal(exeForKind(tempoflowManifest, "server").productName, "TempoFlow Server");
+  assert.equal(exeForKind(demobrandManifest, "client").productName, "DemoBrand");
+  assert.equal(exeForKind(demobrandManifest, "server").productName, "DemoBrand Server");
 });

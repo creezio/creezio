@@ -273,6 +273,7 @@ test("CB-apply-stub product.md stub = error (plus notes)", () => {
     "--out",
     path.join(work, "app"),
     "--force",
+    "--no-push",
   ]);
   assert.notEqual(apply.status, 0, "apply sur stub doit error");
   const out = `${apply.stdout}\n${apply.stderr}`;

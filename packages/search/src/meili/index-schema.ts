@@ -36,15 +36,11 @@ export const GED_INDEXES = CATALOG_INDEXES;
 export type GedIndexUid = CatalogIndexUid;
 
 /**
- * Normalise une clé de compteur vers sa clé fingerprint.
- *
- * H7 : les clés sont libres (`counts[countKey]`). Seul alias legacy encore
- * lu UNE version : `sites` → `fournisseurs` (nom historique du fingerprint
- * des marques héritées — codemod H7 réécrit `countKey: "sites"` côté
- * marque, suppression de l'alias prévue au prochain bump).
+ * Identité de la clé de compteur fingerprint (H11 : plus d'alias
+ * `sites` → `fournisseurs` — la marque déclare `countKey` tel quel).
  */
 export function fingerprintCountKey(countKey: string): string {
-  return countKey === "sites" ? "fournisseurs" : countKey;
+  return countKey;
 }
 
 /**
