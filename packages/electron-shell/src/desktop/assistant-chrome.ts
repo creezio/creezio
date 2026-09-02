@@ -1,6 +1,6 @@
 // @ts-nocheck — Electron BaseWindow / WebContentsView (shim kit mince)
 /**
- * Chrome assistant Electron (FAB) — gold TempoFlow paramétré (deepLink / title).
+ * Chrome assistant Electron (FAB) — gold kit paramétré (deepLink / title).
  * Electron chargé via loadElectron (pas d'import top-level — tests kit Node).
  */
 
@@ -21,7 +21,7 @@ export type ContentRect = {
 
 export type AssistantChromeBrand = {
   productName: string;
-  /** Protocole deep-link, ex. `tempoflow-assistant`. */
+  /** Protocole deep-link, ex. `acme-assistant`. */
   assistantProtocol: string;
   accent?: string;
   accentHover?: string;

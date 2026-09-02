@@ -5,7 +5,7 @@ set -u
 
 URL="${1:-}"
 HOME_DIR="${HOME:-/home/deploy}"
-LOG_DIR="${XDG_STATE_HOME:-$HOME_DIR/.local/state}/tempoflow-server"
+LOG_DIR="${XDG_STATE_HOME:-$HOME_DIR/.local/state}/creezio-server"
 LOG="$LOG_DIR/open-server.log"
 mkdir -p "$LOG_DIR" 2>/dev/null || true
 

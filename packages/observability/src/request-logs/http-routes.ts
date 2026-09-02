@@ -1,7 +1,7 @@
 /**
  * Admin — lecture / purge des logs API + MCP (session UI).
  * Hono « nu » : hors doc OpenAPI publique.
- * O5 — extrait TempoFlow (gold). Auth owner reste côté marque (montage).
+ * O5 — gold. Auth owner reste côté marque (montage).
  */
 import { Hono } from "hono";
 import {

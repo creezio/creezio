@@ -1031,7 +1031,7 @@ function inferBrandId(brandRoot: string): string | null {
       ) as { name?: string; creezio?: { brandId?: string } };
       if (pkg.creezio?.brandId) return pkg.creezio.brandId;
       if (!pkg.name) continue;
-      // "@creezio/app-tempoflow3" → "tempoflow3" (tag image / nom container).
+      // "@creezio/app-acme" → "acme" (tag image / nom container).
       const last = pkg.name.split("/").pop() || pkg.name;
       const id = last.replace(/^app-/, "").replace(/[^a-z0-9-]/gi, "");
       if (id) return id;
@@ -1042,7 +1042,7 @@ function inferBrandId(brandRoot: string): string | null {
   return null;
 }
 
-/** Nom produit pour raccourcis (TempoFlow → TempoFlow-Server-1.desktop). */
+/** Nom produit pour raccourcis (→ {Product}-Server-1.desktop). */
 export function inferProductName(brandRoot: string): string {
   const env = String(process.env.SERVER_DESKTOP_PRODUCT || "").trim();
   if (env) return env;
@@ -1112,7 +1112,7 @@ export const CREEZIO_OPEN_URL_BIN = "creezio-open-url";
 const CREEZIO_OPEN_URL_FALLBACK = `#!/usr/bin/env bash
 set -u
 URL="\${1:-}"
-LOG_DIR="\${XDG_STATE_HOME:-\${HOME:-/home/deploy}/.local/state}/tempoflow-server"
+LOG_DIR="\${XDG_STATE_HOME:-\${HOME:-/home/deploy}/.local/state}/creezio-server"
 LOG="\$LOG_DIR/open-server.log"
 mkdir -p "\$LOG_DIR" 2>/dev/null || true
 log() { echo "[\$(date -Iseconds 2>/dev/null || date)] \$*" >>"\$LOG" 2>/dev/null || true; echo "\$*" >&2; }
@@ -1192,7 +1192,7 @@ export function writeOpenCreezioServerN(opts: {
   const body = `#!/usr/bin/env bash
 # Raccourci Docker server-${opts.n} — généré par creezio server-docker
 set -u
-LOG_DIR="\${XDG_STATE_HOME:-\${HOME:-/home/deploy}/.local/state}/tempoflow-server"
+LOG_DIR="\${XDG_STATE_HOME:-\${HOME:-/home/deploy}/.local/state}/creezio-server"
 LOG="\$LOG_DIR/open-server.log"
 mkdir -p "\$LOG_DIR" 2>/dev/null || true
 echo "[\$(date -Iseconds 2>/dev/null || date)] open-creezio-server-${opts.n} → ${opts.url} DISPLAY=\${DISPLAY:-}" >>"\$LOG" 2>/dev/null || true
@@ -2306,7 +2306,7 @@ async function runPublishRetention(opts: {
   // 2. Build cache au-delà du budget. Attention sémantique BuildKit :
   // `--keep-storage` (alias de --reserved-space) est un plancher « toujours
   // autorisé » et ne purge donc JAMAIS tant que le cache prunable tient sous
-  // ce budget (vécu VPS TempoFlow : cache 23,5 Go, prune --keep-storage 12GB
+  // ce budget (vécu VPS kit : cache 23,5 Go, prune --keep-storage 12GB
   // → « Total: 0B »). C'est `--max-used-space` qui plafonne réellement
   // l'usage total ; fallback --keep-storage pour les daemons plus anciens.
   const keepStorage =

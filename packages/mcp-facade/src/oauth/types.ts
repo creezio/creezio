@@ -49,7 +49,7 @@ export type McpOAuthSessionBridge = {
 };
 
 export type McpOAuthRoutesConfig = {
-  /** Titre produit pages consent (ex. « TempoFlow2 CRM »). */
+  /** Titre produit pages consent (ex. « CRM »). */
   productName: string;
   /** resource_name metadata (défaut : `${productName} MCP`). */
   resourceName?: string;

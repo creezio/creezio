@@ -1,6 +1,6 @@
 /**
  * Routes Hono Admin Database (catalogue, browse, automations, CRUD, export).
- * Port TempoFlow → kit (M2). Auth owner reste côté marque (montage).
+ * port kit → kit (M2). Auth owner reste côté marque (montage).
  *
  * Multi-stores : `GET /database/dbs` + query `?db=<id>` (registre
  * `registerDatabaseStore`). Sans registre → comportement legacy mono-DB.

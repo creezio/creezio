@@ -84,34 +84,19 @@ export const BRAND_SURFACES: readonly BrandSurface[] = [
 ] as const;
 
 /**
- * Marques production ciblées par les gates G1–G3.
- * Ids de repos marque (hors registre kit — H11 : `BrandId` kit = sandbox).
+ * Gates production — le kit ne connaît pas ses consommateurs (H11).
+ * Les marques ciblées vivent dans `.github/propagate-brands.json`
+ * (`configureBrandChannels`). Ce registre reste vide par défaut.
  */
-export type ProductionBrandGate = "certivan" | "fidu" | "tempoflow";
+export type ProductionBrandGate = string;
 
-/** Id dans un rapport d'impact : gates G1–G3 + sandbox kit. */
-export type ImpactBrandId = ProductionBrandGate | "demobrand";
+/** Id dans un rapport d'impact : sandbox kit + ids configurés. */
+export type ImpactBrandId = string;
 
 export const PRODUCTION_BRAND_GATES: Record<
-  ProductionBrandGate,
+  string,
   { gateId: "G1" | "G2" | "G3"; label: string; repoHint: string }
-> = {
-  certivan: {
-    gateId: "G1",
-    label: "Certivan",
-    repoHint: "/opt/docker/certivan-app",
-  },
-  fidu: {
-    gateId: "G2",
-    label: "Fidu",
-    repoHint: "/opt/docker/fidu",
-  },
-  tempoflow: {
-    gateId: "G3",
-    label: "TempoFlow",
-    repoHint: "creezio/tempoflow2 (ou /opt/docker/creezio-kit-src)",
-  },
-};
+> = {};
 
 /**
  * Surfaces touchées par package (direct). Les dépendants transitifs
@@ -162,19 +147,13 @@ export const PACKAGE_SURFACE_MAP: Record<
   "@creezio/propagation": [],
 };
 
-/** Marques concernées par défaut pour un bump (hors factory-only). */
+/** Marques concernées par défaut pour un bump (hors canaux configurés). */
 export function brandsImpactedBySurfaces(
   surfaces: BrandSurfaceId[],
 ): ImpactBrandId[] {
   if (surfaces.length === 0) return [];
-  if (surfaces.every((s) => s === "factory-scaffold")) {
-    return ["demobrand"];
-  }
-  const prod: ProductionBrandGate[] = ["certivan", "fidu", "tempoflow"];
-  if (surfaces.includes("factory-scaffold")) {
-    return [...prod, "demobrand"];
-  }
-  return prod;
+  if (surfaces.includes("factory-scaffold")) return ["demobrand"];
+  return [];
 }
 
 export function surfaceMeta(id: BrandSurfaceId): BrandSurface {

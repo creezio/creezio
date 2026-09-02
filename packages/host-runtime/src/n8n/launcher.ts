@@ -1,6 +1,6 @@
 /**
  * Sidecar n8n — factory brand-agnostic.
- * SoT extrait de TempoFlow n8n-launcher.ts (R3.3) — chemins gold intacts.
+ * SoT extrait historique n8n-launcher.ts (R3.3) — chemins gold intacts.
  * Clés API / agent = hooks verticaux (onN8nReady, getN8nNextEnvExtra, n8nAgentKeys).
  */
 
@@ -247,11 +247,10 @@ function findN8nEntry(): string | null {
 function ensureEncryptionKey(home: string): string {
   const prefix = secretPrefix();
   const keyFile = path.join(home, `.${prefix}-n8n-encryption-key`);
-  /** Legacy marques (Certivan/Fidu) : `.${prefix}-encryption-key` sans `-n8n-`. */
+  /** Ancien layout : `.${prefix}-encryption-key` sans `-n8n-`. */
   const brandLegacy = path.join(home, `.${prefix}-encryption-key`);
-  const legacy = path.join(home, ".tempoflow-encryption-key");
   const desktop = path.join(home, ".desktop-n8n-encryption-key");
-  for (const f of [keyFile, brandLegacy, legacy, desktop]) {
+  for (const f of [keyFile, brandLegacy, desktop]) {
     try {
       const existing = fs.readFileSync(f, "utf8").trim();
       if (existing.length >= 16) {
@@ -292,10 +291,9 @@ function writeOwnerCreds(home: string, creds: OwnerCreds): void {
 /** Creds owner persistés (fichier home) — sans l'override env superadmin. */
 function readFileOwnerCreds(home: string): OwnerCreds | null {
   const keyFile = ownerCredsFile(home);
-  /** Legacy marques : `.${prefix}-owner.json` (Certivan `.certivan-owner.json`). */
+  /** Ancien layout : `.${prefix}-owner.json`. */
   const brandLegacy = path.join(home, `.${secretPrefix()}-owner.json`);
-  const legacy = path.join(home, ".tempoflow-owner.json");
-  for (const f of [keyFile, brandLegacy, legacy]) {
+  for (const f of [keyFile, brandLegacy]) {
     try {
       const raw = JSON.parse(fs.readFileSync(f, "utf8")) as OwnerCreds;
       if (raw && typeof raw.email === "string" && typeof raw.password === "string" && raw.password.length >= 12) {
@@ -785,7 +783,7 @@ async function prepareN8nUiSession(): Promise<{
     };
   }
   if (config.mode === "remote" && !state.running) {
-    // Remote : pas de credentials TempoFlow — l’utilisateur gère l’auth distante.
+    // Remote : pas de credentials kit — l’utilisateur gère l’auth distante.
     return {
       ok: true,
       detail: "Mode distant — pas d’injection cookie locale.",
@@ -982,7 +980,7 @@ async function startN8n(
 
   try {
     const home = n8nHomeDir();
-    // Warm AVANT d’écrire les marqueurs TempoFlow (sinon faux « warm » au 1er boot).
+    // Warm AVANT d’écrire les marqueurs kit (sinon faux « warm » au 1er boot).
     const warm = n8nHomeLooksWarm(home);
     const encryptionKey = ensureEncryptionKey(home);
     const creds = ensureOwnerCreds(home);

@@ -1,7 +1,7 @@
 /**
  * O4r4 — projections entitySources / formatSearchHit déclaratives.
  *
- * Extraite des switches marque (TF/CV/Fidu) : pas d’invention métier,
+ * Extraite des switches marque (marques) : pas d’invention métier,
  * seulement un moteur kit + règles déclarées par la marque.
  */
 

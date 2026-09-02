@@ -1,17 +1,17 @@
 /**
  * Boîte noire desktop — types + helpers PURS (aucun import Electron).
- * Contrat JSONL ops (R4 / P29) — préfixe d'émission historique `TF2EVENT`
- * conservé (wire sous-process Electron ×3). Lecture = dual-read via
- * `OPS_EVENT_PREFIXES` ; ne pas retirer `TF2EVENT` sans cutover marques.
+ * Contrat JSONL ops (R4 / P29) — préfixe d'émission filaire historique
+ * conservé (wire sous-process Electron ×3). Lecture via `OPS_EVENT_PREFIXES` ;
+ * ne pas changer le préfixe d'émission sans cutover des installs existantes.
  */
 
 export const TF2EVENT_PREFIX = "TF2EVENT ";
 /** Alias générique — même valeur que `TF2EVENT_PREFIX` (émission). */
 export const OPS_EVENT_PREFIX = TF2EVENT_PREFIX;
 /**
- * Préfixes stdout acceptés en lecture (M7p / P29) :
- * - émission SoT = `TF2EVENT`
- * - `CertivanEVENT` = dual-read legacy marques (ne pas casser)
+ * Préfixes stdout acceptés en lecture (M7p / P29).
+ * L'émission SoT reste le préfixe filaire historique ; un alias de lecture
+ * est conservé pour les journaux déjà écrits (contrat wire, pas un fallback env).
  */
 export const OPS_EVENT_PREFIXES = [
   TF2EVENT_PREFIX,
@@ -130,7 +130,7 @@ export function serializeOpsEvent(evt: OpsEvent): string {
 
 /**
  * Parse une ligne stdout d'un sous-process.
- * Renvoie l'input si la ligne est un TF2EVENT valide, sinon null.
+ * Renvoie l'input si la ligne est un événement ops valide, sinon null.
  */
 export function parseOpsLine(line: string): OpsEventInput | null {
   const trimmed = line.trim();

@@ -1,6 +1,6 @@
 /**
  * Augmentation Window générique — les apps brancheront leur alias
- * (`tempoflowDesktop` / `certivanDesktop` / `fiduDesktop`) en Phase G.
+ * (`acmeDesktop` / `certivanDesktop` / `fiduDesktop`) en Phase G.
  *
  * Ici on expose seulement un index optionnel pour le kit.
  */

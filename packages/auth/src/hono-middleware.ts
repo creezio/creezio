@@ -30,7 +30,7 @@ export type HonoAuthAdapters = {
   rateLimitPerMinute: number;
   /** Si omis : toute méthode acceptée. */
   apiKeyAllowsMethod?: (scopes: string, method: string) => boolean;
-  /** Si omis : requireSessionOrTasksApiKey non fourni (Fidu). */
+  /** Si omis : requireSessionOrTasksApiKey non fourni (feature-off). */
   apiKeyAllowsTasks?: (scopes: string) => boolean;
 };
 

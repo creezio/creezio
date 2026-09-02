@@ -39,7 +39,7 @@ export const CREEZIO_AI_TASK_HOST_MCP_TOOL_NAMES = [
 export type CreezioAiTaskHostMcpToolName =
   (typeof CREEZIO_AI_TASK_HOST_MCP_TOOL_NAMES)[number];
 
-/** Optionnel (Certivan) — liste kanban générique. */
+/** Optionnel  — liste kanban générique. */
 export const CREEZIO_LIST_TASKS_MCP_TOOL_NAME = "list_tasks" as const;
 
 export type AiTaskHostMcpToolConfig = {
@@ -98,7 +98,7 @@ export type CreateAiTaskHostMcpToolsOptions = {
   registerTool: AiTaskHostMcpRegisterFn;
   /** `userId` du token MCP (Bearer / API key). */
   getActorUserId: () => string | null | undefined;
-  /** Certivan : expose aussi `list_tasks`. Défaut false. */
+  /** : expose aussi `list_tasks`. Défaut false. */
   includeListTasks?: boolean;
 };
 
@@ -129,7 +129,7 @@ function errorResult(message: string) {
  * (provisionnée par `ensure-crm-key-db`, `user_id NULL` + scopes `full`) est
  * MAPPÉE SUR L'OWNER par le résolveur Bearer de la façade MCP
  * (`createApiKeyBearerActorResolver`, @creezio/app-runtime) — même niveau de
- * confiance que l'API REST CRM complète qu'elle ouvre déjà (parité TF2 gold).
+ * confiance que l'API REST CRM complète qu'elle ouvre déjà (parité kit gold).
  * Pas de scope `tasks:run` dédié : `normalizeScopes` côté auth ne conserve
  * que `full`/`crm:*`, et une clé restreinte (`crm:read`/`crm:write`) n'est
  * PAS mappée owner → refusée ici (fail-closed).

@@ -1,5 +1,5 @@
 /**
- * Écran d’erreur boot / crash (hors React) — gold TempoFlow paramétré.
+ * Écran d’erreur boot / crash (hors React) — gold kit paramétré.
  */
 
 import { logFilePath } from "@creezio/host-runtime";

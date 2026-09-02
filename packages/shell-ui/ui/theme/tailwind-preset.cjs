@@ -1,6 +1,6 @@
 /**
  * Preset Tailwind Creezio — thème générique extrait verbatim du design
- * system TempoFlow (gold TF) : accent orange (palette `sky` remappée),
+ * system kit (gold TF) : accent orange (palette `sky` remappée),
  * neutres `slate` réchauffés (encre #14182f), fond crème via variables CSS.
  * AUCUN métier. CJS volontaire : chargé par tailwind.config (Node/jiti)
  * sans étape de build.

@@ -1,5 +1,5 @@
 /**
- * Assistant UI (port TempoFlow — N3).
+ * Assistant UI (port kit — N3).
  * Consommer via `@creezio/assistant/ui`.
  */
 export {

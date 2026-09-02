@@ -69,14 +69,17 @@ export function impactForPackageBump(input: {
   const brands = brandsImpactedBySurfaces(surfaces);
   const gates = brands
     .filter((b): b is ProductionBrandGate => b in PRODUCTION_BRAND_GATES)
-    .map((brandId) => {
+    .flatMap((brandId) => {
       const g = PRODUCTION_BRAND_GATES[brandId];
-      return {
-        gateId: g.gateId,
-        brandId,
-        label: g.label,
-        checklistDoc: `docs/archive/gates/${g.gateId}-${brandId.toUpperCase()}.md`,
-      };
+      if (!g) return [];
+      return [
+        {
+          gateId: g.gateId,
+          brandId,
+          label: g.label,
+          checklistDoc: "docs/archive/PHASE-F.md",
+        },
+      ];
     })
     .sort((a, b) => a.gateId.localeCompare(b.gateId));
 
@@ -87,7 +90,7 @@ export function impactForPackageBump(input: {
     "Remplacer modules dupliqués listés dans PLATFORM-VS-VERTICAL.md",
     "Valider feeds latest.yml Client (+ Serveur si buildServerArtifact)",
     "PR marque avec template kit-bump (voir .github/PULL_REQUEST_TEMPLATE/)",
-    "Gate G1 Certivan avant G2 Fidu avant G3 TempoFlow",
+    "Valider les gates documentées G1 → G2 → G3 (docs/PROPAGATION.md)",
   ];
 
   const surfaceDetails = surfaces.map((id) => {

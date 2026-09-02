@@ -106,9 +106,9 @@ export function desktopSandboxPaths(userData: string): {
 
 /**
  * Confine TOTALEMENT l'environnement d'un process enfant embarqué au sandbox
- * TempoFlow : HOME/USERPROFILE, %APPDATA%/%LOCALAPPDATA%, TEMP, caches
+ * kit : HOME/USERPROFILE, %APPDATA%/%LOCALAPPDATA%, TEMP, caches
  * (npm/pip/uv/XDG), configs globales (git/npm) et — si `toolDirs` est fourni —
- * un PATH minimal (dossiers TempoFlow + System32), sans le PATH utilisateur.
+ * un PATH minimal (dossiers kit + System32), sans le PATH utilisateur.
  *
  * Objectif : aucun binaire embarqué ne peut lire/écrire/résoudre hors du
  * périmètre desktop, même s'il ignore HOME (il ignorera aussi APPDATA/PATH).
@@ -253,7 +253,7 @@ export const HERMES_DEFAULT_REASONING_EFFORT = "medium";
 export const DESKTOP_REASONING_MIGRATION_MARKER =
   "# TEMPOFLOW-REASONING-MIGRATED-V1";
 
-/** Anciens seeds TempoFlow à migrer vers HERMES_DEFAULT_MODEL. */
+/** Anciens seeds kit à migrer vers HERMES_DEFAULT_MODEL. */
 const HERMES_LEGACY_DEFAULTS = new Set([
   "gpt-4.1-mini",
   "gpt-5.2",
@@ -274,10 +274,10 @@ export function normalizeHermesModelProvider(yaml: string): string {
 
 /**
  * Défaut modèle compatible reasoning + migration unique de l'ancien seed
- * TempoFlow `none` vers `medium`.
+ * kit `none` vers `medium`.
  *
  * L'ancien bootstrap ne laissait aucune provenance permettant de distinguer un
- * `none` choisi par l'utilisateur du `none` imposé par TempoFlow. La migration
+ * `none` choisi par l'utilisateur du `none` imposé par. La migration
  * V1 restaure donc `medium` une seule fois, puis le marqueur garantit que tout
  * choix utilisateur ultérieur (y compris `none`) est préservé aux boots suivants.
  * Les autres niveaux existants ne sont jamais écrasés.

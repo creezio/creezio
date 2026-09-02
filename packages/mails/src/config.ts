@@ -5,7 +5,7 @@
 
 export type MailsConfig = {
   /**
-   * Domaine racine public des instances (ex. `tempoflow.fr`, `certivan.creez.io`).
+   * Domaine racine public des instances (ex. `acme.example`, `acme.example`).
    * Dérive `{slug}.mail.{rootDomain}` depuis `{slug}.{rootDomain}`.
    */
   rootDomain: string;

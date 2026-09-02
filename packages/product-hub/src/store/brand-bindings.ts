@@ -32,7 +32,7 @@ export type CreateBrandProductHubBindingsOptions = {
   requireAdminToBootstrapInstall?: boolean;
 };
 
-/** Singleton store + ACL Bearer service-key fallback (TF / Certivan / Fidu). */
+/** Singleton store + ACL Bearer service-key fallback (marques). */
 export function createBrandProductHubBindings(
   opts: CreateBrandProductHubBindingsOptions,
 ): BrandProductHubBindings {

@@ -1,5 +1,5 @@
 /**
- * Logique pure n8n — port brand-agnostic TF2 0.10.26 n8n-embed.ts.
+ * Logique pure n8n — port brand-agnostic kit n8n-embed.ts.
  */
 
 import path from "node:path";

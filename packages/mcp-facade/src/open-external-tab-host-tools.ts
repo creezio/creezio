@@ -1,6 +1,6 @@
 /**
  * D-P18 — tool MCP host-only `open_external_tab` (desktop).
- * SoT kit partagée TF / CV / Fidu. Métier résolution URL reste injecté.
+ * SoT kit partagée marques. Métier résolution URL reste injecté.
  */
 import { z } from "zod";
 
@@ -65,7 +65,7 @@ export type CreateOpenExternalTabHostMcpToolsOptions = {
   title?: string;
   /** Description tool MCP (défaut neutre). */
   description?: string;
-  /** Fidu : expose `outil_slug` dans le schéma. Défaut false. */
+  /** feature-off : expose `outil_slug` dans le schéma. Défaut false. */
   includeOutilSlug?: boolean;
 };
 

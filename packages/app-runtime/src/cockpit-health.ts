@@ -1,5 +1,5 @@
 /**
- * Santé agrégée cockpit (kit-native) — parité TempoFlow `lib/cockpit-health.ts`.
+ * Santé agrégée cockpit (kit-native) — parité kit `lib/cockpit-health.ts`.
  *
  * Lit les envs posés par le harness / desktop après warm natif :
  * - Meili   : MEILI_HOST → GET /health

@@ -1,7 +1,6 @@
 /**
  * Émission d'événements ops depuis un SOUS-PROCESS Node vanilla
- * (meili-indexer, migrations…) : ligne `TF2EVENT {json}` sur stdout.
- * Extrait de TempoFlow ops-emit.ts (R4).
+ * (meili-indexer, migrations…) : ligne ops JSONL sur stdout.
  */
 
 import { TF2EVENT_PREFIX, type OpsEventInput } from "./types.js";

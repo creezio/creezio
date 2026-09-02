@@ -1,5 +1,5 @@
 /**
- * Registre Admin des endpoints runtime (port TempoFlow O5 — gold).
+ * Registre Admin des endpoints runtime (O5 — gold).
  * Enrichit les routes réellement montées avec les métadonnées OpenAPI
  * quand un document est fourni.
  */

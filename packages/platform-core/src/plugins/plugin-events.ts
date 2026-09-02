@@ -1,5 +1,5 @@
 /**
- * Bus d'événements CRM → plugins — logique pure (TF2 0.10.26 plugin-events.ts).
+ * Bus d'événements CRM → plugins — logique pure (kit plugin-events.ts).
  */
 
 import fs from "node:fs";

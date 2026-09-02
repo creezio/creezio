@@ -1,6 +1,6 @@
 /**
  * Registre des migrations historiques **plateforme** (TF gold N4).
- * Versions = schema_version brand.db (chaîne TF / Certivan héritée).
+ * Versions = schema_version brand.db (chaîne TF / héritée).
  * Les steps métier (catalogue, commandes, …) restent dans les marques.
  */
 

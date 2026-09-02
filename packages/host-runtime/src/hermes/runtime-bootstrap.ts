@@ -379,47 +379,21 @@ function verifyInstallScriptChecksum(
 
 /** Marker écrit après pip OK / imports OK — skip pip aux boots suivants. */
 export const WEBUI_DEPS_MARKER = ".desktop-webui-deps";
-/** Legacy marque (upgrade) — lu si le marker desktop est absent. */
-export const WEBUI_DEPS_MARKER_LEGACY = ".tempoflow-webui-deps";
-/** @deprecated Legacy marque héritée (M6p) — installs ≤ cutover host. */
-export const WEBUI_DEPS_MARKER_LEGACY_CERTIVAN = ".certivan-webui-deps";
-/** @deprecated Legacy marque héritée (M6p) — installs ≤ cutover host. */
-export const WEBUI_DEPS_MARKER_LEGACY_FIDU = ".fidu-webui-deps";
 const WEBUI_PIN_FILE = ".desktop-webui-pin";
-const WEBUI_PIN_FILE_LEGACY = ".tempoflow-webui-pin";
-const WEBUI_PIN_FILE_LEGACY_CERTIVAN = ".certivan-webui-pin";
-const WEBUI_PIN_FILE_LEGACY_FIDU = ".fidu-webui-pin";
-
-const WEBUI_DEPS_MARKER_CANDIDATES = [
-  WEBUI_DEPS_MARKER,
-  WEBUI_DEPS_MARKER_LEGACY,
-  WEBUI_DEPS_MARKER_LEGACY_CERTIVAN,
-  WEBUI_DEPS_MARKER_LEGACY_FIDU,
-] as const;
-
-const WEBUI_PIN_CANDIDATES = [
-  WEBUI_PIN_FILE,
-  WEBUI_PIN_FILE_LEGACY,
-  WEBUI_PIN_FILE_LEGACY_CERTIVAN,
-  WEBUI_PIN_FILE_LEGACY_FIDU,
-] as const;
 
 export function webuiDepsMarkerPath(webuiDir: string): string {
   return path.join(webuiDir, WEBUI_DEPS_MARKER);
 }
 
 export function readWebuiDepsMarker(webuiDir: string): string | null {
-  for (const name of WEBUI_DEPS_MARKER_CANDIDATES) {
-    const p = path.join(webuiDir, name);
-    try {
-      if (!fs.existsSync(p)) continue;
-      const v = fs.readFileSync(p, "utf8").trim();
-      if (v) return v;
-    } catch {
-      /* ignore */
-    }
+  const p = path.join(webuiDir, WEBUI_DEPS_MARKER);
+  try {
+    if (!fs.existsSync(p)) return null;
+    const v = fs.readFileSync(p, "utf8").trim();
+    return v || null;
+  } catch {
+    return null;
   }
-  return null;
 }
 
 export function writeWebuiDepsMarker(webuiDir: string, digest: string): void {
@@ -731,17 +705,14 @@ async function extractTarGz(
 }
 
 function readWebuiPin(webuiDir: string): string | null {
-  for (const name of WEBUI_PIN_CANDIDATES) {
-    const p = path.join(webuiDir, name);
-    try {
-      if (!fs.existsSync(p)) continue;
-      const v = fs.readFileSync(p, "utf8").trim();
-      if (v) return v;
-    } catch {
-      /* ignore */
-    }
+  const p = path.join(webuiDir, WEBUI_PIN_FILE);
+  try {
+    if (!fs.existsSync(p)) return null;
+    const v = fs.readFileSync(p, "utf8").trim();
+    return v || null;
+  } catch {
+    return null;
   }
-  return null;
 }
 
 /**

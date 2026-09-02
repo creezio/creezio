@@ -464,7 +464,7 @@ process.exit(r.status ?? 1);
     force,
     written,
   );
-  // Parité TF3 : pages CRM inaccessibles sans cookie session marque.
+  // Parité factory : pages CRM inaccessibles sans cookie session marque.
   writeFile(
     path.join(outDir, "ui/middleware.ts"),
     renderUiAuthMiddleware(model.brandId),

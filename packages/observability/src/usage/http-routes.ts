@@ -1,5 +1,5 @@
 /**
- * Routes Hono usage analytics — ingest + admin (port TempoFlow — N6).
+ * Routes Hono usage analytics — ingest + admin (N6).
  * Auth owner pour admin reste côté marque (montage).
  */
 import { Hono } from "hono";

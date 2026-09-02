@@ -1,7 +1,7 @@
 /**
  * Store plateforme (core.db) pour la surface serveur :
  * - schéma kanban unifié `tasks` / `task_runs` / `agent_session_logs`
- *   (parité migrations TF2 029/026/031, idempotent) ;
+ *   (parité migrations kit 029/026/031, idempotent) ;
  * - utilisateurs plateforme `creezio_platform_users` (collaborateurs
  *   human/ai) + projection owner depuis `creezio_users` (@creezio/auth) ;
  * - adapter DB `TasksDbAdapter` pour le runtime @creezio/tasks.
@@ -15,7 +15,7 @@ import type {
   TasksUsersAdapter,
 } from "@creezio/tasks";
 
-/** Kanban unifié plateforme — même contrat colonnes que TF2 (029+026+031). */
+/** Kanban unifié plateforme — même contrat colonnes que kit (029+026+031). */
 export const PLATFORM_KANBAN_CORE_SQL = `
 CREATE TABLE IF NOT EXISTS tasks (
   id TEXT PRIMARY KEY,

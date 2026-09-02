@@ -1,6 +1,6 @@
 /**
  * Injection marque pour ai-workspace (N2).
- * Partitions / cookies / titres fenêtre — zéro hardcode TempoFlow.
+ * Partitions / cookies / titres fenêtre — zéro hardcode.
  */
 
 import type { AiSupplierTabsFactory } from "./types.js";
@@ -8,7 +8,7 @@ import type { AiSupplierTabsFactory } from "./types.js";
 export type AiWorkspaceHostBindings = {
   /** Ex. "TempoFlow" — titre fenêtres profil IA. */
   productName: string;
-  /** Cookie session CRM (ex. tempoflow2_crm_session). */
+  /** Cookie session CRM (ex. brand_session). */
   sessionCookieName: string;
   /**
    * Slug partitions IA : `persist:{aiPartitionSlug}-<userId>`
@@ -18,7 +18,7 @@ export type AiWorkspaceHostBindings = {
   aiPartitionSlug: string;
   /** Env opt-in partage sessions web owner (ex. TF2_AI_SHARE_WEB_SESSIONS). */
   shareWebSessionsEnvKey: string;
-  /** Préfixe sessionStorage renderer (ex. tempoflow-ai-workspace). */
+  /** Préfixe sessionStorage renderer (ex. brand-ai-workspace). */
   sessionStoragePrefix: string;
   preloadPath: (name: string) => string;
   createSupplierTabs: AiSupplierTabsFactory;

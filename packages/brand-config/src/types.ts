@@ -17,7 +17,7 @@ export type ExeIdentity = {
   productName: string;
   /** Nom du binaire Windows (évite les collisions StartsWith INSTDIR). */
   executableName: string;
-  /** Motif artifactName (ex. `TempoFlow-Setup-${version}.${ext}`). */
+  /** Motif artifactName (ex. `Acme-Setup-${version}.${ext}`). */
   artifactName: string;
   /** `extraMetadata.name` → segment userData Electron par défaut. */
   packageName: string;
@@ -46,7 +46,7 @@ export type BrandFeatures = {
   fleet?: boolean;
   /**
    * Parcours produit `/onboarding` après `/setup`.
-   * Absent/`true` = activé (marques avec étapes métier, ex. TempoFlow).
+   * Absent/`true` = activé (marques avec étapes métier).
    * `false` = désactivé : post-setup → home (`/`), page `/onboarding` OS redirige.
    */
   onboarding?: boolean;
@@ -58,27 +58,27 @@ export type BrandFeatures = {
  * dans platform-core / electron-shell.
  */
 export type AppManifest = {
-  /** Identifiant court stable (`tempoflow` | `certivan` | `fidu`). */
+  /** Identifiant court stable (ex. `acme`). */
   brandId: string;
-  /** Préfixe variables d'env (ex. `TF2`, `CERTIVAN`, `FIDU`). */
+  /** Préfixe variables d'env (ex. `ACME`). */
   envPrefix: string;
-  /** Nom contextBridge exposé sur `window` (ex. `tempoflowDesktop`). */
+  /** Nom contextBridge exposé sur `window` (ex. `acmeDesktop`). */
   bridgeName: string;
   /** Nom fichier SQLite principal sous userData. */
   dbFileName: string;
   /** Nom fichier config locale JSON sous userData. */
   localConfigFileName: string;
   /**
-   * Protocole deep-link OS (sans `://`) — ex. `tempoflow`, `certivan`, `fidu`.
-   * Utilisé pour `tempoflow://join/<host>` et les argv `--{prefix}-profile=`.
+   * Protocole deep-link OS (sans `://`) — ex. `acme`.
+   * Utilisé pour `acme://join/<host>` et les argv `--{prefix}-profile=`.
    */
   deepLinkProtocol: string;
   /**
    * Segment partition Chromium app (sans préfixe `persist:`).
-   * Ex. `tempoflow-app` → `persist:tempoflow-app`.
+   * Ex. `acme-app` → `persist:acme-app`.
    */
   sessionPartition: string;
-  /** Préfixe des fichiers log main (ex. `tempoflow-main` → `tempoflow-main.log`). */
+  /** Préfixe des fichiers log main (ex. `acme-main` → `acme-main.log`). */
   logBasename: string;
   /**
    * Domaine racine pour tunnels Cloudflare
@@ -125,9 +125,8 @@ export type AppManifest = {
    */
   sandbox?: boolean;
   /**
-   * Capacités optionnelles. Fidu : `plugins: false`, `fleet: false` (N5).
-   * TF/CV : `true` explicite (runtime réel).
-   * Demo-app : `onboarding: false` (post-setup → home).
+   * Capacités optionnelles. Une marque peut poser `plugins: false` /
+   * `fleet: false` (N5). Demo-app : `onboarding: false` (post-setup → home).
    */
   features?: BrandFeatures;
 };
@@ -145,7 +144,7 @@ export function isFeatureEnabled(
  * Paramètre les scripts `@creezio/desktop-tooling` sans hardcoder une marque.
  */
 export type BrandPublishInfra = {
-  /** Nom sous `/data/` dans le conteneur NPM (ex. `dl-tempoflow`). */
+  /** Nom sous `/data/` dans le conteneur NPM (ex. `dl-acme`). */
   dockerDlName: string;
   /** Chemin hôte du volume DL (fallback si pas de docker cp). */
   hostDlDirDefault: string;
@@ -153,7 +152,7 @@ export type BrandPublishInfra = {
   npmContainer: string;
   /** Hôte SSH remote-build (`user@host`). */
   remoteBuildHost: string;
-  /** Workdir distant parent de `crm/` (ex. `/opt/docker/certivan-build`). */
+  /** Workdir distant parent de `crm/` (ex. `/opt/docker/acme-build`). */
   remoteBuildRoot: string;
   /** Source binaires Windows sur l'hôte distant (infra only). */
   remoteBinSrc: string;
@@ -163,13 +162,13 @@ export type BrandPublishInfra = {
   remoteLogPrefix: string;
   /**
    * Si true, `remote-build-win` produit aussi `dist-electron-server`
-   * (modèle Client+Serveur). Fidu peut rester `false` tant que le split
-   * packagé n'est pas branché (Phase G).
+   * (modèle Client+Serveur). Une marque peut rester `false` tant que le
+   * split packagé n'est pas branché.
    */
   buildServerArtifact: boolean;
   /**
    * Alias legacy client optionnel republie sous ce nom
-   * (ex. Certivan `Certivan-Setup-0.1.0.exe`).
+   * (ex. `Acme-Setup-0.1.0.exe`).
    */
   legacyClientAlias?: string;
   /** Chemin `crm/` local typique pour la console ops (lecture seule). */
@@ -181,7 +180,7 @@ export function exeForKind(manifest: AppManifest, kind: AppKind): ExeIdentity {
   return kind === "server" ? manifest.server : manifest.client;
 }
 
-/** Nom d'env override (ex. `TF2_USER_DATA_OVERRIDE`). */
+/** Nom d'env override (ex. `ACME_USER_DATA_OVERRIDE`). */
 export function envKey(manifest: AppManifest, suffix: string): string {
   return `${manifest.envPrefix}_${suffix}`;
 }
@@ -191,7 +190,7 @@ export function appSessionPartition(manifest: AppManifest): string {
   return `persist:${manifest.sessionPartition}`;
 }
 
-/** Prefixe argv profil (`--tf2-profile=` / `--certivan-profile=`…). */
+/** Prefixe argv profil (`--acme-profile=`). */
 export function profileArgPrefix(manifest: AppManifest): string {
   return `--${manifest.envPrefix.toLowerCase()}-profile=`;
 }
@@ -227,12 +226,12 @@ export function latestYmlUrl(manifest: AppManifest, kind: AppKind): string {
   return `${feedBaseUrl(exeForKind(manifest, kind))}/latest.yml`;
 }
 
-/** Variable d'env kind packagé (`TF2_APP_KIND`, …). */
+/** Variable d'env kind packagé (`ACME_APP_KIND`, …). */
 export function appKindEnvKey(manifest: AppManifest): string {
   return `${manifest.envPrefix}_APP_KIND`;
 }
 
-/** Variable d'env plateforme serveur embarqué (`TF2_SERVER_PLATFORM`, …). */
+/** Variable d'env plateforme serveur embarqué (`ACME_SERVER_PLATFORM`, …). */
 export function serverPlatformEnvKey(manifest: AppManifest): string {
   return `${manifest.envPrefix}_SERVER_PLATFORM`;
 }

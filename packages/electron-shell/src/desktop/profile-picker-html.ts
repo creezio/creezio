@@ -1,5 +1,5 @@
 /**
- * Écran de profils au boot — gold TempoFlow paramétré (brand / bridge / tunnel).
+ * Écran de profils au boot — gold kit paramétré (brand / bridge / tunnel).
  */
 
 import {
@@ -17,9 +17,9 @@ export type PickerRememberedServer = {
 export type ProfilePickerBrand = {
   productName: string;
   bridgeName: string;
-  /** Domaine tunnel affiché, ex. `tempoflow.fr`. */
+  /** Domaine tunnel affiché, ex. `acme.example`. */
   tunnelRootDomain: string;
-  /** Deep link join, ex. `tempoflow`. */
+  /** Deep link join, ex. `acme`. */
   deepLinkScheme: string;
   accent?: string;
   cssPrefix?: string;

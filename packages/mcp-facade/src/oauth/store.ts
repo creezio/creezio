@@ -1,6 +1,6 @@
 /**
  * Store OAuth 2.1 MCP (PKCE S256, DCR, refresh rotation) — SoT kit.
- * Port TempoFlow gold ; DB / JWT secret / URL publique injectables.
+ * port kit gold ; DB / JWT secret / URL publique injectables.
  */
 import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
 import { SignJWT, jwtVerify } from "jose";

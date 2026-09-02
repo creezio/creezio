@@ -2,7 +2,7 @@
  * Surface Hono plateforme — auth / tasks / assistant / desktop / users sur le
  * port unique du serveur marque (harness Docker ET desktop).
  *
- * Comble l'écart TF2 : ces routes vivaient dans le fork Next TF2 ; ici elles
+ * Comble l'écart kit : ces routes vivaient dans le fork Next historique ; ici elles
  * sont servies par le kit lui-même (l'UI Next standalone rewrite /api/v1/*
  * vers ce serveur). SSE streamé (screencast, desktop-actions, runs).
  *
@@ -243,7 +243,7 @@ export function createPlatformTasksBrandAdapters(): Pick<
         return { ok: true, workspace: info };
       }
       if (!runtime) return { ok: false, error: "platform_surface_unmounted" };
-      // Fallback desktop Electron (parité TF2) : dispatch bridge ciblé host.
+      // Fallback desktop Electron (parité kit) : dispatch bridge ciblé host.
       const user = runtime.store.getUserById(aiUserId);
       if (!user) return { ok: false, error: `Collaborateur IA introuvable: ${aiUserId}` };
       const owner = runtime.store.getOwner();

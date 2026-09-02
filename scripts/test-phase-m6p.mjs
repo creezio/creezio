@@ -45,20 +45,17 @@ check("hermes ensureApiKey brand-aware + clear webui password legacy", () => {
   assert.ok(src.includes("clearGeneratedWebuiPassword"));
 });
 
-check("hermes bootstrap WEBUI_DEPS_MARKER_LEGACY_CERTIVAN + FIDU", () => {
+check("hermes bootstrap — plus aucun marker WebUI marque (H11)", () => {
   const src = read(
     "packages/host-runtime/src/hermes/runtime-bootstrap.ts",
   );
-  assert.ok(src.includes("WEBUI_DEPS_MARKER_LEGACY_CERTIVAN"));
-  assert.ok(src.includes("WEBUI_DEPS_MARKER_LEGACY_FIDU"));
-  assert.ok(src.includes(".certivan-webui-deps"));
-  assert.ok(src.includes(".fidu-webui-deps"));
-  assert.ok(src.includes(".certivan-webui-pin"));
-  assert.ok(src.includes(".fidu-webui-pin"));
-  // H12 : plus de ré-export compat via electron-shell — les marqueurs legacy
-  // sont vérifiés ci-dessus dans leur SoT host-runtime (runtime-bootstrap.ts).
-  // H7 : le clear des passwords webui legacy passe par la dérivation
-  // secretPrefix (voir check précédent) — plus de littéral marque ici.
+  assert.ok(src.includes("WEBUI_DEPS_MARKER"));
+  assert.ok(src.includes(".desktop-webui-deps"));
+  assert.ok(src.includes(".desktop-webui-pin"));
+  assert.equal(src.includes("WEBUI_DEPS_MARKER_LEGACY"), false);
+  assert.equal(src.includes(".certivan-"), false);
+  assert.equal(src.includes(".fidu-"), false);
+  assert.equal(src.includes(".tempoflow-"), false);
   const hermes = read("packages/host-runtime/src/hermes/launcher.ts");
   assert.ok(hermes.includes(`-webui-password`));
 });

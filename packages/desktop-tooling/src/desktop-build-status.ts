@@ -1,6 +1,6 @@
 /**
  * Agrège le statut build Windows d'une marque (hook JSON + feed + process).
- * Port générique de `desktop-build-status.mjs` TF2 0.10.26.
+ * Port générique de `desktop-build-status.mjs` kit.
  */
 
 import { execFileSync, spawnSync } from "node:child_process";

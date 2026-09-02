@@ -89,7 +89,7 @@ function defaultScaffold(
 
 /**
  * Démarre le control plane loopback brandé depuis HostRuntimeContext.
- * **C7** — entrée unique TF / Certivan / Fidu / demobrand.
+ * **C7** — entrée unique marques / demobrand.
  */
 export async function startHostPluginControlPlane(
   opts: StartHostPluginControlPlaneOptions,

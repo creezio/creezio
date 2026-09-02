@@ -12,7 +12,7 @@ import { tableExists } from "../types.js";
  *   in_progress · blocked|review → blocked · done → done · archived → cancelled.
  *   Le statut Hermes brut est conservé dans `hermes_status`.
  * - `parent_task_id` : sous-tâches (délégation collab IA → Hermes).
- * - Supprime les colonnes métier Fidu (entreprise_id / dossier_id /
+ * - Supprime les colonnes métier feature-off (entreprise_id / dossier_id /
  *   restaurant_id) et retire `nav.todos` des permissions collaborateurs
  *   (l'onglet /todos disparaît au profit de /taches).
  */

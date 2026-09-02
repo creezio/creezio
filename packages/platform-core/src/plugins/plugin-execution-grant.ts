@@ -1,6 +1,6 @@
 /**
- * Grants d'exécution plugins (product-hub) — port brand-agnostic TF2.
- * Préfixe token paramétrable (défaut `exec_` ; TF2 utilisait `tf2_exec_`).
+ * Grants d'exécution plugins (product-hub) — port brand-agnostic kit.
+ * Préfixe token paramétrable (défaut `exec_` ; kit utilisait `tf2_exec_`).
  */
 
 import crypto from "node:crypto";

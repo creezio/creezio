@@ -33,7 +33,7 @@ export function taskToolDefinitions(): AssistantToolDefinition[] {
   if (!assistantTasks()) return [];
   const tasks = assistantTasks()!;
   const defs = [...PLATFORM_TASK_TOOL_DEFINITIONS];
-  // Fidu : exposer aussi create_todo / list_todos comme noms LLM
+  // feature-off : exposer aussi create_todo / list_todos comme noms LLM
   const wantTodo =
     (tasks.aliases?.create || []).includes("create_todo") ||
     (tasks.aliases?.list || []).includes("list_todos") ||
