@@ -6,6 +6,41 @@ import type { ProductModel } from "../product-model.js";
 import { getMeiliFeedPreset } from "./meili-feed-presets.js";
 import { renderBrandSchemaSql } from "./schema.js";
 
+/** Cookie session aligné `sessionCookieNameForBrand` (@creezio/app-runtime). */
+function sessionCookieNameForBrandId(brandId: string): string {
+  return `${brandId.replace(/[^a-z0-9_]/gi, "_")}_session`;
+}
+
+/**
+ * Bindings plateforme — `configureAuth({ ownerPermissions: collectNavPermissions() })`
+ * via `applyBrandModuleAuth`. Access-control n'est pas activé ici : les
+ * groupes sont fusionnés seulement si la marque a déjà appelé
+ * `configureAccessControl` (admin).
+ */
+export function renderBrandPlatformBindingsTs(brandId: string): string {
+  const cookie = sessionCookieNameForBrandId(brandId);
+  return `/**
+ * creezio:owned-by-brand
+ * Auth / access : permissions nav collectées depuis les navItems des modules.
+ * Un \`brand module init\` avec \`permission: "nav.<id>"\` alimente l'owner
+ * au prochain boot — plus de catalogue \`nav-permissions.ts\`.
+ */
+import { applyBrandModuleAuth } from "@creezio/app-runtime";
+import {
+  collectNavPermissions,
+  collectPermissionGroups,
+} from "./modules/index.js";
+
+export function applyBrandPlatformBindings(): void {
+  applyBrandModuleAuth({
+    cookieName: ${JSON.stringify(cookie)},
+    ownerPermissions: collectNavPermissions(),
+    permissionGroups: collectPermissionGroups(),
+  });
+}
+`;
+}
+
 export function renderBrandMigrationsTs(model: ProductModel): string {
   const sql = renderBrandSchemaSql(model)
     .replace(/\\/g, "\\\\")
@@ -557,6 +592,7 @@ import { verticalSlot } from "./vertical-slot.js";
 import { brandMigrations } from "./brand-migrations.js";
 import { registerBrandModuleApi } from "./brand-module-api.js";
 import { brandMeiliFeed, applyBrandMeiliConfig } from "./meili-feed.js";
+import { applyBrandPlatformBindings } from "./brand-platform-bindings.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -565,7 +601,10 @@ startBrandDesktop({
   electronDirname: __dirname,
   brandMigrations: brandMigrations(),
   registerModuleApi: registerBrandModuleApi,
-  beforeBoot: applyBrandMeiliConfig,
+  beforeBoot: () => {
+    applyBrandPlatformBindings();
+    applyBrandMeiliConfig();
+  },
   meiliFeed: brandMeiliFeed,
   navItems: verticalSlot.items,
   // Défaut kit = "runtime". Opt-out explicite pour CI/fenêtre seule.

@@ -44,6 +44,7 @@ import {
   MODULES_INDEX_TS,
   MODULES_TYPES_TS,
   renderBrandAgentsMd,
+  renderBrandPlatformBindingsTs,
   renderBrandWorkflowFiles,
 } from "./generators/index.js";
 import { scaffoldAdminApp } from "./admin-repo.js";
@@ -703,6 +704,7 @@ import { ${name} as manifest } from "./app-manifest.js";
 import { verticalSlot } from "./vertical-slot.js";
 import { brandMigrations } from "./brand-migrations.js";
 import { registerBrandModuleApi } from "./brand-module-api.js";
+import { applyBrandPlatformBindings } from "./brand-platform-bindings.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -711,6 +713,7 @@ startBrandDesktop({
   electronDirname: __dirname,
   brandMigrations: brandMigrations(),
   registerModuleApi: registerBrandModuleApi,
+  beforeBoot: applyBrandPlatformBindings,
   navItems: verticalSlot.items,
   desktopShell:
     process.env.CREEZIO_DESKTOP_SHELL === "window" ? "window" : "runtime",
@@ -1503,6 +1506,12 @@ export function scaffoldNewApp(opts: NewAppOptions): ScaffoldResult {
     writeFile(
       path.join(serverDir, "scripts/creezio-cli.mjs"),
       renderCreezioCliProxyMjs(),
+      force,
+      written,
+    );
+    writeFile(
+      path.join(serverDir, "src/electron/brand-platform-bindings.ts"),
+      renderBrandPlatformBindingsTs(manifest.brandId),
       force,
       written,
     );

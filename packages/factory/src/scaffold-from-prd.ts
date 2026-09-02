@@ -38,6 +38,7 @@ import {
   renderBrandMigrationsTs,
   renderBrandModuleApiTs,
   renderBrandKernelHarnessMjs,
+  renderBrandPlatformBindingsTs,
   renderMainFromPrdNativeTs,
   renderMeiliFeedTs,
   renderMetierParcoursSmoke,
@@ -576,6 +577,12 @@ process.exit(r.status ?? 1);
   writeFile(
     path.join(outDir, "scripts/test-meili-config.mjs"),
     renderMeiliConfigSmoke(model),
+    force,
+    written,
+  );
+  writeFile(
+    path.join(outDir, "src/electron/brand-platform-bindings.ts"),
+    renderBrandPlatformBindingsTs(model.brandId),
     force,
     written,
   );

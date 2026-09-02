@@ -55,7 +55,7 @@ export const BRAND_MODULES: BrandModuleDef[] = [
  * Collecteurs du registre — délégation aux collecteurs génériques kit
  * (collectDemoScenarios inclut validation + dédup par id, \`os-tour\`
  * partagé : premier gagne ; collectAssistantSources / collectOnboardingContent
- * = volet 2 F3.4, champs additifs).
+ * = volet 2 F3.4 ; collectNavPermissions / collectPermissionGroups = D8).
  */
 export const {
   collectEntitySpecs,
@@ -67,6 +67,8 @@ export const {
   collectDemoScenarios,
   collectAssistantSources,
   collectOnboardingContent,
+  collectNavPermissions,
+  collectPermissionGroups,
 } = createBrandModuleRegistry(BRAND_MODULES);
 `;
 
@@ -643,11 +645,8 @@ export const ${camel}Module: BrandModuleDef = {
       label: ${JSON.stringify(navLabel)},
       href: ${JSON.stringify(navHref)},
       group: "brand",
-      order: ${order},${
-        entity.permission
-          ? `\n      permission: ${JSON.stringify(entity.permission)},`
-          : ""
-      }
+      order: ${order},
+      permission: ${JSON.stringify(entity.permission || `nav.${moduleId}`)},
     },
   ],
 ${renderPlayableDemoBlock({

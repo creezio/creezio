@@ -9,7 +9,14 @@ export type {
 } from "./types.js";
 
 export {
+  applyBrandModuleAuth,
+  sessionCookieNameForBrand,
+  type ApplyBrandModuleAuthOptions,
+} from "./apply-brand-module-auth.js";
+export {
   createBrandModuleRegistry,
+  collectNavPermissionsFromModules,
+  collectPermissionGroupsFromModules,
   type BrandMeiliIndex,
   type BrandModuleAssistantContextSource,
   type BrandModuleAssistantEntitySource,
@@ -19,6 +26,7 @@ export {
   type BrandModuleOnboarding,
   type BrandModuleRegistry,
   type BrandNavItem,
+  type BrandPermissionGroup,
   type OnboardingContent,
 } from "./module-contract.js";
 export { startBrandDesktop } from "./start-brand-desktop.js";

@@ -61,6 +61,19 @@ function assertAppAllowlist(appDir, label) {
   assert.match(brandApi, /collectDemoScenarios/, `${label}: mount collectDemoScenarios`);
   assert.match(brandApi, /collectAssistantSources/, `${label}: collectAssistantSources`);
   assert.match(brandApi, /collectOnboardingContent/, `${label}: collectOnboardingContent`);
+  const modulesIndex = fs.readFileSync(
+    path.join(server, "src/electron/modules/index.ts"),
+    "utf8",
+  );
+  assert.match(modulesIndex, /collectNavPermissions/, `${label}: collectNavPermissions`);
+  assert.match(modulesIndex, /collectPermissionGroups/, `${label}: collectPermissionGroups`);
+  assert.match(modulesIndex, /collectOnboardingContent/, `${label}: F3.4 collectOnboardingContent`);
+  const bindings = fs.readFileSync(
+    path.join(server, "src/electron/brand-platform-bindings.ts"),
+    "utf8",
+  );
+  assert.match(bindings, /applyBrandModuleAuth/, `${label}: applyBrandModuleAuth`);
+  assert.match(bindings, /collectNavPermissions/, `${label}: bindings collectNavPermissions`);
   assert.match(brandApi, /createInteractiveDemoMount/, `${label}: mount interactive-demo`);
   assert.match(brandApi, /createOnboardingContentMount/, `${label}: mount onboarding`);
   assert.doesNotMatch(brandApi, /brandDemoScenarios\s*\(/);

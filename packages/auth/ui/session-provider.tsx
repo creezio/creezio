@@ -46,7 +46,11 @@ export type SessionContextValue = {
 
 export type SessionProviderProps = {
   children: ReactNode;
-  /** Permissions owner (défaut []). Injecter ALL_NAV_PERMISSIONS marque. */
+  /**
+   * @deprecated SoT = GET /api/v1/auth/me (configureAuth.ownerPermissions
+   * côté serveur). Conservé pour ne pas casser les BrandChrome existants
+   * — ignoré, plus de fallback chrome.
+   */
   ownerPermissions?: readonly string[];
   /** Redirect après impersonate (défaut /dashboard). */
   impersonateRedirect?: string;
@@ -64,7 +68,6 @@ const SessionContext = createContext<SessionContextValue | null>(null);
  */
 export function SessionProvider({
   children,
-  ownerPermissions = [],
   impersonateRedirect = "/dashboard",
   stopImpersonateRedirect = "/collaborateurs",
   heartbeatPath = "/api/v1/desktop/heartbeat",
@@ -91,12 +94,10 @@ export function SessionProvider({
         data.role === "admin"
           ? data.role
           : "owner";
-      const permissions: string[] =
-        role === "owner" || role === "admin"
-          ? [...ownerPermissions]
-          : Array.isArray(data.permissions)
-            ? data.permissions
-            : [];
+      // SoT unique = session /me (configureAuth.ownerPermissions côté serveur).
+      const permissions: string[] = Array.isArray(data.permissions)
+        ? data.permissions
+        : [];
       setMe({
         user: data.user,
         user_id: data.user_id,
@@ -112,7 +113,7 @@ export function SessionProvider({
     } finally {
       setLoading(false);
     }
-  }, [ownerPermissions]);
+  }, []);
 
   useEffect(() => {
     void refresh();

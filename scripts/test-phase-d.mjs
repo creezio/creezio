@@ -235,6 +235,8 @@ test("scaffoldNewApp génère structure + builder configs", () => {
   assert.match(modIndex, /collectEntitySpecs/);
   assert.match(modIndex, /collectAssistantSources/);
   assert.match(modIndex, /collectOnboardingContent/);
+  assert.match(modIndex, /collectNavPermissions/);
+  assert.match(modIndex, /collectPermissionGroups/);
   assert.match(modIndex, /<creezio:module-imports>/);
   const bareApi = fs.readFileSync(
     path.join(outDir, "server/src/electron/brand-module-api.ts"),

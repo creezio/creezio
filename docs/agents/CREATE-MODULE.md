@@ -128,8 +128,9 @@ d'accès (règle d'or n°7, fail-closed pin ≥ 0.16.0) : `permission` (ex.
 OU `accessJustification` explicite si la route est volontairement
 publique/machine (webhook signé, Bearer flotte…) — doctor
 `MODULE_PERMISSION_MISSING`. `accessJustification: "à qualifier"` (posé par
-le codemod H9) = warn `MODULE_PERMISSION_UNQUALIFIED` : qualifier la vraie
-permission dès que possible. Sur un `EntitySpec`, `permission` /
+le codemod H9 sur la dette héritée) = warn `MODULE_PERMISSION_UNQUALIFIED`.
+Un **nouveau** module doit qualifier (`permission: "nav.<id>"`) — interdiction
+de poser `"à qualifier"` silencieusement. Sur un `EntitySpec`, `permission` /
 `accessJustification` sont threadés sur le mount CRUD généré.
 Un `EntitySpec` sans ops extras est valide : le CRUD est généré par
 `operationsFromEntitySpec`.
@@ -200,8 +201,15 @@ l'enforcement côté marque. Documenter chaque op dans l'interview (§5).
   resource via `inferResourceFromToolName` (écriture uniquement). Pour
   montrer une page après mutation UX (panier…) : `openOrNotify("/…")`
   (focus si onglet ouvert, nouvel onglet sinon — pas pastille-only).
-- Nav : `navItems` du module (permissions `nav.*` déclarées via
-  `configureAuth` — sans quoi la sidebar owner est amputée).
+- Nav : `navItems` du module avec `permission: "nav.<id>"` sur chaque
+  entrée. **Ne jamais** éditer un fichier global `nav-permissions.ts` ni
+  `ownerPermissions: [...]` en dur dans les bindings. Les collecteurs
+  `collectNavPermissions()` / `collectPermissionGroups()` (registre kit)
+  alimentent `configureAuth` et `/admin/access` via `applyBrandModuleAuth`
+  au boot. Owner API + sidebar bypassent déjà sans catalogue ; collab /
+  matrice d'accès suivent le registre. Icône chrome : fallback kit si
+  absente — ne pas toucher le BrandChrome partagé. Pas de
+  `accessJustification: "à qualifier"` sur un module neuf.
 - Meili (**composant core fail-closed**) : tout module avec une **entité
   listable** DOIT déclarer son schéma data + index — `meiliIndexes` (UIDs
   `catalog_*` imposés par le kit, jamais `tf2_*` : uid, settings,

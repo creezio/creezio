@@ -40,6 +40,7 @@ export {
   renderBrandMigrationsTs,
   renderBrandModuleApiTs,
   renderBrandKernelHarnessMjs,
+  renderBrandPlatformBindingsTs,
   renderMainFromPrdNativeTs,
   renderMeiliFeedTs,
 } from "./native-runtime.js";

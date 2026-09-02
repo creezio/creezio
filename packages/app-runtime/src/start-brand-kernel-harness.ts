@@ -115,6 +115,8 @@ function resolveBootKernel(
       registerModuleApi: config.registerModuleApi,
       beforeBoot: config.beforeBoot,
       enablePlatformServices: config.enablePlatformServices,
+      ownerPermissions: config.ownerPermissions,
+      permissionGroups: config.permissionGroups,
     });
   }
   throw new Error(
@@ -357,6 +359,12 @@ export async function startBrandKernelHarness(
     platformSurface = mountBrandPlatformSurface({
       brandId: config.brandId,
       coreDbPath: runtime.paths.core,
+      ...(config.ownerPermissions
+        ? { ownerPermissions: config.ownerPermissions }
+        : {}),
+      ...(config.permissionGroups
+        ? { permissionGroups: config.permissionGroups }
+        : {}),
       // DB métier pour les tools SQL de la config assistant kit par défaut.
       brandDb: () => runtime.getBrand(),
       baseUrl: () => advertisedBaseUrl || `http://127.0.0.1:${port || 0}`,

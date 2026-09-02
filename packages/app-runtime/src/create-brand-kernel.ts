@@ -76,6 +76,11 @@ import {
   registerOsNavAdminEntry,
 } from "@creezio/nav";
 import type { CoreNavItem } from "@creezio/shell-ui";
+import {
+  applyBrandModuleAuth,
+  sessionCookieNameForBrand,
+} from "./apply-brand-module-auth.js";
+import type { BrandPermissionGroup } from "./module-contract.js";
 
 export type CreateBrandKernelOptions = {
   manifest: AppManifest;
@@ -95,6 +100,10 @@ export type CreateBrandKernelOptions = {
    * mount kit `@creezio/nav` (source `module`).
    */
   navItems?: readonly CoreNavItem[];
+  /** Permissions owner issues des `navItems` (`collectNavPermissions`). */
+  ownerPermissions?: readonly string[];
+  /** Groupes `/admin/access` (`collectPermissionGroups`) — si AC déjà on. */
+  permissionGroups?: readonly BrandPermissionGroup[];
 };
 
 export type BrandKernelBoot = BrandKernelHandle & {
@@ -165,6 +174,19 @@ export function createBrandKernel(
   opts: CreateBrandKernelOptions,
 ): BrandKernelBoot {
   opts.beforeBoot?.();
+  if (opts.ownerPermissions || opts.permissionGroups) {
+    applyBrandModuleAuth({
+      cookieName:
+        getAuthConfig().cookieName ||
+        sessionCookieNameForBrand(opts.manifest.brandId),
+      ...(opts.ownerPermissions
+        ? { ownerPermissions: opts.ownerPermissions }
+        : {}),
+      ...(opts.permissionGroups
+        ? { permissionGroups: opts.permissionGroups }
+        : {}),
+    });
+  }
   const enablePlatform = opts.enablePlatformServices !== false;
   const paths: PathsContext = {
     manifest: opts.manifest,

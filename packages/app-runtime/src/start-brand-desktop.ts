@@ -91,6 +91,8 @@ function resolveBootKernel(config: StartBrandDesktopConfig): BootBrandKernelFn {
       // Mount `@creezio/nav` auto-enregistré dans createBrandKernel
       // (migrations brand.db + registerModuleApi("nav", …)).
       navItems: config.navItems,
+      ownerPermissions: config.ownerPermissions,
+      permissionGroups: config.permissionGroups,
     });
   }
   throw new Error(

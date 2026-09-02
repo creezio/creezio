@@ -11,6 +11,7 @@ import { test } from "node:test";
 import { fileURLToPath } from "node:url";
 import { createAppManifest } from "../packages/brand-config/dist/index.js";
 import {
+  applyBrandModuleAuth,
   composeBrandOs,
   createBrandModuleRegistry,
   startBrandDesktop,
@@ -60,6 +61,15 @@ test("AR2 composeBrandOs assemble host stack (sandbox)", () => {
   assert.equal(osHandle.status().brandId, "acmeprobe");
   assert.equal(osHandle.status().ok, true);
   osHandle.close();
+});
+
+test("AR3b SessionProvider SoT /me only — pas de fallback ownerPermissions", () => {
+  const src = fs.readFileSync(
+    path.join(ROOT, "packages/auth/ui/session-provider.tsx"),
+    "utf8",
+  );
+  assert.match(src, /Array\.isArray\(data\.permissions\)/);
+  assert.doesNotMatch(src, /\? \[\.\.\.ownerPermissions\]/);
 });
 
 test("AR3 ADR BrandSpec/app-runtime présent", () => {
@@ -151,4 +161,91 @@ test("AR5 collecteurs assistant/onboarding + consommation réelle", () => {
     },
   ]);
   assert.equal(composed.steps[0].id, "articles");
+});
+
+test("AR6 collectNavPermissions / collectPermissionGroups depuis navItems", () => {
+  const { collectNavPermissions, collectPermissionGroups } =
+    createBrandModuleRegistry([
+      {
+        id: "alpha",
+        navItems: [
+          {
+            id: "brand.alpha",
+            label: "Alpha",
+            href: "/alpha",
+            order: 10,
+            permission: "nav.alpha",
+          },
+        ],
+      },
+      {
+        id: "beta",
+        navItems: [
+          {
+            id: "brand.beta-a",
+            label: "Beta A",
+            href: "/beta-a",
+            order: 20,
+            permission: "nav.beta",
+          },
+          {
+            id: "brand.beta-b",
+            label: "Beta B",
+            href: "/beta-b",
+            order: 21,
+            permission: "nav.beta",
+          },
+        ],
+      },
+      { id: "gamma", navItems: [] },
+    ]);
+  assert.deepEqual(collectNavPermissions(), ["nav.alpha", "nav.beta"]);
+  const groups = collectPermissionGroups();
+  assert.equal(groups.length, 2);
+  assert.equal(groups[0]?.id, "alpha");
+  assert.equal(groups[1]?.id, "beta");
+  assert.equal(groups[1]?.permissions.length, 1);
+});
+
+test("AR7 applyBrandModuleAuth câble ownerPermissions + groupes si AC on", async () => {
+  const { getAuthConfig, resetAuthConfigForTests } = await import(
+    "@creezio/auth"
+  );
+  const {
+    configureAccessControl,
+    getAccessControlConfig,
+    resetAccessControlForTests,
+  } = await import("@creezio/access-control");
+  resetAuthConfigForTests();
+  resetAccessControlForTests();
+  applyBrandModuleAuth({
+    cookieName: "ar7_session",
+    ownerPermissions: ["nav.alpha"],
+    permissionGroups: [
+      { id: "alpha", label: "Alpha", permissions: [{ id: "nav.alpha", label: "Alpha" }] },
+    ],
+  });
+  assert.deepEqual(getAuthConfig().ownerPermissions, ["nav.alpha"]);
+  assert.equal(getAccessControlConfig(), null, "AC absent → pas d'activation forcée");
+
+  configureAccessControl({
+    roles: [{ id: "staff", label: "Staff", defaultPermissions: [] }],
+    defaultRole: "staff",
+    permissionGroups: [
+      { id: "os", label: "OS", permissions: [{ id: "nav.os", label: "OS" }] },
+    ],
+  });
+  applyBrandModuleAuth({
+    cookieName: "ar7_session",
+    ownerPermissions: ["nav.alpha", "nav.beta"],
+    permissionGroups: [
+      { id: "alpha", label: "Alpha", permissions: [{ id: "nav.alpha", label: "Alpha" }] },
+    ],
+  });
+  assert.deepEqual(getAuthConfig().ownerPermissions, ["nav.alpha", "nav.beta"]);
+  const ac = getAccessControlConfig();
+  assert.ok(ac?.permissionGroups?.some((g) => g.id === "os"));
+  assert.ok(ac?.permissionGroups?.some((g) => g.id === "alpha"));
+  resetAuthConfigForTests();
+  resetAccessControlForTests();
 });
