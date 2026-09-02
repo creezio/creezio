@@ -1,4 +1,4 @@
-node_modules/
+node_modules
 dist/
 dist-cjs/
 # Copie build des codemods d'architecture (SoT scripts/codemods/) — publiée npm
