@@ -47,6 +47,12 @@
 |---|---|
 | [`codemods/H9/h9-import-module-contract.mjs`](../codemods/H9/h9-import-module-contract.mjs) | Copie embarquée du codemod H9 — `types.ts` → ré-export kit + `accessJustification` sur mounts sans permission. |
 
+## `codemods/lib/`
+
+| Fichier | Rôle |
+|---|---|
+| [`codemods/lib/skip-dirs.mjs`](../codemods/lib/skip-dirs.mjs) | Copie build (gitignorée) du helper SKIP_DIRS partagé — SoT `scripts/codemods/lib/skip-dirs.mjs`. |
+
 ## `scripts/`
 
 | Fichier | Rôle |
