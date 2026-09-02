@@ -66,12 +66,20 @@ export const ${camel}Module: BrandModuleDef = {
   // apiMounts: { "${id}": { dbLayer: "brand", permission: "nav.${id}", operations: [/* 1 op = 1 capacité */], handle } },
   // Mount sans permission : accessJustification explicite obligatoire (doctor MODULE_PERMISSION_MISSING).
   navItems: [
-    { id: "brand.${id}", label: "${title}", href: "/${id}", group: "brand", order: 500 },
+    {
+      id: "brand.${id}",
+      label: "${title}",
+      href: "/${id}",
+      group: "brand",
+      order: 500,
+      permission: "nav.${id}",
+    },
   ],
   // Tools MCP générés depuis operations[] / EntitySpec — plus de mcpTools().
   // Liste catalogue : déclarer meiliIndexes (UID catalog_*) OU horsIndexJustification.
   // meiliIndexes: [{ uid: "catalog_products", countKey: "produits", table: "${camel}", columns: ["id", "nom"], settings: { searchableAttributes: ["nom"], filterableAttributes: ["id"] } }],
-  // horsIndexJustification: "écritures / joins / hors browse catalogue",
+  horsIndexJustification:
+    "stub — pas de browse catalogue Meili tant que le métier n'expose pas de liste indexée",
 ${renderPlayableDemoBlock({ moduleId: id, title, productName, navLabel: title })}
   // migrations: () => [{ id: "mod_${camel}_001_init", sql: \`…\` }],
 };

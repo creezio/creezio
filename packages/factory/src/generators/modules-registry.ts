@@ -64,6 +64,8 @@ export const {
   collectMeiliIndexes,
   collectModuleMigrations,
   collectDemoScenarios,
+  collectNavPermissions,
+  collectPermissionGroups,
 } = createBrandModuleRegistry(BRAND_MODULES);
 `;
 
@@ -599,11 +601,8 @@ export const ${camel}Module: BrandModuleDef = {
       label: ${JSON.stringify(navLabel)},
       href: ${JSON.stringify(navHref)},
       group: "brand",
-      order: ${order},${
-        entity.permission
-          ? `\n      permission: ${JSON.stringify(entity.permission)},`
-          : ""
-      }
+      order: ${order},
+      permission: ${JSON.stringify(entity.permission || `nav.${moduleId}`)},
     },
   ],
 ${renderPlayableDemoBlock({

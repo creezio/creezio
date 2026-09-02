@@ -10,10 +10,13 @@ export type {
 
 export {
   createBrandModuleRegistry,
+  collectNavPermissionsFromModules,
+  collectPermissionGroupsFromModules,
   type BrandMeiliIndex,
   type BrandModuleDef,
   type BrandModuleRegistry,
   type BrandNavItem,
+  type BrandPermissionGroup,
 } from "./module-contract.js";
 export { startBrandDesktop } from "./start-brand-desktop.js";
 export { startBrandKernelHarness } from "./start-brand-kernel-harness.js";

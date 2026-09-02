@@ -12,6 +12,7 @@ import { fileURLToPath } from "node:url";
 import { createAppManifest } from "../packages/brand-config/dist/index.js";
 import {
   composeBrandOs,
+  createBrandModuleRegistry,
   startBrandDesktop,
   startBrandKernelHarness,
 } from "../packages/app-runtime/dist/index.js";
@@ -63,4 +64,48 @@ test("AR3 ADR BrandSpec/app-runtime présent", () => {
   assert.ok(
     fs.existsSync(path.join(ROOT, "docs/adr/ADR-brand-spec-app-runtime.md")),
   );
+});
+
+test("AR4 collectNavPermissions / collectPermissionGroups depuis navItems", () => {
+  const { collectNavPermissions, collectPermissionGroups } =
+    createBrandModuleRegistry([
+      {
+        id: "alpha",
+        navItems: [
+          {
+            id: "brand.alpha",
+            label: "Alpha",
+            href: "/alpha",
+            order: 10,
+            permission: "nav.alpha",
+          },
+        ],
+      },
+      {
+        id: "beta",
+        navItems: [
+          {
+            id: "brand.beta-a",
+            label: "Beta A",
+            href: "/beta-a",
+            order: 20,
+            permission: "nav.beta",
+          },
+          {
+            id: "brand.beta-b",
+            label: "Beta B",
+            href: "/beta-b",
+            order: 21,
+            permission: "nav.beta",
+          },
+        ],
+      },
+      { id: "gamma", navItems: [] },
+    ]);
+  assert.deepEqual(collectNavPermissions(), ["nav.alpha", "nav.beta"]);
+  const groups = collectPermissionGroups();
+  assert.equal(groups.length, 2);
+  assert.equal(groups[0]?.id, "alpha");
+  assert.equal(groups[1]?.id, "beta");
+  assert.equal(groups[1]?.permissions.length, 1);
 });

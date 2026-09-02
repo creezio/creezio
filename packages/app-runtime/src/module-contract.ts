@@ -23,6 +23,18 @@ import {
   type McpRegisteredTool,
 } from "@creezio/mcp-facade";
 
+/**
+ * Groupe de permissions dérivé des `navItems` d'un module — même forme que
+ * `@creezio/access-control` `AccessPermissionGroup`. Les bindings marque
+ * passent `collectPermissionGroups()` à `configureAccessControl` : un agent
+ * module n'édite JAMAIS un catalogue nav global.
+ */
+export type BrandPermissionGroup = {
+  id: string;
+  label: string;
+  permissions: Array<{ id: string; label: string }>;
+};
+
 /** Entrée de nav métier — `order` fixe la position dans la sidebar. */
 export type BrandNavItem = CoreNavItem & { order: number };
 
@@ -97,6 +109,17 @@ export type BrandModuleRegistry = {
    * `collectInteractiveDemoDefaults` (id `os-tour` partagé : premier gagne).
    */
   collectDemoScenarios: () => DemoScenario[];
+  /**
+   * Permissions `nav.*` déclarées sur `navItems[].permission` — SoT unique
+   * pour `configureAuth({ ownerPermissions })`. Dédupliquées, ordre registre.
+   */
+  collectNavPermissions: () => string[];
+  /**
+   * Catalogue `/admin/access` : un groupe par module qui expose au moins
+   * une permission nav. Les bindings marque le passent à
+   * `configureAccessControl({ permissionGroups })`.
+   */
+  collectPermissionGroups: () => BrandPermissionGroup[];
 };
 
 /**
@@ -107,6 +130,7 @@ export type BrandModuleRegistry = {
  * export const {
  *   collectEntitySpecs, collectApiMounts, collectNavItems, collectMcpTools,
  *   collectMeiliIndexes, collectModuleMigrations, collectDemoScenarios,
+ *   collectNavPermissions, collectPermissionGroups,
  * } = createBrandModuleRegistry(BRAND_MODULES);
  * ```
  */
@@ -159,5 +183,51 @@ export function createBrandModuleRegistry(
           mod.demo ? [{ moduleId: mod.id, scenarios: mod.demo.scenarios }] : [],
         ),
       ),
+    collectNavPermissions: () => collectNavPermissionsFromModules(modules),
+    collectPermissionGroups: () => collectPermissionGroupsFromModules(modules),
   };
+}
+
+/** Permissions nav dédupliquées depuis `navItems[].permission`. */
+export function collectNavPermissionsFromModules(
+  modules: readonly BrandModuleDef[],
+): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const mod of modules) {
+    for (const item of mod.navItems ?? []) {
+      const p = item.permission;
+      if (typeof p === "string" && p.length > 0 && !seen.has(p)) {
+        seen.add(p);
+        out.push(p);
+      }
+    }
+  }
+  return out;
+}
+
+/** Groupes `/admin/access` — un groupe par module qui a des permissions nav. */
+export function collectPermissionGroupsFromModules(
+  modules: readonly BrandModuleDef[],
+): BrandPermissionGroup[] {
+  const groups: BrandPermissionGroup[] = [];
+  for (const mod of modules) {
+    const seen = new Set<string>();
+    const permissions: Array<{ id: string; label: string }> = [];
+    for (const item of mod.navItems ?? []) {
+      const p = item.permission;
+      if (typeof p === "string" && p.length > 0 && !seen.has(p)) {
+        seen.add(p);
+        permissions.push({ id: p, label: item.label });
+      }
+    }
+    if (permissions.length) {
+      groups.push({
+        id: mod.id,
+        label: permissions[0]!.label,
+        permissions,
+      });
+    }
+  }
+  return groups;
 }

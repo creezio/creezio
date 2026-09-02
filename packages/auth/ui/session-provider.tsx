@@ -91,11 +91,18 @@ export function SessionProvider({
         data.role === "admin"
           ? data.role
           : "owner";
+      // SoT = GET /me (configureAuth.ownerPermissions côté serveur, déjà
+      // dérivé des navItems des modules). Le prop ownerPermissions n'est
+      // qu'un fallback chrome si /me omet la liste — plus de catalogue
+      // nav dupliqué dans le bundle UI.
+      const permissionsFromMe = Array.isArray(data.permissions)
+        ? data.permissions
+        : [];
       const permissions: string[] =
-        role === "owner" || role === "admin"
-          ? [...ownerPermissions]
-          : Array.isArray(data.permissions)
-            ? data.permissions
+        permissionsFromMe.length > 0
+          ? permissionsFromMe
+          : role === "owner" || role === "admin"
+            ? [...ownerPermissions]
             : [];
       setMe({
         user: data.user,

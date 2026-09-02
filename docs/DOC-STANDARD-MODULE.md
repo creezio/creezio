@@ -224,11 +224,26 @@ Un agent travaillant sur le module `<id>` ne modifie que :
 2. son fichier de wiring `server/src/electron/modules/<id>.ts` ;
 3. ses pages UI (`server/ui/app/<routes du module>/`) et ses composants
    dédiés (`server/ui/components/<id>/`) ;
-4. **une seule ligne** dans le registre `modules/index.ts` (son import).
+4. **une seule ligne** dans le registre `modules/index.ts` (son import) —
+   et **seulement** si le module n'est pas déjà pré-enregistré.
+
+**Dépendance de contrat ≠ attente de merge.** Un module développe contre
+les services publics amont (signatures figées dans l'interview / un fichier
+contrats) avec seed/mock dans sa gate. Le branchement réel du hook
+appartient au module **émetteur**, dans une PR d'intégration **après**
+merge des deux côtés. Absence gracieuse (`try/catch`) tant que l'amont
+n'est pas là.
+
+**Déclarer `permission: "nav.<id>"` sur chaque `navItem`.** Les collecteurs
+`collectNavPermissions()` / `collectPermissionGroups()` alimentent
+`configureAuth` et `/admin/access`. Interdit d'éditer un catalogue nav
+global (`nav-permissions.ts`, `ownerPermissions: [...]` en dur, groupes
+d'accès manuscrits, BrandChrome / icônes). Owner API + sidebar bypassent
+déjà ; collab et matrice suivent le registre au boot.
 
 Tout fichier partagé (registre au-delà de sa ligne, `brand-migrations.ts`,
-`package.json`, composants UI partagés, `tool-registry.ts`…) = **tâche
-séparée sérialisée** (une PR dédiée, jamais mélangée au flux module).
+`package.json`, chrome UI, `tool-registry.ts`…) = **tâche séparée
+sérialisée** (une PR dédiée, jamais mélangée au flux module).
 
 ## Workflow
 
