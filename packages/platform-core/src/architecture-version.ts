@@ -13,8 +13,12 @@
  * → H12 purge des shims P1.b d'electron-shell (ré-exports @deprecated du
  *   barrel + subpath ./meili, alias host nommés marque) et dé-brandage du
  *   module workspace de shell-ui (constantes legacy et vocabulaire métier →
- *   configureWorkspacePaths neutre) — codemods scripts/codemods/H12).
+ *   configureWorkspacePaths neutre) — codemods scripts/codemods/H12
+ * → H13 résidu allowlist runtime : plus de dual-read crash env première
+ *   marque, plus d'heuristique packagée nommée marque, classes/ids UI
+ *   titlebar / fake-cursor / cache SW → creezio-* — codemods
+ *   scripts/codemods/H13).
  */
-export const ARCHITECTURE_VERSION = "H12" as const;
+export const ARCHITECTURE_VERSION = "H13" as const;
 
 export type ArchitectureVersion = typeof ARCHITECTURE_VERSION;

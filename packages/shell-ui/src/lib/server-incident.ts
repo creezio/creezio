@@ -20,15 +20,9 @@ function firstEnv(...keys: string[]): string {
   return "";
 }
 
-/** Prefixe marque (ex. TEMPOFLOW3) si injecté, sinon scan `*_CRASH_ENDPOINT`. */
+/** `CREEZIO_*` puis scan `*_CRASH_ENDPOINT` (clé canonique `envKey`). */
 function resolveCrashEndpoint(): string {
-  const direct = firstEnv(
-    "CREEZIO_CRASH_ENDPOINT",
-    "TEMPOFLOW3_CRASH_ENDPOINT",
-    "TF2_CRASH_ENDPOINT",
-    "CERTIVAN_CRASH_ENDPOINT",
-    "FIDU_CRASH_ENDPOINT",
-  );
+  const direct = firstEnv("CREEZIO_CRASH_ENDPOINT");
   if (direct) return direct;
   for (const [k, v] of Object.entries(process.env)) {
     if (k.endsWith("_CRASH_ENDPOINT") && (v || "").trim()) {
@@ -40,13 +34,7 @@ function resolveCrashEndpoint(): string {
 
 function resolveInstallId(): string {
   return (
-    firstEnv(
-      "CREEZIO_INSTALL_ID",
-      "TEMPOFLOW3_INSTALL_ID",
-      "TF2_INSTALL_ID",
-      "CERTIVAN_INSTALL_ID",
-      "FIDU_INSTALL_ID",
-    ) ||
+    firstEnv("CREEZIO_INSTALL_ID") ||
     (() => {
       for (const [k, v] of Object.entries(process.env)) {
         if (k.endsWith("_INSTALL_ID") && (v || "").trim()) return v!.trim();
@@ -58,14 +46,7 @@ function resolveInstallId(): string {
 
 function resolveAppVersion(): string {
   return (
-    firstEnv(
-      "CREEZIO_APP_VERSION",
-      "TEMPOFLOW3_APP_VERSION",
-      "TF2_APP_VERSION",
-      "CERTIVAN_APP_VERSION",
-      "FIDU_APP_VERSION",
-      "npm_package_version",
-    ) || "unknown"
+    firstEnv("CREEZIO_APP_VERSION", "npm_package_version") || "unknown"
   );
 }
 

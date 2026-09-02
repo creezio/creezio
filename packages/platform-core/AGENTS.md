@@ -77,7 +77,11 @@ Missions principales :
 2. Pour les chemins :
    - garder les overrides env désactivés en packagé ;
    - dériver les noms avec `envKey(manifest, suffix)` (H11 : plus de
-     dual-read env première marque — clé canonique uniquement) ;
+     dual-read env première marque — clé canonique uniquement ; H13 :
+     plus de dual-read crash nommé marque côté shell-ui) ;
+   - `envForNodeScriptSpawn` : heuristique Electron = `same` / `electron`
+     / `creezio` / suffixe `-server` — plus de nom de marque dans le
+     basename (H13) ;
    - préserver la compat de `resolveBrandDbPath` avec `DB_PATH_OVERRIDE`.
 3. Pour SQLite :
    - ne jamais renommer une migration déjà appliquée ;

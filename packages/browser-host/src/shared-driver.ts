@@ -57,7 +57,7 @@ async function showFakeCursorAt(
     const anim = t
       .evalIsolated<void>(
         `(async () => {
-          const c = globalThis.__tfFakeCursor;
+          const c = globalThis.__creezioFakeCursor;
           if (!c) return;
           await c.moveTo(${Math.round(x)}, ${Math.round(y)});
           await c.clickEffect();

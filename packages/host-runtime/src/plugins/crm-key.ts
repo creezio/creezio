@@ -27,8 +27,19 @@ function scopesFromPerms(permissions: string[]): string | null {
   return null;
 }
 
+/** @deprecated nom fichier déjà déployé — dual-read H13, retrait H14. */
+export const PLUGIN_CRM_KEY_FILE = ".tempoflow-plugin-api-key.json";
+
 export function pluginCrmKeyPath(pluginDir: string): string {
-  return path.join(pluginDir, pluginCrmKeyFileName(getPluginHostBindings()));
+  const preferred = path.join(
+    pluginDir,
+    pluginCrmKeyFileName(getPluginHostBindings()),
+  );
+  if (fs.existsSync(preferred)) return preferred;
+  // H13 dual-read du nom déjà déployé — retrait H14 (ADR-h13-allowlist-residue).
+  const legacy = path.join(pluginDir, PLUGIN_CRM_KEY_FILE);
+  if (fs.existsSync(legacy)) return legacy;
+  return preferred;
 }
 
 export function readPluginCrmApiKey(
@@ -162,6 +173,3 @@ export async function ensurePluginCrmApiKey(opts: {
   }
   return stored;
 }
-
-/** @deprecated nom fichier TF — préférer pluginCrmKeyFileName(bindings). */
-export const PLUGIN_CRM_KEY_FILE = ".tempoflow-plugin-api-key.json";

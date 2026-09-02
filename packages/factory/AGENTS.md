@@ -45,6 +45,9 @@ en jumeau dans `main.ts`.
 - H11 : `build-builder-config.mjs` généré exige
   `src/electron/app-manifest.json` — plus de fallback `getManifest` /
   `listBrandIds` sur le registre kit.
+- H13 : le README scaffold ne cite plus de vhost `dl-<marque>` en dur ;
+  classes UI titlebar / fake-cursor / cache SW → `creezio-*` (codemod
+  `scripts/codemods/H13/`).
 - Ne pas écraser des fichiers existants sans `--force`.
 - Ne pas exiger des flags techniques si `--from-prd` suffit.
 - `docs/FILES.md` est maintenu via `node scripts/generate-files-md.mjs factory` (gate `test-phase-docs-freshness`) — la colonne Rôle s'édite à la main, ne pas inventer d'autre format.

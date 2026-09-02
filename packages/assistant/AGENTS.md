@@ -27,6 +27,7 @@ Maintenir le runtime assistant générique : registry brand, stockage chat, mode
 - `src/runtime/mcp-tools.ts` : discovery/call MCP.
 - `src/runtime/tasks-tools.ts` : adapter `create_task` / `list_tasks`.
 - `ui/index.ts` : exports React.
+- `ui/fake-cursor.ts` : id DOM `creezio-fake-cursor` (H13).
 
 ## Modifier sans casser
 
