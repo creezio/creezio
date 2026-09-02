@@ -35,6 +35,7 @@
     "@creezio/mails": "^0.22.0",
     "@creezio/mcp-facade": "^0.22.0",
     "@creezio/nav": "^0.22.0",
+    "@creezio/onboarding": "^0.22.0",
     "@creezio/observability": "^0.22.0",
     "@creezio/platform-core": "^0.22.0",
     "@creezio/product-hub": "^0.22.0",

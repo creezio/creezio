@@ -3,6 +3,7 @@
  */
 import assert from "node:assert/strict";
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
 import test from "node:test";
@@ -288,6 +289,45 @@ test("boot progress headless : reporter + early-listen + boot-status", () => {
   assert.match(harness, /startBrandUiPlane/);
 });
 
+test("rm d'instance ne touche JAMAIS un DNS agent (ownership host-agent)", () => {
+  const cli = fs.readFileSync(
+    path.join(root, "packages/factory/src/server-docker-cli.ts"),
+    "utf8",
+  );
+  const start = cli.indexOf("async function deprovisionInstanceTunnelCf");
+  assert.ok(start > 0, "deprovisionInstanceTunnelCf présent");
+  const end = cli.indexOf("\nasync function ", start + 1);
+  const fn = cli.slice(start, end > start ? end : start + 2500);
+  assert.match(fn, /deprovisionCfSlug\(/);
+  assert.doesNotMatch(
+    fn,
+    /deprovisionCfAgentTunnel|agentTunnelDeprovisionDnsHosts/,
+    "deprovision instance n'appelle pas le geste agent",
+  );
+  assert.doesNotMatch(
+    fn,
+    /agent:\s*true|agent:\s*\{/,
+    "aucune option agent sur le déprovision d'instance",
+  );
+  assert.match(
+    cli,
+    /action === "rm"/,
+    "geste agent rm explicite pour le tunnel/DNS agent",
+  );
+  assert.match(cli, /deprovisionCfAgentTunnel/);
+  const help = spawnSync(
+    process.execPath,
+    [path.join(root, "packages/factory/bin/creezio.js"), "server-docker", "--help"],
+    { encoding: "utf8" },
+  );
+  assert.equal(help.status, 0, help.stderr || help.stdout);
+  assert.match(help.stdout, /agent down\|status\|rm|agent rm/);
+  assert.match(
+    help.stdout,
+    /server-docker rm d'une instance ne les touche JAMAIS/,
+  );
+});
+
 test("CREEZIO_SERVER_DOCKER_BACKUP : défaut on, 0/false/off skip", async () => {
   const dist = path.join(root, "packages/factory/dist/server-docker-cli.js");
   assert.ok(
@@ -331,4 +371,94 @@ test("CREEZIO_SERVER_DOCKER_BACKUP : défaut on, 0/false/off skip", async () => 
     true,
     "unset = on (prod-safe)",
   );
+});
+
+test("publish GHCR : label OCI image.source dans les build args", async () => {
+  const dist = path.join(root, "packages/factory/dist/server-docker-cli.js");
+  assert.ok(fs.existsSync(dist), "dist factory manquant — build:packages");
+  const {
+    OCI_IMAGE_SOURCE_LABEL,
+    parseGithubHttpsSource,
+    requireImageSourceForRegistry,
+    ociImageSourceBuildArgs,
+    collectDockerBuildArgs,
+    resolveBrandGithubSourceUrl,
+  } = await import(pathToFileURL(dist).href);
+
+  assert.equal(OCI_IMAGE_SOURCE_LABEL, "org.opencontainers.image.source");
+  assert.equal(
+    parseGithubHttpsSource("https://github.com/creezio/acme.git"),
+    "https://github.com/creezio/acme",
+  );
+  assert.equal(
+    parseGithubHttpsSource("git@github.com:creezio/acme-admin.git"),
+    "https://github.com/creezio/acme-admin",
+  );
+  assert.equal(
+    parseGithubHttpsSource(
+      "https://x-access-token:secret@github.com/creezio/acme.git",
+    ),
+    "https://github.com/creezio/acme",
+  );
+  assert.equal(parseGithubHttpsSource("https://gitlab.com/x/y.git"), null);
+
+  assert.throws(
+    () => requireImageSourceForRegistry("ghcr.io", null),
+    /org\.opencontainers\.image\.source introuvable/,
+  );
+  assert.equal(
+    requireImageSourceForRegistry("ghcr.io", "https://github.com/creezio/acme"),
+    "https://github.com/creezio/acme",
+  );
+  assert.equal(
+    requireImageSourceForRegistry("127.0.0.1:5000", null),
+    undefined,
+    "registre local : source optionnel",
+  );
+
+  const args = collectDockerBuildArgs({
+    dockerfile: "/kit/docker/server/Dockerfile",
+    serverVariant: "base",
+    serverDirRel: "server",
+    image: "ghcr.io/example/creezio-server-acme:1.0.0",
+    extraTags: ["creezio-server-acme:local"],
+    version: "1.0.0",
+    imageSource: "https://github.com/creezio/acme",
+    brandRoot: "/tmp/acme",
+  });
+  assert.ok(args.includes("--build-arg"));
+  assert.ok(args.includes("IMAGE_SOURCE=https://github.com/creezio/acme"));
+  assert.ok(args.includes("--label"));
+  assert.ok(
+    args.includes(`${OCI_IMAGE_SOURCE_LABEL}=https://github.com/creezio/acme`),
+    args.join(" "),
+  );
+  assert.deepEqual(ociImageSourceBuildArgs(undefined), []);
+
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "creezio-oci-src-"));
+  try {
+    const git = (gitArgs) => {
+      const r = spawnSync("git", ["-C", tmp, ...gitArgs], { encoding: "utf8" });
+      assert.equal(r.status, 0, r.stderr);
+    };
+    git(["init"]);
+    git(["remote", "add", "origin", "git@github.com:creezio/acme.git"]);
+    assert.equal(
+      resolveBrandGithubSourceUrl(tmp),
+      "https://github.com/creezio/acme",
+    );
+  } finally {
+    fs.rmSync(tmp, { recursive: true, force: true });
+  }
+
+  const df = fs.readFileSync(path.join(dockerServer, "Dockerfile"), "utf8");
+  assert.match(df, /ARG IMAGE_SOURCE/);
+  assert.match(df, /LABEL org\.opencontainers\.image\.source=\$\{IMAGE_SOURCE\}/);
+  const cli = fs.readFileSync(
+    path.join(root, "packages/factory/src/server-docker-cli.ts"),
+    "utf8",
+  );
+  assert.match(cli, /requireImageSourceForRegistry/);
+  assert.match(cli, /resolveBrandGithubSourceUrl/);
+  assert.match(cli, /imageSource/);
 });

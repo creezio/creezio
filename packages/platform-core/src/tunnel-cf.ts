@@ -178,8 +178,6 @@ export type TunnelIngressRule = {
 export type TunnelIngressOpts = {
   /** Force nested|flat ; sinon résolution env (D2). */
   hostMode?: TunnelHostMode | null;
-  /** Ingress agent flotte (hôte) — hors conteneur app. */
-  agent?: { host?: string; port: number } | null;
   /** false = réservation zone-level (brand-web/registry) : un seul service. */
   embeds?: boolean;
   /**
@@ -199,9 +197,9 @@ export type TunnelIngressOpts = {
  * Règles ingress complètes (le PUT Cloudflare remplace toute la config).
  *
  * cloudflared tourne IN-PROCESS dans le conteneur de l'app : les services
- * crm/n8n/hermes pointent `127.0.0.1` (même conteneur). L'entrée `agent`
- * pointe l'agent hôte flotte — hors conteneur — joignable via
- * host.docker.internal (extra_hosts host-gateway du stack).
+ * crm/n8n/hermes pointent `127.0.0.1` (même conteneur). L'ingress agent
+ * (`agent.{slug}` / `agent-{slug}`) n'appartient PAS à ce tunnel : il
+ * vit exclusivement sur le tunnel dédié host-agent (T7).
  */
 export function buildTunnelIngressRules(
   hostname: string,
@@ -244,14 +242,6 @@ export function buildTunnelIngressRules(
       rules.push(svcRule(h, `http://${originHost}:${ports.crmPort}`));
     }
   }
-  if (opts?.agent && opts.agent.port) {
-    rules.push(
-      svcRule(
-        tunnelServiceHostname(hostname, "agent", hostMode),
-        `http://${opts.agent.host || "host.docker.internal"}:${opts.agent.port}`,
-      ),
-    );
-  }
   rules.push({ service: "http_status:404" });
   return rules;
 }
@@ -260,7 +250,9 @@ export type TunnelDnsRecordSpec = { name: string; qName: string };
 
 /**
  * Liste des enregistrements DNS CNAME à assurer pour un slug serveur.
- * nested → `{slug}` + `*.{slug}` ; flat → `{slug}` + `n8n|hermes|agent-{slug}`.
+ * nested → `{slug}` + `*.{slug}` ; flat → `{slug}` + `n8n|hermes-{slug}`.
+ * Jamais de CNAME `agent.*` / `agent-*` : propriétaire exclusif du
+ * tunnel dédié host-agent (`ensureCfAgentTunnelDns`).
  * + un CNAME par hostname supplémentaire (D1).
  */
 export function tunnelDnsRecordSpecs(
@@ -269,7 +261,6 @@ export function tunnelDnsRecordSpecs(
   zone: string,
   opts?: {
     wildcard?: boolean;
-    agent?: boolean;
     hostMode?: TunnelHostMode | null;
     extraHostnames?: string[];
   },
@@ -288,10 +279,6 @@ export function tunnelDnsRecordSpecs(
       const h = tunnelServiceHostname(hostname, svc, "flat");
       records.push({ name: h, qName: h });
     }
-    if (opts?.agent) {
-      const h = tunnelServiceHostname(hostname, "agent", "flat");
-      records.push({ name: h, qName: h });
-    }
     return { hostMode: mode, records };
   }
   records.push({
@@ -301,7 +288,12 @@ export function tunnelDnsRecordSpecs(
   return { hostMode: mode, records };
 }
 
-/** Hosts à nettoyer au deprovision (nested + flat + mail + extras D1). */
+/**
+ * Hosts à nettoyer au déprovision d'une INSTANCE applicative
+ * (nested + flat + mail + extras D1). Jamais `agent.*` / `agent-*` :
+ * ces enregistrements appartiennent au cycle de vie du host-agent
+ * (`agentTunnelDeprovisionDnsHosts` / `deprovisionCfAgentTunnel`).
+ */
 export function tunnelDeprovisionDnsHosts(
   slug: string,
   hostname: string,
@@ -314,14 +306,30 @@ export function tunnelDeprovisionDnsHosts(
     `${slug}.mail.${zone}`,
     `n8n-${slug}.${zone}`,
     `hermes-${slug}.${zone}`,
-    `agent-${slug}.${zone}`,
     `n8n.${slug}.${zone}`,
     `hermes.${slug}.${zone}`,
-    `agent.${slug}.${zone}`,
     ...(extraHostnames || [])
       .map((h) => String(h || "").trim().toLowerCase())
       .filter((h) => h && h !== hostname),
   ];
+}
+
+/**
+ * Hosts DNS dont le propriétaire exclusif est le host-agent (T7).
+ * Utilisé uniquement par `deprovisionCfAgentTunnel` — jamais par
+ * `deprovisionCfSlug` / `server-docker rm` d'une instance.
+ */
+export function agentTunnelDeprovisionDnsHosts(
+  slug: string,
+  zone: string,
+  extra?: Array<string | undefined | null>,
+): string[] {
+  const hosts = [`agent-${slug}.${zone}`, `agent.${slug}.${zone}`];
+  for (const h of extra || []) {
+    const n = String(h || "").trim().toLowerCase();
+    if (n && !hosts.includes(n)) hosts.push(n);
+  }
+  return hosts;
 }
 
 /**
@@ -333,6 +341,37 @@ export function tunnelAgentHostname(
   hostMode: TunnelHostMode,
 ): string {
   return hostMode === "nested" ? `agent.${hostname}` : `agent-${hostname}`;
+}
+
+/**
+ * Nom Cloudflare du tunnel DÉDIÉ agent d'un hôte (T7 — cosmétique console CF).
+ * Distinct du préfixe serveur `creezio-server-` : un opérateur voit d'un
+ * coup d'œil quel tunnel porte l'ingress agent du VPS.
+ */
+export function agentTunnelCfName(slug: string): string {
+  return `creezio-agent-${slug}`.slice(0, 100);
+}
+
+/**
+ * Ingress du tunnel dédié agent (T7) : UN seul service HTTP local + 404.
+ * cloudflared tourne dans son propre container (`creezio-agent-tunnel`,
+ * network host) — l'agent écoute en loopback, origin défaut `127.0.0.1`.
+ */
+export function buildAgentTunnelIngressRules(
+  agentHostname: string,
+  agentPort: number,
+  opts?: { originHost?: string },
+): TunnelIngressRule[] {
+  const originHost =
+    String(opts?.originHost || "127.0.0.1").trim() || "127.0.0.1";
+  return [
+    {
+      hostname: agentHostname,
+      service: `http://${originHost}:${agentPort}`,
+      originRequest: { noTLSVerify: false, httpHostHeader: agentHostname },
+    },
+    { service: "http_status:404" },
+  ];
 }
 
 /**

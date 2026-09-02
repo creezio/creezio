@@ -32,6 +32,16 @@ Enrôlement auprès de l'admin flotte :
 creezio server-docker enroll --admin <url> --token <enrollToken> --slug <slug>
 ```
 
+## Tunnel dédié agent (T7)
+
+L'ingress public `agent.{slug}.{zone}` vit sur un tunnel Cloudflare dédié
+dont le connecteur tourne dans un container frère **`creezio-agent-tunnel`**
+(image officielle cloudflared, network host, `--restart unless-stopped`,
+token dans `{brandRoot}/docker-data/agent-tunnel.env` chmod 600). `enroll`
+et `agent up` le provisionnent ; `agent up` migre un hôte déjà enrôlé
+sans tunnel dédié. L'agent surveille ce container (respawn borné —
+`@creezio/fleet` `agent-tunnel.ts`). `agent rm` retire tunnel + DNS agent.
+
 ## Env principales
 
 | Variable | Défaut | Rôle |
@@ -40,6 +50,7 @@ creezio server-docker enroll --admin <url> --token <enrollToken> --slug <slug>
 | `CREEZIO_AGENT_HOSTS` | `127.0.0.1` | Binds (ajouter `172.17.0.1` pour l'ingress tunnel) |
 | `CREEZIO_AGENT_BRAND_ROOTS` | — | Racines marque séparées par `:` |
 | `CREEZIO_AGENT_ADMIN_URL` / `CREEZIO_AGENT_FLEET_KEY` | — | Opt-in updates en pull (posés par `enroll`) |
+| `CREEZIO_AGENT_TUNNEL_CONTAINER` | `creezio-agent-tunnel` | Container cloudflared dédié agent surveillé (T7) |
 
 ## Liens
 

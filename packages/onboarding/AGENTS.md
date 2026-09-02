@@ -16,7 +16,7 @@ Maintenir le kit d'onboarding générique : moteur d'étapes, UI React, first-ru
 
 - `src/index.ts` : exports moteur et validations first-run.
 - `src/engine.ts` : calculs purs de navigation.
-- `src/content.ts` : contenu hybride DB (`onboardingContentMigrations`, `mergeOnboardingContent`, `createOnboardingContentMount` → `/api/v1/modules/onboarding/*`, tables `onboarding_content` + `onboarding_preferences`). Imports type-only `@creezio/api-kernel` / `@creezio/platform-core` — ne pas y ajouter d'import runtime (cycle).
+- `src/content.ts` : contenu hybride DB (`onboardingContentMigrations`, `mergeOnboardingContent`, `composeOnboardingFromModules`, `createOnboardingContentMount` → `/api/v1/modules/onboarding/*`, tables `onboarding_content` + `onboarding_preferences`). `BrandModuleOnboarding` = contribution d'un `BrandModuleDef` (F3.4). Imports type-only `@creezio/api-kernel` / `@creezio/platform-core` — ne pas y ajouter d'import runtime (cycle).
 - `src/setup-types.ts` : config et validation `SetupWizard`.
 - `ui/index.ts` : surface publique React.
 - `ui/onboarding/onboarding-wizard.tsx` : orchestration du parcours injecté.
@@ -34,7 +34,7 @@ Maintenir le kit d'onboarding générique : moteur d'étapes, UI React, first-ru
 
 ## Config brand
 
-- Contenu hybride (ADR-module-natif-hybride) : la marque déclare ses défauts dans `server/src/electron/brand-onboarding-content.ts` (UN fichier explicite), compose `onboardingContentMigrations()` dans ses migrations brand et enregistre `createOnboardingContentMount({ defaults })` sous l'id `onboarding`. Les overrides (textes/mascotte) vivent en `brand.db` ; les réponses du parcours vont dans `onboarding_preferences` via `PUT preferences`.
+- Contenu hybride (ADR-module-natif-hybride) : la marque déclare ses défauts dans `server/src/electron/brand-onboarding-content.ts` (UN fichier explicite) **ou** via `BrandModuleDef.onboarding` collecté par `collectOnboardingContent()` (`composeOnboardingFromModules`), compose `onboardingContentMigrations()` dans ses migrations brand et enregistre `createOnboardingContentMount({ defaults })` sous l'id `onboarding`. Les overrides (textes/mascotte) vivent en `brand.db` ; les réponses du parcours vont dans `onboarding_preferences` via `PUT preferences`.
 - `configureOnboardingUi({ companionSrc })` pour les images compagnon.
 - `OnboardingWizard` reçoit les steps, `transport`, `flags`, `theme`, `resolveExitHref`, `onExit`.
 - `SetupWizard` lit l'identité et l'API desktop via `@creezio/shell-ui`.

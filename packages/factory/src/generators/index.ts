@@ -48,6 +48,7 @@ export {
   MODULES_TYPES_TS,
   ensureModulesRegistry,
   writeProductModelModules,
+  renderAssistantAndOnboardingBlocks,
   renderBrandAgentsMd,
   renderModuleGateStub,
   wireModuleGateInPackageJson,

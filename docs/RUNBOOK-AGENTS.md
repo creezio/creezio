@@ -375,7 +375,7 @@ format `{plain}` géré) → `GET cfd_tunnel/{id}` → 404 ou token absent →
 **recréation** via API et persistance (un `/data` wipé aboutit à un tunnel
 recréé proprement, CNAME mis à jour) → `PUT configurations` (ingress
 `http://127.0.0.1:18791` + services selon le mode de hostnames + extras D1,
-règle `agent` existante préservée) → **upsert DNS idempotent** (CNAME
+jamais de règle `agent`) → **upsert DNS idempotent** (CNAME
 `{hostname}` → `{tunnelId}.cfargotunnel.com`, proxied — jamais d'échec si
 déjà à la bonne cible) → spawn cloudflared in-process **supervisé**
 (respawn borné + backoff si exit ≠ 0 ou mort inattendue ; même tunnel id
@@ -384,8 +384,10 @@ persisté, pas de recréation API) → sonde publique
 fatale).
 
 **Mode flat (défaut)** : hostnames **plats** `n8n-{slug}.{zone}` /
-`hermes-{slug}.{zone}` / `agent-{slug}.{zone}` (CNAMEs plats, pas de
-`*.{slug}`) — Universal SSL ne couvre qu'**un** niveau de wildcard. Poser
+`hermes-{slug}.{zone}` (CNAMEs plats, pas de `*.{slug}`) — Universal SSL
+ne couvre qu'**un** niveau de wildcard. L'hostname agent
+(`agent-{slug}.{zone}` / `agent.{slug}.{zone}`) appartient au tunnel
+dédié host-agent, pas à l'instance. Poser
 `CREEZIO_CF_UNIVERSAL_SSL=1` (certificat Advanced/Total) → mode **nested**
 `n8n.{slug}.{zone}` + wildcard `*.{slug}.{zone}`. Détail :
 [adr/ADR-tunnel-flat-hosts.md](./adr/ADR-tunnel-flat-hosts.md).
@@ -403,10 +405,11 @@ dans `cf.env`. Un hostname client libre reste `{slug}.{zone}`
 
 **Cycle de vie** : `server-docker create` écrit `cf.env` (aucun appel CF
 créateur — tout se fait au boot) ; `server-docker rm <nom>` **déprovisionne
-via l'API CF directe** (DNS nested+flat+mail+extras supprimés, tunnel
-supprimé — connexions coupées d'abord) avant de retirer le stack ;
-`server-docker enroll` pose l'ingress `agent[-.]{slug}` via le client CF
-(en relisant la config courante du tunnel de l'instance).
+via l'API CF directe** (DNS nested+flat+mail+extras de l'instance + tunnel
+instance — **jamais** `agent.*` / `agent-*`) avant de retirer le stack ;
+`server-docker enroll` / `agent up` provisionnent le tunnel **dédié**
+agent ; `server-docker agent rm` est le seul geste qui retire DNS agent +
+tunnel dédié.
 
 **Update et tunnels publics (0.10.8 — non négociable)** : `server-docker
 update` (et tout recreate compose : agent flotte, apply image) **ne peut

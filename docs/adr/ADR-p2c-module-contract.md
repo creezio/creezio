@@ -66,8 +66,11 @@
 
 ## Périmètre reporté (tickets BACKLOG)
 
-- **Sources assistant + contenu onboarding dans le descripteur** (2ᵉ volet
-  F3.4) : trop gros pour cette phase — ticket BACKLOG P2.c-suite.
+- ~~**Sources assistant + contenu onboarding dans le descripteur**~~
+  **fait (T5)** : champs additifs `assistantSources` /
+  `assistantSourcesJustification` / `onboarding` — collecteurs registre +
+  consommation `@creezio/assistant` / `@creezio/onboarding`. Pas de bump
+  `ARCHITECTURE_VERSION` (champs optionnels, marques existantes intactes).
 - ~~**Cohérence `meiliIndexes.table` ↔ migrations**~~ **fait** : doctor
   `MODULE_MEILI_TABLE_UNKNOWN`, résolution cross-module (tous modules +
   `fromprd_brand_*`), échappatoire `tableProvisionedBy`.

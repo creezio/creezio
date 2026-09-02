@@ -38,8 +38,9 @@ export type BrandCliArgs = {
   iconsDir?: string;
   /** Dossier repo admin dédié (défaut <out>-admin). */
   adminOut?: string;
-  /** Factory 2-repos GitHub : forcer / désactiver. */
+  /** `--push` : créer + pousser les 2 repos GitHub (opt-in ; défaut = non). */
   push?: boolean;
+  /** `--no-push` : défaut (redondant). */
   noPush?: boolean;
   githubOrg?: string;
   /** `brand module <action> <id>` — action (init) + id du module. */
@@ -103,11 +104,11 @@ export function printBrandHelp(): void {
 
 Usage:
   creezio brand create --id <id> --name <Name> --domain <host> [--out <dir>]
-                       [--force] [--no-push] [--admin-out <dir>] [--link-kit]
+                       [--force] [--push] [--admin-out <dir>] [--link-kit]
   creezio brand init --id <id> --name <Name> --domain <host> [--out <dir>]
   creezio brand doctor [--spec <brand-spec-dir>]
   creezio brand apply --spec <brand-spec-dir> --out <app-dir> [--force] [--icons-dir <dir>]
-                      [--admin-out <dir>] [--push|--no-push] [--github-org <org>]
+                      [--admin-out <dir>] [--push] [--github-org <org>]
                       [--link-kit]
   creezio brand apply-modules --spec <brand-spec-dir> --out <app-dir>
   creezio brand module init <id> [--app <app-dir>] [--force]
@@ -115,6 +116,7 @@ Usage:
 
 Notes:
   - Happy path naissance = \`brand create\` (CREATE-APP.md) — pas demo-app
+  - Repos GitHub : uniquement avec \`--push\` (token requis) ; défaut = local
   - BrandSpec = SoT déclarative (brand.yaml, product.md, modules/*)
   - apply réutilise le scaffold --from-prd (ProductModel) + pose brand-spec/
   - Icônes : --icons-dir ou <spec>/icons/{client,server}.png (pas le PNG 1×1)

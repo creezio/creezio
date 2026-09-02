@@ -139,6 +139,17 @@ export interface HostAgentState {
   /** F5 : app admin (updates en pull) + credential flotte, posés par enroll. */
   adminAppUrl?: string | null;
   fleetKey?: string | null;
+  /**
+   * T7 (champ ADDITIF) : tunnel cloudflared DÉDIÉ agent, posé par enroll.
+   * Le token du connecteur vit dans `docker-data/agent-tunnel.env` (600),
+   * jamais ici.
+   */
+  agentTunnel?: {
+    tunnelId: string;
+    hostname: string;
+    container?: string;
+    provisionedAt?: string;
+  } | null;
 }
 
 /** Réponse JSON générique {status, json} des fetch flotte. */

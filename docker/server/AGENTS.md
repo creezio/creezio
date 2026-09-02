@@ -31,7 +31,7 @@ CRM web Next) via Docker, multi-instances, sans AppImage/Electron.
 
 | Fichier | Rôle |
 |---------|------|
-| `Dockerfile` | Image générique (context = racine marque, Meili + UI Next embarqués) |
+| `Dockerfile` | Image générique (context = racine marque, Meili + UI Next embarqués). `ARG IMAGE_SOURCE` + label OCI `org.opencontainers.image.source` (posé par `creezio server-docker publish`, fail-closed si registre `ghcr.io` et remote git marque introuvable). |
 | `docker-compose.yml` | Legacy `server-1` + `server-2` (bind 127.0.0.1) |
 | `brand.dockerignore` | Template ignore v4 (posé/rafraîchi en `.dockerignore` marque) |
 | `Dockerfile` | Image serveur npm — `npm ci` workspace via **secret BuildKit** `CREEZIO_NPM_TOKEN` ; matérialisé en `docker/server.Dockerfile` marque (clone GitHub autonome ; gate `test-phase-clone-autonomy`) |

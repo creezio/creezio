@@ -10,13 +10,18 @@ Toute évolution Meili / HTTP kernel / session IPC se fait **ici** (ou dans
 
 - `BrandModuleDef` / `BrandNavItem` / `BrandMeiliIndex` +
   `createBrandModuleRegistry(modules)` — **SoT du contrat de module marque**
-  (P2.c / H9, ADR `docs/adr/ADR-p2c-module-contract.md`) : le
+  (P2.c / H9 + volet 2 F3.4, ADR `docs/adr/ADR-p2c-module-contract.md`) : le
   `modules/types.ts` d'une marque est un simple ré-export de ce package
   (doctor `MODULE_TYPES_DIVERGENT` fail-closed) et le `modules/index.ts`
   généré factory délègue ses collecteurs (`collectEntitySpecs`,
   `collectApiMounts`, `collectNavItems`, `collectMcpTools`,
-  `collectMeiliIndexes`, `collectModuleMigrations`, `collectDemoScenarios`)
-  à `createBrandModuleRegistry(BRAND_MODULES)`.
+  `collectMeiliIndexes`, `collectModuleMigrations`, `collectDemoScenarios`,
+  `collectAssistantSources`, `collectOnboardingContent`)
+  à `createBrandModuleRegistry(BRAND_MODULES)`. Champs additifs
+  `assistantSources` / `assistantSourcesJustification` / `onboarding` —
+  pas de bump `ARCHITECTURE_VERSION`. Doctor warn
+  `MODULE_ASSISTANT_SOURCES_MISSING` si un module expose une API sans
+  sources assistant ni justification.
 - `startBrandDesktop(config)` — Electron main mince
 - `startBrandKernelHarness(config)` — smokes sans GUI
 - `composeBrandOs` / `listenBrandOsHttp` / `warmBrandNativeHosts` — OS natif

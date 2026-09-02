@@ -66,7 +66,24 @@ export {
   getAssistantBrandConfig,
   requireAssistantBrand,
   requireAssistantDb,
+  assistantModuleSources,
 } from "./brand/registry.js";
+export type {
+  BrandModuleAssistantSource,
+  BrandModuleAssistantEntitySource,
+  BrandModuleAssistantContextSource,
+  BrandModuleAssistantToolSource,
+} from "./brand/module-sources.js";
+export {
+  applyModuleAssistantSources,
+  composeEntitySources,
+  createEntitySourcesFromModuleSources,
+  entityRuleFromModuleSource,
+  isContextAssistantSource,
+  isEntityAssistantSource,
+  isToolAssistantSource,
+  toolDefinitionFromModuleSource,
+} from "./brand/module-sources.js";
 export {
   APP_MAP,
   appMapPromptSection,

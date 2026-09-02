@@ -5,9 +5,11 @@
  */
 import { appMapPromptSection } from "./app-map-shim.js";
 import {
+  assistantModuleSources,
   assistantPrompts,
   assistantToolDefinitions,
 } from "./registry.js";
+import { applyModuleAssistantSources } from "./module-sources.js";
 import { CHAT_MODE_ADDENDUM } from "../runtime/modes.js";
 import {
   looksLikeUiCommand,
@@ -104,6 +106,8 @@ export function buildSystemPrompt(
       }
     })();
   const map = appMapPromptSection();
+  const moduleContext =
+    applyModuleAssistantSources(assistantModuleSources()).contextSection;
   const distributionGuard = opts.auditDistribution
     ? `
 ## Contrôle obligatoire pour la demande de répartition en cours
@@ -122,6 +126,7 @@ Pour une dimension texte, normalise-la par \`LOWER(TRIM(colonne))\`. N'annonce p
     surfaceBlock,
     distributionGuard,
     `## Carte de l'application\n${map}`,
+    moduleContext,
     catalog ? `## Catalogue schéma\n${catalog}` : "",
     opts.extra?.trim() || "",
   ];

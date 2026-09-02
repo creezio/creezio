@@ -24,6 +24,7 @@
 | [`src/brand/db-shim.ts`](../src/brand/db-shim.ts) | Shim DB — délègue à configureAssistantBrand({ db }). |
 | [`src/brand/desktop-presence-shim.ts`](../src/brand/desktop-presence-shim.ts) | _(pas de cartouche JSDoc en tête — voir le code)_ |
 | [`src/brand/entity-projections.ts`](../src/brand/entity-projections.ts) | O4r4 — projections entitySources / formatSearchHit déclaratives. Extraite des switches marque (TF/CV/Fidu) : pas d’invention métier, seulement un moteur kit + règles déclarées par la marque. |
+| [`src/brand/module-sources.ts`](../src/brand/module-sources.ts) | Descripteurs `BrandModuleAssistantSource` (entity / context / tool) + `applyModuleAssistantSources` — consommation des sources collectées par le registre de modules (F3.4). |
 | [`src/brand/ops-track-shim.ts`](../src/brand/ops-track-shim.ts) | _(pas de cartouche JSDoc en tête — voir le code)_ |
 | [`src/brand/prompts-shim.ts`](../src/brand/prompts-shim.ts) | Prompts génériques + injection marque (AssistantPrompts). TOOL_DEFINITIONS plateforme = SoT kit (platform-tool-definitions). Métier = discovery MCP ; pas de liste panier/tasks dupliquée en marque. |
 | [`src/brand/registry.ts`](../src/brand/registry.ts) | _(pas de cartouche JSDoc en tête — voir le code)_ |

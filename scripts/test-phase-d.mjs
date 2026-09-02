@@ -233,6 +233,8 @@ test("scaffoldNewApp génère structure + builder configs", () => {
     "utf8",
   );
   assert.match(modIndex, /collectEntitySpecs/);
+  assert.match(modIndex, /collectAssistantSources/);
+  assert.match(modIndex, /collectOnboardingContent/);
   assert.match(modIndex, /<creezio:module-imports>/);
   const bareApi = fs.readFileSync(
     path.join(outDir, "server/src/electron/brand-module-api.ts"),
@@ -320,6 +322,11 @@ test("CLI creezio new-app", () => {
   );
   assert.equal(res.status, 0, res.stderr + res.stdout);
   assert.match(res.stdout, /AppManifest clipapp/);
+  assert.match(
+    res.stdout,
+    /repos GitHub non créés \(--push pour les créer\)/,
+    "clipapp : aucun push GitHub sans --push (même si GITHUB_TOKEN est posé)",
+  );
   assert.ok(fs.existsSync(path.join(outDir, "package.json")));
   assert.ok(
     fs.existsSync(path.join(outDir, "server/src/electron/modules/index.ts")),

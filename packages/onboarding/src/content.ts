@@ -57,6 +57,69 @@ export type OnboardingContentOverride = {
   texts?: Record<string, string>;
 };
 
+/**
+ * Contribution onboarding d'un `BrandModuleDef` (F3.4 / T5).
+ * Collectée par `createBrandModuleRegistry` puis composée ici
+ * (`composeOnboardingFromModules`) — mêmes shapes que le contenu hybride DB.
+ */
+export type BrandModuleOnboarding = {
+  steps: OnboardingStepContent[];
+  texts?: Record<string, string>;
+  mascot?: OnboardingMascot;
+};
+
+export type BrandModuleOnboardingContribution = {
+  moduleId: string;
+  onboarding: BrandModuleOnboarding;
+};
+
+/**
+ * Compose les contributions `BrandModuleDef.onboarding` en un
+ * `OnboardingContent` (étapes dédupliquées par `id` : premier gagne).
+ */
+export function composeOnboardingFromModules(
+  contributions: readonly BrandModuleOnboardingContribution[],
+): OnboardingContent {
+  const steps: OnboardingStepContent[] = [];
+  const seen = new Set<string>();
+  const texts: Record<string, string> = {};
+  let mascot: OnboardingMascot | undefined;
+
+  for (const c of contributions) {
+    const o = c.onboarding;
+    if (!o) continue;
+    for (const step of o.steps ?? []) {
+      if (!step?.id || seen.has(step.id)) continue;
+      seen.add(step.id);
+      steps.push({
+        id: step.id,
+        label: step.label,
+        ...(step.interstitialTitle
+          ? { interstitialTitle: step.interstitialTitle }
+          : {}),
+        ...(step.interstitialTagline
+          ? { interstitialTagline: step.interstitialTagline }
+          : {}),
+        ...(step.texts ? { texts: { ...step.texts } } : {}),
+      });
+    }
+    if (o.texts) Object.assign(texts, o.texts);
+    if (o.mascot) {
+      mascot = {
+        ...(mascot ?? {}),
+        ...(o.mascot.baseUrl ? { baseUrl: o.mascot.baseUrl } : {}),
+        poses: { ...mascot?.poses, ...o.mascot.poses },
+      };
+    }
+  }
+
+  return {
+    steps,
+    ...(Object.keys(texts).length ? { texts } : {}),
+    ...(mascot ? { mascot } : {}),
+  };
+}
+
 /* ------------------------------------------------------------- migrations */
 
 export const ONBOARDING_CONTENT_SCHEMA_SQL = `-- Contenu onboarding hybride + preferences (@creezio/onboarding)
@@ -186,7 +249,10 @@ function newId(): string {
 type ContentDbRow = { value_json?: string } | undefined;
 
 export type OnboardingContentMountOptions = {
-  /** Défauts marque (fichier explicite `brand-onboarding-content.ts`). */
+  /**
+   * Défauts marque (fichier explicite `brand-onboarding-content.ts`)
+   * **ou** résultat de `collectOnboardingContent()` / `composeOnboardingFromModules`.
+   */
   defaults: OnboardingContent;
 };
 

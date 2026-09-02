@@ -136,6 +136,12 @@ test("F1.4 CLI accepte --from-prd", () => {
   assert.equal(r.status, 0, r.stderr);
   assert.match(r.stdout, /--from-prd/);
   assert.match(r.stdout, /--link-kit/);
+  assert.match(r.stdout, /--push/);
+  assert.match(
+    r.stdout,
+    /opt-in|aucun appel GitHub|Défaut \(redondant\)/,
+    "help : --push est opt-in, pas le défaut token-si-dispo",
+  );
 });
 
 test("F1–F4 scaffold --from-prd génère 2 repos (monorepo + admin dédié, runtime natif)", () => {
@@ -147,6 +153,11 @@ test("F1–F4 scaffold --from-prd génère 2 repos (monorepo + admin dédié, ru
     { encoding: "utf8", cwd: ROOT, env: SMOKE_ENV },
   );
   assert.equal(r.status, 0, r.stderr + "\n" + r.stdout);
+  assert.match(
+    r.stdout,
+    /repos GitHub non créés \(--push pour les créer\)/,
+    "--from-prd sans --push : aucun repo GitHub",
+  );
 
   const mustExist = [
     "package.json",

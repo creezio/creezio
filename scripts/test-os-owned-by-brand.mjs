@@ -69,16 +69,7 @@ test("owned-by-brand survit à brand apply --force", () => {
     "utf8",
   );
   assert.equal(
-    runCli([
-      "brand",
-      "apply",
-      "--spec",
-      specDir,
-      "--out",
-      appDir,
-      "--force",
-      "--no-push",
-    ])
+    runCli(["brand", "apply", "--spec", specDir, "--out", appDir, "--force", "--no-push"])
       .status,
     0,
   );
