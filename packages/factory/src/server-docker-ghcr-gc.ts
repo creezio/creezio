@@ -4,7 +4,7 @@
  *
  * Geste : `creezio server-docker registry-gc --registry ghcr.io/<owner>`
  * et rétention post-`publish` quand le registre cible EST `ghcr.io`
- * (indépendant du registre de prod TempoFlow, aujourd'hui loopback).
+ * (indépendant d'un registre de prod loopback).
  *
  * Règle (dupliquée du chemin local / PR factory-hygiene, pas un rebase) :
  *   - semver : au moins les 3 derniers (`GHCR_SEMVER_KEEP_MIN`) ;
