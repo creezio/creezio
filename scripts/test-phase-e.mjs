@@ -41,7 +41,7 @@ import {
   createPluginsHost,
   getPluginControlBridgeEnv,
   startHostPluginControlPlane,
-} from "../packages/electron-shell/dist/index.js";
+} from "../packages/host-runtime/dist/index.js";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 

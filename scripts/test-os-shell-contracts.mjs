@@ -14,14 +14,16 @@ import {
   createSplashModel,
   splashHtmlDocument,
   TrayController,
-  applyOsSandboxEnv,
   checkForUpdatesNow,
   getUpdaterStatus,
   setupAutoUpdater,
-  kitOsVendorDir,
+} from "../packages/electron-shell/dist/index.js";
+import {
+  applyOsSandboxEnv,
   kitBinaryPaths,
   ensureKitOsBinaries,
-} from "../packages/electron-shell/dist/index.js";
+} from "../packages/host-runtime/dist/index.js";
+import { kitOsVendorDir } from "../packages/platform-core/dist/index.js";
 import {
   composeBrandOs,
   resolveNativeWarmFlags,

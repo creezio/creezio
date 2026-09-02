@@ -20,7 +20,7 @@ import {
   sanitizeHermesEmbedConfig,
   shouldSpawnEmbeddedHermes,
 } from "../packages/platform-core/dist/index.js";
-import { kitOsVendorDir } from "../packages/electron-shell/dist/index.js";
+import { kitOsVendorDir } from "../packages/platform-core/dist/index.js";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -109,7 +109,7 @@ test("embeds.vendors — runtime-manifest hermes + n8n", () => {
 
 test("embeds.skills — skills génériques kit présents (creezio-n8n/plugins)", async () => {
   const { kitHermesSkillsDir } = await import(
-    "../packages/electron-shell/dist/index.js"
+    "../packages/host-runtime/dist/index.js"
   );
   for (const name of ["creezio-n8n", "creezio-plugins"]) {
     const skill = path.join(kitHermesSkillsDir(), name, "SKILL.md");
@@ -123,7 +123,7 @@ test("embeds.skills — skills génériques kit présents (creezio-n8n/plugins)"
 
 test("embeds.skills — seedHermesSkillsFromDirs kit + marque idempotent", async () => {
   const { kitHermesSkillsDir, seedHermesSkillsFromDirs } = await import(
-    "../packages/electron-shell/dist/index.js"
+    "../packages/host-runtime/dist/index.js"
   );
   const tmp = fs.mkdtempSync(path.join(ROOT, ".tmp-skills-seed-"));
   try {
@@ -164,7 +164,7 @@ test("embeds.skills — seedHermesSkillsFromDirs kit + marque idempotent", async
 
 test("embeds.n8n — owner: pas de faux positif sur instance vierge", async () => {
   const { n8nLoginSucceeded, n8nNeedsOwnerSetup } = await import(
-    "../packages/electron-shell/dist/index.js"
+    "../packages/host-runtime/dist/index.js"
   );
   // n8n vierge : /rest/login répond 200 (shell user) SANS cookie de session
   // → JAMAIS un login (vécu : « owner: login OK » sur instance demo vierge,
@@ -197,7 +197,7 @@ test("embeds.n8n — owner: pas de faux positif sur instance vierge", async () =
 
 test("embeds.hermes — install layout verrouillé sandbox (jamais /usr/local)", async () => {
   const { hermesFhsFallbackDirs, hermesInstallLayoutEnv } = await import(
-    "../packages/electron-shell/dist/index.js"
+    "../packages/host-runtime/dist/index.js"
   );
   // Posix : HERMES_INSTALL_DIR force le layout sandbox — l'install.sh amont
   // récent bascule sinon en FHS /usr/local quand il tourne root Linux
@@ -226,7 +226,7 @@ test("embeds.hermes — install layout verrouillé sandbox (jamais /usr/local)",
 
 test("embeds.hermes — serverWebuiPassword (superadmin flotte)", async () => {
   const { serverWebuiPassword } = await import(
-    "../packages/electron-shell/dist/index.js"
+    "../packages/host-runtime/dist/index.js"
   );
   const prevPw = process.env.HERMES_WEBUI_PASSWORD;
   const prevSa = process.env.CREEZIO_SUPERADMIN_PASSWORD;

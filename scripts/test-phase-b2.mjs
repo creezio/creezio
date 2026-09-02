@@ -47,7 +47,7 @@ import {
   PLUGIN_VERTICAL_REMAINING,
   overridesAllowed,
   buildConfinedPath,
-} from "../packages/electron-shell/dist/index.js";
+} from "../packages/host-runtime/dist/index.js";
 
 test("hermes / n8n embed gates", () => {
   assert.equal(

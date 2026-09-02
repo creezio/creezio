@@ -14,6 +14,8 @@ const shellCjs = path.join(
   root,
   "packages/electron-shell/dist-cjs/index.js",
 );
+const hostCjs = path.join(root, "packages/host-runtime/dist-cjs/index.js");
+const searchCjs = path.join(root, "packages/search/dist-cjs/index.js");
 
 function check(name, fn) {
   try {
@@ -25,20 +27,24 @@ function check(name, fn) {
   }
 }
 
-check("dist-cjs electron-shell présent", () => {
+check("dist-cjs electron-shell + host-runtime + search présents", () => {
   assert.ok(fs.existsSync(shellCjs), shellCjs);
+  assert.ok(fs.existsSync(hostCjs), hostCjs);
+  assert.ok(fs.existsSync(searchCjs), searchCjs);
 });
 
 const shell = require(shellCjs);
+const host = require(hostCjs);
+const search = require(searchCjs);
 
 check("logger API (scoped / recentLines / logFileTail / early)", () => {
-  assert.equal(typeof shell.initLogger, "function");
-  assert.equal(typeof shell.initEarlyBootLogger, "function");
-  assert.equal(typeof shell.ensureLogsDir, "function");
-  assert.equal(typeof shell.scoped, "function");
-  assert.equal(typeof shell.recentLines, "function");
-  assert.equal(typeof shell.logFileTail, "function");
-  assert.equal(typeof shell.setOpsLineHandler, "function");
+  assert.equal(typeof host.initLogger, "function");
+  assert.equal(typeof host.initEarlyBootLogger, "function");
+  assert.equal(typeof host.ensureLogsDir, "function");
+  assert.equal(typeof host.scoped, "function");
+  assert.equal(typeof host.recentLines, "function");
+  assert.equal(typeof host.logFileTail, "function");
+  assert.equal(typeof host.setOpsLineHandler, "function");
 });
 
 check("splash riche + cssPrefix", () => {
@@ -74,10 +80,10 @@ check("updater / tray / host façades exportées", () => {
   assert.equal(typeof shell.setupAutoUpdater, "function");
   assert.equal(typeof shell.TrayController, "function");
   assert.equal(typeof shell.createHostRuntime, "function");
-  assert.equal(typeof shell.createHostStack, "function");
-  assert.equal(typeof shell.startMeili, "function");
-  assert.equal(typeof shell.createHermesHost, "function");
-  assert.equal(typeof shell.createN8nHost, "function");
+  assert.equal(typeof host.createHostStack, "function");
+  assert.equal(typeof search.startMeili, "function");
+  assert.equal(typeof host.createHermesHost, "function");
+  assert.equal(typeof host.createN8nHost, "function");
 });
 
 check("PHASE-R3.md présent", () => {

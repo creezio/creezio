@@ -15,11 +15,11 @@ import os from "node:os";
 import path from "node:path";
 import { test } from "node:test";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import { kitOsVendorDir } from "../packages/platform-core/dist/index.js";
 import {
   ensureKitOsBinaries,
   kitBinaryPaths,
-  kitOsVendorDir,
-} from "../packages/electron-shell/dist/index.js";
+} from "../packages/host-runtime/dist/index.js";
 import { startBrandKernelHarness } from "../packages/app-runtime/dist/index.js";
 import { buildElectronBuilderConfig } from "../packages/brand-config/dist/index.js";
 

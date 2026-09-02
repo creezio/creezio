@@ -103,11 +103,11 @@ test("platform-core resolvePackagedDataDir = install/data", () => {
 });
 
 test("initEarlyBootLogger crée le fichier log en <100ms", () => {
-  const shellCjs = path.join(root, "packages/electron-shell/dist-cjs/index.js");
-  assert.ok(fs.existsSync(shellCjs), `dist-cjs manquant: ${shellCjs}`);
-  const shell = require(shellCjs);
-  assert.equal(typeof shell.initEarlyBootLogger, "function");
-  assert.equal(typeof shell.ensureLogsDir, "function");
+  const hostCjs = path.join(root, "packages/host-runtime/dist-cjs/index.js");
+  assert.ok(fs.existsSync(hostCjs), `dist-cjs manquant: ${hostCjs}`);
+  const host = require(hostCjs);
+  assert.equal(typeof host.initEarlyBootLogger, "function");
+  assert.equal(typeof host.ensureLogsDir, "function");
 
   const fakeExeDir = fs.mkdtempSync(path.join(os.tmpdir(), "creezio-early-exe-"));
   const fakeExe = path.join(fakeExeDir, "TempoFlow-Server.exe");
@@ -115,7 +115,7 @@ test("initEarlyBootLogger crée le fichier log en <100ms", () => {
   const userData = fs.mkdtempSync(path.join(os.tmpdir(), "creezio-early-ud-"));
 
   const t0 = Date.now();
-  const result = shell.initEarlyBootLogger({
+  const result = host.initEarlyBootLogger({
     basename: "tempoflow3-main",
     userDataDir: userData,
     exePath: fakeExe,
@@ -129,7 +129,7 @@ test("initEarlyBootLogger crée le fichier log en <100ms", () => {
   assert.match(body, /\[early\].*source=userData/);
 
   // Sans userData → fallback exe
-  const exeOnly = shell.initEarlyBootLogger({
+  const exeOnly = host.initEarlyBootLogger({
     basename: "tempoflow3-main",
     exePath: fakeExe,
   });
