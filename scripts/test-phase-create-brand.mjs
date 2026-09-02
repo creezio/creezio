@@ -442,6 +442,22 @@ Desktop Creezio.
     /type BrandModuleDef =/,
     "modules/types.ts ne doit plus redéclarer BrandModuleDef localement",
   );
+  const npmrc = fs.readFileSync(path.join(appDir, ".npmrc"), "utf8");
+  assert.match(
+    npmrc,
+    /@creezio:registry=https:\/\/registry\.npmjs\.org/,
+    "brand apply : .npmrc doit pointer npmjs.org",
+  );
+  assert.doesNotMatch(
+    npmrc,
+    /npm\.pkg\.github\.com/,
+    "brand apply : .npmrc encore GitHub Packages",
+  );
+  assert.doesNotMatch(
+    npmrc,
+    /CREEZIO_NPM_TOKEN/,
+    "brand apply : .npmrc ne doit plus exiger CREEZIO_NPM_TOKEN",
+  );
   const scaffoldedServerPkg = JSON.parse(
     fs.readFileSync(path.join(serverDir, "package.json"), "utf8"),
   );

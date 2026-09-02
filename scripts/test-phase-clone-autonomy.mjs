@@ -5,7 +5,7 @@
  * GitHub doit être utilisable par un clone qui n'a PAS le kit checké out :
  *   1. deps @creezio/* = versions npm publiées (`^<lockstep>`), zéro vendor,
  *      zéro `file:`, zéro symlink node_modules/vendor tracké ;
- *   2. `.npmrc` commité SANS secret (token via ${CREEZIO_NPM_TOKEN}) à la
+ *   2. `.npmrc` commité vers npmjs.org (aucun token) à la
  *      racine + projets npm indépendants (server/ui, client) ;
  *   3. scripts/ensure-server-lock.mjs : locks alignés avant docker build ;
  *   4. docker/server.Dockerfile + .dockerignore matérialisés (docker build
@@ -62,19 +62,24 @@ function assertNpmDeps(pkgJsonPath, label, { min = 1 } = {}) {
   );
 }
 
-/** .npmrc commité : registre @creezio + token via env, jamais en clair. */
+/** .npmrc commité : registre @creezio → npmjs.org, aucun token. */
 function assertNpmrc(npmrcPath, label) {
   assert.ok(fs.existsSync(npmrcPath), `${label}: .npmrc manquant`);
   const body = fs.readFileSync(npmrcPath, "utf8");
   assert.match(
     body,
-    /@creezio:registry=https:\/\/npm\.pkg\.github\.com/,
-    `${label}: .npmrc sans registre @creezio`,
+    /@creezio:registry=https:\/\/registry\.npmjs\.org/,
+    `${label}: .npmrc doit pointer registry.npmjs.org`,
   );
-  assert.match(
+  assert.doesNotMatch(
     body,
-    /\$\{CREEZIO_NPM_TOKEN\}/,
-    `${label}: .npmrc doit référencer \${CREEZIO_NPM_TOKEN}`,
+    /npm\.pkg\.github\.com/,
+    `${label}: .npmrc encore GitHub Packages`,
+  );
+  assert.doesNotMatch(
+    body,
+    /CREEZIO_NPM_TOKEN/,
+    `${label}: .npmrc ne doit plus exiger CREEZIO_NPM_TOKEN`,
   );
   assert.doesNotMatch(
     body,
@@ -257,7 +262,8 @@ test("factory : new-app génère une app npm autonome (zéro vendor)", () => {
 
     const readme = fs.readFileSync(path.join(appDir, "README.md"), "utf8");
     assert.match(readme, /Clone autonome/, "README sans section clone autonome");
-    assert.match(readme, /CREEZIO_NPM_TOKEN/, "README clone sans CREEZIO_NPM_TOKEN");
+    assert.match(readme, /registry\.npmjs\.org/, "README clone sans npmjs.org");
+    assert.doesNotMatch(readme, /CREEZIO_NPM_TOKEN/, "README clone encore CREEZIO_NPM_TOKEN requis");
     assert.doesNotMatch(readme, /vendor\/creezio/, "README encore vendor");
 
     // Workflows CI/CD npm (plus de kit-compat / vendor-update).
@@ -265,7 +271,7 @@ test("factory : new-app génère une app npm autonome (zéro vendor)", () => {
       path.join(appDir, ".github/workflows/ci.yml"),
       "utf8",
     );
-    assert.match(ci, /CREEZIO_NPM_TOKEN/, "ci.yml sans CREEZIO_NPM_TOKEN");
+    assert.doesNotMatch(ci, /CREEZIO_NPM_TOKEN/, "ci.yml encore CREEZIO_NPM_TOKEN requis");
     assert.match(ci, /npm ci/, "ci.yml sans npm ci");
     assert.doesNotMatch(
     ci,

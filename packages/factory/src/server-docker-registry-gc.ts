@@ -3,10 +3,13 @@
  *
  * Geste : `creezio server-docker registry-gc`
  *   1. catalogue + tags via API Distribution v2 ;
- *   2. rétention `--keep N` (défaut 2) par famille de tags (`auto.*` d'un
- *      côté, tags manuels de l'autre) + tags PROTÉGÉS : conteneurs en cours
- *      (docker ps), `docker-data/servers.json` (instances déclarées, même
- *      arrêtées) et releases fleet déclarées dans l'app admin ;
+ *   2. rétention `--keep N` (défaut 2) **par famille** : tags `auto.*`
+ *      d'un côté, tags **semver** de l'autre (fenêtre indépendante et plus
+ *      large : au moins les 3 derniers — `REGISTRY_SEMVER_KEEP_MIN`). Une
+ *      rafale d'`auto.*` n'évince jamais un semver. Tags PROTÉGÉS : jamais
+ *      le tag en usage (docker ps) ni celui référencé par
+ *      `docker-data/servers.json` (instances, même arrêtées) ni les
+ *      releases fleet de l'app admin ;
  *   3. DELETE des manifests non retenus (jamais un tag en usage/référencé) ;
  *   4. `registry garbage-collect` dans le container (`docker exec`).
  *
@@ -17,6 +20,8 @@ import fs from "node:fs";
 import path from "node:path";
 
 export const REGISTRY_GC_KEEP_DEFAULT = 2;
+/** Plancher indépendant pour les tags semver (rollback registre). */
+export const REGISTRY_SEMVER_KEEP_MIN = 3;
 export const REGISTRY_GC_DEFAULT_HOST = "127.0.0.1:5000";
 export const REGISTRY_GC_DEFAULT_CONTAINER = "creezio-registry";
 export const REGISTRY_GC_CONFIG = "/etc/docker/registry/config.yml";
@@ -24,6 +29,24 @@ export const REGISTRY_GC_CONFIG = "/etc/docker/registry/config.yml";
 export const REGISTRY_TAG_RE = /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/;
 /** Tags auto-publiés par la CI (`auto.YYYYMMDDHHMM.<sha>`). */
 export const REGISTRY_AUTO_TAG_RE = /^auto\./;
+/** Tags semver (`0.24.1`, `0.24.1-rc1`) — fenêtre de rétention dédiée. */
+export const REGISTRY_SEMVER_TAG_RE = /^\d+\.\d+\.\d+(?:[.+-].*)?$/;
+
+export type RegistryTagFamily = "auto" | "semver" | "other";
+
+export function registryTagFamily(tag: string): RegistryTagFamily {
+  if (REGISTRY_AUTO_TAG_RE.test(tag)) return "auto";
+  if (REGISTRY_SEMVER_TAG_RE.test(tag)) return "semver";
+  return "other";
+}
+
+/** `--keep N` pour les semver : max(N, 3) — jamais moins large que le plancher. */
+export function resolveSemverKeep(keep: number): number {
+  if (!Number.isFinite(keep) || keep < 1) {
+    throw new Error(`--keep invalide (${keep}) — entier ≥ 1 requis`);
+  }
+  return Math.max(Math.floor(keep), REGISTRY_SEMVER_KEEP_MIN);
+}
 
 const MANIFEST_ACCEPT =
   "application/vnd.docker.distribution.manifest.v2+json, " +
@@ -164,10 +187,44 @@ export function compareVersionTags(a: string, b: string): number {
   return 0;
 }
 
-/** Tags à supprimer : tout sauf les `keep` plus récents (tri version). */
-export function selectTagsToPrune(tags: string[], keep: number): string[] {
+/** Les `n` plus anciens d'une famille (tri version) — candidats à la purge. */
+function oldestBeyondKeep(tags: string[], keep: number): string[] {
   const sorted = [...tags].sort(compareVersionTags);
-  return keep >= sorted.length ? [] : sorted.slice(0, sorted.length - keep);
+  const n = Math.floor(keep);
+  return n >= sorted.length ? [] : sorted.slice(0, sorted.length - n);
+}
+
+/**
+ * Tags à supprimer : rétention **par famille**.
+ *   - `auto.*` : les `keep` plus récents (défaut 2) ;
+ *   - semver : fenêtre indépendante `max(keep, 3)` — une rafale d'auto
+ *     n'évince jamais un semver ;
+ *   - autres (`latest`, …) : même `keep` que les auto.
+ * `protect` = tags jamais évincés (in-use, servers.json, just-pushed).
+ */
+export function selectTagsToPrune(
+  tags: string[],
+  keep: number,
+  protect: Iterable<string> = [],
+): string[] {
+  if (!Number.isFinite(keep) || keep < 1) {
+    throw new Error(`--keep invalide (${keep}) — entier ≥ 1 requis`);
+  }
+  const protectSet = new Set(protect);
+  const auto: string[] = [];
+  const semver: string[] = [];
+  const other: string[] = [];
+  for (const t of tags) {
+    const family = registryTagFamily(t);
+    if (family === "auto") auto.push(t);
+    else if (family === "semver") semver.push(t);
+    else other.push(t);
+  }
+  return [
+    ...oldestBeyondKeep(auto, Math.floor(keep)),
+    ...oldestBeyondKeep(semver, resolveSemverKeep(keep)),
+    ...oldestBeyondKeep(other, Math.floor(keep)),
+  ].filter((t) => !protectSet.has(t));
 }
 
 export function registryBaseUrl(registry: string): string {
@@ -349,15 +406,27 @@ export function planRepoGc(opts: {
     unique.set(t.tag, t);
   }
   const list = [...unique.values()];
-  // Rétention PAR FAMILLE : les N derniers tags auto.* (auto-publish CI)
-  // ET les N derniers tags manuels (semver…) — une rafale d'auto-publish ne
-  // doit jamais évincer la fenêtre de rollback des tags manuels, et vice
-  // versa. Les tags protégés (in-use/référencés) s'ajoutent par-dessus.
-  const lastOf = (tags: string[]): string[] =>
-    tags.sort(compareVersionTags).slice(-Math.floor(keep));
+  // Rétention PAR FAMILLE : les N derniers `auto.*` (CI) ET les
+  // max(N, 3) derniers semver — une rafale d'auto-publish n'évince
+  // jamais la fenêtre de rollback semver. Les tags protégés
+  // (in-use / servers.json / releases) s'ajoutent par-dessus.
+  const lastOf = (tags: string[], n: number): string[] =>
+    [...tags].sort(compareVersionTags).slice(-Math.floor(n));
+  const autoKeep = Math.floor(keep);
+  const semverKeep = resolveSemverKeep(keep);
   const recent = new Set([
-    ...lastOf(list.map((t) => t.tag).filter((t) => REGISTRY_AUTO_TAG_RE.test(t))),
-    ...lastOf(list.map((t) => t.tag).filter((t) => !REGISTRY_AUTO_TAG_RE.test(t))),
+    ...lastOf(
+      list.map((t) => t.tag).filter((t) => registryTagFamily(t) === "auto"),
+      autoKeep,
+    ),
+    ...lastOf(
+      list.map((t) => t.tag).filter((t) => registryTagFamily(t) === "semver"),
+      semverKeep,
+    ),
+    ...lastOf(
+      list.map((t) => t.tag).filter((t) => registryTagFamily(t) === "other"),
+      autoKeep,
+    ),
   ]);
   const referencedTags = opts.referencedTags || new Set<string>();
   const referencedDigests = opts.referencedDigests || new Set<string>();

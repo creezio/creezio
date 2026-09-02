@@ -310,8 +310,10 @@ creezio server-docker publish --brand-root "$BRAND_ROOT" \
   --tag 0.2.2 --registry 127.0.0.1:5000
 # → 127.0.0.1:5000/creezio-server-tempoflow3:0.2.2
 #   /api/v1/core/version affichera 0.2.2 (CREEZIO_APP_VERSION)
-# Rétention auto après push : garde les 2 derniers tags (daemon + registre
-# privé) et prune le build cache (--max-used-space 5GB). Régler :
+# Rétention auto après push : PAR FAMILLE — N derniers auto.* (défaut 2)
+# ET au moins les 3 derniers semver (indépendants : une rafale auto.*
+# n'évince jamais un semver). Jamais le tag référencé par servers.json /
+# instances. Prune aussi le build cache (--max-used-space 5GB). Régler :
 # --keep-tags N / CREEZIO_PUBLISH_KEEP_TAGS, CREEZIO_PUBLISH_KEEP_STORAGE ;
 # désactiver ponctuellement : --no-retention. Voir §10.
 
@@ -810,11 +812,13 @@ daemon et le registre `registry:2`). Quatre mécanismes standard, en couches :
    l'ancien `defaultKeepStorage` reste accepté = `defaultReservedSpace`.)
    Valider avant restart : `sudo dockerd --validate --config-file /etc/docker/daemon.json`.
 
-**Politique (décision 2026-08-06, disque saturé 91 %)** : après chaque
-publish/update on ne garde que **N=2 images** par app (version courante +
-rollback 1 cran, daemon ET registre). Les backups `/data` ne sont **plus**
-créés à chaque update (défaut skip) — les archives de référence dans
-`docker-data/backups/` se gardent. Build cache plafonné à **5GB**.
+**Politique (2026-09, rollback semver)** : après chaque publish, rétention
+**par famille** — N=2 tags `auto.*` (CI) **et** au moins les **3** derniers
+semver (fenêtre indépendante : une rafale `auto.*` n'évince jamais un
+semver). Jamais le tag référencé par `servers.json` / instances. Les
+backups `/data` ne sont **plus** créés à chaque update (défaut skip) —
+les archives de référence dans `docker-data/backups/` se gardent. Build
+cache plafonné à **5GB**.
 
 2. **Timer systemd quotidien** (VPS TempoFlow : `docker-disk-maintenance.timer`,
    04h30 UTC, script `/usr/local/sbin/docker-disk-maintenance.sh`) :
@@ -826,7 +830,8 @@ créés à chaque update (défaut skip) — les archives de référence dans
    - `docker builder prune --max-used-space 5GB -f` (**pas** `--keep-storage`
      = reserved-space : plancher qui ne purge JAMAIS sous le budget — vécu
      cache 23,5 Go et « Total: 0B ») ;
-   - rétention registre : garde les 2 derniers tags par repo (tri version),
+   - rétention registre : garde les N derniers `auto.*` **et** au moins
+     les 3 derniers semver par repo (familles indépendantes),
      DELETE des manifests plus vieux (digests partagés avec un tag conservé
      protégés), **purge des révisions orphelines** (les publish buildx
      poussent un index OCI + attestation : supprimer le seul index laisse
@@ -846,12 +851,11 @@ créés à chaque update (défaut skip) — les archives de référence dans
      `sudo journalctl -u docker-disk-maintenance.service -n 50`.
 
 3. **Rétention dans le flux publish** (§4) : après chaque push réussi,
-   `server-docker publish` supprime du daemon les vieilles images du même
-   repo au-delà des 2 derniers tags, prune le build cache
-   (`--max-used-space 5GB`, fallback `--keep-storage` daemons anciens) et
-   supprime les vieux tags du registre privé (manifests ; blobs et révisions
-   orphelines balayés par le timer). Best-effort : ne fait jamais échouer le
-   publish.
+   `server-docker publish` applique la même politique par famille
+   (`selectTagsToPrune` : ≥ 3 semver, N auto.*, jamais un tag
+   `servers.json`) — daemon + registre privé — puis prune le build cache
+   (`--max-used-space 5GB`, fallback `--keep-storage` daemons anciens).
+   Best-effort : ne fait jamais échouer le publish.
 
 4. **Flux update** : plus de backup automatique ni de `pruneBackups` —
    opt-in `--backup` seulement. Les `.tar.gz` de référence restent dans
@@ -859,8 +863,10 @@ créés à chaque update (défaut skip) — les archives de référence dans
    pour embarquer le défaut `backup=false`).
 
 **Vérification** : `docker system df` (Build Cache ≤ 5GB),
-`df -h /` < 85 %, `curl -s http://127.0.0.1:5000/v2/<repo>/tags/list` ≤ 2 tags,
-archives de référence intactes sous `docker-data/backups/`.
+`df -h /` < 85 %, `curl -s http://127.0.0.1:5000/v2/<repo>/tags/list` :
+au moins les 3 derniers semver encore listés (une rafale `auto.*` ne
+doit pas les avoir évincés), archives de référence intactes sous
+`docker-data/backups/`.
 
 **GC registre à la demande (T11)** — geste CLI fail-closed, indépendant du
 timer. À lancer **hors push** (même garde-fou que le timer) :
@@ -880,8 +886,9 @@ creezio server-docker registry-gc --apply --keep 2 \
 
 Politique : garde les N tags les plus récents **par repository et par
 famille** (tri version — les tags `auto.*` de l'auto-publish CI d'un côté,
-les tags manuels de l'autre : une rafale d'auto-publish n'évince jamais la
-fenêtre de rollback des tags manuels) **et** tout tag PROTÉGÉ :
+les tags **semver** de l'autre avec une fenêtre **indépendante ≥ 3** :
+une rafale d'auto-publish n'évince jamais un semver) **et** tout tag
+PROTÉGÉ :
 
 - conteneur en cours (`docker ps` / images utilisées) ;
 - `docker-data/servers.json` (`--brand-root` explicite + découverte

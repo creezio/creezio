@@ -25,6 +25,7 @@
  */
 import fs from "node:fs";
 import path from "node:path";
+import { shouldSkipDir } from "../lib/skip-dirs.mjs";
 
 const ROOT = path.resolve(process.env.ROOT || ".");
 if (!fs.existsSync(ROOT)) {
@@ -111,14 +112,13 @@ const CODE_DIRS = [
   "scripts",
 ];
 const CODE_EXT = new Set([".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs"]);
-const SKIP_DIRS = new Set(["node_modules", "dist", ".next", "docker-data", ".git"]);
 
 function walk(relDir) {
   const abs = path.join(ROOT, relDir);
   if (!fs.existsSync(abs)) return;
   for (const entry of fs.readdirSync(abs, { withFileTypes: true })) {
     if (entry.isDirectory()) {
-      if (SKIP_DIRS.has(entry.name)) continue;
+      if (shouldSkipDir(entry.name)) continue;
       walk(path.join(relDir, entry.name));
     } else if (CODE_EXT.has(path.extname(entry.name))) {
       rewriteFile(path.join(relDir, entry.name), transformCode);

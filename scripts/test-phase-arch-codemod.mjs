@@ -16,7 +16,8 @@ import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import { test } from "node:test";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
+import os from "node:os";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const CODEMODS_DIR = path.join(ROOT, "scripts", "codemods");
@@ -70,7 +71,11 @@ test("A2 manifests codemods cohérents + scripts valides", () => {
   if (!fs.existsSync(CODEMODS_DIR)) return;
   const versions = fs
     .readdirSync(CODEMODS_DIR)
-    .filter((name) => fs.statSync(path.join(CODEMODS_DIR, name)).isDirectory());
+    .filter(
+      (name) =>
+        /^H\d+$/.test(name) &&
+        fs.statSync(path.join(CODEMODS_DIR, name)).isDirectory(),
+    );
 
   for (const version of versions) {
     const dir = path.join(CODEMODS_DIR, version);
@@ -102,5 +107,91 @@ test("A2 manifests codemods cohérents + scripts valides", () => {
       // Validité syntaxique sans exécution (les codemods mutent une marque).
       execFileSync(process.execPath, ["--check", file], { cwd: ROOT });
     }
+  }
+});
+
+test("A3 SKIP_DIRS partagé : artefacts packagés jamais marchés", async () => {
+  const helperPath = path.join(CODEMODS_DIR, "lib", "skip-dirs.mjs");
+  assert.ok(
+    fs.existsSync(helperPath),
+    "scripts/codemods/lib/skip-dirs.mjs manquant — SoT partagée des SKIP_DIRS",
+  );
+  const helper = await import(pathToFileURL(helperPath).href);
+  for (const name of [
+    "node_modules",
+    "dist",
+    "dist-cjs",
+    "dist-electron-server",
+    "win-unpacked",
+    "release",
+    "out",
+    ".next",
+    ".git",
+    "docker-data",
+  ]) {
+    assert.ok(
+      helper.shouldSkipDir(name),
+      `shouldSkipDir(${name}) doit être true`,
+    );
+  }
+
+  const versions = fs
+    .readdirSync(CODEMODS_DIR)
+    .filter(
+      (name) =>
+        /^H\d+$/.test(name) &&
+        fs.statSync(path.join(CODEMODS_DIR, name)).isDirectory(),
+    );
+  for (const version of versions) {
+    const dir = path.join(CODEMODS_DIR, version);
+    for (const name of fs.readdirSync(dir)) {
+      if (!name.endsWith(".mjs")) continue;
+      const src = fs.readFileSync(path.join(dir, name), "utf8");
+      if (!/\bfunction walk\b/.test(src)) continue;
+      assert.match(
+        src,
+        /from ["']\.\.\/lib\/skip-dirs\.mjs["']/,
+        `${version}/${name} marche un arbre sans importer le SKIP_DIRS partagé`,
+      );
+      assert.doesNotMatch(
+        src,
+        /const SKIP_DIRS = new Set/,
+        `${version}/${name} redéclare SKIP_DIRS localement`,
+      );
+    }
+  }
+
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "creezio-codemod-skip-"));
+  try {
+    const poison = "SHOULD_NOT_SEE";
+    for (const dir of [
+      "dist-electron-server/win-unpacked",
+      "release",
+      "out",
+      "src",
+    ]) {
+      fs.mkdirSync(path.join(tmp, dir), { recursive: true });
+      fs.writeFileSync(path.join(tmp, dir, "poison.ts"), `const x = "${poison}";\n`);
+    }
+    const seen = [];
+    const walk = (dir) => {
+      for (const name of fs.readdirSync(dir)) {
+        const p = path.join(dir, name);
+        if (fs.statSync(p).isDirectory()) {
+          if (helper.shouldSkipDir(name)) continue;
+          walk(p);
+        } else {
+          seen.push(path.relative(tmp, p));
+        }
+      }
+    };
+    walk(tmp);
+    assert.deepEqual(seen.sort(), ["src/poison.ts"]);
+    assert.ok(
+      !seen.some((rel) => /dist-electron-server|win-unpacked|release|out/.test(rel)),
+      "artefacts packagés exclus du walk",
+    );
+  } finally {
+    fs.rmSync(tmp, { recursive: true, force: true });
   }
 });

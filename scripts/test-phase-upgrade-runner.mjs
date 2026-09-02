@@ -496,3 +496,134 @@ test("U6 logique de sync PARTAGÉE (factory dist) + propagate la consomme", () =
   assert.doesNotMatch(upgradeCli, /planManifestBumps/);
   fs.rmSync(work, { recursive: true, force: true });
 });
+
+test("U7 npm isolé : upgrade d'une marque à côté d'un faux kit ne touche pas son node_modules", async () => {
+  const parent = fs.mkdtempSync(path.join(os.tmpdir(), "creezio-upgrade-iso-"));
+  const fakeKit = path.join(parent, "fake-kit");
+  const brand = path.join(parent, "brand");
+  try {
+    fs.mkdirSync(path.join(fakeKit, "packages", "platform-core"), {
+      recursive: true,
+    });
+    fs.mkdirSync(path.join(fakeKit, "node_modules", "@creezio", "platform-core"), {
+      recursive: true,
+    });
+    fs.writeFileSync(
+      path.join(fakeKit, "package.json"),
+      JSON.stringify({
+        name: "creezio",
+        private: true,
+        workspaces: ["packages/*"],
+      }) + "\n",
+    );
+    fs.writeFileSync(
+      path.join(fakeKit, "packages", "platform-core", "package.json"),
+      JSON.stringify({ name: "@creezio/platform-core", version: "0.0.0-sentinel" }) +
+        "\n",
+    );
+    const sentinel = path.join(
+      fakeKit,
+      "node_modules",
+      "@creezio",
+      "platform-core",
+      "SENTINEL",
+    );
+    fs.writeFileSync(sentinel, "DO_NOT_TOUCH\n");
+    fs.writeFileSync(
+      path.join(fakeKit, "node_modules", "@creezio", "platform-core", "package.json"),
+      JSON.stringify({ name: "@creezio/platform-core", version: "0.0.0-sentinel" }) +
+        "\n",
+    );
+
+    fs.mkdirSync(path.join(brand, "server"), { recursive: true });
+    fs.mkdirSync(path.join(brand, "node_modules"), { recursive: true });
+    fs.writeFileSync(
+      path.join(brand, "package.json"),
+      JSON.stringify({
+        name: "probe-brand",
+        private: true,
+        workspaces: ["server"],
+        creezio: { brandId: "probe", architectureVersion: "H7" },
+        scripts: { "os-ui:materialize": "node -e \"\"" },
+      }) + "\n",
+    );
+    fs.writeFileSync(
+      path.join(brand, "server", "package.json"),
+      JSON.stringify({ name: "probe-server", private: true }) + "\n",
+    );
+
+    const upgradeCli = fs.readFileSync(
+      path.join(ROOT, "packages/factory/src/upgrade-cli.ts"),
+      "utf8",
+    );
+    const lockSrc = fs.readFileSync(
+      path.join(ROOT, "packages/factory/src/package-lock.ts"),
+      "utf8",
+    );
+    assert.match(upgradeCli, /from "\.\/npm-isolated\.js"/);
+    assert.match(upgradeCli, /spawnNpmAt/);
+    assert.match(lockSrc, /from "\.\/npm-isolated\.js"/);
+    assert.match(lockSrc, /spawnNpmAt/);
+
+    const { ensureBrandPackageLocks } = await import(factoryDist("package-lock.js"));
+    const poisoned = {
+      ...process.env,
+      CREEZIO_LINK_KIT: "0",
+      npm_config_local_prefix: fakeKit,
+      npm_config_prefix: fakeKit,
+      INIT_CWD: fakeKit,
+      npm_lifecycle_event: "upgrade",
+    };
+    const { refreshed } = ensureBrandPackageLocks(brand, {
+      mode: "lock-only",
+      log: () => {},
+      env: poisoned,
+    });
+    assert.ok(refreshed.length >= 1, "lock marque régénéré (npm a tourné)");
+    assert.ok(
+      fs.existsSync(path.join(brand, "package-lock.json")),
+      "lock créé dans la marque, pas dans le faux kit",
+    );
+    assert.ok(
+      !fs.existsSync(path.join(fakeKit, "package-lock.json")),
+      "faux kit : aucun package-lock créé",
+    );
+    assert.equal(
+      fs.readFileSync(sentinel, "utf8"),
+      "DO_NOT_TOUCH\n",
+      "node_modules/@creezio du faux kit intact après lock-only",
+    );
+
+    const up = spawnSync(
+      process.execPath,
+      [CLI, "upgrade", "--brand-root", brand],
+      {
+        encoding: "utf8",
+        cwd: fakeKit,
+        timeout: 120_000,
+        env: {
+          ...poisoned,
+          CREEZIO_KIT_ROOT: ROOT,
+        },
+      },
+    );
+    assert.equal(
+      up.status,
+      0,
+      `upgrade isolé a échoué:\n${up.stdout}\n${up.stderr}`,
+    );
+    assert.equal(
+      fs.readFileSync(sentinel, "utf8"),
+      "DO_NOT_TOUCH\n",
+      "fail-closed : upgrade d'une marque à côté d'un faux kit workspace ne touche pas son node_modules/@creezio",
+    );
+    assert.ok(
+      fs.existsSync(
+        path.join(fakeKit, "node_modules", "@creezio", "platform-core", "package.json"),
+      ),
+      "lien/package @creezio du faux kit toujours présent",
+    );
+  } finally {
+    fs.rmSync(parent, { recursive: true, force: true });
+  }
+});
