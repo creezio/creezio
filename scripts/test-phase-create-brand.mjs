@@ -198,6 +198,31 @@ test("CB-create brand create --id acme (pas notes, pas crm, admin frère)", () =
   assert.match(brandApi, /collectAssistantSources/);
   assert.match(brandApi, /collectOnboardingContent/);
   assert.match(brandApi, /mergeAssistantBrandConfig/);
+  const createBindings = fs.readFileSync(
+    path.join(serverDir, "src/electron/brand-platform-bindings.ts"),
+    "utf8",
+  );
+  assert.match(createBindings, /applyBrandModuleAuth/);
+  assert.match(createBindings, /collectNavPermissions\(\)/);
+  assert.match(createBindings, /collectPermissionGroups\(\)/);
+  assert.match(
+    fs.readFileSync(path.join(serverDir, "src/electron/main.ts"), "utf8"),
+    /applyBrandPlatformBindings/,
+  );
+  assert.match(
+    fs.readFileSync(
+      path.join(serverDir, "src/electron/modules/index.ts"),
+      "utf8",
+    ),
+    /collectNavPermissions/,
+  );
+  assert.match(
+    fs.readFileSync(
+      path.join(serverDir, "src/electron/modules/index.ts"),
+      "utf8",
+    ),
+    /collectOnboardingContent/,
+  );
   assert.match(brandApi, /createOnboardingContentMount/);
   const createChrome = fs.readFileSync(
     path.join(serverDir, "ui/components/brand-chrome.tsx"),
@@ -237,6 +262,13 @@ test("CB-create brand create --id acme (pas notes, pas crm, admin frère)", () =
   assert.ok(
     fs.existsSync(path.join(serverDir, "src/electron/modules/articles.ts")),
   );
+  const articlesMod = fs.readFileSync(
+    path.join(serverDir, "src/electron/modules/articles.ts"),
+    "utf8",
+  );
+  assert.match(articlesMod, /permission:\s*"nav\.articles"/);
+  assert.match(articlesMod, /horsIndexJustification/);
+  assert.doesNotMatch(articlesMod, /à qualifier/);
   const runner = path.join(serverDir, "scripts/run-module-gates.mjs");
   if (fs.existsSync(runner)) {
     const gates = spawnSync(process.execPath, [runner], {
@@ -368,6 +400,14 @@ Desktop Creezio.
     fs.existsSync(path.join(serverDir, "src/electron/modules/articles.ts")),
     "fixture Articles → modules/articles.ts",
   );
+  assert.match(
+    fs.readFileSync(
+      path.join(serverDir, "src/electron/modules/articles.ts"),
+      "utf8",
+    ),
+    /permission:\s*"nav\.articles"/,
+    "from-prd / apply : permission nav.<id> forcée",
+  );
   if (fs.existsSync(path.join(serverDir, "ui/app/page.tsx"))) {
     assert.doesNotMatch(
       fs.readFileSync(path.join(serverDir, "ui/app/page.tsx"), "utf8"),
@@ -427,7 +467,20 @@ Desktop Creezio.
   assert.match(modulesIndex, /collectDemoScenarios/);
   assert.match(modulesIndex, /collectAssistantSources/);
   assert.match(modulesIndex, /collectOnboardingContent/);
+  assert.match(modulesIndex, /collectNavPermissions/);
+  assert.match(modulesIndex, /collectPermissionGroups/);
   assert.match(modulesIndex, /createBrandModuleRegistry/);
+  const fromPrdBindings = fs.readFileSync(
+    path.join(serverDir, "src/electron/brand-platform-bindings.ts"),
+    "utf8",
+  );
+  assert.match(fromPrdBindings, /applyBrandModuleAuth/);
+  assert.match(fromPrdBindings, /collectNavPermissions\(\)/);
+  const fromPrdMain = fs.readFileSync(
+    path.join(serverDir, "src/electron/main.ts"),
+    "utf8",
+  );
+  assert.match(fromPrdMain, /applyBrandPlatformBindings/);
   const modulesTypes = fs.readFileSync(
     path.join(serverDir, "src/electron/modules/types.ts"),
     "utf8",
@@ -574,6 +627,9 @@ Desktop Creezio.
   assert.match(clientsMod, /demo:\s*\{/, "module init : demo.scenarios (plus un commentaire)");
   assert.match(clientsMod, /assistantSources:/, "module init : assistantSources");
   assert.match(clientsMod, /onboarding:/, "module init : onboarding");
+  assert.match(clientsMod, /permission:\s*"nav\.clients"/, "module init : permission nav");
+  assert.match(clientsMod, /horsIndexJustification/, "module init : horsIndexJustification stub");
+  assert.doesNotMatch(clientsMod, /à qualifier/, "module init : pas de à qualifier silencieux");
   assert.doesNotMatch(
     clientsMod,
     /\/\/ demo: \{ scenarios:/,

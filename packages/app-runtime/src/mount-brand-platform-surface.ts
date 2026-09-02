@@ -22,7 +22,6 @@ import path from "node:path";
 import { Hono, type Context } from "hono";
 import { getCookie } from "hono/cookie";
 import {
-  configureAuth,
   createAuthRoutes,
   createSessionToken,
   getAuthConfig,
@@ -41,6 +40,11 @@ import {
   registerAccessControlStore,
   resolvePermissions,
 } from "@creezio/access-control";
+import {
+  applyBrandModuleAuth,
+  sessionCookieNameForBrand,
+} from "./apply-brand-module-auth.js";
+import type { BrandPermissionGroup } from "./module-contract.js";
 import {
   configureAssistantBrand,
   createAssistantRoutes,
@@ -443,6 +447,11 @@ export function mountBrandPlatformSurface(opts: {
   sessionCookieName?: string;
   ownerPermissions?: readonly string[];
   /**
+   * Groupes `/admin/access` issus de `collectPermissionGroups()` — fusionnés
+   * seulement si `configureAccessControl` a déjà été appelé au beforeBoot.
+   */
+  permissionGroups?: readonly BrandPermissionGroup[];
+  /**
    * DB métier (SqliteHandle kernel) pour les tools SQL assistant par défaut
    * (run_sql / explore, lecture seule côté runtime assistant).
    */
@@ -503,17 +512,20 @@ export function mountBrandPlatformSurface(opts: {
   const log =
     opts.onLog || ((line: string) => console.log(`[platform-surface] ${line}`));
   const cookieName =
-    opts.sessionCookieName || `${opts.brandId.replace(/[^a-z0-9_]/gi, "_")}_session`;
+    opts.sessionCookieName || sessionCookieNameForBrand(opts.brandId);
 
-  // configureAuth idempotent : ne pas écraser une config marque existante.
-  if (!getAuthConfig().cookieName) {
-    configureAuth({
-      cookieName,
-      ...(opts.ownerPermissions
-        ? { ownerPermissions: opts.ownerPermissions }
-        : {}),
-    });
-  }
+  // beforeBoot (bindings) a pu déjà poser cookie + ownerPermissions.
+  // On complète sans écraser : cookie existant conservé, permissions
+  // seulement si fournies ici, groupes seulement si access-control déjà on.
+  applyBrandModuleAuth({
+    cookieName,
+    ...(opts.ownerPermissions
+      ? { ownerPermissions: opts.ownerPermissions }
+      : {}),
+    ...(opts.permissionGroups
+      ? { permissionGroups: opts.permissionGroups }
+      : {}),
+  });
   const effectiveCookieName = getAuthConfig().cookieName || cookieName;
 
   const store = openBrandPlatformStore({

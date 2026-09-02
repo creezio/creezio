@@ -6,7 +6,8 @@ Maintenir le CLI `creezio` :
 
 0. **Happy path** (`brand create --id/--name/--domain`) : monorepo + repo
    admin frère **locaux** + registre vide + mount interactive-demo +
-   collecteurs assistant/onboarding (F3.4). Guide
+   collecteurs assistant/onboarding (F3.4) + nav permissions (D8,
+   `applyBrandModuleAuth` / `collectNavPermissions`). Guide
    `docs/agents/CREATE-APP.md`. Repos GitHub : **`--push` explicite**
    (token requis) — sans ce flag, `maybePushBrandRepos` ne résout aucun
    token et n'appelle pas le réseau (même si `GITHUB_TOKEN` est posé).

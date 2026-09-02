@@ -8,6 +8,7 @@ import type {
 import type { BrandMeiliFeed } from "@creezio/search";
 import type { CoreNavItem } from "@creezio/shell-ui";
 import type { McpRegisteredTool } from "@creezio/mcp-facade";
+import type { BrandPermissionGroup } from "./module-contract.js";
 
 /** Kernel marque déjà booted (SQLite + api-kernel + mounts). */
 export type BrandKernelHandle = {
@@ -90,6 +91,10 @@ export type StartBrandDesktopConfig = {
   meiliFeed?: BrandMeiliFeed;
   /** Items nav brand (slot vertical). */
   navItems?: CoreNavItem[];
+  /** Permissions owner (`collectNavPermissions`) — beforeBoot / kernel. */
+  ownerPermissions?: readonly string[];
+  /** Groupes access-control (`collectPermissionGroups`) si AC déjà on. */
+  permissionGroups?: readonly BrandPermissionGroup[];
   /**
    * Catalogue distant marque (ensureCatalogPresent). Sans = seed local no-op.
    */
@@ -144,6 +149,8 @@ export type StartBrandKernelHarnessConfig = {
   meiliBinary?: string | null;
   skipIndex?: boolean;
   catalogHost?: BrandCatalogHost;
+  ownerPermissions?: readonly string[];
+  permissionGroups?: readonly BrandPermissionGroup[];
   /**
    * Tools MCP marque additionnels — unionnés avec ceux générés depuis
    * `api.listOperations()` (space module).

@@ -522,33 +522,33 @@ import { createLandingMount } from "@creezio/landing";`,
     path.join(serverDir, "src/electron/brand-platform-bindings.ts"),
     `import { configureAccessControl } from "@creezio/access-control";
 import { adminAccessControlPreset } from "@creezio/admin";
+import { applyBrandModuleAuth } from "@creezio/app-runtime";
+import {
+  collectNavPermissions,
+  collectPermissionGroups,
+} from "./modules/index.js";
 
 /**
- * App admin : permissions par module (preset kit @creezio/admin).
+ * App admin : permissions par module (preset kit @creezio/admin) +
+ * groupes métier collectés depuis les navItems (\`collectPermissionGroups\`).
  * Rôle unique « collaborator » avec TOUS les modules par défaut — l'owner
  * restreint compte par compte (OS → Admin → Rôles & accès, onglet Comptes)
  * ou pour tout le rôle (matrice). Owner = toujours tout (bypass kit).
  * Chargé par brand-kernel-harness (serveur) et main.ts (desktop).
  */
 export function applyBrandPlatformBindings(): void {
-  configureAccessControl(adminAccessControlPreset());
+  configureAccessControl(
+    adminAccessControlPreset({ extraGroups: collectPermissionGroups() }),
+  );
+  applyBrandModuleAuth({
+    cookieName: ${JSON.stringify(
+      `${o.brandId}admin`.replace(/[^a-z0-9_]/gi, "_") + "_session",
+    )},
+    ownerPermissions: collectNavPermissions(),
+  });
 }
 `,
     written,
-  );
-  patchFile(
-    path.join(serverDir, "src/electron/main.ts"),
-    `import { brandMeiliFeed, applyBrandMeiliConfig } from "./meili-feed.js";`,
-    `import { brandMeiliFeed, applyBrandMeiliConfig } from "./meili-feed.js";
-import { applyBrandPlatformBindings } from "./brand-platform-bindings.js";`,
-  );
-  patchFile(
-    path.join(serverDir, "src/electron/main.ts"),
-    `  beforeBoot: applyBrandMeiliConfig,`,
-    `  beforeBoot: (...beforeBootArgs) => {
-    applyBrandPlatformBindings();
-    return applyBrandMeiliConfig(...beforeBootArgs);
-  },`,
   );
 
   // 2ter. Nav des modules kit (flotte / tickets / landing) avec leurs

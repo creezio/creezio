@@ -34,6 +34,7 @@ import os from "node:os";
 import path from "node:path";
 import assert from "node:assert/strict";
 import { test } from "node:test";
+import { fileURLToPath } from "node:url";
 
 process.env.AUTH_SECRET = "gate-access-control-secret";
 
@@ -691,4 +692,21 @@ test("12. @creezio/admin : mounts gardés par module, routes machine préservée
     extended.roles.find((r) => r.id === "collaborator").defaultPermissions.includes("nav.metier"),
   );
   assert.ok(extended.permissionGroups.some((g) => g.id === "metier"));
+});
+
+test("13. factory admin bindings : extraGroups collectPermissionGroups + applyBrandModuleAuth", () => {
+  const src = fs.readFileSync(
+    path.join(
+      path.dirname(fileURLToPath(import.meta.url)),
+      "../packages/factory/src/admin-repo.ts",
+    ),
+    "utf8",
+  );
+  assert.match(src, /extraGroups:\s*collectPermissionGroups\(\)/);
+  assert.match(src, /applyBrandModuleAuth/);
+  assert.match(src, /ownerPermissions:\s*collectNavPermissions\(\)/);
+  assert.doesNotMatch(
+    src,
+    /configureAccessControl\(adminAccessControlPreset\(\)\)/,
+  );
 });

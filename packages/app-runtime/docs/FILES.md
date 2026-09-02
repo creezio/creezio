@@ -15,6 +15,7 @@
 
 | Fichier | Rôle |
 |---|---|
+| [`src/apply-brand-module-auth.ts`](../src/apply-brand-module-auth.ts) | D8 — `applyBrandModuleAuth` : `configureAuth({ ownerPermissions })` + fusion `permissionGroups` si access-control déjà configuré |
 | [`src/boot-progress.ts`](../src/boot-progress.ts) | Progression de boot headless (modèle splash partagé) — JSON `GET /api/v1/os/boot-status`, JSONL stdout, journal ops |
 | [`src/brand-platform-store.ts`](../src/brand-platform-store.ts) | Store plateforme marque |
 | [`src/cockpit-health.ts`](../src/cockpit-health.ts) | (à documenter) |
@@ -28,7 +29,7 @@
 | [`src/listen-brand-boot-http.ts`](../src/listen-brand-boot-http.ts) | Early-listen : `boot-status`/healthz répondent pendant le boot |
 | [`src/listen-brand-os-http.ts`](../src/listen-brand-os-http.ts) | Serveur HTTP OS (`/api/v1`, CRM web) |
 | [`src/mcp-jsonrpc.ts`](../src/mcp-jsonrpc.ts) | Pont JSON-RPC 2.0 stateless du endpoint `/mcp` du plane OS (H1) — seuls les corps `jsonrpc:"2.0"` y passent, le transport JSON simple historique est conservé. Consommé par le client MCP natif de Hermes. |
-| [`src/module-contract.ts`](../src/module-contract.ts) | SoT du contrat de module marque (P2.c/H9 + volet 2 F3.4) : `BrandModuleDef` (`assistantSources`, `onboarding`) + `createBrandModuleRegistry` (collecteurs génériques dont `collectAssistantSources` / `collectOnboardingContent`) |
+| [`src/module-contract.ts`](../src/module-contract.ts) | SoT du contrat de module marque (P2.c/H9 + F3.4 + D8) : `BrandModuleDef` + `createBrandModuleRegistry` (collecteurs F3.4 assistant/onboarding **et** D8 `collectNavPermissions` / `collectPermissionGroups`) |
 | [`src/module-mount-auth.ts`](../src/module-mount-auth.ts) | Garde session HTTP default-deny sur `/api/v1/modules/*` (BACKLOG F3) : cookie session / Bearer JWT, allowlist webhook/register/heartbeat/releases/landing public ; boot catalogue (`x-creezio-catalog-internal` = secret par processus `CREEZIO_CATALOG_INTERNAL_SECRET`, `ensureCatalogInternalSecret` — plus de constante `1`, fix P0) ; `AUTH_DISABLED` → session virtuelle harness (refusée si `NODE_ENV=production`). |
 | [`src/mount-brand-admin-database.ts`](../src/mount-brand-admin-database.ts) | Enregistrement auto stores SQLite runtime (`core`/`brand`/plugins) + routes Admin Database montées sur `/api/v1/admin` |
 | [`src/mount-brand-email-surface.ts`](../src/mount-brand-email-surface.ts) | Surface mails optionnelle |

@@ -16,8 +16,11 @@ Toute évolution Meili / HTTP kernel / session IPC se fait **ici** (ou dans
   généré factory délègue ses collecteurs (`collectEntitySpecs`,
   `collectApiMounts`, `collectNavItems`, `collectMcpTools`,
   `collectMeiliIndexes`, `collectModuleMigrations`, `collectDemoScenarios`,
-  `collectAssistantSources`, `collectOnboardingContent`)
-  à `createBrandModuleRegistry(BRAND_MODULES)`. Champs additifs
+  `collectAssistantSources`, `collectOnboardingContent`,
+  `collectNavPermissions`, `collectPermissionGroups`)
+  à `createBrandModuleRegistry(BRAND_MODULES)`. `applyBrandModuleAuth`
+  pose `configureAuth({ ownerPermissions: collectNavPermissions() })` et
+  fusionne les groupes si access-control est déjà configuré. Champs additifs
   `assistantSources` / `assistantSourcesJustification` / `onboarding` —
   pas de bump `ARCHITECTURE_VERSION`. Doctor warn
   `MODULE_ASSISTANT_SOURCES_MISSING` si un module expose une API sans
