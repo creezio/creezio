@@ -11,7 +11,8 @@ Happy path **une commande**. Guide complet :
 ## Commande
 
 ```bash
-creezio brand create --id <id> --name <Name> --domain <host> [--out <dir>] [--force] [--no-push]
+creezio brand create --id <id> --name <Name> --domain <host> [--out <dir>] [--force]
+# Repos GitHub : ajouter --push (token requis). Défaut = local, zéro réseau.
 ```
 
 Puis :

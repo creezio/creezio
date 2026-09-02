@@ -42,8 +42,9 @@ export type CliArgs = {
   defaultServerUrl?: string;
   /** Dossier du repo admin dédié (défaut <out>-admin). */
   adminOut?: string;
-  /** Création + push des 2 repos GitHub privés (défaut : si token dispo). */
+  /** `--push` : créer + pousser les 2 repos GitHub (opt-in ; défaut = non). */
   push?: boolean;
+  /** `--no-push` : défaut (redondant). */
   noPush?: boolean;
   /** Org/owner GitHub des repos créés (défaut creezio). */
   githubOrg?: string;
@@ -133,8 +134,9 @@ Usage:
 
 Happy path (recommandé) :
   creezio brand create --id acme --name Acme --domain acme.local
-  → spec + monorepo + <id>-admin, registre vide, mount interactive-demo,
-    zéro module notes. Puis : creezio brand module init <id> --app .
+  → spec + monorepo + <id>-admin locaux, registre vide, mount interactive-demo,
+    zéro module notes. Repos GitHub : ajouter --push (token requis).
+    Puis : creezio brand module init <id> --app .
 
 Mode produit (legacy TempoFlow3) :
   --from-prd      Brief / PRD markdown non technique
@@ -170,8 +172,10 @@ Mode technique (squelette OS vide) :
 
 Factory 2 repos (marque + admin flotte) :
   --admin-out <dir>   Dossier du repo admin dédié (défaut <out>-admin)
-  --push / --no-push  Création + push des 2 repos GitHub privés
-                      (défaut : si token GITHUB_TOKEN / .github-token dispo)
+  --push              Créer + pousser les 2 repos GitHub privés (opt-in ;
+                      exige GITHUB_TOKEN / CREEZIO_GITHUB_TOKEN / .github-token)
+  --no-push           Défaut (redondant) : aucun appel GitHub, même si un
+                      token est présent dans l'environnement
   --github-org <org>  Org GitHub (défaut creezio)
   --link-kit          Installer @creezio/* depuis le worktree kit (file:),
                       pas le registre — requis en CI / PR de release
@@ -221,7 +225,7 @@ function finalizeModel(model: ProductModel, args: CliArgs): ProductModel {
   return model;
 }
 
-/** Factory 2-repos : délègue à maybePushBrandRepos (politique token/--push). */
+/** Factory 2-repos : délègue à maybePushBrandRepos (opt-in --push). */
 async function maybeCreateGithubRepos(
   args: CliArgs,
   result: import("./scaffold.js").ScaffoldResult,

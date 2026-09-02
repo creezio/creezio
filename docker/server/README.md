@@ -175,6 +175,8 @@ Archives existantes **conservées** (pas de prune dans le flux update).
 ```bash
 # Publier une image versionnée :
 creezio server-docker publish --brand-root "$BRAND_ROOT" --tag 0.3.0 --registry 127.0.0.1:5000
+# GHCR : le label OCI org.opencontainers.image.source est dérivé du remote
+# git origin du brand-root (fail-closed si introuvable).
 
 # Update unitaire (dev/itération — défaut, rapide) :
 creezio server-docker update <nom> --brand-root "$BRAND_ROOT" --tag 0.3.0

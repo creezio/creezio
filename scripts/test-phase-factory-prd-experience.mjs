@@ -57,6 +57,10 @@ test("expérience: dry-run agent = new-app --from-prd seulement", () => {
     { encoding: "utf8", cwd: ROOT, env: SMOKE_ENV },
   );
   assert.equal(r.status, 0, r.stderr + "\n" + r.stdout);
+  assert.match(
+    r.stdout,
+    /repos GitHub non créés \(--push pour les créer\)/,
+  );
 
   const server = fs.existsSync(path.join(outDir, "server/package.json"))
     ? path.join(outDir, "server")
