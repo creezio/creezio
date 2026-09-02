@@ -65,7 +65,7 @@ import {
   configureMeiliBrandFeed,
   configureMeiliCatalogSqlTables,
   type BrandMeiliFeed,
-} from "@creezio/electron-shell/meili";
+} from "@creezio/search";
 
 export const brandMeiliFeed: BrandMeiliFeed = {
   id: ${JSON.stringify(`${model.brandId}-catalog`)},

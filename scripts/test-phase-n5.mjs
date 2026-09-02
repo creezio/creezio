@@ -45,8 +45,10 @@ test("N5.2 createFeatureOffHost exporté + signatures", async () => {
   assert.match(body, /validatePluginExecutionGrant/);
   assert.doesNotMatch(body, PAPERCLIP_RE);
 
+  // H12 : createFeatureOffHost s'importe depuis @creezio/host-runtime
+  // (plus de ré-export compat electron-shell).
   const idx = fs.readFileSync(
-    path.join(root, "packages/electron-shell/src/index.ts"),
+    path.join(root, "packages/host-runtime/src/index.ts"),
     "utf8",
   );
   assert.match(idx, /createFeatureOffHost/);

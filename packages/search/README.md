@@ -38,11 +38,10 @@ comportement runtime).
 
 ## Compat
 
-`@creezio/electron-shell` (et son subpath `./meili`) ré-exporte toute cette
-surface avec `@deprecated` — les imports historiques des marques et de la
-factory continuent de fonctionner. Surface figée par la gate
-`test-phase-electron-shell-frozen-exports` : tout nouveau symbole s'exporte
-d'ici, pas via electron-shell.
+H12 (0.24.0) : les ré-exports de compat d'electron-shell (barrel + subpath
+`./meili`) ont été supprimés — ce package est l'UNIQUE point d'import du
+sous-domaine Meili. Migration marques : codemod `scripts/codemods/H12/`
+(`creezio upgrade`).
 
 ## Liens
 

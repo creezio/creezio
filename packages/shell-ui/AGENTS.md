@@ -14,7 +14,8 @@ La mission inclut une clarification de scope : `shell-ui` n'est plus uniquement 
 - **Jamais** `sed` / `replace_all` sur `window.<brand>Desktop` sans ajouter
   `import { getShellDesktopApi } from "@creezio/shell-ui"` dans chaque fichier
   touché (gate `scripts/test-phase-shell-desktop-api.mjs`).
-- Ne pas ajouter de nouvel usage `Supplier*`; preferer `ExternalSite*`. Les alias supplier sont seulement de la compat historique (dépréciés).
+- Ne pas ajouter d'usage `Supplier*` / `fournisseur` : les alias metier du module workspace ont ete PURGES en H12 — seuls les noms `ExternalSite*` / `siteId` existent. Ne pas reintroduire d'alias de compat.
+- Les chemins plein ecran / canvas du workspace sont injectes par la marque via `configureWorkspacePaths` (`fullscreenPaths`, `canvases`) — aucun chemin metier en dur dans le kit.
 - Ne pas remettre login/session dans shell-ui : utiliser `@creezio/auth/ui`.
 - Ne pas remettre setup/onboarding : utiliser `@creezio/onboarding/ui`.
 - Ne pas remettre cockpit serveur : utiliser `@creezio/cockpit/ui`.
@@ -106,6 +107,7 @@ La marque doit configurer :
   - `configureSidebarCollapsedKey`
   - `configureProductDetailCtx`
   - `configureWorkspaceStorageKey`
+  - `configureWorkspacePaths` (chemins plein ecran / canvases metier)
   - `configureEntityRouteRoots`, `configureSectionLabels`, `configureEntityLabels` si necessaire
 - `configureAiActivityPanel` pour brancher `@creezio/tasks/ui`.
 
@@ -129,7 +131,7 @@ Gates de scope :
 
 - aucun nouveau terme/metier marque dans le kit ;
 - aucun nouveau doublon sidebar/workspace/search dans les marques — le chrome vient du kit ;
-- `ExternalSite*` prefere aux alias `Supplier*` ;
+- `ExternalSite*` uniquement (les alias `Supplier*` du workspace n'existent plus depuis H12) ;
 - auth/onboarding/cockpit/splash restent hors package ;
 - `getShellDesktopApi()` reste la seule lecture desktop global generique.
 
@@ -144,7 +146,7 @@ Gates fonctionnels :
 ## Fichiers sensibles
 
 - `ui/workspace/tab-workspace-context.tsx` : coeur onglets, historique, external sites.
-- `ui/workspace/types.ts` : types publics et aliases legacy supplier.
+- `ui/workspace/types.ts` : types publics du workspace (noms neutres, chemins injectés via `configureWorkspacePaths`).
 - `ui/layout/sidebar.tsx` : chrome nav dense.
 - `ui/search/global-search-provider.tsx` : UX recherche et navigation.
 - `ui/desktop/external-site-slot.tsx` : coordination desktop/webview.

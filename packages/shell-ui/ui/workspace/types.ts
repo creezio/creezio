@@ -29,13 +29,6 @@ export type ExternalSiteTabMeta = {
   electronTabId?: string;
 };
 
-/** @deprecated → ExternalSiteTabMeta (siteId). */
-export type SupplierTabMeta = ExternalSiteTabMeta & {
-  /** @deprecated → siteId */
-  fournisseurId?: number;
-};
-
-
 export type WorkspaceTab = {
   id: string;
   href: string;
@@ -48,8 +41,6 @@ export type WorkspaceTab = {
   fullscreen?: boolean;
   /** Présent si l'onglet héberge un site externe Chromium. */
   externalSite?: ExternalSiteTabMeta;
-  /** @deprecated → externalSite */
-  supplier?: SupplierTabMeta;
 
   /** Historique back/forward propre à cet onglet. */
   history: string[];
@@ -62,7 +53,7 @@ export type WorkspacePersistedState = {
 };
 
 /** v3 : Dashboard unique épinglé + état des onglets persisté en session.
- * Override marque via `configureWorkspaceStorageKey` (ex. tf2-workspace-tabs-v3).
+ * Override marque via `configureWorkspaceStorageKey` (ex. `<brand>-workspace-tabs-v3`).
  */
 export let WORKSPACE_STORAGE_KEY = "creezio-workspace-tabs-v3";
 export const MAX_TABS = 12;
@@ -74,25 +65,37 @@ export function configureWorkspaceStorageKey(key: string): void {
 
 /** Chemin de l'onglet épinglé (toujours premier, non fermable). */
 export const DASHBOARD_PATH = "/dashboard";
+
 /**
- * Chemins fullscreen optionnels — **override marque** via
- * `configureFullscreenPaths`. Défauts vides côté kit (pas de domaine TF).
- * Alias historiques TF (`/panier`, `/optimiser`) restent importables depuis la marque.
+ * Canvas plein écran conditionnel : un pathname rendu sans bandeau H1/trail,
+ * activé seulement quand `requiredQuery` (si posé) est présent dans l'URL
+ * (ex. atelier ouvert sur un objet précis).
  */
-export let PANIER_PATH = "";
-export let OPTIMISER_PATH = "";
+export type WorkspaceCanvasSpec = {
+  /** Pathname exact du canvas (ex. un atelier métier). */
+  path: string;
+  /** Query param requis pour basculer plein écran (absent = toujours). */
+  requiredQuery?: string;
+};
 
-/** @deprecated Chemins TF historiques — configurer via configureFullscreenPaths. */
-export const TF_LEGACY_PANIER_PATH = "/panier";
-/** @deprecated */
-export const TF_LEGACY_OPTIMISER_PATH = "/optimiser";
+/**
+ * Chemins workspace **injectés par la marque** (kit = plateforme only,
+ * défauts vides — aucun domaine métier ici) via `configureWorkspacePaths`.
+ */
+let FULLSCREEN_PATH_PREFIXES: readonly string[] = [];
+let CANVAS_SPECS: readonly WorkspaceCanvasSpec[] = [];
 
-export function configureFullscreenPaths(opts: {
-  panierPath?: string;
-  optimiserPath?: string;
+export function configureWorkspacePaths(opts: {
+  /**
+   * Préfixes de pathnames rendus plein écran sous les onglets
+   * (ex. une page de sélection métier).
+   */
+  fullscreenPaths?: string[];
+  /** Canvas plein écran conditionnels (path + query requis). */
+  canvases?: WorkspaceCanvasSpec[];
 }): void {
-  if (opts.panierPath != null) PANIER_PATH = opts.panierPath;
-  if (opts.optimiserPath != null) OPTIMISER_PATH = opts.optimiserPath;
+  if (opts.fullscreenPaths) FULLSCREEN_PATH_PREFIXES = [...opts.fullscreenPaths];
+  if (opts.canvases) CANVAS_SPECS = [...opts.canvases];
 }
 
 
@@ -200,23 +203,29 @@ export function titleFromHref(href: string): string {
   return `${label} · ${decodeURIComponent(parts[1] || "")}`;
 }
 
-/** Canvas atelier actif (`/optimiser?commande=…`). */
-export function isOptimiserCanvasHref(href: string): boolean {
+/** Canvas plein écran actif (spec marque : path + query requis). */
+export function isCanvasHref(href: string): boolean {
+  if (!CANVAS_SPECS.length) return false;
   const normalized = normalizeHref(href);
   try {
     const url = new URL(normalized, "http://local.invalid");
-    if (url.pathname !== OPTIMISER_PATH) return false;
-    return url.searchParams.has("commande");
+    return CANVAS_SPECS.some(
+      (spec) =>
+        url.pathname === spec.path &&
+        (!spec.requiredQuery || url.searchParams.has(spec.requiredQuery)),
+    );
   } catch {
     return false;
   }
 }
 
 export function isFullscreenHref(href: string): boolean {
-  if (isOptimiserCanvasHref(href) || isExternalSiteHref(href)) return true;
-  if (PANIER_PATH) {
+  if (isCanvasHref(href) || isExternalSiteHref(href)) return true;
+  if (FULLSCREEN_PATH_PREFIXES.length) {
     const path = normalizeHref(href).split("?")[0] || "/";
-    if (path === PANIER_PATH || path.startsWith(PANIER_PATH + "/")) return true;
+    return FULLSCREEN_PATH_PREFIXES.some(
+      (prefix) => path === prefix || path.startsWith(prefix + "/"),
+    );
   }
   return false;
 }
@@ -227,9 +236,6 @@ export function isExternalSiteHref(href: string): boolean {
   return path === "/site" || path.startsWith("/site/");
 }
 
-/** @deprecated → isExternalSiteHref */
-export const isSupplierHref = isExternalSiteHref;
-
 export function siteIdFromHref(href: string): number | null {
   const path = normalizeHref(href).split("?")[0] || "/";
   const m = path.match(/^\/site\/(\d+)$/);
@@ -238,15 +244,9 @@ export function siteIdFromHref(href: string): number | null {
   return Number.isFinite(id) ? id : null;
 }
 
-/** @deprecated → siteIdFromHref */
-export const fournisseurIdFromHref = siteIdFromHref;
-
 export function externalSiteHref(siteId: number): string {
   return `/site/${Math.floor(siteId)}`;
 }
-
-/** @deprecated → externalSiteHref */
-export const supplierHref = externalSiteHref;
 
 export function createExternalSiteTab(opts: {
   siteId: number;
@@ -400,15 +400,6 @@ export function ensureTabHistory(
       url: String(tab.externalSite.url || ""),
       electronTabId: tab.externalSite.electronTabId,
     };
-  } else if (
-    tab.supplier &&
-    typeof (tab.supplier.siteId ?? tab.supplier.fournisseurId) === "number"
-  ) {
-    externalSite = {
-      siteId: Number(tab.supplier.siteId ?? tab.supplier.fournisseurId),
-      url: String(tab.supplier.url || ""),
-      electronTabId: tab.supplier.electronTabId,
-    };
   } else if (isExternalSiteHref(href)) {
     externalSite = {
       siteId: siteIdFromHref(href) || 0,
@@ -426,30 +417,9 @@ export function ensureTabHistory(
     trail: tab.trail,
     fullscreen: tab.fullscreen ?? isFullscreenHref(href),
     externalSite,
-    /** @deprecated miroir compat */
-    supplier: externalSite
-      ? { ...externalSite, fournisseurId: externalSite.siteId }
-      : undefined,
     history,
     historyIndex,
   };
-}
-
-/** @deprecated → createExternalSiteTab */
-export function createSupplierTab(opts: {
-  fournisseurId: number;
-  url: string;
-  title?: string;
-  electronTabId?: string;
-  id?: string;
-}): WorkspaceTab {
-  return createExternalSiteTab({
-    siteId: opts.fournisseurId,
-    url: opts.url,
-    title: opts.title,
-    electronTabId: opts.electronTabId,
-    id: opts.id,
-  });
 }
 
 /** Même pathname (seuls les query params changent). */

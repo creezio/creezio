@@ -78,7 +78,6 @@
 | [`test-phase-desktop-server-parity.mjs`](../test-phase-desktop-server-parity.mjs) | Gate parité desktop Serveur TF2 0.10.26 : NSIS (démarrage auto, désinstall profonde), UI Configuration (tray / launchAtStartup / factory-reset), runtime. |
 | [`test-phase-docs-freshness.mjs`](../test-phase-docs-freshness.mjs) | Gate D0 — fraîcheur documentaire (docs/DOC-STANDARD.md). Vérifie, pour chaque cible du périmètre (packages/*, docker/*, apps/*, scripts/) : 1. |
 | [`test-phase-e.mjs`](../test-phase-e.mjs) | !usrbinenv node |
-| [`test-phase-electron-shell-frozen-exports.mjs`](../test-phase-electron-shell-frozen-exports.mjs) | Surface de ré-exports `@deprecated` d'electron-shell figée (snapshot JSON, interdiction `export *` depuis host-runtime/search). |
 | [`test-phase-f.mjs`](../test-phase-f.mjs) | !usrbinenv node |
 | [`test-phase-factory-docker-parity.mjs`](../test-phase-factory-docker-parity.mjs) | Gate héritage factory → Docker (env, opt-in CREEZIO_FACTORY_DOCKER=1). |
 | [`test-phase-factory-lockfile.mjs`](../test-phase-factory-lockfile.mjs) | Cohérence `package-lock` marque (`isPackageLockInSync`) pour que `npm ci` Docker ne casse pas le layout `node_modules`. |
@@ -238,6 +237,13 @@
 | Fichier | Rôle |
 |---|---|
 | [`codemods/H11/h11-purge-tf2-compat.mjs`](../codemods/H11/h11-purge-tf2-compat.mjs) | Codemod H11 : purge compat TF2-era — `TEMPOFLOW_*` → préfixe manifeste, asserts feed CHR, `countKey: "sites"`, retire fallback builder. Fail-closed si appel runtime `createChrCatalogMeiliFeed` ou import `*Manifest` prod. Idempotent. |
+
+## `codemods/H12/`
+
+| Fichier | Rôle |
+|---|---|
+| [`codemods/H12/h12-electron-shell-imports.mjs`](../codemods/H12/h12-electron-shell-imports.mjs) | Codemod H12 (1/2) : reclasse les imports `@creezio/electron-shell` (barrel + subpath `./meili`) vers les packages SoT host-runtime/search/platform-core ; renomme les alias host nommés marque (`ensureTempoflowNode` → `ensureDesktopNode`, pins `TF2_*` → `DESKTOP_*`…) et `nodeEnsure`. Idempotent. |
+| [`codemods/H12/h12-workspace-debrand.mjs`](../codemods/H12/h12-workspace-debrand.mjs) | Codemod H12 (2/2) : dé-brande le workspace shell-ui — renommages `*Supplier*`/`fournisseurIdFromHref` → noms `ExternalSite*`/`siteId*`, `isOptimiserCanvasHref` → `isCanvasHref`, `configureFullscreenPaths` → `configureWorkspacePaths` (fullscreenPaths + canvases), constantes `TF_LEGACY_*`/`PANIER_PATH`/`OPTIMISER_PATH` → constantes de marque. Fail-closed si valeurs non littérales. Idempotent. |
 
 ## `codemods/H7/`
 

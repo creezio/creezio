@@ -37,8 +37,8 @@ jamais dans electron-shell.
 ## Comment modifier sans casser
 
 1. Nouveau symbole public → exporter depuis `src/index.ts` d'ICI. Ne PAS
-   l'ajouter aux ré-exports d'electron-shell (gate
-   `test-phase-electron-shell-frozen-exports` = rouge).
+   le ré-exporter via electron-shell (les shims compat ont été purgés en
+   H12 — ce package est l'unique point d'import du host).
 2. Chemins ressources : `kitOsResourcesRoot()` / `kitOsVendorDir()` vivent
    dans `@creezio/platform-core` et résolvent le package
   `@creezio/host-runtime` (qui ship `resources/vendor`). Ne pas

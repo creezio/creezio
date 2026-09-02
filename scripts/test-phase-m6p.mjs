@@ -55,9 +55,8 @@ check("hermes bootstrap WEBUI_DEPS_MARKER_LEGACY_CERTIVAN + FIDU", () => {
   assert.ok(src.includes(".fidu-webui-deps"));
   assert.ok(src.includes(".certivan-webui-pin"));
   assert.ok(src.includes(".fidu-webui-pin"));
-  const idx = read("packages/electron-shell/src/index.ts");
-  assert.ok(idx.includes("WEBUI_DEPS_MARKER_LEGACY_CERTIVAN"));
-  assert.ok(idx.includes("WEBUI_DEPS_MARKER_LEGACY_FIDU"));
+  // H12 : plus de ré-export compat via electron-shell — les marqueurs legacy
+  // sont vérifiés ci-dessus dans leur SoT host-runtime (runtime-bootstrap.ts).
   // H7 : le clear des passwords webui legacy passe par la dérivation
   // secretPrefix (voir check précédent) — plus de littéral marque ici.
   const hermes = read("packages/host-runtime/src/hermes/launcher.ts");

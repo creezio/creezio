@@ -259,17 +259,39 @@ export function AppChrome({ children }) {
 }
 ```
 
-### Sites externes : noms neutres vs alias legacy
+### Sites externes / workspace : noms neutres (alias metier purges en H12)
 
-La terminologie kit est neutre :
+La terminologie kit est neutre. Les alias metier historiques du module
+workspace ont ete SUPPRIMES en H12 (codemod `scripts/codemods/H12/`) —
+mapping ancien → nouveau :
 
-| SoT kit | Alias deprecie TF |
+| Ancien nom (supprime) | SoT kit |
 |---|---|
-| `OpenExternalSiteOpts`, `openExternalSite`, `siteId` | `OpenSupplierSiteOpts`, `openSupplierSite`, `fournisseurId` |
-| `ExternalSiteSlot`, `ExternalSiteTabMeta`, `createExternalSiteTab` | `SupplierSiteSlot`, `SupplierTabMeta`, `createSupplierTab` |
-| `siteIdFromHref`, `isExternalSiteHref` | `fournisseurIdFromHref`, `isSupplierHref` |
+| `OpenSupplierSiteOpts`, `openSupplierSite`, `fournisseurId` | `OpenExternalSiteOpts`, `openExternalSite`, `siteId` |
+| `SupplierTabMeta`, `createSupplierTab`, `patchSupplierTab` | `ExternalSiteTabMeta`, `createExternalSiteTab`, `patchExternalSiteTab` |
+| `fournisseurIdFromHref`, `isSupplierHref` | `siteIdFromHref`, `isExternalSiteHref` |
+| `isOptimiserCanvasHref` | `isCanvasHref` |
+| `configureFullscreenPaths({ panierPath, optimiserPath })` | `configureWorkspacePaths({ fullscreenPaths, canvases })` |
+| `PANIER_PATH`, `OPTIMISER_PATH`, `TF_LEGACY_*` | constantes DE MARQUE (le kit n'exporte plus de chemin metier) |
 
-Ne pas ajouter de nouveau libelle utilisateur "fournisseur" dans le kit. Les alias restent supportes pour compat, mais les nouveaux appels doivent utiliser les noms `ExternalSite`. Regle de fond : [ADR-no-brand-domain-in-native-packages](../../docs/adr/ADR-no-brand-domain-in-native-packages.md) (gate `test-phase-p29`).
+Ne pas ajouter de nouveau libelle utilisateur "fournisseur" dans le kit, ni
+de nouvel alias de compat. Regle de fond :
+[ADR-no-brand-domain-in-native-packages](../../docs/adr/ADR-no-brand-domain-in-native-packages.md)
+(gates `test-phase-p29` + `test-phase-no-brand-vocab`).
+
+Exemple de wiring marque (chemins plein ecran / canvas) :
+
+```ts
+import { configureWorkspacePaths } from "@creezio/shell-ui/ui";
+
+configureWorkspacePaths({
+  // Prefixes de pathnames rendus plein ecran sous les onglets.
+  fullscreenPaths: ["/ma-selection"],
+  // Canvas plein ecran conditionnel : actif seulement quand le query param
+  // requis est present.
+  canvases: [{ path: "/mon-atelier", requiredQuery: "objet" }],
+});
+```
 
 ## Flux / fonctionnement
 

@@ -481,6 +481,3 @@ export function upsertHermesMcpConfig(
   const block = buildHermesMcpYamlBlock(cfg);
   return body ? `${body}\n\n${block}\n` : `${block}\n`;
 }
-
-/** @deprecated alias */
-export const tempoflowSandboxPaths = desktopSandboxPaths;

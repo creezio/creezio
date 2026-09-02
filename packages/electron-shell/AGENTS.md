@@ -7,7 +7,7 @@ updater, splash, bridge, admin-window, overlays desktop, browser-tabs et
 télémétrie webContents. Garder le package générique, testable et sans
 dépendance métier verticale.
 
-## P1.b — extraction host-runtime / search (0.11.x)
+## P1.b — extraction host-runtime / search (0.11.x) — shims purgés en H12
 
 Le host Node pur a déménagé :
 
@@ -20,11 +20,13 @@ Le host Node pur a déménagé :
 - `kitOsResourcesRoot` / `kitOsVendorDir` / `envForNodeScriptSpawn` →
   `@creezio/platform-core`.
 
-Ce package **ré-exporte tout** avec `@deprecated` (compat des imports
-historiques kit/marques/factory). Cette surface est **FIGÉE** — gate
-`test-phase-electron-shell-frozen-exports` (snapshot
-`scripts/electron-shell-frozen-exports.json`) : tout NOUVEAU symbole host
-s'exporte depuis son package SoT, jamais d'ici. `resources/{vendor,scripts,bin}` ont déménagé dans
+**H12 (0.24.0)** : les ré-exports de compat `@deprecated` du barrel et le
+shim subpath `./meili` ont été **SUPPRIMÉS** (la gate
+`test-phase-electron-shell-frozen-exports` et son snapshot n'existent plus —
+il n'y a plus de surface gelée à protéger). Tout symbole host s'importe
+depuis son package SoT ; migration marques : codemod `scripts/codemods/H12/`
+(appliqué par `creezio upgrade`). Ne JAMAIS ré-exporter un symbole host
+depuis ce barrel. `resources/{vendor,scripts,bin}` ont déménagé dans
 `@creezio/host-runtime` (P1.c) — résolus par `kitOsResourcesRoot`.
 
 ## P2.a — moteur desktop partagé (compat legacy retirée en H10)
@@ -54,9 +56,9 @@ Règles :
 
 ## Meili — composant CORE fail-closed (contrat marques)
 
-> SoT du code : `@creezio/search` (extrait P1.b). Le contrat ci-dessous
-> reste valable ; les subpaths `@creezio/electron-shell/meili` sont des
-> ré-exports de compat.
+> SoT du code : `@creezio/search` (extrait P1.b ; le shim subpath
+> `@creezio/electron-shell/meili` a été supprimé en H12). Le contrat
+> ci-dessous reste valable.
 
 **Meili = core, comme SQLite.** Quand un feed déclare ≥ 1 index :
 
@@ -79,7 +81,7 @@ Règles :
    par l'index (`filter_rejected` **visible**).
 5. **Piège interdit** : `if (q) { meili } else { sql }` — le browse filtré
    sans texte doit aussi passer Meili (audit perf secteurs 3668bbbd).
-6. Helpers publics : `browseMeiliIndexOutcome` (`@creezio/electron-shell/meili`,
+6. Helpers publics : `browseMeiliIndexOutcome` (`@creezio/search`,
    issue discriminée incident/hors-index) et `browseMeiliIndex` (compat,
    `null` = tout incident). **Ne pas** utiliser `searchMeiliIndexes` pour le
    browse (retourne `[]` si `q` vide). Entity-list kit : `configureEntityMeili`
@@ -104,16 +106,14 @@ dans la marque mais **doit** respecter ce contrat.
 
 ## Points d'entrée
 
-- `src/index.ts` : barrel public principal (desktop natif + ré-exports
-  `@deprecated` figés).
+- `src/index.ts` : barrel public principal (desktop natif UNIQUEMENT —
+  plus de ré-exports host depuis H12).
 - `src/desktop/brand-desktop-runtime.ts` : moteur desktop partagé complet
   (chemin moderne app-runtime + clients legacy — voir section P2.a).
 - `src/host/browser-tabs/index.ts` : sous-export browser-tabs
   (`@creezio/electron-shell/browser-tabs` — reste ICI, Electron via
   `loadElectron`).
 - `src/host/web-telemetry.ts` : `instrumentWebContents` (desktop).
-- `src/meili.ts` : shim compat du subpath `./meili` (ré-export
-  `@creezio/search`, surface figée).
 
 Déménagés en P1.b (voir leurs AGENTS) :
 
@@ -169,8 +169,8 @@ Si la modification touche Electron reel, completer par un smoke de marque :
 
 - `src/desktop/brand-desktop-runtime.ts` : boot global, IPC, restart Next, BYOK.
 - `src/host/browser-tabs/browser-tab-driver.ts` : CDP trusted input.
-- `src/index.ts` + `src/meili.ts` : surface de ré-exports FIGÉE (gate
-  `test-phase-electron-shell-frozen-exports`).
+- `src/index.ts` : barrel desktop natif — ne JAMAIS y ré-exporter un
+  symbole host (H12 : shims purgés, importer depuis les packages SoT).
 - Vendor / scripts / bins kit : `@creezio/host-runtime/resources`
   (résolution `kitOsResourcesRoot`).
 - Le reste (plugins, hermes, n8n, tunnel, sandbox, ai-workspace) : voir

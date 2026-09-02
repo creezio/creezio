@@ -471,30 +471,6 @@
       "ticket": "P1.a — inventaire initial audit (héritage contractuel divers, à ventiler lors du nettoyage P1.b+)"
     },
     {
-      "file": "packages/electron-shell/src/index.ts",
-      "pattern": "certivan",
-      "count": 1,
-      "ticket": "P1.a — inventaire initial audit (héritage contractuel divers, à ventiler lors du nettoyage P1.b+)"
-    },
-    {
-      "file": "packages/electron-shell/src/index.ts",
-      "pattern": "fidu",
-      "count": 1,
-      "ticket": "P1.a — inventaire initial audit (héritage contractuel divers, à ventiler lors du nettoyage P1.b+)"
-    },
-    {
-      "file": "packages/electron-shell/src/index.ts",
-      "pattern": "tempoflow",
-      "count": 3,
-      "ticket": "P1.a — inventaire initial audit (héritage contractuel divers, à ventiler lors du nettoyage P1.b+)"
-    },
-    {
-      "file": "packages/electron-shell/src/index.ts",
-      "pattern": "tf2",
-      "count": 3,
-      "ticket": "P1.a — inventaire initial audit (héritage contractuel divers, à ventiler lors du nettoyage P1.b+)"
-    },
-    {
       "file": "packages/electron-shell/src/splash-ui.ts",
       "pattern": "certivan",
       "count": 1,
@@ -705,12 +681,6 @@
       "ticket": "P1.a — inventaire initial audit (héritage contractuel divers, à ventiler lors du nettoyage P1.b+)"
     },
     {
-      "file": "packages/host-runtime/src/brand-host-runtime.ts",
-      "pattern": "tempoflow",
-      "count": 4,
-      "ticket": "P1.a — inventaire initial audit (héritage contractuel divers, à ventiler lors du nettoyage P1.b+)"
-    },
-    {
       "file": "packages/host-runtime/src/brand-host-stack.ts",
       "pattern": "certivan",
       "count": 1,
@@ -839,13 +809,13 @@
     {
       "file": "packages/host-runtime/src/node-runtime.ts",
       "pattern": "tempoflow",
-      "count": 3,
+      "count": 1,
       "ticket": "P1.a — inventaire initial audit (héritage contractuel divers, à ventiler lors du nettoyage P1.b+)"
     },
     {
       "file": "packages/host-runtime/src/node-runtime.ts",
       "pattern": "tf2",
-      "count": 5,
+      "count": 1,
       "ticket": "P1.a — inventaire initial audit (héritage contractuel divers, à ventiler lors du nettoyage P1.b+)"
     },
     {
@@ -857,7 +827,7 @@
     {
       "file": "packages/host-runtime/src/npm-cli.ts",
       "pattern": "tf2",
-      "count": 2,
+      "count": 1,
       "ticket": "P1.a — inventaire initial audit (héritage contractuel divers, à ventiler lors du nettoyage P1.b+)"
     },
     {
@@ -905,7 +875,7 @@
     {
       "file": "packages/host-runtime/src/sandbox/embed-sandbox.ts",
       "pattern": "tempoflow",
-      "count": 9,
+      "count": 8,
       "ticket": "P1.a — inventaire initial audit (héritage contractuel divers, à ventiler lors du nettoyage P1.b+)"
     },
     {
@@ -1559,18 +1529,6 @@
     {
       "file": "packages/shell-ui/ui/theme/theme.css",
       "pattern": "winhub",
-      "count": 1,
-      "ticket": "P1.a — inventaire initial audit (héritage contractuel divers, à ventiler lors du nettoyage P1.b+)"
-    },
-    {
-      "file": "packages/shell-ui/ui/workspace/types.ts",
-      "pattern": "tf2",
-      "count": 1,
-      "ticket": "P1.a — inventaire initial audit (héritage contractuel divers, à ventiler lors du nettoyage P1.b+)"
-    },
-    {
-      "file": "packages/shell-ui/ui/workspace/workspace-root.tsx",
-      "pattern": "tf3",
       "count": 1,
       "ticket": "P1.a — inventaire initial audit (héritage contractuel divers, à ventiler lors du nettoyage P1.b+)"
     },

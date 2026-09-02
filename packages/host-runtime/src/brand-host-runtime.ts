@@ -46,7 +46,6 @@ import {
 import { getPluginControlBridgeEnv } from "./plugins/control-extras.js";
 import {
   ensureDesktopNode,
-  ensureTempoflowNode,
   type EnsureDesktopNodeResult,
 } from "./node-runtime.js";
 import { getInstallId } from "./crash-reporter.js";
@@ -84,7 +83,7 @@ export type BrandHostRuntimeConfig = {
   secretFilePrefix: string;
   /** `full` = Hermes+n8n bridge ; `crm-only` = Fidu. */
   hermesBridge: "full" | "crm-only";
-  nodeEnsure: "tempoflow" | "desktop";
+  nodeEnsure: "desktop";
   /** Chemin absolu script ensure-crm-key-db.js (marque). */
   ensureDbScriptPath: () => string;
   seedHermesSkills?: (hermesHome: string) => void | Promise<void>;
@@ -359,9 +358,7 @@ export function createBrandHostRuntime(
             log: (_scope, line) => opts.onLog!(line),
           })
         : hostRuntimeContext();
-      const ensure =
-        cfg.nodeEnsure === "tempoflow" ? ensureTempoflowNode : ensureDesktopNode;
-      return ensure(ctx, {
+      return ensureDesktopNode(ctx, {
         minVersion: opts?.minVersion,
         pin: opts?.pin,
         platform: opts?.platform,

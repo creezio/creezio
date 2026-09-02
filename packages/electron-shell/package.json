@@ -12,12 +12,6 @@
       "require": "./dist-cjs/index.js",
       "default": "./dist/index.js"
     },
-    "./meili": {
-      "types": "./dist/meili.d.ts",
-      "import": "./dist/meili.js",
-      "require": "./dist-cjs/meili.js",
-      "default": "./dist/meili.js"
-    },
     "./browser-tabs": {
       "types": "./dist/host/browser-tabs/index.d.ts",
       "import": "./dist/host/browser-tabs/index.js",
@@ -27,9 +21,6 @@
   },
   "typesVersions": {
     "*": {
-      "meili": [
-        "./dist/meili.d.ts"
-      ],
       "browser-tabs": [
         "./dist/host/browser-tabs/index.d.ts"
       ]

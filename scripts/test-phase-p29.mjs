@@ -29,17 +29,17 @@ test("P29.1 ADR documente SoT + aliases + Meili configure + ops dual-read", () =
   assert.match(adr, /Hygiene P29|P29/);
 });
 
-test("P29.2 shell-ui : OpenExternalSiteOpts SoT + OpenSupplierSiteOpts alias", () => {
+test("P29.2 shell-ui : OpenExternalSiteOpts SoT (alias supplier purgés en H12)", () => {
   const host = read("packages/shell-ui/ui/workspace/tab-workspace-host.ts");
   assert.match(host, /export type OpenExternalSiteOpts/);
-  assert.match(host, /@deprecated[\s\S]*OpenSupplierSiteOpts/);
   assert.match(host, /normalizeOpenExternalSiteOpts/);
-  assert.match(host, /fournisseurId/);
+  // H12 : plus d'alias métier dans le module workspace.
+  assert.doesNotMatch(host, /OpenSupplierSiteOpts|fournisseurId/);
 
   const ctx = read("packages/shell-ui/ui/workspace/tab-workspace-context.tsx");
   assert.match(ctx, /export type OpenExternalSiteOpts/);
   assert.match(ctx, /openExternalSite/);
-  assert.match(ctx, /@deprecated[\s\S]*openSupplierSite|openSupplierSite[\s\S]*@deprecated/);
+  assert.doesNotMatch(ctx, /openSupplierSite|patchSupplierTab|fournisseurId/);
 
   const readme = read("packages/shell-ui/README.md");
   assert.match(readme, /OpenExternalSiteOpts/);
@@ -97,8 +97,10 @@ test("P29.5 electron-shell : Meili tables configurables + driver external_*", ()
   const coherence = read("packages/search/src/meili/coherence-db.ts");
   assert.match(coherence, /getMeiliCatalogSqlTables/);
 
-  const pkg = read("packages/electron-shell/src/index.ts");
-  assert.match(pkg, /configureMeiliCatalogSqlTables/);
+  // H12 : configureMeiliCatalogSqlTables s'importe depuis @creezio/search
+  // (plus de ré-export compat electron-shell).
+  const searchIdx = read("packages/search/src/index.ts");
+  assert.match(searchIdx, /configureMeiliCatalogSqlTables/);
 
   // Depuis l'extraction browser-host, les verbes du driver vivent dans
   // shared-driver.ts (table partagée Electron/Chromium serveur). L'invariant

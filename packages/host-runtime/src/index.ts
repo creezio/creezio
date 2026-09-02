@@ -116,13 +116,11 @@ export {
   shouldRespawnCloudflared,
 } from "./tunnel/cloudflared-respawn.js";
 
-// export * : les alias legacy nommés marque restent couverts par l'allowlist no-brand-vocab côté electron-shell (ré-exports figés) sans les épeler ici
+// export * : alias legacy nommés marque purgés en H12 (codemod scripts/codemods/H12)
 export * from "./node-runtime.js";
 
-// export * (idem : alias legacy non épelés)
 export * from "./npm-cli.js";
 
-// export * (idem : alias legacy non épelés)
 export * from "./sandbox/embed-sandbox.js";
 export {
   buildConfinedPath,

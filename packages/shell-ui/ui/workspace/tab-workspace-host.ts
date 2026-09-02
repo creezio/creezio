@@ -2,8 +2,8 @@
  * Host marque pour le tab-workspace (nav / surfaces métier reste marque).
  * O9 — injection ; pas de jumeau.
  *
- * Capacité native = ouvrir un **site externe** (onglet), pas un « fournisseur ».
- * Les libellés métier (Fournisseur, Outil, …) = config/UI marque.
+ * Capacité native = ouvrir un **site externe** (onglet) — les libellés
+ * métier de ces sites = config/UI marque.
  */
 
 /** Options d’ouverture d’un site externe (partition /site/<id>). */
@@ -15,15 +15,6 @@ export type OpenExternalSiteOpts = {
   electronTabId?: string;
   navigateUrl?: boolean;
   [key: string]: unknown;
-};
-
-/**
- * @deprecated Utiliser `OpenExternalSiteOpts` + `siteId`.
- * Alias temporaire : `fournisseurId` → `siteId`.
- */
-export type OpenSupplierSiteOpts = OpenExternalSiteOpts & {
-  /** @deprecated → `siteId` */
-  fournisseurId?: number;
 };
 
 export type TabWorkspaceHost = {
@@ -60,30 +51,21 @@ export function useTabWorkspaceOptional(): any {
   }
 }
 
-/** Normalise opts marque (fournisseurId legacy → siteId). */
+/** Normalise les opts (siteId par défaut 0 = partition générique). */
 export function normalizeOpenExternalSiteOpts(
-  opts: OpenExternalSiteOpts | OpenSupplierSiteOpts,
+  opts: OpenExternalSiteOpts,
 ): OpenExternalSiteOpts {
-  const siteId =
-    opts.siteId ??
-    (opts as OpenSupplierSiteOpts).fournisseurId ??
-    0;
-  const { fournisseurId: _drop, ...rest } = opts as OpenSupplierSiteOpts;
-  return { ...rest, siteId };
+  return { ...opts, siteId: opts.siteId ?? 0 };
 }
 
-/**
- * Ouvre un site externe via le host workspace (API générique).
- * Accepte `openExternalSite` (SoT) ou `openSupplierSite` (alias déprécié marque).
- */
+/** Ouvre un site externe via le host workspace (API générique). */
 export function openExternalSiteFromWorkspace(
   workspace: any,
-  opts: OpenExternalSiteOpts | OpenSupplierSiteOpts,
+  opts: OpenExternalSiteOpts,
 ): void {
   if (!workspace) return;
   const normalized = normalizeOpenExternalSiteOpts(opts);
-  const open =
-    workspace.openExternalSite ??
-    workspace.openSupplierSite;
-  if (typeof open === "function") open(normalized);
+  if (typeof workspace.openExternalSite === "function") {
+    workspace.openExternalSite(normalized);
+  }
 }
