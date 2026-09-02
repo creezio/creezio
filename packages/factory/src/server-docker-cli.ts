@@ -59,8 +59,13 @@ import { assertUfwFleetRule } from "./server-docker-ufw.js";
 import {
   AGENT_TUNNEL_CONTAINER,
   agentTunnelEnvPath,
+  applyDedicatedAgentUrlToHostState,
+  canonicalDedicatedAgentUrl,
+  discoverFleetHostsJsonPaths,
   needsDedicatedAgentTunnelMigration,
   parseAgentPublicUrl,
+  persistDedicatedAgentUrlInFleetHostsFile,
+  formatFleetHostsEaccesError,
   buildAgentTunnelRunArgs,
   renderAgentTunnelEnvFile,
   resolveAgentTunnelImage,
@@ -1536,6 +1541,27 @@ function dockerContainerState(name: string): {
   };
 }
 
+/** CREEZIO_ADMIN_ROOT du container creezio-server-admin s'il tourne. */
+function inspectAdminRootFromContainer(): string | null {
+  const r = spawnSync(
+    "docker",
+    [
+      "inspect",
+      "-f",
+      "{{range .Config.Env}}{{println .}}{{end}}",
+      "creezio-server-admin",
+    ],
+    { encoding: "utf8" },
+  );
+  if (r.status !== 0) return null;
+  for (const line of (r.stdout || "").split("\n")) {
+    if (!line.startsWith("CREEZIO_ADMIN_ROOT=")) continue;
+    const v = line.slice("CREEZIO_ADMIN_ROOT=".length).trim();
+    return v || null;
+  }
+  return null;
+}
+
 async function curlHealth(
   port: number,
 ): Promise<{ ok: boolean; status: number; brandId?: string; body: string }> {
@@ -2606,16 +2632,21 @@ async function provisionDedicatedAgentTunnel(opts: {
       );
     }
   }
+  const dedicatedUrl = canonicalDedicatedAgentUrl({
+    provisionedUrl: ensured.agentUrl,
+    hostname: ensured.hostname,
+  });
   opts.state.agentTunnel = {
     tunnelId: ensured.tunnelId,
     hostname: ensured.hostname,
     container: AGENT_TUNNEL_CONTAINER,
     provisionedAt: new Date().toISOString(),
   };
+  applyDedicatedAgentUrlToHostState(opts.state, dedicatedUrl);
   saveAgentState(opts.brandRoot, opts.state);
-  console.log(`✓ tunnel agent dédié : ${ensured.agentUrl}`);
+  console.log(`✓ tunnel agent dédié : ${dedicatedUrl}`);
   return {
-    agentUrl: ensured.agentUrl,
+    agentUrl: dedicatedUrl,
     hostname: ensured.hostname,
     tunnelId: ensured.tunnelId,
   };
@@ -2646,6 +2677,119 @@ function ensureAgentTunnelContainer(opts: {
     }),
     opts.env,
   );
+}
+
+/**
+ * Après provision/reprise du tunnel dédié : persiste l'URL canonique dans
+ * host-agent.json ET toutes les SoT admin (fleet-hosts.json locaux +
+ * POST /admin/api/hosts/agent-url). Idempotent. Fail-closed si l'URL
+ * ne peut pas être dérivée, ou si l'hôte est enrôlé sans SoT admin
+ * joignable (l'admin continuerait de sonder l'ancienne URL nested).
+ * `fleet-hosts.json` root:root 600 : écriture via `sudo -n`, sinon
+ * POST admin (container). Jamais d'abort EACCES brut ni chmod manuel.
+ */
+async function persistDedicatedAgentUrlAfterUp(opts: {
+  brandRoot: string;
+  state: AgentState;
+  provisionedUrl?: string | null;
+  adminRoot?: string | null;
+}): Promise<string> {
+  const dedicatedUrl = canonicalDedicatedAgentUrl({
+    provisionedUrl: opts.provisionedUrl,
+    hostname: opts.state.agentTunnel?.hostname,
+  });
+  if (applyDedicatedAgentUrlToHostState(opts.state, dedicatedUrl)) {
+    saveAgentState(opts.brandRoot, opts.state);
+    console.log(`✓ agentUrl persisté (host-agent.json) : ${dedicatedUrl}`);
+  }
+
+  const extraRoots: string[] = [];
+  const fromContainer = inspectAdminRootFromContainer();
+  if (fromContainer) extraRoots.push(fromContainer);
+  const files = discoverFleetHostsJsonPaths({
+    brandRoot: opts.brandRoot,
+    adminRoot: opts.adminRoot,
+    extraRoots,
+  });
+  let fleetFound = false;
+  const deniedFiles: string[] = [];
+  for (const file of files) {
+    const r = persistDedicatedAgentUrlInFleetHostsFile(
+      file,
+      opts.state.hostId,
+      dedicatedUrl,
+    );
+    if (r.permissionDenied) {
+      deniedFiles.push(file);
+      console.log(
+        `⚠ ${file} : EACCES (root:root 600 typique) — sudo -n impossible, ` +
+          `on pousse via POST /admin/api/hosts/agent-url`,
+      );
+      continue;
+    }
+    if (r.found) fleetFound = true;
+    if (r.changed) {
+      console.log(`✓ agentUrl persisté (${file}) : ${dedicatedUrl}`);
+    }
+  }
+
+  const adminUrl = String(opts.state.adminUrl || "").trim().replace(/\/+$/, "");
+  const fleetKey = String(opts.state.fleetKey || "").trim();
+  let apiOk = false;
+  let adminDetail = adminUrl
+    ? `${adminUrl} injoignable`
+    : "adminUrl absente de host-agent.json";
+  if (adminUrl && fleetKey) {
+    try {
+      const res = await fetch(`${adminUrl}/admin/api/hosts/agent-url`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          hostId: opts.state.hostId,
+          agentUrl: dedicatedUrl,
+          agentToken: fleetKey,
+        }),
+      });
+      const json = (await res.json().catch(() => ({}))) as {
+        ok?: boolean;
+        error?: string;
+      };
+      if (res.status === 200 && json.ok) {
+        apiOk = true;
+        console.log(`✓ agentUrl poussé à l'admin (${adminUrl}) : ${dedicatedUrl}`);
+      } else if (fleetFound) {
+        console.log(
+          `⚠ admin agentUrl (${res.status}): ${json.error || "réponse invalide"} — SoT locale à jour`,
+        );
+      } else {
+        adminDetail = `${adminUrl} (${res.status}): ${json.error || "réponse invalide"}`;
+      }
+    } catch (e) {
+      if (fleetFound) {
+        console.log(
+          `⚠ admin agentUrl injoignable : ${(e as Error)?.message || e} — SoT locale à jour`,
+        );
+      } else {
+        adminDetail = `${adminUrl} : ${(e as Error)?.message || e}`;
+      }
+    }
+  }
+
+  if ((adminUrl || fleetKey || deniedFiles.length) && !fleetFound && !apiOk) {
+    throw new Error(
+      deniedFiles.length
+        ? formatFleetHostsEaccesError({
+            dedicatedUrl,
+            deniedFiles,
+            adminDetail,
+          })
+        : `hôte enrôlé : agentUrl dédiée ${dedicatedUrl} écrite dans host-agent.json ` +
+            `mais fleet-hosts.json introuvable et admin injoignable. ` +
+            `L'admin flotte continuerait de sonder l'ancienne URL nested. ` +
+            `Poser --admin-root <repo-admin> ou relancer avec l'admin up.`,
+    );
+  }
+  return dedicatedUrl;
 }
 
 async function runAgentSubcommand(
@@ -2865,6 +3009,7 @@ async function runAgentSubcommand(
   );
   const tunnelEnvFile = agentTunnelEnvPath(brandRoot);
   const envFileExists = fs.existsSync(tunnelEnvFile);
+  let provisionedUrl: string | null = null;
   if (
     needsDedicatedAgentTunnelMigration({
       adminUrl: state.adminUrl,
@@ -2884,7 +3029,7 @@ async function runAgentSubcommand(
       );
     }
     const brandId = String(composeEnv(paths).BRAND_ID);
-    await provisionDedicatedAgentTunnel({
+    const provisioned = await provisionDedicatedAgentTunnel({
       kit: paths.kit,
       brandRoot,
       brandId,
@@ -2892,12 +3037,25 @@ async function runAgentSubcommand(
       slug,
       serverHostname: parsed?.serverHostname,
     });
+    provisionedUrl = provisioned.agentUrl;
   } else if (envFileExists) {
     ensureAgentTunnelContainer({ env, envFile: tunnelEnvFile, recreate: false });
     console.log(
       `✓ tunnel agent dédié : container ${AGENT_TUNNEL_CONTAINER} up` +
         (state.agentTunnel ? ` (${state.agentTunnel.hostname})` : ""),
     );
+  }
+  const canDeriveDedicatedUrl = Boolean(
+    provisionedUrl || state.agentTunnel?.hostname,
+  );
+  const enrolled = Boolean(state.adminUrl || state.fleetKey);
+  if (canDeriveDedicatedUrl || (envFileExists && enrolled)) {
+    await persistDedicatedAgentUrlAfterUp({
+      brandRoot,
+      state,
+      provisionedUrl,
+      adminRoot: args.adminRoot,
+    });
   }
   if (!state.adminUrl) {
     console.log(

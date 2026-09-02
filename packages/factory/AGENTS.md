@@ -122,7 +122,9 @@ en jumeau dans `main.ts`.
   `provisionDedicatedAgentTunnel` (CLI) : enroll **et** `agent up`
   (migration auto si hôte déjà enrôlé sans tunnel dédié) — ordre
   ensure → connecteur → DNS → retrait résiduel (gate
-  `test-phase-agent-tunnel`). `agent rm` = seul geste qui retire DNS
+  `test-phase-agent-tunnel`). Persist `agentUrl` : `sudo -n` si
+  `fleet-hosts.json` est root:root 600, sinon POST admin (container) —
+  jamais chmod manuel. `agent rm` = seul geste qui retire DNS
   `agent.*` / tunnel dédié ; `server-docker rm` d'une instance ne les
   touche jamais.
 - `src/server-docker-owner.ts` : politique create fail-closed owner

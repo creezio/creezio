@@ -599,15 +599,25 @@ creezio server-docker enroll --brand-root "$BRAND_ROOT" \
   --admin https://admin.tempoflow.fr --token <enrollToken> --slug <slug>
 ```
 
-**Tunnel dédié agent (T7)** : l'ingress public `agent.{slug}.{zone}` /
-`agent-{slug}.{zone}` vit exclusivement sur un tunnel Cloudflare propre à
-l'agent (nom CF `creezio-agent-<slug>`, container
-**`creezio-agent-tunnel`**, token `{BRAND_ROOT}/docker-data/agent-tunnel.env`
-chmod 600). `enroll --slug` le provisionne ; **`agent up` (chaque update
-de l'agent) détecte un hôte déjà enrôlé sans tunnel dédié et exécute
-lui-même la migration** (provision → connecteur → bascule CNAME → retrait
-d'une règle résiduelle sur un tunnel d'instance). Idempotent. Sans
-`CREEZIO_CF_*` : refus fail-closed avec la liste des clés manquantes.
+**Tunnel dédié agent (T7)** : l'ingress public `agent-{slug}.{zone}`
+(défaut flat) / `agent.{slug}.{zone}` (nested si Universal SSL) vit
+exclusivement sur un tunnel Cloudflare propre à l'agent (nom CF
+`creezio-agent-<slug>`, container **`creezio-agent-tunnel`**, token
+`{BRAND_ROOT}/docker-data/agent-tunnel.env` chmod 600). `enroll --slug` le
+provisionne ; **`agent up` (chaque update de l'agent) détecte un hôte déjà
+enrôlé sans tunnel dédié et exécute lui-même la migration** (provision →
+connecteur → bascule CNAME → retrait d'une règle résiduelle sur un tunnel
+d'instance) **et persiste l'URL publique canonique dans toutes les SoT
+`agentUrl`** (`host-agent.json` + `docker-data/fleet-hosts.json` +
+`POST /admin/api/hosts/agent-url`). Idempotent. Fail-closed si l'URL ne
+peut pas être dérivée (ou si l'hôte est enrôlé sans SoT admin joignable).
+`docker-data/fleet-hosts.json` est souvent **root:root 600** (écrit par
+`creezio-server-admin`) : `agent up` tente l'écriture directe, puis
+`sudo -n tee` (même wrapper que le préflight UFW), puis le POST admin
+(le container écrit le fichier — même chemin que `enroll` / `update`).
+Ne **pas** chmod/chown à la main. Si sudo et admin échouent : message
+actionnable (`admin up` puis relancer `agent up`).
+Sans `CREEZIO_CF_*` : refus fail-closed avec la liste des clés manquantes.
 Respawn : Docker `unless-stopped` + surveillance bornée par le host-agent
 (`@creezio/fleet` `agent-tunnel.ts`). État : `agent status` et
 `GET /agent/api/health` (champ `agentTunnel`).
@@ -644,7 +654,9 @@ qui porte l'ingress `agent.*` est droppé par UFW. Vécu 10–30/08/2026
 20 jours — incident qui a motivé l'automatisation.
 
 **Vérification** : `curl -sS -u admin:… http://127.0.0.1:18800/admin/api/hosts`
-→ l'hôte avec `"online":true` et son `agentUrl` `https://agent.<slug>.…`.
+→ l'hôte avec `"online":true` et son `agentUrl` `https://agent-<slug>.<zone>`
+(URL du tunnel dédié, persistée par `agent up` / `enroll` dans
+`host-agent.json` et `fleet-hosts.json`).
 
 **Vérité** : `packages/factory/src/server-docker-cli.ts` (agent/enroll) +
 `server-docker-agent-tunnel.ts` (container tunnel dédié),

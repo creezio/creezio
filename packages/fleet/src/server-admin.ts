@@ -9,7 +9,7 @@
  *   - local  : serveurs de CE VPS via socket Docker + registres
  *              {brandRoot}/docker-data/servers.json (mode historique)
  *   - flotte : hôtes distants enrôlés via leur agent hôte tunnelisé
- *              `https://agent.{slug}.{zone}` — l'admin INITIE tous
+ *              `https://agent-{slug}.{zone}` (tunnel dédié) — l'admin INITIE tous
  *              les appels (Bearer token par hôte, jamais de polling inverse)
  *
  * Registre d'hôtes : {adminRoot}/docker-data/fleet-hosts.json (runtime, avec
@@ -763,6 +763,59 @@ export function startServerAdmin(): void {
     return null;
   }
 
+  /**
+   * Pousse l'URL publique canonique du tunnel dédié (agent up / migration).
+   * Auth par agentToken de l'hôte déjà enrôlé — pas de Basic (même contrat
+   * que enroll : le VPS distant n'a pas le mot de passe admin).
+   */
+  async function handleHostAgentUrlUpdate(
+    req: IncomingMessage,
+    res: ServerResponse,
+  ): Promise<void> {
+    let body: { hostId?: string; agentUrl?: string; agentToken?: string };
+    try {
+      body = JSON.parse(await readBody(req));
+    } catch {
+      return send(res, 400, { ok: false, error: "json" });
+    }
+    const hostId = String(body.hostId || "").trim();
+    const agentUrl = String(body.agentUrl || "").trim().replace(/\/+$/, "");
+    const agentToken = String(body.agentToken || "").trim();
+    if (!hostId || !agentUrl || !agentToken) {
+      return send(res, 400, {
+        ok: false,
+        error: "hostId, agentUrl, agentToken requis",
+      });
+    }
+    if (!/^https:\/\//.test(agentUrl)) {
+      return send(res, 400, { ok: false, error: "agentUrl invalide (https requis)" });
+    }
+    const data = loadFleetHosts();
+    const host = data.hosts.find((h) => h.hostId === hostId);
+    if (!host) {
+      return send(res, 404, { ok: false, error: "hôte inconnu" });
+    }
+    const a = Buffer.from(agentToken);
+    const b = Buffer.from(String(host.agentToken || ""));
+    const valid =
+      a.length === b.length && a.length > 0 && crypto.timingSafeEqual(a, b);
+    if (!valid) {
+      audit(`agent-url refusé (token) hostId=${hostId}`);
+      return send(res, 401, { ok: false, error: "agentToken invalide" });
+    }
+    const prev = host.agentUrl;
+    host.agentUrl = agentUrl;
+    saveFleetHosts(data);
+    requestSnapshotRefresh();
+    audit(`host agentUrl ${hostId} ${prev} → ${agentUrl}`);
+    return send(res, 200, {
+      ok: true,
+      hostId,
+      agentUrl,
+      changed: prev !== agentUrl,
+    });
+  }
+
   /** Enrôlement d'un hôte — PAS de Basic auth : authentifié par enrollToken. */
   async function handleEnroll(req: IncomingMessage, res: ServerResponse): Promise<void> {
     let body: {
@@ -886,6 +939,10 @@ export function startServerAdmin(): void {
     // Enrôlement : auth par enrollToken (les VPS distants n'ont pas le Basic).
     if (req.method === "POST" && p === "/admin/api/enroll") {
       return handleEnroll(req, res);
+    }
+    // agent up : l'hôte pousse l'URL dédiée (auth par son agentToken).
+    if (req.method === "POST" && p === "/admin/api/hosts/agent-url") {
+      return handleHostAgentUrlUpdate(req, res);
     }
 
     if (!authorized(req)) return sendUnauthorized(res);

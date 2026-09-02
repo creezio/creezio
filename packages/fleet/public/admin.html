@@ -369,15 +369,13 @@ function crmUrlOf(s, running) {
   const slug = s.env && s.env.CREEZIO_TUNNEL_SLUG;
   const host = state.hosts.find((h) => h.hostId === s.hostId);
   const agentUrl = host?.agentUrl || "";
-  const m = agentUrl.match(/^https:\/\/agent\.(.+)$/);
-  if (slug && m) {
-    // agent.{slug}.{zone} → {slug}.{zone} ; slug de l'instance si différent.
-    const rest = m[1];
-    const zone = rest.split(".").slice(1).join(".");
-    return `https://${slug}.${zone || rest}/`;
-  }
-  if (m) return `https://${m[1]}/`;
-  return null;
+  const nested = agentUrl.match(/^https:\/\/agent\.(.+)$/);
+  const flat = agentUrl.match(/^https:\/\/agent-(.+)$/);
+  const rest = (nested && nested[1]) || (flat && flat[1]) || "";
+  if (!rest) return null;
+  const zone = rest.split(".").slice(1).join(".");
+  if (slug) return `https://${slug}.${zone || rest}/`;
+  return `https://${rest}/`;
 }
 
 async function loadPanel(s, kind) {
