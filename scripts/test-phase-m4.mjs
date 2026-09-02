@@ -12,7 +12,7 @@ import { resolveBrandCrmRoot } from "./lib/brand-roots.mjs";
 
 import {
   createLocalConfigStoreSync,
-} from "../packages/electron-shell/dist/index.js";
+} from "../packages/host-runtime/dist/index.js";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const tfCrm = resolveBrandCrmRoot("tempoflow2");

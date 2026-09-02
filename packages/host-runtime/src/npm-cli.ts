@@ -17,8 +17,6 @@ import {
 import { resolveSystemBinary } from "./sandbox/os-sandbox.js";
 
 export const DESKTOP_NPM_PIN = "10.9.2";
-/** @deprecated */
-export const TF2_NPM_PIN = DESKTOP_NPM_PIN;
 
 export type EnsureNpmCliResult =
   | { ok: true; node: string; npmCli: string; source: string }

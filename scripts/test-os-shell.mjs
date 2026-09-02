@@ -11,15 +11,17 @@ import path from "node:path";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
 import {
-  createLocalConfigStoreSync,
   createLocalSplashSteps,
   createSplashModel,
   splashHtmlDocument,
   reduceUpdateEvent,
   getUpdaterStatus,
-  kitOsVendorDir,
 } from "../packages/electron-shell/dist/index.js";
-import { generateRecoveryKey } from "../packages/platform-core/dist/index.js";
+import { createLocalConfigStoreSync } from "../packages/host-runtime/dist/index.js";
+import {
+  generateRecoveryKey,
+  kitOsVendorDir,
+} from "../packages/platform-core/dist/index.js";
 import { demobrandManifest } from "../packages/brand-config/dist/index.js";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");

@@ -61,7 +61,7 @@ import {
 import {
   startHostPluginControlPlane,
   type HostRuntimeContext,
-} from "@creezio/electron-shell";
+} from "@creezio/host-runtime";
 import type { PluginControlPlaneState } from "@creezio/product-hub";
 import {
   productHubTokensFromManifest,

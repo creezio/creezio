@@ -7,11 +7,11 @@
 > **P1.b (0.11.x)** : le host Node pur a été extrait vers
 > [`@creezio/host-runtime`](../host-runtime/README.md) (hermes, n8n, tunnel,
 > plugins, sandbox, ai-workspace, server-launcher, crash reporter…) et
-> [`@creezio/search`](../search/README.md) (sous-domaine Meili). Ce package
-> **ré-exporte tout** avec `@deprecated` — aucun import historique ne casse,
-> mais la surface de ré-exports est figée
-> (gate `test-phase-electron-shell-frozen-exports`) : le nouveau code host
-> s'écrit dans les nouveaux packages. `resources/{vendor,scripts,bin}`
+> [`@creezio/search`](../search/README.md) (sous-domaine Meili).
+> **H12 (0.24.0)** : les ré-exports de compat `@deprecated` du barrel et le
+> shim subpath `./meili` ont été **supprimés** — tout symbole host s'importe
+> depuis son package SoT. Migration marques : codemod `scripts/codemods/H12/`
+> (appliqué par `creezio upgrade`). `resources/{vendor,scripts,bin}`
 > vivent dans `@creezio/host-runtime` (P1.c).
 
 Ce package est volontairement brand-agnostic : les marques fournissent leur `AppManifest`, leurs chemins, leurs stores locaux, leurs prefixes d'env et leurs hooks verticaux.
@@ -21,13 +21,16 @@ Ce package est volontairement brand-agnostic : les marques fournissent leur `App
 Inclus :
 
 - runtime desktop complet via `installBrandDesktopRuntime` ;
-- host stack lazy via `createHostStack`, `createBrandHostStack` et `createBrandHostRuntime` ;
-- launchers Next, Meilisearch, Hermes Agent/WebUI, n8n, Cloudflare tunnel ;
-- runtime plugins : discovery, scaffold, start/stop/restart, git versions, control plane, grants, accept-check, tests, data migrations ;
-- bindings marque pour plugins (`configurePluginHost`) et workspaces IA (`configureAiWorkspaceHost`) ;
+- boot desktop (`prepareDesktopBoot`), sessions desktop, splash, tray, updater, admin-window ;
 - browser-tabs exporte separement via `@creezio/electron-shell/browser-tabs` ;
-- bridge client, crash reporter, safe storage, local config, node/npm runtime, sandbox OS ;
-- overlays desktop : assistant chrome, profile picker, error page, OAuth loopback.
+- overlays desktop : assistant chrome, profile picker, error page, OAuth loopback ;
+- telemetrie WebContents (`instrumentWebContents`).
+
+Depuis H12, tout le host Node pur (host stack, launchers Hermes/n8n/tunnel,
+runtime plugins, bridge client, crash reporter, safe storage, local config,
+node/npm runtime, sandbox OS, ai-workspace) s'importe depuis
+`@creezio/host-runtime`, le sous-domaine Meili depuis `@creezio/search` —
+les exemples ci-dessous montrent le wiring complet.
 
 Hors perimetre :
 
@@ -46,7 +49,7 @@ npm run typecheck -w @creezio/electron-shell
 
 Le package publie :
 
-- `@creezio/electron-shell` : barrel principal runtime/host ;
+- `@creezio/electron-shell` : barrel desktop natif (plus aucun ré-export host depuis H12) ;
 - `@creezio/electron-shell/browser-tabs` : sous-export a privilegier pour les tests Node et les imports qui ne doivent pas tirer tout le barrel principal.
 
 `electron` et `electron-updater` sont des peer dependencies optionnelles, chargees seulement par les chemins host/runtime concernes.
@@ -58,7 +61,7 @@ Le package publie :
 Le contexte host est le noyau commun des launchers :
 
 ```ts
-import { createBrandHostRuntime } from "@creezio/electron-shell";
+import { createBrandHostRuntime } from "@creezio/host-runtime";
 
 const hostRuntime = createBrandHostRuntime({
   manifest,
@@ -103,7 +106,7 @@ Le runtime riche des plugins exige `configurePluginHost(bindings)` avant usage :
 import {
   configurePluginHost,
   buildPluginControlPlaneAdapters,
-} from "@creezio/electron-shell";
+} from "@creezio/host-runtime";
 
 configurePluginHost({
   envPrefix: "MYBRAND",
@@ -136,7 +139,7 @@ Les variables plugins sont posees sur `${envPrefix}_*` uniquement (H11 : plus d'
 ### Bindings ai-workspace
 
 ```ts
-import { configureAiWorkspaceHost } from "@creezio/electron-shell";
+import { configureAiWorkspaceHost } from "@creezio/host-runtime";
 
 configureAiWorkspaceHost({
   productName: "MyBrand",
@@ -188,7 +191,7 @@ Le runtime installe les handlers Electron, gere le boot local/remote, lance les 
 ### Server launcher
 
 ```ts
-import { startBrandNextServer } from "@creezio/electron-shell";
+import { startBrandNextServer } from "@creezio/host-runtime";
 
 const server = await startBrandNextServer(deps, {
   meiliHost: meili?.host,
@@ -231,7 +234,7 @@ import {
   startEnabledPlugins,
   restartPlugin,
   pluginsStatusPayloadWithGit,
-} from "@creezio/electron-shell";
+} from "@creezio/host-runtime";
 
 setPluginsCrmPort(server.port);
 await startEnabledPlugins({ onLog: (line) => log("plugins", line) });
@@ -244,7 +247,7 @@ const status = await pluginsStatusPayloadWithGit();
 ### Control plane plugins
 
 ```ts
-import { startHostPluginControlPlane } from "@creezio/electron-shell";
+import { startHostPluginControlPlane } from "@creezio/host-runtime";
 
 const state = await startHostPluginControlPlane({
   ctx: hostRuntime.hostRuntimeContext(),
@@ -277,7 +280,7 @@ Les onglets externes utilisent des `WebContentsView`, des partitions persistante
 ### AI workspace
 
 ```ts
-import { AiWorkspaceManager } from "@creezio/electron-shell";
+import { AiWorkspaceManager } from "@creezio/host-runtime";
 
 const manager = new AiWorkspaceManager(mainWindow, ownerView, ownerTabs, {
   defaultPresentation: () => "window",

@@ -169,12 +169,8 @@ export function renderCreezioBootTs(m: AppManifest): string {
  * Boot plateforme mince — généré factory (F2/F4).
  * Prépare userData + kind avant installBrandDesktopRuntime.
  */
-import {
-  initLogger,
-  log,
-  prepareDesktopBoot,
-  writeAppKindFile,
-} from "@creezio/electron-shell";
+import { initLogger, log } from "@creezio/host-runtime";
+import { prepareDesktopBoot, writeAppKindFile } from "@creezio/electron-shell";
 import { ${exportName} as manifest } from "../electron/app-manifest.js";
 
 export async function creezioBoot(opts: { electronDir: string }) {
@@ -196,7 +192,7 @@ export function renderHostStackBindingsTs(m: AppManifest): string {
  * Compose createBrandHostStack quand les hosts verticaux sont prêts.
  */
 import type { AppManifest } from "@creezio/brand-config";
-import { createBrandHostStack } from "@creezio/electron-shell";
+import { createBrandHostStack } from "@creezio/host-runtime";
 import { brandPaths } from "./paths.js";
 
 export type LocalConfigStoreLike = {
@@ -296,9 +292,8 @@ export function renderMainFromPrdTs(m: AppManifest, model: ProductModel): string
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { app, BrowserWindow, ipcMain } from "electron";
+import { initLogger, log } from "@creezio/host-runtime";
 import {
-  initLogger,
-  log,
   prepareDesktopBoot,
   writeAppKindFile,
   installBrandDesktopRuntime,

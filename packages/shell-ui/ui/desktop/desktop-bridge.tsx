@@ -31,7 +31,7 @@ function titleFromInfo(url: string, rawTitle?: string): string {
 
 function resolveOpenFn(workspace: any): ((opts: OpenExternalSiteOpts) => void) | null {
   if (!workspace) return null;
-  return workspace.openExternalSite ?? workspace.openSupplierSite ?? null;
+  return workspace.openExternalSite ?? null;
 }
 
 export function DesktopBridge() {

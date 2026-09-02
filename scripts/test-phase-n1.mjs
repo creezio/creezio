@@ -13,7 +13,9 @@ const pluginsDir = path.join(
   root,
   "packages/host-runtime/src/plugins",
 );
-const idxPath = path.join(root, "packages/electron-shell/src/index.ts");
+// H12 : plus de ré-export compat via electron-shell — la surface publique
+// des plugins host se vérifie dans les sources SoT de host-runtime.
+const hostRuntimeSrc = path.join(root, "packages/host-runtime/src");
 const distPlugins = path.join(
   root,
   "packages/host-runtime/dist/plugins",
@@ -68,8 +70,12 @@ test("N1.2 modules plugins présents sous host/plugins/", () => {
   assert.match(bindings, /handleBrandExtras/);
 });
 
-test("N1.3 exports publics index.ts + dist build", () => {
-  const idx = fs.readFileSync(idxPath, "utf8");
+test("N1.3 exports publics host-runtime + dist build", () => {
+  const pluginsSrc = fs
+    .readdirSync(pluginsDir)
+    .filter((f) => f.endsWith(".ts"))
+    .map((f) => fs.readFileSync(path.join(pluginsDir, f), "utf8"))
+    .join("\n");
   for (const sym of [
     "configurePluginHost",
     "scaffoldPlugin",
@@ -82,9 +88,14 @@ test("N1.3 exports publics index.ts + dist build", () => {
     "ensurePluginGitRepo",
     "applyPluginDataMigrations",
   ]) {
-    assert.match(idx, new RegExp(`\\b${sym}\\b`), `export manquant: ${sym}`);
+    assert.match(
+      pluginsSrc,
+      new RegExp(`export (async )?(function|const|type) ${sym}\\b`),
+      `export manquant côté host-runtime/src/plugins : ${sym}`,
+    );
   }
-  assert.match(idx, /Phase N1|runtime plugins TF/i);
+  const hostIdx = fs.readFileSync(path.join(hostRuntimeSrc, "index.ts"), "utf8");
+  assert.match(hostIdx, /plugins\//, "barrel host-runtime sans les plugins");
 
   assert.ok(
     fs.existsSync(path.join(distPlugins, "launcher.js")),
@@ -120,7 +131,10 @@ test("N1.5 absence paperclip + gate dans npm test", () => {
     const src = fs.readFileSync(path.join(pluginsDir, name), "utf8");
     assert.doesNotMatch(src, PAPERCLIP_RE, `paperclip dans ${name}`);
   }
-  const idx = fs.readFileSync(idxPath, "utf8");
+  const idx = fs.readFileSync(
+    path.join(hostRuntimeSrc, "index.ts"),
+    "utf8",
+  );
   assert.doesNotMatch(idx, PAPERCLIP_RE);
 });
 

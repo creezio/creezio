@@ -42,8 +42,8 @@ autre module, ou historique `fromprd_brand_*`).
 ## Comment modifier sans casser
 
 1. Tout nouveau symbole public s'exporte depuis `src/index.ts` d'ICI. Ne
-   jamais l'ajouter aux ré-exports d'electron-shell (gate
-   `test-phase-electron-shell-frozen-exports` = rouge).
+   jamais le ré-exporter via electron-shell (les shims compat, dont le
+   subpath `./meili`, ont été purgés en H12).
 2. Le chemin du script de cohérence (`meiliCoherenceScriptPath`) résout
    `kitOsResourcesRoot()` (platform-core) → `resources/scripts` du package
    host-runtime. Ne pas changer sans mettre à jour la résolution ET les

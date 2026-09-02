@@ -61,7 +61,7 @@ export function SiteLink({
         }
       }
 
-      if (workspace?.openExternalSite || workspace?.openSupplierSite) {
+      if (workspace?.openExternalSite) {
         openExternalSiteFromWorkspace(workspace, {
           siteId: resolvedSiteId,
           url,

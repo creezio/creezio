@@ -20,8 +20,6 @@ export {
   normalizeOpenExternalSiteOpts,
   type TabWorkspaceHost,
   type OpenExternalSiteOpts,
-  /** @deprecated → OpenExternalSiteOpts */
-  type OpenSupplierSiteOpts,
 } from "./workspace/tab-workspace-host";
 export {
   configureGlobalSearchHost,
@@ -116,8 +114,6 @@ export {
   useOpenTab as useOpenTabImpl,
   type NavigateOptions,
   type OpenExternalSiteOpts as TabWorkspaceOpenExternalSiteOpts,
-  /** @deprecated → TabWorkspaceOpenExternalSiteOpts */
-  type OpenSupplierSiteOpts as TabWorkspaceOpenSupplierSiteOpts,
 } from "./workspace/tab-workspace-context";
 export * from "./workspace/workspace-shell";
 export * from "./workspace/workspace-root";

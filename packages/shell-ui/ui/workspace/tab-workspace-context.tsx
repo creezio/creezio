@@ -75,11 +75,6 @@ export type OpenExternalSiteOpts = {
   navigateUrl?: boolean;
 };
 
-/** @deprecated Use OpenExternalSiteOpts with siteId. */
-export type OpenSupplierSiteOpts = Omit<OpenExternalSiteOpts, "siteId"> & {
-  fournisseurId: number;
-};
-
 type TabWorkspaceContextValue = {
   ready: boolean;
   tabs: WorkspaceTab[];
@@ -87,7 +82,7 @@ type TabWorkspaceContextValue = {
   activeTab: WorkspaceTab | null;
   /** Onglet épinglé (Dashboard) : toujours premier, non fermable. */
   pinnedTabId: string | null;
-  /** Pastilles de notification par onglet (ex. ajouts panier). */
+  /** Pastilles de notification par onglet (ex. ajouts à une sélection). */
   tabBadges: Record<string, number>;
   canGoBack: boolean;
   canGoForward: boolean;
@@ -109,8 +104,8 @@ type TabWorkspaceContextValue = {
    *   `"focused"`.
    * - Aucun onglet → `navigate(href, { newTab: true })` → `"opened"`.
    *
-   * Usage typique : ajout panier / mutation qui doit **montrer** la cible
-   * (ex. `openOrNotify("/panier")` depuis un bouton catalogue).
+   * Usage typique : mutation métier qui doit **montrer** la cible
+   * (ex. `openOrNotify("/<selection>")` depuis un bouton catalogue).
    */
   openOrNotify: (href: string) => "opened" | "focused" | "active";
   /**
@@ -119,16 +114,9 @@ type TabWorkspaceContextValue = {
    * l'appelant (SiteLink / DesktopBridge) a déjà fait openTab IPC.
    */
   openExternalSite: (opts: OpenExternalSiteOpts) => void;
-  /** @deprecated Use openExternalSite. */
-  openSupplierSite: (opts: OpenSupplierSiteOpts) => void;
   /** Met à jour le lien electronTabId / titre d'un onglet site. */
   patchExternalSiteTab: (
     siteId: number,
-    patch: Partial<{ electronTabId: string; url: string; title: string }>,
-  ) => void;
-  /** @deprecated Use patchExternalSiteTab. */
-  patchSupplierTab: (
-    fournisseurId: number,
     patch: Partial<{ electronTabId: string; url: string; title: string }>,
   ) => void;
   currentHref: string;
@@ -253,16 +241,13 @@ function findExternalSiteTab(
   const href = externalSiteHref(siteId);
   return (
     tabs.find((t) => t.externalSite?.siteId === siteId) ||
-    tabs.find((t) => t.supplier?.siteId === siteId) ||
-    tabs.find((t) => t.supplier?.fournisseurId === siteId) ||
     tabs.find((t) => pathnameOf(t.href) === pathnameOf(href)) ||
     null
   );
 }
 
 function closeElectronTab(tab: WorkspaceTab | undefined): void {
-  const electronId =
-    tab?.externalSite?.electronTabId ?? tab?.supplier?.electronTabId;
+  const electronId = tab?.externalSite?.electronTabId;
   if (!electronId) return;
   try {
     void getShellDesktopApi()?.closeTab(electronId);
@@ -370,7 +355,7 @@ export function TabWorkspaceProvider({ children }: { children: ReactNode }) {
       let normalized = saved.tabs.map((t) => ensureTabHistory(t));
       let pinned = withPinnedDashboard(normalized);
       // L'URL demandée (lien direct, F5, clic avant hydratation) prime TOUJOURS
-      // sur l'onglet actif sauvegardé — plus de router.replace vers un vieux panier.
+      // sur l'onglet actif sauvegardé — plus de router.replace vers une vieille page.
       let active =
         pinned.tabs.find((t) => normalizeHref(t.href) === currentHref) ||
         pinned.tabs.find((t) => samePathname(t.href, currentHref));
@@ -612,7 +597,7 @@ export function TabWorkspaceProvider({ children }: { children: ReactNode }) {
         });
         const pinned = withPinnedDashboard([...next, tab]);
         // Refs synchrones AVANT routeTo : sinon le sync URL→onglet court
-        // avec l'ancien activeTabId et écrase l'onglet produit (ex. → Panier).
+        // avec l'ancien activeTabId et écrase l'onglet produit actif.
         tabsRef.current = pinned.tabs;
         pinnedTabIdRef.current = pinned.pinnedId;
         activeTabIdRef.current = tab.id;
@@ -744,8 +729,8 @@ export function TabWorkspaceProvider({ children }: { children: ReactNode }) {
       setTabs((prev) => {
         let changed = false;
         const next = prev.map((t) => {
-          const meta = t.externalSite ?? t.supplier;
-          const metaSiteId = meta?.siteId ?? t.supplier?.fournisseurId;
+          const meta = t.externalSite;
+          const metaSiteId = meta?.siteId;
           if (metaSiteId !== siteId && !isExternalSiteHref(t.href)) {
             return t;
           }
@@ -767,37 +752,25 @@ export function TabWorkspaceProvider({ children }: { children: ReactNode }) {
             nextTitle === t.title &&
             nextUrl === (meta?.url ?? "") &&
             nextElectronId === meta?.electronTabId &&
-            t.externalSite?.siteId === siteId &&
-            t.supplier?.fournisseurId === siteId
+            t.externalSite?.siteId === siteId
           ) {
             return t;
           }
           changed = true;
-          const externalSite = {
-            siteId,
-            url: nextUrl,
-            electronTabId: nextElectronId,
-          };
           return {
             ...t,
             title: nextTitle,
-            externalSite,
-            /** @deprecated miroir compat */
-            supplier: { ...externalSite, fournisseurId: siteId },
+            externalSite: {
+              siteId,
+              url: nextUrl,
+              electronTabId: nextElectronId,
+            },
           };
         });
         return changed ? next : prev;
       });
     },
     [],
-  );
-
-  const patchSupplierTab = useCallback(
-    (
-      fournisseurId: number,
-      patch: Partial<{ electronTabId: string; url: string; title: string }>,
-    ) => patchExternalSiteTab(fournisseurId, patch),
-    [patchExternalSiteTab],
   );
 
   const openExternalSite = useCallback(
@@ -810,7 +783,7 @@ export function TabWorkspaceProvider({ children }: { children: ReactNode }) {
       if (existing) {
         // Réactivation (sidebar Hermes/n8n) : garder l'URL live SPA.
         // Navigation explicite (SiteLink / navigateur) : navigateUrl → seed.
-        const existingMeta = existing.externalSite ?? existing.supplier;
+        const existingMeta = existing.externalSite;
         const liveUrl = (existingMeta?.url || "").trim();
         const seedUrl = (opts.url || "").trim();
         const nextUrl = opts.navigateUrl
@@ -827,8 +800,6 @@ export function TabWorkspaceProvider({ children }: { children: ReactNode }) {
           href,
           fullscreen: true,
           externalSite,
-          /** @deprecated miroir compat */
-          supplier: { ...externalSite, fournisseurId: sid },
         };
         const nextTabs = tabsRef.current.map((t) =>
           t.id === existing.id ? updated : t,
@@ -881,19 +852,6 @@ export function TabWorkspaceProvider({ children }: { children: ReactNode }) {
       routeTo(href, true);
     },
     [routeTo],
-  );
-
-  const openSupplierSite = useCallback(
-    (opts: OpenSupplierSiteOpts) => {
-      openExternalSite({
-        siteId: opts.fournisseurId,
-        url: opts.url,
-        title: opts.title,
-        electronTabId: opts.electronTabId,
-        navigateUrl: opts.navigateUrl,
-      });
-    },
-    [openExternalSite],
   );
 
   /** Réordonne un onglet (drag & drop) — ne touche ni l'actif ni les historiques.
@@ -1055,7 +1013,7 @@ export function TabWorkspaceProvider({ children }: { children: ReactNode }) {
     if (!ready) return;
     const api = getShellDesktopApi();
     if (!api) return;
-    const externalMeta = activeTab?.externalSite ?? activeTab?.supplier;
+    const externalMeta = activeTab?.externalSite;
     const cmd =
       !activeTab || !isExternalSiteHref(activeTab.href)
         ? reduceExternalSiteSurfaceCommand({ type: "leave-external" })
@@ -1092,9 +1050,7 @@ export function TabWorkspaceProvider({ children }: { children: ReactNode }) {
       setTabMeta,
       openOrNotify,
       openExternalSite,
-      openSupplierSite,
       patchExternalSiteTab,
-      patchSupplierTab,
       currentHref,
       activeSurface,
     }),
@@ -1118,9 +1074,7 @@ export function TabWorkspaceProvider({ children }: { children: ReactNode }) {
       setTabMeta,
       openOrNotify,
       openExternalSite,
-      openSupplierSite,
       patchExternalSiteTab,
-      patchSupplierTab,
       currentHref,
       activeSurface,
     ],

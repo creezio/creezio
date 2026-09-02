@@ -22,6 +22,13 @@
 |---|---|
 | [`codemods/H11/h11-purge-tf2-compat.mjs`](../codemods/H11/h11-purge-tf2-compat.mjs) | Copie build (gitignorée) du codemod H11 — SoT `scripts/codemods/H11/` : purge `TEMPOFLOW_*`, asserts feed CHR, `countKey: "sites"`, fallback builder. |
 
+## `codemods/H12/`
+
+| Fichier | Rôle |
+|---|---|
+| [`codemods/H12/h12-electron-shell-imports.mjs`](../codemods/H12/h12-electron-shell-imports.mjs) | Copie build (gitignorée) du codemod H12 — SoT `scripts/codemods/H12/` : reclasse imports `@creezio/electron-shell` (+ `/meili`) vers host-runtime / search / platform-core ; alias host nommés marque → `DESKTOP_*` / `ensureDesktopNode`. |
+| [`codemods/H12/h12-workspace-debrand.mjs`](../codemods/H12/h12-workspace-debrand.mjs) | Copie build (gitignorée) du codemod H12 — SoT `scripts/codemods/H12/` : `configureFullscreenPaths` → `configureWorkspacePaths`, workspace neutre (`isCanvasHref`, `openExternalSite`). |
+
 ## `codemods/H7/`
 
 | Fichier | Rôle |

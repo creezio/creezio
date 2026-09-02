@@ -18,7 +18,6 @@
 | [`src/boot.ts`](../src/boot.ts) | Façade boot Electron plateforme — structure générique (pas le métier). Les apps marques appellent `prepareDesktopBoot(manifest)` **avant** `app.requestSingleInstanceLock()` pour isoler userData Client/Serveur. Le monolithe main.ts (catalogue, tabs fournisseurs, Hermes…) reste vertical. |
 | [`src/index.ts`](../src/index.ts) | @creezio/electron-shell — runtime Electron plateforme (Phase B / B.2). |
 | [`src/main-facade.ts`](../src/main-facade.ts) | Façades supplémentaires pour un `main.ts` mince (Phase B.2 / G). `prepareDesktopBoot` (boot.ts) + ces helpers couvrent le shell platform avant le métier vertical (catalogue, tabs, AI workspace…). |
-| [`src/meili.ts`](../src/meili.ts) | (à documenter) |
 | [`src/splash-ui.ts`](../src/splash-ui.ts) | Splash de démarrage — modèle + HTML riche (aucun import Electron). Port brand-agnostic de electron/splash-ui.ts (TF2) — productName / bridgeName / cssPrefix. |
 | [`src/tray.ts`](../src/tray.ts) | Icône Tray générique — labels depuis AppManifest.productName. Port de electron/tray.ts (TF2) — setup/refresh sync (require electron). |
 | [`src/updater.ts`](../src/updater.ts) | Auto-update via electron-updater (provider generic). Port de electron/updater.ts — feed URL fourni par l'appelant (manifest). Les apps marques appellent `setupAutoUpdater({ feedUrl, … })` après boot UI. |

@@ -21,7 +21,7 @@ import {
   describeCloudflaredExit,
   resolveCloudflaredRespawnPolicy,
   shouldRespawnCloudflared,
-} from "../packages/electron-shell/dist/index.js";
+} from "../packages/host-runtime/dist/index.js";
 import { demobrandManifest } from "../packages/brand-config/dist/index.js";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");

@@ -20,7 +20,7 @@
  */
 import type { ApiKernel, ApiMount, EntitySpec } from "@creezio/api-kernel";
 import type { SqliteMigration } from "@creezio/platform-core";
-import type { BrandMeiliFeed } from "@creezio/electron-shell/meili";
+import type { BrandMeiliFeed } from "@creezio/search";
 import type { CoreNavItem } from "@creezio/shell-ui";
 import type { DemoScenario } from "@creezio/interactive-demo";
 import { collectInteractiveDemoDefaults } from "@creezio/interactive-demo";

@@ -268,7 +268,7 @@ function createSearchMount(): ApiMount {
       const host = process.env.MEILI_HOST || "";
       if (host) {
         try {
-          const { searchMeiliIndexes } = await import("@creezio/electron-shell/meili");
+          const { searchMeiliIndexes } = await import("@creezio/search");
           const { brandMeiliFeed } = await import("./meili-feed.js");
           const hits = await searchMeiliIndexes({
             host,
@@ -394,7 +394,7 @@ import {
   configureMeiliBrandFeed,
   configureMeiliCatalogSqlTables,
   type BrandMeiliFeed,
-} from "@creezio/electron-shell/meili";
+} from "@creezio/search";
 
 export const brandMeiliFeed: BrandMeiliFeed = {
   id: "${model.brandId}-os",
@@ -425,7 +425,7 @@ import {
   configureMeiliBrandFeed,
   configureMeiliCatalogSqlTables,
   type BrandMeiliFeed,
-} from "@creezio/electron-shell/meili";
+} from "@creezio/search";
 
 export const brandMeiliFeed: BrandMeiliFeed = {
   id: "${model.brandId}-${ent.id}",

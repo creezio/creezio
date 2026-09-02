@@ -11,7 +11,7 @@ import { fileURLToPath } from "node:url";
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 // P1.b : le host Node pur vit dans @creezio/host-runtime, le sous-domaine
 // Meili dans @creezio/search ; electron-shell garde le reliquat desktop
-// (web-telemetry) et ré-exporte tout (compat figée).
+// (web-telemetry). H12 : plus de ré-exports compat via electron-shell.
 const hostRuntimeDir = path.join(root, "packages/host-runtime/src");
 const searchDir = path.join(root, "packages/search/src");
 const esHostDir = path.join(root, "packages/electron-shell/src/host");
@@ -85,7 +85,22 @@ test("N2.3 bindings + exports publics index.ts", () => {
   assert.match(crash, /export function configureCrashReporter/);
   assert.doesNotMatch(crash, /crm\.tempoflow\.fr\/crash/);
 
-  const idx = fs.readFileSync(idxPath, "utf8");
+  // H12 : plus de ré-export compat via electron-shell — chaque symbole se
+  // vérifie dans sa source SoT (host-runtime / search / electron-shell).
+  const sotSources = [
+    fs.readFileSync(idxPath, "utf8"), // desktop natif (instrumentWebContents)
+    fs.readFileSync(hostFile("crash-reporter.ts"), "utf8"),
+    fs.readFileSync(hostFile("bridge-client.ts"), "utf8"),
+    fs.readFileSync(hostFile("server-launcher.ts"), "utf8"),
+    fs.readFileSync(hostFile("ai-workspace/bindings.ts"), "utf8"),
+    fs.readFileSync(hostFile("ai-workspace/manager.ts"), "utf8"),
+    fs.readFileSync(hostFile("ai-workspace/actions.ts"), "utf8"),
+    fs.readFileSync(hostFile("meili/coherence.ts"), "utf8"),
+    fs.readFileSync(
+      path.join(root, "packages/search/src/meili/indexer.ts"),
+      "utf8",
+    ),
+  ].join("\n");
   for (const sym of [
     "configureCrashReporter",
     "instrumentWebContents",
@@ -98,7 +113,7 @@ test("N2.3 bindings + exports publics index.ts", () => {
     "decideMeiliReady",
     "runIndexation",
   ]) {
-    assert.match(idx, new RegExp(sym), `export manquant: ${sym}`);
+    assert.match(sotSources, new RegExp(sym), `export manquant: ${sym}`);
   }
 
   assert.ok(

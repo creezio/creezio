@@ -62,13 +62,18 @@ test("O3.3 exports barrels", () => {
     path.join(root, "packages/electron-shell/src/index.ts"),
     "utf8",
   );
-  assert.match(shell, /host\/n8n\/api-key/);
-  assert.match(shell, /agent-isolation/);
   assert.match(shell, /assistant-chrome/);
   assert.match(shell, /oauth-loopback/);
   assert.match(shell, /profile-picker-html/);
   assert.match(shell, /error-page-html/);
-  assert.match(shell, /host\/hermes\/crm-key/);
+  // P1.b/H12 : les modules host n8n/hermes vivent dans @creezio/host-runtime
+  // (plus de ré-export compat via electron-shell).
+  for (const relHost of ["n8n/api-key.ts", "hermes/crm-key.ts", "n8n/agent-isolation.ts"]) {
+    assert.ok(
+      fs.existsSync(path.join(root, "packages/host-runtime/src", relHost)),
+      `host-runtime/src/${relHost} manquant`,
+    );
+  }
   const tabs = fs.readFileSync(
     path.join(root, "packages/electron-shell/src/host/browser-tabs/index.ts"),
     "utf8",

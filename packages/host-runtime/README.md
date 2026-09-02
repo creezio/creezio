@@ -45,10 +45,11 @@ le serveur Docker headless — sans jamais importer Electron statiquement.
 
 ## Compat
 
-`@creezio/electron-shell` ré-exporte toute cette surface avec `@deprecated`
-— aucun import historique ne casse. Surface figée par la gate
-`test-phase-electron-shell-frozen-exports` : tout nouveau symbole host
-s'exporte d'ici.
+H12 (0.24.0) : les ré-exports de compat `@deprecated` d'electron-shell ont
+été supprimés — ce package est l'UNIQUE point d'import du host Node pur.
+Migration marques : codemod `scripts/codemods/H12/` (`creezio upgrade`).
+Les alias host nommés marque (ensure node « première marque », pins TF2,
+sandbox paths) ont été purgés au profit des noms `Desktop*` génériques.
 
 ## Liens
 

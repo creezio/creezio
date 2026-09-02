@@ -1,5 +1,5 @@
 /**
- * Browse paginé Meili — API publique `@creezio/electron-shell/meili`.
+ * Browse paginé Meili — API publique `@creezio/search`.
  * Meili est un composant CORE (fail-closed) pour le browse catalogue.
  *
  * Contrat (SoT AGENTS.md section Meili) :

@@ -9,8 +9,12 @@
  * → H11 purge de la compat desktop historique (dual-reads env première
  *   marque, manifests prod kit, créateur de feed CHR runtime, alias
  *   password WebUI historique, preload-app.js)
- *   — codemods scripts/codemods/H11).
+ *   — codemods scripts/codemods/H11
+ * → H12 purge des shims P1.b d'electron-shell (ré-exports @deprecated du
+ *   barrel + subpath ./meili, alias host nommés marque) et dé-brandage du
+ *   module workspace de shell-ui (constantes legacy et vocabulaire métier →
+ *   configureWorkspacePaths neutre) — codemods scripts/codemods/H12).
  */
-export const ARCHITECTURE_VERSION = "H11" as const;
+export const ARCHITECTURE_VERSION = "H12" as const;
 
 export type ArchitectureVersion = typeof ARCHITECTURE_VERSION;

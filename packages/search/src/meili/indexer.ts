@@ -37,7 +37,7 @@ export async function runIndexation(opts?: RunIndexationOptions): Promise<void> 
     throw new Error(
       "runIndexation: aucun BrandMeiliFeed — passer opts.feed ou appeler " +
         "configureMeiliBrandFeed(brandMeiliFeed) avant l'indexation " +
-        "(voir @creezio/electron-shell/meili feed.ts).",
+        "(voir @creezio/search feed.ts).",
     );
   }
   const { runFeedIndexation } = await import("./generic-indexer.js");

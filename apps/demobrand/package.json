@@ -32,6 +32,7 @@
     "@creezio/observability": "^0.23.0",
     "@creezio/automations": "^0.23.0",
     "@creezio/electron-shell": "^0.23.0",
+    "@creezio/host-runtime": "^0.23.0",
     "@creezio/desktop-tooling": "^0.23.0",
     "@creezio/factory": "0.17.0"
   },

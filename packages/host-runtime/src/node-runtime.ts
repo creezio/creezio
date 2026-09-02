@@ -15,10 +15,6 @@ import { applyOsSandboxEnv } from "./sandbox/embed-sandbox.js";
 
 export const DESKTOP_NODE_PIN = "22.22.2";
 export const DESKTOP_NODE_MIN_FOR_EMBEDS = "22.22.0";
-/** @deprecated alias TF2 */
-export const TF2_NODE_PIN = DESKTOP_NODE_PIN;
-/** @deprecated alias TF2 */
-export const TF2_NODE_MIN_FOR_EMBEDS = DESKTOP_NODE_MIN_FOR_EMBEDS;
 
 export type NodeVersionTriple = [number, number, number];
 
@@ -280,8 +276,3 @@ export async function ensureDesktopNode(
 
 /** Déplacé vers @creezio/platform-core (P1.b) — ré-exporté ici pour compat. */
 export { envForNodeScriptSpawn } from "@creezio/platform-core";
-
-/** @deprecated alias */
-export const ensureTempoflowNode = ensureDesktopNode;
-/** @deprecated alias */
-export const resolveTempoflowNodeBinary = resolveDesktopNodeBinary;

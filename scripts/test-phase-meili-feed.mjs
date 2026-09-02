@@ -44,14 +44,22 @@ test("C2 generic-indexer + runIndexation accepte feed", () => {
   assert.match(idx, /runFeedIndexation/);
 });
 
-test("C3 export package ./meili sans barrel Electron", () => {
+test("C3 plus de subpath ./meili côté electron-shell (H12 — SoT @creezio/search)", () => {
   const pkg = JSON.parse(
     fs.readFileSync(
       path.join(ROOT, "packages/electron-shell/package.json"),
       "utf8",
     ),
   );
-  assert.ok(pkg.exports["./meili"]);
+  assert.equal(
+    pkg.exports["./meili"],
+    undefined,
+    "le shim ./meili a été purgé en H12 — importer @creezio/search",
+  );
+  const searchPkg = JSON.parse(
+    fs.readFileSync(path.join(ROOT, "packages/search/package.json"), "utf8"),
+  );
+  assert.ok(searchPkg.exports?.["."], "export racine @creezio/search requis");
 });
 
 test("C4 factory génère meili-feed hors tf2_* (registre de presets, H7)", () => {
@@ -94,12 +102,9 @@ test("D1 kit expose listenBrandKernelHttp + maybeBootBrandMeili", () => {
     "utf8",
   );
   assert.match(bootSrc, /export async function maybeBootBrandMeili/);
-  const barrel = fs.readFileSync(
-    path.join(ROOT, "packages/electron-shell/src/index.ts"),
-    "utf8",
-  );
-  assert.match(barrel, /listenBrandKernelHttp/);
-  assert.match(barrel, /maybeBootBrandMeili/);
+  // H12 : plus de ré-export compat via electron-shell — les SoT sont
+  // host-runtime (listenBrandKernelHttp) et search (maybeBootBrandMeili),
+  // vérifiées ci-dessus dans leurs sources.
 });
 
 test("D2 boot Meili saute la réindexation quand le fingerprint est à jour", () => {

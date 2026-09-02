@@ -92,12 +92,14 @@ test("O7.3 wirings consomment kit (pas de jumeau spawn/fleet inline)", () => {
 });
 
 test("O7.4 kit exports O7 + shell preload CRM", () => {
-  const shellIdx = fs.readFileSync(
-    path.join(root, "packages/electron-shell/src/index.ts"),
+  // H12 : createBrandHostStack / createBrandHostRuntime s'importent depuis
+  // leur SoT @creezio/host-runtime (plus de ré-export compat electron-shell).
+  const hostIdx = fs.readFileSync(
+    path.join(root, "packages/host-runtime/src/index.ts"),
     "utf8",
   );
-  assert.match(shellIdx, /createBrandHostStack/);
-  assert.match(shellIdx, /createBrandHostRuntime/);
+  assert.match(hostIdx, /createBrandHostStack/);
+  assert.match(hostIdx, /createBrandHostRuntime/);
   assert.ok(
     fs.existsSync(
       path.join(root, "packages/host-runtime/src/brand-host-stack.ts"),

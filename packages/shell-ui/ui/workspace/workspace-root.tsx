@@ -116,8 +116,8 @@ export function WorkspaceRoot({
   const wrappedShell = wrapWorkspace ? wrapWorkspace(shell) : shell;
   // afterShell est un slot ADDITIF : il s'insère APRÈS le chrome par défaut
   // (bridge desktop, widget assistant, UiDriver, agent host). Le remplacer
-  // ferait disparaître l'assistant — régression prod constatée (TF3 y montait
-  // sa cloche d'alertes et perdait FAB + panneau chat).
+  // ferait disparaître l'assistant — régression prod constatée (une marque y
+  // montait sa cloche d'alertes et perdait FAB + panneau chat).
   const defaultAfterShell = (
     <>
       <DesktopBridge />

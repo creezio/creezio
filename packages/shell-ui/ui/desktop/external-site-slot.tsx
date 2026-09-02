@@ -64,21 +64,14 @@ export function ExternalSiteSlot({
   const slotRef = useRef<HTMLDivElement>(null);
   const paneActive = usePaneActive();
   const workspace = useTabWorkspace();
-  const { tabs, setTabMeta } = workspace;
-  const patchExternalSiteTab =
-    workspace.patchExternalSiteTab ?? workspace.patchSupplierTab;
+  const { tabs, setTabMeta, patchExternalSiteTab } = workspace;
   const href = `/site/${siteId}`;
-  const wsTab = tabs.find((t: any) => {
-    const external = t.externalSite;
-    const legacy = t.supplier;
-    return (
-      external?.siteId === siteId ||
-      legacy?.siteId === siteId ||
-      legacy?.fournisseurId === siteId ||
-      (t.href.split("?")[0] || "") === href
-    );
-  });
-  const externalMeta = wsTab?.externalSite ?? wsTab?.supplier;
+  const wsTab = tabs.find(
+    (t: any) =>
+      t.externalSite?.siteId === siteId ||
+      (t.href.split("?")[0] || "") === href,
+  );
+  const externalMeta = wsTab?.externalSite;
   const url = externalMeta?.url || initialUrl || "";
   const electronTabId = externalMeta?.electronTabId;
   /** Document deja ouvert / synchronise depuis Electron - bloque la boucle openTab. */
