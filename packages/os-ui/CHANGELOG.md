@@ -1,5 +1,15 @@
 # @creezio/os-ui
 
+## 0.24.0
+
+### Patch Changes
+
+- Updated dependencies [efc7bb5]
+  - @creezio/shell-ui@0.24.0
+  - @creezio/interactive-demo@0.24.0
+  - @creezio/mails@0.24.0
+  - @creezio/nav@0.24.0
+
 ## 0.23.0
 
 ### Patch Changes

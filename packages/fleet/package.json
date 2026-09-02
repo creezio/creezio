@@ -1,6 +1,6 @@
 {
   "name": "@creezio/fleet",
-  "version": "0.23.0",
+  "version": "0.24.0",
   "description": "Backend flotte typé — gestes Docker (Engine API), registre serveurs, updates pull/rollback, agent hôte, proxy registre pull-only, protocole agent↔backend versionné (ex fleet-collector .mjs)",
   "type": "module",
   "main": "./dist/index.js",

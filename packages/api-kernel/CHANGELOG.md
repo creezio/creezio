@@ -1,5 +1,13 @@
 # @creezio/api-kernel
 
+## 0.24.0
+
+### Patch Changes
+
+- Updated dependencies [efc7bb5]
+  - @creezio/platform-core@0.24.0
+  - @creezio/brand-config@0.24.0
+
 ## 0.23.0
 
 ### Patch Changes
