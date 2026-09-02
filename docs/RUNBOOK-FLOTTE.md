@@ -38,7 +38,11 @@ Les zones Cloudflare et hostnames publics sont **ceux de la marque**
    2026-08-31 ; credentials root/600 dans
    `/opt/docker/creezio-secrets/ghcr.env`, hors git — jamais la valeur en
    clair ailleurs), update admin async (202 + `update-status`),
-   backup + rollback auto
+   backup + rollback auto. **hostPort persisté** dans `servers.json` et
+   réutilisé à chaque update (plus de ports éphémères 32774→…). Fichiers
+   stack `cf.env` / `secrets.env` root:root 600 : le CLI lit/écrit via
+   `sudo -n` / wrapper `/usr/local/sbin/creezio-server-docker priv-io`
+   (fail-closed — pas de chmod, pas de « lance en sudo »)
 4b. **Déployer sur toute la flotte (releases pull)** — `publish --release`
    (draft), registre pull-only `registry.{zone}`, cycle
    draft → rolling (canary `wave_pct`) → done, kill-switch

@@ -218,16 +218,39 @@ test("CLI registre d'instances : create/start/stop/rm/logs/ls/update/backup + ad
   );
   assert.match(cli, /--browser/);
   assert.match(cli, /SERVER_VARIANT/);
+  assert.match(cli, /applyAllocatedHostPort/);
+  assert.match(cli, /recordedHostPort/);
+  assert.match(cli, /port hôte persisté/);
+  assert.match(cli, /priv-io/);
+  assert.match(cli, /readTextFileDirectOrSudo/);
+  assert.match(cli, /formatStackFileEaccesError/);
+  const wrapper = fs.readFileSync(
+    path.join(dockerServer, "creezio-server-docker-sudo.sh"),
+    "utf8",
+  );
+  assert.match(wrapper, /priv-io/);
+  assert.match(wrapper, /docker-data/);
+  assert.doesNotMatch(wrapper, /chmod 666|chmod a\+|chown /);
+  const lib = fs.readFileSync(
+    path.join(root, "packages/fleet/src/server-lib.ts"),
+    "utf8",
+  );
+  assert.match(lib, /resolveInstanceHostPort/);
+  assert.match(lib, /applyAllocatedHostPort/);
+  assert.match(lib, /2e update/);
+  const agentTun = fs.readFileSync(
+    path.join(root, "packages/factory/src/server-docker-agent-tunnel.ts"),
+    "utf8",
+  );
+  assert.match(agentTun, /CREEZIO_SERVER_DOCKER_WRAPPER/);
+  assert.match(agentTun, /priv-io/);
+  assert.match(agentTun, /formatStackFileEaccesError/);
   assert.match(cli, /wantBackup = backupEnabled && !!args\.backup/);
   assert.match(cli, /backup: wantBackup/);
   assert.match(cli, /CREEZIO_SERVER_DOCKER_BACKUP/);
   assert.match(cli, /backup skippé \(CREEZIO_SERVER_DOCKER_BACKUP=0\)/);
   assert.doesNotMatch(cli, /noBackup|--no-backup/);
   // P2.b : SoT flotte portée en TS — packages/fleet (wrappers compat retirés).
-  const lib = fs.readFileSync(
-    path.join(root, "packages/fleet/src/server-lib.ts"),
-    "utf8",
-  );
   assert.match(lib, /backup = false/);
   assert.match(lib, /pas de nouveau backup \(défaut\)/);
   assert.match(lib, /CREEZIO_SERVER_DOCKER_BACKUP/);

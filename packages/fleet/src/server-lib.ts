@@ -27,12 +27,15 @@ import {
   stopContainer,
 } from "./docker.js";
 import {
+  applyAllocatedHostPort,
   isStackUpdateRefused,
+  resolveInstanceHostPort,
   resolveStackUpdatePolicy,
   stackHostPort,
   stackUp,
   writeInstanceStack,
 } from "./instance-stack.js";
+import { defaultPrivilegedFileIo, isFsPermissionError } from "./priv-io.js";
 import type {
   AuditFn,
   BackupResult,
@@ -62,10 +65,16 @@ export function readJson<T>(file: string, fallback: T): T {
 }
 
 export function writeJson(file: string, data: unknown): void {
-  fs.mkdirSync(path.dirname(file), { recursive: true });
-  const tmp = `${file}.${process.pid}.tmp`;
-  fs.writeFileSync(tmp, JSON.stringify(data, null, 2) + "\n");
-  fs.renameSync(tmp, file);
+  const body = JSON.stringify(data, null, 2) + "\n";
+  try {
+    fs.mkdirSync(path.dirname(file), { recursive: true });
+    const tmp = `${file}.${process.pid}.tmp`;
+    fs.writeFileSync(tmp, body);
+    fs.renameSync(tmp, file);
+  } catch (e) {
+    if (!isFsPermissionError(e)) throw e;
+    defaultPrivilegedFileIo.writeFile(file, body);
+  }
 }
 
 export async function fetchJson(
@@ -844,13 +853,18 @@ export async function updateServer({
       // (patch image app seulement) ou refuse si hostname public sans
       // cloudflared. --remove-orphans interdit dès qu'un sidecar est
       // conservé (c'est ce flag qui a retiré cloudflared en 0.10.2).
+      // hostPort persisté : réutilise le port enregistré (2e update =
+      // même loopback) ; alloue seulement si aucun n'est enregistré
+      // ou s'il est occupé par un autre process.
+      const nextHp = await resolveInstanceHostPort(inst);
+      inst.hostPort = nextHp > 0 ? nextHp : 0;
       writeInstanceStack({ brandRoot, brandId, image: img, inst });
       stackUp(brandRoot, inst, {
         quiet: true,
         removeOrphans: stackPolicy?.action !== "preserve-sidecar",
       });
       const hp = stackHostPort(inst.containerName);
-      if (hp) inst.port = hp;
+      applyAllocatedHostPort(inst, hp);
       return;
     }
     try {

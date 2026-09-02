@@ -417,8 +417,12 @@ test("source : provisionDedicatedAgentTunnel = ensure → connecteur → DNS →
   assert.match(helper, /export function isFsPermissionError/);
   assert.match(helper, /export function readTextFileDirectOrSudo/);
   assert.match(helper, /export function writeTextFileDirectOrSudo/);
+  assert.match(helper, /export function formatStackFileEaccesError/);
+  assert.match(helper, /CREEZIO_SERVER_DOCKER_WRAPPER/);
+  assert.match(helper, /priv-io/);
   assert.match(helper, /sudo -n/);
   assert.match(helper, /permissionDenied/);
+  assert.match(helper, /Ne PAS chmod\/chown/);
 });
 
 test("helpers : needsDedicatedAgentTunnelMigration + parseAgentPublicUrl", () => {
@@ -637,6 +641,14 @@ test("helpers : après migration, agentUrl == URL dédiée (plus l'URL nested pa
     assert.match(msg, /admin up/);
     assert.match(msg, /POST \/admin\/api\/hosts\/agent-url/);
     assert.match(msg, /Ne PAS chmod\/chown/);
+    const stackMsg = factory.formatStackFileEaccesError("/opt/docker/x/docker-data/stacks/n/cf.env");
+    assert.match(stackMsg, /root:root 600/);
+    assert.match(stackMsg, /priv-io/);
+    assert.match(stackMsg, /Ne PAS chmod\/chown/);
+    assert.equal(
+      factory.CREEZIO_SERVER_DOCKER_WRAPPER,
+      "/usr/local/sbin/creezio-server-docker",
+    );
   } finally {
     fs.rmSync(tmp, { recursive: true, force: true });
   }

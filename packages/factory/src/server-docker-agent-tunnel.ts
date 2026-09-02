@@ -280,12 +280,16 @@ export type SudoExec = (
   opts?: { input?: string },
 ) => { ok: boolean; stdout: string; stderr: string };
 
+/** Wrapper sudoers scopé (VPS) — seul binaire NOPASSWD typique. */
+export const CREEZIO_SERVER_DOCKER_WRAPPER =
+  "/usr/local/sbin/creezio-server-docker";
+
 export function isFsPermissionError(err: unknown): boolean {
   const code = (err as NodeJS.ErrnoException | undefined)?.code;
   return code === "EACCES" || code === "EPERM";
 }
 
-export function defaultSudoExec(
+function spawnSudo(
   argv: string[],
   opts?: { input?: string },
 ): { ok: boolean; stdout: string; stderr: string } {
@@ -300,13 +304,50 @@ export function defaultSudoExec(
   };
 }
 
-function permissionError(message: string): NodeJS.ErrnoException {
+/**
+ * `sudo -n <cmd>` puis, si refusé, `sudo -n /usr/local/sbin/creezio-server-docker priv-io <cmd>`.
+ * Jamais de chmod/chown du fichier cible — le wrapper est le seul fallback.
+ */
+export function defaultSudoExec(
+  argv: string[],
+  opts?: { input?: string },
+): { ok: boolean; stdout: string; stderr: string } {
+  const direct = spawnSudo(argv, opts);
+  if (direct.ok) return direct;
+  if (!fs.existsSync(CREEZIO_SERVER_DOCKER_WRAPPER)) return direct;
+  const viaWrapper = spawnSudo(
+    [CREEZIO_SERVER_DOCKER_WRAPPER, "priv-io", ...argv],
+    opts,
+  );
+  if (viaWrapper.ok) return viaWrapper;
+  return {
+    ok: false,
+    stdout: viaWrapper.stdout || direct.stdout,
+    stderr:
+      [direct.stderr, viaWrapper.stderr].filter(Boolean).join(" | ") ||
+      "sudo -n / wrapper refusés",
+  };
+}
+
+export function permissionError(message: string): NodeJS.ErrnoException {
   const err = new Error(message) as NodeJS.ErrnoException;
   err.code = "EACCES";
   return err;
 }
 
-/** Lecture directe, sinon `sudo -n cat` (même wrapper que le préflight UFW). */
+export function formatStackFileEaccesError(filePath: string): string {
+  return (
+    `fichier stack ${filePath} est root:root 600 (écrit par un geste root / wrapper) ` +
+    `et sudo -n / ${CREEZIO_SERVER_DOCKER_WRAPPER} priv-io ont échoué. ` +
+    `Ne PAS chmod/chown à la main. ` +
+    `Chemin qui marche : installer ${CREEZIO_SERVER_DOCKER_WRAPPER} ` +
+    `(docker/server/creezio-server-docker-sudo.sh) avec sudoers ` +
+    `NOPASSWD: ${CREEZIO_SERVER_DOCKER_WRAPPER} puis relancer ` +
+    `creezio server-docker update|migrate-stack|ensure-owner.`
+  );
+}
+
+/** Lecture directe, sinon `sudo -n cat` puis wrapper `priv-io cat`. */
 export function readTextFileDirectOrSudo(
   filePath: string,
   sudoExec: SudoExec = defaultSudoExec,
@@ -317,11 +358,15 @@ export function readTextFileDirectOrSudo(
     if (!isFsPermissionError(e)) throw e;
   }
   const r = sudoExec(["cat", filePath]);
-  if (!r.ok) throw permissionError(r.stderr || "sudo -n cat refusé");
+  if (!r.ok) {
+    throw permissionError(
+      r.stderr || formatStackFileEaccesError(filePath),
+    );
+  }
   return r.stdout;
 }
 
-/** Écriture directe, sinon `sudo -n tee` + chmod 600. */
+/** Écriture directe, sinon `sudo -n tee` / wrapper `priv-io tee` + chmod 600. */
 export function writeTextFileDirectOrSudo(
   filePath: string,
   body: string,
@@ -334,7 +379,11 @@ export function writeTextFileDirectOrSudo(
     if (!isFsPermissionError(e)) throw e;
   }
   const tee = sudoExec(["tee", filePath], { input: body });
-  if (!tee.ok) throw permissionError(tee.stderr || "sudo -n tee refusé");
+  if (!tee.ok) {
+    throw permissionError(
+      tee.stderr || formatStackFileEaccesError(filePath),
+    );
+  }
   sudoExec(["chmod", "600", filePath]);
 }
 

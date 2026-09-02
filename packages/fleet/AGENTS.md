@@ -82,6 +82,9 @@ restent la SoT observability, hors périmètre fleet.
   doit repasser par `set()`/`save()` sinon elle n'est pas persistée.
 - `instance-stack` : politique `resolveStackUpdatePolicy` (préserver le
   sidecar cloudflared, refuser tout update qui casserait un hostname public).
+  `hostPort` persisté (`recordedHostPort` / `resolveReusableHostPort`) —
+  2ᵉ update = même port loopback. Fichiers stack 600 via `priv-io.ts`
+  (`sudo -n` / wrapper), fail-closed.
 - `agent-tunnel` (T7) : le container cloudflared DÉDIÉ agent
   (`creezio-agent-tunnel`) est provisionné par `creezio server-docker
   enroll` / `agent up` (factory) — le watch d'ici ne fait QUE redémarrer

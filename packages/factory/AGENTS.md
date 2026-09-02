@@ -135,11 +135,13 @@ en jumeau dans `main.ts`.
   `provisionDedicatedAgentTunnel` (CLI) : enroll **et** `agent up`
   (migration auto si hôte déjà enrôlé sans tunnel dédié) — ordre
   ensure → connecteur → DNS → retrait résiduel (gate
-  `test-phase-agent-tunnel`). Persist `agentUrl` : `sudo -n` si
-  `fleet-hosts.json` est root:root 600, sinon POST admin (container) —
-  jamais chmod manuel. `agent rm` = seul geste qui retire DNS
-  `agent.*` / tunnel dédié ; `server-docker rm` d'une instance ne les
-  touche jamais.
+  `test-phase-agent-tunnel`). Persist `agentUrl` : `sudo -n` / wrapper
+  `priv-io` si `fleet-hosts.json` est root:root 600, sinon POST admin
+  (container) — jamais chmod manuel. Même chemin pour `cf.env` /
+  `secrets.env` à l'`update` (fail-closed). `hostPort` persisté dans
+  `servers.json` et réutilisé au recreate. `agent rm` = seul geste qui
+  retire DNS `agent.*` / tunnel dédié ; `server-docker rm` d'une
+  instance ne les touche jamais.
 - `src/server-docker-owner.ts` : politique create fail-closed owner
   (`CREEZIO_OWNER_EMAIL` / `_PASSWORD` requis en VPS/prod ; optionnel si
   `CREEZIO_TUNNEL_LOCAL=1`) — first-run `POST /api/v1/os/setup`, persist

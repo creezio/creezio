@@ -11,6 +11,11 @@
 import fs from "node:fs";
 import net from "node:net";
 import path from "node:path";
+import {
+  isFsPermissionError,
+  readTextFileDirectOrSudo,
+  writeTextFileDirectOrSudo,
+} from "./server-docker-agent-tunnel.js";
 
 export const SERVER_PORT_BASE = 18790;
 export const SERVER_CONTAINER_PORT = 18791;
@@ -31,11 +36,15 @@ export type ServerRegistryInstance = {
   variant?: ServerVariant;
   /**
    * Stack compose autonome (M2) : app + cloudflared sidecar, ports internes
-   * fixes (18791), port hôte loopback auto (hostPort 0/absent) ou fixe.
+   * fixes (18791), port hôte loopback persisté (`hostPort`) puis réutilisé
+   * au recreate (0/absent = attribution auto au premier up seulement).
    * Absent/false = legacy `docker run` (port hôte = inst.port).
    */
   stack?: boolean;
-  /** Port hôte fixe loopback (0/absent = attribution auto en mode stack). */
+  /**
+   * Port hôte loopback persisté. 0/absent au premier create = attribution
+   * auto Docker ; après up, égal au port alloué et réutilisé à l'update.
+   */
   hostPort?: number;
 };
 
@@ -77,7 +86,7 @@ export function loadServerRegistry(
 ): ServerRegistry {
   const file = registryPath(brandRoot);
   try {
-    const raw = JSON.parse(fs.readFileSync(file, "utf8")) as ServerRegistry;
+    const raw = JSON.parse(readTextFileDirectOrSudo(file)) as ServerRegistry;
     if (raw && Array.isArray(raw.instances)) {
       return {
         version: 1,
@@ -86,8 +95,9 @@ export function loadServerRegistry(
         instances: raw.instances,
       };
     }
-  } catch {
-    /* premier create */
+  } catch (e) {
+    if (isFsPermissionError(e)) throw e;
+    /* premier create / JSON invalide */
   }
   return {
     version: 1,
@@ -102,10 +112,16 @@ export function saveServerRegistry(
   registry: ServerRegistry,
 ): void {
   const file = registryPath(brandRoot);
-  fs.mkdirSync(path.dirname(file), { recursive: true });
-  const tmp = `${file}.${process.pid}.tmp`;
-  fs.writeFileSync(tmp, JSON.stringify(registry, null, 2) + "\n");
-  fs.renameSync(tmp, file);
+  const body = JSON.stringify(registry, null, 2) + "\n";
+  try {
+    fs.mkdirSync(path.dirname(file), { recursive: true });
+    const tmp = `${file}.${process.pid}.tmp`;
+    fs.writeFileSync(tmp, body);
+    fs.renameSync(tmp, file);
+  } catch (e) {
+    if (!isFsPermissionError(e)) throw e;
+    writeTextFileDirectOrSudo(file, body);
+  }
 }
 
 function portBusy(port: number, host = "127.0.0.1"): Promise<boolean> {

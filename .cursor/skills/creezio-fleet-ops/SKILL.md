@@ -18,7 +18,9 @@ alias creezio='node $CREEZIO_KIT_ROOT/packages/factory/bin/creezio.js'
 ```
 
 Containers : `<brandId>-server-<nom>` (ex. `tempoflow3-server-demo`).
-Ports : auto 18790+n, bind `127.0.0.1` (exposition = `--expose`).
+Ports : loopback `127.0.0.1`, persistés dans `servers.json` (`hostPort`)
+et **réutilisés** à chaque `update` (plus de 32774→32776→…). Exposition
+publique = `--expose` / tunnel CF.
 
 ## Index « Je veux X → fais Y »
 
@@ -279,9 +281,11 @@ SoT du script matérialisé) ; `packages/factory/src/server-docker-cli.ts`
 (`ensure-owner`, persistance `secrets.env`) ; checks métier :
 `scripts/verify-prod.local.mjs` du repo (ex. `tempoflow3`).
 
-**Pièges** : `secrets.env` est chmod 600 — lancer en user propriétaire
-(deploy) ou sudo. Compte E2E admin = collaborateur (permissions vides) :
-suffisant pour login/me, pas pour les gestes owner de l'app admin.
+**Pièges** : `secrets.env` / `cf.env` sont chmod 600 (souvent root:root).
+Le CLI les lit/écrit via `sudo -n` puis
+`/usr/local/sbin/creezio-server-docker priv-io` (fail-closed actionnable
+si sudo impossible — ne PAS chmod/chown). Compte E2E admin = collaborateur
+(permissions vides) : suffisant pour login/me, pas pour les gestes owner.
 
 ## 4. Publier une image, updater, rollback
 
@@ -365,6 +369,21 @@ si KO. **Pas de nouveau tar.gz par défaut.** Les archives déjà présentes
 dans `{BRAND_ROOT}/docker-data/backups/` sont **conservées** (pas de prune
 dans le flux update).
 
+**hostPort stable** : le port loopback alloué au create est persisté dans
+`docker-data/servers.json` (`hostPort` + `port`) et **réutilisé** au
+recreate. Un 2ᵉ `update` garde le même `127.0.0.1:<hostPort>`. Un port
+libre n'est alloué que s'il n'y en a aucun d'enregistré, ou si le port
+enregistré est occupé par un *autre* process.
+
+**Fichiers stack root:root 600** (`cf.env`, `secrets.env`, parfois
+`fleet-hosts.json` / `servers.json`) : `update` / `migrate-stack` /
+`ensure-owner` empruntent le même chemin privilégié que
+`persistDedicatedAgentUrl` — lecture/écriture directe, sinon `sudo -n`,
+sinon wrapper `/usr/local/sbin/creezio-server-docker priv-io`. Si sudo
+est impossible : **fail-closed** avec le message d'install sudoers
+(NOPASSWD sur le wrapper). Jamais un chmod one-shot, jamais « pense à
+sudo ».
+
 **GitHub ≠ backup runtime.** GitHub = **code** (image / repo). Les données
 runtime vivent sous `docker-data/servers/<nom>` → `/data` (sqlite, config…).
 Un backup tar.gz = filet si le volume est corrompu un jour — pas à refaire
@@ -405,7 +424,9 @@ creezio server-docker start <nom> --brand-root "$BRAND_ROOT"
 **Pièges** : update synchrone interdit côté admin/agent — Cloudflare coupe
 les requêtes longues, d'où le contrat 202 + polling `update-status` (la CLI
 `update` locale est synchrone OK). Registre requis pour publish
-(`--registry` ou env), sinon erreur explicite.
+(`--registry` ou env), sinon erreur explicite. Le port loopback **ne
+change plus** à l'update (persisté). Les fichiers 600 n'exigent plus un
+sudo manuel — le CLI le fait (ou refuse avec le wrapper à installer).
 
 ## 4b. Déployer sur toute la flotte — releases en PULL (F4-F6)
 
