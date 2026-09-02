@@ -7,8 +7,11 @@
  *   - ports INTERNES fixes : l'app écoute toujours sur 18791 dans le réseau
  *     du stack ; cloudflared tourne IN-PROCESS dans le conteneur app
  *     (fin du sidecar) et la joint en loopback `http://127.0.0.1:18791` ;
- *   - port hôte indifférent : publié sur 127.0.0.1 avec attribution auto
- *     (`127.0.0.1::18791`) pour debug/healthcheck — fini les collisions ;
+ *   - port hôte loopback persisté : `hostPort` / `port` dans servers.json
+ *     (et compose `127.0.0.1:<hostPort>:18791`). Premier up : attribution
+ *     auto (`127.0.0.1::18791`) puis persistance. Recreate : RÉUTILISE le
+ *     port enregistré ; un port libre seulement si aucun n'est enregistré
+ *     ou s'il est occupé par un autre process. ;
  *   - secrets JAMAIS dans `environment:` du compose.yml : `cf.env` (contrat
  *     Cloudflare `CREEZIO_CF_*` + `CREEZIO_DOMAIN` + `CREEZIO_TUNNEL_SLUG`)
  *     et `secrets.env` (clés applicatives détectées) sont des `env_file`
@@ -32,12 +35,101 @@
  * divergente du template compose.
  */
 import fs from "node:fs";
+import net from "node:net";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
 import type { ServerInstance } from "./types.js";
+import {
+  defaultPrivilegedFileIo,
+  type PrivilegedFileIo,
+} from "./priv-io.js";
 
 /** Port interne fixe de l'app dans le réseau du stack (standard). */
 export const STACK_APP_PORT = 18791;
+
+/**
+ * Port hôte déjà alloué : `hostPort` s'il est > 0, sinon `port`
+ * (instances 0.24–0.25 qui n'avaient persisté que `port`).
+ */
+export function recordedHostPort(inst: {
+  hostPort?: number;
+  port?: number;
+}): number {
+  const hp = Number(inst.hostPort);
+  if (Number.isInteger(hp) && hp > 0) return hp;
+  const p = Number(inst.port);
+  return Number.isInteger(p) && p > 0 ? p : 0;
+}
+
+/** Persiste le port hôte alloué dans l'état d'instance (servers.json). */
+export function applyAllocatedHostPort<
+  T extends { port?: number; hostPort?: number },
+>(inst: T, hp: number): T {
+  if (hp > 0) {
+    inst.port = hp;
+    inst.hostPort = hp;
+  }
+  return inst;
+}
+
+/**
+ * Réutilise `recorded` sauf si aucun port n'est enregistré ou s'il est
+ * occupé par un *autre* process (pas notre conteneur).
+ */
+export function resolveReusableHostPort(opts: {
+  recorded: number;
+  ownContainerPort?: number;
+  busy: boolean;
+}): number {
+  const rec = Number(opts.recorded) || 0;
+  if (rec <= 0) return 0;
+  if (Number(opts.ownContainerPort) === rec) return rec;
+  if (!opts.busy) return rec;
+  return 0;
+}
+
+export function isLoopbackPortBusy(
+  port: number,
+  host = "127.0.0.1",
+): Promise<boolean> {
+  return new Promise((resolve) => {
+    const sock = net.connect({ port, host });
+    const done = (busy: boolean) => {
+      sock.destroy();
+      resolve(busy);
+    };
+    sock.once("connect", () => done(true));
+    sock.once("error", () => done(false));
+    sock.setTimeout(400, () => done(false));
+  });
+}
+
+/**
+ * Port à pin dans le compose avant recreate : enregistré s'il est libre
+ * ou tenu par notre conteneur ; 0 (= auto Docker) sinon.
+ */
+export async function resolveInstanceHostPort(
+  inst: { hostPort?: number; port?: number; containerName?: string },
+  opts?: {
+    inspectHostPort?: (containerName: string) => number;
+    isBusy?: (port: number) => Promise<boolean> | boolean;
+  },
+): Promise<number> {
+  const recorded = recordedHostPort(inst);
+  if (recorded <= 0) return 0;
+  const inspect = opts?.inspectHostPort ?? stackHostPort;
+  const own =
+    inst.containerName && inspect
+      ? Number(inspect(inst.containerName)) || 0
+      : 0;
+  const probe = opts?.isBusy ?? isLoopbackPortBusy;
+  const busy = own === recorded ? false : Boolean(await probe(recorded));
+  return resolveReusableHostPort({
+    recorded,
+    ownContainerPort: own,
+    busy,
+  });
+}
 
 /**
  * Clés du contrat Cloudflare forwardées par le CLI vers `cf.env` (600).
@@ -141,15 +233,16 @@ function writeMergedSecretsFile(
   secretsFile: string,
   instEnv: Record<string, string> | undefined,
   extra: Record<string, string> = {},
+  io: PrivilegedFileIo = defaultPrivilegedFileIo,
 ): string | null {
-  const existing = parseDotEnvFile(secretsFile);
+  const existing = parseDotEnvFile(secretsFile, io);
   const { secret } = splitInstanceEnv(instEnv);
   const merged = mergeSecretsEnv(existing, { ...secret, ...extra });
   if (Object.keys(merged).length) {
-    writeEnvFile600(secretsFile, merged);
+    writeEnvFile600(secretsFile, merged, io);
     return secretsFile;
   }
-  if (fs.existsSync(secretsFile)) fs.rmSync(secretsFile);
+  if (io.exists(secretsFile)) io.rmFile(secretsFile);
   return null;
 }
 
@@ -161,6 +254,7 @@ export function persistOwnerSecrets({
   brandRoot,
   inst,
   owner,
+  io = defaultPrivilegedFileIo,
 }: {
   brandRoot: string;
   inst: StackInstance;
@@ -170,6 +264,7 @@ export function persistOwnerSecrets({
     e2eEmail?: string;
     e2ePassword?: string;
   };
+  io?: PrivilegedFileIo;
 }): string | null {
   fs.mkdirSync(stackDir(brandRoot, inst), { recursive: true });
   const extra: Record<string, string> = {};
@@ -181,7 +276,12 @@ export function persistOwnerSecrets({
   if (password) extra.CREEZIO_OWNER_PASSWORD = password;
   if (e2eEmail) extra.CREEZIO_E2E_EMAIL = e2eEmail;
   if (e2ePassword) extra.CREEZIO_E2E_PASSWORD = e2ePassword;
-  return writeMergedSecretsFile(secretsEnvPath(brandRoot, inst), inst?.env, extra);
+  return writeMergedSecretsFile(
+    secretsEnvPath(brandRoot, inst),
+    inst?.env,
+    extra,
+    io,
+  );
 }
 
 /**
@@ -302,19 +402,25 @@ export function renderInstanceCompose({
 }
 
 /** Écrit un env_file chmod 600 (jamais de secret dans ps/inspect/registre). */
-function writeEnvFile600(file: string, entries: Record<string, string>): void {
+function writeEnvFile600(
+  file: string,
+  entries: Record<string, string>,
+  io: PrivilegedFileIo = defaultPrivilegedFileIo,
+): void {
   const lines = Object.entries(entries)
     .filter(([, v]) => v !== undefined && v !== null && String(v) !== "")
     .map(([k, v]) => `${k}=${String(v)}`);
-  fs.writeFileSync(file, lines.join("\n") + "\n", { mode: 0o600 });
-  fs.chmodSync(file, 0o600);
+  io.writeFile(file, lines.join("\n") + "\n");
 }
 
 /** Parse KEY=VAL (lignes # ignorées) — jamais logué (peut contenir un token). */
-export function parseDotEnvFile(file: string | null | undefined): Record<string, string> {
-  if (!file || !fs.existsSync(file)) return {};
+export function parseDotEnvFile(
+  file: string | null | undefined,
+  io: PrivilegedFileIo = defaultPrivilegedFileIo,
+): Record<string, string> {
+  if (!file || !io.exists(file)) return {};
   const out: Record<string, string> = {};
-  for (const line of fs.readFileSync(file, "utf8").split("\n")) {
+  for (const line of io.readFile(file).split("\n")) {
     const t = line.trim();
     if (!t || t.startsWith("#")) continue;
     const i = t.indexOf("=");
@@ -343,8 +449,12 @@ export function isLocalTunnelOnly(inst: StackInstance | null | undefined): boole
 }
 
 /** Contrat in-process 0.10 (cf.env) — l'app spawn cloudflared elle-même. */
-export function hasInProcessCfContract(brandRoot: string, inst: StackInstance): boolean {
-  const cf = parseDotEnvFile(cfEnvPath(brandRoot, inst));
+export function hasInProcessCfContract(
+  brandRoot: string,
+  inst: StackInstance,
+  io: PrivilegedFileIo = defaultPrivilegedFileIo,
+): boolean {
+  const cf = parseDotEnvFile(cfEnvPath(brandRoot, inst), io);
   return Boolean(
     String(cf.CREEZIO_CF_API_TOKEN || "").trim() &&
       String(cf.CREEZIO_CF_ACCOUNT_ID || "").trim() &&
@@ -360,12 +470,14 @@ export function readPersistedPublicHostname({
   brandRoot,
   inst,
   brandId,
+  io = defaultPrivilegedFileIo,
 }: {
   brandRoot: string;
   inst: StackInstance;
   brandId?: string;
+  io?: PrivilegedFileIo;
 }): { hostname: string; source: string } | null {
-  const tunnel = parseDotEnvFile(tunnelEnvPath(brandRoot, inst));
+  const tunnel = parseDotEnvFile(tunnelEnvPath(brandRoot, inst), io);
   const fromTunnel = String(tunnel.CREEZIO_TUNNEL_HOSTNAME || "").trim();
   if (fromTunnel) return { hostname: fromTunnel, source: "tunnel.env" };
   const fromInst = String(
@@ -390,18 +502,20 @@ export function resolveStackUpdatePolicy({
   brandId,
   inst,
   composeYml,
+  io = defaultPrivilegedFileIo,
 }: {
   brandRoot: string;
   brandId?: string;
   inst: StackInstance;
   composeYml?: string;
+  io?: PrivilegedFileIo;
 }): StackUpdatePolicy {
   const composeFile = composeFilePath(brandRoot, inst);
   const yml =
     composeYml !== undefined
       ? String(composeYml || "")
-      : fs.existsSync(composeFile)
-        ? fs.readFileSync(composeFile, "utf8")
+      : io.exists(composeFile)
+        ? io.readFile(composeFile)
         : "";
   const sidecarServices = listCloudflaredServiceNames(yml);
   if (sidecarServices.length) {
@@ -410,11 +524,11 @@ export function resolveStackUpdatePolicy({
   if (isLocalTunnelOnly(inst)) {
     return { action: "rewrite" };
   }
-  if (hasInProcessCfContract(brandRoot, inst)) {
+  if (hasInProcessCfContract(brandRoot, inst, io)) {
     return { action: "rewrite" };
   }
-  const persisted = readPersistedPublicHostname({ brandRoot, inst, brandId });
-  const hasTunnelEnv = fs.existsSync(tunnelEnvPath(brandRoot, inst));
+  const persisted = readPersistedPublicHostname({ brandRoot, inst, brandId, io });
+  const hasTunnelEnv = io.exists(tunnelEnvPath(brandRoot, inst));
   if (persisted || hasTunnelEnv) {
     const hostname = persisted?.hostname || "(adresse publique persistée)";
     return {
@@ -498,6 +612,7 @@ export function writeInstanceStack({
   inst,
   cf,
   allowDropSidecar = false,
+  io = defaultPrivilegedFileIo,
 }: {
   brandRoot: string;
   brandId: string;
@@ -505,13 +620,12 @@ export function writeInstanceStack({
   inst: StackInstance;
   cf?: Record<string, string> | null;
   allowDropSidecar?: boolean;
+  io?: PrivilegedFileIo;
 }): WriteInstanceStackResult {
   const dir = stackDir(brandRoot, inst);
   fs.mkdirSync(dir, { recursive: true });
   const composeFile = composeFilePath(brandRoot, inst);
-  const existing = fs.existsSync(composeFile)
-    ? fs.readFileSync(composeFile, "utf8")
-    : "";
+  const existing = io.exists(composeFile) ? io.readFile(composeFile) : "";
 
   if (!allowDropSidecar && existing) {
     const policy = resolveStackUpdatePolicy({
@@ -519,6 +633,7 @@ export function writeInstanceStack({
       brandId,
       inst,
       composeYml: existing,
+      io,
     });
     if (policy.action === "refuse") {
       const err = new Error(policy.error) as StackUpdateRefusedError;
@@ -527,13 +642,13 @@ export function writeInstanceStack({
       throw err;
     }
     if (policy.action === "preserve-sidecar") {
-      fs.writeFileSync(composeFile, patchComposeAppImage(existing, image));
+      io.writeFile(composeFile, patchComposeAppImage(existing, image));
       // Sidecar intact — secrets.env fusionné (owner/e2e jamais droppés).
-      writeMergedSecretsFile(secretsEnvPath(brandRoot, inst), inst.env);
+      writeMergedSecretsFile(secretsEnvPath(brandRoot, inst), inst.env, {}, io);
       return {
         dir,
         composeFile,
-        withCf: fs.existsSync(cfEnvPath(brandRoot, inst)),
+        withCf: io.exists(cfEnvPath(brandRoot, inst)),
         preservedSidecar: true,
         sidecarServices: policy.sidecarServices,
       };
@@ -542,15 +657,15 @@ export function writeInstanceStack({
 
   const cfFile = cfEnvPath(brandRoot, inst);
   if (cf && typeof cf === "object") {
-    writeEnvFile600(cfFile, cf);
-  } else if (cf === null && fs.existsSync(cfFile)) {
-    fs.rmSync(cfFile);
+    writeEnvFile600(cfFile, cf, io);
+  } else if (cf === null && io.exists(cfFile)) {
+    io.rmFile(cfFile);
   }
   const secretsFile = secretsEnvPath(brandRoot, inst);
-  writeMergedSecretsFile(secretsFile, inst.env);
-  const withCf = Boolean(cf && Object.keys(cf).length) || fs.existsSync(cfFile);
-  const withSecrets = fs.existsSync(secretsFile);
-  fs.writeFileSync(
+  writeMergedSecretsFile(secretsFile, inst.env, {}, io);
+  const withCf = Boolean(cf && Object.keys(cf).length) || io.exists(cfFile);
+  const withSecrets = io.exists(secretsFile);
+  io.writeFile(
     composeFile,
     renderInstanceCompose({ brandRoot, brandId, image, inst, withCf, withSecrets }),
   );

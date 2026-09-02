@@ -347,6 +347,9 @@ test("updateServer : refuse fail-closed avant recreate (source)", () => {
   assert.match(src, /preserve-sidecar/);
   assert.match(src, /removeOrphans: stackPolicy\?\.action !== "preserve-sidecar"/);
   assert.match(src, /sidecar \$\{stackPolicy\.sidecarServices\.join/);
+  assert.match(src, /resolveInstanceHostPort/);
+  assert.match(src, /applyAllocatedHostPort/);
+  assert.match(src, /2e update/);
 });
 
 test("listCloudflaredServiceNames couvre cloudflared*", () => {

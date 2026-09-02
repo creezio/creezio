@@ -83,6 +83,140 @@ test("M2 stack : ports internes fixes + port hôte loopback auto", () => {
   assert.match(yml, /api\/v1\/core\/health/);
 });
 
+test("hostPort persisté : 2e writeInstanceStack → même 127.0.0.1:N:18791", () => {
+  const brandRoot = fs.mkdtempSync(path.join(os.tmpdir(), "creezio-hp-reuse-"));
+  const inst = { ...BASE_INST, hostPort: 0, port: 0 };
+  stack.writeInstanceStack({
+    brandRoot,
+    brandId: "tempoflow3",
+    image: "img:v1",
+    inst,
+    cf: CF,
+  });
+  const firstYml = fs.readFileSync(stack.composeFilePath(brandRoot, inst), "utf8");
+  assert.match(firstYml, /"127\.0\.0\.1::18791"/, "1er create : attribution auto");
+
+  assert.equal(stack.recordedHostPort({ hostPort: 0, port: 32774 }), 32774);
+  assert.equal(stack.recordedHostPort({ hostPort: 32774, port: 1 }), 32774);
+  assert.equal(stack.recordedHostPort({ hostPort: 0, port: 0 }), 0);
+
+  assert.equal(
+    stack.resolveReusableHostPort({ recorded: 32774, busy: false }),
+    32774,
+    "enregistré + libre → réutilise",
+  );
+  assert.equal(
+    stack.resolveReusableHostPort({
+      recorded: 32774,
+      ownContainerPort: 32774,
+      busy: true,
+    }),
+    32774,
+    "tenu par notre conteneur → réutilise",
+  );
+  assert.equal(
+    stack.resolveReusableHostPort({ recorded: 32774, busy: true }),
+    0,
+    "occupé par un autre process → nouveau port",
+  );
+  assert.equal(
+    stack.resolveReusableHostPort({ recorded: 0, busy: false }),
+    0,
+    "aucun enregistré → auto",
+  );
+
+  // Instances 0.24–0.25 : seul `port` est rempli — resolve + apply
+  // pin le loopback avant write (pas de 127.0.0.1::18791 à l'update).
+  const legacy = { ...BASE_INST, name: "legacy-hp", hostPort: 0, port: 32774 };
+  const reused = stack.resolveReusableHostPort({
+    recorded: stack.recordedHostPort(legacy),
+    busy: false,
+  });
+  stack.applyAllocatedHostPort(legacy, reused);
+  stack.writeInstanceStack({
+    brandRoot,
+    brandId: "tempoflow3",
+    image: "img:legacy",
+    inst: legacy,
+  });
+  assert.match(
+    fs.readFileSync(stack.composeFilePath(brandRoot, legacy), "utf8"),
+    /"127\.0\.0\.1:32774:18791"/,
+    "port enregistré sans hostPort → pin compose",
+  );
+
+  stack.applyAllocatedHostPort(inst, 32774);
+  assert.equal(inst.hostPort, 32774);
+  assert.equal(inst.port, 32774);
+
+  stack.writeInstanceStack({
+    brandRoot,
+    brandId: "tempoflow3",
+    image: "img:v2",
+    inst,
+  });
+  const second = fs.readFileSync(stack.composeFilePath(brandRoot, inst), "utf8");
+  assert.match(second, /"127\.0\.0\.1:32774:18791"/);
+  assert.match(second, /image: img:v2/);
+
+  stack.writeInstanceStack({
+    brandRoot,
+    brandId: "tempoflow3",
+    image: "img:v3",
+    inst,
+  });
+  const third = fs.readFileSync(stack.composeFilePath(brandRoot, inst), "utf8");
+  assert.match(third, /"127\.0\.0\.1:32774:18791"/, "2e update → même hostPort");
+  assert.match(third, /image: img:v3/);
+  fs.rmSync(brandRoot, { recursive: true, force: true });
+});
+
+test("stack files 600 : lecture/écriture via I/O privilégié, fail-closed actionnable", async () => {
+  const brandRoot = fs.mkdtempSync(path.join(os.tmpdir(), "creezio-priv-io-"));
+  const inst = { ...BASE_INST };
+  const files = new Map();
+  let sudoCats = 0;
+  const io = {
+    exists: (p) => files.has(p) || fs.existsSync(p),
+    readFile: (p) => {
+      if (files.has(p)) return files.get(p);
+      sudoCats += 1;
+      return fs.readFileSync(p, "utf8");
+    },
+    writeFile: (p, body) => {
+      files.set(p, body);
+      fs.writeFileSync(p, body, { mode: 0o600 });
+    },
+    rmFile: (p) => {
+      files.delete(p);
+      if (fs.existsSync(p)) fs.rmSync(p);
+    },
+  };
+  stack.writeInstanceStack({
+    brandRoot,
+    brandId: "tempoflow3",
+    image: "img:priv",
+    inst,
+    cf: CF,
+    io,
+  });
+  const cf = stack.cfEnvPath(brandRoot, inst);
+  assert.ok(files.has(cf), "cf.env écrit via I/O injecté (chemin privilégié)");
+  assert.match(files.get(cf), /CREEZIO_CF_API_TOKEN=cf-token-secret-123/);
+
+  const { formatStackFileEaccesError, CREEZIO_SERVER_DOCKER_WRAPPER } =
+    await import(
+      pathToFileURL(path.join(ROOT, "packages/fleet/dist/priv-io.js")).href
+    );
+  const msg = formatStackFileEaccesError(cf);
+  assert.match(msg, /root:root 600/);
+  assert.match(msg, /Ne PAS chmod\/chown/);
+  assert.match(msg, new RegExp(CREEZIO_SERVER_DOCKER_WRAPPER.replace(/\//g, "\\/")));
+  assert.match(msg, /priv-io/);
+  assert.match(msg, /update\|migrate-stack\|ensure-owner/);
+  fs.rmSync(brandRoot, { recursive: true, force: true });
+});
+
 test("M2 stack : hostPort fixe (cas tempoflowadmin — lp tunnel)", () => {
   const yml = stack.renderInstanceCompose({
     brandRoot: "/srv/brand",

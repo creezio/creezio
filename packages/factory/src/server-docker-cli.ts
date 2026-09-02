@@ -66,6 +66,9 @@ import {
   parseAgentPublicUrl,
   persistDedicatedAgentUrlInFleetHostsFile,
   formatFleetHostsEaccesError,
+  formatStackFileEaccesError,
+  isFsPermissionError,
+  readTextFileDirectOrSudo,
   buildAgentTunnelRunArgs,
   renderAgentTunnelEnvFile,
   resolveAgentTunnelImage,
@@ -449,10 +452,14 @@ Instances nommées (registre docker-data/servers.json — recommandé) :
 Stack compose autonome (modèle standard — cloudflared in-process) :
   create génère par défaut un stack compose par instance : app seule (port
   interne fixe 18791, cloudflared in-process), cf.env + secrets.env chmod
-  600 (jamais de secret dans le compose), port hôte loopback auto
-  127.0.0.1::18791 (debug/healthcheck), zéro port public.
+  600 (jamais de secret dans le compose), port hôte loopback persisté
+  dans servers.json (premier up : auto 127.0.0.1::18791, puis réutilisé
+  à chaque update — plus de 32774→32776→…). Zéro port public.
     --no-stack : legacy docker run (port hôte fixe du registre)
     --host-port N : port hôte loopback FIXE au lieu de l'attribution auto
+  Fichiers stack root:root 600 (cf.env, secrets.env) : le CLI lit/écrit
+  via sudo -n / /usr/local/sbin/creezio-server-docker priv-io (fail-closed
+  si sudo impossible — jamais un chmod one-shot).
   creezio server-docker migrate-stack <nom> --brand-root <app> [--host-port N]
     (bascule une instance sidecar ou legacy en stack in-process : backup
      /data obligatoire → cf.env écrit (CREEZIO_CF_* requis — env hôte ou
@@ -684,6 +691,17 @@ async function importInstanceStack(kit: string) {
       opts?: { tail?: number; follow?: boolean },
     ) => void;
     stackHostPort: (containerName: string) => number;
+    recordedHostPort: (inst: {
+      hostPort?: number;
+      port?: number;
+    }) => number;
+    applyAllocatedHostPort: <T extends { port?: number; hostPort?: number }>(
+      inst: T,
+      hp: number,
+    ) => T;
+    resolveInstanceHostPort: (
+      inst: ServerRegistryInstance,
+    ) => Promise<number>;
     readKernelTunnelConfig: (
       brandRoot: string,
       inst: ServerRegistryInstance,
@@ -1774,8 +1792,11 @@ function readEnvFileValues(file: string): Record<string, string> {
   const out: Record<string, string> = {};
   let raw = "";
   try {
-    raw = fs.readFileSync(file, "utf8");
-  } catch {
+    raw = readTextFileDirectOrSudo(file);
+  } catch (e) {
+    if (isFsPermissionError(e)) {
+      throw new Error(formatStackFileEaccesError(file));
+    }
     return out;
   }
   for (const line of raw.split("\n")) {
@@ -3345,7 +3366,14 @@ async function runEnsureOwner(opts: {
   if (inst.stack) {
     stack.stackRecreateApp(paths.brandRoot, inst, { quiet: true });
     const hp = stack.stackHostPort(inst.containerName);
-    if (hp) inst.port = hp;
+    if (hp) {
+      stack.applyAllocatedHostPort(inst, hp);
+      const registry = loadServerRegistry(paths.brandRoot, brandId);
+      registry.instances = registry.instances.map((i) =>
+        i.name === inst.name ? inst : i,
+      );
+      saveServerRegistry(paths.brandRoot, registry);
+    }
     console.log(`  app recréée (sidecar / tunnel intact) — ${formatOwnerLoginLog(e2e.email)}`);
   }
 }
@@ -3635,12 +3663,12 @@ async function runRegistrySubcommand(
       if (!hp) {
         throw new Error(`port hôte du stack introuvable après up (${containerName})`);
       }
-      inst.port = hp;
+      stack.applyAllocatedHostPort(inst, hp);
       registry.instances.push(inst);
       saveServerRegistry(paths.brandRoot, registry);
       console.log(
         `+ instance ${name} (stack compose) → http://127.0.0.1:${hp}/ ` +
-          `(container ${containerName}, port hôte ${inst.hostPort ? "fixe" : "auto"}, app interne :${stack.STACK_APP_PORT})`,
+          `(container ${containerName}, port hôte persisté ${hp}, app interne :${stack.STACK_APP_PORT})`,
       );
       console.log(
         `  boot-status : curl http://127.0.0.1:${hp}/api/v1/os/boot-status`,
@@ -3884,9 +3912,7 @@ async function runRegistrySubcommand(
       hostPort:
         args.hostPort && args.hostPort > 0
           ? args.hostPort
-          : Number(inst.hostPort) > 0
-            ? Number(inst.hostPort)
-            : 0,
+          : stack.recordedHostPort(inst) || 0,
       env: Object.fromEntries(
         Object.entries({ ...(inst.env || {}), CREEZIO_TUNNEL_LOCAL: "0" }).filter(
           ([k]) =>
@@ -3986,14 +4012,14 @@ async function runRegistrySubcommand(
       );
     }
     fs.rmSync(stackBackup, { recursive: true, force: true });
-    instStack.port = hp;
+    stack.applyAllocatedHostPort(instStack, hp);
     registry.instances = registry.instances.map((i) =>
       i.name === name ? instStack : i,
     );
     saveServerRegistry(paths.brandRoot, registry);
     console.log(
       `✓ ${name} migré en stack in-process — app interne :${stack.STACK_APP_PORT}, ` +
-        `port hôte debug 127.0.0.1:${hp} (${instStack.hostPort ? "fixe" : "auto"})`,
+        `port hôte debug 127.0.0.1:${hp} (persisté, réutilisé à l'update)`,
     );
     const publicHost = kc?.hostname || cf?.CREEZIO_DOMAIN;
     if (publicHost) {
@@ -4017,8 +4043,8 @@ async function runRegistrySubcommand(
       const stack = await importInstanceStack(paths.kit);
       stack.stackStart(paths.brandRoot, inst);
       const hp = stack.stackHostPort(inst.containerName) || inst.port;
-      if (hp && hp !== inst.port) {
-        inst.port = hp;
+      if (hp && (hp !== inst.port || hp !== inst.hostPort)) {
+        stack.applyAllocatedHostPort(inst, hp);
         saveServerRegistry(paths.brandRoot, registry);
       }
       await waitBootReady(hp);

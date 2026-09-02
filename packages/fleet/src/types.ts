@@ -20,7 +20,7 @@ export interface ServerInstance {
   variant?: string;
   /** true = stack compose autonome (modèle M2/0.10). */
   stack?: boolean;
-  /** Stack : port hôte fixe (>0) — sinon attribution loopback auto. */
+  /** Stack : port hôte loopback persisté (>0) — réutilisé à l'update. */
   hostPort?: number;
 }
 

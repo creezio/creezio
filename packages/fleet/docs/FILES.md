@@ -13,7 +13,8 @@
 | [`src/docker.ts`](../src/docker.ts) | (à documenter) |
 | [`src/host-agent.ts`](../src/host-agent.ts) | (à documenter) |
 | [`src/index.ts`](../src/index.ts) | (à documenter) |
-| [`src/instance-stack.ts`](../src/instance-stack.ts) | (à documenter) |
+| [`src/instance-stack.ts`](../src/instance-stack.ts) | Stack compose par instance : rendu compose, politique update (preserve-sidecar / refuse), `hostPort` persisté et réutilisé au recreate, I/O privilégié des env_file 600. |
+| [`src/priv-io.ts`](../src/priv-io.ts) | Lecture/écriture privilégiée (direct → `sudo -n` → wrapper `creezio-server-docker priv-io`) des fichiers stack root:root 600 — fail-closed, jamais chmod/chown. |
 | [`src/protocol.ts`](../src/protocol.ts) | (à documenter) |
 | [`src/registry-pull-proxy.ts`](../src/registry-pull-proxy.ts) | (à documenter) |
 | [`src/server-admin-client.ts`](../src/server-admin-client.ts) | Client typé du backend flotte pour l'app admin (T4) : résolution env `CREEZIO_FLEET_BACKEND_URL`/`_BASIC`, `fleetBackendFetch` (Basic, timeout), helpers `fetchFleetBackendServers` / `verifyFleetHostCredential` — transport HTTP loopback conservé (backend = container séparé, seul détenteur du socket Docker) |

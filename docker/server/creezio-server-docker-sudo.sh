@@ -21,9 +21,67 @@ die() { echo "creezio-server-docker(sudo): $*" >&2; exit 2; }
 [ -n "$NODE" ] || die "node introuvable"
 
 SUB="${1:-}"
+# I/O privilégié des fichiers stack (cf.env, secrets.env, servers.json…) :
+# mêmes chemins que persistDedicatedAgentUrl — cat/tee/chmod/rm/test
+# uniquement sous …/docker-data/. Jamais un chmod one-shot hors wrapper.
+if [ "$SUB" = "priv-io" ]; then
+  shift || true
+  OP="${1:-}"; shift || true
+  case "$OP" in
+    cat)
+      FILE="${1:-}"
+      [ -n "$FILE" ] || die "priv-io cat : chemin requis"
+      case "$FILE" in
+        */docker-data/*) ;;
+        *) die "priv-io : chemin hors docker-data: $FILE" ;;
+      esac
+      exec cat -- "$FILE"
+      ;;
+    tee)
+      FILE="${1:-}"
+      [ -n "$FILE" ] || die "priv-io tee : chemin requis"
+      case "$FILE" in
+        */docker-data/*) ;;
+        *) die "priv-io : chemin hors docker-data: $FILE" ;;
+      esac
+      exec tee -- "$FILE"
+      ;;
+    chmod)
+      MODE="${1:-}"; FILE="${2:-}"
+      [ "$MODE" = "600" ] || die "priv-io chmod : seul 600 est autorisé"
+      [ -n "$FILE" ] || die "priv-io chmod : chemin requis"
+      case "$FILE" in
+        */docker-data/*) ;;
+        *) die "priv-io : chemin hors docker-data: $FILE" ;;
+      esac
+      exec chmod 600 -- "$FILE"
+      ;;
+    rm)
+      [ "${1:-}" = "-f" ] || die "priv-io rm : seul rm -f <chemin> est autorisé"
+      FILE="${2:-}"
+      [ -n "$FILE" ] || die "priv-io rm : chemin requis"
+      case "$FILE" in
+        */docker-data/*) ;;
+        *) die "priv-io : chemin hors docker-data: $FILE" ;;
+      esac
+      exec rm -f -- "$FILE"
+      ;;
+    test)
+      [ "${1:-}" = "-e" ] || die "priv-io test : seul test -e <chemin> est autorisé"
+      FILE="${2:-}"
+      [ -n "$FILE" ] || die "priv-io test : chemin requis"
+      case "$FILE" in
+        */docker-data/*) ;;
+        *) die "priv-io : chemin hors docker-data: $FILE" ;;
+      esac
+      exec test -e -- "$FILE"
+      ;;
+    *) die "priv-io op refusée: ${OP:-<vide>} (cat|tee|chmod|rm|test)" ;;
+  esac
+fi
 case "$SUB" in
   update|backup|migrate-stack|ls|start|stop|logs) ;;
-  *) die "sous-commande refusée: ${SUB:-<vide>} (update|backup|migrate-stack|ls|start|stop|logs)" ;;
+  *) die "sous-commande refusée: ${SUB:-<vide>} (update|backup|migrate-stack|ls|start|stop|logs|priv-io)" ;;
 esac
 shift || true
 ORIG_ARGS=("$@")
