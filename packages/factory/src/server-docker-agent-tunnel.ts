@@ -1,11 +1,12 @@
 /**
  * Tunnel cloudflared DÉDIÉ au host-agent (T7) — helpers purs du CLI.
  *
- * `creezio server-docker enroll` provisionne un tunnel Cloudflare PROPRE à
- * l'agent (nom CF `creezio-agent-<slug>`, ingress unique
- * `agent.{slug}.{zone}` → 127.0.0.1:<port agent>) et fait tourner son
- * connecteur dans un container dédié `creezio-agent-tunnel` — l'agent ne
- * dépend plus du cloudflared in-process d'un serveur applicatif du VPS
+ * `creezio server-docker enroll` / `agent up` provisionnent un tunnel
+ * Cloudflare PROPRE à l'agent (nom CF `creezio-agent-<slug>`, ingress
+ * unique `agent-{slug}.{zone}` → 127.0.0.1:<port agent>) et persistent
+ * l'URL publique canonique dans `host-agent.json` + `fleet-hosts.json`
+ * (`agentUrl`). Le connecteur tourne dans `creezio-agent-tunnel` — l'agent
+ * ne dépend plus du cloudflared in-process d'un serveur applicatif du VPS
  * (serveur down/recréé ≠ agent injoignable).
  *
  * Sécurité : le token du connecteur vit UNIQUEMENT dans
@@ -17,6 +18,7 @@
  * politique cloudflared-respawn).
  */
 
+import fs from "node:fs";
 import path from "node:path";
 
 /** Nom du container cloudflared dédié agent (aligné @creezio/fleet). */
@@ -141,4 +143,151 @@ export function parseAgentPublicUrl(
     return { hostname: host, serverHostname, slugGuess, hostMode: "flat" };
   }
   return null;
+}
+
+/**
+ * URL publique canonique du tunnel dédié (`https://agent-{slug}.{zone}`
+ * flat, ou celle réellement provisionnée). Fail-closed si rien n'est
+ * dérivable — jamais d'URL nested partagée inventée en secours.
+ */
+export function canonicalDedicatedAgentUrl(opts: {
+  provisionedUrl?: string | null;
+  hostname?: string | null;
+}): string {
+  const raw = String(opts.provisionedUrl || "").trim().replace(/\/+$/, "");
+  if (raw) {
+    let parsed: URL;
+    try {
+      parsed = new URL(raw);
+    } catch {
+      throw new Error(
+        `agentUrl dédiée invalide (${raw}) — URL https publique attendue.`,
+      );
+    }
+    if (parsed.protocol !== "https:") {
+      throw new Error(`agentUrl dédiée invalide (${raw}) — https requis.`);
+    }
+    const host = parsed.hostname.toLowerCase();
+    if (!host) {
+      throw new Error(`agentUrl dédiée invalide (${raw}) — hostname manquant.`);
+    }
+    return `https://${host}`;
+  }
+  const host = String(opts.hostname || "")
+    .trim()
+    .toLowerCase()
+    .replace(/\.$/, "");
+  if (host && host.includes(".") && !host.includes("/") && !/\s/.test(host)) {
+    return `https://${host}`;
+  }
+  throw new Error(
+    "agentUrl dédiée introuvable : ni URL provisionnée ni hostname du tunnel. " +
+      "Relancer `creezio server-docker agent up --slug <slug>` pour (re)provisionner.",
+  );
+}
+
+/** True si l'URL persistée n'est pas encore celle du tunnel dédié. */
+export function agentUrlNeedsDedicatedPersist(
+  currentUrl: string | null | undefined,
+  dedicatedUrl: string,
+): boolean {
+  const cur = String(currentUrl || "").trim().replace(/\/+$/, "");
+  const want = String(dedicatedUrl || "").trim().replace(/\/+$/, "");
+  if (!want) {
+    throw new Error("agentUrl dédiée vide — refus de comparer");
+  }
+  return cur !== want;
+}
+
+export function applyDedicatedAgentUrlToHostState<
+  T extends { agentUrl?: string | null },
+>(state: T, dedicatedUrl: string): boolean {
+  const url = canonicalDedicatedAgentUrl({ provisionedUrl: dedicatedUrl });
+  if (!agentUrlNeedsDedicatedPersist(state.agentUrl, url)) return false;
+  state.agentUrl = url;
+  return true;
+}
+
+export function applyDedicatedAgentUrlToFleetHosts(
+  data: { hosts?: Array<{ hostId: string; agentUrl?: string }> },
+  hostId: string,
+  dedicatedUrl: string,
+): { found: boolean; changed: boolean } {
+  const id = String(hostId || "").trim();
+  if (!id) return { found: false, changed: false };
+  const url = canonicalDedicatedAgentUrl({ provisionedUrl: dedicatedUrl });
+  const host = (data.hosts || []).find((h) => h.hostId === id);
+  if (!host) return { found: false, changed: false };
+  if (!agentUrlNeedsDedicatedPersist(host.agentUrl, url)) {
+    return { found: true, changed: false };
+  }
+  host.agentUrl = url;
+  return { found: true, changed: true };
+}
+
+/**
+ * Chemins SoT `fleet-hosts.json` (runtime + miroirs) à mettre à jour
+ * après `agent up`. Uniquement les fichiers déjà présents.
+ */
+export function discoverFleetHostsJsonPaths(opts: {
+  brandRoot: string;
+  adminRoot?: string | null;
+  extraRoots?: string[];
+}): string[] {
+  const roots = new Set<string>();
+  const addRoot = (r?: string | null) => {
+    const v = String(r || "").trim();
+    if (v) roots.add(path.resolve(v));
+  };
+  addRoot(opts.adminRoot);
+  addRoot(opts.brandRoot);
+  const brand = path.resolve(opts.brandRoot);
+  if (brand) addRoot(`${brand}-admin`);
+  for (const r of opts.extraRoots || []) addRoot(r);
+
+  const out: string[] = [];
+  const seen = new Set<string>();
+  for (const root of roots) {
+    for (const rel of [
+      path.join("docker-data", "fleet-hosts.json"),
+      "fleet-hosts.json",
+      path.join("admin", "fleet-hosts.json"),
+    ]) {
+      const file = path.join(root, rel);
+      if (!fs.existsSync(file) || seen.has(file)) continue;
+      seen.add(file);
+      out.push(file);
+    }
+  }
+  return out;
+}
+
+/** Écrit `agentUrl` dans un fleet-hosts.json existant (idemptotent). */
+export function persistDedicatedAgentUrlInFleetHostsFile(
+  filePath: string,
+  hostId: string,
+  dedicatedUrl: string,
+): { found: boolean; changed: boolean } {
+  if (!fs.existsSync(filePath)) return { found: false, changed: false };
+  let raw: unknown;
+  try {
+    raw = JSON.parse(fs.readFileSync(filePath, "utf8"));
+  } catch (e) {
+    throw new Error(
+      `fleet-hosts.json illisible (${filePath}) : ${(e as Error).message}`,
+    );
+  }
+  if (!raw || typeof raw !== "object") {
+    throw new Error(`fleet-hosts.json invalide (${filePath})`);
+  }
+  const data = raw as { hosts?: Array<{ hostId: string; agentUrl?: string }> };
+  const result = applyDedicatedAgentUrlToFleetHosts(data, hostId, dedicatedUrl);
+  if (result.changed) {
+    fs.writeFileSync(
+      filePath,
+      JSON.stringify(data, null, 2) + "\n",
+      { mode: 0o600 },
+    );
+  }
+  return result;
 }

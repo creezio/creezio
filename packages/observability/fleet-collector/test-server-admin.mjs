@@ -246,6 +246,70 @@ try {
   assert.deepEqual(hosts.json.hosts, []);
   assert.ok(hosts.json.refreshedAt, "refreshedAt attendu sur /hosts");
 
+  // agent up pousse l'URL dédiée (POST /admin/api/hosts/agent-url, pas de Basic).
+  const tok = await req(
+    "POST",
+    "/admin/api/hosts/enroll-token",
+    JSON.stringify({ label: "gate-agenturl" }),
+    { Authorization: BASIC },
+  );
+  assert.equal(tok.status, 200);
+  assert.ok(tok.json.enrollToken);
+  const enroll = await req(
+    "POST",
+    "/admin/api/enroll",
+    JSON.stringify({
+      enrollToken: tok.json.enrollToken,
+      hostId: "host-gate",
+      label: "gate",
+      agentUrl: "https://agent.resto.example.test",
+      agentToken: "agent-tok-gate-1",
+    }),
+  );
+  assert.equal(enroll.status, 200, enroll.raw);
+  assert.equal(enroll.json.ok, true);
+  const pushUrl = await req(
+    "POST",
+    "/admin/api/hosts/agent-url",
+    JSON.stringify({
+      hostId: "host-gate",
+      agentUrl: "https://agent-resto.example.test/",
+      agentToken: "agent-tok-gate-1",
+    }),
+  );
+  assert.equal(pushUrl.status, 200, pushUrl.raw);
+  assert.equal(pushUrl.json.ok, true);
+  assert.equal(pushUrl.json.agentUrl, "https://agent-resto.example.test");
+  assert.equal(pushUrl.json.changed, true);
+  const hostsFile = JSON.parse(
+    fs.readFileSync(path.join(BRAND_ROOT, "docker-data", "fleet-hosts.json"), "utf8"),
+  );
+  assert.equal(
+    hostsFile.hosts[0].agentUrl,
+    "https://agent-resto.example.test",
+    "fleet-hosts.json : plus l'URL nested partagée",
+  );
+  const badTok = await req(
+    "POST",
+    "/admin/api/hosts/agent-url",
+    JSON.stringify({
+      hostId: "host-gate",
+      agentUrl: "https://agent-resto.example.test",
+      agentToken: "wrong",
+    }),
+  );
+  assert.equal(badTok.status, 401);
+  const noHttps = await req(
+    "POST",
+    "/admin/api/hosts/agent-url",
+    JSON.stringify({
+      hostId: "host-gate",
+      agentUrl: "http://agent-resto.example.test",
+      agentToken: "agent-tok-gate-1",
+    }),
+  );
+  assert.equal(noHttps.status, 400);
+
   // Ops JSONL : événements parsés, lignes invalides ignorées.
   const ops = await req(
     "GET",

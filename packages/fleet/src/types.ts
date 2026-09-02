@@ -136,6 +136,13 @@ export interface HostAgentState {
   label: string | null;
   tokens: Array<{ id?: string; hash: string; revokedAt?: string | null }>;
   adminUrl?: string | null;
+  /**
+   * URL publique canonique du host-agent (tunnel dédié
+   * `https://agent-{slug}.{zone}` / celle réellement provisionnée).
+   * Champ ADDITIF — posé par `enroll` et `agent up` (plus l'URL nested
+   * partagée `https://agent.{slug}.{zone}`).
+   */
+  agentUrl?: string | null;
   /** F5 : app admin (updates en pull) + credential flotte, posés par enroll. */
   adminAppUrl?: string | null;
   fleetKey?: string | null;

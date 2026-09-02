@@ -408,8 +408,9 @@ créateur — tout se fait au boot) ; `server-docker rm <nom>` **déprovisionne
 via l'API CF directe** (DNS nested+flat+mail+extras de l'instance + tunnel
 instance — **jamais** `agent.*` / `agent-*`) avant de retirer le stack ;
 `server-docker enroll` / `agent up` provisionnent le tunnel **dédié**
-agent ; `server-docker agent rm` est le seul geste qui retire DNS agent +
-tunnel dédié.
+agent et persistent l'URL publique canonique dans `host-agent.json` et
+`fleet-hosts.json` (`agentUrl`) ; `server-docker agent rm` est le seul
+geste qui retire DNS agent + tunnel dédié.
 
 **Update et tunnels publics (0.10.8 — non négociable)** : `server-docker
 update` (et tout recreate compose : agent flotte, apply image) **ne peut

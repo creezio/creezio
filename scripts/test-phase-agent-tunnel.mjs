@@ -16,13 +16,16 @@
  *  3. contrats source : helpers factory (container/run-args/env-file 600,
  *     token JAMAIS en argv), ordre de migration (provision → connecteur
  *     → bascule DNS → retrait règle résiduelle) porté par
- *     provisionDedicatedAgentTunnel (enroll ET agent up), host-agent
- *     démarre le watch (pas de kill-switch), jamais de POST cfd_tunnel
- *     côté watch, noms de container alignés fleet ↔ factory,
- *     instance rm ne touche jamais un DNS agent.
+ *     provisionDedicatedAgentTunnel (enroll ET agent up), persist
+ *     agentUrl dédiée (host-agent.json + fleet-hosts.json, plus
+ *     l'URL nested partagée), host-agent démarre le watch (pas de
+ *     kill-switch), jamais de POST cfd_tunnel côté watch, noms de
+ *     container alignés fleet ↔ factory, instance rm ne touche jamais
+ *     un DNS agent.
  */
 import assert from "node:assert/strict";
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { test } from "node:test";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -408,6 +411,9 @@ test("source : provisionDedicatedAgentTunnel = ensure → connecteur → DNS →
   assert.match(helper, /mode: 0o600|chmod|600/);
   assert.match(helper, /export function needsDedicatedAgentTunnelMigration/);
   assert.match(helper, /export function parseAgentPublicUrl/);
+  assert.match(helper, /export function canonicalDedicatedAgentUrl/);
+  assert.match(helper, /export function applyDedicatedAgentUrlToHostState/);
+  assert.match(helper, /export function persistDedicatedAgentUrlInFleetHostsFile/);
 });
 
 test("helpers : needsDedicatedAgentTunnelMigration + parseAgentPublicUrl", () => {
@@ -466,6 +472,122 @@ test("helpers : needsDedicatedAgentTunnelMigration + parseAgentPublicUrl", () =>
   assert.equal(factory.parseAgentPublicUrl("http://127.0.0.1:18810"), null);
 });
 
+test("helpers : après migration, agentUrl == URL dédiée (plus l'URL nested partagée)", () => {
+  assert.equal(
+    factory.canonicalDedicatedAgentUrl({
+      provisionedUrl: "https://agent-resto.example.test/",
+    }),
+    "https://agent-resto.example.test",
+  );
+  assert.equal(
+    factory.canonicalDedicatedAgentUrl({
+      hostname: "agent-resto.example.test",
+    }),
+    "https://agent-resto.example.test",
+  );
+  assert.throws(
+    () => factory.canonicalDedicatedAgentUrl({}),
+    /introuvable/,
+  );
+  assert.throws(
+    () => factory.canonicalDedicatedAgentUrl({ provisionedUrl: "http://agent-resto.example.test" }),
+    /https requis/,
+  );
+
+  const nestedShared = "https://agent.resto.example.test";
+  const dedicated = "https://agent-resto.example.test";
+  assert.equal(
+    factory.agentUrlNeedsDedicatedPersist(nestedShared, dedicated),
+    true,
+    "URL nested partagée ≠ URL dédiée",
+  );
+  assert.equal(
+    factory.agentUrlNeedsDedicatedPersist(dedicated, dedicated),
+    false,
+    "déjà dédiée → idempotent",
+  );
+  assert.equal(
+    factory.agentUrlNeedsDedicatedPersist(null, dedicated),
+    true,
+    "agentUrl absent → persist",
+  );
+
+  const state = { agentUrl: nestedShared };
+  assert.equal(factory.applyDedicatedAgentUrlToHostState(state, dedicated), true);
+  assert.equal(state.agentUrl, dedicated, "host-agent.json : plus l'URL nested");
+  assert.equal(
+    factory.applyDedicatedAgentUrlToHostState(state, dedicated),
+    false,
+    "re-apply idempotent",
+  );
+
+  const hosts = {
+    hosts: [
+      { hostId: "host-1", agentUrl: nestedShared },
+      { hostId: "host-other", agentUrl: "https://agent.other.example.test" },
+    ],
+  };
+  assert.deepEqual(
+    factory.applyDedicatedAgentUrlToFleetHosts(hosts, "host-1", dedicated),
+    { found: true, changed: true },
+  );
+  assert.equal(
+    hosts.hosts[0].agentUrl,
+    dedicated,
+    "fleet-hosts.json : agentUrl == URL dédiée",
+  );
+  assert.equal(
+    hosts.hosts[1].agentUrl,
+    "https://agent.other.example.test",
+    "autres hôtes intacts",
+  );
+  assert.deepEqual(
+    factory.applyDedicatedAgentUrlToFleetHosts(hosts, "host-1", dedicated),
+    { found: true, changed: false },
+    "fleet-hosts idempotent",
+  );
+  assert.deepEqual(
+    factory.applyDedicatedAgentUrlToFleetHosts(hosts, "inconnu", dedicated),
+    { found: false, changed: false },
+  );
+
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "creezio-agenturl-"));
+  try {
+    const brandRoot = path.join(tmp, "brand");
+    const adminRoot = path.join(tmp, "brand-admin");
+    fs.mkdirSync(path.join(brandRoot, "docker-data"), { recursive: true });
+    fs.mkdirSync(path.join(adminRoot, "docker-data"), { recursive: true });
+    const runtime = path.join(adminRoot, "docker-data", "fleet-hosts.json");
+    fs.writeFileSync(
+      runtime,
+      JSON.stringify({
+        version: 1,
+        hosts: [{ hostId: "host-1", agentUrl: nestedShared, agentToken: "tok" }],
+      }),
+    );
+    const found = factory.discoverFleetHostsJsonPaths({
+      brandRoot,
+      adminRoot,
+    });
+    assert.ok(found.includes(runtime), `runtime manquant: ${found.join(",")}`);
+    const wrote = factory.persistDedicatedAgentUrlInFleetHostsFile(
+      runtime,
+      "host-1",
+      dedicated,
+    );
+    assert.deepEqual(wrote, { found: true, changed: true });
+    const after = JSON.parse(fs.readFileSync(runtime, "utf8"));
+    assert.equal(after.hosts[0].agentUrl, dedicated);
+    assert.equal(after.hosts[0].agentToken, "tok", "token intact");
+    assert.deepEqual(
+      factory.persistDedicatedAgentUrlInFleetHostsFile(runtime, "host-1", dedicated),
+      { found: true, changed: false },
+    );
+  } finally {
+    fs.rmSync(tmp, { recursive: true, force: true });
+  }
+});
+
 test("source : agent up migre ; instance rm n'appelle jamais deprovisionCfAgentTunnel", () => {
   const cli = fs.readFileSync(
     path.join(ROOT, "packages/factory/src/server-docker-cli.ts"),
@@ -493,6 +615,31 @@ test("source : agent up migre ; instance rm n'appelle jamais deprovisionCfAgentT
     /contrat Cloudflare incomplet/,
     "migration fail-closed si CF manque",
   );
+  assert.match(
+    upSlice,
+    /persistDedicatedAgentUrlAfterUp/,
+    "agent up persiste agentUrl après provision/reprise",
+  );
+  const iFn = cli.indexOf("async function provisionDedicatedAgentTunnel");
+  const iSave = cli.indexOf("saveAgentState(opts.brandRoot, opts.state)", iFn);
+  const provisionFn = cli.slice(iFn, iSave + 80);
+  assert.match(
+    provisionFn,
+    /applyDedicatedAgentUrlToHostState/,
+    "provision écrit agentUrl dans host-agent.json",
+  );
+  assert.match(provisionFn, /canonicalDedicatedAgentUrl/);
+  assert.match(
+    cli,
+    /async function persistDedicatedAgentUrlAfterUp/,
+    "persist partagée (host-agent + fleet-hosts + admin API)",
+  );
+  assert.match(cli, /\/admin\/api\/hosts\/agent-url/);
+  assert.doesNotMatch(
+    cli,
+    /penser à patcher|patcher agentUrl|patch manuel/,
+    "plus de consigne de patch manuel agentUrl",
+  );
 });
 
 test("source : host-agent démarre le watch ; pas de kill-switch ; watch sans API CF", () => {
@@ -517,4 +664,26 @@ test("source : host-agent démarre le watch ; pas de kill-switch ; watch sans AP
     /^import /m,
     "agent-tunnel.ts reste autonome (Node pur, zéro import — docker injecté)",
   );
+  const serverAdmin = fs.readFileSync(
+    path.join(ROOT, "packages/fleet/src/server-admin.ts"),
+    "utf8",
+  );
+  assert.match(
+    serverAdmin,
+    /\/admin\/api\/hosts\/agent-url/,
+    "backend flotte accepte le push agentUrl (agent up)",
+  );
+  assert.match(serverAdmin, /handleHostAgentUrlUpdate/);
+  const skill = fs.readFileSync(
+    path.join(ROOT, ".cursor/skills/creezio-fleet-ops/SKILL.md"),
+    "utf8",
+  );
+  assert.match(skill, /persiste l'URL publique canonique/);
+  assert.doesNotMatch(skill, /penser à patcher agentUrl/);
+  const runbook = fs.readFileSync(
+    path.join(ROOT, "docs/RUNBOOK-FLOTTE.md"),
+    "utf8",
+  );
+  assert.match(runbook, /persiste `agentUrl`/);
+  assert.doesNotMatch(runbook, /penser à patcher agentUrl/);
 });

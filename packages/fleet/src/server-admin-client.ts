@@ -152,3 +152,49 @@ export async function verifyFleetHostCredential(
   });
   return r.status === 200 && r.json?.ok === true && r.json?.valid === true;
 }
+
+/**
+ * `POST /admin/api/hosts/agent-url` — l'hôte pousse l'URL dédiée
+ * (auth agentToken, pas de Basic). Utilisé par `agent up` après
+ * provision/migration du tunnel. Throw sur erreur réseau / timeout.
+ */
+export async function pushFleetHostAgentUrl(opts: {
+  adminUrl: string;
+  hostId: string;
+  agentUrl: string;
+  agentToken: string;
+  timeoutMs?: number;
+}): Promise<{ status: number; ok: boolean; changed?: boolean; error?: string }> {
+  const base = String(opts.adminUrl || "").trim().replace(/\/+$/, "");
+  if (!base) {
+    return { status: 400, ok: false, error: "adminUrl manquante" };
+  }
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), opts.timeoutMs ?? 8000);
+  try {
+    const res = await fetch(`${base}/admin/api/hosts/agent-url`, {
+      method: "POST",
+      signal: ctrl.signal,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        hostId: opts.hostId,
+        agentUrl: opts.agentUrl,
+        agentToken: opts.agentToken,
+      }),
+    });
+    let json: Record<string, unknown> | null = null;
+    try {
+      json = (await res.json()) as Record<string, unknown>;
+    } catch {
+      /* non JSON */
+    }
+    return {
+      status: res.status,
+      ok: res.status === 200 && json?.ok === true,
+      changed: json?.changed === true,
+      error: typeof json?.error === "string" ? json.error : undefined,
+    };
+  } finally {
+    clearTimeout(timer);
+  }
+}
