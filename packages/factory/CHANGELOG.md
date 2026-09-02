@@ -1,5 +1,15 @@
 # @creezio/factory
 
+## 0.18.1
+
+### Patch Changes
+
+- 465aa62: `agent up` persiste l'URL publique du tunnel dédié (`agentUrl`) dans host-agent.json et fleet-hosts.json après provision/migration — l'admin flotte ne sonde plus l'ancienne URL nested partagée. `fleet-hosts.json` root:root 600 : écriture via `sudo -n`, sinon POST `/admin/api/hosts/agent-url` (container) — plus d'exit 1 EACCES.
+  - @creezio/brand-config@0.24.1
+  - @creezio/platform-core@0.24.1
+  - @creezio/product-hub@0.24.1
+  - @creezio/brand-spec@0.24.1
+
 ## 0.18.0
 
 ### Minor Changes

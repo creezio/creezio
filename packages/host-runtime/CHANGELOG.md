@@ -1,5 +1,15 @@
 # @creezio/host-runtime
 
+## 0.24.1
+
+### Patch Changes
+
+- @creezio/brand-config@0.24.1
+- @creezio/platform-core@0.24.1
+- @creezio/product-hub@0.24.1
+- @creezio/search@0.24.1
+- @creezio/observability@0.24.1
+
 ## 0.24.0
 
 ### Minor Changes

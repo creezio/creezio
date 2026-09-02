@@ -1,5 +1,15 @@
 # @creezio/admin
 
+## 0.24.1
+
+### Patch Changes
+
+- Updated dependencies [465aa62]
+  - @creezio/fleet@0.24.1
+  - @creezio/platform-core@0.24.1
+  - @creezio/api-kernel@0.24.1
+  - @creezio/integrations@0.24.1
+
 ## 0.24.0
 
 ### Patch Changes
