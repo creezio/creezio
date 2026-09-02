@@ -1,18 +1,20 @@
 /**
  * Cohérence package.json ↔ package-lock.json (requis par `npm ci` Docker).
  *
- * Mode npm (distribution GitHub Packages) : la racine marque est le SoT —
+ * Mode npm (distribution npmjs.org) : la racine marque est le SoT —
  * `packages[""]` (orchestrateur) + `packages["server"]` (livrable serveur,
  * workspace). Locks autonomes pour les projets npm indépendants (server/ui,
  * client/). Plus de vendor ni de clôture file: à expanser.
  *
  * Régénération via `npm install --package-lock-only` (push) ou
- * `npm install` (build host). Sans `--link-kit`, interroge le registre
- * GitHub Packages (CREEZIO_NPM_TOKEN). Avec `--link-kit` /
- * `CREEZIO_LINK_KIT=1`, les `@creezio/*` sont pinés sur le worktree kit
- * (`file:`) le temps de l'install — les manifests restent `^<lockstep>`.
+ * `npm install` (build host). Sans `--link-kit`, interroge npmjs.org
+ * (`@creezio/*` publics). Avec `--link-kit` / `CREEZIO_LINK_KIT=1`, les
+ * `@creezio/*` sont pinés sur le worktree kit (`file:`) le temps de
+ * l'install — les manifests restent `^<lockstep>`.
+ *
+ * Tout spawn npm est isolé au cwd cible (`spawnNpmAt`) : jamais de
+ * prefix/workspace hérité du kit.
  */
-import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import {
@@ -20,6 +22,7 @@ import {
   isLinkKitEnabled,
   resolveKitRoot,
 } from "./kit-release.js";
+import { spawnNpmAt } from "./npm-isolated.js";
 
 export type PkgJson = {
   dependencies?: Record<string, string>;
@@ -160,6 +163,8 @@ export function ensureBrandPackageLocks(
     kitRoot?: string;
     /** Pin `@creezio/*` sur le worktree (sinon env `CREEZIO_LINK_KIT`). */
     linkKit?: boolean;
+    /** Env du spawn npm (défaut : process.env, isolé du prefix kit). */
+    env?: NodeJS.ProcessEnv;
   },
 ): { refreshed: string[] } {
   const log = opts?.log || ((l: string) => console.log(l));
@@ -169,7 +174,13 @@ export function ensureBrandPackageLocks(
     ? pinCreezioDepsToKitWorktree(brandRoot, opts?.kitRoot, log)
     : () => {};
   try {
-    return refreshBrandPackageLocks(brandRoot, mode, log, linkKit);
+    return refreshBrandPackageLocks(
+      brandRoot,
+      mode,
+      log,
+      linkKit,
+      opts?.env ?? process.env,
+    );
   } finally {
     restore();
   }
@@ -237,6 +248,7 @@ function refreshBrandPackageLocks(
   mode: "lock-only" | "install",
   log: (line: string) => void,
   linkKit: boolean,
+  env: NodeJS.ProcessEnv,
 ): { refreshed: string[] } {
   const refreshed: string[] = [];
   for (const target of collectTargets(brandRoot)) {
@@ -256,17 +268,13 @@ function refreshBrandPackageLocks(
             "--no-audit",
             "--no-fund",
           ];
-    const r = spawnSync("npm", args, {
-      cwd: target.cwd,
-      stdio: "inherit",
-      env: process.env,
-    });
+    const r = spawnNpmAt(target.cwd, args, { stdio: "inherit", env });
     if (r.status !== 0) {
       throw new Error(
         `npm ${args.join(" ")} exit ${r.status ?? "?"} dans ${target.rel} — ` +
           (linkKit
             ? "lock impossible en --link-kit (worktree kit ou deps publiques injoignables)"
-            : "lock impossible (deps @creezio/* privées → exporter CREEZIO_NPM_TOKEN, ou --link-kit)"),
+            : "lock impossible (deps @creezio/* injoignables — npmjs.org, ou --link-kit)"),
       );
     }
     if (!isPackageLockInSync(target.pkgPath, target.lockPath, target.lockKey)) {

@@ -53,7 +53,7 @@ en jumeau dans `main.ts`.
 ## Layout hôte + smokes
 
 - Scaffold npm : workspace racine (`workspaces: ["server"]`) + `.npmrc`
-  (registre @creezio → GitHub Packages, token via `CREEZIO_NPM_TOKEN`) +
+  (registre @creezio → npmjs.org, aucun token) +
   matérialise `scripts/ensure-server-lock.mjs` (SoT `docker/server/`).
   Plus de vendor ni de symlinks trackés.
 - `--link-kit` / `CREEZIO_LINK_KIT=1` : `ensureBrandPackageLocks` pin les
@@ -88,12 +88,17 @@ en jumeau dans `main.ts`.
   = no-op sinon échec), **sync** `@creezio/*` de TOUS les manifests via
   `planCreezioManifestSync` (bump + AJOUT des deps SoT manquantes —
   trou prod 0.20.0 — jamais de suppression : dep hors SoT = warning
-  listé), lockfiles régénérés (`npm install --package-lock-only`, jamais
-  `npm update`), rematérialisation os-ui, doctor brand-spec fail-closed,
+  listé), lockfiles régénérés (`npm install --package-lock-only` isolé
+  au brand-root — jamais le prefix/workspace du kit ; jamais `npm update`),
+  rematérialisation os-ui, doctor brand-spec fail-closed,
   `--dry-run` (liste les ajouts). Les codemods sont embarqués dans le
   package publié
-  (`codemods/`, copiés au build par `scripts/copy-codemods.mjs` depuis
-  `scripts/codemods/` du kit — SoT). Gate : `test-phase-upgrade-runner`.
+  (`codemods/` + `codemods/lib/`, copiés au build par
+  `scripts/copy-codemods.mjs` depuis `scripts/codemods/` du kit — SoT).
+  Gate : `test-phase-upgrade-runner`.
+- `src/npm-isolated.ts` : spawn npm ancré sur le projet marque
+  (`--prefix` + env prefix/workspace stripé) — consommé par
+  `upgrade-cli` et `package-lock`.
 - `src/sync-creezio-deps.ts` : logique PARTAGÉE de sync des manifests
   marque (rôles root/server/server-ui/client ↔ SoT
   `SERVER/UI/CLIENT_CREEZIO_DEPS`) — consommée par `upgrade-cli.ts` ET par
@@ -105,12 +110,14 @@ en jumeau dans `main.ts`.
 - `src/server-docker-registry-gc.ts` : `creezio server-docker registry-gc`
   — GC fail-closed du registre Docker local (`registry:2`, `127.0.0.1:5000`) :
   API v2 list/delete + `docker exec … garbage-collect`, rétention `--keep N`
-  (défaut 2) **par famille** de tags (`auto.*` / manuels), tags PROTÉGÉS
-  jamais supprimés : conteneurs en cours, `docker-data/servers.json`
-  (`--brand-root` + labels `creezio.brand-root`, instances arrêtées
-  incluses), releases fleet de l'app admin (`--admin-app` /
-  `CREEZIO_FLEET_ADMIN_URL`, injoignable = refus). **Dry-run par défaut**,
-  `--apply` exécute. Gate : `scripts/test-phase-server-docker-registry-gc.mjs`.
+  (défaut 2) **par famille** : `auto.*` d'un côté, **semver** de l'autre
+  (fenêtre indépendante ≥ 3 — une rafale `auto.*` n'évince jamais un
+  semver). Tags PROTÉGÉS jamais supprimés : conteneurs en cours,
+  `docker-data/servers.json` (`--brand-root` + labels `creezio.brand-root`,
+  instances arrêtées incluses), releases fleet de l'app admin (`--admin-app`
+  / `CREEZIO_FLEET_ADMIN_URL`, injoignable = refus). **Dry-run par défaut**,
+  `--apply` exécute. Même politique sur le chemin `publish`.
+  Gate : `scripts/test-phase-server-docker-registry-gc.mjs`.
 - `src/server-docker-ghcr-gc.ts` : même geste `registry-gc` + rétention
   `publish` quand le registre cible EST `ghcr.io` — API GitHub Packages
   versions (pas v2). Règle : ≥ 3 semver, jamais un tag in-use /

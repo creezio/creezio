@@ -124,7 +124,7 @@ function renderPackageJsonFromPrd(m: AppManifest, model: ProductModel): string {
         main: "./build/electron/main.js",
         scripts,
         dependencies: {
-          // Deps npm publiées (GitHub Packages, lockstep ^<version>) —
+          // Deps npm publiées (npmjs.org, lockstep ^<version>) —
           // SoT unique : SERVER_CREEZIO_DEPS (kit-release.ts). Plus de file:vendor.
           ...creezioNpmDeps(SERVER_CREEZIO_DEPS),
           "electron-updater": "^6.3.9",

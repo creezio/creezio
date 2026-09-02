@@ -102,7 +102,7 @@ function scaffoldKitRootDefault(): string {
 /**
  * Matérialise dans la marque les artefacts « clone autonome » npm (SoT kit
  * docker/server/) : Dockerfile serveur, pré-flight lockfiles, .dockerignore.
- * L'auth registre ne se matérialise pas (CREEZIO_NPM_TOKEN = env/secret).
+ * Packages @creezio/* publics (npmjs.org) — aucun token.
  */
 function materializeStandaloneDistribution(
   outDir: string,
@@ -206,7 +206,7 @@ function renderPackageJson(m: AppManifest): string {
             "node scripts/ensure-linux-icons.mjs && npm run electron:config:server && npm run build:electron && electron-builder --config electron-builder.server.json --linux AppImage dir --x64",
         },
         dependencies: {
-          // Deps npm publiées (GitHub Packages, lockstep) — clôture explicite.
+          // Deps npm publiées (npmjs.org, lockstep) — clôture explicite.
           ...creezioNpmDeps(SERVER_CREEZIO_DEPS),
           "electron-updater": "^6.3.9",
           // Deps npm runtime main (asar FileSets kit) — pas seulement transitifs
@@ -962,7 +962,6 @@ docker-data/    # runtime gitignoré (registre servers.json, volumes)
 ## Quickstart dev (5 lignes)
 
 \`\`\`bash
-export CREEZIO_NPM_TOKEN=…        # PAT read:packages org creezio (registre privé)
 npm run setup                   # deps racine + ui + client, build kernel
 npm run dev                     # kernel + Next dev — URL affichée
 npm run status                  # état des processus (PID files .creezio/)
@@ -989,16 +988,11 @@ kit \`docker/server/README.md\`.
 
 ## Clone autonome (sans le kit creezio)
 
-**Registre privé — écosystème fermé assumé** : \`@creezio/*\` n'est
-installable qu'avec un PAT \`read:packages\` de l'org creezio
-(\`CREEZIO_NPM_TOKEN\`). Distribution npm (docs/NPM-DISTRIBUTION.md du kit) :
-les deps \`@creezio/*\`
-sont des versions publiées sur GitHub Packages — aucun vendor à synchroniser.
-Le \`.npmrc\` racine (commité, sans secret) référence \`\${CREEZIO_NPM_TOKEN}\` :
-exporter un PAT \`read:packages\` avant tout install. Post-clone :
+**npmjs.org** : \`@creezio/*\` sont des packages publics (org \`creezio\`).
+Distribution npm (docs/NPM-DISTRIBUTION.md du kit) — aucun vendor, aucun
+token. Le \`.npmrc\` racine (commité) pointe \`registry.npmjs.org\`. Post-clone :
 
 \`\`\`bash
-export CREEZIO_NPM_TOKEN=…        # PAT read:packages (org creezio)
 npm ci                          # workspace racine (server/) — lock commité
 npm ci --prefix server/ui && npm ci --prefix client
 npm run build:runtime && npm run build:ui
@@ -1818,10 +1812,10 @@ export function scaffoldNewApp(opts: NewAppOptions): ScaffoldResult {
     writeFile(path.join(outDir, rel), body, force, written);
   }
 
-  // .npmrc (registre @creezio → GitHub Packages, token via env — jamais
-  // commité) : racine (workspace) + client/ (install indépendante — npm ne
-  // remonte pas chercher le .npmrc parent hors workspaces). server/ui/.npmrc
-  // est posé par le scaffold UI (from-prd) quand une UI existe.
+  // .npmrc (registre @creezio → npmjs.org, aucun token) : racine
+  // (workspace) + client/ (install indépendante — npm ne remonte pas
+  // chercher le .npmrc parent hors workspaces). server/ui/.npmrc est
+  // posé par le scaffold UI (from-prd) quand une UI existe.
   writeFile(path.join(outDir, ".npmrc"), renderCreezioNpmrc(), force, written);
   writeFile(path.join(clientDir, ".npmrc"), renderCreezioNpmrc(), force, written);
   // .env partagé racine (runtime server + client).

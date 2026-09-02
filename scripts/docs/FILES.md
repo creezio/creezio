@@ -265,6 +265,12 @@
 |---|---|
 | [`codemods/H9/h9-import-module-contract.mjs`](../codemods/H9/h9-import-module-contract.mjs) | Migration H9 (P2.c) : modules/types.ts → ré-export kit + accessJustification "à qualifier" sur les mounts sans permission |
 
+## `codemods/lib/`
+
+| Fichier | Rôle |
+|---|---|
+| [`codemods/lib/skip-dirs.mjs`](../codemods/lib/skip-dirs.mjs) | SKIP_DIRS partagé de tous les codemods H* : `node_modules`, `dist`, `dist-electron-server`, `win-unpacked`, `release`, `out`, … |
+
 ## `lib/`
 
 | Fichier | Rôle |

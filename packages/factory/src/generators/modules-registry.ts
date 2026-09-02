@@ -847,7 +847,7 @@ Marque légère sur **OS Creezio** — monorepo client + server (layout 2 repos)
 - \`client/\` = desktop thin remote-only (main **sans** imports métier)
 - Admin flotte = **repo dédié privé** \`<brand>-admin\` (frère du monorepo) —
   jamais de \`admin/\` ici
-- Kit \`@creezio/*\` = **packages npm versionnés** (GitHub Packages, auth \`CREEZIO_NPM_TOKEN\`) — plus de \`vendor/\` ni symlinks
+- Kit \`@creezio/*\` = **packages npm versionnés** (npmjs.org, org creezio — aucun token) — plus de \`vendor/\` ni symlinks
 - Déclaration = migrations + \`registerModuleApi\` + feed + nav **métier**
 - Métier = **registre de modules** \`server/src/electron/modules/<id>.ts\`
   (un \`BrandModuleDef\` par module : entitySpecs, apiMounts + operations[],
@@ -872,7 +872,7 @@ Marque légère sur **OS Creezio** — monorepo client + server (layout 2 repos)
 
 ## Secrets (jamais commités, jamais dumpés)
 
-- Packages : \`CREEZIO_NPM_TOKEN\` / \`GH_TOKEN\` → GitHub Packages \`@creezio/*\`
+- Packages : \`@creezio/*\` publics sur npmjs.org (aucun token)
 - VPS tunnel : \`CREEZIO_CF_API_TOKEN\` + \`_ACCOUNT_ID\` + \`_ZONE_ID\`
 - VPS owner : \`CREEZIO_OWNER_EMAIL\` + \`CREEZIO_OWNER_PASSWORD\`
 - Local : \`CREEZIO_TUNNEL_LOCAL=1\`
