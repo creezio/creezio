@@ -594,24 +594,43 @@ test("U7 npm isolé : upgrade d'une marque à côté d'un faux kit ne touche pas
       "node_modules/@creezio du faux kit intact après lock-only",
     );
 
-    const up = spawnSync(
-      process.execPath,
-      [CLI, "upgrade", "--brand-root", brand],
-      {
-        encoding: "utf8",
-        cwd: fakeKit,
-        timeout: 120_000,
-        env: {
-          ...poisoned,
-          CREEZIO_KIT_ROOT: ROOT,
+    const kitVer = JSON.parse(
+      fs.readFileSync(
+        path.join(ROOT, "packages/platform-core/package.json"),
+        "utf8",
+      ),
+    ).version;
+    const published = spawnSync(
+      "npm",
+      ["view", `@creezio/platform-core@${kitVer}`, "version"],
+      { encoding: "utf8", timeout: 30_000 },
+    );
+    // PR changeset-release : lockstep pas encore sur npmjs (ETARGET).
+    // L'isolation lock-only + sentinel est déjà prouvée ci-dessus.
+    if (published.status !== 0) {
+      console.log(
+        `# skip U7 upgrade spawn : @creezio/platform-core@${kitVer} absent de npmjs (PR version)`,
+      );
+    } else {
+      const up = spawnSync(
+        process.execPath,
+        [CLI, "upgrade", "--brand-root", brand],
+        {
+          encoding: "utf8",
+          cwd: fakeKit,
+          timeout: 120_000,
+          env: {
+            ...poisoned,
+            CREEZIO_KIT_ROOT: ROOT,
+          },
         },
-      },
-    );
-    assert.equal(
-      up.status,
-      0,
-      `upgrade isolé a échoué:\n${up.stdout}\n${up.stderr}`,
-    );
+      );
+      assert.equal(
+        up.status,
+        0,
+        `upgrade isolé a échoué:\n${up.stdout}\n${up.stderr}`,
+      );
+    }
     assert.equal(
       fs.readFileSync(sentinel, "utf8"),
       "DO_NOT_TOUCH\n",

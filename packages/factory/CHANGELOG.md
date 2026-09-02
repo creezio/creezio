@@ -1,5 +1,22 @@
 # @creezio/factory
 
+## 0.19.0
+
+### Minor Changes
+
+- a7f9988: Hygiene factory : rétention semver registre indépendante (≥ 3, jamais le tag servers.json), `creezio upgrade` isole npm au brand-root, `.npmrc` généré pointe npmjs.org, SKIP_DIRS partagé des codemods (dist-electron-server / win-unpacked / release / out).
+- 17ae2a4: Les permissions nav des `navItems` alimentent `configureAuth` / `/admin/access` via `applyBrandModuleAuth` (collecteurs `collectNavPermissions` / `collectPermissionGroups`). `SessionProvider` lit uniquement `/me`. `brand module init` pose `permission: "nav.<id>"` sans `à qualifier` silencieux.
+- 4d6eccc: Rétention GHCR via l'API Packages (3 semver + jamais in-use, fail-closed sans auth) et garde anti-doublon des PR de propagate (GET PR ouvertes / pin main / HTTP 422).
+
+### Patch Changes
+
+- 2da43ad: D1 / T10 — purge vocabulaire marque du runtime kit : markers Hermes hérités retirés, registre production propagation vidé (canaux data-driven), commentaires/JSDoc neutralisés, log opener `creezio-server`. Allowlist 270→117 / 493→173 occ. Pas de dual-read TEMPOFLOW\_\* recréé.
+- Updated dependencies [2da43ad]
+  - @creezio/brand-config@0.25.0
+  - @creezio/platform-core@0.25.0
+  - @creezio/product-hub@0.25.0
+  - @creezio/brand-spec@0.25.0
+
 ## 0.18.1
 
 ### Patch Changes

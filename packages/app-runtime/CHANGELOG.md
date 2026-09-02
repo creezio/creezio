@@ -1,5 +1,38 @@
 # @creezio/app-runtime
 
+## 0.25.0
+
+### Minor Changes
+
+- 17ae2a4: Les permissions nav des `navItems` alimentent `configureAuth` / `/admin/access` via `applyBrandModuleAuth` (collecteurs `collectNavPermissions` / `collectPermissionGroups`). `SessionProvider` lit uniquement `/me`. `brand module init` pose `permission: "nav.<id>"` sans `à qualifier` silencieux.
+
+### Patch Changes
+
+- Updated dependencies [17ae2a4]
+- Updated dependencies [2da43ad]
+  - @creezio/auth@0.25.0
+  - @creezio/brand-config@0.25.0
+  - @creezio/host-runtime@0.25.0
+  - @creezio/observability@0.25.0
+  - @creezio/electron-shell@0.25.0
+  - @creezio/platform-core@0.25.0
+  - @creezio/access-control@0.25.0
+  - @creezio/integrations@0.25.0
+  - @creezio/mails@0.25.0
+  - @creezio/tasks@0.25.0
+  - @creezio/api-kernel@0.25.0
+  - @creezio/product-hub@0.25.0
+  - @creezio/shell-ui@0.25.0
+  - @creezio/search@0.25.0
+  - @creezio/mcp-facade@0.25.0
+  - @creezio/nav@0.25.0
+  - @creezio/onboarding@0.25.0
+  - @creezio/interactive-demo@0.25.0
+  - @creezio/assistant@0.25.0
+  - @creezio/support@0.25.0
+  - @creezio/browser-host@0.25.0
+  - @creezio/database@0.25.0
+
 ## 0.24.1
 
 ### Patch Changes

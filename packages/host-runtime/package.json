@@ -1,6 +1,6 @@
 {
   "name": "@creezio/host-runtime",
-  "version": "0.24.1",
+  "version": "0.25.0",
   "description": "Host runtime Node pur du kit Creezio (embeds Hermes/n8n/tunnel, plugins host + control plane, sandbox, ai-workspace, node/npm embarqués, launchers serveur, wiring host marque) — sans Electron statique",
   "type": "module",
   "main": "./dist-cjs/index.js",
@@ -23,11 +23,11 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@creezio/brand-config": "^0.24.1",
-    "@creezio/observability": "^0.24.1",
-    "@creezio/platform-core": "^0.24.1",
-    "@creezio/product-hub": "^0.24.1",
-    "@creezio/search": "^0.24.1"
+    "@creezio/brand-config": "^0.25.0",
+    "@creezio/observability": "^0.25.0",
+    "@creezio/platform-core": "^0.25.0",
+    "@creezio/product-hub": "^0.25.0",
+    "@creezio/search": "^0.25.0"
   },
   "peerDependencies": {
     "electron": ">=28"
