@@ -17,6 +17,16 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const CLI = path.join(ROOT, "packages/factory/bin/creezio.js");
 
+// Les cas « token en env » prouvent que la factory ne contacte JAMAIS GitHub
+// sans --push, même quand un token est disponible (on ne désarme rien).
+// Sur un runner CI, aucun token n'est exposé en env : on injecte un jeton
+// factice pour conserver la même preuve (le compteur réseau reste fail-closed,
+// la valeur du token n'est jamais utilisée). Sur une machine dev, le vrai
+// token présent est conservé tel quel.
+if (!(process.env.GITHUB_TOKEN || process.env.CREEZIO_GITHUB_TOKEN || "").trim()) {
+  process.env.CREEZIO_GITHUB_TOKEN = "ghp_gate_dummy_token_never_sent";
+}
+
 function runCli(args, opts = {}) {
   return spawnSync(process.execPath, [CLI, ...args], {
     encoding: "utf8",
