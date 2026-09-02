@@ -799,6 +799,67 @@ test("BS20 doctor : meiliIndexes.table inconnue = MODULE_MEILI_TABLE_UNKNOWN", (
   fs.rmSync(work, { recursive: true, force: true });
 });
 
+test("BS21 doctor : API sans assistantSources = MODULE_ASSISTANT_SOURCES_MISSING (warn)", () => {
+  const work = fs.mkdtempSync(path.join(os.tmpdir(), "brand-spec-asst-"));
+  const { specDir, modulesDir } = scaffoldDoctorApp(work, "asstdoc", "Asst Doc");
+  const moduleSrc = (extra) => `import { genericOsTourScenario } from "@creezio/interactive-demo";
+export const flowModule = {
+  id: "flow",
+  demo: { scenarios: [genericOsTourScenario({ productName: "Asst Doc" })] },
+  horsIndexJustification: "écritures — hors browse",
+  apiMounts: {
+    flow: {
+      dbLayer: "brand",
+      permission: "nav.flow",
+      operations: [
+        { id: "list", method: "GET", path: "/", description: "Lister" },
+      ],
+      handle: async () => ({ status: 200, body: {} }),
+    },
+  },
+  ${extra}
+};
+`;
+  const modPath = path.join(modulesDir, "flow.ts");
+
+  fs.writeFileSync(modPath, moduleSrc(""), "utf8");
+  const missing = doctorBrandSpec(specDir);
+  assert.equal(missing.ok, true, formatDoctorReport(missing));
+  assert.ok(
+    missing.issues.some(
+      (i) => i.code === "MODULE_ASSISTANT_SOURCES_MISSING" && i.level === "warn",
+    ),
+    formatDoctorReport(missing),
+  );
+
+  fs.writeFileSync(
+    modPath,
+    moduleSrc(`assistantSourcesJustification: "webhook machine — pas de contexte LLM",`),
+    "utf8",
+  );
+  const justified = doctorBrandSpec(specDir);
+  assert.equal(justified.ok, true, formatDoctorReport(justified));
+  assert.ok(
+    !justified.issues.some((i) => i.code === "MODULE_ASSISTANT_SOURCES_MISSING"),
+    formatDoctorReport(justified),
+  );
+
+  fs.writeFileSync(
+    modPath,
+    moduleSrc(`assistantSources: [
+    { kind: "context", id: "flow-overview", title: "Flux", body: "Module flux." },
+  ],`),
+    "utf8",
+  );
+  const sourced = doctorBrandSpec(specDir);
+  assert.equal(sourced.ok, true, formatDoctorReport(sourced));
+  assert.ok(
+    !sourced.issues.some((i) => i.code === "MODULE_ASSISTANT_SOURCES_MISSING"),
+    formatDoctorReport(sourced),
+  );
+  fs.rmSync(work, { recursive: true, force: true });
+});
+
 test("BS12 doctor : product.md manquant = PRODUCT_MD_MISSING", () => {
   const out = fs.mkdtempSync(path.join(os.tmpdir(), "brand-spec-noprod-"));
   const result = initBrandSpec({

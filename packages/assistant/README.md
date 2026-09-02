@@ -58,6 +58,7 @@ import {
   mcpFacadeToAssistantConfig,
 } from "@creezio/assistant";
 import { createAssistantTasksAdapter } from "@creezio/tasks";
+import { collectAssistantSources } from "./modules/index.js";
 
 configureAssistantBrand({
   identity: {
@@ -85,6 +86,7 @@ configureAssistantBrand({
     buildHermesWorkSystemBrief: (nowIso, user) =>
       `Agent Work Ma Marque pour ${user?.name ?? "l'utilisateur"} (${nowIso}).`,
   },
+  moduleSources: collectAssistantSources(), // BrandModuleDef.assistantSources
   mcp: mcpFacadeToAssistantConfig(facade),
   tasks: createAssistantTasksAdapter(),
   db: {

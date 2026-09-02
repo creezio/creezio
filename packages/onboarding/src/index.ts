@@ -46,10 +46,13 @@ export type {
   OnboardingContent,
   OnboardingContentOverride,
   OnboardingContentMountOptions,
+  BrandModuleOnboarding,
+  BrandModuleOnboardingContribution,
 } from "./content.js";
 export {
   ONBOARDING_CONTENT_SCHEMA_SQL,
   onboardingContentMigrations,
   mergeOnboardingContent,
+  composeOnboardingFromModules,
   createOnboardingContentMount,
 } from "./content.js";

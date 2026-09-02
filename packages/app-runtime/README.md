@@ -21,6 +21,7 @@ updater, crash-reporter, sidecar navigateur) est composé ici.
 | `warmBrandNativeHosts` | Préchauffage embeds (n8n, Hermes) |
 | `wireBrandBrowserSidecar` | Sidecar navigateur IA (Chromium CDP, `CREEZIO_BROWSER_PROXY`) |
 | `mountBrandEmailSurface` / `mountBrandMcpSurface` / `mountBrandPlatformSurface` | Surfaces optionnelles |
+| `createBrandModuleRegistry` | Collecteurs du registre (`collectEntitySpecs`, `collectAssistantSources`, `collectOnboardingContent`, …) — SoT `BrandModuleDef` (P2.c / F3.4) |
 
 ## Consommation marque
 

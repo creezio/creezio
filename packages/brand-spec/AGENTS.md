@@ -52,6 +52,9 @@ du doctor. Version kit indéterminable → pas d'escalade aveugle (warn).
   - `MODULE_PERMISSION_UNQUALIFIED` — **warn** : `accessJustification:
     "à qualifier"` (dette posée par le codemod H9, jamais une permission
     inventée)
+  - `MODULE_ASSISTANT_SOURCES_MISSING` — **warn** (volet 2 F3.4, jamais
+    fail-closed) : module avec `apiMounts` / `entitySpecs` sans
+    `assistantSources` ni `assistantSourcesJustification`
 - Checks manifests `@creezio/*` (**error** immédiate, sans gating par pin —
   un manifest cassé est un bug runtime/build quel que soit l'âge de la
   marque) :

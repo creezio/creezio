@@ -69,7 +69,7 @@ test("owned-by-brand survit à brand apply --force", () => {
     "utf8",
   );
   assert.equal(
-    runCli(["brand", "apply", "--spec", specDir, "--out", appDir, "--force"])
+    runCli(["brand", "apply", "--spec", specDir, "--out", appDir, "--force", "--no-push"])
       .status,
     0,
   );
@@ -96,6 +96,7 @@ test("owned-by-brand survit à brand apply --force", () => {
     "--out",
     appDir,
     "--force",
+    "--no-push",
   ]);
   assert.equal(reapply.status, 0, reapply.stderr + reapply.stdout);
   assert.match(reapply.stdout + reapply.stderr, /skip owned-by-brand/);
@@ -120,6 +121,7 @@ test("owned-by-brand survit à brand apply --force", () => {
     "--out",
     appDir,
     "--force",
+    "--no-push",
   ]);
   assert.equal(reapplyPkg.status, 0, reapplyPkg.stderr + reapplyPkg.stdout);
   assert.match(

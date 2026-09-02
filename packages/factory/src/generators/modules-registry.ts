@@ -54,7 +54,8 @@ export const BRAND_MODULES: BrandModuleDef[] = [
 /**
  * Collecteurs du registre — délégation aux collecteurs génériques kit
  * (collectDemoScenarios inclut validation + dédup par id, \`os-tour\`
- * partagé : premier gagne).
+ * partagé : premier gagne ; collectAssistantSources / collectOnboardingContent
+ * = volet 2 F3.4, champs additifs).
  */
 export const {
   collectEntitySpecs,
@@ -64,6 +65,8 @@ export const {
   collectMeiliIndexes,
   collectModuleMigrations,
   collectDemoScenarios,
+  collectAssistantSources,
+  collectOnboardingContent,
 } = createBrandModuleRegistry(BRAND_MODULES);
 `;
 
@@ -327,6 +330,47 @@ export function renderPlayableDemoBlock(opts: {
             optional: true,
           },
         ],
+      },
+    ],
+  },`;
+}
+
+/** Descripteurs assistant + étape onboarding — factory / `brand module init`. */
+export function renderAssistantAndOnboardingBlocks(opts: {
+  moduleId: string;
+  title: string;
+  entityId?: string;
+  navHref?: string;
+  titleField?: string;
+}): string {
+  const href = opts.navHref || `/${opts.moduleId}`;
+  const entityKind = opts.entityId || opts.moduleId;
+  const titleField = opts.titleField || "nom";
+  return `  assistantSources: [
+    {
+      kind: "entity",
+      entityKind: ${JSON.stringify(entityKind)},
+      titleFields: [${JSON.stringify(titleField)}],
+      type: ${JSON.stringify(entityKind)},
+      urlWhenId: ${JSON.stringify(`${href}/{id}`)},
+      urlWhenSearch: ${JSON.stringify(`${href}?q={q}`)},
+    },
+    {
+      kind: "context",
+      id: ${JSON.stringify(`${opts.moduleId}-overview`)},
+      title: ${JSON.stringify(opts.title)},
+      body: ${JSON.stringify(
+        `Module ${opts.title} — entité ${entityKind}.`,
+      )},
+    },
+  ],
+  onboarding: {
+    steps: [
+      {
+        id: ${JSON.stringify(opts.moduleId)},
+        label: ${JSON.stringify(opts.title)},
+        interstitialTitle: ${JSON.stringify(opts.title)},
+        interstitialTagline: ${JSON.stringify(`Découvrir ${opts.title}.`)},
       },
     ],
   },`;
@@ -613,6 +657,16 @@ ${renderPlayableDemoBlock({
     navLabel,
   })}
 ${meiliOrHors}
+${renderAssistantAndOnboardingBlocks({
+    moduleId,
+    title: navLabel,
+    entityId: entity.id,
+    navHref,
+    titleField:
+      entity.fields.find((f) => f.type === "text")?.name ||
+      entity.fields[0]?.name ||
+      "nom",
+  })}
 };
 `,
   };
@@ -797,7 +851,7 @@ Marque légère sur **OS Creezio** — monorepo client + server (layout 2 repos)
 - Déclaration = migrations + \`registerModuleApi\` + feed + nav **métier**
 - Métier = **registre de modules** \`server/src/electron/modules/<id>.ts\`
   (un \`BrandModuleDef\` par module : entitySpecs, apiMounts + operations[],
-  navItems, meiliIndexes, demo, migrations) + specs 5 fichiers
+  navItems, meiliIndexes, assistantSources, onboarding, demo, migrations) + specs 5 fichiers
   \`brand-spec/modules/<id>/\` (prd, interview, TODO, CHANGELOG, gate.mjs —
   standard kit \`DOC-STANDARD-MODULE.md\`, runner \`npm run test:modules\`).
   \`brand-module-api.ts\` / \`brand-migrations.ts\` / \`vertical-slot.ts\` /

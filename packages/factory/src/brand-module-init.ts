@@ -19,6 +19,7 @@ import {
   camelizeModuleId,
   ensureModulesRegistry,
   registerModuleInIndex,
+  renderAssistantAndOnboardingBlocks,
   renderModuleGateStub,
   renderPlayableDemoBlock,
   wireModuleGateInPackageJson,
@@ -73,6 +74,7 @@ export const ${camel}Module: BrandModuleDef = {
   // meiliIndexes: [{ uid: "catalog_products", countKey: "produits", table: "${camel}", columns: ["id", "nom"], settings: { searchableAttributes: ["nom"], filterableAttributes: ["id"] } }],
   // horsIndexJustification: "écritures / joins / hors browse catalogue",
 ${renderPlayableDemoBlock({ moduleId: id, title, productName, navLabel: title })}
+${renderAssistantAndOnboardingBlocks({ moduleId: id, title, navHref: `/${id}` })}
   // migrations: () => [{ id: "mod_${camel}_001_init", sql: \`…\` }],
 };
 `;

@@ -177,7 +177,7 @@ test("os-ui scaffold : zéro page OS versionnée, materialize + boot kit", () =>
   // hors-ligne que factory-prd (CREEZIO_SKIP_BRAND_DIST + lien kit si smoke).
   const r = spawnSync(
     process.execPath,
-    [CLI, "new-app", "--from-prd", PRD, "--out", out, "--force"],
+    [CLI, "new-app", "--from-prd", PRD, "--out", out, "--force", "--no-push"],
     {
       encoding: "utf8",
       cwd: ROOT,
