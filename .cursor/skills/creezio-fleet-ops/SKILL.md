@@ -611,6 +611,12 @@ d'instance) **et persiste l'URL publique canonique dans toutes les SoT
 `agentUrl`** (`host-agent.json` + `docker-data/fleet-hosts.json` +
 `POST /admin/api/hosts/agent-url`). Idempotent. Fail-closed si l'URL ne
 peut pas être dérivée (ou si l'hôte est enrôlé sans SoT admin joignable).
+`docker-data/fleet-hosts.json` est souvent **root:root 600** (écrit par
+`creezio-server-admin`) : `agent up` tente l'écriture directe, puis
+`sudo -n tee` (même wrapper que le préflight UFW), puis le POST admin
+(le container écrit le fichier — même chemin que `enroll` / `update`).
+Ne **pas** chmod/chown à la main. Si sudo et admin échouent : message
+actionnable (`admin up` puis relancer `agent up`).
 Sans `CREEZIO_CF_*` : refus fail-closed avec la liste des clés manquantes.
 Respawn : Docker `unless-stopped` + surveillance bornée par le host-agent
 (`@creezio/fleet` `agent-tunnel.ts`). État : `agent status` et

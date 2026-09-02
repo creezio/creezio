@@ -93,7 +93,9 @@ restent la SoT observability, hors périmètre fleet.
   health : additif (protocole v1 intact). Pas de kill-switch env.
   `agentUrl` (URL dédiée) est persistée par la factory + 
   `POST /admin/api/hosts/agent-url` (auth agentToken) — l'admin ne
-  sonde plus une URL nested partagée stale.
+  sonde plus une URL nested partagée stale. `fleet-hosts.json` runtime
+  root:root 600 : le CLI tente `sudo -n` puis ce POST (le container
+  écrit) — jamais chmod/chown manuel.
 - `server-admin-client` : tout changement de route/format côté
   `server-admin.ts` (`/admin/api/servers`, `/admin/api/hosts/verify`,
   `POST /admin/api/hosts/agent-url`) doit suivre dans le client typé —

@@ -409,7 +409,9 @@ via l'API CF directe** (DNS nested+flat+mail+extras de l'instance + tunnel
 instance — **jamais** `agent.*` / `agent-*`) avant de retirer le stack ;
 `server-docker enroll` / `agent up` provisionnent le tunnel **dédié**
 agent et persistent l'URL publique canonique dans `host-agent.json` et
-`fleet-hosts.json` (`agentUrl`) ; `server-docker agent rm` est le seul
+`fleet-hosts.json` (`agentUrl`) — si `fleet-hosts.json` est root:root 600,
+écriture via `sudo -n` sinon POST admin (container), jamais chmod manuel ;
+`server-docker agent rm` est le seul
 geste qui retire DNS agent + tunnel dédié.
 
 **Update et tunnels publics (0.10.8 — non négociable)** : `server-docker

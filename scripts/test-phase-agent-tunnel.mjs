@@ -414,6 +414,11 @@ test("source : provisionDedicatedAgentTunnel = ensure → connecteur → DNS →
   assert.match(helper, /export function canonicalDedicatedAgentUrl/);
   assert.match(helper, /export function applyDedicatedAgentUrlToHostState/);
   assert.match(helper, /export function persistDedicatedAgentUrlInFleetHostsFile/);
+  assert.match(helper, /export function isFsPermissionError/);
+  assert.match(helper, /export function readTextFileDirectOrSudo/);
+  assert.match(helper, /export function writeTextFileDirectOrSudo/);
+  assert.match(helper, /sudo -n/);
+  assert.match(helper, /permissionDenied/);
 });
 
 test("helpers : needsDedicatedAgentTunnelMigration + parseAgentPublicUrl", () => {
@@ -583,6 +588,55 @@ test("helpers : après migration, agentUrl == URL dédiée (plus l'URL nested pa
       factory.persistDedicatedAgentUrlInFleetHostsFile(runtime, "host-1", dedicated),
       { found: true, changed: false },
     );
+
+    const eacces = Object.assign(new Error("EACCES: permission denied"), {
+      code: "EACCES",
+    });
+    assert.equal(factory.isFsPermissionError(eacces), true);
+    assert.equal(factory.isFsPermissionError(new Error("ENOENT")), false);
+    const denied = factory.persistDedicatedAgentUrlInFleetHostsFile(
+      runtime,
+      "host-1",
+      "https://agent-other.example.test",
+      {
+        readFile: () => {
+          throw eacces;
+        },
+        writeFile: () => {
+          throw eacces;
+        },
+      },
+    );
+    assert.deepEqual(
+      denied,
+      { found: true, changed: false, permissionDenied: true },
+      "EACCES → permissionDenied, pas d'exception",
+    );
+    const sudoWrote = { path: "", body: "" };
+    const viaSudo = factory.persistDedicatedAgentUrlInFleetHostsFile(
+      runtime,
+      "host-1",
+      "https://agent-via-sudo.example.test",
+      {
+        readFile: () => fs.readFileSync(runtime, "utf8"),
+        writeFile: (filePath, body) => {
+          sudoWrote.path = filePath;
+          sudoWrote.body = body;
+          fs.writeFileSync(filePath, body);
+        },
+      },
+    );
+    assert.deepEqual(viaSudo, { found: true, changed: true });
+    assert.match(sudoWrote.body, /agent-via-sudo\.example\.test/);
+    const msg = factory.formatFleetHostsEaccesError({
+      dedicatedUrl: dedicated,
+      deniedFiles: [runtime],
+      adminDetail: "admin down",
+    });
+    assert.match(msg, /root:root 600/);
+    assert.match(msg, /admin up/);
+    assert.match(msg, /POST \/admin\/api\/hosts\/agent-url/);
+    assert.match(msg, /Ne PAS chmod\/chown/);
   } finally {
     fs.rmSync(tmp, { recursive: true, force: true });
   }
@@ -635,6 +689,12 @@ test("source : agent up migre ; instance rm n'appelle jamais deprovisionCfAgentT
     "persist partagée (host-agent + fleet-hosts + admin API)",
   );
   assert.match(cli, /\/admin\/api\/hosts\/agent-url/);
+  assert.match(
+    cli,
+    /permissionDenied/,
+    "EACCES local n'aborte pas avant le POST admin",
+  );
+  assert.match(cli, /formatFleetHostsEaccesError/);
   assert.doesNotMatch(
     cli,
     /penser à patcher|patcher agentUrl|patch manuel/,
@@ -679,11 +739,14 @@ test("source : host-agent démarre le watch ; pas de kill-switch ; watch sans AP
     "utf8",
   );
   assert.match(skill, /persiste l'URL publique canonique/);
+  assert.match(skill, /root:root 600/);
+  assert.match(skill, /sudo -n tee/);
   assert.doesNotMatch(skill, /penser à patcher agentUrl/);
   const runbook = fs.readFileSync(
     path.join(ROOT, "docs/RUNBOOK-FLOTTE.md"),
     "utf8",
   );
   assert.match(runbook, /persiste `agentUrl`/);
+  assert.match(runbook, /root:root 600/);
   assert.doesNotMatch(runbook, /penser à patcher agentUrl/);
 });

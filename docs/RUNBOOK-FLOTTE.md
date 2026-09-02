@@ -53,7 +53,9 @@ Les zones Cloudflare et hostnames publics sont **ceux de la marque**
    tunnel Cloudflare propre à l'agent (container `creezio-agent-tunnel`,
    token `docker-data/agent-tunnel.env` 600) ; `agent up` migre tout seul
    un hôte déjà enrôlé sans tunnel dédié **et persiste `agentUrl`
-   (host-agent.json + fleet-hosts.json + API admin)** ; `agent rm` est
+   (host-agent.json + fleet-hosts.json + API admin)** — `fleet-hosts.json`
+   root:root 600 : `sudo -n` puis POST admin, jamais chmod manuel ;
+   `agent rm` est
    le seul geste qui retire DNS `agent.*` /
    tunnel dédié (`server-docker rm` d'une instance ne les touche jamais) ;
    respawn surveillé par le host-agent (gates `test-phase-agent-tunnel`,

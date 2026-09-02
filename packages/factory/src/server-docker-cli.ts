@@ -65,6 +65,7 @@ import {
   needsDedicatedAgentTunnelMigration,
   parseAgentPublicUrl,
   persistDedicatedAgentUrlInFleetHostsFile,
+  formatFleetHostsEaccesError,
   buildAgentTunnelRunArgs,
   renderAgentTunnelEnvFile,
   resolveAgentTunnelImage,
@@ -2684,6 +2685,8 @@ function ensureAgentTunnelContainer(opts: {
  * POST /admin/api/hosts/agent-url). Idempotent. Fail-closed si l'URL
  * ne peut pas être dérivée, ou si l'hôte est enrôlé sans SoT admin
  * joignable (l'admin continuerait de sonder l'ancienne URL nested).
+ * `fleet-hosts.json` root:root 600 : écriture via `sudo -n`, sinon
+ * POST admin (container). Jamais d'abort EACCES brut ni chmod manuel.
  */
 async function persistDedicatedAgentUrlAfterUp(opts: {
   brandRoot: string;
@@ -2709,12 +2712,21 @@ async function persistDedicatedAgentUrlAfterUp(opts: {
     extraRoots,
   });
   let fleetFound = false;
+  const deniedFiles: string[] = [];
   for (const file of files) {
     const r = persistDedicatedAgentUrlInFleetHostsFile(
       file,
       opts.state.hostId,
       dedicatedUrl,
     );
+    if (r.permissionDenied) {
+      deniedFiles.push(file);
+      console.log(
+        `⚠ ${file} : EACCES (root:root 600 typique) — sudo -n impossible, ` +
+          `on pousse via POST /admin/api/hosts/agent-url`,
+      );
+      continue;
+    }
     if (r.found) fleetFound = true;
     if (r.changed) {
       console.log(`✓ agentUrl persisté (${file}) : ${dedicatedUrl}`);
@@ -2724,6 +2736,9 @@ async function persistDedicatedAgentUrlAfterUp(opts: {
   const adminUrl = String(opts.state.adminUrl || "").trim().replace(/\/+$/, "");
   const fleetKey = String(opts.state.fleetKey || "").trim();
   let apiOk = false;
+  let adminDetail = adminUrl
+    ? `${adminUrl} injoignable`
+    : "adminUrl absente de host-agent.json";
   if (adminUrl && fleetKey) {
     try {
       const res = await fetch(`${adminUrl}/admin/api/hosts/agent-url`, {
@@ -2747,9 +2762,7 @@ async function persistDedicatedAgentUrlAfterUp(opts: {
           `⚠ admin agentUrl (${res.status}): ${json.error || "réponse invalide"} — SoT locale à jour`,
         );
       } else {
-        throw new Error(
-          `admin agentUrl KO (${res.status}): ${json.error || "réponse invalide"}`,
-        );
+        adminDetail = `${adminUrl} (${res.status}): ${json.error || "réponse invalide"}`;
       }
     } catch (e) {
       if (fleetFound) {
@@ -2757,22 +2770,23 @@ async function persistDedicatedAgentUrlAfterUp(opts: {
           `⚠ admin agentUrl injoignable : ${(e as Error)?.message || e} — SoT locale à jour`,
         );
       } else {
-        throw new Error(
-          `hôte enrôlé : agentUrl dédiée ${dedicatedUrl} écrite dans host-agent.json ` +
-            `mais aucune SoT admin à jour (fleet-hosts.json introuvable, ` +
-            `${adminUrl} : ${(e as Error)?.message || e}). ` +
-            `Poser --admin-root <repo-admin> ou vérifier que creezio-server-admin tourne.`,
-        );
+        adminDetail = `${adminUrl} : ${(e as Error)?.message || e}`;
       }
     }
   }
 
-  if ((adminUrl || fleetKey) && !fleetFound && !apiOk) {
+  if ((adminUrl || fleetKey || deniedFiles.length) && !fleetFound && !apiOk) {
     throw new Error(
-      `hôte enrôlé : agentUrl dédiée ${dedicatedUrl} écrite dans host-agent.json ` +
-        `mais fleet-hosts.json introuvable et admin injoignable. ` +
-        `L'admin flotte continuerait de sonder l'ancienne URL nested. ` +
-        `Poser --admin-root <repo-admin> ou relancer avec l'admin up.`,
+      deniedFiles.length
+        ? formatFleetHostsEaccesError({
+            dedicatedUrl,
+            deniedFiles,
+            adminDetail,
+          })
+        : `hôte enrôlé : agentUrl dédiée ${dedicatedUrl} écrite dans host-agent.json ` +
+            `mais fleet-hosts.json introuvable et admin injoignable. ` +
+            `L'admin flotte continuerait de sonder l'ancienne URL nested. ` +
+            `Poser --admin-root <repo-admin> ou relancer avec l'admin up.`,
     );
   }
   return dedicatedUrl;

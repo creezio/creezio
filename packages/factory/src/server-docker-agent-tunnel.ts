@@ -18,6 +18,7 @@
  * politique cloudflared-respawn).
  */
 
+import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 
@@ -262,17 +263,119 @@ export function discoverFleetHostsJsonPaths(opts: {
   return out;
 }
 
-/** Écrit `agentUrl` dans un fleet-hosts.json existant (idemptotent). */
+export type PersistFleetHostsResult = {
+  found: boolean;
+  changed: boolean;
+  /** Présent mais lecture/écriture refusée (root:root 600 typique). */
+  permissionDenied?: boolean;
+};
+
+export type FleetHostsFileIo = {
+  readFile: (filePath: string) => string;
+  writeFile: (filePath: string, body: string) => void;
+};
+
+export type SudoExec = (
+  argv: string[],
+  opts?: { input?: string },
+) => { ok: boolean; stdout: string; stderr: string };
+
+export function isFsPermissionError(err: unknown): boolean {
+  const code = (err as NodeJS.ErrnoException | undefined)?.code;
+  return code === "EACCES" || code === "EPERM";
+}
+
+export function defaultSudoExec(
+  argv: string[],
+  opts?: { input?: string },
+): { ok: boolean; stdout: string; stderr: string } {
+  const r = spawnSync("sudo", ["-n", ...argv], {
+    encoding: "utf8",
+    input: opts?.input,
+  });
+  return {
+    ok: r.status === 0,
+    stdout: r.stdout || "",
+    stderr: String(r.stderr || r.error?.message || ""),
+  };
+}
+
+function permissionError(message: string): NodeJS.ErrnoException {
+  const err = new Error(message) as NodeJS.ErrnoException;
+  err.code = "EACCES";
+  return err;
+}
+
+/** Lecture directe, sinon `sudo -n cat` (même wrapper que le préflight UFW). */
+export function readTextFileDirectOrSudo(
+  filePath: string,
+  sudoExec: SudoExec = defaultSudoExec,
+): string {
+  try {
+    return fs.readFileSync(filePath, "utf8");
+  } catch (e) {
+    if (!isFsPermissionError(e)) throw e;
+  }
+  const r = sudoExec(["cat", filePath]);
+  if (!r.ok) throw permissionError(r.stderr || "sudo -n cat refusé");
+  return r.stdout;
+}
+
+/** Écriture directe, sinon `sudo -n tee` + chmod 600. */
+export function writeTextFileDirectOrSudo(
+  filePath: string,
+  body: string,
+  sudoExec: SudoExec = defaultSudoExec,
+): void {
+  try {
+    fs.writeFileSync(filePath, body, { mode: 0o600 });
+    return;
+  } catch (e) {
+    if (!isFsPermissionError(e)) throw e;
+  }
+  const tee = sudoExec(["tee", filePath], { input: body });
+  if (!tee.ok) throw permissionError(tee.stderr || "sudo -n tee refusé");
+  sudoExec(["chmod", "600", filePath]);
+}
+
+export function formatFleetHostsEaccesError(opts: {
+  dedicatedUrl: string;
+  deniedFiles: string[];
+  adminDetail: string;
+}): string {
+  const files = opts.deniedFiles.join(", ");
+  return (
+    `hôte enrôlé : agentUrl dédiée ${opts.dedicatedUrl} écrite dans host-agent.json ` +
+    `mais ${files} est root:root 600 (écrit par creezio-server-admin) ` +
+    `et sudo -n / admin ont échoué (${opts.adminDetail}). ` +
+    `Ne PAS chmod/chown à la main. ` +
+    `Chemin qui marche : creezio server-docker admin up --admin-root <repo-admin> ` +
+    `puis relancer agent up — POST /admin/api/hosts/agent-url écrit le fichier ` +
+    `depuis le container (même wrapper que enroll / server-docker update).`
+  );
+}
+
+/**
+ * Écrit `agentUrl` dans un fleet-hosts.json existant (idempotent).
+ * EACCES/EPERM → tente sudo -n ; si ça échoue encore, `permissionDenied`
+ * (le caller pousse via POST admin, sans aborter).
+ */
 export function persistDedicatedAgentUrlInFleetHostsFile(
   filePath: string,
   hostId: string,
   dedicatedUrl: string,
-): { found: boolean; changed: boolean } {
+  io?: FleetHostsFileIo,
+): PersistFleetHostsResult {
   if (!fs.existsSync(filePath)) return { found: false, changed: false };
+  const readFile = io?.readFile ?? readTextFileDirectOrSudo;
+  const writeFile = io?.writeFile ?? writeTextFileDirectOrSudo;
   let raw: unknown;
   try {
-    raw = JSON.parse(fs.readFileSync(filePath, "utf8"));
+    raw = JSON.parse(readFile(filePath));
   } catch (e) {
+    if (isFsPermissionError(e)) {
+      return { found: true, changed: false, permissionDenied: true };
+    }
     throw new Error(
       `fleet-hosts.json illisible (${filePath}) : ${(e as Error).message}`,
     );
@@ -283,11 +386,14 @@ export function persistDedicatedAgentUrlInFleetHostsFile(
   const data = raw as { hosts?: Array<{ hostId: string; agentUrl?: string }> };
   const result = applyDedicatedAgentUrlToFleetHosts(data, hostId, dedicatedUrl);
   if (result.changed) {
-    fs.writeFileSync(
-      filePath,
-      JSON.stringify(data, null, 2) + "\n",
-      { mode: 0o600 },
-    );
+    try {
+      writeFile(filePath, JSON.stringify(data, null, 2) + "\n");
+    } catch (e) {
+      if (isFsPermissionError(e)) {
+        return { found: true, changed: false, permissionDenied: true };
+      }
+      throw e;
+    }
   }
   return result;
 }

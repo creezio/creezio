@@ -129,6 +129,10 @@ export {
   needsDedicatedAgentTunnelMigration,
   parseAgentPublicUrl,
   persistDedicatedAgentUrlInFleetHostsFile,
+  formatFleetHostsEaccesError,
+  isFsPermissionError,
+  readTextFileDirectOrSudo,
+  writeTextFileDirectOrSudo,
   renderAgentTunnelEnvFile,
   resolveAgentTunnelImage,
 } from "./server-docker-agent-tunnel.js";
