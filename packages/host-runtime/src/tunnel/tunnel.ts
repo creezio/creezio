@@ -324,7 +324,7 @@ export function createTunnelService(opts: {
       ports.hermesPort ??
       cfg.servicePorts?.hermes ??
       HERMES_DESKTOP_WEBUI_PORT;
-    // ensureCfTunnel = PUT ingress (ports à jour, règle agent préservée) +
+    // ensureCfTunnel = PUT ingress (ports à jour, jamais de règle agent) +
     // DNS idempotent + self-healing si le tunnel a disparu côté CF.
     const result = await ensureCfTunnel(env, {
       slug: cfg.slug,

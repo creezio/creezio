@@ -2,9 +2,11 @@
  * Création + push des repos GitHub d'une marque factory (2 repos privés :
  * monorepo marque + `<brand>-admin`).
  *
- * Token : env GITHUB_TOKEN / CREEZIO_GITHUB_TOKEN, ou fichier `.github-token`
- * (jamais commité). Auteur des commits : Creezio via flags `-c` par commande —
- * JAMAIS de `git config` global/local persistant.
+ * Push GitHub **opt-in** : `maybePushBrandRepos` ne résout un token et
+ * n'appelle l'API que si `push: true` (`--push`). Sans ce flag : zéro réseau.
+ * Token (uniquement si `--push`) : env GITHUB_TOKEN / CREEZIO_GITHUB_TOKEN,
+ * ou fichier `.github-token` (jamais commité). Auteur des commits : Creezio
+ * via flags `-c` par commande — JAMAIS de `git config` global/local persistant.
  */
 
 import fs from "node:fs";
@@ -178,17 +180,25 @@ export type MaybePushOptions = {
   adminDir: string;
   brandId: string;
   productName: string;
-  /** --push : exige un token ; --no-push : jamais. */
+  /** --push : seul opt-in réseau ; exige un token. */
   push?: boolean;
+  /** --no-push : défaut (redondant) ; gagne sur --push si les deux sont posés. */
   noPush?: boolean;
   org?: string;
   log?: (line: string) => void;
 };
 
+/** Message CLI quand les repos GitHub ne sont pas créés (défaut, sans --push). */
+export const GITHUB_REPOS_SKIPPED_MSG =
+  "repos GitHub non créés (--push pour les créer)";
+
 /**
  * Politique factory 2-repos : crée + pousse `<brand>` et `<brand>-admin`
- * si un token est résolvable (env ou .github-token près de la marque).
- * `--no-push` court-circuite ; `--push` échoue sans token.
+ * **uniquement** si `push: true` (flag CLI `--push`).
+ *
+ * Sans `--push` : aucun appel réseau, aucune résolution de token
+ * (env / `.github-token` ignorés). `--no-push` est le défaut (flag accepté,
+ * redondant). `--push` sans token = erreur explicite.
  */
 export async function maybePushBrandRepos(
   o: MaybePushOptions,
@@ -202,21 +212,16 @@ export async function maybePushBrandRepos(
   // sans ça il naît SANS package-lock.json (vécu foove2-admin, 2026-08-13).
   prepareBrandDistribution(o.adminDir, { log });
 
-  if (o.noPush) {
-    log("--no-push : repos GitHub non créés");
+  const wantPush = o.push === true && o.noPush !== true;
+  if (!wantPush) {
+    log(GITHUB_REPOS_SKIPPED_MSG);
     return null;
   }
   const token = resolveGithubToken([o.outDir, path.dirname(o.outDir)]);
   if (!token) {
-    if (o.push) {
-      throw new Error(
-        "--push : token GitHub requis (env GITHUB_TOKEN/CREEZIO_GITHUB_TOKEN ou .github-token)",
-      );
-    }
-    log(
-      "pas de token GitHub — repos non créés (env GITHUB_TOKEN ou .github-token, puis --push)",
+    throw new Error(
+      "--push : token GitHub requis (env GITHUB_TOKEN/CREEZIO_GITHUB_TOKEN ou .github-token)",
     );
-    return null;
   }
   const org = o.org || process.env.CREEZIO_GITHUB_ORG || "creezio";
   return createBrandGithubRepos({

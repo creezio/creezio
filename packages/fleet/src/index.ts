@@ -11,6 +11,7 @@
 export * from "./protocol.js";
 export * from "./types.js";
 export * from "./docker.js";
+export * from "./agent-tunnel.js";
 export * from "./server-lib.js";
 export * from "./server-admin-client.js";
 export * from "./instance-stack.js";

@@ -16,10 +16,14 @@
  *  5. DNS specs flat/nested selon D2 (CREEZIO_CF_UNIVERSAL_SSL) + ingress
  *     services 127.0.0.1 (cloudflared in-process, modèle unique) ;
  *  6. D1 : hostnames supplémentaires dans l'ingress ET les DNS du même
- *     tunnel ; règle agent existante préservée (GET configurations) ;
+ *     tunnel ; aucune règle agent posée/préservée sur le tunnel instance ;
  *  7. erreurs API : CfApiError (status + message), getCfTunnel null sur
  *     404, relance sur 500 ;
- *  8. deprovisionCfSlug : DNS supprimés + tunnel supprimé (best-effort).
+ *  8. deprovisionCfSlug : DNS instance + tunnel instance (jamais agent.*) ;
+ * 10. T7 — tunnel DÉDIÉ agent (`ensureCfAgentTunnel`) : création
+ *     `creezio-agent-<slug>` (ingress agent seul, pas d'embeds/email),
+ *     `dns:false` (bascule différée), idempotence, 404 → recréation,
+ *     bascule CNAME + `removeCfTunnelAgentRule` + `deprovisionCfAgentTunnel`.
  */
 import assert from "node:assert/strict";
 import fs from "node:fs";
@@ -31,9 +35,12 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const CORE = path.join(ROOT, "packages/platform-core/dist");
 
 const {
+  agentTunnelCfName,
+  buildAgentTunnelIngressRules,
   buildTunnelIngressRules,
   tunnelDnsRecordSpecs,
   tunnelDeprovisionDnsHosts,
+  agentTunnelDeprovisionDnsHosts,
   tunnelAgentHostname,
   slugCheckLocal,
 } = await import(path.join(CORE, "tunnel-cf.js"));
@@ -44,8 +51,14 @@ const {
   resolveCfZoneName,
   getCfTunnel,
   ensureCfTunnel,
+  ensureCfAgentTunnel,
+  ensureCfAgentTunnelDns,
+  removeCfTunnelAgentRule,
   ensureCfCnameRecord,
   deprovisionCfSlug,
+  deprovisionCfAgentTunnel,
+  getCfTunnelConfig,
+  putCfTunnelIngress,
   resolveCfTunnelEnv,
   missingCfTunnelEnvKeys,
 } = await import(path.join(CORE, "tunnel-cf-client.js"));
@@ -367,12 +380,11 @@ test("D2 : hostnames services flat (défaut) vs nested (UNIVERSAL_SSL)", () => {
   assert.equal(tunnelAgentHostname("x.gate.test", "nested"), "agent.x.gate.test");
 });
 
-/* ── 6. D1 : multi-hostnames + préservation règle agent ── */
+/* ── 6. D1 : multi-hostnames — aucune règle agent sur le tunnel instance ── */
 
-test("D1 : extra hostnames dans ingress+DNS ; règle agent existante préservée", async () => {
+test("D1 : extra hostnames dans ingress+DNS ; l'ensure instance ne repose JAMAIS une règle agent", async () => {
   const mock = startCfMock();
   try {
-    // Tunnel existant AVEC règle agent (posée par `server-docker enroll`).
     mock.state.tunnels.set("t-9", {
       id: "t-9",
       name: "creezio-server-winhub-admin",
@@ -400,24 +412,26 @@ test("D1 : extra hostnames dans ingress+DNS ; règle agent existante préservée
       "app.winhub.fr",
       "n8n-app.winhub.fr",
       "hermes-app.winhub.fr",
-      "console.winhub.fr", // D1 — même tunnel, même service que le CRM
-      "agent-app.winhub.fr", // règle agent préservée (GET configurations)
+      "console.winhub.fr",
       null,
     ]);
-    const agentRule = put.body.config.ingress.find(
-      (x) => x.hostname === "agent-app.winhub.fr",
+    assert.ok(
+      !put.body.config.ingress.some((x) => x.hostname === "agent-app.winhub.fr"),
+      "règle agent absente du PUT ingress instance",
     );
-    assert.equal(agentRule.service, "http://host.docker.internal:18810");
     const crmService = put.body.config.ingress.find(
       (x) => x.hostname === "console.winhub.fr",
     );
     assert.equal(crmService.service, "http://127.0.0.1:18791");
-    // DNS : CNAME pour le hostname custom + l'extra.
     const names = [...mock.state.dns.values()]
       .filter((x) => x.type === "CNAME")
       .map((x) => x.name);
     assert.ok(names.includes("app.winhub.fr"));
     assert.ok(names.includes("console.winhub.fr"));
+    assert.ok(
+      !names.includes("agent-app.winhub.fr"),
+      "ensureCfTunnel ne crée pas de CNAME agent",
+    );
   } finally {
     mock.restore();
   }
@@ -478,7 +492,6 @@ test("deprovisionCfSlug : DNS (nested+flat+mail+extras) + tunnel supprimés", as
     const delTunnel = callsTo(mock.calls, "DELETE", /\/cfd_tunnel\/t-[^/]+$/);
     assert.equal(delConn.length, 1);
     assert.equal(delTunnel.length, 1);
-    // Hosts de nettoyage : nested + flat + mail + extras (couverture large).
     const hosts = tunnelDeprovisionDnsHosts(
       "resto-d",
       "resto-d.gate.test",
@@ -491,11 +504,18 @@ test("deprovisionCfSlug : DNS (nested+flat+mail+extras) + tunnel supprimés", as
       "resto-d.mail.gate.test",
       "n8n-resto-d.gate.test",
       "n8n.resto-d.gate.test",
-      "agent-resto-d.gate.test",
       "booking.gate.test",
     ]) {
       assert.ok(hosts.includes(h), `host de nettoyage ${h}`);
     }
+    assert.ok(
+      !hosts.includes("agent-resto-d.gate.test"),
+      "deprovision instance ne liste PAS agent-*",
+    );
+    assert.ok(
+      !hosts.includes("agent.resto-d.gate.test"),
+      "deprovision instance ne liste PAS agent.*",
+    );
   } finally {
     mock.restore();
   }
@@ -525,6 +545,263 @@ test("ensureCfCnameRecord : A hérité (NPM) → DELETE + POST CNAME tunnel", as
     assert.equal(recs[0].content, "t-99.cfargotunnel.com");
     assert.equal(recs[0].proxied, true);
     assert.equal(callsTo(mock.calls, "DELETE", /dns_records\/dns-a/).length, 1);
+  } finally {
+    mock.restore();
+  }
+});
+
+/* ── 10. T7 : tunnel DÉDIÉ agent ── */
+
+test("ensureCfAgentTunnel : création dédiée (nom creezio-agent-*, ingress agent seul, DNS)", async () => {
+  const mock = startCfMock();
+  try {
+    const r = await ensureCfAgentTunnel(ENV, {
+      slug: "resto-e",
+      serverHostname: "resto-e.gate.test",
+      agentPort: 18810,
+    });
+    assert.equal(r.ok, true);
+    assert.equal(r.recreated, true);
+    assert.equal(r.hostname, "agent-resto-e.gate.test", "flat par défaut");
+    assert.equal(r.agentUrl, "https://agent-resto-e.gate.test");
+    // Tunnel PROPRE à l'agent — nom CF distinct du préfixe serveur.
+    const posts = callsTo(mock.calls, "POST", /\/cfd_tunnel$/);
+    assert.equal(posts.length, 1);
+    assert.equal(posts[0].body.name, "creezio-agent-resto-e");
+    assert.equal(posts[0].body.config_src, "cloudflare");
+    assert.equal(agentTunnelCfName("resto-e"), "creezio-agent-resto-e");
+    // Ingress : UN service agent (origin loopback — connecteur network host)
+    // + 404. Jamais d'embeds n8n/hermes ni de règle CRM.
+    const puts = callsTo(mock.calls, "PUT", /\/configurations$/);
+    assert.equal(puts.length, 1);
+    assert.deepEqual(
+      puts[0].body.config.ingress.map((x) => [x.hostname || null, x.service]),
+      [
+        ["agent-resto-e.gate.test", "http://127.0.0.1:18810"],
+        [null, "http_status:404"],
+      ],
+    );
+    // DNS : le CNAME agent seul — aucun MX/SPF (pas d'email agent).
+    const dns = [...mock.state.dns.values()];
+    assert.equal(dns.length, 1);
+    assert.equal(dns[0].type, "CNAME");
+    assert.equal(dns[0].name, "agent-resto-e.gate.test");
+    assert.equal(dns[0].content, `${r.tunnelId}.cfargotunnel.com`);
+    // Helper pur : mêmes règles.
+    assert.deepEqual(
+      buildAgentTunnelIngressRules("agent-x.gate.test", 18810).map((x) => [
+        x.hostname || null,
+        x.service,
+      ]),
+      [
+        ["agent-x.gate.test", "http://127.0.0.1:18810"],
+        [null, "http_status:404"],
+      ],
+    );
+  } finally {
+    mock.restore();
+  }
+});
+
+test("ensureCfAgentTunnel : dns:false → aucune écriture DNS (bascule différée) ; idempotence stored", async () => {
+  const mock = startCfMock();
+  try {
+    const first = await ensureCfAgentTunnel(ENV, {
+      slug: "resto-f",
+      serverHostname: "resto-f.gate.test",
+      agentPort: 18810,
+      dns: false,
+    });
+    assert.equal(
+      mock.calls.filter((c) => /\/dns_records/.test(c.path)).length,
+      0,
+      "dns:false = zéro appel DNS — l'appelant bascule après le démarrage du connecteur",
+    );
+    // Bascule séparée (après container up) : upsert idempotent.
+    const created = await ensureCfAgentTunnelDns(ENV, {
+      hostname: first.hostname,
+      tunnelId: first.tunnelId,
+      slug: "resto-f",
+    });
+    assert.equal(created, "created");
+    mock.calls.length = 0;
+    // Ré-enroll : tunnel réutilisé (aucun POST), recreated=false, DNS no-op.
+    const second = await ensureCfAgentTunnel(ENV, {
+      slug: "resto-f",
+      serverHostname: "resto-f.gate.test",
+      agentPort: 18810,
+      stored: { tunnelId: first.tunnelId, tunnelToken: first.tunnelToken },
+    });
+    assert.equal(second.tunnelId, first.tunnelId);
+    assert.equal(second.recreated, false);
+    assert.equal(callsTo(mock.calls, "POST", /\/cfd_tunnel$/).length, 0);
+    assert.equal(
+      mock.calls.filter(
+        (c) => /\/dns_records/.test(c.path) && c.method !== "GET",
+      ).length,
+      0,
+      "CNAME déjà à la bonne cible → aucun write DNS",
+    );
+  } finally {
+    mock.restore();
+  }
+});
+
+test("ensureCfAgentTunnel : tunnel 404 côté CF → recréation, CNAME agent suit le nouvel id", async () => {
+  const mock = startCfMock();
+  try {
+    const first = await ensureCfAgentTunnel(ENV, {
+      slug: "resto-g",
+      serverHostname: "resto-g.gate.test",
+      agentPort: 18810,
+    });
+    mock.state.tunnels.delete(first.tunnelId);
+    mock.calls.length = 0;
+    const second = await ensureCfAgentTunnel(ENV, {
+      slug: "resto-g",
+      serverHostname: "resto-g.gate.test",
+      agentPort: 18810,
+      stored: { tunnelId: first.tunnelId, tunnelToken: first.tunnelToken },
+    });
+    assert.notEqual(second.tunnelId, first.tunnelId);
+    assert.equal(second.recreated, true);
+    assert.equal(callsTo(mock.calls, "PUT", /\/dns_records\/dns-/).length, 1);
+    const cname = [...mock.state.dns.values()].find(
+      (x) => x.name === "agent-resto-g.gate.test",
+    );
+    assert.equal(cname.content, `${second.tunnelId}.cfargotunnel.com`);
+  } finally {
+    mock.restore();
+  }
+});
+
+test("T7 : CNAME agent re-pointé + règle résiduelle retirée ; ensure instance ne la repose pas", async () => {
+  const mock = startCfMock();
+  try {
+    const server = await ensureCfTunnel(ENV, { slug: "resto-h" });
+    const agentHost = "agent-resto-h.gate.test";
+    // Reste historique (plus aucun chemin code ne pose cette règle).
+    const current = (await getCfTunnelConfig(ENV, server.tunnelId)) || [];
+    const leftover = current.filter((r) => r.service !== "http_status:404");
+    leftover.push({
+      hostname: agentHost,
+      service: "http://host.docker.internal:18810",
+    });
+    leftover.push({ service: "http_status:404" });
+    await putCfTunnelIngress(ENV, server.tunnelId, leftover);
+    await ensureCfCnameRecord(ENV, {
+      name: agentHost,
+      target: `${server.tunnelId}.cfargotunnel.com`,
+    });
+    const legacyCname = [...mock.state.dns.values()].find(
+      (x) => x.name === agentHost,
+    );
+    assert.equal(legacyCname.content, `${server.tunnelId}.cfargotunnel.com`);
+    mock.calls.length = 0;
+
+    const dedicated = await ensureCfAgentTunnel(ENV, {
+      slug: "resto-h",
+      serverHostname: "resto-h.gate.test",
+      agentPort: 18810,
+      dns: false,
+    });
+    assert.notEqual(dedicated.tunnelId, server.tunnelId);
+    const dns = await ensureCfAgentTunnelDns(ENV, {
+      hostname: dedicated.hostname,
+      tunnelId: dedicated.tunnelId,
+      slug: "resto-h",
+    });
+    assert.equal(dns, "updated", "CNAME agent MIS À JOUR vers le tunnel dédié");
+    const cname = [...mock.state.dns.values()].find((x) => x.name === agentHost);
+    assert.equal(cname.content, `${dedicated.tunnelId}.cfargotunnel.com`);
+
+    const removed = await removeCfTunnelAgentRule(ENV, {
+      tunnelId: server.tunnelId,
+      agentHostname: agentHost,
+    });
+    assert.equal(removed, true);
+    const serverIngress = mock.state.tunnels.get(server.tunnelId).config.ingress;
+    assert.ok(
+      !serverIngress.some((x) => x.hostname === agentHost),
+      "règle agent absente du tunnel instance",
+    );
+    mock.calls.length = 0;
+    assert.equal(
+      await removeCfTunnelAgentRule(ENV, {
+        tunnelId: server.tunnelId,
+        agentHostname: agentHost,
+      }),
+      false,
+    );
+    assert.equal(callsTo(mock.calls, "PUT", /\/configurations$/).length, 0);
+    mock.calls.length = 0;
+    await ensureCfTunnel(ENV, {
+      slug: "resto-h",
+      stored: { tunnelId: server.tunnelId, tunnelToken: server.tunnelToken },
+    });
+    const rebooted = mock.state.tunnels.get(server.tunnelId).config.ingress;
+    assert.ok(!rebooted.some((x) => x.hostname === agentHost));
+  } finally {
+    mock.restore();
+  }
+});
+
+test("deprovisionCfSlug ne touche JAMAIS un DNS agent ; seul deprovisionCfAgentTunnel le retire", async () => {
+  const mock = startCfMock();
+  try {
+    const instance = await ensureCfTunnel(ENV, { slug: "resto-i" });
+    const agent = await ensureCfAgentTunnel(ENV, {
+      slug: "resto-i",
+      serverHostname: "resto-i.gate.test",
+      agentPort: 18810,
+    });
+    const agentHost = "agent-resto-i.gate.test";
+    assert.ok(
+      [...mock.state.dns.values()].some((x) => x.name === agentHost),
+      "CNAME agent posé par le tunnel dédié",
+    );
+    mock.calls.length = 0;
+    await deprovisionCfSlug(ENV, {
+      slug: "resto-i",
+      tunnelId: instance.tunnelId,
+    });
+    const afterInstance = [...mock.state.dns.values()];
+    assert.ok(
+      afterInstance.some((x) => x.name === agentHost),
+      "DNS agent intact après deprovision instance",
+    );
+    assert.ok(
+      mock.state.tunnels.has(agent.tunnelId),
+      "tunnel dédié agent intact après deprovision instance",
+    );
+    assert.equal(
+      afterInstance.filter((x) => /^agent[.-]/.test(x.name)).length,
+      1,
+    );
+    const out = await deprovisionCfAgentTunnel(ENV, {
+      slug: "resto-i",
+      hostname: agentHost,
+      tunnelId: agent.tunnelId,
+    });
+    assert.equal(out.removed.tunnel, agent.tunnelId);
+    assert.ok(out.removed.dns.some((d) => d.includes(agentHost)));
+    assert.ok(
+      ![...mock.state.dns.values()].some((x) => x.name === agentHost),
+      "DNS agent retiré uniquement par deprovisionCfAgentTunnel",
+    );
+    assert.ok(!mock.state.tunnels.has(agent.tunnelId));
+    const agentHosts = agentTunnelDeprovisionDnsHosts("resto-i", "gate.test", [
+      agentHost,
+    ]);
+    assert.ok(agentHosts.includes("agent-resto-i.gate.test"));
+    assert.ok(agentHosts.includes("agent.resto-i.gate.test"));
+    assert.ok(
+      !tunnelDeprovisionDnsHosts(
+        "resto-i",
+        "resto-i.gate.test",
+        "gate.test",
+      ).some((h) => /^agent[.-]/.test(h)),
+    );
   } finally {
     mock.restore();
   }

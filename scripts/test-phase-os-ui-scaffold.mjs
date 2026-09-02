@@ -186,6 +186,11 @@ test("os-ui scaffold : zéro page OS versionnée, materialize + boot kit", () =>
     },
   );
   assert.equal(r.status, 0, r.stderr || r.stdout);
+  assert.match(
+    r.stdout,
+    /repos GitHub non créés \(--push pour les créer\)/,
+    "os-ui-scaffold sans --push : aucun repo GitHub",
+  );
 
   // Layout 2 repos (monorepo client+server) : le serveur (et son UI) vit sous server/.
   const srv = path.join(out, "server");

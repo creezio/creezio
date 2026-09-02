@@ -26,6 +26,8 @@
  *                              défaut state.adminAppUrl posé par enroll)
  *   CREEZIO_AGENT_FLEET_KEY   (opt-in F5 : credential flotte = agentToken ;
  *                              défaut state.fleetKey posé par enroll)
+ *   CREEZIO_AGENT_TUNNEL_CONTAINER (T7 : container cloudflared dédié agent —
+ *                              défaut creezio-agent-tunnel)
  *
  * 0 domaine marque hardcodé — injection env uniquement.
  */
@@ -37,10 +39,16 @@ import type { IncomingMessage, ServerResponse } from "node:http";
 import {
   containerLogs,
   dockerPing,
+  inspectContainer,
   removeContainer,
   startContainer,
   stopContainer,
 } from "./docker.js";
+import {
+  AGENT_TUNNEL_CONTAINER,
+  resolveAgentTunnelRespawnPolicy,
+  startAgentTunnelWatch,
+} from "./agent-tunnel.js";
 import { startAgentUpdateLoop } from "./agent-updates.js";
 import {
   buildDiskReport,
@@ -86,6 +94,11 @@ export function startHostAgent(): void {
       ? path.join(BRAND_ROOTS[0], "docker-data", "host-agent.json")
       : "");
   const MAX_BODY = 1 * 1024 * 1024;
+
+  // T7 : surveillance respawn du container cloudflared dédié agent —
+  // best-effort absolu (jamais d'impact sur le service HTTP), démarrée
+  // plus bas après le listen.
+  let tunnelWatch: ReturnType<typeof startAgentTunnelWatch> | null = null;
 
   if (!BRAND_ROOTS.length) {
     console.error("[host-agent] CREEZIO_AGENT_BRAND_ROOTS requis");
@@ -375,6 +388,8 @@ export function startHostAgent(): void {
         brandRoots: BRAND_ROOTS,
         docker: await dockerPing(),
         protocol: FLEET_PROTOCOL_VERSION,
+        // Champ ADDITIF (protocole v1 intact) : état du tunnel dédié (T7).
+        agentTunnel: tunnelWatch ? tunnelWatch.getStatus() : null,
       });
     }
 
@@ -520,4 +535,33 @@ export function startHostAgent(): void {
       );
     }
   }
+
+  // T7 : respawn surveillé du container cloudflared dédié agent
+  // (`creezio-agent-tunnel`) — même politique bornée que les autres
+  // cloudflared (miroir host-runtime). Container absent = idle (pas encore
+  // provisionné).
+  const container =
+    String(process.env.CREEZIO_AGENT_TUNNEL_CONTAINER || "").trim() ||
+    AGENT_TUNNEL_CONTAINER;
+  tunnelWatch = startAgentTunnelWatch({
+    container,
+    policy: resolveAgentTunnelRespawnPolicy(process.env),
+    deps: {
+      inspect: async (name) => {
+        const i = await inspectContainer(name);
+        if (!i) return null;
+        const startedRaw = i.State?.StartedAt || "";
+        const startedMs = Date.parse(startedRaw);
+        return {
+          exists: true,
+          running: i.State?.Status === "running",
+          status: i.State?.Status || "unknown",
+          startedAtMs: Number.isFinite(startedMs) && startedMs > 0 ? startedMs : null,
+        };
+      },
+      start: (name) => startContainer(name),
+      log: audit,
+    },
+  });
+  audit(`tunnel agent dédié : surveillance respawn active (${container})`);
 }

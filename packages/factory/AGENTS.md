@@ -5,9 +5,12 @@
 Maintenir le CLI `creezio` :
 
 0. **Happy path** (`brand create --id/--name/--domain`) : monorepo + repo
-   admin frère + registre vide + mount interactive-demo + collecteurs
-   assistant/onboarding (F3.4). Guide
-   `docs/agents/CREATE-APP.md`. **Pas** `demo-app` (déprécié, exit 1).
+   admin frère **locaux** + registre vide + mount interactive-demo +
+   collecteurs assistant/onboarding (F3.4). Guide
+   `docs/agents/CREATE-APP.md`. Repos GitHub : **`--push` explicite**
+   (token requis) — sans ce flag, `maybePushBrandRepos` ne résout aucun
+   token et n'appelle pas le réseau (même si `GITHUB_TOKEN` est posé).
+   `--no-push` = défaut redondant. **Pas** `demo-app` (déprécié, exit 1).
    **Pas** de module notes. **Pas** de `server/crm/`.
 1. **Mode OS** (`new-app --name/--id/--domain`) : squelette Client+Serveur,
    slot métier vide (sandbox technique) — même câblage démo que create.
@@ -94,6 +97,8 @@ en jumeau dans `main.ts`.
   `scripts/propagate-brands.mjs` (import du dist) ; jamais de boucle de
   bump parallèle.
 - `src/server-docker-cli.ts` : serveurs marque headless (`docker/server`).
+  `publish` pose `org.opencontainers.image.source` (remote git du
+  brand-root) — fail-closed si registre `ghcr.io` et remote introuvable.
 - `src/server-docker-registry-gc.ts` : `creezio server-docker registry-gc`
   — GC fail-closed du registre Docker local (`registry:2`, `127.0.0.1:5000`) :
   API v2 list/delete + `docker exec … garbage-collect`, rétention `--keep N`
@@ -106,6 +111,17 @@ en jumeau dans `main.ts`.
 - `src/server-docker-tunnel.ts` : politique create fail-closed
   (`CREEZIO_CF_API_TOKEN` / `_ACCOUNT_ID` / `_ZONE_ID` requis sauf
   `CREEZIO_TUNNEL_LOCAL=1`) + dérivation slug réservé.
+- `src/server-docker-agent-tunnel.ts` : helpers purs du tunnel cloudflared
+  DÉDIÉ agent (T7) — container `creezio-agent-tunnel` (network host,
+  restart unless-stopped), env file `docker-data/agent-tunnel.env` 600
+  (`TUNNEL_TOKEN`, jamais en argv), détection
+  `needsDedicatedAgentTunnelMigration` / `parseAgentPublicUrl`.
+  `provisionDedicatedAgentTunnel` (CLI) : enroll **et** `agent up`
+  (migration auto si hôte déjà enrôlé sans tunnel dédié) — ordre
+  ensure → connecteur → DNS → retrait résiduel (gate
+  `test-phase-agent-tunnel`). `agent rm` = seul geste qui retire DNS
+  `agent.*` / tunnel dédié ; `server-docker rm` d'une instance ne les
+  touche jamais.
 - `src/server-docker-owner.ts` : politique create fail-closed owner
   (`CREEZIO_OWNER_EMAIL` / `_PASSWORD` requis en VPS/prod ; optionnel si
   `CREEZIO_TUNNEL_LOCAL=1`) — first-run `POST /api/v1/os/setup`, persist
@@ -138,6 +154,11 @@ en jumeau dans `main.ts`.
 
 ## Modifier sans casser
 
+- Push GitHub factory = **opt-in `--push` uniquement**. Interdit de
+  reconditionner le push à « un token est résolvable » ou à « on dirait
+  un CI ». Pas d'env de bypass (`CREEZIO_FACTORY_NO_PUSH` n'existe pas).
+  Les gates scaffold (`test-phase-d`, `factory-two-repos`, `create-brand`,
+  `os-ui-scaffold`, `factory-prd`) tournent **avec** le token VM en place.
 - Toute nouvelle option CLI → `CliArgs`, `parseArgs`, `printHelp`, `NewAppOptions`.
 - `safeBrandId` doit continuer à mapper `tempoflow` → `tempoflow3`.
 - Les smokes générés (`test:metier-parcours`, `test:first-run-auth`) doivent
