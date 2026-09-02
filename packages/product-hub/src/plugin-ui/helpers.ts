@@ -1,5 +1,5 @@
 /**
- * Ouverture panel plugin / sidebar items (port TempoFlow — N6).
+ * Ouverture panel plugin / sidebar items (port kit — N6).
  */
 
 import { browserWindow, getDesktopApi, getProductHubUiBrand } from "./brand.js";

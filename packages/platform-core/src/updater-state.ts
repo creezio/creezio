@@ -1,6 +1,6 @@
 /**
  * État auto-update — logique PURE (reduce), sans Electron.
- * Extrait de electron/updater.ts (TF2 0.10.26).
+ * Extrait de electron/updater.ts (kit).
  */
 
 export type UpdateState =

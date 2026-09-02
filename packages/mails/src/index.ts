@@ -1,7 +1,7 @@
 /**
  * @creezio/mails — mails plateforme v2 (SoT inbox + outbox durable +
  * transports multi-provider + IMAP + webhooks + UI).
- * Pas de templates TempoFlow/Fidu.
+ * Pas de templates marques.
  */
 
 export type {

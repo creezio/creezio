@@ -1,6 +1,6 @@
 /**
  * Contexte runtime hôte injecté dans tous les launchers B.2.
- * Remplace les singletons TF2 (userDataDir(), paths.ts, logger).
+ * Remplace les singletons kit (userDataDir(), paths.ts, logger).
  */
 
 import type { AppManifest } from "@creezio/brand-config";

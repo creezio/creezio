@@ -1,5 +1,5 @@
 /**
- * Consentement télémétrie flotte — extrait TempoFlow fleet-telemetry.ts (M4).
+ * Consentement télémétrie flotte — extrait historique fleet-telemetry.ts (M4).
  * Labels UI marque restent hors kit ; ici : types + sanitize/patch purs.
  */
 

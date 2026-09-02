@@ -79,7 +79,7 @@ async function readBody(req: http.IncomingMessage): Promise<unknown> {
  * Contrat de composition api-kernel (voir @creezio/api-kernel src/hono.ts) :
  * un 404 kernel « not mounted / not found » laisse la main aux routes API
  * propres à la marque — ici servies par le plane UI Next (ex. app Hono
- * marque montée sous /api/v1 dans l'app Next, architecture TempoFlow).
+ * marque montée sous /api/v1 dans l'app Next, architecture kit).
  *
  * Attention : le next.config marque rewrite `/api/v1/*` → kernel. Sans garde,
  * un fallthrough kernel→Next→kernel boucle (CPU, ECONNRESET, pages Admin

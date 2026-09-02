@@ -1,5 +1,5 @@
 /**
- * Types admin MCP (port TempoFlow — N6).
+ * Types admin MCP (port kit — N6).
  * Le registre métier des tools reste injecté par la marque.
  */
 

@@ -1,6 +1,6 @@
 /**
  * Schéma SQL core — tables Admin Database / automations row-level.
- * Identique à la migration TempoFlow v33 (préfixe `db_*` conservé pour compat).
+ * Identique à la migration kit v33 (préfixe `db_*` conservé pour compat).
  */
 export const DATABASE_CORE_SQL = `
 CREATE TABLE IF NOT EXISTS db_automations (

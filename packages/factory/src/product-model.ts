@@ -4,7 +4,7 @@
  * Le brief reste non technique. Le parsing produit un modèle structuré que les
  * générateurs **génériques** consomment (CRUD + wiring OS).
  *
- * Anti-triche : on n’injecte PAS un clone TempoFlow (optimiser/scan/stack…).
+ * Anti-triche : on n’injecte PAS un clone kit (optimiser/scan/stack…).
  * Le cœur inféré du PRD « fournisseurs → prix → panier → commande » suffit
  * pour le bootstrap ; les modules suivants sont écrits par l’agent (mini-PRDs).
  */

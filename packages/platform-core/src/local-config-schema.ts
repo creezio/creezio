@@ -1,5 +1,5 @@
 /**
- * Schéma local-config (userData/*-config.json) — aligné TF2 0.10.26.
+ * Schéma local-config (userData/*-config.json) — aligné kit.
  * Le chiffrement safeStorage est dans @creezio/electron-shell.
  */
 

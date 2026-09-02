@@ -184,7 +184,7 @@ export {
   createOpenExternalTabHostMcpTools,
 } from "./open-external-tab-host-tools.js";
 
-/* ── N6 : MCP admin (port TempoFlow) ── */
+/* ── N6 : MCP admin (port kit) ── */
 
 export {
   configureMcpAdmin,

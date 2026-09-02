@@ -1,6 +1,6 @@
 /**
  * Agent télémétrie flotte — heartbeat + sync opt-in.
- * Extrait de TempoFlow fleet-agent.ts (R4) — endpoint / consent / IDs = hooks.
+ * Agent flotte (R4) — endpoint / consent / IDs = hooks.
  * Best-effort : jamais de throw vers le boot.
  */
 
@@ -68,8 +68,8 @@ export type FleetAgentRuntimeHooks = {
     | Array<Record<string, unknown>>
     | Promise<Array<Record<string, unknown>>>;
   /**
-   * Champs métier marque à fusionner dans le heartbeat (ex. dossierStats
-   * Certivan) — best-effort, scope heartbeat.
+   * Champs métier marque à fusionner dans le heartbeat (ex. stats dossier)
+   * — best-effort, scope heartbeat.
    */
   getHeartbeatExtras?: () =>
     | Record<string, unknown>

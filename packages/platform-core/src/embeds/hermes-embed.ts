@@ -1,5 +1,5 @@
 /**
- * Logique pure Hermes Agent — port brand-agnostic TF2 0.10.26 hermes-embed.ts.
+ * Logique pure Hermes Agent — port brand-agnostic kit hermes-embed.ts.
  * Aucun import Electron : testable depuis Node.
  */
 

@@ -7,7 +7,7 @@
  * Layout packagé (échelle kit) : `{installDir}/data/` — logs, crash-reports,
  * sqlite, embeds. Pas de Roaming/%APPDATA% pour les données runtime.
  *
- * Source d'abstraction : electron/paths.ts (TF2 0.10.26 / Certivan / Fidu).
+ * Source d'abstraction : electron/paths.ts (kit / marques).
  */
 
 import fs from "node:fs";
@@ -110,7 +110,7 @@ export function resolveUserDataDir(ctx: PathsContext): string {
  * Chemin SQLite principal (= base **brand** / métier).
  *
  * @deprecated Préférer `resolveBrandDbPath` (H1.0). Alias conservé pour
- * soft-compat des marques déjà branchées (TempoFlow / Certivan / Fidu).
+ * soft-compat des marques déjà branchées (marques).
  */
 export function resolveDbPath(ctx: PathsContext): string {
   const override = readEnvOverride(ctx, "DB_PATH_OVERRIDE");

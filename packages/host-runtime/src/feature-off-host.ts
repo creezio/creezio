@@ -1,6 +1,6 @@
 /**
  * Feature-off host — contrat kit pour marques sans runtime plugins / flotte
- * (Phase N5, extraits des signatures Fidu `host-na-stubs.ts`).
+ * (Phase N5, extraits des signatures feature-off `host-na-stubs.ts`).
  *
  * Ne pas inventer de produit : réponses `ok: false` / listes vides honnêtes.
  * Les marques à plugins réels (TF/CV) utilisent `createPluginsHost` / fleet.
@@ -10,7 +10,7 @@ import fs from "node:fs";
 import path from "node:path";
 
 export type FeatureOffHostOptions = {
-  /** Libellé marque dans les messages (ex. `Fidu`). */
+  /** Libellé marque dans les messages (ex. `feature-off`). */
   brandLabel: string;
   /** Résolveur userData (dossier `plugins/` sous cette racine). */
   userDataDir: () => string;
@@ -118,7 +118,7 @@ function assertFeatureOff(
 
 /**
  * Construit les surfaces host feature-off (plugins + flotte).
- * Signatures alignées sur l’ancien `host-na-stubs` Fidu.
+ * Signatures alignées sur l’ancien `host-na-stubs`.
  */
 export function createFeatureOffHost(
   opts: FeatureOffHostOptions,

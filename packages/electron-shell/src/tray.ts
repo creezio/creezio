@@ -1,6 +1,6 @@
 /**
  * Icône Tray générique — labels depuis AppManifest.productName.
- * Port de electron/tray.ts (TF2) — setup/refresh sync (require electron).
+ * Port de electron/tray.ts (historique) — setup/refresh sync (require electron).
  */
 
 import fs from "node:fs";

@@ -1,5 +1,5 @@
 /**
- * Runtime desktop plateforme — extrait mécanique de tempoflow2/crm/electron/main.ts (M12).
+ * Runtime desktop plateforme — extrait mécanique du main Electron historique (M12).
  * Comportement préservé ; la marque injecte deps (store, hosts, paths, vertical).
  *
  * P2.a — ce fichier est le MOTEUR DESKTOP PARTAGÉ, pas un runtime mort :
@@ -495,7 +495,7 @@ export function installBrandDesktopRuntime(deps: BrandDesktopDeps): void {
   /**
    * Réinjecte HERMES_* dans Next après un spawn Hermes réussi.
    * No-op au boot (Next pas encore up) — évite le double restart.
-   * Delta M12p (Certivan) porté plateforme.
+   * Delta M12p porté plateforme.
    */
   async function maybeRestartNextAfterHermesSpawn(
     hermesSpawned: boolean,
@@ -679,13 +679,13 @@ export function installBrandDesktopRuntime(deps: BrandDesktopDeps): void {
   });
 
   /*
-   * Deep-link `tempoflow://join/<host>` — lien d'invitation collaborateur humain.
+   * Deep-link `{protocol}://join/<host>` — lien d'invitation collaborateur humain.
    * Enregistrement du protocole : packagé → simple ; dev → binaire electron +
    * chemin de l'app (pattern officiel Electron).
    */
   try {
     // Le deep-link join appartient à l'app CLIENT (et au legacy) : l'app
-    // Serveur ne s'enregistre pas sur tempoflow:// (installables côte à côte).
+    // Serveur ne s'enregistre pas sur le protocole join (installables côte à côte).
     if (deps.bootBehavior.registerDeepLink) {
       if (process.defaultApp) {
         if (process.argv.length >= 2) {
@@ -879,8 +879,8 @@ export function installBrandDesktopRuntime(deps: BrandDesktopDeps): void {
    */
   function runMigrationsInNode(): Promise<"runner" | "kernel"> {
     const script = deps.paths.nodeScript(path.join("migrations", "runner.js"));
-    // Marques native-kernel (TF3 / factory) : migrations core/brand déjà
-    // appliquées in-process par createBrandKernel — le runner.js legacy TF2
+    // Marques native-kernel (factory) : migrations core/brand déjà
+    // appliquées in-process par createBrandKernel — le runner.js legacy
     // n'existe pas. Ce n'est pas un « skip » : la base est bien à jour.
     if (!fs.existsSync(script)) {
       log("migrate", "migrations kernel appliquées in-process (pas de runner.js legacy)");
@@ -891,7 +891,7 @@ export function installBrandDesktopRuntime(deps: BrandDesktopDeps): void {
       const env = envForNodeScriptSpawn(bin);
       const nm = deps.paths.nodeModulesPathForScripts();
       if (nm) env.NODE_PATH = nm;
-      // Packagé : resources/seeds ; aussi exposé via TF2_RESOURCES_PATH.
+      // Packagé : resources/seeds ; aussi exposé via ${envPrefix}_RESOURCES_PATH.
       if (process.resourcesPath) {
         env[`${deps.envPrefix}_RESOURCES_PATH`] = process.resourcesPath;
         const seeds = path.join(process.resourcesPath, "seeds");
@@ -1377,7 +1377,7 @@ export function installBrandDesktopRuntime(deps: BrandDesktopDeps): void {
     });
 
     safeHandle("connection:test", async (_e, rawUrl) => {
-      // Lien d'invitation collé tel quel (tempoflow://join/…) : accepté
+      // Lien d'invitation collé tel quel ({protocol}://join/…) : accepté
       // partout où on saisit une URL de serveur.
       const raw = String(rawUrl || "").trim();
       const fromDeepLink = deps.vertical.parseJoinDeepLink(raw);
@@ -2885,7 +2885,7 @@ export function installBrandDesktopRuntime(deps: BrandDesktopDeps): void {
       return;
     }
 
-    // Profil join (argv --tf2-profile=join: ou deep-link tempoflow://join/…) :
+    // Profil join (argv --{prefix}-profile=join: ou deep-link {protocol}://join/…) :
     // le serveur cible est déjà connu → picker sauté, connexion directe.
     const launch = deps.bootProfileLaunch;
     if (launch && launch.mode === "join" && launch.serverUrl) {
@@ -3136,7 +3136,7 @@ export function installBrandDesktopRuntime(deps: BrandDesktopDeps): void {
       connectionMode: "local",
       n8n: n8nCfg,
     });
-    // Contrat produit TF2 : la stack native s'installe et démarre PENDANT le
+    // Contrat produit : la stack native s'installe et démarre PENDANT le
     // splash, avec une ligne + barre + chrono par outil. L'utilisateur voit la
     // progression et arrive sur un CRM dont les services sont réellement
     // disponibles. Opt-out diagnostic : CREEZIO_EMBEDS_BLOCK_UI=0 (warm différé
@@ -3532,7 +3532,7 @@ export function installBrandDesktopRuntime(deps: BrandDesktopDeps): void {
     }
 
     if (needHermes && (!hermes?.apiUrl || !hermes.webuiUrl)) {
-      // Soft-boot : TF2 plantait parfois ici (install.sh exit 126 / CLI absente).
+      // Soft-boot : un install.sh exit 126 / CLI absente ne doit pas bloquer l'UI.
       // On ouvre l’UI quand même + retry Hermes en arrière-plan (pas fail-hard).
       const st = deps.hosts.hermes().getHermesStatusPayload("local");
       const hermesSoftMsg = `Hermes indisponible pour l’instant — interface ouverte, retry en arrière-plan.\n${st.detail}${st.bootstrapError ? `\n${st.bootstrapError}` : ""}`;
@@ -3696,7 +3696,7 @@ export function installBrandDesktopRuntime(deps: BrandDesktopDeps): void {
       logError("plugins", e);
     }
 
-    /* 5a3. Context pack (prefs, OpenAPI, glossaire) + MCP tempoflow + bridge Hermes */
+    /* 5a3. Context pack (prefs, OpenAPI, glossaire) + MCP marque + bridge Hermes */
     if (needHermes && hermes) {
       try {
         if (hermesCrmApiKey) {
@@ -4271,7 +4271,7 @@ export function installBrandDesktopRuntime(deps: BrandDesktopDeps): void {
     deps.vertical.initCrashReporter(deps.paths.userDataDir(), app.getVersion());
     deps.vertical.installGlobalHandlers();
 
-    // Boîte noire : journal structuré + routage des lignes TF2EVENT des
+    // Boîte noire : journal structuré + routage des lignes ops (préfixe filaire) des
     // sous-process (indexeur, migrations, Next, embeds) via le hook logger.
     setOpsJournalHooks({
       log: (scope, line) => log(scope, line),

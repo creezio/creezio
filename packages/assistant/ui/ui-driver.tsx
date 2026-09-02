@@ -14,7 +14,7 @@ import { getFakeCursor } from "./fake-cursor";
 import { resolveAidAttr } from "@creezio/shell-ui/ui";
 
 export const UI_ACTION_EVENT = "creezio-assistant-ui-action";
-/** @deprecated alias TF2 */
+/** @deprecated alias kit */
 export const UI_ACTION_EVENT_LEGACY = "tf2-assistant-ui-action";
 
 type UiActionDetail = {

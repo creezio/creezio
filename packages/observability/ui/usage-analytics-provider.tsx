@@ -4,7 +4,7 @@
  * Monte le tracker d'usage local : session, page views (dwell), capture clics.
  * Persiste via /api/v1/analytics/events (SQLite) + miroir flotte Electron.
  *
- * Port TempoFlow — N6. Session injectée (pas de `@/` marque).
+ * N6. Session injectée (pas de `@/` marque).
  */
 
 import { useEffect, useRef, type ReactNode } from "react";

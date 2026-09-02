@@ -444,7 +444,7 @@ function renderElectronBuilderBase(m: AppManifest): string {
           output: "dist-electron",
           buildResources: "resources",
         },
-        // Parité TF2 : exclure node_modules (sinon bins kit + deps → asar ~450 Mo).
+        // parité kit : exclure node_modules (sinon bins kit + deps → asar ~450 Mo).
         // @creezio/* runtime ré-inclus via buildElectronBuilderConfig (FileSets
         // résolus npm : ../node_modules/@creezio/* — hoisting workspace racine).
         files: [
@@ -1047,7 +1047,7 @@ contextBridge.exposeInMainWorld(BRIDGE_NAME, api);
 function renderNavCoreTs(): string {
   return `/**
  * Navigation cœur plateforme — délègue à \`@creezio/shell-ui\`.
- * PAS de catalogue TempoFlow ni d'entrées métier marque.
+ * PAS de catalogue kit ni d'entrées métier marque.
  */
 export type { CoreNavItem as NavItem } from "@creezio/shell-ui";
 export { CORE_NAV_ITEMS, coreNavItems } from "@creezio/shell-ui";

@@ -6,7 +6,7 @@
  * pour marques non migrées ; ne pas l’utiliser pour les nouveaux stores kit.
  *
  * C1 : colonnes `model` / `mode` / `user_id` / `sources_json` pour cutover
- * TempoFlow sans perte (voir ensureAssistantRichColumns).
+ * kit sans perte (voir ensureAssistantRichColumns).
  */
 export const ASSISTANT_CORE_SQL = `
 CREATE TABLE IF NOT EXISTS creezio_assistant_conversations (

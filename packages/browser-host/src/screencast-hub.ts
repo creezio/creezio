@@ -1,7 +1,7 @@
 /**
  * Hub screencast des espaces IA — jumeau headless du hub kit
  * `@creezio/shell-ui/ui/lib/ai-screencast-hub.ts` (celui-ci vit dans le
- * process Next des forks TF2 ; ce module vit dans le process harness/serveur).
+ * process Next des forks historiques ; ce module vit dans le process harness/serveur).
  *
  * MÊME clé globalThis (`__tf2ScreencastHub`) : si les deux modules cohabitent
  * un jour dans un même process, ils partagent l'état au lieu de diverger.

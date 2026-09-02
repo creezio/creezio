@@ -29,7 +29,7 @@ export type HonoMcpToolRegisterFn = (
 ) => void;
 
 export type BindFacadeToolsToHonoOptions = {
-  /** Surface listTools (défaut legacy-preferred — aligné marques TF/CV/Fidu). */
+  /** Surface listTools (défaut legacy-preferred — aligné marques marques). */
   publicSurface?: McpPublicSurfaceMode;
   /**
    * Si fourni : n'enregistrer que ces noms (ex. `MCP_TOOL_REGISTRY`).

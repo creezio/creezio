@@ -1,6 +1,6 @@
 /**
  * Profils de lancement multi-instances — logique PURE.
- * Port brand-agnostic de electron/profile.ts (TF2 0.10.26).
+ * Port brand-agnostic de electron/profile.ts (kit).
  */
 
 import path from "node:path";

@@ -378,7 +378,7 @@ Override marque TF3 : `--project tf3-servers`.
 | `~/bin/open-creezio-server-N` | Wrapper par instance (URL `http://127.0.0.1:PORT/` figée) + log |
 | `~/Desktop\|Bureau/{Product}-Server-{N}.desktop` | `Exec=/…/open-creezio-server-N` (**pas** `xdg-open` direct) |
 
-- Log : `~/.local/state/tempoflow-server/open-server.log`
+- Log : `~/.local/state/creezio-server/open-server.log`
 - Trust XFCE : `gio set … metadata::trusted true` (posé par le CLI)
 - `StartupNotify=false` (évite silence XFCE sur wrapper bash)
 - Préférer Firefox **tarball** dans `~/.local/firefox` : le snap échoue souvent

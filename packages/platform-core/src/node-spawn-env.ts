@@ -25,7 +25,7 @@ export function envForNodeScriptSpawn(
   } catch {
     same = nodeBin === process.execPath;
   }
-  // Heuristique : binaire Electron packagé (TempoFlow-Server, etc.) sans node système.
+  // Heuristique : binaire Electron packagé (…-Server, etc.) sans node système.
   const base = path.basename(nodeBin).toLowerCase();
   const looksElectron =
     same ||

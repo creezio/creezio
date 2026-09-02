@@ -14,7 +14,7 @@ export type BrandRoleDbLike = {
 
 export type AuthConfig = {
   /**
-   * Nom du cookie de session JWT (ex. tempoflow2_crm_session / fidu_session).
+   * Nom du cookie de session JWT (ex. brand_session / brand_session).
    * Obligatoire avant getSession / cookies / middlewares.
    */
   cookieName: string;

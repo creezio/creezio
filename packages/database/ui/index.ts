@@ -1,5 +1,5 @@
 /**
- * Admin Database UI (port TempoFlow — M2).
+ * Admin Database UI (port kit — M2).
  * Consommer via `@creezio/database/ui`.
  */
 export { DatabaseClient } from "./database-client";

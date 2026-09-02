@@ -1,6 +1,6 @@
 /**
  * Boîte noire — moteur d'anomalies générique.
- * Extrait de TempoFlow ops-rules.ts (R4).
+ * Règles boot ops (R4).
  */
 
 import {

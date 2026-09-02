@@ -1,6 +1,6 @@
 /**
  * Surface HTTP assistant (mount Hono).
- * Port gold TempoFlow `crm/src/server/routes/assistant.ts` → kit (D-P16 / P5).
+ * Port gold kit `crm/src/server/routes/assistant.ts` → kit (D-P16 / P5).
  *
  * Auth / desktop-presence / Product Hub / usage restent injectables marque.
  * Prérequis : `configureAssistantBrand(...)` au boot host.
@@ -110,7 +110,7 @@ export type AssistantRoutesDeps = {
   /**
    * Auth du flux SSE desktop-actions :
    * - `query` (défaut) : `?user_id=` (bridge Electron TF/CV)
-   * - `session` : `session.sub` (Fidu)
+   * - `session` : `session.sub` (feature-off)
    */
   desktopStreamAuth?: "query" | "session";
   /** Méta device pour le bridge (headers marque, query, …). */

@@ -1,7 +1,7 @@
 /**
  * Échantillons télémétrie flotte (best-effort, lecture seule, redactée).
  * Pas de better-sqlite3 dans le process Electron (ABI) — spawn Node vanilla.
- * Extrait TempoFlow fleet-samples.ts (M7) — chemins = hooks marque.
+ * Samples diagnostics (M7) — chemins = hooks marque.
  */
 
 import fs from "node:fs";

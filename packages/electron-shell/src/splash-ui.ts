@@ -1,6 +1,6 @@
 /**
  * Splash de démarrage — modèle + HTML riche (aucun import Electron).
- * Port brand-agnostic de electron/splash-ui.ts (TF2) — productName / bridgeName / cssPrefix.
+ * Port brand-agnostic de electron/splash-ui.ts (historique) — productName / bridgeName / cssPrefix.
  */
 
 import {
@@ -312,7 +312,7 @@ export type SplashHtmlOptions = {
   bridgeName: string;
   windowChrome?: boolean;
   accentColor?: string;
-  /** Préfixe classes / ids chrome (`tf` pour TempoFlow / Certivan, `cz` défaut). */
+  /** Préfixe classes / ids chrome (`tf` pour marques, `cz` défaut). */
   cssPrefix?: string;
 };
 

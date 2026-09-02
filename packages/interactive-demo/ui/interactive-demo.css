@@ -308,7 +308,7 @@ div.creezio-demo-card--centered[role="dialog"] {
 .creezio-demo-launcher {
   position: fixed;
   /* Haut-droite : extr?mit? libre de la barre d'onglets du workspace ?
-   * en bas-gauche le lanceur recouvrait la sidebar (retour winhub). */
+   * en bas-gauche le lanceur recouvrait la sidebar (retour viewport étroit). */
   right: 18px;
   top: 10px;
   z-index: calc(var(--creezio-demo-z) - 10);

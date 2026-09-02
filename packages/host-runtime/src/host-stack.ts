@@ -1,5 +1,5 @@
 /**
- * Accès PARESSEUX aux modules host-only — port du pattern TF2 host-stack.ts.
+ * Accès PARESSEUX aux modules host-only — port du pattern kit host-stack.ts.
  *
  * Les apps marques construisent un HostStack via `createHostStack(deps)`
  * et n'importent les launchers que sur les chemins allowLocalStack.
@@ -53,7 +53,7 @@ export function createHostStack(opts: {
   };
 }
 
-/** Lazy accessor pattern (équivalent TF2 `lazy(() => require(...))`). */
+/** Lazy accessor pattern (équivalent kit `lazy(() => require(...))`). */
 export function lazyHost<T>(load: () => T): () => T {
   let mod: T | undefined;
   return () => (mod ??= load());

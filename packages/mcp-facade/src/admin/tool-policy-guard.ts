@@ -4,7 +4,7 @@
  * Trois surfaces, pour trois points d'entrée :
  *   - `checkToolPolicy`          : décision brute (enabled/rôles/scopes) —
  *                                  utilisable par n'importe quel enforcement
- *                                  marque (ex. TF3 `registerMcpTool`) ;
+ *                                  marque (ex. factory `registerMcpTool`) ;
  *   - `createToolPolicyAuthorize`: `McpAuthorizeToolCallFn` composable avec
  *                                  `composeToolPolicies` / `denyCrossLayerToolCall`
  *                                  pour la façade (`createBrandMcpFacade`) ;
@@ -95,7 +95,7 @@ export function getStoredMcpToolPolicy(name: string): ToolPolicyView | null {
  * Décision d'enforcement d'un tool pour un acteur.
  * Retourne la raison du deny, ou `null` si autorisé.
  *
- * Sémantique (parité TempoFlow) :
+ * Sémantique (parité kit) :
  *  - policy absente ou `enabled=false` → "tool_disabled" ;
  *  - rôle (resolveRole(userId) sinon defaultRole) hors allowedRoles → "role_forbidden" ;
  *  - scopes fournis, aucun full-access ni allowedScope accordé → "policy_scope_forbidden"

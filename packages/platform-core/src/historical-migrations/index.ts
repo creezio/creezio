@@ -1,7 +1,7 @@
 /**
  * Migrations historiques brand.db (schema_version) — plateforme SoT kit (N4).
  *
- * Hors scope : steps métier TF/CV/Fidu ; `platformCoreMigrations` (core.db).
+ * Hors scope : steps métier marques ; `platformCoreMigrations` (core.db).
  */
 
 export type {

@@ -1,5 +1,5 @@
 /**
- * Admin Plugins UI (port TempoFlow — N6).
+ * Admin Plugins UI (port kit — N6).
  * Consommer via `@creezio/product-hub/ui`.
  */
 export { AdminPluginsList } from "./plugins-list";

@@ -1,7 +1,7 @@
 /**
  * Types communs preload / renderer — abstraction des window.*Desktop.
  *
- * Intersection des API TempoFlow / Certivan / Fidu (noyau partagé).
+ * Intersection des API marques (noyau partagé).
  * Les extensions verticales restent dans chaque app jusqu'à Phase B/G.
  */
 
@@ -63,7 +63,7 @@ export type DesktopInfo = {
   connectionMode?: "local" | "remote";
   baseUrl?: string | null;
   localBind?: "127.0.0.1" | "0.0.0.0";
-  /** Présent dès le split 0.10 (TF2 / Certivan) ; optionnel sur Fidu aujourd'hui. */
+  /** Présent dès le split 0.10 (TF2 / Certivan) ; optionnel sur feature-off aujourd'hui. */
   appKind?: DesktopAppKind;
 };
 

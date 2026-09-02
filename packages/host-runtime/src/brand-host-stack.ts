@@ -1,6 +1,6 @@
 /**
  * Lazy host-stack marque — composition mince du kit (O7).
- * Remplace ~220 LOC dupliqués TF/CV/Fidu par une factory + table de config.
+ * Remplace ~220 LOC dupliqués marques par une factory + table de config.
  */
 
 import path from "node:path";
@@ -56,7 +56,7 @@ export type BrandHostStackConfig = {
   getPaths: () => BrandHostPathsModule;
   portEnvKey: string;
   defaultPort?: number;
-  /** Préfixe env crash/install/version : TF2 | CERTIVAN | FIDU */
+  /** Préfixe env crash/install/version : kit | CERTIVAN | FIDU */
   envPrefix: string;
   includeFleetOpsDirs?: boolean;
   extraEnv?: (ctx: {

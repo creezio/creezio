@@ -81,7 +81,7 @@ export async function warmBrandNativeHosts(
     onLog?: (line: string) => void;
     /**
      * WEBHOOK_URL / N8N_EDITOR_BASE_URL publics (tunnel si provisionné,
-     * sinon URL locale) — parité TF2. `null`/absent = loopback.
+     * sinon URL locale) — parité kit. `null`/absent = loopback.
      */
     n8nPublicBaseUrl?: string | null;
   },

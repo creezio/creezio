@@ -8,7 +8,7 @@
  * - la façade est montée `allowUnauthenticated: true` → les tools « qui
  *   agissent » portent leur propre gate (`actorIsOwner`, @creezio/tasks) ;
  * - la clé CRM service Hermes est provisionnée par `ensure-crm-key-db`
- *   (electron-shell) avec `user_id NULL` + scopes `full` (parité TF2 gold).
+ *   (electron-shell) avec `user_id NULL` + scopes `full` (parité kit gold).
  *   `createApiKeyBearerActorResolver` vérifie le Bearer contre la table
  *   `api_keys` (sha256, non révoquée) et MAPPE une clé service full-scope
  *   sans user sur L'OWNER — même niveau de confiance que l'API REST CRM
@@ -151,7 +151,7 @@ function toFacadeResult(raw: unknown): McpToolCallResult {
 
 export type RegisterHermesHostMcpToolsOptions = {
   mcp: McpFacade;
-  /** Certivan : expose aussi `list_tasks`. Défaut false. */
+  /** : expose aussi `list_tasks`. Défaut false. */
   includeListTasks?: boolean;
   log?: (line: string) => void;
 };

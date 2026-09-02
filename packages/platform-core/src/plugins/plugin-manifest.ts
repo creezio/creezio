@@ -1,5 +1,5 @@
 /**
- * Contrat manifest + découverte plugins — port TF2 plugin-runtime.ts (partie pure).
+ * Contrat manifest + découverte plugins — port kit plugin-runtime.ts (partie pure).
  * Le spawn / control-api restent dans @creezio/electron-shell.
  */
 

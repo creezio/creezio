@@ -46,7 +46,7 @@ export type ComposeBrandOsOptions = {
   electronDirname: string;
   /**
    * Host plugins réel — **activé par défaut** (P&P).
-   * Feature-off si `manifest.features.plugins === false` (Fidu) ou
+   * Feature-off si `manifest.features.plugins === false` (feature-off) ou
    * kill-switch `CREEZIO_PLUGINS=0`. `CREEZIO_PLUGINS=1` reste accepté
    * (no-op — c'est déjà le défaut).
    */
@@ -194,7 +194,7 @@ function buildBrandPaths(opts: ComposeBrandOsOptions) {
     assistantDbPath: () => path.join(opts.userDataDir, "assistant.db"),
     uploadsDir: () => path.join(opts.userDataDir, "uploads"),
     nextServerEntry: () => {
-      // Packagé (parité TF2) : afterPack → resources/server/server.js
+      // Packagé (parité kit) : afterPack → resources/server/server.js
       if (opts.isPackaged) {
         return path.join(opts.resourcesRoot, "server", "server.js");
       }
@@ -215,7 +215,7 @@ function buildBrandPaths(opts: ComposeBrandOsOptions) {
     nodeBinary: () => process.execPath,
     meiliDataDir: () => path.join(opts.userDataDir, "meili"),
     meiliBinary: () => {
-      // Parité TF2 : meilisearch-win.exe sous Windows ; meili en Linux kit.
+      // parité kit : meilisearch-win.exe sous Windows ; meili en Linux kit.
       const winName = "meilisearch-win.exe";
       const unixName = "meili";
       const name = process.platform === "win32" ? winName : unixName;
@@ -291,14 +291,14 @@ export function composeBrandOs(
   const prefix = m.envPrefix;
   const product = m.client.productName;
   const domain = m.tunnelRootDomain || m.domains?.primary || "localhost";
-  // Plugins ON par défaut — OFF si features.plugins=false (Fidu) ou
+  // Plugins ON par défaut — OFF si features.plugins=false (feature-off) ou
   // kill-switch CREEZIO_PLUGINS=0 (l'ancien opt-in =1 reste un no-op).
   const pluginsFeatureOff =
     opts.pluginsFeatureOff !== undefined
       ? opts.pluginsFeatureOff
       : !isFeatureEnabled(m, "plugins") ||
         process.env.CREEZIO_PLUGINS === "0";
-  /** Fleet = manifest.features.fleet (Fidu false ; TF/CV/TF3 true). */
+  /** Fleet = manifest.features.fleet (Fidu false ; marques true). */
   const fleetEnabled = isFeatureEnabled(m, "fleet");
   const fleetDefaultEndpoint =
     process.env.CREEZIO_FLEET_ENDPOINT ||
@@ -367,7 +367,7 @@ export function composeBrandOs(
     hermesBridge: "full",
     nodeEnsure: "desktop",
     ensureDbScriptPath: () => ensureCrmKeyDbScript(),
-    // Skills Hermes par défaut (parité TF2) : génériques kit (creezio-n8n,
+    // Skills Hermes par défaut (parité kit) : génériques kit (creezio-n8n,
     // creezio-plugins) + skills marque (`vendor/hermes-skills` de l'app).
     // Toute app composée par le kit les reçoit sans wiring marque.
     seedHermesSkills: (hermesHome: string) => {
@@ -473,7 +473,7 @@ export function composeBrandOs(
       },
     catalogPresentIfDbExists: !opts.catalogHost,
     // P&P : plugins activés par défaut. Feature-off si
-    // manifest.features.plugins=false (Fidu) ou CREEZIO_PLUGINS=0.
+    // manifest.features.plugins=false (feature-off) ou CREEZIO_PLUGINS=0.
     pluginsFeatureOff,
     featureOffBrandLabel: product,
     ...(!pluginsFeatureOff

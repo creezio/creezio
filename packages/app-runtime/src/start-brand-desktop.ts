@@ -156,7 +156,7 @@ type BootSplashHandle = {
 };
 
 /**
- * Fenêtre IMMÉDIATE avant tout travail lourd (parité TF2 `main.ts`).
+ * Fenêtre IMMÉDIATE avant tout travail lourd (parité kit `main.ts`).
  *
  * Le kernel (core.db + brand.db), la surface HTTP OS et MCP se montent avant
  * que le shell runtime ne crée sa fenêtre : sur un poste Windows froid
@@ -537,7 +537,7 @@ async function startBrandDesktopBody(args: {
     };
   }
 
-  // Fenêtre AVANT le travail lourd (parité TF2) : le kernel SQLite, la surface
+  // Fenêtre AVANT le travail lourd (parité kit) : le kernel SQLite, la surface
   // HTTP OS et MCP prennent des dizaines de secondes sur un poste Windows
   // froid. Remplacée par la coquille du shell runtime (installBrandOsDesktop).
   const bootSplash =

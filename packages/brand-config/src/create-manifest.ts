@@ -1,7 +1,7 @@
 /**
  * Fabrique un AppManifest Client+Serveur à partir d'un spec minimal.
  * Utilisé par `@creezio/factory` (Phase D) — jamais pour écraser
- * les manifests prod TempoFlow / Certivan / Fidu.
+ * un manifest de production déjà en flotte.
  */
 
 import { nsisGuidFromAppId } from "./nsis-guid.js";
@@ -76,7 +76,7 @@ function toEnvPrefix(brandId: string, override?: string): string {
   return brandId.toUpperCase().replace(/-/g, "_");
 }
 
-/** Token feed sandbox déterministe (≠ tokens prod TF/Fidu/Certivan). */
+/** Token feed sandbox déterministe (≠ tokens prod déjà en flotte). */
 export function defaultFeedToken(brandId: string): string {
   // Préfixe sandbox + empreinte courte — jamais les tokens prod.
   const digest = nsisGuidFromAppId(`creezio-feed:${brandId}`).replace(
@@ -236,12 +236,13 @@ export function validateAppManifest(m: AppManifest): string[] {
       "server.nsisGuid ≠ UUID.v5(appId)",
     );
   }
-  const prodTfFidu = "dl-e660352fb04dbd5e2519f0e60897c548";
-  const prodCertivan = "dl-3c94d486b0efa7618fad5bdfff410c49";
+  const reservedProdFeedTokens = [
+    "dl-e660352fb04dbd5e2519f0e60897c548",
+    "dl-3c94d486b0efa7618fad5bdfff410c49",
+  ];
   if (
     m.sandbox &&
-    (m.client?.feedUrl?.includes(prodTfFidu) ||
-      m.client?.feedUrl?.includes(prodCertivan))
+    reservedProdFeedTokens.some((tok) => m.client?.feedUrl?.includes(tok))
   ) {
     errors.push("sandbox ne doit pas recycler un feedToken prod");
   }

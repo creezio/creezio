@@ -151,7 +151,7 @@ export type TasksBrandConfig = {
   productName: string;
   /** Description courte domaine métier pour le prompt agent. */
   productDomain: string;
-  /** Label footer Hermes, ex. "TempoFlow CRM". */
+  /** Label footer Hermes, ex. "CRM". */
   hermesSourceLabel: string;
   /** Skill Hermes à charger, ex. "tempoflow2-crm". */
   hermesSkill: string;

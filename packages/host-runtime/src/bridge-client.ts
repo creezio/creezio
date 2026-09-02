@@ -26,7 +26,7 @@ export type BridgeOptions = {
   getSessionCookie?: () => Promise<string | null>;
   executor: (req: SupplierActionRequest) => Promise<Record<string, unknown>>;
   onLog?: (line: string) => void;
-  /** Cookie session CRM (ex. tempoflow2_crm_session). */
+  /** Cookie session CRM (ex. brand_session). */
   sessionCookieName: string;
   /** Méta présence device (headers x-device-id / x-device-label du stream). */
   deviceId?: string;

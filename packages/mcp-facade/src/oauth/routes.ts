@@ -1,5 +1,5 @@
 /**
- * Endpoints OAuth 2.1 du serveur MCP — SoT kit (port TempoFlow gold).
+ * Endpoints OAuth 2.1 du serveur MCP — SoT kit (port kit gold).
  * Branding / session / cookie injectables via McpOAuthRoutesConfig.
  */
 import { Hono } from "hono";

@@ -79,7 +79,7 @@ export type PluginN8nProvisioningDeps = {
     | string;
   /** Metadata registre (`managedBy`). */
   managedBy: string;
-  /** Label connexion snapshot (ex. « Tag dédié + registre TempoFlow »). */
+  /** Label connexion snapshot (ex. « Tag dédié + registre kit »). */
   modeLabel?: string;
   /** Credentials ; défaut = env N8N_API_URL / N8N_API_KEY / N8N_VERSION. */
   getConfig?: () => { base: string; key: string; version?: string | null };

@@ -9,7 +9,7 @@
 import type { DemoScenario, DemoStep } from "./types.js";
 
 export type GenericOsTourOptions = {
-  /** Nom du produit affiché dans les cartes (ex. « WinHub »). */
+  /** Nom du produit affiché dans les cartes (ex. « Acme »). */
   productName: string;
   /** Route d'atterrissage de fin de visite (défaut `/`). */
   homeHref?: string;

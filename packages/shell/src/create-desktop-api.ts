@@ -1,7 +1,7 @@
 /**
  * Fabrique l'objet exposé via contextBridge sous `window[bridgeName]`.
  *
- * Port structurel de electron/preload-app.ts (TF2 0.10.26) — sans hardcoder
+ * Port structurel de electron/preload-app.ts (kit) — sans hardcoder
  * le nom du bridge.
  *
  * ⚠️ Préload packagé via extraResources (hors asar) : NE PAS `require`
@@ -180,7 +180,7 @@ export function createDesktopApi(
       ipc.send(C.setup.retry);
     },
 
-    // Compat TF2 : handlers main écoutent souvent `update:get-status`.
+    // Compat kit : handlers main écoutent souvent `update:get-status`.
     getUpdateStatus: () =>
       ipc.invoke(C.update.getStatus) as Promise<DesktopUpdateStatus>,
     checkForUpdates: () =>

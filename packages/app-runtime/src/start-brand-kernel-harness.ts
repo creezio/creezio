@@ -153,7 +153,7 @@ export async function startBrandKernelHarness(
       : { n8n: false, hermes: false };
   const warmNative = warmFlags.n8n || warmFlags.hermes;
   // Plugins ON par défaut (parité composeBrandOs) — OFF si
-  // features.plugins=false (Fidu) ou kill-switch CREEZIO_PLUGINS=0.
+  // features.plugins=false (feature-off) ou kill-switch CREEZIO_PLUGINS=0.
   const pluginsOn =
     desktopProfile === "full" &&
     process.env.CREEZIO_PLUGINS !== "0" &&
@@ -177,7 +177,7 @@ export async function startBrandKernelHarness(
       process.env.MEILI_SKIP_INDEX !== "1",
   });
 
-  // Étapes serveur dynamiques (parité TF2) — visibles dans boot-status dès
+  // Étapes serveur dynamiques (parité kit) — visibles dans boot-status dès
   // le early-listen quand la phase est activée.
   if (desktopProfile === "full" && config.catalogHost?.ensureCatalogImported) {
     boot.register("catalog-import", "Import catalogue");
@@ -950,7 +950,7 @@ export async function startBrandKernelHarness(
       boot.go("hermes", { detail: "Warm Hermes…", parallel: true });
     }
     // Webhooks n8n : URL publique (tunnel réel si provisionné, sinon la
-    // surface locale) — parité TF2 WEBHOOK_URL / N8N_EDITOR_BASE_URL.
+    // surface locale) — parité kit WEBHOOK_URL / N8N_EDITOR_BASE_URL.
     let n8nPublicBaseUrl: string | null = null;
     try {
       n8nPublicBaseUrl = brandOs.hostRuntime
@@ -991,7 +991,7 @@ export async function startBrandKernelHarness(
     // réapplique après restart Hermes (clé/port peuvent changer).
     applyNativeEmbedNextEnv(brandOs, { log: phaseLog("native-env") });
 
-    // Pont Hermes ↔ CRM/n8n (parité TF2 5a/5a3) : clé CRM + seed contexte
+    // Pont Hermes ↔ CRM/n8n (parité kit 5a/5a3) : clé CRM + seed contexte
     // + reapplyHermesBridge — derrière le warm Hermes uniquement.
     if (warmHermes && config.manifest) {
       await runHarnessHermesBridgePhase({

@@ -1,6 +1,6 @@
 // @ts-nocheck — Electron shell.openExternal (shim kit mince)
 /**
- * OAuth 2.0 RFC 8252 (native apps) Google — gold TempoFlow paramétré.
+ * OAuth 2.0 RFC 8252 (native apps) Google — gold kit paramétré.
  * Store tokens injecté ; Electron via loadElectron (pas d'import top-level).
  */
 

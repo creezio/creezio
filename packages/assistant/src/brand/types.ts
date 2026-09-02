@@ -102,7 +102,7 @@ export type AssistantMcpConfig = {
 
 /**
  * Adapter tâches kanban marque — handlers kit `create_task` / `list_tasks`
- * (aliases Fidu `create_todo` / `list_todos`).
+ * (aliases feature-off `create_todo` / `list_todos`).
  * Les marques branchent leur store (`@/lib/tasks` ou todos) ; le kit expose
  * les defs + dispatch. Ne pas recopier dans brand-chat-tools.
  */

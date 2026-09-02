@@ -1,5 +1,5 @@
 /**
- * CLI npm sans PATH Windows — port brand-agnostic TF2 npm-cli.ts.
+ * CLI npm sans PATH Windows — port brand-agnostic kit npm-cli.ts.
  */
 
 import { spawn, type ChildProcess } from "node:child_process";
