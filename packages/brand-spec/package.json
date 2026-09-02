@@ -1,6 +1,6 @@
 {
   "name": "@creezio/brand-spec",
-  "version": "0.24.1",
+  "version": "0.25.0",
   "description": "BrandSpec — source of truth déclarative d'une marque (YAML + modules + doctor)",
   "type": "module",
   "main": "./dist/index.js",

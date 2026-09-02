@@ -1,5 +1,13 @@
 # @creezio/access-control
 
+## 0.25.0
+
+### Patch Changes
+
+- Updated dependencies [17ae2a4]
+  - @creezio/auth@0.25.0
+  - @creezio/shell-ui@0.25.0
+
 ## 0.24.1
 
 ### Patch Changes

@@ -1,5 +1,20 @@
 # @creezio/electron-shell
 
+## 0.25.0
+
+### Patch Changes
+
+- 2da43ad: D1 / T10 — purge vocabulaire marque du runtime kit : markers Hermes hérités retirés, registre production propagation vidé (canaux data-driven), commentaires/JSDoc neutralisés, log opener `creezio-server`. Allowlist 270→117 / 493→173 occ. Pas de dual-read TEMPOFLOW\_\* recréé.
+- Updated dependencies [2da43ad]
+  - @creezio/brand-config@0.25.0
+  - @creezio/host-runtime@0.25.0
+  - @creezio/observability@0.25.0
+  - @creezio/platform-core@0.25.0
+  - @creezio/product-hub@0.25.0
+  - @creezio/shell@0.25.0
+  - @creezio/search@0.25.0
+  - @creezio/browser-host@0.25.0
+
 ## 0.24.1
 
 ### Patch Changes
