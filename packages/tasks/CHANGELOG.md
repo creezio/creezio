@@ -1,5 +1,28 @@
 # @creezio/tasks
 
+## 0.23.0
+
+### Patch Changes
+
+- 555b2fc: Teardown fail-closed de la boucle runner IA : `stopAiRunnerLoop()` exporté par
+  `@creezio/tasks` (arrêt des timers runner 2 s + récurrence 60 s posés par
+  `ensureAiRunnerLoop`) et appelé par `mountBrandPlatformSurface().close()`.
+  Sans cet arrêt, le `setInterval` process-global survivait à la fermeture de la
+  surface plateforme et son tick suivant jetait `requireTasksBrand()` en
+  `unhandledRejection` (« configureTasksBrand() requis avant d'utiliser le
+  runtime kanban ») — cause de la flake de la gate
+  `test-phase-platform-native-mounts` (PNM.2). Une nouvelle surface relance la
+  boucle à sa première requête tasks.
+- Updated dependencies [ddf823d]
+- Updated dependencies [cd50ae5]
+- Updated dependencies [bf14b35]
+- Updated dependencies [b0a53b0]
+  - @creezio/platform-core@0.23.0
+  - @creezio/assistant@0.23.0
+  - @creezio/api-kernel@0.23.0
+  - @creezio/auth@0.23.0
+  - @creezio/shell-ui@0.23.0
+
 ## 0.22.0
 
 ### Patch Changes

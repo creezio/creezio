@@ -1,5 +1,13 @@
 # @creezio/shell-ui
 
+## 0.23.0
+
+### Patch Changes
+
+- Updated dependencies [ddf823d]
+  - @creezio/brand-config@0.23.0
+  - @creezio/shell@0.23.0
+
 ## 0.22.0
 
 ### Patch Changes

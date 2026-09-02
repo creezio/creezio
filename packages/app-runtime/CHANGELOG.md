@@ -1,5 +1,77 @@
 # @creezio/app-runtime
 
+## 0.23.0
+
+### Minor Changes
+
+- ddf823d: H11 — purge de la compat TF2-era (`ARCHITECTURE_VERSION` H10 → **H11**,
+  ADR `docs/adr/ADR-h11-purge-tf2-compat.md`).
+
+  Dual-reads `TEMPOFLOW_*` retirés (env canonique = `envKey` / envPrefix
+  du manifest). Manifests kit `tempoflow` / `certivan` / `fidu` et leurs
+  entrées de registre supprimés (`demobrand` reste).
+  `createChrCatalogMeiliFeed` et l'alias `sites` → `fournisseurs` de
+  `fingerprintCountKey` retirés. Alias
+  `clearTempoflowGeneratedWebuiPassword` retiré ; le workspace IA exige
+  `preload.js` (échec explicite si absent). Fallback registre kit des
+  `build-builder-config.mjs` générés retiré.
+
+  **Breaking** : une marque qui s'appuie encore sur `TEMPOFLOW_*`, un
+  manifest kit, `createChrCatalogMeiliFeed`, l'alias Tempoflow du password
+  WebUI ou `preload-app.js` casse au boot / à l'import. Migration
+  automatique via `creezio upgrade` (codemod `scripts/codemods/H11/`,
+  idempotent, fail-closed).
+
+- cd50ae5: T5 / F3.4 — volet 2 du contrat de module : champs additifs `assistantSources`,
+  `assistantSourcesJustification` et `onboarding` sur `BrandModuleDef`.
+  Collecteurs `collectAssistantSources` / `collectOnboardingContent` dans
+  `createBrandModuleRegistry` ; consommation réelle dans `@creezio/assistant`
+  (`moduleSources`, `applyModuleAssistantSources`, contexte prompt +
+  entitySources + toolDefinitions) et `@creezio/onboarding`
+  (`composeOnboardingFromModules`, mount factory). Doctor warn
+  `MODULE_ASSISTANT_SOURCES_MISSING` si un module expose une API sans sources
+  ni justification. Templates factory (`brand module init`, from-prd) mis à
+  jour. Pas de bump `ARCHITECTURE_VERSION` (champs optionnels).
+
+### Patch Changes
+
+- 555b2fc: Teardown fail-closed de la boucle runner IA : `stopAiRunnerLoop()` exporté par
+  `@creezio/tasks` (arrêt des timers runner 2 s + récurrence 60 s posés par
+  `ensureAiRunnerLoop`) et appelé par `mountBrandPlatformSurface().close()`.
+  Sans cet arrêt, le `setInterval` process-global survivait à la fermeture de la
+  surface plateforme et son tick suivant jetait `requireTasksBrand()` en
+  `unhandledRejection` (« configureTasksBrand() requis avant d'utiliser le
+  runtime kanban ») — cause de la flake de la gate
+  `test-phase-platform-native-mounts` (PNM.2). Une nouvelle surface relance la
+  boucle à sa première requête tasks.
+- Updated dependencies [ddf823d]
+- Updated dependencies [555b2fc]
+- Updated dependencies [cd50ae5]
+- Updated dependencies [bf14b35]
+- Updated dependencies [b0a53b0]
+  - @creezio/platform-core@0.23.0
+  - @creezio/brand-config@0.23.0
+  - @creezio/search@0.23.0
+  - @creezio/host-runtime@0.23.0
+  - @creezio/electron-shell@0.23.0
+  - @creezio/product-hub@0.23.0
+  - @creezio/tasks@0.23.0
+  - @creezio/assistant@0.23.0
+  - @creezio/onboarding@0.23.0
+  - @creezio/api-kernel@0.23.0
+  - @creezio/auth@0.23.0
+  - @creezio/browser-host@0.23.0
+  - @creezio/database@0.23.0
+  - @creezio/integrations@0.23.0
+  - @creezio/interactive-demo@0.23.0
+  - @creezio/mails@0.23.0
+  - @creezio/mcp-facade@0.23.0
+  - @creezio/nav@0.23.0
+  - @creezio/observability@0.23.0
+  - @creezio/shell-ui@0.23.0
+  - @creezio/access-control@0.23.0
+  - @creezio/support@0.23.0
+
 ## 0.22.0
 
 ### Patch Changes

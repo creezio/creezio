@@ -1,5 +1,15 @@
 # @creezio/landing
 
+## 0.23.0
+
+### Patch Changes
+
+- Updated dependencies [ddf823d]
+- Updated dependencies [bf14b35]
+- Updated dependencies [b0a53b0]
+  - @creezio/platform-core@0.23.0
+  - @creezio/api-kernel@0.23.0
+
 ## 0.22.0
 
 ### Patch Changes
