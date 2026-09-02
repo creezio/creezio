@@ -169,7 +169,12 @@ archivées : [archive/gates/](./archive/gates/).
 pour chaque marque de `.github/propagate-brands.json` :
 
 1. no-op si le HEAD n'est pas un commit release changesets ;
-2. clone le repo marque, skip si déjà à jour ou branche de bump déjà poussée ;
+2. GET les PR ouvertes du repo cible — skip si même titre, même head
+   (`creezio/kit-bump-<version>`), ou `package.json` déjà au pin (default
+   branch ou PR ouverte) ; skip aussi si `main` est déjà au pin. Puis
+   clone ; skip si déjà à jour ou branche de bump déjà poussée. POST
+   `/pulls` HTTP 422 = skip (PR déjà existante), jamais une erreur
+   (D7 — `ls-remote` seul a produit TF3 #73 après #72 mergée) ;
 3. synchronise tous les manifests `@creezio/*` avec la SoT kit via
    `planCreezioManifestSync` (logique partagée `@creezio/factory` — bump des
    existantes + ajout des deps requises manquantes, extras hors SoT listés

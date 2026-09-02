@@ -71,6 +71,12 @@ import {
   resolveAgentTunnelImage,
 } from "./server-docker-agent-tunnel.js";
 import {
+  isGhcrRegistry,
+  runGhcrGcCommand,
+  runGhcrPublishRetention,
+} from "./server-docker-ghcr-gc.js";
+import {
+  REGISTRY_GC_DEFAULT_HOST,
   runRegistryGcCommand,
   selectTagsToPrune,
 } from "./server-docker-registry-gc.js";
@@ -482,23 +488,22 @@ Registry d'images versionnées (update de flotte) :
     Rétention après push réussi : garde les N derniers tags (défaut 2,
     env CREEZIO_PUBLISH_KEEP_TAGS) côté daemon local ET registre privé,
     + docker builder prune --max-used-space (env CREEZIO_PUBLISH_KEEP_STORAGE,
-    défaut 5GB). Les blobs registre sont balayés par registry-gc / timer hôte.
-  creezio server-docker registry-gc [--registry 127.0.0.1:5000] [--keep 2]
-    [--container creezio-registry] [--repo <name>] [--brand-root <app>]
-    [--admin-app <url>] [--apply]
-    (GC fail-closed du registre Docker local registry:2 : liste les tags
-     par repo via API v2, garde les N plus récents PAR FAMILLE — auto.*
-     d'un côté, tags manuels de l'autre ; défaut 2, env
-     CREEZIO_REGISTRY_GC_KEEP — ET tout tag PROTÉGÉ : conteneur en cours
-     (docker ps), docker-data/servers.json (--brand-root + découverte
-     labels creezio.brand-root, instances arrêtées incluses), releases
-     fleet de l'app admin (--admin-app / env CREEZIO_FLEET_ADMIN_URL,
-     admin injoignable = refus). DELETE des manifests non retenus puis
-     registry garbage-collect dans le container.
-     DRY-RUN PAR DÉFAUT : plan seulement — --apply exécute. Jamais de
-     suppression d'un tag en usage ou référencé. Erreurs explicites :
-     docker absent, registre down, servers.json illisible, DELETE KO,
-     GC KO.)
+    défaut 5GB). Cible ghcr.io : API GitHub Packages (versions) — au moins
+    3 semver + jamais un tag in-use / servers.json ; auth manquante =
+    fail-closed (GHCR_TOKEN / GITHUB_TOKEN / .github-token). Les blobs du
+    registre local sont balayés par registry-gc / timer hôte.
+  creezio server-docker registry-gc [--registry 127.0.0.1:5000|ghcr.io/<owner>]
+    [--keep 2] [--container creezio-registry] [--repo <name>]
+    [--brand-root <app>] [--admin-app <url>] [--apply]
+    (GC fail-closed. Registre local registry:2 : API v2 + garbage-collect.
+     Cible ghcr.io/<owner> : API GitHub Packages versions — même politique
+     (3 semver min, jamais in-use / servers.json / releases), auth
+     obligatoire. Garde les N plus récents PAR FAMILLE — auto.* d'un côté,
+     semver de l'autre (plancher 3) ; défaut 2, env CREEZIO_REGISTRY_GC_KEEP
+     — ET tout tag PROTÉGÉ : conteneur en cours (docker ps),
+     docker-data/servers.json (--brand-root + labels creezio.brand-root),
+     releases fleet (--admin-app / CREEZIO_FLEET_ADMIN_URL).
+     DRY-RUN PAR DÉFAUT : plan seulement — --apply exécute.)
 
 Agent hôte flotte (VPS restaurant — exposé via agent.{slug}.{zone}) :
   creezio server-docker agent up --brand-root <app> [--port 18810]
@@ -2171,6 +2176,7 @@ async function runPublishSubcommand(
     repo: publishRepoName(brandId, variant),
     justPushedTag: tag,
     keepTags: resolvePublishKeepTags(args, env),
+    brandRoot: paths.brandRoot,
     env,
   });
 }
@@ -2229,20 +2235,16 @@ const MANIFEST_ACCEPT =
   "application/vnd.docker.distribution.manifest.list.v2+json";
 
 /**
- * Nettoyage best-effort après un push réussi — ne fait JAMAIS échouer le
- * publish. Trois volets :
- * 1. daemon local : `docker rmi` des vieux tags <registry>/<repo> au-delà de
- *    keepTags (les images utilisées par un container résistent — normal) ;
- * 2. build cache : `docker builder prune --keep-storage` (même politique que
- *    la GC BuildKit du daemon) ;
- * 3. registre privé : DELETE des manifests des vieux tags (blobs balayés par
- *    la GC registre planifiée côté hôte — `registry garbage-collect`).
+ * Nettoyage après un push réussi. Daemon + build cache = best-effort
+ * (ne fait pas échouer le publish). Registre local = best-effort.
+ * Cible `ghcr.io` = fail-closed (auth / API Packages).
  */
 async function runPublishRetention(opts: {
   registry: string;
   repo: string;
   justPushedTag: string;
   keepTags: number;
+  brandRoot?: string;
   env: NodeJS.ProcessEnv;
 }): Promise<void> {
   const { registry, repo, justPushedTag, keepTags } = opts;
@@ -2303,7 +2305,18 @@ async function runPublishRetention(opts: {
     console.log("⚠ docker builder prune KO — cache non purgé");
   }
 
-  // 3. Vieux tags du registre privé (manifests seulement).
+  // 3. Vieux tags du registre : local (API v2) ou GHCR (Packages API).
+  if (isGhcrRegistry(registry)) {
+    await runGhcrPublishRetention({
+      registry,
+      repo,
+      justPushedTag,
+      keepTags,
+      brandRoot: opts.brandRoot,
+      env: opts.env,
+    });
+    return;
+  }
   const bases = privateRegistryBases(registry);
   if (!bases.length) return;
   const tagsRes = await registryFetch(bases, `/v2/${repo}/tags/list`);
@@ -4183,7 +4196,15 @@ export async function runServerDockerCli(argv: string[]): Promise<void> {
   }
 
   if (args.sub === "registry-gc") {
-    await runRegistryGcCommand(args);
+    const resolved =
+      (args.registry || "").trim() ||
+      (process.env.CREEZIO_REGISTRY || "").trim() ||
+      REGISTRY_GC_DEFAULT_HOST;
+    if (isGhcrRegistry(resolved)) {
+      await runGhcrGcCommand(args);
+    } else {
+      await runRegistryGcCommand(args);
+    }
     return;
   }
 

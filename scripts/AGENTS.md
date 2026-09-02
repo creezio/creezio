@@ -26,6 +26,7 @@ ils décrivent le chantier, pas l'état courant.
 | `lib/intention-twins.mjs` | Scanner jumeaux intention (P0) |
 | `lib/assert-runtime-dist.mjs` | Fail-closed dist runtime (contrats + hash de contenu src↔dist) — publish / gate ADR.1b-gen |
 | `lib/link-kit-node-modules.mjs` | Lien `node_modules` kit → app générée (gates factory-prd hors ligne, pas de npm install) |
+| `lib/propagate-pr-guard.mjs` | Garde anti-doublon PR de bump (`evaluatePropagateGuard` / HTTP 422) — D7 |
 | `test-phase-*.mjs` | Gates — une phase / un contrat |
 
 ## Ajouter une gate

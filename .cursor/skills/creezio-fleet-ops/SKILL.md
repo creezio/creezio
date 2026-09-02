@@ -352,8 +352,11 @@ Chargement : `set -a; . /opt/docker/creezio-secrets/ghcr.env; set +a`.
 Preuve E2E : publish `creezio-server-tempoflow3:auto.202608310248.674051e`
 (1,04 Go compressés, build+push 318 s depuis le VPS) → pull GHCR → update
 `resto-lyon`/`resto-marseille` `--backup` → `verify-prod` 7/7. La rétention
-post-publish (§10) vise le registre local — utiliser `--no-retention` avec
-GHCR (rétention distante à la main / à outiller).
+post-publish (§10) s'applique aussi à GHCR (API Packages versions : ≥ 3
+semver, jamais un tag référencé `servers.json` / instances ; token
+`GHCR_TOKEN` / `GITHUB_TOKEN` / `.github-token` obligatoire — fail-closed
+si absent). `--no-retention` reste le bypass ponctuel, plus un passage
+obligé GHCR.
 
 Update = pull → recreate même volume/env → health → **rollback auto image**
 si KO. **Pas de nouveau tar.gz par défaut.** Les archives déjà présentes
@@ -900,12 +903,24 @@ Fail-closed (exit ≠ 0, message actionnable) : docker absent, registre down
 DELETE manifeste KO (`REGISTRY_STORAGE_DELETE_ENABLED=true` requis),
 container registry arrêté, `garbage-collect` KO.
 
+**GHCR** (`--registry ghcr.io/<owner>`) : même geste `registry-gc`, autre
+backend — API GitHub Packages `…/packages/container/<image>/versions`
+(jamais l'API v2, `privateRegistryBases("ghcr.io")` reste `[]`). Garde
+≥ 3 semver + tout tag in-use / `servers.json` / instances / releases ;
+dry-run par défaut, `--apply` DELETE la version. Auth manquante =
+fail-closed (`GHCR_TOKEN` / `GITHUB_TOKEN` / `.github-token`, scope
+`delete:packages`). Le registre de prod TempoFlow peut être loopback
+(`127.0.0.1:5000`) : ce chemin ne s'active que si la cible EST `ghcr.io`.
+
 **Vérité** : `packages/factory/src/server-docker-registry-gc.ts` (geste
-`registry-gc`) ; `packages/factory/src/server-docker-cli.ts`
-(`runPublishRetention`, `selectTagsToPrune`) ; hôte : `/etc/docker/daemon.json`,
+`registry-gc` local) ; `packages/factory/src/server-docker-ghcr-gc.ts`
+(rétention GHCR + `publish`) ; `packages/factory/src/server-docker-cli.ts`
+(`runPublishRetention`, `selectTagsToPrune` / `selectGhcrTagsToPrune`) ;
+hôte : `/etc/docker/daemon.json`,
 `/usr/local/sbin/docker-disk-maintenance.sh`,
 `/etc/systemd/system/docker-disk-maintenance.{service,timer}`.
-Gate : `scripts/test-phase-server-docker-registry-gc.mjs`.
+Gates : `scripts/test-phase-server-docker-registry-gc.mjs`,
+`scripts/test-phase-server-docker-ghcr-gc.mjs`.
 
 **Pièges** : `daemon.json` exige un **restart** de `docker.service` (pas un
 reload) → jamais pendant un build/publish ; re-vérifier ensuite la santé des

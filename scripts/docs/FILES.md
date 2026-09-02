@@ -15,7 +15,7 @@
 | [`generate-files-md.mjs`](../generate-files-md.mjs) | Générateur des inventaires `docs/FILES.md` — format standard du kit. |
 | [`generate-kit-packages.mjs`](../generate-kit-packages.mjs) | Génère/vérifie packages/platform-core/kit-packages.json (manifeste des packages publiés, consommé par les apps) |
 | [`kit-version.mjs`](../kit-version.mjs) | !usrbinenv node |
-| [`propagate-brands.mjs`](../propagate-brands.mjs) | Rollout npm flotte (P3.b) — ouvre une PR de sync `@creezio/*` par marque configurée (`.github/propagate-brands.json`) : bump + ajout des deps SoT manquantes via `planCreezioManifestSync` (@creezio/factory, logique partagée avec `creezio upgrade`), extras listés en warning dans la PR, rapport d'impact propagation en corps ; consommé par `propagate.yml`. |
+| [`propagate-brands.mjs`](../propagate-brands.mjs) | Rollout npm flotte (P3.b) — ouvre une PR de sync `@creezio/*` par marque configurée (`.github/propagate-brands.json`) : garde D7 (GET PR ouvertes / pin `package.json` / HTTP 422) puis bump + ajout des deps SoT manquantes via `planCreezioManifestSync` (@creezio/factory, logique partagée avec `creezio upgrade`), extras listés en warning dans la PR, rapport d'impact propagation en corps ; consommé par `propagate.yml`. |
 | [`propagation-impact.mjs`](../propagation-impact.mjs) | !usrbinenv node |
 | [`reset-tempoflow3.mjs`](../reset-tempoflow3.mjs) | Reset scripté TempoFlow3 : backup → brand apply --force → les fichiers creezio:owned-by-brand / creezio.ownedByBrand sont préservés. |
 | [`test-fast.mjs`](../test-fast.mjs) | Runner gates fail-fast lisible (`npm run test:kit`/`test:brands`/`test:env`) — suites auto-détectées (matrice dans README), séquentiel, stop 1re rouge, `--from`/`--only`/`--skip`, JSONL /tmp/creezio-test-fast.log |
@@ -202,6 +202,7 @@
 | [`test-phase-plugin-insights.mjs`](../test-phase-plugin-insights.mjs) | Gate P4 plugins natifs — plugin démo kit « insights-assistant ». |
 | [`test-phase-plugin-tools.mjs`](../test-phase-plugin-tools.mjs) | Gate P2/P3 plugins natifs — tools MCP plugins + mounts API kernel. |
 | [`test-phase-plugins-default.mjs`](../test-phase-plugins-default.mjs) | Gate P1 plugins natifs — activation par défaut. - PD1 : sans env ⇒ plugins ENABLED (défaut inversé, plus d'opt-in). |
+| [`test-phase-propagate-pr-guard.mjs`](../test-phase-propagate-pr-guard.mjs) | Gate D7 — garde anti-doublon PR de propagate (`propagate-pr-guard`, mock gh : titre / head / pin / HTTP 422). |
 | [`test-phase-r0.mjs`](../test-phase-r0.mjs) | Phase R0 — gel inventions + clarif lifecycle-only. |
 | [`test-phase-r1.mjs`](../test-phase-r1.mjs) | Phase R1 — @creezio/database (port TempoFlow Admin Database). |
 | [`test-phase-r2.mjs`](../test-phase-r2.mjs) | Phase R2 — Product Hub SoT unique core.db. |
@@ -210,6 +211,7 @@
 | [`test-phase-registry-pull-proxy.mjs`](../test-phase-registry-pull-proxy.mjs) | Gate — exposition du registre Docker en pull authentifié (F4). |
 | [`test-phase-resolve-manifest.mjs`](../test-phase-resolve-manifest.mjs) | Gate resolveManifest — registre + fallback app-manifest.json (from-prd). |
 | [`test-phase-runtime-dist-freshness.mjs`](../test-phase-runtime-dist-freshness.mjs) | Gate ADR.1b généralisée — dist runtime = câblage src (content + mtime) ; fail-closed sync/publish. |
+| [`test-phase-server-docker-ghcr-gc.mjs`](../test-phase-server-docker-ghcr-gc.mjs) | Gate D5 — rétention GHCR (API Packages versions, 3 semver + jamais in-use, fail-closed sans auth, mock HTTP). |
 | [`test-phase-server-docker-owner.mjs`](../test-phase-server-docker-owner.mjs) | Gate — create VPS fail-closed sans `CREEZIO_OWNER_EMAIL`/`_PASSWORD` ; persist `secrets.env` ; `ensure-owner` + `CREEZIO_E2E_*` optionnels ; LOCAL=1 owner optionnel ; setup + login mockés ; jamais le mot de passe en log. |
 | [`test-phase-server-docker-registry-gc.mjs`](../test-phase-server-docker-registry-gc.mjs) | Gate T11 — `server-docker registry-gc` : plan/rétention par famille `auto.*`, protections servers.json + releases fleet, dry-run par défaut + `--apply`, mock HTTP fail-closed ; live `registry:2` éphémère ou skip explicite si Docker absent. |
 | [`test-phase-server-docker-tunnel.mjs`](../test-phase-server-docker-tunnel.mjs) | Gate — create VPS fail-closed sans contrat CF (`CREEZIO_CF_*`) + mapping slug réservé `demo` → `<brand>-demo`. |
@@ -271,4 +273,5 @@
 | [`lib/brand-roots.mjs`](../lib/brand-roots.mjs) | Resolve brand CRM roots across VPS (/opt/docker/…) and sibling layouts (e.g. |
 | [`lib/brand-vocab.mjs`](../lib/brand-vocab.mjs) | Scanner vocabulaire marque (SoT patterns + allowlist) — CLI `--print` / `--write-allowlist` (rétrécit uniquement, refuse ajout/incrément). |
 | [`lib/link-kit-node-modules.mjs`](../lib/link-kit-node-modules.mjs) | Pose un symlink `node_modules` kit → app générée (tsc hors ligne, sans npm install ni `--link-kit`). |
+| [`lib/propagate-pr-guard.mjs`](../lib/propagate-pr-guard.mjs) | Garde anti-doublon des PR de bump kit (GET PR ouvertes, pin `package.json`, HTTP 422) — D7. |
 | [`lib/resolve-probe-brand.mjs`](../lib/resolve-probe-brand.mjs) | Résout la marque sonde TempoFlow3 hors monorepo kit. Layout nominal : 2 repos — monorepo marque (`server/`, `client/`) + repo admin dédié `<brand>-admin`. |

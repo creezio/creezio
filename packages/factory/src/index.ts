@@ -172,6 +172,20 @@ export {
   type RepoGcPlan,
 } from "./server-docker-registry-gc.js";
 export {
+  isGhcrRegistry,
+  parseGhcrRegistry,
+  selectGhcrTagsToPrune,
+  planGhcrPackageGc,
+  resolveGhcrToken,
+  resolveGhcrSemverKeep,
+  runGhcrGc,
+  runGhcrGcCommand,
+  runGhcrPublishRetention,
+  GHCR_SEMVER_KEEP_MIN,
+  type GhcrGcResult,
+  type GhcrGcOpts,
+} from "./server-docker-ghcr-gc.js";
+export {
   writeAppFile,
   isOwnedByBrand,
   OWNED_BY_BRAND_MARKER,
