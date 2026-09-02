@@ -8,6 +8,7 @@
 
 | Fichier | Rôle |
 |---|---|
+| [`src/agent-tunnel.ts`](../src/agent-tunnel.ts) | T7 — surveillance respawn (bornée, miroir cloudflared-respawn) du container cloudflared DÉDIÉ agent `creezio-agent-tunnel` : politique ignore/respawn/give-up + watch docker injecté ; jamais de (re)création de tunnel CF ici. |
 | [`src/agent-updates.ts`](../src/agent-updates.ts) | (à documenter) |
 | [`src/docker.ts`](../src/docker.ts) | (à documenter) |
 | [`src/host-agent.ts`](../src/host-agent.ts) | (à documenter) |

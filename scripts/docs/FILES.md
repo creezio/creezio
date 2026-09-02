@@ -47,6 +47,7 @@
 | [`test-phase-admin-fleet-registry.mjs`](../test-phase-admin-fleet-registry.mjs) | Gate — module fleet-registry (@creezio/admin) : DB flotte centrale (F2). |
 | [`test-phase-admin-prospects.mjs`](../test-phase-admin-prospects.mjs) | Gate CRUD prospects admin (PROSP-5) + validation nom requis (PROSP-3) sur `createAdminCrudMount`. |
 | [`test-phase-admin-roadmap.mjs`](../test-phase-admin-roadmap.mjs) | Gate CRUD roadmap admin (ROAD-4) + validation titre requis (ROAD-3) + tri par position. |
+| [`test-phase-agent-tunnel.mjs`](../test-phase-agent-tunnel.mjs) | Gate T7 — tunnel cloudflared dédié agent : politique respawn bornée + watch container (docker injecté) côté fleet, helpers container factory (token jamais en argv), ordre migration douce de l'enroll. |
 | [`test-phase-api-entity-mount.mjs`](../test-phase-api-entity-mount.mjs) | Gate entity mounts — moteur CRUD déclaratif `@creezio/api-kernel` (`createEntityApiMount` / `registerEntityMounts`). |
 | [`test-phase-api-fallthrough-loop.mjs`](../test-phase-api-fallthrough-loop.mjs) | Coupe-circuit anti-boucle 404 kernel→Next→kernel (`x-creezio-kernel-fallthrough` / `inflightApiFallthrough`). |
 | [`test-phase-app-runtime.mjs`](../test-phase-app-runtime.mjs) | Gate app-runtime — façade exports + composeBrandOs smoke (sans apps/tempoflow3). |
@@ -220,7 +221,7 @@
 | [`test-phase-sqlite-wal-resilience.mjs`](../test-phase-sqlite-wal-resilience.mjs) | Quarantaine WAL/SHM à l'open + checkpoint `close` + harness `closeKernel` avant sidecars (anti boot-loop SIGKILL). |
 | [`test-phase-stack-update-preserve.mjs`](../test-phase-stack-update-preserve.mjs) | Gate — update ne peut plus retirer un sidecar cloudflared ni changer le hostname : preserve + fail-closed + LOCAL=1 + migrate explicite. |
 | [`test-phase-tf3-chrome.mjs`](../test-phase-tf3-chrome.mjs) | Cutover chrome marque sonde (jumeaux layout/assistant absents + `configureSidebar`) — skip si repo absent. |
-| [`test-phase-tunnel-self-provision.mjs`](../test-phase-tunnel-self-provision.mjs) | Auto-provisioning tunnel CF mocké (verify token, create/idempotence/404, DNS, deprovision) — zéro réseau réel. |
+| [`test-phase-tunnel-self-provision.mjs`](../test-phase-tunnel-self-provision.mjs) | Auto-provisioning tunnel CF mocké (verify token, create/idempotence/404, DNS, deprovision) + §10 tunnel dédié agent T7 (`ensureCfAgentTunnel`, migration douce) — zéro réseau réel. |
 | [`test-phase-upgrade-runner.mjs`](../test-phase-upgrade-runner.mjs) | Gate P3.a — `creezio upgrade` : dry-run no-op sur scaffold frais, chaîne multi-versions (H8→…→cible courante) dans l'ordre sur fixture en retard, application réelle idempotente. |
 | [`test-phase-v1.mjs`](../test-phase-v1.mjs) | Phase V1 — fabrique plugins conversationnelle (demobrand E2E). |
 | [`test-phase-v2.mjs`](../test-phase-v2.mjs) | Phase V2 — observabilité native (activité, usages plugins, control-plane). |

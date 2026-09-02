@@ -117,6 +117,16 @@ export {
   type CreateTunnelPolicyInput,
 } from "./server-docker-tunnel.js";
 export {
+  AGENT_TUNNEL_CONTAINER,
+  AGENT_TUNNEL_IMAGE_DEFAULT,
+  agentTunnelEnvPath,
+  buildAgentTunnelRunArgs,
+  needsDedicatedAgentTunnelMigration,
+  parseAgentPublicUrl,
+  renderAgentTunnelEnvFile,
+  resolveAgentTunnelImage,
+} from "./server-docker-agent-tunnel.js";
+export {
   CREATE_OWNER_ENV_KEYS,
   E2E_OWNER_ENV_KEYS,
   applyFirstRunOwner,

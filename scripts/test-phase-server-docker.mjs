@@ -289,6 +289,45 @@ test("boot progress headless : reporter + early-listen + boot-status", () => {
   assert.match(harness, /startBrandUiPlane/);
 });
 
+test("rm d'instance ne touche JAMAIS un DNS agent (ownership host-agent)", () => {
+  const cli = fs.readFileSync(
+    path.join(root, "packages/factory/src/server-docker-cli.ts"),
+    "utf8",
+  );
+  const start = cli.indexOf("async function deprovisionInstanceTunnelCf");
+  assert.ok(start > 0, "deprovisionInstanceTunnelCf présent");
+  const end = cli.indexOf("\nasync function ", start + 1);
+  const fn = cli.slice(start, end > start ? end : start + 2500);
+  assert.match(fn, /deprovisionCfSlug\(/);
+  assert.doesNotMatch(
+    fn,
+    /deprovisionCfAgentTunnel|agentTunnelDeprovisionDnsHosts/,
+    "deprovision instance n'appelle pas le geste agent",
+  );
+  assert.doesNotMatch(
+    fn,
+    /agent:\s*true|agent:\s*\{/,
+    "aucune option agent sur le déprovision d'instance",
+  );
+  assert.match(
+    cli,
+    /action === "rm"/,
+    "geste agent rm explicite pour le tunnel/DNS agent",
+  );
+  assert.match(cli, /deprovisionCfAgentTunnel/);
+  const help = spawnSync(
+    process.execPath,
+    [path.join(root, "packages/factory/bin/creezio.js"), "server-docker", "--help"],
+    { encoding: "utf8" },
+  );
+  assert.equal(help.status, 0, help.stderr || help.stdout);
+  assert.match(help.stdout, /agent down\|status\|rm|agent rm/);
+  assert.match(
+    help.stdout,
+    /server-docker rm d'une instance ne les touche JAMAIS/,
+  );
+});
+
 test("CREEZIO_SERVER_DOCKER_BACKUP : défaut on, 0/false/off skip", async () => {
   const dist = path.join(root, "packages/factory/dist/server-docker-cli.js");
   assert.ok(

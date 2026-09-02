@@ -594,9 +594,29 @@ curl -sS -u "admin:$ADMPASS" -X POST \
   -H 'content-type: application/json' -d '{"label":"vps-resto-x"}'
 # → {"ok":true,"enrollToken":"…"}  (affiché UNE fois)
 
-# Sur le VPS — enrôlement (réserve l'ingress agent.{slug} via le provisioner) :
+# Sur le VPS — enrôlement (provisionne le tunnel DÉDIÉ agent via l'API CF) :
 creezio server-docker enroll --brand-root "$BRAND_ROOT" \
   --admin https://admin.tempoflow.fr --token <enrollToken> --slug <slug>
+```
+
+**Tunnel dédié agent (T7)** : l'ingress public `agent.{slug}.{zone}` /
+`agent-{slug}.{zone}` vit exclusivement sur un tunnel Cloudflare propre à
+l'agent (nom CF `creezio-agent-<slug>`, container
+**`creezio-agent-tunnel`**, token `{BRAND_ROOT}/docker-data/agent-tunnel.env`
+chmod 600). `enroll --slug` le provisionne ; **`agent up` (chaque update
+de l'agent) détecte un hôte déjà enrôlé sans tunnel dédié et exécute
+lui-même la migration** (provision → connecteur → bascule CNAME → retrait
+d'une règle résiduelle sur un tunnel d'instance). Idempotent. Sans
+`CREEZIO_CF_*` : refus fail-closed avec la liste des clés manquantes.
+Respawn : Docker `unless-stopped` + surveillance bornée par le host-agent
+(`@creezio/fleet` `agent-tunnel.ts`). État : `agent status` et
+`GET /agent/api/health` (champ `agentTunnel`).
+
+**Ownership DNS** : `server-docker rm <instance>` ne touche jamais
+`agent.*` / `agent-*`. Le seul geste qui les retire :
+
+```bash
+creezio server-docker agent rm --brand-root "$BRAND_ROOT" [--slug <slug>]
 ```
 
 **Firewall UFW — posé automatiquement (0.18.0+)** : tout port hôte consommé
@@ -626,9 +646,15 @@ qui porte l'ingress `agent.*` est droppé par UFW. Vécu 10–30/08/2026
 **Vérification** : `curl -sS -u admin:… http://127.0.0.1:18800/admin/api/hosts`
 → l'hôte avec `"online":true` et son `agentUrl` `https://agent.<slug>.…`.
 
-**Vérité** : `packages/factory/src/server-docker-cli.ts` (agent/enroll),
+**Vérité** : `packages/factory/src/server-docker-cli.ts` (agent/enroll) +
+`server-docker-agent-tunnel.ts` (container tunnel dédié),
+`packages/platform-core/src/tunnel-cf-client.ts` (`ensureCfAgentTunnel`,
+`deprovisionCfAgentTunnel`),
+`packages/fleet/src/agent-tunnel.ts` (surveillance respawn),
 `packages/fleet/src/server-admin.ts` (`/admin/api/enroll` — auth par enrollToken, pas Basic),
 tokens agent : `docker-data/host-agent.json` (hashés, `agent token new|revoke`).
+Gates : `test-phase-agent-tunnel`, `test-phase-tunnel-self-provision` (§10),
+`test-phase-server-docker` (rm instance ≠ DNS agent).
 
 ## 7. Client desktop thin (remote-only)
 
@@ -676,7 +702,11 @@ L'admin (§5) montre boot-status live, logs et ops par serveur sans SSH.
 
 Agent hôte injoignable (`https://agent.{slug}.{zone}` en timeout) alors que
 le CRM répond : vérifier UFW — `sudo journalctl -k | rg 'UFW BLOCK.*DPT=188'`
-(règle `172.16.0.0/12` → 18800/18810 manquante, voir §6).
+(règle `172.16.0.0/12` → 18800/18810 manquante, voir §6) — puis le
+connecteur dédié : `docker ps -a --filter name=creezio-agent-tunnel` +
+`docker logs creezio-agent-tunnel --tail 50` (T7 ; le host-agent le
+redémarre seul, backoff borné — un abandon est loggué dans
+`docker logs creezio-host-agent`).
 
 **Vérité** : `packages/app-runtime/src/listen-brand-os-http.ts` (routes os),
 `start-brand-kernel-harness.ts` (étapes boot),
