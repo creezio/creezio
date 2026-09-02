@@ -1,5 +1,12 @@
 # @creezio/search
 
+## 0.24.1
+
+### Patch Changes
+
+- @creezio/platform-core@0.24.1
+- @creezio/observability@0.24.1
+
 ## 0.24.0
 
 ### Minor Changes
