@@ -1,5 +1,60 @@
 # @creezio/electron-shell
 
+## 0.23.0
+
+### Minor Changes
+
+- ddf823d: H11 — purge de la compat TF2-era (`ARCHITECTURE_VERSION` H10 → **H11**,
+  ADR `docs/adr/ADR-h11-purge-tf2-compat.md`).
+
+  Dual-reads `TEMPOFLOW_*` retirés (env canonique = `envKey` / envPrefix
+  du manifest). Manifests kit `tempoflow` / `certivan` / `fidu` et leurs
+  entrées de registre supprimés (`demobrand` reste).
+  `createChrCatalogMeiliFeed` et l'alias `sites` → `fournisseurs` de
+  `fingerprintCountKey` retirés. Alias
+  `clearTempoflowGeneratedWebuiPassword` retiré ; le workspace IA exige
+  `preload.js` (échec explicite si absent). Fallback registre kit des
+  `build-builder-config.mjs` générés retiré.
+
+  **Breaking** : une marque qui s'appuie encore sur `TEMPOFLOW_*`, un
+  manifest kit, `createChrCatalogMeiliFeed`, l'alias Tempoflow du password
+  WebUI ou `preload-app.js` casse au boot / à l'import. Migration
+  automatique via `creezio upgrade` (codemod `scripts/codemods/H11/`,
+  idempotent, fail-closed).
+
+- b0a53b0: T9 — retrait de la compat desktop legacy (`ARCHITECTURE_VERSION` H9 →
+  **H10**, ADR `docs/adr/ADR-p2a-desktop-legacy-freeze.md` note de clôture).
+
+  Le module gelé `electron-shell/src/desktop/legacy-brand-compat.ts` est
+  supprimé, avec sa gate `test-phase-legacy-desktop-frozen` et l'empreinte
+  `scripts/legacy-desktop-frozen.json`. Le moteur desktop
+  (`installBrandDesktopRuntime`) applique des défauts génériques :
+  `<PREFIX>_PLUGINS_DIR`, `<brandId>fid`, `<PREFIX>_API_KEY`, preload unique
+  `preload.js`, contrat host `ensureDesktopNode` (sans alias).
+
+  **Breaking pour les clients desktop legacy** (repos hors kit appelant
+  `installBrandDesktopRuntime` directement avec un envPrefix historique) :
+  les valeurs d'env implicites et le basename preload historique ne sont
+  plus sondés. Migration automatique via `creezio upgrade` (codemod
+  `scripts/codemods/H10/`, idempotent, fail-closed) : injection des deps
+  explicites aux valeurs historiques, renommage `ensureTempoflowNode` →
+  `ensureDesktopNode`, rebascule `preload-app.js` → `preload.js`. Aucun
+  geste pour les marques modernes (`startBrandDesktop`).
+
+### Patch Changes
+
+- Updated dependencies [ddf823d]
+- Updated dependencies [bf14b35]
+- Updated dependencies [b0a53b0]
+  - @creezio/platform-core@0.23.0
+  - @creezio/brand-config@0.23.0
+  - @creezio/search@0.23.0
+  - @creezio/host-runtime@0.23.0
+  - @creezio/product-hub@0.23.0
+  - @creezio/browser-host@0.23.0
+  - @creezio/observability@0.23.0
+  - @creezio/shell@0.23.0
+
 ## 0.22.0
 
 ### Patch Changes
