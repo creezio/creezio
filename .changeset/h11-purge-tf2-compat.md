@@ -1,12 +1,12 @@
 ---
-"@creezio/platform-core": major
-"@creezio/brand-config": major
-"@creezio/search": major
-"@creezio/host-runtime": major
-"@creezio/electron-shell": major
-"@creezio/product-hub": major
-"@creezio/app-runtime": major
-"@creezio/factory": major
+"@creezio/platform-core": minor
+"@creezio/brand-config": minor
+"@creezio/search": minor
+"@creezio/host-runtime": minor
+"@creezio/electron-shell": minor
+"@creezio/product-hub": minor
+"@creezio/app-runtime": minor
+"@creezio/factory": minor
 "@creezio/propagation": minor
 ---
 
