@@ -25,6 +25,10 @@
  * Garde-fous :
  *   - ne fait rien si HEAD n'est pas un commit release changesets
  *     (`chore(release): version packages`) sauf --force / PROPAGATE_FORCE=1 ;
+ *   - GET les PR ouvertes (même titre / même head / package.json déjà au
+ *     pin) ou `main` déjà au pin → skip (D7 — `ls-remote` kit-bump-<ver>
+ *     ne suffit pas : TF3 #73 doublon après #72 mergée) ;
+ *   - POST /pulls HTTP 422 → skip (PR déjà existante), jamais une erreur ;
  *   - marque déjà à jour (tous manifests ^version ET deps SoT présentes) → skip ;
  *   - branche de bump déjà poussée → skip (PR déjà ouverte) ;
  *   - sync = logique PARTAGÉE `planCreezioManifestSync` (@creezio/factory,
@@ -40,6 +44,12 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import {
+  bumpBranchName,
+  bumpPrTitle,
+  evaluatePropagateGuard,
+  interpretCreatePullResponse,
+} from "./lib/propagate-pr-guard.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const CONFIG_PATH = path.join(ROOT, ".github/propagate-brands.json");
@@ -125,7 +135,7 @@ function regenLockfiles(cloneDir) {
   return regenerated;
 }
 
-async function githubApi(method, url, body) {
+async function githubRequest(method, url, body) {
   const res = await fetch(`https://api.github.com${url}`, {
     method,
     headers: {
@@ -137,10 +147,13 @@ async function githubApi(method, url, body) {
     body: body ? JSON.stringify(body) : undefined,
   });
   const json = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    throw new Error(`GitHub ${method} ${url} → ${res.status}: ${JSON.stringify(json).slice(0, 400)}`);
-  }
-  return json;
+  return { status: res.status, json, link: res.headers.get("link") || "" };
+}
+
+function githubApiClient() {
+  return {
+    request: (method, url) => githubRequest(method, url),
+  };
 }
 
 async function main() {
@@ -161,7 +174,7 @@ async function main() {
   const version = kitVersion();
   const spec = `^${version}`;
   const bumpKind = bumpKindFor(version);
-  const branch = `creezio/kit-bump-${version}`;
+  const branch = bumpBranchName(version);
   log(`propagate: kit ${version} (bump ${bumpKind}) → ${brands.length} marque(s)${dryRun ? " [dry-run]" : ""}`);
 
   // Rapport d'impact via @creezio/propagation (contrat Phase F, branché ici).
@@ -204,6 +217,20 @@ async function main() {
 async function propagateBrand(brand, { version, spec, branch, payload }) {
   const { brandId, repo, defaultBranch = "main" } = brand;
   log(`\n--- ${brandId} (${repo}) ---`);
+
+  if (token) {
+    const guard = await evaluatePropagateGuard(githubApiClient(), {
+      repo,
+      version,
+      brandId,
+      branch,
+      defaultBranch,
+    });
+    if (guard.skip) {
+      return { brand: brandId, status: "SKIP", detail: guard.reason };
+    }
+  }
+
   const cloneDir = fs.mkdtempSync(path.join(os.tmpdir(), `propagate-${brandId}-`));
   const cloneUrl = token
     ? `https://x-access-token:${token}@github.com/${repo}.git`
@@ -253,7 +280,7 @@ async function propagateBrand(brand, { version, spec, branch, payload }) {
   );
   sh("git", ["push", "origin", branch], { cwd: cloneDir, stdio: ["ignore", "inherit", "inherit"] });
 
-  const title = `chore(deps): bump @creezio/* → ${version} [${brandId}]`;
+  const title = bumpPrTitle(version, brandId);
   const bodyHeader = [
     `Bump automatique des packages \`@creezio/*\` vers **${version}** (rollout npm flotte, workflow \`propagate.yml\` du kit).`,
     "",
@@ -273,14 +300,22 @@ async function propagateBrand(brand, { version, spec, branch, payload }) {
       : []),
   ].join("\n");
   const body = bodyHeader + (payload ? `\n${payload.bodyMarkdown}` : "\n_(pas de rapport d'impact disponible)_");
-  const pr = await githubApi("POST", `/repos/${repo}/pulls`, {
+  const created = await githubRequest("POST", `/repos/${repo}/pulls`, {
     title,
     head: branch,
     base: defaultBranch,
     body,
   });
-  log(`PR ouverte : ${pr.html_url}`);
-  return { brand: brandId, status: "PR", detail: pr.html_url };
+  const outcome = interpretCreatePullResponse(created.status, created.json);
+  if (outcome.kind === "skip") {
+    log(`PR non ouverte : ${outcome.reason}`);
+    return { brand: brandId, status: "SKIP", detail: outcome.reason };
+  }
+  if (outcome.kind === "error") {
+    throw new Error(outcome.reason);
+  }
+  log(`PR ouverte : ${outcome.url}`);
+  return { brand: brandId, status: "PR", detail: outcome.url };
 }
 
 main().catch((err) => {

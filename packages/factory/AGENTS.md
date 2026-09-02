@@ -118,6 +118,11 @@ en jumeau dans `main.ts`.
   / `CREEZIO_FLEET_ADMIN_URL`, injoignable = refus). **Dry-run par défaut**,
   `--apply` exécute. Même politique sur le chemin `publish`.
   Gate : `scripts/test-phase-server-docker-registry-gc.mjs`.
+- `src/server-docker-ghcr-gc.ts` : même geste `registry-gc` + rétention
+  `publish` quand le registre cible EST `ghcr.io` — API GitHub Packages
+  versions (pas v2). Règle : ≥ 3 semver, jamais un tag in-use /
+  `servers.json` / instances. Auth manquante = fail-closed. Gate :
+  `scripts/test-phase-server-docker-ghcr-gc.mjs`.
 - `src/server-docker-tunnel.ts` : politique create fail-closed
   (`CREEZIO_CF_API_TOKEN` / `_ACCOUNT_ID` / `_ZONE_ID` requis sauf
   `CREEZIO_TUNNEL_LOCAL=1`) + dérivation slug réservé.
@@ -185,6 +190,7 @@ node --test scripts/test-phase-factory-prd.mjs
 node --test scripts/test-phase-factory-prd-experience.mjs
 node --test scripts/test-phase-os-ui-scaffold.mjs
 node --test scripts/test-phase-server-docker-registry-gc.mjs
+node --test scripts/test-phase-server-docker-ghcr-gc.mjs
 ```
 
 Smoke manuel :
