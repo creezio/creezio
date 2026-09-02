@@ -1,5 +1,43 @@
 # @creezio/app-runtime
 
+## 0.24.0
+
+### Minor Changes
+
+- efc7bb5: H12 — purge des shims P1.b d'electron-shell + dé-brandage workspace shell-ui (ARCHITECTURE_VERSION H11 → H12, convention 0.x : minor comme H10/H11).
+
+  - `@creezio/electron-shell` : plus aucun ré-export `@deprecated` vers host-runtime/search ; subpath `./meili` retiré. Importer depuis les packages SoT.
+  - `@creezio/host-runtime` : alias nommés marque retirés (`ensureTempoflowNode` → `ensureDesktopNode`, pins `TF2_*` → `DESKTOP_*`, `tempoflowSandboxPaths` → `desktopSandboxPaths`).
+  - `@creezio/shell-ui` : `configureWorkspacePaths` remplace `configureFullscreenPaths` ; plus de `TF_LEGACY_*` / `PANIER_PATH` / `OPTIMISER_PATH` / `*Supplier*` dans le workspace.
+  - Codemods `scripts/codemods/H12/` (`since: 0.24.0`), appliqués par `creezio upgrade`.
+  - Gate `test-phase-electron-shell-frozen-exports` retirée (plus de surface gelée).
+
+### Patch Changes
+
+- Updated dependencies [efc7bb5]
+  - @creezio/platform-core@0.24.0
+  - @creezio/electron-shell@0.24.0
+  - @creezio/host-runtime@0.24.0
+  - @creezio/search@0.24.0
+  - @creezio/shell-ui@0.24.0
+  - @creezio/api-kernel@0.24.0
+  - @creezio/assistant@0.24.0
+  - @creezio/auth@0.24.0
+  - @creezio/browser-host@0.24.0
+  - @creezio/database@0.24.0
+  - @creezio/integrations@0.24.0
+  - @creezio/interactive-demo@0.24.0
+  - @creezio/mails@0.24.0
+  - @creezio/mcp-facade@0.24.0
+  - @creezio/nav@0.24.0
+  - @creezio/observability@0.24.0
+  - @creezio/onboarding@0.24.0
+  - @creezio/product-hub@0.24.0
+  - @creezio/tasks@0.24.0
+  - @creezio/access-control@0.24.0
+  - @creezio/brand-config@0.24.0
+  - @creezio/support@0.24.0
+
 ## 0.23.0
 
 ### Minor Changes

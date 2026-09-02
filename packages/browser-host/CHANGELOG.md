@@ -1,5 +1,12 @@
 # @creezio/browser-host
 
+## 0.24.0
+
+### Patch Changes
+
+- Updated dependencies [efc7bb5]
+  - @creezio/platform-core@0.24.0
+
 ## 0.23.0
 
 ### Patch Changes
