@@ -1,5 +1,25 @@
 # @creezio/factory
 
+## 0.20.0
+
+### Minor Changes
+
+- 2f5b6ea: H13 — résidu allowlist runtime (ARCHITECTURE_VERSION H12 → H13, convention 0.x : minor comme H10/H11/H12).
+
+  - Crash env : plus de dual-read `TF2_*` / `CERTIVAN_*` / `FIDU_*` / `TEMPOFLOW3_*` — `CREEZIO_*` + scan `envKey`.
+  - `envForNodeScriptSpawn` : plus d'heuristique packagée nommée marque.
+  - UI kit : `creezio-fake-cursor`, `creezio-titlebar-*`, cache SW `creezio-shell-*`.
+  - Codemods `scripts/codemods/H13/` (`since: 0.26.0`), appliqués par `creezio upgrade`.
+
+### Patch Changes
+
+- cff3d24: `server-docker update` persiste et réutilise le `hostPort` loopback (2ᵉ update = même port) et lit/écrit les fichiers stack root:root 600 (`cf.env`, `secrets.env`) via `sudo -n` / wrapper `/usr/local/sbin/creezio-server-docker priv-io` — fail-closed actionnable, plus de chmod one-shot.
+- Updated dependencies [2f5b6ea]
+  - @creezio/platform-core@0.26.0
+  - @creezio/product-hub@0.26.0
+  - @creezio/brand-config@0.26.0
+  - @creezio/brand-spec@0.26.0
+
 ## 0.19.0
 
 ### Minor Changes

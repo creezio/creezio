@@ -1,5 +1,12 @@
 # @creezio/database
 
+## 0.26.0
+
+### Patch Changes
+
+- Updated dependencies [2f5b6ea]
+  - @creezio/platform-core@0.26.0
+
 ## 0.25.0
 
 ### Patch Changes

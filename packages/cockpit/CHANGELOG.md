@@ -1,5 +1,12 @@
 # @creezio/cockpit
 
+## 0.26.0
+
+### Patch Changes
+
+- Updated dependencies [2f5b6ea]
+  - @creezio/shell-ui@0.26.0
+
 ## 0.25.0
 
 ### Patch Changes

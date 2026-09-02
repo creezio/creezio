@@ -1,6 +1,6 @@
 {
   "name": "@creezio/desktop-tooling",
-  "version": "0.25.0",
+  "version": "0.26.0",
   "description": "Tooling publish / remote-build / after-pack / build-status générique (AppManifest)",
   "type": "module",
   "main": "./dist-cjs/index.js",
@@ -35,7 +35,7 @@
     "resolve-config": "node scripts/resolve-config.mjs"
   },
   "dependencies": {
-    "@creezio/brand-config": "^0.25.0"
+    "@creezio/brand-config": "^0.26.0"
   },
   "devDependencies": {
     "@types/node": "^22.15.3",
