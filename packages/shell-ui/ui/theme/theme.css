@@ -1,6 +1,6 @@
 /*
- * Thème Creezio canonique — extrait verbatim du design system TempoFlow
- * (gold TF). Fond crème #faf7f1, encre #14182f, chrome onglets « Chrome »,
+ * Thème Creezio canonique — design system kit (palette gold).
+ * Fond crème #faf7f1, encre #14182f, chrome onglets « Chrome »,
  * sidebar sombre, animations onboarding. AUCUN métier.
  *
  * Usage marque (layout racine, AVANT le globals.css marque) :
@@ -268,18 +268,18 @@ html {
 }
 
 /* Electron frameless (Windows) : bandeau titre / onglets déplaçable */
-.tempoflow-titlebar-drag {
+.creezio-titlebar-drag {
   -webkit-app-region: drag;
   app-region: drag;
 }
 
-.tempoflow-titlebar-no-drag {
+.creezio-titlebar-no-drag {
   -webkit-app-region: no-drag;
   app-region: no-drag;
 }
 
 /* Contrôles fenêtre Windows : curseur default (pas pointer) — hover = fond */
-.tempoflow-titlebar-no-drag button {
+.creezio-titlebar-no-drag button {
   cursor: default;
 }
 
@@ -290,7 +290,7 @@ html {
 /*
  * Styles possédés par le composant : la palette ne doit JAMAIS dépendre des
  * règles génériques de modales de la marque (un `[role="dialog"]` global qui
- * borne largeur/hauteur/overflow a détruit son rendu — incident winhub PR #8,
+ * borne largeur/hauteur/overflow a détruit son rendu — incident login PR #8,
  * 2026-08-10). Classe doublée + attribut = spécificité (0,3,0) : prime sur
  * tout sélecteur générique à une classe/un attribut, quel que soit l ordre
  * des feuilles de styles. Les classes Tailwind du composant restent pour le

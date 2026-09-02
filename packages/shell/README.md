@@ -81,8 +81,8 @@ wireCrmHostPreload({
   ipc: ipcRenderer,
   contextBridge,
   bridgeName: "tempoflowDesktop",
-  titlebarNoDragClass: ".tempoflow-titlebar-no-drag",
-  aidAttr: "data-tf2-aid",
+  titlebarNoDragClass: ".creezio-titlebar-no-drag",
+  aidAttr: "data-creezio-aid",
 });
 ```
 
@@ -275,7 +275,7 @@ La compatibilité est volontaire :
 
 - Bridge attendu : `tempoflowDesktop`.
 - `customWindowChrome` généralement activé sous Windows.
-- `titlebarNoDragClass` typique : `.tempoflow-titlebar-no-drag`.
+- `titlebarNoDragClass` typique : `.creezio-titlebar-no-drag` (H13).
 - Les extensions hôte Hermes, n8n, plugins et fleet sont pertinentes car `tempoflowManifest.features` active `plugins` et `fleet`.
 - Les canaux historiques TF2 (`oauth:google-login`, `config:*`, `update:get-status`, `tabs:supplier-opened`) restent pris en compte.
 

@@ -36,7 +36,7 @@
 | [`src/lib/optimize-cover-url.ts`](../src/lib/optimize-cover-url.ts) | Réécrit les URLs de covers (secteurs / catégories) vers une taille vignette. Les /img/familles.webp locaux sont déjà optimisés — pass-through. |
 | [`src/lib/page-trails.ts`](../src/lib/page-trails.ts) | Trails admin / loading plateforme (O9) — trails métier restent marque. export type TrailCrumb = { href?: string; label: string }; export function trailForRequestLogs(): TrailCrumb[] { return [ { href: "/admin/request-logs", label: "Admin" }, { label: "Logs API / MCP" }, ]; } export function trailForAnalytics(): TrailCrumb[] { |
 | [`src/lib/public-origin.ts`](../src/lib/public-origin.ts) | _(pas de cartouche JSDoc en tête — voir le code)_ |
-| [`src/lib/server-incident.ts`](../src/lib/server-incident.ts) | Remontée d'incidents serveur (app desktop) vers le collecteur de crash de l'éditeur — ex. « Meilisearch indisponible alors que la recherche est sollicitée ». Best-effort, jamais bloquant, dédupliqué (1 envoi max par type d'incident par heure) pour ne pas inonder le collecteur. Actif uniquement si TF2_CRASH_ENDPOINT est injecté dans l'environnement (fait par electron/server-launcher.ts) — en déploiement web classique, cette fonction est un no-op. |
+| [`src/lib/server-incident.ts`](../src/lib/server-incident.ts) | Remontée d'incidents serveur (app desktop) vers le collecteur de crash. Actif si `CREEZIO_CRASH_ENDPOINT` ou `*_CRASH_ENDPOINT` (`envKey`) est injecté — no-op en déploiement web classique. H13 : plus de dual-read nommé marque. |
 | [`src/lib/tab-document-url.ts`](../src/lib/tab-document-url.ts) | Comparaison d'URL « même document » pour onglets sites externes. Ignore le hash (soft-nav SPA). Normalise trailing slash sur pathname, hostname en minuscules, et aligne localhost ↔ 127.0.0.1. Dupliqué volontairement dans electron/tab-url.ts (rootDir Electron isolé). |
 | [`src/lib/utils.ts`](../src/lib/utils.ts) | _(pas de cartouche JSDoc en tête — voir le code)_ |
 
@@ -144,7 +144,7 @@
 | Fichier | Rôle |
 |---|---|
 | [`ui/pwa/client-error-reporter.tsx`](../ui/pwa/client-error-reporter.tsx) | _(pas de cartouche JSDoc en tête — voir le code)_ |
-| [`ui/pwa/register-sw.tsx`](../ui/pwa/register-sw.tsx) | _(pas de cartouche JSDoc en tête — voir le code)_ |
+| [`ui/pwa/register-sw.tsx`](../ui/pwa/register-sw.tsx) | Enregistrement SW + purge des caches HTML `creezio-shell-*` (H13). |
 
 ## `ui/search/`
 
@@ -181,7 +181,7 @@
 
 | Fichier | Rôle |
 |---|---|
-| [`ui/theme/tailwind-preset.cjs`](../ui/theme/tailwind-preset.cjs) | Preset Tailwind Creezio (thème gold TF générique : accent orange, neutres réchauffés, variables CSS) — CJS volontaire (chargé par tailwind.config Node/jiti). |
+| [`ui/theme/tailwind-preset.cjs`](../ui/theme/tailwind-preset.cjs) | Preset Tailwind Creezio (accent orange, neutres réchauffés, variables CSS) — CJS volontaire (chargé par tailwind.config Node/jiti). |
 
 ## `ui/workspace/`
 

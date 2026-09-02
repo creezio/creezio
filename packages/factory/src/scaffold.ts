@@ -1256,7 +1256,7 @@ npm run electron:config:server
 
 ## Publish (sandbox — dry-run)
 
-Les feeds sandbox sont **jetables** et distincts des feeds prod TF / Fidu / Certivan.
+Les feeds sandbox sont **jetables** et distincts des feeds des marques déjà en flotte.
 Tant que le vhost \`dl-${m.brandId}\` n'existe pas sur NPM, utiliser uniquement le dry-run :
 
 \`\`\`bash
@@ -1264,7 +1264,7 @@ npm run desktop:resolve-config -- --brand=${m.brandId} --kind=client --pretty
 npm run desktop:publish -- --brand=${m.brandId} --kind=client --dry-run --app-root /opt/docker/creezio/apps/${m.brandId}
 \`\`\`
 
-Ne **jamais** pointer \`dockerDlName\` / feedToken vers \`dl-tempoflow\`, \`dl-fidu\` ou \`dl-certivan\`.
+Ne **jamais** recycler \`dockerDlName\` / feedToken d'une marque déjà en flotte.
 
 ## Suite (kit H6 / I*)
 
@@ -1562,7 +1562,7 @@ export function scaffoldNewApp(opts: NewAppOptions): ScaffoldResult {
 
   // Plugin kit générique embarqué — seedé au boot via seedPluginsFromDirs
   // (`<serverDir>/plugins/<id>/` → runtime). Sans cet appel, une marque
-  // scaffoldée part avec 0 plugins (WinHub / audit 4a42617d).
+  // scaffoldée part avec 0 plugins (audit 4a42617d).
   const kitPlugin = installKitPluginTemplate({
     templateId: "insights-assistant",
     pluginsDir: path.join(serverDir, "plugins"),

@@ -266,9 +266,9 @@ export const DRIVER_HELPERS = `
 export const FAKE_CURSOR_INJECT = `
 (() => {
   const g = globalThis;
-  if (g.__tfFakeCursor) return;
+  if (g.__creezioFakeCursor) return;
 
-  const CURSOR_ID = "tf2-fake-cursor";
+  const CURSOR_ID = "creezio-fake-cursor";
   const HIDE_DELAY_MS = 3500;
   const CURSOR_SVG =
     '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">' +
@@ -399,6 +399,6 @@ export const FAKE_CURSOR_INJECT = `
     }
   }
 
-  g.__tfFakeCursor = new FakeCursor();
+  g.__creezioFakeCursor = new FakeCursor();
 })();
 `;

@@ -167,7 +167,7 @@ export function buildCrmHostDesktopApi(
 export type CrmHostDesktopApi = ReturnType<typeof buildCrmHostDesktopApi>;
 
 export type PreloadTelemetryOptions = {
-  /** Classe CSS zone titlebar à ignorer (ex. `.tempoflow-titlebar-no-drag`). */
+  /** Classe CSS zone titlebar à ignorer (ex. `.creezio-titlebar-no-drag`). */
   titlebarNoDragClass: string;
   /** Attribut data aid (défaut kit `data-creezio-aid`). */
   aidAttr?: string;

@@ -5,7 +5,7 @@ import { useEffect } from "react";
 /**
  * Enregistrement client du SW custom (`public/sw.js`).
  * Pas de next-pwa : compatible Next 14 App Router + standalone Docker.
- * Au boot : purge les vieux caches HTML (tf2-shell-v1) qui causaient
+ * Au boot : purge les vieux caches HTML (creezio-shell-v*) qui causaient
  * des « Application error » après redeploy.
  */
 export function RegisterServiceWorker() {
@@ -22,7 +22,7 @@ export function RegisterServiceWorker() {
         const keys = await caches.keys();
         await Promise.all(
           keys
-            .filter((k) => k.startsWith("tf2-shell-") && k !== "tf2-shell-v2")
+            .filter((k) => k.startsWith("creezio-shell-") && k !== "creezio-shell-v2")
             .map((k) => caches.delete(k)),
         );
       } catch {

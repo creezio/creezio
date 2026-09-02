@@ -30,7 +30,6 @@ export function envForNodeScriptSpawn(
   const looksElectron =
     same ||
     base === "electron" ||
-    base.includes("tempoflow") ||
     base.includes("creezio") ||
     base.endsWith("-server");
   if (looksElectron) env.ELECTRON_RUN_AS_NODE = "1";

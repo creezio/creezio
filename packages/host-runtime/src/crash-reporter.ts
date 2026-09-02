@@ -18,7 +18,7 @@ import { recentLines, log, logFileTail, logFilePath } from "./logger.js";
 export type CrashReporterConfig = {
   /** URL collecteur par défaut (marque). Absente = conserve la valeur courante. */
   defaultEndpoint?: string;
-  /** Env override (ex. TF2_CRASH_ENDPOINT / TEMPOFLOW3_CRASH_ENDPOINT). */
+  /** Env override (clé canonique `envKey(manifest, "CRASH_ENDPOINT")`). */
   endpointEnvKey?: string;
   /** brandId joint aux rapports (filtre VPS). */
   brandId?: string;

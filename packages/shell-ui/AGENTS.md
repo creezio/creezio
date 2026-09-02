@@ -85,8 +85,9 @@ La marque doit configurer :
 - `configureShellUiBrand` :
   - `desktopApiGlobal`
   - `publicHostSuffix`
-  - `titlebarDragClass`
-  - `titlebarNoDragClass`
+  - `titlebarDragClass` / `titlebarNoDragClass` (défauts + CSS kit H13 :
+    `creezio-titlebar-drag` / `creezio-titlebar-no-drag` — plus de
+    sélecteur nommé marque ; codemod `scripts/codemods/H13/`)
   - `apiKeyPrefix`
   - `productName`
   - `aidAttr` si besoin

@@ -7,9 +7,11 @@ Chromium serveur pour IA (sidecar Docker). **Zéro dépendance Electron.**
 1. **Jamais d'import `electron`** ici — ce package tourne dans le container
    Node headless. Le jumeau Electron est `electron-shell/host/ai-workspace`.
 2. **`driver-scripts.ts` = SoT des helpers driver** (`DRIVER_HELPERS`,
-   `FAKE_CURSOR_INJECT`). La version Electron les importe d'ici — ne PAS
-   forker : toute évolution de verbe `external_*` se fait ici puis profite
-   aux deux mondes via `CdpTransport` (`shared-driver.ts`).
+   `FAKE_CURSOR_INJECT`). Id DOM `creezio-fake-cursor`, global
+   `__creezioFakeCursor` (H13 — plus de préfixe nommé marque). La
+   version Electron les importe d'ici — ne PAS forker : toute évolution
+   de verbe `external_*` se fait ici puis profite aux deux mondes via
+   `CdpTransport` (`shared-driver.ts`).
 3. **Profils persistants** : `/data/browser/<aiUserId>` — ne pas purger le
    `user-data-dir` (sessions fournisseurs IA). Les verrous Singleton* sont
    purgés au launch (`clearStaleProfileLocks`) car le hostname change à

@@ -90,7 +90,7 @@ wireCrmHostPreload({
   ipc: ipcRenderer,
   contextBridge,
   bridgeName: "tempoflowDesktop",
-  titlebarNoDragClass: ".tempoflow-titlebar-no-drag",
+  titlebarNoDragClass: ".creezio-titlebar-no-drag",
 });
 ```
 

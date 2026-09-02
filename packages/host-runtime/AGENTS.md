@@ -54,6 +54,10 @@ jamais dans electron-shell.
    `pluginEnvKeys` = `${envPrefix}_${suffix}` uniquement ; secret Hermes
    = `.{secretFilePrefix}-api-server-key` ; `AiWorkspaceManager` exige
    `preload.js` (échec explicite si absent). Ne pas réintroduire d'alias.
+6. H13 — `pluginCrmKeyPath` dual-lit le nom fichier déjà déployé
+   (`PLUGIN_CRM_KEY_FILE`) puis le nom dérivé `.{brandId}-plugin-api-key.json`.
+   Retrait du littéral au H14 (ADR-h13-allowlist-residue). `tempoflow-npm`
+   reste un dual-read de chemin disque (même ADR).
 
 ## Tests / gates liés
 

@@ -4,7 +4,7 @@
  * survivre aux navigations App Router.
  */
 
-const CURSOR_ID = "tf2-fake-cursor";
+const CURSOR_ID = "creezio-fake-cursor";
 const HIDE_DELAY_MS = 3500;
 
 const CURSOR_SVG = `

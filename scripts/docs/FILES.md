@@ -247,6 +247,12 @@
 | [`codemods/H12/h12-electron-shell-imports.mjs`](../codemods/H12/h12-electron-shell-imports.mjs) | Codemod H12 (1/2) : reclasse les imports `@creezio/electron-shell` (barrel + subpath `./meili`) vers les packages SoT host-runtime/search/platform-core ; renomme les alias host nommés marque (`ensureTempoflowNode` → `ensureDesktopNode`, pins `TF2_*` → `DESKTOP_*`…) et `nodeEnsure`. Idempotent. |
 | [`codemods/H12/h12-workspace-debrand.mjs`](../codemods/H12/h12-workspace-debrand.mjs) | Codemod H12 (2/2) : dé-brande le workspace shell-ui — renommages `*Supplier*`/`fournisseurIdFromHref` → noms `ExternalSite*`/`siteId*`, `isOptimiserCanvasHref` → `isCanvasHref`, `configureFullscreenPaths` → `configureWorkspacePaths` (fullscreenPaths + canvases), constantes `TF_LEGACY_*`/`PANIER_PATH`/`OPTIMISER_PATH` → constantes de marque. Fail-closed si valeurs non littérales. Idempotent. |
 
+## `codemods/H13/`
+
+| Fichier | Rôle |
+|---|---|
+| [`codemods/H13/h13-ui-debrand.mjs`](../codemods/H13/h13-ui-debrand.mjs) | Codemod H13 : classes / ids UI kit nommés marque → `creezio-*` (`tempoflow-titlebar-*`, `tf2-fake-cursor`, `__tfFakeCursor`, cache SW `tf2-shell-`). Idempotent. |
+
 ## `codemods/H7/`
 
 | Fichier | Rôle |

@@ -29,6 +29,12 @@
 | [`codemods/H12/h12-electron-shell-imports.mjs`](../codemods/H12/h12-electron-shell-imports.mjs) | Copie build (gitignorée) du codemod H12 — SoT `scripts/codemods/H12/` : reclasse imports `@creezio/electron-shell` (+ `/meili`) vers host-runtime / search / platform-core ; alias host nommés marque → `DESKTOP_*` / `ensureDesktopNode`. |
 | [`codemods/H12/h12-workspace-debrand.mjs`](../codemods/H12/h12-workspace-debrand.mjs) | Copie build (gitignorée) du codemod H12 — SoT `scripts/codemods/H12/` : `configureFullscreenPaths` → `configureWorkspacePaths`, workspace neutre (`isCanvasHref`, `openExternalSite`). |
 
+## `codemods/H13/`
+
+| Fichier | Rôle |
+|---|---|
+| [`codemods/H13/h13-ui-debrand.mjs`](../codemods/H13/h13-ui-debrand.mjs) | Copie build (gitignorée) du codemod H13 — SoT `scripts/codemods/H13/` : titlebar / fake-cursor / cache SW → `creezio-*`. |
+
 ## `codemods/H7/`
 
 | Fichier | Rôle |
@@ -51,7 +57,7 @@
 
 | Fichier | Rôle |
 |---|---|
-| [`codemods/lib/skip-dirs.mjs`](../codemods/lib/skip-dirs.mjs) | Copie build (gitignorée) du helper SKIP_DIRS partagé — SoT `scripts/codemods/lib/skip-dirs.mjs`. |
+| [`codemods/lib/skip-dirs.mjs`](../codemods/lib/skip-dirs.mjs) | Copie du SKIP_DIRS partagé des codemods H*. |
 
 ## `scripts/`
 
