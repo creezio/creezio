@@ -24,4 +24,6 @@
 | [`src/meili/generic-indexer.ts`](../src/meili/generic-indexer.ts) | (à documenter) |
 | [`src/meili/index-schema.ts`](../src/meili/index-schema.ts) | (à documenter) |
 | [`src/meili/index.ts`](../src/meili/index.ts) | (à documenter) |
+| [`src/meili/pagination-settings.ts`](../src/meili/pagination-settings.ts) | Plancher `pagination.maxTotalHits` (défaut Meili 1000 = cap silencieux browse). |
 | [`src/meili/indexer.ts`](../src/meili/indexer.ts) | (à documenter) |
+| [`src/meili/pagination-settings.ts`](../src/meili/pagination-settings.ts) | Plancher `pagination.maxTotalHits` (défaut Meili 1000 = cap silencieux browse). |

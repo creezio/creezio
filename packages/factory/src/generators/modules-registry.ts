@@ -711,6 +711,7 @@ export function renderMeiliOrHorsIndexBlock(entityId: string): string {
       settings: {
         searchableAttributes: ["nom"],
         filterableAttributes: ["id"],
+        pagination: { maxTotalHits: 100000 },
       },
     },
   ],`;
