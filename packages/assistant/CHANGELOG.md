@@ -1,5 +1,12 @@
 # @creezio/assistant
 
+## 0.26.1
+
+### Patch Changes
+
+- @creezio/shell@0.26.1
+- @creezio/platform-core@0.26.1
+
 ## 0.26.0
 
 ### Minor Changes
