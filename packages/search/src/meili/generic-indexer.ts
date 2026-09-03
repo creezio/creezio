@@ -16,6 +16,10 @@ import {
   type MeiliFingerprint,
 } from "./index-schema.js";
 import type { BrandMeiliFeed, BrandMeiliDocument } from "./feed.js";
+import {
+  mergeMeiliIndexSettings,
+  needsMeiliMaxTotalHitsRaise,
+} from "./pagination-settings.js";
 
 type SqliteDb = {
   prepare(sql: string): {
@@ -139,7 +143,11 @@ async function recreateIndex(
   await createIndex(meili, uid);
   await waitTask(
     meili,
-    await meili.request("PATCH", `/indexes/${uid}/settings`, settings),
+    await meili.request(
+      "PATCH",
+      `/indexes/${uid}/settings`,
+      mergeMeiliIndexSettings(settings),
+    ),
   );
 }
 
@@ -433,6 +441,50 @@ export async function runFeedIndexation(opts: {
  * RETHROW — l'appelant (search mount) doit la transformer en
  * 503 `meili_unavailable`, jamais en fallback SQL silencieux.
  */
+/**
+ * PATCH `pagination.maxTotalHits` sur des index déjà swapés — pas de
+ * réindexation. Appelé au boot quand le fingerprint est cohérent
+ * (sinon `recreateIndex` pose déjà le plancher).
+ */
+export async function ensureMeiliPaginationSettings(opts: {
+  meiliHost: string;
+  masterKey?: string;
+  indexUids: readonly string[];
+  log?: LogFn;
+}): Promise<void> {
+  const log = opts.log ?? ((line) => console.log(line));
+  if (!opts.meiliHost || opts.indexUids.length === 0) return;
+  const meili = createMeiliClient(opts.meiliHost, opts.masterKey || "");
+  for (const uid of opts.indexUids) {
+    try {
+      const settings = (await meili.request(
+        "GET",
+        `/indexes/${uid}/settings`,
+      )) as { pagination?: { maxTotalHits?: unknown } };
+      const current = settings?.pagination?.maxTotalHits;
+      if (!needsMeiliMaxTotalHitsRaise(current)) continue;
+      const merged = mergeMeiliIndexSettings({
+        pagination: { maxTotalHits: current },
+      });
+      await waitTask(
+        meili,
+        await meili.request("PATCH", `/indexes/${uid}/settings`, {
+          pagination: merged.pagination,
+        }),
+      );
+      log(
+        `[meili] ${uid}: pagination.maxTotalHits ${String(current ?? "défaut")} → ${String((merged.pagination as { maxTotalHits: number }).maxTotalHits)}`,
+      );
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      if (/^Meili HTTP 404\b/.test(msg)) continue;
+      log(
+        `[meili] ${uid}: maxTotalHits ensure ignoré (${msg.slice(0, 180)})`,
+      );
+    }
+  }
+}
+
 export async function searchMeiliIndexes(opts: {
   host: string;
   masterKey?: string;

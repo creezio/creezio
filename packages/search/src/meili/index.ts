@@ -59,7 +59,18 @@ export {
 } from "./coherence.js";
 
 export { runIndexation } from "./indexer.js";
-export { runFeedIndexation, searchMeiliIndexes } from "./generic-indexer.js";
+export {
+  ensureMeiliPaginationSettings,
+  runFeedIndexation,
+  searchMeiliIndexes,
+} from "./generic-indexer.js";
+export {
+  DEFAULT_MEILI_MAX_TOTAL_HITS,
+  mergeMeiliIndexSettings,
+  needsMeiliMaxTotalHitsRaise,
+  resolveMeiliMaxTotalHitsFloor,
+} from "./pagination-settings.js";
+export type { MeiliSettingsJson } from "./pagination-settings.js";
 export {
   browseMeiliIndex,
   browseMeiliIndexOutcome,

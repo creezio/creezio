@@ -102,6 +102,49 @@ test("source : boot Meili fail-closed (MeiliRequiredError + échappatoire unique
   assert.match(desktop, /MEILI_REQUIRED/);
 });
 
+test("source : Meili pagination.maxTotalHits plancher (pas de cap 1000 silencieux)", () => {
+  const settings = read("packages/search/src/meili/pagination-settings.ts");
+  assert.match(settings, /DEFAULT_MEILI_MAX_TOTAL_HITS\s*=\s*100_000/);
+  assert.match(settings, /export function mergeMeiliIndexSettings/);
+  assert.match(settings, /CREEZIO_MEILI_MAX_TOTAL_HITS/);
+
+  const indexer = read("packages/search/src/meili/generic-indexer.ts");
+  assert.match(indexer, /mergeMeiliIndexSettings\(settings\)/);
+  assert.match(indexer, /export async function ensureMeiliPaginationSettings/);
+
+  const boot = read("packages/search/src/brand-meili-boot.ts");
+  assert.match(boot, /ensureMeiliPaginationSettings/);
+  assert.match(
+    boot,
+    /indexSkipped:\s*true/,
+    "le PATCH settings doit tourner sur le chemin fingerprint à jour (pas seulement à la réindexation)",
+  );
+
+  const factoryMod = read("packages/factory/src/generators/modules-registry.ts");
+  assert.match(factoryMod, /maxTotalHits:\s*100000/);
+  const factoryFeed = read("packages/factory/src/generators/meili-feed-presets.ts");
+  assert.match(factoryFeed, /maxTotalHits:\s*100000/);
+});
+
+test("isolé : mergeMeiliIndexSettings lève le défaut 1000 sans écraser un plafond plus haut", async () => {
+  const { mergeMeiliIndexSettings, DEFAULT_MEILI_MAX_TOTAL_HITS } = await import(
+    path.join(ROOT, "packages/search/dist/meili/pagination-settings.js")
+  );
+  assert.equal(DEFAULT_MEILI_MAX_TOTAL_HITS, 100_000);
+  const raised = mergeMeiliIndexSettings({
+    searchableAttributes: ["nom"],
+    pagination: { maxTotalHits: 1000 },
+  });
+  assert.equal(raised.pagination.maxTotalHits, 100_000);
+  assert.deepEqual(raised.searchableAttributes, ["nom"]);
+  const kept = mergeMeiliIndexSettings({
+    pagination: { maxTotalHits: 250_000 },
+  });
+  assert.equal(kept.pagination.maxTotalHits, 250_000);
+  const empty = mergeMeiliIndexSettings({});
+  assert.equal(empty.pagination.maxTotalHits, 100_000);
+});
+
 test("source : entity-mount fail-closed (503 meili_unavailable, indexing)", () => {
   const mount = read("packages/api-kernel/src/entity-mount.ts");
   assert.match(mount, /meili_unavailable/);

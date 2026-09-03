@@ -83,6 +83,7 @@ export const brandMeiliFeed: BrandMeiliFeed = {
       settings: {
         searchableAttributes: ["nom", "categorie", "unite"],
         filterableAttributes: ["type", "fournisseur_id", "categorie"],
+        pagination: { maxTotalHits: 100000 },
         displayedAttributes: [
           "id",
           "type",
@@ -103,6 +104,7 @@ export const brandMeiliFeed: BrandMeiliFeed = {
       settings: {
         searchableAttributes: ["nom", "contact", "email"],
         filterableAttributes: ["type"],
+        pagination: { maxTotalHits: 100000 },
         displayedAttributes: [
           "id",
           "type",

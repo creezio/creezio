@@ -14,7 +14,10 @@
 import type { BrandMeiliFeed } from "./meili/feed.js";
 import { configureMeiliBrandFeed } from "./meili/feed.js";
 import { startMeili, type RunningMeili } from "./meili-launcher.js";
-import { runFeedIndexation } from "./meili/generic-indexer.js";
+import {
+  ensureMeiliPaginationSettings,
+  runFeedIndexation,
+} from "./meili/generic-indexer.js";
 import {
   configureMeiliCoherencePaths,
   decideMeiliReady,
@@ -136,6 +139,13 @@ export async function maybeBootBrandMeili(opts: {
           `fingerprint à jour (${decision.reason}) — indexation sautée, ` +
             `compteurs ${JSON.stringify(decision.meili)}`,
         );
+        // Settings cheap : lève le plafond Meili 1000 sans recréer l'index.
+        await ensureMeiliPaginationSettings({
+          meiliHost: meili.host,
+          masterKey: meili.masterKey,
+          indexUids: (opts.feed.indexes ?? []).map((i) => i.uid),
+          log,
+        });
         return { meili, engine: "meili", indexSkipped: true };
       }
       log(`réindexation requise: ${decision.reason}`);
