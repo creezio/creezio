@@ -1,5 +1,14 @@
 # @creezio/auth
 
+## 0.26.1
+
+### Patch Changes
+
+- 9a244e8: Reject previously issued cookie and bearer sessions immediately when the platform account is disabled or missing. Revalidate impersonation actors and current account roles on every request, fail closed if the account store is unavailable, and preserve standalone/legacy JWT compatibility through an injectable session guard.
+  - @creezio/shell@0.26.1
+  - @creezio/platform-core@0.26.1
+  - @creezio/shell-ui@0.26.1
+
 ## 0.26.0
 
 ### Patch Changes

@@ -1,5 +1,13 @@
 # @creezio/search
 
+## 0.26.1
+
+### Patch Changes
+
+- d5fd697: Le browse Meili ne coupe plus les listes à 1000 hits : `pagination.maxTotalHits` est posé à l'indexation et PATCHé au boot (sans réindexation) quand le fingerprint est déjà à jour.
+  - @creezio/platform-core@0.26.1
+  - @creezio/observability@0.26.1
+
 ## 0.26.0
 
 ### Patch Changes
