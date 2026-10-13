@@ -86,3 +86,11 @@ Guide auteur : [CREATE-PLUGIN](../../docs/agents/CREATE-PLUGIN.md).
 - [AGENTS.md](./AGENTS.md)
 - [docs/FILES.md](./docs/FILES.md)
 - [../../docs/ARCHITECTURE.md](../../docs/ARCHITECTURE.md)
+
+### Révocation des sessions plateforme
+
+La surface plateforme câble `configureAuth.isSessionActive` au store natif.
+Chaque JWT cookie/Bearer est refusé si le compte est inactif, absent ou a
+changé de rôle, ou si son acteur impersonné n’est plus propriétaire actif.
+La fermeture de la surface refuse aussi les sessions. Aucune table métier
+ni copie de comptes n’est nécessaire côté marque.

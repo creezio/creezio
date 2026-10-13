@@ -78,6 +78,16 @@ configureAuth({
 
 Options complémentaires :
 
+- `isSessionActive(session)` : vérification de l'état courant du compte après
+  validation cryptographique, à chaque lecture du JWT. Seul `true` autorise
+  la session ; `false` ou une erreur du resolver la refuse. La surface
+  `app-runtime` le câble automatiquement au store plateforme : compte actif,
+  rôle inchangé et acteur propriétaire actif en cas d'impersonation. Les
+  cookies et Bearer déjà émis sont ainsi refusés dès la désactivation ; la
+  réactivation rétablit les sessions encore valides. Sans adapter (usage
+  autonome), la compatibilité JWT existante est conservée. Les flux par clé
+  API et le mode de test `AUTH_DISABLED` gardent leur contrat propre.
+
 - `userAdminPermission` : les gardes `POST`/`PATCH` users acceptent le owner
   OU une session collaborateur portant cette permission (défaut : owner-only).
 - `resolveBrandRole(userId, db)` : rôle métier marque exposé en session (ex.

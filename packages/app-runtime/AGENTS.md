@@ -101,3 +101,11 @@ await startBrandDesktop({
   navItems: verticalSlot.items,
 });
 ```
+
+## Sessions et désactivation
+
+`mountBrandPlatformSurface` câble `configureAuth.isSessionActive` au store
+plateforme natif, sans cache. Tout lecteur JWT (y compris les modules Node)
+doit suivre ce contrôle partagé : sujet actif, rôle courant cohérent,
+acteur impersonné propriétaire actif. Un store fermé refuse les sessions.
+Gate : `scripts/test-phase-session-account-state.mjs`.
