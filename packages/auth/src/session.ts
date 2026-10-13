@@ -189,7 +189,11 @@ export async function verifySessionToken(
 ): Promise<SessionPayload | null> {
   try {
     const { payload } = await jwtVerify(token, getSecret());
-    return normalizePayload(payload as Record<string, unknown>);
+    const session = normalizePayload(payload as Record<string, unknown>);
+    if (!session) return null;
+    const isSessionActive = getAuthConfig().isSessionActive;
+    if (isSessionActive && (await isSessionActive(session)) !== true) return null;
+    return session;
   } catch {
     return null;
   }

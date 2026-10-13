@@ -131,3 +131,11 @@ Gates fonctionnels :
 - [`README.md`](./README.md)
 - [`docs/FILES.md`](./docs/FILES.md)
 - Packages lies : `@creezio/platform-core`, `@creezio/shell`, `@creezio/shell-ui`, `@creezio/mcp-facade`
+
+## État courant des sessions
+
+`configureAuth.isSessionActive` est appelé par `verifySessionToken` après la
+signature, sans cache : seul true passe, toute erreur refuse. La surface
+plateforme le câble au store core et contrôle aussi l’acteur impersonné.
+Préserver les usages autonomes sans adapter et la compatibilité des anciens
+JWT owner ; gate `test-phase-session-account-state.mjs`.

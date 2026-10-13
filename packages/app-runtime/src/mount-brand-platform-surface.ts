@@ -22,6 +22,7 @@ import path from "node:path";
 import { Hono, type Context } from "hono";
 import { getCookie } from "hono/cookie";
 import {
+  configureAuth,
   createAuthRoutes,
   createSessionToken,
   getAuthConfig,
@@ -556,6 +557,25 @@ export function mountBrandPlatformSurface(opts: {
     presence,
   };
   runtimeSlot().current = runtime;
+  // Shared by Hono, module mounts and cookie/Bearer readers. A signed JWT
+  // proves identity, not that the account (or impersonation actor) is active.
+  configureAuth({
+    cookieName: effectiveCookieName,
+    isSessionActive: (session) => {
+      if (runtimeSlot().current !== runtime) return false;
+      const subject = session.sub === "legacy-owner"
+        ? store.getOwner()
+        : store.getUserById(session.sub);
+      if (!subject?.active || subject.role !== session.role) return false;
+      if (session.sub === "legacy-owner" &&
+          subject.username.trim().toLowerCase() !== session.email.trim().toLowerCase()) return false;
+      if (session.actorSub) {
+        const actor = store.getUserById(session.actorSub);
+        if (!actor?.active || actor.role !== "owner") return false;
+      }
+      return true;
+    },
+  });
 
   // Assistant : la marque peut avoir posé AppMap/prompts/meili/hermes au
   // beforeBoot. On complète toujours db + presence + tasks (merge) — sans

@@ -3,6 +3,8 @@
  * Aucun nom de cookie ni bridge hardcodé dans le kit.
  */
 
+import type { SessionPayload } from "./session-types.js";
+
 /**
  * Accès db minimal (structurel) passé au resolver de rôle marque : la
  * couche brand du kernel (brand.db) quand la surface la fournit, sinon
@@ -18,6 +20,13 @@ export type AuthConfig = {
    * Obligatoire avant getSession / cookies / middlewares.
    */
   cookieName: string;
+  /**
+   * Live account guard after JWT signature validation, on every verification.
+   * Injected by the platform surface; standalone adapters may supply their own.
+   * Only true accepts the session; false, missing accounts and lookup errors
+   * deny access. The adapter must also validate the actor during impersonation.
+   */
+  isSessionActive?: (session: Readonly<SessionPayload>) => boolean | Promise<boolean>;
   /** Durée cookie en secondes. Défaut 7 jours. */
   cookieMaxAge?: number;
   /**
@@ -60,6 +69,7 @@ const DEFAULT_MAX_AGE = 60 * 60 * 24 * 7;
 type ResolvedAuthConfig = {
   cookieName: string;
   cookieMaxAge: number;
+  isSessionActive: AuthConfig["isSessionActive"];
   ownerPermissions: readonly string[];
   collaboratorDefaultPermissions: readonly string[];
   collaboratorAssignablePermissions: readonly string[];
@@ -73,6 +83,7 @@ type ResolvedAuthConfig = {
 const DEFAULT: ResolvedAuthConfig = {
   cookieName: "",
   cookieMaxAge: DEFAULT_MAX_AGE,
+  isSessionActive: undefined,
   ownerPermissions: [],
   collaboratorDefaultPermissions: [],
   collaboratorAssignablePermissions: [],
@@ -111,6 +122,7 @@ export function configureAuth(next: AuthConfig): void {
         ? next.userAdminPermission.trim()
         : config.userAdminPermission,
     resolveBrandRole: next.resolveBrandRole ?? config.resolveBrandRole,
+    isSessionActive: next.isSessionActive ?? config.isSessionActive,
   };
 }
 
